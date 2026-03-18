@@ -1352,6 +1352,16 @@
         </div>
     </div>
 
+    <div id="reliability-info-modal" class="modal-overlay" onclick="closeReliabilityInfo(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="t-reliabilityInfoTitle"></h3>
+            <p id="t-reliabilityInfoText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 20px; text-align: left;"></p>
+            <div class="action-row">
+                <button class="btn" style="flex: 1;" onclick="closeReliabilityInfo()" id="t-btnClose">Понятно</button>
+            </div>
+        </div>
+    </div>
+
     <div id="drop-test-modal" class="modal-overlay" onclick="closeDropTestModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-dropTestTitle">🗑️ Отказаться</h3>
@@ -1599,12 +1609,15 @@
                 // Reliability
                 experienceLabel: "🎓 Опыт: {count}",
                 completedTestsSuffix: "завершенных тестов",
-                disciplineLabel: "📊 Дисциплина:",
+                disciplineLabel: "📊 Надежность:",
                 reliabilityNewbie: "⚪️ Новичок (Сбор данных)",
                 reliabilityExcellent: "🟢 Отлично",
                 reliabilityGood: "🟡 Хорошо",
                 reliabilityRisky: "🟠 Рискованно",
                 reliabilityUnreliable: "🔴 Ненадежный",
+                reliabilityInfoTitle: "ℹ️ Индекс надежности",
+                reliabilityInfoText: "Этот показатель отражает, насколько ответственно вы подходите к тестированию чужих проектов.\n\n<b>Как считается:</b>\nЭто процент ваших фактических ежедневных чекинов от ожидаемых за всё время.\n\n<b>Статусы:</b>\n🟢 Отличная (95-100%)\n🟡 Хорошая (80-94%)\n🟠 В зоне риска (65-79%)\n🔴 Ненадежный (<65%)\n\n<i>Статус обновляется после прохождения «испытательного срока» (эквивалент 3-х полных тестов).</i>",
+                btnClose: "Понятно",
             },
             en: {
                 tabTests: "My Tests",
@@ -1824,12 +1837,15 @@
                 // Reliability
                 experienceLabel: "🎓 Experience: {count}",
                 completedTestsSuffix: "completed tests",
-                disciplineLabel: "📊 Discipline:",
+                disciplineLabel: "📊 Reliability:",
                 reliabilityNewbie: "⚪️ Newbie (Collecting data)",
                 reliabilityExcellent: "🟢 Excellent",
                 reliabilityGood: "🟡 Good",
                 reliabilityRisky: "🟠 Risky",
                 reliabilityUnreliable: "🔴 Unreliable",
+                reliabilityInfoTitle: "ℹ️ Reliability Score",
+                reliabilityInfoText: "This score reflects how responsibly you approach testing other people's projects.\n\n<b>How it's calculated:</b>\nIt's the percentage of your actual daily check-ins against the expected ones over all time.\n\n<b>Tiers:</b>\n🟢 Excellent (95-100%)\n🟡 Good (80-94%)\n🟠 Risky (65-79%)\n🔴 Unreliable (<65%)\n\n<i>The status is updated after passing the 'probation period' (equivalent to 3 full tests).</i>",
+                btnClose: "Got it",
             }
         };
 
@@ -1909,6 +1925,7 @@
             document.getElementById('t-screenshotCompleteTitle').innerText = t.screenshotReminderTitle;
             document.getElementById('t-screenshotCompleteText').innerText = t.screenshotReminderText;
             document.getElementById('t-screenshotCompleteClose').innerText = t.screenshotCompleteClose;
+            document.getElementById('t-btnClose').innerText = t.btnClose;
             document.getElementById('t-dropTestTitle').innerText = t.dropTestTitle;
             document.getElementById('t-dropTestWarning').innerText = t.dropTestWarning;
             document.getElementById('t-btnCancel').innerText = t.btnCancel;
@@ -2194,6 +2211,7 @@
                     rank: data.rank || 0,
                     total_developers: data.total_developers || 0,
                     my_active_tests: data.my_active_tests || 0,
+                    my_total_tests: data.my_total_tests || 0,
                     need_more: data.need_more || 0,
                     top_thresholds: data.top_thresholds || {},
                     completed_tests: data.completed_tests || 0,
@@ -2807,9 +2825,9 @@
 
                 const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
                 const expLine = t.experienceLabel.replace('{count}', visibilityStats.completed_tests) + ' ' + t.completedTestsSuffix;
-                const discLine = reliability.percent !== null
-                    ? `${t.disciplineLabel} ${reliability.text} (${reliability.percent}%)`
-                    : `${t.disciplineLabel} ${reliability.text}`;
+                const reliabilityValue = reliability.percent !== null
+                    ? `${reliability.text} (${reliability.percent}%)`
+                    : `${reliability.text}`;
 
                 const dashHtml = `
                     <div class="dashboard-block">
@@ -2819,14 +2837,14 @@
                         </div>
                         ${visibleLine ? `<div class="dashboard-row"><span class="dashboard-label">${visibleLine}</span></div>` : ''}
                         <div class="dashboard-row">
-                            <span class="dashboard-label">⚡ ${t.activeTestsLabel}: ${visibilityStats.my_active_tests}</span>
+                            <span class="dashboard-label">⚡ ${t.activeTestsLabel}: ${visibilityStats.my_total_tests}</span>
                         </div>
                         ${visibilityStats.need_more > 0 ? `<div class="dashboard-row"><span class="dashboard-label" style="color: #ff9500;">${t.needMore.replace('{count}', visibilityStats.need_more)}</span></div>` : ''}
                         <div class="dashboard-row">
                             <span class="dashboard-label">${expLine}</span>
                         </div>
                         <div class="dashboard-row">
-                            <span class="dashboard-label" style="color: ${reliability.color};">${discLine}</span>
+                            <span class="dashboard-label" style="color: ${reliability.color};">${t.disciplineLabel} <span onclick="showReliabilityInfo()" style="cursor:pointer; text-decoration: underline; text-decoration-style: dotted;">${reliabilityValue} ℹ️</span></span>
                         </div>
                     </div>
                 `;
@@ -3469,6 +3487,19 @@
         function showKarmaInfo() {
             if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
             showCustomAlert(t.karmaInfoText);
+        }
+
+        function showReliabilityInfo() {
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            document.getElementById('t-reliabilityInfoTitle').innerHTML = t.reliabilityInfoTitle;
+            document.getElementById('t-reliabilityInfoText').innerHTML = t.reliabilityInfoText;
+            document.getElementById('t-btnClose').innerText = t.btnClose;
+            document.getElementById('reliability-info-modal').classList.add('active');
+        }
+
+        function closeReliabilityInfo(event) {
+            if (event && event.target !== document.getElementById('reliability-info-modal')) return;
+            document.getElementById('reliability-info-modal').classList.remove('active');
         }
 
         function showRankPopup() {
