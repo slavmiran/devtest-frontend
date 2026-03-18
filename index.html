@@ -1342,6 +1342,16 @@
         </div>
     </div>
 
+    <!-- Screenshot Complete Reminder Modal -->
+    <div id="screenshot-complete-modal" class="modal-overlay" onclick="closeScreenshotCompleteModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 style="font-size: 16px;" id="t-screenshotCompleteTitle"></h3>
+            <p id="t-screenshotCompleteText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 16px;"></p>
+            <div id="screenshot-complete-action"></div>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142,142,147,0.2);" onclick="closeScreenshotCompleteModal()" id="t-screenshotCompleteClose"></button>
+        </div>
+    </div>
+
     <div id="drop-test-modal" class="modal-overlay" onclick="closeDropTestModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-dropTestTitle">🗑️ Отказаться</h3>
@@ -1438,6 +1448,7 @@
                 screenshotReminderTitle: "📸 Сегодня был обязательный день скриншота",
                 screenshotReminderText: "Если вы ещё не отправили разработчику скриншот запуска в личные сообщения, вернитесь в диалог и отправьте его. Повторные пропуски могут привести к блокировке.",
                 screenshotReminderBtn: "💬 Отправить скриншот",
+                screenshotCompleteClose: "Понятно",
                 inviteModalTitle: "Пригласить тестеров",
                 inviteClose: "Закрыть",
                 inviteBlock1Title: "📢 Опубликовать на нашей Бирже",
@@ -1585,6 +1596,15 @@
                 statusVisibleNew: "🟢 Видно (Новинка)",
                 statusVisibleQuota: "🟢 Видно на бирже",
                 statusHiddenQuota: "🟡 Скрыто (Нужно 3 активных теста)",
+                // Reliability
+                experienceLabel: "🎓 Опыт: {count}",
+                completedTestsSuffix: "завершенных тестов",
+                disciplineLabel: "📊 Дисциплина:",
+                reliabilityNewbie: "⚪️ Новичок (Сбор данных)",
+                reliabilityExcellent: "🟢 Отлично",
+                reliabilityGood: "🟡 Хорошо",
+                reliabilityRisky: "🟠 Рискованно",
+                reliabilityUnreliable: "🔴 Ненадежный",
             },
             en: {
                 tabTests: "My Tests",
@@ -1653,6 +1673,7 @@
                 screenshotReminderTitle: "📸 Today was a mandatory screenshot day",
                 screenshotReminderText: "If you still have not sent the developer a launch screenshot in direct messages, return to the chat and send it now. Repeated misses may lead to a ban.",
                 screenshotReminderBtn: "💬 Send Screenshot",
+                screenshotCompleteClose: "Got it",
                 inviteModalTitle: "Invite testers",
                 inviteClose: "Close",
                 inviteBlock1Title: "📢 Post on our Exchange",
@@ -1800,6 +1821,15 @@
                 statusVisibleNew: "🟢 Visible (New app)",
                 statusVisibleQuota: "🟢 Visible on exchange",
                 statusHiddenQuota: "🟡 Hidden (Need 3 active tests)",
+                // Reliability
+                experienceLabel: "🎓 Experience: {count}",
+                completedTestsSuffix: "completed tests",
+                disciplineLabel: "📊 Discipline:",
+                reliabilityNewbie: "⚪️ Newbie (Collecting data)",
+                reliabilityExcellent: "🟢 Excellent",
+                reliabilityGood: "🟡 Good",
+                reliabilityRisky: "🟠 Risky",
+                reliabilityUnreliable: "🔴 Unreliable",
             }
         };
 
@@ -1876,6 +1906,9 @@
             document.getElementById('contact-chip-mutual').innerText = t.contactChipMutual;
             document.getElementById('contact-chip-attach').innerText = t.contactChipAttach;
             document.getElementById('t-extendTitle').innerText = t.extendTitle;
+            document.getElementById('t-screenshotCompleteTitle').innerText = t.screenshotReminderTitle;
+            document.getElementById('t-screenshotCompleteText').innerText = t.screenshotReminderText;
+            document.getElementById('t-screenshotCompleteClose').innerText = t.screenshotCompleteClose;
             document.getElementById('t-dropTestTitle').innerText = t.dropTestTitle;
             document.getElementById('t-dropTestWarning').innerText = t.dropTestWarning;
             document.getElementById('t-btnCancel').innerText = t.btnCancel;
@@ -2112,6 +2145,15 @@
                     }
                 });
             }
+
+            // Show screenshot reminder modal when user returns from Telegram
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && _pendingScreenshotReminderUsername !== null) {
+                    const uname = _pendingScreenshotReminderUsername;
+                    _pendingScreenshotReminderUsername = null;
+                    setTimeout(() => showScreenshotCompleteModal(uname), 300);
+                }
+            });
         });
 
         async function loadProjects(isBackground = false) {
@@ -2153,7 +2195,10 @@
                     total_developers: data.total_developers || 0,
                     my_active_tests: data.my_active_tests || 0,
                     need_more: data.need_more || 0,
-                    top_thresholds: data.top_thresholds || {}
+                    top_thresholds: data.top_thresholds || {},
+                    completed_tests: data.completed_tests || 0,
+                    total_expected_checkins: data.total_expected_checkins || 0,
+                    total_actual_checkins: data.total_actual_checkins || 0,
                 };
                 
                 renderProjects();
@@ -2265,14 +2310,14 @@
                 return '';
             }
 
+            const safeReminderText = (t.screenshotReminderText || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const dmButton = test.owner_username
                 ? `<button class="btn btn-secondary" style="width: 100%; background-color: var(--button-color, #007aff); color: var(--button-text-color, #fff); border: none;" onclick="return openTelegramProfile('${test.owner_username}', event)">${t.screenshotReminderBtn}</button>`
                 : '';
 
             return `
                 <div class="screenshot-reminder">
-                    <div class="screenshot-reminder-title">${t.screenshotReminderTitle}</div>
-                    <div class="screenshot-reminder-text">${t.screenshotReminderText}</div>
+                    <div class="screenshot-reminder-title" style="cursor: pointer;" onclick="event.stopPropagation(); showToast('${safeReminderText}')">${t.screenshotReminderTitle}</div>
                     ${dmButton}
                 </div>
             `;
@@ -2717,6 +2762,17 @@
         });
 
 
+        function calculateReliability(expected, actual) {
+            if (expected < 42) {
+                return { text: t.reliabilityNewbie, percent: null, color: 'var(--hint-color)' };
+            }
+            const percent = Math.round((actual / expected) * 100);
+            if (percent >= 95) return { text: t.reliabilityExcellent, percent, color: '#34c759' };
+            if (percent >= 80) return { text: t.reliabilityGood, percent, color: '#ffcc00' };
+            if (percent >= 65) return { text: t.reliabilityRisky, percent, color: '#ff9500' };
+            return { text: t.reliabilityUnreliable, percent, color: '#ff3b30' };
+        }
+
         function renderProjects() {
             const container = document.getElementById('projects-list');
             container.innerHTML = '';
@@ -2749,6 +2805,12 @@
                 else if (vc > 0) visibleLine = t.visibilityPartial.replace('{visible}', vc).replace('{total}', tc);
                 else visibleLine = t.visibilityNone;
 
+                const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
+                const expLine = t.experienceLabel.replace('{count}', visibilityStats.completed_tests) + ' ' + t.completedTestsSuffix;
+                const discLine = reliability.percent !== null
+                    ? `${t.disciplineLabel} ${reliability.text} (${reliability.percent}%)`
+                    : `${t.disciplineLabel} ${reliability.text}`;
+
                 const dashHtml = `
                     <div class="dashboard-block">
                         <div class="dashboard-row">
@@ -2760,6 +2822,12 @@
                             <span class="dashboard-label">⚡ ${t.activeTestsLabel}: ${visibilityStats.my_active_tests}</span>
                         </div>
                         ${visibilityStats.need_more > 0 ? `<div class="dashboard-row"><span class="dashboard-label" style="color: #ff9500;">${t.needMore.replace('{count}', visibilityStats.need_more)}</span></div>` : ''}
+                        <div class="dashboard-row">
+                            <span class="dashboard-label">${expLine}</span>
+                        </div>
+                        <div class="dashboard-row">
+                            <span class="dashboard-label" style="color: ${reliability.color};">${discLine}</span>
+                        </div>
                     </div>
                 `;
                 container.insertAdjacentHTML('beforeend', dashHtml);
@@ -3090,6 +3158,23 @@
 
         let _reportAppId = null;
         let _reportOwnerUsername = null;
+        let _pendingScreenshotReminderUsername = null;
+
+        function showScreenshotCompleteModal(ownerUsername) {
+            const actionEl = document.getElementById('screenshot-complete-action');
+            if (ownerUsername) {
+                const safe = (ownerUsername || '').replace(/'/g, "\\'");
+                actionEl.innerHTML = `<button class="btn" style="width: 100%; background-color: var(--button-color, #007aff); color: var(--button-text-color, #fff); border: none; margin-bottom: 8px;" onclick="openTelegramProfile('${safe}', event); closeScreenshotCompleteModal();">${t.screenshotReminderBtn}</button>`;
+            } else {
+                actionEl.innerHTML = '';
+            }
+            document.getElementById('screenshot-complete-modal').classList.add('active');
+        }
+
+        function closeScreenshotCompleteModal(event) {
+            if (event && event.target !== document.getElementById('screenshot-complete-modal')) return;
+            document.getElementById('screenshot-complete-modal').classList.remove('active');
+        }
 
         async function handleScreenshotAndConfirm(id, ownerUsername) {
             if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
@@ -3133,7 +3218,13 @@
             const ownerUsername = (_reportOwnerUsername || '').replace('@', '').trim();
             const appId = _reportAppId;
 
-            // Open Telegram chat with prefilled message
+            _reportAppId = null;
+            _reportOwnerUsername = null;
+
+            // Close modal immediately — don't make the user wait
+            document.getElementById('report-modal').classList.remove('active');
+
+            // Open Telegram FIRST, before any interface update
             if (ownerUsername) {
                 const encodedText = encodeURIComponent(text);
                 try {
@@ -3145,17 +3236,14 @@
                         window.location.href = 'https://t.me/' + ownerUsername + '?text=' + encodedText;
                     }
                 }
+                // Store for reminder popup when user returns from Telegram
+                _pendingScreenshotReminderUsername = ownerUsername;
             }
 
-            // Close modal
-            document.getElementById('report-modal').classList.remove('active');
-
-            // Confirm checkin
+            // Confirm checkin in the background — no await, don't block Telegram navigation
             if (appId) {
-                await confirmStart(appId);
+                confirmStart(appId);
             }
-            _reportAppId = null;
-            _reportOwnerUsername = null;
         }
 
         // --- Contact Developer Modal ---
