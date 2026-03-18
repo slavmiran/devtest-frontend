@@ -882,7 +882,7 @@
             color: var(--hint-color);
             line-height: 1.3;
             margin-bottom: 10px;
-            padding-left: 54px;
+            padding-left: 0;
         }
 
         /* Expire Warning */
@@ -1268,7 +1268,19 @@
                 <label class="form-label" id="t-editGroup">Ссылка на Google Group</label>
                 <input type="text" id="edit-group" class="form-input" readonly style="background-color: rgba(142, 142, 147, 0.15); cursor: not-allowed;" onclick="showReadonlyAlert()">
             </div>
-            <button class="btn btn-primary" onclick="saveProjectEdit()" id="t-editSave">Сохранить</button>
+            <div id="edit-created-at" style="font-size: 12px; color: var(--hint-color); opacity: 0.75; margin: 6px 2px 12px 2px;"></div>
+            <div class="action-row">
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEditModal()" id="t-editCancel">Отмена</button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="saveProjectEdit()" id="t-editSave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tester Dossier Modal -->
+    <div id="dossier-modal" class="modal-overlay" onclick="closeDossierModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 360px;">
+            <h3 id="dossier-modal-title" style="margin-bottom: 16px;"></h3>
+            <div id="dossier-body" style="font-size: 14px; line-height: 1.6;"></div>
         </div>
     </div>
 
@@ -1450,6 +1462,8 @@
                 emailWarningCancel: "❌ Отмена",
                 editProjectTitle: "Редактировать проект",
                 editPackage: "Пакет (Play Store Link)",
+                editCancel: "Отмена",
+                editAddedToPlatform: "🗓 Добавлен на платформу: {date} ({days} {days_word} назад)",
                 readonlyFieldAlert: "Эти данные нельзя изменить. Если вы допустили ошибку при вводе ссылок, удалите этот проект и создайте новый.",
                 screenshotBtn: "Отправить Скриншот и Завершить тест",
                 screenshotWarning: "⚠️ Сегодня день обязательного скриншота!",
@@ -1618,6 +1632,24 @@
                 reliabilityInfoTitle: "ℹ️ Индекс надежности",
                 reliabilityInfoText: "Этот показатель отражает, насколько ответственно вы подходите к тестированию чужих проектов.\n\n<b>Как считается:</b>\nЭто процент ваших фактических ежедневных чекинов от ожидаемых за всё время.\n\n<b>Статусы:</b>\n🟢 Отличная (95-100%)\n🟡 Хорошая (80-94%)\n🟠 В зоне риска (65-79%)\n🔴 Ненадежный (<65%)\n\n<i>Статус обновляется после прохождения «испытательного срока» (эквивалент 3-х полных тестов).</i>",
                 btnClose: "Понятно",
+                // Tester Dossier
+                dossierTitle: "Досье тестера",
+                dossierGlobalTitle: "👤 Глобальный профиль",
+                dossierProjectTitle: "📋 В этом проекте",
+                dossierActionsTitle: "⚡ Действия",
+                dossierKarma: "☯️ Карма: {karma}",
+                dossierExperience: "🎓 Опыт: {count} тестов",
+                dossierReliability: "📊 Надежность: {pct}%",
+                dossierTestingDay: "🧪 День тестирования: {day} из 14",
+                dossierStartDate: "📅 Начало: {date}",
+                dossierExpectedFinish: "🏁 Ожидаемое завершение: {date}",
+                dossierMissedDays: "⚠️ Пропущено дней: {count}",
+                dossierLastCheck: "🕐 Последний чекин: {status}",
+                dossierBtnTelegram: "💬 Telegram",
+                dossierBtnKarma: "+☯️ Наградить",
+                dossierBtnDelete: "🗑️ Убрать тестера",
+                dossierLoading: "Загрузка...",
+                dossierNewbie: "Новичок",
             },
             en: {
                 tabTests: "My Tests",
@@ -1678,6 +1710,8 @@
                 emailWarningCancel: "❌ Cancel",
                 editProjectTitle: "Edit project",
                 editPackage: "Package (Play Store Link)",
+                editCancel: "Cancel",
+                editAddedToPlatform: "🗓 Added to platform: {date} ({days} days ago)",
                 readonlyFieldAlert: "This data cannot be changed. If you made a mistake when entering links, delete this project and create a new one.",
                 screenshotBtn: "Send Screenshot & Complete test",
                 screenshotWarning: "⚠️ Today is a mandatory screenshot day!",
@@ -1846,6 +1880,24 @@
                 reliabilityInfoTitle: "ℹ️ Reliability Score",
                 reliabilityInfoText: "This score reflects how responsibly you approach testing other people's projects.\n\n<b>How it's calculated:</b>\nIt's the percentage of your actual daily check-ins against the expected ones over all time.\n\n<b>Tiers:</b>\n🟢 Excellent (95-100%)\n🟡 Good (80-94%)\n🟠 Risky (65-79%)\n🔴 Unreliable (<65%)\n\n<i>The status is updated after passing the 'probation period' (equivalent to 3 full tests).</i>",
                 btnClose: "Got it",
+                // Tester Dossier
+                dossierTitle: "Tester Dossier",
+                dossierGlobalTitle: "👤 Global Profile",
+                dossierProjectTitle: "📋 In This Project",
+                dossierActionsTitle: "⚡ Actions",
+                dossierKarma: "☯️ Karma: {karma}",
+                dossierExperience: "🎓 Experience: {count} tests",
+                dossierReliability: "📊 Reliability: {pct}%",
+                dossierTestingDay: "🧪 Testing day: {day} of 14",
+                dossierStartDate: "📅 Started: {date}",
+                dossierExpectedFinish: "🏁 Expected finish: {date}",
+                dossierMissedDays: "⚠️ Missed days: {count}",
+                dossierLastCheck: "🕐 Last check-in: {status}",
+                dossierBtnTelegram: "💬 Telegram",
+                dossierBtnKarma: "+☯️ Reward",
+                dossierBtnDelete: "🗑️ Remove tester",
+                dossierLoading: "Loading...",
+                dossierNewbie: "Newbie",
             }
         };
 
@@ -1892,7 +1944,9 @@
             document.getElementById('t-editIconUrl').innerText = t.iconUrl;
             document.getElementById('t-editPackage').innerText = t.editPackage;
             document.getElementById('t-editGroup').innerText = t.googleGroup;
+            document.getElementById('t-editCancel').innerText = t.editCancel;
             document.getElementById('t-editSave').innerText = t.save;
+            renderEditCreatedAtMeta();
             // Karma modal translations
             document.getElementById('karma-modal-title').innerText = t.karmaModalTitle;
             document.getElementById('karma-modal-desc').innerText = t.karmaModalDesc;
@@ -2232,6 +2286,57 @@
 
         // --- Helpers ---
         const getLocalDate = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+        function getRuDaysWord(days) {
+            const d10 = days % 10;
+            const d100 = days % 100;
+            if (d10 === 1 && d100 !== 11) return 'день';
+            if (d10 >= 2 && d10 <= 4 && (d100 < 12 || d100 > 14)) return 'дня';
+            return 'дней';
+        }
+
+        function formatEditProjectCreatedAt(project) {
+            if (!project || !project.created_at) return '';
+            const createdDate = new Date(project.created_at);
+            if (Number.isNaN(createdDate.getTime())) return '';
+
+            const msInDay = 1000 * 60 * 60 * 24;
+            const todayDate = new Date(getLocalDate());
+            const createdOnlyDate = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+            const daysAgo = Math.max(0, Math.floor((todayDate - createdOnlyDate) / msInDay));
+
+            if (lang === 'ru') {
+                const formattedDate = new Intl.DateTimeFormat('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                }).format(createdDate).replace(/\s?г\.?$/, '');
+                return t.editAddedToPlatform
+                    .replace('{date}', formattedDate)
+                    .replace('{days}', daysAgo)
+                    .replace('{days_word}', getRuDaysWord(daysAgo));
+            }
+
+            const formattedDate = new Intl.DateTimeFormat('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            }).format(createdDate);
+            return t.editAddedToPlatform
+                .replace('{date}', formattedDate)
+                .replace('{days}', daysAgo);
+        }
+
+        function renderEditCreatedAtMeta() {
+            const metaEl = document.getElementById('edit-created-at');
+            if (!metaEl) return;
+            if (!projectToEdit) {
+                metaEl.textContent = '';
+                return;
+            }
+            const project = myProjects.find(p => p.id === projectToEdit);
+            metaEl.textContent = formatEditProjectCreatedAt(project);
+        }
 
         function formatTimeAgo(dateStr) {
             if (!dateStr) return t.timeJustNow;
@@ -2822,12 +2927,17 @@
                 else if (vc === tc) visibleLine = t.visibilityAllPublic;
                 else if (vc > 0) visibleLine = t.visibilityPartial.replace('{visible}', vc).replace('{total}', tc);
                 else visibleLine = t.visibilityNone;
+                const hasHiddenApps = tc > 0 && vc < tc;
+                const showNeedMore = hasHiddenApps && (visibilityStats.need_more > 0);
 
                 const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
                 const expLine = t.experienceLabel.replace('{count}', visibilityStats.completed_tests) + ' ' + t.completedTestsSuffix;
                 const reliabilityValue = reliability.percent !== null
                     ? `${reliability.text} (${reliability.percent}%)`
                     : `${reliability.text}`;
+                const reliabilityValueStyle = reliability.percent !== null
+                    ? 'cursor:pointer; text-decoration: underline; text-decoration-style: dotted;'
+                    : 'cursor:pointer; text-decoration: none;';
 
                 const dashHtml = `
                     <div class="dashboard-block">
@@ -2836,15 +2946,15 @@
                             <button class="meta-chip accent-yellow" onclick="showKarmaInfo()">☯️ ${visibilityStats.ownerKarma}</button>
                         </div>
                         ${visibleLine ? `<div class="dashboard-row"><span class="dashboard-label">${visibleLine}</span></div>` : ''}
+                        ${showNeedMore ? `<div class="dashboard-row"><span class="dashboard-label" style="color: #ff9500;">${t.needMore.replace('{count}', visibilityStats.need_more)}</span></div>` : ''}
                         <div class="dashboard-row">
                             <span class="dashboard-label">⚡ ${t.activeTestsLabel}: ${visibilityStats.my_total_tests}</span>
                         </div>
-                        ${visibilityStats.need_more > 0 ? `<div class="dashboard-row"><span class="dashboard-label" style="color: #ff9500;">${t.needMore.replace('{count}', visibilityStats.need_more)}</span></div>` : ''}
                         <div class="dashboard-row">
                             <span class="dashboard-label">${expLine}</span>
                         </div>
                         <div class="dashboard-row">
-                            <span class="dashboard-label" style="color: ${reliability.color};">${t.disciplineLabel} <span onclick="showReliabilityInfo()" style="cursor:pointer; text-decoration: underline; text-decoration-style: dotted;">${reliabilityValue} ℹ️</span></span>
+                            <span class="dashboard-label" style="color: ${reliability.color};">${t.disciplineLabel} <span onclick="showReliabilityInfo()" style="${reliabilityValueStyle}">${reliabilityValue} </span></span>
                         </div>
                     </div>
                 `;
@@ -2932,11 +3042,11 @@
                             }
                         }
                         
-                        const trashHtml = `<span onclick="deleteTester(${project.id}, ${tester.tester_id}, '${cleanUsername || tester.tester_id}')" style="cursor: pointer; font-size: 16px;">🗑️</span>`;
+                        const chevronHtml = `<span style="font-size: 18px; opacity: 0.35; flex-shrink: 0;">›</span>`;
 
                         testersHtml += `
-                            <li>
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <li onclick="openDossierModal('${cleanUsername}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;">
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" onclick="event.stopPropagation()">
                                     ${nameHtml}
                                     ${screenshotDayHtml}
                                     ${bellHtml}
@@ -2944,8 +3054,7 @@
                                 </div>
                                 <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                                     ${statusHtml}
-                                    <span style="display: inline-block; width: 1px; height: 16px; background: rgba(142, 142, 147, 0.4); margin: 0 2px;"></span>
-                                    ${trashHtml}
+                                    ${chevronHtml}
                                 </div>
                             </li>
                         `;
@@ -2998,11 +3107,11 @@
                         badges += `<button class="meta-chip accent-blue" onclick="showRankPopup()">🏆 #${visibilityStats.rank}</button>`;
                     }
                     
-                    // ☯️ Karma available/none
-                    const karmaChipText = likesAvailable > 0
-                        ? t.karmaAvailable.replace('{count}', likesAvailable)
-                        : t.karmaNoRewards;
-                    badges += `<button class="meta-chip ${likesAvailable > 0 ? 'accent-yellow' : 'accent-red'}" onclick="showKarmaChipInfo()">${karmaChipText}</button>`;
+                    // Karma available (hide chip when no rewards left)
+                    if (likesAvailable > 0) {
+                        const karmaChipText = t.karmaAvailable.replace('{count}', likesAvailable);
+                        badges += `<button class="meta-chip accent-yellow" onclick="showKarmaChipInfo()">${karmaChipText}</button>`;
+                    }
 
                     // ⚠️ Old app warning chip
                     if (isOldApp) {
@@ -3862,6 +3971,122 @@
             }
         }
 
+        // --- Tester Dossier ---
+        async function openDossierModal(username, testerId, appId) {
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            const modal = document.getElementById('dossier-modal');
+            document.getElementById('dossier-modal-title').innerText = username ? `@${username}` : `ID: ${testerId}`;
+            document.getElementById('dossier-body').innerHTML = `<p style="text-align:center; color: var(--hint-color);">${t.dossierLoading}</p>`;
+            modal.classList.add('active');
+
+            // Find tester's local data in myProjects
+            const project = myProjects.find(p => p.id === appId);
+            const tester = project ? (project.testers || []).find(tr => tr.tester_id === testerId) : null;
+            const today = getLocalDate();
+            const todayDate = new Date(today);
+
+            // Calc project-level info
+            let testingDay = 0;
+            let startDateStr = '';
+            let expectedFinish = '';
+            let lastCheckStatus = '';
+            if (tester) {
+                if (tester.start_date) {
+                    const sd = new Date(tester.start_date);
+                    testingDay = Math.floor((todayDate - sd) / (1000*60*60*24)) + 1;
+                    startDateStr = tester.start_date;
+                    const finishDate = new Date(sd);
+                    finishDate.setDate(finishDate.getDate() + 13);
+                    expectedFinish = finishDate.toISOString().split('T')[0];
+                }
+                if (!tester.last_check_date) {
+                    lastCheckStatus = t.statusNotOpened;
+                } else if (tester.last_check_date === today) {
+                    lastCheckStatus = t.statusToday;
+                } else {
+                    const diff = Math.floor(Math.abs(todayDate - new Date(tester.last_check_date)) / (1000*60*60*24));
+                    lastCheckStatus = diff === 1 ? t.statusYesterday : `${diff} ${t.statusDaysAgo}`;
+                }
+            }
+
+            // Fetch global profile from API
+            let profile = { karma: 0, completed_tests: 0, total_expected_checkins: 0, total_actual_checkins: 0 };
+            try {
+                const resp = await fetch(`${API_BASE}/users/${testerId}/profile`);
+                if (resp.ok) profile = await resp.json();
+            } catch (e) {
+                console.error('Dossier fetch error:', e);
+            }
+
+            // Reliability calc
+            let reliabilityText = t.dossierNewbie;
+            const expected = profile.total_expected_checkins || 0;
+            const actual = profile.total_actual_checkins || 0;
+            let reliabilityPct = 0;
+            if (expected >= 42) {
+                reliabilityPct = Math.round((actual / expected) * 100);
+                if (reliabilityPct >= 95) reliabilityText = t.reliabilityExcellent;
+                else if (reliabilityPct >= 80) reliabilityText = t.reliabilityGood;
+                else if (reliabilityPct >= 65) reliabilityText = t.reliabilityRisky;
+                else reliabilityText = t.reliabilityUnreliable;
+            }
+
+            // Karma button availability
+            const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
+            const alreadyLiked = project ? (project.likes || []).some(l => l.tester_id === testerId) : true;
+            const canReward = likesAvailable > 0 && !alreadyLiked;
+
+            // Missed days calc (approximate)
+            let missedDays = 0;
+            if (testingDay > 0 && expected > 0 && actual < expected) {
+                missedDays = Math.max(0, expected - actual);
+            }
+
+            // Build HTML
+            let html = '';
+
+            // Block 1: Global Profile
+            html += `<div style="margin-bottom: 16px;">
+                <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierGlobalTitle}</div>
+                <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
+                    ${t.dossierExperience.replace('{count}', profile.completed_tests)}
+                    <br>${expected >= 42 ? t.dossierReliability.replace('{pct}', reliabilityPct) + ' ' + reliabilityText : t.disciplineLabel + ' ' + t.dossierNewbie}
+                    <br>${t.dossierKarma.replace('{karma}', profile.karma)}
+                </div>
+            </div>`;
+
+            // Block 2: In This Project
+            if (tester) {
+                html += `<div style="margin-bottom: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierProjectTitle}</div>
+                    <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
+                        ${t.dossierTestingDay.replace('{day}', Math.min(testingDay, 14))}
+                        ${startDateStr ? '<br>' + t.dossierStartDate.replace('{date}', startDateStr) : ''}
+                        ${expectedFinish ? '<br>' + t.dossierExpectedFinish.replace('{date}', expectedFinish) : ''}
+                        <br>${t.dossierLastCheck.replace('{status}', lastCheckStatus)}
+                    </div>
+                </div>`;
+            }
+
+            // Block 3: Actions
+            const tgName = username || '';
+            html += `<div>
+                <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierActionsTitle}</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    ${tgName ? `<button class="btn" style="width: 100%; background: var(--secondary-bg-color); color: var(--link-color); border: none; font-weight: 600; padding: 10px;" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${tgName}')">${t.dossierBtnTelegram}</button>` : ''}
+                    ${canReward ? `<button class="btn" style="width: 100%; background: rgba(255,204,0,0.15); color: #ffcc00; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
+                    <button class="btn" style="width: 100%; background: rgba(255,59,48,0.1); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); deleteTester(${appId}, ${testerId}, '${tgName || testerId}')">${t.dossierBtnDelete}</button>
+                </div>
+            </div>`;
+
+            document.getElementById('dossier-body').innerHTML = html;
+        }
+
+        function closeDossierModal(e) {
+            if (e && e.target && e.target.id !== 'dossier-modal') return;
+            document.getElementById('dossier-modal').classList.remove('active');
+        }
+
         let projectToDelete = null;
 
         function openDeleteModal(id) {
@@ -4084,13 +4309,17 @@
             document.getElementById('edit-icon').value = project.icon_url || '';
             document.getElementById('edit-package').value = project.package || '';
             document.getElementById('edit-group').value = project.google_group_url || 'https://groups.google.com/g/google-play-dev-test';
+            renderEditCreatedAtMeta();
             document.getElementById('edit-project-modal').classList.add('active');
         }
 
         function closeEditModal(event) {
             if (event && event.target !== document.getElementById('edit-project-modal')) return;
             document.getElementById('edit-project-modal').classList.remove('active');
-            setTimeout(() => { projectToEdit = null; }, 300);
+            setTimeout(() => {
+                projectToEdit = null;
+                renderEditCreatedAtMeta();
+            }, 300);
         }
 
         async function saveProjectEdit() {
