@@ -44,6 +44,8 @@ var _dropTestAppId = null;
 var _overtimeTest = null;
 var _syncProjectId = null;
 var _socialBonusStatus = 'none';
+var _earnGrantCount = 0;
+var _inviteProjectId = null;
 var archivedProjects = [];
 var projectToDelete = null;
 
@@ -317,6 +319,18 @@ function rerenderDynamicUi() {
     renderArchivedProjects();
     if (availableAppsLoaded) {
         renderShowcase();
+    }
+    refreshOpenModals();
+}
+
+function refreshOpenModals() {
+    const earnModal = document.getElementById('earn-bust-modal');
+    if (earnModal && earnModal.classList.contains('active')) {
+        renderEarnBustDynamic();
+    }
+    const inviteModal = document.getElementById('invite-modal');
+    if (inviteModal && inviteModal.classList.contains('active') && _inviteProjectId) {
+        openInviteModal(_inviteProjectId);
     }
 }
 
@@ -846,6 +860,18 @@ async function confirmOvertimeLeave() {
     }
 }
 
+function renderEarnBustDynamic() {
+    document.getElementById('earn-grant-status').innerHTML = `<span class="meta-chip accent-green">🏆 ${t.earnGrantTestsLabel}: ${_earnGrantCount}</span>`;
+    const socialStatus = document.getElementById('earn-social-status');
+    if (_socialBonusStatus === 'approved') {
+        socialStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnSocialApproved}</span>`;
+    } else if (_socialBonusStatus === 'pending') {
+        socialStatus.innerHTML = `<button class="btn btn-secondary" style="width:100%; opacity:0.6;" disabled>⏳ ${t.earnSocialPending}</button>`;
+    } else {
+        socialStatus.innerHTML = `<button class="btn btn-primary" style="width:100%;" onclick="openSocialModal()">🎁 ${t.earnSocialBtn}</button>`;
+    }
+}
+
 async function openEarnBustModal() {
     document.getElementById('earn-bust-modal').classList.add('active');
     try {
@@ -853,17 +879,9 @@ async function openEarnBustModal() {
         if (!response.ok) return;
         const data = await response.json();
         document.getElementById('earn-referrals-count').innerText = `👥 ${data.referrals_count || 0}`;
-        const grantCount = data.grant_tests_count || 0;
-        document.getElementById('earn-grant-status').innerHTML = `<span class="meta-chip accent-green">🏆 ${t.earnGrantTestsLabel}: ${grantCount}</span>`;
+        _earnGrantCount = data.grant_tests_count || 0;
         _socialBonusStatus = data.social_bonus_status || 'none';
-        const socialStatus = document.getElementById('earn-social-status');
-        if (_socialBonusStatus === 'approved') {
-            socialStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnSocialApproved}</span>`;
-        } else if (_socialBonusStatus === 'pending') {
-            socialStatus.innerHTML = `<button class="btn btn-secondary" style="width:100%; opacity:0.6;" disabled>⏳ ${t.earnSocialPending}</button>`;
-        } else {
-            socialStatus.innerHTML = `<button class="btn btn-primary" style="width:100%;" onclick="openSocialModal()">🎁 ${t.earnSocialBtn}</button>`;
-        }
+        renderEarnBustDynamic();
     } catch (error) {
         console.error('Failed to load referral stats:', error);
     }
@@ -881,7 +899,7 @@ async function submitSocialLink() {
         const data = await response.json();
         if (response.ok) {
             _socialBonusStatus = 'pending';
-            document.getElementById('earn-social-status').innerHTML = `<button class="btn btn-secondary" style="width:100%; opacity:0.6;" disabled>⏳ ${t.earnSocialPending}</button>`;
+            renderEarnBustDynamic();
             closeSocialModal();
             const templateMsg = `Привет! Я опубликовал пост о DevTestHub (12 Testers Google Play): ${url}. Жду проверку бонуса! #DevTestHub #12testersGooglePlay`;
             const encoded = encodeURIComponent(templateMsg);

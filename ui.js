@@ -414,55 +414,29 @@ function renderTests() {
         }
 
         const isOvertime = userTestingDay !== null && userTestingDay >= 15;
-        if (isOvertime && test.status !== 'done') {
-            const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
-            const syncReady = isProjectSynced(test);
-            const ownerToast = ownerActive ? t.overtimeOwnerActiveToast : t.overtimeOwnerAfkToast;
-            const syncToast = syncReady
-                ? t.overtimeSyncReadyToast.replace('{day}', test.google_sync_day || 0)
-                : t.overtimeSyncNoneToast;
-
-            actionsHtml += `
-                <div style="display:flex; gap:8px; margin-top:8px; flex-wrap: wrap;">
-                    <button class="meta-chip ${ownerActive ? 'accent-green' : 'accent-orange'}" onclick="event.stopPropagation(); showToast('${ownerToast.replace(/'/g, "\\'")}')">👨‍💻</button>
-                    <button class="meta-chip ${syncReady ? 'accent-blue' : ''}" onclick="event.stopPropagation(); showToast('${syncToast.replace(/'/g, "\\'")}')">🔄</button>
-                </div>
-                <button class="btn" style="width:100%; margin-top:8px; background-color: rgba(52,199,89,0.18); color:#34c759;" onclick="openOvertimeModal(${test.id}, event)">${t.overtimeLeaveBtn}</button>
-            `;
-        }
 
         const headerActions = [];
-        if (test.owner_username) {
-            headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${safeOwnerUsername}', event)">💬</button>`);
-        }
         if (isOvertime && test.status !== 'done') {
             headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #34c759;" onclick="openOvertimeModal(${test.id}, event)">✅</button>`);
-        } else {
+        } else if (test.status !== 'done') {
             headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openDropTestModal(${test.id}, event)">🗑️</button>`);
         }
-        const ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`;
-
-        let devInfoHtml = '';
-        if (test.instructions) {
-            devInfoHtml = `
-                <details class="dev-instruction" onclick="event.stopPropagation();">
-                    <summary>${t.devInfo} <span class="details-arrow">▼</span></summary>
-                    <div class="dev-instruction-body">${escapeHtmlWithBreaks(test.instructions)}</div>
-                </details>
-            `;
-        }
+        const trailingHtml = headerActions.length
+            ? `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`
+            : '';
 
         let cardContent = `
             <div class="card-header">
-                ${renderIcon(test.name, test.icon_url)}
-                <div class="card-info">
-                    <div class="card-title">${safeName}</div>
-                    <div class="card-subtitle">${safePackageLabel}</div>
+                <div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">
+                    ${renderIcon(test.name, test.icon_url)}
+                    <div class="card-info">
+                        <div class="card-title">${safeName}</div>
+                        <div class="card-subtitle">${safePackageLabel}</div>
+                    </div>
                 </div>
-                ${ownerBtnHtml}
+                ${trailingHtml}
             </div>
             ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay)}
-            ${devInfoHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}
             </div>
@@ -1500,6 +1474,7 @@ function closeBanner() {
 }
 
 function openInviteModal(projectId) {
+    _inviteProjectId = projectId;
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
 
@@ -1556,6 +1531,7 @@ function copyAndAction(text, target) {
 function closeInviteModal(event) {
     if (event && event.target !== document.getElementById('invite-modal')) return;
     document.getElementById('invite-modal').classList.remove('active');
+    _inviteProjectId = null;
 }
 
 async function openDossierModal(username, testerId, appId) {
@@ -1773,6 +1749,129 @@ document.addEventListener('click', (event) => {
     toggleDetailsWithAnimation(summary.parentElement);
 });
 
+/* ── Project Details Modal ────────────────────────── */
+function openProjectDetailsModal(appId) {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    const test = myTests.find(function (t) { return t.id === appId; });
+    if (!test) return;
+
+    const body = document.getElementById('project-details-body');
+    if (!body) return;
+
+    const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
+    const safePackage = window.escapeHTML(test.package || '');
+    const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
+    const displayOwner = window.escapeHTML(test.owner_username ? '@' + test.owner_username : '—');
+    const userTestingDay = getUserTestingDay(test.start_date);
+    const isOvertime = userTestingDay !== null && userTestingDay >= 15;
+    const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
+    const syncReady = isProjectSynced(test);
+
+    // Grant progress (14-day bar)
+    var grantHtml = '';
+    if (typeof userTestingDay === 'number' && userTestingDay > 0) {
+        var segments = [];
+        for (var i = 1; i <= 14; i++) {
+            var cls = 'grant-segment';
+            if (i < userTestingDay) cls += ' filled';
+            else if (i === userTestingDay) cls += ' filled current';
+            segments.push('<div class="' + cls + '"></div>');
+        }
+        var goldenHtml = '';
+        if (userTestingDay >= 14) {
+            goldenHtml = '<div class="detail-badge">' + window.t('golden_tester', {}, lang) + '</div>';
+        }
+        grantHtml = '<div class="detail-section">' +
+            '<div class="detail-section-title">' + window.t('detail_grant_title', {}, lang) + '</div>' +
+            '<div class="grant-progress">' + segments.join('') + '</div>' +
+            '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--hint-color);margin-top:4px;">' +
+                '<span>' + window.t('myTestDayShort', { days: userTestingDay }, lang) + '</span>' +
+                '<span>' + window.t('days_left_count', { count: Math.max(0, 14 - userTestingDay) }, lang) + '</span>' +
+            '</div>' +
+            goldenHtml +
+        '</div>';
+    }
+
+    // Owner section
+    var ownerStatusClass = ownerActive ? 'online' : 'offline';
+    var ownerStatusText = ownerActive
+        ? window.t('detail_owner_online', {}, lang)
+        : window.t('detail_owner_offline', {}, lang);
+    var ownerSection = '<div class="detail-section">' +
+        '<div class="detail-section-title">' + window.t('detail_owner_label', {}, lang) + '</div>' +
+        '<div class="detail-owner-row">' +
+            getAvatar(test.owner_username || '?') +
+            '<div>' +
+                '<div class="detail-owner-name">' + displayOwner + '</div>' +
+                '<div class="detail-owner-status ' + ownerStatusClass + '">● ' + ownerStatusText + '</div>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
+
+    // Sync section
+    var syncHtml = '';
+    if (syncReady) {
+        syncHtml = '<div class="detail-section" style="padding:10px 14px;">' +
+            '<span style="color:#34c759;font-size:14px;font-weight:600;">' + window.t('sync_success', {}, lang) + '</span>' +
+            (test.sync_message ? '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.escapeHTML(test.sync_message) + '</div>' : '') +
+        '</div>';
+    }
+
+    // Instructions section
+    var instrHtml = '';
+    if (test.instructions) {
+        instrHtml = '<div class="detail-section">' +
+            '<div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
+            '<div class="detail-instruction-body">' + escapeHtmlWithBreaks(test.instructions) + '</div>' +
+        '</div>';
+    }
+
+    // Testers count
+    var testersHtml = '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' +
+        window.t('detail_testers_label', { count: test.active_testers_count || 0 }, lang) +
+    '</div>';
+
+    // Action buttons
+    var actionButtons = '';
+    if (test.owner_username) {
+        actionButtons += '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="openTelegramProfile(\'' + safeOwnerUsername + '\', event)">' + window.t('detail_contact_btn', {}, lang) + '</button>';
+        actionButtons += '<button class="btn" style="background:rgba(142,142,147,0.12);color:var(--text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_suggest_btn', {}, lang) + '</button>';
+    }
+    if (isOvertime && test.status !== 'done') {
+        actionButtons += '<button class="btn" style="background:rgba(255,59,48,0.1);color:#ff3b30;" onclick="closeProjectDetailsModal(); openOvertimeModal(' + test.id + ')">' + window.t('detail_leave_btn', {}, lang) + '</button>';
+    } else if (test.status !== 'done') {
+        actionButtons += '<button class="btn" style="background:rgba(255,59,48,0.1);color:#ff3b30;" onclick="closeProjectDetailsModal(); openDropTestModal(' + test.id + ')">' + window.t('detail_leave_btn', {}, lang) + '</button>';
+    }
+
+    body.innerHTML = '<div class="detail-header">' +
+            renderIcon(test.name, test.icon_url) +
+            '<div class="card-info">' +
+                '<div class="card-title">' + safeName + '</div>' +
+                '<div class="card-subtitle">' + safePackage + '</div>' +
+            '</div>' +
+        '</div>' +
+        renderCompactMeta(null, test.active_testers_count, false, userTestingDay) +
+        grantHtml +
+        ownerSection +
+        syncHtml +
+        instrHtml +
+        testersHtml +
+        '<div class="detail-actions">' + actionButtons + '</div>';
+
+    var modal = document.getElementById('project-details-modal');
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function closeProjectDetailsModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    var modal = document.getElementById('project-details-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
 Object.assign(window, {
     showSkeleton,
     showRetry,
@@ -1864,4 +1963,6 @@ Object.assign(window, {
     closeEditModal,
     escapeHTML: window.escapeHTML,
     copyEmail,
+    openProjectDetailsModal,
+    closeProjectDetailsModal,
 });

@@ -1399,3 +1399,162 @@ details[open] > summary .details-arrow {
     font-size: 14px;
     padding: 0 8px;
 }
+
+/* ── Grant Progress Bar ──────────────────────────── */
+.grant-progress {
+    display: flex;
+    gap: 4px;
+    margin: 14px 0 8px;
+}
+.grant-segment {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    position: relative;
+    transition: background 0.3s ease;
+}
+.grant-segment.filled {
+    background: var(--button-color);
+}
+.grant-segment.current::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 6px rgba(51, 144, 236, 0.6);
+    border: 2px solid var(--button-color);
+}
+
+/* ── Project Detail Modal (Bottom Sheet) ─────────── */
+#project-details-modal .modal-content {
+    border-radius: 20px 20px 0 0;
+    background: rgba(23, 27, 34, 0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 20px 16px 28px;
+    max-height: 88vh;
+    overflow-y: auto;
+}
+.detail-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0 auto 16px;
+}
+.detail-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.detail-header .avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    font-size: 22px;
+}
+.detail-header .card-info {
+    flex: 1;
+    min-width: 0;
+}
+.detail-header .card-title {
+    font-size: 17px;
+    font-weight: 700;
+}
+.detail-header .card-subtitle {
+    font-size: 13px;
+    opacity: 0.55;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.detail-section {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+.detail-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--hint-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+.detail-owner-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.detail-owner-row .avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 15px;
+}
+.detail-owner-name {
+    font-weight: 600;
+    font-size: 15px;
+}
+.detail-owner-status {
+    font-size: 12px;
+    margin-top: 2px;
+}
+.detail-owner-status.online {
+    color: #34c759;
+}
+.detail-owner-status.offline {
+    color: var(--hint-color);
+}
+.detail-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+}
+.detail-actions .btn {
+    width: 100%;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 14px;
+}
+.detail-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(255, 214, 10, 0.12);
+    color: #ffd60a;
+    margin-bottom: 12px;
+}
+.detail-instruction-body {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-color);
+    opacity: 0.85;
+    white-space: pre-line;
+    word-break: break-word;
+}
+
+/* ── Test Card clickable area ────────────────────── */
+.card-header-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}

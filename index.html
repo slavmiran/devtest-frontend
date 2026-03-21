@@ -549,5 +549,12 @@
             <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeSocialModal()" id="t-socialModalCancel" data-i18n="socialModalCancel">Отмена</button>
         </div>
     </div>
+    <!-- Project Details Modal (Bottom Sheet) -->
+    <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="detail-handle"></div>
+            <div id="project-details-body"></div>
+        </div>
+    </div>
 </body>
 </html>

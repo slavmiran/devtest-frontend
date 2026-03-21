@@ -351,7 +351,20 @@
             invalid_limit_bounty: "Количество тестеров должно быть не меньше 1.",
             invalid_bounty_per_tester: "Награда одному тестеру должна быть не меньше 100 $BUST.",
             bust_balance_unavailable: "Баланс $BUST пока недоступен. Попробуйте позже.",
-            insufficient_bust_balance: "Недостаточно $BUST. Нужно: {required}, доступно: {balance}"
+            insufficient_bust_balance: "Недостаточно $BUST. Нужно: {required}, доступно: {balance}",
+            golden_tester: "🏆 Золотой Тестер",
+            golden_tester_hint: "Вы прошли 14 дней без пропусков — грант будет начислен автоматически!",
+            sync_success: "✅ Проект синхронизирован",
+            fact_end_date: "Дата завершения: {date}",
+            days_left_count: "Осталось дней: {count}",
+            detail_owner_label: "Разработчик",
+            detail_owner_online: "онлайн",
+            detail_owner_offline: "оффлайн",
+            detail_testers_label: "Активных тестеров: {count}",
+            detail_contact_btn: "💬 Написать разработчику",
+            detail_suggest_btn: "💡 Предложить идею",
+            detail_leave_btn: "🚪 Покинуть проект",
+            detail_grant_title: "Прогресс гранта"
         },
         en: {
             tabTests: "My Tests",
@@ -702,7 +715,20 @@
             invalid_limit_bounty: "Paid tester slots must be at least 1.",
             invalid_bounty_per_tester: "Reward per tester must be at least 100 $BUST.",
             bust_balance_unavailable: "$BUST balance is unavailable right now. Try again later.",
-            insufficient_bust_balance: "Not enough $BUST. Required: {required}, available: {balance}"
+            insufficient_bust_balance: "Not enough $BUST. Required: {required}, available: {balance}",
+            golden_tester: "🏆 Golden Tester",
+            golden_tester_hint: "You completed 14 days without skipping — the grant will be awarded automatically!",
+            sync_success: "✅ Project synced",
+            fact_end_date: "End date: {date}",
+            days_left_count: "Days left: {count}",
+            detail_owner_label: "Developer",
+            detail_owner_online: "online",
+            detail_owner_offline: "offline",
+            detail_testers_label: "Active testers: {count}",
+            detail_contact_btn: "💬 Message developer",
+            detail_suggest_btn: "💡 Suggest an idea",
+            detail_leave_btn: "🚪 Leave project",
+            detail_grant_title: "Grant progress"
         }
     };
 
