@@ -738,9 +738,6 @@
 
     window.I18N_DICT = DICT;
     window.currentLang = window.currentLang || DEFAULT_LANG;
-    window.getTranslations = function (lang) {
-        return getMap(lang || window.currentLang);
-    };
     window.t = function (key, params, lang) {
         const value = getMap(lang || window.currentLang)[key] ?? DICT[DEFAULT_LANG][key];
         if (typeof value === 'undefined') return key;

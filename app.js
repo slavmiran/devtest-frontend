@@ -10,7 +10,11 @@ const userId = initData.user?.id || 123456789;
 var API_BASE = 'https://devtest-backend.onrender.com/api';
 
 var lang = localStorage.getItem('app_language') || (Object.keys(initData).length > 0 ? (langCode === 'ru' ? 'ru' : 'en') : 'ru');
-var t = window.getTranslations(lang);
+var t = new Proxy({}, {
+    get(_, key) {
+        return window.t(key, {}, lang);
+    }
+});
 
 var myTests = [];
 var incomingOffers = [];
@@ -102,33 +106,6 @@ function formatEditProjectCreatedAt(project) {
         .replace('{days}', daysAgo);
 }
 
-function formatTimeAgo(dateStr) {
-    if (!dateStr) return t.timeJustNow;
-    const eventDate = new Date(dateStr);
-    if (Number.isNaN(eventDate.getTime())) return t.timeJustNow;
-    const diffMs = Date.now() - eventDate.getTime();
-    const minutes = Math.max(0, Math.floor(diffMs / 60000));
-    if (minutes < 1) return t.timeJustNow;
-    if (minutes < 60) return t.timeMinAgo.replace('{count}', minutes);
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return t.timeHourAgo.replace('{count}', hours);
-    const days = Math.floor(hours / 24);
-    return t.timeDayAgo.replace('{count}', days);
-}
-
-function formatOfferRemaining(createdAt) {
-    const created = new Date(createdAt || '');
-    if (Number.isNaN(created.getTime())) return t.offerExpired;
-    const expireAt = created.getTime() + (3 * 60 * 60 * 1000);
-    const leftMs = expireAt - Date.now();
-    if (leftMs <= 0) return t.offerExpired;
-    const totalSec = Math.floor(leftMs / 1000);
-    const hh = String(Math.floor(totalSec / 3600)).padStart(2, '0');
-    const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
-    const ss = String(totalSec % 60).padStart(2, '0');
-    return `${hh}:${mm}:${ss}`;
-}
-
 function getOfferApiError(message) {
     const code = typeof message === 'string'
         ? message
@@ -143,30 +120,6 @@ function getOfferApiError(message) {
         return t.offerAlreadyConnected;
     }
     return getApiErrorMessage(message, 'offerActionError');
-}
-
-function getUserTestingDay(startDate) {
-    if (!startDate) return null;
-    const startedAt = new Date(startDate);
-    if (Number.isNaN(startedAt.getTime())) return null;
-    const today = new Date(getLocalDate());
-    return Math.floor((today - startedAt) / (1000 * 60 * 60 * 24)) + 1;
-}
-
-function isMandatoryScreenshotDay(testingDay) {
-    return [1, 7, 14].includes(testingDay);
-}
-
-function getOwnerActiveStatus(lastOwnerActivity) {
-    if (!lastOwnerActivity) return false;
-    const dt = new Date(lastOwnerActivity);
-    if (Number.isNaN(dt.getTime())) return false;
-    const diffMs = Date.now() - dt.getTime();
-    return diffMs <= (12 * 60 * 60 * 1000);
-}
-
-function isProjectSynced(test) {
-    return (test.google_sync_day || 0) > 1;
 }
 
 function formatBustAmount(value) {
@@ -312,7 +265,6 @@ function buildProjectPricingPayload(formKey) {
 }
 
 function refreshLanguageUi() {
-    t = window.getTranslations(lang);
     if (window.updateTranslations) {
         window.updateTranslations(lang);
     }
@@ -401,7 +353,6 @@ function refreshActiveTabData() {
 
 function applyLanguage(newLang) {
     lang = newLang;
-    t = window.getTranslations(lang);
     localStorage.setItem('app_language', lang);
     fetch(`${API_BASE}/users/${userId}/language`, {
         method: 'PUT',
@@ -763,16 +714,6 @@ async function handleScreenshotAndConfirm(id, ownerUsername) {
     openReportModal(id, ownerUsername);
 }
 
-function insertReportChip(chipText) {
-    const textarea = document.getElementById('report-text');
-    if (textarea.value.length > 0 && !textarea.value.endsWith('\n')) {
-        textarea.value += '\n';
-    }
-    textarea.value += chipText + ' ';
-    textarea.focus();
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-}
-
 async function sendReport() {
     const text = document.getElementById('report-text').value.trim();
     const ownerUsername = (_reportOwnerUsername || '').replace('@', '').trim();
@@ -1006,33 +947,6 @@ async function confirmHardDelete(appId, appName) {
     } catch (error) {
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
-}
-
-function copyGroupUrl(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        if (tg.showAlert) tg.showAlert(t.copied);
-    }).catch(error => console.error('Copy failed', error));
-}
-
-async function showKarmaBreakdown(targetUserId) {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    try {
-        const response = await fetch(`${API_BASE}/users/${targetUserId}/karma/breakdown`);
-        const data = await response.json();
-        const message = t.karmaBreakdownTitle.replace('{karma}', data.total || 0)
-            + '\n\n' + t.karmaBreakdownGood.replace('{count}', data.good || 0)
-            + '\n' + t.karmaBreakdownBug.replace('{count}', data.bug || 0);
-        if (tg.showAlert) tg.showAlert(message);
-        else alert(message);
-    } catch (error) {
-        console.error('Karma breakdown error:', error);
-    }
-}
-
-function showActiveTestsToast() {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    showToast(t.visibilityHint);
 }
 
 async function sendKarmaReward(appId, testerId, rewardType) {
@@ -1295,12 +1209,6 @@ async function saveProject() {
     });
 }
 
-function closeEmailWarningModal(event) {
-    if (event && event.target !== document.getElementById('email-warning-modal')) return;
-    document.getElementById('email-warning-modal').classList.remove('active');
-    pendingProjectData = null;
-}
-
 async function confirmEmailWarning() {
     document.getElementById('email-warning-modal').classList.remove('active');
     if (pendingProjectData) {
@@ -1448,14 +1356,8 @@ Object.assign(window, {
     getLocalDate,
     getRuDaysWord,
     formatEditProjectCreatedAt,
-    formatTimeAgo,
-    formatOfferRemaining,
     getOfferApiError,
     decideOffer,
-    getUserTestingDay,
-    isMandatoryScreenshotDay,
-    getOwnerActiveStatus,
-    isProjectSynced,
     joinMutual,
     joinBounty,
     startTimer,
@@ -1463,7 +1365,6 @@ Object.assign(window, {
     openPlay,
     handleFirstDownload,
     handleScreenshotAndConfirm,
-    insertReportChip,
     sendReport,
     sendContactMessage,
     toggleVisibility,
@@ -1474,9 +1375,6 @@ Object.assign(window, {
     saveProjectSync,
     loadArchivedProjects,
     confirmHardDelete,
-    copyGroupUrl,
-    showKarmaBreakdown,
-    showActiveTestsToast,
     sendKarmaReward,
     confirmStart,
     deleteTester,
@@ -1488,7 +1386,6 @@ Object.assign(window, {
     rerenderDynamicUi,
     refreshActiveTabData,
     saveProject,
-    closeEmailWarningModal,
     confirmEmailWarning,
     saveProjectEdit
 });
