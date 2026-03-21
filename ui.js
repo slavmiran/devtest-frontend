@@ -1,5 +1,26 @@
 window.App = window.App || {};
 
+window.escapeHTML = function (value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+};
+
+function escapeInlineJsString(value) {
+    return String(value ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n');
+}
+
+function escapeHtmlWithBreaks(value) {
+    return window.escapeHTML(value).replace(/\r?\n/g, '<br>');
+}
+
 function showSkeleton(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -71,14 +92,20 @@ function renderEvents() {
     const toggleEl = document.getElementById('events-toggle');
     if (!listEl || !toggleEl) return;
 
-    const visibleEvents = eventsExpanded ? communityEvents : communityEvents.slice(0, 2);
-    listEl.className = eventsExpanded ? 'events-list expanded' : 'events-list';
-
     if (communityEvents === null) {
         listEl.innerHTML = `<div class="event-time">${t.pulseLoading}</div>`;
         toggleEl.style.display = 'none';
         return;
     }
+
+    if (!communityEvents) {
+        listEl.innerHTML = `<div class="event-time">${t.pulseEmpty}</div>`;
+        toggleEl.style.display = 'none';
+        return;
+    }
+
+    const visibleEvents = eventsExpanded ? communityEvents : communityEvents.slice(0, 2);
+    listEl.className = eventsExpanded ? 'events-list expanded' : 'events-list';
 
     if (!communityEvents.length) {
         listEl.innerHTML = `<div class="event-time">${t.pulseEmpty}</div>`;
@@ -87,7 +114,7 @@ function renderEvents() {
     }
 
     listEl.innerHTML = visibleEvents.map((eventItem) => {
-        const text = lang === 'ru' ? eventItem.text_ru : eventItem.text_en;
+        const text = window.escapeHTML(lang === 'ru' ? eventItem.text_ru : eventItem.text_en);
         return `
             <div class="event-item">
                 <div class="event-time">${formatTimeAgo(eventItem.created_at)}</div>
@@ -114,13 +141,13 @@ function getAvatar(name) {
     }
     const color = colors[Math.abs(hash) % colors.length];
     const letter = name.charAt(0).toUpperCase();
-    return `<div class="avatar" style="background-color: ${color}">${letter}</div>`;
+    return `<div class="avatar" style="background-color: ${color}">${window.escapeHTML(letter)}</div>`;
 }
 
 function renderIcon(name, iconUrl) {
     if (iconUrl) {
         const firstLetter = name.charAt(0).toUpperCase().replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return `<img src="${iconUrl}" class="avatar" style="object-fit: cover;" onerror="this.onerror=null; this.outerHTML='<div class=\\'avatar\\' style=\\'background-color: #8e8e93;\\'>${firstLetter}</div>';">`;
+        return `<img src="${window.escapeHTML(iconUrl)}" class="avatar" style="object-fit: cover;" onerror="this.onerror=null; this.outerHTML='<div class=\\'avatar\\' style=\\'background-color: #8e8e93;\\'>${firstLetter}</div>';">`;
     }
     return getAvatar(name);
 }
@@ -258,14 +285,16 @@ function renderIncomingOffers() {
     section.style.display = '';
     carousel.innerHTML = pending.map((offer) => {
         const username = (offer.proposer_username || '').replace(/@/g, '');
-        const safeUsername = username.replace(/'/g, "\\'");
-        const displayName = username
+        const safeUsername = escapeInlineJsString(username);
+        const displayName = window.escapeHTML(username
             ? `@${username}`
-            : (offer.proposer_full_name || window.t('idLabel', { id: offer.proposer_id }, lang));
+            : (offer.proposer_full_name || window.t('idLabel', { id: offer.proposer_id }, lang)));
         const remain = formatOfferRemaining(offer.created_at);
         const expireText = remain === window.t('offerExpired', {}, lang)
             ? window.t('offerExpired', {}, lang)
             : window.t('offerExpiresIn', { time: remain }, lang);
+        const targetAppName = offer.target_app_name || window.t('unknownLabel', {}, lang);
+        const proposerAppName = offer.proposer_app_name || window.t('unknownLabel', {}, lang);
 
         return `
             <div class="offer-card">
@@ -273,8 +302,8 @@ function renderIncomingOffers() {
                     <button class="offer-user" onclick="openTesterDossier('${safeUsername}', ${offer.proposer_id}, ${offer.target_app_id}); event.stopPropagation();">${displayName}</button>
                     <span class="meta-chip accent-yellow">☯️ ${offer.proposer_karma || 0}</span>
                 </div>
-                <div class="offer-sub">${window.t('offerForApp', { target_app: offer.target_app_name || window.t('unknownLabel', {}, lang) }, lang)}</div>
-                <div class="offer-sub">${window.t('offerWithApp', { proposer_app: offer.proposer_app_name || window.t('unknownLabel', {}, lang) }, lang)}</div>
+                <div class="offer-sub">${window.escapeHTML(window.t('offerForApp', { target_app: targetAppName }, lang))}</div>
+                <div class="offer-sub">${window.escapeHTML(window.t('offerWithApp', { proposer_app: proposerAppName }, lang))}</div>
                 <div class="offer-expire">${expireText}</div>
                 <div class="action-row" style="margin-top: 10px;">
                     <button class="btn btn-success" style="flex: 1;" onclick="decideOffer(${offer.offer_id}, 'accept', event)">${window.t('offerAcceptBtn', {}, lang)}</button>
@@ -285,13 +314,22 @@ function renderIncomingOffers() {
     }).join('');
 
     _offersTimerId = setInterval(() => {
-        const hasVisible = document.getElementById('offers-section') && document.getElementById('offers-section').style.display !== 'none';
-        if (!hasVisible) {
+        const section = document.getElementById('offers-section');
+        if (!section || section.style.display === 'none') {
             clearInterval(_offersTimerId);
             _offersTimerId = null;
             return;
         }
-        renderIncomingOffers();
+        const timerEls = section.querySelectorAll('.offer-expire');
+        const pendingOffers = (incomingOffers || []).filter(o => o.status === 'pending');
+        timerEls.forEach((el, i) => {
+            if (!pendingOffers[i]) return;
+            const remain = formatOfferRemaining(pendingOffers[i].created_at);
+            const text = remain === window.t('offerExpired', {}, lang)
+                ? window.t('offerExpired', {}, lang)
+                : window.t('offerExpiresIn', { time: remain }, lang);
+            el.textContent = text;
+        });
     }, 1000);
 }
 
@@ -309,22 +347,26 @@ function renderTests() {
         card.className = 'card';
         card.id = `test-card-${test.id}`;
         const userTestingDay = getUserTestingDay(test.start_date);
+        const safePackage = escapeInlineJsString(test.package);
+        const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
+        const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
+        const safePackageLabel = window.escapeHTML(test.package || '');
 
         let actionsHtml = '';
         if (test.status === 'new') {
             const groupUrl = test.google_group_url || 'https://groups.google.com/g/google-play-dev-test';
-            const safeGroupUrl = groupUrl.replace(/'/g, "\\'");
+            const safeGroupUrl = escapeInlineJsString(groupUrl);
             actionsHtml = `
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <div style="display: flex; gap: 8px; align-items: stretch;">
                         <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="tg.openLink('${safeGroupUrl}', { try_browser: 'chrome' }); if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged();">${t.joinGroup}</button>
                         <button class="btn-icon" style="width: 44px; min-height: 44px; font-size: 18px;" onclick="copyGroupUrl('${safeGroupUrl}')">📋</button>
                     </div>
-                    <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="handleFirstDownload(${test.id}, '${test.package}')">
+                    <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="handleFirstDownload(${test.id}, '${safePackage}')">
                         ${t.downloadPlay}
                     </button>
                     <div id="new-screenshot-box-${test.id}" style="display: none;">
-                        <button id="btn-confirm-${test.id}" class="btn btn-success" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${test.owner_username || ''}')">
+                        <button id="btn-confirm-${test.id}" class="btn btn-success" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
                             💬 3. ${t.screenshotBtn}
                         </button>
                         <div style="color: #ff3b30; font-size: 13px; margin-top: 8px; text-align: center;">
@@ -340,7 +382,7 @@ function renderTests() {
             if (isScreenshotDay) {
                 actionsHtml = `
                     <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${test.package}', true, '${test.owner_username || ''}')">
+                        <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
                             ${t.openBtn}
                         </button>
                         <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
@@ -354,7 +396,7 @@ function renderTests() {
             } else {
                 actionsHtml = `
                     <div class="action-row">
-                        <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${test.package}', false, '')">
+                        <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '')">
                             ${t.openBtn}
                         </button>
                         <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
@@ -391,7 +433,7 @@ function renderTests() {
 
         const headerActions = [];
         if (test.owner_username) {
-            headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${test.owner_username}', event)">💬</button>`);
+            headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${safeOwnerUsername}', event)">💬</button>`);
         }
         if (isOvertime && test.status !== 'done') {
             headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #34c759;" onclick="openOvertimeModal(${test.id}, event)">✅</button>`);
@@ -405,7 +447,7 @@ function renderTests() {
             devInfoHtml = `
                 <details class="dev-instruction" onclick="event.stopPropagation();">
                     <summary>${t.devInfo} <span class="details-arrow">▼</span></summary>
-                    <div class="dev-instruction-body">${test.instructions}</div>
+                    <div class="dev-instruction-body">${escapeHtmlWithBreaks(test.instructions)}</div>
                 </details>
             `;
         }
@@ -414,8 +456,8 @@ function renderTests() {
             <div class="card-header">
                 ${renderIcon(test.name, test.icon_url)}
                 <div class="card-info">
-                    <div class="card-title">${test.name || window.t('unknownLabel', {}, lang)}</div>
-                    <div class="card-subtitle">${test.package}</div>
+                    <div class="card-title">${safeName}</div>
+                    <div class="card-subtitle">${safePackageLabel}</div>
                 </div>
                 ${ownerBtnHtml}
             </div>
@@ -468,6 +510,9 @@ function renderCompletedTests(completedTests) {
         card.className = 'card';
         card.id = `test-card-${test.id}`;
         const userTestingDay = getUserTestingDay(test.start_date);
+        const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
+        const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
+        const safePackageLabel = window.escapeHTML(test.package || '');
 
         const actionsHtml = `
             <div class="done-text">
@@ -477,7 +522,7 @@ function renderCompletedTests(completedTests) {
 
         const headerActions = [];
         if (test.owner_username) {
-            headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${test.owner_username}', event)">💬</button>`);
+            headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${safeOwnerUsername}', event)">💬</button>`);
         }
         headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openDropTestModal(${test.id}, event)">🗑️</button>`);
         const ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`;
@@ -487,7 +532,7 @@ function renderCompletedTests(completedTests) {
             devInfoHtml = `
                 <details class="dev-instruction" onclick="event.stopPropagation();">
                     <summary>${t.devInfo} <span class="details-arrow">▼</span></summary>
-                    <div class="dev-instruction-body">${test.instructions}</div>
+                    <div class="dev-instruction-body">${escapeHtmlWithBreaks(test.instructions)}</div>
                 </details>
             `;
         }
@@ -496,8 +541,8 @@ function renderCompletedTests(completedTests) {
             <div class="card-header">
                 ${renderIcon(test.name, test.icon_url)}
                 <div class="card-info">
-                    <div class="card-title">${test.name || window.t('unknownLabel', {}, lang)}</div>
-                    <div class="card-subtitle">${test.package}</div>
+                    <div class="card-title">${safeName}</div>
+                    <div class="card-subtitle">${safePackageLabel}</div>
                 </div>
                 ${ownerBtnHtml}
             </div>
@@ -532,8 +577,8 @@ function getLangBadge(targetLang) {
 }
 
 function renderFeedCard(item, kind) {
-    const ownerDisplay = item.owner_full_name || (item.owner_username ? '@' + item.owner_username : window.t('idLabel', { id: item.owner_id }, lang));
-    const safeOwner = (item.owner_username || '').replace(/'/g, "\\'");
+    const ownerDisplay = window.escapeHTML(item.owner_full_name || (item.owner_username ? '@' + item.owner_username : window.t('idLabel', { id: item.owner_id }, lang)));
+    const safeOwner = escapeInlineJsString(item.owner_username || '');
     const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
     const bountyChip = kind === 'bounty'
         ? `<span class="meta-chip accent-purple">💎 ${item.bounty_per_tester || 0} $BUST</span>`
@@ -559,7 +604,7 @@ function renderFeedCard(item, kind) {
         <div class="market-card">
             <div class="market-top">
                 <div>
-                    <div class="card-title">${item.name || window.t('unknownLabel', {}, lang)}</div>
+                    <div class="card-title">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
                     <div class="market-owner" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
@@ -665,26 +710,20 @@ function renderShowcase() {
         prelaunchPanel.style.display = 'none';
     }
 
-    neededPanel.innerHTML = '';
     if (showcaseTestersNeeded.length === 0) {
         neededPanel.innerHTML = `<p class="no-testers" style="text-align: center; margin-top: 16px;">${t.noAvailable}</p>`;
     } else {
-        showcaseTestersNeeded.forEach((app) => {
-            neededPanel.innerHTML += renderCompactCard(app);
-        });
+        neededPanel.innerHTML = showcaseTestersNeeded.map(renderCompactCard).join('');
     }
 
-    prelaunchPanel.innerHTML = '';
-    if (showcasePreLaunch.length > 0) {
-        showcasePreLaunch.forEach((app) => {
-            prelaunchPanel.innerHTML += renderCompactCard(app);
-        });
-    }
+    prelaunchPanel.innerHTML = showcasePreLaunch.length > 0
+        ? showcasePreLaunch.map(renderCompactCard).join('')
+        : '';
 }
 
 function renderCompactCard(app) {
-    const ownerDisplay = app.owner_full_name || (app.owner_username ? '@' + app.owner_username : window.t('unknownLabel', {}, lang));
-    const ownerUsername = app.owner_username || '';
+    const ownerDisplay = window.escapeHTML(app.owner_full_name || (app.owner_username ? '@' + app.owner_username : window.t('unknownLabel', {}, lang)));
+    const ownerUsername = escapeInlineJsString(app.owner_username || '');
     const escapeText = (text) => String(text || '').replace(/'/g, "\\'");
     const testersTooltip = escapeText(window.t('chipTooltipTesters', { count: app.active_testers_count || 0 }, lang));
     const daysValue = app.days_since_publish || 1;
@@ -709,7 +748,7 @@ function renderCompactCard(app) {
                     <span class="compact-instruction-arrow">▶</span>
                     ${t.instructionAccordion}
                 </summary>
-                <div class="compact-instruction-body">${app.instructions}</div>
+                <div class="compact-instruction-body">${escapeHtmlWithBreaks(app.instructions)}</div>
             </details>
         `;
     }
@@ -722,7 +761,7 @@ function renderCompactCard(app) {
                 </div>
                 <div class="compact-card-center">
                     <div class="compact-card-clickable" onclick="openContactModal('${ownerUsername}')">
-                        <div class="compact-card-name">${app.name || window.t('unknownLabel', {}, lang)}</div>
+                        <div class="compact-card-name">${window.escapeHTML(app.name || window.t('unknownLabel', {}, lang))}</div>
                         <div class="compact-card-owner">${ownerDisplay} 💬</div>
                     </div>
                     <div class="compact-card-badges">${badges}</div>
@@ -806,7 +845,7 @@ function renderProjects() {
                     <button class="meta-chip accent-yellow" onclick="showKarmaInfo()">☯️ ${visibilityStats.ownerKarma}</button>
                 </div>
                 <div class="dashboard-row">
-                    <span class="dashboard-label">⚡ ${t.activeTestsLabel}: ${visibilityStats.my_total_tests}</span>
+                    <span class="dashboard-label">⚡ ${t.activeTestsLabel}: ${visibilityStats.my_active_tests}</span>
                 </div>
                 <div class="dashboard-row" onclick="openEarnBustModal()" style="cursor:pointer;">
                     <span class="dashboard-label" style="font-size: 18px; font-weight: 800; color: var(--link-color);">${t.bustBalanceLabel.replace('{amount}', formatBustAmount(visibilityStats.balance_bust || 0))}</span>
@@ -853,6 +892,8 @@ function renderProjects() {
         const card = document.createElement('div');
         const isInactive = !project.is_visible;
         card.className = isInactive ? 'card card-inactive' : 'card';
+        const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
+        const safeProjectPackage = window.escapeHTML(project.package || '');
 
         const appDays = project.created_at ? (Math.floor((todayDate - new Date(project.created_at)) / (1000 * 60 * 60 * 24)) + 1) : 0;
         const likesAvailable = project.likes_max - project.likes_used;
@@ -865,7 +906,7 @@ function renderProjects() {
                 let cleanUsername = '';
                 if (tester.username) {
                     cleanUsername = tester.username.replace('@', '');
-                    nameHtml = `<a href="javascript:void(0);" onclick="return openTelegramProfile('${cleanUsername}', event)" class="tester-link">@${cleanUsername}</a>`;
+                    nameHtml = `<a href="javascript:void(0);" onclick="return openTelegramProfile('${escapeInlineJsString(cleanUsername)}', event)" class="tester-link">@${window.escapeHTML(cleanUsername)}</a>`;
                 } else {
                     nameHtml = `<span class="tester-id">${window.t('idLabel', { id: tester.tester_id }, lang)}</span>`;
                 }
@@ -890,7 +931,7 @@ function renderProjects() {
                 let bellHtml = '';
                 if (showBell && cleanUsername) {
                     const msg = t.bellNotifyMsg.replace('{name}', project.name || window.t('unknownLabel', {}, lang));
-                    bellHtml = `<a href="javascript:void(0);" onclick="tg.openTelegramLink('https://t.me/${cleanUsername}?text=${encodeURIComponent(msg)}')" style="text-decoration: none; font-size: 16px;">🔔</a>`;
+                    bellHtml = `<a href="javascript:void(0);" onclick="tg.openTelegramLink('https://t.me/${escapeInlineJsString(cleanUsername)}?text=${escapeInlineJsString(encodeURIComponent(msg))}')" style="text-decoration: none; font-size: 16px;">🔔</a>`;
                 }
 
                 let screenshotDayHtml = '';
@@ -918,7 +959,7 @@ function renderProjects() {
                 const chevronHtml = '<span style="font-size: 18px; opacity: 0.35; flex-shrink: 0;">›</span>';
 
                 testersHtml += `
-                    <li onclick="openDossierModal('${cleanUsername}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;">
+                    <li onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;">
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" onclick="event.stopPropagation()">
                             ${nameHtml}
                             ${screenshotDayHtml}
@@ -942,7 +983,7 @@ function renderProjects() {
 
             const statusChip = (() => {
                 if (!project.is_visible) {
-                    return `<button class="meta-chip" style="background: rgba(142,142,147,0.15);" onclick="showToast('${t.visibilityManualToast}')">🚫 ${t.statusHiddenManual}</button>`;
+                    return `<button class="meta-chip" style="background: rgba(142,142,147,0.15);" onclick="showToast('${escapeInlineJsString(t.visibilityManualToast)}')">🚫 ${t.statusHiddenManual}</button>`;
                 }
                 const mode = project.mode || 'mutual';
                 if (mode === 'bounty') {
@@ -1000,8 +1041,8 @@ function renderProjects() {
             <div class="card-header" style="margin-bottom: 8px;">
                 ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
                 <div class="card-info">
-                    <div class="card-title">${project.name || window.t('unknownLabel', {}, lang)}</div>
-                    <div class="card-subtitle">${project.package}</div>
+                    <div class="card-title">${safeProjectName}</div>
+                    <div class="card-subtitle">${safeProjectPackage}</div>
                 </div>
                 <div class="project-header-actions">
                     <button class="project-icon-btn" onclick="openEditModal(${project.id})">✏️</button>
@@ -1051,7 +1092,7 @@ function showScreenshotCompleteModal(ownerUsername) {
         closeEl.innerText = t.screenshotCompleteClose || t.btnClose;
     }
     if (ownerUsername) {
-        const safe = (ownerUsername || '').replace(/'/g, "\\'");
+        const safe = escapeInlineJsString(ownerUsername || '');
         actionEl.innerHTML = `<button class="btn" style="width: 100%; background-color: var(--button-color, #007aff); color: var(--button-text-color, #fff); border: none; margin-bottom: 8px;" onclick="openTelegramProfile('${safe}', event); closeScreenshotCompleteModal();">${t.screenshotReminderBtn}</button>`;
     } else {
         actionEl.innerHTML = '';
@@ -1103,10 +1144,8 @@ function openContactModal(ownerUsername) {
     textarea.value = t.contactPrefill;
     document.getElementById('attach-project-container').style.display = 'none';
     const select = document.getElementById('attach-project-select');
-    select.innerHTML = '<option value="">' + t.contactSelectProject + '</option>';
-    myProjects.forEach((project) => {
-        select.innerHTML += '<option value="' + project.id + '">' + project.name + '</option>';
-    });
+    select.innerHTML = '<option value="">' + window.escapeHTML(t.contactSelectProject) + '</option>'
+        + myProjects.map((project) => '<option value="' + project.id + '">' + window.escapeHTML(project.name || window.t('unknownLabel', {}, lang)) + '</option>').join('');
     document.getElementById('contact-modal').classList.add('active');
 }
 
@@ -1204,11 +1243,12 @@ function closeEarnBustModal(event) {
 function openSocialModal() {
     document.getElementById('social-link-modal').classList.add('active');
     const input = document.getElementById('social-url-input');
+    const button = document.getElementById('send-social-link-btn');
     input.value = '';
-    document.getElementById('send-social-link-btn').disabled = true;
-    input.addEventListener('input', () => {
-        document.getElementById('send-social-link-btn').disabled = !input.value.trim().startsWith('http');
-    });
+    button.disabled = true;
+    input.oninput = () => {
+        button.disabled = !input.value.trim().startsWith('http');
+    };
 }
 
 function closeSocialModal(event) {
@@ -1241,13 +1281,15 @@ function renderArchivedProjects() {
     archivedProjects.forEach((project) => {
         const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
         const archiveName = project.name || window.t('unknownLabel', {}, lang);
+        const safeArchiveName = window.escapeHTML(archiveName);
+        const safeArchivePackage = window.escapeHTML(project.package_name || '');
         html += `
             <div class="card archive-card">
                 <div class="card-header archive-card-header">
                     ${renderIcon(archiveName, project.icon_url)}
                     <div class="card-info">
-                        <div class="card-title">${archiveName}</div>
-                        <div class="card-subtitle">${project.package_name}</div>
+                        <div class="card-title">${safeArchiveName}</div>
+                        <div class="card-subtitle">${safeArchivePackage}</div>
                     </div>
                 </div>
                 <div class="archive-meta-row">
@@ -1256,7 +1298,7 @@ function renderArchivedProjects() {
                     <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
                 </div>
                 <button class="btn archive-delete-btn"
-                    onclick="confirmHardDelete(${project.app_id}, '${archiveName.replace(/'/g, "\\'")}')">
+                    onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
                     ${t.archiveDeletePermanent}
                 </button>
             </div>`;
@@ -1296,26 +1338,6 @@ function showScreenshotDayAlert() {
 }
 
 function showVisibilityToast() {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    showToast(t.visibilityHint);
-}
-
-async function showKarmaBreakdown(targetUserId) {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    try {
-        const resp = await fetch(`${API_BASE}/users/${targetUserId}/karma/breakdown`);
-        const data = await resp.json();
-        const msg = t.karmaBreakdownTitle.replace('{karma}', data.total || 0)
-            + '\n\n' + t.karmaBreakdownGood.replace('{count}', data.good || 0)
-            + '\n' + t.karmaBreakdownBug.replace('{count}', data.bug || 0);
-        if (tg.showAlert) tg.showAlert(msg);
-        else alert(msg);
-    } catch (error) {
-        console.error('Karma breakdown error:', error);
-    }
-}
-
-function showActiveTestsToast() {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     showToast(t.visibilityHint);
 }
@@ -1496,17 +1518,17 @@ function openInviteModal(projectId) {
     body.innerHTML = `
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock1Title}</div>
-            <div style="${preStyle}">${block1Text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            <div style="${preStyle}">${window.escapeHTML(block1Text)}</div>
             <button class="btn btn-primary" onclick="copyAndAction('${escapeForAttr(block1Text)}', 'exchange')">${t.inviteBlock1Btn}</button>
         </div>
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock2Title}</div>
-            <div style="${preStyle}">${block2Text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            <div style="${preStyle}">${window.escapeHTML(block2Text)}</div>
             <button class="btn" style="width: 100%; background: rgba(51,144,236,0.12); color: var(--link-color); border: none;" onclick="copyAndAction('${escapeForAttr(block2Text)}', 'saved')">${t.inviteBlock2Btn}</button>
         </div>
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock3Title}</div>
-            <div style="${preStyle}">${block3Text}</div>
+            <div style="${preStyle}">${window.escapeHTML(block3Text)}</div>
             <button class="btn" style="width: 100%; background: rgba(51,144,236,0.12); color: var(--link-color); border: none;" onclick="copyAndAction('${escapeForAttr(block3Text)}', 'saved')">${t.inviteBlock3Btn}</button>
         </div>
     `;
@@ -1517,7 +1539,7 @@ function openInviteModal(projectId) {
 }
 
 function escapeForAttr(str) {
-    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
 }
 
 function copyAndAction(text, target) {
@@ -1596,6 +1618,8 @@ async function openDossierModal(username, testerId, appId) {
     const canReward = likesAvailable > 0 && !alreadyLiked;
     const canDeleteFromProject = !!tester && !!project && !!appId;
     const tgName = username || '';
+    const safeTelegramUsername = escapeInlineJsString(tgName);
+    const safeDeleteName = escapeInlineJsString(tgName || String(testerId));
 
     let html = '';
     html += `<div style="margin-bottom: 16px;">
@@ -1622,9 +1646,9 @@ async function openDossierModal(username, testerId, appId) {
     html += `<div>
         <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierActionsTitle}</div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${tgName ? `<button class="btn" style="width: 100%; background: var(--secondary-bg-color); color: var(--link-color); border: none; font-weight: 600; padding: 10px;" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${tgName}')">${t.dossierBtnTelegram}</button>` : ''}
+            ${tgName ? `<button class="btn" style="width: 100%; background: var(--secondary-bg-color); color: var(--link-color); border: none; font-weight: 600; padding: 10px;" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
             ${canReward ? `<button class="btn" style="width: 100%; background: rgba(255,204,0,0.15); color: #ffcc00; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
-            ${canDeleteFromProject ? `<button class="btn" style="width: 100%; background: rgba(255,59,48,0.1); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); deleteTester(${appId}, ${testerId}, '${tgName || testerId}')">${t.dossierBtnDelete}</button>` : ''}
+            ${canDeleteFromProject ? `<button class="btn" style="width: 100%; background: rgba(255,59,48,0.1); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); deleteTester(${appId}, ${testerId}, '${safeDeleteName}')">${t.dossierBtnDelete}</button>` : ''}
         </div>
     </div>`;
 
@@ -1749,23 +1773,6 @@ document.addEventListener('click', (event) => {
     toggleDetailsWithAnimation(summary.parentElement);
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    const snap = document.getElementById('showcase-snap');
-    if (snap) {
-        let scrollTimer;
-        snap.addEventListener('scroll', () => {
-            clearTimeout(scrollTimer);
-            scrollTimer = setTimeout(() => {
-                const half = snap.scrollWidth / 2;
-                const activeTab = snap.scrollLeft >= half ? 'prelaunch' : 'needed';
-                document.querySelectorAll('.showcase-tab').forEach((el) => {
-                    el.classList.toggle('active', el.dataset.tab === activeTab);
-                });
-            }, 100);
-        });
-    }
-});
-
 Object.assign(window, {
     showSkeleton,
     showRetry,
@@ -1855,5 +1862,6 @@ Object.assign(window, {
     showReadonlyAlert,
     openEditModal,
     closeEditModal,
+    escapeHTML: window.escapeHTML,
     copyEmail,
 });

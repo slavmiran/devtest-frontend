@@ -307,6 +307,7 @@ function refreshLanguageUi() {
 }
 
 function rerenderDynamicUi() {
+    updateShowcaseVisibility();
     renderEvents();
     renderTests();
     renderIncomingOffers();
@@ -319,10 +320,25 @@ function rerenderDynamicUi() {
     }
 }
 
+function updateShowcaseVisibility() {
+    const availableDetails = document.getElementById('available-details');
+    if (!availableDetails) return;
+
+    const hasShowcaseContent = showcaseLoadError
+        || showcaseTestersNeeded.length > 0
+        || showcasePreLaunch.length > 0;
+
+    availableDetails.style.display = hasShowcaseContent ? '' : 'none';
+
+    if (!hasShowcaseContent) {
+        availableDetails.open = false;
+        availableAppsLoaded = false;
+    }
+}
+
 function refreshActiveTabData() {
     const activeTab = document.querySelector('.tab-content.active');
     const activeTabId = activeTab ? activeTab.id : '';
-    const tasksSectionOpen = document.getElementById('available-details')?.open;
 
     if (activeTabId === 'tab-tests') {
         loadTasks().catch(error => console.error('Language refresh tasks error:', error));
@@ -343,11 +359,6 @@ function refreshActiveTabData() {
 
     if (activeTabId === 'tab-bounty') {
         loadBountyFeed().catch(error => console.error('Language refresh bounty error:', error));
-        return;
-    }
-
-    if (tasksSectionOpen) {
-        loadTasks().catch(error => console.error('Language refresh showcase error:', error));
     }
 }
 
@@ -379,7 +390,7 @@ async function loadTasks() {
         const data = await response.json();
 
         const today = getLocalDate();
-        myTests = data.to_test_today.map(app => {
+        myTests = (data.to_test_today || []).map(app => {
             let status = 'new';
             if (app.last_check_date === today) {
                 status = 'done';
@@ -417,6 +428,7 @@ async function loadTasks() {
         showcaseTestersNeeded = data.testers_needed || [];
         showcasePreLaunch = data.pre_launch || [];
         showcaseLoadError = false;
+        updateShowcaseVisibility();
         const availableDetails = document.getElementById('available-details');
         if (availableDetails && availableDetails.open) {
             availableAppsLoaded = true;
@@ -430,6 +442,7 @@ async function loadTasks() {
         incomingOffers = [];
         renderIncomingOffers();
         showcaseLoadError = true;
+        updateShowcaseVisibility();
         const neededPanel = document.getElementById('showcase-needed');
         const prelaunchPanel = document.getElementById('showcase-prelaunch');
         if (neededPanel) {
@@ -457,6 +470,7 @@ async function loadMutualFeed() {
         console.error('Error loading mutual feed:', error);
         mutualSeeking = [];
         mutualPrelaunch = [];
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
     } finally {
         renderMutualFeed();
         _apiEnd();
@@ -473,6 +487,7 @@ async function loadBountyFeed() {
     } catch (error) {
         console.error('Error loading bounty feed:', error);
         bountyContracts = [];
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
     } finally {
         renderBountyFeed();
         _apiEnd();
@@ -766,23 +781,24 @@ async function toggleVisibility(appId, isVisible) {
     project.is_visible = isVisible;
     renderProjects();
 
-    const request = fetch(`${API_BASE}/projects/${appId}/toggle_visibility`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_visible: isVisible })
-    });
-
-    loadProjects(true);
-
     try {
-        const response = await request;
+        const response = await fetch(`${API_BASE}/projects/${appId}/toggle_visibility`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_visible: isVisible })
+        });
         if (!response.ok) throw new Error('HTTP ' + response.status);
+        const result = await response.json();
+        if (result.status && result.status !== 'success' && result.status !== 'ok') {
+            throw new Error(getApiErrorMessage(result, 'visibilityUpdateError'));
+        }
         if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        loadProjects(true).catch(() => {});
     } catch (error) {
         console.error('Toggle visibility error:', error);
         project.is_visible = previousVisibility;
         renderProjects();
-        showToast(t.visibilityUpdateError);
+        showToast(error && error.message && error.message !== '[object Object]' ? error.message : t.visibilityUpdateError);
     }
 }
 
@@ -921,6 +937,7 @@ async function loadArchivedProjects() {
         renderArchivedProjects();
     } catch (error) {
         console.error('Archive load error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }
 
@@ -974,6 +991,7 @@ async function sendKarmaReward(appId, testerId, rewardType) {
         }
     } catch (error) {
         console.error('Karma error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }
 
@@ -1029,53 +1047,9 @@ async function confirmStart(id) {
             showToast(t.successCheckin);
         }
 
-        setTimeout(async () => {
+        setTimeout(() => {
             card.style.display = 'none';
-            try {
-                const tasksResponse = await fetch(`${API_BASE}/tasks/${userId}`);
-                const data = await tasksResponse.json();
-                const today = getLocalDate();
-                myTests = data.to_test_today.map(app => {
-                    let status = 'new';
-                    if (app.last_check_date === today) {
-                        status = 'done';
-                    } else if (app.last_check_date && app.last_check_date < today) {
-                        status = 'daily';
-                    } else if (app.last_check_date === null) {
-                        status = 'new';
-                    }
-                    const existingTest = myTests.find(test => test.id === app.app_id);
-                    if (existingTest && existingTest.status === 'opened' && status !== 'done') {
-                        status = 'opened';
-                    }
-                    return {
-                        id: app.app_id,
-                        name: app.name,
-                        package: app.package_name,
-                        icon_url: app.icon_url,
-                        google_group_url: app.google_group_url,
-                        instructions: app.instructions,
-                        owner_username: app.owner_username,
-                        start_date: app.start_date,
-                        active_testers_count: app.active_testers_count,
-                        days_since_publish: app.days_since_publish,
-                        status
-                    };
-                });
-                renderCompletedTests(myTests.filter(test => test.status === 'done'));
-                const activeCount = myTests.filter(test => test.status !== 'done').length;
-                if (activeCount === 0) {
-                    document.getElementById('tests-list').innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-icon">🎉</div>
-                            <h3>${t.emptyTests}</h3>
-                            <p>${t.emptyTestsDesc}</p>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Error fetching fresh data after checkin:', error);
-            }
+            loadTasks();
         }, 800);
         return true;
     } catch (error) {
@@ -1092,7 +1066,15 @@ async function confirmStart(id) {
 }
 
 async function deleteTester(appId, testerId, testerName) {
-    if (!window.confirm(t.deleteTesterConfirm.replace('{name}', testerName))) return;
+    const confirmed = await new Promise(resolve => {
+        const message = t.deleteTesterConfirm.replace('{name}', testerName);
+        if (tg.showConfirm) {
+            tg.showConfirm(message, ok => resolve(ok));
+        } else {
+            resolve(confirm(message));
+        }
+    });
+    if (!confirmed) return;
     try {
         const response = await fetch(`${API_BASE}/projects/${appId}/testers/${testerId}`, { method: 'DELETE' });
         const result = await response.json();
@@ -1317,14 +1299,6 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(() => {});
     }
 
-    loadTasks();
-    loadEvents();
-    loadProjects();
-    loadMutualFeed();
-    loadBountyFeed();
-});
-
-document.addEventListener('DOMContentLoaded', () => {
     const details = document.getElementById('available-details');
     if (details) {
         details.addEventListener('toggle', () => {
@@ -1342,6 +1316,27 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => showScreenshotCompleteModal(username), 300);
         }
     });
+
+    const snap = document.getElementById('showcase-snap');
+    if (snap) {
+        let scrollTimer;
+        snap.addEventListener('scroll', () => {
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(() => {
+                const half = snap.scrollWidth / 2;
+                const activeTab = snap.scrollLeft >= half ? 'prelaunch' : 'needed';
+                document.querySelectorAll('.showcase-tab').forEach((el) => {
+                    el.classList.toggle('active', el.dataset.tab === activeTab);
+                });
+            }, 100);
+        });
+    }
+
+    loadTasks();
+    loadEvents();
+    loadProjects();
+    loadMutualFeed();
+    loadBountyFeed();
 });
 
 Object.assign(window, {
@@ -1384,6 +1379,7 @@ Object.assign(window, {
     updateProjectPricing,
     getApiErrorMessage,
     rerenderDynamicUi,
+    updateShowcaseVisibility,
     refreshActiveTabData,
     saveProject,
     confirmEmailWarning,
@@ -1414,6 +1410,7 @@ Object.assign(window.App, {
     refreshLanguageUi,
     applyLanguage,
     loadTasks,
+    updateShowcaseVisibility,
     loadProjects,
     loadEvents,
     loadMutualFeed,
