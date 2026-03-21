@@ -1,0 +1,1486 @@
+window.App = window.App || {};
+
+const tg = window.Telegram.WebApp;
+tg.expand();
+tg.ready();
+
+const initData = tg.initDataUnsafe || {};
+const langCode = initData.user?.language_code;
+const userId = initData.user?.id || 123456789;
+const API_BASE = 'https://devtest-backend.onrender.com/api';
+
+let lang = localStorage.getItem('app_language') || (Object.keys(initData).length > 0 ? (langCode === 'ru' ? 'ru' : 'en') : 'ru');
+let t = window.getTranslations(lang);
+
+let myTests = [];
+let incomingOffers = [];
+let myProjects = [];
+let mutualSeeking = [];
+let mutualPrelaunch = [];
+let bountyContracts = [];
+let showcaseTestersNeeded = [];
+let showcasePreLaunch = [];
+let communityEvents = null;
+let eventsExpanded = false;
+let activeTimerAppId = null;
+let pendingProjectData = null;
+let projectToEdit = null;
+let visibilityStats = {};
+let _activeRequests = 0;
+let _karmaAppId = null;
+let _karmaTesterId = null;
+let _offersTimerId = null;
+let availableAppsLoaded = false;
+let showcaseLoadError = false;
+let _reportAppId = null;
+let _reportOwnerUsername = null;
+let _pendingScreenshotReminderUsername = null;
+let _contactOwnerUsername = '';
+let _dropTestAppId = null;
+let _overtimeTest = null;
+let _syncProjectId = null;
+let _socialBonusStatus = 'none';
+let archivedProjects = [];
+let projectToDelete = null;
+
+function _apiStart() {
+    _activeRequests++;
+    const dot = document.getElementById('loading-dot');
+    if (dot) dot.classList.remove('hidden');
+}
+
+function _apiEnd() {
+    _activeRequests = Math.max(0, _activeRequests - 1);
+    if (_activeRequests === 0) {
+        const dot = document.getElementById('loading-dot');
+        if (dot) dot.classList.add('hidden');
+    }
+}
+
+const getLocalDate = () => {
+    const date = new Date();
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+};
+
+function getRuDaysWord(days) {
+    const d10 = days % 10;
+    const d100 = days % 100;
+    if (d10 === 1 && d100 !== 11) return 'день';
+    if (d10 >= 2 && d10 <= 4 && (d100 < 12 || d100 > 14)) return 'дня';
+    return 'дней';
+}
+
+function formatEditProjectCreatedAt(project) {
+    if (!project || !project.created_at) return '';
+    const createdDate = new Date(project.created_at);
+    if (Number.isNaN(createdDate.getTime())) return '';
+
+    const msInDay = 1000 * 60 * 60 * 24;
+    const todayDate = new Date(getLocalDate());
+    const createdOnlyDate = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+    const daysAgo = Math.max(0, Math.floor((todayDate - createdOnlyDate) / msInDay));
+
+    if (lang === 'ru') {
+        const formattedDate = new Intl.DateTimeFormat('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        }).format(createdDate).replace(/\s?г\.?$/, '');
+        return t.editAddedToPlatform
+            .replace('{date}', formattedDate)
+            .replace('{days}', daysAgo)
+            .replace('{days_word}', getRuDaysWord(daysAgo));
+    }
+
+    const formattedDate = new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    }).format(createdDate);
+    return t.editAddedToPlatform
+        .replace('{date}', formattedDate)
+        .replace('{days}', daysAgo);
+}
+
+function formatTimeAgo(dateStr) {
+    if (!dateStr) return t.timeJustNow;
+    const eventDate = new Date(dateStr);
+    if (Number.isNaN(eventDate.getTime())) return t.timeJustNow;
+    const diffMs = Date.now() - eventDate.getTime();
+    const minutes = Math.max(0, Math.floor(diffMs / 60000));
+    if (minutes < 1) return t.timeJustNow;
+    if (minutes < 60) return t.timeMinAgo.replace('{count}', minutes);
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t.timeHourAgo.replace('{count}', hours);
+    const days = Math.floor(hours / 24);
+    return t.timeDayAgo.replace('{count}', days);
+}
+
+function formatOfferRemaining(createdAt) {
+    const created = new Date(createdAt || '');
+    if (Number.isNaN(created.getTime())) return t.offerExpired;
+    const expireAt = created.getTime() + (3 * 60 * 60 * 1000);
+    const leftMs = expireAt - Date.now();
+    if (leftMs <= 0) return t.offerExpired;
+    const totalSec = Math.floor(leftMs / 1000);
+    const hh = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+    const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+    const ss = String(totalSec % 60).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+}
+
+function getOfferApiError(message) {
+    const code = typeof message === 'string'
+        ? message
+        : message && typeof message === 'object'
+            ? (message.code || message.message)
+            : null;
+    if (!code) return t.offerActionError;
+    if (['offer_forbidden', 'offer_not_pending', 'offer_not_found', 'offer_expired'].includes(code)) {
+        return t.offerForbidden;
+    }
+    if (code === 'offer_already_connected') {
+        return t.offerAlreadyConnected;
+    }
+    return getApiErrorMessage(message, 'offerActionError');
+}
+
+function getUserTestingDay(startDate) {
+    if (!startDate) return null;
+    const startedAt = new Date(startDate);
+    if (Number.isNaN(startedAt.getTime())) return null;
+    const today = new Date(getLocalDate());
+    return Math.floor((today - startedAt) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function isMandatoryScreenshotDay(testingDay) {
+    return [1, 7, 14].includes(testingDay);
+}
+
+function getOwnerActiveStatus(lastOwnerActivity) {
+    if (!lastOwnerActivity) return false;
+    const dt = new Date(lastOwnerActivity);
+    if (Number.isNaN(dt.getTime())) return false;
+    const diffMs = Date.now() - dt.getTime();
+    return diffMs <= (12 * 60 * 60 * 1000);
+}
+
+function isProjectSynced(test) {
+    return (test.google_sync_day || 0) > 1;
+}
+
+function formatBustAmount(value) {
+    const numeric = Number(value || 0);
+    const rounded = Math.round(numeric * 10) / 10;
+    const normalized = Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
+    return `${normalized} $BUST`;
+}
+
+function getApiErrorMessage(payload, fallbackKey = 'genericError') {
+    if (window.resolveApiMessage) {
+        return window.resolveApiMessage(payload, fallbackKey, lang);
+    }
+    if (payload && typeof payload === 'object') {
+        return payload.message || payload.detail || t[fallbackKey] || t.genericError;
+    }
+    return payload || t[fallbackKey] || t.genericError;
+}
+
+function getProjectApiErrorMessage(message, details = {}) {
+    return getApiErrorMessage({ code: message, details }, 'saveProjectError');
+}
+
+function getProjectFormConfig(formKey) {
+    return formKey === 'edit'
+        ? {
+            modeInput: 'edit-mode',
+            mutualInput: 'edit-limit-mutual',
+            bountyInput: 'edit-limit-bounty',
+            rewardInput: 'edit-bounty-per-tester',
+            mutualPanel: 'edit-mutual-settings',
+            bountyPanel: 'edit-bounty-settings',
+            calcPerTester: 'edit-calc-per-tester',
+            calcDaily: 'edit-calc-daily',
+            calcHold: 'edit-calc-hold',
+            calcTotal: 'edit-calc-total',
+            balanceBadge: 'edit-balance-badge-value',
+            modeButtons: {
+                mutual: 'edit-mode-mutual',
+                bounty: 'edit-mode-bounty',
+                hybrid: 'edit-mode-hybrid'
+            }
+        }
+        : {
+            modeInput: 'app-mode',
+            mutualInput: 'app-limit-mutual',
+            bountyInput: 'app-limit-bounty',
+            rewardInput: 'app-bounty-per-tester',
+            mutualPanel: 'add-mutual-settings',
+            bountyPanel: 'add-bounty-settings',
+            calcPerTester: 'add-calc-per-tester',
+            calcDaily: 'add-calc-daily',
+            calcHold: 'add-calc-hold',
+            calcTotal: 'add-calc-total',
+            balanceBadge: 'add-balance-badge-value',
+            modeButtons: {
+                mutual: 'add-mode-mutual',
+                bounty: 'add-mode-bounty',
+                hybrid: 'add-mode-hybrid'
+            }
+        };
+}
+
+function getProjectPricingState(formKey) {
+    const config = getProjectFormConfig(formKey);
+    const mode = document.getElementById(config.modeInput).value || 'mutual';
+    const limitMutual = Number.parseInt(document.getElementById(config.mutualInput).value || '0', 10) || 0;
+    const limitBounty = Number.parseInt(document.getElementById(config.bountyInput).value || '0', 10) || 0;
+    const bountyPerTester = Number.parseInt(document.getElementById(config.rewardInput).value || '0', 10) || 0;
+    return { mode, limitMutual, limitBounty, bountyPerTester };
+}
+
+function setProjectMode(formKey, mode) {
+    const config = getProjectFormConfig(formKey);
+    document.getElementById(config.modeInput).value = mode;
+    Object.entries(config.modeButtons).forEach(([key, id]) => {
+        document.getElementById(id).classList.toggle('active', key === mode);
+    });
+    updateProjectPricing(formKey);
+}
+
+function updateProjectPricing(formKey) {
+    const config = getProjectFormConfig(formKey);
+    const state = getProjectPricingState(formKey);
+    const showMutual = state.mode === 'mutual' || state.mode === 'hybrid';
+    const showBounty = state.mode === 'bounty' || state.mode === 'hybrid';
+    const mutualPanel = document.getElementById(config.mutualPanel);
+    const bountyPanel = document.getElementById(config.bountyPanel);
+    mutualPanel.classList.toggle('active', showMutual);
+    bountyPanel.classList.toggle('active', showBounty);
+
+    const rewardPerTester = showBounty ? state.bountyPerTester : 0;
+    const dailyShare = rewardPerTester * 0.4;
+    const holdBonus = rewardPerTester * 0.6;
+    const totalCost = showBounty ? state.limitBounty * rewardPerTester : 0;
+    const bustBalance = visibilityStats && typeof visibilityStats.balance_bust !== 'undefined'
+        ? visibilityStats.balance_bust
+        : 0;
+
+    document.getElementById(config.calcPerTester).innerText = formatBustAmount(rewardPerTester);
+    document.getElementById(config.calcDaily).innerText = formatBustAmount(dailyShare);
+    document.getElementById(config.calcHold).innerText = formatBustAmount(holdBonus);
+    document.getElementById(config.calcTotal).innerText = formatBustAmount(totalCost);
+    document.getElementById(config.balanceBadge).innerText = formatBustAmount(bustBalance);
+}
+
+function resetProjectForms() {
+    document.getElementById('app-mode').value = 'mutual';
+    document.getElementById('app-limit-mutual').value = '12';
+    document.getElementById('app-limit-bounty').value = '12';
+    document.getElementById('app-bounty-per-tester').value = '100';
+    document.getElementById('edit-mode').value = 'mutual';
+    document.getElementById('edit-limit-mutual').value = '12';
+    document.getElementById('edit-limit-bounty').value = '12';
+    document.getElementById('edit-bounty-per-tester').value = '100';
+    setProjectMode('add', 'mutual');
+    setProjectMode('edit', 'mutual');
+}
+
+function validateProjectPricing(formKey) {
+    const { mode, limitMutual, limitBounty, bountyPerTester } = getProjectPricingState(formKey);
+    if (!['mutual', 'bounty', 'hybrid'].includes(mode)) return t.invalidModeSelection;
+    if ((mode === 'mutual' || mode === 'hybrid') && limitMutual < 1) return t.mutualLimitInvalid;
+    if ((mode === 'bounty' || mode === 'hybrid') && limitBounty < 1) return t.bountyLimitInvalid;
+    if ((mode === 'bounty' || mode === 'hybrid') && bountyPerTester < 100) return t.bountyPerTesterInvalid;
+    return null;
+}
+
+function buildProjectPricingPayload(formKey) {
+    const error = validateProjectPricing(formKey);
+    if (error) {
+        if (tg.showAlert) tg.showAlert(error);
+        else alert(error);
+        return null;
+    }
+    const { mode, limitMutual, limitBounty, bountyPerTester } = getProjectPricingState(formKey);
+    return {
+        mode,
+        limit_mutual: mode === 'bounty' ? 0 : limitMutual,
+        limit_bounty: mode === 'bounty' || mode === 'hybrid' ? limitBounty : 0,
+        bounty_per_tester: mode === 'bounty' || mode === 'hybrid' ? bountyPerTester : 0
+    };
+}
+
+function refreshLanguageUi() {
+    t = window.getTranslations(lang);
+    if (window.updateTranslations) {
+        window.updateTranslations(lang);
+    }
+
+    updateProjectPricing('add');
+    updateProjectPricing('edit');
+    renderEditCreatedAtMeta();
+
+    const switcher = document.getElementById('lang-switcher');
+    const dot = document.getElementById('loading-dot');
+    const dotHtml = dot ? dot.outerHTML : '';
+    switcher.innerHTML = '🌐 ' + (lang === 'ru' ? 'RU' : 'EN') + dotHtml;
+
+    const chipTexts = [
+        window.t('chipBrowse', {}, lang),
+        window.t('chipScreenshot3', {}, lang),
+        window.t('chipJustOpen', {}, lang),
+        window.t('chipTryFeatures', {}, lang),
+        window.t('chipLeaveReview', {}, lang)
+    ];
+    const renderChips = (containerId, textareaId) => {
+        const element = document.getElementById(containerId);
+        if (!element) return;
+        element.innerHTML = chipTexts
+            .map(chipText => `<button type="button" class="chip" onclick="insertChip('${textareaId}', this.dataset.text)" data-text="${chipText.replace(/"/g, '&quot;')}">${chipText}</button>`)
+            .join('');
+    };
+    renderChips('chips-instructions', 'app-instructions');
+    renderChips('chips-edit-instructions', 'edit-description');
+
+    const toggleBtn = document.getElementById('events-toggle');
+    if (toggleBtn) {
+        toggleBtn.innerText = eventsExpanded ? window.t('pulseCollapse', {}, lang) : window.t('pulseExpand', {}, lang);
+    }
+
+    const select = document.getElementById('attach-project-select');
+    if (select && select.options.length > 0 && !select.value) {
+        select.options[0].text = window.t('contactSelectPlaceholder', {}, lang);
+    }
+}
+
+function applyLanguage(newLang) {
+    lang = newLang;
+    t = window.getTranslations(lang);
+    localStorage.setItem('app_language', lang);
+    fetch(`${API_BASE}/users/${userId}/language`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: lang })
+    }).catch(error => console.error('Language sync error:', error));
+
+    refreshLanguageUi();
+    renderEvents();
+    renderTests();
+    renderIncomingOffers();
+    renderProjects();
+    renderMutualFeed();
+    renderBountyFeed();
+    renderArchivedProjects();
+    if (availableAppsLoaded) renderShowcase();
+}
+
+function toggleLanguage() {
+    applyLanguage(lang === 'ru' ? 'en' : 'ru');
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+async function loadTasks() {
+    showSkeleton('tests-list');
+    _apiStart();
+    try {
+        const response = await fetch(`${API_BASE}/tasks/${userId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        const today = getLocalDate();
+        myTests = data.to_test_today.map(app => {
+            let status = 'new';
+            if (app.last_check_date === today) {
+                status = 'done';
+            } else if (app.last_check_date && app.last_check_date < today) {
+                status = 'daily';
+            } else if (app.last_check_date === null) {
+                status = 'new';
+            }
+            const existingTest = myTests.find(test => test.id === app.app_id);
+            if (existingTest && existingTest.status === 'opened' && status !== 'done') {
+                status = 'opened';
+            }
+            return {
+                id: app.app_id,
+                name: app.name,
+                package: app.package_name,
+                icon_url: app.icon_url,
+                google_group_url: app.google_group_url,
+                instructions: app.instructions,
+                status,
+                start_date: app.start_date,
+                owner_username: app.owner_username,
+                active_testers_count: app.active_testers_count,
+                days_since_publish: app.days_since_publish,
+                google_sync_day: app.google_sync_day || 0,
+                sync_message: app.sync_message || '',
+                last_owner_activity: app.last_owner_activity || null
+            };
+        });
+
+        incomingOffers = data.incoming_offers || [];
+        renderIncomingOffers();
+        renderTests();
+
+        showcaseTestersNeeded = data.testers_needed || [];
+        showcasePreLaunch = data.pre_launch || [];
+        showcaseLoadError = false;
+        const availableDetails = document.getElementById('available-details');
+        if (availableDetails && availableDetails.open) {
+            availableAppsLoaded = true;
+            renderShowcase();
+        } else {
+            availableAppsLoaded = false;
+        }
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+        showRetry('tests-list', 'loadTasks()');
+        incomingOffers = [];
+        renderIncomingOffers();
+        showcaseLoadError = true;
+        const neededPanel = document.getElementById('showcase-needed');
+        const prelaunchPanel = document.getElementById('showcase-prelaunch');
+        if (neededPanel) {
+            neededPanel.innerHTML = `
+                <div class="retry-container" style="padding: 20px 8px;">
+                    <button class="retry-btn" onclick="loadTasks(); if (this.closest('details')) this.closest('details').open = true;">${t.retryBtn}</button>
+                </div>
+            `;
+        }
+        if (prelaunchPanel) prelaunchPanel.innerHTML = '';
+    } finally {
+        _apiEnd();
+    }
+}
+
+async function loadMutualFeed() {
+    _apiStart();
+    try {
+        const response = await fetch(`${API_BASE}/feed/mutual/${userId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        mutualSeeking = data.seeking || [];
+        mutualPrelaunch = data.prelaunch || [];
+    } catch (error) {
+        console.error('Error loading mutual feed:', error);
+        mutualSeeking = [];
+        mutualPrelaunch = [];
+    } finally {
+        renderMutualFeed();
+        _apiEnd();
+    }
+}
+
+async function loadBountyFeed() {
+    _apiStart();
+    try {
+        const response = await fetch(`${API_BASE}/feed/bounty/${userId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        bountyContracts = data.contracts || [];
+    } catch (error) {
+        console.error('Error loading bounty feed:', error);
+        bountyContracts = [];
+    } finally {
+        renderBountyFeed();
+        _apiEnd();
+    }
+}
+
+async function loadEvents(retryCount = 0) {
+    _apiStart();
+    try {
+        const response = await fetch(`${API_BASE}/events`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        communityEvents = data.events || [];
+        renderEvents();
+    } catch (error) {
+        console.error('Error loading events:', error);
+        if (retryCount < 2) {
+            const delay = (retryCount + 1) * 2000;
+            setTimeout(() => loadEvents(retryCount + 1), delay);
+        } else {
+            communityEvents = [];
+            renderEvents();
+        }
+    } finally {
+        _apiEnd();
+    }
+}
+
+async function loadProjects(isBackground = false) {
+    if (!isBackground) {
+        showSkeleton('projects-list');
+    }
+    _apiStart();
+    try {
+        const response = await fetch(`${API_BASE}/projects/${userId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        const projectsList = data.projects || [];
+        myProjects = projectsList.map(project => ({
+            id: project.app_id,
+            name: project.name,
+            package: project.package_name,
+            icon_url: project.icon_url,
+            google_group_url: project.google_group_url,
+            instructions: project.instructions || '',
+            testers: project.testers || [],
+            is_visible: project.is_visible !== false,
+            created_at: project.created_at || null,
+            likes: project.likes || [],
+            likes_used: project.likes_used || 0,
+            likes_max: project.likes_max || 1,
+            mode: project.mode || 'mutual',
+            limit_mutual: project.limit_mutual || 0,
+            limit_bounty: project.limit_bounty || 0,
+            bounty_per_tester: project.bounty_per_tester || 0,
+            google_sync_day: project.google_sync_day || 0,
+            sync_message: project.sync_message || ''
+        }));
+
+        visibilityStats = {
+            ownerKarma: data.karma || 0,
+            rank: data.rank || 0,
+            total_developers: data.total_developers || 0,
+            my_active_tests: data.my_active_tests || 0,
+            my_total_tests: data.my_total_tests || 0,
+            balance_bust: data.balance_bust || 0,
+            top_thresholds: data.top_thresholds || {},
+            completed_tests: data.completed_tests || 0,
+            total_expected_checkins: data.total_expected_checkins || 0,
+            total_actual_checkins: data.total_actual_checkins || 0
+        };
+
+        renderProjects();
+    } catch (error) {
+        console.error('Error loading projects:', error);
+        if (!isBackground) {
+            showRetry('projects-list', 'loadProjects()');
+        }
+    } finally {
+        _apiEnd();
+        loadArchivedProjects().catch(() => {});
+    }
+}
+
+async function decideOffer(offerId, action, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (!offerId) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/offers/${offerId}/${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        const result = await response.json();
+        if (result.status !== 'success') {
+            const message = getOfferApiError(result);
+            if (tg.showAlert) tg.showAlert(message);
+            else alert(message);
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        await loadTasks();
+        loadProjects(true).catch(() => {});
+    } catch (error) {
+        console.error('Offer decision error:', error);
+        if (tg.showAlert) tg.showAlert(t.networkError);
+        else alert(t.networkError);
+    }
+}
+
+async function joinMutual(appId, allowOverLimit = false) {
+    try {
+        const response = await fetch(`${API_BASE}/feed/mutual/${appId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: userId, allow_over_limit: allowOverLimit })
+        });
+        const result = await response.json();
+        if (result.status !== 'success') {
+            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        await Promise.all([loadTasks(), loadMutualFeed(), loadProjects(true)]);
+    } catch (error) {
+        console.error('Join mutual error:', error);
+        if (tg.showAlert) tg.showAlert(t.networkError);
+    }
+}
+
+async function joinBounty(appId) {
+    try {
+        const response = await fetch(`${API_BASE}/feed/bounty/${appId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: userId })
+        });
+        const result = await response.json();
+        if (result.status !== 'success') {
+            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        await Promise.all([loadTasks(), loadBountyFeed(), loadProjects(true)]);
+    } catch (error) {
+        console.error('Join bounty error:', error);
+        if (tg.showAlert) tg.showAlert(t.networkError);
+    }
+}
+
+function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
+    if (activeTimerAppId === id) {
+        tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+        return;
+    }
+    if (activeTimerAppId !== null && activeTimerAppId !== id) {
+        showCustomAlert(t.antiFraudAlert);
+        return;
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+
+    const btn = document.getElementById(`btn-confirm-${id}`);
+    if (!btn || !btn.disabled) return;
+
+    activeTimerAppId = id;
+    let timeLeft = 15;
+    btn.innerText = t.timerRemaining.replace('{sec}', timeLeft);
+
+    const timerId = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+            clearInterval(timerId);
+            activeTimerAppId = null;
+            btn.disabled = false;
+            btn.style.backgroundColor = 'var(--success-color)';
+            btn.style.color = '#fff';
+            btn.style.cursor = 'pointer';
+            if (isScreenshotDay) {
+                btn.innerText = '💬 ' + t.screenshotBtn;
+                btn.onclick = () => handleScreenshotAndConfirm(id, ownerUsername);
+            } else {
+                btn.innerText = t.confirmStart;
+                btn.onclick = () => confirmStart(id);
+            }
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            btn.innerText = t.timerRemaining.replace('{sec}', timeLeft);
+        }
+    }, 1000);
+}
+
+async function takeAppToTest(appId) {
+    try {
+        const response = await fetch(`${API_BASE}/take_test`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: userId, app_id: appId })
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            loadTasks();
+        } else if (tg.showAlert) {
+            tg.showAlert(getApiErrorMessage(result, 'takeTestError'));
+        }
+    } catch (error) {
+        console.error('Take test error:', error);
+        if (tg.showAlert) tg.showAlert(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
+function openPlay(id, pkg) {
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+    const test = myTests.find(item => item.id === id);
+    if (test) {
+        test.status = 'opened';
+        renderTests();
+    }
+}
+
+function handleFirstDownload(id, pkg) {
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+    setTimeout(() => {
+        const screenshotBox = document.getElementById(`new-screenshot-box-${id}`);
+        if (screenshotBox) screenshotBox.style.display = 'block';
+    }, 1000);
+}
+
+async function handleScreenshotAndConfirm(id, ownerUsername) {
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    openReportModal(id, ownerUsername);
+}
+
+function insertReportChip(chipText) {
+    const textarea = document.getElementById('report-text');
+    if (textarea.value.length > 0 && !textarea.value.endsWith('\n')) {
+        textarea.value += '\n';
+    }
+    textarea.value += chipText + ' ';
+    textarea.focus();
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+async function sendReport() {
+    const text = document.getElementById('report-text').value.trim();
+    const ownerUsername = (_reportOwnerUsername || '').replace('@', '').trim();
+    const appId = _reportAppId;
+
+    _reportAppId = null;
+    _reportOwnerUsername = null;
+    document.getElementById('report-modal').classList.remove('active');
+
+    if (ownerUsername) {
+        const encodedText = encodeURIComponent(text);
+        try {
+            tg.openTelegramLink('https://t.me/' + ownerUsername + '?text=' + encodedText);
+        } catch (error) {
+            try {
+                tg.openLink('https://t.me/' + ownerUsername + '?text=' + encodedText);
+            } catch (fallbackError) {
+                window.location.href = 'https://t.me/' + ownerUsername + '?text=' + encodedText;
+            }
+        }
+        _pendingScreenshotReminderUsername = ownerUsername;
+    }
+
+    if (appId) {
+        confirmStart(appId);
+    }
+}
+
+function sendContactMessage() {
+    if (!_contactOwnerUsername) {
+        showToast(t.usernameUnavailable);
+        return;
+    }
+    const text = document.getElementById('contact-text').value.trim();
+    if (text) {
+        try {
+            tg.openTelegramLink('https://t.me/' + _contactOwnerUsername + '?text=' + encodeURIComponent(text));
+        } catch (error) {
+            window.location.href = 'https://t.me/' + _contactOwnerUsername + '?text=' + encodeURIComponent(text);
+        }
+    }
+    closeContactModal({ target: document.getElementById('contact-modal') });
+}
+
+async function toggleVisibility(appId, isVisible) {
+    const project = myProjects.find(item => item.id === appId);
+    if (!project) return;
+
+    const previousVisibility = project.is_visible;
+    project.is_visible = isVisible;
+    renderProjects();
+
+    const request = fetch(`${API_BASE}/projects/${appId}/toggle_visibility`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_visible: isVisible })
+    });
+
+    loadProjects(true);
+
+    try {
+        const response = await request;
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    } catch (error) {
+        console.error('Toggle visibility error:', error);
+        project.is_visible = previousVisibility;
+        renderProjects();
+        showToast(t.visibilityUpdateError);
+    }
+}
+
+async function confirmDropTest() {
+    if (!_dropTestAppId) return;
+    try {
+        const response = await fetch(`${API_BASE}/tests/${_dropTestAppId}/drop`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: userId })
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        closeDropTestModal({ target: document.getElementById('drop-test-modal') });
+        await Promise.all([loadTasks(), loadProjects(true)]);
+    } catch (error) {
+        console.error('Drop test error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
+async function confirmOvertimeLeave() {
+    if (!_overtimeTest) return;
+    try {
+        const response = await fetch(`${API_BASE}/tests/${_overtimeTest.id}/leave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: userId })
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        closeOvertimeModal({ target: document.getElementById('overtime-modal') });
+        await Promise.all([loadTasks(), loadProjects(true)]);
+    } catch (error) {
+        console.error('Overtime leave error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'loadError'));
+    }
+}
+
+async function openEarnBustModal() {
+    document.getElementById('earn-bust-modal').classList.add('active');
+    try {
+        const response = await fetch(`${API_BASE}/referral-stats/${userId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        document.getElementById('earn-referrals-count').innerText = `👥 ${data.referrals_count || 0}`;
+        const grantCount = data.grant_tests_count || 0;
+        document.getElementById('earn-grant-status').innerHTML = `<span class="meta-chip accent-green">🏆 ${t.earnGrantTestsLabel}: ${grantCount}</span>`;
+        _socialBonusStatus = data.social_bonus_status || 'none';
+        const socialStatus = document.getElementById('earn-social-status');
+        if (_socialBonusStatus === 'approved') {
+            socialStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnSocialApproved}</span>`;
+        } else if (_socialBonusStatus === 'pending') {
+            socialStatus.innerHTML = `<button class="btn btn-secondary" style="width:100%; opacity:0.6;" disabled>⏳ ${t.earnSocialPending}</button>`;
+        } else {
+            socialStatus.innerHTML = `<button class="btn btn-primary" style="width:100%;" onclick="openSocialModal()">🎁 ${t.earnSocialBtn}</button>`;
+        }
+    } catch (error) {
+        console.error('Failed to load referral stats:', error);
+    }
+}
+
+async function submitSocialLink() {
+    const url = document.getElementById('social-url-input').value.trim();
+    if (!url.startsWith('http')) return;
+    try {
+        const response = await fetch(`${API_BASE}/social-bonus/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, url })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            _socialBonusStatus = 'pending';
+            document.getElementById('earn-social-status').innerHTML = `<button class="btn btn-secondary" style="width:100%; opacity:0.6;" disabled>⏳ ${t.earnSocialPending}</button>`;
+            closeSocialModal();
+            const templateMsg = `Привет! Я опубликовал пост о DevTestHub (12 Testers Google Play): ${url}. Жду проверку бонуса! #DevTestHub #12testersGooglePlay`;
+            const encoded = encodeURIComponent(templateMsg);
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.openTelegramLink(`https://t.me/googleplay_console_12testers/31?text=${encoded}`);
+            }
+            showToast(t.earnSocialSubmitted || 'Ссылка отправлена!');
+        } else {
+            showToast(getApiErrorMessage(data, 'socialSubmitError'));
+        }
+    } catch (error) {
+        console.error('Social bonus submit error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'socialSubmitError'));
+    }
+}
+
+async function saveProjectSync() {
+    if (!_syncProjectId) return;
+    const day = Number(document.getElementById('sync-day-input').value);
+    const message = document.getElementById('sync-message-input').value || '';
+    if (!Number.isInteger(day) || day < 1) {
+        showToast(t.syncDayInvalid);
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/projects/${_syncProjectId}/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ google_sync_day: day, sync_message: message })
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(t.syncSavedToast);
+        closeSyncModal({ target: document.getElementById('sync-modal') });
+        await Promise.all([loadProjects(true), loadTasks()]);
+    } catch (error) {
+        console.error('Project sync error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'loadError'));
+    }
+}
+
+async function loadArchivedProjects() {
+    try {
+        const response = await fetch(`${API_BASE}/projects/${userId}/archived`);
+        if (!response.ok) return;
+        const data = await response.json();
+        archivedProjects = data.archived || [];
+        renderArchivedProjects();
+    } catch (error) {
+        console.error('Archive load error:', error);
+    }
+}
+
+async function confirmHardDelete(appId, appName) {
+    const confirmed = await new Promise(resolve => {
+        const message = t.archiveConfirmDelete.replace('{name}', appName);
+        if (tg.showConfirm) {
+            tg.showConfirm(message, ok => resolve(ok));
+        } else {
+            resolve(confirm(message));
+        }
+    });
+    if (!confirmed) return;
+    try {
+        const response = await fetch(`${API_BASE}/projects/${appId}/permanent`, { method: 'DELETE' });
+        const data = await response.json();
+        if (data.status === 'success') {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            archivedProjects = archivedProjects.filter(project => project.app_id !== appId);
+            renderArchivedProjects();
+        } else {
+            showToast(getApiErrorMessage(data, 'hardDeleteError'));
+        }
+    } catch (error) {
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
+function copyGroupUrl(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (tg.showAlert) tg.showAlert(t.copied);
+    }).catch(error => console.error('Copy failed', error));
+}
+
+async function showKarmaBreakdown(targetUserId) {
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    try {
+        const response = await fetch(`${API_BASE}/users/${targetUserId}/karma/breakdown`);
+        const data = await response.json();
+        const message = t.karmaBreakdownTitle.replace('{karma}', data.total || 0)
+            + '\n\n' + t.karmaBreakdownGood.replace('{count}', data.good || 0)
+            + '\n' + t.karmaBreakdownBug.replace('{count}', data.bug || 0);
+        if (tg.showAlert) tg.showAlert(message);
+        else alert(message);
+    } catch (error) {
+        console.error('Karma breakdown error:', error);
+    }
+}
+
+function showActiveTestsToast() {
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    showToast(t.visibilityHint);
+}
+
+async function sendKarmaReward(appId, testerId, rewardType) {
+    try {
+        const response = await fetch(`${API_BASE}/projects/${appId}/like`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: testerId, type: rewardType })
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            showToast(t.karmaToast);
+            const project = myProjects.find(item => item.id === appId);
+            if (project) {
+                if (project.likes) project.likes.push({ tester_id: testerId, type: rewardType });
+                project.likes_used = (project.likes_used || 0) + 1;
+            }
+            renderProjects();
+        } else {
+            const message = result.code === 'karma_limit_reached'
+                ? t.karmaLimitReached
+                : getApiErrorMessage(result, 'karmaAlreadyLiked');
+            showToast(message);
+        }
+    } catch (error) {
+        console.error('Karma error:', error);
+    }
+}
+
+async function confirmStart(id) {
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+    const card = document.getElementById(`test-card-${id}`);
+    const btn = document.getElementById(`btn-confirm-${id}`);
+
+    if (btn) {
+        btn.innerText = t.confirmed;
+        btn.style.backgroundColor = '#2e7d32';
+        btn.style.color = '#ffffff';
+        btn.disabled = true;
+    }
+
+    if (!card) return false;
+    card.classList.add('removing');
+
+    try {
+        const response = await fetch(`${API_BASE}/checkin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: userId, app_id: id, local_date: getLocalDate() })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        if (result.status !== 'success') {
+            card.classList.remove('removing');
+            if (btn) {
+                btn.innerText = t.confirmStart;
+                btn.style.backgroundColor = 'var(--success-color)';
+                btn.disabled = false;
+            }
+            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'checkinError'));
+            return false;
+        }
+
+        const earnedBust = Number(result.earned_bust || 0);
+        const earnedKarma = Number(result.earned_karma || 0);
+        if (result.already_checked_today) {
+            showToast(t.checkinAlreadyDone);
+        } else if (earnedBust > 0) {
+            showToast(t.checkinEarnBust.replace('{amount}', earnedBust.toFixed(1)));
+        } else if (earnedKarma > 0) {
+            showToast(t.checkinEarnKarma.replace('{amount}', earnedKarma.toFixed(1)));
+        } else {
+            showToast(t.successCheckin);
+        }
+
+        setTimeout(async () => {
+            card.style.display = 'none';
+            try {
+                const tasksResponse = await fetch(`${API_BASE}/tasks/${userId}`);
+                const data = await tasksResponse.json();
+                const today = getLocalDate();
+                myTests = data.to_test_today.map(app => {
+                    let status = 'new';
+                    if (app.last_check_date === today) {
+                        status = 'done';
+                    } else if (app.last_check_date && app.last_check_date < today) {
+                        status = 'daily';
+                    } else if (app.last_check_date === null) {
+                        status = 'new';
+                    }
+                    const existingTest = myTests.find(test => test.id === app.app_id);
+                    if (existingTest && existingTest.status === 'opened' && status !== 'done') {
+                        status = 'opened';
+                    }
+                    return {
+                        id: app.app_id,
+                        name: app.name,
+                        package: app.package_name,
+                        icon_url: app.icon_url,
+                        google_group_url: app.google_group_url,
+                        instructions: app.instructions,
+                        owner_username: app.owner_username,
+                        start_date: app.start_date,
+                        active_testers_count: app.active_testers_count,
+                        days_since_publish: app.days_since_publish,
+                        status
+                    };
+                });
+                renderCompletedTests(myTests.filter(test => test.status === 'done'));
+                const activeCount = myTests.filter(test => test.status !== 'done').length;
+                if (activeCount === 0) {
+                    document.getElementById('tests-list').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🎉</div>
+                            <h3>${t.emptyTests}</h3>
+                            <p>${t.emptyTestsDesc}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error fetching fresh data after checkin:', error);
+            }
+        }, 800);
+        return true;
+    } catch (error) {
+        console.error('Checkin error:', error);
+        card.classList.remove('removing');
+        if (btn) {
+            btn.innerText = t.confirmStart;
+            btn.style.backgroundColor = 'var(--success-color)';
+            btn.disabled = false;
+        }
+        if (tg.showAlert) tg.showAlert(getApiErrorMessage(error && error.message, 'networkError'));
+        return false;
+    }
+}
+
+async function deleteTester(appId, testerId, testerName) {
+    if (!window.confirm(t.deleteTesterConfirm.replace('{name}', testerName))) return;
+    try {
+        const response = await fetch(`${API_BASE}/projects/${appId}/testers/${testerId}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (result.status === 'ok') {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            loadProjects();
+        } else if (tg.showAlert) {
+            tg.showAlert(getApiErrorMessage(result, 'deleteTesterError'));
+        }
+    } catch (error) {
+        console.error('Delete tester error:', error);
+        const message = getApiErrorMessage(error && error.message, 'networkError');
+        if (tg.showAlert) tg.showAlert(message);
+        else alert(message);
+    }
+}
+
+async function confirmDeleteProject() {
+    if (!projectToDelete) return;
+
+    const message = document.getElementById('delete-message').value.trim();
+    const id = projectToDelete;
+    const btn = document.getElementById('t-confirmDeleteBtn');
+    const originalText = btn.innerText;
+    btn.innerText = '...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE}/projects/${id}/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            closeDeleteModal();
+            loadProjects();
+        } else if (tg.showAlert) {
+            tg.showAlert(getApiErrorMessage(result, 'deleteProjectError'));
+        }
+    } catch (error) {
+        console.error('Delete project error:', error);
+        const errorMessage = getApiErrorMessage(error && error.message, 'networkError');
+        if (tg.showAlert) tg.showAlert(errorMessage);
+        else alert(errorMessage);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function saveProject() {
+    document.getElementById('package-error').style.display = 'none';
+
+    const nameInput = document.getElementById('app-name').value.trim();
+    let packageInput = document.getElementById('app-package').value.trim();
+    const iconInput = document.getElementById('app-icon').value.trim();
+    const instructionsInput = document.getElementById('app-instructions').value.trim();
+    const pricingPayload = buildProjectPricingPayload('add');
+    if (!pricingPayload) return;
+
+    const isStandard = document.getElementById('seg-standard').classList.contains('active');
+    const groupInput = isStandard ? '' : document.getElementById('app-group').value.trim();
+
+    if (!packageInput.includes('play.google.com/store/apps/details?id=')) {
+        document.getElementById('package-error').innerText = t.invalidPlayLink;
+        document.getElementById('package-error').style.display = 'block';
+        return;
+    }
+    if (!nameInput || !packageInput) {
+        if (tg.showAlert) tg.showAlert(t.fillFields);
+        else alert(t.fillFields);
+        return;
+    }
+    if (nameInput.length > 30) {
+        if (tg.showAlert) tg.showAlert(t.appNameTooLong);
+        else alert(t.appNameTooLong);
+        return;
+    }
+
+    try {
+        if (packageInput.includes('play.google.com')) {
+            const url = new URL(packageInput);
+            const idParam = url.searchParams.get('id');
+            if (idParam) packageInput = idParam;
+        }
+    } catch (error) {
+        console.error('Play URL parse error:', error);
+    }
+
+    if (isStandard) {
+        pendingProjectData = {
+            owner_id: userId,
+            name: nameInput,
+            package_name: packageInput,
+            icon_url: iconInput || null,
+            google_group_url: null,
+            instructions: instructionsInput || null,
+            ...pricingPayload
+        };
+        document.getElementById('email-warning-modal').classList.add('active');
+        return;
+    }
+
+    await doSaveProject({
+        owner_id: userId,
+        name: nameInput,
+        package_name: packageInput,
+        icon_url: iconInput || null,
+        google_group_url: groupInput || null,
+        instructions: instructionsInput || null,
+        ...pricingPayload
+    });
+}
+
+function closeEmailWarningModal(event) {
+    if (event && event.target !== document.getElementById('email-warning-modal')) return;
+    document.getElementById('email-warning-modal').classList.remove('active');
+    pendingProjectData = null;
+}
+
+async function confirmEmailWarning() {
+    document.getElementById('email-warning-modal').classList.remove('active');
+    if (pendingProjectData) {
+        await doSaveProject(pendingProjectData);
+        pendingProjectData = null;
+    }
+}
+
+async function doSaveProject(projectData) {
+    const saveBtn = document.getElementById('t-save');
+    const originalText = saveBtn.innerText;
+    saveBtn.innerText = '...';
+    saveBtn.disabled = true;
+    try {
+        const response = await fetch(`${API_BASE}/projects`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(projectData)
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            closeModal();
+            loadProjects();
+        } else {
+            const message = getProjectApiErrorMessage(result.code || result.message, result.details) || t.saveProjectError;
+            if (tg.showAlert) tg.showAlert(message);
+            else alert(message);
+        }
+    } catch (error) {
+        console.error('Save project error:', error);
+        if (tg.showAlert) tg.showAlert(t.networkError);
+        else alert(t.networkError);
+    } finally {
+        saveBtn.innerText = originalText;
+        saveBtn.disabled = false;
+    }
+}
+
+async function saveProjectEdit() {
+    if (!projectToEdit) return;
+    const name = document.getElementById('edit-name').value.trim();
+    const instructions = document.getElementById('edit-description').value.trim();
+    const iconUrl = document.getElementById('edit-icon').value.trim();
+    const pricingPayload = buildProjectPricingPayload('edit');
+    if (!pricingPayload) return;
+
+    if (!name) {
+        if (tg.showAlert) tg.showAlert(t.fillFields);
+        else alert(t.fillFields);
+        return;
+    }
+
+    const editBtn = document.getElementById('t-editSave');
+    const originalText = editBtn.innerText;
+    editBtn.innerText = '...';
+    editBtn.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE}/projects/${projectToEdit}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                instructions: instructions || null,
+                icon_url: iconUrl || null,
+                ...pricingPayload
+            })
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            closeEditModal();
+            loadProjects();
+        } else {
+            const message = getProjectApiErrorMessage(result.code || result.message, result.details) || t.saveProjectChangesError;
+            if (tg.showAlert) tg.showAlert(message);
+            else alert(message);
+        }
+    } catch (error) {
+        console.error('Edit project error:', error);
+        if (tg.showAlert) tg.showAlert(t.networkError);
+        else alert(t.networkError);
+    } finally {
+        editBtn.innerText = originalText;
+        editBtn.disabled = false;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('hideBanner') === 'true') {
+        const banner = document.getElementById('main-banner');
+        if (banner) banner.style.display = 'none';
+    }
+
+    refreshLanguageUi();
+
+    if (!localStorage.getItem('app_language')) {
+        fetch(`${API_BASE}/users/${userId}/language`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.language && data.language !== lang) {
+                    applyLanguage(data.language);
+                }
+            })
+            .catch(() => {});
+    }
+
+    loadTasks();
+    loadEvents();
+    loadProjects();
+    loadMutualFeed();
+    loadBountyFeed();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const details = document.getElementById('available-details');
+    if (details) {
+        details.addEventListener('toggle', () => {
+            if (details.open && !availableAppsLoaded) {
+                availableAppsLoaded = true;
+                renderShowcase();
+            }
+        });
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && _pendingScreenshotReminderUsername !== null) {
+            const username = _pendingScreenshotReminderUsername;
+            _pendingScreenshotReminderUsername = null;
+            setTimeout(() => showScreenshotCompleteModal(username), 300);
+        }
+    });
+});
+
+Object.assign(window, {
+    refreshLanguageUi,
+    applyLanguage,
+    toggleLanguage,
+    loadTasks,
+    loadMutualFeed,
+    loadBountyFeed,
+    loadEvents,
+    loadProjects,
+    getLocalDate,
+    getRuDaysWord,
+    formatEditProjectCreatedAt,
+    formatTimeAgo,
+    formatOfferRemaining,
+    getOfferApiError,
+    decideOffer,
+    getUserTestingDay,
+    isMandatoryScreenshotDay,
+    getOwnerActiveStatus,
+    isProjectSynced,
+    joinMutual,
+    joinBounty,
+    startTimer,
+    takeAppToTest,
+    openPlay,
+    handleFirstDownload,
+    handleScreenshotAndConfirm,
+    insertReportChip,
+    sendReport,
+    sendContactMessage,
+    toggleVisibility,
+    confirmDropTest,
+    confirmOvertimeLeave,
+    openEarnBustModal,
+    submitSocialLink,
+    saveProjectSync,
+    loadArchivedProjects,
+    confirmHardDelete,
+    copyGroupUrl,
+    showKarmaBreakdown,
+    showActiveTestsToast,
+    sendKarmaReward,
+    confirmStart,
+    deleteTester,
+    confirmDeleteProject,
+    formatBustAmount,
+    setProjectMode,
+    updateProjectPricing,
+    getApiErrorMessage,
+    saveProject,
+    closeEmailWarningModal,
+    confirmEmailWarning,
+    saveProjectEdit
+});
+
+Object.assign(window.App, {
+    tg,
+    API_BASE,
+    userId,
+    getState: () => ({
+        lang,
+        myTests,
+        incomingOffers,
+        myProjects,
+        mutualSeeking,
+        mutualPrelaunch,
+        bountyContracts,
+        showcaseTestersNeeded,
+        showcasePreLaunch,
+        communityEvents,
+        eventsExpanded,
+        visibilityStats,
+        archivedProjects,
+        availableAppsLoaded,
+        showcaseLoadError
+    }),
+    refreshLanguageUi,
+    applyLanguage,
+    loadTasks,
+    loadProjects,
+    loadEvents,
+    loadMutualFeed,
+    loadBountyFeed,
+    loadArchivedProjects,
+    saveProject,
+    saveProjectEdit
+});
