@@ -1,47 +1,47 @@
 window.App = window.App || {};
 
-const tg = window.Telegram.WebApp;
+var tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
 
 const initData = tg.initDataUnsafe || {};
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
-const API_BASE = 'https://devtest-backend.onrender.com/api';
+var API_BASE = 'https://devtest-backend.onrender.com/api';
 
-let lang = localStorage.getItem('app_language') || (Object.keys(initData).length > 0 ? (langCode === 'ru' ? 'ru' : 'en') : 'ru');
-let t = window.getTranslations(lang);
+var lang = localStorage.getItem('app_language') || (Object.keys(initData).length > 0 ? (langCode === 'ru' ? 'ru' : 'en') : 'ru');
+var t = window.getTranslations(lang);
 
-let myTests = [];
-let incomingOffers = [];
-let myProjects = [];
-let mutualSeeking = [];
-let mutualPrelaunch = [];
-let bountyContracts = [];
-let showcaseTestersNeeded = [];
-let showcasePreLaunch = [];
-let communityEvents = null;
-let eventsExpanded = false;
-let activeTimerAppId = null;
-let pendingProjectData = null;
-let projectToEdit = null;
-let visibilityStats = {};
-let _activeRequests = 0;
-let _karmaAppId = null;
-let _karmaTesterId = null;
-let _offersTimerId = null;
-let availableAppsLoaded = false;
-let showcaseLoadError = false;
-let _reportAppId = null;
-let _reportOwnerUsername = null;
-let _pendingScreenshotReminderUsername = null;
-let _contactOwnerUsername = '';
-let _dropTestAppId = null;
-let _overtimeTest = null;
-let _syncProjectId = null;
-let _socialBonusStatus = 'none';
-let archivedProjects = [];
-let projectToDelete = null;
+var myTests = [];
+var incomingOffers = [];
+var myProjects = [];
+var mutualSeeking = [];
+var mutualPrelaunch = [];
+var bountyContracts = [];
+var showcaseTestersNeeded = [];
+var showcasePreLaunch = [];
+var communityEvents = null;
+var eventsExpanded = false;
+var activeTimerAppId = null;
+var pendingProjectData = null;
+var projectToEdit = null;
+var visibilityStats = {};
+var _activeRequests = 0;
+var _karmaAppId = null;
+var _karmaTesterId = null;
+var _offersTimerId = null;
+var availableAppsLoaded = false;
+var showcaseLoadError = false;
+var _reportAppId = null;
+var _reportOwnerUsername = null;
+var _pendingScreenshotReminderUsername = null;
+var _contactOwnerUsername = '';
+var _dropTestAppId = null;
+var _overtimeTest = null;
+var _syncProjectId = null;
+var _socialBonusStatus = 'none';
+var archivedProjects = [];
+var projectToDelete = null;
 
 function _apiStart() {
     _activeRequests++;
@@ -57,10 +57,10 @@ function _apiEnd() {
     }
 }
 
-const getLocalDate = () => {
+function getLocalDate() {
     const date = new Date();
     return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-};
+}
 
 function getRuDaysWord(days) {
     const d10 = days % 10;
