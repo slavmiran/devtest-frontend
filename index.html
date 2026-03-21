@@ -56,36 +56,17 @@
             <button id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()" data-i18n="pulseExpand">Развернуть ▼</button>
         </div>
 
-        <details id="available-details" style="margin-top: 16px; display: none;">
-            <summary style="font-weight: bold; cursor: pointer; padding: 12px; background: var(--bg-color); border-radius: 8px; list-style: none; display: flex; justify-content: space-between; align-items: center;"><span id="t-availableTitle" class="available-title" data-i18n="availableTitle">📱 Биржа проектов</span><span class="details-arrow">▼</span></summary>
-            <div style="margin-top: 8px;">
-                <div class="showcase-tabs" id="showcase-tabs">
-                        <button class="showcase-tab active" data-tab="needed" id="needed-tab-btn" onclick="switchShowcaseTab('needed')">
-                            🔥 Testers Needed (<span id="needed-count">0</span>)
-                    </button>
-                    <button class="showcase-tab" data-tab="prelaunch" id="prelaunch-tab-btn" onclick="switchShowcaseTab('prelaunch')" style="display:none;">
-                            🚀 Pre-Launch (<span id="prelaunch-count">0</span>)
-                    </button>
-                </div>
-                <div class="showcase-snap-container" id="showcase-snap">
-                    <div class="showcase-snap-panel" id="showcase-needed">
-                        <p style="text-align: center; color: var(--hint-color); margin-top: 8px;" id="t-loadingShowcase" data-i18n="loadingShowcase">Загрузка биржи...</p>
-                    </div>
-                    <div class="showcase-snap-panel" id="showcase-prelaunch" style="display:none;"></div>
-                </div>
-            </div>
-        </details>
     </div>
 
     <!-- TAB 3: Mutual Feed -->
     <div id="tab-mutual" class="container tab-content">
-        <h2 id="t-mutualTitle" data-i18n="tabMutual">🤝 Бартер</h2>
-        <p id="t-mutualDesc" data-i18n="mutualDesc">Раздельные потоки взаимного обмена: активный набор и pre-launch.</p>
-
         <div class="segmented-control" style="margin-bottom: 14px;">
             <button class="seg-btn active" onclick="switchMutualSubTab('seeking')" id="mutual-sub-seeking"><span id="t-seekingTitle" data-i18n="mutualSeekingTitle">🔥 Ищут обмен</span></button>
             <button class="seg-btn" onclick="switchMutualSubTab('prelaunch')" id="mutual-sub-prelaunch"><span id="t-prelaunchFeedTitle" data-i18n="mutualPrelaunchTitle">🚀 Pre-Launch</span></button>
         </div>
+
+        <p id="mutual-seeking-desc" data-i18n="mutualSeekingDesc" style="margin-bottom: 12px;">Разместите здесь свой проект, чтобы другие тестеры могли предложить вам взаимный обмен.</p>
+        <p id="mutual-prelaunch-desc" data-i18n="mutualPrelaunchDesc" style="margin-bottom: 12px; display:none;">Проекты, набравшие 15 тестеров. Вы можете присоединиться к ним вне очереди.</p>
 
         <div id="mutual-subtab-seeking">
             <div id="mutual-seeking-list"></div>
@@ -100,6 +81,27 @@
     <div id="tab-bounty" class="container tab-content">
         <h2 id="t-bountyTitle" data-i18n="tabBounty">💎 Биржа</h2>
         <p id="t-bountyDesc" data-i18n="bountyDesc">Контракты с оплатой в $BUST для быстрых подключений.</p>
+
+        <details id="available-details" style="margin-top: 16px; display: none;">
+            <summary style="font-weight: bold; cursor: pointer; padding: 12px; background: var(--bg-color); border-radius: 8px; list-style: none; display: flex; justify-content: space-between; align-items: center;"><span id="t-availableTitle" class="available-title" data-i18n="availableTitle">📱 Биржа проектов</span><span class="details-arrow">▼</span></summary>
+            <div style="margin-top: 8px;">
+                <div class="showcase-tabs" id="showcase-tabs">
+                    <button class="showcase-tab active" data-tab="needed" id="needed-tab-btn" onclick="switchShowcaseTab('needed')">
+                        🔥 Testers Needed (<span id="needed-count">0</span>)
+                    </button>
+                    <button class="showcase-tab" data-tab="prelaunch" id="prelaunch-tab-btn" onclick="switchShowcaseTab('prelaunch')" style="display:none;">
+                        🚀 Pre-Launch (<span id="prelaunch-count">0</span>)
+                    </button>
+                </div>
+                <div class="showcase-snap-container" id="showcase-snap">
+                    <div class="showcase-snap-panel" id="showcase-needed">
+                        <p style="text-align: center; color: var(--hint-color); margin-top: 8px;" id="t-loadingShowcase" data-i18n="loadingShowcase">Загрузка биржи...</p>
+                    </div>
+                    <div class="showcase-snap-panel" id="showcase-prelaunch" style="display:none;"></div>
+                </div>
+            </div>
+        </details>
+
         <div id="bounty-list"></div>
     </div>
 
@@ -549,12 +551,6 @@
             <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeSocialModal()" id="t-socialModalCancel" data-i18n="socialModalCancel">Отмена</button>
         </div>
     </div>
-    <!-- Project Details Modal (Bottom Sheet) -->
-    <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="detail-handle"></div>
-            <div id="project-details-body"></div>
-        </div>
-    </div>
+    <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)"><div class="modal-content" onclick="event.stopPropagation()" id="project-details-body"></div></div>
 </body>
 </html>

@@ -188,9 +188,18 @@ function getProjectFormConfig(formKey) {
 function getProjectPricingState(formKey) {
     const config = getProjectFormConfig(formKey);
     const mode = document.getElementById(config.modeInput).value || 'mutual';
-    const limitMutual = Number.parseInt(document.getElementById(config.mutualInput).value || '0', 10) || 0;
-    const limitBounty = Number.parseInt(document.getElementById(config.bountyInput).value || '0', 10) || 0;
-    const bountyPerTester = Number.parseInt(document.getElementById(config.rewardInput).value || '0', 10) || 0;
+    const mutualInput = document.getElementById(config.mutualInput);
+    const bountyInput = document.getElementById(config.bountyInput);
+    const rewardInput = document.getElementById(config.rewardInput);
+    const limitMutual = mutualInput && mutualInput.value !== '' && Number.isFinite(mutualInput.valueAsNumber)
+        ? Math.trunc(mutualInput.valueAsNumber)
+        : 0;
+    const limitBounty = bountyInput && bountyInput.value !== '' && Number.isFinite(bountyInput.valueAsNumber)
+        ? Math.trunc(bountyInput.valueAsNumber)
+        : 0;
+    const bountyPerTester = rewardInput && rewardInput.value !== '' && Number.isFinite(rewardInput.valueAsNumber)
+        ? Math.trunc(rewardInput.valueAsNumber)
+        : 0;
     return { mode, limitMutual, limitBounty, bountyPerTester };
 }
 
@@ -480,13 +489,15 @@ async function loadMutualFeed() {
         const data = await response.json();
         mutualSeeking = data.seeking || [];
         mutualPrelaunch = data.prelaunch || [];
+        renderMutualFeed();
     } catch (error) {
         console.error('Error loading mutual feed:', error);
         mutualSeeking = [];
         mutualPrelaunch = [];
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        showRetry('mutual-seeking-list', 'loadMutualFeed()');
+        showRetry('mutual-prelaunch-list', 'loadMutualFeed()');
     } finally {
-        renderMutualFeed();
         _apiEnd();
     }
 }
@@ -498,12 +509,13 @@ async function loadBountyFeed() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         bountyContracts = data.contracts || [];
+        renderBountyFeed();
     } catch (error) {
         console.error('Error loading bounty feed:', error);
         bountyContracts = [];
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        showRetry('bounty-list', 'loadBountyFeed()');
     } finally {
-        renderBountyFeed();
         _apiEnd();
     }
 }

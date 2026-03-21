@@ -357,16 +357,16 @@ function renderTests() {
             const groupUrl = test.google_group_url || 'https://groups.google.com/g/google-play-dev-test';
             const safeGroupUrl = escapeInlineJsString(groupUrl);
             actionsHtml = `
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; gap: 8px; align-items: stretch;">
-                        <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="tg.openLink('${safeGroupUrl}', { try_browser: 'chrome' }); if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged();">${t.joinGroup}</button>
-                        <button class="btn-icon" style="width: 44px; min-height: 44px; font-size: 18px;" onclick="copyGroupUrl('${safeGroupUrl}')">📋</button>
+                <div class="first-day-actions">
+                    <div class="first-day-row">
+                        <button class="btn first-day-btn" style="flex: 1;" onclick="tg.openLink('${safeGroupUrl}', { try_browser: 'chrome' }); if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged();">${t.joinGroup}</button>
+                        <button class="btn-icon first-day-copy" style="width: 44px; min-height: 44px; font-size: 18px;" onclick="copyGroupUrl('${safeGroupUrl}')">📋</button>
                     </div>
-                    <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="handleFirstDownload(${test.id}, '${safePackage}')">
+                    <button class="btn first-day-btn" style="width: 100%;" onclick="handleFirstDownload(${test.id}, '${safePackage}')">
                         ${t.downloadPlay}
                     </button>
                     <div id="new-screenshot-box-${test.id}" style="display: none;">
-                        <button id="btn-confirm-${test.id}" class="btn btn-success" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
+                        <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
                             💬 3. ${t.screenshotBtn}
                         </button>
                         <div style="color: #ff3b30; font-size: 13px; margin-top: 8px; text-align: center;">
@@ -413,12 +413,8 @@ function renderTests() {
             `;
         }
 
-        const isOvertime = userTestingDay !== null && userTestingDay >= 15;
-
         const headerActions = [];
-        if (isOvertime && test.status !== 'done') {
-            headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #34c759;" onclick="openOvertimeModal(${test.id}, event)">✅</button>`);
-        } else if (test.status !== 'done') {
+        if (test.status !== 'done') {
             headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openDropTestModal(${test.id}, event)">🗑️</button>`);
         }
         const trailingHtml = headerActions.length
@@ -427,7 +423,7 @@ function renderTests() {
 
         let cardContent = `
             <div class="card-header">
-                <div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">
+                <div class="card-header-link" ${test.status === 'new' ? '' : `onclick="openProjectDetailsModal(${test.id})"`}>
                     ${renderIcon(test.name, test.icon_url)}
                     <div class="card-info">
                         <div class="card-title">${safeName}</div>
@@ -619,16 +615,22 @@ function switchMutualSubTab(tab) {
     const prelaunchPanel = document.getElementById('mutual-subtab-prelaunch');
     const seekingBtn = document.getElementById('mutual-sub-seeking');
     const prelaunchBtn = document.getElementById('mutual-sub-prelaunch');
+    const seekingDesc = document.getElementById('mutual-seeking-desc');
+    const prelaunchDesc = document.getElementById('mutual-prelaunch-desc');
     if (tab === 'seeking') {
         seekingPanel.style.display = '';
         prelaunchPanel.style.display = 'none';
         seekingBtn.classList.add('active');
         prelaunchBtn.classList.remove('active');
+        if (seekingDesc) seekingDesc.style.display = '';
+        if (prelaunchDesc) prelaunchDesc.style.display = 'none';
     } else {
         seekingPanel.style.display = 'none';
         prelaunchPanel.style.display = '';
         seekingBtn.classList.remove('active');
         prelaunchBtn.classList.add('active');
+        if (seekingDesc) seekingDesc.style.display = 'none';
+        if (prelaunchDesc) prelaunchDesc.style.display = '';
     }
 }
 
@@ -1761,102 +1763,89 @@ function openProjectDetailsModal(appId) {
     const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
     const safePackage = window.escapeHTML(test.package || '');
     const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
-    const displayOwner = window.escapeHTML(test.owner_username ? '@' + test.owner_username : '—');
-    const userTestingDay = getUserTestingDay(test.start_date);
-    const isOvertime = userTestingDay !== null && userTestingDay >= 15;
+    const displayOwner = window.escapeHTML(test.owner_username ? '@' + test.owner_username : window.t('unknownLabel', {}, lang));
+    const userTestingDayRaw = getUserTestingDay(test.start_date);
+    const userTestingDay = typeof userTestingDayRaw === 'number' && userTestingDayRaw > 0 ? userTestingDayRaw : 1;
+    const normalizedDay = Math.min(userTestingDay, 14);
+    const skipped = Number.isFinite(Number(test.missed_days)) ? Number(test.missed_days) : 0;
+    const availableSkips = Math.max(0, 3 - skipped);
+    const remainingDays = Math.max(0, 14 - normalizedDay);
     const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
-    const syncReady = isProjectSynced(test);
+    const boostAmount = Number.isFinite(Number(test.owner_boost_reward))
+        ? Number(test.owner_boost_reward)
+        : (Number.isFinite(Number(test.boost_reward)) ? Number(test.boost_reward) : 1000);
+    const ownerKarma = Number.isFinite(Number(test.owner_karma)) ? Number(test.owner_karma) : 0;
 
-    // Grant progress (14-day bar)
-    var grantHtml = '';
-    if (typeof userTestingDay === 'number' && userTestingDay > 0) {
-        var segments = [];
-        for (var i = 1; i <= 14; i++) {
-            var cls = 'grant-segment';
-            if (i < userTestingDay) cls += ' filled';
-            else if (i === userTestingDay) cls += ' filled current';
-            segments.push('<div class="' + cls + '"></div>');
-        }
-        var goldenHtml = '';
-        if (userTestingDay >= 14) {
-            goldenHtml = '<div class="detail-badge">' + window.t('golden_tester', {}, lang) + '</div>';
-        }
-        grantHtml = '<div class="detail-section">' +
-            '<div class="detail-section-title">' + window.t('detail_grant_title', {}, lang) + '</div>' +
-            '<div class="grant-progress">' + segments.join('') + '</div>' +
-            '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--hint-color);margin-top:4px;">' +
-                '<span>' + window.t('myTestDayShort', { days: userTestingDay }, lang) + '</span>' +
-                '<span>' + window.t('days_left_count', { count: Math.max(0, 14 - userTestingDay) }, lang) + '</span>' +
-            '</div>' +
-            goldenHtml +
-        '</div>';
+    var segments = [];
+    for (var i = 1; i <= 14; i++) {
+        var cls = 'grant-segment';
+        if (i < normalizedDay) cls += ' filled';
+        else if (i === normalizedDay) cls += ' filled current';
+        segments.push('<div class="' + cls + '"></div>');
     }
 
-    // Owner section
-    var ownerStatusClass = ownerActive ? 'online' : 'offline';
-    var ownerStatusText = ownerActive
-        ? window.t('detail_owner_online', {}, lang)
-        : window.t('detail_owner_offline', {}, lang);
-    var ownerSection = '<div class="detail-section">' +
-        '<div class="detail-section-title">' + window.t('detail_owner_label', {}, lang) + '</div>' +
-        '<div class="detail-owner-row">' +
-            getAvatar(test.owner_username || '?') +
-            '<div>' +
-                '<div class="detail-owner-name">' + displayOwner + '</div>' +
-                '<div class="detail-owner-status ' + ownerStatusClass + '">● ' + ownerStatusText + '</div>' +
-            '</div>' +
-        '</div>' +
-    '</div>';
-
-    // Sync section
     var syncHtml = '';
-    if (syncReady) {
-        syncHtml = '<div class="detail-section" style="padding:10px 14px;">' +
-            '<span style="color:#34c759;font-size:14px;font-weight:600;">' + window.t('sync_success', {}, lang) + '</span>' +
-            (test.sync_message ? '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.escapeHTML(test.sync_message) + '</div>' : '') +
+    if ((test.google_sync_day || 0) > 1) {
+        const startDate = new Date(test.start_date || '');
+        let factDateText = '—';
+        if (!Number.isNaN(startDate.getTime())) {
+            const endDate = new Date(startDate.getTime());
+            endDate.setDate(endDate.getDate() + 13);
+            factDateText = window.escapeHTML(endDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US'));
+        }
+        syncHtml = '<div class="details-block">' +
+            '<div style="font-size:14px;font-weight:700;color:#34c759;margin-bottom:6px;">' + window.t('syncDoneText', {}, lang) + '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);">' + window.t('fact_end_date', { date: factDateText }, lang) + '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('days_left_count', { count: remainingDays }, lang) + '</div>' +
         '</div>';
     }
 
-    // Instructions section
-    var instrHtml = '';
-    if (test.instructions) {
-        instrHtml = '<div class="detail-section">' +
-            '<div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
-            '<div class="detail-instruction-body">' + escapeHtmlWithBreaks(test.instructions) + '</div>' +
-        '</div>';
-    }
+    var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
+        '<div class="detail-instruction-body">' + (test.instructions ? escapeHtmlWithBreaks(test.instructions) : '—') + '</div></div>';
 
-    // Testers count
-    var testersHtml = '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' +
-        window.t('detail_testers_label', { count: test.active_testers_count || 0 }, lang) +
-    '</div>';
-
-    // Action buttons
-    var actionButtons = '';
-    if (test.owner_username) {
-        actionButtons += '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="openTelegramProfile(\'' + safeOwnerUsername + '\', event)">' + window.t('detail_contact_btn', {}, lang) + '</button>';
-        actionButtons += '<button class="btn" style="background:rgba(142,142,147,0.12);color:var(--text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_suggest_btn', {}, lang) + '</button>';
-    }
-    if (isOvertime && test.status !== 'done') {
-        actionButtons += '<button class="btn" style="background:rgba(255,59,48,0.1);color:#ff3b30;" onclick="closeProjectDetailsModal(); openOvertimeModal(' + test.id + ')">' + window.t('detail_leave_btn', {}, lang) + '</button>';
-    } else if (test.status !== 'done') {
-        actionButtons += '<button class="btn" style="background:rgba(255,59,48,0.1);color:#ff3b30;" onclick="closeProjectDetailsModal(); openDropTestModal(' + test.id + ')">' + window.t('detail_leave_btn', {}, lang) + '</button>';
-    }
-
-    body.innerHTML = '<div class="detail-header">' +
-            renderIcon(test.name, test.icon_url) +
+    body.innerHTML =
+        '<div class="detail-header">' +
+            renderIcon(test.name || '', test.icon_url) +
             '<div class="card-info">' +
                 '<div class="card-title">' + safeName + '</div>' +
                 '<div class="card-subtitle">' + safePackage + '</div>' +
             '</div>' +
         '</div>' +
-        renderCompactMeta(null, test.active_testers_count, false, userTestingDay) +
-        grantHtml +
-        ownerSection +
+
+        '<div class="details-block">' +
+            '<div class="detail-badge">👑 ' + window.t('golden_tester', {}, lang) + '</div>' +
+            '<div class="grant-progress-container">' + segments.join('') + '</div>' +
+            '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);">' +
+                '<span>' + window.t('grantProgressText', { day: normalizedDay }, lang) + '</span>' +
+                '<span>' + window.t('availableSkips', { skips: availableSkips }, lang) + '</span>' +
+            '</div>' +
+        '</div>' +
+
         syncHtml +
-        instrHtml +
-        testersHtml +
-        '<div class="detail-actions">' + actionButtons + '</div>';
+
+        '<div class="details-block">' +
+            '<div class="detail-section-title">' + window.t('detail_owner_label', {}, lang) + '</div>' +
+            '<div class="detail-owner-row">' +
+                getAvatar(test.owner_username || '?') +
+                '<div>' +
+                    '<div class="detail-owner-name">' + displayOwner + '</div>' +
+                    '<div class="detail-owner-status ' + (ownerActive ? 'online' : 'offline') + '">' +
+                        (ownerActive ? window.t('ownerOnlineText', {}, lang) : window.t('ownerOfflineText', {}, lang)) +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);margin-top:10px;">' + window.t('ownerBoostsText', { amount: boostAmount }, lang) + '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('ownerKarmaText', { karma: ownerKarma }, lang) + '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('detail_testers_label', { count: test.active_testers_count || 0 }, lang) + '</div>' +
+        '</div>' +
+
+        instructionsHtml +
+
+        '<div class="detail-actions">' +
+            '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +
+            '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_suggest_btn', {}, lang) + '</button>' +
+            '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); openDropTestModal(' + test.id + ')">' + window.t('detail_leave_btn', {}, lang) + '</button>' +
+        '</div>';
 
     var modal = document.getElementById('project-details-modal');
     if (modal) {
