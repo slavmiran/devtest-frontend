@@ -885,28 +885,6 @@
             padding-left: 0;
         }
 
-        /* Expire Warning */
-        .expire-warning {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255,149,0,0.12);
-            border: 1px solid rgba(255,149,0,0.25);
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 10px;
-            font-size: 13px;
-            color: #ff9500;
-            font-weight: 600;
-        }
-        .expire-warning .btn {
-            padding: 6px 14px;
-            font-size: 13px;
-            white-space: nowrap;
-            width: auto;
-            flex-shrink: 0;
-        }
-
         /* Showcase Tabs */
         .showcase-tabs {
             display: flex;
@@ -1143,6 +1121,10 @@
         <div id="projects-list">
             <!-- Project cards will be injected here -->
         </div>
+
+            <div id="archive-section" style="margin-top: 8px; border-top: 1px solid rgba(142,142,147,0.15); padding-top: 4px;">
+                <!-- Archive accordion injected here -->
+            </div>
     </div>
 
     <!-- Bottom Navigation -->
@@ -1345,15 +1327,6 @@
         </div>
     </div>
 
-    <!-- Extend Project Modal -->
-    <div id="extend-modal" class="modal-overlay" onclick="closeExtendModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-extendTitle">Продлить тестирование</h3>
-            <p id="extend-modal-text" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 16px;"></p>
-            <div id="extend-modal-action"></div>
-        </div>
-    </div>
-
     <!-- Screenshot Complete Reminder Modal -->
     <div id="screenshot-complete-modal" class="modal-overlay" onclick="closeScreenshotCompleteModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
@@ -1381,6 +1354,32 @@
             <div class="action-row">
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeDropTestModal()" id="t-btnCancel">Отмена</button>
                 <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="confirmDropTest()" id="t-btnDrop">Отказаться</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="overtime-modal" class="modal-overlay" onclick="closeOvertimeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="t-overtimeModalTitle">Овертайм: завершить тест?</h3>
+            <p id="t-overtimeModalText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 18px;"></p>
+            <div class="action-row" style="margin-top: 0;">
+                <button class="btn btn-secondary" style="flex: 1;" id="t-overtimeContactBtn" onclick="overtimeContactOwner()">💬 Написать разработчику</button>
+                <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" id="t-overtimeLeaveBtn" onclick="confirmOvertimeLeave()">🚪 Покинуть проект</button>
+            </div>
+            <button class="btn btn-secondary" style="width:100%; margin-top: 8px;" onclick="closeOvertimeModal()" id="t-overtimeCancelBtn">Отмена</button>
+        </div>
+    </div>
+
+    <div id="sync-modal" class="modal-overlay" onclick="closeSyncModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="t-syncModalTitle">Синхронизация проекта</h3>
+            <label id="t-syncDayLabel" style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">Google Sync Day</label>
+            <input id="sync-day-input" class="form-input" type="number" min="1" step="1" style="margin-bottom: 12px;" />
+            <label id="t-syncMessageLabel" style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">Сообщение для тестеров</label>
+            <textarea id="sync-message-input" class="form-input" rows="4" style="resize: vertical; margin-bottom: 12px;"></textarea>
+            <div class="action-row" style="margin-top: 0;">
+                <button class="btn btn-secondary" style="flex: 1;" onclick="closeSyncModal()" id="t-syncCancelBtn">Отмена</button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="saveProjectSync()" id="t-syncSaveBtn">Сохранить синхронизацию</button>
             </div>
         </div>
     </div>
@@ -1531,9 +1530,6 @@
                 // Progress bar
                 progressLabel: "{day}/14 дн.",
                 progressComplete: "🎉 Тест завершён!",
-                // Warnings
-                warningOldApp: "⚠️ Этот проект на тесте уже более 14 дней. Пора публиковать релиз и удалить проект.",
-                warningOldChip: "⚠️ 14+",
                 pulseTitle: "🌐 Пульс сообщества",
                 pulseLoading: "Загрузка...",
                 pulseEmpty: "Пока событий нет",
@@ -1553,7 +1549,6 @@
                 visibilityTitle: "📊 Панель разработчика",
                 activeTestsLabel: "Ваших активных тестов",
                 rankLabel: "Рейтинг: #{rank} из {total}",
-                needMore: "Для видимости всех проектов нужно ещё: {count}",
                 newBadge: "🆕 Новинка",
                 topLabel: "TOP-{n}: {count} тестов",
                 // Bell notification
@@ -1599,27 +1594,42 @@
                 contactChipAttach: "🔗 Прикрепить мой проект",
                 contactSendBtn: "Отправить (Telegram)",
                 contactSelectProject: "Выберите ваш проект",
-                // Extend modal
-                extendTitle: "Продлить тестирование",
-                extendText: "Ваше приложение автоматически удалится через {days_left} дн. Если тестирование еще не завершено, вы можете продлить его на 7 дней.\n\nИспользовано продлений: {ext_count} из 3",
-                extendBtn: "Продлить на 7 дней",
-                extendLimitReached: "Лимит продлений исчерпан",
-                projectExpiring: "⚠️ Проект будет удален через {days_left} дн.",
-                extendBtnShort: "Продлить",
                 dropTestTitle: "🗑️ Отказаться",
-                dropTestWarning: "Вы уверены, что хотите отказаться от тестирования?\n\n⚠️ ВНИМАНИЕ: Это действие уменьшит счетчик ваших активных тестов. Если у вас опубликованы свои проекты, они могут ПОТЕРЯТЬ ВИДИМОСТЬ на витрине из-за нехватки тестов!",
+                dropTestWarning: "Вы уверены, что хотите отказаться от тестирования?",
+                overtimeLeaveBtn: "✅ Завершить тест (Уйти)",
+                overtimeModalTitle: "Овертайм: завершить тест?",
+                overtimeScenarioA: "Проект перешел в овертайм (15+ день), но разработчик еще не указал синхронизацию. Вы можете написать разработчику или завершить тест и выйти.",
+                overtimeScenarioB: "Разработчик указал синхронизацию на {day}-й день.\n\nСообщение: {message}\n\nВы можете обсудить детали в личке или завершить тест и выйти.",
+                overtimeContactBtn: "💬 Написать разработчику",
+                overtimeLeaveConfirmBtn: "🚪 Покинуть проект",
+                overtimeOwnerActiveToast: "👨‍💻 Владелец недавно активен",
+                overtimeOwnerAfkToast: "👨‍💻 Владелец сейчас неактивен",
+                overtimeSyncNoneToast: "🔄 Синхронизация пока не указана",
+                overtimeSyncReadyToast: "🔄 Синхронизация: {day}-й день",
+                syncBtn: "🔄 Синхронизация",
+                syncModalTitle: "Синхронизация проекта",
+                syncDayLabel: "Google Sync Day",
+                syncMessageLabel: "Сообщение для тестеров",
+                syncMessagePlaceholder: "Например: релиз вышел, остаемся еще на 3 дня",
+                syncSaveBtn: "Сохранить синхронизацию",
+                syncSavedToast: "Данные синхронизации сохранены",
+                syncDayInvalid: "Google Sync Day должен быть >= 1",
                 btnCancel: "Отмена",
                 btnDrop: "Отказаться",
                 visibilityManualToast: "Приложение скрыто. Ваша инвайт-ссылка продолжает работать.",
-                visibilityQuotaToast: "Если вам больше не нужны тестеры для обмена, вы можете скрыть приложение с биржи, нажав на 👁️ в шапке.",
-                visibilityNeedTestsToast: "Возьмите на тест еще {count} проекта, чтобы вернуть видимость на бирже.",
+                // Mode labels
+                modeMutual: "🤝 Взаимный обмен",
+                modeBounty: "💎 Биржа",
+                modeHybrid: "🔥 Комбо",
                 // Compact card
                 instructionAccordion: "📝 Инструкция",
                 testBtnShort: "Тест",
                 statusHiddenManual: "🔴 Скрыто вручную",
-                statusVisibleNew: "🟢 Видно (Новинка)",
-                statusVisibleQuota: "🟢 Видно на бирже",
-                statusHiddenQuota: "🟡 Скрыто (Нужно 3 активных теста)",
+                // Archive
+                archiveTitle: "🗄 Архив проектов",
+                archiveEmpty: "Архив пуст",
+                archiveDeletePermanent: "🗑 Удалить навсегда",
+                archiveConfirmDelete: "Удалить проект «{name}» навсегда? Это действие необратимо.",
                 // Reliability
                 experienceLabel: "🎓 Опыт: {count}",
                 completedTestsSuffix: "завершенных тестов",
@@ -1779,9 +1789,6 @@
                 // Progress bar
                 progressLabel: "{day}/14 d.",
                 progressComplete: "🎉 Test complete!",
-                // Warnings
-                warningOldApp: "⚠️ This project has been in testing for over 14 days. Time to publish your release and delete the project.",
-                warningOldChip: "⚠️ 14+",
                 pulseTitle: "🌐 Community Pulse",
                 pulseLoading: "Loading...",
                 pulseEmpty: "No events yet",
@@ -1801,7 +1808,6 @@
                 visibilityTitle: "📊 Developer Dashboard",
                 activeTestsLabel: "Your active tests",
                 rankLabel: "Rank: #{rank} of {total}",
-                needMore: "Need {count} more for all project to be visible",
                 newBadge: "🆕 New",
                 topLabel: "TOP-{n}: {count} tests",
                 // Bell notification
@@ -1847,27 +1853,42 @@
                 contactChipAttach: "🔗 Attach my project",
                 contactSendBtn: "Send (Telegram)",
                 contactSelectProject: "Select your project",
-                // Extend modal
-                extendTitle: "Extend testing",
-                extendText: "Your app will be automatically deleted in {days_left} days. If testing is not yet complete, you can extend it by 7 days.\n\nExtensions used: {ext_count} of 3",
-                extendBtn: "Extend by 7 days",
-                extendLimitReached: "Extension limit reached",
-                projectExpiring: "⚠️ Project will be deleted in {days_left} days",
-                extendBtnShort: "Extend",
                 dropTestTitle: "🗑️ Drop test",
-                dropTestWarning: "Are you sure you want to drop this test?\n\n⚠️ WARNING: This will reduce your active test count. If you have your own published projects, they may LOSE VISIBILITY on the showcase due to a lack of tests!",
+                dropTestWarning: "Are you sure you want to drop this test?",
+                overtimeLeaveBtn: "✅ Finish test (Leave)",
+                overtimeModalTitle: "Overtime: finish test?",
+                overtimeScenarioA: "This project is in overtime (day 15+), but the owner has not provided sync details yet. You can contact the owner or leave the project.",
+                overtimeScenarioB: "Owner provided sync on day {day}.\n\nMessage: {message}\n\nYou can discuss details in DM or leave the project.",
+                overtimeContactBtn: "💬 Contact owner",
+                overtimeLeaveConfirmBtn: "🚪 Leave project",
+                overtimeOwnerActiveToast: "👨‍💻 Owner is recently active",
+                overtimeOwnerAfkToast: "👨‍💻 Owner is currently inactive",
+                overtimeSyncNoneToast: "🔄 Sync is not set yet",
+                overtimeSyncReadyToast: "🔄 Sync: day {day}",
+                syncBtn: "🔄 Sync",
+                syncModalTitle: "Project Sync",
+                syncDayLabel: "Google Sync Day",
+                syncMessageLabel: "Message for testers",
+                syncMessagePlaceholder: "Example: release is live, stay for 3 more days",
+                syncSaveBtn: "Save sync",
+                syncSavedToast: "Sync details saved",
+                syncDayInvalid: "Google Sync Day must be >= 1",
                 btnCancel: "Cancel",
                 btnDrop: "Drop",
                 visibilityManualToast: "The app is hidden. Your invite link still works.",
-                visibilityQuotaToast: "If you no longer need testers for exchange, you can hide the app from the exchange by tapping 👁️ in the header.",
-                visibilityNeedTestsToast: "Take {count} more projects for testing to restore visibility on the exchange.",
+                // Mode labels
+                modeMutual: "🤝 Mutual exchange",
+                modeBounty: "💎 Bounty",
+                modeHybrid: "🔥 Combo",
                 // Compact card
                 instructionAccordion: "📝 Instructions",
                 testBtnShort: "Test",
                 statusHiddenManual: "🔴 Hidden manually",
-                statusVisibleNew: "🟢 Visible (New app)",
-                statusVisibleQuota: "🟢 Visible on exchange",
-                statusHiddenQuota: "🟡 Hidden (Need 3 active tests)",
+                // Archive
+                archiveTitle: "🗄 Project Archive",
+                archiveEmpty: "Archive is empty",
+                archiveDeletePermanent: "🗑 Delete permanently",
+                archiveConfirmDelete: "Permanently delete project \"{name}\"? This action is irreversible.",
                 // Reliability
                 experienceLabel: "🎓 Experience: {count}",
                 completedTestsSuffix: "completed tests",
@@ -1970,12 +1991,11 @@
             if (toggleBtn) {
                 toggleBtn.innerText = eventsExpanded ? t.pulseCollapse : t.pulseExpand;
             }
-            // Contact & Extend modals
+            // Contact modal and shared modals
             document.getElementById('t-contactTitle').innerText = t.contactTitle;
             document.getElementById('t-contactSendBtn').innerText = t.contactSendBtn;
             document.getElementById('contact-chip-mutual').innerText = t.contactChipMutual;
             document.getElementById('contact-chip-attach').innerText = t.contactChipAttach;
-            document.getElementById('t-extendTitle').innerText = t.extendTitle;
             document.getElementById('t-screenshotCompleteTitle').innerText = t.screenshotReminderTitle;
             document.getElementById('t-screenshotCompleteText').innerText = t.screenshotReminderText;
             document.getElementById('t-screenshotCompleteClose').innerText = t.screenshotCompleteClose;
@@ -1984,6 +2004,16 @@
             document.getElementById('t-dropTestWarning').innerText = t.dropTestWarning;
             document.getElementById('t-btnCancel').innerText = t.btnCancel;
             document.getElementById('t-btnDrop').innerText = t.btnDrop;
+            document.getElementById('t-overtimeModalTitle').innerText = t.overtimeModalTitle;
+            document.getElementById('t-overtimeContactBtn').innerText = t.overtimeContactBtn;
+            document.getElementById('t-overtimeLeaveBtn').innerText = t.overtimeLeaveConfirmBtn;
+            document.getElementById('t-overtimeCancelBtn').innerText = t.btnCancel;
+            document.getElementById('t-syncModalTitle').innerText = t.syncModalTitle;
+            document.getElementById('t-syncDayLabel').innerText = t.syncDayLabel;
+            document.getElementById('t-syncMessageLabel').innerText = t.syncMessageLabel;
+            document.getElementById('sync-message-input').placeholder = t.syncMessagePlaceholder;
+            document.getElementById('t-syncCancelBtn').innerText = t.btnCancel;
+            document.getElementById('t-syncSaveBtn').innerText = t.syncSaveBtn;
         }
 
         function applyLanguage(newLang) {
@@ -2001,6 +2031,7 @@
             renderEvents();
             renderTests();
             renderProjects();
+            renderArchivedProjects();
             if (availableAppsLoaded) renderShowcase();
         }
 
@@ -2146,7 +2177,10 @@
                         start_date: app.start_date,
                         owner_username: app.owner_username,
                         active_testers_count: app.active_testers_count,
-                        days_since_publish: app.days_since_publish
+                        days_since_publish: app.days_since_publish,
+                        google_sync_day: app.google_sync_day || 0,
+                        sync_message: app.sync_message || '',
+                        last_owner_activity: app.last_owner_activity || null,
                     };
                 });
                 
@@ -2249,15 +2283,13 @@
                     instructions: project.instructions || '',
                     testers: project.testers || [],
                     is_visible: project.is_visible !== false,
-                    is_app_new: project.is_app_new || false,
                     created_at: project.created_at || null,
                     likes: project.likes || [],
                     likes_used: project.likes_used || 0,
                     likes_max: project.likes_max || 1,
-                    extensions_count: project.extensions_count || 0,
-                    days_left: project.days_left,
-                    system_status: project.system_status || 'hidden_manual',
-                    tests_shortage: project.tests_shortage || 0,
+                    mode: project.mode || 'mutual',
+                    google_sync_day: project.google_sync_day || 0,
+                    sync_message: project.sync_message || '',
                 }));
                 
                 visibilityStats = {
@@ -2266,7 +2298,6 @@
                     total_developers: data.total_developers || 0,
                     my_active_tests: data.my_active_tests || 0,
                     my_total_tests: data.my_total_tests || 0,
-                    need_more: data.need_more || 0,
                     top_thresholds: data.top_thresholds || {},
                     completed_tests: data.completed_tests || 0,
                     total_expected_checkins: data.total_expected_checkins || 0,
@@ -2278,9 +2309,11 @@
                 console.error("Error loading projects:", error);
                 if (!isBackground) {
                     showRetry('projects-list', 'loadProjects()');
+
                 }
             } finally {
                 _apiEnd();
+                loadArchivedProjects().catch(() => {});
             }
         }
 
@@ -2425,6 +2458,18 @@
 
         function isMandatoryScreenshotDay(testingDay) {
             return [1, 7, 14].includes(testingDay);
+        }
+
+        function getOwnerActiveStatus(lastOwnerActivity) {
+            if (!lastOwnerActivity) return false;
+            const dt = new Date(lastOwnerActivity);
+            if (Number.isNaN(dt.getTime())) return false;
+            const diffMs = Date.now() - dt.getTime();
+            return diffMs <= (12 * 60 * 60 * 1000);
+        }
+
+        function isProjectSynced(test) {
+            return (test.google_sync_day || 0) > 1;
         }
 
         function getScreenshotReminderHtml(test) {
@@ -2573,12 +2618,34 @@
                     `;
                 }
 
+                const isOvertime = userTestingDay !== null && userTestingDay >= 15;
+                if (isOvertime && test.status !== 'done') {
+                    const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
+                    const syncReady = isProjectSynced(test);
+                    const ownerToast = ownerActive ? t.overtimeOwnerActiveToast : t.overtimeOwnerAfkToast;
+                    const syncToast = syncReady
+                        ? t.overtimeSyncReadyToast.replace('{day}', test.google_sync_day || 0)
+                        : t.overtimeSyncNoneToast;
+
+                    actionsHtml += `
+                        <div style="display:flex; gap:8px; margin-top:8px; flex-wrap: wrap;">
+                            <button class="meta-chip ${ownerActive ? 'accent-green' : 'accent-orange'}" onclick="event.stopPropagation(); showToast('${ownerToast.replace(/'/g, "\\'")}')">👨‍💻</button>
+                            <button class="meta-chip ${syncReady ? 'accent-blue' : ''}" onclick="event.stopPropagation(); showToast('${syncToast.replace(/'/g, "\\'")}')">🔄</button>
+                        </div>
+                        <button class="btn" style="width:100%; margin-top:8px; background-color: rgba(52,199,89,0.18); color:#34c759;" onclick="openOvertimeModal(${test.id}, event)">${t.overtimeLeaveBtn}</button>
+                    `;
+                }
+
                 let ownerBtnHtml = '';
                 const headerActions = [];
                 if (test.owner_username) {
                     headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${test.owner_username}', event)">💬</button>`);
                 }
-                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openDropTestModal(${test.id}, event)">🗑️</button>`);
+                if (isOvertime && test.status !== 'done') {
+                    headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #34c759;" onclick="openOvertimeModal(${test.id}, event)">✅</button>`);
+                } else {
+                    headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openDropTestModal(${test.id}, event)">🗑️</button>`);
+                }
                 ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`;
 
                 let devInfoHtml = '';
@@ -2920,16 +2987,6 @@
 
             // Developer Dashboard block
             if (visibilityStats) {
-                const vc = myProjects.filter(p => p.system_status === 'visible_new' || p.system_status === 'visible_quota').length;
-                const tc = myProjects.length;
-                let visibleLine = '';
-                if (tc === 0) visibleLine = '';
-                else if (vc === tc) visibleLine = t.visibilityAllPublic;
-                else if (vc > 0) visibleLine = t.visibilityPartial.replace('{visible}', vc).replace('{total}', tc);
-                else visibleLine = t.visibilityNone;
-                const hasHiddenApps = tc > 0 && vc < tc;
-                const showNeedMore = hasHiddenApps && (visibilityStats.need_more > 0);
-
                 const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
                 const expLine = t.experienceLabel.replace('{count}', visibilityStats.completed_tests) + ' ' + t.completedTestsSuffix;
                 const reliabilityValue = reliability.percent !== null
@@ -2945,8 +3002,6 @@
                             <span class="dashboard-label dashboard-title">${t.visibilityTitle}</span>
                             <button class="meta-chip accent-yellow" onclick="showKarmaInfo()">☯️ ${visibilityStats.ownerKarma}</button>
                         </div>
-                        ${visibleLine ? `<div class="dashboard-row"><span class="dashboard-label">${visibleLine}</span></div>` : ''}
-                        ${showNeedMore ? `<div class="dashboard-row"><span class="dashboard-label" style="color: #ff9500;">${t.needMore.replace('{count}', visibilityStats.need_more)}</span></div>` : ''}
                         <div class="dashboard-row">
                             <span class="dashboard-label">⚡ ${t.activeTestsLabel}: ${visibilityStats.my_total_tests}</span>
                         </div>
@@ -2973,13 +3028,12 @@
 
             myProjects.forEach(project => {
                 const card = document.createElement('div');
-                const isInactive = project.system_status === 'hidden_manual' || project.system_status === 'hidden_quota';
+                const isInactive = !project.is_visible;
                 card.className = isInactive ? 'card card-inactive' : 'card';
 
-                // Check if app is 14+ days old
+                // Compute app age for progress bar
                 const appDays = project.created_at ? (Math.floor((todayDate - new Date(project.created_at)) / (1000*60*60*24)) + 1) : 0;
-                const isOldApp = appDays >= 14;
-                
+
                 const likesAvailable = project.likes_max - project.likes_used;
                 
                 let testersHtml = '';
@@ -3068,63 +3122,35 @@
                     let badges = '';
 
                     const statusChip = (() => {
-                        const s = project.system_status;
-                        if (s === 'hidden_manual') {
-                            return `<button class="meta-chip" style="background: rgba(142,142,147,0.15);" onclick="showToast('${t.visibilityManualToast}')">🚫 Скрыто (вручную)</button>`;
+                        if (!project.is_visible) {
+                            return `<button class="meta-chip" style="background: rgba(142,142,147,0.15);" onclick="showToast('${t.visibilityManualToast}')">🚫 ${t.statusHiddenManual}</button>`;
                         }
-                        if (s === 'visible_new') {
-                            let untilText = '';
-                            if (project.created_at) {
-                                const exp = new Date(new Date(project.created_at).getTime() + 72 * 60 * 60 * 1000);
-                                const dd = String(exp.getDate()).padStart(2, '0');
-                                const mm = String(exp.getMonth() + 1).padStart(2, '0');
-                                const hh = String(exp.getHours()).padStart(2, '0');
-                                const mi = String(exp.getMinutes()).padStart(2, '0');
-                                untilText = `${dd}.${mm} ${hh}:${mi}`;
-                            } else {
-                                const exp = new Date(Date.now() + 72 * 60 * 60 * 1000);
-                                const dd = String(exp.getDate()).padStart(2, '0');
-                                const mm = String(exp.getMonth() + 1).padStart(2, '0');
-                                const hh = String(exp.getHours()).padStart(2, '0');
-                                const mi = String(exp.getMinutes()).padStart(2, '0');
-                                untilText = `${dd}.${mm} ${hh}:${mi}`;
-                            }
-                            return `<button class="meta-chip accent-green" onclick="showToast('${t.newBadgeToast.replace(/'/g, "\\'")}')">🟢 На бирже (до ${untilText})</button>`;
+                        const mode = project.mode || 'mutual';
+                        if (mode === 'bounty') {
+                            return `<button class="meta-chip accent-purple" onclick="void(0)">${t.modeBounty}</button>`;
                         }
-                        if (s === 'visible_quota') {
-                            return `<button class="meta-chip accent-green" onclick="showToast('${t.visibilityQuotaToast}')">🟢 На бирже</button>`;
+                        if (mode === 'hybrid') {
+                            return `<button class="meta-chip accent-orange" onclick="void(0)">${t.modeHybrid}</button>`;
                         }
-                        if (s === 'hidden_quota') {
-                            const shortage = project.tests_shortage || 1;
-                            return `<button class="meta-chip accent-orange" onclick="showToast('${t.visibilityNeedTestsToast.replace('{count}', shortage)}')">🟡 Нужно тестов: ${shortage}</button>`;
-                        }
-                        return '';
+                        return `<button class="meta-chip accent-green" onclick="void(0)">${t.modeMutual}</button>`;
                     })();
                     if (statusChip) badges += statusChip;
-                    
+
                     // 🏆 Rank
                     if (visibilityStats.rank) {
                         badges += `<button class="meta-chip accent-blue" onclick="showRankPopup()">🏆 #${visibilityStats.rank}</button>`;
                     }
-                    
+
                     // Karma available (hide chip when no rewards left)
                     if (likesAvailable > 0) {
                         const karmaChipText = t.karmaAvailable.replace('{count}', likesAvailable);
                         badges += `<button class="meta-chip accent-yellow" onclick="showKarmaChipInfo()">${karmaChipText}</button>`;
                     }
 
-                    // ⚠️ Old app warning chip
-                    if (isOldApp) {
-                        badges += `<button class="meta-chip accent-orange" onclick="showToast('${t.warningOldApp.replace(/'/g, "\\'")}')">⚠️ 14+</button>`;
-                    }
-                    
                     return badges;
                 })();
 
-                // Old app inline warning
-                const oldAppWarningHtml = isOldApp
-                    ? `<div style="background: rgba(255,149,0,0.12); border: 1px solid rgba(255,149,0,0.25); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; color: #ff9500; line-height: 1.4;">${t.warningOldApp}</div>`
-                    : '';
+                // Old app inline warning — removed (projects now archive after 35 days hard limit)
 
                 // App-level 14-day progress bar
                 const appProgressHtml = (() => {
@@ -3160,14 +3186,8 @@
                     <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                         ${visibilityBadge}
                     </div>
-                    ${(project.system_status === 'hidden_manual' || project.system_status === 'hidden_quota') ? `<div class="visibility-hint">${t.inviteLinkAlways}</div>` : ''}
-                    ${project.days_left !== null && project.days_left !== undefined && project.days_left <= 3 ? `
-                    <div class="expire-warning">
-                        <span>${t.projectExpiring.replace('{days_left}', Math.max(0, project.days_left))}</span>
-                        <button class="btn" style="padding: 6px 16px; font-size: 13px; background: rgba(255,149,0,0.2); color: #ff9500; border: none; border-radius: 8px; font-weight: 600; white-space: nowrap;" onclick="openExtendModal(${project.id})">${t.extendBtnShort}</button>
-                    </div>` : ''}
+                    ${(project.is_visible === false) ? `<div class="visibility-hint">${t.inviteLinkAlways}</div>` : ''}
                     ${appProgressHtml}
-                    ${oldAppWarningHtml}
                     <div class="testers-section">
                         <div class="testers-title">${t.testersList} (${project.testers ? project.testers.length : 0})</div>
                         ${testersHtml}
@@ -3175,6 +3195,9 @@
                     <div class="action-row" style="margin-top: 16px;">
                         <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openInviteModal(${project.id})">
                             🔗 ${t.inviteLink}
+                        </button>
+                        <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
+                            ${t.syncBtn}
                         </button>
                         <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="openDeleteModal(${project.id})">
                             🗑 ${t.deleteProject}
@@ -3438,18 +3461,9 @@
 
             const prev = {
                 is_visible: proj.is_visible,
-                system_status: proj.system_status,
-                tests_shortage: proj.tests_shortage,
             };
 
             proj.is_visible = isVisible;
-            if (!isVisible) {
-                proj.system_status = 'hidden_manual';
-                proj.tests_shortage = 0;
-            } else {
-                proj.system_status = proj.is_app_new ? 'visible_new' : 'hidden_quota';
-                proj.tests_shortage = 1;
-            }
             renderProjects();
 
             const request = fetch(`${API_BASE}/projects/${appId}/toggle_visibility`, {
@@ -3467,8 +3481,6 @@
             } catch (error) {
                 console.error('Toggle visibility error:', error);
                 proj.is_visible = prev.is_visible;
-                proj.system_status = prev.system_status;
-                proj.tests_shortage = prev.tests_shortage;
                 renderProjects();
                 showToast('Ошибка обновления видимости');
             }
@@ -3476,6 +3488,8 @@
 
         // --- Drop Test Modal ---
         let _dropTestAppId = null;
+        let _overtimeTest = null;
+        let _syncProjectId = null;
 
         function openDropTestModal(appId, event = null) {
             if (event) {
@@ -3513,48 +3527,184 @@
             }
         }
 
-        // --- Extend Project Modal ---
-        let _extendAppId = null;
-
-        function openExtendModal(appId) {
-            _extendAppId = appId;
-            const proj = myProjects.find(p => p.id === appId);
-            if (!proj) return;
-            const textEl = document.getElementById('extend-modal-text');
-            const actionEl = document.getElementById('extend-modal-action');
-            textEl.textContent = t.extendText.replace('{days_left}', Math.max(0, proj.days_left || 0)).replace('{ext_count}', proj.extensions_count || 0);
-            if ((proj.extensions_count || 0) >= 3) {
-                actionEl.innerHTML = '<p style="color: #ff3b30; font-weight: 600;">' + t.extendLimitReached + '</p>';
-            } else {
-                actionEl.innerHTML = '<button class="btn btn-primary" onclick="extendProject(' + appId + ')">' + t.extendBtn + '</button>';
+        function openOvertimeModal(appId, event = null) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
             }
-            document.getElementById('extend-modal').classList.add('active');
+            const test = myTests.find(tst => tst.id === appId);
+            if (!test) return;
+            _overtimeTest = test;
+
+            const isSynced = isProjectSynced(test);
+            const message = isSynced
+                ? t.overtimeScenarioB
+                    .replace('{day}', String(test.google_sync_day || 0))
+                    .replace('{message}', test.sync_message || '-')
+                : t.overtimeScenarioA;
+            document.getElementById('t-overtimeModalText').innerText = message;
+            document.getElementById('overtime-modal').classList.add('active');
         }
 
-        function closeExtendModal(event) {
-            if (event && event.target !== document.getElementById('extend-modal')) return;
-            document.getElementById('extend-modal').classList.remove('active');
+        function closeOvertimeModal(event) {
+            if (event && event.target !== document.getElementById('overtime-modal')) return;
+            document.getElementById('overtime-modal').classList.remove('active');
+            _overtimeTest = null;
         }
 
-        async function extendProject(appId) {
+        function overtimeContactOwner() {
+            if (!_overtimeTest || !_overtimeTest.owner_username) return;
+            openTelegramProfile(_overtimeTest.owner_username);
+        }
+
+        async function confirmOvertimeLeave() {
+            if (!_overtimeTest) return;
             try {
-                const response = await fetch(`${API_BASE}/projects/${appId}/extend`, {
+                const response = await fetch(`${API_BASE}/tests/${_overtimeTest.id}/leave`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tester_id: userId })
                 });
                 const data = await response.json();
-                if (data.status === 'success') {
-                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                    closeExtendModal({ target: document.getElementById('extend-modal') });
-                    loadProjects();
-                } else {
-                    showToast(data.message || 'Error');
+                if (!response.ok || data.status !== 'success') {
+                    throw new Error(data.message || t.loadError);
                 }
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                closeOvertimeModal({ target: document.getElementById('overtime-modal') });
+                await Promise.all([loadTasks(), loadProjects(true)]);
             } catch (error) {
-                console.error('Extend error:', error);
-                showToast('Network error');
+                console.error('Overtime leave error:', error);
+                showToast(error.message || t.loadError);
             }
         }
+
+        function openSyncModal(projectId) {
+            const project = myProjects.find(p => p.id === projectId);
+            if (!project) return;
+            _syncProjectId = projectId;
+            document.getElementById('sync-day-input').value = project.google_sync_day || '';
+            document.getElementById('sync-message-input').value = project.sync_message || '';
+            document.getElementById('sync-modal').classList.add('active');
+        }
+
+        function closeSyncModal(event) {
+            if (event && event.target !== document.getElementById('sync-modal')) return;
+            document.getElementById('sync-modal').classList.remove('active');
+            _syncProjectId = null;
+        }
+
+        async function saveProjectSync() {
+            if (!_syncProjectId) return;
+            const dayRaw = document.getElementById('sync-day-input').value;
+            const day = Number(dayRaw);
+            const msg = document.getElementById('sync-message-input').value || '';
+            if (!Number.isInteger(day) || day < 1) {
+                showToast(t.syncDayInvalid);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/projects/${_syncProjectId}/sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ google_sync_day: day, sync_message: msg })
+                });
+                const data = await response.json();
+                if (!response.ok || data.status !== 'success') {
+                    throw new Error(data.message || t.loadError);
+                }
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                showToast(t.syncSavedToast);
+                closeSyncModal({ target: document.getElementById('sync-modal') });
+                await Promise.all([loadProjects(true), loadTasks()]);
+            } catch (error) {
+                console.error('Project sync error:', error);
+                showToast(error.message || t.loadError);
+            }
+        }
+
+        // --- Extend Project Modal ---
+            // --- Archive ---
+            let archivedProjects = [];
+
+            async function loadArchivedProjects() {
+                try {
+                    const resp = await fetch(`${API_BASE}/projects/${userId}/archived`);
+                    if (!resp.ok) return;
+                    const data = await resp.json();
+                    archivedProjects = data.archived || [];
+                    renderArchivedProjects();
+                } catch (e) {
+                    console.error('Archive load error:', e);
+                }
+            }
+
+            function renderArchivedProjects() {
+                const section = document.getElementById('archive-section');
+                if (!section) return;
+                if (archivedProjects.length === 0) {
+                    section.innerHTML = `<div class="accordion-header" onclick="toggleArchive()" style="cursor:pointer; padding: 12px 0; font-size: 14px; font-weight: 600; color: var(--hint-color);">${t.archiveTitle} (0) ▼</div>`;
+                    return;
+                }
+                let html = `<div class="accordion-header" onclick="toggleArchive()" id="archive-toggle" style="cursor:pointer; padding: 12px 0; font-size: 14px; font-weight: 600; color: var(--hint-color);">${t.archiveTitle} (${archivedProjects.length}) ▼</div>`;
+                html += `<div id="archive-list" style="display:none;">`;
+                archivedProjects.forEach(proj => {
+                    const modeLabel = proj.mode === 'bounty' ? t.modeBounty : proj.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
+                    html += `
+                    <div class="card" style="opacity: 0.75; margin-bottom: 10px;">
+                        <div class="card-header" style="margin-bottom: 8px;">
+                            ${renderIcon(proj.name, proj.icon_url)}
+                            <div class="card-info">
+                                <div class="card-title">${proj.name}</div>
+                                <div class="card-subtitle">${proj.package_name}</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 13px; color: var(--hint-color); margin-bottom: 8px;">
+                            ${modeLabel} &nbsp;·&nbsp; \ud83d\udc65 ${proj.total_testers} &nbsp;·&nbsp; \u2705 ${proj.total_checkins} ${t.digest_leaderboard_checkins || 'check-ins'}
+                        </div>
+                        <button class="btn" style="width:100%; background:rgba(255,59,48,0.1); color:#ff3b30; font-size:13px;"
+                            onclick="confirmHardDelete(${proj.app_id}, '${proj.name.replace(/'/g, "\\'")}')">
+                            ${t.archiveDeletePermanent}
+                        </button>
+                    </div>`;
+                });
+                html += `</div>`;
+                section.innerHTML = html;
+            }
+
+            function toggleArchive() {
+                const list = document.getElementById('archive-list');
+                const toggle = document.getElementById('archive-toggle');
+                if (!list) return;
+                const isOpen = list.style.display !== 'none';
+                list.style.display = isOpen ? 'none' : 'block';
+                if (toggle) toggle.textContent = `${t.archiveTitle} (${archivedProjects.length}) ${isOpen ? '▼' : '▲'}`;
+            }
+
+            async function confirmHardDelete(appId, appName) {
+                const confirmed = await new Promise(resolve => {
+                    const msg = t.archiveConfirmDelete.replace('{name}', appName);
+                    if (tg.showConfirm) {
+                        tg.showConfirm(msg, ok => resolve(ok));
+                    } else {
+                        resolve(confirm(msg));
+                    }
+                });
+                if (!confirmed) return;
+                try {
+                    const resp = await fetch(`${API_BASE}/projects/${appId}/permanent`, { method: 'DELETE' });
+                    const data = await resp.json();
+                    if (data.status === 'success') {
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                        archivedProjects = archivedProjects.filter(p => p.app_id !== appId);
+                        renderArchivedProjects();
+                    } else {
+                        showToast(data.message || 'Error');
+                    }
+                } catch (e) {
+                    showToast('Network error');
+                }
+            }
 
         function copyGroupUrl(url) {
             navigator.clipboard.writeText(url).then(() => {
