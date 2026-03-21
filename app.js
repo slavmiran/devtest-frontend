@@ -10,7 +10,7 @@ const userId = initData.user?.id || 123456789;
 var API_BASE = 'https://devtest-backend.onrender.com/api';
 
 var lang = localStorage.getItem('app_language') || (Object.keys(initData).length > 0 ? (langCode === 'ru' ? 'ru' : 'en') : 'ru');
-var t = new Proxy({}, {
+const t = new Proxy({}, {
     get(_, key) {
         return window.t(key, {}, lang);
     }
