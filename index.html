@@ -377,7 +377,10 @@
             padding: 24px 16px;
             transform: translateY(100%);
             transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            padding-bottom: calc(24px + env(safe-area-inset-bottom));
+            max-height: 80vh;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding-bottom: calc(80px + env(safe-area-inset-bottom));
         }
 
         .modal-overlay.active .modal-content { transform: translateY(0); }
@@ -495,7 +498,7 @@
         }
 
         .reveal-panel.active {
-            max-height: 420px;
+            max-height: 600px;
             opacity: 1;
             transform: translateY(0);
             margin-bottom: 16px;
@@ -1324,16 +1327,19 @@
 
     <!-- TAB 3: Mutual Feed -->
     <div id="tab-mutual" class="container tab-content">
-        <h2 id="t-mutualTitle">🤝 Взаимка</h2>
+        <h2 id="t-mutualTitle">🤝 Бартер</h2>
         <p id="t-mutualDesc">Раздельные потоки взаимного обмена: активный набор и pre-launch.</p>
 
-        <div class="card" style="margin-bottom: 12px;">
-            <h3 id="t-seekingTitle" style="margin-bottom: 10px;">🔥 Ищут обмен</h3>
+        <div class="segmented-control" style="margin-bottom: 14px;">
+            <button class="seg-btn active" onclick="switchMutualSubTab('seeking')" id="mutual-sub-seeking"><span id="t-seekingTitle">🔥 Ищут обмен</span></button>
+            <button class="seg-btn" onclick="switchMutualSubTab('prelaunch')" id="mutual-sub-prelaunch"><span id="t-prelaunchFeedTitle">🚀 Pre-Launch</span></button>
+        </div>
+
+        <div id="mutual-subtab-seeking">
             <div id="mutual-seeking-list"></div>
         </div>
 
-        <div class="card">
-            <h3 id="t-prelaunchFeedTitle" style="margin-bottom: 10px;">🚀 Pre-Launch</h3>
+        <div id="mutual-subtab-prelaunch" style="display:none;">
             <div id="mutual-prelaunch-list"></div>
         </div>
     </div>
@@ -1436,15 +1442,18 @@
             <div id="add-bounty-settings" class="reveal-panel">
                 <div class="form-surface">
                     <div class="form-section-title" id="t-bountySettingsTitle">💎 Платные тестеры</div>
-                    <div class="form-hint" id="t-bountySettingsHint">Этот блок нужен только для режима Биржа или Гибрид.</div>
+                    <div style="background: rgba(52,199,89,0.12); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 16px; font-weight: 700; color: var(--link-color);" id="add-balance-badge">💎 </span>
+                        <span style="font-size: 15px; font-weight: 600; color: var(--text-color);" id="add-balance-badge-value"></span>
+                    </div>
                     <div class="form-inline">
                         <div class="form-group">
-                            <label class="form-label" id="t-limitBountyLabel">Количество платных тестеров</label>
+                            <label class="form-label" id="t-limitBountyLabel">Сколько тестеров нанять?</label>
                             <input type="number" id="app-limit-bounty" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('add')">
                             <div class="form-hint" id="t-limitBountyHint" style="margin-top: 8px; margin-bottom: 0;">Сколько слотов откроется в Бирже.</div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" id="t-bountyPerTesterLabel">Награда за тестера</label>
+                            <label class="form-label" id="t-bountyPerTesterLabel">Награда одному тестеру</label>
                             <input type="number" id="app-bounty-per-tester" class="form-input" min="100" step="1" value="100" oninput="updateProjectPricing('add')">
                             <div class="form-hint" id="t-bountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;">Минимум 100 $BUST за одного тестера.</div>
                         </div>
@@ -1455,7 +1464,6 @@
                         <div class="calc-row"><span id="t-calcDailyShare">Ежедневные чекины (40%)</span><span id="add-calc-daily">40 $BUST</span></div>
                         <div class="calc-row"><span id="t-calcHoldBonus">Hold Bonus (60%)</span><span id="add-calc-hold">60 $BUST</span></div>
                         <div class="calc-row total"><span id="t-calcTotalCost">Всего спишется</span><span id="add-calc-total">1200 $BUST</span></div>
-                        <div class="calc-row muted"><span id="t-calcBalance">Текущий баланс</span><span id="add-calc-balance">0 $BUST</span></div>
                     </div>
                 </div>
             </div>
@@ -1563,15 +1571,18 @@
             <div id="edit-bounty-settings" class="reveal-panel">
                 <div class="form-surface">
                     <div class="form-section-title" id="t-editBountySettingsTitle">💎 Платные тестеры</div>
-                    <div class="form-hint" id="t-editBountySettingsHint">Показывается только для режима Биржа или Гибрид.</div>
+                    <div style="background: rgba(52,199,89,0.12); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 16px; font-weight: 700; color: var(--link-color);" id="edit-balance-badge">💎 </span>
+                        <span style="font-size: 15px; font-weight: 600; color: var(--text-color);" id="edit-balance-badge-value"></span>
+                    </div>
                     <div class="form-inline">
                         <div class="form-group">
-                            <label class="form-label" id="t-editLimitBountyLabel">Количество платных тестеров</label>
+                            <label class="form-label" id="t-editLimitBountyLabel">Сколько тестеров нанять?</label>
                             <input type="number" id="edit-limit-bounty" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('edit')">
                             <div class="form-hint" id="t-editLimitBountyHint" style="margin-top: 8px; margin-bottom: 0;">Сколько слотов открыто в Бирже.</div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" id="t-editBountyPerTesterLabel">Награда за тестера</label>
+                            <label class="form-label" id="t-editBountyPerTesterLabel">Награда одному тестеру</label>
                             <input type="number" id="edit-bounty-per-tester" class="form-input" min="100" step="1" value="100" oninput="updateProjectPricing('edit')">
                             <div class="form-hint" id="t-editBountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;">Минимум 100 $BUST.</div>
                         </div>
@@ -1582,7 +1593,6 @@
                         <div class="calc-row"><span id="t-editCalcDailyShare">Ежедневные чекины (40%)</span><span id="edit-calc-daily">40 $BUST</span></div>
                         <div class="calc-row"><span id="t-editCalcHoldBonus">Hold Bonus (60%)</span><span id="edit-calc-hold">60 $BUST</span></div>
                         <div class="calc-row total"><span id="t-editCalcTotalCost">Всего спишется</span><span id="edit-calc-total">1200 $BUST</span></div>
-                        <div class="calc-row muted"><span id="t-editCalcBalance">Текущий баланс</span><span id="edit-calc-balance">0 $BUST</span></div>
                     </div>
                 </div>
             </div>
@@ -1720,6 +1730,48 @@
         </div>
     </div>
 
+    <!-- Earn $BUST Modal -->
+    <div id="earn-bust-modal" class="modal-overlay" onclick="closeEarnBustModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="t-earnTitle">💎 Заработать $BUST</h3>
+            <p id="t-earnDesc" style="font-size: 13px; color: var(--hint-color); margin-bottom: 14px;">Способы получить $BUST на платформе.</p>
+
+            <!-- Referral Section -->
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">🎁</span>
+                    <span style="font-weight: 700; font-size: 15px;" id="t-earnReferralTitle">Пригласи тестера</span>
+                </div>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" id="t-earnReferralDesc">Делитесь инвайт-ссылкой на ваше приложение. Когда приглашённый тестер сделает первый чекин, вы получите 50 $BUST.</p>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                    <span class="meta-chip accent-green" id="earn-referrals-count">👥 0</span>
+                    <span style="font-size: 13px; color: var(--hint-color);" id="t-earnReferralCountLabel">рефералов</span>
+                </div>
+            </div>
+
+            <!-- Platform Grant Section -->
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">🏆</span>
+                    <span style="font-weight: 700; font-size: 15px;" id="t-earnGrantTitle">Грант за тест</span>
+                </div>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" id="t-earnGrantDesc">Завершите 14-дневный тест с ≤3 пропусками, и платформа начислит вам 100 $BUST. Одноразовый грант.</p>
+                <div id="earn-grant-status"></div>
+            </div>
+
+            <!-- Daily Bounty Section -->
+            <div class="card">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">📊</span>
+                    <span style="font-weight: 700; font-size: 15px;" id="t-earnDailyTitle">Ежедневные чекины</span>
+                </div>
+                <p style="font-size: 13px; color: var(--hint-color);" id="t-earnDailyDesc">Тестируйте приложения с режимом Биржа и получайте $BUST за каждый ежедневный чекин (40% от награды) + Hold Bonus (60%) по завершении.</p>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 14px;" onclick="closeEarnBustModal()" id="t-earnClose">Закрыть</button>
+        </div>
+    </div>
+
     <script>
         // Initialize Telegram Web App
         const tg = window.Telegram.WebApp;
@@ -1741,7 +1793,7 @@
             ru: {
                 tabTests: "Мои тесты",
                 tabProjects: "Мои проекты",
-                tabMutual: "Взаимка",
+                tabMutual: "Бартер",
                 tabBounty: "Биржа",
                 mutualDesc: "Раздельные потоки взаимного обмена: активный набор и pre-launch.",
                 bountyDesc: "Контракты с оплатой в $BUST для быстрых подключений.",
@@ -1969,20 +2021,20 @@
                 btnDrop: "Отказаться",
                 visibilityManualToast: "Приложение скрыто. Ваша инвайт-ссылка продолжает работать.",
                 // Mode labels
-                modeMutual: "🤝 Взаимный обмен",
+                modeMutual: "🤝 Бартер",
                 modeBounty: "💎 Биржа",
                 modeHybrid: "🔥 Комбо",
                 modeLabel: "Режим проекта",
                 modeHint: "Выберите, где будете набирать тестеров: по взаимке, через Биржу или в обоих потоках.",
                 editModeHint: "Режим и квоты можно менять в процессе. При росте бюджета спишется только разница.",
-                mutualSettingsTitle: "🤝 Взаимные тестеры",
-                limitMutualLabel: "Лимит взаимных тестеров",
-                limitMutualHint: "Сколько тестеров можно набрать через взаимный обмен.",
+                mutualSettingsTitle: "🤝 Взаимные тесты",
+                limitMutualLabel: "Лимит взаимных тестировщиков",
+                limitMutualHint: "Вы тестируете их приложение, они — ваше.",
                 bountySettingsTitle: "💎 Платные тестеры",
-                bountySettingsHint: "Блок появляется только для режима Биржа или Гибрид.",
-                limitBountyLabel: "Количество платных тестеров",
+                bountySettingsHint: "",
+                limitBountyLabel: "Сколько тестеров нанять?",
                 limitBountyHint: "Сколько слотов открыть в Бирже.",
-                bountyPerTesterLabel: "Награда за тестера",
+                bountyPerTesterLabel: "Награда одному тестеру",
                 bountyPerTesterHint: "Минимум 100 $BUST за одного тестера.",
                 calculatorTitle: "Калькулятор $BUST",
                 calcRewardPerTester: "Награда на 1 тестера",
@@ -1991,9 +2043,21 @@
                 calcTotalCost: "Всего спишется",
                 calcBalance: "Текущий баланс",
                 bustBalanceLabel: "💎 Баланс $BUST: {amount}",
-                mutualLimitInvalid: "Лимит взаимных тестеров должен быть не меньше 1",
-                bountyLimitInvalid: "Количество платных тестеров должно быть не меньше 1",
-                bountyPerTesterInvalid: "Награда за тестера должна быть не меньше 100 $BUST",
+                earnTitle: "💎 Заработать $BUST",
+                earnDesc: "Способы получить $BUST на платформе.",
+                earnReferralTitle: "Пригласи тестера",
+                earnReferralDesc: "Делитесь инвайт-ссылкой на ваше приложение. Когда приглашённый тестер сделает первый чекин, вы получите 50 $BUST.",
+                earnReferralCountLabel: "рефералов",
+                earnGrantTitle: "Грант за тест",
+                earnGrantDesc: "Завершите 14-дневный тест с ≤3 пропусками, и платформа начислит вам 100 $BUST. Одноразовый грант.",
+                earnGrantClaimed: "Получено",
+                earnGrantPending: "Ещё не получено",
+                earnDailyTitle: "Ежедневные чекины",
+                earnDailyDesc: "Тестируйте приложения с режимом Биржа и получайте $BUST за каждый ежедневный чекин (40% от награды) + Hold Bonus (60%) по завершении.",
+                earnClose: "Закрыть",
+                mutualLimitInvalid: "Лимит взаимных тестировщиков должен быть не меньше 1",
+                bountyLimitInvalid: "Количество тестеров должно быть не меньше 1",
+                bountyPerTesterInvalid: "Награда одному тестеру должна быть не меньше 100 $BUST",
                 invalidModeSelection: "Выберите корректный режим проекта",
                 insufficientBustBalance: "Недостаточно $BUST. Нужно: {required}, доступно: {balance}",
                 bustBalanceUnavailable: "Баланс $BUST пока недоступен. Попробуйте позже.",
@@ -2056,7 +2120,7 @@
             en: {
                 tabTests: "My Tests",
                 tabProjects: "My Projects",
-                tabMutual: "Mutual",
+                tabMutual: "Barter",
                 tabBounty: "Bounty",
                 mutualDesc: "Separate mutual exchange streams: seeking and pre-launch.",
                 bountyDesc: "Paid $BUST contracts for quick joins.",
@@ -2284,18 +2348,18 @@
                 btnDrop: "Drop",
                 visibilityManualToast: "The app is hidden. Your invite link still works.",
                 // Mode labels
-                modeMutual: "🤝 Mutual exchange",
+                modeMutual: "🤝 Barter",
                 modeBounty: "💎 Bounty",
                 modeHybrid: "🔥 Combo",
                 modeLabel: "Project mode",
                 modeHint: "Choose where you want to recruit testers: mutual, bounty, or both channels.",
                 editModeHint: "You can adjust mode and quotas later. If the budget grows, only the delta is charged.",
-                mutualSettingsTitle: "🤝 Mutual testers",
+                mutualSettingsTitle: "🤝 Mutual tests",
                 limitMutualLabel: "Mutual tester limit",
-                limitMutualHint: "How many testers can join through mutual exchange.",
+                limitMutualHint: "You test their app, they test yours.",
                 bountySettingsTitle: "💎 Paid testers",
-                bountySettingsHint: "This block appears only for Bounty or Hybrid mode.",
-                limitBountyLabel: "Paid tester slots",
+                bountySettingsHint: "",
+                limitBountyLabel: "How many testers to hire?",
                 limitBountyHint: "How many paid slots to open in the Exchange.",
                 bountyPerTesterLabel: "Reward per tester",
                 bountyPerTesterHint: "Minimum 100 $BUST per tester.",
@@ -2306,6 +2370,18 @@
                 calcTotalCost: "Total charge",
                 calcBalance: "Current balance",
                 bustBalanceLabel: "💎 $BUST balance: {amount}",
+                earnTitle: "💎 Earn $BUST",
+                earnDesc: "Ways to earn $BUST on the platform.",
+                earnReferralTitle: "Invite a tester",
+                earnReferralDesc: "Share your app's invite link. When the invited tester makes their first check-in, you'll receive 50 $BUST.",
+                earnReferralCountLabel: "referrals",
+                earnGrantTitle: "Test grant",
+                earnGrantDesc: "Complete a 14-day test with \u22643 missed days and the platform grants you 100 $BUST. One-time bonus.",
+                earnGrantClaimed: "Claimed",
+                earnGrantPending: "Not yet claimed",
+                earnDailyTitle: "Daily check-ins",
+                earnDailyDesc: "Test Bounty apps and earn $BUST for each daily check-in (40% of the reward) + Hold Bonus (60%) upon completion.",
+                earnClose: "Close",
                 mutualLimitInvalid: "Mutual tester limit must be at least 1",
                 bountyLimitInvalid: "Paid tester slots must be at least 1",
                 bountyPerTesterInvalid: "Reward per tester must be at least 100 $BUST",
@@ -2408,7 +2484,6 @@
             document.getElementById('t-limitMutualLabel').innerText = t.limitMutualLabel;
             document.getElementById('t-limitMutualHint').innerText = t.limitMutualHint;
             document.getElementById('t-bountySettingsTitle').innerText = t.bountySettingsTitle;
-            document.getElementById('t-bountySettingsHint').innerText = t.bountySettingsHint;
             document.getElementById('t-limitBountyLabel').innerText = t.limitBountyLabel;
             document.getElementById('t-limitBountyHint').innerText = t.limitBountyHint;
             document.getElementById('t-bountyPerTesterLabel').innerText = t.bountyPerTesterLabel;
@@ -2418,7 +2493,6 @@
             document.getElementById('t-calcDailyShare').innerText = t.calcDailyShare;
             document.getElementById('t-calcHoldBonus').innerText = t.calcHoldBonus;
             document.getElementById('t-calcTotalCost').innerText = t.calcTotalCost;
-            document.getElementById('t-calcBalance').innerText = t.calcBalance;
             document.getElementById('t-iconUrl').innerText = t.iconUrl;
             document.getElementById('t-save').innerText = t.save;
             document.getElementById('t-bannerText').innerText = t.bannerText;
@@ -2451,7 +2525,6 @@
             document.getElementById('t-editLimitMutualLabel').innerText = t.limitMutualLabel;
             document.getElementById('t-editLimitMutualHint').innerText = t.limitMutualHint;
             document.getElementById('t-editBountySettingsTitle').innerText = t.bountySettingsTitle;
-            document.getElementById('t-editBountySettingsHint').innerText = t.bountySettingsHint;
             document.getElementById('t-editLimitBountyLabel').innerText = t.limitBountyLabel;
             document.getElementById('t-editLimitBountyHint').innerText = t.limitBountyHint;
             document.getElementById('t-editBountyPerTesterLabel').innerText = t.bountyPerTesterLabel;
@@ -2461,7 +2534,6 @@
             document.getElementById('t-editCalcDailyShare').innerText = t.calcDailyShare;
             document.getElementById('t-editCalcHoldBonus').innerText = t.calcHoldBonus;
             document.getElementById('t-editCalcTotalCost').innerText = t.calcTotalCost;
-            document.getElementById('t-editCalcBalance').innerText = t.calcBalance;
             document.getElementById('t-editCancel').innerText = t.editCancel;
             document.getElementById('t-editSave').innerText = t.save;
             updateProjectPricing('add');
@@ -2472,6 +2544,17 @@
             document.getElementById('karma-modal-desc').innerText = t.karmaModalDesc;
             document.getElementById('karma-btn-good').innerText = t.karmaModalGood;
             document.getElementById('karma-btn-bug').innerText = t.karmaModalBug;
+            // Earn modal translations
+            document.getElementById('t-earnTitle').innerText = t.earnTitle;
+            document.getElementById('t-earnDesc').innerText = t.earnDesc;
+            document.getElementById('t-earnReferralTitle').innerText = t.earnReferralTitle;
+            document.getElementById('t-earnReferralDesc').innerText = t.earnReferralDesc;
+            document.getElementById('t-earnReferralCountLabel').innerText = t.earnReferralCountLabel;
+            document.getElementById('t-earnGrantTitle').innerText = t.earnGrantTitle;
+            document.getElementById('t-earnGrantDesc').innerText = t.earnGrantDesc;
+            document.getElementById('t-earnDailyTitle').innerText = t.earnDailyTitle;
+            document.getElementById('t-earnDailyDesc').innerText = t.earnDailyDesc;
+            document.getElementById('t-earnClose').innerText = t.earnClose;
             // Language switcher — preserve loading dot
             const switcher = document.getElementById('lang-switcher');
             const dot = document.getElementById('loading-dot');
@@ -3455,12 +3538,14 @@
             const ownerDisplay = item.owner_full_name || (item.owner_username ? '@' + item.owner_username : `ID: ${item.owner_id}`);
             const safeOwner = (item.owner_username || '').replace(/'/g, "\\'");
             const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
-            const scoreChip = (kind === 'mutual-seeking')
-                ? `<span class="meta-chip accent-purple">${t.scoreLabel}: ${item.score || 0}</span>`
-                : '';
             const bountyChip = (kind === 'bounty')
                 ? `<span class="meta-chip accent-purple">💎 ${item.bounty_per_tester || 0} $BUST</span>`
                 : '';
+            const kindChip = (kind === 'mutual-seeking')
+                ? `<span class="meta-chip accent-green">👨‍💻 ${t.tabTestersNeeded}</span>`
+                : (kind === 'mutual-prelaunch')
+                    ? `<span class="meta-chip accent-blue">🚀 Pre-Launch</span>`
+                    : '';
 
             let buttonText = t.mutualJoinBtn;
             let clickAction = `joinMutual(${item.app_id}, false)`;
@@ -3487,7 +3572,7 @@
                     </div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
                         <span class="meta-chip">👥 ${item.mutual_testers_count ?? item.bounty_testers_count ?? 0}</span>
-                        ${scoreChip}
+                        ${kindChip}
                         ${bountyChip}
                     </div>
                     <button class="btn btn-primary" onclick="${clickAction}">${buttonText}</button>
@@ -3510,6 +3595,24 @@
                 prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
             } else {
                 prelaunchEl.innerHTML = mutualPrelaunch.map(item => renderFeedCard(item, 'mutual-prelaunch')).join('');
+            }
+        }
+
+        function switchMutualSubTab(tab) {
+            const seekingPanel = document.getElementById('mutual-subtab-seeking');
+            const prelaunchPanel = document.getElementById('mutual-subtab-prelaunch');
+            const seekingBtn = document.getElementById('mutual-sub-seeking');
+            const prelaunchBtn = document.getElementById('mutual-sub-prelaunch');
+            if (tab === 'seeking') {
+                seekingPanel.style.display = '';
+                prelaunchPanel.style.display = 'none';
+                seekingBtn.classList.add('active');
+                prelaunchBtn.classList.remove('active');
+            } else {
+                seekingPanel.style.display = 'none';
+                prelaunchPanel.style.display = '';
+                seekingBtn.classList.remove('active');
+                prelaunchBtn.classList.add('active');
             }
         }
 
@@ -3756,25 +3859,7 @@
             const container = document.getElementById('projects-list');
             container.innerHTML = '';
 
-            if (myProjects.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">📂</div>
-                        <p>${t.emptyProjects}</p>
-                    </div>
-                `;
-                return;
-            }
-
-            // Dismissible delete reminder
-            if (localStorage.getItem('hideDeleteReminder') !== 'true') {
-                const reminder = document.createElement('div');
-                reminder.style.cssText = "background-color: rgba(255, 204, 0, 0.2); color: var(--text-color); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; font-size: 13px; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px;";
-                reminder.innerHTML = `<span style="flex: 1;">${t.deleteReminder}</span><button onclick="this.parentElement.remove(); localStorage.setItem('hideDeleteReminder','true');" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--hint-color); flex-shrink: 0; padding: 0; line-height: 1;">✕</button>`;
-                container.appendChild(reminder);
-            }
-
-            // Developer Dashboard block
+            // Developer Dashboard block — всегда отображается, даже без проектов
             if (visibilityStats) {
                 const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
                 const expLine = t.experienceLabel.replace('{count}', visibilityStats.completed_tests) + ' ' + t.completedTestsSuffix;
@@ -3794,7 +3879,7 @@
                         <div class="dashboard-row">
                             <span class="dashboard-label">⚡ ${t.activeTestsLabel}: ${visibilityStats.my_total_tests}</span>
                         </div>
-                        <div class="dashboard-row">
+                        <div class="dashboard-row" onclick="openEarnBustModal()" style="cursor:pointer;">
                             <span class="dashboard-label" style="font-size: 18px; font-weight: 800; color: var(--link-color);">${t.bustBalanceLabel.replace('{amount}', formatBustAmount(visibilityStats.balance_bust || 0))}</span>
                         </div>
                         <div class="dashboard-row">
@@ -3806,6 +3891,24 @@
                     </div>
                 `;
                 container.insertAdjacentHTML('beforeend', dashHtml);
+            }
+
+            if (myProjects.length === 0) {
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="empty-state">
+                        <div class="empty-icon">📂</div>
+                        <p>${t.emptyProjects}</p>
+                    </div>
+                `);
+                return;
+            }
+
+            // Dismissible delete reminder
+            if (localStorage.getItem('hideDeleteReminder') !== 'true') {
+                const reminder = document.createElement('div');
+                reminder.style.cssText = "background-color: rgba(255, 204, 0, 0.2); color: var(--text-color); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; font-size: 13px; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px;";
+                reminder.innerHTML = `<span style="flex: 1;">${t.deleteReminder}</span><button onclick="this.parentElement.remove(); localStorage.setItem('hideDeleteReminder','true');" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--hint-color); flex-shrink: 0; padding: 0; line-height: 1;">✕</button>`;
+                container.appendChild(reminder);
             }
 
             const today = getLocalDate();
@@ -4397,6 +4500,30 @@
             if (event && event.target !== document.getElementById('sync-modal')) return;
             document.getElementById('sync-modal').classList.remove('active');
             _syncProjectId = null;
+        }
+
+        async function openEarnBustModal() {
+            document.getElementById('earn-bust-modal').classList.add('active');
+            try {
+                const resp = await fetch(`${API_BASE}/referral-stats/${userId}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    document.getElementById('earn-referrals-count').innerText = `👥 ${data.referrals_count || 0}`;
+                    const grantStatus = document.getElementById('earn-grant-status');
+                    if (data.social_bonus_claimed) {
+                        grantStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnGrantClaimed}</span>`;
+                    } else {
+                        grantStatus.innerHTML = `<span class="meta-chip accent-yellow">⏳ ${t.earnGrantPending}</span>`;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load referral stats:', e);
+            }
+        }
+
+        function closeEarnBustModal(event) {
+            if (event && event.target !== document.getElementById('earn-bust-modal')) return;
+            document.getElementById('earn-bust-modal').classList.remove('active');
         }
 
         async function saveProjectSync() {
@@ -5138,7 +5265,7 @@
                     calcDaily: 'edit-calc-daily',
                     calcHold: 'edit-calc-hold',
                     calcTotal: 'edit-calc-total',
-                    calcBalance: 'edit-calc-balance',
+                    balanceBadge: 'edit-balance-badge-value',
                     modeButtons: {
                         mutual: 'edit-mode-mutual',
                         bounty: 'edit-mode-bounty',
@@ -5156,7 +5283,7 @@
                     calcDaily: 'add-calc-daily',
                     calcHold: 'add-calc-hold',
                     calcTotal: 'add-calc-total',
-                    calcBalance: 'add-calc-balance',
+                    balanceBadge: 'add-balance-badge-value',
                     modeButtons: {
                         mutual: 'add-mode-mutual',
                         bounty: 'add-mode-bounty',
@@ -5205,7 +5332,7 @@
             document.getElementById(config.calcDaily).innerText = formatBustAmount(dailyShare);
             document.getElementById(config.calcHold).innerText = formatBustAmount(holdBonus);
             document.getElementById(config.calcTotal).innerText = formatBustAmount(totalCost);
-            document.getElementById(config.calcBalance).innerText = formatBustAmount(bustBalance);
+            document.getElementById(config.balanceBadge).innerText = formatBustAmount(bustBalance);
         }
 
         function resetProjectForms() {
