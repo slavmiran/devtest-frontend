@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DevTest Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="./i18n.js"></script>
     <style>
         :root {
             /* Telegram Theme Variables with fallbacks */
@@ -1268,15 +1269,15 @@
     <div id="tab-tests" class="container tab-content active">
         <div class="banner" id="main-banner" style="background-color: var(--secondary-bg-color); padding: 16px; border-radius: 16px; margin-bottom: 16px; position: relative;">
             <button onclick="closeBanner()" style="position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 16px; color: var(--hint-color); cursor: pointer; padding: 4px;">✖</button>
-            <p id="t-bannerText" style="margin: 0; color: var(--text-color); font-size: 14px; line-height: 1.4; padding-right: 20px;">Избавьтесь от хаоса в чатах! Контролируйте ежедневные запуски для 12 тестеров в одном месте и находите новые приложения для взаимного теста.</p>
-            <p id="t-disclaimerText" style="margin: 8px 0 0 0; color: var(--hint-color); font-size: 12px; line-height: 1.4; padding-right: 20px;"></p>
+            <p id="t-bannerText" data-i18n="bannerText" style="margin: 0; color: var(--text-color); font-size: 14px; line-height: 1.4; padding-right: 20px;">Избавьтесь от хаоса в чатах! Контролируйте ежедневные запуски для 12 тестеров в одном месте и находите новые приложения для взаимного теста.</p>
+            <p id="t-disclaimerText" data-i18n="disclaimerText" style="margin: 8px 0 0 0; color: var(--hint-color); font-size: 12px; line-height: 1.4; padding-right: 20px;"></p>
         </div>
-        <h2 id="t-testsTitle">Мои тесты</h2>
-        <p id="t-testsDesc">Приложения, которые вы должны открывать каждый день.</p>
+        <h2 id="t-testsTitle" data-i18n="tabTests">Мои тесты</h2>
+        <p id="t-testsDesc" data-i18n="testsDesc">Приложения, которые вы должны открывать каждый день.</p>
 
         <div id="offers-section" class="offers-section" style="display:none;">
             <div class="offers-header">
-                <h3 id="t-offersTitle">📬 Входящие заявки на взаимку</h3>
+                <h3 id="t-offersTitle" data-i18n="offersTitle">📬 Входящие заявки на взаимку</h3>
                 <span id="offers-count" class="offers-count">0</span>
             </div>
             <div id="offers-carousel" class="offers-carousel"></div>
@@ -1288,7 +1289,7 @@
 
         <div id="done-section" class="accordion" style="display: none;">
             <div class="accordion-header" onclick="toggleAccordion()">
-                <div><span id="t-doneToday">✅ Выполнено сегодня</span> (<span id="done-count">0</span>)</div>
+                <div><span id="t-doneToday" data-i18n="doneToday">✅ Выполнено сегодня</span> (<span id="done-count">0</span>)</div>
                 <div class="accordion-icon">▼</div>
             </div>
             <div class="accordion-content" id="done-list">
@@ -1297,27 +1298,27 @@
         </div>
 
         <div id="community-pulse" class="pulse-card">
-            <div class="pulse-title" id="t-pulseTitle">🌐 Пульс сообщества</div>
+            <div class="pulse-title" id="t-pulseTitle" data-i18n="pulseTitle">🌐 Пульс сообщества</div>
             <div id="events-list" class="events-list">
-                <div class="event-time">Загрузка...</div>
+                <div class="event-time" data-i18n="pulseLoading">Загрузка...</div>
             </div>
-            <button id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()">Развернуть ▼</button>
+            <button id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()" data-i18n="pulseExpand">Развернуть ▼</button>
         </div>
 
         <details id="available-details" style="margin-top: 16px; display: none;">
-            <summary style="font-weight: bold; cursor: pointer; padding: 12px; background: var(--bg-color); border-radius: 8px; list-style: none; display: flex; justify-content: space-between; align-items: center;"><span id="t-availableTitle" class="available-title">📱 Биржа проектов</span><span class="details-arrow">▼</span></summary>
+            <summary style="font-weight: bold; cursor: pointer; padding: 12px; background: var(--bg-color); border-radius: 8px; list-style: none; display: flex; justify-content: space-between; align-items: center;"><span id="t-availableTitle" class="available-title" data-i18n="availableTitle">📱 Биржа проектов</span><span class="details-arrow">▼</span></summary>
             <div style="margin-top: 8px;">
                 <div class="showcase-tabs" id="showcase-tabs">
                         <button class="showcase-tab active" data-tab="needed" id="needed-tab-btn" onclick="switchShowcaseTab('needed')">
-                            🔥 Тестеры Нужны (<span id="needed-count">0</span>)
+                            🔥 Testers Needed (<span id="needed-count">0</span>)
                     </button>
                     <button class="showcase-tab" data-tab="prelaunch" id="prelaunch-tab-btn" onclick="switchShowcaseTab('prelaunch')" style="display:none;">
-                            🚀 Предзапуск (<span id="prelaunch-count">0</span>)
+                            🚀 Pre-Launch (<span id="prelaunch-count">0</span>)
                     </button>
                 </div>
                 <div class="showcase-snap-container" id="showcase-snap">
                     <div class="showcase-snap-panel" id="showcase-needed">
-                        <p style="text-align: center; color: var(--hint-color); margin-top: 8px;" id="t-loadingShowcase">Загрузка биржи...</p>
+                        <p style="text-align: center; color: var(--hint-color); margin-top: 8px;" id="t-loadingShowcase" data-i18n="loadingShowcase">Загрузка биржи...</p>
                     </div>
                     <div class="showcase-snap-panel" id="showcase-prelaunch" style="display:none;"></div>
                 </div>
@@ -1327,12 +1328,12 @@
 
     <!-- TAB 3: Mutual Feed -->
     <div id="tab-mutual" class="container tab-content">
-        <h2 id="t-mutualTitle">🤝 Бартер</h2>
-        <p id="t-mutualDesc">Раздельные потоки взаимного обмена: активный набор и pre-launch.</p>
+        <h2 id="t-mutualTitle" data-i18n="tabMutual">🤝 Бартер</h2>
+        <p id="t-mutualDesc" data-i18n="mutualDesc">Раздельные потоки взаимного обмена: активный набор и pre-launch.</p>
 
         <div class="segmented-control" style="margin-bottom: 14px;">
-            <button class="seg-btn active" onclick="switchMutualSubTab('seeking')" id="mutual-sub-seeking"><span id="t-seekingTitle">🔥 Ищут обмен</span></button>
-            <button class="seg-btn" onclick="switchMutualSubTab('prelaunch')" id="mutual-sub-prelaunch"><span id="t-prelaunchFeedTitle">🚀 Pre-Launch</span></button>
+            <button class="seg-btn active" onclick="switchMutualSubTab('seeking')" id="mutual-sub-seeking"><span id="t-seekingTitle" data-i18n="mutualSeekingTitle">🔥 Ищут обмен</span></button>
+            <button class="seg-btn" onclick="switchMutualSubTab('prelaunch')" id="mutual-sub-prelaunch"><span id="t-prelaunchFeedTitle" data-i18n="mutualPrelaunchTitle">🚀 Pre-Launch</span></button>
         </div>
 
         <div id="mutual-subtab-seeking">
@@ -1346,18 +1347,18 @@
 
     <!-- TAB 4: Bounty Feed -->
     <div id="tab-bounty" class="container tab-content">
-        <h2 id="t-bountyTitle">💎 Биржа</h2>
-        <p id="t-bountyDesc">Контракты с оплатой в $BUST для быстрых подключений.</p>
+        <h2 id="t-bountyTitle" data-i18n="tabBounty">💎 Биржа</h2>
+        <p id="t-bountyDesc" data-i18n="bountyDesc">Контракты с оплатой в $BUST для быстрых подключений.</p>
         <div id="bounty-list"></div>
     </div>
 
     <!-- TAB 2: Мои проекты -->
     <div id="tab-projects" class="container tab-content">
-        <h2 id="t-projectsTitle">Мои проекты</h2>
-        <p id="t-projectsDesc">Ваши приложения, которые тестируют другие.</p>
+        <h2 id="t-projectsTitle" data-i18n="tabProjects">Мои проекты</h2>
+        <p id="t-projectsDesc" data-i18n="projectsDesc">Ваши приложения, которые тестируют другие.</p>
         
         <button class="btn btn-primary" style="margin-bottom: 24px;" onclick="openModal()">
-            <span id="t-addApp">+ Добавить приложение</span>
+            <span id="t-addApp" data-i18n="addApp">+ Добавить приложение</span>
         </button>
 
         <div id="projects-list">
@@ -1373,127 +1374,127 @@
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('tests', this)">
             <div class="nav-icon">📱</div>
-            <div id="t-tabTests">Мои тесты</div>
+            <div id="t-tabTests" data-i18n="tabTests">Мои тесты</div>
         </div>
         <div class="nav-item" onclick="switchTab('projects', this)">
             <div class="nav-icon">🚀</div>
-            <div id="t-tabProjects">Мои проекты</div>
+            <div id="t-tabProjects" data-i18n="tabProjects">Мои проекты</div>
         </div>
         <div class="nav-item" onclick="switchTab('mutual', this)">
             <div class="nav-icon">🤝</div>
-            <div id="t-tabMutual">Взаимка</div>
+            <div id="t-tabMutual" data-i18n="tabMutual">Взаимка</div>
         </div>
         <div class="nav-item" onclick="switchTab('bounty', this)">
             <div class="nav-icon">💎</div>
-            <div id="t-tabBounty">Биржа</div>
+            <div id="t-tabBounty" data-i18n="tabBounty">Биржа</div>
         </div>
     </div>
 
     <!-- Add Project Modal -->
     <div id="add-modal" class="modal-overlay" onclick="closeModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-modalTitle">Добавить приложение</h3>
+            <h3 id="t-modalTitle" data-i18n="addApp">Добавить приложение</h3>
             <div class="form-group">
-                <label class="form-label" id="t-appName">Название приложения</label>
-                <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="Super Taks Tracker (до 30 символов)">
+                <label class="form-label" id="t-appName" data-i18n="appName">Название приложения</label>
+                <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="" data-i18n-placeholder="appNamePlaceholder">
             </div>
             <div class="form-group">
-                <label class="form-label" id="t-packageName">Ссылка на Google Play</label>
-                <input type="text" id="app-package" class="form-input" placeholder="https://play.google.com/store/apps/details?id=com.example.app">
+                <label class="form-label" id="t-packageName" data-i18n="packageName">Ссылка на Google Play</label>
+                <input type="text" id="app-package" class="form-input" placeholder="" data-i18n-placeholder="playLinkPlaceholder">
                 <div id="package-error" style="color: #ff3b30; font-size: 13px; margin-top: 8px; display: none;"></div>
             </div>
             <div class="form-group">
-                <label class="form-label" id="t-googleGroup">Ссылка на Google Group</label>
+                <label class="form-label" id="t-googleGroup" data-i18n="googleGroup">Ссылка на Google Group</label>
                 <div class="seg-control">
-                    <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')">Standard</button>
-                    <button type="button" class="seg-btn" id="seg-custom" onclick="switchGroupTab('custom')">Custom</button>
+                    <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')" data-i18n="groupStandard">Standard</button>
+                    <button type="button" class="seg-btn" id="seg-custom" onclick="switchGroupTab('custom')" data-i18n="groupCustom">Custom</button>
                 </div>
                 <div id="group-standard-block">
                     <div style="display: flex; align-items: center; gap: 8px; background: var(--secondary-bg-color); padding: 12px; border-radius: 8px;">
                         <span style="font-size: 14px; color: var(--link-color); font-weight: 500; word-break: break-all;">google-play-dev-test@googlegroups.com</span>
                         <button type="button" class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; flex-shrink: 0;" onclick="copyEmail()">📋</button>
                     </div>
-                    <div class="form-hint helper-quote" id="t-groupHint" style="margin-top: 8px;">Добавьте эту группу как тестера в Play Console</div>
+                    <div class="form-hint helper-quote" id="t-groupHint" style="margin-top: 8px;" data-i18n="standardGroupHint">Добавьте эту группу как тестера в Play Console</div>
                 </div>
                 <div id="group-custom-block" style="display: none;">
-                    <input type="url" id="app-group" class="form-input" placeholder="https://groups.google.com/g/your-group">
+                    <input type="url" id="app-group" class="form-input" placeholder="" data-i18n-placeholder="groupUrlPlaceholder">
                 </div>
             </div>
             <div class="form-group">
-                <label class="form-label" id="t-modeLabel">Режим проекта</label>
-                <div class="form-hint" id="t-modeHint">Выберите, где хотите набирать тестеров: взаимно, платно или в обоих каналах.</div>
+                <label class="form-label" id="t-modeLabel" data-i18n="modeLabel">Режим проекта</label>
+                <div class="form-hint" id="t-modeHint" data-i18n="modeHint">Выберите, где хотите набирать тестеров: взаимно, платно или в обоих каналах.</div>
                 <input type="hidden" id="app-mode" value="mutual">
                 <div class="seg-control">
-                    <button type="button" class="seg-btn active" id="add-mode-mutual" onclick="setProjectMode('add', 'mutual')">🤝 Взаимно</button>
-                    <button type="button" class="seg-btn" id="add-mode-bounty" onclick="setProjectMode('add', 'bounty')">💎 Биржа</button>
-                    <button type="button" class="seg-btn" id="add-mode-hybrid" onclick="setProjectMode('add', 'hybrid')">🔥 Гибрид</button>
+                    <button type="button" class="seg-btn active" id="add-mode-mutual" onclick="setProjectMode('add', 'mutual')" data-i18n="modeMutual">🤝 Взаимно</button>
+                    <button type="button" class="seg-btn" id="add-mode-bounty" onclick="setProjectMode('add', 'bounty')" data-i18n="modeBounty">💎 Биржа</button>
+                    <button type="button" class="seg-btn" id="add-mode-hybrid" onclick="setProjectMode('add', 'hybrid')" data-i18n="modeHybrid">🔥 Гибрид</button>
                 </div>
             </div>
             <div id="add-mutual-settings" class="reveal-panel active">
                 <div class="form-surface">
-                    <div class="form-section-title" id="t-mutualSettingsTitle">🤝 Взаимные тестеры</div>
+                    <div class="form-section-title" id="t-mutualSettingsTitle" data-i18n="mutualSettingsTitle">🤝 Взаимные тестеры</div>
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label" id="t-limitMutualLabel">Лимит взаимных тестеров</label>
+                        <label class="form-label" id="t-limitMutualLabel" data-i18n="limitMutualLabel">Лимит взаимных тестеров</label>
                         <input type="number" id="app-limit-mutual" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('add')">
-                        <div class="form-hint" id="t-limitMutualHint" style="margin-top: 8px; margin-bottom: 0;">Сколько тестеров можно набрать через взаимный обмен.</div>
+                        <div class="form-hint" id="t-limitMutualHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitMutualHint">Сколько тестеров можно набрать через взаимный обмен.</div>
                     </div>
                 </div>
             </div>
             <div id="add-bounty-settings" class="reveal-panel">
                 <div class="form-surface">
-                    <div class="form-section-title" id="t-bountySettingsTitle">💎 Платные тестеры</div>
+                    <div class="form-section-title" id="t-bountySettingsTitle" data-i18n="bountySettingsTitle">💎 Платные тестеры</div>
                     <div style="background: rgba(52,199,89,0.12); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
                         <span style="font-size: 16px; font-weight: 700; color: var(--link-color);" id="add-balance-badge">💎 </span>
                         <span style="font-size: 15px; font-weight: 600; color: var(--text-color);" id="add-balance-badge-value"></span>
                     </div>
                     <div class="form-inline">
                         <div class="form-group">
-                            <label class="form-label" id="t-limitBountyLabel">Сколько тестеров нанять?</label>
+                            <label class="form-label" id="t-limitBountyLabel" data-i18n="limitBountyLabel">Сколько тестеров нанять?</label>
                             <input type="number" id="app-limit-bounty" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('add')">
-                            <div class="form-hint" id="t-limitBountyHint" style="margin-top: 8px; margin-bottom: 0;">Сколько слотов откроется в Бирже.</div>
+                            <div class="form-hint" id="t-limitBountyHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitBountyHint">Сколько слотов откроется в Бирже.</div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" id="t-bountyPerTesterLabel">Награда одному тестеру</label>
+                            <label class="form-label" id="t-bountyPerTesterLabel" data-i18n="bountyPerTesterLabel">Награда одному тестеру</label>
                             <input type="number" id="app-bounty-per-tester" class="form-input" min="100" step="1" value="100" oninput="updateProjectPricing('add')">
-                            <div class="form-hint" id="t-bountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;">Минимум 100 $BUST за одного тестера.</div>
+                            <div class="form-hint" id="t-bountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="bountyPerTesterHint">Минимум 100 $BUST за одного тестера.</div>
                         </div>
                     </div>
                     <div class="calc-card">
-                        <div class="calc-title" id="t-calculatorTitle">Калькулятор $BUST</div>
-                        <div class="calc-row"><span id="t-calcRewardPerTester">Награда на 1 тестера</span><span id="add-calc-per-tester">100 $BUST</span></div>
-                        <div class="calc-row"><span id="t-calcDailyShare">Ежедневные чекины (40%)</span><span id="add-calc-daily">40 $BUST</span></div>
-                        <div class="calc-row"><span id="t-calcHoldBonus">Hold Bonus (60%)</span><span id="add-calc-hold">60 $BUST</span></div>
-                        <div class="calc-row total"><span id="t-calcTotalCost">Всего спишется</span><span id="add-calc-total">1200 $BUST</span></div>
+                        <div class="calc-title" id="t-calculatorTitle" data-i18n="calculatorTitle">Калькулятор $BUST</div>
+                        <div class="calc-row"><span id="t-calcRewardPerTester" data-i18n="calcRewardPerTester">Награда на 1 тестера</span><span id="add-calc-per-tester">100 $BUST</span></div>
+                        <div class="calc-row"><span id="t-calcDailyShare" data-i18n="calcDailyShare">Ежедневные чекины (40%)</span><span id="add-calc-daily">40 $BUST</span></div>
+                        <div class="calc-row"><span id="t-calcHoldBonus" data-i18n="calcHoldBonus">Hold Bonus (60%)</span><span id="add-calc-hold">60 $BUST</span></div>
+                        <div class="calc-row total"><span id="t-calcTotalCost" data-i18n="calcTotalCost">Всего спишется</span><span id="add-calc-total">1200 $BUST</span></div>
                     </div>
                 </div>
             </div>
             <details style="margin-bottom: 16px;">
-                <summary style="font-size: 14px; font-weight: 500; color: var(--link-color); cursor: pointer; outline: none; list-style: none; display: flex; justify-content: space-between; align-items: center;" id="t-optionalSettings"><span id="t-optionalSettingsText">⚙️ Дополнительные настройки (необязательно)</span><span class="details-arrow">▼</span></summary>
+                <summary style="font-size: 14px; font-weight: 500; color: var(--link-color); cursor: pointer; outline: none; list-style: none; display: flex; justify-content: space-between; align-items: center;" id="t-optionalSettings"><span id="t-optionalSettingsText" data-i18n="optionalSettings">⚙️ Дополнительные настройки (необязательно)</span><span class="details-arrow">▼</span></summary>
                 <div class="form-group" style="margin-top: 12px;">
-                    <label class="form-label" id="t-iconUrl">Ссылка на иконку</label>
-                    <input type="url" id="app-icon" class="form-input" placeholder="https://example.com/icon.png">
+                    <label class="form-label" id="t-iconUrl" data-i18n="iconUrl">Ссылка на иконку</label>
+                    <input type="url" id="app-icon" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder">
                 </div>
                 <div class="form-group">
-                    <label class="form-label" id="t-instructions">Инструкции</label>
-                    <textarea id="app-instructions" class="form-input" rows="3" style="resize: none;" maxlength="1000" placeholder="Дайте любые инструкции (до 1000 символов)"></textarea>
+                    <label class="form-label" id="t-instructions" data-i18n="instructions">Инструкции</label>
+                    <textarea id="app-instructions" class="form-input" rows="3" style="resize: none;" maxlength="1000" placeholder="" data-i18n-placeholder="instPlaceholder"></textarea>
                     <div id="chips-instructions" class="chip-scroll"></div>
                 </div>
             </details>
-            <button class="btn btn-primary" onclick="saveProject()" id="t-save">Сохранить</button>
+            <button class="btn btn-primary" onclick="saveProject()" id="t-save" data-i18n="save">Сохранить</button>
         </div>
     </div>
 
     <!-- Delete Project Modal -->
     <div id="delete-modal" class="modal-overlay" onclick="closeDeleteModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-deleteModalTitle">Завершить проект?</h3>
+            <h3 id="t-deleteModalTitle" data-i18n="deleteModalTitle">Завершить проект?</h3>
             <div class="form-group">
-                <label class="form-label" id="t-deleteMessageLabel">Напишите пару слов благодарности тестерам (необязательно)...</label>
-                <textarea id="delete-message" class="form-input" rows="3" placeholder="Спасибо за помощь!"></textarea>
+                <label class="form-label" id="t-deleteMessageLabel" data-i18n="deleteMessageLabel">Напишите пару слов благодарности тестерам (необязательно)...</label>
+                <textarea id="delete-message" class="form-input" rows="3" placeholder="" data-i18n-placeholder="deleteMessagePlaceholder"></textarea>
             </div>
             <div class="action-row">
-                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeDeleteModal()" id="t-cancelDelete">Отмена</button>
-                <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="confirmDeleteProject()" id="t-confirmDeleteBtn">Завершить и удалить</button>
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeDeleteModal()" id="t-cancelDelete" data-i18n="cancelDelete">Отмена</button>
+                <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="confirmDeleteProject()" id="t-confirmDeleteBtn" data-i18n="confirmDeleteBtn">Завершить и удалить</button>
             </div>
         </div>
     </div>
@@ -1501,15 +1502,15 @@
     <!-- Email Warning Modal -->
     <div id="email-warning-modal" class="modal-overlay" onclick="closeEmailWarningModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-emailWarningTitle">⚠️ Внимание</h3>
-            <p id="t-emailWarningText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; margin-bottom: 16px;">⚠️ Вы не указали свою Google Группу. Будет использована стандартная. Вы точно добавили почту этой группы в вашу Play Console? Без этого тестеры получат ошибку.</p>
+            <h3 id="t-emailWarningTitle" data-i18n="emailWarningTitle">⚠️ Внимание</h3>
+            <p id="t-emailWarningText" data-i18n="emailWarningText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; margin-bottom: 16px;">⚠️ Вы не указали свою Google Группу. Будет использована стандартная. Вы точно добавили почту этой группы в вашу Play Console? Без этого тестеры получат ошибку.</p>
             <div style="display: flex; align-items: center; gap: 8px; background: var(--secondary-bg-color); padding: 12px; border-radius: 12px; margin-bottom: 16px;">
                 <span style="font-size: 14px; color: var(--link-color); font-weight: 500; word-break: break-all;">google-play-dev-test@googlegroups.com</span>
                 <button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; flex-shrink: 0;" onclick="copyEmail()">📋</button>
             </div>
             <div class="action-row">
-                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEmailWarningModal()" id="t-emailWarningCancel">❌ Отмена</button>
-                <button class="btn btn-success" style="flex: 1;" onclick="confirmEmailWarning()" id="t-emailWarningYes">✅ Да, добавил (Создать)</button>
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEmailWarningModal()" id="t-emailWarningCancel" data-i18n="emailWarningCancel">❌ Отмена</button>
+                <button class="btn btn-success" style="flex: 1;" onclick="confirmEmailWarning()" id="t-emailWarningYes" data-i18n="emailWarningYes">✅ Да, добавил (Создать)</button>
             </div>
         </div>
     </div>
@@ -1517,89 +1518,89 @@
     <!-- Invite Modal -->
     <div id="invite-modal" class="modal-overlay" onclick="closeInviteModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
-            <h3 id="t-inviteModalTitle">Пригласить тестеров</h3>
+            <h3 id="t-inviteModalTitle" data-i18n="inviteModalTitle">Пригласить тестеров</h3>
             <div id="invite-modal-body"></div>
-            <button class="btn btn-secondary" style="margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeInviteModal()" id="t-inviteClose">Закрыть</button>
+            <button class="btn btn-secondary" style="margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeInviteModal()" id="t-inviteClose" data-i18n="inviteClose">Закрыть</button>
         </div>
     </div>
 
     <!-- Edit Project Modal -->
     <div id="edit-project-modal" class="modal-overlay" onclick="closeEditModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-editProjectTitle">Редактировать проект</h3>
+            <h3 id="t-editProjectTitle" data-i18n="editProjectTitle">Редактировать проект</h3>
             <div class="form-group">
-                <label class="form-label" id="t-editName">Название</label>
+                <label class="form-label" id="t-editName" data-i18n="appName">Название</label>
                 <input type="text" id="edit-name" class="form-input">
             </div>
             <div class="form-group">
-                <label class="form-label" id="t-editDescription">Инструкции</label>
-                <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000"></textarea>
+                <label class="form-label" id="t-editDescription" data-i18n="instructions">Инструкции</label>
+                <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000" data-i18n-placeholder="instPlaceholder"></textarea>
                 <div id="chips-edit-instructions" class="chip-scroll"></div>
             </div>
             <div class="form-group">
-                <label class="form-label" id="t-editIconUrl">Ссылка на иконку</label>
+                <label class="form-label" id="t-editIconUrl" data-i18n="iconUrl">Ссылка на иконку</label>
                 <input type="url" id="edit-icon" class="form-input">
             </div>
             <div class="form-group">
-                <label class="form-label" id="t-editPackage">Пакет (Play Store Link)</label>
+                <label class="form-label" id="t-editPackage" data-i18n="editPackage">Пакет (Play Store Link)</label>
                 <input type="text" id="edit-package" class="form-input" readonly style="background-color: rgba(142, 142, 147, 0.15); cursor: not-allowed;" onclick="showReadonlyAlert()">
             </div>
             <div class="form-group">
-                <label class="form-label" id="t-editGroup">Ссылка на Google Group</label>
+                <label class="form-label" id="t-editGroup" data-i18n="googleGroup">Ссылка на Google Group</label>
                 <input type="text" id="edit-group" class="form-input" readonly style="background-color: rgba(142, 142, 147, 0.15); cursor: not-allowed;" onclick="showReadonlyAlert()">
             </div>
             <div class="form-group">
-                <label class="form-label" id="t-editModeLabel">Режим проекта</label>
-                <div class="form-hint" id="t-editModeHint">Можно менять режим и квоты, а при росте бюджета система спишет только разницу.</div>
+                <label class="form-label" id="t-editModeLabel" data-i18n="modeLabel">Режим проекта</label>
+                <div class="form-hint" id="t-editModeHint" data-i18n="editModeHint">Можно менять режим и квоты, а при росте бюджета система спишет только разницу.</div>
                 <input type="hidden" id="edit-mode" value="mutual">
                 <div class="seg-control">
-                    <button type="button" class="seg-btn active" id="edit-mode-mutual" onclick="setProjectMode('edit', 'mutual')">🤝 Взаимно</button>
-                    <button type="button" class="seg-btn" id="edit-mode-bounty" onclick="setProjectMode('edit', 'bounty')">💎 Биржа</button>
-                    <button type="button" class="seg-btn" id="edit-mode-hybrid" onclick="setProjectMode('edit', 'hybrid')">🔥 Гибрид</button>
+                    <button type="button" class="seg-btn active" id="edit-mode-mutual" onclick="setProjectMode('edit', 'mutual')" data-i18n="modeMutual">🤝 Взаимно</button>
+                    <button type="button" class="seg-btn" id="edit-mode-bounty" onclick="setProjectMode('edit', 'bounty')" data-i18n="modeBounty">💎 Биржа</button>
+                    <button type="button" class="seg-btn" id="edit-mode-hybrid" onclick="setProjectMode('edit', 'hybrid')" data-i18n="modeHybrid">🔥 Гибрид</button>
                 </div>
             </div>
             <div id="edit-mutual-settings" class="reveal-panel active">
                 <div class="form-surface">
-                    <div class="form-section-title" id="t-editMutualSettingsTitle">🤝 Взаимные тестеры</div>
+                    <div class="form-section-title" id="t-editMutualSettingsTitle" data-i18n="mutualSettingsTitle">🤝 Взаимные тестеры</div>
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label" id="t-editLimitMutualLabel">Лимит взаимных тестеров</label>
+                        <label class="form-label" id="t-editLimitMutualLabel" data-i18n="limitMutualLabel">Лимит взаимных тестеров</label>
                         <input type="number" id="edit-limit-mutual" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('edit')">
-                        <div class="form-hint" id="t-editLimitMutualHint" style="margin-top: 8px; margin-bottom: 0;">Изменяет лимит набора по взаимке.</div>
+                        <div class="form-hint" id="t-editLimitMutualHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitMutualHint">Изменяет лимит набора по взаимке.</div>
                     </div>
                 </div>
             </div>
             <div id="edit-bounty-settings" class="reveal-panel">
                 <div class="form-surface">
-                    <div class="form-section-title" id="t-editBountySettingsTitle">💎 Платные тестеры</div>
+                    <div class="form-section-title" id="t-editBountySettingsTitle" data-i18n="bountySettingsTitle">💎 Платные тестеры</div>
                     <div style="background: rgba(52,199,89,0.12); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
                         <span style="font-size: 16px; font-weight: 700; color: var(--link-color);" id="edit-balance-badge">💎 </span>
                         <span style="font-size: 15px; font-weight: 600; color: var(--text-color);" id="edit-balance-badge-value"></span>
                     </div>
                     <div class="form-inline">
                         <div class="form-group">
-                            <label class="form-label" id="t-editLimitBountyLabel">Сколько тестеров нанять?</label>
+                            <label class="form-label" id="t-editLimitBountyLabel" data-i18n="limitBountyLabel">Сколько тестеров нанять?</label>
                             <input type="number" id="edit-limit-bounty" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('edit')">
-                            <div class="form-hint" id="t-editLimitBountyHint" style="margin-top: 8px; margin-bottom: 0;">Сколько слотов открыто в Бирже.</div>
+                            <div class="form-hint" id="t-editLimitBountyHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitBountyHint">Сколько слотов открыто в Бирже.</div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" id="t-editBountyPerTesterLabel">Награда одному тестеру</label>
+                            <label class="form-label" id="t-editBountyPerTesterLabel" data-i18n="bountyPerTesterLabel">Награда одному тестеру</label>
                             <input type="number" id="edit-bounty-per-tester" class="form-input" min="100" step="1" value="100" oninput="updateProjectPricing('edit')">
-                            <div class="form-hint" id="t-editBountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;">Минимум 100 $BUST.</div>
+                            <div class="form-hint" id="t-editBountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="bountyPerTesterHint">Минимум 100 $BUST.</div>
                         </div>
                     </div>
                     <div class="calc-card">
-                        <div class="calc-title" id="t-editCalculatorTitle">Калькулятор $BUST</div>
-                        <div class="calc-row"><span id="t-editCalcRewardPerTester">Награда на 1 тестера</span><span id="edit-calc-per-tester">100 $BUST</span></div>
-                        <div class="calc-row"><span id="t-editCalcDailyShare">Ежедневные чекины (40%)</span><span id="edit-calc-daily">40 $BUST</span></div>
-                        <div class="calc-row"><span id="t-editCalcHoldBonus">Hold Bonus (60%)</span><span id="edit-calc-hold">60 $BUST</span></div>
-                        <div class="calc-row total"><span id="t-editCalcTotalCost">Всего спишется</span><span id="edit-calc-total">1200 $BUST</span></div>
+                        <div class="calc-title" id="t-editCalculatorTitle" data-i18n="calculatorTitle">Калькулятор $BUST</div>
+                        <div class="calc-row"><span id="t-editCalcRewardPerTester" data-i18n="calcRewardPerTester">Награда на 1 тестера</span><span id="edit-calc-per-tester">100 $BUST</span></div>
+                        <div class="calc-row"><span id="t-editCalcDailyShare" data-i18n="calcDailyShare">Ежедневные чекины (40%)</span><span id="edit-calc-daily">40 $BUST</span></div>
+                        <div class="calc-row"><span id="t-editCalcHoldBonus" data-i18n="calcHoldBonus">Hold Bonus (60%)</span><span id="edit-calc-hold">60 $BUST</span></div>
+                        <div class="calc-row total"><span id="t-editCalcTotalCost" data-i18n="calcTotalCost">Всего спишется</span><span id="edit-calc-total">1200 $BUST</span></div>
                     </div>
                 </div>
             </div>
             <div id="edit-created-at" style="font-size: 12px; color: var(--hint-color); opacity: 0.75; margin: 6px 2px 12px 2px;"></div>
             <div class="action-row">
-                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEditModal()" id="t-editCancel">Отмена</button>
-                <button class="btn btn-primary" style="flex: 1;" onclick="saveProjectEdit()" id="t-editSave">Сохранить</button>
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEditModal()" id="t-editCancel" data-i18n="editCancel">Отмена</button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="saveProjectEdit()" id="t-editSave" data-i18n="save">Сохранить</button>
             </div>
         </div>
     </div>
@@ -1615,17 +1616,17 @@
     <!-- Karma Reward Modal -->
     <div id="karma-modal" class="modal-overlay" onclick="closeKarmaModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="karma-modal-title">☯️ Награда тестеру</h3>
-            <p id="karma-modal-desc" style="font-size: 13px; color: var(--hint-color); margin-bottom: 0;">"Выберите тип награды. Карма поможет тестеру продвигать его проекты."</p>
+            <h3 id="karma-modal-title" data-i18n="karmaModalTitle">☯️ Награда тестеру</h3>
+            <p id="karma-modal-desc" data-i18n="karmaModalDesc" style="font-size: 13px; color: var(--hint-color); margin-bottom: 0;">"Выберите тип награды. Карма поможет тестеру продвигать его проекты."</p>
             <div class="karma-btn-row">
                 <button class="karma-btn-big" onclick="selectKarmaReward('good')">
                     <span class="karma-emoji">👍</span>
-                    <span class="karma-label" id="karma-btn-good">Хороший тестер</span>
+                    <span class="karma-label" id="karma-btn-good" data-i18n="karmaModalGood">Хороший тестер</span>
                     <span class="karma-sub">+1 ☯️</span>
                 </button>
                 <button class="karma-btn-big" onclick="selectKarmaReward('bug')">
                     <span class="karma-emoji">💡</span>
-                    <span class="karma-label" id="karma-btn-bug">Ценный фидбек / Баг</span>
+                    <span class="karma-label" id="karma-btn-bug" data-i18n="karmaModalBug">Ценный фидбек / Баг</span>
                     <span class="karma-sub">+2 ☯️</span>
                 </button>
             </div>
@@ -1636,40 +1637,40 @@
     <div id="custom-alert-overlay" onclick="closeCustomAlert(event)">
         <div class="custom-alert-box" onclick="event.stopPropagation()">
             <div class="custom-alert-text" id="custom-alert-text"></div>
-            <button class="custom-alert-close" onclick="closeCustomAlert()">OK</button>
+            <button class="custom-alert-close" onclick="closeCustomAlert()" data-i18n="customAlertOk"></button>
         </div>
     </div>
 
     <!-- Report Modal -->
     <div id="report-modal" class="modal-overlay" onclick="closeReportModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-reportModalTitle">📸 Отправка отчёта</h3>
-            <p id="t-reportModalHint" style="color: #ff9500; font-size: 14px; font-weight: 600; line-height: 1.4; margin-bottom: 12px;">Не забудьте прикрепить сам скриншот, когда откроется Telegram!</p>
+            <h3 id="t-reportModalTitle" data-i18n="reportModalTitle">📸 Отправка отчёта</h3>
+            <p id="t-reportModalHint" data-i18n="reportModalHint" style="color: #ff9500; font-size: 14px; font-weight: 600; line-height: 1.4; margin-bottom: 12px;">Не забудьте прикрепить сам скриншот, когда откроется Telegram!</p>
             <div class="form-group">
                 <textarea id="report-text" class="form-input" rows="4" style="resize: none;"></textarea>
                 <div id="chips-report" class="chip-scroll" style="margin-top: 8px;"></div>
             </div>
-            <button class="btn btn-primary" id="t-reportBtnSend" onclick="sendReport()">💬 Открыть чат</button>
+            <button class="btn btn-primary" id="t-reportBtnSend" onclick="sendReport()" data-i18n="reportBtnSend">💬 Открыть чат</button>
         </div>
     </div>
 
     <!-- Contact Developer Modal -->
     <div id="contact-modal" class="modal-overlay" onclick="closeContactModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-contactTitle">Связаться с разработчиком</h3>
+            <h3 id="t-contactTitle" data-i18n="contactTitle">Связаться с разработчиком</h3>
             <div class="form-group">
                 <textarea id="contact-text" class="form-input" rows="4"></textarea>
             </div>
             <div class="chip-scroll" style="margin-bottom: 12px;">
-                <button class="chip" id="contact-chip-mutual" onclick="resetContactText()">🔄 Предложить взаимку</button>
-                <button class="chip" id="contact-chip-attach" onclick="toggleAttachProject()">🔗 Прикрепить мой проект</button>
+                <button class="chip" id="contact-chip-mutual" onclick="resetContactText()" data-i18n="contactChipMutual">🔄 Предложить взаимку</button>
+                <button class="chip" id="contact-chip-attach" onclick="toggleAttachProject()" data-i18n="contactChipAttach">🔗 Прикрепить мой проект</button>
             </div>
             <div id="attach-project-container" style="display: none; margin-bottom: 12px;">
                 <select id="attach-project-select" class="form-input" onchange="onProjectSelected()">
-                    <option value="">-- Выберите проект --</option>
+                    <option value="" data-i18n="contactSelectPlaceholder"></option>
                 </select>
             </div>
-            <button class="btn btn-primary" id="t-contactSendBtn" onclick="sendContactMessage()">Отправить (Telegram)</button>
+            <button class="btn btn-primary" id="t-contactSendBtn" onclick="sendContactMessage()" data-i18n="contactSendBtn">Отправить (Telegram)</button>
         </div>
     </div>
 
@@ -1688,44 +1689,44 @@
             <h3 id="t-reliabilityInfoTitle"></h3>
             <p id="t-reliabilityInfoText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 20px; text-align: left;"></p>
             <div class="action-row">
-                <button class="btn" style="flex: 1;" onclick="closeReliabilityInfo()" id="t-btnClose">Понятно</button>
+                <button class="btn" style="flex: 1;" onclick="closeReliabilityInfo()" id="t-btnClose" data-i18n="btnClose">Понятно</button>
             </div>
         </div>
     </div>
 
     <div id="drop-test-modal" class="modal-overlay" onclick="closeDropTestModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-dropTestTitle">🗑️ Отказаться</h3>
+            <h3 id="t-dropTestTitle" data-i18n="dropTestTitle">🗑️ Отказаться</h3>
             <p id="t-dropTestWarning" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 20px;"></p>
             <div class="action-row">
-                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeDropTestModal()" id="t-btnCancel">Отмена</button>
-                <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="confirmDropTest()" id="t-btnDrop">Отказаться</button>
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeDropTestModal()" id="t-btnCancel" data-i18n="btnCancel">Отмена</button>
+                <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="confirmDropTest()" id="t-btnDrop" data-i18n="btnDrop">Отказаться</button>
             </div>
         </div>
     </div>
 
     <div id="overtime-modal" class="modal-overlay" onclick="closeOvertimeModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-overtimeModalTitle">Овертайм: завершить тест?</h3>
+            <h3 id="t-overtimeModalTitle" data-i18n="overtimeModalTitle">Овертайм: завершить тест?</h3>
             <p id="t-overtimeModalText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 18px;"></p>
             <div class="action-row" style="margin-top: 0;">
-                <button class="btn btn-secondary" style="flex: 1;" id="t-overtimeContactBtn" onclick="overtimeContactOwner()">💬 Написать разработчику</button>
-                <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" id="t-overtimeLeaveBtn" onclick="confirmOvertimeLeave()">🚪 Покинуть проект</button>
+                <button class="btn btn-secondary" style="flex: 1;" id="t-overtimeContactBtn" onclick="overtimeContactOwner()" data-i18n="overtimeContactBtn">💬 Написать разработчику</button>
+                <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" id="t-overtimeLeaveBtn" onclick="confirmOvertimeLeave()" data-i18n="overtimeLeaveConfirmBtn">🚪 Покинуть проект</button>
             </div>
-            <button class="btn btn-secondary" style="width:100%; margin-top: 8px;" onclick="closeOvertimeModal()" id="t-overtimeCancelBtn">Отмена</button>
+            <button class="btn btn-secondary" style="width:100%; margin-top: 8px;" onclick="closeOvertimeModal()" id="t-overtimeCancelBtn" data-i18n="btnCancel">Отмена</button>
         </div>
     </div>
 
     <div id="sync-modal" class="modal-overlay" onclick="closeSyncModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-syncModalTitle">Синхронизация проекта</h3>
-            <label id="t-syncDayLabel" style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">Google Sync Day</label>
+            <h3 id="t-syncModalTitle" data-i18n="syncModalTitle">Синхронизация проекта</h3>
+            <label id="t-syncDayLabel" data-i18n="syncDayLabel" style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">Google Sync Day</label>
             <input id="sync-day-input" class="form-input" type="number" min="1" step="1" style="margin-bottom: 12px;" />
-            <label id="t-syncMessageLabel" style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">Сообщение для тестеров</label>
-            <textarea id="sync-message-input" class="form-input" rows="4" style="resize: vertical; margin-bottom: 12px;"></textarea>
+            <label id="t-syncMessageLabel" data-i18n="syncMessageLabel" style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">Сообщение для тестеров</label>
+            <textarea id="sync-message-input" class="form-input" rows="4" style="resize: vertical; margin-bottom: 12px;" data-i18n-placeholder="syncMessagePlaceholder"></textarea>
             <div class="action-row" style="margin-top: 0;">
-                <button class="btn btn-secondary" style="flex: 1;" onclick="closeSyncModal()" id="t-syncCancelBtn">Отмена</button>
-                <button class="btn btn-primary" style="flex: 1;" onclick="saveProjectSync()" id="t-syncSaveBtn">Сохранить синхронизацию</button>
+                <button class="btn btn-secondary" style="flex: 1;" onclick="closeSyncModal()" id="t-syncCancelBtn" data-i18n="btnCancel">Отмена</button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="saveProjectSync()" id="t-syncSaveBtn" data-i18n="syncSaveBtn">Сохранить синхронизацию</button>
             </div>
         </div>
     </div>
@@ -1733,19 +1734,19 @@
     <!-- Earn $BUST Modal -->
     <div id="earn-bust-modal" class="modal-overlay" onclick="closeEarnBustModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-earnTitle">💎 Заработать $BUST</h3>
-            <p id="t-earnDesc" style="font-size: 13px; color: var(--hint-color); margin-bottom: 14px;">Способы получить $BUST на платформе.</p>
+            <h3 id="t-earnTitle" data-i18n="earnTitle">💎 Заработать $BUST</h3>
+            <p id="t-earnDesc" data-i18n="earnDesc" style="font-size: 13px; color: var(--hint-color); margin-bottom: 14px;">Способы получить $BUST на платформе.</p>
 
             <!-- Referral Section -->
             <div class="card" style="margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                     <span style="font-size: 20px;">🎁</span>
-                    <span style="font-weight: 700; font-size: 15px;" id="t-earnReferralTitle">Пригласи тестера</span>
+                    <span style="font-weight: 700; font-size: 15px;" id="t-earnReferralTitle" data-i18n="earnReferralTitle">Пригласи тестера</span>
                 </div>
-                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" id="t-earnReferralDesc">Делитесь инвайт-ссылкой на ваше приложение. Когда приглашённый тестер сделает первый чекин, вы получите 50 $BUST.</p>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" id="t-earnReferralDesc" data-i18n="earnReferralDesc">Делитесь инвайт-ссылкой на ваше приложение. Когда приглашённый тестер сделает первый чекин, вы получите 50 $BUST.</p>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                     <span class="meta-chip accent-green" id="earn-referrals-count">👥 0</span>
-                    <span style="font-size: 13px; color: var(--hint-color);" id="t-earnReferralCountLabel">рефералов</span>
+                    <span style="font-size: 13px; color: var(--hint-color);" id="t-earnReferralCountLabel" data-i18n="earnReferralCountLabel">рефералов</span>
                 </div>
             </div>
 
@@ -1753,9 +1754,9 @@
             <div class="card" style="margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                     <span style="font-size: 20px;">🏆</span>
-                    <span style="font-weight: 700; font-size: 15px;" id="t-earnGrantTitle">Грант: Золотой Тестер</span>
+                    <span style="font-weight: 700; font-size: 15px;" id="t-earnGrantTitle" data-i18n="earnGrantTitle">Грант: Золотой Тестер</span>
                 </div>
-                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" id="t-earnGrantDesc">Многоразовый грант за успешное тестирование. База: 50 $BUST. Бонус кармы: ☯️×5. Идеальный тест: +50. До 200 $BUST!</p>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" id="t-earnGrantDesc" data-i18n="earnGrantDesc">Многоразовый грант за успешное тестирование. База: 50 $BUST. Бонус кармы: ☯️×5. Идеальный тест: +50. До 200 $BUST!</p>
                 <div id="earn-grant-status"></div>
             </div>
 
@@ -1763,9 +1764,9 @@
             <div class="card" style="margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                     <span style="font-size: 20px;">📢</span>
-                    <span style="font-weight: 700; font-size: 15px;" id="t-earnSocialTitle">Социальные сети</span>
+                    <span style="font-weight: 700; font-size: 15px;" id="t-earnSocialTitle" data-i18n="earnSocialTitle">Социальные сети</span>
                 </div>
-                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" id="t-earnSocialDesc">Размести пост о DevTestHub с #DevTestHub #12testersGooglePlay, пришли ссылку и получи 1500 $BUST!</p>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" id="t-earnSocialDesc" data-i18n="earnSocialDesc">Размести пост о DevTestHub с #DevTestHub #12testersGooglePlay, пришли ссылку и получи 1500 $BUST!</p>
                 <div id="earn-social-status"></div>
             </div>
 
@@ -1773,28 +1774,28 @@
             <div class="card">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                     <span style="font-size: 20px;">💎</span>
-                    <span style="font-weight: 700; font-size: 15px;" id="t-earnDailyTitle">Биржа</span>
+                    <span style="font-weight: 700; font-size: 15px;" id="t-earnDailyTitle" data-i18n="earnDailyTitle">Биржа</span>
                 </div>
-                <p style="font-size: 13px; color: var(--hint-color);" id="t-earnDailyDesc">Тестируйте приложения на Бирже и получайте $BUST за каждый чекин (40%) + Hold Bonus (60%).</p>
+                <p style="font-size: 13px; color: var(--hint-color);" id="t-earnDailyDesc" data-i18n="earnDailyDesc">Тестируйте приложения на Бирже и получайте $BUST за каждый чекин (40%) + Hold Bonus (60%).</p>
             </div>
 
-            <button class="btn btn-secondary" style="width: 100%; margin-top: 14px;" onclick="closeEarnBustModal()" id="t-earnClose">Закрыть</button>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 14px;" onclick="closeEarnBustModal()" id="t-earnClose" data-i18n="earnClose">Закрыть</button>
         </div>
     </div>
 
     <!-- Social Link Modal -->
     <div id="social-link-modal" class="modal-overlay" onclick="closeSocialModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-socialModalTitle">📢 Отправить ссылку</h3>
+            <h3 id="t-socialModalTitle" data-i18n="socialModalTitle">📢 Отправить ссылку</h3>
             <div class="card" style="margin-bottom: 14px;">
-                <p style="font-size: 13px; color: var(--hint-color);" id="t-socialModalTemplate">Привет! Я опубликовал пост о DevTestHub (12 Testers Google Play): [ВАША ССЫЛКА]. Жду проверку бонуса! #DevTestHub #12testersGooglePlay</p>
+                <p style="font-size: 13px; color: var(--hint-color);" id="t-socialModalTemplate" data-i18n="socialModalTemplate">Привет! Я опубликовал пост о DevTestHub (12 Testers Google Play): [ВАША ССЫЛКА]. Жду проверку бонуса! #DevTestHub #12testersGooglePlay</p>
             </div>
-            <label style="font-size: 13px; color: var(--hint-color); margin-bottom: 6px; display: block;" id="t-socialModalInputLabel">Ссылка на ваш пост:</label>
-            <input type="url" id="social-url-input" class="form-input" placeholder="https://..." style="margin-bottom: 14px;">
+            <label style="font-size: 13px; color: var(--hint-color); margin-bottom: 6px; display: block;" id="t-socialModalInputLabel" data-i18n="socialModalInputLabel">Ссылка на ваш пост:</label>
+            <input type="url" id="social-url-input" class="form-input" placeholder="" style="margin-bottom: 14px;" data-i18n-placeholder="socialUrlPlaceholder">
             <button class="btn btn-primary" style="width: 100%;" id="send-social-link-btn" disabled onclick="submitSocialLink()">
-                <span id="t-socialModalSendBtn">Открыть Чат и Отправить</span>
+                <span id="t-socialModalSendBtn" data-i18n="socialModalSendBtn">Открыть Чат и Отправить</span>
             </button>
-            <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeSocialModal()" id="t-socialModalCancel">Отмена</button>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeSocialModal()" id="t-socialModalCancel" data-i18n="socialModalCancel">Отмена</button>
         </div>
     </div>
 
@@ -1815,845 +1816,54 @@
         // API sync happens asynchronously after init
         let lang = localStorage.getItem('app_language') || ((Object.keys(initData).length > 0) ? ((langCode === 'ru') ? 'ru' : 'en') : 'ru');
 
-        const dict = {
-            ru: {
-                tabTests: "Мои тесты",
-                tabProjects: "Мои проекты",
-                tabMutual: "Бартер",
-                tabBounty: "Биржа",
-                mutualDesc: "Раздельные потоки взаимного обмена: активный набор и pre-launch.",
-                bountyDesc: "Контракты с оплатой в $BUST для быстрых подключений.",
-                mutualSeekingTitle: "🔥 Ищут обмен",
-                mutualPrelaunchTitle: "🚀 Pre-Launch",
-                mutualEmpty: "В этом разделе пока нет проектов",
-                bountyEmpty: "Контракты пока не найдены",
-                mutualJoinBtn: "🤝 Взять во взаимку",
-                prelaunchJoinBtn: "🚀 Войти в Pre-Launch",
-                bountyTakeBtn: "💎 Взять контракт",
-                scoreLabel: "Score",
-                testsDesc: "Приложения, которые вы должны открывать каждый день.",
-                projectsDesc: "Ваши приложения, которые тестируют другие.",
-                addApp: "+ Добавить приложение",
-                openPlay: "1️⃣ Открыть Google Play",
-                confirmStart: "2️⃣ Подтвердить запуск",
-                successCheckin: "✅ Успешно!",
-                checkinAlreadyDone: "✅ Чекин уже был засчитан сегодня",
-                checkinEarnBust: "✅ Чекин засчитан! Заработано: {amount} $BUST",
-                checkinEarnKarma: "✅ Чекин засчитан! Заработано: {amount} ☯️ Кармы",
-                loadingShowcase: "Загрузка биржи...",
-                retryBtn: "🔄 Повторить попытку",
-                loadError: "Не удалось загрузить данные",
-                leaveReview: "🌟 Оставить приватный отзыв",
-                claimReward: "🎁 Забрать награду и завершить",
-                doneToday: "✅ Выполнено сегодня",
-                doneTodayText: "✅ Выполнено на сегодня",
-                testersList: "Тестировщики",
-                noTesters: "Пока нет тестировщиков",
-                notOpenedYet: "Ещё не открывал",
-                appName: "Название приложения",
-                packageName: "Ссылка на Google Play",
-                googleGroup: "Ссылка на Google Group",
-                groupHint: "Вставьте свою или оставьте стандартную и в Play Console добавьте тестером эту группу: <span class=\"copyable-email\" onclick=\"copyEmail()\">google-play-dev-test@googlegroups.com 📋</span>",
-                copied: "Скопировано!",
-                joinGroup: "👥 1. Вступить в Google Group",
-                downloadPlay: "⬇️ 2. Скачать в Google Play",
-                iconUrl: "Ссылка на иконку (URL можно взять из Google Play)",
-                save: "Сохранить",
-                emptyTests: "Inbox Zero!",
-                emptyTestsDesc: "Вы открыли все приложения на сегодня. Возвращайтесь завтра!",
-                emptyProjects: "Добавьте свое первое приложение и отправьте инвайт-ссылку тестерам. Здесь появится сводка их ежедневной активности.",
-                fillFields: "Пожалуйста, заполните все поля.",
-                appNameTooLong: "Название приложения должно быть не длиннее 30 символов.",
-                bannerText: "Избавьтесь от хаоса в чатах! Контролируйте ежедневные запуски для 12 тестеров в одном месте и находите новые приложения для взаимного теста.",
-                availableTitle: "📱 Биржа проектов",
-                noAvailable: "Пока нет доступных приложений",
-                activeTesters: "Активных тестеров",
-                contactOwner: "Написать владельцу",
-                takeToTest: "Тестировать",
-                inviteLink: "Инвайт-ссылка",
-                deleteProject: "Завершить (Удалить)",
-                inviteCopied: "Ссылка скопирована! Отправьте её для взаимного теста.",
-                confirmDelete: "Вы уверены, что хотите удалить этот проект? Все данные о тестировщиках будут потеряны.",
-                deleteReminder: "⚠️ Пожалуйста, удаляйте проекты после успешного релиза в Google Play, чтобы не тратить время других тестеров впустую!",
-                deleteModalTitle: "Завершить проект?",
-                deleteMessageLabel: "Напишите пару слов благодарности тестерам (необязательно)...",
-                cancelDelete: "Отмена",
-                confirmDeleteBtn: "Завершить и удалить",
-                invalidPlayLink: "❌ Неверный формат. Ссылка должна выглядеть так: https://play.google.com/store/apps/details?id=com.example.app",
-                optionalSettings: "⚙️ Дополнительные настройки (необязательно)",
-                instructions: "Инструкции",
-                instPlaceholder: "Дайте любые инструкции (до 1000 символов)",
-                devInfo: "Доп. информация от разработчика 📌",
-                emailWarningTitle: "⚠️ Внимание",
-                emailWarningText: "⚠️ Вы не указали свою Google Группу. Будет использована стандартная. Вы точно добавили почту этой группы в вашу Play Console? Без этого тестеры получат ошибку.",
-                emailWarningYes: "✅ Да, добавил (Создать)",
-                emailWarningCancel: "❌ Отмена",
-                editProjectTitle: "Редактировать проект",
-                editPackage: "Пакет (Play Store Link)",
-                editCancel: "Отмена",
-                editAddedToPlatform: "🗓 Добавлен на платформу: {date} ({days} {days_word} назад)",
-                readonlyFieldAlert: "Эти данные нельзя изменить. Если вы допустили ошибку при вводе ссылок, удалите этот проект и создайте новый.",
-                screenshotBtn: "Отправить Скриншот и Завершить тест",
-                screenshotWarning: "⚠️ Сегодня день обязательного скриншота!",
-                screenshotDayAlert: "✅ День засчитан!\n\nЕсли вы не отправили скриншот с тестируемым приложением - сделайте это сейчас, что бы вас не залокировали. И возвращайтесь завтра для нового чекина.",
-                screenshotDayOwnerAlert: "У данного тестировщика сегодня день обязательного скриншота! Вы должны получить от него скриншот в личные сообщения.",
-                screenshotReminderTitle: "📸 Сегодня был обязательный день скриншота",
-                screenshotReminderText: "Если вы ещё не отправили разработчику скриншот запуска в личные сообщения, вернитесь в диалог и отправьте его. Повторные пропуски могут привести к блокировке.",
-                screenshotReminderBtn: "💬 Отправить скриншот",
-                screenshotCompleteClose: "Понятно",
-                inviteModalTitle: "Пригласить тестеров",
-                inviteClose: "Закрыть",
-                inviteBlock1Title: "📢 Опубликовать на нашей Бирже",
-                inviteBlock1Btn: "Скопировать и опубликовать",
-                inviteBlock2Title: "💬 Предложить взаимный тест в ЛС",
-                inviteBlock2Btn: "Скопировать и поделиться",
-                inviteBlock3Title: "🔗 Только инвайт-ссылка",
-                inviteBlock3Btn: "Скопировать и поделиться",
-                inviteDescLabel: "ℹ️ Описание: ",
-                inviteBlock1Text: "📱 Приложение: {name}{instr}\n🤖 Взять на тест (ссылка в трекер):\n👉 {link}\n\nБеру ваши проекты в ответ! Бот поможет не забывать про ежедневные клики и прозрачно проверять тестеров.",
-                inviteBlock2Text: "Привет! Взаимный тест? Мое приложение: {name}.\n\nЯ использую бота в TG для учета — не нужно каждый день списываться, бот всё трекает сам.\n\nДобавь свой проект в систему, присылай мне инвайт, я сразу возьму на тест!\n\nМоя ссылка: {link}",
-                // Segmented control
-                groupStandard: "Стандартная",
-                groupCustom: "Своя группа",
-                standardGroupHint: "Добавьте эту группу как тестера в Play Console",
-                // Status labels
-                statusNotOpened: "Ещё не открывал",
-                statusToday: "Сегодня",
-                statusYesterday: "Вчера",
-                statusDaysAgo: "дн. назад",
-                // Timer
-                timerRemaining: "⏳ Осталось {sec} сек...",
-                antiFraudAlert: "⚠️ Фейковые тесты ведут к блокировке!\n\nАлгоритмы Google Play учитывают качество сессий тестировщиков. Если вы просто кликаете по ссылке и сразу закрываете приложение — вы портите статистику и подставляете других разработчиков.\n\nПлатформа держится на честности. За «скликивание» и имитацию тестов мы выдаем перманентный бан без права восстановления.\n\nПока идет таймер, принесите реальную пользу: покликайте меню, найдите баг или оцените дизайн. За ценный фидбек разработчики дают Карму ☯️, которая поднимет уже ВАШИ проекты в ТОП витрины!",
-                confirmed: "✅ Засчитано!",
-                daysShort: "📅 {days} дн.",
-                testersShort: "👥 {count}",
-                myTestDayShort: "🧪 {days} день",
-                testDayExplain: "Вы тестируете это приложение {days}-й день из 14.\n\nДни обязательных скриншотов: 1, 7 и 14.\nВ эти дни необходимо отправить разработчику скриншот запуска приложения в личные сообщения.",
-                newBadgeUntil: "🆕 Новинка (до {date})",
-                newBadgeToast: "Приложение автоматически видно на бирже первые 72 часа после публикации. После этого видимость зависит от ваших активных тестов чужих приложений.",
-                disclaimerText: "⚠️ Платформа помогает выполнить базовое требование Google Play (12 тестеров на 14 дней), но не гарантирует успешную модерацию. Каждое приложение оценивается индивидуально, и итоговое решение зависит исключительно от внутренней политики и правил модерации Google.",
-                // Instruction chips
-                chipBrowse: "Пройдись по всем экранам",
-                chipScreenshot3: "Скриншот каждые 3 дня в ЛС",
-                chipJustOpen: "Просто открой на 15 сек",
-                chipTryFeatures: "Попробуй основные функции",
-                chipLeaveReview: "Оставь отзыв после релиза",
-                // Karma
-                karmaLabel: "☯️ Карма: {karma}",
-                karmaRewardGood: "👍 Хороший тестер",
-                karmaRewardBug: "💡 Ценный фидбек / Баг",
-                karmaToast: "☯️ Награда отправлена тестеру!",
-                karmaAlreadyLiked: "Вы уже наградили этого тестера за это приложение",
-                karmaLimitReached: "Лимит наград для этого приложения исчерпан",
-                karmaShowcase: "☯️ {karma}",
-                karmaPopupTitle: "Награда",
-                karmaPopupMessage: "Выберите тип награды для тестера.\n👍 = +1 ☯️  💡 = +2 ☯️",
-                karmaBreakdownTitle: "☯️ Карма: {karma}",
-                karmaBreakdownGood: "👍 Хороший тестер: {count}",
-                karmaBreakdownBug: "💡 Ценный фидбек: {count}",
-                // Chip tooltips
-                chipTooltipDays: "Приложение опубликовано {days} дн. назад",
-                chipTooltipTesters: "Сейчас {count} активных тестеров",
-                chipTooltipTestDay: "Вы тестируете {days}-й день из 14.\nДни скриншотов: 1, 7, 14.",
-                chipTooltipScreenshotDay: "📸 Сегодня день обязательного скриншота!",
-                // Progress bar
-                progressLabel: "{day}/14 дн.",
-                progressComplete: "🎉 Тест завершён!",
-                pulseTitle: "🌐 Пульс сообщества",
-                pulseLoading: "Загрузка...",
-                pulseEmpty: "Пока событий нет",
-                pulseExpand: "Развернуть ▼",
-                pulseCollapse: "Свернуть ▲",
-                timeJustNow: "только что",
-                timeMinAgo: "{count} мин.",
-                timeHourAgo: "{count} ч.",
-                timeDayAgo: "{count} дн.",
-                // Visibility system
-                visibilityPublic: "🟢 Видно на Бирже",
-                visibilityPrivate: "🔴 Скрыто из Биржи",
-                visibilityAllPublic: "🟢 Все приложения видны",
-                visibilityPartial: "🟡 Видно {visible} из {total}",
-                visibilityNone: "🔴 Не видно на Бирже",
-                visibilityHint: "Каждое ваше приложение требует 3 активных теста чужих приложений за 72ч. Новые приложения видны на бирже автоматически первые 3 дня.",
-                visibilityTitle: "📊 Панель разработчика",
-                activeTestsLabel: "Ваших активных тестов",
-                rankLabel: "Рейтинг: #{rank} из {total}",
-                newBadge: "🆕 Новинка",
-                topLabel: "TOP-{n}: {count} тестов",
-                // Bell notification
-                bellNotifyMsg: "Привет! 👀 Кажется, ты затерялся в матрице и забыл про ежедневный тест моего приложения «{name}»! Забегай в бота сделать спасительный чекин, пока Google нас не покарал 😅: https://t.me/Android12TestersBot",
-                // Delete tester
-                deleteTesterConfirm: "Удалить тестера @{name} из этого проекта?",
-                // Open button
-                openBtn: "📱 Открыть",
-                // Karma info popup
-                karmaInfoText: "☯️ Карма — это ваша репутация на платформе.\n\nЗа что дают:\n👍 Базовый тест: +1\n💡 Ценный фидбек или Баг: +2\n\nКак это работает?\nКарма — влияет на позицию на Бирже. При одинаковом количестве активных тестов выше в списке будет тот разработчик, у которого больше Кармы. Помогайте другим качественно, чтобы продвигать свои проекты!",
-                // Rank popup
-                rankPopupText: "🏆 Ваша позиция на Бирже: #{rank} из {total}\n\nСколько активных тестов нужно для попадания в ТОП:\n\nTOP-1: {t1} тестов\nTOP-2: {t2} тестов\nTOP-3: {t3} тестов\nTOP-4: {t4} тестов\nTOP-5: {t5} тестов\n\nУ вас сейчас: {my} активных тестов",
-                // Karma chip info
-                karmaChipInfoText: "☯️ Благодарность тестеру\n\nВы можете по своему желанию отблагодарить тестера, присвоив ему Карму.\n\nДоступно 2 благодарности:\n• 1-я — доступна сразу после начала тестирования\n• 2-я — открывается после 7-го дня тестов\n\nТипы наград:\n👍 Хороший тестер: +1 ☯️\n💡 Ценный фидбек / Баг: +2 ☯️",
-                karmaLimitInfoText: "Лимит наград: 2 на один проект.\n\n1-я награда доступна в первую неделю.\n2-я награда добавляется со второй недели.\n\nИспользуйте их, чтобы поощрять тестеров за качественный фидбек!",
-                // Karma modal
-                karmaModalTitle: "☯️ Награда тестеру",
-                karmaModalDesc: "Выберите тип награды. Карма поможет тестеру продвигать его проекты.",
-                karmaModalGood: "Хороший тестер",
-                karmaModalBug: "Ценный фидбек / Баг",
-                karmaAvailable: "☯️ Доступно: {count}",
-                karmaNoRewards: "☯️ Наград нет",
-                // Showcase karma info
-                showcaseKarmaInfo: "☯️ Репутация разработчика: {karma}\n\nКарма — это показатель доверия сообщества. Она выдается тем, кто не просто «прокликивает» чужие приложения, а дает ценный фидбек и находит баги.\n\nРазработчики с высокой кармой получают приоритет на Бирже!",
-                // Report modal
-                reportModalTitle: "📸 Отправка отчёта",
-                reportModalHint: "Не забудьте прикрепить сам скриншот, когда откроется Telegram!",
-                reportPrefill: "Привет! 👋 Это отчёт за контрольный день тестирования. Скриншот прикрепил ниже.\n\n",
-                reportBtnSend: "💬 Открыть чат",
-                reportChipBug: "🐛 Нашёл баг:",
-                reportChipIdea: "💡 Есть идея:",
-                reportChipGood: "✅ Работает отлично",
-                // Showcase tabs
-                tabTestersNeeded: "🔥 Testers Needed",
-                tabPreLaunch: "🚀 Pre-Launch",
-                // Visibility toggle
-                visibleOnShowcase: "👁️ Видим на бирже",
-                inviteLinkAlways: "💡 Инвайт-ссылка и сбор чекинов продолжают работать в штатном режиме.",
-                // Contact modal
-                contactTitle: "Связаться с разработчиком",
-                contactPrefill: "Привет! 👋 Нашел твой проект на бирже DevTest Hub. Беру ваш проект на взаимное тестирование.",
-                contactChipMutual: "🔄 Предложить взаимку",
-                contactChipAttach: "🔗 Прикрепить мой проект",
-                contactSendBtn: "Отправить (Telegram)",
-                contactSelectProject: "Выберите ваш проект",
-                dropTestTitle: "🗑️ Отказаться",
-                dropTestWarning: "Вы уверены, что хотите отказаться от тестирования?",
-                overtimeLeaveBtn: "✅ Завершить тест (Уйти)",
-                overtimeModalTitle: "Овертайм: завершить тест?",
-                overtimeScenarioA: "Проект перешел в овертайм (15+ день), но разработчик еще не указал синхронизацию. Вы можете написать разработчику или завершить тест и выйти.",
-                overtimeScenarioB: "Разработчик указал синхронизацию на {day}-й день.\n\nСообщение: {message}\n\nВы можете обсудить детали в личке или завершить тест и выйти.",
-                overtimeContactBtn: "💬 Написать разработчику",
-                overtimeLeaveConfirmBtn: "🚪 Покинуть проект",
-                overtimeOwnerActiveToast: "👨‍💻 Владелец недавно активен",
-                overtimeOwnerAfkToast: "👨‍💻 Владелец сейчас неактивен",
-                overtimeSyncNoneToast: "🔄 Синхронизация пока не указана",
-                overtimeSyncReadyToast: "🔄 Синхронизация: {day}-й день",
-                syncBtn: "🔄 Синхронизация",
-                syncModalTitle: "Синхронизация проекта",
-                syncDayLabel: "Google Sync Day",
-                syncMessageLabel: "Сообщение для тестеров",
-                syncMessagePlaceholder: "Например: релиз вышел, остаемся еще на 3 дня",
-                syncSaveBtn: "Сохранить синхронизацию",
-                syncSavedToast: "Данные синхронизации сохранены",
-                syncDayInvalid: "Google Sync Day должен быть >= 1",
-                btnCancel: "Отмена",
-                btnDrop: "Отказаться",
-                visibilityManualToast: "Приложение скрыто. Ваша инвайт-ссылка продолжает работать.",
-                // Mode labels
-                modeMutual: "🤝 Бартер",
-                modeBounty: "💎 Биржа",
-                modeHybrid: "🔥 Комбо",
-                modeLabel: "Режим проекта",
-                modeHint: "Выберите, где будете набирать тестеров: по взаимке, через Биржу или в обоих потоках.",
-                editModeHint: "Режим и квоты можно менять в процессе. При росте бюджета спишется только разница.",
-                mutualSettingsTitle: "🤝 Взаимные тесты",
-                limitMutualLabel: "Лимит взаимных тестировщиков",
-                limitMutualHint: "Вы тестируете их приложение, они — ваше.",
-                bountySettingsTitle: "💎 Платные тестеры",
-                bountySettingsHint: "",
-                limitBountyLabel: "Сколько тестеров нанять?",
-                limitBountyHint: "Сколько слотов открыть в Бирже.",
-                bountyPerTesterLabel: "Награда одному тестеру",
-                bountyPerTesterHint: "Минимум 100 $BUST за одного тестера.",
-                calculatorTitle: "Калькулятор $BUST",
-                calcRewardPerTester: "Награда на 1 тестера",
-                calcDailyShare: "Ежедневные чекины (40%)",
-                calcHoldBonus: "Hold Bonus (60%)",
-                calcTotalCost: "Всего спишется",
-                calcBalance: "Текущий баланс",
-                bustBalanceLabel: "💎 Баланс $BUST: {amount}",
-                earnTitle: "💎 Заработать $BUST",
-                earnDesc: "Способы получить $BUST на платформе.",
-                earnReferralTitle: "Пригласи тестера",
-                earnReferralDesc: "Делитесь инвайт-ссылкой на ваше приложение. Когда приглашённый тестер сделает первый чекин, вы получите 50 $BUST.",
-                earnReferralCountLabel: "рефералов",
-                earnGrantTitle: "Грант: Золотой Тестер",
-                earnGrantDesc: "Многоразовый грант за успешное тестирование. База: 50 $BUST. Бонус кармы: ☯️×5. Идеальный тест: +50. До 200 $BUST!",
-                earnGrantTestsLabel: "Успешных тестов",
-                earnDailyTitle: "Биржа",
-                earnDailyDesc: "Тестируйте приложения на Бирже и получайте $BUST за каждый чекин (40%) + Hold Bonus (60%).",
-                earnSocialTitle: "Социальные сети",
-                earnSocialDesc: "Размести пост о DevTestHub с #DevTestHub #12testersGooglePlay, пришли ссылку и получи 1500 $BUST!",
-                earnSocialBtn: "Отправить ссылку",
-                earnSocialPending: "На проверке...",
-                earnSocialApproved: "Получено 1500 $BUST",
-                earnSocialSubmitted: "Ссылка отправлена на проверку!",
-                earnClose: "Закрыть",
-                socialModalTitle: "📢 Отправить ссылку",
-                socialModalTemplate: "Привет! Я опубликовал пост о DevTestHub (12 Testers Google Play): [ВАША ССЫЛКА]. Жду проверку бонуса! #DevTestHub #12testersGooglePlay",
-                socialModalInputLabel: "Ссылка на ваш пост:",
-                socialModalSendBtn: "Открыть Чат и Отправить",
-                socialModalCancel: "Отмена",
-                mutualLimitInvalid: "Лимит взаимных тестировщиков должен быть не меньше 1",
-                bountyLimitInvalid: "Количество тестеров должно быть не меньше 1",
-                bountyPerTesterInvalid: "Награда одному тестеру должна быть не меньше 100 $BUST",
-                invalidModeSelection: "Выберите корректный режим проекта",
-                insufficientBustBalance: "Недостаточно $BUST. Нужно: {required}, доступно: {balance}",
-                bustBalanceUnavailable: "Баланс $BUST пока недоступен. Попробуйте позже.",
-                saveProjectError: "Не удалось сохранить проект.",
-                saveProjectChangesError: "Не удалось сохранить изменения.",
-                networkError: "Ошибка сети. Повторите попытку.",
-                offersTitle: "📬 Входящие заявки на взаимку",
-                offersCount: "{count} шт.",
-                offerFrom: "От",
-                offerForApp: "Хочет протестировать: {target_app}",
-                offerWithApp: "Через приложение: {proposer_app}",
-                offerExpiresIn: "Истекает через {time}",
-                offerExpired: "Заявка истекла",
-                offerAcceptBtn: "✅ Принять",
-                offerRejectBtn: "❌ Отклонить",
-                offerActionError: "Не удалось обработать заявку",
-                offerForbidden: "Эту заявку уже нельзя обработать",
-                offerAlreadyConnected: "Вы уже взаимно подключены по этой паре приложений",
-                offerEmpty: "Новых заявок пока нет",
-                // Compact card
-                instructionAccordion: "📝 Инструкция",
-                testBtnShort: "Тест",
-                statusHiddenManual: "🔴 Скрыто вручную",
-                // Archive
-                archiveTitle: "🗄 Архив проектов",
-                archiveEmpty: "Архив пуст",
-                archiveDeletePermanent: "🗑 Удалить навсегда",
-                archiveConfirmDelete: "Удалить проект «{name}» навсегда? Это действие необратимо.",
-                // Reliability
-                experienceLabel: "🎓 Опыт: {count}",
-                completedTestsSuffix: "завершенных тестов",
-                disciplineLabel: "📊 Надежность:",
-                reliabilityNewbie: "⚪️ Новичок (Сбор данных)",
-                reliabilityExcellent: "🟢 Отлично",
-                reliabilityGood: "🟡 Хорошо",
-                reliabilityRisky: "🟠 Рискованно",
-                reliabilityUnreliable: "🔴 Ненадежный",
-                reliabilityInfoTitle: "ℹ️ Индекс надежности",
-                reliabilityInfoText: "Этот показатель отражает, насколько ответственно вы подходите к тестированию чужих проектов.\n\n<b>Как считается:</b>\nЭто процент ваших фактических ежедневных чекинов от ожидаемых за всё время.\n\n<b>Статусы:</b>\n🟢 Отличная (95-100%)\n🟡 Хорошая (80-94%)\n🟠 В зоне риска (65-79%)\n🔴 Ненадежный (<65%)\n\n<i>Статус обновляется после прохождения «испытательного срока» (эквивалент 3-х полных тестов).</i>",
-                btnClose: "Понятно",
-                // Tester Dossier
-                dossierTitle: "Досье тестера",
-                dossierGlobalTitle: "👤 Глобальный профиль",
-                dossierProjectTitle: "📋 В этом проекте",
-                dossierActionsTitle: "⚡ Действия",
-                dossierKarma: "☯️ Карма: {karma}",
-                dossierExperience: "🎓 Опыт: {count} тестов",
-                dossierReliability: "📊 Надежность: {pct}%",
-                dossierTestingDay: "🧪 День тестирования: {day} из 14",
-                dossierStartDate: "📅 Начало: {date}",
-                dossierExpectedFinish: "🏁 Ожидаемое завершение: {date}",
-                dossierMissedDays: "⚠️ Пропущено дней: {count}",
-                dossierLastCheck: "🕐 Последний чекин: {status}",
-                dossierBtnTelegram: "💬 Telegram",
-                dossierBtnKarma: "+☯️ Наградить",
-                dossierBtnDelete: "🗑️ Убрать тестера",
-                dossierLoading: "Загрузка...",
-                dossierNewbie: "Новичок",
-            },
-            en: {
-                tabTests: "My Tests",
-                tabProjects: "My Projects",
-                tabMutual: "Barter",
-                tabBounty: "Bounty",
-                mutualDesc: "Separate mutual exchange streams: seeking and pre-launch.",
-                bountyDesc: "Paid $BUST contracts for quick joins.",
-                mutualSeekingTitle: "🔥 Seeking exchange",
-                mutualPrelaunchTitle: "🚀 Pre-Launch",
-                mutualEmpty: "No projects in this section yet",
-                bountyEmpty: "No contracts found yet",
-                mutualJoinBtn: "🤝 Join mutual",
-                prelaunchJoinBtn: "🚀 Join pre-launch",
-                bountyTakeBtn: "💎 Take contract",
-                scoreLabel: "Score",
-                testsDesc: "Apps you need to open every day.",
-                projectsDesc: "Your apps being tested by others.",
-                addApp: "+ Add app",
-                openPlay: "1️⃣ Open Google Play",
-                confirmStart: "2️⃣ Confirm start",
-                successCheckin: "✅ Success!",
-                checkinAlreadyDone: "✅ Check-in already counted today",
-                checkinEarnBust: "✅ Check-in counted! Earned: {amount} $BUST",
-                checkinEarnKarma: "✅ Check-in counted! Earned: {amount} ☯️ Karma",
-                loadingShowcase: "Loading exchange...",
-                retryBtn: "🔄 Retry",
-                loadError: "Failed to load data",
-                leaveReview: "🌟 Leave Private Review",
-                claimReward: "🎁 Claim Reward & Finish",
-                doneToday: "✅ Done for today",
-                doneTodayText: "✅ Done for today",
-                testersList: "Testers",
-                noTesters: "No testers yet",
-                notOpenedYet: "Not opened yet",
-                appName: "App Name",
-                packageName: "Google Play Link",
-                googleGroup: "Google Group URL",
-                groupHint: "Insert your own or leave the default one, and add this group as a tester in the Play Console: <span class=\"copyable-email\" onclick=\"copyEmail()\">google-play-dev-test@googlegroups.com 📋</span>",
-                copied: "Copied!",
-                joinGroup: "👥 1. Join Google Group",
-                downloadPlay: "⬇️ 2. Download on Google Play",
-                iconUrl: "Icon URL (you can use URL from Google Play)",
-                save: "Save",
-                emptyTests: "Inbox Zero!",
-                emptyTestsDesc: "You've checked all apps for today. Come back tomorrow!",
-                emptyProjects: "Add your first app and send an invite link to testers. A summary of their daily activity will appear here.",
-                fillFields: "Please fill in all fields.",
-                appNameTooLong: "App name must be 30 characters or less.",
-                bannerText: "Get rid of chat chaos! Control daily check-ins for 12 testers in one place and find new apps for mutual testing.",
-                availableTitle: "📱 Project Exchange",
-                noAvailable: "No apps available yet",
-                activeTesters: "Active testers",
-                contactOwner: "Contact owner",
-                takeToTest: "Test",
-                inviteLink: "Invite link",
-                deleteProject: "Finish (Delete)",
-                inviteCopied: "Link copied! Send it for mutual testing.",
-                confirmDelete: "Are you sure you want to delete this project? All tester data will be lost.",
-                deleteReminder: "⚠️ Please delete your projects after a successful release so as not to waste other testers' time!",
-                deleteModalTitle: "Finish project?",
-                deleteMessageLabel: "Write a few words of gratitude to the testers (optional)...",
-                cancelDelete: "Cancel",
-                confirmDeleteBtn: "Finish and delete",
-                invalidPlayLink: "❌ Invalid format. Link should look like: https://play.google.com/store/apps/details?id=com.example.app",
-                optionalSettings: "⚙️ Advanced settings (optional)",
-                instructions: "Instructions",
-                instPlaceholder: "Give any instructions (less than 1000 characters)",
-                devInfo: "Additional info from developer 📌",
-                emailWarningTitle: "⚠️ Warning",
-                emailWarningText: "⚠️ You did not specify your Google Group. The default one will be used. Are you sure you added this group's email to your Play Console? Without it, testers will get an error.",
-                emailWarningYes: "✅ Yes, added (Create)",
-                emailWarningCancel: "❌ Cancel",
-                editProjectTitle: "Edit project",
-                editPackage: "Package (Play Store Link)",
-                editCancel: "Cancel",
-                editAddedToPlatform: "🗓 Added to platform: {date} ({days} days ago)",
-                readonlyFieldAlert: "This data cannot be changed. If you made a mistake when entering links, delete this project and create a new one.",
-                screenshotBtn: "Send Screenshot & Complete test",
-                screenshotWarning: "⚠️ Today is a mandatory screenshot day!",
-                screenshotDayAlert: "✅ Day counted!\n\nIf you haven't sent a screenshot with the app being tested, do it now so you don't get locked out. And come back tomorrow for a new check-in.",
-                screenshotDayOwnerAlert: "This tester has a mandatory screenshot day today! You should receive a screenshot from them in private messages.",
-                screenshotReminderTitle: "📸 Today was a mandatory screenshot day",
-                screenshotReminderText: "If you still have not sent the developer a launch screenshot in direct messages, return to the chat and send it now. Repeated misses may lead to a ban.",
-                screenshotReminderBtn: "💬 Send Screenshot",
-                screenshotCompleteClose: "Got it",
-                inviteModalTitle: "Invite testers",
-                inviteClose: "Close",
-                inviteBlock1Title: "📢 Post on our Exchange",
-                inviteBlock1Btn: "Copy & Publish",
-                inviteBlock2Title: "💬 Offer mutual test in DM",
-                inviteBlock2Btn: "Copy & Share",
-                inviteBlock3Title: "🔗 Just the invite link",
-                inviteBlock3Btn: "Copy & Share",
-                inviteDescLabel: "ℹ️ Description: ",
-                inviteBlock1Text: "📱 App: {name}{instr}\n🤖 Take for testing (tracker link):\n👉 {link}\n\nI'll test yours in return! The bot helps track daily check-ins and transparently monitor testers.",
-                inviteBlock2Text: "Hey! Mutual test? My app: {name}.\n\nI use a TG bot for tracking — no need to message daily, the bot tracks everything.\n\nAdd your project to the system, send me an invite, I'll start testing right away!\n\nMy link: {link}",
-                // Segmented control
-                groupStandard: "Standard",
-                groupCustom: "Custom group",
-                standardGroupHint: "Add this group as a tester in Play Console",
-                // Status labels
-                statusNotOpened: "Not opened yet",
-                statusToday: "Today",
-                statusYesterday: "Yesterday",
-                statusDaysAgo: "days ago",
-                // Timer
-                timerRemaining: "⏳ {sec} sec left...",
-                antiFraudAlert: "⚠️ Fake tests lead to a ban!\n\nGoogle Play algorithms track the quality of tester sessions. Simply clicking a link and immediately closing the app ruins statistics and hurts other developers.\n\nOur platform relies on honesty. We issue permanent bans for faking tests and \"click-farming\".\n\nWhile the timer is running, bring real value: browse the menu, find a bug, or review the design. Developers reward valuable feedback with Karma ☯️, which will boost YOUR projects to the TOP of the showcase!",
-                confirmed: "✅ Counted!",
-                daysShort: "📅 {days} d.",
-                testersShort: "👥 {count}",
-                myTestDayShort: "🧪 Day {days}",
-                testDayExplain: "You've been testing this app for {days} days out of 14.\n\nMandatory screenshot days: 1, 7, and 14.\nOn these days you must send the developer a launch screenshot via direct message.",
-                newBadgeUntil: "🆕 New (until {date})",
-                newBadgeToast: "The app is automatically visible on the exchange for the first 72 hours after publishing. After that, visibility depends on your active tests of other apps.",
-                disclaimerText: "⚠️ The platform helps fulfill the basic Google Play requirement (12 testers for 14 days) but does not guarantee successful moderation. Each app is evaluated individually, and the final decision depends entirely on Google's internal policies and moderation rules.",
-                // Instruction chips
-                chipBrowse: "Go through all screens",
-                chipScreenshot3: "Screenshot every 3 days in DM",
-                chipJustOpen: "Just open for 15 sec",
-                chipTryFeatures: "Try the main features",
-                chipLeaveReview: "Leave a review after release",
-                // Karma
-                karmaLabel: "☯️ Karma: {karma}",
-                karmaRewardGood: "👍 Good tester",
-                karmaRewardBug: "💡 Valuable Feedback / Bug",
-                karmaToast: "☯️ Reward sent to the tester!",
-                karmaAlreadyLiked: "You already rewarded this tester for this app",
-                karmaLimitReached: "Karma limit reached for this app",
-                karmaShowcase: "☯️ {karma}",
-                karmaPopupTitle: "Reward",
-                karmaPopupMessage: "Choose reward type for the tester.\n👍 = +1 ☯️  💡 = +2 ☯️",
-                karmaBreakdownTitle: "☯️ Karma: {karma}",
-                karmaBreakdownGood: "👍 Good tester: {count}",
-                karmaBreakdownBug: "💡 Valuable feedback: {count}",
-                // Chip tooltips
-                chipTooltipDays: "App published {days} days ago",
-                chipTooltipTesters: "Currently {count} active testers",
-                chipTooltipTestDay: "You've been testing for {days} of 14 days.\nScreenshot days: 1, 7, 14.",
-                chipTooltipScreenshotDay: "📸 Today is a mandatory screenshot day!",
-                // Progress bar
-                progressLabel: "{day}/14 d.",
-                progressComplete: "🎉 Test complete!",
-                pulseTitle: "🌐 Community Pulse",
-                pulseLoading: "Loading...",
-                pulseEmpty: "No events yet",
-                pulseExpand: "Expand ▼",
-                pulseCollapse: "Collapse ▲",
-                timeJustNow: "just now",
-                timeMinAgo: "{count} min",
-                timeHourAgo: "{count} h",
-                timeDayAgo: "{count} d",
-                // Visibility system
-                visibilityPublic: "🟢 Visible on Exchange",
-                visibilityPrivate: "🔴 Hidden from Exchange",
-                visibilityAllPublic: "🟢 All apps visible",
-                visibilityPartial: "🟡 {visible} of {total} visible",
-                visibilityNone: "🔴 Not visible on Exchange",
-                visibilityHint: "Each of your apps requires 3 active tests of others' apps in 72h. New apps are automatically visible for the first 3 days.",
-                visibilityTitle: "📊 Developer Dashboard",
-                activeTestsLabel: "Your active tests",
-                rankLabel: "Rank: #{rank} of {total}",
-                newBadge: "🆕 New",
-                topLabel: "TOP-{n}: {count} tests",
-                // Bell notification
-                bellNotifyMsg: "Hey! 👀 Looks like you forgot about the daily test of my app \"{name}\"! Open the bot and do a check-in before Google punishes us 😅: https://t.me/Android12TestersBot",
-                // Delete tester
-                deleteTesterConfirm: "Remove tester @{name} from this project?",
-                // Open button
-                openBtn: "📱 Open",
-                // Karma info popup
-                karmaInfoText: "☯️ Karma is your reputation on the platform.\n\n What it is awarded for: 👍 Basic test: +1 💡 Valuable feedback or bug: +2\n\n How does it work?\n Karma affects your position on the Exchange. If the number of active tests is the same, the developer with more Karma will be higher in the list. Help others effectively to promote your projects!",
-                // Rank popup
-                rankPopupText: "🏆 Your Exchange position: #{rank} of {total}\n\nActive tests needed for each TOP position:\n\nTOP-1: {t1} tests\nTOP-2: {t2} tests\nTOP-3: {t3} tests\nTOP-4: {t4} tests\nTOP-5: {t5} tests\n\nYou currently have: {my} active tests",
-                // Karma chip info
-                karmaChipInfoText: "☯️ Tester Appreciation\n\nYou can optionally reward your tester by awarding Karma.\n\nYou have 2 rewards available:\n• 1st — available immediately after testing starts\n• 2nd — unlocks after day 7 of testing\n\nReward types:\n👍 Good tester: +1 ☯️\n💡 Valuable Feedback / Bug: +2 ☯️",
-                karmaLimitInfoText: "Reward limit: 2 per project.\n\nThe 1st reward is available in the first week.\nThe 2nd reward is added from the second week.\n\nUse them to encourage testers for high-quality feedback!",
-                // Karma modal
-                karmaModalTitle: "☯️ Tester Reward",
-                karmaModalDesc: "Select the type of reward. Karma will help the tester promote their projects.",
-                karmaModalGood: "Good tester",
-                karmaModalBug: "Valuable feedback / Bug",
-                karmaAvailable: "☯️ Available: {count}",
-                karmaNoRewards: "☯️ No rewards",
-                // Showcase karma info
-                showcaseKarmaInfo: "☯️ Developer Reputation: {karma}\n\nKarma is a measure of community trust. It is awarded to those who don't just «click through» other people's apps, but provide valuable feedback and find bugs.\n\nDevelopers with high karma get priority on the Exchange!",
-                // Report modal
-                reportModalTitle: "📸 Send Report",
-                reportModalHint: "Don't forget to attach the screenshot once Telegram opens!",
-                reportPrefill: "Hi! 👋 This is a report for a checkpoint testing day. Screenshot attached below.\n\n",
-                reportBtnSend: "💬 Open Chat",
-                reportChipBug: "🐛 Found a bug:",
-                reportChipIdea: "💡 Got an idea:",
-                reportChipGood: "✅ Works great",
-                // Showcase tabs
-                tabTestersNeeded: "🔥 Testers Needed",
-                tabPreLaunch: "🚀 Pre-Launch",
-                // Visibility toggle
-                visibleOnShowcase: "👁️ Visible on exchange",
-                inviteLinkAlways: "💡 The invite link and daily check-ins continue to work normally.",
-                // Contact modal
-                contactTitle: "Contact developer",
-                contactPrefill: "Hi! 👋 Found your project on DevTest Hub exchange. Taking your project for mutual testing.",
-                contactChipMutual: "🔄 Offer mutual test",
-                contactChipAttach: "🔗 Attach my project",
-                contactSendBtn: "Send (Telegram)",
-                contactSelectProject: "Select your project",
-                dropTestTitle: "🗑️ Drop test",
-                dropTestWarning: "Are you sure you want to drop this test?",
-                overtimeLeaveBtn: "✅ Finish test (Leave)",
-                overtimeModalTitle: "Overtime: finish test?",
-                overtimeScenarioA: "This project is in overtime (day 15+), but the owner has not provided sync details yet. You can contact the owner or leave the project.",
-                overtimeScenarioB: "Owner provided sync on day {day}.\n\nMessage: {message}\n\nYou can discuss details in DM or leave the project.",
-                overtimeContactBtn: "💬 Contact owner",
-                overtimeLeaveConfirmBtn: "🚪 Leave project",
-                overtimeOwnerActiveToast: "👨‍💻 Owner is recently active",
-                overtimeOwnerAfkToast: "👨‍💻 Owner is currently inactive",
-                overtimeSyncNoneToast: "🔄 Sync is not set yet",
-                overtimeSyncReadyToast: "🔄 Sync: day {day}",
-                syncBtn: "🔄 Sync",
-                syncModalTitle: "Project Sync",
-                syncDayLabel: "Google Sync Day",
-                syncMessageLabel: "Message for testers",
-                syncMessagePlaceholder: "Example: release is live, stay for 3 more days",
-                syncSaveBtn: "Save sync",
-                syncSavedToast: "Sync details saved",
-                syncDayInvalid: "Google Sync Day must be >= 1",
-                btnCancel: "Cancel",
-                btnDrop: "Drop",
-                visibilityManualToast: "The app is hidden. Your invite link still works.",
-                // Mode labels
-                modeMutual: "🤝 Barter",
-                modeBounty: "💎 Bounty",
-                modeHybrid: "🔥 Combo",
-                modeLabel: "Project mode",
-                modeHint: "Choose where you want to recruit testers: mutual, bounty, or both channels.",
-                editModeHint: "You can adjust mode and quotas later. If the budget grows, only the delta is charged.",
-                mutualSettingsTitle: "🤝 Mutual tests",
-                limitMutualLabel: "Mutual tester limit",
-                limitMutualHint: "You test their app, they test yours.",
-                bountySettingsTitle: "💎 Paid testers",
-                bountySettingsHint: "",
-                limitBountyLabel: "How many testers to hire?",
-                limitBountyHint: "How many paid slots to open in the Exchange.",
-                bountyPerTesterLabel: "Reward per tester",
-                bountyPerTesterHint: "Minimum 100 $BUST per tester.",
-                calculatorTitle: "$BUST calculator",
-                calcRewardPerTester: "Reward per tester",
-                calcDailyShare: "Daily check-ins (40%)",
-                calcHoldBonus: "Hold Bonus (60%)",
-                calcTotalCost: "Total charge",
-                calcBalance: "Current balance",
-                bustBalanceLabel: "💎 $BUST balance: {amount}",
-                earnTitle: "💎 Earn $BUST",
-                earnDesc: "Ways to earn $BUST on the platform.",
-                earnReferralTitle: "Invite a tester",
-                earnReferralDesc: "Share your app's invite link. When the invited tester makes their first check-in, you'll receive 50 $BUST.",
-                earnReferralCountLabel: "referrals",
-                earnGrantTitle: "Grant: Golden Tester",
-                earnGrantDesc: "Reusable grant for successful testing. Base: 50 $BUST. Karma bonus: ☯️×5. Perfect test: +50. Up to 200 $BUST!",
-                earnGrantTestsLabel: "Successful tests",
-                earnDailyTitle: "Exchange",
-                earnDailyDesc: "Test apps on the Exchange and earn $BUST for each check-in (40%) + Hold Bonus (60%).",
-                earnSocialTitle: "Social media",
-                earnSocialDesc: "Post about DevTestHub with #DevTestHub #12testersGooglePlay, send the link and get 1500 $BUST!",
-                earnSocialBtn: "Send link",
-                earnSocialPending: "Under review...",
-                earnSocialApproved: "Received 1500 $BUST",
-                earnSocialSubmitted: "Link submitted for review!",
-                earnClose: "Close",
-                socialModalTitle: "📢 Submit link",
-                socialModalTemplate: "Hi! I published a post about DevTestHub (12 Testers Google Play): [YOUR LINK]. Waiting for bonus review! #DevTestHub #12testersGooglePlay",
-                socialModalInputLabel: "Link to your post:",
-                socialModalSendBtn: "Open Chat & Send",
-                socialModalCancel: "Cancel",
-                mutualLimitInvalid: "Mutual tester limit must be at least 1",
-                bountyLimitInvalid: "Paid tester slots must be at least 1",
-                bountyPerTesterInvalid: "Reward per tester must be at least 100 $BUST",
-                invalidModeSelection: "Select a valid project mode",
-                insufficientBustBalance: "Not enough $BUST. Required: {required}, available: {balance}",
-                bustBalanceUnavailable: "$BUST balance is unavailable right now. Try again later.",
-                saveProjectError: "Could not save the project.",
-                saveProjectChangesError: "Could not save the changes.",
-                networkError: "Network error. Please try again.",
-                offersTitle: "📬 Incoming mutual offers",
-                offersCount: "{count}",
-                offerFrom: "From",
-                offerForApp: "Wants to test: {target_app}",
-                offerWithApp: "Using app: {proposer_app}",
-                offerExpiresIn: "Expires in {time}",
-                offerExpired: "Offer expired",
-                offerAcceptBtn: "✅ Accept",
-                offerRejectBtn: "❌ Reject",
-                offerActionError: "Failed to process offer",
-                offerForbidden: "This offer can no longer be processed",
-                offerAlreadyConnected: "You are already connected for this app pair",
-                offerEmpty: "No new offers yet",
-                // Compact card
-                instructionAccordion: "📝 Instructions",
-                testBtnShort: "Test",
-                statusHiddenManual: "🔴 Hidden manually",
-                // Archive
-                archiveTitle: "🗄 Project Archive",
-                archiveEmpty: "Archive is empty",
-                archiveDeletePermanent: "🗑 Delete permanently",
-                archiveConfirmDelete: "Permanently delete project \"{name}\"? This action is irreversible.",
-                // Reliability
-                experienceLabel: "🎓 Experience: {count}",
-                completedTestsSuffix: "completed tests",
-                disciplineLabel: "📊 Reliability:",
-                reliabilityNewbie: "⚪️ Newbie (Collecting data)",
-                reliabilityExcellent: "🟢 Excellent",
-                reliabilityGood: "🟡 Good",
-                reliabilityRisky: "🟠 Risky",
-                reliabilityUnreliable: "🔴 Unreliable",
-                reliabilityInfoTitle: "ℹ️ Reliability Score",
-                reliabilityInfoText: "This score reflects how responsibly you approach testing other people's projects.\n\n<b>How it's calculated:</b>\nIt's the percentage of your actual daily check-ins against the expected ones over all time.\n\n<b>Tiers:</b>\n🟢 Excellent (95-100%)\n🟡 Good (80-94%)\n🟠 Risky (65-79%)\n🔴 Unreliable (<65%)\n\n<i>The status is updated after passing the 'probation period' (equivalent to 3 full tests).</i>",
-                btnClose: "Got it",
-                // Tester Dossier
-                dossierTitle: "Tester Dossier",
-                dossierGlobalTitle: "👤 Global Profile",
-                dossierProjectTitle: "📋 In This Project",
-                dossierActionsTitle: "⚡ Actions",
-                dossierKarma: "☯️ Karma: {karma}",
-                dossierExperience: "🎓 Experience: {count} tests",
-                dossierReliability: "📊 Reliability: {pct}%",
-                dossierTestingDay: "🧪 Testing day: {day} of 14",
-                dossierStartDate: "📅 Started: {date}",
-                dossierExpectedFinish: "🏁 Expected finish: {date}",
-                dossierMissedDays: "⚠️ Missed days: {count}",
-                dossierLastCheck: "🕐 Last check-in: {status}",
-                dossierBtnTelegram: "💬 Telegram",
-                dossierBtnKarma: "+☯️ Reward",
-                dossierBtnDelete: "🗑️ Remove tester",
-                dossierLoading: "Loading...",
-                dossierNewbie: "Newbie",
+        let t = window.getTranslations(lang);
+
+        function refreshLanguageUi() {
+            t = window.getTranslations(lang);
+            if (window.updateTranslations) {
+                window.updateTranslations(lang);
             }
-        };
 
-        let t = dict[lang];
-
-        // Apply translations to static UI
-        function applyStaticTranslations() {
-            document.getElementById('t-tabTests').innerText = t.tabTests;
-            document.getElementById('t-tabProjects').innerText = t.tabProjects;
-            document.getElementById('t-tabMutual').innerText = t.tabMutual;
-            document.getElementById('t-tabBounty').innerText = t.tabBounty;
-            document.getElementById('t-testsTitle').innerText = t.tabTests;
-            document.getElementById('t-testsDesc').innerText = t.testsDesc;
-            document.getElementById('t-mutualTitle').innerText = `🤝 ${t.tabMutual}`;
-            document.getElementById('t-mutualDesc').innerText = t.mutualDesc;
-            document.getElementById('t-seekingTitle').innerText = t.mutualSeekingTitle;
-            document.getElementById('t-prelaunchFeedTitle').innerText = t.mutualPrelaunchTitle;
-            document.getElementById('t-bountyTitle').innerText = `💎 ${t.tabBounty}`;
-            document.getElementById('t-bountyDesc').innerText = t.bountyDesc;
-            document.getElementById('t-offersTitle').innerText = t.offersTitle;
-            document.getElementById('t-projectsTitle').innerText = t.tabProjects;
-            document.getElementById('t-projectsDesc').innerText = t.projectsDesc;
-            document.getElementById('t-pulseTitle').innerText = t.pulseTitle;
-            document.getElementById('t-addApp').innerText = t.addApp;
-            document.getElementById('t-doneToday').innerText = t.doneToday;
-            document.getElementById('t-modalTitle').innerText = t.addApp;
-            document.getElementById('t-appName').innerText = t.appName;
-            document.getElementById('t-packageName').innerText = t.packageName;
-            document.getElementById('t-googleGroup').innerText = t.googleGroup;
-            document.getElementById('t-groupHint').innerText = t.standardGroupHint;
-            document.getElementById('seg-standard').innerText = t.groupStandard;
-            document.getElementById('seg-custom').innerText = t.groupCustom;
-            document.getElementById('t-modeLabel').innerText = t.modeLabel;
-            document.getElementById('t-modeHint').innerText = t.modeHint;
-            document.getElementById('add-mode-mutual').innerText = t.modeMutual;
-            document.getElementById('add-mode-bounty').innerText = t.modeBounty;
-            document.getElementById('add-mode-hybrid').innerText = t.modeHybrid;
-            document.getElementById('t-mutualSettingsTitle').innerText = t.mutualSettingsTitle;
-            document.getElementById('t-limitMutualLabel').innerText = t.limitMutualLabel;
-            document.getElementById('t-limitMutualHint').innerText = t.limitMutualHint;
-            document.getElementById('t-bountySettingsTitle').innerText = t.bountySettingsTitle;
-            document.getElementById('t-limitBountyLabel').innerText = t.limitBountyLabel;
-            document.getElementById('t-limitBountyHint').innerText = t.limitBountyHint;
-            document.getElementById('t-bountyPerTesterLabel').innerText = t.bountyPerTesterLabel;
-            document.getElementById('t-bountyPerTesterHint').innerText = t.bountyPerTesterHint;
-            document.getElementById('t-calculatorTitle').innerText = t.calculatorTitle;
-            document.getElementById('t-calcRewardPerTester').innerText = t.calcRewardPerTester;
-            document.getElementById('t-calcDailyShare').innerText = t.calcDailyShare;
-            document.getElementById('t-calcHoldBonus').innerText = t.calcHoldBonus;
-            document.getElementById('t-calcTotalCost').innerText = t.calcTotalCost;
-            document.getElementById('t-iconUrl').innerText = t.iconUrl;
-            document.getElementById('t-save').innerText = t.save;
-            document.getElementById('t-bannerText').innerText = t.bannerText;
-            document.getElementById('t-disclaimerText').innerText = t.disclaimerText;
-            document.getElementById('t-availableTitle').innerText = t.availableTitle;
-            document.getElementById('t-deleteModalTitle').innerText = t.deleteModalTitle;
-            document.getElementById('t-deleteMessageLabel').innerText = t.deleteMessageLabel;
-            document.getElementById('t-cancelDelete').innerText = t.cancelDelete;
-            document.getElementById('t-confirmDeleteBtn').innerText = t.confirmDeleteBtn;
-            document.getElementById('t-optionalSettingsText').innerText = t.optionalSettings;
-            document.getElementById('t-instructions').innerText = t.instructions;
-            document.getElementById('app-instructions').placeholder = t.instPlaceholder;
-            document.getElementById('t-emailWarningTitle').innerText = t.emailWarningTitle;
-            document.getElementById('t-emailWarningText').innerText = t.emailWarningText;
-            document.getElementById('t-emailWarningYes').innerText = t.emailWarningYes;
-            document.getElementById('t-emailWarningCancel').innerText = t.emailWarningCancel;
-            document.getElementById('t-editProjectTitle').innerText = t.editProjectTitle;
-            document.getElementById('t-editName').innerText = t.appName;
-            document.getElementById('t-editDescription').innerText = t.instructions;
-            document.getElementById('edit-description').placeholder = t.instPlaceholder;
-            document.getElementById('t-editIconUrl').innerText = t.iconUrl;
-            document.getElementById('t-editPackage').innerText = t.editPackage;
-            document.getElementById('t-editGroup').innerText = t.googleGroup;
-            document.getElementById('t-editModeLabel').innerText = t.modeLabel;
-            document.getElementById('t-editModeHint').innerText = t.editModeHint;
-            document.getElementById('edit-mode-mutual').innerText = t.modeMutual;
-            document.getElementById('edit-mode-bounty').innerText = t.modeBounty;
-            document.getElementById('edit-mode-hybrid').innerText = t.modeHybrid;
-            document.getElementById('t-editMutualSettingsTitle').innerText = t.mutualSettingsTitle;
-            document.getElementById('t-editLimitMutualLabel').innerText = t.limitMutualLabel;
-            document.getElementById('t-editLimitMutualHint').innerText = t.limitMutualHint;
-            document.getElementById('t-editBountySettingsTitle').innerText = t.bountySettingsTitle;
-            document.getElementById('t-editLimitBountyLabel').innerText = t.limitBountyLabel;
-            document.getElementById('t-editLimitBountyHint').innerText = t.limitBountyHint;
-            document.getElementById('t-editBountyPerTesterLabel').innerText = t.bountyPerTesterLabel;
-            document.getElementById('t-editBountyPerTesterHint').innerText = t.bountyPerTesterHint;
-            document.getElementById('t-editCalculatorTitle').innerText = t.calculatorTitle;
-            document.getElementById('t-editCalcRewardPerTester').innerText = t.calcRewardPerTester;
-            document.getElementById('t-editCalcDailyShare').innerText = t.calcDailyShare;
-            document.getElementById('t-editCalcHoldBonus').innerText = t.calcHoldBonus;
-            document.getElementById('t-editCalcTotalCost').innerText = t.calcTotalCost;
-            document.getElementById('t-editCancel').innerText = t.editCancel;
-            document.getElementById('t-editSave').innerText = t.save;
             updateProjectPricing('add');
             updateProjectPricing('edit');
             renderEditCreatedAtMeta();
-            // Karma modal translations
-            document.getElementById('karma-modal-title').innerText = t.karmaModalTitle;
-            document.getElementById('karma-modal-desc').innerText = t.karmaModalDesc;
-            document.getElementById('karma-btn-good').innerText = t.karmaModalGood;
-            document.getElementById('karma-btn-bug').innerText = t.karmaModalBug;
-            // Earn modal translations
-            document.getElementById('t-earnTitle').innerText = t.earnTitle;
-            document.getElementById('t-earnDesc').innerText = t.earnDesc;
-            document.getElementById('t-earnReferralTitle').innerText = t.earnReferralTitle;
-            document.getElementById('t-earnReferralDesc').innerText = t.earnReferralDesc;
-            document.getElementById('t-earnReferralCountLabel').innerText = t.earnReferralCountLabel;
-            document.getElementById('t-earnGrantTitle').innerText = t.earnGrantTitle;
-            document.getElementById('t-earnGrantDesc').innerText = t.earnGrantDesc;
-            document.getElementById('t-earnSocialTitle').innerText = t.earnSocialTitle;
-            document.getElementById('t-earnSocialDesc').innerText = t.earnSocialDesc;
-            document.getElementById('t-earnDailyTitle').innerText = t.earnDailyTitle;
-            document.getElementById('t-earnDailyDesc').innerText = t.earnDailyDesc;
-            document.getElementById('t-earnClose').innerText = t.earnClose;
-            document.getElementById('t-socialModalTitle').innerText = t.socialModalTitle;
-            document.getElementById('t-socialModalTemplate').innerText = t.socialModalTemplate;
-            document.getElementById('t-socialModalInputLabel').innerText = t.socialModalInputLabel;
-            document.getElementById('t-socialModalSendBtn').innerText = t.socialModalSendBtn;
-            document.getElementById('t-socialModalCancel').innerText = t.socialModalCancel;
-            // Language switcher — preserve loading dot
+
             const switcher = document.getElementById('lang-switcher');
             const dot = document.getElementById('loading-dot');
             const dotHtml = dot ? dot.outerHTML : '';
             switcher.innerHTML = '🌐 ' + (lang === 'ru' ? 'RU' : 'EN') + dotHtml;
-            // Instruction chips
-            const chipTexts = [t.chipBrowse, t.chipScreenshot3, t.chipJustOpen, t.chipTryFeatures, t.chipLeaveReview];
+
+            const chipTexts = [
+                window.t('chipBrowse', {}, lang),
+                window.t('chipScreenshot3', {}, lang),
+                window.t('chipJustOpen', {}, lang),
+                window.t('chipTryFeatures', {}, lang),
+                window.t('chipLeaveReview', {}, lang)
+            ];
             const renderChips = (containerId, textareaId) => {
-                const el = document.getElementById(containerId);
-                if (el) el.innerHTML = chipTexts.map(c => `<button type="button" class="chip" onclick="insertChip('${textareaId}', this.dataset.text)" data-text="${c.replace(/"/g, '&quot;')}">${c}</button>`).join('');
+                const element = document.getElementById(containerId);
+                if (!element) return;
+                element.innerHTML = chipTexts
+                    .map((chipText) => `<button type="button" class="chip" onclick="insertChip('${textareaId}', this.dataset.text)" data-text="${chipText.replace(/"/g, '&quot;')}">${chipText}</button>`)
+                    .join('');
             };
             renderChips('chips-instructions', 'app-instructions');
             renderChips('chips-edit-instructions', 'edit-description');
 
             const toggleBtn = document.getElementById('events-toggle');
             if (toggleBtn) {
-                toggleBtn.innerText = eventsExpanded ? t.pulseCollapse : t.pulseExpand;
+                toggleBtn.innerText = eventsExpanded ? window.t('pulseCollapse', {}, lang) : window.t('pulseExpand', {}, lang);
             }
-            // Contact modal and shared modals
-            document.getElementById('t-contactTitle').innerText = t.contactTitle;
-            document.getElementById('t-contactSendBtn').innerText = t.contactSendBtn;
-            document.getElementById('contact-chip-mutual').innerText = t.contactChipMutual;
-            document.getElementById('contact-chip-attach').innerText = t.contactChipAttach;
-            document.getElementById('t-screenshotCompleteTitle').innerText = t.screenshotReminderTitle;
-            document.getElementById('t-screenshotCompleteText').innerText = t.screenshotReminderText;
-            document.getElementById('t-screenshotCompleteClose').innerText = t.screenshotCompleteClose;
-            document.getElementById('t-btnClose').innerText = t.btnClose;
-            document.getElementById('t-dropTestTitle').innerText = t.dropTestTitle;
-            document.getElementById('t-dropTestWarning').innerText = t.dropTestWarning;
-            document.getElementById('t-btnCancel').innerText = t.btnCancel;
-            document.getElementById('t-btnDrop').innerText = t.btnDrop;
-            document.getElementById('t-overtimeModalTitle').innerText = t.overtimeModalTitle;
-            document.getElementById('t-overtimeContactBtn').innerText = t.overtimeContactBtn;
-            document.getElementById('t-overtimeLeaveBtn').innerText = t.overtimeLeaveConfirmBtn;
-            document.getElementById('t-overtimeCancelBtn').innerText = t.btnCancel;
-            document.getElementById('t-syncModalTitle').innerText = t.syncModalTitle;
-            document.getElementById('t-syncDayLabel').innerText = t.syncDayLabel;
-            document.getElementById('t-syncMessageLabel').innerText = t.syncMessageLabel;
-            document.getElementById('sync-message-input').placeholder = t.syncMessagePlaceholder;
-            document.getElementById('t-syncCancelBtn').innerText = t.btnCancel;
-            document.getElementById('t-syncSaveBtn').innerText = t.syncSaveBtn;
+
+            const select = document.getElementById('attach-project-select');
+            if (select && select.options.length > 0 && !select.value) {
+                select.options[0].text = window.t('contactSelectPlaceholder', {}, lang);
+            }
         }
 
         function applyLanguage(newLang) {
             lang = newLang;
-            t = dict[lang];
+            t = window.getTranslations(lang);
             localStorage.setItem('app_language', lang);
             // Sync to backend
             fetch(`${API_BASE}/users/${userId}/language`, {
@@ -2662,7 +1872,7 @@
                 body: JSON.stringify({ language: lang })
             }).catch(e => console.error('Language sync error:', e));
             // Re-apply everything
-            applyStaticTranslations();
+            refreshLanguageUi();
             renderEvents();
             renderTests();
             renderIncomingOffers();
@@ -2684,7 +1894,7 @@
                 if (banner) banner.style.display = 'none';
             }
 
-            applyStaticTranslations();
+            refreshLanguageUi();
 
             // Async language sync from API (if not in localStorage)
             if (!localStorage.getItem('app_language')) {
@@ -3150,14 +2360,19 @@
         }
 
         function getOfferApiError(message) {
-            if (!message) return t.offerActionError;
-            if (['offer_forbidden', 'offer_not_pending', 'offer_not_found', 'offer_expired'].includes(message)) {
+            const code = typeof message === 'string'
+                ? message
+                : message && typeof message === 'object'
+                    ? (message.code || message.message)
+                    : null;
+            if (!code) return t.offerActionError;
+            if (['offer_forbidden', 'offer_not_pending', 'offer_not_found', 'offer_expired'].includes(code)) {
                 return t.offerForbidden;
             }
-            if (message === 'offer_already_connected') {
+            if (code === 'offer_already_connected') {
                 return t.offerAlreadyConnected;
             }
-            return t.offerActionError;
+            return getApiErrorMessage(message, 'offerActionError');
         }
 
         async function decideOffer(offerId, action, event) {
@@ -3176,7 +2391,7 @@
                 });
                 const result = await response.json();
                 if (result.status !== 'success') {
-                    const msg = getOfferApiError(result.message);
+                    const msg = getOfferApiError(result);
                     if (tg.showAlert) tg.showAlert(msg);
                     else alert(msg);
                     return;
@@ -3216,11 +2431,13 @@
             carousel.innerHTML = pending.map(offer => {
                 const username = (offer.proposer_username || '').replace(/@/g, '');
                 const safeUsername = username.replace(/'/g, "\\'");
-                const displayName = username ? `@${username}` : (offer.proposer_full_name || `ID: ${offer.proposer_id}`);
+                const displayName = username
+                    ? `@${username}`
+                    : (offer.proposer_full_name || window.t('idLabel', { id: offer.proposer_id }, lang));
                 const remain = formatOfferRemaining(offer.created_at);
-                const expireText = remain === t.offerExpired
-                    ? t.offerExpired
-                    : t.offerExpiresIn.replace('{time}', remain);
+                const expireText = remain === window.t('offerExpired', {}, lang)
+                    ? window.t('offerExpired', {}, lang)
+                    : window.t('offerExpiresIn', { time: remain }, lang);
 
                 return `
                     <div class="offer-card">
@@ -3228,12 +2445,12 @@
                             <button class="offer-user" onclick="openTesterDossier('${safeUsername}', ${offer.proposer_id}, ${offer.target_app_id}); event.stopPropagation();">${displayName}</button>
                             <span class="meta-chip accent-yellow">☯️ ${offer.proposer_karma || 0}</span>
                         </div>
-                        <div class="offer-sub">${t.offerForApp.replace('{target_app}', offer.target_app_name || 'Unknown')}</div>
-                        <div class="offer-sub">${t.offerWithApp.replace('{proposer_app}', offer.proposer_app_name || 'Unknown')}</div>
+                        <div class="offer-sub">${window.t('offerForApp', { target_app: offer.target_app_name || window.t('unknownLabel', {}, lang) }, lang)}</div>
+                        <div class="offer-sub">${window.t('offerWithApp', { proposer_app: offer.proposer_app_name || window.t('unknownLabel', {}, lang) }, lang)}</div>
                         <div class="offer-expire">${expireText}</div>
                         <div class="action-row" style="margin-top: 10px;">
-                            <button class="btn btn-success" style="flex: 1;" onclick="decideOffer(${offer.offer_id}, 'accept', event)">${t.offerAcceptBtn}</button>
-                            <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.12); color: #ff3b30;" onclick="decideOffer(${offer.offer_id}, 'reject', event)">${t.offerRejectBtn}</button>
+                            <button class="btn btn-success" style="flex: 1;" onclick="decideOffer(${offer.offer_id}, 'accept', event)">${window.t('offerAcceptBtn', {}, lang)}</button>
+                            <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.12); color: #ff3b30;" onclick="decideOffer(${offer.offer_id}, 'reject', event)">${window.t('offerRejectBtn', {}, lang)}</button>
                         </div>
                     </div>
                 `;
@@ -3468,7 +2685,7 @@
                     <div class="card-header">
                         ${renderIcon(test.name, test.icon_url)}
                         <div class="card-info">
-                            <div class="card-title">${test.name}</div>
+                            <div class="card-title">${test.name || window.t('unknownLabel', {}, lang)}</div>
                             <div class="card-subtitle">${test.package}</div>
                         </div>
                         ${ownerBtnHtml}
@@ -3552,7 +2769,7 @@
                     <div class="card-header">
                         ${renderIcon(test.name, test.icon_url)}
                         <div class="card-info">
-                            <div class="card-title">${test.name}</div>
+                            <div class="card-title">${test.name || window.t('unknownLabel', {}, lang)}</div>
                             <div class="card-subtitle">${test.package}</div>
                         </div>
                         ${ownerBtnHtml}
@@ -3588,26 +2805,26 @@
         }
 
         function renderFeedCard(item, kind) {
-            const ownerDisplay = item.owner_full_name || (item.owner_username ? '@' + item.owner_username : `ID: ${item.owner_id}`);
+            const ownerDisplay = item.owner_full_name || (item.owner_username ? '@' + item.owner_username : window.t('idLabel', { id: item.owner_id }, lang));
             const safeOwner = (item.owner_username || '').replace(/'/g, "\\'");
             const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
             const bountyChip = (kind === 'bounty')
                 ? `<span class="meta-chip accent-purple">💎 ${item.bounty_per_tester || 0} $BUST</span>`
                 : '';
             const kindChip = (kind === 'mutual-seeking')
-                ? `<span class="meta-chip accent-green">👨‍💻 ${t.tabTestersNeeded}</span>`
+                ? `<span class="meta-chip accent-green">👨‍💻 ${window.t('tabTestersNeeded', {}, lang)}</span>`
                 : (kind === 'mutual-prelaunch')
-                    ? `<span class="meta-chip accent-blue">🚀 Pre-Launch</span>`
+                    ? `<span class="meta-chip accent-blue">${window.t('tabPreLaunch', {}, lang)}</span>`
                     : '';
 
-            let buttonText = t.mutualJoinBtn;
+            let buttonText = window.t('mutualJoinBtn', {}, lang);
             let clickAction = `joinMutual(${item.app_id}, false)`;
             if (kind === 'mutual-prelaunch') {
-                buttonText = t.prelaunchJoinBtn;
+                buttonText = window.t('prelaunchJoinBtn', {}, lang);
                 clickAction = `joinMutual(${item.app_id}, true)`;
             }
             if (kind === 'bounty') {
-                buttonText = t.bountyTakeBtn;
+                buttonText = window.t('bountyTakeBtn', {}, lang);
                 clickAction = `joinBounty(${item.app_id})`;
             }
 
@@ -3615,7 +2832,7 @@
                 <div class="market-card">
                     <div class="market-top">
                         <div>
-                            <div class="card-title">${item.name || 'Unknown'}</div>
+                            <div class="card-title">${item.name || window.t('unknownLabel', {}, lang)}</div>
                             <div class="market-owner" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
                         </div>
                         <div style="display:flex; gap:6px; align-items:center;">
@@ -3688,7 +2905,7 @@
                 });
                 const result = await response.json();
                 if (result.status !== 'success') {
-                    if (tg.showAlert) tg.showAlert(result.message || t.networkError);
+                    if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
                     return;
                 }
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -3708,7 +2925,7 @@
                 });
                 const result = await response.json();
                 if (result.status !== 'success') {
-                    if (tg.showAlert) tg.showAlert(result.message || t.networkError);
+                    if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
                     return;
                 }
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -3779,12 +2996,12 @@
         }
 
         function renderCompactCard(app) {
-            const ownerDisplay = app.owner_full_name || (app.owner_username ? '@' + app.owner_username : '???');
+            const ownerDisplay = app.owner_full_name || (app.owner_username ? '@' + app.owner_username : window.t('unknownLabel', {}, lang));
             const ownerUsername = app.owner_username || '';
             const esc = (text) => String(text || '').replace(/'/g, "\\'");
-            const testersTooltip = esc(t.chipTooltipTesters.replace('{count}', app.active_testers_count || 0));
+            const testersTooltip = esc(window.t('chipTooltipTesters', { count: app.active_testers_count || 0 }, lang));
             const daysValue = app.days_since_publish || 1;
-            const daysTooltip = esc(t.chipTooltipDays.replace('{days}', daysValue));
+            const daysTooltip = esc(window.t('chipTooltipDays', { days: daysValue }, lang));
 
             let badges = '';
             if (app.owner_karma) {
@@ -3794,7 +3011,7 @@
             if (app.is_new) {
                 badges += '<button class="meta-chip accent-green" onclick="showToast(\'' + daysTooltip + '\'); event.stopPropagation();">🆕</button>';
             } else if (app.days_since_publish) {
-                badges += '<button class="meta-chip" onclick="showToast(\'' + daysTooltip + '\'); event.stopPropagation();">📅 ' + app.days_since_publish + 'д</button>';
+                badges += '<button class="meta-chip" onclick="showToast(\'' + daysTooltip + '\'); event.stopPropagation();">' + t.daysShort.replace('{days}', app.days_since_publish) + '</button>';
             }
 
             let instructionHtml = '';
@@ -3814,18 +3031,18 @@
                 <div class="compact-card">
                     <div class="compact-card-main">
                         <div class="compact-card-icon">
-                            ${renderIcon(app.name, app.icon_url)}
+                            ${renderIcon(app.name || window.t('unknownLabel', {}, lang), app.icon_url)}
                         </div>
                         <div class="compact-card-center">
                             <div class="compact-card-clickable" onclick="openContactModal('${ownerUsername}')">
-                                <div class="compact-card-name">${app.name}</div>
+                                <div class="compact-card-name">${app.name || window.t('unknownLabel', {}, lang)}</div>
                                 <div class="compact-card-owner">${ownerDisplay} 💬</div>
                             </div>
                             <div class="compact-card-badges">${badges}</div>
                             ${instructionHtml}
                         </div>
                         <div class="compact-card-right">
-                            <button class="compact-test-btn" onclick="takeAppToTest(${app.app_id})">${t.testBtnShort}</button>
+                            <button class="compact-test-btn" onclick="takeAppToTest(${app.app_id})">${window.t('testBtnShort', {}, lang)}</button>
                         </div>
                     </div>
                 </div>
@@ -3994,7 +3211,7 @@
                             cleanUsername = tester.username.replace('@', '');
                             nameHtml = `<a href="javascript:void(0);" onclick="return openTelegramProfile('${cleanUsername}', event)" class="tester-link">@${cleanUsername}</a>`;
                         } else {
-                            nameHtml = `<span class="tester-id">ID: ${tester.tester_id}</span>`;
+                            nameHtml = `<span class="tester-id">${window.t('idLabel', { id: tester.tester_id }, lang)}</span>`;
                         }
                         
                         let statusHtml = '';
@@ -4016,7 +3233,7 @@
                         
                         let bellHtml = '';
                         if (showBell && cleanUsername) {
-                            const msg = t.bellNotifyMsg.replace('{name}', project.name);
+                            const msg = t.bellNotifyMsg.replace('{name}', project.name || window.t('unknownLabel', {}, lang));
                             bellHtml = `<a href="javascript:void(0);" onclick="tg.openTelegramLink('https://t.me/${cleanUsername}?text=${encodeURIComponent(msg)}')" style="text-decoration: none; font-size: 16px;">🔔</a>`;
                         }
 
@@ -4132,9 +3349,9 @@
                 
                 card.innerHTML = `
                     <div class="card-header" style="margin-bottom: 8px;">
-                        ${renderIcon(project.name, project.icon_url)}
+                        ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
                         <div class="card-info">
-                            <div class="card-title">${project.name}</div>
+                            <div class="card-title">${project.name || window.t('unknownLabel', {}, lang)}</div>
                             <div class="card-subtitle">${project.package}</div>
                         </div>
                         <div class="project-header-actions">
@@ -4237,11 +3454,11 @@
                     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                     loadTasks();
                 } else {
-                    if (tg.showAlert) tg.showAlert("Error taking test.");
+                    if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'takeTestError'));
                 }
             } catch (error) {
                 console.error("Take test error:", error);
-                if (tg.showAlert) tg.showAlert("Network error. Please try again.");
+                if (tg.showAlert) tg.showAlert(getApiErrorMessage(error && error.message, 'networkError'));
             }
         }
 
@@ -4402,7 +3619,7 @@
 
         function sendContactMessage() {
             if (!_contactOwnerUsername) {
-                showToast('Username not available');
+                showToast(t.usernameUnavailable);
                 return;
             }
             const text = document.getElementById('contact-text').value.trim();
@@ -4444,7 +3661,7 @@
                 console.error('Toggle visibility error:', error);
                 proj.is_visible = prev.is_visible;
                 renderProjects();
-                showToast('Ошибка обновления видимости');
+                showToast(t.visibilityUpdateError);
             }
         }
 
@@ -4478,14 +3695,15 @@
                 });
                 const data = await response.json();
                 if (!response.ok || data.status !== 'success') {
-                    throw new Error(data.detail || data.message || 'Drop test failed');
+                    showToast(getApiErrorMessage(data, 'loadError'));
+                    return;
                 }
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 closeDropTestModal({ target: document.getElementById('drop-test-modal') });
                 await Promise.all([loadTasks(), loadProjects(true)]);
             } catch (error) {
                 console.error('Drop test error:', error);
-                showToast(error.message || 'Network error');
+                showToast(getApiErrorMessage(error && error.message, 'networkError'));
             }
         }
 
@@ -4529,14 +3747,15 @@
                 });
                 const data = await response.json();
                 if (!response.ok || data.status !== 'success') {
-                    throw new Error(data.message || t.loadError);
+                    showToast(getApiErrorMessage(data, 'loadError'));
+                    return;
                 }
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 closeOvertimeModal({ target: document.getElementById('overtime-modal') });
                 await Promise.all([loadTasks(), loadProjects(true)]);
             } catch (error) {
                 console.error('Overtime leave error:', error);
-                showToast(error.message || t.loadError);
+                showToast(getApiErrorMessage(error && error.message, 'loadError'));
             }
         }
 
@@ -4613,6 +3832,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ user_id: userId, url: url })
                 });
+                const data = await resp.json();
                 if (resp.ok) {
                     _socialBonusStatus = 'pending';
                     const socialStatus = document.getElementById('earn-social-status');
@@ -4625,11 +3845,11 @@
                     }
                     showToast(t.earnSocialSubmitted || 'Ссылка отправлена!');
                 } else {
-                    showToast('Error submitting link');
+                    showToast(getApiErrorMessage(data, 'socialSubmitError'));
                 }
             } catch (e) {
                 console.error('Social bonus submit error:', e);
-                showToast('Error');
+                showToast(getApiErrorMessage(e && e.message, 'socialSubmitError'));
             }
         }
 
@@ -4651,7 +3871,8 @@
                 });
                 const data = await response.json();
                 if (!response.ok || data.status !== 'success') {
-                    throw new Error(data.message || t.loadError);
+                    showToast(getApiErrorMessage(data, 'loadError'));
+                    return;
                 }
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 showToast(t.syncSavedToast);
@@ -4659,7 +3880,7 @@
                 await Promise.all([loadProjects(true), loadTasks()]);
             } catch (error) {
                 console.error('Project sync error:', error);
-                showToast(error.message || t.loadError);
+                showToast(getApiErrorMessage(error && error.message, 'loadError'));
             }
         }
 
@@ -4690,20 +3911,21 @@
                 html += `<div id="archive-list" style="display:none;">`;
                 archivedProjects.forEach(proj => {
                     const modeLabel = proj.mode === 'bounty' ? t.modeBounty : proj.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
+                    const archiveName = proj.name || window.t('unknownLabel', {}, lang);
                     html += `
                     <div class="card" style="opacity: 0.75; margin-bottom: 10px;">
                         <div class="card-header" style="margin-bottom: 8px;">
-                            ${renderIcon(proj.name, proj.icon_url)}
+                            ${renderIcon(archiveName, proj.icon_url)}
                             <div class="card-info">
-                                <div class="card-title">${proj.name}</div>
+                                <div class="card-title">${archiveName}</div>
                                 <div class="card-subtitle">${proj.package_name}</div>
                             </div>
                         </div>
                         <div style="font-size: 13px; color: var(--hint-color); margin-bottom: 8px;">
-                            ${modeLabel} &nbsp;·&nbsp; \ud83d\udc65 ${proj.total_testers} &nbsp;·&nbsp; \u2705 ${proj.total_checkins} ${t.digest_leaderboard_checkins || 'check-ins'}
+                            ${modeLabel} &nbsp;·&nbsp; \ud83d\udc65 ${proj.total_testers} &nbsp;·&nbsp; \u2705 ${proj.total_checkins} ${t.digest_leaderboard_checkins}
                         </div>
                         <button class="btn" style="width:100%; background:rgba(255,59,48,0.1); color:#ff3b30; font-size:13px;"
-                            onclick="confirmHardDelete(${proj.app_id}, '${proj.name.replace(/'/g, "\\'")}')">
+                            onclick="confirmHardDelete(${proj.app_id}, '${archiveName.replace(/'/g, "\\'")}')">
                             ${t.archiveDeletePermanent}
                         </button>
                     </div>`;
@@ -4739,10 +3961,10 @@
                         archivedProjects = archivedProjects.filter(p => p.app_id !== appId);
                         renderArchivedProjects();
                     } else {
-                        showToast(data.message || 'Error');
+                        showToast(getApiErrorMessage(data, 'hardDeleteError'));
                     }
                 } catch (e) {
-                    showToast('Network error');
+                    showToast(getApiErrorMessage(e && e.message, 'networkError'));
                 }
             }
 
@@ -4871,7 +4093,9 @@
                     }
                     renderProjects();
                 } else {
-                    const msg = (result.message && result.message.includes('limit')) ? t.karmaLimitReached : t.karmaAlreadyLiked;
+                    const msg = result.code === 'karma_limit_reached'
+                        ? t.karmaLimitReached
+                        : getApiErrorMessage(result, 'karmaAlreadyLiked');
                     showToast(msg);
                 }
             } catch (error) {
@@ -5042,7 +4266,7 @@
                             btn.style.backgroundColor = "var(--success-color)";
                             btn.disabled = false;
                         }
-                        if (tg.showAlert) tg.showAlert("Error checking in.");
+                        if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'checkinError'));
                         return false;
                     }
                 } catch (error) {
@@ -5053,7 +4277,7 @@
                         btn.style.backgroundColor = "var(--success-color)";
                         btn.disabled = false;
                     }
-                    if (tg.showAlert) tg.showAlert(error.message || "Network error. Please try again.");
+                    if (tg.showAlert) tg.showAlert(getApiErrorMessage(error && error.message, 'networkError'));
                     return false;
                 }
             }
@@ -5171,12 +4395,12 @@
                     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                     loadProjects(); // Reload the projects list to reflect the deletion
                 } else {
-                    if (tg.showAlert) tg.showAlert("Error deleting tester.");
+                    if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'deleteTesterError'));
                 }
             } catch (error) {
                 console.error("Delete tester error:", error);
-                if (tg.showAlert) tg.showAlert("Network error. Please try again.");
-                else alert("Network error. Please try again.");
+                if (tg.showAlert) tg.showAlert(getApiErrorMessage(error && error.message, 'networkError'));
+                else alert(getApiErrorMessage(error && error.message, 'networkError'));
             }
         }
 
@@ -5184,7 +4408,7 @@
         async function openDossierModal(username, testerId, appId) {
             if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
             const modal = document.getElementById('dossier-modal');
-            document.getElementById('dossier-modal-title').innerText = username ? `@${username}` : `ID: ${testerId}`;
+            document.getElementById('dossier-modal-title').innerText = username ? `@${username}` : window.t('idLabel', { id: testerId }, lang);
             document.getElementById('dossier-body').innerHTML = `<p style="text-align:center; color: var(--hint-color);">${t.dossierLoading}</p>`;
             modal.classList.add('active');
 
@@ -5340,12 +4564,12 @@
                     closeDeleteModal();
                     loadProjects();
                 } else {
-                    if (tg.showAlert) tg.showAlert("Error deleting project.");
+                    if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'deleteProjectError'));
                 }
             } catch (error) {
                 console.error("Delete project error:", error);
-                if (tg.showAlert) tg.showAlert("Network error. Please try again.");
-                else alert("Network error. Please try again.");
+                if (tg.showAlert) tg.showAlert(getApiErrorMessage(error && error.message, 'networkError'));
+                else alert(getApiErrorMessage(error && error.message, 'networkError'));
             } finally {
                 btn.innerText = originalText;
                 btn.disabled = false;
@@ -5488,18 +4712,18 @@
             };
         }
 
-        function getProjectApiErrorMessage(message, details = {}) {
-            if (message === 'invalid_mode') return t.invalidModeSelection;
-            if (message === 'invalid_limit_mutual') return t.mutualLimitInvalid;
-            if (message === 'invalid_limit_bounty') return t.bountyLimitInvalid;
-            if (message === 'invalid_bounty_per_tester') return t.bountyPerTesterInvalid;
-            if (message === 'bust_balance_unavailable') return t.bustBalanceUnavailable;
-            if (message === 'insufficient_bust_balance') {
-                return t.insufficientBustBalance
-                    .replace('{required}', formatBustAmount(details.required || 0))
-                    .replace('{balance}', formatBustAmount(details.balance_bust || 0));
+        function getApiErrorMessage(payload, fallbackKey = 'genericError') {
+            if (window.resolveApiMessage) {
+                return window.resolveApiMessage(payload, fallbackKey, lang);
             }
-            return null;
+            if (payload && typeof payload === 'object') {
+                return payload.message || payload.detail || t[fallbackKey] || t.genericError;
+            }
+            return payload || t[fallbackKey] || t.genericError;
+        }
+
+        function getProjectApiErrorMessage(message, details = {}) {
+            return getApiErrorMessage({ code: message, details }, 'saveProjectError');
         }
 
         // --- Modal Logic ---
@@ -5649,7 +4873,7 @@
                     closeModal();
                     loadProjects();
                 } else {
-                    const message = getProjectApiErrorMessage(result.message, result.details) || t.saveProjectError;
+                    const message = getProjectApiErrorMessage(result.code || result.message, result.details) || t.saveProjectError;
                     if (tg.showAlert) tg.showAlert(message);
                     else alert(message);
                 }
@@ -5732,7 +4956,7 @@
                     closeEditModal();
                     loadProjects();
                 } else {
-                    const message = getProjectApiErrorMessage(result.message, result.details) || t.saveProjectChangesError;
+                    const message = getProjectApiErrorMessage(result.code || result.message, result.details) || t.saveProjectChangesError;
                     if (tg.showAlert) tg.showAlert(message);
                     else alert(message);
                 }
