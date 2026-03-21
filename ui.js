@@ -1038,6 +1038,18 @@ function renderProjects() {
 
 function showScreenshotCompleteModal(ownerUsername) {
     const actionEl = document.getElementById('screenshot-complete-action');
+    const titleEl = document.getElementById('t-screenshotCompleteTitle');
+    const textEl = document.getElementById('t-screenshotCompleteText');
+    const closeEl = document.getElementById('t-screenshotCompleteClose');
+    if (titleEl) {
+        titleEl.innerText = t.screenshotCompleteTitle || t.screenshotReminderTitle;
+    }
+    if (textEl) {
+        textEl.innerText = t.screenshotCompleteText || t.screenshotReminderText;
+    }
+    if (closeEl) {
+        closeEl.innerText = t.screenshotCompleteClose || t.btnClose;
+    }
     if (ownerUsername) {
         const safe = (ownerUsername || '').replace(/'/g, "\\'");
         actionEl.innerHTML = `<button class="btn" style="width: 100%; background-color: var(--button-color, #007aff); color: var(--button-text-color, #fff); border: none; margin-bottom: 8px;" onclick="openTelegramProfile('${safe}', event); closeScreenshotCompleteModal();">${t.screenshotReminderBtn}</button>`;
@@ -1208,33 +1220,51 @@ function renderArchivedProjects() {
     const section = document.getElementById('archive-section');
     if (!section) return;
     if (archivedProjects.length === 0) {
-        section.innerHTML = `<div class="accordion-header" onclick="toggleArchive()" style="cursor:pointer; padding: 12px 0; font-size: 14px; font-weight: 600; color: var(--hint-color);">${t.archiveTitle} (0) ▼</div>`;
+        section.innerHTML = `
+            <div class="archive-shell is-empty">
+                <button type="button" class="archive-toggle" onclick="toggleArchive()">
+                    <span class="archive-toggle-label">${t.archiveTitle} (0)</span>
+                    <span class="archive-toggle-arrow">▼</span>
+                </button>
+            </div>
+        `;
         return;
     }
-    let html = `<div class="accordion-header" onclick="toggleArchive()" id="archive-toggle" style="cursor:pointer; padding: 12px 0; font-size: 14px; font-weight: 600; color: var(--hint-color);">${t.archiveTitle} (${archivedProjects.length}) ▼</div>`;
-    html += '<div id="archive-list" style="display:none;">';
+    let html = `
+        <div class="archive-shell">
+            <button type="button" class="archive-toggle" onclick="toggleArchive()" id="archive-toggle">
+                <span class="archive-toggle-label">${t.archiveTitle} (${archivedProjects.length})</span>
+                <span class="archive-toggle-arrow">▼</span>
+            </button>
+            <div id="archive-list" class="archive-list is-collapsed">
+    `;
     archivedProjects.forEach((project) => {
         const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
         const archiveName = project.name || window.t('unknownLabel', {}, lang);
         html += `
-            <div class="card" style="opacity: 0.75; margin-bottom: 10px;">
-                <div class="card-header" style="margin-bottom: 8px;">
+            <div class="card archive-card">
+                <div class="card-header archive-card-header">
                     ${renderIcon(archiveName, project.icon_url)}
                     <div class="card-info">
                         <div class="card-title">${archiveName}</div>
                         <div class="card-subtitle">${project.package_name}</div>
                     </div>
                 </div>
-                <div style="font-size: 13px; color: var(--hint-color); margin-bottom: 8px;">
-                    ${modeLabel} &nbsp;·&nbsp; 👥 ${project.total_testers} &nbsp;·&nbsp; ✅ ${project.total_checkins} ${t.digest_leaderboard_checkins}
+                <div class="archive-meta-row">
+                    <span class="archive-meta-chip">${modeLabel}</span>
+                    <span class="archive-meta-chip">👥 ${project.total_testers}</span>
+                    <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
                 </div>
-                <button class="btn" style="width:100%; background:rgba(255,59,48,0.1); color:#ff3b30; font-size:13px;"
+                <button class="btn archive-delete-btn"
                     onclick="confirmHardDelete(${project.app_id}, '${archiveName.replace(/'/g, "\\'")}')">
                     ${t.archiveDeletePermanent}
                 </button>
             </div>`;
     });
-    html += '</div>';
+    html += `
+            </div>
+        </div>
+    `;
     section.innerHTML = html;
 }
 
@@ -1242,9 +1272,15 @@ function toggleArchive() {
     const list = document.getElementById('archive-list');
     const toggle = document.getElementById('archive-toggle');
     if (!list) return;
-    const isOpen = list.style.display !== 'none';
-    list.style.display = isOpen ? 'none' : 'block';
-    if (toggle) toggle.textContent = `${t.archiveTitle} (${archivedProjects.length}) ${isOpen ? '▼' : '▲'}`;
+    const isCollapsed = list.classList.contains('is-collapsed');
+    list.classList.toggle('is-collapsed', !isCollapsed);
+    if (toggle) {
+        toggle.classList.toggle('is-open', isCollapsed);
+        const arrow = toggle.querySelector('.archive-toggle-arrow');
+        if (arrow) {
+            arrow.textContent = isCollapsed ? '▲' : '▼';
+        }
+    }
 }
 
 function copyGroupUrl(url) {

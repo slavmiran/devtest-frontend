@@ -354,6 +354,51 @@ function refreshLanguageUi() {
     }
 }
 
+function rerenderDynamicUi() {
+    renderEvents();
+    renderTests();
+    renderIncomingOffers();
+    renderProjects();
+    renderMutualFeed();
+    renderBountyFeed();
+    renderArchivedProjects();
+    if (availableAppsLoaded) {
+        renderShowcase();
+    }
+}
+
+function refreshActiveTabData() {
+    const activeTab = document.querySelector('.tab-content.active');
+    const activeTabId = activeTab ? activeTab.id : '';
+    const tasksSectionOpen = document.getElementById('available-details')?.open;
+
+    if (activeTabId === 'tab-tests') {
+        loadTasks().catch(error => console.error('Language refresh tasks error:', error));
+        loadEvents().catch(error => console.error('Language refresh events error:', error));
+        return;
+    }
+
+    if (activeTabId === 'tab-projects') {
+        loadProjects(true).catch(error => console.error('Language refresh projects error:', error));
+        loadArchivedProjects().catch(error => console.error('Language refresh archive error:', error));
+        return;
+    }
+
+    if (activeTabId === 'tab-mutual') {
+        loadMutualFeed().catch(error => console.error('Language refresh mutual error:', error));
+        return;
+    }
+
+    if (activeTabId === 'tab-bounty') {
+        loadBountyFeed().catch(error => console.error('Language refresh bounty error:', error));
+        return;
+    }
+
+    if (tasksSectionOpen) {
+        loadTasks().catch(error => console.error('Language refresh showcase error:', error));
+    }
+}
+
 function applyLanguage(newLang) {
     lang = newLang;
     t = window.getTranslations(lang);
@@ -365,14 +410,8 @@ function applyLanguage(newLang) {
     }).catch(error => console.error('Language sync error:', error));
 
     refreshLanguageUi();
-    renderEvents();
-    renderTests();
-    renderIncomingOffers();
-    renderProjects();
-    renderMutualFeed();
-    renderBountyFeed();
-    renderArchivedProjects();
-    if (availableAppsLoaded) renderShowcase();
+    rerenderDynamicUi();
+    refreshActiveTabData();
 }
 
 function toggleLanguage() {
@@ -1446,6 +1485,8 @@ Object.assign(window, {
     setProjectMode,
     updateProjectPricing,
     getApiErrorMessage,
+    rerenderDynamicUi,
+    refreshActiveTabData,
     saveProject,
     closeEmailWarningModal,
     confirmEmailWarning,

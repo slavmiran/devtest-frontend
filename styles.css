@@ -886,6 +886,94 @@ details[open] > summary .details-arrow {
     cursor: pointer;
 }
 
+.archive-shell {
+    margin-top: 12px;
+    padding-top: 12px;
+}
+
+.archive-shell.is-empty {
+    margin-top: 8px;
+    padding-top: 0;
+}
+
+.archive-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    background: transparent;
+    border: none;
+    color: var(--hint-color);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+}
+
+.archive-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.archive-toggle-arrow {
+    flex-shrink: 0;
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.archive-toggle.is-open .archive-toggle-arrow {
+    transform: translateY(-1px);
+}
+
+.archive-list {
+    display: grid;
+    gap: 12px;
+    padding-top: 8px;
+}
+
+.archive-list.is-collapsed {
+    display: none;
+}
+
+.archive-card {
+    opacity: 0.82;
+    margin-bottom: 0;
+    padding: 14px;
+}
+
+.archive-card-header {
+    margin-bottom: 10px;
+}
+
+.archive-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.archive-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(142, 142, 147, 0.12);
+    color: var(--hint-color);
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.archive-delete-btn {
+    width: 100%;
+    background: rgba(255,59,48,0.1);
+    color: #ff3b30;
+    font-size: 13px;
+}
+
 #karma-modal .modal-content {
     text-align: center;
     padding: 24px 20px;
