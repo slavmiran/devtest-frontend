@@ -471,6 +471,94 @@
             color: var(--button-text-color);
         }
 
+        .form-surface {
+            background: rgba(142, 142, 147, 0.08);
+            border: 1px solid rgba(142, 142, 147, 0.18);
+            border-radius: 16px;
+            padding: 14px;
+        }
+
+        .form-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-color);
+        }
+
+        .reveal-panel {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transform: translateY(-8px);
+            transition: max-height 0.28s ease, opacity 0.2s ease, transform 0.28s ease, margin-bottom 0.28s ease;
+            margin-bottom: 0;
+        }
+
+        .reveal-panel.active {
+            max-height: 420px;
+            opacity: 1;
+            transform: translateY(0);
+            margin-bottom: 16px;
+        }
+
+        .form-inline {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-inline .form-group {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .calc-card {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(51, 144, 236, 0.08), rgba(52, 199, 89, 0.06));
+            border: 1px solid rgba(51, 144, 236, 0.16);
+        }
+
+        .calc-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--link-color);
+            margin-bottom: 8px;
+        }
+
+        .calc-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            padding: 6px 0;
+            color: var(--text-color);
+        }
+
+        .calc-row span:last-child {
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .calc-row.total {
+            margin-top: 6px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(142, 142, 147, 0.18);
+            font-size: 14px;
+        }
+
+        .calc-row.muted {
+            color: var(--hint-color);
+        }
+
+        @media (max-width: 420px) {
+            .form-inline {
+                flex-direction: column;
+                gap: 0;
+            }
+        }
+
         .lang-switcher {
             position: fixed;
             top: 8px;
@@ -626,6 +714,7 @@
         .meta-chip.accent-blue { background: rgba(51,144,236,0.15); color: var(--link-color); }
         .meta-chip.accent-yellow { background: rgba(255,204,0,0.15); color: #e6b800; }
         .meta-chip.accent-orange { background: rgba(255,149,0,0.15); color: #ff9500; }
+        .meta-chip.accent-purple { background: rgba(175, 82, 222, 0.15); color: #af52de; }
         .meta-chip.accent-red { background: rgba(255,59,48,0.15); color: #ff3b30; }
 
         /* Dev instruction accordion */
@@ -1049,6 +1138,122 @@
         #contact-text {
             resize: none;
         }
+
+        .offers-section {
+            margin-bottom: 14px;
+        }
+
+        .offers-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .offers-header h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .offers-count {
+            font-size: 12px;
+            color: var(--hint-color);
+        }
+
+        .offers-carousel {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 2px 2px 6px;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .offers-carousel::-webkit-scrollbar {
+            display: none;
+        }
+
+        .offer-card {
+            flex: 0 0 85vw;
+            max-width: 460px;
+            scroll-snap-align: start;
+            background: var(--secondary-bg-color);
+            border: 1px solid rgba(142, 142, 147, 0.18);
+            border-radius: 14px;
+            padding: 12px;
+        }
+
+        .offer-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .offer-user {
+            color: var(--link-color);
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            font-weight: 600;
+            border: none;
+            background: transparent;
+            padding: 0;
+            font-size: 14px;
+        }
+
+        .offer-sub {
+            font-size: 13px;
+            color: var(--hint-color);
+            margin-bottom: 8px;
+        }
+
+        .offer-expire {
+            font-size: 12px;
+            color: #ff9500;
+            font-weight: 600;
+        }
+
+        .market-card {
+            background: var(--secondary-bg-color);
+            border: 1px solid rgba(142, 142, 147, 0.18);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .market-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .market-owner {
+            color: var(--link-color);
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .lang-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 24px;
+            border-radius: 999px;
+            background: rgba(51, 144, 236, 0.14);
+            font-size: 14px;
+            padding: 0 8px;
+        }
     </style>
 </head>
 <body>
@@ -1065,6 +1270,14 @@
         </div>
         <h2 id="t-testsTitle">Мои тесты</h2>
         <p id="t-testsDesc">Приложения, которые вы должны открывать каждый день.</p>
+
+        <div id="offers-section" class="offers-section" style="display:none;">
+            <div class="offers-header">
+                <h3 id="t-offersTitle">📬 Входящие заявки на взаимку</h3>
+                <span id="offers-count" class="offers-count">0</span>
+            </div>
+            <div id="offers-carousel" class="offers-carousel"></div>
+        </div>
         
         <div id="tests-list">
             <!-- Active cards will be injected here -->
@@ -1088,7 +1301,7 @@
             <button id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()">Развернуть ▼</button>
         </div>
 
-        <details id="available-details" style="margin-top: 16px;">
+        <details id="available-details" style="margin-top: 16px; display: none;">
             <summary style="font-weight: bold; cursor: pointer; padding: 12px; background: var(--bg-color); border-radius: 8px; list-style: none; display: flex; justify-content: space-between; align-items: center;"><span id="t-availableTitle" class="available-title">📱 Биржа проектов</span><span class="details-arrow">▼</span></summary>
             <div style="margin-top: 8px;">
                 <div class="showcase-tabs" id="showcase-tabs">
@@ -1107,6 +1320,29 @@
                 </div>
             </div>
         </details>
+    </div>
+
+    <!-- TAB 3: Mutual Feed -->
+    <div id="tab-mutual" class="container tab-content">
+        <h2 id="t-mutualTitle">🤝 Взаимка</h2>
+        <p id="t-mutualDesc">Раздельные потоки взаимного обмена: активный набор и pre-launch.</p>
+
+        <div class="card" style="margin-bottom: 12px;">
+            <h3 id="t-seekingTitle" style="margin-bottom: 10px;">🔥 Ищут обмен</h3>
+            <div id="mutual-seeking-list"></div>
+        </div>
+
+        <div class="card">
+            <h3 id="t-prelaunchFeedTitle" style="margin-bottom: 10px;">🚀 Pre-Launch</h3>
+            <div id="mutual-prelaunch-list"></div>
+        </div>
+    </div>
+
+    <!-- TAB 4: Bounty Feed -->
+    <div id="tab-bounty" class="container tab-content">
+        <h2 id="t-bountyTitle">💎 Биржа</h2>
+        <p id="t-bountyDesc">Контракты с оплатой в $BUST для быстрых подключений.</p>
+        <div id="bounty-list"></div>
     </div>
 
     <!-- TAB 2: Мои проекты -->
@@ -1136,6 +1372,14 @@
         <div class="nav-item" onclick="switchTab('projects', this)">
             <div class="nav-icon">🚀</div>
             <div id="t-tabProjects">Мои проекты</div>
+        </div>
+        <div class="nav-item" onclick="switchTab('mutual', this)">
+            <div class="nav-icon">🤝</div>
+            <div id="t-tabMutual">Взаимка</div>
+        </div>
+        <div class="nav-item" onclick="switchTab('bounty', this)">
+            <div class="nav-icon">💎</div>
+            <div id="t-tabBounty">Биржа</div>
         </div>
     </div>
 
@@ -1167,6 +1411,52 @@
                 </div>
                 <div id="group-custom-block" style="display: none;">
                     <input type="url" id="app-group" class="form-input" placeholder="https://groups.google.com/g/your-group">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" id="t-modeLabel">Режим проекта</label>
+                <div class="form-hint" id="t-modeHint">Выберите, где хотите набирать тестеров: взаимно, платно или в обоих каналах.</div>
+                <input type="hidden" id="app-mode" value="mutual">
+                <div class="seg-control">
+                    <button type="button" class="seg-btn active" id="add-mode-mutual" onclick="setProjectMode('add', 'mutual')">🤝 Взаимно</button>
+                    <button type="button" class="seg-btn" id="add-mode-bounty" onclick="setProjectMode('add', 'bounty')">💎 Биржа</button>
+                    <button type="button" class="seg-btn" id="add-mode-hybrid" onclick="setProjectMode('add', 'hybrid')">🔥 Гибрид</button>
+                </div>
+            </div>
+            <div id="add-mutual-settings" class="reveal-panel active">
+                <div class="form-surface">
+                    <div class="form-section-title" id="t-mutualSettingsTitle">🤝 Взаимные тестеры</div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" id="t-limitMutualLabel">Лимит взаимных тестеров</label>
+                        <input type="number" id="app-limit-mutual" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('add')">
+                        <div class="form-hint" id="t-limitMutualHint" style="margin-top: 8px; margin-bottom: 0;">Сколько тестеров можно набрать через взаимный обмен.</div>
+                    </div>
+                </div>
+            </div>
+            <div id="add-bounty-settings" class="reveal-panel">
+                <div class="form-surface">
+                    <div class="form-section-title" id="t-bountySettingsTitle">💎 Платные тестеры</div>
+                    <div class="form-hint" id="t-bountySettingsHint">Этот блок нужен только для режима Биржа или Гибрид.</div>
+                    <div class="form-inline">
+                        <div class="form-group">
+                            <label class="form-label" id="t-limitBountyLabel">Количество платных тестеров</label>
+                            <input type="number" id="app-limit-bounty" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('add')">
+                            <div class="form-hint" id="t-limitBountyHint" style="margin-top: 8px; margin-bottom: 0;">Сколько слотов откроется в Бирже.</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="t-bountyPerTesterLabel">Награда за тестера</label>
+                            <input type="number" id="app-bounty-per-tester" class="form-input" min="100" step="1" value="100" oninput="updateProjectPricing('add')">
+                            <div class="form-hint" id="t-bountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;">Минимум 100 $BUST за одного тестера.</div>
+                        </div>
+                    </div>
+                    <div class="calc-card">
+                        <div class="calc-title" id="t-calculatorTitle">Калькулятор $BUST</div>
+                        <div class="calc-row"><span id="t-calcRewardPerTester">Награда на 1 тестера</span><span id="add-calc-per-tester">100 $BUST</span></div>
+                        <div class="calc-row"><span id="t-calcDailyShare">Ежедневные чекины (40%)</span><span id="add-calc-daily">40 $BUST</span></div>
+                        <div class="calc-row"><span id="t-calcHoldBonus">Hold Bonus (60%)</span><span id="add-calc-hold">60 $BUST</span></div>
+                        <div class="calc-row total"><span id="t-calcTotalCost">Всего спишется</span><span id="add-calc-total">1200 $BUST</span></div>
+                        <div class="calc-row muted"><span id="t-calcBalance">Текущий баланс</span><span id="add-calc-balance">0 $BUST</span></div>
+                    </div>
                 </div>
             </div>
             <details style="margin-bottom: 16px;">
@@ -1249,6 +1539,52 @@
             <div class="form-group">
                 <label class="form-label" id="t-editGroup">Ссылка на Google Group</label>
                 <input type="text" id="edit-group" class="form-input" readonly style="background-color: rgba(142, 142, 147, 0.15); cursor: not-allowed;" onclick="showReadonlyAlert()">
+            </div>
+            <div class="form-group">
+                <label class="form-label" id="t-editModeLabel">Режим проекта</label>
+                <div class="form-hint" id="t-editModeHint">Можно менять режим и квоты, а при росте бюджета система спишет только разницу.</div>
+                <input type="hidden" id="edit-mode" value="mutual">
+                <div class="seg-control">
+                    <button type="button" class="seg-btn active" id="edit-mode-mutual" onclick="setProjectMode('edit', 'mutual')">🤝 Взаимно</button>
+                    <button type="button" class="seg-btn" id="edit-mode-bounty" onclick="setProjectMode('edit', 'bounty')">💎 Биржа</button>
+                    <button type="button" class="seg-btn" id="edit-mode-hybrid" onclick="setProjectMode('edit', 'hybrid')">🔥 Гибрид</button>
+                </div>
+            </div>
+            <div id="edit-mutual-settings" class="reveal-panel active">
+                <div class="form-surface">
+                    <div class="form-section-title" id="t-editMutualSettingsTitle">🤝 Взаимные тестеры</div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" id="t-editLimitMutualLabel">Лимит взаимных тестеров</label>
+                        <input type="number" id="edit-limit-mutual" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('edit')">
+                        <div class="form-hint" id="t-editLimitMutualHint" style="margin-top: 8px; margin-bottom: 0;">Изменяет лимит набора по взаимке.</div>
+                    </div>
+                </div>
+            </div>
+            <div id="edit-bounty-settings" class="reveal-panel">
+                <div class="form-surface">
+                    <div class="form-section-title" id="t-editBountySettingsTitle">💎 Платные тестеры</div>
+                    <div class="form-hint" id="t-editBountySettingsHint">Показывается только для режима Биржа или Гибрид.</div>
+                    <div class="form-inline">
+                        <div class="form-group">
+                            <label class="form-label" id="t-editLimitBountyLabel">Количество платных тестеров</label>
+                            <input type="number" id="edit-limit-bounty" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('edit')">
+                            <div class="form-hint" id="t-editLimitBountyHint" style="margin-top: 8px; margin-bottom: 0;">Сколько слотов открыто в Бирже.</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="t-editBountyPerTesterLabel">Награда за тестера</label>
+                            <input type="number" id="edit-bounty-per-tester" class="form-input" min="100" step="1" value="100" oninput="updateProjectPricing('edit')">
+                            <div class="form-hint" id="t-editBountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;">Минимум 100 $BUST.</div>
+                        </div>
+                    </div>
+                    <div class="calc-card">
+                        <div class="calc-title" id="t-editCalculatorTitle">Калькулятор $BUST</div>
+                        <div class="calc-row"><span id="t-editCalcRewardPerTester">Награда на 1 тестера</span><span id="edit-calc-per-tester">100 $BUST</span></div>
+                        <div class="calc-row"><span id="t-editCalcDailyShare">Ежедневные чекины (40%)</span><span id="edit-calc-daily">40 $BUST</span></div>
+                        <div class="calc-row"><span id="t-editCalcHoldBonus">Hold Bonus (60%)</span><span id="edit-calc-hold">60 $BUST</span></div>
+                        <div class="calc-row total"><span id="t-editCalcTotalCost">Всего спишется</span><span id="edit-calc-total">1200 $BUST</span></div>
+                        <div class="calc-row muted"><span id="t-editCalcBalance">Текущий баланс</span><span id="edit-calc-balance">0 $BUST</span></div>
+                    </div>
+                </div>
             </div>
             <div id="edit-created-at" style="font-size: 12px; color: var(--hint-color); opacity: 0.75; margin: 6px 2px 12px 2px;"></div>
             <div class="action-row">
@@ -1405,12 +1741,27 @@
             ru: {
                 tabTests: "Мои тесты",
                 tabProjects: "Мои проекты",
+                tabMutual: "Взаимка",
+                tabBounty: "Биржа",
+                mutualDesc: "Раздельные потоки взаимного обмена: активный набор и pre-launch.",
+                bountyDesc: "Контракты с оплатой в $BUST для быстрых подключений.",
+                mutualSeekingTitle: "🔥 Ищут обмен",
+                mutualPrelaunchTitle: "🚀 Pre-Launch",
+                mutualEmpty: "В этом разделе пока нет проектов",
+                bountyEmpty: "Контракты пока не найдены",
+                mutualJoinBtn: "🤝 Взять во взаимку",
+                prelaunchJoinBtn: "🚀 Войти в Pre-Launch",
+                bountyTakeBtn: "💎 Взять контракт",
+                scoreLabel: "Score",
                 testsDesc: "Приложения, которые вы должны открывать каждый день.",
                 projectsDesc: "Ваши приложения, которые тестируют другие.",
                 addApp: "+ Добавить приложение",
                 openPlay: "1️⃣ Открыть Google Play",
                 confirmStart: "2️⃣ Подтвердить запуск",
                 successCheckin: "✅ Успешно!",
+                checkinAlreadyDone: "✅ Чекин уже был засчитан сегодня",
+                checkinEarnBust: "✅ Чекин засчитан! Заработано: {amount} $BUST",
+                checkinEarnKarma: "✅ Чекин засчитан! Заработано: {amount} ☯️ Кармы",
                 loadingShowcase: "Загрузка биржи...",
                 retryBtn: "🔄 Повторить попытку",
                 loadError: "Не удалось загрузить данные",
@@ -1621,6 +1972,47 @@
                 modeMutual: "🤝 Взаимный обмен",
                 modeBounty: "💎 Биржа",
                 modeHybrid: "🔥 Комбо",
+                modeLabel: "Режим проекта",
+                modeHint: "Выберите, где будете набирать тестеров: по взаимке, через Биржу или в обоих потоках.",
+                editModeHint: "Режим и квоты можно менять в процессе. При росте бюджета спишется только разница.",
+                mutualSettingsTitle: "🤝 Взаимные тестеры",
+                limitMutualLabel: "Лимит взаимных тестеров",
+                limitMutualHint: "Сколько тестеров можно набрать через взаимный обмен.",
+                bountySettingsTitle: "💎 Платные тестеры",
+                bountySettingsHint: "Блок появляется только для режима Биржа или Гибрид.",
+                limitBountyLabel: "Количество платных тестеров",
+                limitBountyHint: "Сколько слотов открыть в Бирже.",
+                bountyPerTesterLabel: "Награда за тестера",
+                bountyPerTesterHint: "Минимум 100 $BUST за одного тестера.",
+                calculatorTitle: "Калькулятор $BUST",
+                calcRewardPerTester: "Награда на 1 тестера",
+                calcDailyShare: "Ежедневные чекины (40%)",
+                calcHoldBonus: "Hold Bonus (60%)",
+                calcTotalCost: "Всего спишется",
+                calcBalance: "Текущий баланс",
+                bustBalanceLabel: "💎 Баланс $BUST: {amount}",
+                mutualLimitInvalid: "Лимит взаимных тестеров должен быть не меньше 1",
+                bountyLimitInvalid: "Количество платных тестеров должно быть не меньше 1",
+                bountyPerTesterInvalid: "Награда за тестера должна быть не меньше 100 $BUST",
+                invalidModeSelection: "Выберите корректный режим проекта",
+                insufficientBustBalance: "Недостаточно $BUST. Нужно: {required}, доступно: {balance}",
+                bustBalanceUnavailable: "Баланс $BUST пока недоступен. Попробуйте позже.",
+                saveProjectError: "Не удалось сохранить проект.",
+                saveProjectChangesError: "Не удалось сохранить изменения.",
+                networkError: "Ошибка сети. Повторите попытку.",
+                offersTitle: "📬 Входящие заявки на взаимку",
+                offersCount: "{count} шт.",
+                offerFrom: "От",
+                offerForApp: "Хочет протестировать: {target_app}",
+                offerWithApp: "Через приложение: {proposer_app}",
+                offerExpiresIn: "Истекает через {time}",
+                offerExpired: "Заявка истекла",
+                offerAcceptBtn: "✅ Принять",
+                offerRejectBtn: "❌ Отклонить",
+                offerActionError: "Не удалось обработать заявку",
+                offerForbidden: "Эту заявку уже нельзя обработать",
+                offerAlreadyConnected: "Вы уже взаимно подключены по этой паре приложений",
+                offerEmpty: "Новых заявок пока нет",
                 // Compact card
                 instructionAccordion: "📝 Инструкция",
                 testBtnShort: "Тест",
@@ -1664,12 +2056,27 @@
             en: {
                 tabTests: "My Tests",
                 tabProjects: "My Projects",
+                tabMutual: "Mutual",
+                tabBounty: "Bounty",
+                mutualDesc: "Separate mutual exchange streams: seeking and pre-launch.",
+                bountyDesc: "Paid $BUST contracts for quick joins.",
+                mutualSeekingTitle: "🔥 Seeking exchange",
+                mutualPrelaunchTitle: "🚀 Pre-Launch",
+                mutualEmpty: "No projects in this section yet",
+                bountyEmpty: "No contracts found yet",
+                mutualJoinBtn: "🤝 Join mutual",
+                prelaunchJoinBtn: "🚀 Join pre-launch",
+                bountyTakeBtn: "💎 Take contract",
+                scoreLabel: "Score",
                 testsDesc: "Apps you need to open every day.",
                 projectsDesc: "Your apps being tested by others.",
                 addApp: "+ Add app",
                 openPlay: "1️⃣ Open Google Play",
                 confirmStart: "2️⃣ Confirm start",
                 successCheckin: "✅ Success!",
+                checkinAlreadyDone: "✅ Check-in already counted today",
+                checkinEarnBust: "✅ Check-in counted! Earned: {amount} $BUST",
+                checkinEarnKarma: "✅ Check-in counted! Earned: {amount} ☯️ Karma",
                 loadingShowcase: "Loading exchange...",
                 retryBtn: "🔄 Retry",
                 loadError: "Failed to load data",
@@ -1880,6 +2287,47 @@
                 modeMutual: "🤝 Mutual exchange",
                 modeBounty: "💎 Bounty",
                 modeHybrid: "🔥 Combo",
+                modeLabel: "Project mode",
+                modeHint: "Choose where you want to recruit testers: mutual, bounty, or both channels.",
+                editModeHint: "You can adjust mode and quotas later. If the budget grows, only the delta is charged.",
+                mutualSettingsTitle: "🤝 Mutual testers",
+                limitMutualLabel: "Mutual tester limit",
+                limitMutualHint: "How many testers can join through mutual exchange.",
+                bountySettingsTitle: "💎 Paid testers",
+                bountySettingsHint: "This block appears only for Bounty or Hybrid mode.",
+                limitBountyLabel: "Paid tester slots",
+                limitBountyHint: "How many paid slots to open in the Exchange.",
+                bountyPerTesterLabel: "Reward per tester",
+                bountyPerTesterHint: "Minimum 100 $BUST per tester.",
+                calculatorTitle: "$BUST calculator",
+                calcRewardPerTester: "Reward per tester",
+                calcDailyShare: "Daily check-ins (40%)",
+                calcHoldBonus: "Hold Bonus (60%)",
+                calcTotalCost: "Total charge",
+                calcBalance: "Current balance",
+                bustBalanceLabel: "💎 $BUST balance: {amount}",
+                mutualLimitInvalid: "Mutual tester limit must be at least 1",
+                bountyLimitInvalid: "Paid tester slots must be at least 1",
+                bountyPerTesterInvalid: "Reward per tester must be at least 100 $BUST",
+                invalidModeSelection: "Select a valid project mode",
+                insufficientBustBalance: "Not enough $BUST. Required: {required}, available: {balance}",
+                bustBalanceUnavailable: "$BUST balance is unavailable right now. Try again later.",
+                saveProjectError: "Could not save the project.",
+                saveProjectChangesError: "Could not save the changes.",
+                networkError: "Network error. Please try again.",
+                offersTitle: "📬 Incoming mutual offers",
+                offersCount: "{count}",
+                offerFrom: "From",
+                offerForApp: "Wants to test: {target_app}",
+                offerWithApp: "Using app: {proposer_app}",
+                offerExpiresIn: "Expires in {time}",
+                offerExpired: "Offer expired",
+                offerAcceptBtn: "✅ Accept",
+                offerRejectBtn: "❌ Reject",
+                offerActionError: "Failed to process offer",
+                offerForbidden: "This offer can no longer be processed",
+                offerAlreadyConnected: "You are already connected for this app pair",
+                offerEmpty: "No new offers yet",
                 // Compact card
                 instructionAccordion: "📝 Instructions",
                 testBtnShort: "Test",
@@ -1928,8 +2376,17 @@
         function applyStaticTranslations() {
             document.getElementById('t-tabTests').innerText = t.tabTests;
             document.getElementById('t-tabProjects').innerText = t.tabProjects;
+            document.getElementById('t-tabMutual').innerText = t.tabMutual;
+            document.getElementById('t-tabBounty').innerText = t.tabBounty;
             document.getElementById('t-testsTitle').innerText = t.tabTests;
             document.getElementById('t-testsDesc').innerText = t.testsDesc;
+            document.getElementById('t-mutualTitle').innerText = `🤝 ${t.tabMutual}`;
+            document.getElementById('t-mutualDesc').innerText = t.mutualDesc;
+            document.getElementById('t-seekingTitle').innerText = t.mutualSeekingTitle;
+            document.getElementById('t-prelaunchFeedTitle').innerText = t.mutualPrelaunchTitle;
+            document.getElementById('t-bountyTitle').innerText = `💎 ${t.tabBounty}`;
+            document.getElementById('t-bountyDesc').innerText = t.bountyDesc;
+            document.getElementById('t-offersTitle').innerText = t.offersTitle;
             document.getElementById('t-projectsTitle').innerText = t.tabProjects;
             document.getElementById('t-projectsDesc').innerText = t.projectsDesc;
             document.getElementById('t-pulseTitle').innerText = t.pulseTitle;
@@ -1942,6 +2399,26 @@
             document.getElementById('t-groupHint').innerText = t.standardGroupHint;
             document.getElementById('seg-standard').innerText = t.groupStandard;
             document.getElementById('seg-custom').innerText = t.groupCustom;
+            document.getElementById('t-modeLabel').innerText = t.modeLabel;
+            document.getElementById('t-modeHint').innerText = t.modeHint;
+            document.getElementById('add-mode-mutual').innerText = t.modeMutual;
+            document.getElementById('add-mode-bounty').innerText = t.modeBounty;
+            document.getElementById('add-mode-hybrid').innerText = t.modeHybrid;
+            document.getElementById('t-mutualSettingsTitle').innerText = t.mutualSettingsTitle;
+            document.getElementById('t-limitMutualLabel').innerText = t.limitMutualLabel;
+            document.getElementById('t-limitMutualHint').innerText = t.limitMutualHint;
+            document.getElementById('t-bountySettingsTitle').innerText = t.bountySettingsTitle;
+            document.getElementById('t-bountySettingsHint').innerText = t.bountySettingsHint;
+            document.getElementById('t-limitBountyLabel').innerText = t.limitBountyLabel;
+            document.getElementById('t-limitBountyHint').innerText = t.limitBountyHint;
+            document.getElementById('t-bountyPerTesterLabel').innerText = t.bountyPerTesterLabel;
+            document.getElementById('t-bountyPerTesterHint').innerText = t.bountyPerTesterHint;
+            document.getElementById('t-calculatorTitle').innerText = t.calculatorTitle;
+            document.getElementById('t-calcRewardPerTester').innerText = t.calcRewardPerTester;
+            document.getElementById('t-calcDailyShare').innerText = t.calcDailyShare;
+            document.getElementById('t-calcHoldBonus').innerText = t.calcHoldBonus;
+            document.getElementById('t-calcTotalCost').innerText = t.calcTotalCost;
+            document.getElementById('t-calcBalance').innerText = t.calcBalance;
             document.getElementById('t-iconUrl').innerText = t.iconUrl;
             document.getElementById('t-save').innerText = t.save;
             document.getElementById('t-bannerText').innerText = t.bannerText;
@@ -1965,8 +2442,30 @@
             document.getElementById('t-editIconUrl').innerText = t.iconUrl;
             document.getElementById('t-editPackage').innerText = t.editPackage;
             document.getElementById('t-editGroup').innerText = t.googleGroup;
+            document.getElementById('t-editModeLabel').innerText = t.modeLabel;
+            document.getElementById('t-editModeHint').innerText = t.editModeHint;
+            document.getElementById('edit-mode-mutual').innerText = t.modeMutual;
+            document.getElementById('edit-mode-bounty').innerText = t.modeBounty;
+            document.getElementById('edit-mode-hybrid').innerText = t.modeHybrid;
+            document.getElementById('t-editMutualSettingsTitle').innerText = t.mutualSettingsTitle;
+            document.getElementById('t-editLimitMutualLabel').innerText = t.limitMutualLabel;
+            document.getElementById('t-editLimitMutualHint').innerText = t.limitMutualHint;
+            document.getElementById('t-editBountySettingsTitle').innerText = t.bountySettingsTitle;
+            document.getElementById('t-editBountySettingsHint').innerText = t.bountySettingsHint;
+            document.getElementById('t-editLimitBountyLabel').innerText = t.limitBountyLabel;
+            document.getElementById('t-editLimitBountyHint').innerText = t.limitBountyHint;
+            document.getElementById('t-editBountyPerTesterLabel').innerText = t.bountyPerTesterLabel;
+            document.getElementById('t-editBountyPerTesterHint').innerText = t.bountyPerTesterHint;
+            document.getElementById('t-editCalculatorTitle').innerText = t.calculatorTitle;
+            document.getElementById('t-editCalcRewardPerTester').innerText = t.calcRewardPerTester;
+            document.getElementById('t-editCalcDailyShare').innerText = t.calcDailyShare;
+            document.getElementById('t-editCalcHoldBonus').innerText = t.calcHoldBonus;
+            document.getElementById('t-editCalcTotalCost').innerText = t.calcTotalCost;
+            document.getElementById('t-editCalcBalance').innerText = t.calcBalance;
             document.getElementById('t-editCancel').innerText = t.editCancel;
             document.getElementById('t-editSave').innerText = t.save;
+            updateProjectPricing('add');
+            updateProjectPricing('edit');
             renderEditCreatedAtMeta();
             // Karma modal translations
             document.getElementById('karma-modal-title').innerText = t.karmaModalTitle;
@@ -2030,7 +2529,10 @@
             applyStaticTranslations();
             renderEvents();
             renderTests();
+            renderIncomingOffers();
             renderProjects();
+            renderMutualFeed();
+            renderBountyFeed();
             renderArchivedProjects();
             if (availableAppsLoaded) renderShowcase();
         }
@@ -2064,11 +2566,17 @@
             loadTasks();
             loadEvents();
             loadProjects();
+            loadMutualFeed();
+            loadBountyFeed();
         });
 
         // --- State ---
         let myTests = [];
+        let incomingOffers = [];
         let myProjects = [];
+        let mutualSeeking = [];
+        let mutualPrelaunch = [];
+        let bountyContracts = [];
         let showcaseTestersNeeded = [];
         let showcasePreLaunch = [];
         let communityEvents = null;
@@ -2080,6 +2588,7 @@
         let _activeRequests = 0;
         let _karmaAppId = null;
         let _karmaTesterId = null;
+        let _offersTimerId = null;
 
         function _apiStart() {
             _activeRequests++;
@@ -2183,6 +2692,9 @@
                         last_owner_activity: app.last_owner_activity || null,
                     };
                 });
+
+                incomingOffers = data.incoming_offers || [];
+                renderIncomingOffers();
                 
                 // Render my tests immediately
                 renderTests();
@@ -2200,6 +2712,8 @@
             } catch (error) {
                 console.error("Error loading tasks:", error);
                 showRetry('tests-list', 'loadTasks()');
+                incomingOffers = [];
+                renderIncomingOffers();
                 showcaseLoadError = true;
                 const neededPanel = document.getElementById('showcase-needed');
                 const prelaunchPanel = document.getElementById('showcase-prelaunch');
@@ -2212,6 +2726,40 @@
                 }
                 if (prelaunchPanel) prelaunchPanel.innerHTML = '';
             } finally {
+                _apiEnd();
+            }
+        }
+
+        async function loadMutualFeed() {
+            _apiStart();
+            try {
+                const response = await fetch(`${API_BASE}/feed/mutual/${userId}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                mutualSeeking = data.seeking || [];
+                mutualPrelaunch = data.prelaunch || [];
+            } catch (error) {
+                console.error('Error loading mutual feed:', error);
+                mutualSeeking = [];
+                mutualPrelaunch = [];
+            } finally {
+                renderMutualFeed();
+                _apiEnd();
+            }
+        }
+
+        async function loadBountyFeed() {
+            _apiStart();
+            try {
+                const response = await fetch(`${API_BASE}/feed/bounty/${userId}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                bountyContracts = data.contracts || [];
+            } catch (error) {
+                console.error('Error loading bounty feed:', error);
+                bountyContracts = [];
+            } finally {
+                renderBountyFeed();
                 _apiEnd();
             }
         }
@@ -2288,6 +2836,9 @@
                     likes_used: project.likes_used || 0,
                     likes_max: project.likes_max || 1,
                     mode: project.mode || 'mutual',
+                    limit_mutual: project.limit_mutual || 0,
+                    limit_bounty: project.limit_bounty || 0,
+                    bounty_per_tester: project.bounty_per_tester || 0,
                     google_sync_day: project.google_sync_day || 0,
                     sync_message: project.sync_message || '',
                 }));
@@ -2298,6 +2849,7 @@
                     total_developers: data.total_developers || 0,
                     my_active_tests: data.my_active_tests || 0,
                     my_total_tests: data.my_total_tests || 0,
+                    balance_bust: data.balance_bust || 0,
                     top_thresholds: data.top_thresholds || {},
                     completed_tests: data.completed_tests || 0,
                     total_expected_checkins: data.total_expected_checkins || 0,
@@ -2442,6 +2994,124 @@
                 return `<img src="${iconUrl}" class="avatar" style="object-fit: cover;" onerror="this.onerror=null; this.outerHTML='<div class=\\'avatar\\' style=\\'background-color: #8e8e93;\\'>${firstLetter}</div>';">`;
             }
             return getAvatar(name);
+        }
+
+        function formatOfferRemaining(createdAt) {
+            const created = new Date(createdAt || '');
+            if (Number.isNaN(created.getTime())) return t.offerExpired;
+            const expireAt = created.getTime() + (3 * 60 * 60 * 1000);
+            const leftMs = expireAt - Date.now();
+            if (leftMs <= 0) return t.offerExpired;
+            const totalSec = Math.floor(leftMs / 1000);
+            const hh = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+            const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+            const ss = String(totalSec % 60).padStart(2, '0');
+            return `${hh}:${mm}:${ss}`;
+        }
+
+        function openTesterDossier(username, testerId, appId = null) {
+            return openDossierModal(username || '', testerId, appId || 0);
+        }
+
+        function getOfferApiError(message) {
+            if (!message) return t.offerActionError;
+            if (['offer_forbidden', 'offer_not_pending', 'offer_not_found', 'offer_expired'].includes(message)) {
+                return t.offerForbidden;
+            }
+            if (message === 'offer_already_connected') {
+                return t.offerAlreadyConnected;
+            }
+            return t.offerActionError;
+        }
+
+        async function decideOffer(offerId, action, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!offerId) return;
+
+            const url = `${API_BASE}/offers/${offerId}/${action}`;
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                const result = await response.json();
+                if (result.status !== 'success') {
+                    const msg = getOfferApiError(result.message);
+                    if (tg.showAlert) tg.showAlert(msg);
+                    else alert(msg);
+                    return;
+                }
+
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                await loadTasks();
+                loadProjects(true).catch(() => {});
+            } catch (error) {
+                console.error('Offer decision error:', error);
+                if (tg.showAlert) tg.showAlert(t.networkError);
+                else alert(t.networkError);
+            }
+        }
+
+        function renderIncomingOffers() {
+            const section = document.getElementById('offers-section');
+            const countEl = document.getElementById('offers-count');
+            const carousel = document.getElementById('offers-carousel');
+            if (!section || !countEl || !carousel) return;
+
+            if (_offersTimerId) {
+                clearInterval(_offersTimerId);
+                _offersTimerId = null;
+            }
+
+            const pending = (incomingOffers || []).filter(o => o.status === 'pending');
+            countEl.innerText = t.offersCount.replace('{count}', pending.length);
+
+            if (!pending.length) {
+                section.style.display = 'none';
+                carousel.innerHTML = '';
+                return;
+            }
+
+            section.style.display = '';
+            carousel.innerHTML = pending.map(offer => {
+                const username = (offer.proposer_username || '').replace(/@/g, '');
+                const safeUsername = username.replace(/'/g, "\\'");
+                const displayName = username ? `@${username}` : (offer.proposer_full_name || `ID: ${offer.proposer_id}`);
+                const remain = formatOfferRemaining(offer.created_at);
+                const expireText = remain === t.offerExpired
+                    ? t.offerExpired
+                    : t.offerExpiresIn.replace('{time}', remain);
+
+                return `
+                    <div class="offer-card">
+                        <div class="offer-top">
+                            <button class="offer-user" onclick="openTesterDossier('${safeUsername}', ${offer.proposer_id}, ${offer.target_app_id}); event.stopPropagation();">${displayName}</button>
+                            <span class="meta-chip accent-yellow">☯️ ${offer.proposer_karma || 0}</span>
+                        </div>
+                        <div class="offer-sub">${t.offerForApp.replace('{target_app}', offer.target_app_name || 'Unknown')}</div>
+                        <div class="offer-sub">${t.offerWithApp.replace('{proposer_app}', offer.proposer_app_name || 'Unknown')}</div>
+                        <div class="offer-expire">${expireText}</div>
+                        <div class="action-row" style="margin-top: 10px;">
+                            <button class="btn btn-success" style="flex: 1;" onclick="decideOffer(${offer.offer_id}, 'accept', event)">${t.offerAcceptBtn}</button>
+                            <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.12); color: #ff3b30;" onclick="decideOffer(${offer.offer_id}, 'reject', event)">${t.offerRejectBtn}</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            _offersTimerId = setInterval(() => {
+                const hasVisible = document.getElementById('offers-section') && document.getElementById('offers-section').style.display !== 'none';
+                if (!hasVisible) {
+                    clearInterval(_offersTimerId);
+                    _offersTimerId = null;
+                    return;
+                }
+                renderIncomingOffers();
+            }, 1000);
         }
 
         function getUserTestingDay(startDate) {
@@ -2774,6 +3444,125 @@
             document.getElementById('done-section').style.display = doneCount > 0 ? 'block' : 'none';
         }
 
+        function getLangBadge(targetLang) {
+            const langCode = String(targetLang || 'ALL').toUpperCase();
+            if (langCode === 'RU') return '<span class="lang-badge">🇷🇺</span>';
+            if (langCode === 'EN') return '<span class="lang-badge">🇬🇧</span>';
+            return '';
+        }
+
+        function renderFeedCard(item, kind) {
+            const ownerDisplay = item.owner_full_name || (item.owner_username ? '@' + item.owner_username : `ID: ${item.owner_id}`);
+            const safeOwner = (item.owner_username || '').replace(/'/g, "\\'");
+            const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
+            const scoreChip = (kind === 'mutual-seeking')
+                ? `<span class="meta-chip accent-purple">${t.scoreLabel}: ${item.score || 0}</span>`
+                : '';
+            const bountyChip = (kind === 'bounty')
+                ? `<span class="meta-chip accent-purple">💎 ${item.bounty_per_tester || 0} $BUST</span>`
+                : '';
+
+            let buttonText = t.mutualJoinBtn;
+            let clickAction = `joinMutual(${item.app_id}, false)`;
+            if (kind === 'mutual-prelaunch') {
+                buttonText = t.prelaunchJoinBtn;
+                clickAction = `joinMutual(${item.app_id}, true)`;
+            }
+            if (kind === 'bounty') {
+                buttonText = t.bountyTakeBtn;
+                clickAction = `joinBounty(${item.app_id})`;
+            }
+
+            return `
+                <div class="market-card">
+                    <div class="market-top">
+                        <div>
+                            <div class="card-title">${item.name || 'Unknown'}</div>
+                            <div class="market-owner" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            ${langBadge}
+                            <span class="meta-chip accent-yellow">☯️ ${item.owner_karma || 0}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+                        <span class="meta-chip">👥 ${item.mutual_testers_count ?? item.bounty_testers_count ?? 0}</span>
+                        ${scoreChip}
+                        ${bountyChip}
+                    </div>
+                    <button class="btn btn-primary" onclick="${clickAction}">${buttonText}</button>
+                </div>
+            `;
+        }
+
+        function renderMutualFeed() {
+            const seekingEl = document.getElementById('mutual-seeking-list');
+            const prelaunchEl = document.getElementById('mutual-prelaunch-list');
+            if (!seekingEl || !prelaunchEl) return;
+
+            if (!mutualSeeking.length) {
+                seekingEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
+            } else {
+                seekingEl.innerHTML = mutualSeeking.map(item => renderFeedCard(item, 'mutual-seeking')).join('');
+            }
+
+            if (!mutualPrelaunch.length) {
+                prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
+            } else {
+                prelaunchEl.innerHTML = mutualPrelaunch.map(item => renderFeedCard(item, 'mutual-prelaunch')).join('');
+            }
+        }
+
+        function renderBountyFeed() {
+            const bountyEl = document.getElementById('bounty-list');
+            if (!bountyEl) return;
+            if (!bountyContracts.length) {
+                bountyEl.innerHTML = `<p class="no-testers" style="margin-top: 10px;">${t.bountyEmpty}</p>`;
+                return;
+            }
+            bountyEl.innerHTML = bountyContracts.map(item => renderFeedCard(item, 'bounty')).join('');
+        }
+
+        async function joinMutual(appId, allowOverLimit = false) {
+            try {
+                const response = await fetch(`${API_BASE}/feed/mutual/${appId}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tester_id: userId, allow_over_limit: allowOverLimit })
+                });
+                const result = await response.json();
+                if (result.status !== 'success') {
+                    if (tg.showAlert) tg.showAlert(result.message || t.networkError);
+                    return;
+                }
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                await Promise.all([loadTasks(), loadMutualFeed(), loadProjects(true)]);
+            } catch (error) {
+                console.error('Join mutual error:', error);
+                if (tg.showAlert) tg.showAlert(t.networkError);
+            }
+        }
+
+        async function joinBounty(appId) {
+            try {
+                const response = await fetch(`${API_BASE}/feed/bounty/${appId}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tester_id: userId })
+                });
+                const result = await response.json();
+                if (result.status !== 'success') {
+                    if (tg.showAlert) tg.showAlert(result.message || t.networkError);
+                    return;
+                }
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                await Promise.all([loadTasks(), loadBountyFeed(), loadProjects(true)]);
+            } catch (error) {
+                console.error('Join bounty error:', error);
+                if (tg.showAlert) tg.showAlert(t.networkError);
+            }
+        }
+
         function renderShowcase() {
             const neededPanel = document.getElementById('showcase-needed');
             const prelaunchPanel = document.getElementById('showcase-prelaunch');
@@ -3006,6 +3795,9 @@
                             <span class="dashboard-label">⚡ ${t.activeTestsLabel}: ${visibilityStats.my_total_tests}</span>
                         </div>
                         <div class="dashboard-row">
+                            <span class="dashboard-label" style="font-size: 18px; font-weight: 800; color: var(--link-color);">${t.bustBalanceLabel.replace('{amount}', formatBustAmount(visibilityStats.balance_bust || 0))}</span>
+                        </div>
+                        <div class="dashboard-row">
                             <span class="dashboard-label">${expLine}</span>
                         </div>
                         <div class="dashboard-row">
@@ -3168,6 +3960,19 @@
                         </div>
                     `;
                 })();
+
+                const quotaSummaryHtml = (() => {
+                    const chips = [];
+                    if (project.mode === 'mutual' || project.mode === 'hybrid') {
+                        chips.push(`<span class="meta-chip">🤝 ${project.limit_mutual || 0}</span>`);
+                    }
+                    if (project.mode === 'bounty' || project.mode === 'hybrid') {
+                        chips.push(`<span class="meta-chip accent-purple">💎 ${project.limit_bounty || 0} × ${formatBustAmount(project.bounty_per_tester || 0)}</span>`);
+                        chips.push(`<span class="meta-chip accent-blue">${t.calcTotalCost}: ${formatBustAmount((project.limit_bounty || 0) * (project.bounty_per_tester || 0))}</span>`);
+                    }
+                    if (!chips.length) return '';
+                    return `<div style="margin: 8px 0 10px; display: flex; gap: 6px; flex-wrap: wrap;">${chips.join('')}</div>`;
+                })();
                 
                 card.innerHTML = `
                     <div class="card-header" style="margin-bottom: 8px;">
@@ -3188,6 +3993,7 @@
                     </div>
                     ${(project.is_visible === false) ? `<div class="visibility-hint">${t.inviteLinkAlways}</div>` : ''}
                     ${appProgressHtml}
+                    ${quotaSummaryHtml}
                     <div class="testers-section">
                         <div class="testers-title">${t.testersList} (${project.testers ? project.testers.length : 0})</div>
                         ${testersHtml}
@@ -3926,6 +4732,18 @@
                     const result = await response.json();
                     
                     if (result.status === 'success') {
+                        const earnedBust = Number(result.earned_bust || 0);
+                        const earnedKarma = Number(result.earned_karma || 0);
+                        if (result.already_checked_today) {
+                            showToast(t.checkinAlreadyDone);
+                        } else if (earnedBust > 0) {
+                            showToast(t.checkinEarnBust.replace('{amount}', earnedBust.toFixed(1)));
+                        } else if (earnedKarma > 0) {
+                            showToast(t.checkinEarnKarma.replace('{amount}', earnedKarma.toFixed(1)));
+                        } else {
+                            showToast(t.successCheckin);
+                        }
+
                         setTimeout(async () => {
                             card.style.display = 'none';
                             
@@ -4015,6 +4833,13 @@
 
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            if (tabId === 'mutual') {
+                loadMutualFeed();
+            }
+            if (tabId === 'bounty') {
+                loadBountyFeed();
+            }
 
             if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
         }
@@ -4185,6 +5010,7 @@
             const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
             const alreadyLiked = project ? (project.likes || []).some(l => l.tester_id === testerId) : true;
             const canReward = likesAvailable > 0 && !alreadyLiked;
+            const canDeleteFromProject = !!tester && !!project && !!appId;
 
             // Missed days calc (approximate)
             let missedDays = 0;
@@ -4225,7 +5051,7 @@
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     ${tgName ? `<button class="btn" style="width: 100%; background: var(--secondary-bg-color); color: var(--link-color); border: none; font-weight: 600; padding: 10px;" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${tgName}')">${t.dossierBtnTelegram}</button>` : ''}
                     ${canReward ? `<button class="btn" style="width: 100%; background: rgba(255,204,0,0.15); color: #ffcc00; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
-                    <button class="btn" style="width: 100%; background: rgba(255,59,48,0.1); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); deleteTester(${appId}, ${testerId}, '${tgName || testerId}')">${t.dossierBtnDelete}</button>
+                    ${canDeleteFromProject ? `<button class="btn" style="width: 100%; background: rgba(255,59,48,0.1); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); deleteTester(${appId}, ${testerId}, '${tgName || testerId}')">${t.dossierBtnDelete}</button>` : ''}
                 </div>
             </div>`;
 
@@ -4292,9 +5118,160 @@
             }
         }
 
+        function formatBustAmount(value) {
+            const numeric = Number(value || 0);
+            const rounded = Math.round(numeric * 10) / 10;
+            const normalized = Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
+            return `${normalized} $BUST`;
+        }
+
+        function getProjectFormConfig(formKey) {
+            return formKey === 'edit'
+                ? {
+                    modeInput: 'edit-mode',
+                    mutualInput: 'edit-limit-mutual',
+                    bountyInput: 'edit-limit-bounty',
+                    rewardInput: 'edit-bounty-per-tester',
+                    mutualPanel: 'edit-mutual-settings',
+                    bountyPanel: 'edit-bounty-settings',
+                    calcPerTester: 'edit-calc-per-tester',
+                    calcDaily: 'edit-calc-daily',
+                    calcHold: 'edit-calc-hold',
+                    calcTotal: 'edit-calc-total',
+                    calcBalance: 'edit-calc-balance',
+                    modeButtons: {
+                        mutual: 'edit-mode-mutual',
+                        bounty: 'edit-mode-bounty',
+                        hybrid: 'edit-mode-hybrid',
+                    },
+                }
+                : {
+                    modeInput: 'app-mode',
+                    mutualInput: 'app-limit-mutual',
+                    bountyInput: 'app-limit-bounty',
+                    rewardInput: 'app-bounty-per-tester',
+                    mutualPanel: 'add-mutual-settings',
+                    bountyPanel: 'add-bounty-settings',
+                    calcPerTester: 'add-calc-per-tester',
+                    calcDaily: 'add-calc-daily',
+                    calcHold: 'add-calc-hold',
+                    calcTotal: 'add-calc-total',
+                    calcBalance: 'add-calc-balance',
+                    modeButtons: {
+                        mutual: 'add-mode-mutual',
+                        bounty: 'add-mode-bounty',
+                        hybrid: 'add-mode-hybrid',
+                    },
+                };
+        }
+
+        function setProjectMode(formKey, mode) {
+            const config = getProjectFormConfig(formKey);
+            document.getElementById(config.modeInput).value = mode;
+            Object.entries(config.modeButtons).forEach(([key, id]) => {
+                document.getElementById(id).classList.toggle('active', key === mode);
+            });
+            updateProjectPricing(formKey);
+        }
+
+        function getProjectPricingState(formKey) {
+            const config = getProjectFormConfig(formKey);
+            const mode = document.getElementById(config.modeInput).value || 'mutual';
+            const limitMutual = Number.parseInt(document.getElementById(config.mutualInput).value || '0', 10) || 0;
+            const limitBounty = Number.parseInt(document.getElementById(config.bountyInput).value || '0', 10) || 0;
+            const bountyPerTester = Number.parseInt(document.getElementById(config.rewardInput).value || '0', 10) || 0;
+            return { mode, limitMutual, limitBounty, bountyPerTester };
+        }
+
+        function updateProjectPricing(formKey) {
+            const config = getProjectFormConfig(formKey);
+            const state = getProjectPricingState(formKey);
+            const showMutual = state.mode === 'mutual' || state.mode === 'hybrid';
+            const showBounty = state.mode === 'bounty' || state.mode === 'hybrid';
+            const mutualPanel = document.getElementById(config.mutualPanel);
+            const bountyPanel = document.getElementById(config.bountyPanel);
+            mutualPanel.classList.toggle('active', showMutual);
+            bountyPanel.classList.toggle('active', showBounty);
+
+            const rewardPerTester = showBounty ? state.bountyPerTester : 0;
+            const dailyShare = rewardPerTester * 0.4;
+            const holdBonus = rewardPerTester * 0.6;
+            const totalCost = showBounty ? state.limitBounty * rewardPerTester : 0;
+            const bustBalance = visibilityStats && typeof visibilityStats.balance_bust !== 'undefined'
+                ? visibilityStats.balance_bust
+                : 0;
+
+            document.getElementById(config.calcPerTester).innerText = formatBustAmount(rewardPerTester);
+            document.getElementById(config.calcDaily).innerText = formatBustAmount(dailyShare);
+            document.getElementById(config.calcHold).innerText = formatBustAmount(holdBonus);
+            document.getElementById(config.calcTotal).innerText = formatBustAmount(totalCost);
+            document.getElementById(config.calcBalance).innerText = formatBustAmount(bustBalance);
+        }
+
+        function resetProjectForms() {
+            document.getElementById('app-mode').value = 'mutual';
+            document.getElementById('app-limit-mutual').value = '12';
+            document.getElementById('app-limit-bounty').value = '12';
+            document.getElementById('app-bounty-per-tester').value = '100';
+            document.getElementById('edit-mode').value = 'mutual';
+            document.getElementById('edit-limit-mutual').value = '12';
+            document.getElementById('edit-limit-bounty').value = '12';
+            document.getElementById('edit-bounty-per-tester').value = '100';
+            setProjectMode('add', 'mutual');
+            setProjectMode('edit', 'mutual');
+        }
+
+        function validateProjectPricing(formKey) {
+            const { mode, limitMutual, limitBounty, bountyPerTester } = getProjectPricingState(formKey);
+            if (!['mutual', 'bounty', 'hybrid'].includes(mode)) {
+                return t.invalidModeSelection;
+            }
+            if ((mode === 'mutual' || mode === 'hybrid') && limitMutual < 1) {
+                return t.mutualLimitInvalid;
+            }
+            if ((mode === 'bounty' || mode === 'hybrid') && limitBounty < 1) {
+                return t.bountyLimitInvalid;
+            }
+            if ((mode === 'bounty' || mode === 'hybrid') && bountyPerTester < 100) {
+                return t.bountyPerTesterInvalid;
+            }
+            return null;
+        }
+
+        function buildProjectPricingPayload(formKey) {
+            const error = validateProjectPricing(formKey);
+            if (error) {
+                if (tg.showAlert) tg.showAlert(error);
+                else alert(error);
+                return null;
+            }
+            const { mode, limitMutual, limitBounty, bountyPerTester } = getProjectPricingState(formKey);
+            return {
+                mode,
+                limit_mutual: mode === 'bounty' ? 0 : limitMutual,
+                limit_bounty: (mode === 'bounty' || mode === 'hybrid') ? limitBounty : 0,
+                bounty_per_tester: (mode === 'bounty' || mode === 'hybrid') ? bountyPerTester : 0,
+            };
+        }
+
+        function getProjectApiErrorMessage(message, details = {}) {
+            if (message === 'invalid_mode') return t.invalidModeSelection;
+            if (message === 'invalid_limit_mutual') return t.mutualLimitInvalid;
+            if (message === 'invalid_limit_bounty') return t.bountyLimitInvalid;
+            if (message === 'invalid_bounty_per_tester') return t.bountyPerTesterInvalid;
+            if (message === 'bust_balance_unavailable') return t.bustBalanceUnavailable;
+            if (message === 'insufficient_bust_balance') {
+                return t.insufficientBustBalance
+                    .replace('{required}', formatBustAmount(details.required || 0))
+                    .replace('{balance}', formatBustAmount(details.balance_bust || 0));
+            }
+            return null;
+        }
+
         // --- Modal Logic ---
         function openModal() {
             document.getElementById('add-modal').classList.add('active');
+            updateProjectPricing('add');
             document.getElementById('app-name').focus();
         }
 
@@ -4311,6 +5288,7 @@
                 document.getElementById('package-error').style.display = 'none';
                 // Reset segmented control to Standard
                 switchGroupTab('standard');
+                resetProjectForms();
             }, 300);
         }
 
@@ -4339,6 +5317,8 @@
             let packageInput = document.getElementById('app-package').value.trim();
             const iconInput = document.getElementById('app-icon').value.trim();
             const instructionsInput = document.getElementById('app-instructions').value.trim();
+            const pricingPayload = buildProjectPricingPayload('add');
+            if (!pricingPayload) return;
             
             // Determine group URL based on segmented control
             const isStandard = document.getElementById('seg-standard').classList.contains('active');
@@ -4381,7 +5361,8 @@
                     package_name: packageInput,
                     icon_url: iconInput || null,
                     google_group_url: null,
-                    instructions: instructionsInput || null
+                    instructions: instructionsInput || null,
+                    ...pricingPayload
                 };
                 document.getElementById('email-warning-modal').classList.add('active');
                 return;
@@ -4393,7 +5374,8 @@
                 package_name: packageInput,
                 icon_url: iconInput || null,
                 google_group_url: groupInput || null,
-                instructions: instructionsInput || null
+                instructions: instructionsInput || null,
+                ...pricingPayload
             });
         }
 
@@ -4433,12 +5415,14 @@
                     closeModal();
                     loadProjects();
                 } else {
-                    if (tg.showAlert) tg.showAlert("Error saving project.");
+                    const message = getProjectApiErrorMessage(result.message, result.details) || t.saveProjectError;
+                    if (tg.showAlert) tg.showAlert(message);
+                    else alert(message);
                 }
             } catch (error) {
                 console.error("Save project error:", error);
-                if (tg.showAlert) tg.showAlert("Network error. Please try again.");
-                else alert("Network error. Please try again.");
+                if (tg.showAlert) tg.showAlert(t.networkError);
+                else alert(t.networkError);
             } finally {
                 saveBtn.innerText = originalText;
                 saveBtn.disabled = false;
@@ -4459,6 +5443,11 @@
             document.getElementById('edit-icon').value = project.icon_url || '';
             document.getElementById('edit-package').value = project.package || '';
             document.getElementById('edit-group').value = project.google_group_url || 'https://groups.google.com/g/google-play-dev-test';
+            document.getElementById('edit-limit-mutual').value = String(project.limit_mutual || 12);
+            document.getElementById('edit-limit-bounty').value = String(project.limit_bounty || 12);
+            document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
+            setProjectMode('edit', project.mode || 'mutual');
+            updateProjectPricing('edit');
             renderEditCreatedAtMeta();
             document.getElementById('edit-project-modal').classList.add('active');
         }
@@ -4468,6 +5457,7 @@
             document.getElementById('edit-project-modal').classList.remove('active');
             setTimeout(() => {
                 projectToEdit = null;
+                resetProjectForms();
                 renderEditCreatedAtMeta();
             }, 300);
         }
@@ -4477,6 +5467,8 @@
             const name = document.getElementById('edit-name').value.trim();
             const instructions = document.getElementById('edit-description').value.trim();
             const icon_url = document.getElementById('edit-icon').value.trim();
+            const pricingPayload = buildProjectPricingPayload('edit');
+            if (!pricingPayload) return;
 
             if (!name) {
                 if (tg.showAlert) tg.showAlert(t.fillFields);
@@ -4496,7 +5488,8 @@
                     body: JSON.stringify({
                         name: name,
                         instructions: instructions || null,
-                        icon_url: icon_url || null
+                        icon_url: icon_url || null,
+                        ...pricingPayload
                     })
                 });
                 const result = await response.json();
@@ -4505,11 +5498,14 @@
                     closeEditModal();
                     loadProjects();
                 } else {
-                    if (tg.showAlert) tg.showAlert("Error saving changes.");
+                    const message = getProjectApiErrorMessage(result.message, result.details) || t.saveProjectChangesError;
+                    if (tg.showAlert) tg.showAlert(message);
+                    else alert(message);
                 }
             } catch (error) {
                 console.error("Edit project error:", error);
-                if (tg.showAlert) tg.showAlert("Network error. Please try again.");
+                if (tg.showAlert) tg.showAlert(t.networkError);
+                else alert(t.networkError);
             } finally {
                 editBtn.innerText = originalText;
                 editBtn.disabled = false;
