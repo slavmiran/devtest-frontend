@@ -133,9 +133,16 @@ function getApiErrorMessage(payload, fallbackKey = 'genericError') {
         return window.resolveApiMessage(payload, fallbackKey, lang);
     }
     if (payload && typeof payload === 'object') {
-        return payload.message || payload.detail || t[fallbackKey] || t.genericError;
+        const objectMessage = payload.message || payload.detail;
+        if (typeof objectMessage === 'string' && objectMessage.trim() !== '') {
+            return objectMessage;
+        }
+        return t[fallbackKey] || t.genericError;
     }
-    return payload || t[fallbackKey] || t.genericError;
+    if (typeof payload === 'string' && payload.trim() !== '') {
+        return payload;
+    }
+    return t[fallbackKey] || t.genericError;
 }
 
 function getProjectApiErrorMessage(message, details = {}) {
@@ -436,6 +443,8 @@ async function loadTasks() {
 }
 
 async function loadMutualFeed() {
+    showSkeleton('mutual-seeking-list');
+    showSkeleton('mutual-prelaunch-list');
     _apiStart();
     try {
         const response = await fetch(`${API_BASE}/feed/mutual/${userId}`);
@@ -457,6 +466,7 @@ async function loadMutualFeed() {
 }
 
 async function loadBountyFeed() {
+    showSkeleton('bounty-list');
     _apiStart();
     try {
         const response = await fetch(`${API_BASE}/feed/bounty/${userId}`);
@@ -929,8 +939,8 @@ async function saveProjectSync() {
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(t.syncSavedToast);
-        closeSyncModal({ target: document.getElementById('sync-modal') });
         await Promise.all([loadProjects(true), loadTasks()]);
+        closeSyncModal({ target: document.getElementById('sync-modal') });
     } catch (error) {
         console.error('Project sync error:', error);
         showToast(getApiErrorMessage(error && error.message, 'loadError'));

@@ -431,15 +431,7 @@
 
     <div id="sync-modal" class="modal-overlay" onclick="closeSyncModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-syncModalTitle" data-i18n="syncModalTitle">Синхронизация проекта</h3>
-            <label id="t-syncDayLabel" data-i18n="syncDayLabel" style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">Google Sync Day</label>
-            <input id="sync-day-input" class="form-input" type="number" min="1" step="1" style="margin-bottom: 12px;" />
-            <label id="t-syncMessageLabel" data-i18n="syncMessageLabel" style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">Сообщение для тестеров</label>
-            <textarea id="sync-message-input" class="form-input" rows="4" style="resize: vertical; margin-bottom: 12px;" data-i18n-placeholder="syncMessagePlaceholder"></textarea>
-            <div class="action-row" style="margin-top: 0;">
-                <button class="btn btn-secondary" style="flex: 1;" onclick="closeSyncModal()" id="t-syncCancelBtn" data-i18n="btnCancel">Отмена</button>
-                <button class="btn btn-primary" style="flex: 1;" onclick="saveProjectSync()" id="t-syncSaveBtn" data-i18n="syncSaveBtn">Сохранить синхронизацию</button>
-            </div>
+            <div id="sync-modal-body"></div>
         </div>
     </div>
 

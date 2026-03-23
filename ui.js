@@ -87,6 +87,29 @@ function formatTimeAgo(dateStr) {
     return t.timeDayAgo.replace('{count}', days);
 }
 
+function parseLocalDateOnly(dateValue) {
+    if (!dateValue) return null;
+    if (dateValue instanceof Date) {
+        return new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
+    }
+    const str = String(dateValue);
+    const datePart = str.includes('T') ? str.split('T')[0] : str;
+    const parts = datePart.split('-').map(Number);
+    if (parts.length === 3 && parts.every((value) => Number.isFinite(value))) {
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+    const parsed = new Date(str);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
+function getDayDiffFromToday(dateValue) {
+    const source = parseLocalDateOnly(dateValue);
+    if (!source) return 0;
+    const today = parseLocalDateOnly(getLocalDate());
+    return Math.max(0, Math.floor((today - source) / (1000 * 60 * 60 * 24)));
+}
+
 function renderEvents() {
     const listEl = document.getElementById('events-list');
     const toggleEl = document.getElementById('events-toggle');
@@ -776,8 +799,7 @@ function renderProjects() {
         const safeProjectPackage = window.escapeHTML(project.package || '');
 
         const platformDays = project.created_at ? (Math.floor((todayDate - new Date(project.created_at)) / (1000 * 60 * 60 * 24)) + 1) : 0;
-        const lastSyncDate = project.last_sync_date ? new Date(project.last_sync_date) : null;
-        const syncDiffDays = lastSyncDate ? Math.floor((todayDate - lastSyncDate) / (1000 * 60 * 60 * 24)) : 0;
+        const syncDiffDays = project.last_sync_date ? getDayDiffFromToday(project.last_sync_date) : 0;
         const currentGoogleDay = (project.google_sync_day || 0) > 1
             ? Math.max(1, (project.google_sync_day || 0) + Math.max(0, syncDiffDays))
             : platformDays;
@@ -1127,16 +1149,113 @@ function overtimeContactOwner() {
 
 function openSyncModal(projectId) {
     const project = myProjects.find((item) => item.id === projectId);
-    if (!project) return;
+    const modal = document.getElementById('sync-modal');
+    const body = document.getElementById('sync-modal-body');
+    if (!project || !modal || !body) return;
+
     _syncProjectId = projectId;
-    document.getElementById('sync-day-input').value = project.google_sync_day || '';
-    document.getElementById('sync-message-input').value = project.sync_message || '';
-    document.getElementById('sync-modal').classList.add('active');
+    const hasSync = (project.google_sync_day || 0) > 1;
+    let isEditMode = !hasSync;
+
+    const renderModalContent = () => {
+        const liveProject = myProjects.find((item) => item.id === projectId) || project;
+        const currentSyncDay = Number(liveProject.google_sync_day || 0);
+        const syncDiffDays = liveProject.last_sync_date ? getDayDiffFromToday(liveProject.last_sync_date) : 0;
+        const currentGoogleDay = currentSyncDay > 1 ? currentSyncDay + syncDiffDays : 0;
+        const leftDays = Math.max(0, 14 - currentGoogleDay);
+        const today = parseLocalDateOnly(getLocalDate()) || new Date();
+        const finishDate = new Date(today);
+        finishDate.setDate(finishDate.getDate() + leftDays);
+        const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
+        const lastSyncDate = parseLocalDateOnly(liveProject.last_sync_date);
+        const updatedDaysAgo = lastSyncDate ? getDayDiffFromToday(lastSyncDate) : 0;
+
+        if (!isEditMode && hasSync) {
+            const segments = [];
+            for (let index = 1; index <= 14; index++) {
+                segments.push(`<div class="grant-segment ${index <= Math.min(currentGoogleDay, 14) ? 'filled' : ''}"></div>`);
+            }
+
+            const updatedStyle = updatedDaysAgo >= 7 ? 'color:#ff9500;' : 'color:var(--hint-color);';
+            const updatedText = window.t('syncUpdatedAt', {
+                date: lastSyncDate ? lastSyncDate.toLocaleDateString(locale) : '-',
+                days: updatedDaysAgo,
+            });
+
+            const syncMessageHtml = liveProject.sync_message
+                ? `<div class="details-block" style="margin-top:10px;"><div class="detail-section-title">${window.escapeHTML(window.t('syncMessageLabel', {}, lang))}</div><div style="font-size:13px;line-height:1.5;">${escapeHtmlWithBreaks(liveProject.sync_message)}</div></div>`
+                : `<div class="details-block" style="margin-top:10px;color:var(--hint-color);">${window.escapeHTML(window.t('syncNoMessage', {}, lang))}</div>`;
+
+            body.innerHTML = `
+                <h3 style="margin-bottom:12px;">${window.escapeHTML(window.t('syncModalTitle', {}, lang))}</h3>
+                <div style="font-size:12px; margin-bottom:10px; ${updatedStyle}">${window.escapeHTML(updatedText)}</div>
+                <div class="grant-progress-container">${segments.join('')}</div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--hint-color);">
+                    <span>${window.escapeHTML(window.t('projectGoogleDayLabel', { day: currentGoogleDay }, lang))}</span>
+                    <span>${window.escapeHTML(window.t('googleDaysLeft', { count: leftDays }, lang))}</span>
+                </div>
+                <div class="details-block" style="margin-top:10px;">
+                    <div style="font-size:13px;color:var(--hint-color);">${window.escapeHTML(window.t('syncEstimatedFinish', { date: finishDate.toLocaleDateString(locale) }, lang))}</div>
+                </div>
+                ${syncMessageHtml}
+                <button id="sync-switch-edit-btn" class="btn btn-primary" style="width:100%;margin-top:12px;">${window.escapeHTML(window.t('syncUpdateDataBtn', {}, lang))}</button>
+                <button id="sync-close-btn" class="btn btn-secondary" style="width:100%;margin-top:8px;">${window.escapeHTML(window.t('btnCancel', {}, lang))}</button>
+            `;
+
+            const switchBtn = document.getElementById('sync-switch-edit-btn');
+            if (switchBtn) {
+                switchBtn.onclick = () => {
+                    isEditMode = true;
+                    renderModalContent();
+                };
+            }
+            const closeBtn = document.getElementById('sync-close-btn');
+            if (closeBtn) closeBtn.onclick = () => closeSyncModal();
+            return;
+        }
+
+        body.innerHTML = `
+            <h3 style="margin-bottom:12px;">${window.escapeHTML(window.t('syncModalTitle', {}, lang))}</h3>
+            <label style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">${window.escapeHTML(window.t('syncDayLabel', {}, lang))}</label>
+            <input id="sync-day-input" class="form-input" type="number" min="1" step="1" style="margin-bottom: 12px;" />
+            <label style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">${window.escapeHTML(window.t('syncMessageLabel', {}, lang))}</label>
+            <textarea id="sync-message-input" class="form-input" rows="4" style="resize: vertical; margin-bottom: 12px;" placeholder="${window.escapeHTML(window.t('syncMessagePlaceholder', {}, lang))}"></textarea>
+            <div class="action-row" style="margin-top: 0;">
+                <button id="sync-cancel-btn" class="btn btn-secondary" style="flex: 1;">${window.escapeHTML(window.t('btnCancel', {}, lang))}</button>
+                <button id="sync-save-btn" class="btn btn-primary" style="flex: 1;">${window.escapeHTML(window.t('syncSaveBtn', {}, lang))}</button>
+            </div>
+        `;
+
+        const dayInput = document.getElementById('sync-day-input');
+        const messageInput = document.getElementById('sync-message-input');
+        if (dayInput) dayInput.value = currentSyncDay > 0 ? String(currentSyncDay) : '';
+        if (messageInput) messageInput.value = liveProject.sync_message || '';
+
+        const cancelBtn = document.getElementById('sync-cancel-btn');
+        if (cancelBtn) {
+            cancelBtn.onclick = () => {
+                if (hasSync) {
+                    isEditMode = false;
+                    renderModalContent();
+                    return;
+                }
+                closeSyncModal();
+            };
+        }
+        const saveBtn = document.getElementById('sync-save-btn');
+        if (saveBtn) saveBtn.onclick = () => saveProjectSync();
+    };
+
+    renderModalContent();
+    modal.classList.add('active');
 }
 
 function closeSyncModal(event) {
     if (event && event.target !== document.getElementById('sync-modal')) return;
-    document.getElementById('sync-modal').classList.remove('active');
+    const modal = document.getElementById('sync-modal');
+    const body = document.getElementById('sync-modal-body');
+    if (modal) modal.classList.remove('active');
+    if (body) body.innerHTML = '';
     _syncProjectId = null;
 }
 
@@ -1289,11 +1408,12 @@ function showTestDayPopup(day) {
         const project = myProjects.find((item) => item.id === projectId);
         const tester = project ? (project.testers || []).find((item) => item.tester_id === day) : null;
         if (tester) {
-            const testerDay = tester.start_date ? (Math.floor((new Date(getLocalDate()) - new Date(tester.start_date)) / (1000 * 60 * 60 * 24)) + 1) : 0;
+            const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
+            const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
             msg = window.t('karmaDistributionTesterStats', {
                 day: testerDay,
                 checkins: tester.checkins_count || 0,
-                skips: tester.skips_count || 0,
+                skips: actualSkips,
             });
         }
     }
@@ -1340,7 +1460,8 @@ function openKarmaDistribution(projectId) {
     }
 
     const rowsHtml = testers.map((tester) => {
-        const testerDay = tester.start_date ? (Math.floor((new Date(getLocalDate()) - new Date(tester.start_date)) / (1000 * 60 * 60 * 24)) + 1) : 0;
+        const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
+        const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
         const liked = (project.likes || []).find((like) => like.tester_id === tester.tester_id);
         const name = tester.username
             ? '@' + window.escapeHTML(tester.username.replace('@', ''))
@@ -1348,7 +1469,7 @@ function openKarmaDistribution(projectId) {
         const stats = window.escapeHTML(window.t('karmaDistributionTesterStats', {
             day: testerDay,
             checkins: tester.checkins_count || 0,
-            skips: tester.skips_count || 0,
+            skips: actualSkips,
         }));
         const amountByType = liked ? (liked.type === 'bug' ? '3.0' : liked.type === 'overtime' ? '2.0' : '1.5') : '';
         const actionHtml = liked
@@ -1423,6 +1544,9 @@ function switchTab(tabId, navElement) {
     document.getElementById(`tab-${tabId}`).classList.add('active');
 
     if (tabId === 'market') {
+        showSkeleton('mutual-seeking-list');
+        showSkeleton('mutual-prelaunch-list');
+        showSkeleton('bounty-list');
         loadMutualFeed();
         loadBountyFeed();
     }
@@ -1825,8 +1949,8 @@ function openProjectDetailsModal(appId) {
     let expectedTotalDays = userTestingDay;
     let overtimeDays = 0;
     if ((test.google_sync_day || 0) > 1) {
-        const lastSyncDate = test.last_sync_date ? new Date(test.last_sync_date) : today;
-        currentGoogleDay = Number(test.google_sync_day || 0) + Math.max(0, Math.floor((today - lastSyncDate) / (1000 * 60 * 60 * 24)));
+        const syncDiffDays = test.last_sync_date ? getDayDiffFromToday(test.last_sync_date) : 0;
+        currentGoogleDay = Number(test.google_sync_day || 0) + syncDiffDays;
         projectDaysLeft = Math.max(0, 14 - currentGoogleDay);
         expectedTotalDays = userTestingDay + projectDaysLeft;
         overtimeDays = Math.max(0, expectedTotalDays - 14);
