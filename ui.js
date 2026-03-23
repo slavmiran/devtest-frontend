@@ -212,7 +212,7 @@ function getScreenshotReminderHtml(test) {
     `;
 }
 
-function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay) {
+function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test) {
     const parts = [];
     if (typeof daysSincePublish === 'number' && daysSincePublish >= 0) {
         const dayLabel = t.daysShort.replace('{days}', daysSincePublish);
@@ -233,6 +233,16 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
     }
     if (isNew) {
         parts.unshift(`<button class="meta-chip accent-green">${t.newBadge}</button>`);
+    }
+    if (test) {
+        const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
+        const ownerChip = ownerActive
+            ? `<button class="meta-chip accent-green" onclick="event.stopPropagation(); showToast('${(t.ownerOnlineText || '').replace(/'/g, "\\'")}')">${t.ownerOnlineText}</button>`
+            : `<button class="meta-chip accent-red" onclick="event.stopPropagation(); showToast('${(t.ownerOfflineText || '').replace(/'/g, "\\'")}')">${t.ownerOfflineText}</button>`;
+        parts.push(ownerChip);
+        if (isProjectSynced(test)) {
+            parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${t.syncDoneText}</button>`);
+        }
     }
     if (parts.length === 0) {
         return '';
@@ -415,7 +425,11 @@ function renderTests() {
 
         const headerActions = [];
         if (test.status !== 'done') {
-            headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openDropTestModal(${test.id}, event)">🗑️</button>`);
+            if (userTestingDay >= 15) {
+                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #30d158;" onclick="openOvertimeModal(${test.id}, event)">✅</button>`);
+            } else {
+                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openDropTestModal(${test.id}, event)">🗑️</button>`);
+            }
         }
         const trailingHtml = headerActions.length
             ? `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`
@@ -432,7 +446,7 @@ function renderTests() {
                 </div>
                 ${trailingHtml}
             </div>
-            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay)}
+            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
             <div id="actions-${test.id}">
                 ${actionsHtml}
             </div>
@@ -516,7 +530,7 @@ function renderCompletedTests(completedTests) {
                 </div>
                 ${ownerBtnHtml}
             </div>
-            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay)}
+            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
             ${devInfoHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}
@@ -560,7 +574,7 @@ function renderFeedCard(item, kind) {
             : '');
 
     let buttonText = window.t('mutualJoinBtn', {}, lang);
-    let clickAction = `joinMutual(${item.app_id}, false)`;
+    let clickAction = `createMutualOffer(${item.app_id}, ${item.owner_id})`;
     if (kind === 'mutual-prelaunch') {
         buttonText = window.t('prelaunchJoinBtn', {}, lang);
         clickAction = `joinMutual(${item.app_id}, true)`;
@@ -642,120 +656,6 @@ function renderBountyFeed() {
         return;
     }
     bountyEl.innerHTML = bountyContracts.map((item) => renderFeedCard(item, 'bounty')).join('');
-}
-
-function renderShowcase() {
-    const neededPanel = document.getElementById('showcase-needed');
-    const prelaunchPanel = document.getElementById('showcase-prelaunch');
-    const neededCount = document.getElementById('needed-count');
-    const prelaunchCount = document.getElementById('prelaunch-count');
-    const prelaunchBtn = document.getElementById('prelaunch-tab-btn');
-    const neededBtn = document.getElementById('needed-tab-btn');
-    const availableTitle = document.getElementById('t-availableTitle');
-    if (!neededPanel || !prelaunchPanel) return;
-
-    neededCount.textContent = showcaseTestersNeeded.length;
-    prelaunchCount.textContent = showcasePreLaunch.length;
-    if (neededBtn) {
-        neededBtn.innerHTML = `${t.tabTestersNeeded} (<span id="needed-count">${showcaseTestersNeeded.length}</span>)`;
-    }
-    if (prelaunchBtn) {
-        prelaunchBtn.innerHTML = `${t.tabPreLaunch} (<span id="prelaunch-count">${showcasePreLaunch.length}</span>)`;
-    }
-    if (availableTitle) {
-        availableTitle.innerText = t.availableTitle;
-    }
-
-    if (showcaseLoadError) {
-        neededPanel.innerHTML = `
-            <div class="retry-container" style="padding: 20px 8px;">
-                <button class="retry-btn" onclick="loadTasks();">${t.retryBtn}</button>
-            </div>
-        `;
-        prelaunchPanel.innerHTML = '';
-        prelaunchBtn.style.display = 'none';
-        prelaunchPanel.style.display = 'none';
-        return;
-    }
-
-    if (showcasePreLaunch.length > 0) {
-        prelaunchBtn.style.display = '';
-        prelaunchPanel.style.display = '';
-    } else {
-        prelaunchBtn.style.display = 'none';
-        prelaunchPanel.style.display = 'none';
-    }
-
-    if (showcaseTestersNeeded.length === 0) {
-        neededPanel.innerHTML = `<p class="no-testers" style="text-align: center; margin-top: 16px;">${t.noAvailable}</p>`;
-    } else {
-        neededPanel.innerHTML = showcaseTestersNeeded.map(renderCompactCard).join('');
-    }
-
-    prelaunchPanel.innerHTML = showcasePreLaunch.length > 0
-        ? showcasePreLaunch.map(renderCompactCard).join('')
-        : '';
-}
-
-function renderCompactCard(app) {
-    const ownerDisplay = window.escapeHTML(app.owner_full_name || (app.owner_username ? '@' + app.owner_username : window.t('unknownLabel', {}, lang)));
-    const ownerUsername = escapeInlineJsString(app.owner_username || '');
-    const escapeText = (text) => String(text || '').replace(/'/g, "\\'");
-    const testersTooltip = escapeText(window.t('chipTooltipTesters', { count: app.active_testers_count || 0 }, lang));
-    const daysValue = app.days_since_publish || 1;
-    const daysTooltip = escapeText(window.t('chipTooltipDays', { days: daysValue }, lang));
-
-    let badges = '';
-    if (app.owner_karma) {
-        badges += '<button class="meta-chip accent-yellow" onclick="showShowcaseKarmaInfo(' + (app.owner_karma || 0) + '); event.stopPropagation();">☯️ ' + app.owner_karma + '</button>';
-    }
-    badges += '<button class="meta-chip accent-blue" onclick="showToast(\'' + testersTooltip + '\'); event.stopPropagation();">👥 ' + (app.active_testers_count || 0) + '</button>';
-    if (app.is_new) {
-        badges += '<button class="meta-chip accent-green" onclick="showToast(\'' + daysTooltip + '\'); event.stopPropagation();">🆕</button>';
-    } else if (app.days_since_publish) {
-        badges += '<button class="meta-chip" onclick="showToast(\'' + daysTooltip + '\'); event.stopPropagation();">' + t.daysShort.replace('{days}', app.days_since_publish) + '</button>';
-    }
-
-    let instructionHtml = '';
-    if (app.instructions) {
-        instructionHtml = `
-            <details class="compact-instruction" onclick="event.stopPropagation();">
-                <summary onclick="event.stopPropagation();">
-                    <span class="compact-instruction-arrow">▶</span>
-                    ${t.instructionAccordion}
-                </summary>
-                <div class="compact-instruction-body">${escapeHtmlWithBreaks(app.instructions)}</div>
-            </details>
-        `;
-    }
-
-    return `
-        <div class="compact-card">
-            <div class="compact-card-main">
-                <div class="compact-card-icon">
-                    ${renderIcon(app.name || window.t('unknownLabel', {}, lang), app.icon_url)}
-                </div>
-                <div class="compact-card-center">
-                    <div class="compact-card-clickable" onclick="openContactModal('${ownerUsername}')">
-                        <div class="compact-card-name">${window.escapeHTML(app.name || window.t('unknownLabel', {}, lang))}</div>
-                        <div class="compact-card-owner">${ownerDisplay} 💬</div>
-                    </div>
-                    <div class="compact-card-badges">${badges}</div>
-                    ${instructionHtml}
-                </div>
-                <div class="compact-card-right">
-                    <button class="compact-test-btn" onclick="takeAppToTest(${app.app_id})">${window.t('testBtnShort', {}, lang)}</button>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function switchShowcaseTab(tab) {
-    document.querySelectorAll('.showcase-tab').forEach((el) => el.classList.toggle('active', el.dataset.tab === tab));
-    const snap = document.getElementById('showcase-snap');
-    const target = document.getElementById(tab === 'prelaunch' ? 'showcase-prelaunch' : 'showcase-needed');
-    if (snap && target) snap.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
 }
 
 function toggleDetailsWithAnimation(detailsEl) {
@@ -1357,13 +1257,6 @@ function showKarmaChipInfo() {
     showCustomAlert(t.karmaLimitInfoText || t.karmaChipInfoText);
 }
 
-function showShowcaseKarmaInfo(karma) {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    const msg = t.showcaseKarmaInfo.replace('{karma}', karma);
-    if (tg.showAlert) tg.showAlert(msg);
-    else alert(msg);
-}
-
 function showTestDayPopup(day) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     const msg = t.testDayExplain.replace('{days}', day);
@@ -1844,7 +1737,9 @@ function openProjectDetailsModal(appId) {
         '<div class="detail-actions">' +
             '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +
             '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_suggest_btn', {}, lang) + '</button>' +
-            '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); openDropTestModal(' + test.id + ')">' + window.t('detail_leave_btn', {}, lang) + '</button>' +
+            (userTestingDay >= 15
+                ? '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="closeProjectDetailsModal(); openOvertimeModal(' + test.id + ')">' + window.t('finish_project', {}, lang) + '</button>'
+                : '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); openDropTestModal(' + test.id + ')">' + window.t('detail_leave_btn', {}, lang) + '</button>') +
         '</div>';
 
     var modal = document.getElementById('project-details-modal');
@@ -1859,6 +1754,30 @@ function closeProjectDetailsModal(event) {
     if (modal) {
         modal.classList.remove('active');
     }
+}
+
+function showProjectSelectModal(projects, targetAppId, targetOwnerId) {
+    let modal = document.getElementById('project-select-modal');
+    if (!modal) return;
+    const listEl = document.getElementById('project-select-list');
+    if (!listEl) return;
+    listEl.innerHTML = projects.map(p => {
+        const safeName = window.escapeHTML(p.name || window.t('unknownLabel'));
+        return `<button class="project-select-item" onclick="window._selectProjectForOffer(${p.id}); event.stopPropagation();">
+            <span class="project-select-icon">${renderIcon(p.name || '', p.icon_url)}</span>
+            <span class="project-select-name">${safeName}</span>
+        </button>`;
+    }).join('');
+    window._selectProjectForOffer = async function(proposerAppId) {
+        closeProjectSelectModal();
+        await window.sendMutualOffer(targetAppId, targetOwnerId, proposerAppId);
+    };
+    modal.classList.add('active');
+}
+
+function closeProjectSelectModal() {
+    const modal = document.getElementById('project-select-modal');
+    if (modal) modal.classList.remove('active');
 }
 
 Object.assign(window, {
@@ -1887,9 +1806,6 @@ Object.assign(window, {
     renderMutualFeed,
     switchMutualSubTab,
     renderBountyFeed,
-    renderShowcase,
-    renderCompactCard,
-    switchShowcaseTab,
     toggleDetailsWithAnimation,
     calculateReliability,
     renderProjects,
@@ -1922,7 +1838,6 @@ Object.assign(window, {
     closeReliabilityInfo,
     showRankPopup,
     showKarmaChipInfo,
-    showShowcaseKarmaInfo,
     showTestDayPopup,
     showNewBadgeToast,
     insertChip,
@@ -1954,4 +1869,6 @@ Object.assign(window, {
     copyEmail,
     openProjectDetailsModal,
     closeProjectDetailsModal,
+    showProjectSelectModal,
+    closeProjectSelectModal,
 });

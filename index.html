@@ -82,26 +82,6 @@
         <h2 id="t-bountyTitle" data-i18n="tabBounty">💎 Биржа</h2>
         <p id="t-bountyDesc" data-i18n="bountyDesc">Контракты с оплатой в $BUST для быстрых подключений.</p>
 
-        <details id="available-details" style="margin-top: 16px; display: none;">
-            <summary style="font-weight: bold; cursor: pointer; padding: 12px; background: var(--bg-color); border-radius: 8px; list-style: none; display: flex; justify-content: space-between; align-items: center;"><span id="t-availableTitle" class="available-title" data-i18n="availableTitle">📱 Биржа проектов</span><span class="details-arrow">▼</span></summary>
-            <div style="margin-top: 8px;">
-                <div class="showcase-tabs" id="showcase-tabs">
-                    <button class="showcase-tab active" data-tab="needed" id="needed-tab-btn" onclick="switchShowcaseTab('needed')">
-                        🔥 Testers Needed (<span id="needed-count">0</span>)
-                    </button>
-                    <button class="showcase-tab" data-tab="prelaunch" id="prelaunch-tab-btn" onclick="switchShowcaseTab('prelaunch')" style="display:none;">
-                        🚀 Pre-Launch (<span id="prelaunch-count">0</span>)
-                    </button>
-                </div>
-                <div class="showcase-snap-container" id="showcase-snap">
-                    <div class="showcase-snap-panel" id="showcase-needed">
-                        <p style="text-align: center; color: var(--hint-color); margin-top: 8px;" id="t-loadingShowcase" data-i18n="loadingShowcase">Загрузка биржи...</p>
-                    </div>
-                    <div class="showcase-snap-panel" id="showcase-prelaunch" style="display:none;"></div>
-                </div>
-            </div>
-        </details>
-
         <div id="bounty-list"></div>
     </div>
 
@@ -552,5 +532,12 @@
         </div>
     </div>
     <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)"><div class="modal-content" onclick="event.stopPropagation()" id="project-details-body"></div></div>
+
+    <div id="project-select-modal" class="modal-overlay" onclick="closeProjectSelectModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="offerSelectProject"></h3>
+            <div id="project-select-list"></div>
+        </div>
+    </div>
 </body>
 </html>

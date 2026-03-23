@@ -22,8 +22,6 @@ var myProjects = [];
 var mutualSeeking = [];
 var mutualPrelaunch = [];
 var bountyContracts = [];
-var showcaseTestersNeeded = [];
-var showcasePreLaunch = [];
 var communityEvents = null;
 var eventsExpanded = false;
 var activeTimerAppId = null;
@@ -34,8 +32,7 @@ var _activeRequests = 0;
 var _karmaAppId = null;
 var _karmaTesterId = null;
 var _offersTimerId = null;
-var availableAppsLoaded = false;
-var showcaseLoadError = false;
+
 var _reportAppId = null;
 var _reportOwnerUsername = null;
 var _pendingScreenshotReminderUsername = null;
@@ -318,7 +315,6 @@ function refreshLanguageUi() {
 }
 
 function rerenderDynamicUi() {
-    updateShowcaseVisibility();
     renderEvents();
     renderTests();
     renderIncomingOffers();
@@ -326,9 +322,6 @@ function rerenderDynamicUi() {
     renderMutualFeed();
     renderBountyFeed();
     renderArchivedProjects();
-    if (availableAppsLoaded) {
-        renderShowcase();
-    }
     refreshOpenModals();
 }
 
@@ -340,22 +333,6 @@ function refreshOpenModals() {
     const inviteModal = document.getElementById('invite-modal');
     if (inviteModal && inviteModal.classList.contains('active') && _inviteProjectId) {
         openInviteModal(_inviteProjectId);
-    }
-}
-
-function updateShowcaseVisibility() {
-    const availableDetails = document.getElementById('available-details');
-    if (!availableDetails) return;
-
-    const hasShowcaseContent = showcaseLoadError
-        || showcaseTestersNeeded.length > 0
-        || showcasePreLaunch.length > 0;
-
-    availableDetails.style.display = hasShowcaseContent ? '' : 'none';
-
-    if (!hasShowcaseContent) {
-        availableDetails.open = false;
-        availableAppsLoaded = false;
     }
 }
 
@@ -448,34 +425,11 @@ async function loadTasks() {
         renderIncomingOffers();
         renderTests();
 
-        showcaseTestersNeeded = data.testers_needed || [];
-        showcasePreLaunch = data.pre_launch || [];
-        showcaseLoadError = false;
-        updateShowcaseVisibility();
-        const availableDetails = document.getElementById('available-details');
-        if (availableDetails && availableDetails.open) {
-            availableAppsLoaded = true;
-            renderShowcase();
-        } else {
-            availableAppsLoaded = false;
-        }
     } catch (error) {
         console.error('Error loading tasks:', error);
         showRetry('tests-list', 'loadTasks()');
         incomingOffers = [];
         renderIncomingOffers();
-        showcaseLoadError = true;
-        updateShowcaseVisibility();
-        const neededPanel = document.getElementById('showcase-needed');
-        const prelaunchPanel = document.getElementById('showcase-prelaunch');
-        if (neededPanel) {
-            neededPanel.innerHTML = `
-                <div class="retry-container" style="padding: 20px 8px;">
-                    <button class="retry-btn" onclick="loadTasks(); if (this.closest('details')) this.closest('details').open = true;">${t.retryBtn}</button>
-                </div>
-            `;
-        }
-        if (prelaunchPanel) prelaunchPanel.innerHTML = '';
     } finally {
         _apiEnd();
     }
@@ -629,6 +583,49 @@ async function decideOffer(offerId, action, event) {
     }
 }
 
+async function createMutualOffer(targetAppId, targetOwnerId) {
+    const eligible = myProjects.filter(p => (p.mode === 'mutual' || p.mode === 'hybrid') && p.id);
+    if (eligible.length === 0) {
+        if (tg.showAlert) tg.showAlert(window.t('offerNoProjects'));
+        else alert(window.t('offerNoProjects'));
+        return;
+    }
+    if (eligible.length === 1) {
+        await sendMutualOffer(targetAppId, targetOwnerId, eligible[0].id);
+        return;
+    }
+    showProjectSelectModal(eligible, targetAppId, targetOwnerId);
+}
+
+async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId) {
+    try {
+        const response = await fetch(`${API_BASE}/offers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner_id: targetOwnerId,
+                target_app_id: targetAppId,
+                proposer_id: userId,
+                proposer_app_id: proposerAppId
+            })
+        });
+        const result = await response.json();
+        if (result.status !== 'success') {
+            const message = getOfferApiError(result);
+            if (tg.showAlert) tg.showAlert(message);
+            else alert(message);
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('offerSentSuccess'));
+        await loadMutualFeed();
+    } catch (error) {
+        console.error('Create offer error:', error);
+        if (tg.showAlert) tg.showAlert(t.networkError);
+        else alert(t.networkError);
+    }
+}
+
 async function joinMutual(appId, allowOverLimit = false) {
     try {
         const response = await fetch(`${API_BASE}/feed/mutual/${appId}/join`, {
@@ -709,26 +706,6 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
             btn.innerText = t.timerRemaining.replace('{sec}', timeLeft);
         }
     }, 1000);
-}
-
-async function takeAppToTest(appId) {
-    try {
-        const response = await fetch(`${API_BASE}/take_test`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId, app_id: appId })
-        });
-        const result = await response.json();
-        if (result.status === 'success') {
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            loadTasks();
-        } else if (tg.showAlert) {
-            tg.showAlert(getApiErrorMessage(result, 'takeTestError'));
-        }
-    } catch (error) {
-        console.error('Take test error:', error);
-        if (tg.showAlert) tg.showAlert(getApiErrorMessage(error && error.message, 'networkError'));
-    }
 }
 
 function openPlay(id, pkg) {
@@ -1329,16 +1306,6 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(() => {});
     }
 
-    const details = document.getElementById('available-details');
-    if (details) {
-        details.addEventListener('toggle', () => {
-            if (details.open && !availableAppsLoaded) {
-                availableAppsLoaded = true;
-                renderShowcase();
-            }
-        });
-    }
-
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && _pendingScreenshotReminderUsername !== null) {
             const username = _pendingScreenshotReminderUsername;
@@ -1346,21 +1313,6 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => showScreenshotCompleteModal(username), 300);
         }
     });
-
-    const snap = document.getElementById('showcase-snap');
-    if (snap) {
-        let scrollTimer;
-        snap.addEventListener('scroll', () => {
-            clearTimeout(scrollTimer);
-            scrollTimer = setTimeout(() => {
-                const half = snap.scrollWidth / 2;
-                const activeTab = snap.scrollLeft >= half ? 'prelaunch' : 'needed';
-                document.querySelectorAll('.showcase-tab').forEach((el) => {
-                    el.classList.toggle('active', el.dataset.tab === activeTab);
-                });
-            }, 100);
-        });
-    }
 
     loadTasks();
     loadEvents();
@@ -1383,10 +1335,11 @@ Object.assign(window, {
     formatEditProjectCreatedAt,
     getOfferApiError,
     decideOffer,
+    createMutualOffer,
+    sendMutualOffer,
     joinMutual,
     joinBounty,
     startTimer,
-    takeAppToTest,
     openPlay,
     handleFirstDownload,
     handleScreenshotAndConfirm,
@@ -1409,7 +1362,6 @@ Object.assign(window, {
     updateProjectPricing,
     getApiErrorMessage,
     rerenderDynamicUi,
-    updateShowcaseVisibility,
     refreshActiveTabData,
     saveProject,
     confirmEmailWarning,
@@ -1428,19 +1380,14 @@ Object.assign(window.App, {
         mutualSeeking,
         mutualPrelaunch,
         bountyContracts,
-        showcaseTestersNeeded,
-        showcasePreLaunch,
         communityEvents,
         eventsExpanded,
         visibilityStats,
         archivedProjects,
-        availableAppsLoaded,
-        showcaseLoadError
     }),
     refreshLanguageUi,
     applyLanguage,
     loadTasks,
-    updateShowcaseVisibility,
     loadProjects,
     loadEvents,
     loadMutualFeed,
