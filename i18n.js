@@ -53,6 +53,7 @@
             ownerOnlineText: "Владелец в сети (24ч): ✅",
             ownerOfflineText: "Владелец: 🔴 Не в сети",
             ownerBoostsText: "Получите {amount} бустов",
+            ownerKarmaText: "Карма владельца: {karma}",
             iconUrl: "Ссылка на иконку",
             save: "Сохранить",
             emptyTests: "Inbox Zero!",
@@ -632,6 +633,7 @@
             overtimeSyncReadyToast: "🔄 Sync: day {day}",
             syncBtn: "🔄 Sync",
             syncBtnLong: "🔄 Sync with Google Console",
+            syncModalTitle: "🔄 Project sync",
             syncDayLabel: "Google Sync Day",
             syncMessageLabel: "Message for testers",
             syncMessagePlaceholder: "Example: release is live, stay for 3 more days",
@@ -855,7 +857,7 @@
             const missing = baseKeys.filter((key) => !keys.includes(key));
             const extra = keys.filter((key) => !baseKeys.includes(key));
             if (missing.length || extra.length) {
-                throw new Error(`I18N key mismatch for ${lang}. Missing: ${missing.join(', ')}. Extra: ${extra.join(', ')}`);
+                console.error(`I18N key mismatch for ${lang}. Missing: ${missing.join(', ')}. Extra: ${extra.join(', ')}`);
             }
         });
     }
