@@ -624,28 +624,29 @@ function renderMutualFeed() {
     }
 }
 
-function switchMutualSubTab(tab) {
-    const seekingPanel = document.getElementById('mutual-subtab-seeking');
-    const prelaunchPanel = document.getElementById('mutual-subtab-prelaunch');
-    const seekingBtn = document.getElementById('mutual-sub-seeking');
-    const prelaunchBtn = document.getElementById('mutual-sub-prelaunch');
-    const seekingDesc = document.getElementById('mutual-seeking-desc');
-    const prelaunchDesc = document.getElementById('mutual-prelaunch-desc');
-    if (tab === 'seeking') {
-        seekingPanel.style.display = '';
-        prelaunchPanel.style.display = 'none';
-        seekingBtn.classList.add('active');
-        prelaunchBtn.classList.remove('active');
-        if (seekingDesc) seekingDesc.style.display = '';
-        if (prelaunchDesc) prelaunchDesc.style.display = 'none';
-    } else {
-        seekingPanel.style.display = 'none';
-        prelaunchPanel.style.display = '';
-        seekingBtn.classList.remove('active');
-        prelaunchBtn.classList.add('active');
-        if (seekingDesc) seekingDesc.style.display = 'none';
-        if (prelaunchDesc) prelaunchDesc.style.display = '';
+function switchMarketSubTab(tab) {
+    const panels = {
+        seeking: document.getElementById('market-subtab-seeking'),
+        bounty: document.getElementById('market-subtab-bounty'),
+        prelaunch: document.getElementById('market-subtab-prelaunch'),
+    };
+    const btns = {
+        seeking: document.getElementById('market-sub-seeking'),
+        bounty: document.getElementById('market-sub-bounty'),
+        prelaunch: document.getElementById('market-sub-prelaunch'),
+    };
+    const descs = {
+        seeking: document.getElementById('market-seeking-desc'),
+        bounty: document.getElementById('market-bounty-desc'),
+        prelaunch: document.getElementById('market-prelaunch-desc'),
+    };
+    for (const key of Object.keys(panels)) {
+        const active = key === tab;
+        if (panels[key]) panels[key].style.display = active ? '' : 'none';
+        if (btns[key]) btns[key].classList.toggle('active', active);
+        if (descs[key]) descs[key].style.display = active ? '' : 'none';
     }
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
 function renderBountyFeed() {
@@ -707,6 +708,7 @@ function renderProjects() {
     if (visibilityStats) {
         const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
         const expLine = t.experienceLabel.replace('{count}', visibilityStats.completed_tests) + ' ' + t.completedTestsSuffix;
+        const goldenLine = window.t('goldenTesterStats', { count: visibilityStats.golden_count || 0 });
         const reliabilityValue = reliability.percent !== null
             ? `${reliability.text} (${reliability.percent}%)`
             : `${reliability.text}`;
@@ -730,6 +732,9 @@ function renderProjects() {
                     <span class="dashboard-label">${expLine}</span>
                 </div>
                 <div class="dashboard-row">
+                    <span class="dashboard-label"><span class="golden-badge">🏆</span> ${goldenLine}</span>
+                </div>
+                <div class="dashboard-row">
                     <span class="dashboard-label" style="color: ${reliability.color};">${t.disciplineLabel} <span onclick="showReliabilityInfo()" style="${reliabilityValueStyle}">${reliabilityValue} </span></span>
                 </div>
             </div>
@@ -749,8 +754,8 @@ function renderProjects() {
 
     if (localStorage.getItem('hideDeleteReminder') !== 'true') {
         const reminder = document.createElement('div');
-        reminder.style.cssText = 'background-color: rgba(255, 204, 0, 0.2); color: var(--text-color); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; font-size: 13px; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px;';
-        reminder.innerHTML = `<span style="flex: 1;">${t.deleteReminder}</span><button onclick="this.parentElement.remove(); localStorage.setItem('hideDeleteReminder','true');" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--hint-color); flex-shrink: 0; padding: 0; line-height: 1;">✕</button>`;
+        reminder.style.cssText = 'background-color: rgba(52, 199, 89, 0.15); color: var(--text-color); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; font-size: 13px; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px;';
+        reminder.innerHTML = `<span style="flex: 1;">${t.deleteReminderPositive}</span><button onclick="this.parentElement.remove(); localStorage.setItem('hideDeleteReminder','true');" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--hint-color); flex-shrink: 0; padding: 0; line-height: 1;">✕</button>`;
         container.appendChild(reminder);
     }
 
@@ -913,6 +918,24 @@ function renderProjects() {
             return `<div style="margin: 8px 0 10px; display: flex; gap: 6px; flex-wrap: wrap;">${chips.join('')}</div>`;
         })();
 
+        const syncProgressHtml = (() => {
+            if (!project.testers || project.testers.length === 0) return '';
+            const total = project.testers.length;
+            const synced = project.testers.filter(t => {
+                if (!t.last_check_date) return false;
+                const diff = Math.floor(Math.abs(todayDate - new Date(t.last_check_date)) / (1000 * 60 * 60 * 24));
+                return diff <= 1;
+            }).length;
+            const pct = Math.round((synced / total) * 100);
+            const label = window.t('syncProgressSynced', { count: synced }) + ' / ' + window.t('syncProgressNotSynced', { count: total - synced });
+            return `<div style="margin: 6px 0 10px;"><div class="sync-progress-bar"><div class="sync-seg" style="width:${pct}%;"></div></div><div style="font-size:12px;color:var(--hint-color);margin-top:4px;">${label}</div></div>`;
+        })();
+
+        const karmaBonusChipHtml = (() => {
+            if (appDays < 14 || !project.testers || project.testers.length < 12) return '';
+            return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
+        })();
+
         card.innerHTML = `
             <div class="card-header" style="margin-bottom: 8px;">
                 ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
@@ -932,7 +955,9 @@ function renderProjects() {
             </div>
             ${project.is_visible === false ? `<div class="visibility-hint">${t.inviteLinkAlways}</div>` : ''}
             ${appProgressHtml}
+            ${syncProgressHtml}
             ${quotaSummaryHtml}
+            <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
             <div class="testers-section">
                 <div class="testers-title">${t.testersList} (${project.testers ? project.testers.length : 0})</div>
                 ${testersHtml}
@@ -1338,10 +1363,8 @@ function switchTab(tabId, navElement) {
     document.querySelectorAll('.tab-content').forEach((element) => element.classList.remove('active'));
     document.getElementById(`tab-${tabId}`).classList.add('active');
 
-    if (tabId === 'mutual') {
+    if (tabId === 'market') {
         loadMutualFeed();
-    }
-    if (tabId === 'bounty') {
         loadBountyFeed();
     }
 
@@ -1677,6 +1700,26 @@ function openProjectDetailsModal(appId) {
         segments.push('<div class="' + cls + '"></div>');
     }
 
+    // Overtime segments (day 15+)
+    var overtimeHtml = '';
+    if (userTestingDay > 14) {
+        var overtimeDays = userTestingDay - 14;
+        var overtimeSegs = [];
+        for (var j = 1; j <= Math.min(overtimeDays, 21); j++) {
+            overtimeSegs.push('<div class="grant-segment overtime filled"></div>');
+        }
+        var checkinsCount = test.checkins_count || 0;
+        var skipsCount = test.skips_count || 0;
+        overtimeHtml = '<div style="margin-top:10px;">' +
+            '<div style="font-size:13px;font-weight:600;color:#ff9500;margin-bottom:6px;">' + window.t('overtimeDayLabel', { day: userTestingDay }, lang) + '</div>' +
+            '<div class="grant-progress-container">' + overtimeSegs.join('') + '</div>' +
+            '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:4px;">' +
+                '<span>' + window.t('overtimeCheckins', { count: checkinsCount }, lang) + '</span>' +
+                '<span>' + window.t('overtimeSkips', { count: skipsCount }, lang) + '</span>' +
+            '</div>' +
+        '</div>';
+    }
+
     var syncHtml = '';
     if ((test.google_sync_day || 0) > 1) {
         const startDate = new Date(test.start_date || '');
@@ -1712,6 +1755,7 @@ function openProjectDetailsModal(appId) {
                 '<span>' + window.t('grantProgressText', { day: normalizedDay }, lang) + '</span>' +
                 '<span>' + window.t('availableSkips', { skips: availableSkips }, lang) + '</span>' +
             '</div>' +
+            overtimeHtml +
         '</div>' +
 
         syncHtml +
@@ -1780,6 +1824,28 @@ function closeProjectSelectModal() {
     if (modal) modal.classList.remove('active');
 }
 
+function openKarmaSelectPopup(appId, testerId) {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    _karmaAppId = appId;
+    _karmaTesterId = testerId;
+    document.getElementById('karma-select-popup').classList.add('active');
+}
+
+function closeKarmaSelectPopup(event) {
+    if (event && event.target && event.target.id !== 'karma-select-popup') return;
+    document.getElementById('karma-select-popup').classList.remove('active');
+    _karmaAppId = null;
+    _karmaTesterId = null;
+}
+
+function confirmKarmaSelect(type) {
+    if (_karmaAppId === null || _karmaTesterId === null) return;
+    document.getElementById('karma-select-popup').classList.remove('active');
+    sendKarmaReward(_karmaAppId, _karmaTesterId, type);
+    _karmaAppId = null;
+    _karmaTesterId = null;
+}
+
 Object.assign(window, {
     showSkeleton,
     showRetry,
@@ -1804,7 +1870,7 @@ Object.assign(window, {
     getLangBadge,
     renderFeedCard,
     renderMutualFeed,
-    switchMutualSubTab,
+    switchMarketSubTab,
     renderBountyFeed,
     toggleDetailsWithAnimation,
     calculateReliability,
@@ -1871,4 +1937,7 @@ Object.assign(window, {
     closeProjectDetailsModal,
     showProjectSelectModal,
     closeProjectSelectModal,
+    openKarmaSelectPopup,
+    closeKarmaSelectPopup,
+    confirmKarmaSelect,
 });

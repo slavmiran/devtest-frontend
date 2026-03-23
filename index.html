@@ -58,31 +58,29 @@
 
     </div>
 
-    <!-- TAB 3: Mutual Feed -->
-    <div id="tab-mutual" class="container tab-content">
+    <!-- TAB 3: Market (merged Mutual + Bounty) -->
+    <div id="tab-market" class="container tab-content">
         <div class="segmented-control" style="margin-bottom: 14px;">
-            <button class="seg-btn active" onclick="switchMutualSubTab('seeking')" id="mutual-sub-seeking"><span id="t-seekingTitle" data-i18n="mutualSeekingTitle">🔥 Ищут обмен</span></button>
-            <button class="seg-btn" onclick="switchMutualSubTab('prelaunch')" id="mutual-sub-prelaunch"><span id="t-prelaunchFeedTitle" data-i18n="mutualPrelaunchTitle">🚀 Pre-Launch</span></button>
+            <button class="seg-btn active" onclick="switchMarketSubTab('seeking')" id="market-sub-seeking"><span data-i18n="marketSeekingTitle">🔥 Ищут обмен</span></button>
+            <button class="seg-btn" onclick="switchMarketSubTab('bounty')" id="market-sub-bounty"><span data-i18n="marketBountyTitle">💎 Биржа</span></button>
+            <button class="seg-btn" onclick="switchMarketSubTab('prelaunch')" id="market-sub-prelaunch"><span data-i18n="marketPrelaunchTitle">🚀 Pre-Launch</span></button>
         </div>
 
-        <p id="mutual-seeking-desc" data-i18n="mutualSeekingDesc" style="margin-bottom: 12px;">Разместите здесь свой проект, чтобы другие тестеры могли предложить вам взаимный обмен.</p>
-        <p id="mutual-prelaunch-desc" data-i18n="mutualPrelaunchDesc" style="margin-bottom: 12px; display:none;">Проекты, набравшие 15 тестеров. Вы можете присоединиться к ним вне очереди.</p>
+        <p id="market-seeking-desc" data-i18n="mutualSeekingDesc" style="margin-bottom: 12px;">Разместите здесь свой проект, чтобы другие тестеры могли предложить вам взаимный обмен.</p>
+        <p id="market-bounty-desc" data-i18n="bountyDesc" style="margin-bottom: 12px; display:none;">Контракты с оплатой в $BUST для быстрых подключений.</p>
+        <p id="market-prelaunch-desc" data-i18n="mutualPrelaunchDesc" style="margin-bottom: 12px; display:none;">Проекты, набравшие 15 тестеров. Вы можете присоединиться к ним вне очереди.</p>
 
-        <div id="mutual-subtab-seeking">
+        <div id="market-subtab-seeking">
             <div id="mutual-seeking-list"></div>
         </div>
 
-        <div id="mutual-subtab-prelaunch" style="display:none;">
+        <div id="market-subtab-bounty" style="display:none;">
+            <div id="bounty-list"></div>
+        </div>
+
+        <div id="market-subtab-prelaunch" style="display:none;">
             <div id="mutual-prelaunch-list"></div>
         </div>
-    </div>
-
-    <!-- TAB 4: Bounty Feed -->
-    <div id="tab-bounty" class="container tab-content">
-        <h2 id="t-bountyTitle" data-i18n="tabBounty">💎 Биржа</h2>
-        <p id="t-bountyDesc" data-i18n="bountyDesc">Контракты с оплатой в $BUST для быстрых подключений.</p>
-
-        <div id="bounty-list"></div>
     </div>
 
     <!-- TAB 2: Мои проекты -->
@@ -107,19 +105,15 @@
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('tests', this)">
             <div class="nav-icon">📱</div>
-            <div id="t-tabTests" data-i18n="tabTests">Мои тесты</div>
+            <div data-i18n="tabTests">Мои тесты</div>
         </div>
         <div class="nav-item" onclick="switchTab('projects', this)">
             <div class="nav-icon">🚀</div>
-            <div id="t-tabProjects" data-i18n="tabProjects">Мои проекты</div>
+            <div data-i18n="tabProjects">Мои проекты</div>
         </div>
-        <div class="nav-item" onclick="switchTab('mutual', this)">
-            <div class="nav-icon">🤝</div>
-            <div id="t-tabMutual" data-i18n="tabMutual">Взаимка</div>
-        </div>
-        <div class="nav-item" onclick="switchTab('bounty', this)">
-            <div class="nav-icon">💎</div>
-            <div id="t-tabBounty" data-i18n="tabBounty">Биржа</div>
+        <div class="nav-item" onclick="switchTab('market', this)">
+            <div class="nav-icon">🏪</div>
+            <div data-i18n="navMarket">Маркет</div>
         </div>
     </div>
 
@@ -355,12 +349,12 @@
                 <button class="karma-btn-big" onclick="selectKarmaReward('good')">
                     <span class="karma-emoji">👍</span>
                     <span class="karma-label" id="karma-btn-good" data-i18n="karmaModalGood">Хороший тестер</span>
-                    <span class="karma-sub">+1 ☯️</span>
+                    <span class="karma-sub">+1.5 ☯️</span>
                 </button>
                 <button class="karma-btn-big" onclick="selectKarmaReward('bug')">
                     <span class="karma-emoji">💡</span>
                     <span class="karma-label" id="karma-btn-bug" data-i18n="karmaModalBug">Ценный фидбек / Баг</span>
-                    <span class="karma-sub">+2 ☯️</span>
+                    <span class="karma-sub">+3.0 ☯️</span>
                 </button>
             </div>
         </div>
@@ -537,6 +531,26 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 data-i18n="offerSelectProject"></h3>
             <div id="project-select-list"></div>
+        </div>
+    </div>
+
+    <!-- Centered Karma Select Popup -->
+    <div id="karma-select-popup" class="centered-popup-overlay" onclick="closeKarmaSelectPopup(event)">
+        <div class="centered-popup" onclick="event.stopPropagation()">
+            <h3 id="karma-select-title" data-i18n="karmaSelectTitle">☯️ Выберите награду</h3>
+            <div class="karma-btn-row">
+                <button class="popup-btn good" onclick="confirmKarmaSelect('good')">
+                    <span>👍</span>
+                    <span data-i18n="karmaSelectGood">Хороший тестер</span>
+                    <span class="karma-sub">+1.5 ☯️</span>
+                </button>
+                <button class="popup-btn bug" onclick="confirmKarmaSelect('bug')">
+                    <span>💡</span>
+                    <span data-i18n="karmaSelectBug">Ценный фидбек</span>
+                    <span class="karma-sub">+3.0 ☯️</span>
+                </button>
+            </div>
+            <button class="popup-btn cancel" onclick="closeKarmaSelectPopup()" data-i18n="karmaSelectCancel">Отмена</button>
         </div>
     </div>
 </body>

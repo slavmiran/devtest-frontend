@@ -1446,7 +1446,7 @@ details[open] > summary .details-arrow {
     -webkit-tap-highlight-color: transparent;
 }
 
-#tab-mutual .segmented-control {
+#tab-market .segmented-control {
     margin-top: 8px;
     margin-bottom: 18px !important;
 }
@@ -1478,4 +1478,153 @@ details[open] > summary .details-arrow {
 
 .first-day-copy {
     border-radius: 14px;
+}
+
+/* ── Overtime grant segments ── */
+.grant-segment.overtime {
+    background: rgba(255, 149, 0, 0.5);
+}
+
+.grant-segment.overtime.filled {
+    background: #ff9500;
+}
+
+/* ── Sync progress bar (owner's renderProjects) ── */
+.sync-progress-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 8px 0;
+}
+
+.sync-progress-bar .sync-seg {
+    flex: 1;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.sync-progress-bar .sync-seg.filled {
+    background: var(--button-color);
+}
+
+.sync-progress-bar .sync-seg.overtime {
+    background: rgba(255, 149, 0, 0.35);
+}
+
+.sync-progress-bar .sync-seg.overtime.filled {
+    background: #ff9500;
+}
+
+/* ── Centered popup (for karma select) ── */
+.centered-popup-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.centered-popup-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.centered-popup {
+    background: rgba(30, 30, 30, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 16px;
+    padding: 24px;
+    min-width: 260px;
+    max-width: 320px;
+    text-align: center;
+}
+
+.centered-popup h4 {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.centered-popup .popup-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 8px;
+    transition: transform 0.1s ease;
+}
+
+.centered-popup .popup-btn:active {
+    transform: scale(0.97);
+}
+
+.centered-popup .popup-btn.good {
+    background: rgba(52, 199, 89, 0.15);
+    color: #34c759;
+}
+
+.centered-popup .popup-btn.bug {
+    background: rgba(0, 122, 255, 0.15);
+    color: var(--link-color);
+}
+
+.centered-popup .popup-btn.cancel {
+    background: rgba(142, 142, 147, 0.15);
+    color: var(--hint-color);
+    margin-bottom: 0;
+}
+
+/* ── Karma distribution sheet ── */
+.karma-dist-tester {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(142, 142, 147, 0.12);
+}
+
+.karma-dist-tester:last-child {
+    border-bottom: none;
+}
+
+.karma-dist-tester .tester-name {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.karma-dist-tester .karma-dist-btn {
+    padding: 6px 14px;
+    border-radius: 10px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(52, 199, 89, 0.14);
+    color: #34c759;
+    cursor: pointer;
+}
+
+.karma-dist-tester .karma-dist-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ── Golden tester badge in dashboard ── */
+.golden-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffd700;
 }

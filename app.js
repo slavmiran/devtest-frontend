@@ -352,13 +352,10 @@ function refreshActiveTabData() {
         return;
     }
 
-    if (activeTabId === 'tab-mutual') {
+    if (activeTabId === 'tab-market') {
         loadMutualFeed().catch(error => console.error('Language refresh mutual error:', error));
-        return;
-    }
-
-    if (activeTabId === 'tab-bounty') {
         loadBountyFeed().catch(error => console.error('Language refresh bounty error:', error));
+        return;
     }
 }
 
@@ -417,7 +414,10 @@ async function loadTasks() {
                 days_since_publish: app.days_since_publish,
                 google_sync_day: app.google_sync_day || 0,
                 sync_message: app.sync_message || '',
-                last_owner_activity: app.last_owner_activity || null
+                last_owner_activity: app.last_owner_activity || null,
+                checkins_count: app.checkins_count || 0,
+                skips_count: app.skips_count || 0,
+                last_sync_date: app.last_sync_date || null,
             };
         });
 
@@ -525,7 +525,8 @@ async function loadProjects(isBackground = false) {
             limit_bounty: project.limit_bounty || 0,
             bounty_per_tester: project.bounty_per_tester || 0,
             google_sync_day: project.google_sync_day || 0,
-            sync_message: project.sync_message || ''
+            sync_message: project.sync_message || '',
+            last_sync_date: project.last_sync_date || null,
         }));
 
         visibilityStats = {
@@ -538,7 +539,8 @@ async function loadProjects(isBackground = false) {
             top_thresholds: data.top_thresholds || {},
             completed_tests: data.completed_tests || 0,
             total_expected_checkins: data.total_expected_checkins || 0,
-            total_actual_checkins: data.total_actual_checkins || 0
+            total_actual_checkins: data.total_actual_checkins || 0,
+            golden_count: data.golden_count || 0,
         };
 
         renderProjects();
