@@ -31,6 +31,7 @@ var visibilityStats = {};
 var _activeRequests = 0;
 var _karmaAppId = null;
 var _karmaTesterId = null;
+var _karmaDistributionProjectId = null;
 var _offersTimerId = null;
 
 var _reportAppId = null;
@@ -123,9 +124,8 @@ function getOfferApiError(message) {
 
 function formatBustAmount(value) {
     const numeric = Number(value || 0);
-    const rounded = Math.round(numeric * 10) / 10;
-    const normalized = Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
-    return `${normalized} $BUST`;
+    const rounded = Math.round(numeric);
+    return `${rounded} $BUST`;
 }
 
 function getApiErrorMessage(payload, fallbackKey = 'genericError') {
@@ -992,6 +992,9 @@ async function sendKarmaReward(appId, testerId, rewardType) {
                 project.likes_used = (project.likes_used || 0) + 1;
             }
             renderProjects();
+            if (window._karmaDistributionProjectId === appId && window.openKarmaDistribution) {
+                window.openKarmaDistribution(appId);
+            }
         } else {
             const message = result.code === 'karma_limit_reached'
                 ? t.karmaLimitReached
@@ -1106,12 +1109,30 @@ async function confirmDeleteProject() {
 
     const message = document.getElementById('delete-message').value.trim();
     const id = projectToDelete;
+    const overtimeSelect = document.getElementById('delete-overtime-tester');
+    const selectedOvertimeTester = overtimeSelect ? overtimeSelect.value : '';
     const btn = document.getElementById('t-confirmDeleteBtn');
     const originalText = btn.innerText;
     btn.innerText = '...';
     btn.disabled = true;
 
     try {
+        if (selectedOvertimeTester) {
+            const rewardResponse = await fetch(`${API_BASE}/projects/${id}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tester_id: Number(selectedOvertimeTester), type: 'overtime' })
+            });
+            const rewardResult = await rewardResponse.json();
+            if (rewardResult.status !== 'success') {
+                const rewardMessage = rewardResult.code === 'karma_limit_reached'
+                    ? t.karmaLimitReached
+                    : getApiErrorMessage(rewardResult, 'karmaAlreadyLiked');
+                showToast(rewardMessage);
+                return;
+            }
+        }
+
         const response = await fetch(`${API_BASE}/projects/${id}/delete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

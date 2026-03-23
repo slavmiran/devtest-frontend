@@ -61,9 +61,9 @@
     <!-- TAB 3: Market (merged Mutual + Bounty) -->
     <div id="tab-market" class="container tab-content">
         <div class="segmented-control" style="margin-bottom: 14px;">
-            <button class="seg-btn active" onclick="switchMarketSubTab('seeking')" id="market-sub-seeking"><span data-i18n="marketSeekingTitle">🔥 Ищут обмен</span></button>
+            <button class="seg-btn active" onclick="switchMarketSubTab('seeking')" id="market-sub-seeking"><span data-i18n="marketSeekingTitle">🤝 Взаимка</span></button>
             <button class="seg-btn" onclick="switchMarketSubTab('bounty')" id="market-sub-bounty"><span data-i18n="marketBountyTitle">💎 Биржа</span></button>
-            <button class="seg-btn" onclick="switchMarketSubTab('prelaunch')" id="market-sub-prelaunch"><span data-i18n="marketPrelaunchTitle">🚀 Pre-Launch</span></button>
+            <button class="seg-btn" onclick="switchMarketSubTab('prelaunch')" id="market-sub-prelaunch"><span data-i18n="marketPrelaunchTitle">🚀 Предзапуск</span></button>
         </div>
 
         <p id="market-seeking-desc" data-i18n="mutualSeekingDesc" style="margin-bottom: 12px;">Разместите здесь свой проект, чтобы другие тестеры могли предложить вам взаимный обмен.</p>
@@ -112,8 +112,8 @@
             <div data-i18n="tabProjects">Мои проекты</div>
         </div>
         <div class="nav-item" onclick="switchTab('market', this)">
-            <div class="nav-icon">🏪</div>
-            <div data-i18n="navMarket">Маркет</div>
+            <div class="nav-icon">🛒</div>
+            <div data-i18n="navMarket">Витрина</div>
         </div>
     </div>
 
@@ -215,6 +215,7 @@
     <div id="delete-modal" class="modal-overlay" onclick="closeDeleteModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-deleteModalTitle" data-i18n="deleteModalTitle">Завершить проект?</h3>
+            <div id="delete-dynamic-info"></div>
             <div class="form-group">
                 <label class="form-label" id="t-deleteMessageLabel" data-i18n="deleteMessageLabel">Напишите пару слов благодарности тестерам (необязательно)...</label>
                 <textarea id="delete-message" class="form-input" rows="3" placeholder="" data-i18n-placeholder="deleteMessagePlaceholder"></textarea>
@@ -358,6 +359,10 @@
                 </button>
             </div>
         </div>
+    </div>
+
+    <div id="karma-distribution-modal" class="modal-overlay" onclick="closeKarmaDistribution(event)">
+        <div class="modal-content" onclick="event.stopPropagation()" id="karma-distribution-body"></div>
     </div>
 
     <!-- Custom Alert Overlay -->
@@ -535,19 +540,17 @@
     </div>
 
     <!-- Centered Karma Select Popup -->
-    <div id="karma-select-popup" class="centered-popup-overlay" onclick="closeKarmaSelectPopup(event)">
-        <div class="centered-popup" onclick="event.stopPropagation()">
+    <div id="karma-select-popup" class="modal-overlay centered-popup-overlay" onclick="closeKarmaSelectPopup(event)">
+        <div class="modal-content centered-popup" onclick="event.stopPropagation()">
             <h3 id="karma-select-title" data-i18n="karmaSelectTitle">☯️ Выберите награду</h3>
             <div class="karma-btn-row">
                 <button class="popup-btn good" onclick="confirmKarmaSelect('good')">
                     <span>👍</span>
-                    <span data-i18n="karmaSelectGood">Хороший тестер</span>
-                    <span class="karma-sub">+1.5 ☯️</span>
+                    <span data-i18n="karmaSelectGood">Отличный тест (+1.5 ☯️)</span>
                 </button>
                 <button class="popup-btn bug" onclick="confirmKarmaSelect('bug')">
                     <span>💡</span>
-                    <span data-i18n="karmaSelectBug">Ценный фидбек</span>
-                    <span class="karma-sub">+3.0 ☯️</span>
+                    <span data-i18n="karmaSelectBug">Найден баг или Хороший совет (+3.0 ☯️)</span>
                 </button>
             </div>
             <button class="popup-btn cancel" onclick="closeKarmaSelectPopup()" data-i18n="karmaSelectCancel">Отмена</button>

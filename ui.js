@@ -426,7 +426,7 @@ function renderTests() {
         const headerActions = [];
         if (test.status !== 'done') {
             if (userTestingDay >= 15) {
-                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #30d158;" onclick="openOvertimeModal(${test.id}, event)">✅</button>`);
+                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #30d158;" onclick="openOvertimeModal(${test.id}, event)">🔄</button>`);
             } else {
                 headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openDropTestModal(${test.id}, event)">🗑️</button>`);
             }
@@ -708,7 +708,8 @@ function renderProjects() {
     if (visibilityStats) {
         const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
         const expLine = t.experienceLabel.replace('{count}', visibilityStats.completed_tests) + ' ' + t.completedTestsSuffix;
-        const goldenLine = window.t('goldenTesterStats', { count: visibilityStats.golden_count || 0 });
+        const goldenCount = visibilityStats.golden_count || 0;
+        const goldenLine = window.t('goldenTesterStats', { count: goldenCount });
         const reliabilityValue = reliability.percent !== null
             ? `${reliability.text} (${reliability.percent}%)`
             : `${reliability.text}`;
@@ -731,9 +732,7 @@ function renderProjects() {
                 <div class="dashboard-row">
                     <span class="dashboard-label">${expLine}</span>
                 </div>
-                <div class="dashboard-row">
-                    <span class="dashboard-label"><span class="golden-badge">🏆</span> ${goldenLine}</span>
-                </div>
+                ${goldenCount > 0 ? `<div class="dashboard-row"><span class="dashboard-label"><span class="golden-badge">🏆</span> ${goldenLine}</span></div>` : ''}
                 <div class="dashboard-row">
                     <span class="dashboard-label" style="color: ${reliability.color};">${t.disciplineLabel} <span onclick="showReliabilityInfo()" style="${reliabilityValueStyle}">${reliabilityValue} </span></span>
                 </div>
@@ -776,7 +775,12 @@ function renderProjects() {
         const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
         const safeProjectPackage = window.escapeHTML(project.package || '');
 
-        const appDays = project.created_at ? (Math.floor((todayDate - new Date(project.created_at)) / (1000 * 60 * 60 * 24)) + 1) : 0;
+        const platformDays = project.created_at ? (Math.floor((todayDate - new Date(project.created_at)) / (1000 * 60 * 60 * 24)) + 1) : 0;
+        const lastSyncDate = project.last_sync_date ? new Date(project.last_sync_date) : null;
+        const syncDiffDays = lastSyncDate ? Math.floor((todayDate - lastSyncDate) / (1000 * 60 * 60 * 24)) : 0;
+        const currentGoogleDay = (project.google_sync_day || 0) > 1
+            ? Math.max(1, (project.google_sync_day || 0) + Math.max(0, syncDiffDays))
+            : platformDays;
         const likesAvailable = project.likes_max - project.likes_used;
 
         let testersHtml = '';
@@ -883,24 +887,36 @@ function renderProjects() {
 
             if (likesAvailable > 0) {
                 const karmaChipText = t.karmaAvailable.replace('{count}', likesAvailable);
-                badges += `<button class="meta-chip accent-yellow" onclick="showKarmaChipInfo()">${karmaChipText}</button>`;
+                badges += `<button class="meta-chip accent-yellow" onclick="openKarmaDistribution(${project.id})">${karmaChipText}</button>`;
             }
 
             return badges;
         })();
 
-        const appProgressHtml = (() => {
-            if (appDays <= 0) return '';
-            const day = Math.min(appDays, 14);
-            const pct = Math.min(100, Math.round((day / 14) * 100));
-            let barColor = 'var(--link-color)';
-            if (day >= 14) barColor = '#34c759';
-            else if (day >= 12) barColor = '#ff9500';
-            const label = day >= 14 ? t.progressComplete : t.progressLabel.replace('{day}', day);
+        const projectProgressHtml = (() => {
+            if (platformDays <= 0) return '';
+            if ((project.google_sync_day || 0) <= 1) {
+                const day = Math.min(platformDays, 14);
+                const pct = Math.min(100, Math.round((day / 14) * 100));
+                return `
+                    <div class="progress-container" style="margin-bottom: 12px;">
+                        <div class="progress-bar"><div class="progress-fill" style="width: ${pct}%;"></div></div>
+                        <span>${t.progressLabel.replace('{day}', day)}</span>
+                    </div>
+                `;
+            }
+
+            const segments = [];
+            for (let index = 1; index <= 14; index++) {
+                segments.push(`<div class="grant-segment ${index <= Math.min(currentGoogleDay, 14) ? 'filled' : ''}"></div>`);
+            }
             return `
-                <div class="app-progress">
-                    <div class="app-progress-bar"><div class="app-progress-fill" style="width: ${pct}%; background: ${barColor};"></div></div>
-                    <span class="app-progress-label" style="color: ${barColor};">${label}</span>
+                <div style="margin-bottom: 12px;">
+                    <div class="grant-progress-container">${segments.join('')}</div>
+                    <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:12px;">
+                        <span>${window.t('projectGoogleDayLabel', { day: Math.min(currentGoogleDay, 14) })}</span>
+                        <span onclick="window.showCustomAlert(window.t('platformDaysInfo'))" style="color:var(--hint-color); cursor:pointer;">[${platformDays}]</span>
+                    </div>
                 </div>
             `;
         })();
@@ -918,21 +934,8 @@ function renderProjects() {
             return `<div style="margin: 8px 0 10px; display: flex; gap: 6px; flex-wrap: wrap;">${chips.join('')}</div>`;
         })();
 
-        const syncProgressHtml = (() => {
-            if (!project.testers || project.testers.length === 0) return '';
-            const total = project.testers.length;
-            const synced = project.testers.filter(t => {
-                if (!t.last_check_date) return false;
-                const diff = Math.floor(Math.abs(todayDate - new Date(t.last_check_date)) / (1000 * 60 * 60 * 24));
-                return diff <= 1;
-            }).length;
-            const pct = Math.round((synced / total) * 100);
-            const label = window.t('syncProgressSynced', { count: synced }) + ' / ' + window.t('syncProgressNotSynced', { count: total - synced });
-            return `<div style="margin: 6px 0 10px;"><div class="sync-progress-bar"><div class="sync-seg" style="width:${pct}%;"></div></div><div style="font-size:12px;color:var(--hint-color);margin-top:4px;">${label}</div></div>`;
-        })();
-
         const karmaBonusChipHtml = (() => {
-            if (appDays < 14 || !project.testers || project.testers.length < 12) return '';
+            if (platformDays < 14 || !project.testers || project.testers.length < 12) return '';
             return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
         })();
 
@@ -954,24 +957,25 @@ function renderProjects() {
                 ${visibilityBadge}
             </div>
             ${project.is_visible === false ? `<div class="visibility-hint">${t.inviteLinkAlways}</div>` : ''}
-            ${appProgressHtml}
-            ${syncProgressHtml}
+            ${projectProgressHtml}
             ${quotaSummaryHtml}
             <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
             <div class="testers-section">
                 <div class="testers-title">${t.testersList} (${project.testers ? project.testers.length : 0})</div>
                 ${testersHtml}
             </div>
-            <div class="action-row" style="margin-top: 16px;">
-                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openInviteModal(${project.id})">
-                    🔗 ${t.inviteLink}
+            <div style="margin-top: 16px;">
+                <button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
+                    ${t.syncBtnLong}
                 </button>
-                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
-                    ${t.syncBtn}
-                </button>
-                <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="openDeleteModal(${project.id})">
-                    🗑 ${t.deleteProject}
-                </button>
+                <div class="action-row" style="margin-top: 0;">
+                    <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openInviteModal(${project.id})">
+                        🔗 ${t.inviteLink}
+                    </button>
+                    <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="openDeleteModal(${project.id})">
+                        🗑 ${t.deleteProject}
+                    </button>
+                </div>
             </div>
         `;
         container.appendChild(card);
@@ -1279,12 +1283,30 @@ function showRankPopup() {
 
 function showKarmaChipInfo() {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    const project = myProjects.find((item) => (item.likes_max - item.likes_used) > 0);
+    if (project) {
+        openKarmaDistribution(project.id);
+        return;
+    }
     showCustomAlert(t.karmaLimitInfoText || t.karmaChipInfoText);
 }
 
 function showTestDayPopup(day) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    const msg = t.testDayExplain.replace('{days}', day);
+    let msg = t.testDayExplain.replace('{days}', day);
+    const projectId = window._karmaDistributionProjectId;
+    if (projectId) {
+        const project = myProjects.find((item) => item.id === projectId);
+        const tester = project ? (project.testers || []).find((item) => item.tester_id === day) : null;
+        if (tester) {
+            const testerDay = tester.start_date ? (Math.floor((new Date(getLocalDate()) - new Date(tester.start_date)) / (1000 * 60 * 60 * 24)) + 1) : 0;
+            msg = window.t('karmaDistributionTesterStats', {
+                day: testerDay,
+                checkins: tester.checkins_count || 0,
+                skips: tester.skips_count || 0,
+            });
+        }
+    }
     if (tg.showAlert) tg.showAlert(msg);
     else alert(msg);
 }
@@ -1305,26 +1327,81 @@ function insertChip(textareaId, chipText) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-function showKarmaPopup(appId, testerId) {
+function openKarmaDistribution(projectId) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    _karmaAppId = appId;
-    _karmaTesterId = testerId;
-    document.getElementById('karma-modal').classList.add('active');
+    const project = myProjects.find((item) => item.id === projectId);
+    const body = document.getElementById('karma-distribution-body');
+    if (!body) return;
+
+    window._karmaDistributionProjectId = projectId;
+
+    if (!project) {
+        body.innerHTML = `<h3>${window.escapeHTML(t.karmaDistributionTitle)}</h3><p style="color:var(--hint-color);">${window.escapeHTML(t.karmaDistNoTesters)}</p>`;
+        document.getElementById('karma-distribution-modal').classList.add('active');
+        return;
+    }
+
+    const likesAvailable = Math.max(0, (project.likes_max || 0) - (project.likes_used || 0));
+    const testers = project.testers || [];
+    if (!testers.length) {
+        body.innerHTML = `<h3>${window.escapeHTML(t.karmaDistributionTitle)}</h3><p style="color:var(--hint-color);">${window.escapeHTML(t.karmaDistNoTesters)}</p>`;
+        document.getElementById('karma-distribution-modal').classList.add('active');
+        return;
+    }
+
+    const rowsHtml = testers.map((tester) => {
+        const testerDay = tester.start_date ? (Math.floor((new Date(getLocalDate()) - new Date(tester.start_date)) / (1000 * 60 * 60 * 24)) + 1) : 0;
+        const liked = (project.likes || []).find((like) => like.tester_id === tester.tester_id);
+        const name = tester.username
+            ? '@' + window.escapeHTML(tester.username.replace('@', ''))
+            : window.escapeHTML(window.t('idLabel', { id: tester.tester_id }));
+        const stats = window.escapeHTML(window.t('karmaDistributionTesterStats', {
+            day: testerDay,
+            checkins: tester.checkins_count || 0,
+            skips: tester.skips_count || 0,
+        }));
+        const amountByType = liked ? (liked.type === 'bug' ? '3.0' : liked.type === 'overtime' ? '2.0' : '1.5') : '';
+        const actionHtml = liked
+            ? `<span class="karma-dist-btn disabled">${window.escapeHTML(window.t('karmaDistributionUsed', { amount: amountByType }))}</span>`
+            : likesAvailable <= 0
+                ? '<span class="karma-dist-btn disabled">+☯️</span>'
+                : `<button class="karma-dist-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${projectId}, ${tester.tester_id})">+☯️</button>`;
+
+        return `<div class="karma-dist-tester">
+            <div>
+                <button type="button" class="karma-dist-name-btn" onclick="showTestDayPopup(${tester.tester_id})"><span class="tester-name">${name}</span></button>
+                <span class="karma-dist-meta">${stats}</span>
+            </div>
+            ${actionHtml}
+        </div>`;
+    }).join('');
+
+    body.innerHTML = `
+        <h3>${window.escapeHTML(t.karmaDistributionTitle)}</h3>
+        <p style="font-size:13px;color:var(--hint-color);margin-bottom:14px;">${window.escapeHTML(t.karmaDistributionDesc)}</p>
+        <div>${rowsHtml}</div>
+        <button class="btn btn-secondary" style="width:100%;margin-top:14px;" onclick="closeKarmaDistribution()">${window.escapeHTML(t.inviteClose)}</button>
+    `;
+
+    document.getElementById('karma-distribution-modal').classList.add('active');
+}
+
+function closeKarmaDistribution(event) {
+    if (event && event.target && event.target.id !== 'karma-distribution-modal') return;
+    document.getElementById('karma-distribution-modal').classList.remove('active');
+    window._karmaDistributionProjectId = null;
+}
+
+function showKarmaPopup(appId, testerId) {
+    openKarmaSelectPopup(appId, testerId);
 }
 
 function closeKarmaModal(event) {
-    if (event && event.target && event.target.id !== 'karma-modal') return;
-    document.getElementById('karma-modal').classList.remove('active');
-    _karmaAppId = null;
-    _karmaTesterId = null;
+    closeKarmaDistribution(event);
 }
 
 function selectKarmaReward(type) {
-    if (_karmaAppId === null || _karmaTesterId === null) return;
-    document.getElementById('karma-modal').classList.remove('active');
-    sendKarmaReward(_karmaAppId, _karmaTesterId, type);
-    _karmaAppId = null;
-    _karmaTesterId = null;
+    confirmKarmaSelect(type);
 }
 
 function showCustomAlert(text) {
@@ -1516,12 +1593,16 @@ async function openDossierModal(username, testerId, appId) {
     const safeDeleteName = escapeInlineJsString(tgName || String(testerId));
 
     let html = '';
+    const goldenCountText = (profile.golden_count || 0) > 0
+        ? window.t('dossierGoldenCount', { count: profile.golden_count })
+        : '';
     html += `<div style="margin-bottom: 16px;">
         <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierGlobalTitle}</div>
         <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
             ${t.dossierExperience.replace('{count}', profile.completed_tests)}
             <br>${expected >= 42 ? t.dossierReliability.replace('{pct}', reliabilityPct) + ' ' + reliabilityText : t.disciplineLabel + ' ' + t.dossierNewbie}
             <br>${t.dossierKarma.replace('{karma}', profile.karma)}
+            ${goldenCountText ? '<br><span class="golden-badge">' + window.escapeHTML(goldenCountText) + '</span>' : ''}
         </div>
     </div>`;
 
@@ -1556,6 +1637,64 @@ function closeDossierModal(event) {
 
 function openDeleteModal(id) {
     projectToDelete = id;
+    const project = myProjects.find(p => p.id === id);
+    const infoEl = document.getElementById('delete-dynamic-info');
+    let infoHtml = '';
+
+    if (project) {
+        const todayDate = new Date(getLocalDate());
+        const daysOnPlatform = project.created_at
+            ? Math.floor((todayDate.getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60 * 24))
+            : 0;
+        const testers = project.testers || [];
+
+        if (daysOnPlatform >= 14) {
+            infoHtml += '<div class="delete-info-block bonus">' + window.escapeHTML(t.deleteCongratsTitle) + '</div>';
+            infoHtml += '<div class="delete-chip-row"><span class="meta-chip accent-green">+5 Кармы 🎉</span></div>';
+        } else {
+            infoHtml += '<div class="delete-info-block">' + window.escapeHTML(t.deleteThanksOnly) + '</div>';
+        }
+
+        const overtimeTesters = testers.map((tr) => {
+            const testerDay = tr.start_date ? (Math.floor((todayDate - new Date(tr.start_date)) / (1000 * 60 * 60 * 24)) + 1) : 0;
+            const overtimeCheckins = Math.max(0, (tr.checkins_count || 0) - 14);
+            return { ...tr, testerDay, overtimeCheckins };
+        }).filter((tr) => {
+            if ((project.google_sync_day || 0) >= 15) return true;
+            if (!tr.start_date) return false;
+            return tr.testerDay >= 15;
+        });
+
+        if (overtimeTesters.length > 0) {
+            const totalOvertimeDays = Math.max(0, ...overtimeTesters.map((item) => item.testerDay - 14));
+            const optionsHtml = ['<option value="">' + window.escapeHTML(t.deleteOvertimeSelectNone) + '</option>']
+                .concat(overtimeTesters.map((tr) => {
+                    const label = tr.username ? '@' + window.escapeHTML(tr.username.replace('@', '')) : window.escapeHTML(window.t('idLabel', { id: tr.tester_id }));
+                    return '<option value="' + tr.tester_id + '">' + label + '</option>';
+                }))
+                .join('');
+            const listHtml = overtimeTesters.map((tr) => {
+                const name = tr.username ? '@' + window.escapeHTML(tr.username.replace('@', '')) : window.escapeHTML(window.t('idLabel', { id: tr.tester_id }));
+                return '<div class="delete-overtime-item">' +
+                    '<div>' +
+                        '<div class="delete-overtime-item-name">' + name + '</div>' +
+                        '<div class="delete-overtime-item-meta">' + window.escapeHTML(window.t('deleteOvertimeTesterStats', { count: tr.overtimeCheckins })) + '</div>' +
+                    '</div>' +
+                    '<span class="meta-chip accent-purple">+' + Math.max(0, tr.testerDay - 14) + ' дн.</span>' +
+                '</div>';
+            }).join('');
+
+            infoHtml += '<div class="delete-info-block overtime">' +
+                '<div style="font-weight:600;margin-bottom:6px;">' + window.escapeHTML(t.deleteOvertimeTitle) + '</div>' +
+                '<div style="color:var(--hint-color);">' + window.escapeHTML(t.deleteOvertimeDesc) + '</div>' +
+                '<div style="margin-top:8px;font-size:12px;color:var(--hint-color);">' + window.escapeHTML(window.t('deleteOvertimeSummary', { count: totalOvertimeDays })) + '</div>' +
+                '<select id="delete-overtime-tester" class="form-input delete-overtime-select">' + optionsHtml + '</select>' +
+                '<div class="delete-overtime-list">' + listHtml + '</div>' +
+            '</div>';
+        }
+    }
+
+    infoEl.innerHTML = infoHtml;
     document.getElementById('delete-modal').classList.add('active');
     document.getElementById('delete-message').focus();
 }
@@ -1566,6 +1705,7 @@ function closeDeleteModal(event) {
 
     setTimeout(() => {
         document.getElementById('delete-message').value = '';
+        document.getElementById('delete-dynamic-info').innerHTML = '';
         projectToDelete = null;
     }, 300);
 }
@@ -1680,61 +1820,68 @@ function openProjectDetailsModal(appId) {
     const safePackage = window.escapeHTML(test.package || '');
     const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
     const displayOwner = window.escapeHTML(test.owner_username ? '@' + test.owner_username : window.t('unknownLabel', {}, lang));
+    const today = new Date(getLocalDate());
     const userTestingDayRaw = getUserTestingDay(test.start_date);
     const userTestingDay = typeof userTestingDayRaw === 'number' && userTestingDayRaw > 0 ? userTestingDayRaw : 1;
-    const normalizedDay = Math.min(userTestingDay, 14);
-    const skipped = Number.isFinite(Number(test.missed_days)) ? Number(test.missed_days) : 0;
-    const availableSkips = Math.max(0, 3 - skipped);
-    const remainingDays = Math.max(0, 14 - normalizedDay);
+    const skips = Number(test.skips_count || 0);
+    const totalCheckins = Number(test.checkins_count || 0);
+    const daysSinceCreated = Number(test.days_since_publish || 0);
+    const left = (test.google_sync_day || 0) > 1
+        ? Math.max(0, 14 - Number(test.google_sync_day || 0))
+        : Math.max(0, 14 - daysSinceCreated);
+    const potential = totalCheckins + left;
     const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
     const boostAmount = Number.isFinite(Number(test.owner_boost_reward))
         ? Number(test.owner_boost_reward)
         : (Number.isFinite(Number(test.boost_reward)) ? Number(test.boost_reward) : 1000);
     const ownerKarma = Number.isFinite(Number(test.owner_karma)) ? Number(test.owner_karma) : 0;
 
-    var segments = [];
-    for (var i = 1; i <= 14; i++) {
-        var cls = 'grant-segment';
-        if (i < normalizedDay) cls += ' filled';
-        else if (i === normalizedDay) cls += ' filled current';
-        segments.push('<div class="' + cls + '"></div>');
-    }
-
-    // Overtime segments (day 15+)
-    var overtimeHtml = '';
-    if (userTestingDay > 14) {
-        var overtimeDays = userTestingDay - 14;
-        var overtimeSegs = [];
-        for (var j = 1; j <= Math.min(overtimeDays, 21); j++) {
-            overtimeSegs.push('<div class="grant-segment overtime filled"></div>');
-        }
-        var checkinsCount = test.checkins_count || 0;
-        var skipsCount = test.skips_count || 0;
-        overtimeHtml = '<div style="margin-top:10px;">' +
-            '<div style="font-size:13px;font-weight:600;color:#ff9500;margin-bottom:6px;">' + window.t('overtimeDayLabel', { day: userTestingDay }, lang) + '</div>' +
-            '<div class="grant-progress-container">' + overtimeSegs.join('') + '</div>' +
-            '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:4px;">' +
-                '<span>' + window.t('overtimeCheckins', { count: checkinsCount }, lang) + '</span>' +
-                '<span>' + window.t('overtimeSkips', { count: skipsCount }, lang) + '</span>' +
-            '</div>' +
-        '</div>';
-    }
-
-    var syncHtml = '';
+    let currentGoogleDay = 0;
+    let projectDaysLeft = 0;
+    let expectedTotalDays = userTestingDay;
+    let overtimeDays = 0;
     if ((test.google_sync_day || 0) > 1) {
-        const startDate = new Date(test.start_date || '');
-        let factDateText = '—';
-        if (!Number.isNaN(startDate.getTime())) {
-            const endDate = new Date(startDate.getTime());
-            endDate.setDate(endDate.getDate() + 13);
-            factDateText = window.escapeHTML(endDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US'));
-        }
-        syncHtml = '<div class="details-block">' +
-            '<div style="font-size:14px;font-weight:700;color:#34c759;margin-bottom:6px;">' + window.t('syncDoneText', {}, lang) + '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);">' + window.t('fact_end_date', { date: factDateText }, lang) + '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('days_left_count', { count: remainingDays }, lang) + '</div>' +
-        '</div>';
+        const lastSyncDate = test.last_sync_date ? new Date(test.last_sync_date) : today;
+        currentGoogleDay = Number(test.google_sync_day || 0) + Math.max(0, Math.floor((today - lastSyncDate) / (1000 * 60 * 60 * 24)));
+        projectDaysLeft = Math.max(0, 14 - currentGoogleDay);
+        expectedTotalDays = userTestingDay + projectDaysLeft;
+        overtimeDays = Math.max(0, expectedTotalDays - 14);
     }
+
+    const segments = [];
+    for (let index = 1; index <= 14; index++) {
+        segments.push('<div class="grant-segment ' + (index <= userTestingDay ? 'filled' : '') + '"></div>');
+    }
+    for (let index = 1; index <= overtimeDays; index++) {
+        segments.push('<div class="grant-segment overtime ' + ((14 + index) <= userTestingDay ? 'filled' : '') + '"></div>');
+    }
+
+    const goldenBadgeHtml = (() => {
+        if (potential < 11) return '';
+        if (skips === 0) {
+            return '<button class="meta-chip accent-yellow" onclick="showToast(\'' + escapeInlineJsString(window.t('goldenTesterToastActive', {}, lang)) + '\')">' + window.escapeHTML(window.t('goldenTesterBadgeActive', {}, lang)) + '</button>';
+        }
+        return '<button class="meta-chip" style="opacity:0.5;filter:grayscale(1);" onclick="showToast(\'' + escapeInlineJsString(window.t('goldenTesterToastLost', {}, lang)) + '\')">👑</button>';
+    })();
+
+    const syncHtml = (() => {
+        if ((test.google_sync_day || 0) <= 1) return '';
+        const finishDate = new Date(today.getTime() + (projectDaysLeft * 24 * 60 * 60 * 1000));
+        const finishDateText = window.escapeHTML(finishDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US'));
+        return '<div class="details-block">' +
+            '<div style="font-size:14px;font-weight:700;color:#34c759;margin-bottom:6px;">' + window.escapeHTML(window.t('projectSyncedTitle', {}, lang)) + '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);">' + window.t('fact_end_date', { date: finishDateText }, lang) + '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('googleDaysLeft', { count: projectDaysLeft }, lang) + '</div>' +
+            '<div style="font-size:12px;color:var(--hint-color);margin-top:4px;opacity:0.8;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
+        '</div>';
+    })();
+
+    const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);">' +
+        '<span>' + window.t('grantProgressText', { day: userTestingDay }, lang) + '</span>' +
+        (overtimeDays > 0
+            ? '<span class="meta-chip accent-purple" onclick="window.showCustomAlert(window.t(\'syncOvertimeInfo\'))">' + window.escapeHTML(window.t('overtimeChipLabel', { count: overtimeDays }, lang)) + '</span>'
+            : '') +
+    '</div>';
 
     var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
         '<div class="detail-instruction-body">' + (test.instructions ? escapeHtmlWithBreaks(test.instructions) : '—') + '</div></div>';
@@ -1749,13 +1896,9 @@ function openProjectDetailsModal(appId) {
         '</div>' +
 
         '<div class="details-block">' +
-            '<div class="detail-badge">👑 ' + window.t('golden_tester', {}, lang) + '</div>' +
+            (goldenBadgeHtml ? '<div style="margin-bottom:8px;">' + goldenBadgeHtml + '</div>' : '') +
             '<div class="grant-progress-container">' + segments.join('') + '</div>' +
-            '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);">' +
-                '<span>' + window.t('grantProgressText', { day: normalizedDay }, lang) + '</span>' +
-                '<span>' + window.t('availableSkips', { skips: availableSkips }, lang) + '</span>' +
-            '</div>' +
-            overtimeHtml +
+            progressFooterHtml +
         '</div>' +
 
         syncHtml +
@@ -1937,6 +2080,8 @@ Object.assign(window, {
     closeProjectDetailsModal,
     showProjectSelectModal,
     closeProjectSelectModal,
+    openKarmaDistribution,
+    closeKarmaDistribution,
     openKarmaSelectPopup,
     closeKarmaSelectPopup,
     confirmKarmaSelect,
