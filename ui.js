@@ -914,7 +914,7 @@ function renderProjects() {
                 <div style="margin-bottom: 12px;">
                     <div class="grant-progress-container">${segments.join('')}</div>
                     <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:12px;">
-                        <span>${window.t('projectGoogleDayLabel', { day: Math.min(currentGoogleDay, 14) })}</span>
+                        <span>${window.t('projectGoogleDayLabel', { day: currentGoogleDay })}</span>
                         <span onclick="window.showCustomAlert(window.t('platformDaysInfo'))" style="color:var(--hint-color); cursor:pointer;">[${platformDays}]</span>
                     </div>
                 </div>
@@ -935,7 +935,7 @@ function renderProjects() {
         })();
 
         const karmaBonusChipHtml = (() => {
-            if (platformDays < 14 || !project.testers || project.testers.length < 12) return '';
+            if (platformDays < 14 || !project.testers || project.testers.length < 5) return '';
             return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
         })();
 
@@ -1281,16 +1281,6 @@ function showRankPopup() {
     else alert(msg);
 }
 
-function showKarmaChipInfo() {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    const project = myProjects.find((item) => (item.likes_max - item.likes_used) > 0);
-    if (project) {
-        openKarmaDistribution(project.id);
-        return;
-    }
-    showCustomAlert(t.karmaLimitInfoText || t.karmaChipInfoText);
-}
-
 function showTestDayPopup(day) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     let msg = t.testDayExplain.replace('{days}', day);
@@ -1394,14 +1384,6 @@ function closeKarmaDistribution(event) {
 
 function showKarmaPopup(appId, testerId) {
     openKarmaSelectPopup(appId, testerId);
-}
-
-function closeKarmaModal(event) {
-    closeKarmaDistribution(event);
-}
-
-function selectKarmaReward(type) {
-    confirmKarmaSelect(type);
 }
 
 function showCustomAlert(text) {
@@ -1647,28 +1629,27 @@ function openDeleteModal(id) {
             ? Math.floor((todayDate.getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60 * 24))
             : 0;
         const testers = project.testers || [];
+        const uniqueTestersCount = new Set(testers.map((tr) => tr.tester_id)).size;
+        const projectLikes = project.likes || [];
+        const canGetOwnerBonus = daysOnPlatform >= 14 && uniqueTestersCount >= 5;
 
-        if (daysOnPlatform >= 14) {
+        if (canGetOwnerBonus) {
             infoHtml += '<div class="delete-info-block bonus">' + window.escapeHTML(t.deleteCongratsTitle) + '</div>';
-            infoHtml += '<div class="delete-chip-row"><span class="meta-chip accent-green">+5 Кармы 🎉</span></div>';
+            infoHtml += '<div class="delete-chip-row"><span class="meta-chip accent-green">' + window.escapeHTML(t.deleteBonusChip) + '</span></div>';
         } else {
             infoHtml += '<div class="delete-info-block">' + window.escapeHTML(t.deleteThanksOnly) + '</div>';
         }
 
         const overtimeTesters = testers.map((tr) => {
-            const testerDay = tr.start_date ? (Math.floor((todayDate - new Date(tr.start_date)) / (1000 * 60 * 60 * 24)) + 1) : 0;
             const overtimeCheckins = Math.max(0, (tr.checkins_count || 0) - 14);
-            return { ...tr, testerDay, overtimeCheckins };
-        }).filter((tr) => {
-            if ((project.google_sync_day || 0) >= 15) return true;
-            if (!tr.start_date) return false;
-            return tr.testerDay >= 15;
-        });
+            const alreadyRewarded = projectLikes.some((like) => like.tester_id === tr.tester_id);
+            return { ...tr, overtimeCheckins, alreadyRewarded };
+        }).filter((tr) => tr.overtimeCheckins > 0);
 
         if (overtimeTesters.length > 0) {
-            const totalOvertimeDays = Math.max(0, ...overtimeTesters.map((item) => item.testerDay - 14));
+            const totalOvertimeDays = overtimeTesters.reduce((acc, item) => acc + item.overtimeCheckins, 0);
             const optionsHtml = ['<option value="">' + window.escapeHTML(t.deleteOvertimeSelectNone) + '</option>']
-                .concat(overtimeTesters.map((tr) => {
+                .concat(overtimeTesters.filter((tr) => !tr.alreadyRewarded).map((tr) => {
                     const label = tr.username ? '@' + window.escapeHTML(tr.username.replace('@', '')) : window.escapeHTML(window.t('idLabel', { id: tr.tester_id }));
                     return '<option value="' + tr.tester_id + '">' + label + '</option>';
                 }))
@@ -1679,8 +1660,11 @@ function openDeleteModal(id) {
                     '<div>' +
                         '<div class="delete-overtime-item-name">' + name + '</div>' +
                         '<div class="delete-overtime-item-meta">' + window.escapeHTML(window.t('deleteOvertimeTesterStats', { count: tr.overtimeCheckins })) + '</div>' +
+                        (tr.alreadyRewarded
+                            ? '<div class="delete-overtime-item-meta">' + window.escapeHTML(window.t('deleteOvertimeAlreadyRewarded')) + '</div>'
+                            : '') +
                     '</div>' +
-                    '<span class="meta-chip accent-purple">+' + Math.max(0, tr.testerDay - 14) + ' дн.</span>' +
+                    '<span class="meta-chip accent-purple">' + window.escapeHTML(window.t('deleteOvertimeDayChip', { count: tr.overtimeCheckins })) + '</span>' +
                 '</div>';
             }).join('');
 
@@ -2046,13 +2030,10 @@ Object.assign(window, {
     showReliabilityInfo,
     closeReliabilityInfo,
     showRankPopup,
-    showKarmaChipInfo,
     showTestDayPopup,
     showNewBadgeToast,
     insertChip,
     showKarmaPopup,
-    closeKarmaModal,
-    selectKarmaReward,
     showCustomAlert,
     closeCustomAlert,
     showToast,

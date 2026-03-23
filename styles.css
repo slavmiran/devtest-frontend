@@ -1000,35 +1000,6 @@ details[open] > summary .details-arrow {
     font-size: 13px;
 }
 
-#karma-modal .modal-content {
-    text-align: center;
-    padding: 24px 20px;
-}
-
-.karma-btn-row {
-    display: flex;
-    gap: 12px;
-    margin-top: 18px;
-}
-
-.karma-btn-big {
-    flex: 1;
-    padding: 16px 8px;
-    border-radius: 14px;
-    border: 2px solid rgba(142,142,147,0.2);
-    background: var(--secondary-bg-color);
-    cursor: pointer;
-    transition: transform 0.15s ease, border-color 0.15s ease;
-}
-
-.karma-btn-big:active {
-    transform: scale(0.95);
-}
-
-.karma-btn-big .karma-emoji { font-size: 32px; display: block; margin-bottom: 6px; }
-.karma-btn-big .karma-label { font-size: 14px; font-weight: 600; color: var(--text-color); display: block; }
-.karma-btn-big .karma-sub { font-size: 12px; color: var(--hint-color); display: block; margin-top: 2px; }
-
 #custom-alert-overlay {
     display: none;
     position: fixed;
@@ -1489,33 +1460,6 @@ details[open] > summary .details-arrow {
     background: #ff9500;
 }
 
-/* ── Sync progress bar (owner's renderProjects) ── */
-.sync-progress-bar {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin: 8px 0;
-}
-
-.sync-progress-bar .sync-seg {
-    flex: 1;
-    height: 5px;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.08);
-}
-
-.sync-progress-bar .sync-seg.filled {
-    background: var(--button-color);
-}
-
-.sync-progress-bar .sync-seg.overtime {
-    background: rgba(255, 149, 0, 0.35);
-}
-
-.sync-progress-bar .sync-seg.overtime.filled {
-    background: #ff9500;
-}
-
 /* ── Centered popup (for karma select) ── */
 .centered-popup-overlay {
     position: fixed;
@@ -1564,6 +1508,25 @@ details[open] > summary .details-arrow {
     cursor: pointer;
     margin-bottom: 8px;
     transition: transform 0.1s ease;
+}
+
+.centered-popup .popup-btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
+    margin-bottom: 10px;
+}
+
+.centered-popup .popup-btn-row .popup-btn {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.centered-popup .popup-btn .popup-btn-amount {
+    display: block;
+    margin-top: 2px;
+    font-size: 13px;
+    opacity: 0.9;
 }
 
 .centered-popup .popup-btn:active {
