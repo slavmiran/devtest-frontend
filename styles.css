@@ -1510,6 +1510,28 @@ details[open] > summary .details-arrow {
     transition: transform 0.1s ease;
 }
 
+.horizontal-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+
+.horizontal-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.horizontal-card {
+    flex: 0 0 85%;
+    scroll-snap-align: center;
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 12px;
+    border: 1px solid var(--accent-color);
+}
+
 .centered-popup .popup-btn-row {
     display: flex;
     gap: 12px;

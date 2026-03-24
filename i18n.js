@@ -375,7 +375,7 @@
             goldenTesterBadge: "👑 Золотой тестер × {count}",
             goldenTesterNone: "Станьте золотым тестером: пройдите 14 дней без пропусков",
             goldenTesterStats: "👑 Золотой тестер: {count} раз",
-            deleteReminderPositive: "Закрывайте проекты вовремя! Успешное завершение 14-дневного цикла тестирования на нашей платформе приносит владельцу бонусные +5 Кармы.",
+            deleteReminderPositive: "Завершайте проекты вовремя! Успешное завершение 14-дневного цикла тестирования на нашей платформе приносит владельцу бонусные +5 Кармы.",
             deleteKarmaBonus: "🏆 Проект проработал 14+ дней с 5+ тестерами — вы получите бонус +5 ☯️ Кармы!",
             deleteKarmaBonusChip: "+5 ☯️ бонус",
             platformDaysInfo: "Это фактическое количество дней, которое ваш проект находится на платформе. Максимальный срок жизни проекта — 35 дней, после чего он будет перенесен в архив.",
@@ -422,7 +422,12 @@
             goldenTesterToastActive: "Ваш текущий бонус +50 $BUST за отсутсвие пропусков по проекту",
             goldenTesterToastLost: "Статус утрачен из-за пропуска.",
             goldenTesterBadgeActive: "👑 Золотой Тестер (+50 $BUST)",
-            projectSyncedTitle: "Проект синхронизирован 🔄"
+            projectSyncedTitle: "Проект синхронизирован 🔄",
+            mutualReturnsSectionTitle: "👥 Ответьте взаимностью",
+            mutualReturnContext: " тестирует ваш проект: {project}",
+            mutualReturnBtn: "🤝 Ответить взаимностью",
+            openGooglePlay: "▶ Открыть Google Play",
+            projectsLoadingAlert: "Проекты ещё загружаются. Нажмите ещё раз через секунду."
         },
         en: {
             tabTests: "My Tests",
@@ -797,7 +802,7 @@
             goldenTesterBadge: "👑 Golden tester × {count}",
             goldenTesterNone: "Become a golden tester: complete 14 days without skipping",
             goldenTesterStats: "👑 Golden tester: {count} times",
-            deleteReminderPositive: "Close projects on time. Successfully finishing the 14-day testing cycle on our platform gives the owner a bonus +5 Karma.",
+            deleteReminderPositive: "Complete projects on time. Successfully finishing the 14-day testing cycle on our platform gives the owner a bonus +5 Karma.",
             deleteKarmaBonus: "🏆 Project ran 14+ days with 5+ testers — you'll get a +5 ☯️ Karma bonus!",
             deleteKarmaBonusChip: "+5 ☯️ bonus",
             platformDaysInfo: "This is the actual number of days your project has been on the platform. The maximum lifetime is 35 days, after which it moves to the archive.",
@@ -844,7 +849,12 @@
             goldenTesterToastActive: "Your current bonus is +50 $BUST for no skips on this project",
             goldenTesterToastLost: "Status lost due to a missed day.",
             goldenTesterBadgeActive: "👑 Golden Tester (+50 $BUST)",
-            projectSyncedTitle: "Project synced 🔄"
+            projectSyncedTitle: "Project synced 🔄",
+            mutualReturnsSectionTitle: "👥 Return the Favor",
+            mutualReturnContext: " is testing your project: {project}",
+            mutualReturnBtn: "🤝 Return the favor",
+            openGooglePlay: "▶ Open Google Play",
+            projectsLoadingAlert: "Projects are still loading. Please try again in a moment."
         }
     };
 

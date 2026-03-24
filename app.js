@@ -46,6 +46,39 @@ var _earnGrantCount = 0;
 var _inviteProjectId = null;
 var archivedProjects = [];
 var projectToDelete = null;
+var myProjectsLoadError = false;
+
+async function fetchWithRetry(url, options, maxRetries) {
+    var retries = (typeof maxRetries === 'number') ? maxRetries : 2;
+    var lastError;
+    for (var attempt = 0; attempt <= retries; attempt++) {
+        try {
+            var response = await fetch(url, options || {});
+            if (response.status === 502 || response.status === 504) {
+                lastError = new Error('HTTP ' + response.status);
+                if (attempt < retries) {
+                    await new Promise(function(res) { setTimeout(res, 1000); });
+                    continue;
+                }
+                throw lastError;
+            }
+            return response;
+        } catch (err) {
+            lastError = err;
+            if (attempt < retries) {
+                await new Promise(function(res) { setTimeout(res, 1000); });
+            }
+        }
+    }
+    throw lastError;
+}
+
+function loadAllData() {
+    loadTasks().catch(function() {});
+    loadProjects().catch(function() {});
+    loadMutualFeed().catch(function() {});
+    loadBountyFeed().catch(function() {});
+}
 
 function _apiStart() {
     _activeRequests++;
@@ -389,7 +422,7 @@ async function loadTasks() {
     showSkeleton('tests-list');
     _apiStart();
     try {
-        const response = await fetch(`${API_BASE}/tasks/${userId}`);
+        const response = await fetchWithRetry(`${API_BASE}/tasks/${userId}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
 
@@ -447,19 +480,20 @@ async function loadMutualFeed() {
     showSkeleton('mutual-prelaunch-list');
     _apiStart();
     try {
-        const response = await fetch(`${API_BASE}/feed/mutual/${userId}`);
+        const response = await fetchWithRetry(`${API_BASE}/feed/mutual/${userId}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         mutualSeeking = data.seeking || [];
         mutualPrelaunch = data.prelaunch || [];
         renderMutualFeed();
+        if (window.renderMutualReturns) {
+            window.renderMutualReturns(data.returns || []);
+        }
     } catch (error) {
         console.error('Error loading mutual feed:', error);
-        mutualSeeking = [];
-        mutualPrelaunch = [];
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
-        showRetry('mutual-seeking-list', 'loadMutualFeed()');
-        showRetry('mutual-prelaunch-list', 'loadMutualFeed()');
+        showRetry('mutual-seeking-list', 'loadAllData()');
+        showRetry('mutual-prelaunch-list', 'loadAllData()');
     } finally {
         _apiEnd();
     }
@@ -469,16 +503,15 @@ async function loadBountyFeed() {
     showSkeleton('bounty-list');
     _apiStart();
     try {
-        const response = await fetch(`${API_BASE}/feed/bounty/${userId}`);
+        const response = await fetchWithRetry(`${API_BASE}/feed/bounty/${userId}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         bountyContracts = data.contracts || [];
         renderBountyFeed();
     } catch (error) {
         console.error('Error loading bounty feed:', error);
-        bountyContracts = [];
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
-        showRetry('bounty-list', 'loadBountyFeed()');
+        showRetry('bounty-list', 'loadAllData()');
     } finally {
         _apiEnd();
     }
@@ -512,7 +545,7 @@ async function loadProjects(isBackground = false) {
     }
     _apiStart();
     try {
-        const response = await fetch(`${API_BASE}/projects/${userId}`);
+        const response = await fetchWithRetry(`${API_BASE}/projects/${userId}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
 
@@ -553,9 +586,11 @@ async function loadProjects(isBackground = false) {
             golden_count: data.golden_count || 0,
         };
 
+        myProjectsLoadError = false;
         renderProjects();
     } catch (error) {
         console.error('Error loading projects:', error);
+        myProjectsLoadError = true;
         if (!isBackground) {
             showRetry('projects-list', 'loadProjects()');
         }
@@ -596,6 +631,12 @@ async function decideOffer(offerId, action, event) {
 }
 
 async function createMutualOffer(targetAppId, targetOwnerId) {
+    if (myProjectsLoadError) {
+        if (tg.showAlert) tg.showAlert(window.t('projectsLoadingAlert'));
+        else alert(window.t('projectsLoadingAlert'));
+        loadProjects(true).catch(function() {});
+        return;
+    }
     const eligible = myProjects.filter(p => (p.mode === 'mutual' || p.mode === 'hybrid') && p.id);
     if (eligible.length === 0) {
         if (tg.showAlert) tg.showAlert(window.t('offerNoProjects'));
@@ -611,7 +652,7 @@ async function createMutualOffer(targetAppId, targetOwnerId) {
 
 async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId) {
     try {
-        const response = await fetch(`${API_BASE}/offers`, {
+        const response = await fetchWithRetry(`${API_BASE}/offers`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1355,6 +1396,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 Object.assign(window, {
+    fetchWithRetry,
+    loadAllData,
     refreshLanguageUi,
     applyLanguage,
     toggleLanguage,

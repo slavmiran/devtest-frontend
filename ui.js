@@ -482,7 +482,7 @@ function renderTests() {
             }
             card.innerHTML = cardContent;
             card.style.cursor = 'pointer';
-            card.onclick = () => tg.openLink(`https://play.google.com/store/apps/details?id=${test.package}`);
+            card.onclick = () => window.openProjectDetailsModal(test.id);
             doneList.appendChild(card);
             doneCount++;
         } else {
@@ -567,7 +567,7 @@ function renderCompletedTests(completedTests) {
 
         card.innerHTML = cardContent;
         card.style.cursor = 'pointer';
-        card.onclick = () => tg.openLink(`https://play.google.com/store/apps/details?id=${test.package}`);
+        card.onclick = () => window.openProjectDetailsModal(test.id);
         doneList.appendChild(card);
         doneCount++;
     });
@@ -627,6 +627,45 @@ function renderFeedCard(item, kind) {
             <button class="btn btn-primary" onclick="${clickAction}">${buttonText}</button>
         </div>
     `;
+}
+
+function renderMutualReturns(apps) {
+    const container = document.getElementById('mutual-returns-container');
+    const list = document.getElementById('mutual-returns-list');
+    const titleEl = document.getElementById('t-mutualReturnsSectionTitle');
+    if (!container || !list) return;
+
+    if (titleEl) {
+        titleEl.textContent = window.t('mutualReturnsSectionTitle', {}, lang);
+    }
+
+    if (!apps || apps.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = '';
+    list.innerHTML = apps.map(app => {
+        const ownerUsername = (app.owner_username || '').replace('@', '');
+        const safeOwnerUsername = escapeInlineJsString(ownerUsername);
+        const displayOwner = window.escapeHTML(ownerUsername ? '@' + ownerUsername : window.t('idLabel', { id: app.owner_id }, lang));
+        const appName = window.escapeHTML(app.name || window.t('unknownLabel', {}, lang));
+        const myProjectNameRaw = app.my_project_name || '';
+        const contextText = window.escapeHTML(window.t('mutualReturnContext', { project: myProjectNameRaw }, lang));
+        const returnBtnText = window.escapeHTML(window.t('mutualReturnBtn', {}, lang));
+        return `
+            <div class="horizontal-card">
+                <div style="font-size:12px; color:var(--hint-color); margin-bottom:8px; line-height:1.4;">
+                    <button class="tester-link" style="background:none;border:none;padding:0;font-size:12px;cursor:pointer;color:var(--link-color);" onclick="openTesterDossier('${safeOwnerUsername}', ${app.owner_id}, ${app.app_id}); event.stopPropagation();">${displayOwner}</button><span>${contextText}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                    ${renderIcon(app.name || '', app.icon_url)}
+                    <div class="card-title" style="font-size:14px;">${appName}</div>
+                </div>
+                <button class="btn btn-primary" style="width:100%;" onclick="if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); window.createMutualOffer(${app.app_id}, ${app.owner_id});">${returnBtnText}</button>
+            </div>
+        `;
+    }).join('');
 }
 
 function renderMutualFeed() {
@@ -2032,6 +2071,7 @@ function openProjectDetailsModal(appId) {
         '<div class="detail-actions">' +
             '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +
             '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_suggest_btn', {}, lang) + '</button>' +
+            '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'https://play.google.com/store/apps/details?id=' + window.escapeHTML(test.package || '') + '\')">' + window.t('openGooglePlay', {}, lang) + '</button>' +
             (userTestingDay >= 15
                 ? '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="closeProjectDetailsModal(); openOvertimeModal(' + test.id + ')">' + window.t('finish_project', {}, lang) + '</button>'
                 : '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); openDropTestModal(' + test.id + ')">' + window.t('detail_leave_btn', {}, lang) + '</button>') +
@@ -2120,6 +2160,7 @@ Object.assign(window, {
     renderCompletedTests,
     getLangBadge,
     renderFeedCard,
+    renderMutualReturns,
     renderMutualFeed,
     switchMarketSubTab,
     renderBountyFeed,
