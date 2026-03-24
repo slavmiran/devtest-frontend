@@ -448,10 +448,19 @@ function refreshLanguageUi() {
     updateProjectPricing('edit');
     renderEditCreatedAtMeta();
 
-    const switcher = document.getElementById('lang-switcher');
-    const dot = document.getElementById('loading-dot');
-    const dotHtml = dot ? dot.outerHTML : '';
-    switcher.innerHTML = '🌐 ' + (lang === 'ru' ? 'RU' : 'EN') + dotHtml;
+    // Update language label in system menu tab
+    const langLabel = document.getElementById('current-lang-label');
+    if (langLabel) {
+        langLabel.innerText = lang === 'ru' ? 'RU' : 'EN';
+    }
+
+    // Update active language button in segmented control
+    const langBtnRu = document.getElementById('lang-btn-ru');
+    const langBtnEn = document.getElementById('lang-btn-en');
+    if (langBtnRu && langBtnEn) {
+        langBtnRu.classList.toggle('active', lang === 'ru');
+        langBtnEn.classList.toggle('active', lang === 'en');
+    }
 
     const chipTexts = [
         window.t('chipBrowse', {}, lang),
@@ -478,6 +487,52 @@ function refreshLanguageUi() {
     const select = document.getElementById('attach-project-select');
     if (select && select.options.length > 0 && !select.value) {
         select.options[0].text = window.t('contactSelectPlaceholder', {}, lang);
+    }
+}
+
+function toggleSystemMenu() {
+    const menu = document.getElementById('system-drop-menu');
+    if (menu) {
+        menu.classList.toggle('active');
+        if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    }
+}
+
+function applyLanguage(newLang) {
+    if (!['ru', 'en'].includes(newLang) || newLang === lang) return;
+    lang = newLang;
+    localStorage.setItem('app_language', lang);
+
+    const request = `${API_BASE}/users/${userId}/language`;
+    fetch(request, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: lang })
+    }).catch(() => {});
+
+    refreshLanguageUi();
+    rerenderDynamicUi();
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+}
+
+function sendFeedback(type) {
+    const hashtagMap = {
+        bug: '#баг',
+        idea: '#идея',
+        question: '#вопрос'
+    };
+    const hashtag = hashtagMap[type] || '#баг';
+    toggleSystemMenu();
+    
+    const feedbackUrl = 'https://t.me/googleplay_console_12testers/31?comment=' + encodeURIComponent(hashtag + ' ');
+    try {
+        tg.openTelegramLink(feedbackUrl);
+    } catch (e) {
+        try {
+            tg.openLink(feedbackUrl);
+        } catch (fallback) {
+            window.location.href = feedbackUrl;
+        }
     }
 }
 

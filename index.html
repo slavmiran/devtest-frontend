@@ -13,8 +13,26 @@
 </head>
 <body>
 
-    <!-- Language Switcher -->
-    <button class="lang-switcher" id="lang-switcher" onclick="toggleLanguage()">🌐 EN<span id="loading-dot" class="loading-dot hidden"></span></button>
+    <!-- System Drop Menu (Pull-down drawer with tab) -->
+    <div id="system-drop-menu" class="system-drop-menu">
+        <div class="system-drop-content">
+            <div class="system-drop-title" data-i18n="systemMenuTitle">Настройки и поддержка</div>
+            <div class="seg-control" style="margin-bottom: 12px;">
+                <button class="seg-btn" id="lang-btn-ru" onclick="applyLanguage('ru')">🇷🇺 RU</button>
+                <button class="seg-btn" id="lang-btn-en" onclick="applyLanguage('en')">🇬🇧 EN</button>
+            </div>
+            <div class="system-feedback-buttons">
+                <button class="btn btn-secondary system-btn" onclick="sendFeedback('bug')" data-i18n="feedbackBug">🐛 Сообщить о баге</button>
+                <button class="btn btn-secondary system-btn" onclick="sendFeedback('idea')" data-i18n="feedbackIdea">💡 Предложить идею</button>
+                <button class="btn btn-secondary system-btn" onclick="sendFeedback('question')" data-i18n="feedbackQuestion">❓ Задать вопрос</button>
+            </div>
+        </div>
+        <div class="system-drop-tab-container">
+            <button class="system-drop-tab" onclick="toggleSystemMenu()">
+                💬 <span id="current-lang-label">RU</span><span id="loading-dot" class="loading-dot hidden"></span>
+            </button>
+        </div>
+    </div>
 
     <!-- TAB 1: Мои тесты -->
     <div id="tab-tests" class="container tab-content active">

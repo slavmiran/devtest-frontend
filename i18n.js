@@ -452,7 +452,11 @@
             mutualReturnContext: " тестирует ваш проект: {project}",
             mutualReturnBtn: "🤝 Вступить во взаимный тест",
             openGooglePlay: "▶ Открыть Google Play",
-            projectsLoadingAlert: "Проекты ещё загружаются. Нажмите ещё раз через секунду."
+            projectsLoadingAlert: "Проекты ещё загружаются. Нажмите ещё раз через секунду.",
+            systemMenuTitle: "Настройки и поддержка",
+            feedbackBug: "🐛 Сообщить о баге",
+            feedbackIdea: "💡 Предложить идею",
+            feedbackQuestion: "❓ Задать вопрос"
         },
         en: {
             tabTests: "My Tests",
@@ -904,7 +908,11 @@
             mutualReturnContext: " is testing your project: {project}",
             mutualReturnBtn: "🤝 Join mutual testing",
             openGooglePlay: "▶ Open Google Play",
-            projectsLoadingAlert: "Projects are still loading. Please try again in a moment."
+            projectsLoadingAlert: "Projects are still loading. Please try again in a moment.",
+            systemMenuTitle: "Settings & Support",
+            feedbackBug: "🐛 Report a bug",
+            feedbackIdea: "💡 Suggest an idea",
+            feedbackQuestion: "❓ Ask a question"
         }
     };
 

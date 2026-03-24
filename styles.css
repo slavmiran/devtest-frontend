@@ -588,23 +588,84 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     }
 }
 
-.lang-switcher {
+/* System Drop Menu (Pull-down drawer) */
+.system-drop-menu {
     position: fixed;
-    top: 8px;
-    right: 8px;
+    top: 0;
+    right: 16px;
     z-index: 9999;
-    background: var(--secondary-bg-color);
-    border: 1px solid rgba(142, 142, 147, 0.3);
-    border-radius: 20px;
-    padding: 4px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    max-width: 320px;
+}
+
+.system-drop-content {
+    background: rgba(28, 28, 30, 0.95);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(142, 142, 147, 0.2);
+    border-radius: 0 0 16px 16px;
+    padding: 16px;
+    padding-top: 24px;
+    overflow-y: auto;
+    max-height: calc(100vh - 60px);
+}
+
+.system-drop-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-color);
+}
+
+.system-feedback-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.system-btn {
+    font-size: 13px;
+    padding: 10px 12px;
+    font-weight: 500;
+    width: 100%;
+}
+
+.system-drop-tab-container {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.system-drop-tab {
+    background: rgba(28, 28, 30, 0.95);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(142, 142, 147, 0.2);
+    border-radius: 0 0 16px 16px;
+    padding: 8px 16px;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     color: var(--link-color);
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
-    -webkit-backface-visibility: hidden;
+    border-top: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
     backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.system-drop-tab:active {
+    opacity: 0.8;
+}
+
+.system-drop-menu {
+    transform: translateY(calc(-100% + 36px));
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.system-drop-menu.active {
+    transform: translateY(0);
 }
 
 input::placeholder,
