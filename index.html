@@ -23,19 +23,34 @@
             <p id="t-bannerText" data-i18n="bannerText" style="margin: 0; color: var(--text-color); font-size: 14px; line-height: 1.4; padding-right: 20px;">Избавьтесь от хаоса в чатах! Контролируйте ежедневные запуски для 12 тестеров в одном месте и находите новые приложения для взаимного теста.</p>
             <p id="t-disclaimerText" data-i18n="disclaimerText" style="margin: 8px 0 0 0; color: var(--hint-color); font-size: 12px; line-height: 1.4; padding-right: 20px;"></p>
         </div>
-        <h2 id="t-testsTitle" data-i18n="tabTests">Мои тесты</h2>
+
+        <div id="community-pulse-container">
+            <div id="community-pulse" class="pulse-card">
+                <div class="pulse-title" id="t-pulseTitle" data-i18n="pulseTitle">🌐 Пульс сообщества</div>
+                <div id="events-list" class="events-list">
+                    <div class="event-time" data-i18n="pulseLoading">Загрузка...</div>
+                </div>
+                <button id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()" data-i18n="pulseExpand">Развернуть ▼</button>
+            </div>
+        </div>
+
+        <div id="incoming-offers-container">
+            <div id="offers-section" class="offers-section" style="display:none;">
+                <div class="offers-header">
+                    <h3 id="t-offersTitle" data-i18n="offersTitle">📬 Входящие заявки на взаимку</h3>
+                    <span id="offers-count" class="offers-count">0</span>
+                </div>
+                <div id="offers-carousel" class="offers-carousel"></div>
+            </div>
+        </div>
+
+        <h2 id="t-testsTitle" data-i18n="testsMainTitle">📱 Мои тесты</h2>
         <p id="t-testsDesc" data-i18n="testsDesc">Приложения, которые вы должны открывать каждый день.</p>
 
-        <div id="offers-section" class="offers-section" style="display:none;">
-            <div class="offers-header">
-                <h3 id="t-offersTitle" data-i18n="offersTitle">📬 Входящие заявки на взаимку</h3>
-                <span id="offers-count" class="offers-count">0</span>
+        <div id="my-tests-list">
+            <div id="tests-list">
+                <!-- Active cards will be injected here -->
             </div>
-            <div id="offers-carousel" class="offers-carousel"></div>
-        </div>
-        
-        <div id="tests-list">
-            <!-- Active cards will be injected here -->
         </div>
 
         <div id="done-section" class="accordion" style="display: none;">
@@ -47,15 +62,6 @@
                 <!-- Done cards will be injected here -->
             </div>
         </div>
-
-        <div id="community-pulse" class="pulse-card">
-            <div class="pulse-title" id="t-pulseTitle" data-i18n="pulseTitle">🌐 Пульс сообщества</div>
-            <div id="events-list" class="events-list">
-                <div class="event-time" data-i18n="pulseLoading">Загрузка...</div>
-            </div>
-            <button id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()" data-i18n="pulseExpand">Развернуть ▼</button>
-        </div>
-
     </div>
 
     <!-- TAB 3: Market (merged Mutual + Bounty) -->
@@ -72,9 +78,9 @@
 
         <div id="market-subtab-seeking">
             <div id="mutual-returns-container" style="display: none;">
-                <p id="t-mutualReturnsSectionTitle" style="font-size:13px; font-weight:600; color:var(--hint-color); margin-bottom:8px;"></p>
+                <p id="t-mutualReturnsSectionTitle" style="font-size:14px; font-weight:700; color:var(--text-color); margin-bottom:6px;"></p>
+                <p id="t-mutualReturnsSubtitle" style="font-size:12px; color:var(--hint-color); margin:0 0 10px 0;"></p>
                 <div class="horizontal-scroll" id="mutual-returns-list"></div>
-                <div style="margin-bottom:14px;"></div>
             </div>
             <div id="mutual-seeking-list"></div>
         </div>

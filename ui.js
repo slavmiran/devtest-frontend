@@ -177,15 +177,18 @@ function renderIcon(name, iconUrl) {
 
 function formatOfferRemaining(createdAt) {
     const created = new Date(createdAt || '');
-    if (Number.isNaN(created.getTime())) return t.offerExpired;
-    const expireAt = created.getTime() + (3 * 60 * 60 * 1000);
-    const leftMs = expireAt - Date.now();
-    if (leftMs <= 0) return t.offerExpired;
-    const totalSec = Math.floor(leftMs / 1000);
-    const hh = String(Math.floor(totalSec / 3600)).padStart(2, '0');
-    const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
-    const ss = String(totalSec % 60).padStart(2, '0');
-    return `${hh}:${mm}:${ss}`;
+    if (Number.isNaN(created.getTime())) return null;
+    const expiresAt = new Date(created.getTime() + (3 * 60 * 60 * 1000));
+    if (Date.now() > expiresAt.getTime()) return null;
+    const leftMs = Math.max(0, expiresAt.getTime() - Date.now());
+    const totalMinutes = Math.floor(leftMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return {
+        expiresAt,
+        hours,
+        minutes,
+    };
 }
 
 function openTesterDossier(username, testerId, appId) {
@@ -306,7 +309,10 @@ function renderIncomingOffers() {
         _offersTimerId = null;
     }
 
-    const pending = (incomingOffers || []).filter((offer) => offer.status === 'pending');
+    const pending = (incomingOffers || []).filter((offer) => {
+        if (!offer || offer.status !== 'pending') return false;
+        return !!formatOfferRemaining(offer.created_at);
+    });
     countEl.innerText = t.offersCount.replace('{count}', pending.length);
 
     if (!pending.length) {
@@ -323,14 +329,13 @@ function renderIncomingOffers() {
             ? `@${username}`
             : (offer.proposer_full_name || window.t('idLabel', { id: offer.proposer_id }, lang)));
         const remain = formatOfferRemaining(offer.created_at);
-        const expireText = remain === window.t('offerExpired', {}, lang)
-            ? window.t('offerExpired', {}, lang)
-            : window.t('offerExpiresIn', { time: remain }, lang);
+        const leftTimeText = window.t('offerTimeLeftValue', { hours: remain ? remain.hours : 0, minutes: remain ? remain.minutes : 0 }, lang);
+        const expireText = window.t('offerTimeLeft', { time: leftTimeText }, lang);
         const targetAppName = offer.target_app_name || window.t('unknownLabel', {}, lang);
         const proposerAppName = offer.proposer_app_name || window.t('unknownLabel', {}, lang);
 
         return `
-            <div class="offer-card">
+            <div class="offer-card" data-offer-id="${offer.offer_id}">
                 <div class="offer-top">
                     <button class="offer-user" onclick="openTesterDossier('${safeUsername}', ${offer.proposer_id}, ${offer.target_app_id}); event.stopPropagation();">${displayName}</button>
                     <span class="meta-chip accent-yellow">☯️ ${offer.proposer_karma || 0}</span>
@@ -353,16 +358,25 @@ function renderIncomingOffers() {
             _offersTimerId = null;
             return;
         }
-        const timerEls = section.querySelectorAll('.offer-expire');
-        const pendingOffers = (incomingOffers || []).filter(o => o.status === 'pending');
-        timerEls.forEach((el, i) => {
-            if (!pendingOffers[i]) return;
-            const remain = formatOfferRemaining(pendingOffers[i].created_at);
-            const text = remain === window.t('offerExpired', {}, lang)
-                ? window.t('offerExpired', {}, lang)
-                : window.t('offerExpiresIn', { time: remain }, lang);
-            el.textContent = text;
+        let hasExpired = false;
+        pending.forEach((offer) => {
+            const card = section.querySelector(`.offer-card[data-offer-id="${offer.offer_id}"]`);
+            if (!card) return;
+            const expireEl = card.querySelector('.offer-expire');
+            const remain = formatOfferRemaining(offer.created_at);
+            if (!remain) {
+                hasExpired = true;
+                return;
+            }
+            if (expireEl) {
+                const leftTimeText = window.t('offerTimeLeftValue', { hours: remain.hours, minutes: remain.minutes }, lang);
+                expireEl.textContent = window.t('offerTimeLeft', { time: leftTimeText }, lang);
+            }
         });
+
+        if (hasExpired) {
+            renderIncomingOffers();
+        }
     }, 1000);
 }
 
@@ -597,14 +611,32 @@ function renderFeedCard(item, kind) {
             : '');
 
     let buttonText = window.t('mutualJoinBtn', {}, lang);
-    let clickAction = `createMutualOffer(${item.app_id}, ${item.owner_id})`;
+    let clickAction = `createMutualOffer(${item.app_id}, ${item.owner_id}, event)`;
+    let buttonClass = 'btn btn-primary';
+    let buttonExtraAttrs = `data-offer-target-app="${item.app_id}" data-offer-target-owner="${item.owner_id}"`;
+
+    const hasIncomingFromOwner = (incomingOffers || []).some((offer) => {
+        if (!offer || offer.status !== 'pending') return false;
+        if (Number(offer.proposer_id) !== Number(item.owner_id)) return false;
+        return !!formatOfferRemaining(offer.created_at);
+    });
+
+    if (kind === 'mutual-seeking' && hasIncomingFromOwner) {
+        buttonText = window.t('offerWaitingAnswer', {}, lang);
+        clickAction = `switchTab('tests')`;
+        buttonClass = 'btn btn-secondary';
+        buttonExtraAttrs = '';
+    }
+
     if (kind === 'mutual-prelaunch') {
         buttonText = window.t('prelaunchJoinBtn', {}, lang);
         clickAction = `joinMutual(${item.app_id}, true)`;
+        buttonExtraAttrs = '';
     }
     if (kind === 'bounty') {
         buttonText = window.t('bountyTakeBtn', {}, lang);
         clickAction = `joinBounty(${item.app_id})`;
+        buttonExtraAttrs = '';
     }
 
     return `
@@ -624,7 +656,7 @@ function renderFeedCard(item, kind) {
                 ${kindChip}
                 ${bountyChip}
             </div>
-            <button class="btn btn-primary" onclick="${clickAction}">${buttonText}</button>
+            <button class="${buttonClass}" ${buttonExtraAttrs} onclick="${clickAction}">${buttonText}</button>
         </div>
     `;
 }
@@ -633,10 +665,14 @@ function renderMutualReturns(apps) {
     const container = document.getElementById('mutual-returns-container');
     const list = document.getElementById('mutual-returns-list');
     const titleEl = document.getElementById('t-mutualReturnsSectionTitle');
+    const subtitleEl = document.getElementById('t-mutualReturnsSubtitle');
     if (!container || !list) return;
 
     if (titleEl) {
         titleEl.textContent = window.t('mutualReturnsSectionTitle', {}, lang);
+    }
+    if (subtitleEl) {
+        subtitleEl.textContent = window.t('mutualReturnsSubtitle', {}, lang);
     }
 
     if (!apps || apps.length === 0) {
@@ -662,7 +698,7 @@ function renderMutualReturns(apps) {
                     ${renderIcon(app.name || '', app.icon_url)}
                     <div class="card-title" style="font-size:14px;">${appName}</div>
                 </div>
-                <button class="btn btn-primary" style="width:100%;" onclick="if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); window.createMutualOffer(${app.app_id}, ${app.owner_id});">${returnBtnText}</button>
+                <button class="btn btn-primary" style="width:100%;" data-offer-target-app="${app.app_id}" data-offer-target-owner="${app.owner_id}" onclick="if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); window.createMutualOffer(${app.app_id}, ${app.owner_id}, event);">${returnBtnText}</button>
             </div>
         `;
     }).join('');
@@ -1576,13 +1612,26 @@ function showToast(message) {
 }
 
 function switchTab(tabId, navElement) {
+    const normalizedTab = (tabId || '').replace(/^tab-/, '');
+    const finalTab = normalizedTab === 'my-tests' ? 'tests' : normalizedTab;
+
     document.querySelectorAll('.nav-item').forEach((element) => element.classList.remove('active'));
-    navElement.classList.add('active');
+    if (navElement && navElement.classList) {
+        navElement.classList.add('active');
+    } else {
+        const map = { tests: 0, projects: 1, market: 2 };
+        const idx = map[finalTab];
+        const navItems = document.querySelectorAll('.nav-item');
+        if (typeof idx === 'number' && navItems[idx]) {
+            navItems[idx].classList.add('active');
+        }
+    }
 
     document.querySelectorAll('.tab-content').forEach((element) => element.classList.remove('active'));
-    document.getElementById(`tab-${tabId}`).classList.add('active');
+    const tabEl = document.getElementById(`tab-${finalTab}`);
+    if (tabEl) tabEl.classList.add('active');
 
-    if (tabId === 'market') {
+    if (finalTab === 'market') {
         showSkeleton('mutual-seeking-list');
         showSkeleton('mutual-prelaunch-list');
         showSkeleton('bounty-list');
@@ -2098,14 +2147,28 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId) {
     if (!listEl) return;
     listEl.innerHTML = projects.map(p => {
         const safeName = window.escapeHTML(p.name || window.t('unknownLabel'));
-        return `<button class="project-select-item" onclick="window._selectProjectForOffer(${p.id}); event.stopPropagation();">
+        const targetAlreadyTesting = (p.testers || []).some(tester => Number(tester.tester_id) === Number(targetOwnerId));
+        const disabledClass = targetAlreadyTesting ? ' disabled' : '';
+        const badgeHtml = targetAlreadyTesting
+            ? `<span class="meta-chip accent-purple">${window.escapeHTML(window.t('alreadyTestingBadge', {}, lang))}</span>`
+            : '';
+
+        const clickHandler = targetAlreadyTesting
+            ? 'event.preventDefault(); event.stopPropagation();'
+            : `window._selectProjectForOffer(${p.id}); event.stopPropagation();`;
+
+        return `<button class="project-select-item${disabledClass}" onclick="${clickHandler}">
             <span class="project-select-icon">${renderIcon(p.name || '', p.icon_url)}</span>
             <span class="project-select-name">${safeName}</span>
+            ${badgeHtml}
         </button>`;
     }).join('');
     window._selectProjectForOffer = async function(proposerAppId) {
         closeProjectSelectModal();
-        await window.sendMutualOffer(targetAppId, targetOwnerId, proposerAppId);
+        await window.sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, {
+            targetAppId: targetAppId,
+            targetOwnerId: targetOwnerId,
+        });
     };
     modal.classList.add('active');
 }

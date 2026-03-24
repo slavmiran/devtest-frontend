@@ -50,23 +50,47 @@ var myProjectsLoadError = false;
 
 async function fetchWithRetry(url, options, maxRetries) {
     var retries = (typeof maxRetries === 'number') ? maxRetries : 2;
+    var retryableStatuses = [408, 425, 429, 500, 502, 503, 504, 520, 522, 524];
+    var timeoutMs = options && typeof options.timeoutMs === 'number' ? options.timeoutMs : 15000;
+    var baseOptions = Object.assign({}, options || {});
+    delete baseOptions.timeoutMs;
     var lastError;
     for (var attempt = 0; attempt <= retries; attempt++) {
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timeoutId = null;
         try {
-            var response = await fetch(url, options || {});
-            if (response.status === 502 || response.status === 504) {
+            var requestOptions = Object.assign({}, baseOptions);
+            if (controller) {
+                requestOptions.signal = controller.signal;
+                timeoutId = setTimeout(function() {
+                    controller.abort();
+                }, timeoutMs);
+            }
+
+            var response = await fetch(url, requestOptions);
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+
+            if (retryableStatuses.indexOf(response.status) !== -1) {
                 lastError = new Error('HTTP ' + response.status);
                 if (attempt < retries) {
-                    await new Promise(function(res) { setTimeout(res, 1000); });
+                    await new Promise(function(res) { setTimeout(res, 1000 * (attempt + 1)); });
                     continue;
                 }
                 throw lastError;
             }
             return response;
         } catch (err) {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
             lastError = err;
+            if (err && err.name === 'AbortError') {
+                lastError = new Error('Request timeout');
+            }
             if (attempt < retries) {
-                await new Promise(function(res) { setTimeout(res, 1000); });
+                await new Promise(function(res) { setTimeout(res, 1000 * (attempt + 1)); });
             }
         }
     }
@@ -630,7 +654,26 @@ async function decideOffer(offerId, action, event) {
     }
 }
 
-async function createMutualOffer(targetAppId, targetOwnerId) {
+function markMutualOfferPendingUi(targetAppId, targetOwnerId, sourceButton) {
+    if (sourceButton && sourceButton.classList) {
+        sourceButton.textContent = window.t('offerPending');
+        sourceButton.classList.add('pending');
+        sourceButton.classList.add('disabled');
+        sourceButton.disabled = true;
+    }
+
+    const selector = 'button[data-offer-target-app="' + targetAppId + '"][data-offer-target-owner="' + targetOwnerId + '"]';
+    const relatedButtons = document.querySelectorAll(selector);
+    relatedButtons.forEach(function(button) {
+        button.textContent = window.t('offerPending');
+        button.classList.add('pending');
+        button.classList.add('disabled');
+        button.disabled = true;
+    });
+}
+
+async function createMutualOffer(targetAppId, targetOwnerId, event) {
+    var sourceButton = event && event.currentTarget ? event.currentTarget : null;
     if (myProjectsLoadError) {
         if (tg.showAlert) tg.showAlert(window.t('projectsLoadingAlert'));
         else alert(window.t('projectsLoadingAlert'));
@@ -644,13 +687,22 @@ async function createMutualOffer(targetAppId, targetOwnerId) {
         return;
     }
     if (eligible.length === 1) {
-        await sendMutualOffer(targetAppId, targetOwnerId, eligible[0].id);
+        await sendMutualOffer(targetAppId, targetOwnerId, eligible[0].id, {
+            sourceButton: sourceButton,
+            targetAppId: targetAppId,
+            targetOwnerId: targetOwnerId,
+        });
         return;
     }
-    showProjectSelectModal(eligible, targetAppId, targetOwnerId);
+    showProjectSelectModal(eligible, targetAppId, targetOwnerId, {
+        sourceButton: sourceButton,
+        targetAppId: targetAppId,
+        targetOwnerId: targetOwnerId,
+    });
 }
 
-async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId) {
+async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiContext) {
+    _apiStart();
     try {
         const response = await fetchWithRetry(`${API_BASE}/offers`, {
             method: 'POST',
@@ -660,22 +712,41 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId) {
                 target_app_id: targetAppId,
                 proposer_id: userId,
                 proposer_app_id: proposerAppId
-            })
+            }),
+            timeoutMs: 20000,
         });
-        const result = await response.json();
-        if (result.status !== 'success') {
+
+        let result = null;
+        try {
+            result = await response.json();
+        } catch (parseError) {
+            result = null;
+        }
+
+        if (!response.ok) {
+            const fallbackPayload = result || { code: 'networkError' };
+            const message = getApiErrorMessage(fallbackPayload, 'networkError');
+            if (tg.showAlert) tg.showAlert(message);
+            else alert(message);
+            return;
+        }
+
+        if (!result || result.status !== 'success') {
             const message = getOfferApiError(result);
             if (tg.showAlert) tg.showAlert(message);
             else alert(message);
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        markMutualOfferPendingUi(targetAppId, targetOwnerId, uiContext && uiContext.sourceButton);
         showToast(window.t('offerSentSuccess'));
-        await loadMutualFeed();
+        closeProjectSelectModal();
     } catch (error) {
         console.error('Create offer error:', error);
         if (tg.showAlert) tg.showAlert(t.networkError);
         else alert(t.networkError);
+    } finally {
+        _apiEnd();
     }
 }
 
@@ -1397,6 +1468,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 Object.assign(window, {
     fetchWithRetry,
+    markMutualOfferPendingUi,
     loadAllData,
     refreshLanguageUi,
     applyLanguage,
