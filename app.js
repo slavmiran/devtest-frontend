@@ -244,6 +244,71 @@ function getProjectApiErrorMessage(message, details = {}) {
     return getApiErrorMessage({ code: message, details }, 'saveProjectError');
 }
 
+function _applyTemplateDetails(message, details) {
+    var text = String(message || '');
+    var safeDetails = details && typeof details === 'object' ? details : {};
+    Object.keys(safeDetails).forEach(function(key) {
+        var value = safeDetails[key];
+        if (value === null || typeof value === 'undefined') {
+            value = '';
+        }
+        text = text.replace(new RegExp('\\{' + key + '\\}', 'g'), String(value));
+    });
+    return text;
+}
+
+function getBackendErrorCode(payload) {
+    if (!payload || typeof payload !== 'object') return '';
+    return String(payload.code || payload.error_code || payload.message || '').trim();
+}
+
+function handleApiError(code, details = {}) {
+    var keyMap = {
+        insufficient_bust_balance: 'err_insufficient_bust_balance',
+        transaction_failed: 'err_transaction_failed',
+        app_archived: 'err_app_archived',
+        offer_already_pending: 'err_offer_already_pending',
+        offer_target_owner_mismatch: 'err_offer_target_owner_mismatch',
+        offer_proposer_owner_mismatch: 'err_offer_proposer_owner_mismatch',
+        offer_not_found: 'err_offer_not_found',
+        offer_forbidden: 'err_offer_forbidden',
+        offer_not_pending: 'err_offer_not_pending',
+        offer_expired: 'err_offer_expired',
+        offer_app_not_found: 'err_offer_app_not_found',
+        offer_inactive_app: 'err_offer_inactive_app',
+        offer_owner_mismatch: 'err_offer_owner_mismatch',
+        offer_accept_failed: 'err_offer_accept_failed',
+        offer_create_failed: 'err_offer_create_failed',
+        user_not_found: 'err_user_not_found',
+    };
+
+    var normalizedCode = String(code || '').trim();
+    var message = '';
+
+    if (normalizedCode === 'network_error') {
+        message = window.t('networkError', {}, lang);
+    } else {
+        var i18nKey = keyMap[normalizedCode] || 'err_default_api';
+        message = window.t(i18nKey, {}, lang);
+        message = _applyTemplateDetails(message, details);
+    }
+
+    if (!message || message.trim() === '') {
+        message = getApiErrorMessage({ code: normalizedCode, details: details }, 'networkError');
+    }
+
+    if (window.showToast) {
+        window.showToast(message);
+    } else if (typeof showToast === 'function') {
+        showToast(message);
+    } else if (tg.showAlert) {
+        tg.showAlert(message);
+    } else {
+        alert(message);
+    }
+    return message;
+}
+
 function getProjectFormConfig(formKey) {
     return formKey === 'edit'
         ? {
@@ -731,9 +796,7 @@ async function decideOffer(offerId, action, event) {
         });
         const result = await response.json();
         if (result.status !== 'success') {
-            const message = getOfferApiError(result);
-            if (tg.showAlert) tg.showAlert(message);
-            else alert(message);
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -741,8 +804,7 @@ async function decideOffer(offerId, action, event) {
         loadProjects(true).catch(() => {});
     } catch (error) {
         console.error('Offer decision error:', error);
-        if (tg.showAlert) tg.showAlert(t.networkError);
-        else alert(t.networkError);
+        handleApiError('network_error');
     }
 }
 
@@ -816,17 +878,16 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
         }
 
         if (!response.ok) {
-            const fallbackPayload = result || { code: 'networkError' };
-            const message = getApiErrorMessage(fallbackPayload, 'networkError');
-            if (tg.showAlert) tg.showAlert(message);
-            else alert(message);
+            const code = getBackendErrorCode(result) || 'err_default_api';
+            const details = result && result.details ? result.details : {};
+            handleApiError(code, details);
             return;
         }
 
         if (!result || result.status !== 'success') {
-            const message = getOfferApiError(result);
-            if (tg.showAlert) tg.showAlert(message);
-            else alert(message);
+            const code = getBackendErrorCode(result) || 'err_default_api';
+            const details = result && result.details ? result.details : {};
+            handleApiError(code, details);
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -835,8 +896,7 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
         closeProjectSelectModal();
     } catch (error) {
         console.error('Create offer error:', error);
-        if (tg.showAlert) tg.showAlert(t.networkError);
-        else alert(t.networkError);
+        handleApiError('network_error');
     } finally {
         _apiEnd();
     }
@@ -1244,20 +1304,26 @@ async function confirmStart(id) {
             body: JSON.stringify({ tester_id: userId, app_id: id, local_date: getLocalDate() })
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        let result = null;
+        try {
+            result = await response.json();
+        } catch (parseError) {
+            result = null;
         }
 
-        const result = await response.json();
-        if (result.status !== 'success') {
+        if (!response.ok || !result || result.status !== 'success') {
             card.classList.remove('removing');
             if (btn) {
                 btn.innerText = t.confirmStart;
                 btn.style.backgroundColor = 'var(--success-color)';
                 btn.disabled = false;
             }
-            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'checkinError'));
+
+            if (result && typeof result === 'object') {
+                handleApiError(getBackendErrorCode(result), result.details || {});
+            } else {
+                handleApiError('network_error');
+            }
             return false;
         }
 
@@ -1286,7 +1352,7 @@ async function confirmStart(id) {
             btn.style.backgroundColor = 'var(--success-color)';
             btn.disabled = false;
         }
-        if (tg.showAlert) tg.showAlert(getApiErrorMessage(error && error.message, 'networkError'));
+        handleApiError('network_error');
         return false;
     }
 }
@@ -1460,14 +1526,11 @@ async function doSaveProject(projectData) {
             closeModal();
             loadProjects();
         } else {
-            const message = getProjectApiErrorMessage(result.code || result.message, result.details) || t.saveProjectError;
-            if (tg.showAlert) tg.showAlert(message);
-            else alert(message);
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
         }
     } catch (error) {
         console.error('Save project error:', error);
-        if (tg.showAlert) tg.showAlert(t.networkError);
-        else alert(t.networkError);
+        handleApiError('network_error');
     } finally {
         saveBtn.innerText = originalText;
         saveBtn.disabled = false;
@@ -1510,14 +1573,11 @@ async function saveProjectEdit() {
             closeEditModal();
             loadProjects();
         } else {
-            const message = getProjectApiErrorMessage(result.code || result.message, result.details) || t.saveProjectChangesError;
-            if (tg.showAlert) tg.showAlert(message);
-            else alert(message);
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
         }
     } catch (error) {
         console.error('Edit project error:', error);
-        if (tg.showAlert) tg.showAlert(t.networkError);
-        else alert(t.networkError);
+        handleApiError('network_error');
     } finally {
         editBtn.innerText = originalText;
         editBtn.disabled = false;
