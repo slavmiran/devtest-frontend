@@ -613,8 +613,10 @@ function renderFeedCard(item, kind) {
     let buttonText = window.t('mutualJoinBtn', {}, lang);
     let clickAction = `createMutualOffer(${item.app_id}, ${item.owner_id}, event)`;
     let buttonClass = 'btn btn-primary';
+    let buttonDisabledAttr = '';
     let buttonExtraAttrs = `data-offer-target-app="${item.app_id}" data-offer-target-owner="${item.owner_id}"`;
 
+    const hasPendingOffer = !!item.has_pending_offer;
     const hasIncomingFromOwner = (incomingOffers || []).some((offer) => {
         if (!offer || offer.status !== 'pending') return false;
         if (Number(offer.proposer_id) !== Number(item.owner_id)) return false;
@@ -626,6 +628,11 @@ function renderFeedCard(item, kind) {
         clickAction = `switchTab('tests')`;
         buttonClass = 'btn btn-secondary';
         buttonExtraAttrs = '';
+    } else if (kind === 'mutual-seeking' && hasPendingOffer) {
+        buttonText = window.t('offerPending', {}, lang);
+        clickAction = 'void(0)';
+        buttonClass = 'btn pending disabled';
+        buttonDisabledAttr = 'disabled';
     }
 
     if (kind === 'mutual-prelaunch') {
@@ -656,7 +663,7 @@ function renderFeedCard(item, kind) {
                 ${kindChip}
                 ${bountyChip}
             </div>
-            <button class="${buttonClass}" ${buttonExtraAttrs} onclick="${clickAction}">${buttonText}</button>
+            <button class="${buttonClass}" ${buttonDisabledAttr} ${buttonExtraAttrs} onclick="${clickAction}">${buttonText}</button>
         </div>
     `;
 }
@@ -688,7 +695,13 @@ function renderMutualReturns(apps) {
         const appName = window.escapeHTML(app.name || window.t('unknownLabel', {}, lang));
         const myProjectNameRaw = app.my_project_name || '';
         const contextText = window.escapeHTML(window.t('mutualReturnContext', { project: myProjectNameRaw }, lang));
-        const returnBtnText = window.escapeHTML(window.t('mutualReturnBtn', {}, lang));
+        const hasPendingOffer = !!app.has_pending_offer;
+        const returnBtnText = window.escapeHTML(window.t(hasPendingOffer ? 'offerPending' : 'mutualReturnBtn', {}, lang));
+        const btnClass = hasPendingOffer ? 'btn pending disabled' : 'btn btn-primary';
+        const btnDisabled = hasPendingOffer ? 'disabled' : '';
+        const btnClick = hasPendingOffer
+            ? 'void(0)'
+            : `if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); window.createMutualOffer(${app.app_id}, ${app.owner_id}, event);`;
         return `
             <div class="horizontal-card">
                 <div style="font-size:12px; color:var(--hint-color); margin-bottom:8px; line-height:1.4;">
@@ -698,7 +711,7 @@ function renderMutualReturns(apps) {
                     ${renderIcon(app.name || '', app.icon_url)}
                     <div class="card-title" style="font-size:14px;">${appName}</div>
                 </div>
-                <button class="btn btn-primary" style="width:100%;" data-offer-target-app="${app.app_id}" data-offer-target-owner="${app.owner_id}" onclick="if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); window.createMutualOffer(${app.app_id}, ${app.owner_id}, event);">${returnBtnText}</button>
+                <button class="${btnClass}" ${btnDisabled} style="width:100%;" data-offer-target-app="${app.app_id}" data-offer-target-owner="${app.owner_id}" onclick="${btnClick}">${returnBtnText}</button>
             </div>
         `;
     }).join('');
@@ -873,11 +886,17 @@ function renderProjects() {
         const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
         const safeProjectPackage = window.escapeHTML(project.package || '');
 
-        const platformDays = project.created_at ? (Math.floor((todayDate - new Date(project.created_at)) / (1000 * 60 * 60 * 24)) + 1) : 0;
+        const createdDate = project.created_at ? new Date(project.created_at) : null;
+        const createdValid = !!(createdDate && !Number.isNaN(createdDate.getTime()));
+        const rawPlatformDays = createdValid ? (Math.floor((todayDate - createdDate) / (1000 * 60 * 60 * 24)) + 1) : 1;
+        const platformDays = Math.max(1, Number.isFinite(rawPlatformDays) ? rawPlatformDays : 1);
         const syncDiffDays = project.last_sync_date ? getDayDiffFromToday(project.last_sync_date) : 0;
-        const currentGoogleDay = (project.google_sync_day || 0) > 1
-            ? Math.max(1, (project.google_sync_day || 0) + Math.max(0, syncDiffDays))
+        const syncDay = Number(project.google_sync_day || 0);
+        const normalizedSyncDay = Number.isFinite(syncDay) ? syncDay : 0;
+        const rawGoogleDay = normalizedSyncDay > 1
+            ? normalizedSyncDay + Math.max(0, syncDiffDays)
             : platformDays;
+        const currentGoogleDay = Math.max(1, Number.isFinite(rawGoogleDay) ? rawGoogleDay : 1);
         const likesAvailable = project.likes_max - project.likes_used;
 
         let testersHtml = '';
@@ -991,7 +1010,6 @@ function renderProjects() {
         })();
 
         const projectProgressHtml = (() => {
-            if (platformDays <= 0) return '';
             if ((project.google_sync_day || 0) <= 1) {
                 const day = Math.min(platformDays, 14);
                 const pct = Math.min(100, Math.round((day / 14) * 100));
@@ -1632,9 +1650,12 @@ function switchTab(tabId, navElement) {
     if (tabEl) tabEl.classList.add('active');
 
     if (finalTab === 'market') {
-        showSkeleton('mutual-seeking-list');
-        showSkeleton('mutual-prelaunch-list');
-        showSkeleton('bounty-list');
+        const canUseCache = window.hasMarketCache && window.hasMarketCache();
+        if (!canUseCache) {
+            showSkeleton('mutual-seeking-list');
+            showSkeleton('mutual-prelaunch-list');
+            showSkeleton('bounty-list');
+        }
         loadMutualFeed();
         loadBountyFeed();
     }
