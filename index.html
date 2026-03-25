@@ -526,9 +526,22 @@
             <label style="font-size: 13px; color: var(--hint-color); margin-bottom: 6px; display: block;" id="t-socialModalInputLabel" data-i18n="socialModalInputLabel">Ссылка на ваш пост:</label>
             <input type="url" id="social-url-input" class="form-input" placeholder="" style="margin-bottom: 14px;" data-i18n-placeholder="socialUrlPlaceholder">
             <button class="btn btn-primary" style="width: 100%;" id="send-social-link-btn" disabled onclick="submitSocialLink()">
-                <span id="t-socialModalSendBtn" data-i18n="socialModalSendBtn">Открыть Чат и Отправить</span>
+                <span id="t-socialModalSendBtn" data-i18n="socialModalSendBtn">Отправить ссылку</span>
             </button>
             <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeSocialModal()" id="t-socialModalCancel" data-i18n="socialModalCancel">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Feedback Modal (Bottom Sheet style, same as social-link-modal) -->
+    <div id="feedback-modal" class="modal-overlay" onclick="closeFeedbackModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="t-feedbackModalTitle" data-i18n="feedbackModalTitle">💬 Обратная связь</h3>
+            <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 8px;" id="t-feedbackModalTypeLabel" data-i18n="feedbackTypeBug">Тип: Баг</p>
+            <textarea id="feedback-text-input" class="form-input" rows="5" style="margin-bottom: 14px; resize: vertical;" data-i18n-placeholder="feedbackModalPlaceholder"></textarea>
+            <button class="btn btn-primary" style="width: 100%;" id="send-feedback-btn" disabled onclick="submitFeedback()">
+                <span id="t-feedbackModalSendBtn" data-i18n="feedbackModalSendBtn">Отправить</span>
+            </button>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeFeedbackModal()" id="t-feedbackModalCancelBtn" data-i18n="feedbackModalCancelBtn">Отмена</button>
         </div>
     </div>
     <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)"><div class="modal-content" onclick="event.stopPropagation()" id="project-details-body"></div></div>

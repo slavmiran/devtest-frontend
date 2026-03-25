@@ -1373,6 +1373,26 @@ function closeSocialModal(event) {
     document.getElementById('social-link-modal').classList.remove('active');
 }
 
+function openFeedbackModal(typeLabelKey) {
+    document.getElementById('feedback-modal').classList.add('active');
+    const input = document.getElementById('feedback-text-input');
+    const button = document.getElementById('send-feedback-btn');
+    const typeLabel = document.getElementById('t-feedbackModalTypeLabel');
+
+    input.value = '';
+    button.disabled = true;
+    typeLabel.textContent = window.t(typeLabelKey || 'feedbackTypeBug', {}, lang);
+
+    input.oninput = () => {
+        button.disabled = input.value.trim().length < 3;
+    };
+}
+
+function closeFeedbackModal(event) {
+    if (event && event.target !== document.getElementById('feedback-modal')) return;
+    document.getElementById('feedback-modal').classList.remove('active');
+}
+
 function renderArchivedProjects() {
     const section = document.getElementById('archive-section');
     if (!section) return;
@@ -2271,6 +2291,8 @@ Object.assign(window, {
     closeEarnBustModal,
     openSocialModal,
     closeSocialModal,
+    openFeedbackModal,
+    closeFeedbackModal,
     renderArchivedProjects,
     toggleArchive,
     showScreenshotDayAlert,

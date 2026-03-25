@@ -43,6 +43,7 @@ var _overtimeTest = null;
 var _syncProjectId = null;
 var _socialBonusStatus = 'none';
 var _earnGrantCount = 0;
+var _feedbackType = 'bug';
 var _inviteProjectId = null;
 var archivedProjects = [];
 var projectToDelete = null;
@@ -512,31 +513,23 @@ function applyLanguage(newLang) {
 
     refreshLanguageUi();
     rerenderDynamicUi();
+    refreshActiveTabData();
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 }
 
 function sendFeedback(type) {
-    const hashtagKeyMap = {
-        bug: 'feedbackTagBug',
-        idea: 'feedbackTagIdea',
-        question: 'feedbackTagQuestion'
+    const typeKeyMap = {
+        bug: 'feedbackTypeBug',
+        idea: 'feedbackTypeIdea',
+        question: 'feedbackTypeQuestion'
     };
-    const hashtag = window.t(hashtagKeyMap[type] || 'feedbackTagBug', {}, lang);
+    _feedbackType = (type === 'idea' || type === 'question') ? type : 'bug';
     const menu = document.getElementById('system-drop-menu');
     if (menu) {
         menu.classList.remove('active');
     }
-
-    const feedbackUrl = 'https://t.me/googleplay_console_12testers?text=' + encodeURIComponent(`${hashtag} `);
-    try {
-        tg.openTelegramLink(feedbackUrl);
-    } catch (e) {
-        try {
-            tg.openLink(feedbackUrl);
-        } catch (fallback) {
-            window.location.href = feedbackUrl;
-        }
-    }
+    openFeedbackModal(typeKeyMap[_feedbackType]);
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 }
 
 function rerenderDynamicUi() {
@@ -582,20 +575,6 @@ function refreshActiveTabData() {
         loadBountyFeed().catch(error => console.error('Language refresh bounty error:', error));
         return;
     }
-}
-
-function applyLanguage(newLang) {
-    lang = newLang;
-    localStorage.setItem('app_language', lang);
-    fetch(`${API_BASE}/users/${userId}/language`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: lang })
-    }).catch(error => console.error('Language sync error:', error));
-
-    refreshLanguageUi();
-    rerenderDynamicUi();
-    refreshActiveTabData();
 }
 
 function toggleLanguage() {
@@ -1224,11 +1203,6 @@ async function submitSocialLink() {
             _socialBonusStatus = 'pending';
             renderEarnBustDynamic();
             closeSocialModal();
-            const templateMsg = `Привет! Я опубликовал пост о DevTestHub (12 Testers Google Play): ${url}. Жду проверку бонуса! #DevTestHub #12testersGooglePlay`;
-            const encoded = encodeURIComponent(templateMsg);
-            if (window.Telegram && Telegram.WebApp) {
-                Telegram.WebApp.openTelegramLink(`https://t.me/googleplay_console_12testers/31?text=${encoded}`);
-            }
             showToast(t.earnSocialSubmitted || 'Ссылка отправлена!');
         } else {
             showToast(getApiErrorMessage(data, 'socialSubmitError'));
@@ -1236,6 +1210,39 @@ async function submitSocialLink() {
     } catch (error) {
         console.error('Social bonus submit error:', error);
         showToast(getApiErrorMessage(error && error.message, 'socialSubmitError'));
+    }
+}
+
+async function submitFeedback() {
+    const input = document.getElementById('feedback-text-input');
+    const rawText = input ? input.value : '';
+    const text = (rawText || '').trim();
+    if (text.length < 3) {
+        showToast(window.t('feedbackValidationError', {}, lang));
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/send_to_topic`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                type: _feedbackType,
+                text
+            })
+        });
+        const result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+            showToast(getApiErrorMessage(result, 'genericError'));
+            return;
+        }
+        closeFeedbackModal();
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('feedbackSentToast', {}, lang));
+    } catch (error) {
+        console.error('Send feedback error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }
 
@@ -1669,6 +1676,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    document.addEventListener('pointerdown', (event) => {
+        const menu = document.getElementById('system-drop-menu');
+        if (!menu || !menu.classList.contains('active')) return;
+        if (!menu.contains(event.target)) {
+            menu.classList.remove('active');
+        }
+    });
+
     loadTasks();
     loadEvents();
     loadProjects();
@@ -1708,6 +1723,8 @@ Object.assign(window, {
     confirmDropTest,
     confirmOvertimeLeave,
     openEarnBustModal,
+    sendFeedback,
+    submitFeedback,
     submitSocialLink,
     saveProjectSync,
     loadArchivedProjects,

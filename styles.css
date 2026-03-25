@@ -592,8 +592,8 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 .system-drop-menu {
     --system-drawer-bg: rgba(28, 28, 30, 0.94);
     --system-drawer-border: rgba(142, 142, 147, 0.18);
-    --system-tab-height: 44px;
-    --system-tab-width: 98px;
+    --system-tab-height: 34px;
+    --system-tab-width: 74px;
     position: fixed;
     top: 0;
     right: 16px;
@@ -664,14 +664,14 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 .system-drop-tab {
     min-width: var(--system-tab-width);
     min-height: var(--system-tab-height);
-    background: var(--system-drawer-bg);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    background: rgba(28, 28, 30, 0.7);
+    backdrop-filter: blur(22px) saturate(1.25);
+    -webkit-backdrop-filter: blur(22px) saturate(1.25);
     border: 1px solid var(--system-drawer-border);
     border-top: none;
     border-radius: 0 0 20px 20px;
-    padding: 10px 16px 12px;
-    font-size: 13px;
+    padding: 6px 10px 7px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     color: var(--link-color);
@@ -682,7 +682,20 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     transition: background-color 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform, backdrop-filter;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+    position: relative;
+    overflow: hidden;
+}
+
+.system-drop-tab::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.03) 45%, rgba(255, 255, 255, 0.01) 100%);
+    pointer-events: none;
 }
 
 .system-drop-tab:hover {
@@ -701,6 +714,11 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 .system-drop-menu.active .system-drop-tab {
     color: var(--text-color);
     box-shadow: none;
+}
+
+#current-lang-label {
+    font-size: 12px;
+    letter-spacing: 0.2px;
 }
 
 input::placeholder,
