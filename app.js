@@ -50,6 +50,22 @@ var projectToDelete = null;
 var myProjectsLoadError = false;
 var marketCache = null;
 var MARKET_CACHE_KEY = 'market_cache_v1';
+var _lastFetchTimes = { mutual: 0, bounty: 0 };
+var MARKET_FETCH_THROTTLE_MS = 15000;
+var _marketInFlight = { mutual: null, bounty: null };
+
+function hasThrottleWindowPassed(feedKey) {
+    return (Date.now() - (_lastFetchTimes[feedKey] || 0)) >= MARKET_FETCH_THROTTLE_MS;
+}
+
+function markMarketFetchSuccess(feedKey) {
+    _lastFetchTimes[feedKey] = Date.now();
+}
+
+function resetMarketFetchThrottle() {
+    _lastFetchTimes.mutual = 0;
+    _lastFetchTimes.bounty = 0;
+}
 
 function getMarketCache() {
     if (marketCache) return marketCache;
@@ -640,6 +656,29 @@ async function loadTasks() {
 }
 
 async function loadMutualFeed() {
+    if (_marketInFlight.mutual) {
+        return _marketInFlight.mutual;
+    }
+
+    const hasLocalData = Array.isArray(mutualSeeking) && mutualSeeking.length > 0
+        || Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0;
+    if (!hasThrottleWindowPassed('mutual') && hasLocalData) {
+        renderMutualFeed();
+        return;
+    }
+
+    const requestPromise = _loadMutualFeedImpl();
+    _marketInFlight.mutual = requestPromise;
+    try {
+        await requestPromise;
+    } finally {
+        if (_marketInFlight.mutual === requestPromise) {
+            _marketInFlight.mutual = null;
+        }
+    }
+}
+
+async function _loadMutualFeedImpl() {
     const cached = getMarketCache();
     const hasMutualCache = !!(cached && cached.mutual);
 
@@ -681,12 +720,17 @@ async function loadMutualFeed() {
         const nextCache = Object.assign({}, cached || {});
         nextCache.mutual = nextMutual;
         setMarketCache(nextCache);
+        markMarketFetchSuccess('mutual');
     } catch (error) {
         console.error('Error loading mutual feed:', error);
-        if (!hasMutualCache) {
+        const hasLocalData = Array.isArray(mutualSeeking) && mutualSeeking.length > 0
+            || Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0;
+        if (!hasLocalData) {
             showToast(getApiErrorMessage(error && error.message, 'networkError'));
-            showRetry('mutual-seeking-list', 'loadMutualFeed()');
-            showRetry('mutual-prelaunch-list', 'loadMutualFeed()');
+            showRetry('mutual-seeking-list', 'forceRefreshMarket()');
+            showRetry('mutual-prelaunch-list', 'forceRefreshMarket()');
+        } else {
+            showToast(getApiErrorMessage(error && error.message, 'networkError'));
         }
     } finally {
         _apiEnd();
@@ -694,6 +738,28 @@ async function loadMutualFeed() {
 }
 
 async function loadBountyFeed() {
+    if (_marketInFlight.bounty) {
+        return _marketInFlight.bounty;
+    }
+
+    const hasLocalData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
+    if (!hasThrottleWindowPassed('bounty') && hasLocalData) {
+        renderBountyFeed();
+        return;
+    }
+
+    const requestPromise = _loadBountyFeedImpl();
+    _marketInFlight.bounty = requestPromise;
+    try {
+        await requestPromise;
+    } finally {
+        if (_marketInFlight.bounty === requestPromise) {
+            _marketInFlight.bounty = null;
+        }
+    }
+}
+
+async function _loadBountyFeedImpl() {
     const cached = getMarketCache();
     const hasBountyCache = !!(cached && cached.bounty && Array.isArray(cached.bounty.contracts));
 
@@ -724,14 +790,31 @@ async function loadBountyFeed() {
         const nextCache = Object.assign({}, cached || {});
         nextCache.bounty = nextBounty;
         setMarketCache(nextCache);
+        markMarketFetchSuccess('bounty');
     } catch (error) {
         console.error('Error loading bounty feed:', error);
-        if (!hasBountyCache) {
+        const hasLocalData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
+        if (!hasLocalData) {
             showToast(getApiErrorMessage(error && error.message, 'networkError'));
-            showRetry('bounty-list', 'loadBountyFeed()');
+            showRetry('bounty-list', 'forceRefreshMarket()');
+        } else {
+            showToast(getApiErrorMessage(error && error.message, 'networkError'));
         }
     } finally {
         _apiEnd();
+    }
+}
+
+async function forceRefreshMarket() {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    resetMarketFetchThrottle();
+    showSkeleton('mutual-seeking-list');
+    showSkeleton('mutual-prelaunch-list');
+    showSkeleton('bounty-list');
+    try {
+        await Promise.all([loadMutualFeed(), loadBountyFeed()]);
+    } catch (error) {
+        console.error('Force refresh market error:', error);
     }
 }
 
@@ -1704,6 +1787,7 @@ Object.assign(window, {
     loadBountyFeed,
     loadEvents,
     loadProjects,
+    forceRefreshMarket,
     getLocalDate,
     getRuDaysWord,
     formatEditProjectCreatedAt,

@@ -84,10 +84,13 @@
 
     <!-- TAB 3: Market (merged Mutual + Bounty) -->
     <div id="tab-market" class="container tab-content">
-        <div class="segmented-control" style="margin-bottom: 14px;">
-            <button class="seg-btn active" onclick="switchMarketSubTab('seeking')" id="market-sub-seeking"><span data-i18n="marketSeekingTitle">🤝 Взаимка</span></button>
-            <button class="seg-btn" onclick="switchMarketSubTab('bounty')" id="market-sub-bounty"><span data-i18n="marketBountyTitle">💎 Контракты</span></button>
-            <button class="seg-btn" onclick="switchMarketSubTab('prelaunch')" id="market-sub-prelaunch"><span data-i18n="marketPrelaunchTitle">🚀 Предзапуск</span></button>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+            <div class="segmented-control" style="margin-bottom:0; flex:1;">
+                <button class="seg-btn active" onclick="switchMarketSubTab('seeking')" id="market-sub-seeking"><span data-i18n="marketSeekingTitle">🤝 Взаимка</span></button>
+                <button class="seg-btn" onclick="switchMarketSubTab('bounty')" id="market-sub-bounty"><span data-i18n="marketBountyTitle">💎 Контракты</span></button>
+                <button class="seg-btn" onclick="switchMarketSubTab('prelaunch')" id="market-sub-prelaunch"><span data-i18n="marketPrelaunchTitle">🚀 Предзапуск</span></button>
+            </div>
+            <button class="btn-icon" id="market-refresh-btn" onclick="forceRefreshMarket()" style="width:42px; height:42px; font-size:18px; border-radius:12px; flex-shrink:0;">🔄</button>
         </div>
 
         <p id="market-seeking-desc" data-i18n="mutualSeekingDesc" style="margin-bottom: 12px;">Разместите здесь свой проект, чтобы другие тестеры могли предложить вам взаимный обмен.</p>
