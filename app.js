@@ -244,14 +244,26 @@ function getApiErrorMessage(payload, fallbackKey = 'genericError') {
     if (window.resolveApiMessage) {
         return window.resolveApiMessage(payload, fallbackKey, lang);
     }
+
+    const isNotFoundLike = function(value) {
+        const text = String(value || '').trim().toLowerCase();
+        return text === 'not found' || text === '404' || text === 'http 404';
+    };
+
     if (payload && typeof payload === 'object') {
         const objectMessage = payload.message || payload.detail;
         if (typeof objectMessage === 'string' && objectMessage.trim() !== '') {
+            if (isNotFoundLike(objectMessage)) {
+                return t.networkError || t.genericError;
+            }
             return objectMessage;
         }
         return t[fallbackKey] || t.genericError;
     }
     if (typeof payload === 'string' && payload.trim() !== '') {
+        if (isNotFoundLike(payload)) {
+            return t.networkError || t.genericError;
+        }
         return payload;
     }
     return t[fallbackKey] || t.genericError;
