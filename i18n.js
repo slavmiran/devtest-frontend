@@ -456,7 +456,10 @@
             systemMenuTitle: "Настройки и поддержка",
             feedbackBug: "🐛 Сообщить о баге",
             feedbackIdea: "💡 Предложить идею",
-            feedbackQuestion: "❓ Задать вопрос"
+            feedbackQuestion: "❓ Задать вопрос",
+            feedbackTagBug: "#баг",
+            feedbackTagIdea: "#идея",
+            feedbackTagQuestion: "#вопрос"
         },
         en: {
             tabTests: "My Tests",
@@ -912,7 +915,10 @@
             systemMenuTitle: "Settings & Support",
             feedbackBug: "🐛 Report a bug",
             feedbackIdea: "💡 Suggest an idea",
-            feedbackQuestion: "❓ Ask a question"
+            feedbackQuestion: "❓ Ask a question",
+            feedbackTagBug: "#bug",
+            feedbackTagIdea: "#idea",
+            feedbackTagQuestion: "#question"
         }
     };
 

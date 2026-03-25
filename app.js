@@ -516,15 +516,18 @@ function applyLanguage(newLang) {
 }
 
 function sendFeedback(type) {
-    const hashtagMap = {
-        bug: '#баг',
-        idea: '#идея',
-        question: '#вопрос'
+    const hashtagKeyMap = {
+        bug: 'feedbackTagBug',
+        idea: 'feedbackTagIdea',
+        question: 'feedbackTagQuestion'
     };
-    const hashtag = hashtagMap[type] || '#баг';
-    toggleSystemMenu();
-    
-    const feedbackUrl = 'https://t.me/googleplay_console_12testers/31?comment=' + encodeURIComponent(hashtag + ' ');
+    const hashtag = window.t(hashtagKeyMap[type] || 'feedbackTagBug', {}, lang);
+    const menu = document.getElementById('system-drop-menu');
+    if (menu) {
+        menu.classList.remove('active');
+    }
+
+    const feedbackUrl = 'https://t.me/googleplay_console_12testers/31?text=' + encodeURIComponent(`${hashtag} `);
     try {
         tg.openTelegramLink(feedbackUrl);
     } catch (e) {

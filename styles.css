@@ -590,25 +590,39 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 
 /* System Drop Menu (Pull-down drawer) */
 .system-drop-menu {
+    --system-drawer-bg: rgba(28, 28, 30, 0.94);
+    --system-drawer-border: rgba(142, 142, 147, 0.18);
+    --system-tab-height: 44px;
     position: fixed;
     top: 0;
     right: 16px;
     z-index: 9999;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: stretch;
+    width: min(320px, calc(100vw - 32px));
     max-width: 320px;
+    background: var(--system-drawer-bg);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid var(--system-drawer-border);
+    border-top: none;
+    border-radius: 0 0 20px 20px;
+    overflow: hidden;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+    transform: translateY(calc(-100% + var(--system-tab-height)));
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .system-drop-content {
-    background: rgba(28, 28, 30, 0.95);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(142, 142, 147, 0.2);
-    border-radius: 0 0 16px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
     padding: 16px;
     padding-top: 24px;
+    padding-bottom: 14px;
     overflow-y: auto;
-    max-height: calc(100vh - 60px);
+    max-height: calc(100vh - 76px);
 }
 
 .system-drop-title {
@@ -633,39 +647,46 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 
 .system-drop-tab-container {
     display: flex;
-    justify-content: flex-end;
+    width: 100%;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .system-drop-tab {
-    background: rgba(28, 28, 30, 0.95);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(142, 142, 147, 0.2);
-    border-radius: 0 0 16px 16px;
-    padding: 8px 16px;
+    width: 100%;
+    min-height: var(--system-tab-height);
+    background: transparent;
+    backdrop-filter: none;
+    border: none;
+    border-radius: 0;
+    padding: 10px 16px 12px;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     color: var(--link-color);
-    border-top: none;
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 4px;
-    transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: background-color 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
 }
 
-.system-drop-tab:active {
-    opacity: 0.8;
+.system-drop-tab:hover {
+    background: rgba(255, 255, 255, 0.04);
 }
 
-.system-drop-menu {
-    transform: translateY(calc(-100% + 36px));
-    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+.system-drop-tab:active {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.06);
 }
 
 .system-drop-menu.active {
     transform: translateY(0);
+}
+
+.system-drop-menu.active .system-drop-tab {
+    color: var(--text-color);
 }
 
 input::placeholder,
