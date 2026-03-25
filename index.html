@@ -438,6 +438,44 @@
         </div>
     </div>
 
+    <!-- Karma Info Modal (Bottom Sheet) -->
+    <div id="karma-info-modal" class="modal-overlay" onclick="closeKarmaInfoModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div style="text-align:center; margin-bottom: 12px;">
+                <div class="dashboard-title" data-i18n="karmaInfoModalTitle">ТВОЙ БАЛАНС КАРМЫ</div>
+                <div id="karma-balance-value" style="font-size: 36px; font-weight: 800; margin-top: 8px; letter-spacing: 0.5px;">☯️ 0.0</div>
+            </div>
+
+            <div class="card" id="karma-stats-container" style="margin-bottom: 12px; display: none;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 18px;">📊</span>
+                    <span style="font-weight: 700; font-size: 15px;" data-i18n="karmaStatsTitle">Твоя статистика</span>
+                </div>
+                <div id="karma-stats-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 18px;">📈</span>
+                    <span style="font-weight: 700; font-size: 15px;" data-i18n="karmaInfoWhyTitle">Зачем нужна Карма?</span>
+                </div>
+                <p style="font-size: 13px; color: var(--hint-color); line-height: 1.5; margin: 0;" data-i18n="karmaInfoWhyText">
+                    Карма — это ваша репутация. Она влияет на позицию в рейтинге Витрины и напрямую увеличивает выплаты $BUST.
+                </p>
+            </div>
+
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 18px;">⚙️</span>
+                    <span style="font-weight: 700; font-size: 15px;" data-i18n="karmaInfoHowTitle">Как получить и потерять?</span>
+                </div>
+                <div style="font-size: 13px; color: var(--hint-color); line-height: 1.55; white-space: pre-line;" data-i18n="karmaInfoHowText"></div>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%;" onclick="closeKarmaInfoModal()" data-i18n="karmaInfoCloseBtn">Закрыть</button>
+        </div>
+    </div>
+
     <div id="drop-test-modal" class="modal-overlay" onclick="closeDropTestModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-dropTestTitle" data-i18n="dropTestTitle">🗑️ Отказаться</h3>

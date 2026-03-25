@@ -1409,6 +1409,78 @@ async function confirmHardDelete(appId, appName) {
     }
 }
 
+async function fetchKarmaBreakdown(targetUserId) {
+    const resolvedUserId = Number(targetUserId || userId || 0);
+    if (!resolvedUserId) {
+        return {
+            status: 'error',
+            code: 'invalid_user_id',
+            total: Number((visibilityStats && visibilityStats.ownerKarma) || 0),
+            breakdown: []
+        };
+    }
+
+    try {
+        const response = await fetchWithRetry(`${API_BASE}/users/${resolvedUserId}/karma/breakdown`, {
+            timeoutMs: 10000
+        }, 1);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+
+        const total = Number(payload && payload.total);
+        const safeTotal = Number.isFinite(total)
+            ? total
+            : Number((visibilityStats && visibilityStats.ownerKarma) || 0);
+
+        const apiBreakdown = payload && Array.isArray(payload.breakdown) ? payload.breakdown : [];
+        let normalizedBreakdown = apiBreakdown.map((item) => {
+            const sourceType = String(item && item.source_type ? item.source_type : 'unknown').toLowerCase();
+            const countRaw = Number(item && item.count);
+            const amountRaw = Number(item && (item.amount ?? item.karma ?? item.points));
+            return {
+                source_type: sourceType,
+                count: Number.isFinite(countRaw) ? countRaw : 0,
+                amount: Number.isFinite(amountRaw) ? amountRaw : 0,
+            };
+        }).filter((item) => item.count !== 0 || item.amount !== 0);
+
+        // Backward compatibility for old backend shape: { total, good, bug }
+        if (!normalizedBreakdown.length) {
+            const goodCount = Number(payload && payload.good);
+            const bugCount = Number(payload && payload.bug);
+            if (Number.isFinite(goodCount) && goodCount > 0) {
+                normalizedBreakdown.push({
+                    source_type: 'good',
+                    count: goodCount,
+                    amount: goodCount * 1.5,
+                });
+            }
+            if (Number.isFinite(bugCount) && bugCount > 0) {
+                normalizedBreakdown.push({
+                    source_type: 'bug',
+                    count: bugCount,
+                    amount: bugCount * 3,
+                });
+            }
+        }
+
+        return {
+            status: 'success',
+            code: null,
+            total: safeTotal,
+            breakdown: normalizedBreakdown,
+        };
+    } catch (error) {
+        console.error('Karma breakdown load error:', error);
+        return {
+            status: 'error',
+            code: 'network_error',
+            total: Number((visibilityStats && visibilityStats.ownerKarma) || 0),
+            breakdown: []
+        };
+    }
+}
+
 async function sendKarmaReward(appId, testerId, rewardType) {
     try {
         const response = await fetch(`${API_BASE}/projects/${appId}/like`, {
@@ -1825,6 +1897,7 @@ Object.assign(window, {
     saveProjectSync,
     loadArchivedProjects,
     confirmHardDelete,
+    fetchKarmaBreakdown,
     sendKarmaReward,
     confirmStart,
     deleteTester,

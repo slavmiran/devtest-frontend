@@ -137,7 +137,9 @@ function renderEvents() {
     }
 
     listEl.innerHTML = visibleEvents.map((eventItem) => {
-        const text = window.escapeHTML(lang === 'ru' ? eventItem.text_ru : eventItem.text_en);
+        const text = window.escapeHTML(
+            (lang === 'ru' ? eventItem.text_ru : (eventItem.text_en || eventItem.text_ru)) || ''
+        );
         return `
             <div class="event-item">
                 <div class="event-time">${formatTimeAgo(eventItem.created_at)}</div>
@@ -1479,9 +1481,94 @@ function showVisibilityToast() {
     showToast(t.visibilityHint);
 }
 
-function showKarmaInfo() {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    showCustomAlert(t.karmaInfoText);
+function getKarmaSourceLabel(sourceType) {
+    const normalized = String(sourceType || '').toLowerCase();
+    const keyMap = {
+        checkin: 'karmaSrc_checkin',
+        overtime_checkin: 'karmaSrc_overtime_checkin',
+        good_test: 'karmaSrc_good_test',
+        bug_report: 'karmaSrc_bug_report',
+        overtime_reward: 'karmaSrc_overtime_reward',
+        owner_bonus: 'karmaSrc_owner_bonus',
+        platform_feedback: 'karmaSrc_platform_feedback',
+        penalty: 'karmaSrc_penalty',
+        other: 'karmaSrc_other',
+        good: 'karmaSrc_good_test',
+        bug: 'karmaSrc_bug_report',
+        overtime: 'karmaSrc_overtime_reward',
+    };
+    const key = keyMap[normalized] || 'karmaSrc_other';
+    return window.t(key, {}, lang);
+}
+
+function formatKarmaAmount(amount) {
+    const num = Number(amount || 0);
+    const sign = num >= 0 ? '+' : '';
+    return `${sign}${num.toFixed(1)} ☯️`;
+}
+
+function closeKarmaInfoModal(event) {
+    if (event && event.target && event.target.id !== 'karma-info-modal') return;
+    const modal = document.getElementById('karma-info-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function showKarmaInfo() {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+    const modal = document.getElementById('karma-info-modal');
+    const totalEl = document.getElementById('karma-balance-value');
+    const breakdownSection = document.getElementById('karma-stats-container');
+    const breakdownEl = document.getElementById('karma-stats-list');
+    if (!modal || !totalEl || !breakdownSection || !breakdownEl) return;
+
+    const fallbackTotal = Number((visibilityStats && visibilityStats.ownerKarma) || 0);
+    totalEl.textContent = window.t('karmaInfoBalanceValue', {
+        amount: fallbackTotal.toFixed(1),
+    });
+    breakdownEl.innerHTML = '';
+    breakdownSection.style.display = 'none';
+
+    let result = {
+        status: 'error',
+        code: 'network_error',
+        total: fallbackTotal,
+        breakdown: []
+    };
+
+    if (window.fetchKarmaBreakdown) {
+        result = await window.fetchKarmaBreakdown(userId);
+    }
+
+    const safeTotal = Number.isFinite(Number(result && result.total))
+        ? Number(result.total)
+        : fallbackTotal;
+    totalEl.textContent = window.t('karmaInfoBalanceValue', {
+        amount: safeTotal.toFixed(1),
+    });
+
+    const rows = (Array.isArray(result && result.breakdown) ? result.breakdown : [])
+        .filter((item) => Number(item && item.count) !== 0 || Number(item && item.amount) !== 0)
+        .map((item) => {
+            const sourceLabel = window.escapeHTML(getKarmaSourceLabel(item.source_type));
+            const amount = Number(item && item.amount) || 0;
+            const amountText = window.escapeHTML(formatKarmaAmount(amount));
+            return `<div class="dashboard-row"><span class="dashboard-label">${sourceLabel}</span><span class="dashboard-label" style="font-weight:700;">${amountText}</span></div>`;
+        });
+
+    if (rows.length > 0) {
+        breakdownEl.innerHTML = rows.join('');
+        breakdownSection.style.display = '';
+    } else {
+        breakdownEl.innerHTML = '';
+        breakdownSection.style.display = 'none';
+    }
+
+    if (!result || result.status !== 'success') {
+        showToast(window.t('karmaInfoNetworkFallbackToast', {}, lang));
+    }
+
+    modal.classList.add('active');
 }
 
 function showReliabilityInfo() {
@@ -2298,6 +2385,7 @@ Object.assign(window, {
     showScreenshotDayAlert,
     showVisibilityToast,
     showKarmaInfo,
+    closeKarmaInfoModal,
     showReliabilityInfo,
     closeReliabilityInfo,
     showRankPopup,
