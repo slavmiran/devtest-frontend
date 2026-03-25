@@ -527,7 +527,7 @@ function sendFeedback(type) {
         menu.classList.remove('active');
     }
 
-    const feedbackUrl = 'https://t.me/googleplay_console_12testers/31?text=' + encodeURIComponent(`${hashtag} `);
+    const feedbackUrl = 'https://t.me/googleplay_console_12testers?text=' + encodeURIComponent(`${hashtag} `);
     try {
         tg.openTelegramLink(feedbackUrl);
     } catch (e) {
