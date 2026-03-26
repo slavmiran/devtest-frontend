@@ -236,8 +236,7 @@ function getOfferApiError(message) {
 
 function formatBustAmount(value) {
     const numeric = Number(value || 0);
-    const rounded = Math.round(numeric);
-    return `${rounded} $BUST`;
+    return `${numeric.toFixed(1)} $BUST`;
 }
 
 function getApiErrorMessage(payload, fallbackKey = 'genericError') {
@@ -416,8 +415,8 @@ function updateProjectPricing(formKey) {
     bountyPanel.classList.toggle('active', showBounty);
 
     const rewardPerTester = showBounty ? state.bountyPerTester : 0;
-    const dailyShare = rewardPerTester * 0.4;
-    const holdBonus = rewardPerTester * 0.6;
+    const dailyShare = rewardPerTester * 0.65;
+    const holdBonus = rewardPerTester * 0.35;
     const totalCost = showBounty ? state.limitBounty * rewardPerTester : 0;
     const bustBalance = visibilityStats && typeof visibilityStats.balance_bust !== 'undefined'
         ? visibilityStats.balance_bust
@@ -634,6 +633,7 @@ async function loadTasks() {
             }
             return {
                 id: app.app_id,
+                progress_id: app.progress_id,
                 name: app.name,
                 package: app.package_name,
                 icon_url: app.icon_url,
@@ -650,6 +650,9 @@ async function loadTasks() {
                 checkins_count: app.checkins_count || 0,
                 skips_count: app.skips_count || 0,
                 last_sync_date: app.last_sync_date || null,
+                testing_days: app.testing_days || 0,
+                grant_claimed: !!app.grant_claimed,
+                app_status: app.app_status || 'active',
             };
         });
 
@@ -1574,6 +1577,7 @@ async function confirmStart(id) {
         setTimeout(() => {
             card.style.display = 'none';
             loadTasks();
+            loadProjects(true);
         }, 800);
         return true;
     } catch (error) {
@@ -1586,6 +1590,43 @@ async function confirmStart(id) {
         }
         handleApiError('network_error');
         return false;
+    }
+}
+
+async function claimGrant(progressId, appId) {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    const btn = document.getElementById(`btn-claim-${appId}`);
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+    }
+    try {
+        const response = await fetch(`${API_BASE}/testing/${progressId}/claim_grant`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: userId })
+        });
+        const result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+            if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+            handleApiError(getBackendErrorCode(result), result.details || {});
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        const amount = Number(result.amount || 0);
+        const test = myTests.find(t => t.id === appId);
+        const isActive = test && test.app_status === 'active';
+        if (isActive) {
+            showToast(window.t('claimGrantOvertimeToast', { amount: amount.toFixed(1) }));
+        } else {
+            showToast(window.t('claimGrantToast', { amount: amount.toFixed(1) }));
+        }
+        if (btn) btn.style.display = 'none';
+        loadProjects(true);
+    } catch (error) {
+        console.error('Claim grant error:', error);
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+        handleApiError('network_error');
     }
 }
 

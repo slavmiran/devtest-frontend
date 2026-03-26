@@ -474,6 +474,17 @@ function renderTests() {
             ? `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`
             : '';
 
+        // Кнопка "Забрать Грант" — если testing_days >= 14 и грант не забран и пропусков <= 3
+        let claimHtml = '';
+        const testDays = test.testing_days || getUserTestingDay(test.start_date) || 0;
+        if (testDays >= 14 && !test.grant_claimed && (test.skips_count || 0) <= 3 && test.progress_id) {
+            claimHtml = `
+                <button id="btn-claim-${test.id}" class="btn btn-claim-grant" onclick="claimGrant(${test.progress_id}, ${test.id})">
+                    🎁 ${window.t('claimGrantBtn')}
+                </button>
+            `;
+        }
+
         let cardContent = `
             <div class="card-header">
                 <div class="card-header-link" ${test.status === 'new' ? '' : `onclick="openProjectDetailsModal(${test.id})"`}>
@@ -486,6 +497,7 @@ function renderTests() {
                 ${trailingHtml}
             </div>
             ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
+            ${claimHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}
             </div>
