@@ -193,6 +193,13 @@ function formatOfferRemaining(createdAt) {
     };
 }
 
+function getProjectLanguageToast(targetLang) {
+    const langCode = String(targetLang || 'ALL').toUpperCase();
+    if (langCode === 'RU') return window.t('projectLanguageToastRu', {}, lang);
+    if (langCode === 'EN') return window.t('projectLanguageToastEn', {}, lang);
+    return window.t('projectLanguageToastAll', {}, lang);
+}
+
 function openTesterDossier(username, testerId, appId) {
     return openDossierModal(username || '', testerId, appId || 0);
 }
@@ -311,10 +318,7 @@ function renderIncomingOffers() {
         _offersTimerId = null;
     }
 
-    const pending = (incomingOffers || []).filter((offer) => {
-        if (!offer || offer.status !== 'pending') return false;
-        return !!formatOfferRemaining(offer.created_at);
-    });
+    const pending = (incomingOffers || []).filter((offer) => !!offer && offer.status === 'pending');
     countEl.innerText = t.offersCount.replace('{count}', pending.length);
 
     if (!pending.length) {
@@ -332,7 +336,7 @@ function renderIncomingOffers() {
             : (offer.proposer_full_name || window.t('idLabel', { id: offer.proposer_id }, lang)));
         const remain = formatOfferRemaining(offer.created_at);
         const leftTimeText = window.t('offerTimeLeftValue', { hours: remain ? remain.hours : 0, minutes: remain ? remain.minutes : 0 }, lang);
-        const expireText = window.t('offerTimeLeft', { time: leftTimeText }, lang);
+        const expireText = remain ? window.t('offerTimeLeft', { time: leftTimeText }, lang) : window.t('offerTimeUnknown', {}, lang);
         const targetAppName = offer.target_app_name || window.t('unknownLabel', {}, lang);
         const proposerAppName = offer.proposer_app_name || window.t('unknownLabel', {}, lang);
 
@@ -400,6 +404,7 @@ function renderTests() {
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
         const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
         const safePackageLabel = window.escapeHTML(test.package || '');
+        const langBadge = (test.target_lang && test.target_lang !== 'ALL') ? getLangBadge(test.target_lang) : '';
 
         let actionsHtml = '';
         if (test.status === 'new') {
@@ -494,6 +499,7 @@ function renderTests() {
                         <div class="card-subtitle">${safePackageLabel}</div>
                     </div>
                 </div>
+                ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
                 ${trailingHtml}
             </div>
             ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
@@ -606,8 +612,8 @@ function renderCompletedTests(completedTests) {
 
 function getLangBadge(targetLang) {
     const langCode = String(targetLang || 'ALL').toUpperCase();
-    if (langCode === 'RU') return '<span class="lang-badge">🇷🇺</span>';
-    if (langCode === 'EN') return '<span class="lang-badge">🇬🇧</span>';
+    if (langCode === 'RU') return `<button type="button" class="lang-badge" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(getProjectLanguageToast('RU'))}')">🇷🇺</button>`;
+    if (langCode === 'EN') return `<button type="button" class="lang-badge" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(getProjectLanguageToast('EN'))}')">🇬🇧</button>`;
     return '';
 }
 
@@ -634,7 +640,7 @@ function renderFeedCard(item, kind) {
     const hasIncomingFromOwner = (incomingOffers || []).some((offer) => {
         if (!offer || offer.status !== 'pending') return false;
         if (Number(offer.proposer_id) !== Number(item.owner_id)) return false;
-        return !!formatOfferRemaining(offer.created_at);
+        return true;
     });
 
     if (kind === 'mutual-seeking' && hasIncomingFromOwner) {
@@ -1018,6 +1024,10 @@ function renderProjects() {
             if (likesAvailable > 0) {
                 const karmaChipText = t.karmaAvailable.replace('{count}', likesAvailable);
                 badges += `<button class="meta-chip accent-yellow" onclick="openKarmaDistribution(${project.id})">${karmaChipText}</button>`;
+            }
+
+            if (project.target_lang && project.target_lang !== 'ALL') {
+                badges += getLangBadge(project.target_lang);
             }
 
             return badges;
@@ -1555,6 +1565,7 @@ function renderArchivedProjects() {
         const archiveName = project.name || window.t('unknownLabel', {}, lang);
         const safeArchiveName = window.escapeHTML(archiveName);
         const safeArchivePackage = window.escapeHTML(project.package_name || '');
+        const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
         html += `
             <div class="card archive-card">
                 <div class="card-header archive-card-header">
@@ -1563,6 +1574,7 @@ function renderArchivedProjects() {
                         <div class="card-title">${safeArchiveName}</div>
                         <div class="card-subtitle">${safeArchivePackage}</div>
                     </div>
+                    ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
                 </div>
                 <div class="archive-meta-row">
                     <span class="archive-meta-chip">${modeLabel}</span>
@@ -2175,6 +2187,7 @@ function closeDeleteModal(event) {
 
 function openModal() {
     document.getElementById('add-modal').classList.add('active');
+    setProjectTargetLang('add', 'ALL');
     updateProjectPricing('add');
     document.getElementById('app-name').focus();
 }
@@ -2237,6 +2250,7 @@ function openEditModal(projectId) {
     document.getElementById('edit-limit-bounty').value = String(project.limit_bounty || 12);
     document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
     setProjectMode('edit', project.mode || 'mutual');
+    setProjectTargetLang('edit', project.target_lang || 'ALL');
     updateProjectPricing('edit');
     renderEditCreatedAtMeta();
     document.getElementById('edit-project-modal').classList.add('active');

@@ -449,15 +449,35 @@ function updateProjectPricing(formKey) {
 
 function resetProjectForms() {
     document.getElementById('app-mode').value = 'mutual';
+    document.getElementById('app-target-lang').value = 'ALL';
     document.getElementById('app-limit-mutual').value = '12';
     document.getElementById('app-limit-bounty').value = '12';
     document.getElementById('app-bounty-per-tester').value = '100';
     document.getElementById('edit-mode').value = 'mutual';
+    document.getElementById('edit-target-lang').value = 'ALL';
     document.getElementById('edit-limit-mutual').value = '12';
     document.getElementById('edit-limit-bounty').value = '12';
     document.getElementById('edit-bounty-per-tester').value = '100';
     setProjectMode('add', 'mutual');
     setProjectMode('edit', 'mutual');
+    setProjectTargetLang('add', 'ALL');
+    setProjectTargetLang('edit', 'ALL');
+}
+
+function setProjectTargetLang(formKey, targetLang) {
+    const normalized = ['RU', 'EN', 'ALL'].includes(String(targetLang || '').toUpperCase())
+        ? String(targetLang).toUpperCase()
+        : 'ALL';
+    const input = document.getElementById(`${formKey}-target-lang`);
+    if (input) {
+        input.value = normalized;
+    }
+    ['ru', 'en', 'all'].forEach((code) => {
+        const button = document.getElementById(`${formKey}-target-lang-${code}`);
+        if (button) {
+            button.classList.toggle('active', code.toUpperCase() === normalized);
+        }
+    });
 }
 
 function validateProjectPricing(formKey) {
@@ -671,6 +691,7 @@ async function loadTasks() {
                 testing_days: app.testing_days || 0,
                 grant_claimed: !!app.grant_claimed,
                 app_status: app.app_status || 'active',
+                target_lang: app.target_lang || 'ALL',
             };
         });
 
@@ -908,6 +929,7 @@ async function loadProjects(isBackground = false) {
             likes_used: project.likes_used || 0,
             likes_max: project.likes_max || 1,
             mode: project.mode || 'mutual',
+            target_lang: project.target_lang || 'ALL',
             limit_mutual: project.limit_mutual || 0,
             limit_bounty: project.limit_bounty || 0,
             bounty_per_tester: project.bounty_per_tester || 0,
@@ -1613,6 +1635,7 @@ async function loadArchivedProjects() {
         const data = await response.json();
         archivedProjects = (data.archived || []).map(function(project) {
             return Object.assign({}, project, {
+                target_lang: project.target_lang || 'ALL',
                 feedback_new_count: project.feedback_new_count || 0,
                 feedback_total_count: project.feedback_total_count || 0,
             });
@@ -1954,6 +1977,7 @@ async function saveProject() {
     let packageInput = document.getElementById('app-package').value.trim();
     const iconInput = document.getElementById('app-icon').value.trim();
     const instructionsInput = document.getElementById('app-instructions').value.trim();
+    const targetLang = (document.getElementById('app-target-lang').value || 'ALL').toUpperCase();
     const pricingPayload = buildProjectPricingPayload('add');
     if (!pricingPayload) return;
 
@@ -1994,6 +2018,7 @@ async function saveProject() {
             icon_url: iconInput || null,
             google_group_url: null,
             instructions: instructionsInput || null,
+            target_lang: targetLang,
             ...pricingPayload
         };
         document.getElementById('email-warning-modal').classList.add('active');
@@ -2007,6 +2032,7 @@ async function saveProject() {
         icon_url: iconInput || null,
         google_group_url: groupInput || null,
         instructions: instructionsInput || null,
+        target_lang: targetLang,
         ...pricingPayload
     });
 }
@@ -2052,6 +2078,7 @@ async function saveProjectEdit() {
     const name = document.getElementById('edit-name').value.trim();
     const instructions = document.getElementById('edit-description').value.trim();
     const iconUrl = document.getElementById('edit-icon').value.trim();
+    const targetLang = (document.getElementById('edit-target-lang').value || 'ALL').toUpperCase();
     const pricingPayload = buildProjectPricingPayload('edit');
     if (!pricingPayload) return;
 
@@ -2074,6 +2101,7 @@ async function saveProjectEdit() {
                 name,
                 instructions: instructions || null,
                 icon_url: iconUrl || null,
+                target_lang: targetLang,
                 ...pricingPayload
             })
         });
@@ -2191,6 +2219,7 @@ Object.assign(window, {
     formatBustAmount,
     setProjectMode,
     updateProjectPricing,
+    setProjectTargetLang,
     getApiErrorMessage,
     rerenderDynamicUi,
     refreshActiveTabData,
@@ -2227,5 +2256,6 @@ Object.assign(window.App, {
     loadBountyFeed,
     loadArchivedProjects,
     saveProject,
+    setProjectTargetLang,
     saveProjectEdit
 });
