@@ -274,36 +274,64 @@ function renderGrantPreviewChip(test) {
 }
 
 function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
-    const totalDays = Math.max(expectedTotalDays || 14, userTestingDay || 0, 1);
-    const totalCheckins = Math.max(0, Number(test.checkins_count || 0));
-    const standardElapsed = Math.min(14, Math.max(0, userTestingDay || 0));
-    const standardCheckins = Math.min(14, totalCheckins);
-    const standardSkips = Math.max(0, standardElapsed - standardCheckins);
-    const overtimeElapsed = Math.max(0, (userTestingDay || 0) - 14);
-    const overtimeCheckins = Math.max(0, totalCheckins - 14);
-    const overtimeSkips = Math.max(0, overtimeElapsed - overtimeCheckins);
-    const remainingDays = Math.max(0, totalDays - standardCheckins - standardSkips - overtimeCheckins - overtimeSkips);
-    const segments = [];
+    var timeline = test.daily_timeline || '';
+    var totalDays = Math.max(expectedTotalDays || 14, userTestingDay || 0, 1);
+    var segments = [];
+    var standardCheckins = 0, standardSkips = 0, overtimeCheckins = 0, overtimeSkips = 0;
 
-    function pushSegments(count, className) {
-        for (let index = 0; index < count; index++) {
-            segments.push(`<div class="grant-segment ${className}"></div>`);
-        }
+    // Build from daily_timeline if available
+    for (var i = 0; i < timeline.length; i++) {
+        var ch = timeline[i];
+        var dayNum = i + 1;
+        var cls = 'remaining';
+        if (ch === '1') { cls = 'standard-checkin'; standardCheckins++; }
+        else if (ch === '0') { cls = 'standard-skip'; standardSkips++; }
+        else if (ch === '2') { cls = 'overtime-checkin'; overtimeCheckins++; }
+        else if (ch === '3') { cls = 'overtime-skip'; overtimeSkips++; }
+        // Add day-14 separator
+        var sep = (dayNum === 14) ? ' day14-separator' : '';
+        segments.push('<div class="grant-segment ' + cls + sep + '" data-day="' + dayNum + '"></div>');
     }
 
-    pushSegments(standardCheckins, 'standard-checkin');
-    pushSegments(standardSkips, 'standard-skip');
-    pushSegments(overtimeCheckins, 'overtime-checkin');
-    pushSegments(overtimeSkips, 'overtime-skip');
-    pushSegments(remainingDays, 'remaining');
+    // Fill remaining future days
+    var remainingDays = Math.max(0, totalDays - timeline.length);
+    for (var j = 0; j < remainingDays; j++) {
+        var dn = timeline.length + j + 1;
+        var sep2 = (dn === 14) ? ' day14-separator' : '';
+        segments.push('<div class="grant-segment remaining' + sep2 + '" data-day="' + dn + '"></div>');
+    }
+
+    // Fallback for empty timeline — use old calculation
+    if (!timeline) {
+        segments = [];
+        var totalCheckins = Math.max(0, Number(test.checkins_count || 0));
+        var standardElapsed = Math.min(14, Math.max(0, userTestingDay || 0));
+        standardCheckins = Math.min(14, totalCheckins);
+        standardSkips = Math.max(0, standardElapsed - standardCheckins);
+        var overtimeElapsed = Math.max(0, (userTestingDay || 0) - 14);
+        overtimeCheckins = Math.max(0, totalCheckins - 14);
+        overtimeSkips = Math.max(0, overtimeElapsed - overtimeCheckins);
+        remainingDays = Math.max(0, totalDays - standardCheckins - standardSkips - overtimeCheckins - overtimeSkips);
+
+        function pushSeg(count, className) {
+            for (var idx = 0; idx < count; idx++) {
+                segments.push('<div class="grant-segment ' + className + '"></div>');
+            }
+        }
+        pushSeg(standardCheckins, 'standard-checkin');
+        pushSeg(standardSkips, 'standard-skip');
+        pushSeg(overtimeCheckins, 'overtime-checkin');
+        pushSeg(overtimeSkips, 'overtime-skip');
+        pushSeg(remainingDays, 'remaining');
+    }
 
     return {
         html: segments.join(''),
-        standardCheckins,
-        standardSkips,
-        overtimeCheckins,
-        overtimeSkips,
-        remainingDays,
+        standardCheckins: standardCheckins,
+        standardSkips: standardSkips,
+        overtimeCheckins: overtimeCheckins,
+        overtimeSkips: overtimeSkips,
+        remainingDays: remainingDays,
     };
 }
 
@@ -596,7 +624,7 @@ function renderTests() {
                 </button>
             `;
         }
-        const grantChipHtml = test.status === 'new' ? '' : renderGrantPreviewChip(test);
+        const grantChipHtml = ''; // Grant chip moved to project details modal
 
         let cardContent = `
             <div class="card-header">
@@ -697,7 +725,6 @@ function renderCompletedTests(completedTests) {
                 ${ownerBtnHtml}
             </div>
             ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
-            ${renderGrantPreviewChip(test)}
             ${devInfoHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}
@@ -948,34 +975,48 @@ function renderProjects() {
 
     if (visibilityStats) {
         const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
-        const expLine = t.experienceLabel.replace('{count}', visibilityStats.completed_tests) + ' ' + t.completedTestsSuffix;
         const goldenCount = visibilityStats.golden_count || 0;
-        const goldenLine = window.t('goldenTesterStats', { count: goldenCount });
         const reliabilityValue = reliability.percent !== null
             ? `${reliability.text} (${reliability.percent}%)`
             : `${reliability.text}`;
-        const reliabilityValueStyle = reliability.percent !== null
-            ? 'cursor:pointer; text-decoration: underline; text-decoration-style: dotted;'
-            : 'cursor:pointer; text-decoration: none;';
+
+        const initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) || {};
+        const tgUser = initData.user || {};
+        const devName = window.escapeHTML(tgUser.first_name || '');
+        const devUsername = tgUser.username ? '@' + window.escapeHTML(tgUser.username) : '';
+        const completedTests = visibilityStats.completed_tests || 0;
+        const goldenBadge = goldenCount > 0 ? ' <span class="golden-badge">🏆</span>' : '';
 
         const dashHtml = `
-            <div class="dashboard-block">
-                <div class="dashboard-row">
-                    <span class="dashboard-label dashboard-title">${t.visibilityTitle}</span>
-                    <button class="meta-chip accent-yellow" onclick="showKarmaInfo()">☯️ ${visibilityStats.ownerKarma}</button>
+            <div class="developer-widget">
+                <div class="developer-widget-header">
+                    <div class="developer-widget-info">
+                        <div class="developer-widget-name">${devName}${goldenBadge}</div>
+                        ${devUsername ? '<div class="developer-widget-username">' + devUsername + '</div>' : ''}
+                    </div>
+                    <div class="developer-widget-exp">${window.t('experienceLabel', { count: completedTests })} ${t.completedTestsSuffix}</div>
                 </div>
-                <div class="dashboard-row">
-                    <span class="dashboard-label">⚡ ${t.activeTestsLabel}: ${visibilityStats.my_active_tests}</span>
-                </div>
-                <div class="dashboard-row" onclick="openEarnBustModal()" style="cursor:pointer;">
-                    <span class="dashboard-label" style="font-size: 18px; font-weight: 800; color: var(--link-color);">${t.bustBalanceLabel.replace('{amount}', formatBustAmount(visibilityStats.balance_bust || 0))}</span>
-                </div>
-                <div class="dashboard-row">
-                    <span class="dashboard-label">${expLine}</span>
-                </div>
-                ${goldenCount > 0 ? `<div class="dashboard-row"><span class="dashboard-label"><span class="golden-badge">🏆</span> ${goldenLine}</span></div>` : ''}
-                <div class="dashboard-row">
-                    <span class="dashboard-label" style="color: ${reliability.color};">${t.disciplineLabel} <span onclick="showReliabilityInfo()" style="${reliabilityValueStyle}">${reliabilityValue} </span></span>
+                <div class="metrics-grid">
+                    <div class="metric-card" onclick="showReliabilityInfo()">
+                        <div class="metric-icon">📊</div>
+                        <div class="metric-value" style="color: ${reliability.color};">${reliabilityValue}</div>
+                        <div class="metric-label" data-i18n="metricReliability">${window.t('metricReliability')}</div>
+                    </div>
+                    <div class="metric-card" onclick="showKarmaInfo()">
+                        <div class="metric-icon">☯️</div>
+                        <div class="metric-value">${visibilityStats.ownerKarma}</div>
+                        <div class="metric-label" data-i18n="metricKarma">${window.t('metricKarma')}</div>
+                    </div>
+                    <div class="metric-card" onclick="openEarnBustModal()">
+                        <div class="metric-icon">💎</div>
+                        <div class="metric-value">${formatBustAmount(visibilityStats.balance_bust || 0)}</div>
+                        <div class="metric-label" data-i18n="metricBalance">${window.t('metricBalance')}</div>
+                    </div>
+                    <div class="metric-card" onclick="switchTab('tab-tests')">
+                        <div class="metric-icon">⚡</div>
+                        <div class="metric-value">${visibilityStats.my_active_tests}</div>
+                        <div class="metric-label" data-i18n="metricActiveTests">${window.t('metricActiveTests')}</div>
+                    </div>
                 </div>
             </div>
         `;
@@ -2453,18 +2494,18 @@ function openProjectDetailsModal(appId) {
         '</div>';
     })();
 
-    const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);">' +
+    const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:6px;">' +
         '<span>' + window.t('grantProgressText', { day: userTestingDay }, lang) + '</span>' +
         (overtimeDays > 0
-            ? '<span class="meta-chip accent-purple" onclick="window.showCustomAlert(window.t(\'syncOvertimeInfo\'))">' + window.escapeHTML(window.t('overtimeChipLabel', { count: overtimeDays }, lang)) + '</span>'
+            ? '<span class="meta-chip accent-purple" style="font-size:11px;padding:2px 8px;" onclick="window.showCustomAlert(window.t(\'syncOvertimeInfo\'))">' + window.escapeHTML(window.t('overtimeChipShort', { count: overtimeDays }, lang)) + '</span>'
             : '') +
     '</div>';
-    const progressLegendHtml = '<div class="grant-progress-legend">' +
-        '<span class="grant-legend-item"><span class="grant-legend-dot" style="background:#34c759;"></span>' + window.escapeHTML(window.t('progressLegendStandardCheckins', { count: progressData.standardCheckins }, lang)) + '</span>' +
-        '<span class="grant-legend-item"><span class="grant-legend-dot" style="background:#ff453a;"></span>' + window.escapeHTML(window.t('progressLegendStandardSkips', { count: progressData.standardSkips }, lang)) + '</span>' +
-        '<span class="grant-legend-item"><span class="grant-legend-dot" style="background:#ffd60a;"></span>' + window.escapeHTML(window.t('progressLegendOvertimeCheckins', { count: progressData.overtimeCheckins }, lang)) + '</span>' +
-        '<span class="grant-legend-item"><span class="grant-legend-dot" style="background:#b42318;"></span>' + window.escapeHTML(window.t('progressLegendOvertimeSkips', { count: progressData.overtimeSkips }, lang)) + '</span>' +
-        '<span class="grant-legend-item"><span class="grant-legend-dot" style="background:rgba(255,255,255,0.35);"></span>' + window.escapeHTML(window.t('progressLegendRemaining', { count: progressData.remainingDays }, lang)) + '</span>' +
+
+    // Compact progress stats (replaces old 5-pill legend)
+    const progressStatsHtml = '<div class="grant-progress-stats" onclick="showTimelineStats(' + test.id + ')">' +
+        '<span class="gps-item gps-checkin">✓ ' + (progressData.standardCheckins + progressData.overtimeCheckins) + '</span>' +
+        '<span class="gps-item gps-skip">✗ ' + (progressData.standardSkips + progressData.overtimeSkips) + '</span>' +
+        '<span class="gps-item gps-remaining">… ' + progressData.remainingDays + '</span>' +
     '</div>';
     const overtimeBannerHtml = userTestingDay >= 14
         ? '<div class="detail-overtime-banner">' + window.escapeHTML(window.t('detailOvertimeReward', {}, lang)) + '</div>'
@@ -2472,6 +2513,49 @@ function openProjectDetailsModal(appId) {
 
     var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
         '<div class="detail-instruction-body">' + (test.instructions ? escapeHtmlWithBreaks(test.instructions) : '—') + '</div></div>';
+
+    // Grant Dashboard Block
+    const grant = getGrantEstimateData(test);
+    var grantDashboardHtml = '';
+    if (grant.eligible && userTestingDay <= 14) {
+        // Active grant — show reward breakdown cards
+        var allowedSkips = 3;
+        var currentSkips = progressData.standardSkips;
+        var skipIndicator = '';
+        for (var si = 0; si < allowedSkips; si++) {
+            skipIndicator += si < currentSkips
+                ? '<span class="skip-dot used"></span>'
+                : '<span class="skip-dot available"></span>';
+        }
+        grantDashboardHtml = '<div class="grant-dashboard-block">' +
+            '<div class="grant-dashboard-header">' +
+                '<span class="grant-dashboard-title">' + window.escapeHTML(window.t('grantDashboardTitle', {}, lang)) + '</span>' +
+                '<span class="grant-dashboard-skips">' + skipIndicator + ' <span class="grant-skip-text">' + window.t('grantSkipsLabel', { used: currentSkips, max: allowedSkips }, lang) + '</span></span>' +
+            '</div>' +
+            '<div class="grant-reward-grid">' +
+                '<div class="grant-reward-card">' +
+                    '<div class="grant-reward-icon">💰</div>' +
+                    '<div class="grant-reward-value">' + window.escapeHTML(window.t('grantDailyRewardValue', {}, lang)) + '</div>' +
+                    '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantDailyRewardLabel', {}, lang)) + '</div>' +
+                '</div>' +
+                '<div class="grant-reward-card">' +
+                    '<div class="grant-reward-icon">🔒</div>' +
+                    '<div class="grant-reward-value">' + window.escapeHTML(window.t('grantHoldBonusValue', {}, lang)) + '</div>' +
+                    '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantHoldBonusLabel', {}, lang)) + '</div>' +
+                '</div>' +
+                '<div class="grant-reward-card">' +
+                    '<div class="grant-reward-icon">🏆</div>' +
+                    '<div class="grant-reward-value">' + formatUiAmount(grant.total, 1) + '</div>' +
+                    '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantPlatformLabel', {}, lang)) + '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    } else if (!grant.eligible && userTestingDay >= 14) {
+        // Lost grant
+        grantDashboardHtml = '<div class="grant-dashboard-lost">' +
+            '<span>❌ ' + window.escapeHTML(window.t('grantLostLabel', {}, lang)) + '</span>' +
+        '</div>';
+    }
 
     body.innerHTML =
         '<div class="detail-header">' +
@@ -2484,12 +2568,13 @@ function openProjectDetailsModal(appId) {
 
         '<div class="details-block">' +
             (goldenBadgeHtml ? '<div style="margin-bottom:8px;">' + goldenBadgeHtml + '</div>' : '') +
-            renderGrantPreviewChip(test) +
             overtimeBannerHtml +
             '<div class="grant-progress-container">' + progressData.html + '</div>' +
             progressFooterHtml +
-            progressLegendHtml +
+            progressStatsHtml +
         '</div>' +
+
+        grantDashboardHtml +
 
         syncHtml +
 
@@ -2532,6 +2617,29 @@ function closeProjectDetailsModal(event) {
         modal.classList.remove('active');
     }
 }
+
+function showTimelineStats(appId) {
+    var test = (window.myTests || []).find(function(t) { return t.id === appId; });
+    if (!test) return;
+    var tl = test.daily_timeline || '';
+    var sc = 0, ss = 0, oc = 0, os = 0;
+    for (var i = 0; i < tl.length; i++) {
+        if (tl[i] === '1') sc++;
+        else if (tl[i] === '0') ss++;
+        else if (tl[i] === '2') oc++;
+        else if (tl[i] === '3') os++;
+    }
+    var msg = window.t('timelineStatsCheckins', { count: sc }, lang) + '\n' +
+        window.t('timelineStatsSkips', { count: ss }, lang) + '\n' +
+        window.t('timelineStatsOvertimeCheckins', { count: oc }, lang) + '\n' +
+        window.t('timelineStatsOvertimeSkips', { count: os }, lang);
+    if (window.tg && window.tg.showAlert) {
+        window.tg.showAlert(msg);
+    } else {
+        window.showCustomAlert(msg);
+    }
+}
+window.showTimelineStats = showTimelineStats;
 
 function showProjectSelectModal(projects, targetAppId, targetOwnerId) {
     let modal = document.getElementById('project-select-modal');

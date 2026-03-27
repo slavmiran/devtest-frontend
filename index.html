@@ -637,6 +637,11 @@
             <h3 data-i18n="feedbackRewardModalTitle">🎁 Поблагодарить / Закрыть</h3>
             <p class="feedback-reward-subtitle" data-i18n="feedbackRewardModalDesc">Выберите награду тестеру за полезный фидбэк и закройте тикет.</p>
 
+            <div class="feedback-reward-status-row">
+                <span class="feedback-reward-status-item" id="feedback-owner-balance">💎 0 $BUST</span>
+                <span class="feedback-reward-status-item" id="feedback-karma-status">☯️ 0/0</span>
+            </div>
+
             <div class="feedback-reward-block">
                 <div class="feedback-reward-label" data-i18n="feedbackRewardBustLabel">$BUST</div>
                 <div class="chip-scroll feedback-reward-chips">
@@ -663,7 +668,7 @@
                 <textarea id="feedback-reward-reply" class="form-input" rows="4" style="resize: vertical;" data-i18n-placeholder="feedbackRewardReplyPlaceholder"></textarea>
             </div>
 
-            <button class="btn btn-primary" style="width: 100%; margin-top: 14px;" onclick="submitFeedbackReward()" data-i18n="feedbackRewardSubmitBtn">Выдать награду и закрыть тикет</button>
+            <button class="btn btn-primary" id="feedback-reward-submit-btn" style="width: 100%; margin-top: 14px;" onclick="submitFeedbackReward()" data-i18n="feedbackRewardSubmitBtn">Выдать награду и закрыть тикет</button>
             <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeFeedbackRewardModal()" data-i18n="feedbackRewardCancelBtn">Отмена</button>
         </div>
     </div>

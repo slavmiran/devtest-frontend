@@ -701,6 +701,7 @@ async function loadTasks() {
                 grant_claimed: !!app.grant_claimed,
                 app_status: app.app_status || 'active',
                 target_lang: app.target_lang || 'ALL',
+                daily_timeline: app.daily_timeline || '',
             };
         });
 
@@ -1410,23 +1411,35 @@ function setFeedbackRewardBust(amount) {
     if (input) {
         input.value = _feedbackRewardBust > 0 ? String(_feedbackRewardBust) : '';
     }
+    var balance = (visibilityStats && visibilityStats.balance_bust) || 0;
     [5, 10, 25, 50, 100].forEach(function(value) {
         const chip = document.getElementById(`feedback-bust-chip-${value}`);
         if (chip) {
             chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
+            chip.classList.toggle('is-disabled', Number(value) > balance);
         }
     });
+    _updateFeedbackRewardSubmitState();
 }
 
 function setFeedbackRewardKarma(amount) {
     _feedbackRewardKarma = Number(amount || 0);
-    const mapping = { 0: '0', 1.5: '15', 3: '30' };
+    var project = myProjects.find(function(p) { return Number(p.id) === Number(_activeProjectFeedbackAppId); });
+    var likesUsed = (project && project.likes_used) || 0;
+    var likesMax = (project && project.likes_max) || 1;
+    var remaining = Math.max(0, likesMax - likesUsed);
+    var mapping = { 0: '0', 1.5: '15', 3: '30' };
     ['0', '15', '30'].forEach(function(code) {
-        const chip = document.getElementById(`feedback-karma-chip-${code}`);
+        var chip = document.getElementById('feedback-karma-chip-' + code);
         if (chip) {
             chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
+            if (code !== '0') {
+                var chipVal = code === '15' ? 1.5 : 3.0;
+                chip.classList.toggle('is-disabled', chipVal > remaining);
+            }
         }
     });
+    _updateFeedbackRewardSubmitState();
 }
 
 async function openProjectFeedback(appId, isArchived) {
@@ -1491,6 +1504,17 @@ function openFeedbackRewardModal(appId, feedbackId) {
     _feedbackRewardTargetId = Number(feedbackId);
     _feedbackRewardBust = 0;
     _feedbackRewardKarma = 0;
+
+    // Populate balance & karma status
+    var balance = (visibilityStats && visibilityStats.balance_bust) || 0;
+    var balanceEl = document.getElementById('feedback-owner-balance');
+    if (balanceEl) balanceEl.textContent = '💎 ' + balance + ' $BUST';
+    var project = myProjects.find(function(p) { return Number(p.id) === Number(appId); });
+    var likesUsed = (project && project.likes_used) || 0;
+    var likesMax = (project && project.likes_max) || 1;
+    var karmaEl = document.getElementById('feedback-karma-status');
+    if (karmaEl) karmaEl.textContent = '☯️ ' + likesUsed + '/' + likesMax;
+
     if (window.openFeedbackRewardModalUi) {
         window.openFeedbackRewardModalUi();
     }
@@ -1506,13 +1530,17 @@ function openFeedbackRewardModal(appId, feedbackId) {
                 const chip = document.getElementById(`feedback-bust-chip-${value}`);
                 if (chip) {
                     chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
+                    chip.classList.toggle('is-disabled', Number(value) > balance);
                 }
             });
+            _updateFeedbackRewardSubmitState();
         };
     }
     if (reply) {
-        reply.value = '';
+        reply.value = window.t('feedbackRewardDefaultReply', {}, lang);
+        reply.oninput = function() { _updateFeedbackRewardSubmitState(); };
     }
+    _updateFeedbackRewardSubmitState();
 }
 
 function closeFeedbackRewardModal() {
@@ -1524,6 +1552,17 @@ function closeFeedbackRewardModal() {
     }
 }
 
+function _updateFeedbackRewardSubmitState() {
+    var btn = document.getElementById('feedback-reward-submit-btn');
+    if (!btn) return;
+    var reply = document.getElementById('feedback-reward-reply');
+    var hasReply = reply && reply.value && reply.value.trim().length > 0;
+    var hasReward = _feedbackRewardBust > 0 || _feedbackRewardKarma > 0;
+    var enabled = hasReward || hasReply;
+    btn.disabled = !enabled;
+    btn.style.opacity = enabled ? '1' : '0.4';
+}
+
 async function submitFeedbackReward() {
     if (!_feedbackRewardTargetId || !_activeProjectFeedbackAppId) return;
 
@@ -1531,6 +1570,18 @@ async function submitFeedbackReward() {
     const replyInput = document.getElementById('feedback-reward-reply');
     const bustAmount = Math.max(0, Number((bustInput && bustInput.value) || _feedbackRewardBust || 0));
     const replyText = (replyInput && replyInput.value ? replyInput.value : '').trim();
+
+    // Client-side validation: bust cannot exceed balance
+    var balance = (visibilityStats && visibilityStats.balance_bust) || 0;
+    if (bustAmount > balance) {
+        if (tg && tg.showAlert) tg.showAlert(window.t('feedbackRewardInsufficientBust', {}, lang));
+        return;
+    }
+
+    // Must have at least reward or reply text
+    if (bustAmount <= 0 && _feedbackRewardKarma <= 0 && !replyText) {
+        return;
+    }
 
     try {
         const response = await fetch(`${API_BASE}/feedback/${_feedbackRewardTargetId}/reward`, {
