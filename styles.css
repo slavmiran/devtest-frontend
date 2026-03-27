@@ -1410,6 +1410,26 @@ details[open] > summary .details-arrow {
     background: var(--button-color);
 }
 
+.grant-segment.standard-checkin {
+    background: #34c759;
+}
+
+.grant-segment.standard-skip {
+    background: #ff453a;
+}
+
+.grant-segment.overtime-checkin {
+    background: #ffd60a;
+}
+
+.grant-segment.overtime-skip {
+    background: #b42318;
+}
+
+.grant-segment.remaining {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 .grant-segment.current::after {
     content: '';
     position: absolute;
@@ -1539,6 +1559,57 @@ details[open] > summary .details-arrow {
     background: rgba(255, 214, 10, 0.12);
     color: #ffd60a;
     margin-bottom: 12px;
+}
+
+.detail-overtime-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 214, 10, 0.12);
+    border: 1px solid rgba(255, 214, 10, 0.18);
+    color: #ffd76a;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.grant-progress-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.grant-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(142, 142, 147, 0.12);
+    color: var(--hint-color);
+    font-size: 12px;
+}
+
+.grant-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.grant-chip {
+    width: 100%;
+    justify-content: center;
+    min-height: 34px;
+    font-weight: 700;
+}
+
+.grant-chip-lost {
+    background: rgba(255, 69, 58, 0.12);
+    color: #ff857d;
 }
 .detail-instruction-body {
     font-size: 14px;

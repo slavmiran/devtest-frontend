@@ -200,6 +200,113 @@ function getProjectLanguageToast(targetLang) {
     return window.t('projectLanguageToastAll', {}, lang);
 }
 
+function formatUiAmount(value, digits) {
+    const numeric = Number(value || 0);
+    const precision = typeof digits === 'number' ? digits : 1;
+    if (!Number.isFinite(numeric)) return '0';
+    const rounded = Number(numeric.toFixed(precision));
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(precision);
+}
+
+function getCurrentUserKarmaValue() {
+    const raw = visibilityStats && typeof visibilityStats.ownerKarma !== 'undefined'
+        ? Number(visibilityStats.ownerKarma)
+        : 0;
+    return Number.isFinite(raw) ? raw : 0;
+}
+
+function getGrantEstimateData(test) {
+    const skips = Math.max(0, Number(test && test.skips_count || 0));
+    const karma = getCurrentUserKarmaValue();
+    const base = 50;
+    const karmaBonus = Math.min(Math.max(0, karma * 5), 100);
+    const perfectBonus = skips === 0 ? 50 : 0;
+    const eligible = skips <= 3;
+    return {
+        base,
+        karma,
+        karmaBonus,
+        perfectBonus,
+        skips,
+        eligible,
+        total: eligible ? Math.min(base + karmaBonus + perfectBonus, 200) : 0,
+    };
+}
+
+function showGrantBreakdownAlertById(appId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const test = myTests.find(function(item) { return Number(item.id) === Number(appId); });
+    if (!test) return;
+
+    const grant = getGrantEstimateData(test);
+    const message = grant.eligible
+        ? window.t('grantBreakdownEligible', {
+            base: formatUiAmount(grant.base, 1),
+            karma: formatUiAmount(grant.karma, 1),
+            karma_bonus: formatUiAmount(grant.karmaBonus, 1),
+            perfect_bonus: formatUiAmount(grant.perfectBonus, 1),
+            total: formatUiAmount(grant.total, 1),
+            skips: grant.skips,
+        }, lang)
+        : window.t('grantBreakdownLost', {
+            skips: grant.skips,
+        }, lang);
+
+    if (tg.showAlert) {
+        tg.showAlert(message);
+    } else if (window.showCustomAlert) {
+        window.showCustomAlert(message);
+    } else {
+        showToast(message);
+    }
+}
+
+function renderGrantPreviewChip(test) {
+    const grant = getGrantEstimateData(test);
+    const chipClass = grant.eligible ? 'meta-chip accent-yellow grant-chip' : 'meta-chip grant-chip grant-chip-lost';
+    const label = grant.eligible
+        ? window.t('grantChipEligible', { amount: formatUiAmount(grant.total, 1) }, lang)
+        : window.t('grantChipLost', {}, lang);
+    return `<button type="button" class="${chipClass}" onclick="showGrantBreakdownAlertById(${test.id}, event)">${window.escapeHTML(label)}</button>`;
+}
+
+function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
+    const totalDays = Math.max(expectedTotalDays || 14, userTestingDay || 0, 1);
+    const totalCheckins = Math.max(0, Number(test.checkins_count || 0));
+    const standardElapsed = Math.min(14, Math.max(0, userTestingDay || 0));
+    const standardCheckins = Math.min(14, totalCheckins);
+    const standardSkips = Math.max(0, standardElapsed - standardCheckins);
+    const overtimeElapsed = Math.max(0, (userTestingDay || 0) - 14);
+    const overtimeCheckins = Math.max(0, totalCheckins - 14);
+    const overtimeSkips = Math.max(0, overtimeElapsed - overtimeCheckins);
+    const remainingDays = Math.max(0, totalDays - standardCheckins - standardSkips - overtimeCheckins - overtimeSkips);
+    const segments = [];
+
+    function pushSegments(count, className) {
+        for (let index = 0; index < count; index++) {
+            segments.push(`<div class="grant-segment ${className}"></div>`);
+        }
+    }
+
+    pushSegments(standardCheckins, 'standard-checkin');
+    pushSegments(standardSkips, 'standard-skip');
+    pushSegments(overtimeCheckins, 'overtime-checkin');
+    pushSegments(overtimeSkips, 'overtime-skip');
+    pushSegments(remainingDays, 'remaining');
+
+    return {
+        html: segments.join(''),
+        standardCheckins,
+        standardSkips,
+        overtimeCheckins,
+        overtimeSkips,
+        remainingDays,
+    };
+}
+
 function openTesterDossier(username, testerId, appId) {
     return openDossierModal(username || '', testerId, appId || 0);
 }
@@ -489,6 +596,7 @@ function renderTests() {
                 </button>
             `;
         }
+        const grantChipHtml = test.status === 'new' ? '' : renderGrantPreviewChip(test);
 
         let cardContent = `
             <div class="card-header">
@@ -503,6 +611,7 @@ function renderTests() {
                 ${trailingHtml}
             </div>
             ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
+            ${grantChipHtml}
             ${claimHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}
@@ -588,6 +697,7 @@ function renderCompletedTests(completedTests) {
                 ${ownerBtnHtml}
             </div>
             ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
+            ${renderGrantPreviewChip(test)}
             ${devInfoHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}
@@ -2308,14 +2418,11 @@ function openProjectDetailsModal(appId) {
         : Math.max(0, 14 - daysSinceCreated);
     const potential = totalCheckins + left;
     const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
-    const boostAmount = Number.isFinite(Number(test.owner_boost_reward))
-        ? Number(test.owner_boost_reward)
-        : (Number.isFinite(Number(test.boost_reward)) ? Number(test.boost_reward) : 1000);
     const ownerKarma = Number.isFinite(Number(test.owner_karma)) ? Number(test.owner_karma) : 0;
 
     let currentGoogleDay = 0;
     let projectDaysLeft = 0;
-    let expectedTotalDays = userTestingDay;
+    let expectedTotalDays = Math.max(14, userTestingDay);
     let overtimeDays = 0;
     if ((test.google_sync_day || 0) > 1) {
         const syncDiffDays = test.last_sync_date ? getDayDiffFromToday(test.last_sync_date) : 0;
@@ -2324,14 +2431,7 @@ function openProjectDetailsModal(appId) {
         expectedTotalDays = userTestingDay + projectDaysLeft;
         overtimeDays = Math.max(0, expectedTotalDays - 14);
     }
-
-    const segments = [];
-    for (let index = 1; index <= 14; index++) {
-        segments.push('<div class="grant-segment ' + (index <= userTestingDay ? 'filled' : '') + '"></div>');
-    }
-    for (let index = 1; index <= overtimeDays; index++) {
-        segments.push('<div class="grant-segment overtime ' + ((14 + index) <= userTestingDay ? 'filled' : '') + '"></div>');
-    }
+    const progressData = buildGrantProgressSegments(test, userTestingDay, expectedTotalDays);
 
     const goldenBadgeHtml = (() => {
         if (potential < 11) return '';
@@ -2359,6 +2459,16 @@ function openProjectDetailsModal(appId) {
             ? '<span class="meta-chip accent-purple" onclick="window.showCustomAlert(window.t(\'syncOvertimeInfo\'))">' + window.escapeHTML(window.t('overtimeChipLabel', { count: overtimeDays }, lang)) + '</span>'
             : '') +
     '</div>';
+    const progressLegendHtml = '<div class="grant-progress-legend">' +
+        '<span class="grant-legend-item"><span class="grant-legend-dot" style="background:#34c759;"></span>' + window.escapeHTML(window.t('progressLegendStandardCheckins', { count: progressData.standardCheckins }, lang)) + '</span>' +
+        '<span class="grant-legend-item"><span class="grant-legend-dot" style="background:#ff453a;"></span>' + window.escapeHTML(window.t('progressLegendStandardSkips', { count: progressData.standardSkips }, lang)) + '</span>' +
+        '<span class="grant-legend-item"><span class="grant-legend-dot" style="background:#ffd60a;"></span>' + window.escapeHTML(window.t('progressLegendOvertimeCheckins', { count: progressData.overtimeCheckins }, lang)) + '</span>' +
+        '<span class="grant-legend-item"><span class="grant-legend-dot" style="background:#b42318;"></span>' + window.escapeHTML(window.t('progressLegendOvertimeSkips', { count: progressData.overtimeSkips }, lang)) + '</span>' +
+        '<span class="grant-legend-item"><span class="grant-legend-dot" style="background:rgba(255,255,255,0.35);"></span>' + window.escapeHTML(window.t('progressLegendRemaining', { count: progressData.remainingDays }, lang)) + '</span>' +
+    '</div>';
+    const overtimeBannerHtml = userTestingDay >= 14
+        ? '<div class="detail-overtime-banner">' + window.escapeHTML(window.t('detailOvertimeReward', {}, lang)) + '</div>'
+        : '';
 
     var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
         '<div class="detail-instruction-body">' + (test.instructions ? escapeHtmlWithBreaks(test.instructions) : '—') + '</div></div>';
@@ -2374,8 +2484,11 @@ function openProjectDetailsModal(appId) {
 
         '<div class="details-block">' +
             (goldenBadgeHtml ? '<div style="margin-bottom:8px;">' + goldenBadgeHtml + '</div>' : '') +
-            '<div class="grant-progress-container">' + segments.join('') + '</div>' +
+            renderGrantPreviewChip(test) +
+            overtimeBannerHtml +
+            '<div class="grant-progress-container">' + progressData.html + '</div>' +
             progressFooterHtml +
+            progressLegendHtml +
         '</div>' +
 
         syncHtml +
@@ -2391,7 +2504,6 @@ function openProjectDetailsModal(appId) {
                     '</div>' +
                 '</div>' +
             '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);margin-top:10px;">' + window.t('ownerBoostsText', { amount: boostAmount }, lang) + '</div>' +
             '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('ownerKarmaText', { karma: ownerKarma }, lang) + '</div>' +
             '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('detail_testers_label', { count: test.active_testers_count || 0 }, lang) + '</div>' +
         '</div>' +
@@ -2496,6 +2608,7 @@ Object.assign(window, {
     isMandatoryScreenshotDay,
     getOwnerActiveStatus,
     isProjectSynced,
+    showGrantBreakdownAlertById,
     getScreenshotReminderHtml,
     renderCompactMeta,
     openTelegramProfile,

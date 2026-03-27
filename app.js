@@ -47,6 +47,8 @@ var _earnGrantBust = 0;
 var _earnReferralBust = 0;
 var _earnExchangeBust = 0;
 var _earnEarlyFinishBust = 0;
+var _earnFeedbackCount = 0;
+var _earnFeedbackBust = 0;
 var _feedbackType = 'bug';
 var _inviteProjectId = null;
 var archivedProjects = [];
@@ -244,9 +246,16 @@ function getOfferApiError(message) {
     return getApiErrorMessage(message, 'offerActionError');
 }
 
-function formatBustAmount(value) {
+function formatAmountValue(value, digits) {
     const numeric = Number(value || 0);
-    return `${numeric.toFixed(1)} $BUST`;
+    const precision = typeof digits === 'number' ? digits : 1;
+    if (!Number.isFinite(numeric)) return '0';
+    const rounded = Number(numeric.toFixed(precision));
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(precision);
+}
+
+function formatBustAmount(value) {
+    return `${formatAmountValue(value, 1)} $BUST`;
 }
 
 function getApiErrorMessage(payload, fallbackKey = 'genericError') {
@@ -956,6 +965,9 @@ async function loadProjects(isBackground = false) {
 
         myProjectsLoadError = false;
         renderProjects();
+        if (typeof window.renderTests === 'function' && Array.isArray(myTests) && myTests.length) {
+            window.renderTests();
+        }
     } catch (error) {
         console.error('Error loading projects:', error);
         myProjectsLoadError = true;
@@ -1318,13 +1330,17 @@ function renderEarnBustDynamic() {
     if (referralCountChip) {
         referralCountChip.innerText = `👥 ${window.t('earnReferralCountChip', { count: referralCount }, lang)}`;
     }
-    document.getElementById('earn-referral-bust').innerText = `💎 ${formatBustAmount(_earnReferralBust)} $BUST`;
+    document.getElementById('earn-referral-bust').innerText = `💎 ${formatBustAmount(_earnReferralBust)}`;
     document.getElementById('earn-grant-status').innerHTML = `
         <span class="meta-chip accent-green">🏆 ${window.t('earnGrantTestsLabel', {}, lang)}: ${_earnGrantCount}</span>
-        <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnGrantBust)} $BUST</span>
+        <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnGrantBust)}</span>
     `;
-    document.getElementById('earn-early-finish-status').innerHTML = `<span class="meta-chip accent-orange">💎 ${formatBustAmount(_earnEarlyFinishBust)} $BUST</span>`;
-    document.getElementById('earn-exchange-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnExchangeBust)} $BUST</span>`;
+    document.getElementById('earn-early-finish-status').innerHTML = `<span class="meta-chip accent-orange">💎 ${formatBustAmount(_earnEarlyFinishBust)}</span>`;
+    document.getElementById('earn-feedback-status').innerHTML = `
+        <span class="meta-chip accent-green">🐞 ${window.t('earnFeedbackCountChip', { count: _earnFeedbackCount }, lang)}</span>
+        <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnFeedbackBust)}</span>
+    `;
+    document.getElementById('earn-exchange-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnExchangeBust)}</span>`;
     const socialStatus = document.getElementById('earn-social-status');
     if (_socialBonusStatus === 'approved') {
         socialStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnSocialApproved}</span>`;
@@ -1349,6 +1365,8 @@ async function openEarnBustModal() {
         _earnReferralBust = Number(data.referral_bust_earned || 0);
         _earnExchangeBust = Number(data.exchange_bust_earned || 0);
         _earnEarlyFinishBust = Number(data.early_finish_bust_earned || 0);
+        _earnFeedbackCount = Number(data.feedback_sent_count || 0);
+        _earnFeedbackBust = Number(data.feedback_bust_earned || 0);
         _socialBonusStatus = data.social_bonus_status || 'none';
         renderEarnBustDynamic();
     } catch (error) {
@@ -1824,12 +1842,15 @@ async function confirmStart(id) {
 
         const earnedBust = Number(result.earned_bust || 0);
         const earnedKarma = Number(result.earned_karma || 0);
+        const sourceType = String(result.source_type || '').toLowerCase();
         if (result.already_checked_today) {
             showToast(t.checkinAlreadyDone);
+        } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
+            showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
         } else if (earnedBust > 0) {
-            showToast(t.checkinEarnBust.replace('{amount}', earnedBust.toFixed(1)));
+            showToast(t.checkinEarnBust.replace('{amount}', formatAmountValue(earnedBust, 1)));
         } else if (earnedKarma > 0) {
-            showToast(t.checkinEarnKarma.replace('{amount}', earnedKarma.toFixed(1)));
+            showToast(t.checkinEarnKarma.replace('{amount}', formatAmountValue(earnedKarma, 1)));
         } else {
             showToast(t.successCheckin);
         }
@@ -2216,6 +2237,7 @@ Object.assign(window, {
     confirmStart,
     deleteTester,
     confirmDeleteProject,
+    formatAmountValue,
     formatBustAmount,
     setProjectMode,
     updateProjectPricing,
