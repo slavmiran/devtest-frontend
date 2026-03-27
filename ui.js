@@ -1097,6 +1097,9 @@ function renderProjects() {
                 <button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
                     ${t.syncBtnLong}
                 </button>
+                <button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);" onclick="openProjectFeedback(${project.id}, false)">
+                    ${window.t('projectFeedbackBtn', { count: project.feedback_new_count || 0 }, lang)}
+                </button>
                 <div class="action-row" style="margin-top: 0;">
                     <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openInviteModal(${project.id})">
                         🔗 ${t.inviteLink}
@@ -1407,6 +1410,124 @@ function closeFeedbackModal(event) {
     document.getElementById('feedback-modal').classList.remove('active');
 }
 
+function formatFeedbackDate(createdAt) {
+    if (!createdAt) return '—';
+    const value = new Date(createdAt);
+    if (Number.isNaN(value.getTime())) return '—';
+    return value.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+function getProjectFeedbackHeader(project) {
+    const safeName = window.escapeHTML((project && (project.name || project.package_name)) || window.t('unknownLabel', {}, lang));
+    const totalCount = Number(project && project.feedback_total_count || 0);
+    const newCount = Number(project && project.feedback_new_count || 0);
+    return `
+        <div class="detail-header" style="margin-bottom: 10px;">
+            ${renderIcon((project && (project.name || project.package_name)) || '', project && project.icon_url)}
+            <div class="card-info">
+                <div class="card-title">${safeName}</div>
+                <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}</div>
+            </div>
+        </div>
+        <div class="feedback-modal-summary">
+            <span class="meta-chip accent-blue">💬 ${window.t('projectFeedbackTotalChip', { count: totalCount }, lang)}</span>
+            <span class="meta-chip accent-green">🆕 ${window.t('projectFeedbackNewChip', { count: newCount }, lang)}</span>
+        </div>
+    `;
+}
+
+function renderProjectFeedbackCards(project, items) {
+    if (!items || !items.length) {
+        return `<div class="feedback-empty">${window.escapeHTML(window.t('projectFeedbackEmpty', {}, lang))}</div>`;
+    }
+    const projectId = Number(project && (project.id || project.app_id) || 0);
+    return `<div class="feedback-list">${items.map(function(item) {
+        const username = (item.tester_username || '').replace('@', '');
+        const safeUsername = escapeInlineJsString(username);
+        const displayName = username
+            ? '@' + window.escapeHTML(username)
+            : window.escapeHTML(item.tester_full_name || window.t('idLabel', { id: item.tester_id }, lang));
+        const authorHtml = username
+            ? `<a href="javascript:void(0);" class="feedback-card-author" onclick="return openTelegramProfile('${safeUsername}', event)">${displayName}</a>`
+            : `<span class="feedback-card-author">${displayName}</span>`;
+        const textHtml = item.message_text
+            ? escapeHtmlWithBreaks(item.message_text)
+            : `<span style="color: var(--hint-color);">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</span>`;
+        const rewardBust = Number(item.reward_bust || 0);
+        const rewardKarma = Number(item.reward_karma || 0);
+        const rewardSummary = item.status === 'processed'
+            ? `<div class="feedback-modal-summary" style="margin-top: 10px;">
+                    ${rewardBust > 0 ? `<span class="meta-chip accent-purple">💎 ${formatBustAmount(rewardBust)} $BUST</span>` : ''}
+                    ${rewardKarma > 0 ? `<span class="meta-chip accent-yellow">☯️ ${rewardKarma.toFixed(1)}</span>` : ''}
+                    <span class="meta-chip">${window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang))}</span>
+               </div>`
+            : '';
+        const replyHtml = item.developer_reply
+            ? `<div class="feedback-card-reply">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang))}: ${escapeHtmlWithBreaks(item.developer_reply)}</div>`
+            : '';
+        return `
+            <div class="feedback-card ${item.status === 'new' ? 'is-new' : ''}">
+                <div class="feedback-card-header">
+                    <div>${authorHtml}</div>
+                    <div class="feedback-card-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</div>
+                </div>
+                <div class="feedback-card-text">${textHtml}</div>
+                <div class="feedback-card-actions">
+                    ${item.tg_file_id ? `<button class="btn btn-secondary" style="width:auto;" onclick="sendProjectFeedbackMedia(${item.id})">🖼 ${window.escapeHTML(window.t('projectFeedbackViewScreenshotBtn', {}, lang))}</button>` : ''}
+                    ${item.status === 'new' ? `<button class="btn btn-primary" style="width:auto;" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">🎁 ${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang))}</button>` : ''}
+                </div>
+                ${rewardSummary}
+                ${replyHtml}
+            </div>
+        `;
+    }).join('')}</div>`;
+}
+
+function showProjectFeedbackModalLoading(project) {
+    const body = document.getElementById('project-feedback-body');
+    if (!body) return;
+    body.innerHTML = getProjectFeedbackHeader(project) + '<div id="project-feedback-list"></div>';
+    showSkeleton('project-feedback-list');
+    document.getElementById('project-feedback-modal').classList.add('active');
+}
+
+function showProjectFeedbackModalError(project) {
+    const body = document.getElementById('project-feedback-body');
+    if (!body) return;
+    const projectId = Number(project && (project.id || project.app_id) || 0);
+    const archivedFlag = project && Object.prototype.hasOwnProperty.call(project, 'app_id') ? 'true' : 'false';
+    body.innerHTML = getProjectFeedbackHeader(project) + '<div id="project-feedback-list"></div>';
+    showRetry('project-feedback-list', `openProjectFeedback(${projectId}, ${archivedFlag})`);
+    document.getElementById('project-feedback-modal').classList.add('active');
+}
+
+function showProjectFeedbackModal(project, items) {
+    const body = document.getElementById('project-feedback-body');
+    if (!body) return;
+    body.innerHTML = getProjectFeedbackHeader(project) + renderProjectFeedbackCards(project, items);
+    document.getElementById('project-feedback-modal').classList.add('active');
+}
+
+function closeProjectFeedbackModal(event) {
+    if (event && event.target !== document.getElementById('project-feedback-modal')) return;
+    document.getElementById('project-feedback-modal').classList.remove('active');
+}
+
+function openFeedbackRewardModalUi() {
+    document.getElementById('feedback-reward-modal').classList.add('active');
+}
+
+function closeFeedbackRewardModalUi(event) {
+    if (event && event.target !== document.getElementById('feedback-reward-modal')) return;
+    document.getElementById('feedback-reward-modal').classList.remove('active');
+}
+
 function renderArchivedProjects() {
     const section = document.getElementById('archive-section');
     if (!section) return;
@@ -1447,11 +1568,17 @@ function renderArchivedProjects() {
                     <span class="archive-meta-chip">${modeLabel}</span>
                     <span class="archive-meta-chip">👥 ${project.total_testers}</span>
                     <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
+                    <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
                 </div>
-                <button class="btn archive-delete-btn"
-                    onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
-                    ${t.archiveDeletePermanent}
-                </button>
+                <div class="action-row" style="margin-top: 10px;">
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="openProjectFeedback(${project.app_id}, true)">
+                        ${window.t('projectFeedbackBtn', { count: project.feedback_new_count || 0 }, lang)}
+                    </button>
+                    <button class="btn archive-delete-btn" style="flex: 1;"
+                        onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
+                        ${t.archiveDeletePermanent}
+                    </button>
+                </div>
             </div>`;
     });
     html += `
@@ -2259,7 +2386,7 @@ function openProjectDetailsModal(appId) {
 
         '<div class="detail-actions">' +
             '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +
-            '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_suggest_btn', {}, lang) + '</button>' +
+            '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); initiateProjectFeedback(' + test.id + ')">' + window.t('detail_suggest_btn', {}, lang) + '</button>' +
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'https://play.google.com/store/apps/details?id=' + window.escapeHTML(test.package || '') + '\')">' + window.t('openGooglePlay', {}, lang) + '</button>' +
             (userTestingDay >= 15
                 ? '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="closeProjectDetailsModal(); openOvertimeModal(' + test.id + ')">' + window.t('finish_project', {}, lang) + '</button>'
@@ -2392,6 +2519,12 @@ Object.assign(window, {
     closeSocialModal,
     openFeedbackModal,
     closeFeedbackModal,
+    showProjectFeedbackModalLoading,
+    showProjectFeedbackModalError,
+    showProjectFeedbackModal,
+    closeProjectFeedbackModal,
+    openFeedbackRewardModalUi,
+    closeFeedbackRewardModalUi,
     renderArchivedProjects,
     toggleArchive,
     showScreenshotDayAlert,

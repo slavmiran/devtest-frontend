@@ -43,10 +43,20 @@ var _overtimeTest = null;
 var _syncProjectId = null;
 var _socialBonusStatus = 'none';
 var _earnGrantCount = 0;
+var _earnGrantBust = 0;
+var _earnReferralBust = 0;
+var _earnExchangeBust = 0;
+var _earnEarlyFinishBust = 0;
 var _feedbackType = 'bug';
 var _inviteProjectId = null;
 var archivedProjects = [];
 var projectToDelete = null;
+var _activeProjectFeedbackAppId = null;
+var _activeProjectFeedbackItems = [];
+var _activeProjectFeedbackArchived = false;
+var _feedbackRewardTargetId = null;
+var _feedbackRewardBust = 0;
+var _feedbackRewardKarma = 0;
 var myProjectsLoadError = false;
 var marketCache = null;
 var MARKET_CACHE_KEY = 'market_cache_v1';
@@ -294,6 +304,14 @@ function handleApiError(code, details = {}) {
     var keyMap = {
         insufficient_bust_balance: 'err_insufficient_bust_balance',
         transaction_failed: 'err_transaction_failed',
+        testing_not_found: 'testing_not_found',
+        feedback_not_found: 'feedback_not_found',
+        feedback_forbidden: 'feedback_forbidden',
+        feedback_already_processed: 'feedback_already_processed',
+        feedback_media_missing: 'feedback_media_missing',
+        no_reward_selected: 'no_reward_selected',
+        invalid_feedback_karma_amount: 'invalid_feedback_karma_amount',
+        invalid_feedback_bust_amount: 'invalid_feedback_bust_amount',
         app_archived: 'err_app_archived',
         offer_already_pending: 'err_offer_already_pending',
         offer_target_owner_mismatch: 'err_offer_target_owner_mismatch',
@@ -707,6 +725,11 @@ async function _loadMutualFeedImpl() {
     } else {
         showSkeleton('mutual-seeking-list');
         showSkeleton('mutual-prelaunch-list');
+        const returnsContainer = document.getElementById('mutual-returns-container');
+        if (returnsContainer) {
+            returnsContainer.style.display = '';
+            showSkeleton('mutual-returns-list');
+        }
     }
 
     _apiStart();
@@ -744,6 +767,11 @@ async function _loadMutualFeedImpl() {
             showToast(getApiErrorMessage(error && error.message, 'networkError'));
             showRetry('mutual-seeking-list', 'forceRefreshMarket()');
             showRetry('mutual-prelaunch-list', 'forceRefreshMarket()');
+            const returnsContainer = document.getElementById('mutual-returns-container');
+            if (returnsContainer) {
+                returnsContainer.style.display = '';
+                showRetry('mutual-returns-list', 'forceRefreshMarket()');
+            }
         } else {
             showToast(getApiErrorMessage(error && error.message, 'networkError'));
         }
@@ -886,6 +914,8 @@ async function loadProjects(isBackground = false) {
             google_sync_day: project.google_sync_day || 0,
             sync_message: project.sync_message || '',
             last_sync_date: project.last_sync_date || null,
+            feedback_new_count: project.feedback_new_count || 0,
+            feedback_total_count: project.feedback_total_count || 0,
         }));
 
         visibilityStats = {
@@ -1261,7 +1291,18 @@ async function confirmOvertimeLeave() {
 }
 
 function renderEarnBustDynamic() {
-    document.getElementById('earn-grant-status').innerHTML = `<span class="meta-chip accent-green">🏆 ${t.earnGrantTestsLabel}: ${_earnGrantCount}</span>`;
+    const referralCountChip = document.getElementById('earn-referrals-count');
+    const referralCount = Number(referralCountChip && referralCountChip.dataset ? referralCountChip.dataset.count || 0 : 0);
+    if (referralCountChip) {
+        referralCountChip.innerText = `👥 ${window.t('earnReferralCountChip', { count: referralCount }, lang)}`;
+    }
+    document.getElementById('earn-referral-bust').innerText = `💎 ${formatBustAmount(_earnReferralBust)} $BUST`;
+    document.getElementById('earn-grant-status').innerHTML = `
+        <span class="meta-chip accent-green">🏆 ${window.t('earnGrantTestsLabel', {}, lang)}: ${_earnGrantCount}</span>
+        <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnGrantBust)} $BUST</span>
+    `;
+    document.getElementById('earn-early-finish-status').innerHTML = `<span class="meta-chip accent-orange">💎 ${formatBustAmount(_earnEarlyFinishBust)} $BUST</span>`;
+    document.getElementById('earn-exchange-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnExchangeBust)} $BUST</span>`;
     const socialStatus = document.getElementById('earn-social-status');
     if (_socialBonusStatus === 'approved') {
         socialStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnSocialApproved}</span>`;
@@ -1278,12 +1319,203 @@ async function openEarnBustModal() {
         const response = await fetch(`${API_BASE}/referral-stats/${userId}`);
         if (!response.ok) return;
         const data = await response.json();
-        document.getElementById('earn-referrals-count').innerText = `👥 ${data.referrals_count || 0}`;
+        const referralsCount = Number(data.referrals_count || 0);
+        document.getElementById('earn-referrals-count').dataset.count = String(referralsCount);
+        document.getElementById('earn-referrals-count').innerText = `👥 ${window.t('earnReferralCountChip', { count: referralsCount }, lang)}`;
         _earnGrantCount = data.grant_tests_count || 0;
+        _earnGrantBust = Number(data.grant_bust_earned || 0);
+        _earnReferralBust = Number(data.referral_bust_earned || 0);
+        _earnExchangeBust = Number(data.exchange_bust_earned || 0);
+        _earnEarlyFinishBust = Number(data.early_finish_bust_earned || 0);
         _socialBonusStatus = data.social_bonus_status || 'none';
         renderEarnBustDynamic();
     } catch (error) {
         console.error('Failed to load referral stats:', error);
+    }
+}
+
+async function initiateProjectFeedback(appId) {
+    try {
+        const response = await fetch(`${API_BASE}/feedback/initiate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, app_id: appId })
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'genericError'));
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('feedbackBotRedirectToast', {}, lang));
+        if (window.closeProjectDetailsModal) {
+            window.closeProjectDetailsModal();
+        }
+        setTimeout(function() {
+            try {
+                tg.close();
+            } catch (error) {
+                console.warn('Failed to close WebApp for feedback flow:', error);
+            }
+        }, 250);
+    } catch (error) {
+        console.error('Feedback initiate error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
+function setFeedbackRewardBust(amount) {
+    _feedbackRewardBust = Number(amount || 0);
+    const input = document.getElementById('feedback-reward-bust-input');
+    if (input) {
+        input.value = _feedbackRewardBust > 0 ? String(_feedbackRewardBust) : '';
+    }
+    [5, 10, 25, 50, 100].forEach(function(value) {
+        const chip = document.getElementById(`feedback-bust-chip-${value}`);
+        if (chip) {
+            chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
+        }
+    });
+}
+
+function setFeedbackRewardKarma(amount) {
+    _feedbackRewardKarma = Number(amount || 0);
+    const mapping = { 0: '0', 1.5: '15', 3: '30' };
+    ['0', '15', '30'].forEach(function(code) {
+        const chip = document.getElementById(`feedback-karma-chip-${code}`);
+        if (chip) {
+            chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
+        }
+    });
+}
+
+async function openProjectFeedback(appId, isArchived) {
+    const project = (isArchived ? archivedProjects : myProjects).find(function(item) {
+        return Number(item.app_id || item.id) === Number(appId);
+    });
+    if (!project) return;
+
+    _activeProjectFeedbackAppId = Number(appId);
+    _activeProjectFeedbackArchived = !!isArchived;
+    _activeProjectFeedbackItems = [];
+
+    if (window.showProjectFeedbackModalLoading) {
+        window.showProjectFeedbackModalLoading(project);
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/projects/${appId}/feedback?owner_id=${userId}`);
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            if (window.showProjectFeedbackModalError) {
+                window.showProjectFeedbackModalError(project);
+            }
+            showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+        _activeProjectFeedbackItems = data.feedback || [];
+        if (window.showProjectFeedbackModal) {
+            window.showProjectFeedbackModal(project, _activeProjectFeedbackItems);
+        }
+    } catch (error) {
+        console.error('Load project feedback error:', error);
+        if (window.showProjectFeedbackModalError) {
+            window.showProjectFeedbackModalError(project);
+        }
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
+async function sendProjectFeedbackMedia(feedbackId) {
+    try {
+        const response = await fetch(`${API_BASE}/feedback/${feedbackId}/send_media`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_id: userId })
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'genericError'));
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('feedbackMediaSentToast', {}, lang));
+    } catch (error) {
+        console.error('Send feedback media error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
+function openFeedbackRewardModal(appId, feedbackId) {
+    _activeProjectFeedbackAppId = Number(appId);
+    _feedbackRewardTargetId = Number(feedbackId);
+    _feedbackRewardBust = 0;
+    _feedbackRewardKarma = 0;
+    if (window.openFeedbackRewardModalUi) {
+        window.openFeedbackRewardModalUi();
+    }
+    setFeedbackRewardBust(0);
+    setFeedbackRewardKarma(0);
+    const input = document.getElementById('feedback-reward-bust-input');
+    const reply = document.getElementById('feedback-reward-reply');
+    if (input) {
+        input.value = '';
+        input.oninput = function() {
+            _feedbackRewardBust = Number(input.value || 0);
+            [5, 10, 25, 50, 100].forEach(function(value) {
+                const chip = document.getElementById(`feedback-bust-chip-${value}`);
+                if (chip) {
+                    chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
+                }
+            });
+        };
+    }
+    if (reply) {
+        reply.value = '';
+    }
+}
+
+function closeFeedbackRewardModal() {
+    _feedbackRewardTargetId = null;
+    _feedbackRewardBust = 0;
+    _feedbackRewardKarma = 0;
+    if (window.closeFeedbackRewardModalUi) {
+        window.closeFeedbackRewardModalUi();
+    }
+}
+
+async function submitFeedbackReward() {
+    if (!_feedbackRewardTargetId || !_activeProjectFeedbackAppId) return;
+
+    const bustInput = document.getElementById('feedback-reward-bust-input');
+    const replyInput = document.getElementById('feedback-reward-reply');
+    const bustAmount = Math.max(0, Number((bustInput && bustInput.value) || _feedbackRewardBust || 0));
+    const replyText = (replyInput && replyInput.value ? replyInput.value : '').trim();
+
+    try {
+        const response = await fetch(`${API_BASE}/feedback/${_feedbackRewardTargetId}/reward`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner_id: userId,
+                bust_amount: bustAmount,
+                karma_amount: _feedbackRewardKarma,
+                reply_text: replyText,
+            })
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            handleApiError(getBackendErrorCode(data), data.details || {});
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('feedbackRewardSuccessToast', {}, lang));
+        closeFeedbackRewardModal();
+        await Promise.all([loadProjects(true), loadArchivedProjects()]);
+        await openProjectFeedback(_activeProjectFeedbackAppId, _activeProjectFeedbackArchived);
+    } catch (error) {
+        console.error('Feedback reward error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }
 
@@ -1379,7 +1611,12 @@ async function loadArchivedProjects() {
         const response = await fetch(`${API_BASE}/projects/${userId}/archived`);
         if (!response.ok) return;
         const data = await response.json();
-        archivedProjects = data.archived || [];
+        archivedProjects = (data.archived || []).map(function(project) {
+            return Object.assign({}, project, {
+                feedback_new_count: project.feedback_new_count || 0,
+                feedback_total_count: project.feedback_total_count || 0,
+            });
+        });
         renderArchivedProjects();
     } catch (error) {
         console.error('Archive load error:', error);
@@ -1932,6 +2169,14 @@ Object.assign(window, {
     confirmDropTest,
     confirmOvertimeLeave,
     openEarnBustModal,
+    initiateProjectFeedback,
+    openProjectFeedback,
+    sendProjectFeedbackMedia,
+    openFeedbackRewardModal,
+    closeFeedbackRewardModal,
+    setFeedbackRewardBust,
+    setFeedbackRewardKarma,
+    submitFeedbackReward,
     sendFeedback,
     submitFeedback,
     submitSocialLink,
@@ -1970,6 +2215,8 @@ Object.assign(window.App, {
         eventsExpanded,
         visibilityStats,
         archivedProjects,
+        activeProjectFeedbackAppId: _activeProjectFeedbackAppId,
+        activeProjectFeedbackItems: _activeProjectFeedbackItems,
     }),
     refreshLanguageUi,
     applyLanguage,
