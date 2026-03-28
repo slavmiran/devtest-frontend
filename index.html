@@ -23,7 +23,7 @@
             </div>
             <div class="system-feedback-buttons">
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('bug')" data-i18n="feedbackBug">🐛 Сообщить о баге</button>
-                <button class="btn btn-secondary system-btn" onclick="sendFeedback('idea')" data-i18n="feedbackIdea">💡 Предложить идею</button>
+                <button class="btn btn-secondary system-btn" onclick="sendFeedback('idea')" data-i18n="feedbackIdea">💡 Идея / Нашли баг?</button>
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('question')" data-i18n="feedbackQuestion">❓ Задать вопрос</button>
             </div>
         </div>
@@ -673,6 +673,11 @@
         </div>
     </div>
     <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)"><div class="modal-content" onclick="event.stopPropagation()" id="project-details-body"></div></div>
+    <div id="timeline-stats-modal" class="modal-overlay" onclick="closeTimelineStatsSheet(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div id="timeline-stats-body"></div>
+        </div>
+    </div>
 
     <div id="project-select-modal" class="modal-overlay" onclick="closeProjectSelectModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">

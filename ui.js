@@ -278,6 +278,10 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     var totalDays = Math.max(expectedTotalDays || 14, userTestingDay || 0, 1);
     var segments = [];
     var standardCheckins = 0, standardSkips = 0, overtimeCheckins = 0, overtimeSkips = 0;
+    var pendingDay = null;
+    if ((test.last_check_date || '') !== getLocalDate() && timeline.length < totalDays) {
+        pendingDay = Math.max(1, Math.min(totalDays, Math.max(userTestingDay || 1, timeline.length + 1)));
+    }
 
     // Build from daily_timeline if available
     for (var i = 0; i < timeline.length; i++) {
@@ -288,8 +292,7 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
         else if (ch === '0') { cls = 'standard-skip'; standardSkips++; }
         else if (ch === '2') { cls = 'overtime-checkin'; overtimeCheckins++; }
         else if (ch === '3') { cls = 'overtime-skip'; overtimeSkips++; }
-        // Add day-14 separator
-        var sep = (dayNum === 14) ? ' day14-separator' : '';
+        var sep = (dayNum === 14 ? ' day14-separator' : '') + (dayNum === 15 ? ' day15-start' : '');
         segments.push('<div class="grant-segment ' + cls + sep + '" data-day="' + dayNum + '"></div>');
     }
 
@@ -297,8 +300,9 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     var remainingDays = Math.max(0, totalDays - timeline.length);
     for (var j = 0; j < remainingDays; j++) {
         var dn = timeline.length + j + 1;
-        var sep2 = (dn === 14) ? ' day14-separator' : '';
-        segments.push('<div class="grant-segment remaining' + sep2 + '" data-day="' + dn + '"></div>');
+        var sep2 = (dn === 14 ? ' day14-separator' : '') + (dn === 15 ? ' day15-start' : '');
+        var currentClass = pendingDay === dn ? ' current-pending' : '';
+        segments.push('<div class="grant-segment remaining' + sep2 + currentClass + '" data-day="' + dn + '"></div>');
     }
 
     // Fallback for empty timeline — use old calculation
@@ -532,7 +536,7 @@ function renderTests() {
 
     myTests.forEach((test) => {
         const card = document.createElement('div');
-        card.className = 'card';
+        card.className = test.status === 'done' ? 'card card-done' : 'card';
         card.id = `test-card-${test.id}`;
         const userTestingDay = getUserTestingDay(test.start_date);
         const safePackage = escapeInlineJsString(test.package);
@@ -626,7 +630,12 @@ function renderTests() {
         }
         const grantChipHtml = ''; // Grant chip moved to project details modal
 
+        const doneBadgeHtml = test.status === 'done'
+            ? '<div class="done-status-pill">' + window.escapeHTML(t.doneTodayText) + '</div><div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
+            : '';
+
         let cardContent = `
+            ${doneBadgeHtml}
             <div class="card-header">
                 <div class="card-header-link" ${test.status === 'new' ? '' : `onclick="openProjectDetailsModal(${test.id})"`}>
                     ${renderIcon(test.name, test.icon_url)}
@@ -685,7 +694,7 @@ function renderCompletedTests(completedTests) {
 
     completedTests.forEach((test) => {
         const card = document.createElement('div');
-        card.className = 'card';
+        card.className = 'card card-done';
         card.id = `test-card-${test.id}`;
         const userTestingDay = getUserTestingDay(test.start_date);
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
@@ -716,6 +725,8 @@ function renderCompletedTests(completedTests) {
         }
 
         let cardContent = `
+            <div class="done-status-pill">${window.escapeHTML(t.doneTodayText)}</div>
+            <div class="done-watermark">${window.escapeHTML(window.t('doneWatermarkText', {}, lang))}</div>
             <div class="card-header">
                 ${renderIcon(test.name, test.icon_url)}
                 <div class="card-info">
@@ -772,6 +783,7 @@ function renderFeedCard(item, kind) {
     let buttonClass = 'btn btn-primary';
     let buttonDisabledAttr = '';
     let buttonExtraAttrs = `data-offer-target-app="${item.app_id}" data-offer-target-owner="${item.owner_id}"`;
+    const isOwnProject = !!item.is_own_project;
 
     const hasPendingOffer = !!item.has_pending_offer;
     const hasIncomingFromOwner = (incomingOffers || []).some((offer) => {
@@ -802,15 +814,23 @@ function renderFeedCard(item, kind) {
         clickAction = `joinBounty(${item.app_id})`;
         buttonExtraAttrs = '';
     }
+    if (isOwnProject) {
+        buttonText = window.t('ownProjectCta', {}, lang);
+        clickAction = 'void(0)';
+        buttonClass = 'btn btn-secondary disabled';
+        buttonDisabledAttr = 'disabled';
+        buttonExtraAttrs = '';
+    }
 
     return `
-        <div class="market-card">
+        <div class="market-card${isOwnProject ? ' market-card-own' : ''}">
             <div class="market-top">
                 <div>
                     <div class="card-title">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
                     <div class="market-owner" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
+                    ${isOwnProject ? `<span class="meta-chip own-project-chip">${window.t('ownProjectBadge', {}, lang)}</span>` : ''}
                     ${langBadge}
                     <span class="meta-chip accent-yellow">☯️ ${item.owner_karma || 0}</span>
                 </div>
@@ -969,53 +989,110 @@ function calculateReliability(expected, actual) {
     return { text: t.reliabilityUnreliable, percent, color: '#ff3b30' };
 }
 
+function pluralizeTestWord(count) {
+    const value = Math.abs(Number(count) || 0);
+    if (lang !== 'ru') return window.t(value === 1 ? 'countTestWord_one' : 'countTestWord_many', {}, lang);
+    const mod10 = value % 10;
+    const mod100 = value % 100;
+    if (mod10 === 1 && mod100 !== 11) return window.t('countTestWord_one', {}, lang);
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return window.t('countTestWord_few', {}, lang);
+    return window.t('countTestWord_many', {}, lang);
+}
+
+function pluralizeGrantWord(count) {
+    const value = Math.abs(Number(count) || 0);
+    if (lang !== 'ru') return window.t(value === 1 ? 'countGrantWord_one' : 'countGrantWord_many', {}, lang);
+    const mod10 = value % 10;
+    const mod100 = value % 100;
+    if (mod10 === 1 && mod100 !== 11) return window.t('countGrantWord_one', {}, lang);
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return window.t('countGrantWord_few', {}, lang);
+    return window.t('countGrantWord_many', {}, lang);
+}
+
+function formatDeveloperAchievements(completedTests, goldenCount) {
+    const testsWord = pluralizeTestWord(completedTests);
+    if (goldenCount > 0) {
+        return window.t('developerAchievementsWithGrant', {
+            tests_count: completedTests,
+            tests_word: testsWord,
+            grants_count: goldenCount,
+            grants_word: pluralizeGrantWord(goldenCount),
+            grant_tag: window.t('developerGrantTag', {}, lang)
+        }, lang);
+    }
+    return window.t('developerAchievementsNoGrant', {
+        tests_count: completedTests,
+        tests_word: testsWord
+    }, lang);
+}
+
+function buildProjectFeedbackButton(projectId, feedbackNewCount, isArchived) {
+    const newCount = Number(feedbackNewCount || 0);
+    const accentClass = newCount > 0 ? ' btn-feedback-alert' : '';
+    const badgeHtml = newCount > 0
+        ? '<span class="feedback-btn-badge">' + window.escapeHTML(String(newCount)) + '</span>'
+        : '';
+    return '<button class="btn btn-secondary project-feedback-btn' + accentClass + '" style="width: 100%; margin-bottom: 8px; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);" onclick="openProjectFeedback(' + projectId + ', ' + (isArchived ? 'true' : 'false') + ')">' +
+        '<span class="project-feedback-btn-inner">' + window.escapeHTML(window.t('projectFeedbackButtonShort', {}, lang)) + badgeHtml + '</span>' +
+    '</button>';
+}
+
 function renderProjects() {
     const container = document.getElementById('projects-list');
     container.innerHTML = '';
 
     if (visibilityStats) {
         const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
-        const goldenCount = visibilityStats.golden_count || 0;
-        const reliabilityValue = reliability.percent !== null
-            ? `${reliability.text} (${reliability.percent}%)`
-            : `${reliability.text}`;
-
+        const reliabilityValue = reliability.percent !== null ? String(reliability.percent) : reliability.text;
+        const goldenCount = Number(visibilityStats.golden_count || 0);
+        const completedTests = Number(visibilityStats.completed_tests || 0);
+        const activeTests = Number(visibilityStats.my_active_tests || 0);
+        const achievementsLine = window.escapeHTML(formatDeveloperAchievements(completedTests, goldenCount));
         const initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) || {};
         const tgUser = initData.user || {};
-        const devName = window.escapeHTML(tgUser.first_name || '');
+        const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ').trim();
+        const devName = window.escapeHTML(fullName || tgUser.first_name || window.t('unknownLabel', {}, lang));
         const devUsername = tgUser.username ? '@' + window.escapeHTML(tgUser.username) : '';
-        const completedTests = visibilityStats.completed_tests || 0;
-        const goldenBadge = goldenCount > 0 ? ' <span class="golden-badge">🏆</span>' : '';
 
         const dashHtml = `
             <div class="developer-widget">
+                <div class="developer-widget-kicker">${window.t('developerWidgetTitle', {}, lang)}</div>
                 <div class="developer-widget-header">
                     <div class="developer-widget-info">
-                        <div class="developer-widget-name">${devName}${goldenBadge}</div>
-                        ${devUsername ? '<div class="developer-widget-username">' + devUsername + '</div>' : ''}
+                        <div class="developer-widget-name-line">
+                            <span class="developer-widget-name">${devName}</span>
+                            ${devUsername ? '<span class="developer-widget-username">(' + devUsername + ')</span>' : ''}
+                        </div>
+                        <div class="developer-widget-stats-line">${achievementsLine}</div>
                     </div>
-                    <div class="developer-widget-exp">${window.t('experienceLabel', { count: completedTests })} ${t.completedTestsSuffix}</div>
                 </div>
                 <div class="metrics-grid">
-                    <div class="metric-card" onclick="showReliabilityInfo()">
-                        <div class="metric-icon">📊</div>
-                        <div class="metric-value" style="color: ${reliability.color};">${reliabilityValue}</div>
-                        <div class="metric-label" data-i18n="metricReliability">${window.t('metricReliability')}</div>
-                    </div>
-                    <div class="metric-card" onclick="showKarmaInfo()">
-                        <div class="metric-icon">☯️</div>
-                        <div class="metric-value">${visibilityStats.ownerKarma}</div>
-                        <div class="metric-label" data-i18n="metricKarma">${window.t('metricKarma')}</div>
-                    </div>
-                    <div class="metric-card" onclick="openEarnBustModal()">
-                        <div class="metric-icon">💎</div>
-                        <div class="metric-value">${formatBustAmount(visibilityStats.balance_bust || 0)}</div>
-                        <div class="metric-label" data-i18n="metricBalance">${window.t('metricBalance')}</div>
-                    </div>
-                    <div class="metric-card" onclick="switchTab('tab-tests')">
-                        <div class="metric-icon">⚡</div>
-                        <div class="metric-value">${visibilityStats.my_active_tests}</div>
-                        <div class="metric-label" data-i18n="metricActiveTests">${window.t('metricActiveTests')}</div>
+                    <button type="button" class="metric-card metric-card-clickable metric-card-success" onclick="showReliabilityInfo()">
+                        <div class="metric-card-top">
+                            <span class="metric-label">${window.t('metricReliabilityV2', {}, lang)}</span>
+                            <span class="metric-chevron">›</span>
+                        </div>
+                        <div class="metric-value">${window.escapeHTML(reliabilityValue)}${reliability.percent !== null ? ' %' : ''} ${reliability.percent !== null ? '<span class="metric-value-mark">✓✓</span>' : ''}</div>
+                    </button>
+                    <button type="button" class="metric-card metric-card-clickable metric-card-gold" onclick="showKarmaInfo()">
+                        <div class="metric-card-top">
+                            <span class="metric-label">${window.t('metricKarma', {}, lang)}</span>
+                            <span class="metric-chevron">›</span>
+                        </div>
+                        <div class="metric-value">${formatUiAmount(visibilityStats.ownerKarma || 0, 1)} <span class="metric-value-mark">☯️</span></div>
+                    </button>
+                    <button type="button" class="metric-card metric-card-clickable metric-card-primary" onclick="openEarnBustModal()">
+                        <div class="metric-card-top">
+                            <span class="metric-label">${window.t('metricBalanceBust', {}, lang)}</span>
+                            <span class="metric-chevron">›</span>
+                        </div>
+                        <div class="metric-value">${formatBustAmount(visibilityStats.balance_bust || 0)} <span class="metric-value-mark">💎</span></div>
+                    </button>
+                    <div class="metric-card metric-card-neutral">
+                        <div class="metric-card-top">
+                            <span class="metric-label">${window.t('metricActiveTests', {}, lang)}</span>
+                        </div>
+                        <div class="metric-value">${window.escapeHTML(activeTests + ' ' + pluralizeTestWord(activeTests))} <span class="metric-value-mark">⚡</span></div>
                     </div>
                 </div>
             </div>
@@ -1168,10 +1245,6 @@ function renderProjects() {
             })();
             if (statusChip) badges += statusChip;
 
-            if (visibilityStats.rank) {
-                badges += `<button class="meta-chip accent-blue" onclick="showRankPopup()">🏆 #${visibilityStats.rank}</button>`;
-            }
-
             if (likesAvailable > 0) {
                 const karmaChipText = t.karmaAvailable.replace('{count}', likesAvailable);
                 badges += `<button class="meta-chip accent-yellow" onclick="openKarmaDistribution(${project.id})">${karmaChipText}</button>`;
@@ -1258,9 +1331,7 @@ function renderProjects() {
                 <button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
                     ${t.syncBtnLong}
                 </button>
-                <button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);" onclick="openProjectFeedback(${project.id}, false)">
-                    ${window.t('projectFeedbackBtn', { count: project.feedback_new_count || 0 }, lang)}
-                </button>
+                ${buildProjectFeedbackButton(project.id, project.feedback_new_count || 0, false)}
                 <div class="action-row" style="margin-top: 0;">
                     <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openInviteModal(${project.id})">
                         🔗 ${t.inviteLink}
@@ -1734,9 +1805,7 @@ function renderArchivedProjects() {
                     <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
                 </div>
                 <div class="action-row" style="margin-top: 10px;">
-                    <button class="btn btn-secondary" style="flex: 1;" onclick="openProjectFeedback(${project.app_id}, true)">
-                        ${window.t('projectFeedbackBtn', { count: project.feedback_new_count || 0 }, lang)}
-                    </button>
+                    <div style="flex: 1;">${buildProjectFeedbackButton(project.app_id, project.feedback_new_count || 0, true)}</div>
                     <button class="btn archive-delete-btn" style="flex: 1;"
                         onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
                         ${t.archiveDeletePermanent}
@@ -2474,14 +2543,6 @@ function openProjectDetailsModal(appId) {
     }
     const progressData = buildGrantProgressSegments(test, userTestingDay, expectedTotalDays);
 
-    const goldenBadgeHtml = (() => {
-        if (potential < 11) return '';
-        if (skips === 0) {
-            return '<button class="meta-chip accent-yellow" onclick="showToast(\'' + escapeInlineJsString(window.t('goldenTesterToastActive', {}, lang)) + '\')">' + window.escapeHTML(window.t('goldenTesterBadgeActive', {}, lang)) + '</button>';
-        }
-        return '<button class="meta-chip" style="opacity:0.5;filter:grayscale(1);" onclick="showToast(\'' + escapeInlineJsString(window.t('goldenTesterToastLost', {}, lang)) + '\')">👑</button>';
-    })();
-
     const syncHtml = (() => {
         if ((test.google_sync_day || 0) <= 1) return '';
         const finishDate = new Date(today.getTime() + (projectDaysLeft * 24 * 60 * 60 * 1000));
@@ -2497,64 +2558,84 @@ function openProjectDetailsModal(appId) {
     const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:6px;">' +
         '<span>' + window.t('grantProgressText', { day: userTestingDay }, lang) + '</span>' +
         (overtimeDays > 0
-            ? '<span class="meta-chip accent-purple" style="font-size:11px;padding:2px 8px;" onclick="window.showCustomAlert(window.t(\'syncOvertimeInfo\'))">' + window.escapeHTML(window.t('overtimeChipShort', { count: overtimeDays }, lang)) + '</span>'
+            ? '<button type="button" class="detail-overtime-banner detail-overtime-chip" onclick="showToast(\'' + escapeInlineJsString(window.t('overtimeChipToast', {}, lang)) + '\')">' + window.escapeHTML(window.t('detailOvertimeReward', {}, lang)) + '</button>'
             : '') +
     '</div>';
 
-    // Compact progress stats (replaces old 5-pill legend)
-    const progressStatsHtml = '<div class="grant-progress-stats" onclick="showTimelineStats(' + test.id + ')">' +
+    const progressStatsHtml = '<div class="grant-progress-stats">' +
         '<span class="gps-item gps-checkin">✓ ' + (progressData.standardCheckins + progressData.overtimeCheckins) + '</span>' +
         '<span class="gps-item gps-skip">✗ ' + (progressData.standardSkips + progressData.overtimeSkips) + '</span>' +
         '<span class="gps-item gps-remaining">… ' + progressData.remainingDays + '</span>' +
     '</div>';
-    const overtimeBannerHtml = userTestingDay >= 14
-        ? '<div class="detail-overtime-banner">' + window.escapeHTML(window.t('detailOvertimeReward', {}, lang)) + '</div>'
-        : '';
+
+    const timelinePanelHtml = '<button type="button" class="grant-progress-hitbox" onclick="openTimelineStatsSheet(' + test.id + ')">' +
+        '<div class="grant-progress-container">' + progressData.html + '</div>' +
+        progressFooterHtml +
+        progressStatsHtml +
+    '</button>';
 
     var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
         '<div class="detail-instruction-body">' + (test.instructions ? escapeHtmlWithBreaks(test.instructions) : '—') + '</div></div>';
 
-    // Grant Dashboard Block
     const grant = getGrantEstimateData(test);
-    var grantDashboardHtml = '';
-    if (grant.eligible && userTestingDay <= 14) {
-        // Active grant — show reward breakdown cards
-        var allowedSkips = 3;
-        var currentSkips = progressData.standardSkips;
-        var skipIndicator = '';
-        for (var si = 0; si < allowedSkips; si++) {
-            skipIndicator += si < currentSkips
-                ? '<span class="skip-dot used"></span>'
-                : '<span class="skip-dot available"></span>';
-        }
+    const currentSkips = Math.max(0, Number(test.skips_count || 0));
+    const skipIndicator = Array.from({ length: 3 }, function(_, index) {
+        return index < currentSkips
+            ? '<span class="skip-dot used"></span>'
+            : '<span class="skip-dot available"></span>';
+    }).join('');
+    const perfectCardClass = currentSkips > 0 ? ' grant-reward-card-burned' : '';
+    const perfectValue = currentSkips > 0 ? '<span class="grant-burned-text">+50 $BUST</span>' : '+50 $BUST';
+    const perfectStatus = currentSkips > 0 ? window.t('grantCardBurned', {}, lang) : window.t('grantCardActive', {}, lang);
+    let grantDashboardHtml = '';
+
+    if (grant.eligible) {
         grantDashboardHtml = '<div class="grant-dashboard-block">' +
             '<div class="grant-dashboard-header">' +
-                '<span class="grant-dashboard-title">' + window.escapeHTML(window.t('grantDashboardTitle', {}, lang)) + '</span>' +
-                '<span class="grant-dashboard-skips">' + skipIndicator + ' <span class="grant-skip-text">' + window.t('grantSkipsLabel', { used: currentSkips, max: allowedSkips }, lang) + '</span></span>' +
+                '<div class="grant-dashboard-heading">' +
+                    '<div class="grant-dashboard-title">' + window.escapeHTML(window.t('grantGoldTesterTitle', {}, lang)) + '</div>' +
+                    '<div class="grant-dashboard-subtitle">' + window.escapeHTML(window.t('grantDashboardSubtitle', {}, lang)) + '</div>' +
+                '</div>' +
+                '<div class="grant-dashboard-total">~' + formatUiAmount(grant.total, 1) + ' $BUST</div>' +
+            '</div>' +
+            '<div class="grant-dashboard-skips-row">' +
+                '<span class="grant-skip-text">' + window.escapeHTML(window.t('grantSkipsLabel', { used: currentSkips, max: 3 }, lang)) + '</span>' +
+                '<span class="grant-dashboard-skips">' + skipIndicator + '</span>' +
             '</div>' +
             '<div class="grant-reward-grid">' +
                 '<div class="grant-reward-card">' +
-                    '<div class="grant-reward-icon">💰</div>' +
-                    '<div class="grant-reward-value">' + window.escapeHTML(window.t('grantDailyRewardValue', {}, lang)) + '</div>' +
-                    '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantDailyRewardLabel', {}, lang)) + '</div>' +
+                    '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantBaseLabel', {}, lang)) + '</div>' +
+                    '<div class="grant-reward-value">50 $BUST</div>' +
+                    '<div class="grant-reward-status is-active">' + window.escapeHTML(window.t('grantCardActive', {}, lang)) + '</div>' +
+                '</div>' +
+                '<div class="grant-reward-card' + perfectCardClass + '">' +
+                    '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantPerfectLabel', {}, lang)) + '</div>' +
+                    '<div class="grant-reward-value">' + perfectValue + '</div>' +
+                    '<div class="grant-reward-status ' + (currentSkips > 0 ? 'is-burned' : 'is-active') + '">' + window.escapeHTML(perfectStatus) + '</div>' +
                 '</div>' +
                 '<div class="grant-reward-card">' +
-                    '<div class="grant-reward-icon">🔒</div>' +
-                    '<div class="grant-reward-value">' + window.escapeHTML(window.t('grantHoldBonusValue', {}, lang)) + '</div>' +
-                    '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantHoldBonusLabel', {}, lang)) + '</div>' +
-                '</div>' +
-                '<div class="grant-reward-card">' +
-                    '<div class="grant-reward-icon">🏆</div>' +
-                    '<div class="grant-reward-value">' + formatUiAmount(grant.total, 1) + '</div>' +
-                    '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantPlatformLabel', {}, lang)) + '</div>' +
+                    '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantKarmaBonusLabel', {}, lang)) + '</div>' +
+                    '<div class="grant-reward-value">+' + formatUiAmount(grant.karmaBonus, 1) + ' $BUST</div>' +
+                    '<div class="grant-reward-status is-active">' + window.escapeHTML(window.t('grantCardActive', {}, lang)) + '</div>' +
                 '</div>' +
             '</div>' +
         '</div>';
-    } else if (!grant.eligible && userTestingDay >= 14) {
-        // Lost grant
-        grantDashboardHtml = '<div class="grant-dashboard-lost">' +
-            '<span>❌ ' + window.escapeHTML(window.t('grantLostLabel', {}, lang)) + '</span>' +
-        '</div>';
+    } else {
+        grantDashboardHtml = '<details class="grant-dashboard-block grant-dashboard-block-lost">' +
+            '<summary class="grant-dashboard-lost-summary">' +
+                '<span class="grant-dashboard-lost-icon">🏆</span>' +
+                '<span class="grant-dashboard-lost-title">' + window.escapeHTML(window.t('grantGoldTesterTitle', {}, lang)) + '</span>' +
+                '<span class="grant-dashboard-lost-arrow">›</span>' +
+            '</summary>' +
+            '<div class="grant-dashboard-lost-body">' +
+                '<div class="grant-dashboard-subtitle">' + window.escapeHTML(window.t('grantLostLabel', {}, lang)) + '</div>' +
+                '<div class="grant-reward-grid grant-reward-grid-lost">' +
+                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantBaseLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">50 $BUST</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
+                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantPerfectLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">+50 $BUST</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
+                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantKarmaBonusLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">+' + formatUiAmount(grant.karmaBonus, 1) + ' $BUST</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
+                '</div>' +
+            '</div>' +
+        '</details>';
     }
 
     body.innerHTML =
@@ -2566,15 +2647,11 @@ function openProjectDetailsModal(appId) {
             '</div>' +
         '</div>' +
 
-        '<div class="details-block">' +
-            (goldenBadgeHtml ? '<div style="margin-bottom:8px;">' + goldenBadgeHtml + '</div>' : '') +
-            overtimeBannerHtml +
-            '<div class="grant-progress-container">' + progressData.html + '</div>' +
-            progressFooterHtml +
-            progressStatsHtml +
-        '</div>' +
-
         grantDashboardHtml +
+
+        '<div class="details-block">' +
+            timelinePanelHtml +
+        '</div>' +
 
         syncHtml +
 
@@ -2618,9 +2695,12 @@ function closeProjectDetailsModal(event) {
     }
 }
 
-function showTimelineStats(appId) {
-    var test = (window.myTests || []).find(function(t) { return t.id === appId; });
-    if (!test) return;
+function openTimelineStatsSheet(appId) {
+    var test = myTests.find(function(t) { return t.id === appId; });
+    var modal = document.getElementById('timeline-stats-modal');
+    var body = document.getElementById('timeline-stats-body');
+    if (!test || !modal || !body) return;
+
     var tl = test.daily_timeline || '';
     var sc = 0, ss = 0, oc = 0, os = 0;
     for (var i = 0; i < tl.length; i++) {
@@ -2629,17 +2709,48 @@ function showTimelineStats(appId) {
         else if (tl[i] === '2') oc++;
         else if (tl[i] === '3') os++;
     }
-    var msg = window.t('timelineStatsCheckins', { count: sc }, lang) + '\n' +
-        window.t('timelineStatsSkips', { count: ss }, lang) + '\n' +
-        window.t('timelineStatsOvertimeCheckins', { count: oc }, lang) + '\n' +
-        window.t('timelineStatsOvertimeSkips', { count: os }, lang);
-    if (window.tg && window.tg.showAlert) {
-        window.tg.showAlert(msg);
-    } else {
-        window.showCustomAlert(msg);
+
+    var totalDone = sc + ss + oc + os;
+    var testingDay = getUserTestingDay(test.start_date) || totalDone || 1;
+    var overtimeDays = Math.max(0, totalDone - 14);
+    var expectedTotalDays = Math.max(14, testingDay);
+    var remainingDays = Math.max(0, expectedTotalDays - totalDone);
+
+    body.innerHTML =
+        '<div class="timeline-sheet-head">' +
+            '<div class="timeline-sheet-title">' + window.escapeHTML(window.t('timelineSheetTitle', {}, lang)) + '</div>' +
+            '<div class="timeline-sheet-subtitle">' + window.escapeHTML(test.name || window.t('unknownLabel', {}, lang)) + '</div>' +
+        '</div>' +
+        '<div class="timeline-sheet-grid">' +
+            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsCheckinsShort', {}, lang)) + '</span><strong>' + sc + '</strong></div>' +
+            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsSkipsShort', {}, lang)) + '</span><strong>' + ss + '</strong></div>' +
+            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsOvertimeCheckinsShort', {}, lang)) + '</span><strong>' + oc + '</strong></div>' +
+            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsOvertimeSkipsShort', {}, lang)) + '</span><strong>' + os + '</strong></div>' +
+        '</div>' +
+        '<div class="timeline-sheet-facts">' +
+            '<div class="timeline-sheet-fact">' + window.escapeHTML(window.t('timelineStatsCurrentDay', { count: testingDay }, lang)) + '</div>' +
+            '<div class="timeline-sheet-fact">' + window.escapeHTML(window.t('timelineStatsRemainingDays', { count: remainingDays }, lang)) + '</div>' +
+            (overtimeDays > 0 ? '<div class="timeline-sheet-fact">' + window.escapeHTML(window.t('timelineStatsOvertimeDays', { count: overtimeDays }, lang)) + '</div>' : '') +
+        '</div>';
+
+    modal.classList.add('active');
+}
+
+function closeTimelineStatsSheet(event) {
+    if (event && event.target !== event.currentTarget) return;
+    var modal = document.getElementById('timeline-stats-modal');
+    if (modal) {
+        modal.classList.remove('active');
     }
 }
+
+function showTimelineStats(appId) {
+    openTimelineStatsSheet(appId);
+}
+
 window.showTimelineStats = showTimelineStats;
+window.openTimelineStatsSheet = openTimelineStatsSheet;
+window.closeTimelineStatsSheet = closeTimelineStatsSheet;
 
 function showProjectSelectModal(projects, targetAppId, targetOwnerId) {
     let modal = document.getElementById('project-select-modal');
@@ -2798,6 +2909,8 @@ Object.assign(window, {
     copyEmail,
     openProjectDetailsModal,
     closeProjectDetailsModal,
+    openTimelineStatsSheet,
+    closeTimelineStatsSheet,
     showProjectSelectModal,
     closeProjectSelectModal,
     openKarmaDistribution,
