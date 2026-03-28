@@ -1424,7 +1424,7 @@ function setFeedbackRewardBust(amount) {
 
 function setFeedbackRewardKarma(amount) {
     _feedbackRewardKarma = Number(amount || 0);
-    var project = myProjects.find(function(p) { return Number(p.id) === Number(_activeProjectFeedbackAppId); });
+    var project = getFeedbackRewardProject();
     var likesUsed = (project && project.likes_used) || 0;
     var likesMax = (project && project.likes_max) || 1;
     var remaining = Math.max(0, likesMax - likesUsed);
@@ -1440,6 +1440,69 @@ function setFeedbackRewardKarma(amount) {
         }
     });
     _updateFeedbackRewardSubmitState();
+}
+
+function getFeedbackRewardProject() {
+    var activeProject = myProjects.find(function(p) { return Number(p.id) === Number(_activeProjectFeedbackAppId); });
+    if (activeProject) return activeProject;
+    return archivedProjects.find(function(p) { return Number(p.app_id) === Number(_activeProjectFeedbackAppId); }) || null;
+}
+
+function getFeedbackRewardItem() {
+    return (_activeProjectFeedbackItems || []).find(function(item) {
+        return Number(item.id) === Number(_feedbackRewardTargetId);
+    }) || null;
+}
+
+function getFeedbackRewardProjectAgeDays(project) {
+    if (!project || !project.created_at) return null;
+    var created = new Date(project.created_at);
+    if (Number.isNaN(created.getTime())) return null;
+    return Math.max(1, Math.floor((Date.now() - created.getTime()) / 86400000) + 1);
+}
+
+function buildFeedbackRewardKarmaMeta(project) {
+    var likesUsed = Number(project && project.likes_used || 0);
+    var likesMax = Number(project && project.likes_max || 1);
+    var remaining = Math.max(0, likesMax - likesUsed);
+    var ageDays = getFeedbackRewardProjectAgeDays(project);
+    var statusLabel = window.t('feedbackRewardKarmaUsage', { used: likesUsed, max: likesMax }, lang);
+    var toastText = '';
+
+    if (remaining > 0) {
+        toastText = window.t('feedbackRewardKarmaReadyToast', { count: remaining }, lang);
+    } else if (ageDays !== null && ageDays < 7) {
+        var daysLeft = Math.max(0, 7 - ageDays);
+        var unlockDate = new Date();
+        unlockDate.setHours(0, 0, 0, 0);
+        unlockDate.setDate(unlockDate.getDate() + daysLeft);
+        toastText = window.t('feedbackRewardKarmaNextToast', {
+            count: daysLeft,
+            date: unlockDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US')
+        }, lang);
+    } else {
+        toastText = window.t('feedbackRewardKarmaLimitToast', {}, lang);
+    }
+
+    return {
+        statusLabel: statusLabel,
+        toastText: toastText
+    };
+}
+
+function updateFeedbackRewardKarmaStatus(project) {
+    var karmaEl = document.getElementById('feedback-karma-status');
+    if (!karmaEl) return;
+    var meta = buildFeedbackRewardKarmaMeta(project);
+    karmaEl.textContent = meta.statusLabel;
+    karmaEl.dataset.toast = meta.toastText || '';
+}
+
+function showFeedbackRewardKarmaInfo() {
+    var karmaEl = document.getElementById('feedback-karma-status');
+    if (!karmaEl) return;
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    showToast(karmaEl.dataset.toast || window.t('feedbackRewardKarmaLimitToast', {}, lang));
 }
 
 async function openProjectFeedback(appId, isArchived) {
@@ -1505,15 +1568,31 @@ function openFeedbackRewardModal(appId, feedbackId) {
     _feedbackRewardBust = 0;
     _feedbackRewardKarma = 0;
 
-    // Populate balance & karma status
+    var project = getFeedbackRewardProject();
+    var item = getFeedbackRewardItem();
+
     var balance = (visibilityStats && visibilityStats.balance_bust) || 0;
     var balanceEl = document.getElementById('feedback-owner-balance');
-    if (balanceEl) balanceEl.textContent = '💎 ' + balance + ' $BUST';
-    var project = myProjects.find(function(p) { return Number(p.id) === Number(appId); });
-    var likesUsed = (project && project.likes_used) || 0;
-    var likesMax = (project && project.likes_max) || 1;
-    var karmaEl = document.getElementById('feedback-karma-status');
-    if (karmaEl) karmaEl.textContent = '☯️ ' + likesUsed + '/' + likesMax;
+    if (balanceEl) balanceEl.textContent = window.t('feedbackRewardBustStatus', { amount: formatBustAmount(balance) }, lang);
+
+    var targetNameEl = document.getElementById('feedback-reward-target-name');
+    var targetMetaEl = document.getElementById('feedback-reward-target-meta');
+    if (targetNameEl) {
+        var fullName = (item && item.tester_full_name) || '';
+        var username = item && item.tester_username ? '@' + String(item.tester_username).replace(/^@+/, '') : '';
+        var fallback = window.t('idLabel', { id: item && item.tester_id ? item.tester_id : 0 }, lang);
+        targetNameEl.textContent = fullName || username || fallback;
+    }
+    if (targetMetaEl) {
+        var usernameText = item && item.tester_username ? '@' + String(item.tester_username).replace(/^@+/, '') : '';
+        var fullNameText = (item && item.tester_full_name) || '';
+        var parts = [];
+        if (fullNameText && usernameText) parts.push(usernameText);
+        if (item && item.message_text) parts.push(window.t('feedbackRewardTargetHint', {}, lang));
+        targetMetaEl.textContent = parts.join(' • ') || window.t('feedbackRewardTargetHint', {}, lang);
+    }
+
+    updateFeedbackRewardKarmaStatus(project);
 
     if (window.openFeedbackRewardModalUi) {
         window.openFeedbackRewardModalUi();
@@ -1537,7 +1616,7 @@ function openFeedbackRewardModal(appId, feedbackId) {
         };
     }
     if (reply) {
-        reply.value = window.t('feedbackRewardDefaultReply', {}, lang);
+        reply.value = '';
         reply.oninput = function() { _updateFeedbackRewardSubmitState(); };
     }
     _updateFeedbackRewardSubmitState();
@@ -2298,7 +2377,8 @@ Object.assign(window, {
     refreshActiveTabData,
     saveProject,
     confirmEmailWarning,
-    saveProjectEdit
+    saveProjectEdit,
+    showFeedbackRewardKarmaInfo
 });
 
 Object.assign(window.App, {

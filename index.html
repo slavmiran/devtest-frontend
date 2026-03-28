@@ -637,13 +637,16 @@
             <h3 data-i18n="feedbackRewardModalTitle">🎁 Поблагодарить / Закрыть</h3>
             <p class="feedback-reward-subtitle" data-i18n="feedbackRewardModalDesc">Выберите награду тестеру за полезный фидбэк и закройте тикет.</p>
 
-            <div class="feedback-reward-status-row">
-                <span class="feedback-reward-status-item" id="feedback-owner-balance">💎 0 $BUST</span>
-                <span class="feedback-reward-status-item" id="feedback-karma-status">☯️ 0/0</span>
+            <div class="feedback-reward-target-card">
+                <div class="feedback-reward-target-title" id="feedback-reward-target-name">—</div>
+                <div class="feedback-reward-target-subtitle" id="feedback-reward-target-meta">—</div>
             </div>
 
             <div class="feedback-reward-block">
-                <div class="feedback-reward-label" data-i18n="feedbackRewardBustLabel">$BUST</div>
+                <div class="feedback-reward-block-head">
+                    <div class="feedback-reward-label" data-i18n="feedbackRewardBustLabel">$BUST</div>
+                    <span class="feedback-reward-status-item" id="feedback-owner-balance">💎 0 $BUST</span>
+                </div>
                 <div class="chip-scroll feedback-reward-chips">
                     <button class="chip feedback-reward-chip" id="feedback-bust-chip-5" onclick="setFeedbackRewardBust(5)">5</button>
                     <button class="chip feedback-reward-chip" id="feedback-bust-chip-10" onclick="setFeedbackRewardBust(10)">10</button>
@@ -655,7 +658,10 @@
             </div>
 
             <div class="feedback-reward-block">
-                <div class="feedback-reward-label" data-i18n="feedbackRewardKarmaLabel">Карма</div>
+                <div class="feedback-reward-block-head">
+                    <div class="feedback-reward-label" data-i18n="feedbackRewardKarmaLabel">Карма</div>
+                    <button type="button" class="feedback-reward-status-item feedback-reward-status-button" id="feedback-karma-status" onclick="showFeedbackRewardKarmaInfo()">☯️ 0/0</button>
+                </div>
                 <div class="chip-scroll feedback-reward-chips">
                     <button class="chip feedback-reward-chip" id="feedback-karma-chip-0" onclick="setFeedbackRewardKarma(0)">0</button>
                     <button class="chip feedback-reward-chip" id="feedback-karma-chip-15" onclick="setFeedbackRewardKarma(1.5)">+1.5 ☯️</button>

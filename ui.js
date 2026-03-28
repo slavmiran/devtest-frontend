@@ -273,41 +273,61 @@ function renderGrantPreviewChip(test) {
     return `<button type="button" class="${chipClass}" onclick="showGrantBreakdownAlertById(${test.id}, event)">${window.escapeHTML(label)}</button>`;
 }
 
+function getTestingTimelineMeta(test) {
+    var today = parseLocalDateOnly(getLocalDate()) || new Date();
+    var userTestingDayRaw = getUserTestingDay(test.start_date);
+    var userTestingDay = typeof userTestingDayRaw === 'number' && userTestingDayRaw > 0 ? userTestingDayRaw : 1;
+    var currentGoogleDay = 0;
+    var projectDaysLeft = 0;
+    var expectedTotalDays = Math.max(14, userTestingDay);
+    var overtimeDays = 0;
+    var isSynced = (test.google_sync_day || 0) > 1;
+
+    if (isSynced) {
+        var syncDiffDays = test.last_sync_date ? getDayDiffFromToday(test.last_sync_date) : 0;
+        currentGoogleDay = Number(test.google_sync_day || 0) + syncDiffDays;
+        projectDaysLeft = Math.max(0, 14 - currentGoogleDay);
+        expectedTotalDays = userTestingDay + projectDaysLeft;
+        overtimeDays = Math.max(0, expectedTotalDays - 14);
+    }
+
+    var finishDate = new Date(today.getTime() + (projectDaysLeft * 24 * 60 * 60 * 1000));
+    return {
+        today: today,
+        userTestingDay: userTestingDay,
+        currentGoogleDay: currentGoogleDay,
+        projectDaysLeft: projectDaysLeft,
+        expectedTotalDays: expectedTotalDays,
+        overtimeDays: overtimeDays,
+        isSynced: isSynced,
+        finishDate: finishDate,
+    };
+}
+
 function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     var timeline = test.daily_timeline || '';
+    var renderTimeline = timeline;
     var totalDays = Math.max(expectedTotalDays || 14, userTestingDay || 0, 1);
-    var segments = [];
     var standardCheckins = 0, standardSkips = 0, overtimeCheckins = 0, overtimeSkips = 0;
     var pendingDay = null;
     if ((test.last_check_date || '') !== getLocalDate() && timeline.length < totalDays) {
         pendingDay = Math.max(1, Math.min(totalDays, Math.max(userTestingDay || 1, timeline.length + 1)));
     }
 
-    // Build from daily_timeline if available
-    for (var i = 0; i < timeline.length; i++) {
-        var ch = timeline[i];
-        var dayNum = i + 1;
+    function getDayState(dayNum) {
+        var ch = renderTimeline[dayNum - 1] || '';
         var cls = 'remaining';
         if (ch === '1') { cls = 'standard-checkin'; standardCheckins++; }
         else if (ch === '0') { cls = 'standard-skip'; standardSkips++; }
         else if (ch === '2') { cls = 'overtime-checkin'; overtimeCheckins++; }
         else if (ch === '3') { cls = 'overtime-skip'; overtimeSkips++; }
-        var sep = (dayNum === 14 ? ' day14-separator' : '') + (dayNum === 15 ? ' day15-start' : '');
-        segments.push('<div class="grant-segment ' + cls + sep + '" data-day="' + dayNum + '"></div>');
+        if (!ch && pendingDay === dayNum) {
+            cls += ' current-pending';
+        }
+        return '<div class="grant-segment ' + cls + '" data-day="' + dayNum + '"></div>';
     }
 
-    // Fill remaining future days
-    var remainingDays = Math.max(0, totalDays - timeline.length);
-    for (var j = 0; j < remainingDays; j++) {
-        var dn = timeline.length + j + 1;
-        var sep2 = (dn === 14 ? ' day14-separator' : '') + (dn === 15 ? ' day15-start' : '');
-        var currentClass = pendingDay === dn ? ' current-pending' : '';
-        segments.push('<div class="grant-segment remaining' + sep2 + currentClass + '" data-day="' + dn + '"></div>');
-    }
-
-    // Fallback for empty timeline — use old calculation
     if (!timeline) {
-        segments = [];
         var totalCheckins = Math.max(0, Number(test.checkins_count || 0));
         var standardElapsed = Math.min(14, Math.max(0, userTestingDay || 0));
         standardCheckins = Math.min(14, totalCheckins);
@@ -315,27 +335,52 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
         var overtimeElapsed = Math.max(0, (userTestingDay || 0) - 14);
         overtimeCheckins = Math.max(0, totalCheckins - 14);
         overtimeSkips = Math.max(0, overtimeElapsed - overtimeCheckins);
-        remainingDays = Math.max(0, totalDays - standardCheckins - standardSkips - overtimeCheckins - overtimeSkips);
-
-        function pushSeg(count, className) {
-            for (var idx = 0; idx < count; idx++) {
-                segments.push('<div class="grant-segment ' + className + '"></div>');
-            }
-        }
-        pushSeg(standardCheckins, 'standard-checkin');
-        pushSeg(standardSkips, 'standard-skip');
-        pushSeg(overtimeCheckins, 'overtime-checkin');
-        pushSeg(overtimeSkips, 'overtime-skip');
-        pushSeg(remainingDays, 'remaining');
+        renderTimeline = ''
+            + '1'.repeat(standardCheckins)
+            + '0'.repeat(standardSkips)
+            + '2'.repeat(overtimeCheckins)
+            + '3'.repeat(overtimeSkips);
     }
 
+    var baseSegments = [];
+    for (var day = 1; day <= 14; day++) {
+        baseSegments.push(getDayState(day));
+    }
+
+    var overtimeSegments = [];
+    for (var overtimeDay = 15; overtimeDay <= totalDays; overtimeDay++) {
+        overtimeSegments.push(getDayState(overtimeDay));
+    }
+
+    var remainingDays = Math.max(0, totalDays - timeline.length);
+    var html = '<div class="timeline-compact">' +
+        '<div class="timeline-row">' +
+            '<div class="timeline-row-head">' +
+                '<span class="timeline-row-title">' + window.escapeHTML(window.t('timelinePrimaryTitle', {}, lang)) + '</span>' +
+                '<span class="timeline-row-range">1-14</span>' +
+            '</div>' +
+            '<div class="grant-progress-container timeline-row-track is-primary">' + baseSegments.join('') + '</div>' +
+        '</div>' +
+        (overtimeSegments.length
+            ? '<div class="timeline-row timeline-row-overtime">' +
+                '<div class="timeline-row-head">' +
+                    '<span class="timeline-row-title">' + window.escapeHTML(window.t('timelineOvertimeTitle', {}, lang)) + '</span>' +
+                    '<span class="timeline-row-range">15-' + totalDays + '</span>' +
+                '</div>' +
+                '<div class="grant-progress-container timeline-row-track is-overtime">' + overtimeSegments.join('') + '</div>' +
+                '<div class="timeline-row-note">' + window.escapeHTML(window.t('timelineOvertimeRewardNote', {}, lang)) + '</div>' +
+            '</div>'
+            : '') +
+    '</div>';
+
     return {
-        html: segments.join(''),
+        html: html,
         standardCheckins: standardCheckins,
         standardSkips: standardSkips,
         overtimeCheckins: overtimeCheckins,
         overtimeSkips: overtimeSkips,
         remainingDays: remainingDays,
+        totalDays: totalDays,
     };
 }
 
@@ -599,11 +644,7 @@ function renderTests() {
                 `;
             }
         } else if (test.status === 'done') {
-            actionsHtml = `
-                <div class="done-text">
-                    ${t.doneTodayText}
-                </div>
-            `;
+            actionsHtml = '';
         }
 
         const headerActions = [];
@@ -701,11 +742,7 @@ function renderCompletedTests(completedTests) {
         const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
         const safePackageLabel = window.escapeHTML(test.package || '');
 
-        const actionsHtml = `
-            <div class="done-text">
-                ${t.doneTodayText}
-            </div>
-        `;
+        const actionsHtml = '';
 
         const headerActions = [];
         if (test.owner_username) {
@@ -1026,15 +1063,26 @@ function formatDeveloperAchievements(completedTests, goldenCount) {
     }, lang);
 }
 
-function buildProjectFeedbackButton(projectId, feedbackNewCount, isArchived) {
+function buildProjectFeedbackButton(projectId, feedbackTotalCount, feedbackNewCount, isArchived) {
+    const totalCount = Number(feedbackTotalCount || 0);
     const newCount = Number(feedbackNewCount || 0);
     const accentClass = newCount > 0 ? ' btn-feedback-alert' : '';
     const badgeHtml = newCount > 0
-        ? '<span class="feedback-btn-badge">' + window.escapeHTML(String(newCount)) + '</span>'
-        : '';
+        ? ''
+        : (totalCount > 0
+            ? '<span class="feedback-btn-badge feedback-btn-badge-total">' + window.escapeHTML(String(totalCount)) + '</span>'
+            : '');
     return '<button class="btn btn-secondary project-feedback-btn' + accentClass + '" style="width: 100%; margin-bottom: 8px; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);" onclick="openProjectFeedback(' + projectId + ', ' + (isArchived ? 'true' : 'false') + ')">' +
         '<span class="project-feedback-btn-inner">' + window.escapeHTML(window.t('projectFeedbackButtonShort', {}, lang)) + badgeHtml + '</span>' +
     '</button>';
+}
+
+function formatCompactSyncLabel(project) {
+    var syncDate = parseLocalDateOnly(project && project.last_sync_date);
+    var dateLabel = syncDate
+        ? syncDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', { day: '2-digit', month: '2-digit' })
+        : '--.--';
+    return window.t('syncBtnCompact', { date: dateLabel }, lang);
 }
 
 function renderProjects() {
@@ -1302,6 +1350,17 @@ function renderProjects() {
             return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
         })();
 
+        const hasSync = (project.google_sync_day || 0) > 1;
+        const syncActionHtml = hasSync
+            ? `<div class="action-row" style="margin-top: 0; align-items: stretch;">
+                    <button class="btn btn-secondary" style="flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);" onclick="openSyncModal(${project.id})">${window.escapeHTML(formatCompactSyncLabel(project))}</button>
+                    <div style="flex: 1;">${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false)}</div>
+                </div>`
+            : `<button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
+                    ${t.syncBtnLong}
+                </button>
+                ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false)}`;
+
         card.innerHTML = `
             <div class="card-header" style="margin-bottom: 8px;">
                 ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
@@ -1328,10 +1387,7 @@ function renderProjects() {
                 ${testersHtml}
             </div>
             <div style="margin-top: 16px;">
-                <button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
-                    ${t.syncBtnLong}
-                </button>
-                ${buildProjectFeedbackButton(project.id, project.feedback_new_count || 0, false)}
+                ${syncActionHtml}
                 <div class="action-row" style="margin-top: 0;">
                     <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openInviteModal(${project.id})">
                         🔗 ${t.inviteLink}
@@ -1467,6 +1523,8 @@ function openOvertimeModal(appId, event) {
     const test = myTests.find((item) => item.id === appId);
     if (!test) return;
     _overtimeTest = test;
+    const timelineMeta = getTestingTimelineMeta(test);
+    const finishDateText = timelineMeta.finishDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US');
 
     const isSynced = isProjectSynced(test);
     const message = isSynced
@@ -1474,7 +1532,13 @@ function openOvertimeModal(appId, event) {
             .replace('{day}', String(test.google_sync_day || 0))
             .replace('{message}', test.sync_message || '-')
         : t.overtimeScenarioA;
-    document.getElementById('t-overtimeModalText').innerText = message;
+    const extra = isSynced
+        ? '\n\n' + window.t('overtimeExtendedNotice', {
+            count: Math.max(0, timelineMeta.projectDaysLeft),
+            date: finishDateText
+        }, lang)
+        : '\n\n' + window.t('overtimeRewardsSafeNotice', {}, lang);
+    document.getElementById('t-overtimeModalText').innerText = message + extra;
     document.getElementById('overtime-modal').classList.add('active');
 }
 
@@ -1682,12 +1746,14 @@ function renderProjectFeedbackCards(project, items) {
     return `<div class="feedback-list">${items.map(function(item) {
         const username = (item.tester_username || '').replace('@', '');
         const safeUsername = escapeInlineJsString(username);
-        const displayName = username
-            ? '@' + window.escapeHTML(username)
-            : window.escapeHTML(item.tester_full_name || window.t('idLabel', { id: item.tester_id }, lang));
+        const fullName = window.escapeHTML(item.tester_full_name || '');
+        const usernameLabel = username ? '@' + window.escapeHTML(username) : '';
+        const primaryAuthor = fullName || usernameLabel || window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang));
+        const secondaryAuthor = fullName && usernameLabel ? usernameLabel : '';
+        const authorInnerHtml = `<span class="feedback-card-author-main">${primaryAuthor}</span>${secondaryAuthor ? `<span class="feedback-card-author-sub">${secondaryAuthor}</span>` : ''}`;
         const authorHtml = username
-            ? `<a href="javascript:void(0);" class="feedback-card-author" onclick="return openTelegramProfile('${safeUsername}', event)">${displayName}</a>`
-            : `<span class="feedback-card-author">${displayName}</span>`;
+            ? `<a href="javascript:void(0);" class="feedback-card-author" onclick="return openTelegramProfile('${safeUsername}', event)">${authorInnerHtml}</a>`
+            : `<span class="feedback-card-author">${authorInnerHtml}</span>`;
         const textHtml = item.message_text
             ? escapeHtmlWithBreaks(item.message_text)
             : `<span style="color: var(--hint-color);">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</span>`;
@@ -1695,7 +1761,7 @@ function renderProjectFeedbackCards(project, items) {
         const rewardKarma = Number(item.reward_karma || 0);
         const rewardSummary = item.status === 'processed'
             ? `<div class="feedback-modal-summary" style="margin-top: 10px;">
-                    ${rewardBust > 0 ? `<span class="meta-chip accent-purple">💎 ${formatBustAmount(rewardBust)} $BUST</span>` : ''}
+                    ${rewardBust > 0 ? `<span class="meta-chip accent-purple">💎 ${formatBustAmount(rewardBust)}</span>` : ''}
                     ${rewardKarma > 0 ? `<span class="meta-chip accent-yellow">☯️ ${rewardKarma.toFixed(1)}</span>` : ''}
                     <span class="meta-chip">${window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang))}</span>
                </div>`
@@ -1805,7 +1871,7 @@ function renderArchivedProjects() {
                     <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
                 </div>
                 <div class="action-row" style="margin-top: 10px;">
-                    <div style="flex: 1;">${buildProjectFeedbackButton(project.app_id, project.feedback_new_count || 0, true)}</div>
+                    <div style="flex: 1;">${buildProjectFeedbackButton(project.app_id, project.feedback_total_count || 0, project.feedback_new_count || 0, true)}</div>
                     <button class="btn archive-delete-btn" style="flex: 1;"
                         onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
                         ${t.archiveDeletePermanent}
@@ -2517,9 +2583,8 @@ function openProjectDetailsModal(appId) {
     const safePackage = window.escapeHTML(test.package || '');
     const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
     const displayOwner = window.escapeHTML(test.owner_username ? '@' + test.owner_username : window.t('unknownLabel', {}, lang));
-    const today = new Date(getLocalDate());
-    const userTestingDayRaw = getUserTestingDay(test.start_date);
-    const userTestingDay = typeof userTestingDayRaw === 'number' && userTestingDayRaw > 0 ? userTestingDayRaw : 1;
+    const timelineMeta = getTestingTimelineMeta(test);
+    const userTestingDay = timelineMeta.userTestingDay;
     const skips = Number(test.skips_count || 0);
     const totalCheckins = Number(test.checkins_count || 0);
     const daysSinceCreated = Number(test.days_since_publish || 0);
@@ -2530,48 +2595,39 @@ function openProjectDetailsModal(appId) {
     const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
     const ownerKarma = Number.isFinite(Number(test.owner_karma)) ? Number(test.owner_karma) : 0;
 
-    let currentGoogleDay = 0;
-    let projectDaysLeft = 0;
-    let expectedTotalDays = Math.max(14, userTestingDay);
-    let overtimeDays = 0;
-    if ((test.google_sync_day || 0) > 1) {
-        const syncDiffDays = test.last_sync_date ? getDayDiffFromToday(test.last_sync_date) : 0;
-        currentGoogleDay = Number(test.google_sync_day || 0) + syncDiffDays;
-        projectDaysLeft = Math.max(0, 14 - currentGoogleDay);
-        expectedTotalDays = userTestingDay + projectDaysLeft;
-        overtimeDays = Math.max(0, expectedTotalDays - 14);
-    }
+    let currentGoogleDay = timelineMeta.currentGoogleDay;
+    let projectDaysLeft = timelineMeta.projectDaysLeft;
+    let expectedTotalDays = timelineMeta.expectedTotalDays;
+    let overtimeDays = timelineMeta.overtimeDays;
     const progressData = buildGrantProgressSegments(test, userTestingDay, expectedTotalDays);
 
     const syncHtml = (() => {
-        if ((test.google_sync_day || 0) <= 1) return '';
-        const finishDate = new Date(today.getTime() + (projectDaysLeft * 24 * 60 * 60 * 1000));
-        const finishDateText = window.escapeHTML(finishDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US'));
+        if (!timelineMeta.isSynced) return '';
+        const finishDateText = window.escapeHTML(timelineMeta.finishDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US'));
         return '<div class="details-block">' +
             '<div style="font-size:14px;font-weight:700;color:#34c759;margin-bottom:6px;">' + window.escapeHTML(window.t('projectSyncedTitle', {}, lang)) + '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);">' + window.t('fact_end_date', { date: finishDateText }, lang) + '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('googleDaysLeft', { count: projectDaysLeft }, lang) + '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.escapeHTML(window.t('syncEstimatedFinish', { date: finishDateText }, lang)) + '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.escapeHTML(window.t('timelineApproxRemaining', { count: progressData.remainingDays }, lang)) + '</div>' +
+            (overtimeDays > 0
+                ? '<div style="font-size:13px;color:#ffd460;margin-top:8px;">' + window.escapeHTML(window.t('syncOvertimeBanner', {}, lang)) + '</div>'
+                : '') +
             '<div style="font-size:12px;color:var(--hint-color);margin-top:4px;opacity:0.8;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
         '</div>';
     })();
 
-    const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:6px;">' +
-        '<span>' + window.t('grantProgressText', { day: userTestingDay }, lang) + '</span>' +
+    const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:10px;">' +
+        '<span>' + window.escapeHTML(window.t('grantProgressText', { day: userTestingDay }, lang)) + '</span>' +
+        (progressData.remainingDays > 0
+            ? '<span>' + window.escapeHTML(window.t('timelineApproxRemaining', { count: progressData.remainingDays }, lang)) + '</span>'
+            : '<span>' + window.escapeHTML(window.t('timelineNoRemaining', {}, lang)) + '</span>') +
         (overtimeDays > 0
             ? '<button type="button" class="detail-overtime-banner detail-overtime-chip" onclick="showToast(\'' + escapeInlineJsString(window.t('overtimeChipToast', {}, lang)) + '\')">' + window.escapeHTML(window.t('detailOvertimeReward', {}, lang)) + '</button>'
             : '') +
     '</div>';
-
-    const progressStatsHtml = '<div class="grant-progress-stats">' +
-        '<span class="gps-item gps-checkin">✓ ' + (progressData.standardCheckins + progressData.overtimeCheckins) + '</span>' +
-        '<span class="gps-item gps-skip">✗ ' + (progressData.standardSkips + progressData.overtimeSkips) + '</span>' +
-        '<span class="gps-item gps-remaining">… ' + progressData.remainingDays + '</span>' +
-    '</div>';
-
     const timelinePanelHtml = '<button type="button" class="grant-progress-hitbox" onclick="openTimelineStatsSheet(' + test.id + ')">' +
-        '<div class="grant-progress-container">' + progressData.html + '</div>' +
+        progressData.html +
         progressFooterHtml +
-        progressStatsHtml +
     '</button>';
 
     var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
@@ -2585,7 +2641,8 @@ function openProjectDetailsModal(appId) {
             : '<span class="skip-dot available"></span>';
     }).join('');
     const perfectCardClass = currentSkips > 0 ? ' grant-reward-card-burned' : '';
-    const perfectValue = currentSkips > 0 ? '<span class="grant-burned-text">+50 $BUST</span>' : '+50 $BUST';
+    const perfectValueLabel = window.t('grantPerfectValue', { amount: formatBustAmount(50) }, lang);
+    const perfectValue = currentSkips > 0 ? '<span class="grant-burned-text">' + window.escapeHTML(perfectValueLabel) + '</span>' : window.escapeHTML(perfectValueLabel);
     const perfectStatus = currentSkips > 0 ? window.t('grantCardBurned', {}, lang) : window.t('grantCardActive', {}, lang);
     let grantDashboardHtml = '';
 
@@ -2596,7 +2653,7 @@ function openProjectDetailsModal(appId) {
                     '<div class="grant-dashboard-title">' + window.escapeHTML(window.t('grantGoldTesterTitle', {}, lang)) + '</div>' +
                     '<div class="grant-dashboard-subtitle">' + window.escapeHTML(window.t('grantDashboardSubtitle', {}, lang)) + '</div>' +
                 '</div>' +
-                '<div class="grant-dashboard-total">~' + formatUiAmount(grant.total, 1) + ' $BUST</div>' +
+                '<div class="grant-dashboard-total">' + window.escapeHTML(window.t('grantTotalEstimateValue', { amount: formatBustAmount(grant.total) }, lang)) + '</div>' +
             '</div>' +
             '<div class="grant-dashboard-skips-row">' +
                 '<span class="grant-skip-text">' + window.escapeHTML(window.t('grantSkipsLabel', { used: currentSkips, max: 3 }, lang)) + '</span>' +
@@ -2605,7 +2662,7 @@ function openProjectDetailsModal(appId) {
             '<div class="grant-reward-grid">' +
                 '<div class="grant-reward-card">' +
                     '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantBaseLabel', {}, lang)) + '</div>' +
-                    '<div class="grant-reward-value">50 $BUST</div>' +
+                    '<div class="grant-reward-value">' + window.escapeHTML(window.t('grantBaseValue', { amount: formatBustAmount(50) }, lang)) + '</div>' +
                     '<div class="grant-reward-status is-active">' + window.escapeHTML(window.t('grantCardActive', {}, lang)) + '</div>' +
                 '</div>' +
                 '<div class="grant-reward-card' + perfectCardClass + '">' +
@@ -2615,7 +2672,7 @@ function openProjectDetailsModal(appId) {
                 '</div>' +
                 '<div class="grant-reward-card">' +
                     '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantKarmaBonusLabel', {}, lang)) + '</div>' +
-                    '<div class="grant-reward-value">+' + formatUiAmount(grant.karmaBonus, 1) + ' $BUST</div>' +
+                    '<div class="grant-reward-value">' + window.escapeHTML(window.t('grantKarmaValue', { amount: formatBustAmount(grant.karmaBonus) }, lang)) + '</div>' +
                     '<div class="grant-reward-status is-active">' + window.escapeHTML(window.t('grantCardActive', {}, lang)) + '</div>' +
                 '</div>' +
             '</div>' +
@@ -2630,9 +2687,9 @@ function openProjectDetailsModal(appId) {
             '<div class="grant-dashboard-lost-body">' +
                 '<div class="grant-dashboard-subtitle">' + window.escapeHTML(window.t('grantLostLabel', {}, lang)) + '</div>' +
                 '<div class="grant-reward-grid grant-reward-grid-lost">' +
-                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantBaseLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">50 $BUST</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
-                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantPerfectLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">+50 $BUST</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
-                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantKarmaBonusLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">+' + formatUiAmount(grant.karmaBonus, 1) + ' $BUST</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
+                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantBaseLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantBaseValue', { amount: formatBustAmount(50) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
+                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantPerfectLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantPerfectValue', { amount: formatBustAmount(50) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
+                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantKarmaBonusLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantKarmaValue', { amount: formatBustAmount(grant.karmaBonus) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
                 '</div>' +
             '</div>' +
         '</details>';
@@ -2700,6 +2757,8 @@ function openTimelineStatsSheet(appId) {
     var modal = document.getElementById('timeline-stats-modal');
     var body = document.getElementById('timeline-stats-body');
     if (!test || !modal || !body) return;
+    var timelineMeta = getTestingTimelineMeta(test);
+    var progressData = buildGrantProgressSegments(test, timelineMeta.userTestingDay, timelineMeta.expectedTotalDays);
 
     var tl = test.daily_timeline || '';
     var sc = 0, ss = 0, oc = 0, os = 0;
@@ -2711,26 +2770,30 @@ function openTimelineStatsSheet(appId) {
     }
 
     var totalDone = sc + ss + oc + os;
-    var testingDay = getUserTestingDay(test.start_date) || totalDone || 1;
+    var testingDay = timelineMeta.userTestingDay || totalDone || 1;
     var overtimeDays = Math.max(0, totalDone - 14);
-    var expectedTotalDays = Math.max(14, testingDay);
-    var remainingDays = Math.max(0, expectedTotalDays - totalDone);
+    var baseDone = Math.min(14, sc + ss);
+    var remainingDays = Math.max(0, progressData.remainingDays);
+    var finishDateText = timelineMeta.finishDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US');
 
     body.innerHTML =
         '<div class="timeline-sheet-head">' +
             '<div class="timeline-sheet-title">' + window.escapeHTML(window.t('timelineSheetTitle', {}, lang)) + '</div>' +
             '<div class="timeline-sheet-subtitle">' + window.escapeHTML(test.name || window.t('unknownLabel', {}, lang)) + '</div>' +
         '</div>' +
+        progressData.html +
         '<div class="timeline-sheet-grid">' +
-            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsCheckinsShort', {}, lang)) + '</span><strong>' + sc + '</strong></div>' +
-            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsSkipsShort', {}, lang)) + '</span><strong>' + ss + '</strong></div>' +
-            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsOvertimeCheckinsShort', {}, lang)) + '</span><strong>' + oc + '</strong></div>' +
-            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsOvertimeSkipsShort', {}, lang)) + '</span><strong>' + os + '</strong></div>' +
+            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsCurrentDayShort', {}, lang)) + '</span><strong>' + testingDay + '</strong></div>' +
+            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsBaseProgress', {}, lang)) + '</span><strong>' + baseDone + '/14</strong></div>' +
+            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsOvertimeDaysShort', {}, lang)) + '</span><strong>' + overtimeDays + '</strong></div>' +
+            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsRemainingDaysShort', {}, lang)) + '</span><strong>' + remainingDays + '</strong></div>' +
         '</div>' +
         '<div class="timeline-sheet-facts">' +
-            '<div class="timeline-sheet-fact">' + window.escapeHTML(window.t('timelineStatsCurrentDay', { count: testingDay }, lang)) + '</div>' +
+            (timelineMeta.isSynced ? '<div class="timeline-sheet-fact">' + window.escapeHTML(window.t('syncOfficialDay', { day: timelineMeta.currentGoogleDay }, lang)) + '</div>' : '') +
             '<div class="timeline-sheet-fact">' + window.escapeHTML(window.t('timelineStatsRemainingDays', { count: remainingDays }, lang)) + '</div>' +
+            '<div class="timeline-sheet-fact">' + window.escapeHTML(window.t('timelineStatsFinishDate', { date: finishDateText }, lang)) + '</div>' +
             (overtimeDays > 0 ? '<div class="timeline-sheet-fact">' + window.escapeHTML(window.t('timelineStatsOvertimeDays', { count: overtimeDays }, lang)) + '</div>' : '') +
+            (timelineMeta.isSynced && timelineMeta.projectDaysLeft > 0 ? '<div class="timeline-sheet-fact">' + window.escapeHTML(window.t('timelineOvertimeRewardNote', {}, lang)) + '</div>' : '') +
         '</div>';
 
     modal.classList.add('active');

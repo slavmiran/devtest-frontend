@@ -1563,7 +1563,7 @@ details[open] > summary .details-arrow {
     display: flex;
     align-items: center;
     gap: 4px;
-    margin: 12px 0 8px;
+    margin: 10px 0 0;
 }
 
 .grant-progress-hitbox {
@@ -1578,10 +1578,12 @@ details[open] > summary .details-arrow {
 
 .grant-segment {
     flex: 1;
-    height: 6px;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.1);
+    min-width: 0;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
     position: relative;
+    border: 1px solid rgba(255,255,255,0.04);
 }
 
 .grant-segment.filled {
@@ -1608,34 +1610,56 @@ details[open] > summary .details-arrow {
     background: rgba(255, 255, 255, 0.1);
 }
 
-/* Day-14 separator on timeline */
-.grant-segment.day14-separator {
-    border-right: 2px solid rgba(255,255,255,0.35);
-    border-radius: 3px 0 0 3px;
-}
-
-.grant-segment.day15-start {
-    margin-left: 8px;
-}
-
 .grant-segment.current-pending {
-    background: #4e8cff;
-    box-shadow: 0 0 0 1px rgba(120, 173, 255, 0.38), 0 0 12px rgba(78, 140, 255, 0.45);
+    background: rgba(255,255,255,0.08);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.22), 0 0 0 1px rgba(255,255,255,0.14);
     animation: timeline-pulse 1.8s ease-in-out infinite;
 }
 
-/* Compact progress stats row */
-.grant-progress-stats {
-    display: flex;
+.timeline-compact {
+    display: grid;
     gap: 12px;
-    margin-top: 6px;
-    font-size: 12px;
-    cursor: pointer;
 }
-.gps-item { color: var(--hint-color); }
-.gps-checkin { color: #34c759; }
-.gps-skip { color: #ff453a; }
-.gps-remaining { color: rgba(255,255,255,0.4); }
+
+.timeline-row {
+    display: grid;
+    gap: 8px;
+}
+
+.timeline-row-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.timeline-row-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.timeline-row-range {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--hint-color);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.timeline-row-track {
+    margin: 0;
+}
+
+.timeline-row-overtime {
+    padding-top: 4px;
+    border-top: 1px dashed rgba(255,255,255,0.08);
+}
+
+.timeline-row-note {
+    font-size: 12px;
+    color: #ffd460;
+}
 
 /* Grant Dashboard Block */
 .grant-dashboard-block {
@@ -1981,6 +2005,12 @@ details[open] > summary .details-arrow {
     box-shadow: 0 0 0 4px rgba(255, 69, 58, 0.14);
 }
 
+.feedback-btn-badge-total {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-color);
+    box-shadow: none;
+}
+
 .btn-feedback-alert {
     box-shadow: 0 0 0 1px rgba(255, 69, 58, 0.18), 0 0 24px rgba(255, 69, 58, 0.14);
     animation: feedback-pulse 1.8s ease-in-out infinite;
@@ -2135,11 +2165,23 @@ details[open] > summary .details-arrow {
 
 .feedback-card-author {
     display: inline-flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 8px;
     color: var(--text-color);
     text-decoration: none;
     font-weight: 600;
+}
+
+.feedback-card-author-main {
+    line-height: 1.2;
+}
+
+.feedback-card-author-sub {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--hint-color);
+    line-height: 1.2;
 }
 
 .feedback-card-date {
@@ -2192,23 +2234,53 @@ details[open] > summary .details-arrow {
     margin: 6px 0 14px;
 }
 
-.feedback-reward-status-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255,255,255,0.04);
-    border-radius: 12px;
-    padding: 10px 14px;
+.feedback-reward-target-card {
     margin-bottom: 14px;
-    font-size: 13px;
-    font-weight: 600;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+.feedback-reward-target-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.feedback-reward-target-subtitle {
+    margin-top: 4px;
+    font-size: 12px;
     color: var(--hint-color);
 }
 
-.feedback-reward-status-item {
+.feedback-reward-block-head {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.feedback-reward-status-item {
+    display: inline-flex;
     align-items: center;
     gap: 4px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    color: var(--hint-color);
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.feedback-reward-status-button {
+    cursor: pointer;
+}
+
+.feedback-reward-status-button:active {
+    transform: scale(0.98);
 }
 
 .feedback-reward-chip.is-disabled {
