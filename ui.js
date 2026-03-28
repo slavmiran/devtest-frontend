@@ -936,14 +936,16 @@ function renderMutualFeed() {
     const prelaunchEl = document.getElementById('mutual-prelaunch-list');
     if (!seekingEl || !prelaunchEl) return;
 
+    const isLoading = !!(window._marketInFlight && (window._marketInFlight.mutual));
+
     if (!mutualSeeking.length) {
-        seekingEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
+        if (!isLoading) seekingEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
         seekingEl.innerHTML = mutualSeeking.map((item) => renderFeedCard(item, 'mutual-seeking')).join('');
     }
 
     if (!mutualPrelaunch.length) {
-        prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
+        if (!isLoading) prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
         prelaunchEl.innerHTML = mutualPrelaunch.map((item) => renderFeedCard(item, 'mutual-prelaunch')).join('');
     }
@@ -977,8 +979,9 @@ function switchMarketSubTab(tab) {
 function renderBountyFeed() {
     const bountyEl = document.getElementById('bounty-list');
     if (!bountyEl) return;
+    const isLoading = !!(window._marketInFlight && (window._marketInFlight.bounty));
     if (!bountyContracts.length) {
-        bountyEl.innerHTML = `<p class="no-testers" style="margin-top: 10px;">${t.bountyEmpty}</p>`;
+        if (!isLoading) bountyEl.innerHTML = `<p class="no-testers" style="margin-top: 10px;">${t.bountyEmpty}</p>`;
         return;
     }
     bountyEl.innerHTML = bountyContracts.map((item) => renderFeedCard(item, 'bounty')).join('');
@@ -1061,6 +1064,14 @@ function formatDeveloperAchievements(completedTests, goldenCount) {
         tests_count: completedTests,
         tests_word: testsWord
     }, lang);
+}
+
+function buildProjectFeedbackBadge(feedbackTotalCount, feedbackNewCount) {
+    const totalCount = Number(feedbackTotalCount || 0);
+    const newCount = Number(feedbackNewCount || 0);
+    if (newCount > 0) return '';
+    if (totalCount > 0) return ' <span class="feedback-btn-badge feedback-btn-badge-total">' + window.escapeHTML(String(totalCount)) + '</span>';
+    return '';
 }
 
 function buildProjectFeedbackButton(projectId, feedbackTotalCount, feedbackNewCount, isArchived) {
@@ -1351,15 +1362,16 @@ function renderProjects() {
         })();
 
         const hasSync = (project.google_sync_day || 0) > 1;
-        const syncActionHtml = hasSync
-            ? `<div class="action-row" style="margin-top: 0; align-items: stretch;">
-                    <button class="btn btn-secondary" style="flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);" onclick="openSyncModal(${project.id})">${window.escapeHTML(formatCompactSyncLabel(project))}</button>
-                    <div style="flex: 1;">${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false)}</div>
-                </div>`
-            : `<button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
-                    ${t.syncBtnLong}
-                </button>
-                ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false)}`;
+        const syncBtnStyle = hasSync
+            ? 'flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);'
+            : 'flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);';
+        const syncBtnLabel = hasSync ? window.escapeHTML(formatCompactSyncLabel(project)) : t.syncBtnLong;
+        const syncActionHtml = `<div class="action-row" style="margin-top: 0;">
+                    <button class="btn btn-secondary" style="${syncBtnStyle}" onclick="openSyncModal(${project.id})">${syncBtnLabel}</button>
+                    <button class="btn btn-secondary" style="flex: 1; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);" onclick="openProjectFeedback(${project.id}, false)">
+                        ${window.escapeHTML(window.t('projectFeedbackButtonShort', {}, lang))}${buildProjectFeedbackBadge(project.feedback_total_count || 0, project.feedback_new_count || 0)}
+                    </button>
+                </div>`;
 
         card.innerHTML = `
             <div class="card-header" style="margin-bottom: 8px;">
@@ -2785,7 +2797,7 @@ function openTimelineStatsSheet(appId) {
         '<div class="timeline-sheet-grid">' +
             '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsCurrentDayShort', {}, lang)) + '</span><strong>' + testingDay + '</strong></div>' +
             '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsBaseProgress', {}, lang)) + '</span><strong>' + baseDone + '/14</strong></div>' +
-            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsOvertimeDaysShort', {}, lang)) + '</span><strong>' + overtimeDays + '</strong></div>' +
+            '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsSkipsShort', {}, lang)) + '</span><strong>' + (ss + os) + '</strong></div>' +
             '<div class="timeline-sheet-stat"><span class="timeline-sheet-stat-label">' + window.escapeHTML(window.t('timelineStatsRemainingDaysShort', {}, lang)) + '</span><strong>' + remainingDays + '</strong></div>' +
         '</div>' +
         '<div class="timeline-sheet-facts">' +

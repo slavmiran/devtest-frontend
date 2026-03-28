@@ -65,6 +65,7 @@ var MARKET_CACHE_KEY = 'market_cache_v1';
 var _lastFetchTimes = { mutual: 0, bounty: 0 };
 var MARKET_FETCH_THROTTLE_MS = 15000;
 var _marketInFlight = { mutual: null, bounty: null };
+window._marketInFlight = _marketInFlight;
 
 function hasThrottleWindowPassed(feedKey) {
     return (Date.now() - (_lastFetchTimes[feedKey] || 0)) >= MARKET_FETCH_THROTTLE_MS;
@@ -882,6 +883,7 @@ async function _loadBountyFeedImpl() {
 async function forceRefreshMarket() {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     resetMarketFetchThrottle();
+    setMarketCache(null);
     showSkeleton('mutual-seeking-list');
     showSkeleton('mutual-prelaunch-list');
     showSkeleton('bounty-list');
@@ -1115,6 +1117,9 @@ async function joinMutual(appId, allowOverLimit = false) {
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        mutualSeeking = mutualSeeking.filter(c => c.app_id !== appId);
+        renderMutualFeed();
+        switchTab('tests');
         await Promise.all([loadTasks(), loadMutualFeed(), loadProjects(true)]);
     } catch (error) {
         console.error('Join mutual error:', error);
@@ -1135,6 +1140,9 @@ async function joinBounty(appId) {
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        bountyContracts = bountyContracts.filter(c => c.app_id !== appId);
+        renderBountyFeed();
+        switchTab('tests');
         await Promise.all([loadTasks(), loadBountyFeed(), loadProjects(true)]);
     } catch (error) {
         console.error('Join bounty error:', error);

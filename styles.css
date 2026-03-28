@@ -1591,7 +1591,7 @@ details[open] > summary .details-arrow {
 }
 
 .grant-segment.standard-checkin {
-    background: #34c759;
+    background: var(--button-color);
 }
 
 .grant-segment.standard-skip {
