@@ -62,8 +62,10 @@ var _feedbackRewardKarma = 0;
 var myProjectsLoadError = false;
 var marketCache = null;
 var MARKET_CACHE_KEY = 'market_cache_v1';
-var _lastFetchTimes = { mutual: 0, bounty: 0 };
+var _lastFetchTimes = { mutual: 0, bounty: 0, tests: 0, projects: 0 };
 var MARKET_FETCH_THROTTLE_MS = 15000;
+var TESTS_FETCH_THROTTLE_MS = 20000;
+var PROJECTS_FETCH_THROTTLE_MS = 30000;
 var _marketInFlight = { mutual: null, bounty: null };
 window._marketInFlight = _marketInFlight;
 var OFFERS_CACHE_KEY = 'incoming_offers_cache_v1';
@@ -72,6 +74,18 @@ var _offersLoadError = false;
 var _offersLoadedOnce = false;
 var _offersPollId = null;
 var _blockedOfferProjectsByOwner = {};
+
+var TESTS_CACHE_KEY = 'tests_cache_v1';
+var myTestsCache = null;
+var _testsInFlight = null;
+var _testsLoadedOnce = false;
+
+var PROJECTS_CACHE_KEY = 'projects_cache_v1';
+var myProjectsCache = null;
+var _projectsInFlight = null;
+var _projectsLoadedOnce = false;
+
+var _pendingActions = new Set();
 
 function hasThrottleWindowPassed(feedKey) {
     return (Date.now() - (_lastFetchTimes[feedKey] || 0)) >= MARKET_FETCH_THROTTLE_MS;
@@ -141,6 +155,64 @@ function setOffersCache(items) {
             localStorage.removeItem(OFFERS_CACHE_KEY);
         }
     } catch (e) {}
+}
+
+function getTestsCache() {
+    if (myTestsCache) return myTestsCache;
+    try {
+        var raw = localStorage.getItem(TESTS_CACHE_KEY);
+        if (!raw) return null;
+        myTestsCache = JSON.parse(raw);
+        return myTestsCache;
+    } catch (e) {
+        myTestsCache = null;
+        return null;
+    }
+}
+
+function setTestsCache(nextCache) {
+    myTestsCache = nextCache || null;
+    try {
+        if (myTestsCache) {
+            localStorage.setItem(TESTS_CACHE_KEY, JSON.stringify(myTestsCache));
+        } else {
+            localStorage.removeItem(TESTS_CACHE_KEY);
+        }
+    } catch (e) {}
+}
+
+function hasTestsCache() {
+    var cached = getTestsCache();
+    return !!(cached && Array.isArray(cached.tests) && cached.tests.length > 0);
+}
+
+function getProjectsCache() {
+    if (myProjectsCache) return myProjectsCache;
+    try {
+        var raw = localStorage.getItem(PROJECTS_CACHE_KEY);
+        if (!raw) return null;
+        myProjectsCache = JSON.parse(raw);
+        return myProjectsCache;
+    } catch (e) {
+        myProjectsCache = null;
+        return null;
+    }
+}
+
+function setProjectsCache(nextCache) {
+    myProjectsCache = nextCache || null;
+    try {
+        if (myProjectsCache) {
+            localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(myProjectsCache));
+        } else {
+            localStorage.removeItem(PROJECTS_CACHE_KEY);
+        }
+    } catch (e) {}
+}
+
+function hasProjectsCache() {
+    var cached = getProjectsCache();
+    return !!(cached && Array.isArray(cached.projects) && cached.projects.length > 0);
 }
 
 async function loadIncomingOffers(options) {
@@ -283,6 +355,11 @@ async function fetchWithRetry(url, options, maxRetries) {
 }
 
 function loadAllData() {
+    // Reset throttles so all data reloads fresh
+    _lastFetchTimes.tests = 0;
+    _lastFetchTimes.projects = 0;
+    _lastFetchTimes.mutual = 0;
+    _lastFetchTimes.bounty = 0;
     loadTasks().catch(function() {});
     loadIncomingOffers().catch(function() {});
     loadProjects().catch(function() {});
@@ -776,68 +853,131 @@ function toggleLanguage() {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-async function loadTasks() {
-    showSkeleton('tests-list');
+async function loadTasks(isBackground) {
+    if (_testsInFlight) {
+        return _testsInFlight;
+    }
+
+    // SWR: render from cache immediately
+    if (!_testsLoadedOnce) {
+        var cached = getTestsCache();
+        if (cached && Array.isArray(cached.tests) && cached.tests.length > 0) {
+            myTests = cached.tests;
+            _testsLoadedOnce = true;
+            renderTests();
+            if (Array.isArray(cached.incoming_offers)) {
+                incomingOffers = cached.incoming_offers;
+                _offersLoadedOnce = true;
+                renderIncomingOffers();
+            }
+        }
+    }
+
+    // Throttle background refreshes
+    if (isBackground && _testsLoadedOnce && (Date.now() - (_lastFetchTimes.tests || 0)) < TESTS_FETCH_THROTTLE_MS) {
+        return;
+    }
+
+    if (!_testsLoadedOnce) {
+        showSkeleton('tests-list');
+    }
+
+    var requestPromise = _loadTasksImpl();
+    _testsInFlight = requestPromise;
+    try {
+        await requestPromise;
+    } finally {
+        if (_testsInFlight === requestPromise) {
+            _testsInFlight = null;
+        }
+    }
+}
+
+function _mapTestsFromApi(data) {
+    var today = getLocalDate();
+    return (data.to_test_today || []).map(function(app) {
+        var status = 'new';
+        if (app.last_check_date === today) {
+            status = 'done';
+        } else if (app.last_check_date && app.last_check_date < today) {
+            status = 'daily';
+        } else if (app.last_check_date === null) {
+            status = 'new';
+        }
+        var existingTest = myTests.find(function(test) { return test.id === app.app_id; });
+        if (existingTest && existingTest.status === 'opened' && status !== 'done') {
+            status = 'opened';
+        }
+        return {
+            id: app.app_id,
+            progress_id: app.progress_id,
+            name: app.name,
+            package: app.package_name,
+            icon_url: app.icon_url,
+            google_group_url: app.google_group_url,
+            instructions: app.instructions,
+            status: status,
+            start_date: app.start_date,
+            owner_username: app.owner_username,
+            active_testers_count: app.active_testers_count,
+            days_since_publish: app.days_since_publish,
+            google_sync_day: app.google_sync_day || 0,
+            sync_message: app.sync_message || '',
+            last_owner_activity: app.last_owner_activity || null,
+            checkins_count: app.checkins_count || 0,
+            skips_count: app.skips_count || 0,
+            last_sync_date: app.last_sync_date || null,
+            testing_days: app.testing_days || 0,
+            grant_claimed: !!app.grant_claimed,
+            app_status: app.app_status || 'active',
+            join_type: app.join_type || 'invite',
+            target_lang: app.target_lang || 'ALL',
+            daily_timeline: app.daily_timeline || '',
+            archive_reason: app.archive_reason || null,
+        };
+    });
+}
+
+async function _loadTasksImpl() {
     _apiStart();
     try {
-        const response = await fetchWithRetry(`${API_BASE}/tasks/${userId}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
+        var response = await fetchWithRetry(API_BASE + '/tasks/' + userId);
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        var data = await response.json();
+        var nextTests = _mapTestsFromApi(data);
+        var nextOffers = Array.isArray(data.incoming_offers) ? data.incoming_offers : null;
 
-        const today = getLocalDate();
-        myTests = (data.to_test_today || []).map(app => {
-            let status = 'new';
-            if (app.last_check_date === today) {
-                status = 'done';
-            } else if (app.last_check_date && app.last_check_date < today) {
-                status = 'daily';
-            } else if (app.last_check_date === null) {
-                status = 'new';
-            }
-            const existingTest = myTests.find(test => test.id === app.app_id);
-            if (existingTest && existingTest.status === 'opened' && status !== 'done') {
-                status = 'opened';
-            }
-            return {
-                id: app.app_id,
-                progress_id: app.progress_id,
-                name: app.name,
-                package: app.package_name,
-                icon_url: app.icon_url,
-                google_group_url: app.google_group_url,
-                instructions: app.instructions,
-                status,
-                start_date: app.start_date,
-                owner_username: app.owner_username,
-                active_testers_count: app.active_testers_count,
-                days_since_publish: app.days_since_publish,
-                google_sync_day: app.google_sync_day || 0,
-                sync_message: app.sync_message || '',
-                last_owner_activity: app.last_owner_activity || null,
-                checkins_count: app.checkins_count || 0,
-                skips_count: app.skips_count || 0,
-                last_sync_date: app.last_sync_date || null,
-                testing_days: app.testing_days || 0,
-                grant_claimed: !!app.grant_claimed,
-                app_status: app.app_status || 'active',
-                join_type: app.join_type || 'invite',
-                target_lang: app.target_lang || 'ALL',
-                daily_timeline: app.daily_timeline || '',
-            };
-        });
-
-        if (Array.isArray(data.incoming_offers)) {
-            incomingOffers = data.incoming_offers;
-            setOffersCache(incomingOffers);
-            _offersLoadedOnce = true;
-            _offersLoadError = false;
-            renderIncomingOffers();
+        // Diff: only re-render if changed
+        var testsChanged = JSON.stringify(myTests) !== JSON.stringify(nextTests);
+        if (testsChanged) {
+            myTests = nextTests;
+            renderTests();
         }
-        renderTests();
+
+        if (nextOffers !== null) {
+            var offersChanged = JSON.stringify(incomingOffers) !== JSON.stringify(nextOffers);
+            if (offersChanged || !_offersLoadedOnce) {
+                incomingOffers = nextOffers;
+                setOffersCache(incomingOffers);
+                _offersLoadedOnce = true;
+                _offersLoadError = false;
+                renderIncomingOffers();
+            }
+        }
+
+        // Update cache
+        setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
+        _testsLoadedOnce = true;
+        _lastFetchTimes.tests = Date.now();
 
     } catch (error) {
         console.error('Error loading tasks:', error);
-        showRetry('tests-list', 'loadTasks()');
+        if (_testsLoadedOnce && myTests.length > 0) {
+            // Have data from cache, just show error toast
+            showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        } else {
+            showRetry('tests-list', 'loadTasks()');
+        }
         if (!_offersLoadedOnce) {
             incomingOffers = getOffersCache() || [];
             _offersLoadedOnce = true;
@@ -1045,18 +1185,46 @@ async function loadEvents(retryCount = 0) {
     }
 }
 
-async function loadProjects(isBackground = false) {
-    if (!isBackground) {
+async function loadProjects(isBackground) {
+    if (_projectsInFlight) {
+        return _projectsInFlight;
+    }
+
+    // SWR: render from cache immediately
+    if (!_projectsLoadedOnce) {
+        var cached = getProjectsCache();
+        if (cached && Array.isArray(cached.projects) && cached.projects.length > 0) {
+            myProjects = cached.projects;
+            visibilityStats = cached.visibilityStats || {};
+            _projectsLoadedOnce = true;
+            myProjectsLoadError = false;
+            renderProjects();
+        }
+    }
+
+    // Throttle background refreshes
+    if (isBackground && _projectsLoadedOnce && (Date.now() - (_lastFetchTimes.projects || 0)) < PROJECTS_FETCH_THROTTLE_MS) {
+        return;
+    }
+
+    if (!_projectsLoadedOnce && !isBackground) {
         showSkeleton('projects-list');
     }
-    _apiStart();
-    try {
-        const response = await fetchWithRetry(`${API_BASE}/projects/${userId}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
 
-        const projectsList = data.projects || [];
-        myProjects = projectsList.map(project => ({
+    var requestPromise = _loadProjectsImpl();
+    _projectsInFlight = requestPromise;
+    try {
+        await requestPromise;
+    } finally {
+        if (_projectsInFlight === requestPromise) {
+            _projectsInFlight = null;
+        }
+    }
+}
+
+function _mapProjectsFromApi(data) {
+    return (data.projects || []).map(function(project) {
+        return {
             id: project.app_id,
             name: project.name,
             package: project.package_name,
@@ -1079,36 +1247,66 @@ async function loadProjects(isBackground = false) {
             last_sync_date: project.last_sync_date || null,
             feedback_new_count: project.feedback_new_count || 0,
             feedback_total_count: project.feedback_total_count || 0,
-        }));
-
-        visibilityStats = {
-            ownerKarma: data.karma || 0,
-            rank: data.rank || 0,
-            total_developers: data.total_developers || 0,
-            my_active_tests: data.my_active_tests || 0,
-            my_total_tests: data.my_total_tests || 0,
-            balance_bust: data.balance_bust || 0,
-            top_thresholds: data.top_thresholds || {},
-            completed_tests: data.completed_tests || 0,
-            total_expected_checkins: data.total_expected_checkins || 0,
-            total_actual_checkins: data.total_actual_checkins || 0,
-            golden_count: data.golden_count || 0,
         };
+    });
+}
 
-        myProjectsLoadError = false;
-        renderProjects();
-        if (typeof window.renderTests === 'function' && Array.isArray(myTests) && myTests.length) {
-            window.renderTests();
+function _mapStatsFromApi(data) {
+    return {
+        ownerKarma: data.karma || 0,
+        rank: data.rank || 0,
+        total_developers: data.total_developers || 0,
+        my_active_tests: data.my_active_tests || 0,
+        my_total_tests: data.my_total_tests || 0,
+        balance_bust: data.balance_bust || 0,
+        top_thresholds: data.top_thresholds || {},
+        completed_tests: data.completed_tests || 0,
+        total_expected_checkins: data.total_expected_checkins || 0,
+        total_actual_checkins: data.total_actual_checkins || 0,
+        golden_count: data.golden_count || 0,
+    };
+}
+
+async function _loadProjectsImpl() {
+    _apiStart();
+    try {
+        var response = await fetchWithRetry(API_BASE + '/projects/' + userId);
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        var data = await response.json();
+        var nextProjects = _mapProjectsFromApi(data);
+        var nextStats = _mapStatsFromApi(data);
+
+        // Diff: only re-render if changed
+        var projectsChanged = JSON.stringify(myProjects) !== JSON.stringify(nextProjects);
+        var statsChanged = JSON.stringify(visibilityStats) !== JSON.stringify(nextStats);
+
+        if (projectsChanged || statsChanged) {
+            myProjects = nextProjects;
+            visibilityStats = nextStats;
+            myProjectsLoadError = false;
+            renderProjects();
+            if (typeof window.renderTests === 'function' && Array.isArray(myTests) && myTests.length) {
+                window.renderTests();
+            }
         }
+
+        // Update cache
+        setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+        _projectsLoadedOnce = true;
+        _lastFetchTimes.projects = Date.now();
+        myProjectsLoadError = false;
+
     } catch (error) {
         console.error('Error loading projects:', error);
         myProjectsLoadError = true;
-        if (!isBackground) {
+        if (_projectsLoadedOnce && myProjects.length > 0) {
+            showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        } else {
             showRetry('projects-list', 'loadProjects()');
         }
     } finally {
         _apiEnd();
-        loadArchivedProjects().catch(() => {});
+        loadArchivedProjects().catch(function() {});
     }
 }
 
@@ -1196,6 +1394,9 @@ async function createMutualOffer(targetAppId, targetOwnerId, event) {
 }
 
 async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiContext) {
+    var actionKey = 'sendOffer_' + targetAppId + '_' + proposerAppId;
+    if (_pendingActions.has(actionKey)) return;
+    _pendingActions.add(actionKey);
     _apiStart();
     try {
         const response = await fetchWithRetry(`${API_BASE}/offers`, {
@@ -1250,10 +1451,21 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
         handleApiError('network_error');
     } finally {
         _apiEnd();
+        _pendingActions.delete(actionKey);
     }
 }
 
 async function joinMutual(appId, allowOverLimit = false) {
+    var actionKey = 'joinMutual_' + appId;
+    if (_pendingActions.has(actionKey)) return;
+    _pendingActions.add(actionKey);
+    // Optimistic UI: remove card immediately, rollback on error
+    const rollback = [...mutualSeeking];
+    mutualSeeking = mutualSeeking.filter(c => c.app_id !== appId);
+    renderMutualFeed();
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    switchTab('tests');
+
     try {
         const response = await fetch(`${API_BASE}/feed/mutual/${appId}/join`, {
             method: 'POST',
@@ -1262,21 +1474,35 @@ async function joinMutual(appId, allowOverLimit = false) {
         });
         const result = await response.json();
         if (result.status !== 'success') {
+            mutualSeeking = rollback;
+            renderMutualFeed();
             if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
             return;
         }
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        mutualSeeking = mutualSeeking.filter(c => c.app_id !== appId);
-        renderMutualFeed();
-        switchTab('tests');
-        await Promise.all([loadTasks(), loadMutualFeed(), loadProjects(true)]);
+        loadTasks(true);
+        loadMutualFeed();
+        loadProjects(true);
     } catch (error) {
         console.error('Join mutual error:', error);
+        mutualSeeking = rollback;
+        renderMutualFeed();
         if (tg.showAlert) tg.showAlert(t.networkError);
+    } finally {
+        _pendingActions.delete(actionKey);
     }
 }
 
 async function joinBounty(appId) {
+    var actionKey = 'joinBounty_' + appId;
+    if (_pendingActions.has(actionKey)) return;
+    _pendingActions.add(actionKey);
+    // Optimistic UI: remove card immediately, rollback on error
+    const rollback = [...bountyContracts];
+    bountyContracts = bountyContracts.filter(c => c.app_id !== appId);
+    renderBountyFeed();
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    switchTab('tests');
+
     try {
         const response = await fetch(`${API_BASE}/feed/bounty/${appId}/join`, {
             method: 'POST',
@@ -1285,17 +1511,21 @@ async function joinBounty(appId) {
         });
         const result = await response.json();
         if (result.status !== 'success') {
+            bountyContracts = rollback;
+            renderBountyFeed();
             if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
             return;
         }
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        bountyContracts = bountyContracts.filter(c => c.app_id !== appId);
-        renderBountyFeed();
-        switchTab('tests');
-        await Promise.all([loadTasks(), loadBountyFeed(), loadProjects(true)]);
+        loadTasks(true);
+        loadBountyFeed();
+        loadProjects(true);
     } catch (error) {
         console.error('Join bounty error:', error);
+        bountyContracts = rollback;
+        renderBountyFeed();
         if (tg.showAlert) tg.showAlert(t.networkError);
+    } finally {
+        _pendingActions.delete(actionKey);
     }
 }
 
@@ -1943,6 +2173,7 @@ async function loadArchivedProjects() {
                 target_lang: project.target_lang || 'ALL',
                 feedback_new_count: project.feedback_new_count || 0,
                 feedback_total_count: project.feedback_total_count || 0,
+                archive_reason: project.archive_reason || null,
             });
         });
         renderArchivedProjects();
@@ -2149,7 +2380,7 @@ async function confirmStart(id) {
 
         setTimeout(() => {
             card.style.display = 'none';
-            loadTasks();
+            loadTasks(true);
             loadProjects(true);
         }, 800);
         return true;

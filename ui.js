@@ -469,6 +469,12 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         if (sourceChip) {
             parts.push(sourceChip);
         }
+        if (test.app_status === 'archived') {
+            var archiveLabel = test.archive_reason === 'afk' ? t.archivedAfkBadge : t.archivedBadge;
+            var archiveToast = test.archive_reason === 'afk' ? (t.archivedAfkToast || '').replace(/'/g, "\\'") : '';
+            var archiveOnclick = archiveToast ? "event.stopPropagation(); showToast('" + archiveToast + "')" : 'event.stopPropagation()';
+            parts.push('<button class="meta-chip accent-red" onclick="' + archiveOnclick + '">' + archiveLabel + '</button>');
+        }
     }
     if (typeof daysSincePublish === 'number' && daysSincePublish >= 0) {
         const dayLabel = t.daysShort.replace('{days}', daysSincePublish);
@@ -1925,6 +1931,7 @@ function renderArchivedProjects() {
         const safeArchiveName = window.escapeHTML(archiveName);
         const safeArchivePackage = window.escapeHTML(project.package_name || '');
         const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
+        const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
         html += `
             <div class="card archive-card">
                 <div class="card-header archive-card-header">
@@ -1937,6 +1944,7 @@ function renderArchivedProjects() {
                 </div>
                 <div class="archive-meta-row">
                     <span class="archive-meta-chip">${modeLabel}</span>
+                    ${afkChip}
                     <span class="archive-meta-chip">👥 ${project.total_testers}</span>
                     <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
                     <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
@@ -2265,18 +2273,33 @@ function switchTab(tabId, navElement) {
     if (tabEl) tabEl.classList.add('active');
 
     if (finalTab === 'market') {
-        const canUseCache = window.hasMarketCache && window.hasMarketCache();
-        if (!canUseCache) {
+        var hasMutualData = Array.isArray(mutualSeeking) && mutualSeeking.length > 0
+            || Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0;
+        var hasBountyData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
+        if (!hasMutualData) {
             showSkeleton('mutual-seeking-list');
             showSkeleton('mutual-prelaunch-list');
+        }
+        if (!hasBountyData) {
             showSkeleton('bounty-list');
         }
         loadMutualFeed();
         loadBountyFeed();
     }
 
-    if (finalTab === 'tests' && window.loadIncomingOffers) {
-        window.loadIncomingOffers({ background: true }).catch(function() {});
+    if (finalTab === 'tests') {
+        if (window.loadTasks) {
+            window.loadTasks(true).catch(function() {});
+        }
+        if (window.loadIncomingOffers) {
+            window.loadIncomingOffers({ background: true }).catch(function() {});
+        }
+    }
+
+    if (finalTab === 'projects') {
+        if (window.loadProjects) {
+            window.loadProjects(true).catch(function() {});
+        }
     }
 
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
