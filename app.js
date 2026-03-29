@@ -62,10 +62,12 @@ var _feedbackRewardKarma = 0;
 var myProjectsLoadError = false;
 var marketCache = null;
 var MARKET_CACHE_KEY = 'market_cache_v1';
-var _lastFetchTimes = { mutual: 0, bounty: 0, tests: 0, projects: 0 };
+var _lastFetchTimes = { mutual: 0, bounty: 0, tests: 0, projects: 0, offers: 0, archived: 0 };
 var MARKET_FETCH_THROTTLE_MS = 15000;
 var TESTS_FETCH_THROTTLE_MS = 20000;
 var PROJECTS_FETCH_THROTTLE_MS = 30000;
+var OFFERS_FETCH_THROTTLE_MS = 15000;
+var ARCHIVED_FETCH_THROTTLE_MS = 45000;
 var _marketInFlight = { mutual: null, bounty: null };
 window._marketInFlight = _marketInFlight;
 var OFFERS_CACHE_KEY = 'incoming_offers_cache_v1';
@@ -183,7 +185,7 @@ function setTestsCache(nextCache) {
 
 function hasTestsCache() {
     var cached = getTestsCache();
-    return !!(cached && Array.isArray(cached.tests) && cached.tests.length > 0);
+    return !!(cached && Array.isArray(cached.tests));
 }
 
 function getProjectsCache() {
@@ -212,7 +214,7 @@ function setProjectsCache(nextCache) {
 
 function hasProjectsCache() {
     var cached = getProjectsCache();
-    return !!(cached && Array.isArray(cached.projects) && cached.projects.length > 0);
+    return !!(cached && Array.isArray(cached.projects));
 }
 
 async function loadIncomingOffers(options) {
@@ -231,6 +233,10 @@ async function loadIncomingOffers(options) {
         renderIncomingOffers();
     }
 
+    if (background && _offersLoadedOnce && (Date.now() - (_lastFetchTimes.offers || 0)) < OFFERS_FETCH_THROTTLE_MS) {
+        return;
+    }
+
     var requestPromise = (async function() {
         _apiStart();
         try {
@@ -241,6 +247,7 @@ async function loadIncomingOffers(options) {
             setOffersCache(incomingOffers);
             _offersLoadedOnce = true;
             _offersLoadError = false;
+            _lastFetchTimes.offers = Date.now();
             renderIncomingOffers();
         } catch (error) {
             console.error('Error loading incoming offers:', error);
@@ -360,9 +367,12 @@ function loadAllData() {
     _lastFetchTimes.projects = 0;
     _lastFetchTimes.mutual = 0;
     _lastFetchTimes.bounty = 0;
+    _lastFetchTimes.offers = 0;
+    _lastFetchTimes.archived = 0;
     loadTasks().catch(function() {});
     loadIncomingOffers().catch(function() {});
     loadProjects().catch(function() {});
+    loadArchivedProjects({ silent: true }).catch(function() {});
     loadMutualFeed().catch(function() {});
     loadBountyFeed().catch(function() {});
 }
@@ -861,7 +871,7 @@ async function loadTasks(isBackground) {
     // SWR: render from cache immediately
     if (!_testsLoadedOnce) {
         var cached = getTestsCache();
-        if (cached && Array.isArray(cached.tests) && cached.tests.length > 0) {
+        if (cached && Array.isArray(cached.tests)) {
             myTests = cached.tests;
             _testsLoadedOnce = true;
             renderTests();
@@ -1193,7 +1203,7 @@ async function loadProjects(isBackground) {
     // SWR: render from cache immediately
     if (!_projectsLoadedOnce) {
         var cached = getProjectsCache();
-        if (cached && Array.isArray(cached.projects) && cached.projects.length > 0) {
+        if (cached && Array.isArray(cached.projects)) {
             myProjects = cached.projects;
             visibilityStats = cached.visibilityStats || {};
             _projectsLoadedOnce = true;
@@ -1306,7 +1316,6 @@ async function _loadProjectsImpl() {
         }
     } finally {
         _apiEnd();
-        loadArchivedProjects().catch(function() {});
     }
 }
 
@@ -2163,7 +2172,15 @@ async function saveProjectSync() {
     }
 }
 
-async function loadArchivedProjects() {
+async function loadArchivedProjects(options) {
+    var opts = options || {};
+    var background = !!opts.background;
+    var silent = !!opts.silent || background;
+
+    if (background && (Date.now() - (_lastFetchTimes.archived || 0)) < ARCHIVED_FETCH_THROTTLE_MS) {
+        return;
+    }
+
     try {
         const response = await fetch(`${API_BASE}/projects/${userId}/archived`);
         if (!response.ok) return;
@@ -2176,10 +2193,13 @@ async function loadArchivedProjects() {
                 archive_reason: project.archive_reason || null,
             });
         });
+        _lastFetchTimes.archived = Date.now();
         renderArchivedProjects();
     } catch (error) {
         console.error('Archive load error:', error);
-        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        if (!silent) {
+            showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        }
     }
 }
 

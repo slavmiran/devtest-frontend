@@ -2300,6 +2300,9 @@ function switchTab(tabId, navElement) {
         if (window.loadProjects) {
             window.loadProjects(true).catch(function() {});
         }
+        if (window.loadArchivedProjects) {
+            window.loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+        }
     }
 
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
