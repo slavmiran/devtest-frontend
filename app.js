@@ -66,6 +66,12 @@ var _lastFetchTimes = { mutual: 0, bounty: 0 };
 var MARKET_FETCH_THROTTLE_MS = 15000;
 var _marketInFlight = { mutual: null, bounty: null };
 window._marketInFlight = _marketInFlight;
+var OFFERS_CACHE_KEY = 'incoming_offers_cache_v1';
+var _offersInFlight = null;
+var _offersLoadError = false;
+var _offersLoadedOnce = false;
+var _offersPollId = null;
+var _blockedOfferProjectsByOwner = {};
 
 function hasThrottleWindowPassed(feedKey) {
     return (Date.now() - (_lastFetchTimes[feedKey] || 0)) >= MARKET_FETCH_THROTTLE_MS;
@@ -114,6 +120,117 @@ function hasMarketCache() {
     );
     const hasBounty = cached.bounty && Array.isArray(cached.bounty.contracts);
     return !!(hasMutual || hasBounty);
+}
+
+function getOffersCache() {
+    try {
+        var raw = localStorage.getItem(OFFERS_CACHE_KEY);
+        if (!raw) return null;
+        var parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function setOffersCache(items) {
+    try {
+        if (Array.isArray(items)) {
+            localStorage.setItem(OFFERS_CACHE_KEY, JSON.stringify(items));
+        } else {
+            localStorage.removeItem(OFFERS_CACHE_KEY);
+        }
+    } catch (e) {}
+}
+
+async function loadIncomingOffers(options) {
+    var opts = options || {};
+    var background = !!opts.background;
+
+    if (_offersInFlight) {
+        return _offersInFlight;
+    }
+
+    var cached = getOffersCache();
+    if (!_offersLoadedOnce && Array.isArray(cached)) {
+        incomingOffers = cached;
+        _offersLoadedOnce = true;
+        _offersLoadError = false;
+        renderIncomingOffers();
+    }
+
+    var requestPromise = (async function() {
+        _apiStart();
+        try {
+            var response = await fetchWithRetry(`${API_BASE}/offers/incoming/${userId}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            var data = await response.json();
+            incomingOffers = data.offers || [];
+            setOffersCache(incomingOffers);
+            _offersLoadedOnce = true;
+            _offersLoadError = false;
+            renderIncomingOffers();
+        } catch (error) {
+            console.error('Error loading incoming offers:', error);
+            if (!Array.isArray(incomingOffers) || incomingOffers.length === 0) {
+                incomingOffers = Array.isArray(cached) ? cached : [];
+            }
+            _offersLoadedOnce = true;
+            _offersLoadError = true;
+            renderIncomingOffers();
+            if (!background && (!incomingOffers || incomingOffers.length === 0)) {
+                showToast(getApiErrorMessage(error && error.message, 'networkError'));
+            }
+        } finally {
+            _apiEnd();
+        }
+    })();
+
+    _offersInFlight = requestPromise;
+    renderIncomingOffers();
+
+    try {
+        await requestPromise;
+    } finally {
+        if (_offersInFlight === requestPromise) {
+            _offersInFlight = null;
+        }
+        renderIncomingOffers();
+    }
+}
+
+function startOffersPolling() {
+    if (_offersPollId) {
+        clearInterval(_offersPollId);
+    }
+    _offersPollId = setInterval(function() {
+        if (!document.hidden) {
+            loadIncomingOffers({ background: true }).catch(function() {});
+        }
+    }, 30000);
+}
+
+async function fetchBlockedOfferProjects(targetOwnerId, forceRefresh) {
+    var ownerKey = String(targetOwnerId || '');
+    if (!ownerKey) return {};
+    if (!forceRefresh && _blockedOfferProjectsByOwner[ownerKey]) {
+        return _blockedOfferProjectsByOwner[ownerKey];
+    }
+    try {
+        var response = await fetchWithRetry(`${API_BASE}/offers/blocked-projects/${userId}/${targetOwnerId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        var data = await response.json();
+        var map = {};
+        (data.blocked_projects || []).forEach(function(item) {
+            if (!item || typeof item.proposer_app_id === 'undefined' || item.proposer_app_id === null) return;
+            map[String(item.proposer_app_id)] = item;
+        });
+        _blockedOfferProjectsByOwner[ownerKey] = map;
+        return map;
+    } catch (error) {
+        console.error('Error loading blocked offer projects:', error);
+        return {};
+    }
 }
 
 async function fetchWithRetry(url, options, maxRetries) {
@@ -167,6 +284,7 @@ async function fetchWithRetry(url, options, maxRetries) {
 
 function loadAllData() {
     loadTasks().catch(function() {});
+    loadIncomingOffers().catch(function() {});
     loadProjects().catch(function() {});
     loadMutualFeed().catch(function() {});
     loadBountyFeed().catch(function() {});
@@ -333,6 +451,7 @@ function handleApiError(code, details = {}) {
         offer_app_not_found: 'err_offer_app_not_found',
         offer_inactive_app: 'err_offer_inactive_app',
         offer_owner_mismatch: 'err_offer_owner_mismatch',
+        offer_proposer_app_locked_owner: 'err_offer_proposer_app_locked_owner',
         offer_accept_failed: 'err_offer_accept_failed',
         offer_create_failed: 'err_offer_create_failed',
         user_not_found: 'err_user_not_found',
@@ -701,19 +820,29 @@ async function loadTasks() {
                 testing_days: app.testing_days || 0,
                 grant_claimed: !!app.grant_claimed,
                 app_status: app.app_status || 'active',
+                join_type: app.join_type || 'invite',
                 target_lang: app.target_lang || 'ALL',
                 daily_timeline: app.daily_timeline || '',
             };
         });
 
-        incomingOffers = data.incoming_offers || [];
-        renderIncomingOffers();
+        if (Array.isArray(data.incoming_offers)) {
+            incomingOffers = data.incoming_offers;
+            setOffersCache(incomingOffers);
+            _offersLoadedOnce = true;
+            _offersLoadError = false;
+            renderIncomingOffers();
+        }
         renderTests();
 
     } catch (error) {
         console.error('Error loading tasks:', error);
         showRetry('tests-list', 'loadTasks()');
-        incomingOffers = [];
+        if (!_offersLoadedOnce) {
+            incomingOffers = getOffersCache() || [];
+            _offersLoadedOnce = true;
+            _offersLoadError = incomingOffers.length === 0;
+        }
         renderIncomingOffers();
     } finally {
         _apiEnd();
@@ -1002,7 +1131,7 @@ async function decideOffer(offerId, action, event) {
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        await loadTasks();
+        await Promise.all([loadTasks(), loadIncomingOffers({ background: true })]);
         loadProjects(true).catch(() => {});
     } catch (error) {
         console.error('Offer decision error:', error);
@@ -1042,7 +1171,15 @@ async function createMutualOffer(targetAppId, targetOwnerId, event) {
         else alert(window.t('offerNoProjects'));
         return;
     }
+    const blockedProjects = await fetchBlockedOfferProjects(targetOwnerId, true);
     if (eligible.length === 1) {
+        const blockedEntry = blockedProjects[String(eligible[0].id)];
+        if (blockedEntry) {
+            showToast(window.t('offerProjectLockedSingle', {
+                target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang)
+            }, lang));
+            return;
+        }
         await sendMutualOffer(targetAppId, targetOwnerId, eligible[0].id, {
             sourceButton: sourceButton,
             targetAppId: targetAppId,
@@ -1054,6 +1191,7 @@ async function createMutualOffer(targetAppId, targetOwnerId, event) {
         sourceButton: sourceButton,
         targetAppId: targetAppId,
         targetOwnerId: targetOwnerId,
+        blockedProjects: blockedProjects,
     });
 }
 
@@ -1093,6 +1231,17 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (uiContext && uiContext.targetOwnerId) {
+            var ownerKey = String(uiContext.targetOwnerId);
+            var ownerLocks = _blockedOfferProjectsByOwner[ownerKey] || {};
+            ownerLocks[String(proposerAppId)] = {
+                proposer_app_id: proposerAppId,
+                target_app_id: targetAppId,
+                target_app_name: '',
+                created_at: new Date().toISOString(),
+            };
+            _blockedOfferProjectsByOwner[ownerKey] = ownerLocks;
+        }
         markMutualOfferPendingUi(targetAppId, targetOwnerId, uiContext && uiContext.sourceButton);
         showToast(window.t('offerSentSuccess'));
         closeProjectSelectModal();
@@ -1985,6 +2134,11 @@ async function confirmStart(id) {
             showToast(t.checkinAlreadyDone);
         } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
             showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+        } else if (earnedBust > 0 && earnedKarma > 0) {
+            showToast(window.t('checkinEarnBustAndKarma', {
+                bust: formatAmountValue(earnedBust, 1),
+                karma: formatAmountValue(earnedKarma, 1)
+            }, lang));
         } else if (earnedBust > 0) {
             showToast(t.checkinEarnBust.replace('{amount}', formatAmountValue(earnedBust, 1)));
         } else if (earnedKarma > 0) {
@@ -2306,6 +2460,9 @@ document.addEventListener('DOMContentLoaded', () => {
             _pendingScreenshotReminderUsername = null;
             setTimeout(() => showScreenshotCompleteModal(username), 300);
         }
+        if (!document.hidden) {
+            loadIncomingOffers({ background: true }).catch(() => {});
+        }
     });
 
     document.addEventListener('pointerdown', (event) => {
@@ -2317,6 +2474,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadTasks();
+    loadIncomingOffers();
+    startOffersPolling();
     loadEvents();
     loadProjects();
     loadMutualFeed();
@@ -2332,6 +2491,7 @@ Object.assign(window, {
     applyLanguage,
     toggleLanguage,
     loadTasks,
+    loadIncomingOffers,
     loadMutualFeed,
     loadBountyFeed,
     loadEvents,

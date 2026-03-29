@@ -178,7 +178,21 @@ function renderIcon(name, iconUrl) {
 }
 
 function formatOfferRemaining(createdAt) {
-    const created = new Date(createdAt || '');
+    let rawValue = createdAt;
+    if (rawValue instanceof Date) {
+        rawValue = rawValue.toISOString();
+    }
+    let normalized = String(rawValue || '').trim();
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(normalized)) {
+        normalized = normalized.replace(' ', 'T');
+    }
+    if (normalized && !/([zZ]|[+\-]\d{2}:\d{2})$/.test(normalized)) {
+        normalized += 'Z';
+    }
+    let created = new Date(normalized || '');
+    if (Number.isNaN(created.getTime()) && createdAt) {
+        created = new Date(createdAt);
+    }
     if (Number.isNaN(created.getTime())) return null;
     const expiresAt = new Date(created.getTime() + (3 * 60 * 60 * 1000));
     if (Date.now() > expiresAt.getTime()) return null;
@@ -431,8 +445,31 @@ function getScreenshotReminderHtml(test) {
     `;
 }
 
+function getTestSourceChip(test) {
+    const joinType = String(test && test.join_type || '').toLowerCase();
+    if (joinType === 'bounty') {
+        return `<span class="meta-chip accent-purple">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))}</span>`;
+    }
+    if (joinType === 'prelaunch') {
+        return `<span class="meta-chip accent-blue">🚀 ${window.escapeHTML(window.t('testSourcePrelaunch', {}, lang))}</span>`;
+    }
+    if (joinType === 'mutual') {
+        return `<span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('testSourceMutual', {}, lang))}</span>`;
+    }
+    if (joinType === 'invite') {
+        return `<span class="meta-chip">🔗 ${window.escapeHTML(window.t('testSourceInvite', {}, lang))}</span>`;
+    }
+    return '';
+}
+
 function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test) {
     const parts = [];
+    if (test) {
+        const sourceChip = getTestSourceChip(test);
+        if (sourceChip) {
+            parts.push(sourceChip);
+        }
+    }
     if (typeof daysSincePublish === 'number' && daysSincePublish >= 0) {
         const dayLabel = t.daysShort.replace('{days}', daysSincePublish);
         const tooltip = t.chipTooltipDays.replace('{days}', daysSincePublish);
@@ -503,9 +540,20 @@ function renderIncomingOffers() {
     }
 
     const pending = (incomingOffers || []).filter((offer) => !!offer && offer.status === 'pending');
+    const isLoading = !!_offersInFlight;
     countEl.innerText = t.offersCount.replace('{count}', pending.length);
 
     if (!pending.length) {
+        if (isLoading) {
+            section.style.display = '';
+            showSkeleton('offers-carousel');
+            return;
+        }
+        if (_offersLoadError) {
+            section.style.display = '';
+            showRetry('offers-carousel', 'loadIncomingOffers()');
+            return;
+        }
         section.style.display = 'none';
         carousel.innerHTML = '';
         return;
@@ -896,6 +944,13 @@ function renderMutualReturns(apps) {
         subtitleEl.textContent = window.t('mutualReturnsSubtitle', {}, lang);
     }
 
+    const isLoading = !!(window._marketInFlight && window._marketInFlight.mutual);
+    if ((!apps || apps.length === 0) && isLoading) {
+        container.style.display = '';
+        showSkeleton('mutual-returns-list');
+        return;
+    }
+
     if (!apps || apps.length === 0) {
         container.style.display = 'none';
         return;
@@ -939,13 +994,15 @@ function renderMutualFeed() {
     const isLoading = !!(window._marketInFlight && (window._marketInFlight.mutual));
 
     if (!mutualSeeking.length) {
-        if (!isLoading) seekingEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
+        if (isLoading) showSkeleton('mutual-seeking-list');
+        else seekingEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
         seekingEl.innerHTML = mutualSeeking.map((item) => renderFeedCard(item, 'mutual-seeking')).join('');
     }
 
     if (!mutualPrelaunch.length) {
-        if (!isLoading) prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
+        if (isLoading) showSkeleton('mutual-prelaunch-list');
+        else prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
         prelaunchEl.innerHTML = mutualPrelaunch.map((item) => renderFeedCard(item, 'mutual-prelaunch')).join('');
     }
@@ -981,7 +1038,8 @@ function renderBountyFeed() {
     if (!bountyEl) return;
     const isLoading = !!(window._marketInFlight && (window._marketInFlight.bounty));
     if (!bountyContracts.length) {
-        if (!isLoading) bountyEl.innerHTML = `<p class="no-testers" style="margin-top: 10px;">${t.bountyEmpty}</p>`;
+        if (isLoading) showSkeleton('bounty-list');
+        else bountyEl.innerHTML = `<p class="no-testers" style="margin-top: 10px;">${t.bountyEmpty}</p>`;
         return;
     }
     bountyEl.innerHTML = bountyContracts.map((item) => renderFeedCard(item, 'bounty')).join('');
@@ -1362,16 +1420,17 @@ function renderProjects() {
         })();
 
         const hasSync = (project.google_sync_day || 0) > 1;
-        const syncBtnStyle = hasSync
-            ? 'flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);'
-            : 'flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);';
-        const syncBtnLabel = hasSync ? window.escapeHTML(formatCompactSyncLabel(project)) : t.syncBtnLong;
-        const syncActionHtml = `<div class="action-row" style="margin-top: 0;">
-                    <button class="btn btn-secondary" style="${syncBtnStyle}" onclick="openSyncModal(${project.id})">${syncBtnLabel}</button>
+        const syncActionHtml = hasSync
+            ? `<div class="action-row" style="margin-top: 0; margin-bottom: 10px;">
+                    <button class="btn btn-secondary" style="flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);" onclick="openSyncModal(${project.id})">${window.escapeHTML(formatCompactSyncLabel(project))}</button>
                     <button class="btn btn-secondary" style="flex: 1; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);" onclick="openProjectFeedback(${project.id}, false)">
                         ${window.escapeHTML(window.t('projectFeedbackButtonShort', {}, lang))}${buildProjectFeedbackBadge(project.feedback_total_count || 0, project.feedback_new_count || 0)}
                     </button>
-                </div>`;
+                </div>`
+            : `<button class="btn btn-secondary" style="width: 100%; margin-bottom: 10px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
+                    ${t.syncBtnLong}
+                </button>
+                ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false)}`;
 
         card.innerHTML = `
             <div class="card-header" style="margin-bottom: 8px;">
@@ -1400,7 +1459,7 @@ function renderProjects() {
             </div>
             <div style="margin-top: 16px;">
                 ${syncActionHtml}
-                <div class="action-row" style="margin-top: 0;">
+                <div class="action-row" style="margin-top: 10px;">
                     <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openInviteModal(${project.id})">
                         🔗 ${t.inviteLink}
                     </button>
@@ -2216,6 +2275,10 @@ function switchTab(tabId, navElement) {
         loadBountyFeed();
     }
 
+    if (finalTab === 'tests' && window.loadIncomingOffers) {
+        window.loadIncomingOffers({ background: true }).catch(function() {});
+    }
+
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
@@ -2827,26 +2890,40 @@ window.showTimelineStats = showTimelineStats;
 window.openTimelineStatsSheet = openTimelineStatsSheet;
 window.closeTimelineStatsSheet = closeTimelineStatsSheet;
 
-function showProjectSelectModal(projects, targetAppId, targetOwnerId) {
+function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
     let modal = document.getElementById('project-select-modal');
     if (!modal) return;
     const listEl = document.getElementById('project-select-list');
     if (!listEl) return;
+    const blockedProjects = options && options.blockedProjects ? options.blockedProjects : {};
     listEl.innerHTML = projects.map(p => {
         const safeName = window.escapeHTML(p.name || window.t('unknownLabel'));
         const targetAlreadyTesting = (p.testers || []).some(tester => Number(tester.tester_id) === Number(targetOwnerId));
-        const disabledClass = targetAlreadyTesting ? ' disabled' : '';
-        const badgeHtml = targetAlreadyTesting
-            ? `<span class="meta-chip accent-purple">${window.escapeHTML(window.t('alreadyTestingBadge', {}, lang))}</span>`
+        const blockedEntry = blockedProjects[String(p.id)] || null;
+        const isDisabled = targetAlreadyTesting || !!blockedEntry;
+        const disabledClass = isDisabled ? ' disabled' : '';
+        const badges = [];
+        if (targetAlreadyTesting) {
+            badges.push(`<span class="meta-chip accent-purple">${window.escapeHTML(window.t('alreadyTestingBadge', {}, lang))}</span>`);
+        }
+        if (blockedEntry) {
+            badges.push(`<span class="meta-chip accent-orange">${window.escapeHTML(window.t('offerProjectLockedBadge', {}, lang))}</span>`);
+        }
+        const badgeHtml = badges.join('');
+        const reasonHtml = blockedEntry
+            ? `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectLockedDetails', { target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang) }, lang))}</span>`
             : '';
 
-        const clickHandler = targetAlreadyTesting
+        const clickHandler = isDisabled
             ? 'event.preventDefault(); event.stopPropagation();'
             : `window._selectProjectForOffer(${p.id}); event.stopPropagation();`;
 
         return `<button class="project-select-item${disabledClass}" onclick="${clickHandler}">
             <span class="project-select-icon">${renderIcon(p.name || '', p.icon_url)}</span>
-            <span class="project-select-name">${safeName}</span>
+            <span class="project-select-text">
+                <span class="project-select-name">${safeName}</span>
+                ${reasonHtml}
+            </span>
             ${badgeHtml}
         </button>`;
     }).join('');
