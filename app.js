@@ -1162,6 +1162,7 @@ async function _loadMutualFeedImpl(options) {
         nextCache.mutual = nextMutual;
         setMarketCache(nextCache);
         markMarketFetchSuccess('mutual');
+        window._marketLoadedOnce = true;
     } catch (error) {
         console.error('Error loading mutual feed:', error);
         const hasLocalData = Array.isArray(mutualSeeking) && mutualSeeking.length > 0
@@ -2282,6 +2283,77 @@ async function saveProjectSync() {
     }
 }
 
+var _syncActivityInterval = null;
+
+async function pingOwnerActivity(projectId) {
+    var btn = document.getElementById('activity-ping-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '\u23f3...';
+    }
+
+    try {
+        var response = await fetch(API_BASE + '/projects/' + projectId + '/ping_activity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_id: userId })
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'activityPingError'));
+            if (btn) { btn.disabled = false; btn.textContent = window.t('activityConfirmBtn'); }
+            return;
+        }
+
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('activityPingSuccess'));
+
+        var proj = myProjects.find(function(p) { return p.id === projectId; });
+        if (proj) {
+            proj.last_owner_activity = data.last_owner_activity || new Date().toISOString();
+        }
+
+        _startActivityCountdown(btn, 24 * 60 * 60 * 1000);
+        renderProjects(true);
+    } catch (error) {
+        console.error('Ping activity error:', error);
+        showToast(window.t('activityPingError'));
+        if (btn) { btn.disabled = false; btn.textContent = window.t('activityConfirmBtn'); }
+    }
+}
+
+function _startActivityCountdown(btn, msRemaining) {
+    if (_syncActivityInterval) clearInterval(_syncActivityInterval);
+    if (!btn) return;
+
+    function update() {
+        msRemaining -= 1000;
+        if (msRemaining <= 0) {
+            clearInterval(_syncActivityInterval);
+            _syncActivityInterval = null;
+            btn.disabled = false;
+            btn.className = 'btn btn-success';
+            btn.style.opacity = '1';
+            btn.style.fontSize = '16px';
+            btn.style.padding = '14px';
+            btn.textContent = window.t('activityConfirmBtn');
+            return;
+        }
+        var h = Math.floor(msRemaining / 3600000);
+        var m = Math.floor((msRemaining % 3600000) / 60000);
+        var s = Math.floor((msRemaining % 60000) / 1000);
+        var timeStr = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        btn.textContent = window.t('activityConfirmedBtn', { time: timeStr });
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+    }
+
+    update();
+    _syncActivityInterval = setInterval(update, 1000);
+}
+
+
+
 async function loadArchivedProjects(options) {
     var opts = options || {};
     var background = !!opts.background;
@@ -2916,6 +2988,7 @@ Object.assign(window, {
     submitFeedback,
     submitSocialLink,
     saveProjectSync,
+    pingOwnerActivity,
     loadArchivedProjects,
     confirmHardDelete,
     fetchKarmaBreakdown,

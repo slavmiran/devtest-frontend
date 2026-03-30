@@ -279,7 +279,7 @@
             earnGrantDesc: "На 14-й день тестирования нажмите \"Забрать Грант\" на карточке теста. База: 50 $BUST (макс. 3 пропуска). Бонус кармы: ☯️×5. Идеальный тест (0 пропусков): +50. Максимум 200 $BUST!",
             earnGrantTestsLabel: "Грантов выдано",
             earnEarlyFinishTitle: "Бонус: Ранний финиш",
-            earnEarlyFinishDesc: "Если разработчик удаляет проект раньше 14 дней, а у вас не больше 1 пропуска — вы автоматически получаете +25 $BUST.",
+            earnEarlyFinishDesc: "Если разработчик удаляет проект раньше 14 дней, а вы тестировали минимум 7 дней с не более 1 пропуском — вы автоматически получаете +25 $BUST.",
             earnFeedbackTitle: "Баг-репорты и Идеи",
             earnFeedbackDesc: "Отправляйте полезный фидбэк разработчикам. В благодарность они могут выдавать $BUST и иногда Карму.",
             earnFeedbackCountChip: "{count} отправлено",
@@ -640,7 +640,77 @@
             systemMenuTitle: "Настройки и поддержка",
             feedbackBug: "🐛 Сообщить о баге",
             feedbackIdea: "💡 Предложить идею",
-            feedbackQuestion: "❓ Задать вопрос"
+            feedbackQuestion: "❓ Задать вопрос",
+
+            // Leave Project Modal
+            leaveModalTitle: "🚪 Покинуть проект",
+            leaveModalDesc: "Прежде чем покинуть проект, ознакомьтесь со статистикой партнёра.",
+            leavePartnerTitle: "📊 Статистика партнёра",
+            leavePartnerUsername: "Партнёр: @{username}",
+            leavePartnerDays: "Дней тестирования: {days}",
+            leavePartnerSkips: "Пропусков: {skips}",
+            leavePartnerLastActive: "Последняя активность: {date}",
+            leavePartnerLeft: "⚠️ Партнёр уже покинул ваш проект",
+            leavePartnerNoData: "Данные о партнёре отсутствуют",
+            leaveMyStatsTitle: "📋 Моя статистика",
+            leaveMyDays: "Моих дней: {days}",
+            leaveMySkips: "Моих пропусков: {skips}",
+            leaveReasonLabel: "Причина выхода",
+            leaveReasonPlaceholder: "Опишите причину (необязательно)...",
+            leaveJustifiedTitle: "✅ Справедливый выход",
+            leaveJustifiedDesc: "Партнёр нарушил обязательства (3+ пропуска или покинул ваш проект). Вы уходите без штрафа.",
+            leaveAbandonedTitle: "⚠️ Досрочный выход",
+            leaveAbandonedDesc: "Вы покидаете проект по своей инициативе. Наработанная карма будет сожжена: -{karma} ☯️.",
+            leaveAbandonedWarning: "Внимание: вся карма ({karma} ☯️), заработанная чекинами в этом проекте, будет безвозвратно сожжена.",
+            leaveConfirmJustified: "Покинуть (без штрафа)",
+            leaveConfirmAbandoned: "Покинуть (со штрафом)",
+            leaveCancelBtn: "Отмена",
+            leaveSuccessJustified: "✅ Вы покинули проект. Справедливый выход засчитан.",
+            leaveSuccessAbandoned: "⚠️ Вы покинули проект. Карма сожжена: -{karma} ☯️.",
+            leavePartnerSkipsThreshold: "3+ пропуска = справедливый выход",
+            leaveLoadingStats: "Загрузка статистики...",
+
+            // Kick Tester Modal
+            kickModalTitle: "⚠️ Исключить тестера",
+            kickModalDesc: "Вы можете исключить тестера в первые 7 дней тестирования.",
+            kickTesterStats: "📊 Статистика тестера",
+            kickTesterDays: "Дней тестирования: {days}",
+            kickTesterSkips: "Пропусков: {skips}",
+            kickTesterCheckins: "Чекинов: {checkins}",
+            kickReasonLabel: "Причина исключения",
+            kickReasonPlaceholder: "Опишите причину (необязательно)...",
+            kickHoldBonusInfo: "💎 Hold Bonus: {action}",
+            kickHoldBonusReturn: "возвращается вам (тестер пропустил 3+ дней)",
+            kickHoldBonusBurn: "сжигается (тестер дисциплинирован, менее 3 пропусков)",
+            kickDailyPoolInfo: "⚡ Остаток пула чекинов ({amount} $BUST) будет сожжён (дефляция)",
+            kickConfirmBtn: "Исключить тестера",
+            kickCancelBtn: "Отмена",
+            kickSuccessMsg: "✅ Тестер исключён из проекта.",
+            kickTooLateError: "Исключить тестера можно только в первые 7 дней.",
+            kickBlockedTitle: "🔒 Исключение недоступно",
+            kickBlockedDesc: "Тестер протестировал более 7 дней. Исключение возможно только в течение первых 7 дней.",
+
+            // Contract Economics
+            contractEconomicsTitle: "💰 Экономика контракта",
+            contractDailyReward: "Ежедневная награда за чекин: ~{amount} $BUST",
+            contractHoldBonus: "Hold Bonus (за 14 дн. без 4+ пропусков): {amount} $BUST",
+            contractTotalPerTester: "Итого на тестера: {amount} $BUST",
+            contractEarlyFinishNote: "⚡ Проект закрыт < 14 дней? Бонус +25 $BUST при участии ≥7 дней и ≤1 пропуск.",
+
+            // New error keys
+            kick_too_late: "Исключить тестера можно только в первые 7 дней тестирования.",
+            not_owner: "Только владелец проекта может выполнить это действие.",
+            stats_not_available: "Статистика партнёра недоступна.",
+
+            // Overtime & Anti-AFK
+            overtimeBadge: "🔥 Овертайм",
+            syncDayProgress: "🔄 День {day}/14",
+            afkWarningBanner: "⚠️ ВНИМАНИЕ: Во время Овертайма (после 14-го дня) вы обязаны ежедневно заходить и подтверждать активность. Если вы будете неактивны более 48 часов, проект удалится, а вы получите штраф -10 ☯️ Кармы!",
+            activityConfirmedBtn: "✅ Активность подтверждена. Следующая проверка через {time}",
+            activityConfirmBtn: "✅ Подтвердить активность",
+            activityPingSuccess: "✅ Активность подтверждена!",
+            activityPingError: "Не удалось подтвердить активность."
+
         },
         en: {
             tabTests: "My Tests",
@@ -1280,7 +1350,77 @@
             systemMenuTitle: "Settings & Support",
             feedbackBug: "🐛 Report a bug",
             feedbackIdea: "💡 Suggest an idea",
-            feedbackQuestion: "❓ Ask a question"
+            feedbackQuestion: "❓ Ask a question",
+
+            // Leave Project Modal
+            leaveModalTitle: "🚪 Leave project",
+            leaveModalDesc: "Before leaving, review your partner's testing statistics.",
+            leavePartnerTitle: "📊 Partner statistics",
+            leavePartnerUsername: "Partner: @{username}",
+            leavePartnerDays: "Testing days: {days}",
+            leavePartnerSkips: "Skips: {skips}",
+            leavePartnerLastActive: "Last active: {date}",
+            leavePartnerLeft: "⚠️ Partner already left your project",
+            leavePartnerNoData: "No partner data available",
+            leaveMyStatsTitle: "📋 My statistics",
+            leaveMyDays: "My days: {days}",
+            leaveMySkips: "My skips: {skips}",
+            leaveReasonLabel: "Reason for leaving",
+            leaveReasonPlaceholder: "Describe the reason (optional)...",
+            leaveJustifiedTitle: "✅ Justified exit",
+            leaveJustifiedDesc: "Partner violated obligations (3+ skips or left your project). You leave without penalty.",
+            leaveAbandonedTitle: "⚠️ Early exit",
+            leaveAbandonedDesc: "You are leaving on your own initiative. Earned karma will be burned: -{karma} ☯️.",
+            leaveAbandonedWarning: "Warning: all karma ({karma} ☯️) earned from check-ins in this project will be permanently burned.",
+            leaveConfirmJustified: "Leave (no penalty)",
+            leaveConfirmAbandoned: "Leave (with penalty)",
+            leaveCancelBtn: "Cancel",
+            leaveSuccessJustified: "✅ You left the project. Justified exit counted.",
+            leaveSuccessAbandoned: "⚠️ You left the project. Karma burned: -{karma} ☯️.",
+            leavePartnerSkipsThreshold: "3+ skips = justified exit",
+            leaveLoadingStats: "Loading statistics...",
+
+            // Kick Tester Modal
+            kickModalTitle: "⚠️ Remove tester",
+            kickModalDesc: "You can remove a tester within the first 7 days of testing.",
+            kickTesterStats: "📊 Tester statistics",
+            kickTesterDays: "Testing days: {days}",
+            kickTesterSkips: "Skips: {skips}",
+            kickTesterCheckins: "Check-ins: {checkins}",
+            kickReasonLabel: "Reason for removal",
+            kickReasonPlaceholder: "Describe the reason (optional)...",
+            kickHoldBonusInfo: "💎 Hold Bonus: {action}",
+            kickHoldBonusReturn: "returned to you (tester missed 3+ days)",
+            kickHoldBonusBurn: "burned (tester was disciplined, less than 3 skips)",
+            kickDailyPoolInfo: "⚡ Remaining check-in pool ({amount} $BUST) will be burned (deflation)",
+            kickConfirmBtn: "Remove tester",
+            kickCancelBtn: "Cancel",
+            kickSuccessMsg: "✅ Tester has been removed from the project.",
+            kickTooLateError: "Tester can only be removed within the first 7 days.",
+            kickBlockedTitle: "🔒 Removal unavailable",
+            kickBlockedDesc: "Tester has been testing for more than 7 days. Removal is only possible within the first 7 days.",
+
+            // Contract Economics
+            contractEconomicsTitle: "💰 Contract economics",
+            contractDailyReward: "Daily check-in reward: ~{amount} $BUST",
+            contractHoldBonus: "Hold Bonus (14 days with <4 skips): {amount} $BUST",
+            contractTotalPerTester: "Total per tester: {amount} $BUST",
+            contractEarlyFinishNote: "⚡ Project closed < 14 days? Bonus +25 $BUST for ≥7 days participation and ≤1 skip.",
+
+            // New error keys
+            kick_too_late: "Tester can only be removed within the first 7 days of testing.",
+            not_owner: "Only the project owner can perform this action.",
+            stats_not_available: "Partner statistics are not available.",
+
+            // Overtime & Anti-AFK
+            overtimeBadge: "🔥 Overtime",
+            syncDayProgress: "🔄 Day {day}/14",
+            afkWarningBanner: "⚠️ WARNING: During Overtime (after day 14), you must log in daily and confirm your activity. If you are inactive for more than 48 hours, the project will be deleted and you will receive a penalty of -10 ☯️ Karma!",
+            activityConfirmedBtn: "✅ Activity confirmed. Next check in {time}",
+            activityConfirmBtn: "✅ Confirm activity",
+            activityPingSuccess: "✅ Activity confirmed!",
+            activityPingError: "Failed to confirm activity."
+
         }
     };
 

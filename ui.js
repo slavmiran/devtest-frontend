@@ -563,12 +563,12 @@ function renderIncomingOffers() {
     countEl.innerText = t.offersCount.replace('{count}', pending.length);
 
     if (!pending.length) {
-        if (isLoading) {
+        if (isLoading && !_offersLoadedOnce) {
             section.style.display = '';
             showSkeleton('offers-carousel');
             return;
         }
-        if (_offersLoadError) {
+        if (_offersLoadError && !_offersLoadedOnce) {
             section.style.display = '';
             showRetry('offers-carousel', 'loadIncomingOffers()');
             return;
@@ -947,7 +947,7 @@ function renderFeedCard(item, kind) {
                 </div>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
-                <span class="meta-chip">👥 ${item.mutual_testers_count ?? item.bounty_testers_count ?? 0}</span>
+                <span class="meta-chip">👥 ${item.mutual_testers_count ?? item.bounty_testers_count ?? 0}/${item.limit_mutual || item.limit_bounty || 12}</span>
                 ${kindChip}
                 ${bountyChip}
             </div>
@@ -973,7 +973,7 @@ function renderMutualReturns(apps, force) {
     }
 
     const isLoading = !!(window._marketInFlight && window._marketInFlight.mutual);
-    if ((!items || items.length === 0) && isLoading) {
+    if ((!items || items.length === 0) && isLoading && !window._marketLoadedOnce) {
         container.style.display = '';
         showSkeleton('mutual-returns-list');
         return;
@@ -1177,11 +1177,11 @@ function buildProjectFeedbackButton(projectId, feedbackTotalCount, feedbackNewCo
 }
 
 function formatCompactSyncLabel(project) {
-    var syncDate = parseLocalDateOnly(project && project.last_sync_date);
-    var dateLabel = syncDate
-        ? syncDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', { day: '2-digit', month: '2-digit' })
-        : '--.--';
-    return window.t('syncBtnCompact', { date: dateLabel }, lang);
+    var syncDay = Number(project && project.google_sync_day || 0);
+    var syncDiffDays = project && project.last_sync_date ? getDayDiffFromToday(project.last_sync_date) : 0;
+    var currentGoogleDay = syncDay > 1 ? syncDay + Math.max(0, syncDiffDays) : 0;
+    var day = Math.max(1, currentGoogleDay || 1);
+    return window.t('syncDayProgress', { day: day }, lang);
 }
 
 function renderProjects(force) {
@@ -1278,7 +1278,6 @@ function renderProjects(force) {
     myProjects.forEach((project) => {
         const card = document.createElement('div');
         const isInactive = !project.is_visible;
-        card.className = isInactive ? 'card card-inactive' : 'card';
         const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
         const safeProjectPackage = window.escapeHTML(project.package || '');
 
@@ -1294,6 +1293,14 @@ function renderProjects(force) {
             : platformDays;
         const currentGoogleDay = Math.max(1, Number.isFinite(rawGoogleDay) ? rawGoogleDay : 1);
         const likesAvailable = project.likes_max - project.likes_used;
+
+        const isOvertime = platformDays > 14;
+        const lastActivity = project.last_owner_activity ? new Date(project.last_owner_activity) : (createdDate || new Date());
+        const afkMs = Date.now() - lastActivity.getTime();
+        const needsActivityPing = isOvertime && afkMs > 24 * 60 * 60 * 1000;
+        let cardClass = isInactive ? 'card card-inactive' : 'card';
+        if (isOvertime) cardClass += ' card-overtime';
+        card.className = cardClass;
 
         let testersHtml = '';
         if (project.testers && project.testers.length > 0) {
@@ -1451,9 +1458,13 @@ function renderProjects(force) {
         })();
 
         const hasSync = (project.google_sync_day || 0) > 1;
+        const overtimeBadgeHtml = isOvertime ? `<span class="meta-chip accent-red" style="font-weight:600;">${window.t('overtimeBadge', {}, lang)}</span>` : '';
+        const syncBtnStyle = needsActivityPing
+            ? 'flex: 1; background-color: rgba(255, 149, 0, 0.2); color: #ff9500; border: 1px solid rgba(255, 149, 0, 0.4); animation: pulse-attention 2s infinite;'
+            : 'flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);';
         const syncActionHtml = hasSync
             ? `<div class="action-row" style="margin-top: 0; margin-bottom: 10px;">
-                    <button class="btn btn-secondary" style="flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);" onclick="openSyncModal(${project.id})">${window.escapeHTML(formatCompactSyncLabel(project))}</button>
+                <button class="btn btn-secondary" style="${syncBtnStyle}" onclick="openSyncModal(${project.id})">${window.escapeHTML(formatCompactSyncLabel(project))}</button>
                     <button class="btn btn-secondary" style="flex: 1; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);" onclick="openProjectFeedback(${project.id}, false)">
                         ${window.escapeHTML(window.t('projectFeedbackButtonShort', {}, lang))}${buildProjectFeedbackBadge(project.feedback_total_count || 0, project.feedback_new_count || 0)}
                     </button>
@@ -1481,6 +1492,7 @@ function renderProjects(force) {
                 ${visibilityBadge}
             </div>
             ${project.is_visible === false ? `<div class="visibility-hint">${t.inviteLinkAlways}</div>` : ''}
+            ${overtimeBadgeHtml ? `<div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${overtimeBadgeHtml}</div>` : ''}
             ${projectProgressHtml}
             ${quotaSummaryHtml}
             <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
@@ -1694,6 +1706,32 @@ function openSyncModal(projectId) {
                 ? `<div class="details-block" style="margin-top:10px;"><div class="detail-section-title">${window.escapeHTML(window.t('syncMessageLabel', {}, lang))}</div><div style="font-size:13px;line-height:1.5;">${escapeHtmlWithBreaks(liveProject.sync_message)}</div></div>`
                 : `<div class="details-block" style="margin-top:10px;color:var(--hint-color);">${window.escapeHTML(window.t('syncNoMessage', {}, lang))}</div>`;
 
+            // Overtime Anti-AFK section
+            const projectCreated = liveProject.created_at ? new Date(liveProject.created_at) : null;
+            const projectAgeDays = projectCreated ? Math.floor((Date.now() - projectCreated.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 0;
+            const isProjectOvertime = projectAgeDays > 14;
+            let afkSectionHtml = '';
+            if (isProjectOvertime) {
+                const lastAct = liveProject.last_owner_activity ? new Date(liveProject.last_owner_activity) : (projectCreated || new Date());
+                const msSinceActivity = Date.now() - lastAct.getTime();
+                const msUntilNext = Math.max(0, 24 * 60 * 60 * 1000 - msSinceActivity);
+                const isOnCooldown = msSinceActivity < 24 * 60 * 60 * 1000;
+
+                const warningHtml = `<div style="background: rgba(255, 59, 48, 0.12); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: 12px; padding: 12px; margin-top: 12px; font-size: 12px; line-height: 1.5; color: #ff3b30; font-weight: 600;">${window.escapeHTML(window.t('afkWarningBanner', {}, lang))}</div>`;
+
+                let btnHtml = '';
+                if (isOnCooldown) {
+                    const h = Math.floor(msUntilNext / 3600000);
+                    const m = Math.floor((msUntilNext % 3600000) / 60000);
+                    const s = Math.floor((msUntilNext % 60000) / 1000);
+                    const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                    btnHtml = `<button id="activity-ping-btn" class="btn btn-secondary" style="width:100%;margin-top:10px;opacity:0.6;" disabled>${window.escapeHTML(window.t('activityConfirmedBtn', { time: timeStr }, lang))}</button>`;
+                } else {
+                    btnHtml = `<button id="activity-ping-btn" class="btn btn-success" style="width:100%;margin-top:10px;font-size:16px;padding:14px;" onclick="pingOwnerActivity(${projectId})">${window.escapeHTML(window.t('activityConfirmBtn', {}, lang))}</button>`;
+                }
+                afkSectionHtml = warningHtml + btnHtml;
+            }
+
             body.innerHTML = `
                 <h3 style="margin-bottom:12px;">${window.escapeHTML(window.t('syncModalTitle', {}, lang))}</h3>
                 <div style="font-size:12px; margin-bottom:10px; ${updatedStyle}">${window.escapeHTML(updatedText)}</div>
@@ -1706,6 +1744,7 @@ function openSyncModal(projectId) {
                     <div style="font-size:13px;color:var(--hint-color);">${window.escapeHTML(window.t('syncEstimatedFinish', { date: finishDate.toLocaleDateString(locale) }, lang))}</div>
                 </div>
                 ${syncMessageHtml}
+                ${afkSectionHtml}
                 <button id="sync-switch-edit-btn" class="btn btn-primary" style="width:100%;margin-top:12px;">${window.escapeHTML(window.t('syncUpdateDataBtn', {}, lang))}</button>
                 <button id="sync-close-btn" class="btn btn-secondary" style="width:100%;margin-top:8px;">${window.escapeHTML(window.t('btnCancel', {}, lang))}</button>
             `;

@@ -2683,3 +2683,18 @@ details[open] > summary .details-arrow {
     background: rgba(255, 204, 0, 0.1);
     color: var(--text-color);
 }
+
+/* ── Overtime project card highlighting ── */
+.card.card-overtime {
+    border: 1px solid rgba(255, 149, 0, 0.35);
+    box-shadow: 0 0 12px rgba(255, 149, 0, 0.15);
+}
+
+@keyframes pulse-attention {
+    0%, 100% {
+        box-shadow: 0 0 4px rgba(255, 149, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 16px rgba(255, 149, 0, 0.6);
+    }
+}
