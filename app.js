@@ -40,6 +40,9 @@ var _reportOwnerUsername = null;
 var _pendingScreenshotReminderUsername = null;
 var _contactOwnerUsername = '';
 var _dropTestAppId = null;
+var _leaveMutualAppId = null;
+var _leaveMutualStats = null;
+var _kickTarget = null;
 var _overtimeTest = null;
 var _syncProjectId = null;
 var _socialBonusStatus = 'none';
@@ -1810,6 +1813,148 @@ async function confirmDropTest() {
     }
 }
 
+function _buildLeaveReasonPayload(prefix, freeformText) {
+    var safePrefix = String(prefix || '').trim();
+    var safeFreeform = String(freeformText || '').trim();
+    if (safePrefix && safeFreeform) {
+        return safePrefix + ': ' + safeFreeform;
+    }
+    return safePrefix || safeFreeform;
+}
+
+function _removeLocalTest(appId) {
+    myTests = (myTests || []).filter(function(test) {
+        return Number(test.id) !== Number(appId);
+    });
+}
+
+function _removeLocalTesterFromProject(appId, testerId) {
+    var project = (myProjects || []).find(function(item) {
+        return Number(item.id) === Number(appId);
+    });
+    if (!project || !Array.isArray(project.testers)) {
+        return;
+    }
+    project.testers = project.testers.filter(function(item) {
+        return Number(item.tester_id) !== Number(testerId);
+    });
+}
+
+async function confirmLeaveMutual(isJustified) {
+    if (!_leaveMutualAppId) return;
+
+    var reasonSelect = document.getElementById('leave-reason-select');
+    var reasonOther = document.getElementById('leave-reason-other');
+    var reasonText = reasonSelect ? reasonSelect.value : '';
+    var reasonPayload = _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
+    var appId = _leaveMutualAppId;
+    var previousTests = Array.isArray(myTests) ? myTests.slice() : [];
+
+    try {
+        _removeLocalTest(appId);
+        if (typeof window.renderTests === 'function') {
+            window.renderTests(true);
+        }
+
+        var response = await fetch(`${API_BASE}/tests/${appId}/leave_mutual`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tester_id: userId,
+                leave_reason: reasonPayload,
+                is_justified: !!isJustified,
+            })
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            myTests = previousTests;
+            if (typeof window.renderTests === 'function') {
+                window.renderTests(true);
+            }
+            showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (data.exit_status === 'abandoned') {
+            showToast(window.t('leaveSuccessAbandoned', {
+                karma: formatUiAmount(data.karma_burned || 0, 1)
+            }, lang));
+        } else {
+            showToast(window.t('leaveSuccessJustified', {}, lang));
+        }
+
+        closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+        await Promise.all([loadTasks(true), loadProjects(true)]);
+    } catch (error) {
+        console.error('Leave mutual error:', error);
+        myTests = previousTests;
+        if (typeof window.renderTests === 'function') {
+            window.renderTests(true);
+        }
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
+async function confirmKickTester() {
+    if (!_kickTarget || !_kickTarget.appId || !_kickTarget.testerId) return;
+
+    var reasonSelect = document.getElementById('kick-reason-select');
+    var reasonOther = document.getElementById('kick-reason-other');
+    var reasonText = reasonSelect ? reasonSelect.value : '';
+    var reasonPayload = _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
+    var target = {
+        appId: _kickTarget.appId,
+        testerId: _kickTarget.testerId,
+    };
+    var project = (myProjects || []).find(function(item) {
+        return Number(item.id) === Number(target.appId);
+    });
+    var previousTesters = project && Array.isArray(project.testers) ? project.testers.slice() : null;
+
+    try {
+        _removeLocalTesterFromProject(target.appId, target.testerId);
+        if (typeof window.renderProjects === 'function') {
+            window.renderProjects(true);
+        }
+
+        var response = await fetch(`${API_BASE}/projects/${target.appId}/kick/${target.testerId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner_id: userId,
+                leave_reason: reasonPayload,
+            })
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            if (project && previousTesters) {
+                project.testers = previousTesters;
+            }
+            if (typeof window.renderProjects === 'function') {
+                window.renderProjects(true);
+            }
+            showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('kickSuccessMsg', {}, lang));
+        closeKickTesterModal({ target: document.getElementById('kick-modal') });
+        closeDossierModal();
+        await loadProjects(true);
+    } catch (error) {
+        console.error('Kick tester error:', error);
+        if (project && previousTesters) {
+            project.testers = previousTesters;
+        }
+        if (typeof window.renderProjects === 'function') {
+            window.renderProjects(true);
+        }
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
 async function confirmOvertimeLeave() {
     if (!_overtimeTest) return;
     try {
@@ -2974,6 +3119,8 @@ Object.assign(window, {
     sendContactMessage,
     toggleVisibility,
     confirmDropTest,
+    confirmLeaveMutual,
+    confirmKickTester,
     confirmOvertimeLeave,
     openEarnBustModal,
     initiateProjectFeedback,

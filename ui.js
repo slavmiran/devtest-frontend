@@ -228,6 +228,23 @@ function formatUiAmount(value, digits) {
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(precision);
 }
 
+function formatLastActiveLabel(rawValue) {
+    if (!rawValue) return window.t('unknownLabel', {}, lang);
+    const parsed = new Date(rawValue);
+    if (Number.isNaN(parsed.getTime())) return String(rawValue);
+    return parsed.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function isMutualExitFlow(test) {
+    const joinType = String(test && test.join_type || '').toLowerCase();
+    return joinType === 'mutual' || joinType === 'prelaunch';
+}
+
 function getCurrentUserKarmaValue() {
     const raw = visibilityStats && typeof visibilityStats.ownerKarma !== 'undefined'
         ? Number(visibilityStats.ownerKarma)
@@ -726,7 +743,7 @@ function renderTests(force) {
             if (userTestingDay >= 15) {
                 headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #30d158;" onclick="openOvertimeModal(${test.id}, event)">🔄</button>`);
             } else {
-                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openDropTestModal(${test.id}, event)">🗑️</button>`);
+                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="${isMutualExitFlow(test) ? `openLeaveMutualModal(${test.id}, event)` : `openDropTestModal(${test.id}, event)`}">🗑️</button>`);
             }
         }
         const trailingHtml = headerActions.length
@@ -822,7 +839,7 @@ function renderCompletedTests(completedTests) {
         if (test.owner_username) {
             headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${safeOwnerUsername}', event)">💬</button>`);
         }
-        headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openDropTestModal(${test.id}, event)">🗑️</button>`);
+        headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="${isMutualExitFlow(test) ? `openLeaveMutualModal(${test.id}, event)` : `openDropTestModal(${test.id}, event)`}">🗑️</button>`);
         const ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`;
 
         let devInfoHtml = '';
@@ -1629,6 +1646,100 @@ function closeDropTestModal(event) {
     _dropTestAppId = null;
 }
 
+async function openLeaveMutualModal(appId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const modal = document.getElementById('leave-mutual-modal');
+    const body = document.getElementById('leave-mutual-body');
+    const justifiedBtn = document.getElementById('leave-justified-btn');
+    const reasonSelect = document.getElementById('leave-reason-select');
+    const reasonOther = document.getElementById('leave-reason-other');
+    if (!modal || !body) return;
+
+    _leaveMutualAppId = appId;
+    _leaveMutualStats = null;
+    if (reasonSelect) reasonSelect.value = 'inactive_partner';
+    if (reasonOther) {
+        reasonOther.value = '';
+        reasonOther.style.display = 'none';
+    }
+    if (justifiedBtn) justifiedBtn.style.display = 'none';
+    body.innerHTML = `<p style="text-align:center; color: var(--hint-color);">${window.escapeHTML(window.t('leaveLoadingStats', {}, lang))}</p>`;
+    modal.classList.add('active');
+
+    try {
+        const response = await fetch(`${API_BASE}/tests/${appId}/partner_stats/${userId}`);
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            body.innerHTML = `<div class="details-block"><div style="color: var(--hint-color);">${window.escapeHTML(getApiErrorMessage(data, 'stats_not_available'))}</div></div>`;
+            return;
+        }
+
+        _leaveMutualStats = data;
+        const justifiedAllowed = !!data.partner_left || Number(data.partner_skips || 0) >= 3;
+        const karmaBurn = Math.min(14, Number(data.my_testing_days || 0)) * 0.1;
+        const partnerLabel = data.partner_username
+            ? window.t('leavePartnerUsername', { username: (data.partner_username || '').replace('@', '') }, lang)
+            : window.t('idLabel', { id: data.partner_id || 0 }, lang);
+        const partnerActiveLine = data.partner_left
+            ? window.t('leavePartnerLeft', {}, lang)
+            : window.t('leavePartnerLastActive', { date: formatLastActiveLabel(data.partner_last_active) }, lang);
+        const waitWarning = justifiedAllowed
+            ? ''
+            : `<div class="details-block" style="border-color: rgba(255,149,0,0.22);"><div style="color:#ff9500; font-size:13px; line-height:1.5;">${window.escapeHTML(window.t('leaveSafeWaitWarning', { count: Math.max(0, 3 - Number(data.partner_skips || 0)) }, lang))}</div></div>`;
+
+        body.innerHTML = '' +
+            `<div class="details-block">` +
+                `<div class="detail-section-title">${window.escapeHTML(window.t('leavePartnerTitle', {}, lang))}</div>` +
+                `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
+                    `<div>${window.escapeHTML(partnerLabel)}</div>` +
+                    `<div>${window.escapeHTML(window.t('leavePartnerDays', { days: data.partner_testing_days || 0 }, lang))}</div>` +
+                    `<div>${window.escapeHTML(window.t('leavePartnerSkips', { skips: data.partner_skips || 0 }, lang))}</div>` +
+                    `<div>${window.escapeHTML(partnerActiveLine)}</div>` +
+                `</div>` +
+            `</div>` +
+            `<div class="details-block">` +
+                `<div class="detail-section-title">${window.escapeHTML(window.t('leaveMyStatsTitle', {}, lang))}</div>` +
+                `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
+                    `<div>${window.escapeHTML(window.t('leaveMyDays', { days: data.my_testing_days || 0 }, lang))}</div>` +
+                    `<div>${window.escapeHTML(window.t('leaveMySkips', { skips: data.my_skips || 0 }, lang))}</div>` +
+                `</div>` +
+            `</div>` +
+            waitWarning +
+            `<div class="details-block" style="border-color: ${justifiedAllowed ? 'rgba(52,199,89,0.22)' : 'rgba(255,59,48,0.22)'};">` +
+                `<div class="detail-section-title">${window.escapeHTML(justifiedAllowed ? window.t('leaveJustifiedTitle', {}, lang) : window.t('leaveAbandonedTitle', {}, lang))}</div>` +
+                `<div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(justifiedAllowed ? window.t('leaveJustifiedDesc', {}, lang) : window.t('leaveAbandonedDesc', { karma: formatUiAmount(karmaBurn, 1) }, lang))}</div>` +
+                `${justifiedAllowed ? '' : `<div style="margin-top:8px; font-size:12px; color:#ff9500; line-height:1.5;">${window.escapeHTML(window.t('leaveAbandonedWarning', { karma: formatUiAmount(karmaBurn, 1) }, lang))}</div>`}` +
+            `</div>`;
+
+        if (justifiedBtn) justifiedBtn.style.display = justifiedAllowed ? '' : 'none';
+    } catch (error) {
+        console.error('Leave mutual stats error:', error);
+        body.innerHTML = `<div class="details-block"><div style="color: var(--hint-color);">${window.escapeHTML(getApiErrorMessage(error && error.message, 'networkError'))}</div></div>`;
+    }
+}
+
+function closeLeaveMutualModal(event) {
+    const modal = document.getElementById('leave-mutual-modal');
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
+    _leaveMutualAppId = null;
+    _leaveMutualStats = null;
+}
+
+function toggleLeaveReasonOther() {
+    const select = document.getElementById('leave-reason-select');
+    const other = document.getElementById('leave-reason-other');
+    if (!select || !other) return;
+    other.style.display = select.value === 'other' ? 'block' : 'none';
+    if (select.value !== 'other') {
+        other.value = '';
+    }
+}
+
 function openOvertimeModal(appId, event) {
     if (event) {
         event.preventDefault();
@@ -1665,6 +1776,81 @@ function closeOvertimeModal(event) {
 function overtimeContactOwner() {
     if (!_overtimeTest || !_overtimeTest.owner_username) return;
     openTelegramProfile(_overtimeTest.owner_username);
+}
+
+function openKickTesterModal(appId, testerId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const modal = document.getElementById('kick-modal');
+    const body = document.getElementById('kick-modal-body');
+    const reasonSelect = document.getElementById('kick-reason-select');
+    const reasonOther = document.getElementById('kick-reason-other');
+    if (!modal || !body) return;
+
+    const project = myProjects.find(function(item) { return Number(item.id) === Number(appId); });
+    const tester = project ? (project.testers || []).find(function(candidate) { return Number(candidate.tester_id) === Number(testerId); }) : null;
+    if (!project || !tester) return;
+
+    const testingDays = tester.start_date ? getUserTestingDay(tester.start_date) : 0;
+    const skipsCount = Math.max(0, Number(tester.skips_count || 0));
+    if (testingDays > 7) {
+        if (tg.showAlert) tg.showAlert(window.t('kickBlockedDesc', {}, lang));
+        else showToast(window.t('kickBlockedDesc', {}, lang));
+        return;
+    }
+
+    const bountyPerTester = Number(project.bounty_per_tester || 0);
+    const holdBonus = bountyPerTester > 0 ? bountyPerTester * 0.35 : 0;
+    const dailyPool = bountyPerTester > 0 ? bountyPerTester * 0.65 : 0;
+    const rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
+    const dailyBurn = Math.max(0, dailyPool - (Number(tester.checkins_count || 0) * rewardPerCheckin));
+    const holdAction = skipsCount >= 3
+        ? window.t('kickHoldBonusReturn', {}, lang)
+        : window.t('kickHoldBonusBurn', {}, lang);
+
+    _kickTarget = { appId: appId, testerId: testerId };
+    if (reasonSelect) reasonSelect.value = 'no_response';
+    if (reasonOther) {
+        reasonOther.value = '';
+        reasonOther.style.display = 'none';
+    }
+    body.innerHTML = '' +
+        `<div class="details-block">` +
+            `<div class="detail-section-title">${window.escapeHTML(window.t('kickTesterStats', {}, lang))}</div>` +
+            `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
+                `<div>${window.escapeHTML(window.t('kickTesterDays', { days: testingDays }, lang))}</div>` +
+                `<div>${window.escapeHTML(window.t('kickTesterSkips', { skips: skipsCount }, lang))}</div>` +
+                `<div>${window.escapeHTML(window.t('kickTesterCheckins', { checkins: Number(tester.checkins_count || 0) }, lang))}</div>` +
+            `</div>` +
+        `</div>` +
+        `<div class="details-block">` +
+            `<div style="font-size:13px; line-height:1.6; color: var(--text-color);">` +
+                `<div>${window.escapeHTML(window.t('kickHoldBonusInfo', { action: holdAction }, lang))}</div>` +
+                `<div style="margin-top:8px; color: var(--hint-color);">${window.escapeHTML(window.t('kickDailyPoolInfo', { amount: formatUiAmount(dailyBurn, 1) }, lang))}</div>` +
+                `${holdBonus > 0 ? `<div style="margin-top:8px; color: var(--hint-color);">${window.escapeHTML(window.t('contractHoldBonus', { amount: formatUiAmount(holdBonus, 1) }, lang))}</div>` : ''}` +
+            `</div>` +
+        `</div>`;
+    modal.classList.add('active');
+}
+
+function closeKickTesterModal(event) {
+    const modal = document.getElementById('kick-modal');
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
+    _kickTarget = null;
+}
+
+function toggleKickReasonOther() {
+    const select = document.getElementById('kick-reason-select');
+    const other = document.getElementById('kick-reason-other');
+    if (!select || !other) return;
+    other.style.display = select.value === 'other' ? 'block' : 'none';
+    if (select.value !== 'other') {
+        other.value = '';
+    }
 }
 
 function openSyncModal(projectId) {
@@ -2532,7 +2718,7 @@ async function openDossierModal(username, testerId, appId) {
     const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
     const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
     const canReward = likesAvailable > 0 && !alreadyLiked;
-    const canDeleteFromProject = !!tester && !!project && !!appId;
+    const canDeleteFromProject = !!tester && !!project && !!appId && testingDay > 0 && testingDay <= 7;
     const tgName = username || '';
     const safeTelegramUsername = escapeInlineJsString(tgName);
     const safeDeleteName = escapeInlineJsString(tgName || String(testerId));
@@ -2568,7 +2754,7 @@ async function openDossierModal(username, testerId, appId) {
         <div style="display: flex; flex-direction: column; gap: 8px;">
             ${tgName ? `<button class="btn" style="width: 100%; background: var(--secondary-bg-color); color: var(--link-color); border: none; font-weight: 600; padding: 10px;" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
             ${canReward ? `<button class="btn" style="width: 100%; background: rgba(255,204,0,0.15); color: #ffcc00; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
-            ${canDeleteFromProject ? `<button class="btn" style="width: 100%; background: rgba(255,59,48,0.1); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); deleteTester(${appId}, ${testerId}, '${safeDeleteName}')">${t.dossierBtnDelete}</button>` : ''}
+            ${canDeleteFromProject ? `<button class="btn" style="width: 100%; background: rgba(255,59,48,0.1); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); openKickTesterModal(${appId}, ${testerId})">${t.dossierBtnDelete}</button>` : ''}
         </div>
     </div>`;
 
@@ -2818,6 +3004,20 @@ function openProjectDetailsModal(appId) {
 
     var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
         '<div class="detail-instruction-body">' + (test.instructions ? escapeHtmlWithBreaks(test.instructions) : '—') + '</div></div>';
+    var economicsHtml = '';
+    if (Number(test.bounty_per_tester || 0) > 0) {
+        var perTester = Number(test.bounty_per_tester || 0);
+        var dailyReward = perTester * 0.65 / 14;
+        var holdBonus = perTester * 0.35;
+        economicsHtml = '<div class="details-block">' +
+            '<div class="detail-section-title">' + window.escapeHTML(window.t('contractEconomicsTitle', {}, lang)) + '</div>' +
+            '<div style="font-size:13px; line-height:1.7; color: var(--text-color);">' +
+                '<div>' + window.escapeHTML(window.t('contractDailyReward', { amount: formatUiAmount(dailyReward, 1) }, lang)) + '</div>' +
+                '<div style="margin-top:6px;">' + window.escapeHTML(window.t('contractHoldBonus', { amount: formatUiAmount(holdBonus, 1) }, lang)) + '</div>' +
+                '<div style="margin-top:6px; color: var(--hint-color);">' + window.escapeHTML(window.t('contractEarlyFinishNote', {}, lang)) + '</div>' +
+            '</div>' +
+        '</div>';
+    }
 
     const grant = getGrantEstimateData(test);
     const currentSkips = Math.max(0, Number(test.skips_count || 0));
@@ -2915,13 +3115,15 @@ function openProjectDetailsModal(appId) {
 
         instructionsHtml +
 
+        economicsHtml +
+
         '<div class="detail-actions">' +
             '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +
             '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); initiateProjectFeedback(' + test.id + ')">' + window.t('detail_suggest_btn', {}, lang) + '</button>' +
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'https://play.google.com/store/apps/details?id=' + window.escapeHTML(test.package || '') + '\')">' + window.t('openGooglePlay', {}, lang) + '</button>' +
             (userTestingDay >= 15
                 ? '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="closeProjectDetailsModal(); openOvertimeModal(' + test.id + ')">' + window.t('finish_project', {}, lang) + '</button>'
-                : '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); openDropTestModal(' + test.id + ')">' + window.t('detail_leave_btn', {}, lang) + '</button>') +
+                : '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); ' + (isMutualExitFlow(test) ? 'openLeaveMutualModal(' + test.id + ')' : 'openDropTestModal(' + test.id + ')') + '">' + window.t('detail_leave_btn', {}, lang) + '</button>') +
         '</div>';
 
     var modal = document.getElementById('project-details-modal');
@@ -3118,9 +3320,15 @@ Object.assign(window, {
     onProjectSelected,
     openDropTestModal,
     closeDropTestModal,
+    openLeaveMutualModal,
+    closeLeaveMutualModal,
+    toggleLeaveReasonOther,
     openOvertimeModal,
     closeOvertimeModal,
     overtimeContactOwner,
+    openKickTesterModal,
+    closeKickTesterModal,
+    toggleKickReasonOther,
     openSyncModal,
     closeSyncModal,
     closeEarnBustModal,

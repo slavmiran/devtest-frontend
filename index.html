@@ -521,6 +521,49 @@
         </div>
     </div>
 
+    <div id="leave-mutual-modal" class="modal-overlay" onclick="closeLeaveMutualModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="leaveModalTitle">🚪 Покинуть проект</h3>
+            <div id="leave-mutual-body" style="margin-bottom: 14px;"></div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label" data-i18n="leaveReasonLabel">Причина выхода</label>
+                <select id="leave-reason-select" class="form-input" onchange="toggleLeaveReasonOther()">
+                    <option value="inactive_partner" data-i18n="leaveReasonInactive">Партнёр неактивен</option>
+                    <option value="partner_left" data-i18n="leaveReasonPartnerLeft">Партнёр уже вышел</option>
+                    <option value="communication_issue" data-i18n="leaveReasonCommunication">Нет связи</option>
+                    <option value="other" data-i18n="leaveReasonOther">Другое</option>
+                </select>
+            </div>
+            <textarea id="leave-reason-other" class="form-input" rows="3" style="display:none; resize:none; margin-bottom: 14px;" data-i18n-placeholder="leaveReasonPlaceholder" placeholder="Опишите причину (необязательно)..."></textarea>
+            <div class="action-row" style="margin-top: 0;">
+                <button class="btn btn-secondary" style="flex: 1;" onclick="closeLeaveMutualModal()" data-i18n="btnCancel">Отмена</button>
+                <button id="leave-justified-btn" class="btn btn-primary" style="flex: 1; display:none;" onclick="confirmLeaveMutual(true)" data-i18n="leaveJustifiedBtn">Выйти без штрафа</button>
+            </div>
+            <button class="btn" style="width: 100%; margin-top: 8px; background-color: rgba(255,59,48,0.1); color: #ff3b30;" onclick="confirmLeaveMutual(false)" data-i18n="leaveAbandonedBtn">Покинуть с потерей кармы</button>
+        </div>
+    </div>
+
+    <div id="kick-modal" class="modal-overlay" onclick="closeKickTesterModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="kickModalTitle">⚠️ Исключить тестера</h3>
+            <div id="kick-modal-body" style="margin-bottom: 14px;"></div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label" data-i18n="kickReasonLabel">Причина исключения</label>
+                <select id="kick-reason-select" class="form-input" onchange="toggleKickReasonOther()">
+                    <option value="no_response" data-i18n="kickReasonNoResponse">Нет связи</option>
+                    <option value="inactive" data-i18n="kickReasonInactivity">Не выполняет чекины</option>
+                    <option value="violation" data-i18n="kickReasonViolation">Нарушение договорённостей</option>
+                    <option value="other" data-i18n="kickReasonOther">Другое</option>
+                </select>
+            </div>
+            <textarea id="kick-reason-other" class="form-input" rows="3" style="display:none; resize:none; margin-bottom: 14px;" data-i18n-placeholder="kickReasonPlaceholder" placeholder="Опишите причину (необязательно)..."></textarea>
+            <div class="action-row" style="margin-top: 0;">
+                <button class="btn btn-secondary" style="flex: 1;" onclick="closeKickTesterModal()" data-i18n="btnCancel">Отмена</button>
+                <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" onclick="confirmKickTester()" data-i18n="kickConfirmBtn">Исключить тестера</button>
+            </div>
+        </div>
+    </div>
+
     <div id="sync-modal" class="modal-overlay" onclick="closeSyncModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div id="sync-modal-body"></div>
@@ -562,7 +605,7 @@
                     <span style="font-size: 20px;">⚡</span>
                     <span style="font-weight: 700; font-size: 15px;" data-i18n="earnEarlyFinishTitle">Бонус: Ранний финиш</span>
                 </div>
-                <p style="font-size: 13px; color: var(--hint-color);" data-i18n="earnEarlyFinishDesc">Если разработчик удаляет проект раньше 14 дней, а у вас 0 пропусков — вы автоматически получаете +25 $BUST.</p>
+                <p style="font-size: 13px; color: var(--hint-color);" data-i18n="earnEarlyFinishDesc">Если разработчик удаляет проект раньше 14 дней, а вы тестировали минимум 7 дней с не более 1 пропуском — вы автоматически получаете +25 $BUST.</p>
                 <div id="earn-early-finish-status" class="earn-chip-row" style="margin-top: 10px;"></div>
             </div>
 
