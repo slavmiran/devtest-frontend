@@ -21,6 +21,7 @@ var incomingOffers = [];
 var myProjects = [];
 var mutualSeeking = [];
 var mutualPrelaunch = [];
+var mutualReturns = [];
 var bountyContracts = [];
 var communityEvents = null;
 var eventsExpanded = false;
@@ -88,6 +89,8 @@ var _projectsInFlight = null;
 var _projectsLoadedOnce = false;
 
 var _pendingActions = new Set();
+var _backgroundSyncState = { tests: 0, projects: 0, market: 0 };
+var _deferredBootstrapStarted = false;
 
 function hasThrottleWindowPassed(feedKey) {
     return (Date.now() - (_lastFetchTimes[feedKey] || 0)) >= MARKET_FETCH_THROTTLE_MS;
@@ -100,6 +103,71 @@ function markMarketFetchSuccess(feedKey) {
 function resetMarketFetchThrottle() {
     _lastFetchTimes.mutual = 0;
     _lastFetchTimes.bounty = 0;
+}
+
+function isTabCurrentlyActive(tabName) {
+    var tab = document.getElementById('tab-' + tabName);
+    return !!(tab && tab.classList.contains('active'));
+}
+
+function runWhenIdle(task, timeoutMs) {
+    if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(function() {
+            task();
+        }, { timeout: timeoutMs || 1000 });
+        return;
+    }
+    setTimeout(task, Math.min(timeoutMs || 1000, 250));
+}
+
+function updateBackgroundSyncUi() {
+    var hasAnySync = Object.keys(_backgroundSyncState).some(function(key) {
+        return (_backgroundSyncState[key] || 0) > 0;
+    });
+    var bar = document.getElementById('background-sync-bar');
+    if (bar) {
+        bar.classList.toggle('hidden', !hasAnySync);
+    }
+
+    var testsDot = document.getElementById('nav-sync-tests');
+    var projectsDot = document.getElementById('nav-sync-projects');
+    var marketDot = document.getElementById('nav-sync-market');
+    if (testsDot) testsDot.classList.toggle('hidden', (_backgroundSyncState.tests || 0) === 0);
+    if (projectsDot) projectsDot.classList.toggle('hidden', (_backgroundSyncState.projects || 0) === 0);
+    if (marketDot) marketDot.classList.toggle('hidden', (_backgroundSyncState.market || 0) === 0);
+}
+
+function beginBackgroundSync(scope) {
+    _backgroundSyncState[scope] = (_backgroundSyncState[scope] || 0) + 1;
+    updateBackgroundSyncUi();
+}
+
+function endBackgroundSync(scope) {
+    _backgroundSyncState[scope] = Math.max(0, (_backgroundSyncState[scope] || 0) - 1);
+    updateBackgroundSyncUi();
+}
+
+function scheduleDeferredBootstrap() {
+    if (_deferredBootstrapStarted) return;
+    _deferredBootstrapStarted = true;
+
+    setTimeout(function() {
+        runWhenIdle(function() {
+            if (!isTabCurrentlyActive('projects')) {
+                loadProjects(true).catch(function() {});
+                loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+            }
+        }, 1200);
+    }, 250);
+
+    setTimeout(function() {
+        runWhenIdle(function() {
+            if (!isTabCurrentlyActive('market')) {
+                loadMutualFeed().catch(function() {});
+                loadBountyFeed().catch(function() {});
+            }
+        }, 1600);
+    }, 700);
 }
 
 function getMarketCache() {
@@ -237,7 +305,12 @@ async function loadIncomingOffers(options) {
         return;
     }
 
+    var shouldMarkBackgroundSync = background || _offersLoadedOnce || Array.isArray(cached);
+
     var requestPromise = (async function() {
+        if (shouldMarkBackgroundSync) {
+            beginBackgroundSync('tests');
+        }
         _apiStart();
         try {
             var response = await fetchWithRetry(`${API_BASE}/offers/incoming/${userId}`);
@@ -262,6 +335,9 @@ async function loadIncomingOffers(options) {
             }
         } finally {
             _apiEnd();
+            if (shouldMarkBackgroundSync) {
+                endBackgroundSync('tests');
+            }
         }
     })();
 
@@ -814,13 +890,14 @@ function sendFeedback(type) {
 }
 
 function rerenderDynamicUi() {
-    renderEvents();
-    renderTests();
-    renderIncomingOffers();
-    renderProjects();
-    renderMutualFeed();
-    renderBountyFeed();
-    renderArchivedProjects();
+    renderEvents(true);
+    renderTests(true);
+    renderIncomingOffers(true);
+    renderProjects(true);
+    renderMutualFeed(true);
+    renderMutualReturns(null, true);
+    renderBountyFeed(true);
+    renderArchivedProjects(true);
     refreshOpenModals();
 }
 
@@ -892,7 +969,7 @@ async function loadTasks(isBackground) {
         showSkeleton('tests-list');
     }
 
-    var requestPromise = _loadTasksImpl();
+    var requestPromise = _loadTasksImpl({ backgroundSync: !!isBackground || _testsLoadedOnce || hasTestsCache() });
     _testsInFlight = requestPromise;
     try {
         await requestPromise;
@@ -944,11 +1021,16 @@ function _mapTestsFromApi(data) {
             target_lang: app.target_lang || 'ALL',
             daily_timeline: app.daily_timeline || '',
             archive_reason: app.archive_reason || null,
+            bounty_per_tester: app.bounty_per_tester || 0,
         };
     });
 }
 
-async function _loadTasksImpl() {
+async function _loadTasksImpl(options) {
+    var shouldMarkBackgroundSync = !!(options && options.backgroundSync);
+    if (shouldMarkBackgroundSync) {
+        beginBackgroundSync('tests');
+    }
     _apiStart();
     try {
         var response = await fetchWithRetry(API_BASE + '/tasks/' + userId);
@@ -996,6 +1078,9 @@ async function _loadTasksImpl() {
         renderIncomingOffers();
     } finally {
         _apiEnd();
+        if (shouldMarkBackgroundSync) {
+            endBackgroundSync('tests');
+        }
     }
 }
 
@@ -1011,7 +1096,7 @@ async function loadMutualFeed() {
         return;
     }
 
-    const requestPromise = _loadMutualFeedImpl();
+    const requestPromise = _loadMutualFeedImpl({ backgroundSync: hasLocalData || hasMarketCache() });
     _marketInFlight.mutual = requestPromise;
     try {
         await requestPromise;
@@ -1019,19 +1104,22 @@ async function loadMutualFeed() {
         if (_marketInFlight.mutual === requestPromise) {
             _marketInFlight.mutual = null;
         }
+        renderMutualFeed();
     }
 }
 
-async function _loadMutualFeedImpl() {
+async function _loadMutualFeedImpl(options) {
     const cached = getMarketCache();
     const hasMutualCache = !!(cached && cached.mutual);
+    const shouldMarkBackgroundSync = !!(options && options.backgroundSync);
 
     if (hasMutualCache) {
         mutualSeeking = cached.mutual.seeking || [];
         mutualPrelaunch = cached.mutual.prelaunch || [];
+        mutualReturns = cached.mutual.returns || [];
         renderMutualFeed();
         if (window.renderMutualReturns) {
-            window.renderMutualReturns(cached.mutual.returns || []);
+            window.renderMutualReturns(mutualReturns);
         }
     } else {
         showSkeleton('mutual-seeking-list');
@@ -1043,6 +1131,9 @@ async function _loadMutualFeedImpl() {
         }
     }
 
+    if (shouldMarkBackgroundSync) {
+        beginBackgroundSync('market');
+    }
     _apiStart();
     try {
         const response = await fetchWithRetry(`${API_BASE}/feed/mutual/${userId}`);
@@ -1060,9 +1151,10 @@ async function _loadMutualFeedImpl() {
         if (!hasMutualCache || changed) {
             mutualSeeking = nextMutual.seeking;
             mutualPrelaunch = nextMutual.prelaunch;
+            mutualReturns = nextMutual.returns;
             renderMutualFeed();
             if (window.renderMutualReturns) {
-                window.renderMutualReturns(nextMutual.returns);
+                window.renderMutualReturns(mutualReturns);
             }
         }
 
@@ -1088,6 +1180,9 @@ async function _loadMutualFeedImpl() {
         }
     } finally {
         _apiEnd();
+        if (shouldMarkBackgroundSync) {
+            endBackgroundSync('market');
+        }
     }
 }
 
@@ -1102,7 +1197,7 @@ async function loadBountyFeed() {
         return;
     }
 
-    const requestPromise = _loadBountyFeedImpl();
+    const requestPromise = _loadBountyFeedImpl({ backgroundSync: hasLocalData || hasMarketCache() });
     _marketInFlight.bounty = requestPromise;
     try {
         await requestPromise;
@@ -1110,12 +1205,14 @@ async function loadBountyFeed() {
         if (_marketInFlight.bounty === requestPromise) {
             _marketInFlight.bounty = null;
         }
+        renderBountyFeed();
     }
 }
 
-async function _loadBountyFeedImpl() {
+async function _loadBountyFeedImpl(options) {
     const cached = getMarketCache();
     const hasBountyCache = !!(cached && cached.bounty && Array.isArray(cached.bounty.contracts));
+    const shouldMarkBackgroundSync = !!(options && options.backgroundSync);
 
     if (hasBountyCache) {
         bountyContracts = cached.bounty.contracts || [];
@@ -1124,6 +1221,9 @@ async function _loadBountyFeedImpl() {
         showSkeleton('bounty-list');
     }
 
+    if (shouldMarkBackgroundSync) {
+        beginBackgroundSync('market');
+    }
     _apiStart();
     try {
         const response = await fetchWithRetry(`${API_BASE}/feed/bounty/${userId}`);
@@ -1156,6 +1256,9 @@ async function _loadBountyFeedImpl() {
         }
     } finally {
         _apiEnd();
+        if (shouldMarkBackgroundSync) {
+            endBackgroundSync('market');
+        }
     }
 }
 
@@ -1221,7 +1324,7 @@ async function loadProjects(isBackground) {
         showSkeleton('projects-list');
     }
 
-    var requestPromise = _loadProjectsImpl();
+    var requestPromise = _loadProjectsImpl({ backgroundSync: !!isBackground || _projectsLoadedOnce || hasProjectsCache() });
     _projectsInFlight = requestPromise;
     try {
         await requestPromise;
@@ -1277,7 +1380,11 @@ function _mapStatsFromApi(data) {
     };
 }
 
-async function _loadProjectsImpl() {
+async function _loadProjectsImpl(options) {
+    var shouldMarkBackgroundSync = !!(options && options.backgroundSync);
+    if (shouldMarkBackgroundSync) {
+        beginBackgroundSync('projects');
+    }
     _apiStart();
     try {
         var response = await fetchWithRetry(API_BASE + '/projects/' + userId);
@@ -1316,6 +1423,9 @@ async function _loadProjectsImpl() {
         }
     } finally {
         _apiEnd();
+        if (shouldMarkBackgroundSync) {
+            endBackgroundSync('projects');
+        }
     }
 }
 
@@ -2176,12 +2286,16 @@ async function loadArchivedProjects(options) {
     var opts = options || {};
     var background = !!opts.background;
     var silent = !!opts.silent || background;
+    var shouldMarkBackgroundSync = background || archivedProjects.length > 0;
 
     if (background && (Date.now() - (_lastFetchTimes.archived || 0)) < ARCHIVED_FETCH_THROTTLE_MS) {
         return;
     }
 
     try {
+        if (shouldMarkBackgroundSync) {
+            beginBackgroundSync('projects');
+        }
         const response = await fetch(`${API_BASE}/projects/${userId}/archived`);
         if (!response.ok) return;
         const data = await response.json();
@@ -2199,6 +2313,10 @@ async function loadArchivedProjects(options) {
         console.error('Archive load error:', error);
         if (!silent) {
             showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        }
+    } finally {
+        if (shouldMarkBackgroundSync) {
+            endBackgroundSync('projects');
         }
     }
 }
@@ -2518,8 +2636,29 @@ async function confirmDeleteProject() {
         const result = await response.json();
         if (result.status === 'success') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+            // Optimistic UI: move project from active to archive immediately
+            var deletedProject = myProjects.find(function(p) { return p.id === id; });
+            if (deletedProject) {
+                myProjects = myProjects.filter(function(p) { return p.id !== id; });
+                archivedProjects.unshift({
+                    app_id: deletedProject.id,
+                    name: deletedProject.name,
+                    package_name: deletedProject.package,
+                    icon_url: deletedProject.icon_url,
+                    target_lang: deletedProject.target_lang || 'ALL',
+                    feedback_new_count: deletedProject.feedback_new_count || 0,
+                    feedback_total_count: deletedProject.feedback_total_count || 0,
+                    archive_reason: null,
+                });
+                renderProjects();
+                renderArchivedProjects();
+            }
+
             closeDeleteModal();
-            loadProjects();
+            // Background refresh for accurate data
+            loadProjects(true).catch(function() {});
+            loadArchivedProjects({ background: true, silent: true }).catch(function() {});
         } else if (tg.showAlert) {
             tg.showAlert(getApiErrorMessage(result, 'deleteProjectError'));
         }
@@ -2728,9 +2867,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadIncomingOffers();
     startOffersPolling();
     loadEvents();
-    loadProjects();
-    loadMutualFeed();
-    loadBountyFeed();
+    scheduleDeferredBootstrap();
 });
 
 Object.assign(window, {

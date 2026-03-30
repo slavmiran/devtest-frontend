@@ -13,6 +13,8 @@
 </head>
 <body>
 
+    <div id="background-sync-bar" class="background-sync-bar hidden" aria-hidden="true"></div>
+
     <!-- System Drop Menu (Pull-down drawer with tab) -->
     <div id="system-drop-menu" class="system-drop-menu">
         <div class="system-drop-content">
@@ -136,15 +138,15 @@
     <!-- Bottom Navigation -->
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('tests', this)">
-            <div class="nav-icon">📱</div>
+            <div class="nav-icon">📱<span id="nav-sync-tests" class="nav-sync-dot hidden"></span></div>
             <div data-i18n="tabTests">Мои тесты</div>
         </div>
         <div class="nav-item" onclick="switchTab('projects', this)">
-            <div class="nav-icon">🚀</div>
+            <div class="nav-icon">🚀<span id="nav-sync-projects" class="nav-sync-dot hidden"></span></div>
             <div data-i18n="tabProjects">Мои проекты</div>
         </div>
         <div class="nav-item" onclick="switchTab('market', this)">
-            <div class="nav-icon">🛒</div>
+            <div class="nav-icon">🛒<span id="nav-sync-market" class="nav-sync-dot hidden"></span></div>
             <div data-i18n="navMarket">Витрина</div>
         </div>
     </div>

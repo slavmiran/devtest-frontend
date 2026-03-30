@@ -111,6 +111,7 @@ function getDayDiffFromToday(dateValue) {
 }
 
 function renderEvents() {
+    if (!arguments[0] && !isTabVisible('tests')) return;
     const listEl = document.getElementById('events-list');
     const toggleEl = document.getElementById('events-toggle');
     if (!listEl || !toggleEl) return;
@@ -172,9 +173,14 @@ function getAvatar(name) {
 function renderIcon(name, iconUrl) {
     if (iconUrl) {
         const firstLetter = name.charAt(0).toUpperCase().replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return `<img src="${window.escapeHTML(iconUrl)}" class="avatar" style="object-fit: cover;" onerror="this.onerror=null; this.outerHTML='<div class=\\'avatar\\' style=\\'background-color: #8e8e93;\\'>${firstLetter}</div>';">`;
+        return `<img src="${window.escapeHTML(iconUrl)}" class="avatar" style="object-fit: cover;" loading="lazy" decoding="async" onerror="this.onerror=null; this.outerHTML='<div class=\\'avatar\\' style=\\'background-color: #8e8e93;\\'>${firstLetter}</div>';">`;
     }
     return getAvatar(name);
+}
+
+function isTabVisible(tabName) {
+    const tab = document.getElementById(`tab-${tabName}`);
+    return !!(tab && tab.classList.contains('active'));
 }
 
 function formatOfferRemaining(createdAt) {
@@ -535,6 +541,13 @@ function openTelegramProfile(username, event) {
 }
 
 function renderIncomingOffers() {
+    if (!arguments[0] && !isTabVisible('tests')) {
+        if (_offersTimerId) {
+            clearInterval(_offersTimerId);
+            _offersTimerId = null;
+        }
+        return;
+    }
     const section = document.getElementById('offers-section');
     const countEl = document.getElementById('offers-count');
     const carousel = document.getElementById('offers-carousel');
@@ -624,7 +637,8 @@ function renderIncomingOffers() {
     }, 1000);
 }
 
-function renderTests() {
+function renderTests(force) {
+    if (!force && !isTabVisible('tests')) return;
     const activeList = document.getElementById('tests-list');
     const doneList = document.getElementById('done-list');
     activeList.innerHTML = '';
@@ -696,6 +710,12 @@ function renderTests() {
                         </button>
                     </div>
                 `;
+            }
+
+            // Bounty daily reward hint
+            if (test.join_type === 'bounty' && test.bounty_per_tester > 0) {
+                var dailyReward = (test.bounty_per_tester * 0.65 / 14).toFixed(1);
+                actionsHtml += '<div style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">' + window.t('bountyDailyReward', { amount: dailyReward }, lang) + '</div>';
             }
         } else if (test.status === 'done') {
             actionsHtml = '';
@@ -936,7 +956,9 @@ function renderFeedCard(item, kind) {
     `;
 }
 
-function renderMutualReturns(apps) {
+function renderMutualReturns(apps, force) {
+    if (!force && !isTabVisible('market')) return;
+    const items = Array.isArray(apps) ? apps : (Array.isArray(mutualReturns) ? mutualReturns : []);
     const container = document.getElementById('mutual-returns-container');
     const list = document.getElementById('mutual-returns-list');
     const titleEl = document.getElementById('t-mutualReturnsSectionTitle');
@@ -951,19 +973,19 @@ function renderMutualReturns(apps) {
     }
 
     const isLoading = !!(window._marketInFlight && window._marketInFlight.mutual);
-    if ((!apps || apps.length === 0) && isLoading) {
+    if ((!items || items.length === 0) && isLoading) {
         container.style.display = '';
         showSkeleton('mutual-returns-list');
         return;
     }
 
-    if (!apps || apps.length === 0) {
+    if (!items || items.length === 0) {
         container.style.display = 'none';
         return;
     }
 
     container.style.display = '';
-    list.innerHTML = apps.map(app => {
+    list.innerHTML = items.map(app => {
         const ownerUsername = (app.owner_username || '').replace('@', '');
         const safeOwnerUsername = escapeInlineJsString(ownerUsername);
         const displayOwner = window.escapeHTML(ownerUsername ? '@' + ownerUsername : window.t('idLabel', { id: app.owner_id }, lang));
@@ -992,7 +1014,8 @@ function renderMutualReturns(apps) {
     }).join('');
 }
 
-function renderMutualFeed() {
+function renderMutualFeed(force) {
+    if (!force && !isTabVisible('market')) return;
     const seekingEl = document.getElementById('mutual-seeking-list');
     const prelaunchEl = document.getElementById('mutual-prelaunch-list');
     if (!seekingEl || !prelaunchEl) return;
@@ -1039,7 +1062,8 @@ function switchMarketSubTab(tab) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-function renderBountyFeed() {
+function renderBountyFeed(force) {
+    if (!force && !isTabVisible('market')) return;
     const bountyEl = document.getElementById('bounty-list');
     if (!bountyEl) return;
     const isLoading = !!(window._marketInFlight && (window._marketInFlight.bounty));
@@ -1160,7 +1184,8 @@ function formatCompactSyncLabel(project) {
     return window.t('syncBtnCompact', { date: dateLabel }, lang);
 }
 
-function renderProjects() {
+function renderProjects(force) {
+    if (!force && !isTabVisible('projects')) return;
     const container = document.getElementById('projects-list');
     container.innerHTML = '';
 
@@ -1903,7 +1928,8 @@ function closeFeedbackRewardModalUi(event) {
     document.getElementById('feedback-reward-modal').classList.remove('active');
 }
 
-function renderArchivedProjects() {
+function renderArchivedProjects(force) {
+    if (!force && !isTabVisible('projects')) return;
     const section = document.getElementById('archive-section');
     if (!section) return;
     if (archivedProjects.length === 0) {
@@ -2272,16 +2298,36 @@ function switchTab(tabId, navElement) {
     const tabEl = document.getElementById(`tab-${finalTab}`);
     if (tabEl) tabEl.classList.add('active');
 
+    if (finalTab === 'tests') {
+        renderEvents(true);
+        renderIncomingOffers(true);
+        renderTests(true);
+    }
+
     if (finalTab === 'market') {
-        var hasMutualData = Array.isArray(mutualSeeking) && mutualSeeking.length > 0
-            || Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0;
-        var hasBountyData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
-        if (!hasMutualData) {
-            showSkeleton('mutual-seeking-list');
-            showSkeleton('mutual-prelaunch-list');
-        }
-        if (!hasBountyData) {
-            showSkeleton('bounty-list');
+        renderMutualFeed(true);
+        renderMutualReturns(null, true);
+        renderBountyFeed(true);
+    }
+
+    if (finalTab === 'projects') {
+        renderProjects(true);
+        renderArchivedProjects(true);
+    }
+
+    if (finalTab === 'market') {
+        var cachedMarket = window.hasMarketCache ? window.hasMarketCache() : false;
+        if (!cachedMarket) {
+            var hasMutualData = Array.isArray(mutualSeeking) && mutualSeeking.length > 0
+                || Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0;
+            var hasBountyData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
+            if (!hasMutualData) {
+                showSkeleton('mutual-seeking-list');
+                showSkeleton('mutual-prelaunch-list');
+            }
+            if (!hasBountyData) {
+                showSkeleton('bounty-list');
+            }
         }
         loadMutualFeed();
         loadBountyFeed();
