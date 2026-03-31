@@ -5,6 +5,8 @@ tg.expand();
 tg.ready();
 
 const initData = tg.initDataUnsafe || {};
+const BOT_USERNAME = 'Android12TestersBot';
+const BOT_CHAT_URL = `https://t.me/${BOT_USERNAME}`;
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
 var API_BASE = 'https://devtest-backend.onrender.com/api';
@@ -94,6 +96,99 @@ var _projectsLoadedOnce = false;
 var _pendingActions = new Set();
 var _backgroundSyncState = { tests: 0, projects: 0, market: 0 };
 var _deferredBootstrapStarted = false;
+var _initialRouteHandled = false;
+var _marketPollId = null;
+var MARKET_POLL_INTERVAL_MS = 5 * 60 * 1000;
+var _marketFeedState = {
+    mutual: { confirmedEmpty: false, emptyStreak: 0 },
+    bounty: { confirmedEmpty: false, emptyStreak: 0 }
+};
+var _marketRetryTimers = { mutual: null, bounty: null };
+
+function _parseInitialRouteTarget() {
+    var params = new URLSearchParams(window.location.search || '');
+    var startParam = String(initData.start_param || params.get('startapp') || '').trim();
+    var feedbackProjectId = Number(
+        params.get('feedback_project_id') ||
+        params.get('project_feedback_id') ||
+        params.get('project_id') ||
+        params.get('app_id') ||
+        0
+    );
+    var routeKind = '';
+    var candidateValues = [
+        startParam,
+        params.get('route') || '',
+        params.get('feedback') || '',
+        params.get('tab') || '',
+    ];
+
+    for (var index = 0; index < candidateValues.length; index++) {
+        var raw = String(candidateValues[index] || '').trim();
+        if (!raw) continue;
+        var normalized = raw.toLowerCase();
+        var feedbackMatch = normalized.match(/(?:project_feedback|feedback|owner_feedback|feedback_project)[_:=.-]?(\d+)?/);
+        if (feedbackMatch) {
+            routeKind = 'feedback';
+            if (!feedbackProjectId && feedbackMatch[1]) {
+                feedbackProjectId = Number(feedbackMatch[1] || 0);
+            }
+            break;
+        }
+        if (normalized === 'projects') {
+            routeKind = 'projects';
+        }
+    }
+
+    if (routeKind === 'feedback' || params.get('feedback') === '1') {
+        return {
+            tab: 'projects',
+            openFeedback: true,
+            appId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
+    if (routeKind === 'projects') {
+        return {
+            tab: 'projects',
+            openFeedback: false,
+            appId: null,
+        };
+    }
+    return null;
+}
+
+async function _handleInitialRoute() {
+    if (_initialRouteHandled) return;
+    _initialRouteHandled = true;
+
+    var route = _parseInitialRouteTarget();
+    if (!route) return;
+
+    if (route.tab === 'projects') {
+        switchTab('projects');
+    }
+
+    if (!route.openFeedback || !route.appId) {
+        return;
+    }
+
+    try {
+        await Promise.allSettled([
+            loadProjects(true),
+            loadArchivedProjects({ silent: true })
+        ]);
+
+        var isArchived = !(myProjects || []).some(function(project) {
+            return Number(project.id) === Number(route.appId);
+        }) && (archivedProjects || []).some(function(project) {
+            return Number(project.app_id) === Number(route.appId);
+        });
+
+        await openProjectFeedback(route.appId, isArchived);
+    } catch (error) {
+        console.error('Initial feedback route error:', error);
+    }
+}
 
 function hasThrottleWindowPassed(feedKey) {
     return (Date.now() - (_lastFetchTimes[feedKey] || 0)) >= MARKET_FETCH_THROTTLE_MS;
@@ -184,6 +279,72 @@ function getMarketCache() {
         marketCache = null;
         return null;
     }
+}
+
+function hydrateMarketFromCache() {
+    const cached = getMarketCache();
+    if (!cached) return false;
+
+    if (cached.mutual) {
+        mutualSeeking = Array.isArray(cached.mutual.seeking) ? cached.mutual.seeking : [];
+        mutualPrelaunch = Array.isArray(cached.mutual.prelaunch) ? cached.mutual.prelaunch : [];
+        mutualReturns = Array.isArray(cached.mutual.returns) ? cached.mutual.returns : [];
+    }
+    if (cached.bounty) {
+        bountyContracts = Array.isArray(cached.bounty.contracts) ? cached.bounty.contracts : [];
+    }
+    return true;
+}
+
+function getMarketFeedState(feedKey) {
+    return _marketFeedState[feedKey] || { confirmedEmpty: false, emptyStreak: 0 };
+}
+
+function _scheduleMarketRetry(feedKey, delayMs) {
+    if (_marketRetryTimers[feedKey]) return;
+    _marketRetryTimers[feedKey] = setTimeout(function() {
+        _marketRetryTimers[feedKey] = null;
+        if (feedKey === 'mutual') {
+            loadMutualFeed().catch(function() {});
+        } else {
+            loadBountyFeed().catch(function() {});
+        }
+    }, delayMs || 2500);
+}
+
+function _resolveMarketResponse(feedKey, nextCount, hadVisibleData) {
+    var state = _marketFeedState[feedKey];
+    if (!state) {
+        state = { confirmedEmpty: false, emptyStreak: 0 };
+        _marketFeedState[feedKey] = state;
+    }
+
+    if (nextCount > 0) {
+        state.confirmedEmpty = false;
+        state.emptyStreak = 0;
+        return true;
+    }
+
+    state.emptyStreak += 1;
+    if (state.emptyStreak < 2) {
+        state.confirmedEmpty = false;
+        _scheduleMarketRetry(feedKey, hadVisibleData ? 2500 : 1500);
+        return false;
+    }
+
+    state.confirmedEmpty = true;
+    return true;
+}
+
+function startMarketPolling() {
+    if (_marketPollId) {
+        clearInterval(_marketPollId);
+    }
+    _marketPollId = setInterval(function() {
+        if (document.hidden) return;
+        loadMutualFeed().catch(function() {});
+        loadBountyFeed().catch(function() {});
+    }, MARKET_POLL_INTERVAL_MS);
 }
 
 function setMarketCache(nextCache) {
@@ -1092,6 +1253,7 @@ async function loadMutualFeed() {
         return _marketInFlight.mutual;
     }
 
+    hydrateMarketFromCache();
     const hasLocalData = Array.isArray(mutualSeeking) && mutualSeeking.length > 0
         || Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0;
     if (!hasThrottleWindowPassed('mutual') && hasLocalData) {
@@ -1115,6 +1277,9 @@ async function _loadMutualFeedImpl(options) {
     const cached = getMarketCache();
     const hasMutualCache = !!(cached && cached.mutual);
     const shouldMarkBackgroundSync = !!(options && options.backgroundSync);
+    const hadVisibleData = (Array.isArray(mutualSeeking) && mutualSeeking.length > 0)
+        || (Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0)
+        || (Array.isArray(mutualReturns) && mutualReturns.length > 0);
 
     if (hasMutualCache) {
         mutualSeeking = cached.mutual.seeking || [];
@@ -1148,10 +1313,12 @@ async function _loadMutualFeedImpl(options) {
             prelaunch: data.prelaunch || [],
             returns: data.returns || [],
         };
+        const nextCount = nextMutual.seeking.length + nextMutual.prelaunch.length + nextMutual.returns.length;
         const prevMutual = cached && cached.mutual ? cached.mutual : null;
         const changed = JSON.stringify(prevMutual) !== JSON.stringify(nextMutual);
+        const canApply = _resolveMarketResponse('mutual', nextCount, hadVisibleData);
 
-        if (!hasMutualCache || changed) {
+        if (canApply && (!hasMutualCache || changed)) {
             mutualSeeking = nextMutual.seeking;
             mutualPrelaunch = nextMutual.prelaunch;
             mutualReturns = nextMutual.returns;
@@ -1161,9 +1328,12 @@ async function _loadMutualFeedImpl(options) {
             }
         }
 
-        const nextCache = Object.assign({}, cached || {});
-        nextCache.mutual = nextMutual;
-        setMarketCache(nextCache);
+        if (canApply) {
+            const nextCache = Object.assign({}, cached || {});
+            nextCache.mutual = nextMutual;
+            nextCache.ts = Date.now();
+            setMarketCache(nextCache);
+        }
         markMarketFetchSuccess('mutual');
         window._marketLoadedOnce = true;
     } catch (error) {
@@ -1195,6 +1365,7 @@ async function loadBountyFeed() {
         return _marketInFlight.bounty;
     }
 
+    hydrateMarketFromCache();
     const hasLocalData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
     if (!hasThrottleWindowPassed('bounty') && hasLocalData) {
         renderBountyFeed();
@@ -1217,6 +1388,7 @@ async function _loadBountyFeedImpl(options) {
     const cached = getMarketCache();
     const hasBountyCache = !!(cached && cached.bounty && Array.isArray(cached.bounty.contracts));
     const shouldMarkBackgroundSync = !!(options && options.backgroundSync);
+    const hadVisibleData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
 
     if (hasBountyCache) {
         bountyContracts = cached.bounty.contracts || [];
@@ -1237,17 +1409,22 @@ async function _loadBountyFeedImpl(options) {
         const nextBounty = {
             contracts: data.contracts || [],
         };
+        const nextCount = nextBounty.contracts.length;
         const prevBounty = cached && cached.bounty ? cached.bounty : null;
         const changed = JSON.stringify(prevBounty) !== JSON.stringify(nextBounty);
+        const canApply = _resolveMarketResponse('bounty', nextCount, hadVisibleData);
 
-        if (!hasBountyCache || changed) {
+        if (canApply && (!hasBountyCache || changed)) {
             bountyContracts = nextBounty.contracts;
             renderBountyFeed();
         }
 
-        const nextCache = Object.assign({}, cached || {});
-        nextCache.bounty = nextBounty;
-        setMarketCache(nextCache);
+        if (canApply) {
+            const nextCache = Object.assign({}, cached || {});
+            nextCache.bounty = nextBounty;
+            nextCache.ts = Date.now();
+            setMarketCache(nextCache);
+        }
         markMarketFetchSuccess('bounty');
     } catch (error) {
         console.error('Error loading bounty feed:', error);
@@ -1269,10 +1446,21 @@ async function _loadBountyFeedImpl(options) {
 async function forceRefreshMarket() {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     resetMarketFetchThrottle();
-    setMarketCache(null);
-    showSkeleton('mutual-seeking-list');
-    showSkeleton('mutual-prelaunch-list');
-    showSkeleton('bounty-list');
+    _marketFeedState.mutual.confirmedEmpty = false;
+    _marketFeedState.mutual.emptyStreak = 0;
+    _marketFeedState.bounty.confirmedEmpty = false;
+    _marketFeedState.bounty.emptyStreak = 0;
+
+    var hasMutualData = (Array.isArray(mutualSeeking) && mutualSeeking.length > 0)
+        || (Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0);
+    var hasBountyData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
+    if (!hasMutualData) {
+        showSkeleton('mutual-seeking-list');
+        showSkeleton('mutual-prelaunch-list');
+    }
+    if (!hasBountyData) {
+        showSkeleton('bounty-list');
+    }
     try {
         await Promise.all([loadMutualFeed(), loadBountyFeed()]);
     } catch (error) {
@@ -2046,9 +2234,15 @@ async function initiateProjectFeedback(appId) {
         }
         setTimeout(function() {
             try {
-                tg.close();
+                if (tg.openTelegramLink) {
+                    tg.openTelegramLink(BOT_CHAT_URL);
+                } else if (tg.openLink) {
+                    tg.openLink(BOT_CHAT_URL);
+                } else {
+                    window.location.href = BOT_CHAT_URL;
+                }
             } catch (error) {
-                console.warn('Failed to close WebApp for feedback flow:', error);
+                console.warn('Failed to open bot chat for feedback flow:', error);
             }
         }, 250);
     } catch (error) {
@@ -3083,8 +3277,12 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTasks();
     loadIncomingOffers();
     startOffersPolling();
+    startMarketPolling();
     loadEvents();
     scheduleDeferredBootstrap();
+    _handleInitialRoute().catch(function(error) {
+        console.error('Initial route handler failed:', error);
+    });
 });
 
 Object.assign(window, {
@@ -3092,6 +3290,8 @@ Object.assign(window, {
     markMutualOfferPendingUi,
     loadAllData,
     hasMarketCache,
+    hydrateMarketFromCache,
+    getMarketFeedState,
     refreshLanguageUi,
     applyLanguage,
     toggleLanguage,

@@ -252,8 +252,20 @@ function getCurrentUserKarmaValue() {
     return Number.isFinite(raw) ? raw : 0;
 }
 
+function getFinalizedGrantSkips(test) {
+    const rawSkips = Math.max(0, Number(test && test.skips_count || 0));
+    if (!test) return rawSkips;
+
+    const testingDay = getUserTestingDay(test.start_date);
+    const hasCheckedToday = (test.last_check_date || '') === getLocalDate();
+    if (!hasCheckedToday && testingDay > 0 && testingDay <= 14 && rawSkips > 0) {
+        return rawSkips - 1;
+    }
+    return rawSkips;
+}
+
 function getGrantEstimateData(test) {
-    const skips = Math.max(0, Number(test && test.skips_count || 0));
+    const skips = getFinalizedGrantSkips(test);
     const karma = getCurrentUserKarmaValue();
     const base = 50;
     const karmaBonus = Math.min(Math.max(0, karma * 5), 100);
@@ -347,8 +359,17 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     var totalDays = Math.max(expectedTotalDays || 14, userTestingDay || 0, 1);
     var standardCheckins = 0, standardSkips = 0, overtimeCheckins = 0, overtimeSkips = 0;
     var pendingDay = null;
-    if ((test.last_check_date || '') !== getLocalDate() && timeline.length < totalDays) {
-        pendingDay = Math.max(1, Math.min(totalDays, Math.max(userTestingDay || 1, timeline.length + 1)));
+    var hasCheckedToday = (test.last_check_date || '') === getLocalDate();
+
+    if (!hasCheckedToday && userTestingDay > 0 && renderTimeline.length >= userTestingDay) {
+        var unresolvedMarker = renderTimeline[userTestingDay - 1] || '';
+        if (unresolvedMarker === '0' || unresolvedMarker === '3') {
+            renderTimeline = renderTimeline.slice(0, userTestingDay - 1) + renderTimeline.slice(userTestingDay);
+        }
+    }
+
+    if (userTestingDay > 0 && userTestingDay <= totalDays) {
+        pendingDay = Math.max(1, Math.min(totalDays, userTestingDay || 1));
     }
 
     function getDayState(dayNum) {
@@ -358,7 +379,7 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
         else if (ch === '0') { cls = 'standard-skip'; standardSkips++; }
         else if (ch === '2') { cls = 'overtime-checkin'; overtimeCheckins++; }
         else if (ch === '3') { cls = 'overtime-skip'; overtimeSkips++; }
-        if (!ch && pendingDay === dayNum) {
+        if (pendingDay === dayNum) {
             cls += ' current-pending';
         }
         return '<div class="grant-segment ' + cls + '" data-day="' + dayNum + '"></div>';
@@ -366,10 +387,11 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
 
     if (!timeline) {
         var totalCheckins = Math.max(0, Number(test.checkins_count || 0));
-        var standardElapsed = Math.min(14, Math.max(0, userTestingDay || 0));
+        var resolvedElapsed = Math.max(0, (userTestingDay || 0) - (hasCheckedToday ? 0 : 1));
+        var standardElapsed = Math.min(14, resolvedElapsed);
         standardCheckins = Math.min(14, totalCheckins);
         standardSkips = Math.max(0, standardElapsed - standardCheckins);
-        var overtimeElapsed = Math.max(0, (userTestingDay || 0) - 14);
+        var overtimeElapsed = Math.max(0, resolvedElapsed - 14);
         overtimeCheckins = Math.max(0, totalCheckins - 14);
         overtimeSkips = Math.max(0, overtimeElapsed - overtimeCheckins);
         renderTimeline = ''
@@ -389,7 +411,7 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
         overtimeSegments.push(getDayState(overtimeDay));
     }
 
-    var remainingDays = Math.max(0, totalDays - timeline.length);
+    var remainingDays = Math.max(0, totalDays - renderTimeline.length);
     var html = '<div class="timeline-compact">' +
         '<div class="timeline-row">' +
             '<div class="timeline-row-head">' +
@@ -1038,16 +1060,17 @@ function renderMutualFeed(force) {
     if (!seekingEl || !prelaunchEl) return;
 
     const isLoading = !!(window._marketInFlight && (window._marketInFlight.mutual));
+    const feedState = window.getMarketFeedState ? window.getMarketFeedState('mutual') : { confirmedEmpty: false };
 
     if (!mutualSeeking.length) {
-        if (isLoading) showSkeleton('mutual-seeking-list');
+        if (isLoading || !feedState.confirmedEmpty) showSkeleton('mutual-seeking-list');
         else seekingEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
         seekingEl.innerHTML = mutualSeeking.map((item) => renderFeedCard(item, 'mutual-seeking')).join('');
     }
 
     if (!mutualPrelaunch.length) {
-        if (isLoading) showSkeleton('mutual-prelaunch-list');
+        if (isLoading || !feedState.confirmedEmpty) showSkeleton('mutual-prelaunch-list');
         else prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
         prelaunchEl.innerHTML = mutualPrelaunch.map((item) => renderFeedCard(item, 'mutual-prelaunch')).join('');
@@ -1084,8 +1107,9 @@ function renderBountyFeed(force) {
     const bountyEl = document.getElementById('bounty-list');
     if (!bountyEl) return;
     const isLoading = !!(window._marketInFlight && (window._marketInFlight.bounty));
+    const feedState = window.getMarketFeedState ? window.getMarketFeedState('bounty') : { confirmedEmpty: false };
     if (!bountyContracts.length) {
-        if (isLoading) showSkeleton('bounty-list');
+        if (isLoading || !feedState.confirmedEmpty) showSkeleton('bounty-list');
         else bountyEl.innerHTML = `<p class="no-testers" style="margin-top: 10px;">${t.bountyEmpty}</p>`;
         return;
     }
@@ -1174,21 +1198,18 @@ function formatDeveloperAchievements(completedTests, goldenCount) {
 function buildProjectFeedbackBadge(feedbackTotalCount, feedbackNewCount) {
     const totalCount = Number(feedbackTotalCount || 0);
     const newCount = Number(feedbackNewCount || 0);
-    if (newCount > 0) return '';
+    if (newCount > 0) return ' <span class="feedback-btn-badge">' + window.escapeHTML(String(newCount)) + '</span>';
     if (totalCount > 0) return ' <span class="feedback-btn-badge feedback-btn-badge-total">' + window.escapeHTML(String(totalCount)) + '</span>';
     return '';
 }
 
-function buildProjectFeedbackButton(projectId, feedbackTotalCount, feedbackNewCount, isArchived) {
+function buildProjectFeedbackButton(projectId, feedbackTotalCount, feedbackNewCount, isArchived, extraStyle) {
     const totalCount = Number(feedbackTotalCount || 0);
     const newCount = Number(feedbackNewCount || 0);
     const accentClass = newCount > 0 ? ' btn-feedback-alert' : '';
-    const badgeHtml = newCount > 0
-        ? ''
-        : (totalCount > 0
-            ? '<span class="feedback-btn-badge feedback-btn-badge-total">' + window.escapeHTML(String(totalCount)) + '</span>'
-            : '');
-    return '<button class="btn btn-secondary project-feedback-btn' + accentClass + '" style="width: 100%; margin-bottom: 8px; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);" onclick="openProjectFeedback(' + projectId + ', ' + (isArchived ? 'true' : 'false') + ')">' +
+    const badgeHtml = buildProjectFeedbackBadge(totalCount, newCount);
+    const baseStyle = 'width: 100%; margin-bottom: 8px; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);';
+    return '<button class="btn btn-secondary project-feedback-btn' + accentClass + '" style="' + (extraStyle || baseStyle) + '" onclick="openProjectFeedback(' + projectId + ', ' + (isArchived ? 'true' : 'false') + ')">' +
         '<span class="project-feedback-btn-inner">' + window.escapeHTML(window.t('projectFeedbackButtonShort', {}, lang)) + badgeHtml + '</span>' +
     '</button>';
 }
@@ -1482,9 +1503,7 @@ function renderProjects(force) {
         const syncActionHtml = hasSync
             ? `<div class="action-row" style="margin-top: 0; margin-bottom: 10px;">
                 <button class="btn btn-secondary" style="${syncBtnStyle}" onclick="openSyncModal(${project.id})">${window.escapeHTML(formatCompactSyncLabel(project))}</button>
-                    <button class="btn btn-secondary" style="flex: 1; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);" onclick="openProjectFeedback(${project.id}, false)">
-                        ${window.escapeHTML(window.t('projectFeedbackButtonShort', {}, lang))}${buildProjectFeedbackBadge(project.feedback_total_count || 0, project.feedback_new_count || 0)}
-                    </button>
+                    ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'flex: 1; margin-bottom: 0; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);')}
                 </div>`
             : `<button class="btn btn-secondary" style="width: 100%; margin-bottom: 10px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
                     ${t.syncBtnLong}
@@ -2530,6 +2549,9 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'market') {
+        if (window.hydrateMarketFromCache) {
+            window.hydrateMarketFromCache();
+        }
         renderMutualFeed(true);
         renderMutualReturns(null, true);
         renderBountyFeed(true);
@@ -3020,7 +3042,7 @@ function openProjectDetailsModal(appId) {
     }
 
     const grant = getGrantEstimateData(test);
-    const currentSkips = Math.max(0, Number(test.skips_count || 0));
+    const currentSkips = Math.max(0, Number(grant.skips || 0));
     const skipIndicator = Array.from({ length: 3 }, function(_, index) {
         return index < currentSkips
             ? '<span class="skip-dot used"></span>'
