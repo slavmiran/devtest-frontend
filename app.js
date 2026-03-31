@@ -986,6 +986,9 @@ function handleApiError(code, details = {}) {
         invalid_feedback_karma_amount: 'invalid_feedback_karma_amount',
         invalid_feedback_bust_amount: 'invalid_feedback_bust_amount',
         app_archived: 'err_app_archived',
+        app_not_found: 'app_not_found',
+        not_owner: 'not_owner',
+        publish_to_market_failed: 'publish_to_market_failed',
         offer_already_pending: 'err_offer_already_pending',
         offer_target_owner_mismatch: 'err_offer_target_owner_mismatch',
         offer_proposer_owner_mismatch: 'err_offer_proposer_owner_mismatch',
@@ -1757,6 +1760,33 @@ async function loadProjects(isBackground) {
         if (_projectsInFlight === requestPromise) {
             _projectsInFlight = null;
         }
+    }
+}
+
+async function publishProjectToMarket(projectId) {
+    if (!projectId) return null;
+
+    _apiStart();
+    try {
+        var response = await fetch(`${API_BASE}/projects/${projectId}/publish_to_market`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_id: userId })
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            handleApiError(getBackendErrorCode(data), data && data.details ? data.details : {});
+            return null;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('invitePublishSuccess', {}, lang));
+        return data.topic_link || null;
+    } catch (error) {
+        console.error('Publish to market error:', error);
+        handleApiError('network_error');
+        return null;
+    } finally {
+        _apiEnd();
     }
 }
 
@@ -3595,6 +3625,7 @@ Object.assign(window, {
     saveProject,
     confirmEmailWarning,
     saveProjectEdit,
+    publishProjectToMarket,
     showFeedbackRewardKarmaInfo
 });
 
@@ -3631,5 +3662,6 @@ Object.assign(window.App, {
     loadReliabilityBreakdown,
     saveProject,
     setProjectTargetLang,
-    saveProjectEdit
+    saveProjectEdit,
+    publishProjectToMarket
 });

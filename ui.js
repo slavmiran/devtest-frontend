@@ -510,6 +510,29 @@ function getTestSourceChip(test) {
     return '';
 }
 
+function getTesterSourceMeta(joinType) {
+    const normalized = String(joinType || 'invite').toLowerCase();
+    if (normalized === 'bounty') {
+        return { icon: '💎', label: window.t('testSourceBounty', {}, lang) };
+    }
+    if (normalized === 'mutual') {
+        return { icon: '🤝', label: window.t('testSourceMutual', {}, lang) };
+    }
+    if (normalized === 'prelaunch') {
+        return { icon: '🚀', label: window.t('testSourcePrelaunch', {}, lang) };
+    }
+    if (normalized === 'direct') {
+        return { icon: '🚀', label: window.t('testSourceDirect', {}, lang) };
+    }
+    return { icon: '🚀', label: window.t('testSourceInvite', {}, lang) };
+}
+
+function renderTesterSourceIndicator(joinType) {
+    const sourceMeta = getTesterSourceMeta(joinType);
+    const toastText = window.t('testerSourceToast', { source: sourceMeta.label }, lang);
+    return `<button type="button" style="background:none; border:none; padding:0; margin:0; color:var(--hint-color); font-size:15px; cursor:pointer; line-height:1;" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(toastText)}')">${sourceMeta.icon}</button>`;
+}
+
 function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test) {
     const parts = [];
     if (test) {
@@ -1332,6 +1355,12 @@ function renderFeedCard(item, kind) {
         : (kind === 'mutual-prelaunch'
             ? `<span class="meta-chip accent-blue">${window.t('tabPreLaunch', {}, lang)}</span>`
             : '');
+    const testerChipCount = kind === 'bounty'
+        ? Number(item.bounty_testers_count || 0)
+        : Number(item.mutual_testers_count || 0);
+    const testerChipLimit = kind === 'bounty'
+        ? Number(item.limit_bounty || 0)
+        : Number(item.limit_mutual || 0);
 
     let buttonText = window.t('mutualJoinBtn', {}, lang);
     let clickAction = `createMutualOffer(${item.app_id}, ${item.owner_id}, event)`;
@@ -1406,7 +1435,7 @@ function renderFeedCard(item, kind) {
                 </div>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
-                <span class="meta-chip">👥 ${item.mutual_testers_count ?? item.bounty_testers_count ?? 0}/${item.limit_mutual || item.limit_bounty || 12}</span>
+                <span class="meta-chip">👥 ${testerChipCount}/${testerChipLimit || 12}</span>
                 ${kindChip}
                 ${bountyChip}
                 ${syncChip}
@@ -1778,6 +1807,7 @@ function renderProjects(force) {
             project.testers.forEach((tester) => {
                 let nameHtml = '';
                 let cleanUsername = '';
+                const sourceIndicatorHtml = renderTesterSourceIndicator(tester.join_type);
                 if (tester.username) {
                     cleanUsername = tester.username.replace('@', '');
                     nameHtml = `<a href="javascript:void(0);" onclick="return openTelegramProfile('${escapeInlineJsString(cleanUsername)}', event)" class="tester-link">@${window.escapeHTML(cleanUsername)}</a>`;
@@ -1836,6 +1866,7 @@ function renderProjects(force) {
                     <li onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;">
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" onclick="event.stopPropagation()">
                             ${nameHtml}
+                            ${sourceIndicatorHtml}
                             ${screenshotDayHtml}
                             ${bellHtml}
                             ${karmaHtml}
@@ -3080,7 +3111,7 @@ function openInviteModal(projectId) {
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock1Title}</div>
             <div style="${preStyle}">${window.escapeHTML(block1Text)}</div>
-            <button class="btn btn-primary" onclick="copyAndAction('${escapeForAttr(block1Text)}', 'exchange')">${t.inviteBlock1Btn}</button>
+            <button class="btn btn-primary" onclick="publishProjectToMarketAction(${project.id})">${t.inviteBlock1Btn}</button>
         </div>
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock2Title}</div>
@@ -3112,6 +3143,12 @@ function copyAndAction(text, target) {
     } else {
         tg.openTelegramLink('https://t.me/share/url?text=' + encodeURIComponent(decoded));
     }
+}
+
+async function publishProjectToMarketAction(projectId) {
+    if (!projectId || !window.publishProjectToMarket) return;
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    await window.publishProjectToMarket(projectId);
 }
 
 function closeInviteModal(event) {
@@ -3198,6 +3235,7 @@ async function openDossierModal(username, testerId, appId) {
     </div>`;
 
     if (tester) {
+        const sourceMeta = getTesterSourceMeta(tester.join_type);
         html += `<div style="margin-bottom: 16px;">
             <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierProjectTitle}</div>
             <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
@@ -3205,6 +3243,7 @@ async function openDossierModal(username, testerId, appId) {
                 ${startDateStr ? '<br>' + t.dossierStartDate.replace('{date}', startDateStr) : ''}
                 ${expectedFinish ? '<br>' + t.dossierExpectedFinish.replace('{date}', expectedFinish) : ''}
                 <br>${t.dossierLastCheck.replace('{status}', lastCheckStatus)}
+                <br>${t.dossierSource.replace('{source}', window.escapeHTML(sourceMeta.label))}
             </div>
         </div>`;
     }
@@ -3839,6 +3878,7 @@ Object.assign(window, {
     openInviteModal,
     escapeForAttr,
     copyAndAction,
+    publishProjectToMarketAction,
     closeInviteModal,
     openDossierModal,
     closeDossierModal,
