@@ -513,18 +513,18 @@ function getTestSourceChip(test) {
 function getTesterSourceMeta(joinType) {
     const normalized = String(joinType || 'invite').toLowerCase();
     if (normalized === 'bounty') {
-        return { icon: '💎', label: window.t('testSourceBounty', {}, lang) };
+        return { icon: '💎', label: window.t('testerSourceBountyFull', {}, lang) };
     }
     if (normalized === 'mutual') {
-        return { icon: '🤝', label: window.t('testSourceMutual', {}, lang) };
+        return { icon: '🤝', label: window.t('testerSourceMutualFull', {}, lang) };
     }
     if (normalized === 'prelaunch') {
-        return { icon: '🚀', label: window.t('testSourcePrelaunch', {}, lang) };
+        return { icon: '🚀', label: window.t('testerSourcePrelaunchFull', {}, lang) };
     }
     if (normalized === 'direct') {
-        return { icon: '🚀', label: window.t('testSourceDirect', {}, lang) };
+        return { icon: '🚀', label: window.t('testerSourceDirectFull', {}, lang) };
     }
-    return { icon: '🚀', label: window.t('testSourceInvite', {}, lang) };
+    return { icon: '🚀', label: window.t('testerSourceInviteFull', {}, lang) };
 }
 
 function renderTesterSourceIndicator(joinType) {
@@ -1807,7 +1807,6 @@ function renderProjects(force) {
             project.testers.forEach((tester) => {
                 let nameHtml = '';
                 let cleanUsername = '';
-                const sourceIndicatorHtml = renderTesterSourceIndicator(tester.join_type);
                 if (tester.username) {
                     cleanUsername = tester.username.replace('@', '');
                     nameHtml = `<a href="javascript:void(0);" onclick="return openTelegramProfile('${escapeInlineJsString(cleanUsername)}', event)" class="tester-link">@${window.escapeHTML(cleanUsername)}</a>`;
@@ -1866,7 +1865,6 @@ function renderProjects(force) {
                     <li onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;">
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" onclick="event.stopPropagation()">
                             ${nameHtml}
-                            ${sourceIndicatorHtml}
                             ${screenshotDayHtml}
                             ${bellHtml}
                             ${karmaHtml}
@@ -1942,11 +1940,14 @@ function renderProjects(force) {
 
         const quotaSummaryHtml = (() => {
             const chips = [];
+            const testers = Array.isArray(project.testers) ? project.testers : [];
+            const mutualCount = testers.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
+            const bountyCount = testers.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
             if (project.mode === 'mutual' || project.mode === 'hybrid') {
-                chips.push(`<span class="meta-chip">🤝 ${project.limit_mutual || 0}</span>`);
+                chips.push(`<span class="meta-chip">${window.escapeHTML(window.t('mutualChipLabel', { current: mutualCount, target: project.limit_mutual || 0 }, lang))}</span>`);
             }
             if (project.mode === 'bounty' || project.mode === 'hybrid') {
-                chips.push(`<span class="meta-chip accent-purple">💎 ${project.limit_bounty || 0} × ${formatBustAmount(project.bounty_per_tester || 0)}</span>`);
+                chips.push(`<button type="button" class="meta-chip accent-purple" onclick="openContractEconomyModal(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('contractChipLabel', { current: bountyCount, target: project.limit_bounty || 0, price: formatUiAmount(project.bounty_per_tester || 0, 1) }, lang))}</button>`);
             }
             if (!chips.length) return '';
             return `<div style="margin: 8px 0 10px; display: flex; gap: 6px; flex-wrap: wrap;">${chips.join('')}</div>`;
@@ -2276,6 +2277,7 @@ function openKickTesterModal(appId, testerId, event) {
 
     const testingDays = tester.start_date ? getUserTestingDay(tester.start_date) : 0;
     const skipsCount = Math.max(0, Number(tester.skips_count || 0));
+    const joinType = String(tester.join_type || 'invite').toLowerCase();
     if (testingDays > 7) {
         if (tg.showAlert) tg.showAlert(window.t('kickBlockedDesc', {}, lang));
         else showToast(window.t('kickBlockedDesc', {}, lang));
@@ -2290,6 +2292,23 @@ function openKickTesterModal(appId, testerId, event) {
     const holdAction = skipsCount >= 3
         ? window.t('kickHoldBonusReturn', {}, lang)
         : window.t('kickHoldBonusBurn', {}, lang);
+        const verdictHtml = `<div class="details-block" style="border-color: ${skipsCount >= 3 ? 'rgba(52,199,89,0.22)' : 'rgba(255,149,0,0.24)'};">
+            <div class="detail-section-title">${window.escapeHTML(window.t('kickVerdictTitle', {}, lang))}</div>
+            <div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t(skipsCount >= 3 ? 'kickVerdictSafe' : 'kickVerdictUnsafe', {}, lang))}</div>
+        </div>`;
+    let economyHtml = '';
+    if (joinType === 'bounty' && bountyPerTester > 0) {
+        economyHtml = '' +
+            `<div class="details-block">` +
+                `<div style="font-size:13px; line-height:1.6; color: var(--text-color);">` +
+                    `<div>${window.escapeHTML(window.t('kickHoldBonusInfo', { action: holdAction }, lang))}</div>` +
+                    `<div style="margin-top:8px; color: var(--hint-color);">${window.escapeHTML(window.t('kickDailyPoolInfo', { amount: formatUiAmount(dailyBurn, 1) }, lang))}</div>` +
+                    `${holdBonus > 0 ? `<div style="margin-top:8px; color: var(--hint-color);">${window.escapeHTML(window.t('contractHoldBonus', { amount: formatUiAmount(holdBonus, 1) }, lang))}</div>` : ''}` +
+                `</div>` +
+            `</div>`;
+    } else {
+        economyHtml = `<div class="details-block"><div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t('kickNoFinancialPenalties', {}, lang))}</div></div>`;
+    }
 
     _kickTarget = { appId: appId, testerId: testerId };
     if (reasonSelect) reasonSelect.value = 'no_response';
@@ -2298,6 +2317,7 @@ function openKickTesterModal(appId, testerId, event) {
         reasonOther.style.display = 'none';
     }
     body.innerHTML = '' +
+        verdictHtml +
         `<div class="details-block">` +
             `<div class="detail-section-title">${window.escapeHTML(window.t('kickTesterStats', {}, lang))}</div>` +
             `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
@@ -2306,13 +2326,7 @@ function openKickTesterModal(appId, testerId, event) {
                 `<div>${window.escapeHTML(window.t('kickTesterCheckins', { checkins: Number(tester.checkins_count || 0) }, lang))}</div>` +
             `</div>` +
         `</div>` +
-        `<div class="details-block">` +
-            `<div style="font-size:13px; line-height:1.6; color: var(--text-color);">` +
-                `<div>${window.escapeHTML(window.t('kickHoldBonusInfo', { action: holdAction }, lang))}</div>` +
-                `<div style="margin-top:8px; color: var(--hint-color);">${window.escapeHTML(window.t('kickDailyPoolInfo', { amount: formatUiAmount(dailyBurn, 1) }, lang))}</div>` +
-                `${holdBonus > 0 ? `<div style="margin-top:8px; color: var(--hint-color);">${window.escapeHTML(window.t('contractHoldBonus', { amount: formatUiAmount(holdBonus, 1) }, lang))}</div>` : ''}` +
-            `</div>` +
-        `</div>`;
+        economyHtml;
     modal.classList.add('active');
 }
 
@@ -3236,6 +3250,7 @@ async function openDossierModal(username, testerId, appId) {
 
     if (tester) {
         const sourceMeta = getTesterSourceMeta(tester.join_type);
+        const sourceText = window.escapeHTML(sourceMeta.icon + ' ' + sourceMeta.label);
         html += `<div style="margin-bottom: 16px;">
             <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierProjectTitle}</div>
             <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
@@ -3243,7 +3258,7 @@ async function openDossierModal(username, testerId, appId) {
                 ${startDateStr ? '<br>' + t.dossierStartDate.replace('{date}', startDateStr) : ''}
                 ${expectedFinish ? '<br>' + t.dossierExpectedFinish.replace('{date}', expectedFinish) : ''}
                 <br>${t.dossierLastCheck.replace('{status}', lastCheckStatus)}
-                <br>${t.dossierSource.replace('{source}', window.escapeHTML(sourceMeta.label))}
+                <br>${t.dossierSource.replace('{source}', sourceText)}
             </div>
         </div>`;
     }
@@ -3713,9 +3728,11 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
     let modal = document.getElementById('project-select-modal');
     if (!modal) return;
     const listEl = document.getElementById('project-select-list');
+    const footerEl = document.getElementById('project-select-footer');
     if (!listEl) return;
     const blockedProjects = options && options.blockedProjects ? options.blockedProjects : {};
-    listEl.innerHTML = projects.map(p => {
+    const availableProjects = Array.isArray(projects) ? projects : [];
+    listEl.innerHTML = availableProjects.length ? availableProjects.map(p => {
         const safeName = window.escapeHTML(p.name || window.t('unknownLabel'));
         const targetAlreadyTesting = (p.testers || []).some(tester => Number(tester.tester_id) === Number(targetOwnerId));
         const blockedEntry = blockedProjects[String(p.id)] || null;
@@ -3745,7 +3762,7 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
             </span>
             ${badgeHtml}
         </button>`;
-    }).join('');
+    }).join('') : `<div class="details-block"><div style="font-size:13px; color: var(--hint-color);">${window.escapeHTML(window.t('offerNoProjects', {}, lang))}</div></div>`;
     window._selectProjectForOffer = async function(proposerAppId) {
         closeProjectSelectModal();
         await window.sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, {
@@ -3753,12 +3770,54 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
             targetOwnerId: targetOwnerId,
         });
     };
+    if (footerEl) {
+        footerEl.innerHTML = `<button class="btn btn-secondary" style="width: 100%;" onclick="joinDirect(${targetAppId})">${window.escapeHTML(window.t('takeWithoutMutualBtn', {}, lang))}</button>`;
+    }
     modal.classList.add('active');
 }
 
 function closeProjectSelectModal() {
     const modal = document.getElementById('project-select-modal');
     if (modal) modal.classList.remove('active');
+}
+
+function openContractEconomyModal(projectId) {
+    const project = (myProjects || []).find(function(item) { return Number(item.id) === Number(projectId); });
+    const modal = document.getElementById('contract-economy-modal');
+    const body = document.getElementById('contract-economy-body');
+    if (!project || !modal || !body) return;
+
+    const needed = Number(project.limit_bounty || 0);
+    const testers = Array.isArray(project.testers) ? project.testers : [];
+    const joined = testers.filter(function(tester) {
+        return String(tester.join_type || '').toLowerCase() === 'bounty';
+    }).length;
+    const perTester = Number(project.bounty_per_tester || 0);
+    const perCheckin = perTester > 0 ? (perTester * 0.65) / 14 : 0;
+    const holdBonus = perTester > 0 ? perTester * 0.35 : 0;
+    const totalBudget = needed * perTester;
+
+    body.innerHTML = '' +
+        `<h3>${window.escapeHTML(window.t('contractEconomicsTitle', {}, lang))}</h3>` +
+        `<div class="details-block">` +
+            `<div style="font-size:13px; line-height:1.8; color: var(--text-color);">` +
+                `<div>${window.escapeHTML(window.t('contractEconomyNeed', { count: needed }, lang))}</div>` +
+                `<div>${window.escapeHTML(window.t('contractEconomyCurrent', { count: joined }, lang))}</div>` +
+                `<div>${window.escapeHTML(window.t('contractEconomyPerTester', { amount: formatUiAmount(perTester, 1) }, lang))}</div>` +
+                `<div>${window.escapeHTML(window.t('contractEconomyPerCheckin', { amount: formatUiAmount(perCheckin, 1) }, lang))}</div>` +
+                `<div>${window.escapeHTML(window.t('contractEconomyHold', { amount: formatUiAmount(holdBonus, 1) }, lang))}</div>` +
+                `<div>${window.escapeHTML(window.t('contractEconomyBudget', { amount: formatUiAmount(totalBudget, 1) }, lang))}</div>` +
+            `</div>` +
+        `</div>` +
+        `<button class="btn btn-secondary" style="width:100%;" onclick="closeContractEconomyModal()">${window.escapeHTML(window.t('btnClose', {}, lang))}</button>`;
+    modal.classList.add('active');
+}
+
+function closeContractEconomyModal(event) {
+    const modal = document.getElementById('contract-economy-modal');
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
 }
 
 function openKarmaSelectPopup(appId, testerId) {
@@ -3899,6 +3958,8 @@ Object.assign(window, {
     closeTimelineStatsSheet,
     showProjectSelectModal,
     closeProjectSelectModal,
+    openContractEconomyModal,
+    closeContractEconomyModal,
     openKarmaDistribution,
     closeKarmaDistribution,
     openKarmaSelectPopup,

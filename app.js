@@ -1938,33 +1938,51 @@ async function createMutualOffer(targetAppId, targetOwnerId, event) {
         return;
     }
     const eligible = myProjects.filter(p => (p.mode === 'mutual' || p.mode === 'hybrid') && p.id);
-    if (eligible.length === 0) {
-        if (tg.showAlert) tg.showAlert(window.t('offerNoProjects'));
-        else alert(window.t('offerNoProjects'));
-        return;
-    }
     const blockedProjects = await fetchBlockedOfferProjects(targetOwnerId, true);
-    if (eligible.length === 1) {
-        const blockedEntry = blockedProjects[String(eligible[0].id)];
-        if (blockedEntry) {
-            showToast(window.t('offerProjectLockedSingle', {
-                target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang)
-            }, lang));
-            return;
-        }
-        await sendMutualOffer(targetAppId, targetOwnerId, eligible[0].id, {
-            sourceButton: sourceButton,
-            targetAppId: targetAppId,
-            targetOwnerId: targetOwnerId,
-        });
-        return;
-    }
     showProjectSelectModal(eligible, targetAppId, targetOwnerId, {
         sourceButton: sourceButton,
         targetAppId: targetAppId,
         targetOwnerId: targetOwnerId,
         blockedProjects: blockedProjects,
     });
+}
+
+async function joinDirect(appId) {
+    var actionKey = 'joinDirect_' + appId;
+    if (_pendingActions.has(actionKey)) return;
+    _pendingActions.add(actionKey);
+
+    const rollback = [...mutualSeeking];
+    mutualSeeking = mutualSeeking.filter(function(card) { return card.app_id !== appId; });
+    renderMutualFeed();
+    closeProjectSelectModal();
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    switchTab('tests');
+
+    try {
+        const response = await fetch(`${API_BASE}/feed/mutual/${appId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: userId, allow_over_limit: false, join_type: 'direct' })
+        });
+        const result = await response.json();
+        if (result.status !== 'success') {
+            mutualSeeking = rollback;
+            renderMutualFeed();
+            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
+            return;
+        }
+        loadTasks(true);
+        loadMutualFeed();
+        loadProjects(true);
+    } catch (error) {
+        console.error('Join direct error:', error);
+        mutualSeeking = rollback;
+        renderMutualFeed();
+        if (tg.showAlert) tg.showAlert(t.networkError);
+    } finally {
+        _pendingActions.delete(actionKey);
+    }
 }
 
 async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiContext) {
@@ -3578,6 +3596,7 @@ Object.assign(window, {
     createMutualOffer,
     sendMutualOffer,
     joinMutual,
+    joinDirect,
     joinBounty,
     startTimer,
     openPlay,
@@ -3663,5 +3682,6 @@ Object.assign(window.App, {
     saveProject,
     setProjectTargetLang,
     saveProjectEdit,
-    publishProjectToMarket
+    publishProjectToMarket,
+    joinDirect
 });
