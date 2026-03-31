@@ -2029,9 +2029,20 @@ details[open] > summary .details-arrow {
     animation: timeline-pulse 1.8s ease-in-out infinite;
 }
 
+.grant-segment.current-pending-base {
+    background: rgba(10, 132, 255, 0.28);
+    box-shadow: inset 0 0 0 1px rgba(125, 196, 255, 0.5), 0 0 0 1px rgba(10, 132, 255, 0.18);
+}
+
+.grant-segment.current-pending-overtime {
+    background: rgba(255, 214, 10, 0.24);
+    box-shadow: inset 0 0 0 1px rgba(255, 224, 122, 0.52), 0 0 0 1px rgba(255, 214, 10, 0.16);
+}
+
 .timeline-compact {
     display: grid;
     gap: 12px;
+    margin-bottom: 14px;
 }
 
 .timeline-row {
@@ -2473,6 +2484,8 @@ details[open] > summary .details-arrow {
 .timeline-sheet-facts {
     display: grid;
     gap: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 10px;
 }
 
 .timeline-sheet-fact {
@@ -2481,6 +2494,13 @@ details[open] > summary .details-arrow {
     background: rgba(255,255,255,0.04);
     font-size: 13px;
     color: var(--text-color);
+}
+
+.market-offer-note {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--hint-color);
+    line-height: 1.4;
 }
 
 @keyframes timeline-pulse {

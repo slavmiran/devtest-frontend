@@ -383,6 +383,7 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
         else if (ch === '3') { cls = 'overtime-skip'; overtimeSkips++; }
         if (pendingDay === dayNum) {
             cls += ' current-pending';
+            cls += dayNum > 14 ? ' current-pending-overtime' : ' current-pending-base';
         }
         return '<div class="grant-segment ' + cls + '" data-day="' + dayNum + '"></div>';
     }
@@ -1192,7 +1193,7 @@ function renderTests(force) {
         let cardContent = `
             ${doneBadgeHtml}
             <div class="card-header">
-                <div class="card-header-link" ${test.status === 'new' ? '' : `onclick="openProjectDetailsModal(${test.id})"`}>
+                <div class="card-header-link" ${(test.status === 'new' && test.app_status !== 'archived') ? '' : `onclick="openProjectDetailsModal(${test.id})"`}>
                     ${renderIcon(test.name, test.icon_url)}
                     <div class="card-info">
                         <div class="card-title">${safeName}</div>
@@ -1320,6 +1321,9 @@ function renderFeedCard(item, kind) {
     const ownerDisplay = window.escapeHTML(item.owner_full_name || (item.owner_username ? '@' + item.owner_username : window.t('idLabel', { id: item.owner_id }, lang)));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
     const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
+    const syncChip = Number(item.google_sync_day || 0) > 1
+        ? `<span class="meta-chip accent-green">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
+        : '';
     const bountyChip = kind === 'bounty'
         ? `<span class="meta-chip accent-purple">💎 ${item.bounty_per_tester || 0} $BUST</span>`
         : '';
@@ -1337,14 +1341,30 @@ function renderFeedCard(item, kind) {
     const isOwnProject = !!item.is_own_project;
 
     const hasPendingOffer = !!item.has_pending_offer;
-    const hasIncomingFromOwner = (incomingOffers || []).some((offer) => {
+    const incomingFromOwnerOffers = (incomingOffers || []).filter((offer) => {
         if (!offer || offer.status !== 'pending') return false;
         if (Number(offer.proposer_id) !== Number(item.owner_id)) return false;
         return true;
     });
+    const hasIncomingFromOwner = incomingFromOwnerOffers.length > 0;
+    const singleIncomingOffer = incomingFromOwnerOffers.length === 1 ? incomingFromOwnerOffers[0] : null;
+    const pendingOfferRemaining = hasPendingOffer ? formatOfferRemaining(item.pending_offer_created_at) : null;
+    const pendingOfferMeta = pendingOfferRemaining
+        ? window.t('offerTimeLeft', {
+            time: window.t('offerTimeLeftValue', {
+                hours: pendingOfferRemaining.hours,
+                minutes: pendingOfferRemaining.minutes,
+            }, lang)
+        }, lang)
+        : '';
 
-    if (kind === 'mutual-seeking' && hasIncomingFromOwner) {
-        buttonText = window.t('offerWaitingAnswer', {}, lang);
+    if (kind === 'mutual-seeking' && singleIncomingOffer) {
+        buttonText = window.t('offerAcceptDirectBtn', {}, lang);
+        clickAction = `decideOffer(${singleIncomingOffer.offer_id}, 'accept', event)`;
+        buttonClass = 'btn btn-secondary';
+        buttonExtraAttrs = '';
+    } else if (kind === 'mutual-seeking' && hasIncomingFromOwner) {
+        buttonText = window.t('offerReviewOwnerOffersBtn', {}, lang);
         clickAction = `switchTab('tests')`;
         buttonClass = 'btn btn-secondary';
         buttonExtraAttrs = '';
@@ -1381,7 +1401,6 @@ function renderFeedCard(item, kind) {
                     <div class="market-owner" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
-                    ${isOwnProject ? `<span class="meta-chip own-project-chip">${window.t('ownProjectBadge', {}, lang)}</span>` : ''}
                     ${langBadge}
                     <span class="meta-chip accent-yellow">☯️ ${item.owner_karma || 0}</span>
                 </div>
@@ -1390,8 +1409,10 @@ function renderFeedCard(item, kind) {
                 <span class="meta-chip">👥 ${item.mutual_testers_count ?? item.bounty_testers_count ?? 0}/${item.limit_mutual || item.limit_bounty || 12}</span>
                 ${kindChip}
                 ${bountyChip}
+                ${syncChip}
             </div>
             <button class="${buttonClass}" ${buttonDisabledAttr} ${buttonExtraAttrs} onclick="${clickAction}">${buttonText}</button>
+            ${(kind === 'mutual-seeking' && pendingOfferMeta) ? `<div class="market-offer-note">${window.escapeHTML(pendingOfferMeta)}</div>` : ''}
         </div>
     `;
 }
@@ -1436,6 +1457,15 @@ function renderMutualReturns(apps, force) {
         const returnBtnText = window.escapeHTML(window.t(hasPendingOffer ? 'offerPending' : 'mutualReturnBtn', {}, lang));
         const btnClass = hasPendingOffer ? 'btn pending disabled' : 'btn btn-primary';
         const btnDisabled = hasPendingOffer ? 'disabled' : '';
+        const pendingOfferRemaining = hasPendingOffer ? formatOfferRemaining(app.pending_offer_created_at) : null;
+        const pendingOfferMeta = pendingOfferRemaining
+            ? window.escapeHTML(window.t('offerTimeLeft', {
+                time: window.t('offerTimeLeftValue', {
+                    hours: pendingOfferRemaining.hours,
+                    minutes: pendingOfferRemaining.minutes,
+                }, lang)
+            }, lang))
+            : '';
         const btnClick = hasPendingOffer
             ? 'void(0)'
             : `if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); window.createMutualOffer(${app.app_id}, ${app.owner_id}, event);`;
@@ -1449,6 +1479,7 @@ function renderMutualReturns(apps, force) {
                     <div class="card-title" style="font-size:14px;">${appName}</div>
                 </div>
                 <button class="${btnClass}" ${btnDisabled} style="width:100%;" data-offer-target-app="${app.app_id}" data-offer-target-owner="${app.owner_id}" onclick="${btnClick}">${returnBtnText}</button>
+                ${pendingOfferMeta ? `<div class="market-offer-note">${pendingOfferMeta}</div>` : ''}
             </div>
         `;
     }).join('');
@@ -1885,7 +1916,6 @@ function renderProjects(force) {
             }
             if (project.mode === 'bounty' || project.mode === 'hybrid') {
                 chips.push(`<span class="meta-chip accent-purple">💎 ${project.limit_bounty || 0} × ${formatBustAmount(project.bounty_per_tester || 0)}</span>`);
-                chips.push(`<span class="meta-chip accent-blue">${t.calcTotalCost}: ${formatBustAmount((project.limit_bounty || 0) * (project.bounty_per_tester || 0))}</span>`);
             }
             if (!chips.length) return '';
             return `<div style="margin: 8px 0 10px; display: flex; gap: 6px; flex-wrap: wrap;">${chips.join('')}</div>`;
@@ -3333,7 +3363,7 @@ function openEditModal(projectId) {
     document.getElementById('edit-description').value = project.instructions || '';
     document.getElementById('edit-icon').value = project.icon_url || '';
     document.getElementById('edit-package').value = project.package || '';
-    document.getElementById('edit-group').value = project.google_group_url || 'https://groups.google.com/g/google-play-dev-test';
+    document.getElementById('edit-group').value = project.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
     document.getElementById('edit-limit-mutual').value = String(project.limit_mutual || 12);
     document.getElementById('edit-limit-bounty').value = String(project.limit_bounty || 12);
     document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
@@ -3352,6 +3382,13 @@ function closeEditModal(event) {
         resetProjectForms();
         renderEditCreatedAtMeta();
     }, 300);
+}
+
+function resetEditGoogleGroupToDefault() {
+    var input = document.getElementById('edit-group');
+    if (!input) return;
+    input.value = window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 }
 
 function copyEmail() {

@@ -3,6 +3,7 @@ window.App = window.App || {};
 var tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
+window.DEFAULT_GOOGLE_GROUP_URL = 'https://groups.google.com/g/google-play-dev-test';
 
 const initData = tg.initDataUnsafe || {};
 const BOT_USERNAME = 'Android12TestersBot';
@@ -3424,6 +3425,7 @@ async function saveProjectEdit() {
     const name = document.getElementById('edit-name').value.trim();
     const instructions = document.getElementById('edit-description').value.trim();
     const iconUrl = document.getElementById('edit-icon').value.trim();
+    const googleGroupUrl = document.getElementById('edit-group').value.trim();
     const targetLang = (document.getElementById('edit-target-lang').value || 'ALL').toUpperCase();
     const pricingPayload = buildProjectPricingPayload('edit');
     if (!pricingPayload) return;
@@ -3447,6 +3449,7 @@ async function saveProjectEdit() {
                 name,
                 instructions: instructions || null,
                 icon_url: iconUrl || null,
+                google_group_url: googleGroupUrl || window.DEFAULT_GOOGLE_GROUP_URL,
                 target_lang: targetLang,
                 ...pricingPayload
             })
