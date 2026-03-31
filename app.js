@@ -514,7 +514,9 @@ function rerenderReliabilityUi() {
     if (typeof window.renderReliabilitySummaryWidget === 'function') {
         window.renderReliabilitySummaryWidget(true);
     }
-    if (typeof window.renderReliabilityDashboard === 'function') {
+    if (typeof window.renderReliabilityAlphaModal === 'function') {
+        window.renderReliabilityAlphaModal();
+    } else if (typeof window.renderReliabilityDashboard === 'function') {
         window.renderReliabilityDashboard();
     }
 }
@@ -561,6 +563,7 @@ async function loadReliabilitySummary(isBackground) {
             var payload = await response.json();
             if (payload && payload.status === 'error') throw payload;
             reliabilitySummary = payload || null;
+            window.reliabilitySummary = reliabilitySummary;
             setReliabilitySummaryCache({ data: reliabilitySummary, ts: Date.now() });
             _reliabilitySummaryLoadedOnce = true;
             _reliabilitySummaryLoadError = false;
@@ -571,6 +574,7 @@ async function loadReliabilitySummary(isBackground) {
             if (!reliabilitySummary) {
                 var summaryCache = getReliabilitySummaryCache();
                 reliabilitySummary = summaryCache && summaryCache.data ? summaryCache.data : null;
+                window.reliabilitySummary = reliabilitySummary;
             }
             _reliabilitySummaryLoadedOnce = true;
             _reliabilitySummaryLoadError = true;
@@ -623,6 +627,7 @@ async function loadReliabilityBreakdown(isBackground) {
             var payload = await response.json();
             if (payload && payload.status === 'error') throw payload;
             reliabilityBreakdown = payload || null;
+            window.reliabilityBreakdown = reliabilityBreakdown;
             setReliabilityBreakdownCache({ data: reliabilityBreakdown, ts: Date.now() });
             _reliabilityBreakdownLoadedOnce = true;
             _reliabilityBreakdownLoadError = false;
@@ -633,6 +638,7 @@ async function loadReliabilityBreakdown(isBackground) {
             if (!reliabilityBreakdown) {
                 var breakdownCache = getReliabilityBreakdownCache();
                 reliabilityBreakdown = breakdownCache && breakdownCache.data ? breakdownCache.data : null;
+                window.reliabilityBreakdown = reliabilityBreakdown;
             }
             _reliabilityBreakdownLoadedOnce = true;
             _reliabilityBreakdownLoadError = true;
@@ -1285,9 +1291,17 @@ function refreshOpenModals() {
     if (inviteModal && inviteModal.classList.contains('active') && _inviteProjectId) {
         openInviteModal(_inviteProjectId);
     }
-    const reliabilityModal = document.getElementById('reliability-dashboard-modal');
-    if (reliabilityModal && reliabilityModal.classList.contains('active') && window.renderReliabilityDashboard) {
-        window.renderReliabilityDashboard();
+    const reliabilityInfoModal = document.getElementById('reliability-info-modal');
+    if (reliabilityInfoModal && reliabilityInfoModal.classList.contains('active') && window.showReliabilityInfo) {
+        window.showReliabilityInfo();
+    }
+    const reliabilityAlphaModal = document.getElementById('reliability-alpha-modal');
+    if (reliabilityAlphaModal && reliabilityAlphaModal.classList.contains('active')) {
+        if (window.renderReliabilityAlphaModal) {
+            window.renderReliabilityAlphaModal();
+        } else if (window.renderReliabilityDashboard) {
+            window.renderReliabilityDashboard();
+        }
     }
 }
 

@@ -67,8 +67,6 @@
         <h2 id="t-testsTitle" data-i18n="testsMainTitle">📱 Мои тесты</h2>
         <p id="t-testsDesc" data-i18n="testsDesc">Приложения, которые вы должны открывать каждый день.</p>
 
-        <div id="tester-reliability-summary"></div>
-
         <div id="my-tests-list">
             <div id="tests-list">
                 <!-- Active cards will be injected here -->
@@ -456,6 +454,7 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-reliabilityInfoTitle"></h3>
             <p id="t-reliabilityInfoText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 20px; text-align: left;"></p>
+            <button class="btn btn-primary" style="width: 100%; margin-bottom: 12px;" onclick="openReliabilityAlphaModal()" id="t-reliabilityAlphaBtn" data-i18n="reliabilityAlphaBtn">🧪 Новый Индекс (Альфа)</button>
             <div class="action-row">
                 <button class="btn" style="flex: 1;" onclick="closeReliabilityInfo()" id="t-btnClose" data-i18n="btnClose">Понятно</button>
             </div>
@@ -500,16 +499,16 @@
         </div>
     </div>
 
-    <div id="reliability-dashboard-modal" class="modal-overlay reliability-dashboard-modal" onclick="closeReliabilityDashboard(event)">
-        <div class="modal-content reliability-dashboard-content" onclick="event.stopPropagation()">
-            <div class="reliability-dashboard-topbar">
-                <div>
-                    <div class="reliability-summary-kicker" data-i18n="reliabilityDashModalKicker">Reliability dashboard</div>
-                    <h3 data-i18n="reliabilityDashModalTitle">Индекс надёжности</h3>
+    <div id="reliability-alpha-modal" class="modal-overlay reliability-alpha-modal" onclick="closeReliabilityAlphaModal(event)">
+        <div class="modal-content reliability-alpha-modal-content" onclick="event.stopPropagation()">
+            <div class="reliability-alpha-topbar">
+                <div class="reliability-alpha-topbar-text">
+                    <div class="reliability-alpha-topbar-kicker" data-i18n="reliabilityAlphaKicker">Альфа-режим</div>
+                    <h3 data-i18n="reliabilityAlphaTitle">Новый индекс надежности</h3>
                 </div>
-                <button type="button" class="btn-icon reliability-dashboard-close" onclick="closeReliabilityDashboard()">✕</button>
+                <button type="button" class="btn-icon reliability-alpha-close" onclick="closeReliabilityAlphaModal()">✕</button>
             </div>
-            <div id="reliability-dashboard-body"></div>
+            <div id="reliability-alpha-body"></div>
         </div>
     </div>
 

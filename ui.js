@@ -757,125 +757,120 @@ function buildReliabilityGrantText(lastGrant) {
 }
 
 function renderReliabilitySummaryWidget(force) {
-    if (!force && !isTabVisible('tests')) return;
+    return;
+}
 
-    var container = document.getElementById('tester-reliability-summary');
-    if (!container) return;
+function getReliabilityAlphaStatusMeta(status) {
+    var normalized = String(status || 'newbie').toLowerCase();
+    if (normalized === 'expert') return { label: window.t('reliabilityDashStatusExpertFull', {}, lang), badgeClass: 'badge-good' };
+    if (normalized === 'active') return { label: window.t('reliabilityDashStatusActiveFull', {}, lang), badgeClass: 'badge-good' };
+    if (normalized === 'basic') return { label: window.t('reliabilityDashStatusBasicFull', {}, lang), badgeClass: 'badge-mid' };
+    if (normalized === 'minimal') return { label: window.t('reliabilityDashStatusMinimalFull', {}, lang), badgeClass: 'badge-bad' };
+    if (normalized === 'bad') return { label: window.t('reliabilityDashStatusBadFull', {}, lang), badgeClass: 'badge-bad' };
+    return { label: window.t('reliabilityDashStatusNewbieFull', {}, lang), badgeClass: 'badge-neutral' };
+}
 
-    var state = getReliabilityUiState();
-    var summary = state.summary;
-    var isInitialLoading = state.summaryLoading && !state.summaryLoadedOnce && !summary;
+function getReliabilityAlphaProjectTabLabel(filterKey) {
+    if (filterKey === 'current') return window.t('reliabilityDashTabCurrent', {}, lang);
+    if (filterKey === 'completed') return window.t('reliabilityDashTabCompleted', {}, lang);
+    if (filterKey === 'archive') return window.t('reliabilityDashTabArchive', {}, lang);
+    return window.t('reliabilityDashTabAll', {}, lang);
+}
 
-    if (isInitialLoading) {
-        container.innerHTML = buildReliabilitySummarySkeleton();
-        return;
+function getReliabilityAlphaAvatar(name) {
+    var safeName = String(name || '').trim();
+    return window.escapeHTML((safeName.charAt(0) || 'T').toUpperCase());
+}
+
+function getReliabilityAlphaProjects(filterKey, projects) {
+    var list = Array.isArray(projects) ? projects.slice() : [];
+    if (filterKey === 'current') {
+        return list.filter(function(project) {
+            return String(project.leave_status || project.status || '').toLowerCase() === 'active';
+        });
     }
-
-    if (!summary) {
-        var emptyTextKey = state.summaryError ? 'reliabilityDashSummaryError' : 'reliabilityDashSummaryEmpty';
-        container.innerHTML = `
-            <div class="reliability-summary-card">
-                <div class="reliability-summary-empty">${window.escapeHTML(window.t(emptyTextKey, {}, lang))}</div>
-            </div>
-        `;
-        return;
+    if (filterKey === 'completed') {
+        return list.filter(function(project) {
+            var leaveStatus = String(project.leave_status || project.status || '').toLowerCase();
+            var participation = String(project.participation_type || '').toLowerCase();
+            return leaveStatus !== 'active' && participation !== 'abandoned' && participation !== 'unfair_kick';
+        });
     }
+    if (filterKey === 'archive') {
+        return list.filter(function(project) {
+            var leaveStatus = String(project.leave_status || project.status || '').toLowerCase();
+            var participation = String(project.participation_type || '').toLowerCase();
+            return participation === 'abandoned' || participation === 'unfair_kick' || leaveStatus === 'kicked_by_owner' || leaveStatus === 'abandoned';
+        });
+    }
+    return list;
+}
 
-    var statusMeta = getReliabilityStatusMeta(summary.reliability_status);
-    var lastGrantText = buildReliabilityGrantText(summary.last_grant);
-    var safeComment = window.escapeHTML(summary.reliability_comment || window.t('reliabilityDashSummaryFallbackComment', {}, lang));
-
-    container.innerHTML = `
-        <button type="button" class="reliability-summary-card" onclick="openReliabilityDashboard(${Number(summary.id || userId)})">
-            <div class="reliability-summary-header">
-                <div>
-                    <div class="reliability-summary-kicker">${window.escapeHTML(window.t('reliabilityDashSummaryKicker', {}, lang))}</div>
-                    <div class="reliability-summary-name">${window.escapeHTML(summary.display_name || window.t('reliabilityDashSummaryDefaultName', {}, lang))}</div>
+function buildReliabilityAlphaSkeleton() {
+    return `
+        <div class="page reliability-alpha-page">
+            <section class="card reliability-alpha-card">
+                <div class="header">
+                    <div class="user-main">
+                        <div class="avatar skeleton"></div>
+                        <div class="user-info" style="flex: 1;">
+                            <div class="skeleton skeleton-line medium"></div>
+                            <div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton skeleton-line short" style="width: 140px; margin-bottom: 0;"></div>
                 </div>
-                <span class="reliability-status-badge ${statusMeta.badgeClass}">${window.escapeHTML(statusMeta.label)}</span>
+                <div class="summary-grid">
+                    <div class="summary-item"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></div>
+                    <div class="summary-item"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></div>
+                    <div class="summary-item"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></div>
+                    <div class="summary-item"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></div>
+                </div>
+            </section>
+            <div class="layout-2">
+                <section class="card reliability-alpha-card"><div class="skeleton skeleton-line long"></div><div class="skeleton skeleton-line long"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></section>
+                <section class="card reliability-alpha-card"><div class="skeleton skeleton-line long"></div><div class="skeleton skeleton-line long"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></section>
             </div>
-            <div class="reliability-summary-grid">
-                <div class="reliability-summary-metric">
-                    <span class="reliability-summary-label">${window.escapeHTML(window.t('reliabilityDashMetricReliability', {}, lang))}</span>
-                    <strong class="reliability-summary-value">${window.escapeHTML(formatReliabilityIndex(summary.reliability_overall))}</strong>
-                </div>
-                <div class="reliability-summary-metric">
-                    <span class="reliability-summary-label">${window.escapeHTML(window.t('reliabilityDashMetricKarma', {}, lang))}</span>
-                    <strong class="reliability-summary-value">${window.escapeHTML(formatKarmaValue(summary.karma))} ☯️</strong>
-                </div>
-                <div class="reliability-summary-metric">
-                    <span class="reliability-summary-label">${window.escapeHTML(window.t('reliabilityDashMetricCompleted', {}, lang))}</span>
-                    <strong class="reliability-summary-value">${window.escapeHTML(String(summary.completed_tests || 0))}</strong>
-                </div>
-                <div class="reliability-summary-metric">
-                    <span class="reliability-summary-label">${window.escapeHTML(window.t('reliabilityDashMetricProjects', {}, lang))}</span>
-                    <strong class="reliability-summary-value">${window.escapeHTML(String(summary.active_projects_count || 0))}</strong>
-                </div>
-            </div>
-            <div class="reliability-summary-foot">
-                <div class="reliability-summary-grant">${lastGrantText}</div>
-                <div class="reliability-summary-comment">${safeComment}</div>
-                <span class="reliability-summary-link">${window.escapeHTML(window.t('reliabilityDashOpenDetails', {}, lang))}</span>
-            </div>
-        </button>
+        </div>
     `;
 }
 
-function buildReliabilityProjectCard(project) {
-    var statusMeta = getReliabilityStatusMeta(project.project_status);
-    var safeTitle = window.escapeHTML(project.title || window.t('unknownLabel', {}, lang));
-    var participation = window.escapeHTML(window.t('reliabilityDashParticipation_' + (project.participation_type || 'short_run'), {}, lang));
-    var fairness = window.escapeHTML(window.t('reliabilityDashFairness_' + (project.leave_fairness || 'neutral'), {}, lang));
-    var leaveReason = project.leave_reason ? `<div class="reliability-project-note">${window.escapeHTML(window.t('reliabilityDashLeaveReason', { value: project.leave_reason }, lang))}</div>` : '';
-    var countStateClass = project.is_counted_in_reliability ? 'is-counted' : 'is-skipped';
-    var countStateText = window.escapeHTML(window.t(project.is_counted_in_reliability ? 'reliabilityDashCounted' : 'reliabilityDashSkipped', {}, lang));
-    var baseIndex = project.project_index == null ? '0.0' : formatReliabilityIndex(project.project_index);
-    var effectiveIndex = project.effective_project_index == null ? '0.0' : formatReliabilityIndex(project.effective_project_index);
-    var weightLabel = window.escapeHTML(window.t('reliabilityDashWeightLabel', { value: Math.round(Number(project.weight || 0) * 100) }, lang));
-    var contributionLabel = window.escapeHTML(window.t('reliabilityDashContributionLabel', { value: formatReliabilityIndex(project.weighted_contribution || 0) }, lang));
+function buildReliabilityAlphaProjectCard(project) {
+    var statusMeta = getReliabilityAlphaStatusMeta(project.project_status);
+    var title = window.escapeHTML(project.title || window.t('unknownLabel', {}, lang));
+    var typeLabel = window.escapeHTML(window.t('reliabilityDashProjectType_' + (project.join_type || project.type || 'invite'), {}, lang));
+    var observed = String(project.actual_checkins || 0) + ' / ' + String(project.mandatory_days || 14);
+    var skips = String(project.skips_count || 0);
+    var overtimeDays = Number(project.overtime_checkin_days || 0);
+    var overtimeBonus = formatReliabilityIndex(project.overtime_bonus_index || 0);
+    var participationKey = 'reliabilityDashParticipationType_' + (project.participation_type || 'short_run');
+    var exitKey = 'reliabilityDashExitType_' + (project.leave_status || project.status || 'active');
+    var noteKey = project.is_counted_in_reliability ? 'reliabilityDashProjectNoteCounted' : 'reliabilityDashProjectNoteSkipped';
+    var note = window.escapeHTML(window.t(noteKey, {
+        value: formatReliabilityIndex(project.weighted_contribution || project.effective_project_index || 0),
+        karma: formatReliabilityIndex(overtimeDays > 0 ? overtimeDays * 0.5 : 0)
+    }, lang));
 
     return `
-        <article class="reliability-project-card">
-            <div class="reliability-project-head">
-                <div>
-                    <h4>${safeTitle}</h4>
-                    <div class="reliability-project-subhead">${participation} • ${fairness}</div>
-                </div>
-                <span class="reliability-status-badge ${statusMeta.badgeClass}">${window.escapeHTML(statusMeta.label)}</span>
-            </div>
-            <div class="reliability-project-grid">
-                <div class="reliability-project-metric">
-                    <span>${window.escapeHTML(window.t('reliabilityDashProjectObserved', {}, lang))}</span>
-                    <strong>${window.escapeHTML(String(project.testing_days || 0))}/${window.escapeHTML(String(project.mandatory_days || 14))}</strong>
-                </div>
-                <div class="reliability-project-metric">
-                    <span>${window.escapeHTML(window.t('reliabilityDashProjectCheckins', {}, lang))}</span>
-                    <strong>${window.escapeHTML(String(project.actual_checkins || 0))}/${window.escapeHTML(String(project.expected_checkins || 14))}</strong>
-                </div>
-                <div class="reliability-project-metric">
-                    <span>${window.escapeHTML(window.t('reliabilityDashProjectSkips', {}, lang))}</span>
-                    <strong>${window.escapeHTML(String(project.skips_count || 0))}</strong>
-                </div>
-                <div class="reliability-project-metric">
-                    <span>${window.escapeHTML(window.t('reliabilityDashProjectOvertime', {}, lang))}</span>
-                    <strong>+${window.escapeHTML(formatReliabilityIndex(project.overtime_bonus_index || 0))}</strong>
-                </div>
-            </div>
-            <div class="reliability-project-tags">
-                <span class="reliability-inline-chip ${countStateClass}">${countStateText}</span>
-                <span class="reliability-inline-chip">${window.escapeHTML(window.t('reliabilityDashProjectBaseIndex', { value: baseIndex }, lang))}</span>
-                <span class="reliability-inline-chip">${window.escapeHTML(window.t('reliabilityDashProjectEffectiveIndex', { value: effectiveIndex }, lang))}</span>
-                <span class="reliability-inline-chip">${weightLabel}</span>
-                <span class="reliability-inline-chip">${contributionLabel}</span>
-            </div>
-            ${leaveReason}
-        </article>
+        <div class="project-card">
+          <div class="proj-header">
+            <div class="proj-title">${title} · ${typeLabel}</div>
+            <span class="badge-status ${statusMeta.badgeClass}">${window.escapeHTML(statusMeta.label)}</span>
+          </div>
+          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryPeriod', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryValue', { actual: project.actual_checkins || 0, total: project.mandatory_days || 14, skips: skips }, lang))}</span></div>
+          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectIndexLabel', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectIndexValue', { value: formatReliabilityIndex(project.effective_project_index || 0), status: statusMeta.label }, lang))}</span></div>
+          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeLabel', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeValue', { days: overtimeDays, bonus: overtimeBonus }, lang))}</span></div>
+          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectParticipationLabel', {}, lang))}</span><span>${window.escapeHTML(window.t(participationKey, {}, lang))}</span></div>
+          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectExitLabel', {}, lang))}</span><span>${window.escapeHTML(window.t(exitKey, { fairness: window.t('reliabilityDashFairness_' + (project.leave_fairness || 'neutral'), {}, lang) }, lang))}</span></div>
+          <div class="proj-note">${note}</div>
+          <div class="link-more">${window.escapeHTML(window.t('reliabilityDashProjectDetailsLink', {}, lang))}</div>
+        </div>
     `;
 }
 
-function renderReliabilityDashboard() {
-    var modal = document.getElementById('reliability-dashboard-modal');
-    var body = document.getElementById('reliability-dashboard-body');
+function renderReliabilityAlphaModal() {
+    var modal = document.getElementById('reliability-alpha-modal');
+    var body = document.getElementById('reliability-alpha-body');
     if (!modal || !body || !modal.classList.contains('active')) return;
 
     var state = getReliabilityUiState();
@@ -883,116 +878,173 @@ function renderReliabilityDashboard() {
     var breakdown = state.breakdown;
 
     if ((state.summaryLoading && !summary) || (state.breakdownLoading && !breakdown)) {
-        body.innerHTML = buildReliabilitySummarySkeleton() + buildReliabilitySummarySkeleton();
+        body.innerHTML = buildReliabilityAlphaSkeleton();
         return;
     }
 
     if (!summary || !breakdown) {
-        body.innerHTML = `<div class="reliability-dashboard-empty">${window.escapeHTML(window.t('reliabilityDashModalError', {}, lang))}</div>`;
+        body.innerHTML = `<div class="page reliability-alpha-page"><section class="card reliability-alpha-card"><div class="reliability-dashboard-empty">${window.escapeHTML(window.t('reliabilityDashModalError', {}, lang))}</div></section></div>`;
         return;
     }
 
-    var overallStatus = getReliabilityStatusMeta(summary.reliability_status);
+    var overallStatus = getReliabilityAlphaStatusMeta(summary.reliability_status);
     var projects = Array.isArray(breakdown.projects_used) ? breakdown.projects_used : [];
-    var projectsHtml = projects.length
-        ? projects.map(buildReliabilityProjectCard).join('')
-        : `<div class="reliability-dashboard-empty">${window.escapeHTML(window.t('reliabilityDashProjectsEmpty', {}, lang))}</div>`;
+    var visibleProjects = getReliabilityAlphaProjects(_reliabilityDashboardFilter, projects);
+    var projectsHtml = visibleProjects.length
+        ? visibleProjects.map(buildReliabilityAlphaProjectCard).join('')
+        : `<div class="project-card"><div class="proj-note">${window.escapeHTML(window.t('reliabilityDashProjectsEmpty', {}, lang))}</div></div>`;
     var grant = summary.last_grant || {};
-    var hasGrant = !!grant.has_grant;
-    var guideVisibleProjects = _reliabilityDashboardFilter === 'projects';
+    var grantText = grant.has_grant
+        ? window.t('reliabilityDashSummaryGrantValue', {
+            amount: formatReliabilityIndex(grant.amount_bust || 0),
+            base: formatReliabilityIndex(grant.base_bonus || 0),
+            perfect: formatReliabilityIndex(grant.perfect_bonus || 0),
+            karma: formatKarmaValue(grant.karma_at_moment || 0),
+            karma_bonus: formatReliabilityIndex(grant.karma_component || 0)
+        }, lang)
+        : window.t('reliabilityDashSummaryGrantEmptyLong', {}, lang);
+    var fullLabel = window.t('reliabilityDashSummaryParticipationValue', {
+        full: String(summary.completed_full_tests || 0),
+        early: String(summary.completed_early_tests || 0)
+    }, lang);
+    var activeProjectsPill = window.t('reliabilityDashActiveProjectsPill', { count: String(summary.active_projects_count || 0) }, lang);
+    var tabs = [
+        { key: 'all', label: getReliabilityAlphaProjectTabLabel('all') },
+        { key: 'current', label: getReliabilityAlphaProjectTabLabel('current') },
+        { key: 'completed', label: getReliabilityAlphaProjectTabLabel('completed') },
+        { key: 'archive', label: getReliabilityAlphaProjectTabLabel('archive') }
+    ];
 
     body.innerHTML = `
-        <div class="reliability-dashboard-shell">
-            <section class="reliability-dashboard-hero">
-                <div class="reliability-dashboard-headline">
-                    <div class="reliability-summary-kicker">${window.escapeHTML(window.t('reliabilityDashModalKicker', {}, lang))}</div>
-                    <h3>${window.escapeHTML(summary.display_name || window.t('reliabilityDashSummaryDefaultName', {}, lang))}</h3>
-                    <p>${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')}</p>
+        <div class="page reliability-alpha-page">
+          <section class="card reliability-alpha-card">
+            <div class="header">
+              <div class="user-main">
+                <div class="avatar">${getReliabilityAlphaAvatar(summary.display_name)}</div>
+                <div class="user-info">
+                  <div class="user-name">${window.escapeHTML(summary.display_name || window.t('reliabilityDashSummaryDefaultName', {}, lang))}</div>
+                  <div class="user-label">${window.escapeHTML(window.t('reliabilityDashSummaryUserLabel', { total: String(summary.completed_tests || 0), full: String(summary.completed_full_tests || 0), early: String(summary.completed_early_tests || 0) }, lang))}</div>
                 </div>
-                <div class="reliability-dashboard-scorebox">
-                    <div class="reliability-dashboard-score">${window.escapeHTML(formatReliabilityIndex(summary.reliability_overall))}</div>
-                    <span class="reliability-status-badge ${overallStatus.badgeClass}">${window.escapeHTML(overallStatus.label)}</span>
-                </div>
-            </section>
+              </div>
+              <div class="pill">${window.escapeHTML(activeProjectsPill)}</div>
+            </div>
 
-            <section class="reliability-dashboard-metrics">
-                <div class="reliability-summary-metric">
-                    <span class="reliability-summary-label">${window.escapeHTML(window.t('reliabilityDashMetricKarma', {}, lang))}</span>
-                    <strong class="reliability-summary-value">${window.escapeHTML(formatKarmaValue(summary.karma))} ☯️</strong>
-                </div>
-                <div class="reliability-summary-metric">
-                    <span class="reliability-summary-label">${window.escapeHTML(window.t('reliabilityDashMetricCompletedFull', {}, lang))}</span>
-                    <strong class="reliability-summary-value">${window.escapeHTML(String(summary.completed_full_tests || 0))}</strong>
-                </div>
-                <div class="reliability-summary-metric">
-                    <span class="reliability-summary-label">${window.escapeHTML(window.t('reliabilityDashMetricCompletedEarly', {}, lang))}</span>
-                    <strong class="reliability-summary-value">${window.escapeHTML(String(summary.completed_early_tests || 0))}</strong>
-                </div>
-                <div class="reliability-summary-metric">
-                    <span class="reliability-summary-label">${window.escapeHTML(window.t('reliabilityDashMetricProjectsUsed', {}, lang))}</span>
-                    <strong class="reliability-summary-value">${window.escapeHTML(String(projects.length))}</strong>
-                </div>
-            </section>
+            <div class="summary-grid">
+              <div class="summary-item">
+                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityLabel', {}, lang))}</div>
+                <div class="summary-value">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityValue', { value: formatReliabilityIndex(summary.reliability_overall), status: overallStatus.label }, lang))}</div>
+                <div class="summary-extra">${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')}</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryKarmaLabel', {}, lang))}</div>
+                <div class="summary-value">${window.escapeHTML(formatKarmaValue(summary.karma))}</div>
+                <div class="summary-extra">${window.escapeHTML(window.t('reliabilityDashSummaryKarmaExtra', {}, lang))}</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryGrantLabel', {}, lang))}</div>
+                <div class="summary-value">${window.escapeHTML(grant.has_grant ? formatReliabilityIndex(grant.amount_bust || 0) + ' $BUST' : window.t('reliabilityDashGrantEmptyShort', {}, lang))}</div>
+                <div class="summary-extra">${window.escapeHTML(grantText)}</div>
+                ${grant.has_grant ? `<div class="grant-badge">${window.escapeHTML(window.t('reliabilityDashSummaryGrantBadge', {}, lang))}</div>` : ''}
+              </div>
+              <div class="summary-item">
+                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryParticipationLabel', {}, lang))}</div>
+                <div class="summary-value">${window.escapeHTML(fullLabel)}</div>
+                <div class="summary-extra">${window.escapeHTML(window.t('reliabilityDashSummaryParticipationExtra', {}, lang))}</div>
+              </div>
+            </div>
 
-            <section class="reliability-dashboard-formula">
-                <div class="reliability-detail-card">
-                    <div class="reliability-detail-card-title">${window.escapeHTML(window.t('reliabilityDashFormulaTitle', {}, lang))}</div>
-                    <div class="dashboard-row"><span class="dashboard-label">${window.escapeHTML(window.t('reliabilityDashFormulaWeighted', {}, lang))}</span><span class="dashboard-value">${window.escapeHTML(formatReliabilityIndex(breakdown.weighted_before_penalty || 0))}</span></div>
-                    <div class="dashboard-row"><span class="dashboard-label">${window.escapeHTML(window.t('reliabilityDashFormulaBadPeriods', {}, lang))}</span><span class="dashboard-value">${window.escapeHTML(String(breakdown.bad_periods_count || 0))}</span></div>
-                    <div class="dashboard-row"><span class="dashboard-label">${window.escapeHTML(window.t('reliabilityDashFormulaPenalty', {}, lang))}</span><span class="dashboard-value">${window.escapeHTML(formatReliabilityIndex(breakdown.penalty || 0))}</span></div>
-                    <div class="reliability-project-note">${window.escapeHTML(breakdown.formula_comment || '')}</div>
-                </div>
-                <div class="reliability-detail-card">
-                    <div class="reliability-detail-card-title">${window.escapeHTML(window.t('reliabilityDashGrantTitle', {}, lang))}</div>
-                    <div class="reliability-grant-total">${hasGrant ? window.escapeHTML(formatReliabilityIndex(grant.amount_bust || 0)) + ' $BUST' : window.escapeHTML(window.t('reliabilityDashGrantEmptyShort', {}, lang))}</div>
-                    <div class="dashboard-row"><span class="dashboard-label">${window.escapeHTML(window.t('reliabilityDashGrantBase', {}, lang))}</span><span class="dashboard-value">${window.escapeHTML(formatReliabilityIndex(grant.base_bonus || 0))}</span></div>
-                    <div class="dashboard-row"><span class="dashboard-label">${window.escapeHTML(window.t('reliabilityDashGrantPerfect', {}, lang))}</span><span class="dashboard-value">${window.escapeHTML(formatReliabilityIndex(grant.perfect_bonus || 0))}</span></div>
-                    <div class="dashboard-row"><span class="dashboard-label">${window.escapeHTML(window.t('reliabilityDashGrantKarmaComponent', {}, lang))}</span><span class="dashboard-value">${window.escapeHTML(formatReliabilityIndex(grant.karma_component || 0))}</span></div>
-                    <div class="dashboard-row"><span class="dashboard-label">${window.escapeHTML(window.t('reliabilityDashGrantKarmaMoment', {}, lang))}</span><span class="dashboard-value">${window.escapeHTML(formatKarmaValue(grant.karma_at_moment || 0))} ☯️</span></div>
-                    <div class="reliability-project-note">${window.escapeHTML(window.t('reliabilityDashGrantDate', { value: formatReliabilityDate(grant.granted_at) }, lang))}</div>
-                </div>
-            </section>
+            <div class="link-main" onclick="document.getElementById('reliability-alpha-guide').scrollIntoView({ behavior: 'smooth', block: 'start' })">${window.escapeHTML(window.t('reliabilityDashLinkMain', {}, lang))}</div>
 
-            <section class="reliability-dashboard-switcher">
-                <button type="button" class="seg-btn ${guideVisibleProjects ? 'active' : ''}" onclick="setReliabilityDashboardFilter('projects')">${window.escapeHTML(window.t('reliabilityDashTabProjects', {}, lang))}</button>
-                <button type="button" class="seg-btn ${!guideVisibleProjects ? 'active' : ''}" onclick="setReliabilityDashboardFilter('guide')">${window.escapeHTML(window.t('reliabilityDashTabGuide', {}, lang))}</button>
-            </section>
+            <div class="tabs">
+              ${tabs.map(function(tab) {
+                return `<button type="button" class="tab ${_reliabilityDashboardFilter === tab.key ? 'active' : ''}" onclick="setReliabilityDashboardFilter('${tab.key}')">${window.escapeHTML(tab.label)}</button>`;
+              }).join('')}
+            </div>
+          </section>
 
-            <section class="reliability-dashboard-panel ${guideVisibleProjects ? 'active' : ''}">
+          <div class="layout-2">
+            <section class="card reliability-alpha-card" id="reliability-alpha-guide">
+              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</div>
+              <div class="projects-grid">
                 ${projectsHtml}
+              </div>
             </section>
 
-            <section class="reliability-dashboard-panel ${!guideVisibleProjects ? 'active' : ''}">
-                <div class="reliability-guide-card">
-                    <div class="reliability-detail-card-title">${window.escapeHTML(window.t('reliabilityDashGuideRulesTitle', {}, lang))}</div>
-                    <div class="reliability-guide-list">
-                        <div>${window.escapeHTML(window.t('reliabilityDashGuideRule1', {}, lang))}</div>
-                        <div>${window.escapeHTML(window.t('reliabilityDashGuideRule2', {}, lang))}</div>
-                        <div>${window.escapeHTML(window.t('reliabilityDashGuideRule3', {}, lang))}</div>
-                        <div>${window.escapeHTML(window.t('reliabilityDashGuideRule4', {}, lang))}</div>
-                    </div>
-                </div>
-                <div class="reliability-guide-card">
-                    <div class="reliability-detail-card-title">${window.escapeHTML(window.t('reliabilityDashGuideImproveTitle', {}, lang))}</div>
-                    <div class="reliability-guide-list">
-                        <div>${window.escapeHTML(window.t('reliabilityDashGuideImprove1', {}, lang))}</div>
-                        <div>${window.escapeHTML(window.t('reliabilityDashGuideImprove2', {}, lang))}</div>
-                        <div>${window.escapeHTML(window.t('reliabilityDashGuideImprove3', {}, lang))}</div>
-                    </div>
-                </div>
+            <section class="card reliability-alpha-card">
+              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashGuideSectionTitle', {}, lang))}</div>
+
+              <div class="detail-block">
+                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Title', {}, lang))}</strong>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row1Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row1Value', {}, lang))}</span></div>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row2Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row2Value', {}, lang))}</span></div>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row3Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row3Value', {}, lang))}</span></div>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row4Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row4Value', {}, lang))}</span></div>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row5Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row5Value', {}, lang))}</span></div>
+                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Mini', {}, lang))}</div>
+              </div>
+
+              <div class="detail-block">
+                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Title', {}, lang))}</strong>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row1Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row1Value', {}, lang))}</span></div>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row2Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row2Value', {}, lang))}</span></div>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row3Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row3Value', {}, lang))}</span></div>
+                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Mini', {}, lang))}</div>
+              </div>
+
+              <div class="detail-block">
+                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Title', {}, lang))}</strong>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row1Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row1Value', {}, lang))}</span></div>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row2Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row2Value', {}, lang))}</span></div>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row3Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row3Value', {}, lang))}</span></div>
+                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Mini', {}, lang))}</div>
+              </div>
+
+              <div class="detail-block">
+                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Title', {}, lang))}</strong>
+                <ol class="guide">
+                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item1', {}, lang))}</li>
+                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item2', {}, lang))}</li>
+                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item3', {}, lang))}</li>
+                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item4', {}, lang))}</li>
+                </ol>
+                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock4Mini', {}, lang))}</div>
+              </div>
+
+              <div class="detail-block">
+                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Title', {}, lang))}</strong>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row1Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row1Value', {}, lang))}</span></div>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row2Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row2Value', {}, lang))}</span></div>
+                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row3Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row3Value', {}, lang))}</span></div>
+                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Mini', {}, lang))}</div>
+              </div>
+
+              <div class="detail-block">
+                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock6Title', {}, lang))}</strong>
+                <div class="tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag1', {}, lang))}</div>
+                <div class="tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag2', {}, lang))}</div>
+                <div class="tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag3', {}, lang))}</div>
+                <div class="tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag4', {}, lang))}</div>
+                <div class="tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag5', {}, lang))}</div>
+                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Mini', {}, lang))}</div>
+              </div>
             </section>
+          </div>
         </div>
     `;
 }
 
-function openReliabilityDashboard(testerId) {
+function renderReliabilityDashboard() {
+    renderReliabilityAlphaModal();
+}
+
+function openReliabilityAlphaModal() {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-    var modal = document.getElementById('reliability-dashboard-modal');
-    var body = document.getElementById('reliability-dashboard-body');
+    var modal = document.getElementById('reliability-alpha-modal');
+    var body = document.getElementById('reliability-alpha-body');
     if (!modal || !body) return;
 
-    _reliabilityDashboardFilter = 'projects';
-    body.innerHTML = buildReliabilitySummarySkeleton();
+    _reliabilityDashboardFilter = 'all';
+    body.innerHTML = buildReliabilityAlphaSkeleton();
     modal.classList.add('active');
 
     if (window.loadReliabilitySummary) {
@@ -1001,25 +1053,32 @@ function openReliabilityDashboard(testerId) {
     if (window.loadReliabilityBreakdown) {
         window.loadReliabilityBreakdown(false).catch(function() {});
     }
-    renderReliabilityDashboard();
+    renderReliabilityAlphaModal();
 }
 
-function closeReliabilityDashboard(event) {
-    var modal = document.getElementById('reliability-dashboard-modal');
+function closeReliabilityAlphaModal(event) {
+    var modal = document.getElementById('reliability-alpha-modal');
     if (!modal) return;
     if (event && event.target && event.target !== modal) return;
     modal.classList.remove('active');
 }
 
+function openReliabilityDashboard() {
+    openReliabilityAlphaModal();
+}
+
+function closeReliabilityDashboard(event) {
+    closeReliabilityAlphaModal(event);
+}
+
 function setReliabilityDashboardFilter(filterKey) {
-    _reliabilityDashboardFilter = filterKey === 'guide' ? 'guide' : 'projects';
+    _reliabilityDashboardFilter = ['all', 'current', 'completed', 'archive'].indexOf(filterKey) >= 0 ? filterKey : 'all';
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    renderReliabilityDashboard();
+    renderReliabilityAlphaModal();
 }
 
 function renderTests(force) {
     if (!force && !isTabVisible('tests')) return;
-    renderReliabilitySummaryWidget(true);
     const activeList = document.getElementById('tests-list');
     const doneList = document.getElementById('done-list');
     activeList.innerHTML = '';
@@ -2703,6 +2762,7 @@ function showReliabilityInfo() {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     document.getElementById('t-reliabilityInfoTitle').innerHTML = t.reliabilityInfoTitle;
     document.getElementById('t-reliabilityInfoText').innerHTML = t.reliabilityInfoText;
+    document.getElementById('t-reliabilityAlphaBtn').innerText = t.reliabilityAlphaBtn;
     document.getElementById('t-btnClose').innerText = t.btnClose;
     document.getElementById('reliability-info-modal').classList.add('active');
 }
@@ -3720,6 +3780,9 @@ Object.assign(window, {
     showVisibilityToast,
     showKarmaInfo,
     closeKarmaInfoModal,
+    openReliabilityAlphaModal,
+    closeReliabilityAlphaModal,
+    renderReliabilityAlphaModal,
     openReliabilityDashboard,
     closeReliabilityDashboard,
     setReliabilityDashboardFilter,
