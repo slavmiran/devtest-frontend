@@ -1148,6 +1148,299 @@ details[open] > summary .details-arrow {
     font-weight: 700;
 }
 
+#tester-reliability-summary {
+    margin-bottom: 16px;
+}
+
+.reliability-summary-card {
+    width: 100%;
+    border: 1px solid rgba(77, 163, 255, 0.18);
+    background:
+        radial-gradient(circle at top right, rgba(77, 163, 255, 0.18), transparent 34%),
+        linear-gradient(135deg, rgba(18, 23, 31, 0.96), rgba(24, 30, 41, 0.92));
+    border-radius: 20px;
+    padding: 18px;
+    text-align: left;
+    color: var(--text-color);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+button.reliability-summary-card {
+    cursor: pointer;
+}
+
+.reliability-summary-card-loading {
+    cursor: default;
+}
+
+.reliability-summary-header,
+.reliability-project-head,
+.reliability-dashboard-hero,
+.reliability-dashboard-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.reliability-summary-kicker {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #8abfff;
+    margin-bottom: 6px;
+}
+
+.reliability-summary-name,
+.reliability-dashboard-headline h3 {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.reliability-summary-grid,
+.reliability-dashboard-metrics,
+.reliability-project-grid,
+.reliability-dashboard-formula {
+    display: grid;
+    gap: 12px;
+}
+
+.reliability-summary-grid,
+.reliability-dashboard-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 16px;
+}
+
+.reliability-summary-metric,
+.reliability-detail-card,
+.reliability-project-card,
+.reliability-guide-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 14px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+.reliability-summary-label,
+.reliability-project-metric span,
+.reliability-project-subhead,
+.reliability-summary-comment,
+.reliability-summary-grant,
+.reliability-project-note,
+.reliability-dashboard-headline p,
+.reliability-guide-list,
+.reliability-summary-empty,
+.reliability-dashboard-empty {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--hint-color);
+}
+
+.reliability-summary-value,
+.reliability-dashboard-score,
+.reliability-grant-total,
+.reliability-project-metric strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-color);
+}
+
+.reliability-summary-foot {
+    margin-top: 14px;
+    display: grid;
+    gap: 8px;
+}
+
+.reliability-summary-link {
+    font-size: 13px;
+    font-weight: 700;
+    color: #8abfff;
+}
+
+.reliability-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.reliability-status-badge.is-newbie {
+    background: rgba(142, 142, 147, 0.14);
+    color: #c6cad1;
+    border-color: rgba(142, 142, 147, 0.24);
+}
+
+.reliability-status-badge.is-bad {
+    background: rgba(255, 69, 58, 0.14);
+    color: #ff8b84;
+    border-color: rgba(255, 69, 58, 0.3);
+}
+
+.reliability-status-badge.is-minimal {
+    background: rgba(255, 159, 10, 0.16);
+    color: #ffbd66;
+    border-color: rgba(255, 159, 10, 0.3);
+}
+
+.reliability-status-badge.is-basic {
+    background: rgba(255, 214, 10, 0.14);
+    color: #ffe57d;
+    border-color: rgba(255, 214, 10, 0.28);
+}
+
+.reliability-status-badge.is-active {
+    background: rgba(52, 199, 89, 0.14);
+    color: #7ee2a1;
+    border-color: rgba(52, 199, 89, 0.28);
+}
+
+.reliability-status-badge.is-expert {
+    background: rgba(90, 200, 250, 0.14);
+    color: #8fdcff;
+    border-color: rgba(90, 200, 250, 0.28);
+}
+
+.reliability-mini-skeleton {
+    min-height: 82px;
+    margin-bottom: 0;
+}
+
+.reliability-dashboard-modal {
+    align-items: flex-end;
+}
+
+.reliability-dashboard-content {
+    width: min(100%, 860px);
+    max-height: 92vh;
+    overflow-y: auto;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+}
+
+.reliability-dashboard-close {
+    flex-shrink: 0;
+}
+
+.reliability-dashboard-shell {
+    display: grid;
+    gap: 14px;
+}
+
+.reliability-dashboard-headline {
+    flex: 1;
+}
+
+.reliability-dashboard-scorebox {
+    min-width: 120px;
+    text-align: right;
+}
+
+.reliability-dashboard-score {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 42px;
+}
+
+.reliability-dashboard-formula {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reliability-detail-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.reliability-dashboard-switcher {
+    display: flex;
+    gap: 8px;
+}
+
+.reliability-dashboard-panel {
+    display: none;
+}
+
+.reliability-dashboard-panel.active {
+    display: grid;
+    gap: 12px;
+}
+
+.reliability-project-head h4 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+}
+
+.reliability-project-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 12px;
+}
+
+.reliability-project-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.reliability-inline-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(142, 142, 147, 0.12);
+    color: var(--text-color);
+    font-size: 12px;
+}
+
+.reliability-inline-chip.is-counted {
+    background: rgba(52, 199, 89, 0.14);
+    color: #8ce6aa;
+}
+
+.reliability-inline-chip.is-skipped {
+    background: rgba(255, 159, 10, 0.16);
+    color: #ffca7f;
+}
+
+.reliability-guide-list {
+    display: grid;
+    gap: 8px;
+}
+
+@media (max-width: 640px) {
+    .reliability-summary-grid,
+    .reliability-dashboard-metrics,
+    .reliability-dashboard-formula,
+    .reliability-project-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reliability-dashboard-hero,
+    .reliability-dashboard-topbar,
+    .reliability-project-head {
+        flex-direction: column;
+    }
+
+    .reliability-dashboard-scorebox {
+        min-width: 0;
+        text-align: left;
+    }
+}
+
 .available-title {
     font-size: 1.5em;
     font-weight: 700;

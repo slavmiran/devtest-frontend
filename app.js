@@ -68,12 +68,13 @@ var _feedbackRewardKarma = 0;
 var myProjectsLoadError = false;
 var marketCache = null;
 var MARKET_CACHE_KEY = 'market_cache_v1';
-var _lastFetchTimes = { mutual: 0, bounty: 0, tests: 0, projects: 0, offers: 0, archived: 0 };
+var _lastFetchTimes = { mutual: 0, bounty: 0, tests: 0, projects: 0, offers: 0, archived: 0, reliabilitySummary: 0, reliabilityBreakdown: 0 };
 var MARKET_FETCH_THROTTLE_MS = 15000;
 var TESTS_FETCH_THROTTLE_MS = 20000;
 var PROJECTS_FETCH_THROTTLE_MS = 30000;
 var OFFERS_FETCH_THROTTLE_MS = 15000;
 var ARCHIVED_FETCH_THROTTLE_MS = 45000;
+var RELIABILITY_FETCH_THROTTLE_MS = 30000;
 var _marketInFlight = { mutual: null, bounty: null };
 window._marketInFlight = _marketInFlight;
 var OFFERS_CACHE_KEY = 'incoming_offers_cache_v1';
@@ -92,6 +93,18 @@ var PROJECTS_CACHE_KEY = 'projects_cache_v1';
 var myProjectsCache = null;
 var _projectsInFlight = null;
 var _projectsLoadedOnce = false;
+var RELIABILITY_SUMMARY_CACHE_KEY = 'reliability_summary_cache_v1';
+var RELIABILITY_BREAKDOWN_CACHE_KEY = 'reliability_breakdown_cache_v1';
+var reliabilitySummaryCache = null;
+var reliabilityBreakdownCache = null;
+var reliabilitySummary = null;
+var reliabilityBreakdown = null;
+var _reliabilitySummaryInFlight = null;
+var _reliabilityBreakdownInFlight = null;
+var _reliabilitySummaryLoadedOnce = false;
+var _reliabilityBreakdownLoadedOnce = false;
+var _reliabilitySummaryLoadError = false;
+var _reliabilityBreakdownLoadError = false;
 
 var _pendingActions = new Set();
 var _backgroundSyncState = { tests: 0, projects: 0, market: 0 };
@@ -449,6 +462,200 @@ function hasProjectsCache() {
     return !!(cached && Array.isArray(cached.projects));
 }
 
+function getReliabilitySummaryCache() {
+    if (reliabilitySummaryCache) return reliabilitySummaryCache;
+    try {
+        var raw = localStorage.getItem(RELIABILITY_SUMMARY_CACHE_KEY);
+        if (!raw) return null;
+        reliabilitySummaryCache = JSON.parse(raw);
+        return reliabilitySummaryCache;
+    } catch (e) {
+        reliabilitySummaryCache = null;
+        return null;
+    }
+}
+
+function setReliabilitySummaryCache(nextCache) {
+    reliabilitySummaryCache = nextCache || null;
+    try {
+        if (reliabilitySummaryCache) {
+            localStorage.setItem(RELIABILITY_SUMMARY_CACHE_KEY, JSON.stringify(reliabilitySummaryCache));
+        } else {
+            localStorage.removeItem(RELIABILITY_SUMMARY_CACHE_KEY);
+        }
+    } catch (e) {}
+}
+
+function getReliabilityBreakdownCache() {
+    if (reliabilityBreakdownCache) return reliabilityBreakdownCache;
+    try {
+        var raw = localStorage.getItem(RELIABILITY_BREAKDOWN_CACHE_KEY);
+        if (!raw) return null;
+        reliabilityBreakdownCache = JSON.parse(raw);
+        return reliabilityBreakdownCache;
+    } catch (e) {
+        reliabilityBreakdownCache = null;
+        return null;
+    }
+}
+
+function setReliabilityBreakdownCache(nextCache) {
+    reliabilityBreakdownCache = nextCache || null;
+    try {
+        if (reliabilityBreakdownCache) {
+            localStorage.setItem(RELIABILITY_BREAKDOWN_CACHE_KEY, JSON.stringify(reliabilityBreakdownCache));
+        } else {
+            localStorage.removeItem(RELIABILITY_BREAKDOWN_CACHE_KEY);
+        }
+    } catch (e) {}
+}
+
+function rerenderReliabilityUi() {
+    if (typeof window.renderReliabilitySummaryWidget === 'function') {
+        window.renderReliabilitySummaryWidget(true);
+    }
+    if (typeof window.renderReliabilityDashboard === 'function') {
+        window.renderReliabilityDashboard();
+    }
+}
+
+function getReliabilityState() {
+    return {
+        summary: reliabilitySummary,
+        breakdown: reliabilityBreakdown,
+        summaryLoading: !!_reliabilitySummaryInFlight,
+        breakdownLoading: !!_reliabilityBreakdownInFlight,
+        summaryLoadedOnce: _reliabilitySummaryLoadedOnce,
+        breakdownLoadedOnce: _reliabilityBreakdownLoadedOnce,
+        summaryError: _reliabilitySummaryLoadError,
+        breakdownError: _reliabilityBreakdownLoadError,
+    };
+}
+
+async function loadReliabilitySummary(isBackground) {
+    if (_reliabilitySummaryInFlight) {
+        return _reliabilitySummaryInFlight;
+    }
+
+    if (!_reliabilitySummaryLoadedOnce) {
+        var cached = getReliabilitySummaryCache();
+        if (cached && cached.data) {
+            reliabilitySummary = cached.data;
+            _reliabilitySummaryLoadedOnce = true;
+            _reliabilitySummaryLoadError = false;
+            rerenderReliabilityUi();
+        }
+    }
+
+    if (isBackground && _reliabilitySummaryLoadedOnce && (Date.now() - (_lastFetchTimes.reliabilitySummary || 0)) < RELIABILITY_FETCH_THROTTLE_MS) {
+        return;
+    }
+
+    var requestPromise = (async function() {
+        var shouldMarkBackgroundSync = !!isBackground || _reliabilitySummaryLoadedOnce || !!getReliabilitySummaryCache();
+        if (shouldMarkBackgroundSync) beginBackgroundSync('tests');
+        _apiStart();
+        try {
+            var response = await fetchWithRetry(API_BASE + '/tester/' + userId + '/reliability/summary', { timeoutMs: 12000 }, 1);
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var payload = await response.json();
+            if (payload && payload.status === 'error') throw payload;
+            reliabilitySummary = payload || null;
+            setReliabilitySummaryCache({ data: reliabilitySummary, ts: Date.now() });
+            _reliabilitySummaryLoadedOnce = true;
+            _reliabilitySummaryLoadError = false;
+            _lastFetchTimes.reliabilitySummary = Date.now();
+            rerenderReliabilityUi();
+        } catch (error) {
+            console.error('Reliability summary load error:', error);
+            if (!reliabilitySummary) {
+                var summaryCache = getReliabilitySummaryCache();
+                reliabilitySummary = summaryCache && summaryCache.data ? summaryCache.data : null;
+            }
+            _reliabilitySummaryLoadedOnce = true;
+            _reliabilitySummaryLoadError = true;
+            rerenderReliabilityUi();
+        } finally {
+            _apiEnd();
+            if (shouldMarkBackgroundSync) endBackgroundSync('tests');
+        }
+    })();
+
+    _reliabilitySummaryInFlight = requestPromise;
+    rerenderReliabilityUi();
+
+    try {
+        await requestPromise;
+    } finally {
+        if (_reliabilitySummaryInFlight === requestPromise) {
+            _reliabilitySummaryInFlight = null;
+        }
+        rerenderReliabilityUi();
+    }
+}
+
+async function loadReliabilityBreakdown(isBackground) {
+    if (_reliabilityBreakdownInFlight) {
+        return _reliabilityBreakdownInFlight;
+    }
+
+    if (!_reliabilityBreakdownLoadedOnce) {
+        var cached = getReliabilityBreakdownCache();
+        if (cached && cached.data) {
+            reliabilityBreakdown = cached.data;
+            _reliabilityBreakdownLoadedOnce = true;
+            _reliabilityBreakdownLoadError = false;
+            rerenderReliabilityUi();
+        }
+    }
+
+    if (isBackground && _reliabilityBreakdownLoadedOnce && (Date.now() - (_lastFetchTimes.reliabilityBreakdown || 0)) < RELIABILITY_FETCH_THROTTLE_MS) {
+        return;
+    }
+
+    var requestPromise = (async function() {
+        var shouldMarkBackgroundSync = !!isBackground || _reliabilityBreakdownLoadedOnce || !!getReliabilityBreakdownCache();
+        if (shouldMarkBackgroundSync) beginBackgroundSync('tests');
+        _apiStart();
+        try {
+            var response = await fetchWithRetry(API_BASE + '/tester/' + userId + '/reliability/breakdown', { timeoutMs: 12000 }, 1);
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var payload = await response.json();
+            if (payload && payload.status === 'error') throw payload;
+            reliabilityBreakdown = payload || null;
+            setReliabilityBreakdownCache({ data: reliabilityBreakdown, ts: Date.now() });
+            _reliabilityBreakdownLoadedOnce = true;
+            _reliabilityBreakdownLoadError = false;
+            _lastFetchTimes.reliabilityBreakdown = Date.now();
+            rerenderReliabilityUi();
+        } catch (error) {
+            console.error('Reliability breakdown load error:', error);
+            if (!reliabilityBreakdown) {
+                var breakdownCache = getReliabilityBreakdownCache();
+                reliabilityBreakdown = breakdownCache && breakdownCache.data ? breakdownCache.data : null;
+            }
+            _reliabilityBreakdownLoadedOnce = true;
+            _reliabilityBreakdownLoadError = true;
+            rerenderReliabilityUi();
+        } finally {
+            _apiEnd();
+            if (shouldMarkBackgroundSync) endBackgroundSync('tests');
+        }
+    })();
+
+    _reliabilityBreakdownInFlight = requestPromise;
+    rerenderReliabilityUi();
+
+    try {
+        await requestPromise;
+    } finally {
+        if (_reliabilityBreakdownInFlight === requestPromise) {
+            _reliabilityBreakdownInFlight = null;
+        }
+        rerenderReliabilityUi();
+    }
+}
+
 async function loadIncomingOffers(options) {
     var opts = options || {};
     var background = !!opts.background;
@@ -609,7 +816,11 @@ function loadAllData() {
     _lastFetchTimes.bounty = 0;
     _lastFetchTimes.offers = 0;
     _lastFetchTimes.archived = 0;
+    _lastFetchTimes.reliabilitySummary = 0;
+    _lastFetchTimes.reliabilityBreakdown = 0;
     loadTasks().catch(function() {});
+    loadReliabilitySummary().catch(function() {});
+    loadReliabilityBreakdown().catch(function() {});
     loadIncomingOffers().catch(function() {});
     loadProjects().catch(function() {});
     loadArchivedProjects({ silent: true }).catch(function() {});
@@ -1074,6 +1285,10 @@ function refreshOpenModals() {
     if (inviteModal && inviteModal.classList.contains('active') && _inviteProjectId) {
         openInviteModal(_inviteProjectId);
     }
+    const reliabilityModal = document.getElementById('reliability-dashboard-modal');
+    if (reliabilityModal && reliabilityModal.classList.contains('active') && window.renderReliabilityDashboard) {
+        window.renderReliabilityDashboard();
+    }
 }
 
 function refreshActiveTabData() {
@@ -1083,6 +1298,8 @@ function refreshActiveTabData() {
     if (activeTabId === 'tab-tests') {
         loadTasks().catch(error => console.error('Language refresh tasks error:', error));
         loadEvents().catch(error => console.error('Language refresh events error:', error));
+        loadReliabilitySummary(true).catch(error => console.error('Language refresh reliability summary error:', error));
+        loadReliabilityBreakdown(true).catch(error => console.error('Language refresh reliability breakdown error:', error));
         return;
     }
 
@@ -1225,6 +1442,7 @@ async function _loadTasksImpl(options) {
         setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
         _testsLoadedOnce = true;
         _lastFetchTimes.tests = Date.now();
+        loadReliabilitySummary(true).catch(function() {});
 
     } catch (error) {
         console.error('Error loading tasks:', error);
@@ -3263,6 +3481,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!document.hidden) {
             loadIncomingOffers({ background: true }).catch(() => {});
+            loadReliabilitySummary(true).catch(() => {});
         }
     });
 
@@ -3275,6 +3494,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadTasks();
+    loadReliabilitySummary();
+    loadReliabilityBreakdown(true);
     loadIncomingOffers();
     startOffersPolling();
     startMarketPolling();
@@ -3337,6 +3558,8 @@ Object.assign(window, {
     saveProjectSync,
     pingOwnerActivity,
     loadArchivedProjects,
+    loadReliabilitySummary,
+    loadReliabilityBreakdown,
     confirmHardDelete,
     fetchKarmaBreakdown,
     sendKarmaReward,
@@ -3349,6 +3572,7 @@ Object.assign(window, {
     updateProjectPricing,
     setProjectTargetLang,
     getApiErrorMessage,
+    getReliabilityState,
     rerenderDynamicUi,
     refreshActiveTabData,
     saveProject,
@@ -3372,6 +3596,8 @@ Object.assign(window.App, {
         communityEvents,
         eventsExpanded,
         visibilityStats,
+        reliabilitySummary,
+        reliabilityBreakdown,
         archivedProjects,
         activeProjectFeedbackAppId: _activeProjectFeedbackAppId,
         activeProjectFeedbackItems: _activeProjectFeedbackItems,
@@ -3384,6 +3610,8 @@ Object.assign(window.App, {
     loadMutualFeed,
     loadBountyFeed,
     loadArchivedProjects,
+    loadReliabilitySummary,
+    loadReliabilityBreakdown,
     saveProject,
     setProjectTargetLang,
     saveProjectEdit

@@ -67,6 +67,8 @@
         <h2 id="t-testsTitle" data-i18n="testsMainTitle">📱 Мои тесты</h2>
         <p id="t-testsDesc" data-i18n="testsDesc">Приложения, которые вы должны открывать каждый день.</p>
 
+        <div id="tester-reliability-summary"></div>
+
         <div id="my-tests-list">
             <div id="tests-list">
                 <!-- Active cards will be injected here -->
@@ -495,6 +497,19 @@
             </div>
 
             <button class="btn btn-secondary" style="width: 100%;" onclick="closeKarmaInfoModal()" data-i18n="karmaInfoCloseBtn">Закрыть</button>
+        </div>
+    </div>
+
+    <div id="reliability-dashboard-modal" class="modal-overlay reliability-dashboard-modal" onclick="closeReliabilityDashboard(event)">
+        <div class="modal-content reliability-dashboard-content" onclick="event.stopPropagation()">
+            <div class="reliability-dashboard-topbar">
+                <div>
+                    <div class="reliability-summary-kicker" data-i18n="reliabilityDashModalKicker">Reliability dashboard</div>
+                    <h3 data-i18n="reliabilityDashModalTitle">Индекс надёжности</h3>
+                </div>
+                <button type="button" class="btn-icon reliability-dashboard-close" onclick="closeReliabilityDashboard()">✕</button>
+            </div>
+            <div id="reliability-dashboard-body"></div>
         </div>
     </div>
 
