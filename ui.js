@@ -3173,7 +3173,10 @@ function openInviteModal(projectId) {
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock1Title}</div>
             <div style="${preStyle}">${window.escapeHTML(block1Text)}</div>
-            <button class="btn btn-primary" onclick="publishProjectToMarketAction(${project.id})">${t.inviteBlock1Btn}</button>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary" id="invite-publish-btn" style="flex:1;" onclick="publishProjectToMarketAction(${project.id})">${t.inviteBlock1Btn}</button>
+                <button class="btn-icon" style="width:42px;height:42px;font-size:18px;border-radius:12px;flex-shrink:0;" onclick="copyAndAction('${escapeForAttr(block1Text)}', 'saved')">📋</button>
+            </div>
         </div>
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock2Title}</div>
@@ -3210,7 +3213,17 @@ function copyAndAction(text, target) {
 async function publishProjectToMarketAction(projectId) {
     if (!projectId || !window.publishProjectToMarket) return;
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-    await window.publishProjectToMarket(projectId);
+    const result = await window.publishProjectToMarket(projectId);
+    if (result) {
+        const btn = document.getElementById('invite-publish-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = t.invitePublishedBtn;
+            btn.classList.remove('btn-primary');
+            btn.style.background = 'rgba(52,199,89,0.15)';
+            btn.style.color = '#34c759';
+        }
+    }
 }
 
 function closeInviteModal(event) {
@@ -3573,6 +3586,18 @@ function openProjectDetailsModal(appId) {
 
     var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
         '<div class="detail-instruction-body">' + (test.instructions ? escapeHtmlWithBreaks(test.instructions) : '—') + '</div></div>';
+
+    var googleGroupHtml = '';
+    var _groupUrl = test.google_group_url || '';
+    if (_groupUrl) {
+        googleGroupHtml = '<div class="details-block">' +
+            '<div class="detail-section-title">' + window.t('detailGoogleGroup', {}, lang) + '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+                '<div style="flex:1;font-size:13px;color:var(--link-color);cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" onclick="tg.openLink(\'' + window.escapeInlineJsString(_groupUrl) + '\')">' + window.escapeHTML(_groupUrl) + '</div>' +
+                '<button class="btn-icon" style="width:32px;height:32px;font-size:14px;border-radius:8px;flex-shrink:0;" onclick="event.stopPropagation();navigator.clipboard.writeText(\'' + window.escapeInlineJsString(_groupUrl) + '\');if(tg.HapticFeedback)tg.HapticFeedback.notificationOccurred(\'success\');showToast(\'' + escapeInlineJsString(window.t('detailGoogleGroupCopied', {}, lang)) + '\')">📋</button>' +
+            '</div>' +
+        '</div>';
+    }
     var economicsHtml = '';
     if (Number(test.bounty_per_tester || 0) > 0) {
         var perTester = Number(test.bounty_per_tester || 0);
@@ -3681,6 +3706,8 @@ function openProjectDetailsModal(appId) {
             '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('ownerKarmaText', { karma: ownerKarma }, lang) + '</div>' +
             '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('detail_testers_label', { count: test.active_testers_count || 0 }, lang) + '</div>' +
         '</div>' +
+
+        googleGroupHtml +
 
         instructionsHtml +
 

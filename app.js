@@ -161,6 +161,12 @@ function _parseInitialRouteTarget() {
             }
             break;
         }
+        var editMatch = normalized.match(/^edit[_:](\d+)$/);
+        if (editMatch) {
+            routeKind = 'edit';
+            feedbackProjectId = Number(editMatch[1] || 0);
+            break;
+        }
         if (normalized === 'projects') {
             routeKind = 'projects';
         }
@@ -190,6 +196,13 @@ function _parseInitialRouteTarget() {
             appId: null,
         };
     }
+    if (routeKind === 'edit') {
+        return {
+            tab: 'projects',
+            openEdit: true,
+            appId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
     return null;
 }
 
@@ -205,6 +218,17 @@ async function _handleInitialRoute() {
     }
     if (route.tab === 'market') {
         switchTab('market');
+    }
+
+    // ── Edit route: open project edit modal ──
+    if (route.openEdit && route.appId) {
+        try {
+            await loadProjects(true);
+            openEditModal(route.appId);
+        } catch (error) {
+            console.error('Initial edit route error:', error);
+        }
+        return;
     }
 
     if (!route.openFeedback || !route.appId) {
@@ -1812,7 +1836,7 @@ async function publishProjectToMarket(projectId) {
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t('invitePublishSuccess', {}, lang));
-        return data.topic_link || null;
+        return data.topic_link || true;
     } catch (error) {
         console.error('Publish to market error:', error);
         handleApiError('network_error');
