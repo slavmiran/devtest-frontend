@@ -1216,7 +1216,7 @@ function renderTests(force) {
         let cardContent = `
             ${doneBadgeHtml}
             <div class="card-header">
-                <div class="card-header-link" ${(test.status === 'new' && test.app_status !== 'archived') ? '' : `onclick="openProjectDetailsModal(${test.id})"`}>
+                <div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">
                     ${renderIcon(test.name, test.icon_url)}
                     <div class="card-info">
                         <div class="card-title">${safeName}</div>
@@ -1263,6 +1263,8 @@ function renderTests(force) {
             </div>
         `;
     }
+
+    if (window._restoreActiveTimer) window._restoreActiveTimer();
 }
 
 function renderCompletedTests(completedTests) {
@@ -2292,7 +2294,32 @@ function openKickTesterModal(appId, testerId, event) {
     const holdAction = skipsCount >= 3
         ? window.t('kickHoldBonusReturn', {}, lang)
         : window.t('kickHoldBonusBurn', {}, lang);
-        const verdictHtml = `<div class="details-block" style="border-color: ${skipsCount >= 3 ? 'rgba(52,199,89,0.22)' : 'rgba(255,149,0,0.24)'};">
+
+    // Grace period: 24h from join date, 0 checkins
+    const checkinCount = Number(tester.checkins_count || 0);
+    let graceTimerHtml = '';
+    let _kickGraceEnd = 0;
+    if (checkinCount === 0 && tester.start_date) {
+        const joinDate = new Date(tester.start_date + 'T00:00:00');
+        _kickGraceEnd = joinDate.getTime() + 24 * 60 * 60 * 1000;
+        const graceRemainingMs = Math.max(0, _kickGraceEnd - Date.now());
+        if (graceRemainingMs > 0) {
+            const hours = Math.floor(graceRemainingMs / 3600000);
+            const minutes = Math.floor((graceRemainingMs % 3600000) / 60000);
+            const timeStr = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+            graceTimerHtml =
+                `<div class="details-block" style="border-color: rgba(52,199,89,0.3); text-align: center;">` +
+                    `<div id="kick-grace-timer" style="font-size: 18px; font-weight: 700; color: #34c759;">` +
+                        `⏳ ${window.escapeHTML(window.t('kickGraceTimer', { time: timeStr }, lang))}` +
+                    `</div>` +
+                    `<div style="font-size: 11px; line-height: 1.5; color: var(--hint-color); margin-top: 8px;">` +
+                        `${window.escapeHTML(window.t('kickGraceExplanation', {}, lang))}` +
+                    `</div>` +
+                `</div>`;
+        }
+    }
+
+    const verdictHtml = `<div class="details-block" style="border-color: ${skipsCount >= 3 ? 'rgba(52,199,89,0.22)' : 'rgba(255,149,0,0.24)'};">
             <div class="detail-section-title">${window.escapeHTML(window.t('kickVerdictTitle', {}, lang))}</div>
             <div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t(skipsCount >= 3 ? 'kickVerdictSafe' : 'kickVerdictUnsafe', {}, lang))}</div>
         </div>`;
@@ -2317,17 +2344,38 @@ function openKickTesterModal(appId, testerId, event) {
         reasonOther.style.display = 'none';
     }
     body.innerHTML = '' +
+        graceTimerHtml +
         verdictHtml +
         `<div class="details-block">` +
             `<div class="detail-section-title">${window.escapeHTML(window.t('kickTesterStats', {}, lang))}</div>` +
             `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
                 `<div>${window.escapeHTML(window.t('kickTesterDays', { days: testingDays }, lang))}</div>` +
                 `<div>${window.escapeHTML(window.t('kickTesterSkips', { skips: skipsCount }, lang))}</div>` +
-                `<div>${window.escapeHTML(window.t('kickTesterCheckins', { checkins: Number(tester.checkins_count || 0) }, lang))}</div>` +
+                `<div>${window.escapeHTML(window.t('kickTesterCheckins', { checkins: checkinCount }, lang))}</div>` +
             `</div>` +
         `</div>` +
         economyHtml;
     modal.classList.add('active');
+
+    // Live countdown for grace period
+    if (_kickGraceEnd > Date.now()) {
+        var _kickGraceInterval = setInterval(function() {
+            var el = document.getElementById('kick-grace-timer');
+            if (!el || !modal.classList.contains('active')) {
+                clearInterval(_kickGraceInterval);
+                return;
+            }
+            var rem = Math.max(0, _kickGraceEnd - Date.now());
+            if (rem <= 0) {
+                clearInterval(_kickGraceInterval);
+                el.textContent = '⏳ ' + window.t('kickGraceExpired', {}, lang);
+                return;
+            }
+            var h = Math.floor(rem / 3600000);
+            var m = Math.floor((rem % 3600000) / 60000);
+            el.textContent = '⏳ ' + window.t('kickGraceTimer', { time: String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') }, lang);
+        }, 60000);
+    }
 }
 
 function closeKickTesterModal(event) {

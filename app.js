@@ -29,6 +29,10 @@ var bountyContracts = [];
 var communityEvents = null;
 var eventsExpanded = false;
 var activeTimerAppId = null;
+var _timerEndTimestamp = null;
+var _timerIntervalId = null;
+var _timerIsScreenshot = false;
+var _timerOwnerUsername = '';
 var pendingProjectData = null;
 var projectToEdit = null;
 var visibilityStats = {};
@@ -152,6 +156,9 @@ function _parseInitialRouteTarget() {
         if (normalized === 'projects') {
             routeKind = 'projects';
         }
+        if (normalized === 'market') {
+            routeKind = 'market';
+        }
     }
 
     if (routeKind === 'feedback' || params.get('feedback') === '1') {
@@ -168,6 +175,13 @@ function _parseInitialRouteTarget() {
             appId: null,
         };
     }
+    if (routeKind === 'market') {
+        return {
+            tab: 'market',
+            openFeedback: false,
+            appId: null,
+        };
+    }
     return null;
 }
 
@@ -180,6 +194,9 @@ async function _handleInitialRoute() {
 
     if (route.tab === 'projects') {
         switchTab('projects');
+    }
+    if (route.tab === 'market') {
+        switchTab('market');
     }
 
     if (!route.openFeedback || !route.appId) {
@@ -2122,6 +2139,14 @@ async function joinBounty(appId) {
 }
 
 function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
+    // Clean up stale timer (tab suspension / cache restoration scenario)
+    if (activeTimerAppId !== null && _timerEndTimestamp && Date.now() > _timerEndTimestamp + 2000) {
+        if (_timerIntervalId) clearInterval(_timerIntervalId);
+        _timerIntervalId = null;
+        _timerEndTimestamp = null;
+        activeTimerAppId = null;
+    }
+
     if (activeTimerAppId === id) {
         tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
         return;
@@ -2137,31 +2162,67 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
     if (!btn || !btn.disabled) return;
 
     activeTimerAppId = id;
-    let timeLeft = 15;
-    btn.innerText = t.timerRemaining.replace('{sec}', timeLeft);
+    _timerEndTimestamp = Date.now() + 15000;
+    _timerIsScreenshot = isScreenshotDay;
+    _timerOwnerUsername = ownerUsername;
+    if (_timerIntervalId) clearInterval(_timerIntervalId);
+    btn.innerText = t.timerRemaining.replace('{sec}', 15);
 
-    const timerId = setInterval(() => {
-        timeLeft--;
-        if (timeLeft <= 0) {
-            clearInterval(timerId);
+    _timerIntervalId = setInterval(() => {
+        var remaining = Math.ceil((_timerEndTimestamp - Date.now()) / 1000);
+        var liveBtn = document.getElementById(`btn-confirm-${id}`);
+        if (remaining <= 0) {
+            clearInterval(_timerIntervalId);
+            _timerIntervalId = null;
+            _timerEndTimestamp = null;
             activeTimerAppId = null;
-            btn.disabled = false;
-            btn.style.backgroundColor = 'var(--success-color)';
-            btn.style.color = '#fff';
-            btn.style.cursor = 'pointer';
-            if (isScreenshotDay) {
-                btn.innerText = '💬 ' + t.screenshotBtn;
-                btn.onclick = () => handleScreenshotAndConfirm(id, ownerUsername);
-            } else {
-                btn.innerText = t.confirmStart;
-                btn.onclick = () => confirmStart(id);
+            if (liveBtn) {
+                liveBtn.disabled = false;
+                liveBtn.style.backgroundColor = 'var(--success-color)';
+                liveBtn.style.color = '#fff';
+                liveBtn.style.cursor = 'pointer';
+                if (_timerIsScreenshot) {
+                    liveBtn.innerText = '💬 ' + t.screenshotBtn;
+                    liveBtn.onclick = () => handleScreenshotAndConfirm(id, _timerOwnerUsername);
+                } else {
+                    liveBtn.innerText = t.confirmStart;
+                    liveBtn.onclick = () => confirmStart(id);
+                }
             }
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         } else {
-            btn.innerText = t.timerRemaining.replace('{sec}', timeLeft);
+            if (liveBtn) liveBtn.innerText = t.timerRemaining.replace('{sec}', remaining);
         }
     }, 1000);
 }
+
+function _restoreActiveTimer() {
+    if (!activeTimerAppId || !_timerEndTimestamp) return;
+    var remaining = Math.ceil((_timerEndTimestamp - Date.now()) / 1000);
+    var btn = document.getElementById('btn-confirm-' + activeTimerAppId);
+    if (!btn) return;
+    if (remaining <= 0) {
+        var finishedId = activeTimerAppId;
+        if (_timerIntervalId) clearInterval(_timerIntervalId);
+        _timerIntervalId = null;
+        _timerEndTimestamp = null;
+        activeTimerAppId = null;
+        btn.disabled = false;
+        btn.style.backgroundColor = 'var(--success-color)';
+        btn.style.color = '#fff';
+        btn.style.cursor = 'pointer';
+        if (_timerIsScreenshot) {
+            btn.innerText = '💬 ' + t.screenshotBtn;
+            btn.onclick = function() { handleScreenshotAndConfirm(finishedId, _timerOwnerUsername); };
+        } else {
+            btn.innerText = t.confirmStart;
+            btn.onclick = function() { confirmStart(finishedId); };
+        }
+    } else {
+        btn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
+    }
+}
+window._restoreActiveTimer = _restoreActiveTimer;
 
 function openPlay(id, pkg) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
@@ -2515,7 +2576,9 @@ async function initiateProjectFeedback(appId) {
         }
         setTimeout(function() {
             try {
-                if (tg.openTelegramLink) {
+                if (tg.close) {
+                    tg.close();
+                } else if (tg.openTelegramLink) {
                     tg.openTelegramLink(BOT_CHAT_URL);
                 } else if (tg.openLink) {
                     tg.openLink(BOT_CHAT_URL);
@@ -2523,7 +2586,7 @@ async function initiateProjectFeedback(appId) {
                     window.location.href = BOT_CHAT_URL;
                 }
             } catch (error) {
-                console.warn('Failed to open bot chat for feedback flow:', error);
+                console.warn('Failed to close WebApp for feedback flow:', error);
             }
         }, 250);
     } catch (error) {
@@ -3545,6 +3608,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => showScreenshotCompleteModal(username), 300);
         }
         if (!document.hidden) {
+            renderTests(true);
+            loadTasks(false).catch(() => {});
             loadIncomingOffers({ background: true }).catch(() => {});
             loadReliabilitySummary(true).catch(() => {});
         }
