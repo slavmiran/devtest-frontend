@@ -64,6 +64,12 @@ function showRetry(containerId, retryFn) {
     `;
 }
 
+function showMarketLoading(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = `<p class="no-testers">${t.pulseLoading}</p>`;
+}
+
 function renderEditCreatedAtMeta() {
     const metaEl = document.getElementById('edit-created-at');
     if (!metaEl) return;
@@ -1467,7 +1473,8 @@ function renderMutualReturns(apps, force) {
     const isLoading = !!(window._marketInFlight && window._marketInFlight.mutual);
     if ((!items || items.length === 0) && isLoading && !window._marketLoadedOnce) {
         container.style.display = '';
-        showSkeleton('mutual-returns-list');
+        if (window._marketForceSkeleton) showSkeleton('mutual-returns-list');
+        else showMarketLoading('mutual-returns-list');
         return;
     }
 
@@ -1526,15 +1533,19 @@ function renderMutualFeed(force) {
     const feedState = window.getMarketFeedState ? window.getMarketFeedState('mutual') : { confirmedEmpty: false };
 
     if (!mutualSeeking.length) {
-        if (isLoading || !feedState.confirmedEmpty) showSkeleton('mutual-seeking-list');
-        else seekingEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
+        if (isLoading || !feedState.confirmedEmpty) {
+            if (window._marketForceSkeleton) showSkeleton('mutual-seeking-list');
+            else showMarketLoading('mutual-seeking-list');
+        } else seekingEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
         seekingEl.innerHTML = mutualSeeking.map((item) => renderFeedCard(item, 'mutual-seeking')).join('');
     }
 
     if (!mutualPrelaunch.length) {
-        if (isLoading || !feedState.confirmedEmpty) showSkeleton('mutual-prelaunch-list');
-        else prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
+        if (isLoading || !feedState.confirmedEmpty) {
+            if (window._marketForceSkeleton) showSkeleton('mutual-prelaunch-list');
+            else showMarketLoading('mutual-prelaunch-list');
+        } else prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
         prelaunchEl.innerHTML = mutualPrelaunch.map((item) => renderFeedCard(item, 'mutual-prelaunch')).join('');
     }
@@ -1572,8 +1583,10 @@ function renderBountyFeed(force) {
     const isLoading = !!(window._marketInFlight && (window._marketInFlight.bounty));
     const feedState = window.getMarketFeedState ? window.getMarketFeedState('bounty') : { confirmedEmpty: false };
     if (!bountyContracts.length) {
-        if (isLoading || !feedState.confirmedEmpty) showSkeleton('bounty-list');
-        else bountyEl.innerHTML = `<p class="no-testers" style="margin-top: 10px;">${t.bountyEmpty}</p>`;
+        if (isLoading || !feedState.confirmedEmpty) {
+            if (window._marketForceSkeleton) showSkeleton('bounty-list');
+            else showMarketLoading('bounty-list');
+        } else bountyEl.innerHTML = `<p class="no-testers" style="margin-top: 10px;">${t.bountyEmpty}</p>`;
         return;
     }
     bountyEl.innerHTML = bountyContracts.map((item) => renderFeedCard(item, 'bounty')).join('');
@@ -3088,19 +3101,6 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'market') {
-        var cachedMarket = window.hasMarketCache ? window.hasMarketCache() : false;
-        if (!cachedMarket) {
-            var hasMutualData = Array.isArray(mutualSeeking) && mutualSeeking.length > 0
-                || Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0;
-            var hasBountyData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
-            if (!hasMutualData) {
-                showSkeleton('mutual-seeking-list');
-                showSkeleton('mutual-prelaunch-list');
-            }
-            if (!hasBountyData) {
-                showSkeleton('bounty-list');
-            }
-        }
         loadMutualFeed();
         loadBountyFeed();
     }

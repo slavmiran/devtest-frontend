@@ -122,6 +122,14 @@ var _marketFeedState = {
     bounty: { confirmedEmpty: false, emptyStreak: 0 }
 };
 var _marketRetryTimers = { mutual: null, bounty: null };
+var _marketForceSkeleton = false;
+
+function setMarketForceSkeleton(enabled) {
+    _marketForceSkeleton = !!enabled;
+    window._marketForceSkeleton = _marketForceSkeleton;
+}
+
+window._marketForceSkeleton = _marketForceSkeleton;
 
 function _parseInitialRouteTarget() {
     var params = new URLSearchParams(window.location.search || '');
@@ -343,6 +351,11 @@ function _scheduleMarketRetry(feedKey, delayMs) {
     }, delayMs || 2500);
 }
 
+function resetMarketFeedStates() {
+    _marketFeedState.mutual = { confirmedEmpty: false, emptyStreak: 0 };
+    _marketFeedState.bounty = { confirmedEmpty: false, emptyStreak: 0 };
+}
+
 function _resolveMarketResponse(feedKey, nextCount, hadVisibleData) {
     var state = _marketFeedState[feedKey];
     if (!state) {
@@ -393,11 +406,11 @@ function hasMarketCache() {
     const cached = getMarketCache();
     if (!cached) return false;
     const hasMutual = cached.mutual && (
-        Array.isArray(cached.mutual.seeking) ||
-        Array.isArray(cached.mutual.prelaunch) ||
-        Array.isArray(cached.mutual.returns)
+        (Array.isArray(cached.mutual.seeking) && cached.mutual.seeking.length > 0) ||
+        (Array.isArray(cached.mutual.prelaunch) && cached.mutual.prelaunch.length > 0) ||
+        (Array.isArray(cached.mutual.returns) && cached.mutual.returns.length > 0)
     );
-    const hasBounty = cached.bounty && Array.isArray(cached.bounty.contracts);
+    const hasBounty = cached.bounty && Array.isArray(cached.bounty.contracts) && cached.bounty.contracts.length > 0;
     return !!(hasMutual || hasBounty);
 }
 
@@ -1514,7 +1527,7 @@ async function loadMutualFeed() {
         return;
     }
 
-    const requestPromise = _loadMutualFeedImpl({ backgroundSync: hasLocalData || hasMarketCache() });
+    const requestPromise = _loadMutualFeedImpl({ backgroundSync: hasLocalData || hasMarketCache(), forceSkeleton: _marketForceSkeleton });
     _marketInFlight.mutual = requestPromise;
     try {
         await requestPromise;
@@ -1530,6 +1543,7 @@ async function _loadMutualFeedImpl(options) {
     const cached = getMarketCache();
     const hasMutualCache = !!(cached && cached.mutual);
     const shouldMarkBackgroundSync = !!(options && options.backgroundSync);
+    const shouldShowSkeleton = !!(options && options.forceSkeleton);
     const hadVisibleData = (Array.isArray(mutualSeeking) && mutualSeeking.length > 0)
         || (Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0)
         || (Array.isArray(mutualReturns) && mutualReturns.length > 0);
@@ -1542,7 +1556,7 @@ async function _loadMutualFeedImpl(options) {
         if (window.renderMutualReturns) {
             window.renderMutualReturns(mutualReturns);
         }
-    } else {
+    } else if (shouldShowSkeleton) {
         showSkeleton('mutual-seeking-list');
         showSkeleton('mutual-prelaunch-list');
         const returnsContainer = document.getElementById('mutual-returns-container');
@@ -1625,7 +1639,7 @@ async function loadBountyFeed() {
         return;
     }
 
-    const requestPromise = _loadBountyFeedImpl({ backgroundSync: hasLocalData || hasMarketCache() });
+    const requestPromise = _loadBountyFeedImpl({ backgroundSync: hasLocalData || hasMarketCache(), forceSkeleton: _marketForceSkeleton });
     _marketInFlight.bounty = requestPromise;
     try {
         await requestPromise;
@@ -1641,12 +1655,13 @@ async function _loadBountyFeedImpl(options) {
     const cached = getMarketCache();
     const hasBountyCache = !!(cached && cached.bounty && Array.isArray(cached.bounty.contracts));
     const shouldMarkBackgroundSync = !!(options && options.backgroundSync);
+    const shouldShowSkeleton = !!(options && options.forceSkeleton);
     const hadVisibleData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
 
     if (hasBountyCache) {
         bountyContracts = cached.bounty.contracts || [];
         renderBountyFeed();
-    } else {
+    } else if (shouldShowSkeleton) {
         showSkeleton('bounty-list');
     }
 
@@ -1699,10 +1714,8 @@ async function _loadBountyFeedImpl(options) {
 async function forceRefreshMarket() {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     resetMarketFetchThrottle();
-    _marketFeedState.mutual.confirmedEmpty = false;
-    _marketFeedState.mutual.emptyStreak = 0;
-    _marketFeedState.bounty.confirmedEmpty = false;
-    _marketFeedState.bounty.emptyStreak = 0;
+    resetMarketFeedStates();
+    setMarketForceSkeleton(true);
 
     var hasMutualData = (Array.isArray(mutualSeeking) && mutualSeeking.length > 0)
         || (Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0);
@@ -1718,6 +1731,8 @@ async function forceRefreshMarket() {
         await Promise.all([loadMutualFeed(), loadBountyFeed()]);
     } catch (error) {
         console.error('Force refresh market error:', error);
+    } finally {
+        setMarketForceSkeleton(false);
     }
 }
 
@@ -3643,6 +3658,8 @@ Object.assign(window, {
     hasMarketCache,
     hydrateMarketFromCache,
     getMarketFeedState,
+    resetMarketFeedStates,
+    setMarketForceSkeleton,
     refreshLanguageUi,
     applyLanguage,
     toggleLanguage,
