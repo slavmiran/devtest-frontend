@@ -836,6 +836,38 @@ function getReliabilityAlphaProjects(filterKey, projects) {
     return list;
 }
 
+function getReliabilityAlphaProjectSourceMeta(project) {
+    if (project && project.is_used_in_formula) {
+        return {
+            chipClass: 'chip-used',
+            chipLabel: window.t('reliabilityDashProjectChipUsed', {}, lang),
+            noteKey: 'reliabilityDashProjectNoteCounted'
+        };
+    }
+    if (project && project.is_counted_in_reliability) {
+        return {
+            chipClass: 'chip-history',
+            chipLabel: window.t('reliabilityDashProjectChipHistory', {}, lang),
+            noteKey: 'reliabilityDashProjectNoteHistorical'
+        };
+    }
+    return {
+        chipClass: 'chip-skipped',
+        chipLabel: window.t('reliabilityDashProjectChipSkipped', {}, lang),
+        noteKey: 'reliabilityDashProjectNoteSkipped'
+    };
+}
+
+function buildReliabilityAlphaGuideCard(title, accentClass, contentHtml, footnote) {
+    return `
+        <section class="guide-card ${accentClass}">
+          <div class="guide-card-title">${window.escapeHTML(title)}</div>
+          <div class="guide-card-body">${contentHtml}</div>
+          <div class="guide-card-footnote">${window.escapeHTML(footnote)}</div>
+        </section>
+    `;
+}
+
 function buildReliabilityAlphaSkeleton() {
     return `
         <div class="page reliability-alpha-page">
@@ -869,14 +901,13 @@ function buildReliabilityAlphaProjectCard(project) {
     var statusMeta = getReliabilityAlphaStatusMeta(project.project_status);
     var title = window.escapeHTML(project.title || window.t('unknownLabel', {}, lang));
     var typeLabel = window.escapeHTML(window.t('reliabilityDashProjectType_' + (project.join_type || project.type || 'invite'), {}, lang));
-    var observed = String(project.actual_checkins || 0) + ' / ' + String(project.mandatory_days || 14);
     var skips = String(project.skips_count || 0);
     var overtimeDays = Number(project.overtime_checkin_days || 0);
     var overtimeBonus = formatReliabilityIndex(project.overtime_bonus_index || 0);
     var participationKey = 'reliabilityDashParticipationType_' + (project.participation_type || 'short_run');
     var exitKey = 'reliabilityDashExitType_' + (project.leave_status || project.status || 'active');
-    var noteKey = project.is_counted_in_reliability ? 'reliabilityDashProjectNoteCounted' : 'reliabilityDashProjectNoteSkipped';
-    var note = window.escapeHTML(window.t(noteKey, {
+        var sourceMeta = getReliabilityAlphaProjectSourceMeta(project);
+        var note = window.escapeHTML(window.t(sourceMeta.noteKey, {
         value: formatReliabilityIndex(project.weighted_contribution || project.effective_project_index || 0),
         karma: formatReliabilityIndex(overtimeDays > 0 ? overtimeDays * 0.5 : 0)
     }, lang));
@@ -887,6 +918,7 @@ function buildReliabilityAlphaProjectCard(project) {
             <div class="proj-title">${title} · ${typeLabel}</div>
             <span class="badge-status ${statusMeta.badgeClass}">${window.escapeHTML(statusMeta.label)}</span>
           </div>
+                    <div class="project-chips"><span class="project-chip ${sourceMeta.chipClass}">${window.escapeHTML(sourceMeta.chipLabel)}</span></div>
           <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryPeriod', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryValue', { actual: project.actual_checkins || 0, total: project.mandatory_days || 14, skips: skips }, lang))}</span></div>
           <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectIndexLabel', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectIndexValue', { value: formatReliabilityIndex(project.effective_project_index || 0), status: statusMeta.label }, lang))}</span></div>
           <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeLabel', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeValue', { days: overtimeDays, bonus: overtimeBonus }, lang))}</span></div>
@@ -918,7 +950,9 @@ function renderReliabilityAlphaModal() {
     }
 
     var overallStatus = getReliabilityAlphaStatusMeta(summary.reliability_status);
-    var projects = Array.isArray(breakdown.projects_used) ? breakdown.projects_used : [];
+    var projects = Array.isArray(breakdown.projects_full_history)
+        ? breakdown.projects_full_history
+        : (Array.isArray(breakdown.projects_used) ? breakdown.projects_used : []);
     var visibleProjects = getReliabilityAlphaProjects(_reliabilityDashboardFilter, projects);
     var projectsHtml = visibleProjects.length
         ? visibleProjects.map(buildReliabilityAlphaProjectCard).join('')
@@ -944,6 +978,85 @@ function renderReliabilityAlphaModal() {
         { key: 'completed', label: getReliabilityAlphaProjectTabLabel('completed') },
         { key: 'archive', label: getReliabilityAlphaProjectTabLabel('archive') }
     ];
+    var guideCardsHtml = [
+        buildReliabilityAlphaGuideCard(
+            window.t('reliabilityDashGuideBlock1Title', {}, lang),
+            'accent-blue',
+            `
+                <div class="guide-rows">
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row1Label', {}, lang))}</span><span class="guide-value danger">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row1Value', {}, lang))}</span></div>
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row2Label', {}, lang))}</span><span class="guide-value warning">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row2Value', {}, lang))}</span></div>
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row3Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row3Value', {}, lang))}</span></div>
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row4Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row4Value', {}, lang))}</span></div>
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row5Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row5Value', {}, lang))}</span></div>
+                </div>
+            `,
+            window.t('reliabilityDashGuideBlock1Mini', {}, lang)
+        ),
+        buildReliabilityAlphaGuideCard(
+            window.t('reliabilityDashGuideBlock2Title', {}, lang),
+            'accent-cyan',
+            `
+                <div class="guide-rows">
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row1Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row1Value', {}, lang))}</span></div>
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row2Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row2Value', {}, lang))}</span></div>
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row3Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row3Value', {}, lang))}</span></div>
+                </div>
+            `,
+            window.t('reliabilityDashGuideBlock2Mini', {}, lang)
+        ),
+        buildReliabilityAlphaGuideCard(
+            window.t('reliabilityDashGuideBlock3Title', {}, lang),
+            'accent-indigo',
+            `
+                <div class="guide-rows">
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row1Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row1Value', {}, lang))}</span></div>
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row2Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row2Value', {}, lang))}</span></div>
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row3Label', {}, lang))}</span><span class="guide-value danger">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row3Value', {}, lang))}</span></div>
+                </div>
+            `,
+            window.t('reliabilityDashGuideBlock3Mini', {}, lang)
+        ),
+        buildReliabilityAlphaGuideCard(
+            window.t('reliabilityDashGuideBlock4Title', {}, lang),
+            'accent-red',
+            `
+                <ol class="guide guide-list">
+                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item1', {}, lang))}</li>
+                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item2', {}, lang))}</li>
+                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item3', {}, lang))}</li>
+                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item4', {}, lang))}</li>
+                </ol>
+            `,
+            window.t('reliabilityDashGuideBlock4Mini', {}, lang)
+        ),
+        buildReliabilityAlphaGuideCard(
+            window.t('reliabilityDashGuideBlock5Title', {}, lang),
+            'accent-gold',
+            `
+                <div class="guide-rows">
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row1Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row1Value', {}, lang))}</span></div>
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row2Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row2Value', {}, lang))}</span></div>
+                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row3Label', {}, lang))}</span><span class="guide-value gold">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row3Value', {}, lang))}</span></div>
+                </div>
+            `,
+            window.t('reliabilityDashGuideBlock5Mini', {}, lang)
+        ),
+        buildReliabilityAlphaGuideCard(
+            window.t('reliabilityDashGuideBlock6Title', {}, lang),
+            'accent-green',
+            `
+                <div class="guide-tags">
+                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag1', {}, lang))}</span>
+                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag2', {}, lang))}</span>
+                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag3', {}, lang))}</span>
+                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag4', {}, lang))}</span>
+                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag5', {}, lang))}</span>
+                </div>
+            `,
+            window.t('reliabilityDashGuideBlock6Mini', {}, lang)
+        )
+    ].join('');
 
     body.innerHTML = `
         <div class="page reliability-alpha-page">
@@ -995,6 +1108,7 @@ function renderReliabilityAlphaModal() {
           <div class="layout-2">
             <section class="card reliability-alpha-card" id="reliability-alpha-guide">
               <div class="section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</div>
+                            <div class="section-copy">${window.escapeHTML(window.t('reliabilityDashProjectsHistoryHint', {}, lang))}</div>
               <div class="projects-grid">
                 ${projectsHtml}
               </div>
@@ -1002,61 +1116,9 @@ function renderReliabilityAlphaModal() {
 
             <section class="card reliability-alpha-card">
               <div class="section-title">${window.escapeHTML(window.t('reliabilityDashGuideSectionTitle', {}, lang))}</div>
-
-              <div class="detail-block">
-                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Title', {}, lang))}</strong>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row1Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row1Value', {}, lang))}</span></div>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row2Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row2Value', {}, lang))}</span></div>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row3Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row3Value', {}, lang))}</span></div>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row4Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row4Value', {}, lang))}</span></div>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row5Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row5Value', {}, lang))}</span></div>
-                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Mini', {}, lang))}</div>
-              </div>
-
-              <div class="detail-block">
-                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Title', {}, lang))}</strong>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row1Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row1Value', {}, lang))}</span></div>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row2Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row2Value', {}, lang))}</span></div>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row3Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row3Value', {}, lang))}</span></div>
-                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Mini', {}, lang))}</div>
-              </div>
-
-              <div class="detail-block">
-                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Title', {}, lang))}</strong>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row1Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row1Value', {}, lang))}</span></div>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row2Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row2Value', {}, lang))}</span></div>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row3Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row3Value', {}, lang))}</span></div>
-                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Mini', {}, lang))}</div>
-              </div>
-
-              <div class="detail-block">
-                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Title', {}, lang))}</strong>
-                <ol class="guide">
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item1', {}, lang))}</li>
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item2', {}, lang))}</li>
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item3', {}, lang))}</li>
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item4', {}, lang))}</li>
-                </ol>
-                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock4Mini', {}, lang))}</div>
-              </div>
-
-              <div class="detail-block">
-                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Title', {}, lang))}</strong>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row1Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row1Value', {}, lang))}</span></div>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row2Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row2Value', {}, lang))}</span></div>
-                <div class="detail-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row3Label', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row3Value', {}, lang))}</span></div>
-                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Mini', {}, lang))}</div>
-              </div>
-
-              <div class="detail-block">
-                <strong>${window.escapeHTML(window.t('reliabilityDashGuideBlock6Title', {}, lang))}</strong>
-                <div class="tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag1', {}, lang))}</div>
-                <div class="tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag2', {}, lang))}</div>
-                <div class="tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag3', {}, lang))}</div>
-                <div class="tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag4', {}, lang))}</div>
-                <div class="tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag5', {}, lang))}</div>
-                <div class="mini">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Mini', {}, lang))}</div>
-              </div>
+                            <div class="guide-cards">
+                                ${guideCardsHtml}
+                            </div>
             </section>
           </div>
         </div>
