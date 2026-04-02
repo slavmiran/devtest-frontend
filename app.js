@@ -33,6 +33,7 @@ var _timerEndTimestamp = null;
 var _timerIntervalId = null;
 var _timerIsScreenshot = false;
 var _timerOwnerUsername = '';
+var _timerStorageKey = 'devtest_active_timer';
 var pendingProjectData = null;
 var projectToEdit = null;
 var visibilityStats = {};
@@ -1041,6 +1042,7 @@ function handleApiError(code, details = {}) {
         invalid_feedback_bust_amount: 'invalid_feedback_bust_amount',
         app_archived: 'err_app_archived',
         app_not_found: 'app_not_found',
+        already_published: 'already_published',
         not_owner: 'not_owner',
         publish_to_market_failed: 'publish_to_market_failed',
         offer_already_pending: 'err_offer_already_pending',
@@ -1326,6 +1328,84 @@ function sendFeedback(type) {
     }
     openFeedbackModal(typeKeyMap[_feedbackType]);
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+function _persistActiveTimer() {
+    try {
+        if (!activeTimerAppId || !_timerEndTimestamp) {
+            localStorage.removeItem(_timerStorageKey);
+            return;
+        }
+        localStorage.setItem(_timerStorageKey, JSON.stringify({
+            appId: activeTimerAppId,
+            endTimestamp: _timerEndTimestamp,
+            isScreenshot: !!_timerIsScreenshot,
+            ownerUsername: _timerOwnerUsername || ''
+        }));
+    } catch (error) {
+        console.warn('Failed to persist active timer:', error);
+    }
+}
+
+function _clearPersistedActiveTimer() {
+    try {
+        localStorage.removeItem(_timerStorageKey);
+    } catch (error) {
+        console.warn('Failed to clear active timer state:', error);
+    }
+}
+
+function _syncActiveTimerState() {
+    if (!activeTimerAppId || !_timerEndTimestamp) return false;
+    if (Date.now() < _timerEndTimestamp) {
+        _persistActiveTimer();
+        return false;
+    }
+
+    const finishedId = activeTimerAppId;
+    if (_timerIntervalId) clearInterval(_timerIntervalId);
+    _timerIntervalId = null;
+    _timerEndTimestamp = null;
+    activeTimerAppId = null;
+
+    const btn = document.getElementById('btn-confirm-' + finishedId);
+    if (btn) {
+        btn.disabled = false;
+        btn.style.backgroundColor = 'var(--success-color)';
+        btn.style.color = '#fff';
+        btn.style.cursor = 'pointer';
+        if (_timerIsScreenshot) {
+            btn.innerText = '💬 ' + t.screenshotBtn;
+            btn.onclick = function() { handleScreenshotAndConfirm(finishedId, _timerOwnerUsername); };
+        } else {
+            btn.innerText = t.confirmStart;
+            btn.onclick = function() { confirmStart(finishedId); };
+        }
+    }
+
+    _clearPersistedActiveTimer();
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    return true;
+}
+
+function _loadPersistedActiveTimer() {
+    try {
+        const raw = localStorage.getItem(_timerStorageKey);
+        if (!raw) return;
+        const payload = JSON.parse(raw);
+        if (!payload || !payload.appId || !payload.endTimestamp) {
+            _clearPersistedActiveTimer();
+            return;
+        }
+        activeTimerAppId = Number(payload.appId) || null;
+        _timerEndTimestamp = Number(payload.endTimestamp) || null;
+        _timerIsScreenshot = !!payload.isScreenshot;
+        _timerOwnerUsername = String(payload.ownerUsername || '');
+        _syncActiveTimerState();
+    } catch (error) {
+        console.warn('Failed to load persisted active timer:', error);
+        _clearPersistedActiveTimer();
+    }
 }
 
 function rerenderDynamicUi() {
@@ -1822,6 +1902,10 @@ async function loadProjects(isBackground) {
 async function publishProjectToMarket(projectId) {
     if (!projectId) return null;
 
+    var actionKey = 'publish_market_' + projectId;
+    if (_pendingActions.has(actionKey)) return null;
+    _pendingActions.add(actionKey);
+
     _apiStart();
     try {
         var response = await fetch(`${API_BASE}/projects/${projectId}/publish_to_market`, {
@@ -1834,8 +1918,16 @@ async function publishProjectToMarket(projectId) {
             handleApiError(getBackendErrorCode(data), data && data.details ? data.details : {});
             return null;
         }
+        var project = (myProjects || []).find(function(item) {
+            return Number(item.id) === Number(projectId);
+        });
+        if (project) {
+            project.published_to_market_at = data.published_to_market_at || new Date().toISOString();
+        }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t('invitePublishSuccess', {}, lang));
+        if (window.renderProjects) window.renderProjects(true);
+        refreshOpenModals();
         return data.topic_link || true;
     } catch (error) {
         console.error('Publish to market error:', error);
@@ -1843,6 +1935,7 @@ async function publishProjectToMarket(projectId) {
         return null;
     } finally {
         _apiEnd();
+        _pendingActions.delete(actionKey);
     }
 }
 
@@ -1869,6 +1962,7 @@ function _mapProjectsFromApi(data) {
             google_sync_day: project.google_sync_day || 0,
             sync_message: project.sync_message || '',
             last_sync_date: project.last_sync_date || null,
+            published_to_market_at: project.published_to_market_at || null,
             feedback_new_count: project.feedback_new_count || 0,
             feedback_total_count: project.feedback_total_count || 0,
         };
@@ -2205,30 +2299,14 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
     _timerIsScreenshot = isScreenshotDay;
     _timerOwnerUsername = ownerUsername;
     if (_timerIntervalId) clearInterval(_timerIntervalId);
+    _persistActiveTimer();
     btn.innerText = t.timerRemaining.replace('{sec}', 15);
 
     _timerIntervalId = setInterval(() => {
         var remaining = Math.ceil((_timerEndTimestamp - Date.now()) / 1000);
         var liveBtn = document.getElementById(`btn-confirm-${id}`);
         if (remaining <= 0) {
-            clearInterval(_timerIntervalId);
-            _timerIntervalId = null;
-            _timerEndTimestamp = null;
-            activeTimerAppId = null;
-            if (liveBtn) {
-                liveBtn.disabled = false;
-                liveBtn.style.backgroundColor = 'var(--success-color)';
-                liveBtn.style.color = '#fff';
-                liveBtn.style.cursor = 'pointer';
-                if (_timerIsScreenshot) {
-                    liveBtn.innerText = '💬 ' + t.screenshotBtn;
-                    liveBtn.onclick = () => handleScreenshotAndConfirm(id, _timerOwnerUsername);
-                } else {
-                    liveBtn.innerText = t.confirmStart;
-                    liveBtn.onclick = () => confirmStart(id);
-                }
-            }
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            _syncActiveTimerState();
         } else {
             if (liveBtn) liveBtn.innerText = t.timerRemaining.replace('{sec}', remaining);
         }
@@ -2237,28 +2315,15 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
 
 function _restoreActiveTimer() {
     if (!activeTimerAppId || !_timerEndTimestamp) return;
+    if (_syncActiveTimerState()) return;
     var remaining = Math.ceil((_timerEndTimestamp - Date.now()) / 1000);
     var btn = document.getElementById('btn-confirm-' + activeTimerAppId);
     if (!btn) return;
     if (remaining <= 0) {
-        var finishedId = activeTimerAppId;
-        if (_timerIntervalId) clearInterval(_timerIntervalId);
-        _timerIntervalId = null;
-        _timerEndTimestamp = null;
-        activeTimerAppId = null;
-        btn.disabled = false;
-        btn.style.backgroundColor = 'var(--success-color)';
-        btn.style.color = '#fff';
-        btn.style.cursor = 'pointer';
-        if (_timerIsScreenshot) {
-            btn.innerText = '💬 ' + t.screenshotBtn;
-            btn.onclick = function() { handleScreenshotAndConfirm(finishedId, _timerOwnerUsername); };
-        } else {
-            btn.innerText = t.confirmStart;
-            btn.onclick = function() { confirmStart(finishedId); };
-        }
+        _syncActiveTimerState();
     } else {
         btn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
+        _persistActiveTimer();
     }
 }
 window._restoreActiveTimer = _restoreActiveTimer;
@@ -2968,7 +3033,23 @@ async function submitFeedback() {
         }
         closeFeedbackModal();
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(window.t('feedbackSentToast', {}, lang));
+        showToast(window.t('feedbackBotRedirectToast', {}, lang));
+        setTimeout(function() {
+            try {
+                if (tg.openTelegramLink) {
+                    tg.openTelegramLink(BOT_CHAT_URL);
+                } else if (tg.openLink) {
+                    tg.openLink(BOT_CHAT_URL);
+                } else {
+                    window.location.href = BOT_CHAT_URL;
+                }
+                if (tg.close) {
+                    setTimeout(function() { tg.close(); }, 80);
+                }
+            } catch (error) {
+                console.warn('Failed to redirect to bot chat for feedback flow:', error);
+            }
+        }, 250);
     } catch (error) {
         console.error('Send feedback error:', error);
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
@@ -3647,11 +3728,22 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => showScreenshotCompleteModal(username), 300);
         }
         if (!document.hidden) {
+            _syncActiveTimerState();
             renderTests(true);
             loadTasks(false).catch(() => {});
             loadIncomingOffers({ background: true }).catch(() => {});
             loadReliabilitySummary(true).catch(() => {});
         }
+    });
+
+    window.addEventListener('focus', function() {
+        _syncActiveTimerState();
+        if (window.renderTests) window.renderTests(true);
+    });
+
+    window.addEventListener('pageshow', function() {
+        _syncActiveTimerState();
+        if (window.renderTests) window.renderTests(true);
     });
 
     document.addEventListener('pointerdown', (event) => {
@@ -3669,6 +3761,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startOffersPolling();
     startMarketPolling();
     loadEvents();
+    _loadPersistedActiveTimer();
     scheduleDeferredBootstrap();
     _handleInitialRoute().catch(function(error) {
         console.error('Initial route handler failed:', error);

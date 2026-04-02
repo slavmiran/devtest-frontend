@@ -2017,8 +2017,8 @@ function renderProjects(force) {
             <div style="margin-top: 16px;">
                 ${syncActionHtml}
                 <div class="action-row" style="margin-top: 10px;">
-                    <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openInviteModal(${project.id})">
-                        🔗 ${t.inviteLink}
+                    <button class="btn ${project.published_to_market_at ? 'btn-secondary' : 'btn-primary'}" style="flex: 1; ${project.published_to_market_at ? 'background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);' : ''}" onclick="openInviteModal(${project.id})">
+                        ${project.published_to_market_at ? '🔗 ' + t.inviteLink : t.inviteLinkNextStep}
                     </button>
                     <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="openDeleteModal(${project.id})">
                         🗑 ${t.deleteProject}
@@ -2304,9 +2304,13 @@ function openKickTesterModal(appId, testerId, event) {
     const dailyPool = bountyPerTester > 0 ? bountyPerTester * 0.65 : 0;
     const rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
     const dailyBurn = Math.max(0, dailyPool - (Number(tester.checkins_count || 0) * rewardPerCheckin));
-    const holdAction = skipsCount >= 3
-        ? window.t('kickHoldBonusReturn', {}, lang)
-        : window.t('kickHoldBonusBurn', {}, lang);
+    const isDisciplinaryKick = skipsCount >= 3;
+    const isBountyJoin = joinType === 'bounty' && bountyPerTester > 0;
+    const joinTypeLabelKey = joinType === 'bounty'
+        ? 'kickJoinTypeBounty'
+        : joinType === 'mutual'
+            ? 'kickJoinTypeMutual'
+            : 'kickJoinTypeInvite';
 
     // Grace period: 24h from join date, 0 checkins
     const checkinCount = Number(tester.checkins_count || 0);
@@ -2332,23 +2336,47 @@ function openKickTesterModal(appId, testerId, event) {
         }
     }
 
-    const verdictHtml = `<div class="details-block" style="border-color: ${skipsCount >= 3 ? 'rgba(52,199,89,0.22)' : 'rgba(255,149,0,0.24)'};">
+    const verdictBodyKey = isBountyJoin
+        ? (isDisciplinaryKick ? 'kickVerdictBountySafe' : 'kickVerdictBountyUnsafe')
+        : (isDisciplinaryKick ? 'kickVerdictNonBountySafe' : 'kickVerdictNonBountyUnsafe');
+    const verdictTone = isDisciplinaryKick ? 'rgba(52,199,89,0.22)' : 'rgba(255,149,0,0.24)';
+    const verdictHtml = `<div class="details-block" style="border-color: ${verdictTone};">
             <div class="detail-section-title">${window.escapeHTML(window.t('kickVerdictTitle', {}, lang))}</div>
-            <div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t(skipsCount >= 3 ? 'kickVerdictSafe' : 'kickVerdictUnsafe', {}, lang))}</div>
+            <div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t(verdictBodyKey, {}, lang))}</div>
         </div>`;
-    let economyHtml = '';
-    if (joinType === 'bounty' && bountyPerTester > 0) {
-        economyHtml = '' +
-            `<div class="details-block">` +
-                `<div style="font-size:13px; line-height:1.6; color: var(--text-color);">` +
-                    `<div>${window.escapeHTML(window.t('kickHoldBonusInfo', { action: holdAction }, lang))}</div>` +
-                    `<div style="margin-top:8px; color: var(--hint-color);">${window.escapeHTML(window.t('kickDailyPoolInfo', { amount: formatUiAmount(dailyBurn, 1) }, lang))}</div>` +
-                    `${holdBonus > 0 ? `<div style="margin-top:8px; color: var(--hint-color);">${window.escapeHTML(window.t('contractHoldBonus', { amount: formatUiAmount(holdBonus, 1) }, lang))}</div>` : ''}` +
-                `</div>` +
-            `</div>`;
+
+    const ownerEffects = [];
+    if (isBountyJoin) {
+        ownerEffects.push(window.t(isDisciplinaryKick ? 'kickOwnerBountyHoldReturned' : 'kickOwnerBountyHoldBurned', { amount: formatUiAmount(holdBonus, 1) }, lang));
+        ownerEffects.push(window.t('kickOwnerBountyDailyBurn', { amount: formatUiAmount(dailyBurn, 1) }, lang));
     } else {
-        economyHtml = `<div class="details-block"><div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t('kickNoFinancialPenalties', {}, lang))}</div></div>`;
+        ownerEffects.push(window.t(joinType === 'mutual' ? 'kickOwnerNoMoneyMutual' : 'kickOwnerNoMoneyInvite', {}, lang));
     }
+    ownerEffects.push(window.t(isDisciplinaryKick ? 'kickOwnerReliabilitySafe' : 'kickOwnerReliabilityRisk', {}, lang));
+
+    const testerEffects = [
+        window.t('kickTesterEffectAccess', {}, lang),
+        window.t(isDisciplinaryKick ? 'kickTesterEffectJustified' : 'kickTesterEffectNeutral', {}, lang)
+    ];
+
+    const scenarioHtml = `<div class="details-block">
+            <div class="detail-section-title">${window.escapeHTML(window.t('kickScenarioTitle', {}, lang))}</div>
+            <div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t(joinTypeLabelKey, {}, lang))}</div>
+        </div>`;
+
+    const ownerEffectsHtml = `<div class="details-block">
+            <div class="detail-section-title">${window.escapeHTML(window.t('kickOwnerEffectsTitle', {}, lang))}</div>
+            <div style="font-size:13px; line-height:1.6; color: var(--text-color); display:flex; flex-direction:column; gap:8px;">${ownerEffects.map(function(line) {
+                return `<div>• ${window.escapeHTML(line)}</div>`;
+            }).join('')}</div>
+        </div>`;
+
+    const testerEffectsHtml = `<div class="details-block">
+            <div class="detail-section-title">${window.escapeHTML(window.t('kickTesterEffectsTitle', {}, lang))}</div>
+            <div style="font-size:13px; line-height:1.6; color: var(--text-color); display:flex; flex-direction:column; gap:8px;">${testerEffects.map(function(line) {
+                return `<div>• ${window.escapeHTML(line)}</div>`;
+            }).join('')}</div>
+        </div>`;
 
     _kickTarget = { appId: appId, testerId: testerId };
     if (reasonSelect) reasonSelect.value = 'no_response';
@@ -2359,6 +2387,9 @@ function openKickTesterModal(appId, testerId, event) {
     body.innerHTML = '' +
         graceTimerHtml +
         verdictHtml +
+        scenarioHtml +
+        ownerEffectsHtml +
+        testerEffectsHtml +
         `<div class="details-block">` +
             `<div class="detail-section-title">${window.escapeHTML(window.t('kickTesterStats', {}, lang))}</div>` +
             `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
@@ -2366,8 +2397,7 @@ function openKickTesterModal(appId, testerId, event) {
                 `<div>${window.escapeHTML(window.t('kickTesterSkips', { skips: skipsCount }, lang))}</div>` +
                 `<div>${window.escapeHTML(window.t('kickTesterCheckins', { checkins: checkinCount }, lang))}</div>` +
             `</div>` +
-        `</div>` +
-        economyHtml;
+        `</div>`;
     modal.classList.add('active');
 
     // Live countdown for grace period
@@ -3156,6 +3186,7 @@ function openInviteModal(projectId) {
     _inviteProjectId = projectId;
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
+    const isPublished = !!project.published_to_market_at;
 
     const link = `https://t.me/Android12TestersBot?start=app_${project.id}`;
     const instrLine = project.instructions ? `\n${t.inviteDescLabel}${project.instructions}` : '';
@@ -3174,7 +3205,7 @@ function openInviteModal(projectId) {
             <div style="${titleStyle}">${t.inviteBlock1Title}</div>
             <div style="${preStyle}">${window.escapeHTML(block1Text)}</div>
             <div style="display:flex;gap:8px;">
-                <button class="btn btn-primary" id="invite-publish-btn" style="flex:1;" onclick="publishProjectToMarketAction(${project.id})">${t.inviteBlock1Btn}</button>
+                <button class="btn ${isPublished ? '' : 'btn-primary'}" id="invite-publish-btn" style="flex:1; ${isPublished ? 'background: rgba(52,199,89,0.15); color: #34c759;' : ''}" ${isPublished ? 'disabled' : ''} onclick="publishProjectToMarketAction(${project.id})">${isPublished ? t.invitePublishedBtn : t.inviteBlock1Btn}</button>
                 <button class="btn-icon" style="width:42px;height:42px;font-size:18px;border-radius:12px;flex-shrink:0;" onclick="copyAndAction('${escapeForAttr(block1Text)}', 'saved')">📋</button>
             </div>
         </div>
@@ -3212,10 +3243,19 @@ function copyAndAction(text, target) {
 
 async function publishProjectToMarketAction(projectId) {
     if (!projectId || !window.publishProjectToMarket) return;
+    const project = (myProjects || []).find(function(item) {
+        return Number(item.id) === Number(projectId);
+    });
+    if (project && project.published_to_market_at) {
+        showToast(window.t('already_published', {}, lang));
+        return;
+    }
+    const btn = document.getElementById('invite-publish-btn');
+    if (btn && btn.disabled) return;
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    if (btn) btn.disabled = true;
     const result = await window.publishProjectToMarket(projectId);
     if (result) {
-        const btn = document.getElementById('invite-publish-btn');
         if (btn) {
             btn.disabled = true;
             btn.textContent = t.invitePublishedBtn;
@@ -3223,6 +3263,8 @@ async function publishProjectToMarketAction(projectId) {
             btn.style.background = 'rgba(52,199,89,0.15)';
             btn.style.color = '#34c759';
         }
+    } else if (btn) {
+        btn.disabled = false;
     }
 }
 
