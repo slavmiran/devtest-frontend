@@ -1194,6 +1194,7 @@ function renderTests(force) {
         if (test.status === 'new') {
             const groupUrl = test.google_group_url || 'https://groups.google.com/g/google-play-dev-test';
             const safeGroupUrl = escapeInlineJsString(groupUrl);
+            const shouldShowScreenshotAction = window.isFirstDayScreenshotVisible ? window.isFirstDayScreenshotVisible(test.id) : false;
             actionsHtml = `
                 <div class="first-day-actions">
                     <div class="first-day-row">
@@ -1203,7 +1204,7 @@ function renderTests(force) {
                     <button class="btn first-day-btn" style="width: 100%;" onclick="handleFirstDownload(${test.id}, '${safePackage}')">
                         ${t.downloadPlay}
                     </button>
-                    <div id="new-screenshot-box-${test.id}" style="display: none;">
+                    <div id="new-screenshot-box-${test.id}" style="display: ${shouldShowScreenshotAction ? 'block' : 'none'};">
                         <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
                             💬 3. ${t.screenshotBtn}
                         </button>

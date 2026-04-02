@@ -34,6 +34,8 @@ var _timerIntervalId = null;
 var _timerIsScreenshot = false;
 var _timerOwnerUsername = '';
 var _timerStorageKey = 'devtest_active_timer';
+var _firstDayScreenshotStateKey = 'devtest_firstday_screenshot_state_v1';
+var _firstDayScreenshotState = {};
 var pendingProjectData = null;
 var projectToEdit = null;
 var visibilityStats = {};
@@ -1330,6 +1332,73 @@ function sendFeedback(type) {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 }
 
+function _openBotDm() {
+    try {
+        if (tg.openTelegramLink) {
+            tg.openTelegramLink(BOT_CHAT_URL);
+            return true;
+        }
+    } catch (error) {}
+    try {
+        if (tg.openLink) {
+            tg.openLink(BOT_CHAT_URL);
+            return true;
+        }
+    } catch (error) {}
+    try {
+        window.location.href = BOT_CHAT_URL;
+        return true;
+    } catch (error) {}
+    return false;
+}
+
+function redirectToBotDmAndClose() {
+    var opened = _openBotDm();
+    // Allow Telegram to process deep-link before closing Mini App.
+    setTimeout(function() {
+        try {
+            if (tg.close) tg.close();
+        } catch (error) {}
+    }, opened ? 700 : 1000);
+}
+
+function _loadFirstDayScreenshotState() {
+    try {
+        var raw = localStorage.getItem(_firstDayScreenshotStateKey);
+        if (!raw) {
+            _firstDayScreenshotState = {};
+            return;
+        }
+        var parsed = JSON.parse(raw);
+        _firstDayScreenshotState = parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        _firstDayScreenshotState = {};
+    }
+}
+
+function _persistFirstDayScreenshotState() {
+    try {
+        localStorage.setItem(_firstDayScreenshotStateKey, JSON.stringify(_firstDayScreenshotState || {}));
+    } catch (error) {}
+}
+
+function setFirstDayScreenshotVisible(appId, isVisible) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return;
+    if (isVisible) {
+        _firstDayScreenshotState[key] = true;
+    } else {
+        delete _firstDayScreenshotState[key];
+    }
+    _persistFirstDayScreenshotState();
+}
+
+function isFirstDayScreenshotVisible(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return false;
+    return !!_firstDayScreenshotState[key];
+}
+
 function _persistActiveTimer() {
     try {
         if (!activeTimerAppId || !_timerEndTimestamp) {
@@ -2340,6 +2409,7 @@ function openPlay(id, pkg) {
 
 function handleFirstDownload(id, pkg) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    setFirstDayScreenshotVisible(id, true);
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
     setTimeout(() => {
         const screenshotBox = document.getElementById(`new-screenshot-box-${id}`);
@@ -2678,21 +2748,7 @@ async function initiateProjectFeedback(appId) {
         if (window.closeProjectDetailsModal) {
             window.closeProjectDetailsModal();
         }
-        setTimeout(function() {
-            try {
-                if (tg.close) {
-                    tg.close();
-                } else if (tg.openTelegramLink) {
-                    tg.openTelegramLink(BOT_CHAT_URL);
-                } else if (tg.openLink) {
-                    tg.openLink(BOT_CHAT_URL);
-                } else {
-                    window.location.href = BOT_CHAT_URL;
-                }
-            } catch (error) {
-                console.warn('Failed to close WebApp for feedback flow:', error);
-            }
-        }, 250);
+        setTimeout(redirectToBotDmAndClose, 250);
     } catch (error) {
         console.error('Feedback initiate error:', error);
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
@@ -3034,22 +3090,7 @@ async function submitFeedback() {
         closeFeedbackModal();
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t('feedbackBotRedirectToast', {}, lang));
-        setTimeout(function() {
-            try {
-                if (tg.openTelegramLink) {
-                    tg.openTelegramLink(BOT_CHAT_URL);
-                } else if (tg.openLink) {
-                    tg.openLink(BOT_CHAT_URL);
-                } else {
-                    window.location.href = BOT_CHAT_URL;
-                }
-                if (tg.close) {
-                    setTimeout(function() { tg.close(); }, 80);
-                }
-            } catch (error) {
-                console.warn('Failed to redirect to bot chat for feedback flow:', error);
-            }
-        }, 250);
+        setTimeout(redirectToBotDmAndClose, 250);
     } catch (error) {
         console.error('Send feedback error:', error);
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
@@ -3374,6 +3415,7 @@ async function confirmStart(id) {
         const earnedBust = Number(result.earned_bust || 0);
         const earnedKarma = Number(result.earned_karma || 0);
         const sourceType = String(result.source_type || '').toLowerCase();
+        setFirstDayScreenshotVisible(id, false);
         if (result.already_checked_today) {
             showToast(t.checkinAlreadyDone);
         } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
@@ -3754,6 +3796,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    _loadFirstDayScreenshotState();
     loadTasks();
     loadReliabilitySummary();
     loadReliabilityBreakdown(true);
@@ -3844,7 +3887,9 @@ Object.assign(window, {
     confirmEmailWarning,
     saveProjectEdit,
     publishProjectToMarket,
-    showFeedbackRewardKarmaInfo
+    showFeedbackRewardKarmaInfo,
+    isFirstDayScreenshotVisible,
+    setFirstDayScreenshotVisible
 });
 
 Object.assign(window.App, {
