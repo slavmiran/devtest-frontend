@@ -34,6 +34,8 @@ var _timerIntervalId = null;
 var _timerIsScreenshot = false;
 var _timerOwnerUsername = '';
 var _timerStorageKey = 'devtest_active_timer';
+var _timerReadyStateKey = 'devtest_timer_ready_state_v1';
+var _timerReadyState = {};
 var _firstDayScreenshotStateKey = 'devtest_firstday_screenshot_state_v1';
 var _firstDayScreenshotState = {};
 var pendingProjectData = null;
@@ -1416,12 +1418,99 @@ function _persistActiveTimer() {
     }
 }
 
+function _loadTimerReadyState() {
+    try {
+        var raw = localStorage.getItem(_timerReadyStateKey);
+        if (!raw) {
+            _timerReadyState = {};
+            return;
+        }
+        var parsed = JSON.parse(raw);
+        _timerReadyState = parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        _timerReadyState = {};
+    }
+}
+
+function _persistTimerReadyState() {
+    try {
+        localStorage.setItem(_timerReadyStateKey, JSON.stringify(_timerReadyState || {}));
+    } catch (error) {}
+}
+
+function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return;
+    if (isReady) {
+        _timerReadyState[key] = {
+            isScreenshot: !!isScreenshot,
+            ownerUsername: String(ownerUsername || '')
+        };
+    } else {
+        delete _timerReadyState[key];
+    }
+    _persistTimerReadyState();
+}
+
+function _getTimerReadyPayload(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return null;
+    var payload = _timerReadyState[key];
+    if (!payload || typeof payload !== 'object') return null;
+    return {
+        isScreenshot: !!payload.isScreenshot,
+        ownerUsername: String(payload.ownerUsername || '')
+    };
+}
+
+function _applyPersistedReadyTimerButtons() {
+    var keys = Object.keys(_timerReadyState || {});
+    if (!keys.length) return;
+    keys.forEach(function(key) {
+        var payload = _timerReadyState[key];
+        _setTimerButtonReady(Number(key), !!(payload && payload.isScreenshot), (payload && payload.ownerUsername) || '');
+    });
+}
+
 function _clearPersistedActiveTimer() {
     try {
         localStorage.removeItem(_timerStorageKey);
     } catch (error) {
         console.warn('Failed to clear active timer state:', error);
     }
+}
+
+function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
+    const btn = document.getElementById('btn-confirm-' + finishedId);
+    if (!btn) return false;
+
+    btn.disabled = false;
+    btn.style.backgroundColor = 'var(--success-color)';
+    btn.style.color = '#fff';
+    btn.style.cursor = 'pointer';
+    if (isScreenshot) {
+        btn.innerText = '💬 ' + t.screenshotBtn;
+        btn.onclick = function() { handleScreenshotAndConfirm(finishedId, ownerUsername || ''); };
+    } else {
+        btn.innerText = t.confirmStart;
+        btn.onclick = function() { confirmStart(finishedId); };
+    }
+    return true;
+}
+
+function _startActiveTimerInterval(id) {
+    if (_timerIntervalId) clearInterval(_timerIntervalId);
+    _timerIntervalId = setInterval(() => {
+        var remaining = Math.ceil((_timerEndTimestamp - Date.now()) / 1000);
+        var liveBtn = document.getElementById('btn-confirm-' + id);
+        if (remaining <= 0) {
+            _syncActiveTimerState();
+            return;
+        }
+        if (liveBtn) {
+            liveBtn.innerText = t.timerRemaining.replace('{sec}', remaining);
+        }
+    }, 1000);
 }
 
 function _syncActiveTimerState() {
@@ -1432,25 +1521,23 @@ function _syncActiveTimerState() {
     }
 
     const finishedId = activeTimerAppId;
+    const wasScreenshot = !!_timerIsScreenshot;
+    const savedOwnerUsername = _timerOwnerUsername || '';
+
+    if (!_setTimerButtonReady(finishedId, wasScreenshot, savedOwnerUsername)) {
+        // Keep expired timer state until the button is rendered after app restore.
+        _persistActiveTimer();
+        return false;
+    }
+
+    setTimerReadyForConfirm(finishedId, true, wasScreenshot, savedOwnerUsername);
+
     if (_timerIntervalId) clearInterval(_timerIntervalId);
     _timerIntervalId = null;
     _timerEndTimestamp = null;
     activeTimerAppId = null;
-
-    const btn = document.getElementById('btn-confirm-' + finishedId);
-    if (btn) {
-        btn.disabled = false;
-        btn.style.backgroundColor = 'var(--success-color)';
-        btn.style.color = '#fff';
-        btn.style.cursor = 'pointer';
-        if (_timerIsScreenshot) {
-            btn.innerText = '💬 ' + t.screenshotBtn;
-            btn.onclick = function() { handleScreenshotAndConfirm(finishedId, _timerOwnerUsername); };
-        } else {
-            btn.innerText = t.confirmStart;
-            btn.onclick = function() { confirmStart(finishedId); };
-        }
-    }
+    _timerIsScreenshot = false;
+    _timerOwnerUsername = '';
 
     _clearPersistedActiveTimer();
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -2347,12 +2434,23 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
         _timerIntervalId = null;
         _timerEndTimestamp = null;
         activeTimerAppId = null;
+        _timerIsScreenshot = false;
+        _timerOwnerUsername = '';
+        _clearPersistedActiveTimer();
     }
 
     if (activeTimerAppId === id) {
         tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
         return;
     }
+
+    var readyPayload = _getTimerReadyPayload(id);
+    if (readyPayload) {
+        _setTimerButtonReady(id, readyPayload.isScreenshot, readyPayload.ownerUsername);
+        tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+        return;
+    }
+
     if (activeTimerAppId !== null && activeTimerAppId !== id) {
         showCustomAlert(t.antiFraudAlert);
         return;
@@ -2367,22 +2465,13 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
     _timerEndTimestamp = Date.now() + 15000;
     _timerIsScreenshot = isScreenshotDay;
     _timerOwnerUsername = ownerUsername;
-    if (_timerIntervalId) clearInterval(_timerIntervalId);
     _persistActiveTimer();
     btn.innerText = t.timerRemaining.replace('{sec}', 15);
-
-    _timerIntervalId = setInterval(() => {
-        var remaining = Math.ceil((_timerEndTimestamp - Date.now()) / 1000);
-        var liveBtn = document.getElementById(`btn-confirm-${id}`);
-        if (remaining <= 0) {
-            _syncActiveTimerState();
-        } else {
-            if (liveBtn) liveBtn.innerText = t.timerRemaining.replace('{sec}', remaining);
-        }
-    }, 1000);
+    _startActiveTimerInterval(id);
 }
 
 function _restoreActiveTimer() {
+    _applyPersistedReadyTimerButtons();
     if (!activeTimerAppId || !_timerEndTimestamp) return;
     if (_syncActiveTimerState()) return;
     var remaining = Math.ceil((_timerEndTimestamp - Date.now()) / 1000);
@@ -2393,6 +2482,7 @@ function _restoreActiveTimer() {
     } else {
         btn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
         _persistActiveTimer();
+        _startActiveTimerInterval(activeTimerAppId);
     }
 }
 window._restoreActiveTimer = _restoreActiveTimer;
@@ -3416,6 +3506,7 @@ async function confirmStart(id) {
         const earnedKarma = Number(result.earned_karma || 0);
         const sourceType = String(result.source_type || '').toLowerCase();
         setFirstDayScreenshotVisible(id, false);
+        setTimerReadyForConfirm(id, false, false, '');
         if (result.already_checked_today) {
             showToast(t.checkinAlreadyDone);
         } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
@@ -3797,6 +3888,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     _loadFirstDayScreenshotState();
+    _loadTimerReadyState();
     loadTasks();
     loadReliabilitySummary();
     loadReliabilityBreakdown(true);
