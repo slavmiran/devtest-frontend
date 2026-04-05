@@ -1063,6 +1063,9 @@ function handleApiError(code, details = {}) {
         offer_accept_failed: 'err_offer_accept_failed',
         offer_create_failed: 'err_offer_create_failed',
         user_not_found: 'err_user_not_found',
+        mass_invite_project_unavailable: 'massInviteUnavailable',
+        mass_invite_cooldown_active: 'massInviteCooldownActiveError',
+        mass_invite_cooldown_not_active: 'massInviteCooldownNotActive',
     };
 
     var normalizedCode = String(code || '').trim();
@@ -2095,6 +2098,109 @@ async function publishProjectToMarket(projectId) {
     }
 }
 
+function refreshMarketAfterMassInvite() {
+    resetMarketFeedStates();
+    resetMarketFetchThrottle();
+    setMarketCache(null);
+}
+
+async function startMassInvite(projectId) {
+    if (!projectId) return null;
+
+    var actionKey = 'mass_invite_start_' + projectId;
+    if (_pendingActions.has(actionKey)) return null;
+    _pendingActions.add(actionKey);
+
+    _apiStart();
+    try {
+        var response = await fetch(`${API_BASE}/projects/${projectId}/mass_invite`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_id: userId })
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            handleApiError(getBackendErrorCode(data), data && data.details ? data.details : {});
+            return null;
+        }
+
+        var sentCount = Number(data.sent_count || 0);
+        var project = (myProjects || []).find(function(item) {
+            return Number(item.id) === Number(projectId);
+        });
+        if (project && sentCount > 0) {
+            project.last_mass_invite_at = data.last_mass_invite_at || new Date().toISOString();
+        }
+
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (sentCount > 0) {
+            showToast(window.t('massInviteLaunchSuccess', { count: sentCount }, lang));
+            renderProjects(true);
+            refreshOpenModals();
+            await loadProjects(true);
+            refreshMarketAfterMassInvite();
+            await Promise.all([loadMutualFeed(), loadBountyFeed()]);
+        } else {
+            showToast(window.t('massInviteNoCandidates', {}, lang));
+            await loadProjects(true);
+        }
+        return data;
+    } catch (error) {
+        console.error('Mass invite launch error:', error);
+        handleApiError('network_error');
+        return null;
+    } finally {
+        _apiEnd();
+        _pendingActions.delete(actionKey);
+    }
+}
+
+async function resetMassInviteCooldown(projectId) {
+    if (!projectId) return null;
+
+    var actionKey = 'mass_invite_reset_' + projectId;
+    if (_pendingActions.has(actionKey)) return null;
+    _pendingActions.add(actionKey);
+
+    _apiStart();
+    try {
+        var response = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/reset_cooldown`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_id: userId })
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            handleApiError(getBackendErrorCode(data), data && data.details ? data.details : {});
+            return null;
+        }
+
+        var project = (myProjects || []).find(function(item) {
+            return Number(item.id) === Number(projectId);
+        });
+        if (project) {
+            project.last_mass_invite_at = null;
+        }
+        if (typeof data.balance_bust !== 'undefined') {
+            visibilityStats.balance_bust = Number(data.balance_bust || 0);
+        }
+
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('massInviteResetSuccess', {}, lang));
+        renderProjects(true);
+        refreshOpenModals();
+        loadProjects(true).catch(function() {});
+        return data;
+    } catch (error) {
+        console.error('Mass invite cooldown reset error:', error);
+        handleApiError('network_error');
+        return null;
+    } finally {
+        _apiEnd();
+        _pendingActions.delete(actionKey);
+    }
+}
+
 function _mapProjectsFromApi(data) {
     return (data.projects || []).map(function(project) {
         return {
@@ -2119,6 +2225,7 @@ function _mapProjectsFromApi(data) {
             sync_message: project.sync_message || '',
             last_sync_date: project.last_sync_date || null,
             published_to_market_at: project.published_to_market_at || null,
+            last_mass_invite_at: project.last_mass_invite_at || null,
             feedback_new_count: project.feedback_new_count || 0,
             feedback_total_count: project.feedback_total_count || 0,
         };
@@ -3972,6 +4079,8 @@ Object.assign(window, {
     updateProjectPricing,
     setProjectTargetLang,
     getApiErrorMessage,
+    startMassInvite,
+    resetMassInviteCooldown,
     getReliabilityState,
     rerenderDynamicUi,
     refreshActiveTabData,
@@ -4019,5 +4128,7 @@ Object.assign(window.App, {
     setProjectTargetLang,
     saveProjectEdit,
     publishProjectToMarket,
+    startMassInvite,
+    resetMassInviteCooldown,
     joinDirect
 });

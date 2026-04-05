@@ -3245,11 +3245,78 @@ function closeBanner() {
     localStorage.setItem('hideBanner', 'true');
 }
 
+function formatMassInviteRemaining(remainingMs) {
+    var safeMs = Math.max(0, Number(remainingMs || 0));
+    var totalSeconds = Math.ceil(safeMs / 1000);
+    var hours = Math.floor(totalSeconds / 3600);
+    var minutes = Math.floor((totalSeconds % 3600) / 60);
+    var seconds = totalSeconds % 60;
+    return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+}
+
+function getProjectMassInviteMeta(project) {
+    var mode = String(project && project.mode || 'mutual').toLowerCase();
+    var isEligibleMode = mode === 'mutual' || mode === 'hybrid';
+    var testers = Array.isArray(project && project.testers) ? project.testers : [];
+    var activeMutualTesters = testers.filter(function(tester) {
+        return String(tester && tester.join_type || 'invite').toLowerCase() !== 'bounty';
+    }).length;
+    var limitMutual = Math.max(0, Number(project && project.limit_mutual || 0));
+    var neededSlots = Math.max(0, limitMutual - activeMutualTesters);
+    var maxRecipients = neededSlots > 0 ? neededSlots * 2 : 0;
+    var parsedLastInvite = Date.parse(project && project.last_mass_invite_at ? project.last_mass_invite_at : '');
+    var remainingMs = Number.isFinite(parsedLastInvite)
+        ? Math.max(0, (parsedLastInvite + 24 * 60 * 60 * 1000) - Date.now())
+        : 0;
+
+    return {
+        isEligibleMode: isEligibleMode,
+        activeMutualTesters: activeMutualTesters,
+        neededSlots: neededSlots,
+        maxRecipients: maxRecipients,
+        remainingMs: remainingMs,
+        isCooldownActive: remainingMs > 0,
+        isAvailable: isEligibleMode && maxRecipients > 0,
+    };
+}
+
+async function handleMassInviteAction(projectId) {
+    var project = myProjects.find(function(item) {
+        return Number(item.id) === Number(projectId);
+    });
+    if (!project) return;
+
+    var meta = getProjectMassInviteMeta(project);
+    if (!meta.isAvailable && !meta.isCooldownActive) {
+        showToast(window.t('massInviteUnavailable', {}, lang));
+        return;
+    }
+
+    if (meta.isCooldownActive) {
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        var confirmed = await new Promise(function(resolve) {
+            var message = window.t('massInviteResetConfirm', {}, lang);
+            if (tg.showConfirm) {
+                tg.showConfirm(message, function(ok) { resolve(!!ok); });
+            } else {
+                resolve(confirm(message));
+            }
+        });
+        if (!confirmed) return;
+        await window.resetMassInviteCooldown(projectId);
+        return;
+    }
+
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    await window.startMassInvite(projectId);
+}
+
 function openInviteModal(projectId) {
     _inviteProjectId = projectId;
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
     const isPublished = !!project.published_to_market_at;
+    const massInviteMeta = getProjectMassInviteMeta(project);
 
     const link = `https://t.me/Android12TestersBot?start=app_${project.id}`;
     const instrLine = project.instructions ? `\n${t.inviteDescLabel}${project.instructions}` : '';
@@ -3257,6 +3324,23 @@ function openInviteModal(projectId) {
     const block1Text = t.inviteBlock1Text.replace('{name}', project.name).replace('{instr}', instrLine).replace('{link}', link);
     const block2Text = t.inviteBlock2Text.replace('{name}', project.name).replace('{link}', link);
     const block3Text = link;
+    const massInviteButtonLabel = massInviteMeta.isAvailable
+        ? window.t('massInviteLaunchBtn', { count: massInviteMeta.maxRecipients }, lang)
+        : window.t('massInviteUnavailableBtn', {}, lang);
+    const massInviteCooldownHtml = massInviteMeta.isCooldownActive
+        ? `<div class="mass-invite-subhint">${window.escapeHTML(window.t('massInviteCooldownRemaining', { time: formatMassInviteRemaining(massInviteMeta.remainingMs) }, lang))}</div>
+           <div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteCooldownManualHint', {}, lang))}</div>`
+        : (!massInviteMeta.isAvailable
+            ? `<div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteUnavailableNote', {}, lang))}</div>`
+            : '');
+    const massInviteButtonClass = massInviteMeta.isCooldownActive
+        ? 'btn mass-invite-btn is-locked'
+        : massInviteMeta.isAvailable
+            ? 'btn btn-primary mass-invite-btn'
+            : 'btn btn-secondary mass-invite-btn is-disabled';
+    const massInviteButtonAttrs = massInviteMeta.isCooldownActive || massInviteMeta.isAvailable
+        ? `onclick="handleMassInviteAction(${project.id})"`
+        : 'disabled';
 
     const cardStyle = 'background: var(--secondary-bg-color); border-radius: 12px; padding: 14px; margin-bottom: 12px;';
     const titleStyle = 'font-size: 15px; font-weight: 600; margin-bottom: 10px;';
@@ -3281,6 +3365,12 @@ function openInviteModal(projectId) {
             <div style="${titleStyle}">${t.inviteBlock3Title}</div>
             <div style="${preStyle}">${window.escapeHTML(block3Text)}</div>
             <button class="btn" style="width: 100%; background: rgba(51,144,236,0.12); color: var(--link-color); border: none;" onclick="copyAndAction('${escapeForAttr(block3Text)}', 'saved')">${t.inviteBlock3Btn}</button>
+        </div>
+        <div class="mass-invite-card">
+            <div class="mass-invite-title">${window.escapeHTML(window.t('massInviteBlockTitle', {}, lang))}</div>
+            <div class="mass-invite-desc">${window.escapeHTML(window.t('massInviteBlockDesc', {}, lang))}</div>
+            <button class="${massInviteButtonClass}" style="width: 100%;" ${massInviteButtonAttrs}>${window.escapeHTML(massInviteButtonLabel)}</button>
+            ${massInviteCooldownHtml}
         </div>
     `;
 
@@ -4114,6 +4204,7 @@ Object.assign(window, {
     switchTab,
     toggleAccordion,
     closeBanner,
+    handleMassInviteAction,
     openInviteModal,
     escapeForAttr,
     copyAndAction,
