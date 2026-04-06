@@ -261,15 +261,7 @@ function getCurrentUserKarmaValue() {
 }
 
 function getFinalizedGrantSkips(test) {
-    const rawSkips = Math.max(0, Number(test && test.skips_count || 0));
-    if (!test) return rawSkips;
-
-    const testingDay = getUserTestingDay(test.start_date);
-    const hasCheckedToday = (test.last_check_date || '') === getLocalDate();
-    if (!hasCheckedToday && testingDay > 0 && testingDay <= 14 && rawSkips > 0) {
-        return rawSkips - 1;
-    }
-    return rawSkips;
+    return Math.max(0, Number(test && test.skips_count || 0));
 }
 
 function getGrantEstimateData(test) {

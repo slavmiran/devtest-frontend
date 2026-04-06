@@ -3962,16 +3962,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     refreshLanguageUi();
 
-    if (!localStorage.getItem('app_language')) {
-        fetch(`${API_BASE}/users/${userId}/language`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.language && data.language !== lang) {
-                    applyLanguage(data.language);
-                }
-            })
-            .catch(() => {});
-    }
+    fetch(`${API_BASE}/users/${userId}/language`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.language && data.language !== lang) {
+                applyLanguage(data.language);
+            }
+        })
+        .catch(() => {});
 
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && _pendingScreenshotReminderUsername !== null) {
