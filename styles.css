@@ -2629,6 +2629,31 @@ details[open] > summary .details-arrow {
     border: 1px solid rgba(142, 142, 147, 0.18);
 }
 
+.mass-invite-btn.is-loading {
+    pointer-events: none;
+    opacity: 0.7;
+    position: relative;
+    color: transparent !important;
+}
+
+.mass-invite-btn.is-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: mass-invite-spin 0.6s linear infinite;
+}
+
+@keyframes mass-invite-spin {
+    to { transform: rotate(360deg); }
+}
+
 .mass-invite-subhint {
     margin-top: 10px;
     font-size: 12px;

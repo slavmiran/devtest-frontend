@@ -2111,6 +2111,13 @@ async function startMassInvite(projectId) {
     if (_pendingActions.has(actionKey)) return null;
     _pendingActions.add(actionKey);
 
+    var btn = document.getElementById('mass-invite-btn');
+    var originalLabel = btn ? btn.textContent : '';
+    if (btn) {
+        btn.classList.add('is-loading');
+        btn.disabled = true;
+    }
+
     _apiStart();
     try {
         var response = await fetch(`${API_BASE}/projects/${projectId}/mass_invite`, {
@@ -2150,6 +2157,11 @@ async function startMassInvite(projectId) {
         handleApiError('network_error');
         return null;
     } finally {
+        if (btn) {
+            btn.classList.remove('is-loading');
+            btn.disabled = false;
+            btn.textContent = originalLabel;
+        }
         _apiEnd();
         _pendingActions.delete(actionKey);
     }

@@ -3325,10 +3325,14 @@ function openInviteModal(projectId) {
     const block2Text = t.inviteBlock2Text.replace('{name}', project.name).replace('{link}', link);
     const block3Text = link;
     const massInviteButtonLabel = massInviteMeta.isAvailable
-        ? window.t('massInviteLaunchBtn', { count: massInviteMeta.maxRecipients }, lang)
+        ? window.t('massInviteLaunchBtn', {}, lang)
         : window.t('massInviteUnavailableBtn', {}, lang);
+    const massInviteLimitHintHtml = massInviteMeta.isAvailable
+        ? `<div class="mass-invite-hint" style="text-align:center;">${window.escapeHTML(window.t('massInviteLimitHint', { count: massInviteMeta.maxRecipients }, lang))}</div>`
+        : '';
     const massInviteCooldownHtml = massInviteMeta.isCooldownActive
         ? `<div class="mass-invite-subhint">${window.escapeHTML(window.t('massInviteCooldownRemaining', { time: formatMassInviteRemaining(massInviteMeta.remainingMs) }, lang))}</div>
+           <div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteResetCostHint', {}, lang))}</div>
            <div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteCooldownManualHint', {}, lang))}</div>`
         : (!massInviteMeta.isAvailable
             ? `<div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteUnavailableNote', {}, lang))}</div>`
@@ -3356,6 +3360,13 @@ function openInviteModal(projectId) {
                 <button class="btn-icon" style="width:42px;height:42px;font-size:18px;border-radius:12px;flex-shrink:0;" onclick="copyAndAction('${escapeForAttr(block1Text)}', 'saved')">📋</button>
             </div>
         </div>
+        <div class="mass-invite-card">
+            <div class="mass-invite-title">${window.escapeHTML(window.t('massInviteBlockTitle', {}, lang))}</div>
+            <div class="mass-invite-desc">${window.escapeHTML(window.t('massInviteBlockDesc', {}, lang))}</div>
+            <button id="mass-invite-btn" class="${massInviteButtonClass}" style="width: 100%;" ${massInviteButtonAttrs}>${window.escapeHTML(massInviteButtonLabel)}</button>
+            ${massInviteLimitHintHtml}
+            ${massInviteCooldownHtml}
+        </div>
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock2Title}</div>
             <div style="${preStyle}">${window.escapeHTML(block2Text)}</div>
@@ -3365,12 +3376,6 @@ function openInviteModal(projectId) {
             <div style="${titleStyle}">${t.inviteBlock3Title}</div>
             <div style="${preStyle}">${window.escapeHTML(block3Text)}</div>
             <button class="btn" style="width: 100%; background: rgba(51,144,236,0.12); color: var(--link-color); border: none;" onclick="copyAndAction('${escapeForAttr(block3Text)}', 'saved')">${t.inviteBlock3Btn}</button>
-        </div>
-        <div class="mass-invite-card">
-            <div class="mass-invite-title">${window.escapeHTML(window.t('massInviteBlockTitle', {}, lang))}</div>
-            <div class="mass-invite-desc">${window.escapeHTML(window.t('massInviteBlockDesc', {}, lang))}</div>
-            <button class="${massInviteButtonClass}" style="width: 100%;" ${massInviteButtonAttrs}>${window.escapeHTML(massInviteButtonLabel)}</button>
-            ${massInviteCooldownHtml}
         </div>
     `;
 
