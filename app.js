@@ -2478,8 +2478,15 @@ async function joinMutual(appId, allowOverLimit = false) {
     _pendingActions.add(actionKey);
     // Optimistic UI: remove card immediately, rollback on error
     const rollback = [...mutualSeeking];
+    const rollbackPrelaunch = [...mutualPrelaunch];
+    const rollbackReturns = [...mutualReturns];
     mutualSeeking = mutualSeeking.filter(c => c.app_id !== appId);
+    mutualPrelaunch = mutualPrelaunch.filter(c => c.app_id !== appId);
+    mutualReturns = mutualReturns.filter(c => c.app_id !== appId);
     renderMutualFeed();
+    if (window.renderMutualReturns) {
+        window.renderMutualReturns(mutualReturns, true);
+    }
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     switchTab('tests');
 
@@ -2492,7 +2499,12 @@ async function joinMutual(appId, allowOverLimit = false) {
         const result = await response.json();
         if (result.status !== 'success') {
             mutualSeeking = rollback;
+            mutualPrelaunch = rollbackPrelaunch;
+            mutualReturns = rollbackReturns;
             renderMutualFeed();
+            if (window.renderMutualReturns) {
+                window.renderMutualReturns(mutualReturns, true);
+            }
             if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
             return;
         }
@@ -2502,7 +2514,12 @@ async function joinMutual(appId, allowOverLimit = false) {
     } catch (error) {
         console.error('Join mutual error:', error);
         mutualSeeking = rollback;
+        mutualPrelaunch = rollbackPrelaunch;
+        mutualReturns = rollbackReturns;
         renderMutualFeed();
+        if (window.renderMutualReturns) {
+            window.renderMutualReturns(mutualReturns, true);
+        }
         if (tg.showAlert) tg.showAlert(t.networkError);
     } finally {
         _pendingActions.delete(actionKey);

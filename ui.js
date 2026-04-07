@@ -358,7 +358,8 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     var renderTimeline = timeline;
     var totalDays = Math.max(expectedTotalDays || 14, userTestingDay || 0, 1);
     var standardCheckins = 0, standardSkips = 0, overtimeCheckins = 0, overtimeSkips = 0;
-    var pendingDay = null;
+    var currentDay = null;
+    var currentDayState = '';
     var hasCheckedToday = (test.last_check_date || '') === getLocalDate();
 
     if (!hasCheckedToday && userTestingDay > 0 && renderTimeline.length >= userTestingDay) {
@@ -369,7 +370,8 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     }
 
     if (userTestingDay > 0 && userTestingDay <= totalDays) {
-        pendingDay = Math.max(1, Math.min(totalDays, userTestingDay || 1));
+        currentDay = Math.max(1, Math.min(totalDays, userTestingDay || 1));
+        currentDayState = hasCheckedToday ? 'completed' : 'pending';
     }
 
     function getDayState(dayNum) {
@@ -379,9 +381,13 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
         else if (ch === '0') { cls = 'standard-skip'; standardSkips++; }
         else if (ch === '2') { cls = 'overtime-checkin'; overtimeCheckins++; }
         else if (ch === '3') { cls = 'overtime-skip'; overtimeSkips++; }
-        if (pendingDay === dayNum) {
-            cls += ' current-pending';
-            cls += dayNum > 14 ? ' current-pending-overtime' : ' current-pending-base';
+        if (currentDay === dayNum) {
+            if (currentDayState === 'completed') {
+                cls += ' current-completed';
+            } else if (currentDayState === 'pending') {
+                cls += ' current-pending';
+                cls += dayNum > 14 ? ' current-pending-overtime' : ' current-pending-base';
+            }
         }
         return '<div class="grant-segment ' + cls + '" data-day="' + dayNum + '"></div>';
     }
@@ -441,11 +447,41 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
         overtimeSkips: overtimeSkips,
         remainingDays: remainingDays,
         totalDays: totalDays,
+        currentDay: currentDay,
+        currentDayState: currentDayState,
     };
 }
 
 function openTesterDossier(username, testerId, appId) {
     return openDossierModal(username || '', testerId, appId || 0);
+}
+
+function getMarketCandidateByAppId(appId) {
+    const normalizedAppId = Number(appId || 0);
+    if (!normalizedAppId) return null;
+
+    const returnsCandidate = (Array.isArray(mutualReturns) ? mutualReturns : []).find(function(item) {
+        return Number(item && item.app_id) === normalizedAppId;
+    });
+    if (returnsCandidate) {
+        return Object.assign({ market_kind: 'mutual-return' }, returnsCandidate);
+    }
+
+    const seekingCandidate = (Array.isArray(mutualSeeking) ? mutualSeeking : []).find(function(item) {
+        return Number(item && item.app_id) === normalizedAppId;
+    });
+    if (seekingCandidate) {
+        return Object.assign({ market_kind: 'mutual-seeking' }, seekingCandidate);
+    }
+
+    const prelaunchCandidate = (Array.isArray(mutualPrelaunch) ? mutualPrelaunch : []).find(function(item) {
+        return Number(item && item.app_id) === normalizedAppId;
+    });
+    if (prelaunchCandidate) {
+        return Object.assign({ market_kind: 'mutual-prelaunch' }, prelaunchCandidate);
+    }
+
+    return null;
 }
 
 function getUserTestingDay(startDate) {
@@ -1546,6 +1582,8 @@ function renderMutualReturns(apps, force) {
         const appName = window.escapeHTML(app.name || window.t('unknownLabel', {}, lang));
         const myProjectNameRaw = app.my_project_name || '';
         const contextText = window.escapeHTML(window.t('mutualReturnContext', { project: myProjectNameRaw }, lang));
+        const sourceMeta = getTesterSourceMeta(app.join_type);
+        const sourceBadge = `<span class="mutual-return-source-badge" title="${window.escapeHTML(sourceMeta.label)}">${window.escapeHTML(sourceMeta.icon + ' ' + sourceMeta.label)}</span>`;
         const hasPendingOffer = !!app.has_pending_offer;
         const returnBtnText = window.escapeHTML(window.t(hasPendingOffer ? 'offerPending' : 'mutualReturnBtn', {}, lang));
         const btnClass = hasPendingOffer ? 'btn pending disabled' : 'btn btn-primary';
@@ -1561,15 +1599,18 @@ function renderMutualReturns(apps, force) {
             : '';
         const btnClick = hasPendingOffer
             ? 'void(0)'
-            : `if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); window.createMutualOffer(${app.app_id}, ${app.owner_id}, event);`;
+            : `if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); openTesterDossier('${safeOwnerUsername}', ${app.owner_id}, ${app.app_id}); event.stopPropagation();`;
         return `
-            <div class="horizontal-card">
+            <div class="horizontal-card mutual-return-card">
                 <div style="font-size:12px; color:var(--hint-color); margin-bottom:8px; line-height:1.4;">
                     <button class="tester-link" style="background:none;border:none;padding:0;font-size:12px;cursor:pointer;color:var(--link-color);" onclick="openTesterDossier('${safeOwnerUsername}', ${app.owner_id}, ${app.app_id}); event.stopPropagation();">${displayOwner}</button><span>${contextText}</span>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                <div class="mutual-return-card-head">
                     ${renderIcon(app.name || '', app.icon_url)}
-                    <div class="card-title" style="font-size:14px;">${appName}</div>
+                    <div class="mutual-return-card-main">
+                        <div class="card-title mutual-return-card-title">${appName}</div>
+                        ${sourceBadge}
+                    </div>
                 </div>
                 <button class="${btnClass}" ${btnDisabled} style="width:100%;" data-offer-target-app="${app.app_id}" data-offer-target-owner="${app.owner_id}" onclick="${btnClick}">${returnBtnText}</button>
                 ${pendingOfferMeta ? `<div class="market-offer-note">${pendingOfferMeta}</div>` : ''}
@@ -3433,6 +3474,7 @@ async function openDossierModal(username, testerId, appId) {
 
     const project = myProjects.find((item) => item.id === appId);
     const tester = project ? (project.testers || []).find((candidate) => candidate.tester_id === testerId) : null;
+    const marketCandidate = getMarketCandidateByAppId(appId);
     const today = getLocalDate();
     const todayDate = new Date(today);
 
@@ -3483,9 +3525,11 @@ async function openDossierModal(username, testerId, appId) {
     const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
     const canReward = likesAvailable > 0 && !alreadyLiked;
     const canDeleteFromProject = !!tester && !!project && !!appId && testingDay > 0 && testingDay <= 7;
+    const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project;
+    const takeFromShowcaseDisabled = !!(marketCandidate && marketCandidate.has_pending_offer);
+    const takeFromShowcaseIsPrelaunch = !!(marketCandidate && marketCandidate.market_kind === 'mutual-prelaunch');
     const tgName = username || '';
     const safeTelegramUsername = escapeInlineJsString(tgName);
-    const safeDeleteName = escapeInlineJsString(tgName || String(testerId));
 
     let html = '';
     const goldenCountText = (profile.golden_count || 0) > 0
@@ -3514,12 +3558,25 @@ async function openDossierModal(username, testerId, appId) {
                 <br>${t.dossierSource.replace('{source}', sourceText)}
             </div>
         </div>`;
+    } else if (marketCandidate && marketCandidate.market_kind === 'mutual-return') {
+        const sourceMeta = getTesterSourceMeta(marketCandidate.join_type);
+        const sourceText = window.escapeHTML(sourceMeta.icon + ' ' + sourceMeta.label);
+        const contextText = window.escapeHTML(window.t('mutualReturnContext', { project: marketCandidate.my_project_name || '' }, lang));
+        html += `<div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierProjectTitle}</div>
+            <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
+                ${window.escapeHTML(window.t('mutualReturnsSectionTitle', {}, lang))}
+                <br>${contextText}
+                <br>${t.dossierSource.replace('{source}', sourceText)}
+            </div>
+        </div>`;
     }
 
     html += `<div>
         <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierActionsTitle}</div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
             ${tgName ? `<button class="btn" style="width: 100%; background: var(--secondary-bg-color); color: var(--link-color); border: none; font-weight: 600; padding: 10px;" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
+            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" style="width: 100%; border: none; font-weight: 600; padding: 10px;" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); joinMutual(${appId}, ${takeFromShowcaseIsPrelaunch ? 'true' : 'false'})"`}>${window.escapeHTML(window.t(takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest', {}, lang))}</button>` : ''}
             ${canReward ? `<button class="btn" style="width: 100%; background: rgba(255,204,0,0.15); color: #ffcc00; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
             ${canDeleteFromProject ? `<button class="btn" style="width: 100%; background: rgba(255,59,48,0.1); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); openKickTesterModal(${appId}, ${testerId})">${t.dossierBtnDelete}</button>` : ''}
         </div>
@@ -3936,15 +3993,10 @@ function openTimelineStatsSheet(appId) {
     var timelineMeta = getTestingTimelineMeta(test);
     var progressData = buildGrantProgressSegments(test, timelineMeta.userTestingDay, timelineMeta.expectedTotalDays);
 
-    var tl = test.daily_timeline || '';
-    var sc = 0, ss = 0, oc = 0, os = 0;
-    for (var i = 0; i < tl.length; i++) {
-        if (tl[i] === '1') sc++;
-        else if (tl[i] === '0') ss++;
-        else if (tl[i] === '2') oc++;
-        else if (tl[i] === '3') os++;
-    }
-
+    var sc = progressData.standardCheckins;
+    var ss = progressData.standardSkips;
+    var oc = progressData.overtimeCheckins;
+    var os = progressData.overtimeSkips;
     var totalDone = sc + ss + oc + os;
     var testingDay = timelineMeta.userTestingDay || totalDone || 1;
     var overtimeDays = Math.max(0, totalDone - 14);
