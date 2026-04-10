@@ -1748,6 +1748,16 @@ details[open] > summary .details-arrow {
     flex: 1;
 }
 
+.event-text a {
+    color: var(--link-color);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.event-text a:active {
+    opacity: 0.75;
+}
+
 .event-time {
     font-size: 12px;
     color: var(--hint-color);
@@ -3299,16 +3309,38 @@ details[open] > summary .details-arrow {
     cursor: pointer;
 }
 
-.delete-overtime-select {
-    width: 100%;
-    margin-top: 10px;
-}
-
-.delete-overtime-list {
+.delete-overtime-radio-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-top: 10px;
+}
+
+.delete-overtime-radio {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 149, 0, 0.08);
+    border: 1px solid rgba(255, 149, 0, 0.16);
+    cursor: pointer;
+}
+
+.delete-overtime-radio input[type="radio"] {
+    margin-top: 3px;
+    accent-color: var(--link-color);
+}
+
+.delete-overtime-radio.is-disabled {
+    opacity: 0.65;
+    cursor: default;
+}
+
+.delete-overtime-radio-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
 }
 
 .delete-overtime-item {
@@ -3367,6 +3399,15 @@ details[open] > summary .details-arrow {
 .delete-info-block.overtime {
     background: rgba(255, 149, 0, 0.12);
     color: #ff9500;
+}
+
+.sync-last-day-block {
+    border: 1px solid rgba(255, 149, 0, 0.24);
+    background: rgba(255, 149, 0, 0.08);
+}
+
+.sync-last-day-chip {
+    animation: pulse-attention 2s ease-in-out infinite;
 }
 .delete-info-block.karma-dist {
     background: rgba(255, 204, 0, 0.1);

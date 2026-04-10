@@ -1049,6 +1049,7 @@ function handleApiError(code, details = {}) {
         already_published: 'already_published',
         not_owner: 'not_owner',
         publish_to_market_failed: 'publish_to_market_failed',
+        overtime_reward_unavailable: 'err_overtime_reward_unavailable',
         offer_already_pending: 'err_offer_already_pending',
         offer_target_owner_mismatch: 'err_offer_target_owner_mismatch',
         offer_proposer_owner_mismatch: 'err_offer_proposer_owner_mismatch',
@@ -3660,11 +3661,26 @@ async function confirmStart(id) {
             showToast(t.successCheckin);
         }
 
+        var updatedTest = myTests.find(function(test) {
+            return Number(test.id) === Number(id);
+        });
+        if (updatedTest) {
+            updatedTest.last_check_date = result.last_check_date || getLocalDate();
+            updatedTest.checkins_count = Math.max(0, Number(result.checkins_count || updatedTest.checkins_count || 0));
+            updatedTest.skips_count = Math.max(0, Number(result.skips_count || 0));
+            updatedTest.daily_timeline = result.daily_timeline || updatedTest.daily_timeline || '';
+            updatedTest.testing_days = Math.max(Number(updatedTest.testing_days || 0), Number(result.testing_day || 0));
+            updatedTest.status = 'done';
+        }
+
+        setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
+        renderTests(true);
+        refreshOpenModals();
+
         setTimeout(() => {
-            card.style.display = 'none';
-            loadTasks(true);
-            loadProjects(true);
-        }, 800);
+            loadTasks(true).catch(function() {});
+            loadProjects(true).catch(function() {});
+        }, 250);
         return true;
     } catch (error) {
         console.error('Checkin error:', error);
@@ -3748,34 +3764,21 @@ async function confirmDeleteProject() {
 
     const message = document.getElementById('delete-message').value.trim();
     const id = projectToDelete;
-    const overtimeSelect = document.getElementById('delete-overtime-tester');
-    const selectedOvertimeTester = overtimeSelect ? overtimeSelect.value : '';
+    const overtimeSelectedInput = document.querySelector('input[name="delete-overtime-tester"]:checked');
+    const selectedOvertimeTester = overtimeSelectedInput ? overtimeSelectedInput.value : '';
     const btn = document.getElementById('t-confirmDeleteBtn');
     const originalText = btn.innerText;
     btn.innerText = '...';
     btn.disabled = true;
 
     try {
-        if (selectedOvertimeTester) {
-            const rewardResponse = await fetch(`${API_BASE}/projects/${id}/like`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tester_id: Number(selectedOvertimeTester), type: 'overtime' })
-            });
-            const rewardResult = await rewardResponse.json();
-            if (rewardResult.status !== 'success') {
-                const rewardMessage = rewardResult.code === 'karma_limit_reached'
-                    ? t.karmaLimitReached
-                    : getApiErrorMessage(rewardResult, 'karmaAlreadyLiked');
-                showToast(rewardMessage);
-                return;
-            }
-        }
-
         const response = await fetch(`${API_BASE}/projects/${id}/delete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message })
+            body: JSON.stringify({
+                message,
+                overtime_reward_user_id: selectedOvertimeTester ? Number(selectedOvertimeTester) : null,
+            })
         });
         const result = await response.json();
         if (result.status === 'success') {
@@ -3803,8 +3806,8 @@ async function confirmDeleteProject() {
             // Background refresh for accurate data
             loadProjects(true).catch(function() {});
             loadArchivedProjects({ background: true, silent: true }).catch(function() {});
-        } else if (tg.showAlert) {
-            tg.showAlert(getApiErrorMessage(result, 'deleteProjectError'));
+        } else {
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
         }
     } catch (error) {
         console.error('Delete project error:', error);

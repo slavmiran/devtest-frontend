@@ -118,6 +118,128 @@ function getDayDiffFromToday(dateValue) {
     return Math.max(0, Math.floor((today - source) / (1000 * 60 * 60 * 24)));
 }
 
+function formatDdMmYyyy(dateValue) {
+    const value = dateValue instanceof Date ? dateValue : new Date(dateValue);
+    if (Number.isNaN(value.getTime())) return '—';
+    const day = String(value.getDate()).padStart(2, '0');
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const year = String(value.getFullYear());
+    return day + '/' + month + '/' + year;
+}
+
+function showSyncLastDayNotice(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const message = window.t('syncLastDayAlert', {}, lang);
+    if (tg.showAlert) {
+        tg.showAlert(message);
+    } else if (window.showCustomAlert) {
+        window.showCustomAlert(message);
+    } else {
+        alert(message);
+    }
+}
+
+function sanitizePulseEventHtml(value) {
+    var raw = String(value || '');
+    if (!raw) return '';
+
+    var template = document.createElement('template');
+    template.innerHTML = raw;
+    var allowedTags = {
+        A: true,
+        B: true,
+        STRONG: true,
+        I: true,
+        EM: true,
+        BR: true,
+        CODE: true,
+    };
+    var allowedHrefPattern = /^(https:\/\/t\.me\/[A-Za-z0-9_]+(?:[/?].*)?|tg:\/\/user\?id=\d+)$/i;
+
+    function sanitizeNode(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            return document.createTextNode(node.textContent || '');
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            return document.createTextNode('');
+        }
+
+        var tagName = String(node.tagName || '').toUpperCase();
+        if (!allowedTags[tagName]) {
+            var fragment = document.createDocumentFragment();
+            Array.from(node.childNodes || []).forEach(function(child) {
+                fragment.appendChild(sanitizeNode(child));
+            });
+            return fragment;
+        }
+
+        var element = document.createElement(tagName.toLowerCase());
+        if (tagName === 'A') {
+            var href = String(node.getAttribute('href') || '');
+            if (allowedHrefPattern.test(href)) {
+                element.setAttribute('href', href);
+                element.setAttribute('target', '_blank');
+                element.setAttribute('rel', 'noopener noreferrer');
+            }
+        }
+
+        Array.from(node.childNodes || []).forEach(function(child) {
+            element.appendChild(sanitizeNode(child));
+        });
+
+        if (tagName === 'A' && !element.getAttribute('href')) {
+            return document.createTextNode(element.textContent || '');
+        }
+
+        return element;
+    }
+
+    var container = document.createElement('div');
+    Array.from(template.content.childNodes || []).forEach(function(child) {
+        container.appendChild(sanitizeNode(child));
+    });
+    return container.innerHTML;
+}
+
+function getTesterOvertimeStats(tester) {
+    var overtimeCheckins = Number(tester && tester.overtime_checkins);
+    var overtimeSkips = Number(tester && tester.overtime_skips);
+    var overtimeDays = Number(tester && tester.overtime_days);
+
+    if (Number.isFinite(overtimeCheckins) && Number.isFinite(overtimeSkips) && Number.isFinite(overtimeDays)) {
+        return {
+            overtimeCheckins: Math.max(0, overtimeCheckins),
+            overtimeSkips: Math.max(0, overtimeSkips),
+            overtimeDays: Math.max(0, overtimeDays),
+        };
+    }
+
+    var timeline = String(tester && tester.daily_timeline || '');
+    if (timeline) {
+        var overtimeTimeline = timeline.slice(14);
+        return {
+            overtimeCheckins: (overtimeTimeline.match(/2/g) || []).length,
+            overtimeSkips: (overtimeTimeline.match(/3/g) || []).length,
+            overtimeDays: overtimeTimeline.length,
+        };
+    }
+
+    var totalCheckins = Math.max(0, Number(tester && tester.checkins_count || 0));
+    var testingDay = getUserTestingDay(tester && tester.start_date);
+    var hasCheckedToday = (tester && tester.last_check_date || '') === getLocalDate();
+    var realizedDays = Math.max(0, testingDay - (hasCheckedToday ? 0 : 1));
+    var overtimeRealized = Math.max(0, realizedDays - 14);
+    var fallbackCheckins = Math.max(0, totalCheckins - 14);
+    return {
+        overtimeCheckins: fallbackCheckins,
+        overtimeSkips: Math.max(0, overtimeRealized - fallbackCheckins),
+        overtimeDays: overtimeRealized,
+    };
+}
+
 function renderEvents() {
     if (!arguments[0] && !isTabVisible('tests')) return;
     const listEl = document.getElementById('events-list');
@@ -146,9 +268,8 @@ function renderEvents() {
     }
 
     listEl.innerHTML = visibleEvents.map((eventItem) => {
-        const text = window.escapeHTML(
-            (lang === 'ru' ? eventItem.text_ru : (eventItem.text_en || eventItem.text_ru)) || ''
-        );
+        const rawText = (lang === 'ru' ? eventItem.text_ru : (eventItem.text_en || eventItem.text_ru)) || '';
+        const text = sanitizePulseEventHtml(rawText);
         return `
             <div class="event-item">
                 <div class="event-time">${formatTimeAgo(eventItem.created_at)}</div>
@@ -350,6 +471,7 @@ function getTestingTimelineMeta(test) {
         overtimeDays: overtimeDays,
         isSynced: isSynced,
         finishDate: finishDate,
+        isLastDay: isSynced && projectDaysLeft === 0,
     };
 }
 
@@ -2608,8 +2730,11 @@ function openSyncModal(projectId) {
                     <span>${window.escapeHTML(window.t('projectGoogleDayLabel', { day: currentGoogleDay }, lang))}</span>
                     <span>${window.escapeHTML(window.t('googleDaysLeft', { count: leftDays }, lang))}</span>
                 </div>
-                <div class="details-block" style="margin-top:10px;">
-                    <div style="font-size:13px;color:var(--hint-color);">${window.escapeHTML(window.t('syncEstimatedFinish', { date: finishDate.toLocaleDateString(locale) }, lang))}</div>
+                <div class="details-block${timelineMeta.isLastDay ? ' sync-last-day-block' : ''}" style="margin-top:10px;${timelineMeta.isLastDay ? 'cursor:pointer;' : ''}"${timelineMeta.isLastDay ? ' onclick="showSyncLastDayNotice(event)"' : ''}>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                        <div style="font-size:13px;color:var(--hint-color);">${window.escapeHTML(window.t('syncEstimatedFinish', { date: formatDdMmYyyy(finishDate) }, lang))}</div>
+                        ${timelineMeta.isLastDay ? '<button type="button" class="meta-chip accent-red sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>' : ''}
+                    </div>
                 </div>
                 ${syncMessageHtml}
                 ${afkSectionHtml}
@@ -3614,39 +3739,45 @@ function openDeleteModal(id) {
         }
 
         const overtimeTesters = testers.map((tr) => {
-            const overtimeCheckins = Math.max(0, (tr.checkins_count || 0) - 14);
-            const alreadyRewarded = projectLikes.some((like) => like.tester_id === tr.tester_id);
-            return { ...tr, overtimeCheckins, alreadyRewarded };
+            const overtimeStats = getTesterOvertimeStats(tr);
+            const alreadyRewarded = projectLikes.some((like) => like.tester_id === tr.tester_id && String(like.type || '').toLowerCase() === 'overtime');
+            return {
+                ...tr,
+                overtimeCheckins: overtimeStats.overtimeCheckins,
+                overtimeSkips: overtimeStats.overtimeSkips,
+                overtimeDays: overtimeStats.overtimeDays,
+                alreadyRewarded,
+            };
         }).filter((tr) => tr.overtimeCheckins > 0);
 
         if (overtimeTesters.length > 0) {
-            const totalOvertimeDays = overtimeTesters.reduce((acc, item) => acc + item.overtimeCheckins, 0);
-            const optionsHtml = ['<option value="">' + window.escapeHTML(t.deleteOvertimeSelectNone) + '</option>']
-                .concat(overtimeTesters.filter((tr) => !tr.alreadyRewarded).map((tr) => {
-                    const label = tr.username ? '@' + window.escapeHTML(tr.username.replace('@', '')) : window.escapeHTML(window.t('idLabel', { id: tr.tester_id }));
-                    return '<option value="' + tr.tester_id + '">' + label + '</option>';
-                }))
-                .join('');
-            const listHtml = overtimeTesters.map((tr) => {
+            const totalOvertimeDays = overtimeTesters.reduce((acc, item) => acc + (item.overtimeDays || 0), 0);
+            const radioHtml = ['<label class="delete-overtime-radio">' +
+                '<input type="radio" name="delete-overtime-tester" value="" checked>' +
+                '<span class="delete-overtime-radio-body">' +
+                    '<span class="delete-overtime-item-name">' + window.escapeHTML(window.t('deleteOvertimeSelectNone', {}, lang)) + '</span>' +
+                '</span>' +
+            '</label>']
+                .concat(overtimeTesters.map((tr) => {
                 const name = tr.username ? '@' + window.escapeHTML(tr.username.replace('@', '')) : window.escapeHTML(window.t('idLabel', { id: tr.tester_id }));
-                return '<div class="delete-overtime-item">' +
-                    '<div>' +
-                        '<div class="delete-overtime-item-name">' + name + '</div>' +
-                        '<div class="delete-overtime-item-meta">' + window.escapeHTML(window.t('deleteOvertimeTesterStats', { count: tr.overtimeCheckins })) + '</div>' +
+                return '<label class="delete-overtime-radio' + (tr.alreadyRewarded ? ' is-disabled' : '') + '">' +
+                    '<input type="radio" name="delete-overtime-tester" value="' + tr.tester_id + '"' + (tr.alreadyRewarded ? ' disabled' : '') + '>' +
+                    '<span class="delete-overtime-radio-body">' +
+                        '<span class="delete-overtime-item-name">' + name + '</span>' +
+                        '<span class="delete-overtime-item-meta">' + window.escapeHTML(window.t('deleteOvertimeTesterStats', { checkins: tr.overtimeCheckins, skips: tr.overtimeSkips }, lang)) + '</span>' +
                         (tr.alreadyRewarded
-                            ? '<div class="delete-overtime-item-meta">' + window.escapeHTML(window.t('deleteOvertimeAlreadyRewarded')) + '</div>'
+                            ? '<span class="delete-overtime-item-meta">' + window.escapeHTML(window.t('deleteOvertimeAlreadyRewarded', {}, lang)) + '</span>'
                             : '') +
-                    '</div>' +
-                    '<span class="meta-chip accent-purple">' + window.escapeHTML(window.t('deleteOvertimeDayChip', { count: tr.overtimeCheckins })) + '</span>' +
-                '</div>';
-            }).join('');
+                    '</span>' +
+                    '<span class="meta-chip accent-purple">' + window.escapeHTML(window.t('deleteOvertimeDayChip', { count: tr.overtimeDays || tr.overtimeCheckins }, lang)) + '</span>' +
+                '</label>';
+            })).join('');
 
             infoHtml += '<div class="delete-info-block overtime">' +
                 '<div style="font-weight:600;margin-bottom:6px;">' + window.escapeHTML(t.deleteOvertimeTitle) + '</div>' +
                 '<div style="color:var(--hint-color);">' + window.escapeHTML(t.deleteOvertimeDesc) + '</div>' +
                 '<div style="margin-top:8px;font-size:12px;color:var(--hint-color);">' + window.escapeHTML(window.t('deleteOvertimeSummary', { count: totalOvertimeDays })) + '</div>' +
-                '<select id="delete-overtime-tester" class="form-input delete-overtime-select">' + optionsHtml + '</select>' +
-                '<div class="delete-overtime-list">' + listHtml + '</div>' +
+                '<div class="delete-overtime-radio-list">' + radioHtml + '</div>' +
             '</div>';
         }
     }
@@ -3806,11 +3937,16 @@ function openProjectDetailsModal(appId) {
 
     const syncHtml = (() => {
         if (!timelineMeta.isSynced) return '';
-        const finishDateText = window.escapeHTML(timelineMeta.finishDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US'));
-        return '<div class="details-block">' +
+        const finishDateText = window.escapeHTML(formatDdMmYyyy(timelineMeta.finishDate));
+        return '<div class="details-block' + (timelineMeta.isLastDay ? ' sync-last-day-block' : '') + '"' + (timelineMeta.isLastDay ? ' onclick="showSyncLastDayNotice(event)" style="cursor:pointer;"' : '') + '>' +
             '<div style="font-size:14px;font-weight:700;color:#34c759;margin-bottom:6px;">' + window.escapeHTML(window.t('projectSyncedTitle', {}, lang)) + '</div>' +
             '<div style="font-size:13px;color:var(--hint-color);">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.escapeHTML(window.t('syncEstimatedFinish', { date: finishDateText }, lang)) + '</div>' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:4px;">' +
+                '<div style="font-size:13px;color:var(--hint-color);">' + window.escapeHTML(window.t('syncEstimatedFinish', { date: finishDateText }, lang)) + '</div>' +
+                (timelineMeta.isLastDay
+                    ? '<button type="button" class="meta-chip accent-red sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>'
+                    : '') +
+            '</div>' +
             '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.escapeHTML(window.t('timelineApproxRemaining', { count: progressData.remainingDays }, lang)) + '</div>' +
             (overtimeDays > 0
                 ? '<div style="font-size:13px;color:#ffd460;margin-top:8px;">' + window.escapeHTML(window.t('syncOvertimeBanner', {}, lang)) + '</div>'
