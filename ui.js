@@ -416,7 +416,7 @@ function getGrantEstimateData(test) {
     const base = 50;
     const karmaBonus = Math.min(Math.max(0, karma * 5), 100);
     const perfectBonus = skips === 0 ? 50 : 0;
-    const eligible = skips <= 3;
+    const eligible = skips < 3;
     return {
         base,
         karma,
@@ -1373,8 +1373,9 @@ function renderTests(force) {
         const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
         const safePackageLabel = window.escapeHTML(test.package || '');
         const langBadge = (test.target_lang && test.target_lang !== 'ALL') ? getLangBadge(test.target_lang) : '';
-        const issueBtnDisplay = test.has_clicked_store ? 'inline-flex' : 'none';
-        const isIssueBlocked = !!test.issue_reported_at;
+        const shouldShowIssueOnCard = test.status === 'new' && !!test.has_clicked_store;
+        const issueBtnDisplay = shouldShowIssueOnCard ? 'inline-flex' : 'none';
+        const isIssueBlocked = !!test.issue_reported_at && !test.issue_fixed_at;
         const issueBtnHtml = `<button id="btn-issue-${test.id}" class="btn" style="display:${issueBtnDisplay}; width:100%; margin-top:8px; background:rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>🚨 ${window.t('reportIssueBtnLabel', {}, lang)}</button>`;
 
         // === ACTION BUTTONS LOGIC ===
@@ -1407,7 +1408,6 @@ function renderTests(force) {
                 <div class="action-row" style="gap: 8px;">
                     ${secondaryActions}
                 </div>
-                ${issueBtnHtml}
             `;
         }
         // State B: status = 'new' OR status = 'daily'/'opened' without ready to claim
@@ -1452,7 +1452,6 @@ function renderTests(force) {
                             ${t.screenshotWarning}
                         </div>
                     </div>
-                    ${issueBtnHtml}
                 `;
             } else {
                 actionsHtml = `
@@ -1464,7 +1463,6 @@ function renderTests(force) {
                             ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : t.confirmStart}
                         </button>
                     </div>
-                    ${issueBtnHtml}
                 `;
             }
 
@@ -2377,14 +2375,20 @@ function openIssueReportModal(appId) {
     const hint = document.getElementById('t-issueReportHint');
     const sendBtn = document.getElementById('t-issueReportSend');
     const cancelBtn = document.getElementById('t-issueReportCancel');
+    const emailInput = document.getElementById('issue-report-email');
     if (title) title.innerText = window.t('reportIssueModalTitle', {}, lang);
-    if (hint) hint.innerText = window.t('reportIssueHint', {}, lang);
+    if (hint) hint.innerText = window.t('reportIssueModalInfo', {}, lang);
     if (sendBtn) sendBtn.innerText = window.t('reportIssueSendBtn', {}, lang);
     if (cancelBtn) cancelBtn.innerText = window.t('reportIssueCancelBtn', {}, lang);
+    if (emailInput) {
+        const appState = window.App && typeof window.App.getState === 'function' ? window.App.getState() : {};
+        emailInput.value = String(appState && appState.userEmail || window.App.userEmail || '').trim();
+        emailInput.placeholder = window.t('reportIssueEmailPlaceholder', {}, lang);
+    }
     const textarea = document.getElementById('issue-report-text');
     if (textarea) {
         textarea.value = '';
-        textarea.placeholder = window.t('reportIssuePlaceholder', {}, lang);
+        textarea.placeholder = window.t('reportIssueCommentPlaceholder', {}, lang);
     }
     modal.classList.add('active');
 }
@@ -4060,6 +4064,8 @@ function openProjectDetailsModal(appId) {
     let expectedTotalDays = timelineMeta.expectedTotalDays;
     let overtimeDays = timelineMeta.overtimeDays;
     const progressData = buildGrantProgressSegments(test, userTestingDay, expectedTotalDays);
+    const isIssueBlocked = !!test.issue_reported_at && !test.issue_fixed_at;
+    const showIssueActionInDetails = test.status !== 'new' && test.status !== 'done';
 
     const syncHtml = (() => {
         if (!timelineMeta.isSynced) return '';
@@ -4228,6 +4234,11 @@ function openProjectDetailsModal(appId) {
             '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +
             '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); initiateProjectFeedback(' + test.id + ')">' + window.t('detail_suggest_btn', {}, lang) + '</button>' +
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'https://play.google.com/store/apps/details?id=' + window.escapeHTML(test.package || '') + '\')">' + window.t('openGooglePlay', {}, lang) + '</button>' +
+            (showIssueActionInDetails
+                ? (isIssueBlocked
+                    ? '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--hint-color);cursor:not-allowed;" disabled>' + window.t('issueAwaitingFix', {}, lang) + '</button>'
+                    : '<button class="btn" style="background:rgba(255,59,48,0.12);color:#ff6b63;border:1px solid rgba(255,59,48,0.35);" onclick="closeProjectDetailsModal(); openIssueReportModal(' + test.id + ')">' + window.t('reportIssueBtnLabel', {}, lang) + '</button>')
+                : '') +
             (userTestingDay >= 15
                 ? '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="closeProjectDetailsModal(); openOvertimeModal(' + test.id + ')">' + window.t('finish_project', {}, lang) + '</button>'
                 : '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); ' + (isMutualExitFlow(test) ? 'openLeaveMutualModal(' + test.id + ')' : 'openDropTestModal(' + test.id + ')') + '">' + window.t('detail_leave_btn', {}, lang) + '</button>') +

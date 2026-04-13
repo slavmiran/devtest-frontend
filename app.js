@@ -50,6 +50,7 @@ var _offersTimerId = null;
 var _reportAppId = null;
 var _reportOwnerUsername = null;
 var _issueReportAppId = null;
+var _userEmail = '';
 var _pendingScreenshotReminderUsername = null;
 var _contactOwnerUsername = '';
 var _dropTestAppId = null;
@@ -487,6 +488,18 @@ function setTestsCache(nextCache) {
             localStorage.removeItem(TESTS_CACHE_KEY);
         }
     } catch (e) {}
+}
+
+function persistTestsCacheSnapshot() {
+    setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
+}
+
+function countGrantSkips(app) {
+    var timeline = String(app && app.daily_timeline || '');
+    if (timeline) {
+        return Math.max(0, (timeline.substring(0, 14).match(/[03]/g) || []).length);
+    }
+    return Math.max(0, Number(app && app.skips_count || 0));
 }
 
 function hasTestsCache() {
@@ -1037,6 +1050,10 @@ function handleApiError(code, details = {}) {
     var keyMap = {
         insufficient_bust_balance: 'err_insufficient_bust_balance',
         transaction_failed: 'err_transaction_failed',
+        grant_not_ready: 'err_grant_not_ready',
+        grant_too_many_skips: 'err_grant_too_many_skips',
+        grant_already_claimed: 'err_grant_already_claimed',
+        invalid_start_date: 'err_grant_unavailable',
         testing_not_found: 'testing_not_found',
         feedback_not_found: 'feedback_not_found',
         feedback_forbidden: 'feedback_forbidden',
@@ -1693,8 +1710,8 @@ function _mapTestsFromApi(data) {
         // Computed: test eligible for grant claim after Day 14 check-in
         var isTestedToday = status === 'done';
         var testingDays = Number(app.testing_days || 0);
-        var skipsCount = Number(app.skips_count || 0);
-        var isReadyToClaim = testingDays >= 14 && isTestedToday && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
+        var skipsCount = countGrantSkips(app);
+        var isReadyToClaim = testingDays >= 14 && isTestedToday && !app.grant_claimed && skipsCount < 3 && app.progress_id;
         
         return {
             id: app.app_id,
@@ -1750,38 +1767,14 @@ function _onStoreLinkClickedForIssueFlow(id) {
     if (!test) return;
     test.has_clicked_store = true;
 
-    // UI reset requested by product: new store click unlocks action flow.
-    var wasFrozen = !!test.issue_reported_at;
-    if (test.issue_reported_at) {
-        test.issue_reported_at = null;
-        test.issue_reason = '';
-        test.issue_fixed_at = null;
-    }
-
     var issueBtn = document.getElementById('btn-issue-' + id);
     if (issueBtn) {
         issueBtn.style.display = 'inline-flex';
-        issueBtn.disabled = false;
-        issueBtn.style.opacity = '1';
+        issueBtn.disabled = !!test.issue_reported_at && !test.issue_fixed_at;
+        issueBtn.style.opacity = issueBtn.disabled ? '0.55' : '1';
     }
 
-    if (wasFrozen) {
-        var btnConfirm = document.getElementById('btn-confirm-' + id);
-        if (btnConfirm) {
-            var testingDay = typeof getUserTestingDay === 'function' ? (getUserTestingDay(test.start_date) || 0) : 0;
-            var screenshotDay = typeof isMandatoryScreenshotDay === 'function' ? isMandatoryScreenshotDay(testingDay) : false;
-            btnConfirm.disabled = false;
-            btnConfirm.innerText = screenshotDay ? ('💬 ' + t.screenshotBtn) : t.confirmStart;
-            btnConfirm.style.backgroundColor = 'var(--success-color)';
-            btnConfirm.style.color = '#ffffff';
-            btnConfirm.style.cursor = 'pointer';
-            if (screenshotDay) {
-                btnConfirm.onclick = function() { handleScreenshotAndConfirm(id, (test.owner_username || '').replace('@', '')); };
-            } else {
-                btnConfirm.onclick = function() { confirmStart(id); };
-            }
-        }
-    }
+    persistTestsCacheSnapshot();
 }
 
 async function _loadTasksImpl(options) {
@@ -1794,6 +1787,8 @@ async function _loadTasksImpl(options) {
         var response = await fetchWithRetry(API_BASE + '/tasks/' + userId);
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var data = await response.json();
+        _userEmail = String(data.user_email || '').trim();
+        window.App.userEmail = _userEmail;
         var nextTests = _mapTestsFromApi(data);
         var nextOffers = Array.isArray(data.incoming_offers) ? data.incoming_offers : null;
 
@@ -1816,7 +1811,7 @@ async function _loadTasksImpl(options) {
         }
 
         // Update cache
-        setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
+        persistTestsCacheSnapshot();
         _testsLoadedOnce = true;
         _lastFetchTimes.tests = Date.now();
         loadReliabilitySummary(true).catch(function() {});
@@ -2727,19 +2722,17 @@ async function submitIssueReport(appId) {
     if (!appId) return;
     var test = myTests.find(function(item) { return Number(item.id) === Number(appId); });
     if (!test) return;
-    if (!test.has_clicked_store) {
-        showToast(window.t('reportIssueNeedStoreFirst', {}, lang));
-        return;
-    }
 
     var reasonEl = document.getElementById('issue-report-text');
+    var emailEl = document.getElementById('issue-report-email');
     var reason = reasonEl ? String(reasonEl.value || '').trim() : '';
+    var email = emailEl ? String(emailEl.value || '').trim() : '';
 
     try {
         var response = await fetch(`${API_BASE}/projects/${appId}/report_issue`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId, reason: reason })
+            body: JSON.stringify({ tester_id: userId, issue_reason: reason, email: email })
         });
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {
@@ -2750,6 +2743,8 @@ async function submitIssueReport(appId) {
         test.issue_reported_at = result.issue_reported_at || new Date().toISOString();
         test.issue_reason = reason;
         test.issue_fixed_at = null;
+        _userEmail = String(result.email || email || _userEmail || '').trim();
+        window.App.userEmail = _userEmail;
         _setIssueUiState(appId, true);
 
         var issueBtn = document.getElementById('btn-issue-' + appId);
@@ -2758,6 +2753,10 @@ async function submitIssueReport(appId) {
             issueBtn.style.opacity = '0.55';
         }
 
+        persistTestsCacheSnapshot();
+        if (typeof window.renderTests === 'function') {
+            window.renderTests(true);
+        }
         if (window.closeIssueReportModal) window.closeIssueReportModal();
         showToast(window.t('reportIssueSuccess', {}, lang));
     } catch (error) {
@@ -3834,6 +3833,10 @@ async function claimGrant(progressId, appId) {
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         const amount = Number(result.amount || 0);
         const test = myTests.find(t => t.id === appId);
+        if (test) {
+            test.grant_claimed = true;
+            test.isReadyToClaim = false;
+        }
         const isActive = test && test.app_status === 'active';
         if (isActive) {
             showToast(window.t('claimGrantOvertimeToast', { amount: amount.toFixed(1) }));
@@ -3841,6 +3844,8 @@ async function claimGrant(progressId, appId) {
             showToast(window.t('claimGrantToast', { amount: amount.toFixed(1) }));
         }
         if (btn) btn.style.display = 'none';
+        persistTestsCacheSnapshot();
+        if (window.renderTests) window.renderTests(true);
         loadProjects(true);
     } catch (error) {
         console.error('Claim grant error:', error);
@@ -4245,8 +4250,10 @@ Object.assign(window.App, {
     tg,
     API_BASE,
     userId,
+    userEmail: _userEmail,
     getState: () => ({
         lang,
+        userEmail: _userEmail,
         myTests,
         incomingOffers,
         myProjects,

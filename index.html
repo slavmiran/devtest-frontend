@@ -437,9 +437,10 @@
     <div id="issue-report-modal" class="modal-overlay" onclick="closeIssueReportModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-issueReportTitle" data-i18n="reportIssueModalTitle">Сообщить об ошибке доступа</h3>
-            <p id="t-issueReportHint" data-i18n="reportIssueHint" style="color: var(--hint-color); font-size: 13px;"></p>
+            <p id="t-issueReportHint" data-i18n="reportIssueModalInfo" style="color: var(--hint-color); font-size: 13px; line-height: 1.5;"></p>
             <div class="form-group">
-                <textarea id="issue-report-text" class="form-input" rows="4" data-i18n-placeholder="reportIssuePlaceholder" style="resize: none;"></textarea>
+                <input id="issue-report-email" type="email" class="form-input" data-i18n-placeholder="reportIssueEmailPlaceholder" style="margin-bottom: 10px;">
+                <textarea id="issue-report-text" class="form-input" rows="4" data-i18n-placeholder="reportIssueCommentPlaceholder" style="resize: none;"></textarea>
             </div>
             <div class="action-row">
                 <button class="btn btn-primary" id="t-issueReportSend" onclick="submitIssueReportFromModal()" data-i18n="reportIssueSendBtn">Отправить</button>
