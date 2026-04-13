@@ -422,6 +422,32 @@
         </div>
     </div>
 
+    <!-- Screenshot Guard Modal -->
+    <div id="screenshot-guard-modal" class="modal-overlay" onclick="closeScreenshotGuardModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="t-screenshotGuardTitle" data-i18n="screenshotGuardTitle">Вы уже подготовили скриншоты для подтверждения?</h3>
+            <div class="action-row">
+                <button class="btn btn-primary" id="t-screenshotGuardYes" onclick="confirmScreenshotGuard()" data-i18n="screenshotGuardYes">✅ Да, отправить</button>
+                <button class="btn btn-secondary" id="t-screenshotGuardCancel" onclick="closeScreenshotGuardModal()" data-i18n="screenshotGuardCancel">❌ Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Issue Report Modal -->
+    <div id="issue-report-modal" class="modal-overlay" onclick="closeIssueReportModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="t-issueReportTitle" data-i18n="reportIssueModalTitle">Сообщить об ошибке доступа</h3>
+            <p id="t-issueReportHint" data-i18n="reportIssueHint" style="color: var(--hint-color); font-size: 13px;"></p>
+            <div class="form-group">
+                <textarea id="issue-report-text" class="form-input" rows="4" data-i18n-placeholder="reportIssuePlaceholder" style="resize: none;"></textarea>
+            </div>
+            <div class="action-row">
+                <button class="btn btn-primary" id="t-issueReportSend" onclick="submitIssueReportFromModal()" data-i18n="reportIssueSendBtn">Отправить</button>
+                <button class="btn btn-secondary" id="t-issueReportCancel" onclick="closeIssueReportModal()" data-i18n="reportIssueCancelBtn">Отмена</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Contact Developer Modal -->
     <div id="contact-modal" class="modal-overlay" onclick="closeContactModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">

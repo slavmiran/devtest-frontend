@@ -111,6 +111,20 @@ function parseLocalDateOnly(dateValue) {
     return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 }
 
+function isTestedToday(test) {
+    if (!test || !test.last_check_date) return false;
+    try {
+        const lastCheckDate = parseLocalDateOnly(test.last_check_date);
+        if (!lastCheckDate) return false;
+        const today = parseLocalDateOnly(getLocalDate());
+        if (!today) return false;
+        // Compare dates without time component (both dates are at 00:00:00 due to parseLocalDateOnly)
+        return lastCheckDate.getTime() === today.getTime();
+    } catch (e) {
+        return false;
+    }
+}
+
 function getDayDiffFromToday(dateValue) {
     const source = parseLocalDateOnly(dateValue);
     if (!source) return 0;
@@ -382,6 +396,17 @@ function getCurrentUserKarmaValue() {
 }
 
 function getFinalizedGrantSkips(test) {
+    // Count skips from daily_timeline (days 1-14 only) as source of truth
+    if (test && test.daily_timeline) {
+        const timeline = String(test.daily_timeline || '');
+        // Only count baseline period (days 1-14)
+        const baselinePeriod = timeline.substring(0, 14);
+        // '0' = standard skip, '3' = overtime skip (but shouldn't exist in days 1-14)
+        // Count occurrences of skip characters
+        const skipCount = (baselinePeriod.match(/[03]/g) || []).length;
+        return Math.max(0, skipCount);
+    }
+    // Fallback to skips_count if no timeline
     return Math.max(0, Number(test && test.skips_count || 0));
 }
 
@@ -482,7 +507,7 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     var standardCheckins = 0, standardSkips = 0, overtimeCheckins = 0, overtimeSkips = 0;
     var currentDay = null;
     var currentDayState = '';
-    var hasCheckedToday = (test.last_check_date || '') === getLocalDate();
+    var hasCheckedToday = isTestedToday(test);  // ← Use normalized date comparison
 
     if (!hasCheckedToday && userTestingDay > 0 && renderTimeline.length >= userTestingDay) {
         var unresolvedMarker = renderTimeline[userTestingDay - 1] || '';
@@ -1331,7 +1356,16 @@ function renderTests(force) {
 
     myTests.forEach((test) => {
         const card = document.createElement('div');
-        card.className = test.status === 'done' ? 'card card-done' : 'card';
+        
+        // Determine if test should go to active or done list:
+        // - If isReadyToClaim: keep in active list (even if today is check-in day)
+        // - Else if status='done' AND day < 14: go to done list
+        // - Else if status='done' AND day >= 14 AND !isReadyToClaim: go to done list (grant already claimed or skips exceeded)
+        // - Else: go to active list
+        const shouldShowInActiveList = test.isReadyToClaim || test.status !== 'done' || (test.status === 'done' && test.testing_days < 14);
+        const shouldShowInDoneList = test.status === 'done' && !test.isReadyToClaim;
+        
+        card.className = test.status === 'done' && shouldShowInDoneList ? 'card card-done' : 'card';
         card.id = `test-card-${test.id}`;
         const userTestingDay = getUserTestingDay(test.start_date);
         const safePackage = escapeInlineJsString(test.package);
@@ -1339,9 +1373,45 @@ function renderTests(force) {
         const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
         const safePackageLabel = window.escapeHTML(test.package || '');
         const langBadge = (test.target_lang && test.target_lang !== 'ALL') ? getLangBadge(test.target_lang) : '';
+        const issueBtnDisplay = test.has_clicked_store ? 'inline-flex' : 'none';
+        const isIssueBlocked = !!test.issue_reported_at;
+        const issueBtnHtml = `<button id="btn-issue-${test.id}" class="btn" style="display:${issueBtnDisplay}; width:100%; margin-top:8px; background:rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>🚨 ${window.t('reportIssueBtnLabel', {}, lang)}</button>`;
 
+        // === ACTION BUTTONS LOGIC ===
         let actionsHtml = '';
-        if (test.status === 'new') {
+        
+        // State A: isReadyToClaim = true (Day >= 14 AND tested today AND eligible)
+        // Show claim button + secondary open/screenshot row
+        if (test.isReadyToClaim) {
+            const testingDay = userTestingDay || 999;
+            const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
+            
+            let secondaryActions = `
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', ${isScreenshotDay ? 'true' : 'false'}, '${isScreenshotDay ? safeOwnerUsername : ''}')">
+                    🔗 ${t.openBtn}
+                </button>
+            `;
+            
+            if (isScreenshotDay) {
+                secondaryActions += `
+                    <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
+                        ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '💬 ' + t.screenshotBtn}
+                    </button>
+                `;
+            }
+            
+            actionsHtml = `
+                <button class="btn btn-claim-grant" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="claimGrant(${test.progress_id}, ${test.id})">
+                    🎁 ${window.t('claimGrantBtn')}
+                </button>
+                <div class="action-row" style="gap: 8px;">
+                    ${secondaryActions}
+                </div>
+                ${issueBtnHtml}
+            `;
+        }
+        // State B: status = 'new' OR status = 'daily'/'opened' without ready to claim
+        else if (test.status === 'new') {
             const groupUrl = test.google_group_url || 'https://groups.google.com/g/google-play-dev-test';
             const safeGroupUrl = escapeInlineJsString(groupUrl);
             const shouldShowScreenshotAction = window.isFirstDayScreenshotVisible ? window.isFirstDayScreenshotVisible(test.id) : false;
@@ -1363,9 +1433,10 @@ function renderTests(force) {
                         </div>
                     </div>
                 </div>
+                ${issueBtnHtml}
             `;
         } else if (test.status === 'daily' || test.status === 'opened') {
-            const testingDay = getUserTestingDay(test.start_date) || 999;
+            const testingDay = userTestingDay || 999;
             const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
 
             if (isScreenshotDay) {
@@ -1375,12 +1446,13 @@ function renderTests(force) {
                             ${t.openBtn}
                         </button>
                         <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                            💬 ${t.screenshotBtn}
+                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '💬 ' + t.screenshotBtn}
                         </button>
                         <div style="color: #ff3b30; font-size: 13px; text-align: center;">
                             ${t.screenshotWarning}
                         </div>
                     </div>
+                    ${issueBtnHtml}
                 `;
             } else {
                 actionsHtml = `
@@ -1389,9 +1461,10 @@ function renderTests(force) {
                             ${t.openBtn}
                         </button>
                         <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                            ${t.confirmStart}
+                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : t.confirmStart}
                         </button>
                     </div>
+                    ${issueBtnHtml}
                 `;
             }
 
@@ -1400,12 +1473,13 @@ function renderTests(force) {
                 var dailyReward = (test.bounty_per_tester * 0.65 / 14).toFixed(1);
                 actionsHtml += '<div style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">' + window.t('bountyDailyReward', { amount: dailyReward }, lang) + '</div>';
             }
-        } else if (test.status === 'done') {
+        } else if (test.status === 'done' && !test.isReadyToClaim) {
+            // Done without claim opportunity (already claimed or ineligible)
             actionsHtml = '';
         }
 
         const headerActions = [];
-        if (test.status !== 'done') {
+        if (test.status !== 'done' && !test.isReadyToClaim) {
             if (userTestingDay >= 15) {
                 headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #30d158;" onclick="openOvertimeModal(${test.id}, event)">🔄</button>`);
             } else {
@@ -1416,19 +1490,7 @@ function renderTests(force) {
             ? `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`
             : '';
 
-        // Кнопка "Забрать Грант" — если testing_days >= 14 и грант не забран и пропусков <= 3
-        let claimHtml = '';
-        const testDays = test.testing_days || getUserTestingDay(test.start_date) || 0;
-        if (testDays >= 14 && !test.grant_claimed && (test.skips_count || 0) <= 3 && test.progress_id) {
-            claimHtml = `
-                <button id="btn-claim-${test.id}" class="btn btn-claim-grant" onclick="claimGrant(${test.progress_id}, ${test.id})">
-                    🎁 ${window.t('claimGrantBtn')}
-                </button>
-            `;
-        }
-        const grantChipHtml = ''; // Grant chip moved to project details modal
-
-        const doneBadgeHtml = test.status === 'done'
+        const doneBadgeHtml = test.status === 'done' && !test.isReadyToClaim
             ? '<div class="done-status-pill">' + window.escapeHTML(t.doneTodayText) + '</div><div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
             : '';
 
@@ -1446,14 +1508,12 @@ function renderTests(force) {
                 ${trailingHtml}
             </div>
             ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
-            ${grantChipHtml}
-            ${claimHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}
             </div>
         `;
 
-        if (test.status === 'done') {
+        if (shouldShowInDoneList) {
             const reminderHtml = getScreenshotReminderHtml(test);
             if (reminderHtml) {
                 cardContent += reminderHtml;
@@ -1463,7 +1523,7 @@ function renderTests(force) {
             card.onclick = () => window.openProjectDetailsModal(test.id);
             doneList.appendChild(card);
             doneCount++;
-        } else {
+        } else if (shouldShowInActiveList) {
             card.innerHTML = cardContent;
             activeList.appendChild(card);
             activeCount++;
@@ -2040,9 +2100,11 @@ function renderProjects(force) {
             project.testers.forEach((tester) => {
                 let nameHtml = '';
                 let cleanUsername = '';
+                const isContractTester = String(tester.join_type || '').toLowerCase() === 'bounty';
+                const testerPrefix = isContractTester ? '💎 ' : '';
                 if (tester.username) {
                     cleanUsername = tester.username.replace('@', '');
-                    nameHtml = `<a href="javascript:void(0);" onclick="return openTelegramProfile('${escapeInlineJsString(cleanUsername)}', event)" class="tester-link">@${window.escapeHTML(cleanUsername)}</a>`;
+                    nameHtml = `<a href="javascript:void(0);" onclick="return openTelegramProfile('${escapeInlineJsString(cleanUsername)}', event)" class="tester-link">${testerPrefix}@${window.escapeHTML(cleanUsername)}</a>`;
                 } else {
                     nameHtml = `<span class="tester-id">${window.t('idLabel', { id: tester.tester_id }, lang)}</span>`;
                 }
@@ -2274,6 +2336,70 @@ function showScreenshotCompleteModal(ownerUsername) {
 function closeScreenshotCompleteModal(event) {
     if (event && event.target !== document.getElementById('screenshot-complete-modal')) return;
     document.getElementById('screenshot-complete-modal').classList.remove('active');
+}
+
+function openScreenshotGuardModal(appId, ownerUsername) {
+    window._screenshotGuardAppId = appId;
+    window._screenshotGuardOwner = ownerUsername || '';
+    const modal = document.getElementById('screenshot-guard-modal');
+    if (!modal) {
+        openReportModal(appId, ownerUsername || '');
+        return;
+    }
+    const title = document.getElementById('t-screenshotGuardTitle');
+    const yesBtn = document.getElementById('t-screenshotGuardYes');
+    const cancelBtn = document.getElementById('t-screenshotGuardCancel');
+    if (title) title.innerText = window.t('screenshotGuardTitle', {}, lang);
+    if (yesBtn) yesBtn.innerText = window.t('screenshotGuardYes', {}, lang);
+    if (cancelBtn) cancelBtn.innerText = window.t('screenshotGuardCancel', {}, lang);
+    modal.classList.add('active');
+}
+
+function closeScreenshotGuardModal(event) {
+    const modal = document.getElementById('screenshot-guard-modal');
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
+}
+
+function confirmScreenshotGuard() {
+    const appId = window._screenshotGuardAppId;
+    const owner = window._screenshotGuardOwner || '';
+    closeScreenshotGuardModal();
+    openReportModal(appId, owner);
+}
+
+function openIssueReportModal(appId) {
+    _issueReportAppId = appId;
+    const modal = document.getElementById('issue-report-modal');
+    if (!modal) return;
+    const title = document.getElementById('t-issueReportTitle');
+    const hint = document.getElementById('t-issueReportHint');
+    const sendBtn = document.getElementById('t-issueReportSend');
+    const cancelBtn = document.getElementById('t-issueReportCancel');
+    if (title) title.innerText = window.t('reportIssueModalTitle', {}, lang);
+    if (hint) hint.innerText = window.t('reportIssueHint', {}, lang);
+    if (sendBtn) sendBtn.innerText = window.t('reportIssueSendBtn', {}, lang);
+    if (cancelBtn) cancelBtn.innerText = window.t('reportIssueCancelBtn', {}, lang);
+    const textarea = document.getElementById('issue-report-text');
+    if (textarea) {
+        textarea.value = '';
+        textarea.placeholder = window.t('reportIssuePlaceholder', {}, lang);
+    }
+    modal.classList.add('active');
+}
+
+function closeIssueReportModal(event) {
+    const modal = document.getElementById('issue-report-modal');
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
+    _issueReportAppId = null;
+}
+
+function submitIssueReportFromModal() {
+    if (!_issueReportAppId) return;
+    submitIssueReport(_issueReportAppId);
 }
 
 function openReportModal(appId, ownerUsername) {
@@ -4334,6 +4460,12 @@ Object.assign(window, {
     closeScreenshotCompleteModal,
     openReportModal,
     closeReportModal,
+    openScreenshotGuardModal,
+    closeScreenshotGuardModal,
+    confirmScreenshotGuard,
+    openIssueReportModal,
+    closeIssueReportModal,
+    submitIssueReportFromModal,
     insertReportChip,
     openContactModal,
     closeContactModal,

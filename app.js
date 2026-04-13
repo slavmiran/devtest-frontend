@@ -49,6 +49,7 @@ var _offersTimerId = null;
 
 var _reportAppId = null;
 var _reportOwnerUsername = null;
+var _issueReportAppId = null;
 var _pendingScreenshotReminderUsername = null;
 var _contactOwnerUsername = '';
 var _dropTestAppId = null;
@@ -1688,6 +1689,13 @@ function _mapTestsFromApi(data) {
         if (existingTest && existingTest.status === 'opened' && status !== 'done') {
             status = 'opened';
         }
+        
+        // Computed: test eligible for grant claim after Day 14 check-in
+        var isTestedToday = status === 'done';
+        var testingDays = Number(app.testing_days || 0);
+        var skipsCount = Number(app.skips_count || 0);
+        var isReadyToClaim = testingDays >= 14 && isTestedToday && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
+        
         return {
             id: app.app_id,
             progress_id: app.progress_id,
@@ -1715,8 +1723,65 @@ function _mapTestsFromApi(data) {
             daily_timeline: app.daily_timeline || '',
             archive_reason: app.archive_reason || null,
             bounty_per_tester: app.bounty_per_tester || 0,
+            last_check_date: app.last_check_date || null,
+            issue_reported_at: app.issue_reported_at || null,
+            issue_reason: app.issue_reason || '',
+            issue_fixed_at: app.issue_fixed_at || null,
+            has_clicked_store: existingTest ? !!existingTest.has_clicked_store : false,
+            isTestedToday: isTestedToday,
+            isReadyToClaim: isReadyToClaim,
         };
     });
+}
+
+function _setIssueUiState(id, blocked) {
+    var btnConfirm = document.getElementById('btn-confirm-' + id);
+    if (!btnConfirm) return;
+    if (blocked) {
+        btnConfirm.disabled = true;
+        btnConfirm.innerText = window.t('issueAwaitingFix', {}, lang);
+        btnConfirm.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
+        btnConfirm.style.color = 'var(--hint-color)';
+    }
+}
+
+function _onStoreLinkClickedForIssueFlow(id) {
+    var test = myTests.find(function(item) { return Number(item.id) === Number(id); });
+    if (!test) return;
+    test.has_clicked_store = true;
+
+    // UI reset requested by product: new store click unlocks action flow.
+    var wasFrozen = !!test.issue_reported_at;
+    if (test.issue_reported_at) {
+        test.issue_reported_at = null;
+        test.issue_reason = '';
+        test.issue_fixed_at = null;
+    }
+
+    var issueBtn = document.getElementById('btn-issue-' + id);
+    if (issueBtn) {
+        issueBtn.style.display = 'inline-flex';
+        issueBtn.disabled = false;
+        issueBtn.style.opacity = '1';
+    }
+
+    if (wasFrozen) {
+        var btnConfirm = document.getElementById('btn-confirm-' + id);
+        if (btnConfirm) {
+            var testingDay = typeof getUserTestingDay === 'function' ? (getUserTestingDay(test.start_date) || 0) : 0;
+            var screenshotDay = typeof isMandatoryScreenshotDay === 'function' ? isMandatoryScreenshotDay(testingDay) : false;
+            btnConfirm.disabled = false;
+            btnConfirm.innerText = screenshotDay ? ('💬 ' + t.screenshotBtn) : t.confirmStart;
+            btnConfirm.style.backgroundColor = 'var(--success-color)';
+            btnConfirm.style.color = '#ffffff';
+            btnConfirm.style.cursor = 'pointer';
+            if (screenshotDay) {
+                btnConfirm.onclick = function() { handleScreenshotAndConfirm(id, (test.owner_username || '').replace('@', '')); };
+            } else {
+                btnConfirm.onclick = function() { confirmStart(id); };
+            }
+        }
+    }
 }
 
 async function _loadTasksImpl(options) {
@@ -2578,6 +2643,7 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
 
     if (activeTimerAppId === id) {
         tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+        _onStoreLinkClickedForIssueFlow(id);
         return;
     }
 
@@ -2585,6 +2651,7 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
     if (readyPayload) {
         _setTimerButtonReady(id, readyPayload.isScreenshot, readyPayload.ownerUsername);
         tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+        _onStoreLinkClickedForIssueFlow(id);
         return;
     }
 
@@ -2594,6 +2661,7 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
     }
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+    _onStoreLinkClickedForIssueFlow(id);
 
     const btn = document.getElementById(`btn-confirm-${id}`);
     if (!btn || !btn.disabled) return;
@@ -2627,6 +2695,7 @@ window._restoreActiveTimer = _restoreActiveTimer;
 function openPlay(id, pkg) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+    _onStoreLinkClickedForIssueFlow(id);
     const test = myTests.find(item => item.id === id);
     if (test) {
         test.status = 'opened';
@@ -2638,6 +2707,7 @@ function handleFirstDownload(id, pkg) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     setFirstDayScreenshotVisible(id, true);
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+    _onStoreLinkClickedForIssueFlow(id);
     setTimeout(() => {
         const screenshotBox = document.getElementById(`new-screenshot-box-${id}`);
         if (screenshotBox) screenshotBox.style.display = 'block';
@@ -2646,7 +2716,54 @@ function handleFirstDownload(id, pkg) {
 
 async function handleScreenshotAndConfirm(id, ownerUsername) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    if (window.openScreenshotGuardModal) {
+        window.openScreenshotGuardModal(id, ownerUsername);
+        return;
+    }
     openReportModal(id, ownerUsername);
+}
+
+async function submitIssueReport(appId) {
+    if (!appId) return;
+    var test = myTests.find(function(item) { return Number(item.id) === Number(appId); });
+    if (!test) return;
+    if (!test.has_clicked_store) {
+        showToast(window.t('reportIssueNeedStoreFirst', {}, lang));
+        return;
+    }
+
+    var reasonEl = document.getElementById('issue-report-text');
+    var reason = reasonEl ? String(reasonEl.value || '').trim() : '';
+
+    try {
+        var response = await fetch(`${API_BASE}/projects/${appId}/report_issue`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: userId, reason: reason })
+        });
+        var result = await response.json();
+        if (!response.ok || !result || result.status !== 'success') {
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            return;
+        }
+
+        test.issue_reported_at = result.issue_reported_at || new Date().toISOString();
+        test.issue_reason = reason;
+        test.issue_fixed_at = null;
+        _setIssueUiState(appId, true);
+
+        var issueBtn = document.getElementById('btn-issue-' + appId);
+        if (issueBtn) {
+            issueBtn.disabled = true;
+            issueBtn.style.opacity = '0.55';
+        }
+
+        if (window.closeIssueReportModal) window.closeIssueReportModal();
+        showToast(window.t('reportIssueSuccess', {}, lang));
+    } catch (error) {
+        console.error('Report issue error:', error);
+        handleApiError('network_error');
+    }
 }
 
 async function sendReport() {
@@ -4073,6 +4190,7 @@ Object.assign(window, {
     openPlay,
     handleFirstDownload,
     handleScreenshotAndConfirm,
+    submitIssueReport,
     sendReport,
     sendContactMessage,
     toggleVisibility,
