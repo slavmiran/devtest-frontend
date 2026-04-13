@@ -502,6 +502,18 @@ function countGrantSkips(app) {
     return Math.max(0, Number(app && app.skips_count || 0));
 }
 
+function isValidEmail(value) {
+    var email = String(value || '').trim();
+    if (!email) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidGoogleGroupUrl(value) {
+    var url = String(value || '').trim();
+    if (!url) return false;
+    return /^https:\/\/groups\.google\.com(?:\/u\/\d+)?\/g\/[A-Za-z0-9._-]+\/?$/.test(url);
+}
+
 function hasTestsCache() {
     var cached = getTestsCache();
     return !!(cached && Array.isArray(cached.tests));
@@ -1054,6 +1066,7 @@ function handleApiError(code, details = {}) {
         grant_too_many_skips: 'err_grant_too_many_skips',
         grant_already_claimed: 'err_grant_already_claimed',
         invalid_start_date: 'err_grant_unavailable',
+        invalid_google_group_url: 'invalid_google_group_url',
         testing_not_found: 'testing_not_found',
         feedback_not_found: 'feedback_not_found',
         feedback_forbidden: 'feedback_forbidden',
@@ -1707,11 +1720,13 @@ function _mapTestsFromApi(data) {
             status = 'opened';
         }
         
-        // Computed: test eligible for grant claim after Day 14 check-in
+        // Computed: grant is claimable from Day 15, while Day 14 done shows "available tomorrow"
         var isTestedToday = status === 'done';
         var testingDays = Number(app.testing_days || 0);
         var skipsCount = countGrantSkips(app);
-        var isReadyToClaim = testingDays >= 14 && isTestedToday && !app.grant_claimed && skipsCount < 3 && app.progress_id;
+        var canEverClaim = !app.grant_claimed && skipsCount <= 3 && app.progress_id;
+        var isGrantAvailableTomorrow = !!(canEverClaim && testingDays === 14 && isTestedToday);
+        var isReadyToClaim = !!(canEverClaim && testingDays >= 15);
         
         return {
             id: app.app_id,
@@ -1746,6 +1761,7 @@ function _mapTestsFromApi(data) {
             issue_fixed_at: app.issue_fixed_at || null,
             has_clicked_store: existingTest ? !!existingTest.has_clicked_store : false,
             isTestedToday: isTestedToday,
+            isGrantAvailableTomorrow: isGrantAvailableTomorrow,
             isReadyToClaim: isReadyToClaim,
         };
     });
@@ -2728,6 +2744,14 @@ async function submitIssueReport(appId) {
     var reason = reasonEl ? String(reasonEl.value || '').trim() : '';
     var email = emailEl ? String(emailEl.value || '').trim() : '';
 
+    if (email && !isValidEmail(email)) {
+        showToast(window.t('reportIssueInvalidEmail', {}, lang));
+        if (emailEl && typeof emailEl.focus === 'function') {
+            emailEl.focus();
+        }
+        return;
+    }
+
     try {
         var response = await fetch(`${API_BASE}/projects/${appId}/report_issue`, {
             method: 'POST',
@@ -2751,6 +2775,7 @@ async function submitIssueReport(appId) {
         if (issueBtn) {
             issueBtn.disabled = true;
             issueBtn.style.opacity = '0.55';
+            issueBtn.innerText = window.t('issueAwaitingFix', {}, lang);
         }
 
         persistTestsCacheSnapshot();
@@ -3956,6 +3981,11 @@ async function saveProject() {
     const isStandard = document.getElementById('seg-standard').classList.contains('active');
     const groupInput = isStandard ? '' : document.getElementById('app-group').value.trim();
 
+    if (!isStandard && groupInput && !isValidGoogleGroupUrl(groupInput)) {
+        handleApiError('invalid_google_group_url');
+        return;
+    }
+
     if (!packageInput.includes('play.google.com/store/apps/details?id=')) {
         document.getElementById('package-error').innerText = t.invalidPlayLink;
         document.getElementById('package-error').style.display = 'block';
@@ -4058,6 +4088,11 @@ async function saveProjectEdit() {
     if (!name) {
         if (tg.showAlert) tg.showAlert(t.fillFields);
         else alert(t.fillFields);
+        return;
+    }
+
+    if (googleGroupUrl && !isValidGoogleGroupUrl(googleGroupUrl)) {
+        handleApiError('invalid_google_group_url');
         return;
     }
 

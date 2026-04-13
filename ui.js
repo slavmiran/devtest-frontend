@@ -416,7 +416,7 @@ function getGrantEstimateData(test) {
     const base = 50;
     const karmaBonus = Math.min(Math.max(0, karma * 5), 100);
     const perfectBonus = skips === 0 ? 50 : 0;
-    const eligible = skips < 3;
+    const eligible = skips <= 3;
     return {
         base,
         karma,
@@ -1358,12 +1358,12 @@ function renderTests(force) {
         const card = document.createElement('div');
         
         // Determine if test should go to active or done list:
-        // - If isReadyToClaim: keep in active list (even if today is check-in day)
+        // - If isReadyToClaim or isGrantAvailableTomorrow: keep in active list
         // - Else if status='done' AND day < 14: go to done list
-        // - Else if status='done' AND day >= 14 AND !isReadyToClaim: go to done list (grant already claimed or skips exceeded)
+        // - Else if status='done' AND day >= 14 without claim states: go to done list
         // - Else: go to active list
-        const shouldShowInActiveList = test.isReadyToClaim || test.status !== 'done' || (test.status === 'done' && test.testing_days < 14);
-        const shouldShowInDoneList = test.status === 'done' && !test.isReadyToClaim;
+        const shouldShowInActiveList = test.isReadyToClaim || test.isGrantAvailableTomorrow || test.status !== 'done' || (test.status === 'done' && test.testing_days < 14);
+        const shouldShowInDoneList = test.status === 'done' && !test.isReadyToClaim && !test.isGrantAvailableTomorrow;
         
         card.className = test.status === 'done' && shouldShowInDoneList ? 'card card-done' : 'card';
         card.id = `test-card-${test.id}`;
@@ -1376,13 +1376,13 @@ function renderTests(force) {
         const shouldShowIssueOnCard = test.status === 'new' && !!test.has_clicked_store;
         const issueBtnDisplay = shouldShowIssueOnCard ? 'inline-flex' : 'none';
         const isIssueBlocked = !!test.issue_reported_at && !test.issue_fixed_at;
-        const issueBtnHtml = `<button id="btn-issue-${test.id}" class="btn" style="display:${issueBtnDisplay}; width:100%; margin-top:8px; background:rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>🚨 ${window.t('reportIssueBtnLabel', {}, lang)}</button>`;
+        const issueBtnText = isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : ('🚨 ' + window.t('reportIssueBtnLabel', {}, lang));
+        const issueBtnHtml = `<button id="btn-issue-${test.id}" class="btn" style="display:${issueBtnDisplay}; width:100%; margin-top:8px; background:rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>${issueBtnText}</button>`;
 
         // === ACTION BUTTONS LOGIC ===
         let actionsHtml = '';
         
-        // State A: isReadyToClaim = true (Day >= 14 AND tested today AND eligible)
-        // Show claim button + secondary open/screenshot row
+        // State A: grant available now (Day >= 15)
         if (test.isReadyToClaim) {
             const testingDay = userTestingDay || 999;
             const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
@@ -1402,12 +1402,18 @@ function renderTests(force) {
             }
             
             actionsHtml = `
-                <button class="btn btn-claim-grant" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="claimGrant(${test.progress_id}, ${test.id})">
+                <button id="btn-claim-${test.id}" class="btn btn-claim-grant" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="claimGrant(${test.progress_id}, ${test.id})">
                     🎁 ${window.t('claimGrantBtn')}
                 </button>
                 <div class="action-row" style="gap: 8px;">
                     ${secondaryActions}
                 </div>
+            `;
+        } else if (test.isGrantAvailableTomorrow) {
+            actionsHtml = `
+                <button id="btn-claim-${test.id}" class="btn btn-claim-grant" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
+                    ${window.t('claimGrantTomorrowBtn', {}, lang)}
+                </button>
             `;
         }
         // State B: status = 'new' OR status = 'daily'/'opened' without ready to claim
