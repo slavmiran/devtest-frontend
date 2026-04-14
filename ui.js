@@ -343,7 +343,7 @@ function formatOfferRemaining(createdAt) {
         created = new Date(createdAt);
     }
     if (Number.isNaN(created.getTime())) return null;
-    const expiresAt = new Date(created.getTime() + (3 * 60 * 60 * 1000));
+    const expiresAt = new Date(created.getTime() + (5 * 60 * 60 * 1000));
     if (Date.now() > expiresAt.getTime()) return null;
     const leftMs = Math.max(0, expiresAt.getTime() - Date.now());
     const totalMinutes = Math.floor(leftMs / 60000);
