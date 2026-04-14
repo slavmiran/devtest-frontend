@@ -1361,11 +1361,14 @@ function renderTests(force) {
         // - If isReadyToClaim or isGrantAvailableTomorrow: keep in active list
         // - Else if status='done' AND day < 14: go to done list
         // - Else if status='done' AND day >= 14 without claim states: go to done list
+        // - If isReadyToClaim: keep in active list
+        // - If isGrantAvailableTomorrow: move to done list (grant pending)
+        // - Else if status='done': go to done list
         // - Else: go to active list
-        const shouldShowInActiveList = test.isReadyToClaim || test.isGrantAvailableTomorrow || test.status !== 'done' || (test.status === 'done' && test.testing_days < 14);
-        const shouldShowInDoneList = test.status === 'done' && !test.isReadyToClaim && !test.isGrantAvailableTomorrow;
+        const shouldShowInActiveList = test.isReadyToClaim || (test.status !== 'done' && !test.isGrantAvailableTomorrow);
+        const shouldShowInDoneList = test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim);
         
-        card.className = test.status === 'done' && shouldShowInDoneList ? 'card card-done' : 'card';
+        card.className = shouldShowInDoneList ? 'card card-done' : 'card';
         card.id = `test-card-${test.id}`;
         const userTestingDay = getUserTestingDay(test.start_date);
         const safePackage = escapeInlineJsString(test.package);
@@ -1397,6 +1400,12 @@ function renderTests(force) {
                 secondaryActions += `
                     <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
                         ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '💬 ' + t.screenshotBtn}
+                    </button>
+                `;
+            } else {
+                secondaryActions += `
+                    <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
+                        ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : t.confirmStart}
                     </button>
                 `;
             }

@@ -1519,6 +1519,17 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     const btn = document.getElementById('btn-confirm-' + finishedId);
     if (!btn) return false;
 
+    // Check if test has an unresolved issue — keep button disabled
+    var test = myTests.find(function(item) { return Number(item.id) === Number(finishedId); });
+    if (test && test.issue_reported_at && !test.issue_fixed_at) {
+        btn.disabled = true;
+        btn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
+        btn.style.color = 'var(--hint-color)';
+        btn.style.cursor = 'not-allowed';
+        btn.innerText = window.t('issueAwaitingFix', {}, lang);
+        return true;
+    }
+
     btn.disabled = false;
     btn.style.backgroundColor = 'var(--success-color)';
     btn.style.color = '#fff';
