@@ -2818,6 +2818,9 @@ function openSyncModal(projectId) {
         const syncDiffDays = liveProject.last_sync_date ? getDayDiffFromToday(liveProject.last_sync_date) : 0;
         const currentGoogleDay = currentSyncDay > 1 ? currentSyncDay + syncDiffDays : 0;
         const leftDays = Math.max(0, 14 - currentGoogleDay);
+        const timelineMeta = {
+            isLastDay: currentSyncDay > 1 && leftDays === 0,
+        };
         const today = parseLocalDateOnly(getLocalDate()) || new Date();
         const finishDate = new Date(today);
         finishDate.setDate(finishDate.getDate() + leftDays);
