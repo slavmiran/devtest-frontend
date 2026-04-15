@@ -2324,6 +2324,7 @@ function _mapProjectsFromApi(data) {
             google_sync_day: project.google_sync_day || 0,
             sync_message: project.sync_message || '',
             last_sync_date: project.last_sync_date || null,
+            last_owner_activity: project.last_owner_activity || null,
             published_to_market_at: project.published_to_market_at || null,
             last_mass_invite_at: project.last_mass_invite_at || null,
             feedback_new_count: project.feedback_new_count || 0,
@@ -3529,13 +3530,14 @@ async function pingOwnerActivity(projectId) {
         }
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(window.t('activityPingSuccess'));
+        showToast(window.t(data.already_confirmed ? 'activityConfirmedBtn' : 'activityPingSuccess', data.already_confirmed ? { time: '24:00:00' } : {}));
 
         var proj = myProjects.find(function(p) { return p.id === projectId; });
         if (proj) {
             proj.last_owner_activity = data.last_owner_activity || new Date().toISOString();
         }
 
+        setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
         _startActivityCountdown(btn, 24 * 60 * 60 * 1000);
         renderProjects(true);
     } catch (error) {
