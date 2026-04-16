@@ -449,26 +449,6 @@
         </div>
     </div>
 
-    <!-- Contact Developer Modal -->
-    <div id="contact-modal" class="modal-overlay" onclick="closeContactModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-contactTitle" data-i18n="contactTitle">Связаться с разработчиком</h3>
-            <div class="form-group">
-                <textarea id="contact-text" class="form-input" rows="4"></textarea>
-            </div>
-            <div class="chip-scroll" style="margin-bottom: 12px;">
-                <button class="chip" id="contact-chip-mutual" onclick="resetContactText()" data-i18n="contactChipMutual">🔄 Предложить взаимку</button>
-                <button class="chip" id="contact-chip-attach" onclick="toggleAttachProject()" data-i18n="contactChipAttach">🔗 Прикрепить мой проект</button>
-            </div>
-            <div id="attach-project-container" style="display: none; margin-bottom: 12px;">
-                <select id="attach-project-select" class="form-input" onchange="onProjectSelected()">
-                    <option value="" data-i18n="contactSelectPlaceholder"></option>
-                </select>
-            </div>
-            <button class="btn btn-primary" id="t-contactSendBtn" onclick="sendContactMessage()" data-i18n="contactSendBtn">Отправить (Telegram)</button>
-        </div>
-    </div>
-
     <!-- Screenshot Complete Reminder Modal -->
     <div id="screenshot-complete-modal" class="modal-overlay" onclick="closeScreenshotCompleteModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">

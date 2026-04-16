@@ -52,7 +52,6 @@ var _reportOwnerUsername = null;
 var _issueReportAppId = null;
 var _userEmail = '';
 var _pendingScreenshotReminderUsername = null;
-var _contactOwnerUsername = '';
 var _dropTestAppId = null;
 var _leaveMutualAppId = null;
 var _leaveMutualStats = null;
@@ -2830,22 +2829,6 @@ async function sendReport() {
     }
 }
 
-function sendContactMessage() {
-    if (!_contactOwnerUsername) {
-        showToast(t.usernameUnavailable);
-        return;
-    }
-    const text = document.getElementById('contact-text').value.trim();
-    if (text) {
-        try {
-            tg.openTelegramLink('https://t.me/' + _contactOwnerUsername + '?text=' + encodeURIComponent(text));
-        } catch (error) {
-            window.location.href = 'https://t.me/' + _contactOwnerUsername + '?text=' + encodeURIComponent(text);
-        }
-    }
-    closeContactModal({ target: document.getElementById('contact-modal') });
-}
-
 async function toggleVisibility(appId, isVisible) {
     const project = myProjects.find(item => item.id === appId);
     if (!project) return;
@@ -4245,7 +4228,6 @@ Object.assign(window, {
     handleScreenshotAndConfirm,
     submitIssueReport,
     sendReport,
-    sendContactMessage,
     toggleVisibility,
     confirmDropTest,
     confirmLeaveMutual,

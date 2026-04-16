@@ -648,7 +648,7 @@ function getOwnerActiveStatus(lastOwnerActivity) {
     const dt = new Date(lastOwnerActivity);
     if (Number.isNaN(dt.getTime())) return false;
     const diffMs = Date.now() - dt.getTime();
-    return diffMs <= (12 * 60 * 60 * 1000);
+    return diffMs <= (24 * 60 * 60 * 1000);
 }
 
 function isProjectSynced(test) {
@@ -2454,43 +2454,6 @@ function insertReportChip(chipText) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-function openContactModal(ownerUsername) {
-    _contactOwnerUsername = ownerUsername;
-    const textarea = document.getElementById('contact-text');
-    textarea.value = t.contactPrefill;
-    document.getElementById('attach-project-container').style.display = 'none';
-    const select = document.getElementById('attach-project-select');
-    select.innerHTML = '<option value="">' + window.escapeHTML(t.contactSelectProject) + '</option>'
-        + myProjects.map((project) => '<option value="' + project.id + '">' + window.escapeHTML(project.name || window.t('unknownLabel', {}, lang)) + '</option>').join('');
-    document.getElementById('contact-modal').classList.add('active');
-}
-
-function closeContactModal(event) {
-    if (event && event.target !== document.getElementById('contact-modal')) return;
-    document.getElementById('contact-modal').classList.remove('active');
-}
-
-function resetContactText() {
-    document.getElementById('contact-text').value = t.contactPrefill;
-}
-
-function toggleAttachProject() {
-    const container = document.getElementById('attach-project-container');
-    container.style.display = container.style.display === 'none' ? 'block' : 'none';
-}
-
-function onProjectSelected() {
-    const select = document.getElementById('attach-project-select');
-    const selectedId = select.value;
-    if (selectedId) {
-        const textarea = document.getElementById('contact-text');
-        const link = 'https://t.me/Android12TestersBot?start=app_' + selectedId;
-        if (!textarea.value.includes(link)) {
-            textarea.value += '\n\n🔗 ' + link;
-        }
-    }
-}
-
 function openDropTestModal(appId, event) {
     if (event) {
         event.preventDefault();
@@ -4249,7 +4212,7 @@ function openProjectDetailsModal(appId) {
         economicsHtml +
 
         '<div class="detail-actions">' +
-            '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openContactModal(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +
+            '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openTelegramProfile(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +
             '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); initiateProjectFeedback(' + test.id + ')">' + window.t('detail_suggest_btn', {}, lang) + '</button>' +
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'https://play.google.com/store/apps/details?id=' + window.escapeHTML(test.package || '') + '\')">' + window.t('openGooglePlay', {}, lang) + '</button>' +
             (showIssueActionInDetails
@@ -4496,11 +4459,6 @@ Object.assign(window, {
     closeIssueReportModal,
     submitIssueReportFromModal,
     insertReportChip,
-    openContactModal,
-    closeContactModal,
-    resetContactText,
-    toggleAttachProject,
-    onProjectSelected,
     openDropTestModal,
     closeDropTestModal,
     openLeaveMutualModal,
