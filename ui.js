@@ -22,6 +22,7 @@ function escapeHtmlWithBreaks(value) {
 }
 
 var _reliabilityDashboardFilter = 'projects';
+var _inviteMode = 'mutual';
 
 function showSkeleton(containerId) {
     const container = document.getElementById(containerId);
@@ -3581,18 +3582,24 @@ async function handleMassInviteAction(projectId) {
 }
 
 function openInviteModal(projectId) {
+    const previousProjectId = _inviteProjectId;
     _inviteProjectId = projectId;
+    if (previousProjectId !== projectId) {
+        _inviteMode = 'mutual';
+    }
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
-    const isPublished = !!project.published_to_market_at;
+    const isPublished = true;
     const massInviteMeta = getProjectMassInviteMeta(project);
 
-    const link = `https://t.me/Android12TestersBot?start=app_${project.id}`;
+    const buildInviteLink = (mode) => `https://t.me/Android12TestersBot?start=${mode === 'mutual' ? 'mutual' : 'app'}_${project.id}`;
     const instrLine = project.instructions ? `\n${t.inviteDescLabel}${project.instructions}` : '';
-
-    const block1Text = t.inviteBlock1Text.replace('{name}', project.name).replace('{instr}', instrLine).replace('{link}', link);
-    const block2Text = t.inviteBlock2Text.replace('{name}', project.name).replace('{link}', link);
-    const block3Text = link;
+    const getBlock1Text = (mode) => t.inviteBlock1Text.replace('{name}', project.name).replace('{instr}', instrLine).replace('{link}', buildInviteLink(mode));
+    const getBlock2Text = (mode) => {
+        const templateKey = mode === 'mutual' ? 'inviteBlock2Text' : 'inviteBlock2TextDirect';
+        return window.t(templateKey, { name: project.name, link: buildInviteLink(mode) }, lang);
+    };
+    const getBlock3Text = (mode) => buildInviteLink(mode);
     const massInviteButtonLabel = massInviteMeta.isAvailable
         ? window.t('massInviteLaunchBtn', {}, lang)
         : window.t('massInviteUnavailableBtn', {}, lang);
@@ -3620,12 +3627,19 @@ function openInviteModal(projectId) {
     const preStyle = 'font-family: monospace; font-size: 12px; color: var(--hint-color); white-space: pre-wrap; word-break: break-word; max-height: 150px; overflow-y: auto; margin-bottom: 12px; line-height: 1.4;';
 
     const body = document.getElementById('invite-modal-body');
-    body.innerHTML = `
+
+    function renderInviteModalContent() {
+        const block1Text = getBlock1Text(_inviteMode);
+        const block2Text = getBlock2Text(_inviteMode);
+        const block3Text = getBlock3Text(_inviteMode);
+        const mutualTabActive = _inviteMode === 'mutual';
+        const block2Title = mutualTabActive ? t.inviteBlock2Title : t.inviteBlock2TitleDirect;
+        body.innerHTML = `
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock1Title}</div>
             <div style="${preStyle}">${window.escapeHTML(block1Text)}</div>
             <div style="display:flex;gap:8px;">
-                <button class="btn ${isPublished ? '' : 'btn-primary'}" id="invite-publish-btn" style="flex:1; ${isPublished ? 'background: rgba(52,199,89,0.15); color: #34c759;' : ''}" ${isPublished ? 'disabled' : ''} onclick="publishProjectToMarketAction(${project.id})">${isPublished ? t.invitePublishedBtn : t.inviteBlock1Btn}</button>
+                <button class="btn" id="invite-publish-btn" style="flex:1; background: rgba(52,199,89,0.15); color: #34c759;" disabled>${window.escapeHTML(t.invitePublishedBtn)}</button>
                 <button class="btn-icon" style="width:42px;height:42px;font-size:18px;border-radius:12px;flex-shrink:0;" onclick="copyAndAction('${escapeForAttr(block1Text)}', 'saved')">📋</button>
             </div>
         </div>
@@ -3636,8 +3650,12 @@ function openInviteModal(projectId) {
             ${massInviteLimitHintHtml}
             ${massInviteCooldownHtml}
         </div>
+        <div style="display:flex;gap:8px;margin:12px 0 10px;">
+            <button class="btn ${mutualTabActive ? 'btn-primary' : ''}" style="flex:1; ${mutualTabActive ? '' : 'background: var(--secondary-bg-color); color: var(--text-color);'}" onclick="window.setInviteMode('mutual')">${window.escapeHTML(window.t('inviteModeMutualTab', {}, lang))}</button>
+            <button class="btn ${!mutualTabActive ? 'btn-primary' : ''}" style="flex:1; ${!mutualTabActive ? '' : 'background: var(--secondary-bg-color); color: var(--text-color);'}" onclick="window.setInviteMode('direct')">${window.escapeHTML(window.t('inviteModeDirectTab', {}, lang))}</button>
+        </div>
         <div style="${cardStyle}">
-            <div style="${titleStyle}">${t.inviteBlock2Title}</div>
+            <div style="${titleStyle}">${window.escapeHTML(block2Title)}</div>
             <div style="${preStyle}">${window.escapeHTML(block2Text)}</div>
             <button class="btn" style="width: 100%; background: rgba(51,144,236,0.12); color: var(--link-color); border: none;" onclick="copyAndAction('${escapeForAttr(block2Text)}', 'saved')">${t.inviteBlock2Btn}</button>
         </div>
@@ -3647,6 +3665,9 @@ function openInviteModal(projectId) {
             <button class="btn" style="width: 100%; background: rgba(51,144,236,0.12); color: var(--link-color); border: none;" onclick="copyAndAction('${escapeForAttr(block3Text)}', 'saved')">${t.inviteBlock3Btn}</button>
         </div>
     `;
+    }
+
+    renderInviteModalContent();
 
     document.getElementById('t-inviteModalTitle').innerText = t.inviteModalTitle;
     document.getElementById('t-inviteClose').innerText = t.inviteClose;
@@ -3669,29 +3690,15 @@ function copyAndAction(text, target) {
 }
 
 async function publishProjectToMarketAction(projectId) {
-    if (!projectId || !window.publishProjectToMarket) return;
-    const project = (myProjects || []).find(function(item) {
-        return Number(item.id) === Number(projectId);
-    });
-    if (project && project.published_to_market_at) {
-        showToast(window.t('already_published', {}, lang));
-        return;
-    }
-    const btn = document.getElementById('invite-publish-btn');
-    if (btn && btn.disabled) return;
-    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-    if (btn) btn.disabled = true;
-    const result = await window.publishProjectToMarket(projectId);
-    if (result) {
-        if (btn) {
-            btn.disabled = true;
-            btn.textContent = t.invitePublishedBtn;
-            btn.classList.remove('btn-primary');
-            btn.style.background = 'rgba(52,199,89,0.15)';
-            btn.style.color = '#34c759';
-        }
-    } else if (btn) {
-        btn.disabled = false;
+    if (!projectId) return;
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    showToast(window.t('already_published', {}, lang));
+}
+
+function setInviteMode(mode) {
+    _inviteMode = mode === 'direct' ? 'direct' : 'mutual';
+    if (_inviteProjectId) {
+        openInviteModal(_inviteProjectId);
     }
 }
 
@@ -3699,6 +3706,7 @@ function closeInviteModal(event) {
     if (event && event.target !== document.getElementById('invite-modal')) return;
     document.getElementById('invite-modal').classList.remove('active');
     _inviteProjectId = null;
+    _inviteMode = 'mutual';
 }
 
 async function openDossierModal(username, testerId, appId) {
@@ -4510,6 +4518,7 @@ Object.assign(window, {
     closeBanner,
     handleMassInviteAction,
     openInviteModal,
+    setInviteMode,
     escapeForAttr,
     copyAndAction,
     publishProjectToMarketAction,

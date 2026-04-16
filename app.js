@@ -1091,6 +1091,7 @@ function handleApiError(code, details = {}) {
         offer_inactive_app: 'err_offer_inactive_app',
         offer_owner_mismatch: 'err_offer_owner_mismatch',
         offer_proposer_app_locked_owner: 'err_offer_proposer_app_locked_owner',
+        offer_no_available_apps: 'err_offer_no_available_apps',
         offer_accept_failed: 'err_offer_accept_failed',
         offer_create_failed: 'err_offer_create_failed',
         user_not_found: 'err_user_not_found',
