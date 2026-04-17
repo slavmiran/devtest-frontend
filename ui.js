@@ -3916,6 +3916,9 @@ async function openDossierModal(username, testerId, appId) {
         }
     }
 
+    const tgName = username || '';
+    const safeTelegramUsername = escapeInlineJsString(tgName);
+
     let profile = { karma: 0, completed_tests: 0, total_expected_checkins: 0, total_actual_checkins: 0 };
     try {
         const resp = await fetch(`${API_BASE}/users/${testerId}/profile`);
@@ -3953,8 +3956,6 @@ async function openDossierModal(username, testerId, appId) {
     const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project;
     const takeFromShowcaseDisabled = !!(marketCandidate && marketCandidate.has_pending_offer);
     const takeFromShowcaseIsPrelaunch = !!(marketCandidate && marketCandidate.market_kind === 'mutual-prelaunch');
-    const tgName = username || '';
-    const safeTelegramUsername = escapeInlineJsString(tgName);
 
     let html = '';
     const goldenCountText = (profile.golden_count || 0) > 0
