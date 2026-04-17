@@ -3859,13 +3859,26 @@ function openDeleteModal(id) {
 
         const overtimeTesters = testers.map((tr) => {
             const overtimeStats = getTesterOvertimeStats(tr);
-            const alreadyRewarded = projectLikes.some((like) => like.tester_id === tr.tester_id && String(like.type || '').toLowerCase() === 'overtime');
+            const testerRewardTypes = projectLikes
+                .filter((like) => like.tester_id === tr.tester_id)
+                .map((like) => String(like.type || '').toLowerCase())
+                .filter(Boolean);
+            const alreadyRewarded = testerRewardTypes.includes('overtime');
+            const rewardHistoryLabels = testerRewardTypes
+                .filter((type) => type !== 'overtime')
+                .map((type) => {
+                    if (type === 'good') return window.t('deleteRewardTypeGood', {}, lang);
+                    if (type === 'bug') return window.t('deleteRewardTypeBug', {}, lang);
+                    return window.t('deleteRewardTypeGeneric', {}, lang);
+                })
+                .join(' • ');
             return {
                 ...tr,
                 overtimeCheckins: overtimeStats.overtimeCheckins,
                 overtimeSkips: overtimeStats.overtimeSkips,
                 overtimeDays: overtimeStats.overtimeDays,
                 alreadyRewarded,
+                rewardHistoryLabels,
             };
         }).filter((tr) => tr.overtimeCheckins > 0);
 
@@ -3884,6 +3897,9 @@ function openDeleteModal(id) {
                     '<span class="delete-overtime-radio-body">' +
                         '<span class="delete-overtime-item-name">' + name + '</span>' +
                         '<span class="delete-overtime-item-meta">' + window.escapeHTML(window.t('deleteOvertimeTesterStats', { checkins: tr.overtimeCheckins, skips: tr.overtimeSkips }, lang)) + '</span>' +
+                        (tr.rewardHistoryLabels
+                            ? '<span class="delete-overtime-item-meta">' + window.escapeHTML(window.t('deleteRewardHistory', { types: tr.rewardHistoryLabels }, lang)) + '</span>'
+                            : '') +
                         (tr.alreadyRewarded
                             ? '<span class="delete-overtime-item-meta">' + window.escapeHTML(window.t('deleteOvertimeAlreadyRewarded', {}, lang)) + '</span>'
                             : '') +

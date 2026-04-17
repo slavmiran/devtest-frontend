@@ -3524,6 +3524,8 @@ async function pingOwnerActivity(projectId) {
         setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
         _startActivityCountdown(btn, 24 * 60 * 60 * 1000);
         renderProjects(true);
+        if (typeof refreshOpenModals === 'function') refreshOpenModals();
+        loadProjects(true).catch(function() {});
     } catch (error) {
         console.error('Ping activity error:', error);
         showToast(window.t('activityPingError'));
