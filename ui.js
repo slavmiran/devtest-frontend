@@ -3709,6 +3709,177 @@ function closeInviteModal(event) {
     _inviteMode = 'mutual';
 }
 
+var _dossierProjectsCache = {};
+var _dossierProfilesCache = {};
+
+function getDossierReliabilityState(profile) {
+    var expected = Number(profile && profile.total_expected_checkins || 0);
+    var actual = Number(profile && profile.total_actual_checkins || 0);
+    var reliabilityPct = 0;
+    var reliabilityText = window.t('dossierNewbie', {}, lang);
+
+    if (expected >= 42) {
+        reliabilityPct = Math.round((actual / Math.max(1, expected)) * 100);
+        if (reliabilityPct >= 95) reliabilityText = window.t('reliabilityExcellent', {}, lang);
+        else if (reliabilityPct >= 80) reliabilityText = window.t('reliabilityGood', {}, lang);
+        else if (reliabilityPct >= 65) reliabilityText = window.t('reliabilityRisky', {}, lang);
+        else reliabilityText = window.t('reliabilityUnreliable', {}, lang);
+    }
+
+    return {
+        expected: expected,
+        actual: actual,
+        reliabilityPct: reliabilityPct,
+        reliabilityText: reliabilityText,
+    };
+}
+
+function getProjectModeText(mode) {
+    var normalized = String(mode || 'mutual').toLowerCase();
+    if (normalized === 'bounty') return window.t('modeBounty', {}, lang);
+    if (normalized === 'hybrid') return window.t('modeHybrid', {}, lang);
+    return window.t('modeMutual', {}, lang);
+}
+
+function openTesterOwnedProjectFromDossier(testerId, projectId) {
+    var numericProjectId = Number(projectId || 0);
+    if (numericProjectId <= 0) return;
+
+    var existingTest = (myTests || []).find(function(item) {
+        return Number(item.id) === numericProjectId;
+    });
+
+    closeDossierModal();
+    if (existingTest) {
+        setTimeout(function() {
+            openProjectDetailsModal(numericProjectId);
+        }, 40);
+        return;
+    }
+
+    var cacheKey = String(testerId || '');
+    var project = (_dossierProjectsCache[cacheKey] || []).find(function(item) {
+        return Number(item.app_id) === numericProjectId;
+    });
+    var profile = _dossierProfilesCache[cacheKey] || {};
+    if (!project) {
+        showToast(window.t('loadError', {}, lang));
+        return;
+    }
+
+    setTimeout(function() {
+        openTesterOwnedProjectPreviewModal(project, profile, testerId);
+    }, 40);
+}
+
+function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
+    if (!project) return;
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+    var body = document.getElementById('project-details-body');
+    if (!body) return;
+
+    var safeName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
+    var safePackage = window.escapeHTML(project.package_name || '');
+    var safeOwnerUsername = escapeInlineJsString(project.owner_username || '');
+    var ownerDisplay = window.escapeHTML(project.owner_username ? '@' + String(project.owner_username).replace('@', '') : window.t('idLabel', { id: testerId }, lang));
+    var createdDate = project.created_at ? new Date(project.created_at) : null;
+    var todayDate = new Date(getLocalDate());
+    var platformDays = createdDate && !Number.isNaN(createdDate.getTime())
+        ? Math.max(1, Math.floor((todayDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+        : 1;
+    var syncDay = Number(project.google_sync_day || 0);
+    var syncDiffDays = project.last_sync_date ? getDayDiffFromToday(project.last_sync_date) : 0;
+    var currentGoogleDay = syncDay > 1 ? syncDay + Math.max(0, syncDiffDays) : platformDays;
+    var leftDays = Math.max(0, 14 - currentGoogleDay);
+    var finishDate = new Date(todayDate);
+    finishDate.setDate(finishDate.getDate() + leftDays);
+    var hasSync = syncDay > 1;
+    var ownerActive = getOwnerActiveStatus(project.last_owner_activity);
+    var reliabilityState = getDossierReliabilityState(profile || {});
+    var reliabilityLine = reliabilityState.expected >= 42
+        ? window.t('dossierOwnerReliability', { pct: reliabilityState.reliabilityPct, status: reliabilityState.reliabilityText }, lang)
+        : window.t('dossierOwnerReliabilityNewbie', {}, lang);
+    var takeAction = String(project.mode || 'mutual').toLowerCase() === 'bounty'
+        ? 'closeProjectDetailsModal(); joinBounty(' + Number(project.app_id) + ')'
+        : 'closeProjectDetailsModal(); joinMutual(' + Number(project.app_id) + ', false)';
+    var contactButtonHtml = safeOwnerUsername
+        ? '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openTelegramProfile(\'' + safeOwnerUsername + '\')">' + window.escapeHTML(window.t('detail_contact_btn', {}, lang)) + '</button>'
+        : '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(window.t('usernameUnavailable', {}, lang)) + '</button>';
+
+    var syncHtml = hasSync
+        ? '<div class="details-block">' +
+            '<div class="detail-section-title">' + window.escapeHTML(window.t('projectSyncedTitle', {}, lang)) + '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);line-height:1.6;">' +
+                window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '<br>' +
+                window.escapeHTML(window.t('syncEstimatedFinish', { date: formatDdMmYyyy(finishDate) }, lang)) + '<br>' +
+                window.escapeHTML(window.t('timelineApproxRemaining', { count: leftDays }, lang)) +
+            '</div>' +
+            (project.sync_message
+                ? '<div style="font-size:13px;color:var(--text-color);margin-top:8px;line-height:1.5;">' + escapeHtmlWithBreaks(project.sync_message) + '</div>'
+                : '') +
+        '</div>'
+        : '<div class="details-block"><div class="detail-section-title">' + window.escapeHTML(window.t('syncBtn', {}, lang)) + '</div><div style="font-size:13px;color:var(--hint-color);">' + window.escapeHTML(window.t('dossierOwnedProjectSyncMissing', {}, lang)) + '</div></div>';
+
+    var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.escapeHTML(window.t('devInfo', {}, lang)) + '</div><div class="detail-instruction-body">' + (project.instructions ? escapeHtmlWithBreaks(project.instructions) : '—') + '</div></div>';
+    var economicsHtml = '';
+    if (Number(project.bounty_per_tester || 0) > 0) {
+        var perTester = Number(project.bounty_per_tester || 0);
+        var dailyReward = perTester * 0.65 / 14;
+        var holdBonus = perTester * 0.35;
+        economicsHtml = '<div class="details-block">' +
+            '<div class="detail-section-title">' + window.escapeHTML(window.t('contractEconomicsTitle', {}, lang)) + '</div>' +
+            '<div style="font-size:13px;line-height:1.7;color:var(--text-color);">' +
+                '<div>' + window.escapeHTML(window.t('contractDailyReward', { amount: formatUiAmount(dailyReward, 1) }, lang)) + '</div>' +
+                '<div style="margin-top:6px;">' + window.escapeHTML(window.t('contractHoldBonus', { amount: formatUiAmount(holdBonus, 1) }, lang)) + '</div>' +
+            '</div>' +
+        '</div>';
+    }
+
+    body.innerHTML =
+        '<div class="detail-header">' +
+            renderIcon(project.name || '', project.icon_url) +
+            '<div class="card-info">' +
+                '<div class="card-title">' + safeName + '</div>' +
+                '<div class="card-subtitle">' + safePackage + '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="details-block">' +
+            '<div class="detail-section-title">' + window.escapeHTML(window.t('dossierOwnedProjectsTitle', {}, lang)) + '</div>' +
+            '<div style="font-size:13px;line-height:1.7;color:var(--text-color);">' +
+                window.escapeHTML(window.t('dossierOwnedProjectAdded', { date: createdDate ? formatDdMmYyyy(createdDate) : '—' }, lang)) + '<br>' +
+                window.escapeHTML(window.t('dossierOwnedProjectEta', { count: leftDays }, lang)) + '<br>' +
+                window.escapeHTML(getProjectModeText(project.mode)) + '<br>' +
+                window.escapeHTML(window.t('detail_testers_label', { count: project.active_testers_count || 0 }, lang)) + '<br>' +
+                window.escapeHTML(project.is_visible === false ? window.t('visibilityPrivate', {}, lang) : window.t('visibilityPublic', {}, lang)) +
+            '</div>' +
+        '</div>' +
+        syncHtml +
+        '<div class="details-block">' +
+            '<div class="detail-section-title">' + window.escapeHTML(window.t('detail_owner_label', {}, lang)) + '</div>' +
+            '<div class="detail-owner-row">' +
+                getAvatar(project.owner_username || '?') +
+                '<div>' +
+                    '<div class="detail-owner-name">' + ownerDisplay + '</div>' +
+                    '<div class="detail-owner-status ' + (ownerActive ? 'online' : 'offline') + '">' +
+                        (ownerActive ? window.t('ownerOnlineText', {}, lang) : window.t('ownerOfflineText', {}, lang)) +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.escapeHTML(reliabilityLine) + '</div>' +
+        '</div>' +
+        instructionsHtml +
+        economicsHtml +
+        '<div class="detail-actions">' +
+            contactButtonHtml +
+            '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'' + escapeInlineJsString(project.package_name || '') + '\')">' + window.escapeHTML(window.t('openGooglePlay', {}, lang)) + '</button>' +
+            '<button class="btn" style="background:rgba(0,122,255,0.16);color:var(--button-color);" onclick="' + takeAction + '">' + window.escapeHTML(window.t('dossierBtnTakeTest', {}, lang)) + '</button>' +
+        '</div>';
+
+    var modal = document.getElementById('project-details-modal');
+    if (modal) modal.classList.add('active');
+}
+
 async function openDossierModal(username, testerId, appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     const modal = document.getElementById('dossier-modal');
@@ -3753,17 +3924,27 @@ async function openDossierModal(username, testerId, appId) {
         console.error('Dossier fetch error:', error);
     }
 
-    let reliabilityText = t.dossierNewbie;
-    const expected = profile.total_expected_checkins || 0;
-    const actual = profile.total_actual_checkins || 0;
-    let reliabilityPct = 0;
-    if (expected >= 42) {
-        reliabilityPct = Math.round((actual / expected) * 100);
-        if (reliabilityPct >= 95) reliabilityText = t.reliabilityExcellent;
-        else if (reliabilityPct >= 80) reliabilityText = t.reliabilityGood;
-        else if (reliabilityPct >= 65) reliabilityText = t.reliabilityRisky;
-        else reliabilityText = t.reliabilityUnreliable;
+    let testerProjects = [];
+    try {
+        const resp = await fetch(`${API_BASE}/users/${testerId}/projects`);
+        if (resp.ok) {
+            const data = await resp.json();
+            testerProjects = Array.isArray(data && data.projects) ? data.projects : [];
+        }
+    } catch (error) {
+        console.error('Dossier projects fetch error:', error);
     }
+    testerProjects = testerProjects.map(function(item) {
+        return Object.assign({}, item, { owner_username: tgName || '' });
+    });
+    _dossierProjectsCache[String(testerId)] = testerProjects;
+    _dossierProfilesCache[String(testerId)] = profile;
+
+    const reliabilityState = getDossierReliabilityState(profile);
+    const expected = reliabilityState.expected;
+    const actual = reliabilityState.actual;
+    const reliabilityPct = reliabilityState.reliabilityPct;
+    const reliabilityText = reliabilityState.reliabilityText;
 
     const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
     const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
@@ -3787,6 +3968,39 @@ async function openDossierModal(username, testerId, appId) {
             <br>${t.dossierKarma.replace('{karma}', profile.karma)}
             ${goldenCountText ? '<br><span class="golden-badge">' + window.escapeHTML(goldenCountText) + '</span>' : ''}
         </div>
+    </div>`;
+
+    html += `<div style="margin-bottom: 16px;">
+        <div style="font-weight: 600; margin-bottom: 8px;">${window.escapeHTML(window.t('dossierOwnedProjectsTitle', {}, lang))}</div>
+        ${testerProjects.length
+            ? testerProjects.map((ownedProject) => {
+                const safeOwnedName = window.escapeHTML(ownedProject.name || window.t('unknownLabel', {}, lang));
+                const safeOwnedPackage = window.escapeHTML(ownedProject.package_name || '');
+                const alreadyTestingOwned = (myTests || []).some((test) => Number(test.id) === Number(ownedProject.app_id));
+                const createdAt = ownedProject.created_at ? new Date(ownedProject.created_at) : null;
+                const platformDays = createdAt && !Number.isNaN(createdAt.getTime())
+                    ? Math.max(1, Math.floor((todayDate.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+                    : 1;
+                const syncDayOwned = Number(ownedProject.google_sync_day || 0);
+                const syncDiffOwned = ownedProject.last_sync_date ? getDayDiffFromToday(ownedProject.last_sync_date) : 0;
+                const currentGoogleDayOwned = syncDayOwned > 1 ? syncDayOwned + Math.max(0, syncDiffOwned) : platformDays;
+                const leftDaysOwned = Math.max(0, 14 - currentGoogleDayOwned);
+                return `<button type="button" class="details-block" style="width:100%;text-align:left;cursor:pointer;margin-bottom:8px;" onclick="openTesterOwnedProjectFromDossier(${testerId}, ${Number(ownedProject.app_id)})">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        ${renderIcon(ownedProject.name || '', ownedProject.icon_url)}
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:700;">${safeOwnedName}</div>
+                            <div style="font-size:12px;color:var(--hint-color);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeOwnedPackage}</div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+                                <span class="meta-chip">${window.escapeHTML(getProjectModeText(ownedProject.mode))}</span>
+                                <span class="meta-chip">${window.escapeHTML(window.t('dossierOwnedProjectEta', { count: leftDaysOwned }, lang))}</span>
+                                ${alreadyTestingOwned ? '<span class="meta-chip accent-green">' + window.escapeHTML(window.t('dossierOwnedProjectAlreadyTesting', {}, lang)) + '</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                </button>`;
+            }).join('')
+            : `<div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; color: var(--hint-color);">${window.escapeHTML(window.t('dossierOwnedProjectsEmpty', {}, lang))}</div>`}
     </div>`;
 
     if (tester) {
@@ -4541,6 +4755,7 @@ Object.assign(window, {
     closeInviteModal,
     openDossierModal,
     closeDossierModal,
+    openTesterOwnedProjectFromDossier,
     openDeleteModal,
     closeDeleteModal,
     openModal,
