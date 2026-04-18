@@ -1726,19 +1726,25 @@ function _mapTestsFromApi(data) {
         } else if (app.last_check_date === null) {
             status = 'new';
         }
+        var progressStatus = String(app.progress_status || 'active').toLowerCase();
+        var isArchivedOrCompleted = String(app.app_status || 'active').toLowerCase() !== 'active' || progressStatus !== 'active';
         var existingTest = myTests.find(function(test) { return test.id === app.app_id; });
-        if (existingTest && existingTest.status === 'opened' && status !== 'done') {
+        if (existingTest && existingTest.status === 'opened' && status !== 'done' && !isArchivedOrCompleted) {
             status = 'opened';
         }
         
-        // Computed: grant is claimable from Day 15, while Day 14 done shows "available tomorrow"
+        // Computed: archived/completed final-day tests may claim immediately,
+        // while active Day 14 done shows "available tomorrow".
         var isTestedToday = status === 'done';
         var testingDays = Number(app.testing_days || 0);
         var skipsCount = countGrantSkips(app);
         var canEverClaim = !app.grant_claimed && skipsCount <= 3 && app.progress_id;
-        var isGrantAvailableTomorrow = !!(canEverClaim && testingDays === 14 && isTestedToday);
-        var isReadyToClaim = !!(canEverClaim && testingDays >= 15);
-        
+        var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && testingDays === 14 && isTestedToday);
+        var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
+
+        if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow) {
+            status = 'done';
+        }        
         return {
             id: app.app_id,
             progress_id: app.progress_id,
@@ -1760,6 +1766,7 @@ function _mapTestsFromApi(data) {
             last_sync_date: app.last_sync_date || null,
             testing_days: app.testing_days || 0,
             grant_claimed: !!app.grant_claimed,
+            progress_status: app.progress_status || 'active',
             app_status: app.app_status || 'active',
             join_type: app.join_type || 'invite',
             target_lang: app.target_lang || 'ALL',
@@ -3736,6 +3743,23 @@ async function sendKarmaReward(appId, testerId, rewardType) {
 async function confirmStart(id) {
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
+    const test = myTests.find(function(item) { return Number(item.id) === Number(id); });
+    if (test) {
+        var isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' || String(test.progress_status || 'active').toLowerCase() !== 'active';
+        if (isArchivedOrCompleted) {
+            if (!test.isReadyToClaim && !test.isGrantAvailableTomorrow) {
+                _removeLocalTest(id);
+                persistTestsCacheSnapshot();
+                if (typeof window.renderTests === 'function') {
+                    window.renderTests(true);
+                }
+            }
+            if (tg.showAlert) tg.showAlert(window.t('archivedNoCheckinAlert', {}, lang));
+            loadTasks(true).catch(function() {});
+            return false;
+        }
+    }
+
     const card = document.getElementById(`test-card-${id}`);
     const btn = document.getElementById(`btn-confirm-${id}`);
 
@@ -3772,7 +3796,15 @@ async function confirmStart(id) {
             }
 
             if (result && typeof result === 'object') {
-                handleApiError(getBackendErrorCode(result), result.details || {});
+                var errorCode = getBackendErrorCode(result);
+                if (errorCode === 'testing_not_found') {
+                    _removeLocalTest(id);
+                    persistTestsCacheSnapshot();
+                    if (tg.showAlert) tg.showAlert(window.t('archivedNoCheckinAlert', {}, lang));
+                    loadTasks(true).catch(function() {});
+                } else {
+                    handleApiError(errorCode, result.details || {});
+                }
             } else {
                 handleApiError('network_error');
             }

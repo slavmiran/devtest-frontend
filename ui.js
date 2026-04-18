@@ -3974,7 +3974,7 @@ async function openDossierModal(username, testerId, appId) {
     html += `<div style="margin-bottom: 16px;">
         <div style="font-weight: 600; margin-bottom: 8px;">${window.escapeHTML(window.t('dossierOwnedProjectsTitle', {}, lang))}</div>
         ${testerProjects.length
-            ? testerProjects.map((ownedProject) => {
+            ? '<div class="dossier-owned-projects-list">' + testerProjects.map((ownedProject) => {
                 const safeOwnedName = window.escapeHTML(ownedProject.name || window.t('unknownLabel', {}, lang));
                 const safeOwnedPackage = window.escapeHTML(ownedProject.package_name || '');
                 const alreadyTestingOwned = (myTests || []).some((test) => Number(test.id) === Number(ownedProject.app_id));
@@ -3986,22 +3986,27 @@ async function openDossierModal(username, testerId, appId) {
                 const syncDiffOwned = ownedProject.last_sync_date ? getDayDiffFromToday(ownedProject.last_sync_date) : 0;
                 const currentGoogleDayOwned = syncDayOwned > 1 ? syncDayOwned + Math.max(0, syncDiffOwned) : platformDays;
                 const leftDaysOwned = Math.max(0, 14 - currentGoogleDayOwned);
-                return `<button type="button" class="details-block" style="width:100%;text-align:left;cursor:pointer;margin-bottom:8px;" onclick="openTesterOwnedProjectFromDossier(${testerId}, ${Number(ownedProject.app_id)})">
-                    <div style="display:flex;align-items:center;gap:10px;">
+                return `<button type="button" class="dossier-owned-project-card" onclick="openTesterOwnedProjectFromDossier(${testerId}, ${Number(ownedProject.app_id)})">
+                    <div class="dossier-owned-project-card-inner">
                         ${renderIcon(ownedProject.name || '', ownedProject.icon_url)}
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-weight:700;">${safeOwnedName}</div>
-                            <div style="font-size:12px;color:var(--hint-color);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeOwnedPackage}</div>
-                            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
-                                <span class="meta-chip">${window.escapeHTML(getProjectModeText(ownedProject.mode))}</span>
+                        <div class="dossier-owned-project-body">
+                            <div class="dossier-owned-project-top">
+                                <div style="flex:1;min-width:0;">
+                                    <div class="dossier-owned-project-title">${safeOwnedName}</div>
+                                    <div class="dossier-owned-project-subtitle">${safeOwnedPackage}</div>
+                                </div>
+                                <div class="dossier-owned-project-arrow">›</div>
+                            </div>
+                            <div class="dossier-owned-project-meta">
+                                <span class="meta-chip accent-blue">${window.escapeHTML(getProjectModeText(ownedProject.mode))}</span>
                                 <span class="meta-chip">${window.escapeHTML(window.t('dossierOwnedProjectEta', { count: leftDaysOwned }, lang))}</span>
                                 ${alreadyTestingOwned ? '<span class="meta-chip accent-green">' + window.escapeHTML(window.t('dossierOwnedProjectAlreadyTesting', {}, lang)) + '</span>' : ''}
                             </div>
                         </div>
                     </div>
                 </button>`;
-            }).join('')
-            : `<div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; color: var(--hint-color);">${window.escapeHTML(window.t('dossierOwnedProjectsEmpty', {}, lang))}</div>`}
+            }).join('') + '</div>'
+            : `<div class="dossier-owned-project-empty">${window.escapeHTML(window.t('dossierOwnedProjectsEmpty', {}, lang))}</div>`}
     </div>`;
 
     if (tester) {
