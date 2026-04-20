@@ -652,6 +652,36 @@ function getOwnerActiveStatus(lastOwnerActivity) {
     return diffMs <= (24 * 60 * 60 * 1000);
 }
 
+function getOwnerLastSeenToastText(lastOwnerActivity) {
+    if (!lastOwnerActivity) {
+        return window.t('ownerLastSeenUnknown', {}, lang);
+    }
+    const dt = new Date(lastOwnerActivity);
+    if (Number.isNaN(dt.getTime())) {
+        return window.t('ownerLastSeenUnknown', {}, lang);
+    }
+    const diffMs = Math.max(0, Date.now() - dt.getTime());
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 1) {
+        return window.t('ownerLastSeenJustNow', {}, lang);
+    }
+    if (diffHours < 24) {
+        return window.t('ownerLastSeenHoursAgo', { count: diffHours }, lang);
+    }
+    return window.t('ownerLastSeenDaysAgo', { count: Math.max(1, diffDays) }, lang);
+}
+
+function showOwnerLastSeenToast(lastOwnerActivity) {
+    try {
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.impactOccurred === 'function') {
+            window.tg.HapticFeedback.impactOccurred('light');
+        }
+    } catch (e) {}
+    showToast(getOwnerLastSeenToastText(lastOwnerActivity));
+}
+
 function isProjectSynced(test) {
     return (test.google_sync_day || 0) > 1;
 }
@@ -751,9 +781,10 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
     }
     if (test) {
         const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
+        const ownerLastSeenValue = window.escapeInlineJsString ? window.escapeInlineJsString(String(test.last_owner_activity || '')) : String(test.last_owner_activity || '').replace(/'/g, "\\'");
         const ownerChip = ownerActive
-            ? `<button class="meta-chip accent-green" onclick="event.stopPropagation(); showToast('${(t.ownerOnlineText || '').replace(/'/g, "\\'")}')">${t.ownerOnlineText}</button>`
-            : `<button class="meta-chip accent-red" onclick="event.stopPropagation(); showToast('${(t.ownerOfflineText || '').replace(/'/g, "\\'")}')">${t.ownerOfflineText}</button>`;
+            ? `<button class="meta-chip accent-green" onclick="event.stopPropagation(); showOwnerLastSeenToast('${ownerLastSeenValue}')">${t.ownerOnlineText}</button>`
+            : `<button class="meta-chip accent-red" onclick="event.stopPropagation(); showOwnerLastSeenToast('${ownerLastSeenValue}')">${t.ownerOfflineText}</button>`;
         parts.push(ownerChip);
         if (isProjectSynced(test)) {
             parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${t.syncDoneText}</button>`);
@@ -3388,6 +3419,13 @@ function openKarmaDistribution(projectId) {
     body.innerHTML = `
         <h3>${window.escapeHTML(t.karmaDistributionTitle)}</h3>
         <p style="font-size:13px;color:var(--hint-color);margin-bottom:14px;">${window.escapeHTML(t.karmaDistributionDesc)}</p>
+        <div class="delete-info-block karma-dist" style="margin-bottom:12px;">
+            <div style="font-weight:600;margin-bottom:6px;">${window.escapeHTML(window.t('karmaDistributionGuideTitle', {}, lang))}</div>
+            <div style="font-size:13px;color:var(--hint-color);line-height:1.55;">${window.escapeHTML(window.t('karmaDistributionGuideText', {}, lang))}</div>
+            <div class="delete-chip-row" style="margin-top:8px;">
+                <span class="meta-chip accent-green">${window.escapeHTML(window.t('karmaDistributionGuideStatus', { available: likesAvailable, total: 2 }, lang))}</span>
+            </div>
+        </div>
         <div>${rowsHtml}</div>
         <button class="btn btn-secondary" style="width:100%;margin-top:14px;" onclick="closeKarmaDistribution()">${window.escapeHTML(t.inviteClose)}</button>
     `;
@@ -3872,7 +3910,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
                 getAvatar(project.owner_username || '?') +
                 '<div>' +
                     '<div class="detail-owner-name">' + ownerDisplay + '</div>' +
-                    '<div class="detail-owner-status ' + (ownerActive ? 'online' : 'offline') + '">' +
+                    '<div class="detail-owner-status ' + (ownerActive ? 'online' : 'offline') + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(project.last_owner_activity || '') + '\')">' +
                         (ownerActive ? window.t('ownerOnlineText', {}, lang) : window.t('ownerOfflineText', {}, lang)) +
                     '</div>' +
                 '</div>' +
@@ -4023,10 +4061,14 @@ async function openDossierModal(username, testerId, appId) {
     if (tester) {
         const sourceMeta = getTesterSourceMeta(tester.join_type);
         const sourceText = window.escapeHTML(sourceMeta.icon + ' ' + sourceMeta.label);
+        const actualSkips = Math.max(0, Math.max(0, testingDay - 1) - Number(tester.checkins_count || 0));
         html += `<div style="margin-bottom: 16px;">
             <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierProjectTitle}</div>
             <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
-                ${t.dossierTestingDay.replace('{day}', Math.min(testingDay, 14))}
+                ${window.t('dossierDaysInTest', { count: testingDay }, lang)}
+                <br>${t.dossierTestingDay.replace('{day}', Math.min(testingDay, 14))}
+                <br>${window.t('dossierCheckins', { count: tester.checkins_count || 0 }, lang)}
+                <br>${t.dossierMissedDays.replace('{count}', actualSkips)}
                 ${startDateStr ? '<br>' + t.dossierStartDate.replace('{date}', startDateStr) : ''}
                 ${expectedFinish ? '<br>' + t.dossierExpectedFinish.replace('{date}', expectedFinish) : ''}
                 <br>${t.dossierLastCheck.replace('{status}', lastCheckStatus)}
@@ -4451,7 +4493,7 @@ function openProjectDetailsModal(appId) {
                 getAvatar(test.owner_username || '?') +
                 '<div>' +
                     '<div class="detail-owner-name">' + displayOwner + '</div>' +
-                    '<div class="detail-owner-status ' + (ownerActive ? 'online' : 'offline') + '">' +
+                    '<div class="detail-owner-status ' + (ownerActive ? 'online' : 'offline') + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(test.last_owner_activity || '') + '\')">' +
                         (ownerActive ? window.t('ownerOnlineText', {}, lang) : window.t('ownerOfflineText', {}, lang)) +
                     '</div>' +
                 '</div>' +
@@ -4760,6 +4802,7 @@ Object.assign(window, {
     showCustomAlert,
     closeCustomAlert,
     showToast,
+    showOwnerLastSeenToast,
     switchTab,
     toggleAccordion,
     closeBanner,

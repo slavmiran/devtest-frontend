@@ -3268,13 +3268,13 @@ details[open] > summary .details-arrow {
 
 .centered-popup {
     margin: auto;
-    width: 90%;
-    max-width: 320px;
+    width: 92%;
+    max-width: 420px;
     background: rgba(30, 30, 30, 0.92);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-radius: 20px;
-    padding: 24px;
+    padding: 24px 22px;
     text-align: center;
 }
 
@@ -3285,9 +3285,14 @@ details[open] > summary .details-arrow {
 }
 
 .centered-popup .popup-btn {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
     width: 100%;
-    padding: 12px;
+    min-height: 88px;
+    padding: 14px 12px;
     border: none;
     border-radius: 12px;
     font-size: 15px;
@@ -3295,6 +3300,8 @@ details[open] > summary .details-arrow {
     cursor: pointer;
     margin-bottom: 8px;
     transition: transform 0.1s ease;
+    line-height: 1.35;
+    text-wrap: balance;
 }
 
 .horizontal-scroll {
