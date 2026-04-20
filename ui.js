@@ -1718,7 +1718,7 @@ function renderFeedCard(item, kind) {
     }
 
     return `
-        <div class="market-card${isOwnProject ? ' market-card-own' : ''}">
+        <div class="market-card${isOwnProject ? ' market-card-own' : ''}" data-app-id="${item.app_id}">
             <div class="market-top">
                 <div>
                     <div class="card-title">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
@@ -1946,15 +1946,25 @@ function pluralizeGrantWord(count) {
     return window.t('countGrantWord_many', {}, lang);
 }
 
-function formatDeveloperAchievements(completedTests, goldenCount) {
+function formatDeveloperAchievements(completedTests, goldenCount, totalGrants) {
     const testsWord = pluralizeTestWord(completedTests);
-    if (goldenCount > 0) {
+    if (totalGrants > 0 && goldenCount > 0) {
+        return window.t('developerAchievementsWithGrantFull', {
+            tests_count: completedTests,
+            tests_word: testsWord,
+            grants_count: totalGrants,
+            grants_word: pluralizeGrantWord(totalGrants),
+            golden_count: goldenCount,
+            golden_word: pluralizeGrantWord(goldenCount),
+            grant_tag: window.t('developerGrantTag', {}, lang)
+        }, lang);
+    }
+    if (totalGrants > 0) {
         return window.t('developerAchievementsWithGrant', {
             tests_count: completedTests,
             tests_word: testsWord,
-            grants_count: goldenCount,
-            grants_word: pluralizeGrantWord(goldenCount),
-            grant_tag: window.t('developerGrantTag', {}, lang)
+            grants_count: totalGrants,
+            grants_word: pluralizeGrantWord(totalGrants)
         }, lang);
     }
     return window.t('developerAchievementsNoGrant', {
@@ -1999,9 +2009,10 @@ function renderProjects(force) {
         const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
         const reliabilityValue = reliability.percent !== null ? String(reliability.percent) : reliability.text;
         const goldenCount = Number(visibilityStats.golden_count || 0);
+        const totalGrants = Number(visibilityStats.grant_tests_count || 0);
         const completedTests = Number(visibilityStats.completed_tests || 0);
         const activeTests = Number(visibilityStats.my_active_tests || 0);
-        const achievementsLine = window.escapeHTML(formatDeveloperAchievements(completedTests, goldenCount));
+        const achievementsLine = window.escapeHTML(formatDeveloperAchievements(completedTests, goldenCount, totalGrants));
         const initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) || {};
         const tgUser = initData.user || {};
         const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ').trim();

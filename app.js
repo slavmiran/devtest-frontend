@@ -173,8 +173,17 @@ function _parseInitialRouteTarget() {
             feedbackProjectId = Number(editMatch[1] || 0);
             break;
         }
+        var projectMatch = normalized.match(/^project[_:](\d+)$/);
+        if (projectMatch) {
+            routeKind = 'project';
+            feedbackProjectId = Number(projectMatch[1] || 0);
+            break;
+        }
         if (normalized === 'projects') {
             routeKind = 'projects';
+        }
+        if (normalized === 'tests') {
+            routeKind = 'tests';
         }
         if (normalized === 'market') {
             routeKind = 'market';
@@ -195,6 +204,13 @@ function _parseInitialRouteTarget() {
             appId: null,
         };
     }
+    if (routeKind === 'tests') {
+        return {
+            tab: 'tests',
+            openFeedback: false,
+            appId: null,
+        };
+    }
     if (routeKind === 'market') {
         return {
             tab: 'market',
@@ -206,6 +222,13 @@ function _parseInitialRouteTarget() {
         return {
             tab: 'projects',
             openEdit: true,
+            appId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
+    if (routeKind === 'project') {
+        return {
+            tab: 'market',
+            openProject: true,
             appId: feedbackProjectId > 0 ? feedbackProjectId : null,
         };
     }
@@ -222,6 +245,9 @@ async function _handleInitialRoute() {
     if (route.tab === 'projects') {
         switchTab('projects');
     }
+    if (route.tab === 'tests') {
+        switchTab('tests');
+    }
     if (route.tab === 'market') {
         switchTab('market');
     }
@@ -233,6 +259,26 @@ async function _handleInitialRoute() {
             openEditModal(route.appId);
         } catch (error) {
             console.error('Initial edit route error:', error);
+        }
+        return;
+    }
+
+    // ── Project route: open market and scroll to project card ──
+    if (route.openProject && route.appId) {
+        try {
+            if (typeof window.loadMarketData === 'function') {
+                await window.loadMarketData(true);
+            }
+            setTimeout(function() {
+                var card = document.querySelector('[data-app-id="' + route.appId + '"]');
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add('highlight-pulse');
+                    setTimeout(function() { card.classList.remove('highlight-pulse'); }, 2000);
+                }
+            }, 500);
+        } catch (error) {
+            console.error('Initial project route error:', error);
         }
         return;
     }
@@ -2353,6 +2399,7 @@ function _mapStatsFromApi(data) {
         total_expected_checkins: data.total_expected_checkins || 0,
         total_actual_checkins: data.total_actual_checkins || 0,
         golden_count: data.golden_count || 0,
+        grant_tests_count: data.grant_tests_count || 0,
     };
 }
 
@@ -3843,6 +3890,14 @@ async function confirmStart(id) {
             updatedTest.daily_timeline = result.daily_timeline || updatedTest.daily_timeline || '';
             updatedTest.testing_days = Math.max(Number(updatedTest.testing_days || 0), Number(result.testing_day || 0));
             updatedTest.status = 'done';
+
+            // Recalculate isGrantAvailableTomorrow after optimistic update
+            var skipsAfter = countGrantSkips(updatedTest);
+            var canEverClaim = !updatedTest.grant_claimed && skipsAfter <= 3 && updatedTest.progress_id;
+            if (canEverClaim && updatedTest.testing_days === 14) {
+                updatedTest.isGrantAvailableTomorrow = true;
+                window.tg.showAlert(window.t('grantAvailableTomorrowAlert', {}, lang));
+            }
         }
 
         setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
