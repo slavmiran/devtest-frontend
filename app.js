@@ -3463,13 +3463,14 @@ function renderEarnBustDynamic() {
     }
     document.getElementById('earn-referral-bust').innerText = `💎 ${formatBustAmount(_earnReferralBust)}`;
     document.getElementById('earn-guest-status').innerHTML = `
-        <span class="meta-chip accent-green">${window.escapeHTML(window.t('earnGuestInviteSummaryChip', { count: _earnGuestInviteCount, amount: formatAmountValue(_earnGuestInviteBust, 1) }, lang))}</span>
+        <span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('earnGuestInviteCountChip', { count: _earnGuestInviteCount }, lang))}</span>
+        <span class="meta-chip accent-blue">💎 ${window.escapeHTML(window.t('earnGuestInviteBustChip', { amount: formatAmountValue(_earnGuestInviteBust, 1) }, lang))}</span>
     `;
     document.getElementById('earn-grant-status').innerHTML = `
         <span class="meta-chip accent-green">🏆 ${window.t('earnGrantTestsLabel', {}, lang)}: ${_earnGrantCount}</span>
         <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnGrantBust)}</span>
     `;
-    document.getElementById('earn-early-finish-status').innerHTML = `<span class="meta-chip accent-orange">💎 ${formatBustAmount(_earnEarlyFinishBust)}</span>`;
+    document.getElementById('earn-early-finish-status').innerHTML = `<span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnEarlyFinishBust)}</span>`;
     document.getElementById('earn-feedback-status').innerHTML = `
         <span class="meta-chip accent-green">🐞 ${window.t('earnFeedbackCountChip', { count: _earnFeedbackCount }, lang)}</span>
         <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnFeedbackBust)}</span>
