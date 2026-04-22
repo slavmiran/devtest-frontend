@@ -23,6 +23,8 @@ function escapeHtmlWithBreaks(value) {
 
 var _reliabilityDashboardFilter = 'projects';
 var _inviteMode = 'mutual';
+var _guestInviteGuestId = null;
+var _guestInviteSending = false;
 
 function showSkeleton(containerId) {
     const container = document.getElementById(containerId);
@@ -1871,6 +1873,236 @@ function renderMutualFeed(force) {
         } else prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
         prelaunchEl.innerHTML = mutualPrelaunch.map((item) => renderFeedCard(item, 'mutual-prelaunch')).join('');
+    }
+
+    renderGuestProjectsSection(true);
+}
+
+function renderGuestProjectCard(item) {
+    const packageName = String(item.package_name || item.name || '').trim();
+    const appName = window.escapeHTML(packageName || window.t('unknownLabel', {}, lang));
+    const ownerUsername = String(item.owner_username || '').trim().replace(/^@+/, '');
+    const ownerLabel = ownerUsername
+        ? '@' + ownerUsername
+        : window.t('idLabel', { id: Number(item.owner_telegram_id || item.owner_id || 0) }, lang);
+    const description = String(item.instructions || '').trim();
+    const safeGuestId = escapeInlineJsString(String(item.id || ''));
+    const safeDescription = description
+        ? escapeHtmlWithBreaks(description)
+        : window.escapeHTML(window.t('guestCardNoInstructions', {}, lang));
+    const langChip = String(item.lang || 'ALL').toUpperCase() !== 'ALL'
+        ? getLangBadge(item.lang)
+        : '';
+    const categoryKey = String(item.category || 'app').toLowerCase() === 'game'
+        ? 'guestFilterCategoryGame'
+        : 'guestFilterCategoryApp';
+
+    return `
+        <div class="market-card guest-market-card" data-guest-app-id="${window.escapeHTML(String(item.id || ''))}">
+            <div class="market-top guest-market-top">
+                <div class="guest-market-title-wrap">
+                    <div class="guest-market-headline">
+                        <div class="card-title guest-market-title">${appName}</div>
+                        <span class="guest-market-badge">${window.escapeHTML(window.t('guestCardBadge', {}, lang))}</span>
+                    </div>
+                    <div class="market-owner">${window.escapeHTML(ownerLabel)}</div>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                    ${langChip}
+                    <span class="meta-chip">${window.escapeHTML(window.t(categoryKey, {}, lang))}</span>
+                    <span class="meta-chip accent-blue">📨 ${window.escapeHTML(window.t('guestCardInvitesSent', { count: Number(item.invites_sent || 0) }, lang))}</span>
+                </div>
+            </div>
+            <div class="guest-market-desc">${safeDescription}</div>
+            <button class="btn btn-primary" style="width:100%;" onclick="openGuestInviteModal('${safeGuestId}', event)">${window.escapeHTML(window.t('guestInviteBtn', {}, lang))}</button>
+        </div>
+    `;
+}
+
+function renderGuestProjectsSection(force) {
+    if (!force && !isTabVisible('market')) return;
+    const section = document.getElementById('guest-projects-section');
+    const body = document.getElementById('guest-projects-body');
+    const toggleBtn = document.getElementById('guest-projects-toggle');
+    const toggleText = document.getElementById('guest-projects-toggle-text');
+    const toggleIcon = document.getElementById('guest-projects-toggle-icon');
+    const langLabel = document.getElementById('guest-filter-lang-label');
+    const categoryLabel = document.getElementById('guest-filter-category-label');
+    const langSelect = document.getElementById('guest-filter-lang');
+    const categorySelect = document.getElementById('guest-filter-category');
+    const list = document.getElementById('guest-projects-list');
+    const optionLangAll = document.getElementById('guest-filter-lang-all');
+    const optionLangRu = document.getElementById('guest-filter-lang-ru');
+    const optionLangEn = document.getElementById('guest-filter-lang-en');
+    const optionCategoryAll = document.getElementById('guest-filter-category-all');
+    const optionCategoryGame = document.getElementById('guest-filter-category-game');
+    const optionCategoryApp = document.getElementById('guest-filter-category-app');
+
+    if (!section || !body || !toggleBtn || !toggleText || !toggleIcon || !list) return;
+
+    toggleText.textContent = window.t('guestProjectsAccordionTitle', {}, lang);
+    toggleBtn.setAttribute('aria-expanded', _guestProjectsExpanded ? 'true' : 'false');
+    toggleIcon.textContent = _guestProjectsExpanded ? '−' : '+';
+    section.classList.toggle('expanded', !!_guestProjectsExpanded);
+
+    if (langLabel) langLabel.textContent = window.t('guestFilterLangLabel', {}, lang);
+    if (categoryLabel) categoryLabel.textContent = window.t('guestFilterCategoryLabel', {}, lang);
+    if (langSelect) langSelect.value = String((_guestProjectsFilters && _guestProjectsFilters.lang) || 'ALL').toUpperCase();
+    if (categorySelect) categorySelect.value = String((_guestProjectsFilters && _guestProjectsFilters.category) || 'ALL').toUpperCase();
+    if (optionLangAll) optionLangAll.textContent = window.t('guestFilterLangAll', {}, lang);
+    if (optionLangRu) optionLangRu.textContent = window.t('guestFilterLangRu', {}, lang);
+    if (optionLangEn) optionLangEn.textContent = window.t('guestFilterLangEn', {}, lang);
+    if (optionCategoryAll) optionCategoryAll.textContent = window.t('guestFilterCategoryAll', {}, lang);
+    if (optionCategoryGame) optionCategoryGame.textContent = window.t('guestFilterCategoryGame', {}, lang);
+    if (optionCategoryApp) optionCategoryApp.textContent = window.t('guestFilterCategoryApp', {}, lang);
+
+    if (!_guestProjectsExpanded) {
+        return;
+    }
+
+    if (_guestProjectsInFlight && !_guestProjectsLoadedOnce && (!Array.isArray(guestProjects) || !guestProjects.length)) {
+        showMarketLoading('guest-projects-list');
+        return;
+    }
+
+    if (!Array.isArray(guestProjects) || !guestProjects.length) {
+        const emptyKey = _guestProjectsLoadError ? 'guestProjectsLoadError' : 'guestProjectsEmpty';
+        list.innerHTML = `<p class="no-testers">${window.escapeHTML(window.t(emptyKey, {}, lang))}</p>`;
+        return;
+    }
+
+    list.innerHTML = guestProjects.map(renderGuestProjectCard).join('');
+}
+
+function renderGuestInviteModal() {
+    const modal = document.getElementById('guest-invite-modal');
+    const title = document.getElementById('t-guestInviteModalTitle');
+    const closeBtn = document.getElementById('t-guestInviteClose');
+    const body = document.getElementById('guest-invite-modal-body');
+    if (!modal || !title || !closeBtn || !body) return;
+
+    title.textContent = window.t('guestInviteModalTitle', {}, lang);
+    closeBtn.textContent = window.t('inviteClose', {}, lang);
+
+    const guest = (Array.isArray(guestProjects) ? guestProjects : []).find(function(item) {
+        return String(item.id || '') === String(_guestInviteGuestId || '');
+    });
+    if (!guest) {
+        body.innerHTML = `<div class="guest-invite-note">${window.escapeHTML(window.t('guestProjectsLoadError', {}, lang))}</div>`;
+        return;
+    }
+
+    const ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
+    const packageName = String(guest.package_name || guest.name || '').trim();
+    const inviterProjects = (Array.isArray(myProjects) ? myProjects : []).filter(function(project) {
+        const mode = String(project && project.mode || 'mutual').toLowerCase();
+        return !!project && (mode === 'mutual' || mode === 'hybrid');
+    });
+    const hasEligibleProject = inviterProjects.length > 0;
+    const hasOwnerUsername = !!ownerUsername;
+    const disabled = _guestInviteSending || !hasEligibleProject || !hasOwnerUsername;
+    const noteKey = !hasOwnerUsername
+        ? 'guestInviteNoUsername'
+        : (!hasEligibleProject ? 'guestInviteNeedsProject' : 'guestInviteReady');
+
+    body.innerHTML = `
+        <div class="guest-invite-note">${window.escapeHTML(window.t('guestInviteModalDesc', { owner_username: ownerUsername ? '@' + ownerUsername : window.t('unknownLabel', {}, lang) }, lang))}</div>
+        <div class="guest-invite-card">
+            <div class="guest-invite-app-row">
+                ${renderIcon(packageName || '', null)}
+                <div class="guest-invite-app-meta">
+                    <div class="card-title guest-invite-app-title">${window.escapeHTML(packageName || window.t('unknownLabel', {}, lang))}</div>
+                    <div class="market-owner">${window.escapeHTML(ownerUsername ? '@' + ownerUsername : window.t('guestInviteOwnerMissing', {}, lang))}</div>
+                </div>
+            </div>
+            <div class="guest-invite-help">${window.escapeHTML(window.t(noteKey, {}, lang))}</div>
+            <button class="btn ${disabled ? 'btn-secondary disabled' : 'btn-primary'}" ${disabled ? 'disabled' : ''} style="width:100%;" onclick="sendGuestProjectInvite()">${window.escapeHTML(window.t(_guestInviteSending ? 'guestInviteSending' : 'guestInviteSendBtn', {}, lang))}</button>
+        </div>
+    `;
+}
+
+function openGuestInviteModal(guestAppId, event) {
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+    _guestInviteGuestId = String(guestAppId || '');
+    _guestInviteSending = false;
+    renderGuestInviteModal();
+    const modal = document.getElementById('guest-invite-modal');
+    if (modal) {
+        modal.classList.add('active');
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+function closeGuestInviteModal(event) {
+    if (event && event.target !== document.getElementById('guest-invite-modal')) return;
+    const modal = document.getElementById('guest-invite-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    _guestInviteGuestId = null;
+    _guestInviteSending = false;
+}
+
+async function sendGuestProjectInvite() {
+    const guest = (Array.isArray(guestProjects) ? guestProjects : []).find(function(item) {
+        return String(item.id || '') === String(_guestInviteGuestId || '');
+    });
+    if (!guest || _guestInviteSending) return;
+
+    const ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
+    if (!ownerUsername) {
+        showToast(window.t('guestInviteNoUsername', {}, lang));
+        return;
+    }
+
+    const inviterProjects = (Array.isArray(myProjects) ? myProjects : []).filter(function(project) {
+        const mode = String(project && project.mode || 'mutual').toLowerCase();
+        return !!project && (mode === 'mutual' || mode === 'hybrid');
+    });
+    if (!inviterProjects.length) {
+        showToast(window.t('guestInviteNeedsProject', {}, lang));
+        return;
+    }
+
+    _guestInviteSending = true;
+    renderGuestInviteModal();
+    try {
+        const response = await fetch(`${API_BASE}/guest-apps/${encodeURIComponent(String(guest.id || ''))}/invite`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ inviter_id: userId })
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'genericError'));
+            return;
+        }
+
+        const inviteLink = String(data.invite_link || '').trim();
+        const messageText = window.t('guestInviteMessageTemplate', {
+            app_name: String(guest.package_name || guest.name || '').trim(),
+            invite_link: inviteLink,
+        }, lang);
+        const encodedText = encodeURIComponent(messageText);
+
+        guest.invites_sent = Number(data.invites_sent || guest.invites_sent || 0);
+        if (typeof _syncGuestProjectsCache === 'function') {
+            _syncGuestProjectsCache();
+        }
+        renderGuestProjectsSection(true);
+        closeGuestInviteModal();
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        tg.openTelegramLink(`https://t.me/${ownerUsername}?text=${encodedText}`);
+    } catch (error) {
+        console.error('Guest invite send error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    } finally {
+        _guestInviteSending = false;
+        if (_guestInviteGuestId) {
+            renderGuestInviteModal();
+        }
     }
 }
 
@@ -4807,11 +5039,16 @@ Object.assign(window, {
     toggleAccordion,
     closeBanner,
     handleMassInviteAction,
+    renderGuestProjectsSection,
+    renderGuestInviteModal,
     openInviteModal,
+    openGuestInviteModal,
+    sendGuestProjectInvite,
     setInviteMode,
     escapeForAttr,
     copyAndAction,
     publishProjectToMarketAction,
+    closeGuestInviteModal,
     closeInviteModal,
     openDossierModal,
     closeDossierModal,

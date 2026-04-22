@@ -106,6 +106,33 @@
                 <div class="horizontal-scroll" id="mutual-returns-list"></div>
             </div>
             <div id="mutual-seeking-list"></div>
+            <div id="guest-projects-section" class="guest-projects-section">
+                <button id="guest-projects-toggle" class="guest-projects-toggle" onclick="toggleGuestProjectsAccordion()" type="button">
+                    <span id="guest-projects-toggle-text" data-i18n="guestProjectsAccordionTitle">Показать гостевые проекты (Из внешних чатов)</span>
+                    <span id="guest-projects-toggle-icon" class="guest-projects-toggle-icon">+</span>
+                </button>
+                <div id="guest-projects-body" class="guest-projects-body">
+                    <div class="guest-projects-filters">
+                        <label class="guest-projects-filter">
+                            <span id="guest-filter-lang-label" data-i18n="guestFilterLangLabel">Язык</span>
+                            <select id="guest-filter-lang" class="form-input guest-filter-select" onchange="updateGuestProjectsFilter('lang', this.value)">
+                                <option id="guest-filter-lang-all" value="ALL">ALL</option>
+                                <option id="guest-filter-lang-ru" value="RU">RU</option>
+                                <option id="guest-filter-lang-en" value="EN">EN</option>
+                            </select>
+                        </label>
+                        <label class="guest-projects-filter">
+                            <span id="guest-filter-category-label" data-i18n="guestFilterCategoryLabel">Категория</span>
+                            <select id="guest-filter-category" class="form-input guest-filter-select" onchange="updateGuestProjectsFilter('category', this.value)">
+                                <option id="guest-filter-category-all" value="ALL">ALL</option>
+                                <option id="guest-filter-category-game" value="GAME">Game</option>
+                                <option id="guest-filter-category-app" value="APP">App</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="guest-projects-list"></div>
+                </div>
+            </div>
         </div>
 
         <div id="market-subtab-bounty" style="display:none;">
@@ -293,6 +320,14 @@
             <h3 id="t-inviteModalTitle" data-i18n="inviteModalTitle">Пригласить тестеров</h3>
             <div id="invite-modal-body"></div>
             <button class="btn btn-secondary" style="margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeInviteModal()" id="t-inviteClose" data-i18n="inviteClose">Закрыть</button>
+        </div>
+    </div>
+
+    <div id="guest-invite-modal" class="modal-overlay" onclick="closeGuestInviteModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
+            <h3 id="t-guestInviteModalTitle" data-i18n="guestInviteModalTitle">Пригласить гостевой проект</h3>
+            <div id="guest-invite-modal-body"></div>
+            <button class="btn btn-secondary" style="margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeGuestInviteModal()" id="t-guestInviteClose" data-i18n="inviteClose">Закрыть</button>
         </div>
     </div>
 
@@ -610,6 +645,15 @@
                     <span class="meta-chip accent-green" id="earn-referrals-count">👥 0</span>
                     <span class="meta-chip accent-blue" id="earn-referral-bust">💎 0.0 $BUST</span>
                 </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">🤝</span>
+                    <span style="font-weight: 700; font-size: 15px;" data-i18n="earnGuestInviteTitle">Приглашение гостевых проектов</span>
+                </div>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnGuestInviteDesc">Приглашайте разработчиков из внешних чатов. Когда приглашенный владелец подтвердит проект и сделает первый чекин, вы получите 10 $BUST.</p>
+                <div id="earn-guest-status" class="earn-chip-row"></div>
             </div>
 
             <!-- Golden Tester Grant Section -->

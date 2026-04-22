@@ -25,6 +25,7 @@ var myProjects = [];
 var mutualSeeking = [];
 var mutualPrelaunch = [];
 var mutualReturns = [];
+var guestProjects = [];
 var bountyContracts = [];
 var communityEvents = null;
 var eventsExpanded = false;
@@ -62,6 +63,8 @@ var _socialBonusStatus = 'none';
 var _earnGrantCount = 0;
 var _earnGrantBust = 0;
 var _earnReferralBust = 0;
+var _earnGuestInviteCount = 0;
+var _earnGuestInviteBust = 0;
 var _earnExchangeBust = 0;
 var _earnEarlyFinishBust = 0;
 var _earnFeedbackCount = 0;
@@ -79,6 +82,7 @@ var _feedbackRewardKarma = 0;
 var myProjectsLoadError = false;
 var marketCache = null;
 var MARKET_CACHE_KEY = 'market_cache_v1';
+var GUEST_PROJECTS_CACHE_KEY = 'guest_projects_cache_v1';
 var _lastFetchTimes = { mutual: 0, bounty: 0, tests: 0, projects: 0, offers: 0, archived: 0, reliabilitySummary: 0, reliabilityBreakdown: 0 };
 var MARKET_FETCH_THROTTLE_MS = 15000;
 var TESTS_FETCH_THROTTLE_MS = 20000;
@@ -129,6 +133,11 @@ var _marketFeedState = {
 };
 var _marketRetryTimers = { mutual: null, bounty: null };
 var _marketForceSkeleton = false;
+var _guestProjectsInFlight = null;
+var _guestProjectsLoadedOnce = false;
+var _guestProjectsExpanded = false;
+var _guestProjectsLoadError = false;
+var _guestProjectsFilters = { lang: 'ALL', category: 'ALL' };
 
 function setMarketForceSkeleton(enabled) {
     _marketForceSkeleton = !!enabled;
@@ -413,6 +422,123 @@ function hydrateMarketFromCache() {
 
 function getMarketFeedState(feedKey) {
     return _marketFeedState[feedKey] || { confirmedEmpty: false, emptyStreak: 0 };
+}
+
+function getGuestProjectsCache() {
+    try {
+        const raw = localStorage.getItem(GUEST_PROJECTS_CACHE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (error) {
+        return null;
+    }
+}
+
+function setGuestProjectsCache(payload) {
+    try {
+        localStorage.setItem(GUEST_PROJECTS_CACHE_KEY, JSON.stringify(payload || {}));
+    } catch (error) {
+        console.warn('Failed to cache guest projects:', error);
+    }
+}
+
+function _buildGuestProjectsUrl() {
+    const params = new URLSearchParams();
+    params.set('lang', String(_guestProjectsFilters.lang || 'ALL').toUpperCase());
+    params.set('category', String(_guestProjectsFilters.category || 'ALL').toUpperCase());
+    return `${API_BASE}/guest-apps?${params.toString()}`;
+}
+
+function _syncGuestProjectsCache() {
+    setGuestProjectsCache({
+        filters: Object.assign({}, _guestProjectsFilters),
+        items: Array.isArray(guestProjects) ? guestProjects : [],
+        ts: Date.now(),
+    });
+}
+
+async function loadGuestApps(options) {
+    options = options || {};
+    if (_guestProjectsInFlight) {
+        return _guestProjectsInFlight;
+    }
+
+    const cached = getGuestProjectsCache();
+    const filtersMatch = cached && cached.filters
+        && String(cached.filters.lang || 'ALL').toUpperCase() === String(_guestProjectsFilters.lang || 'ALL').toUpperCase()
+        && String(cached.filters.category || 'ALL').toUpperCase() === String(_guestProjectsFilters.category || 'ALL').toUpperCase();
+
+    if (!options.force && filtersMatch && Array.isArray(cached.items) && cached.items.length) {
+        guestProjects = cached.items;
+        _guestProjectsLoadedOnce = true;
+        _guestProjectsLoadError = false;
+        if (window.renderGuestProjectsSection) {
+            window.renderGuestProjectsSection(true);
+        }
+    }
+
+    const requestPromise = (async function() {
+        try {
+            const response = await fetchWithRetry(_buildGuestProjectsUrl());
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            guestProjects = Array.isArray(data.items) ? data.items : [];
+            _guestProjectsLoadedOnce = true;
+            _guestProjectsLoadError = false;
+            _syncGuestProjectsCache();
+        } catch (error) {
+            console.error('Error loading guest apps:', error);
+            _guestProjectsLoadError = true;
+            if (!_guestProjectsLoadedOnce) {
+                guestProjects = filtersMatch && Array.isArray((cached || {}).items) ? cached.items : [];
+                _guestProjectsLoadedOnce = guestProjects.length > 0;
+            }
+            if (_guestProjectsExpanded && !guestProjects.length) {
+                showToast(getApiErrorMessage(error && error.message, 'networkError'));
+            }
+        } finally {
+            if (window.renderGuestProjectsSection) {
+                window.renderGuestProjectsSection(true);
+            }
+        }
+    })();
+
+    _guestProjectsInFlight = requestPromise;
+    try {
+        await requestPromise;
+    } finally {
+        if (_guestProjectsInFlight === requestPromise) {
+            _guestProjectsInFlight = null;
+        }
+    }
+}
+
+async function toggleGuestProjectsAccordion(forceExpanded) {
+    const nextExpanded = typeof forceExpanded === 'boolean'
+        ? forceExpanded
+        : !_guestProjectsExpanded;
+    _guestProjectsExpanded = !!nextExpanded;
+    if (window.renderGuestProjectsSection) {
+        window.renderGuestProjectsSection(true);
+    }
+    if (_guestProjectsExpanded) {
+        await loadGuestApps({ force: !_guestProjectsLoadedOnce });
+    }
+}
+
+async function updateGuestProjectsFilter(field, value) {
+    const normalizedField = String(field || '').trim();
+    if (normalizedField !== 'lang' && normalizedField !== 'category') {
+        return;
+    }
+    _guestProjectsFilters[normalizedField] = String(value || 'ALL').toUpperCase();
+    _guestProjectsLoadError = false;
+    if (window.renderGuestProjectsSection) {
+        window.renderGuestProjectsSection(true);
+    }
+    if (_guestProjectsExpanded) {
+        await loadGuestApps({ force: true });
+    }
 }
 
 function _scheduleMarketRetry(feedKey, delayMs) {
@@ -1664,6 +1790,9 @@ function rerenderDynamicUi() {
     renderMutualFeed(true);
     renderMutualReturns(null, true);
     renderBountyFeed(true);
+    if (window.renderGuestProjectsSection) {
+        window.renderGuestProjectsSection(true);
+    }
     renderArchivedProjects(true);
     refreshOpenModals();
 }
@@ -1676,6 +1805,10 @@ function refreshOpenModals() {
     const inviteModal = document.getElementById('invite-modal');
     if (inviteModal && inviteModal.classList.contains('active') && _inviteProjectId) {
         openInviteModal(_inviteProjectId);
+    }
+    const guestInviteModal = document.getElementById('guest-invite-modal');
+    if (guestInviteModal && guestInviteModal.classList.contains('active') && window.renderGuestInviteModal) {
+        window.renderGuestInviteModal();
     }
     const reliabilityInfoModal = document.getElementById('reliability-info-modal');
     if (reliabilityInfoModal && reliabilityInfoModal.classList.contains('active') && window.showReliabilityInfo) {
@@ -3106,6 +3239,10 @@ function renderEarnBustDynamic() {
         referralCountChip.innerText = `👥 ${window.t('earnReferralCountChip', { count: referralCount }, lang)}`;
     }
     document.getElementById('earn-referral-bust').innerText = `💎 ${formatBustAmount(_earnReferralBust)}`;
+    document.getElementById('earn-guest-status').innerHTML = `
+        <span class="meta-chip accent-green">🤝 ${window.t('earnGuestInviteCountChip', { count: _earnGuestInviteCount }, lang)}</span>
+        <span class="meta-chip accent-blue">💎 ${window.t('earnGuestInviteBustChip', { amount: formatAmountValue(_earnGuestInviteBust, 1) }, lang)}</span>
+    `;
     document.getElementById('earn-grant-status').innerHTML = `
         <span class="meta-chip accent-green">🏆 ${window.t('earnGrantTestsLabel', {}, lang)}: ${_earnGrantCount}</span>
         <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnGrantBust)}</span>
@@ -3138,6 +3275,8 @@ async function openEarnBustModal() {
         _earnGrantCount = data.grant_tests_count || 0;
         _earnGrantBust = Number(data.grant_bust_earned || 0);
         _earnReferralBust = Number(data.referral_bust_earned || 0);
+        _earnGuestInviteCount = Number(data.guest_invites_count || 0);
+        _earnGuestInviteBust = Number(data.guest_invites_earned || 0);
         _earnExchangeBust = Number(data.exchange_bust_earned || 0);
         _earnEarlyFinishBust = Number(data.early_finish_bust_earned || 0);
         _earnFeedbackCount = Number(data.feedback_sent_count || 0);
@@ -4298,6 +4437,7 @@ Object.assign(window, {
     loadTasks,
     loadIncomingOffers,
     loadMutualFeed,
+    loadGuestApps,
     loadBountyFeed,
     loadEvents,
     loadProjects,
@@ -4324,6 +4464,8 @@ Object.assign(window, {
     confirmKickTester,
     confirmOvertimeLeave,
     openEarnBustModal,
+    toggleGuestProjectsAccordion,
+    updateGuestProjectsFilter,
     initiateProjectFeedback,
     openProjectFeedback,
     sendProjectFeedbackMedia,
