@@ -3463,8 +3463,7 @@ function renderEarnBustDynamic() {
     }
     document.getElementById('earn-referral-bust').innerText = `💎 ${formatBustAmount(_earnReferralBust)}`;
     document.getElementById('earn-guest-status').innerHTML = `
-        <span class="meta-chip accent-green">🤝 ${window.t('earnGuestInviteCountChip', { count: _earnGuestInviteCount }, lang)}</span>
-        <span class="meta-chip accent-blue">💎 ${window.t('earnGuestInviteBustChip', { amount: formatAmountValue(_earnGuestInviteBust, 1) }, lang)}</span>
+        <span class="meta-chip accent-green">${window.escapeHTML(window.t('earnGuestInviteSummaryChip', { count: _earnGuestInviteCount, amount: formatAmountValue(_earnGuestInviteBust, 1) }, lang))}</span>
     `;
     document.getElementById('earn-grant-status').innerHTML = `
         <span class="meta-chip accent-green">🏆 ${window.t('earnGrantTestsLabel', {}, lang)}: ${_earnGrantCount}</span>
