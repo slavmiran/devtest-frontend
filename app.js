@@ -7,10 +7,14 @@ window.DEFAULT_GOOGLE_GROUP_URL = 'https://groups.google.com/g/google-play-dev-t
 
 const initData = tg.initDataUnsafe || {};
 const BOT_USERNAME = 'Android12TestersBot';
+const WEBAPP_SHORTNAME = 'app';
 const BOT_CHAT_URL = `https://t.me/${BOT_USERNAME}`;
+const GUEST_CLAIM_START_PARAM_RE = /^guest_([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})_(\d+)$/i;
+const GUEST_CLAIM_SESSION_PREFIX = 'guest_claim_handled_v1:';
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
 var API_BASE = 'https://devtest-backend.onrender.com/api';
+const GUEST_PROJECTS_PAGE_SIZE = 5;
 
 var lang = localStorage.getItem('app_language') || (Object.keys(initData).length > 0 ? (langCode === 'ru' ? 'ru' : 'en') : 'ru');
 const t = new Proxy({}, {
@@ -137,6 +141,7 @@ var _guestProjectsInFlight = null;
 var _guestProjectsLoadedOnce = false;
 var _guestProjectsExpanded = false;
 var _guestProjectsLoadError = false;
+var _guestProjectsVisibleCount = GUEST_PROJECTS_PAGE_SIZE;
 var _guestProjectsFilters = { lang: 'ALL', category: 'ALL' };
 
 function setMarketForceSkeleton(enabled) {
@@ -146,9 +151,63 @@ function setMarketForceSkeleton(enabled) {
 
 window._marketForceSkeleton = _marketForceSkeleton;
 
+function _getStartappParam() {
+    var params = new URLSearchParams(window.location.search || '');
+    return String(initData.start_param || params.get('startapp') || '').trim();
+}
+
+function _parseGuestClaimIntent() {
+    var rawStartParam = _getStartappParam();
+    if (!rawStartParam) return null;
+
+    var match = rawStartParam.match(GUEST_CLAIM_START_PARAM_RE);
+    if (!match) return null;
+
+    return {
+        rawStartParam: rawStartParam,
+        guestAppId: String(match[1] || '').trim(),
+        inviterId: Number(match[2] || 0),
+    };
+}
+
+function _getGuestClaimHandledKey(rawStartParam) {
+    return GUEST_CLAIM_SESSION_PREFIX + String(rawStartParam || '');
+}
+
+function _isGuestClaimHandled(rawStartParam) {
+    try {
+        return sessionStorage.getItem(_getGuestClaimHandledKey(rawStartParam)) === '1';
+    } catch (error) {
+        return false;
+    }
+}
+
+function _markGuestClaimHandled(rawStartParam) {
+    try {
+        sessionStorage.setItem(_getGuestClaimHandledKey(rawStartParam), '1');
+    } catch (error) {}
+}
+
+function _clearStartappQueryParam() {
+    try {
+        var url = new URL(window.location.href);
+        if (!url.searchParams.has('startapp')) return;
+        url.searchParams.delete('startapp');
+
+        var nextUrl = url.pathname;
+        if (url.searchParams.toString()) {
+            nextUrl += '?' + url.searchParams.toString();
+        }
+        if (url.hash) {
+            nextUrl += url.hash;
+        }
+        window.history.replaceState({}, document.title, nextUrl);
+    } catch (error) {}
+}
+
 function _parseInitialRouteTarget() {
     var params = new URLSearchParams(window.location.search || '');
-    var startParam = String(initData.start_param || params.get('startapp') || '').trim();
+    var startParam = _getStartappParam();
     var feedbackProjectId = Number(
         params.get('feedback_project_id') ||
         params.get('project_feedback_id') ||
@@ -314,6 +373,115 @@ async function _handleInitialRoute() {
     }
 }
 
+async function _handleGuestClaimIntent(intent) {
+    if (!intent || !intent.guestAppId || intent.inviterId <= 0) {
+        return false;
+    }
+
+    if (_isGuestClaimHandled(intent.rawStartParam)) {
+        _clearStartappQueryParam();
+        return true;
+    }
+
+    if (window.ui && typeof window.ui.showLoading === 'function') {
+        window.ui.showLoading(window.t('guestClaimLoading', {}, lang));
+    }
+
+    var hideLoading = function() {
+        if (window.ui && typeof window.ui.hideLoading === 'function') {
+            window.ui.hideLoading();
+        }
+    };
+
+    try {
+        var response = await fetch(`${API_BASE}/guest-apps/${encodeURIComponent(intent.guestAppId)}/claim`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                inviter_id: intent.inviterId,
+                init_data: tg.initData || '',
+            })
+        });
+
+        var payload = null;
+        try {
+            payload = await response.json();
+        } catch (error) {
+            payload = null;
+        }
+
+        if (!response.ok) {
+            var detail = String(payload && payload.detail || '').trim();
+            if (detail === 'own_link') {
+                _markGuestClaimHandled(intent.rawStartParam);
+                _clearStartappQueryParam();
+                hideLoading();
+                showToast(window.t('guestClaimOwnLinkToast', {}, lang));
+                return true;
+            }
+            if (detail === 'already_claimed') {
+                _markGuestClaimHandled(intent.rawStartParam);
+                _clearStartappQueryParam();
+                hideLoading();
+                showToast(window.t('guestClaimAlreadyClaimedToast', {}, lang));
+                return true;
+            }
+            if (detail === 'not_owner') {
+                _markGuestClaimHandled(intent.rawStartParam);
+                _clearStartappQueryParam();
+                hideLoading();
+                if (typeof window.showGuestClaimStatusModal === 'function') {
+                    window.showGuestClaimStatusModal({ variant: 'not-owner' });
+                } else {
+                    showToast(window.t('guestClaimNotOwnerTitle', {}, lang));
+                }
+                return true;
+            }
+            if (detail === 'invalid_init_data') {
+                hideLoading();
+                showToast(window.t('guestClaimAuthErrorToast', {}, lang));
+                return true;
+            }
+
+            hideLoading();
+            if (detail) {
+                handleApiError(detail, payload && payload.details ? payload.details : {});
+            } else {
+                showToast(getApiErrorMessage(payload, 'networkError'));
+            }
+            return true;
+        }
+
+        _markGuestClaimHandled(intent.rawStartParam);
+        _clearStartappQueryParam();
+
+        await Promise.allSettled([
+            loadTasks(true),
+            loadProjects(true),
+            loadIncomingOffers({ background: true }),
+            loadArchivedProjects({ silent: true })
+        ]);
+
+        hideLoading();
+        switchTab('tests');
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (typeof window.showGuestClaimStatusModal === 'function') {
+            window.showGuestClaimStatusModal({
+                variant: 'success',
+                appId: Number(payload && payload.new_app_id || 0),
+            });
+        }
+        return true;
+    } catch (error) {
+        console.error('Guest claim intent error:', error);
+        hideLoading();
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        return false;
+    } finally {
+        hideLoading();
+    }
+}
+
 function hasThrottleWindowPassed(feedKey) {
     return (Date.now() - (_lastFetchTimes[feedKey] || 0)) >= MARKET_FETCH_THROTTLE_MS;
 }
@@ -449,6 +617,58 @@ function _buildGuestProjectsUrl() {
     return `${API_BASE}/guest-apps?${params.toString()}`;
 }
 
+function getGuestProjectsPageSize() {
+    return GUEST_PROJECTS_PAGE_SIZE;
+}
+
+function resetGuestProjectsPagination() {
+    _guestProjectsVisibleCount = GUEST_PROJECTS_PAGE_SIZE;
+}
+
+function getVisibleGuestProjects() {
+    if (!Array.isArray(guestProjects)) {
+        return [];
+    }
+    return guestProjects.slice(0, Math.max(GUEST_PROJECTS_PAGE_SIZE, Number(_guestProjectsVisibleCount || GUEST_PROJECTS_PAGE_SIZE)));
+}
+
+function canShowMoreGuestProjects() {
+    return Array.isArray(guestProjects) && guestProjects.length > getVisibleGuestProjects().length;
+}
+
+function showMoreGuestProjects() {
+    if (!Array.isArray(guestProjects) || guestProjects.length <= _guestProjectsVisibleCount) {
+        return;
+    }
+    _guestProjectsVisibleCount = Math.min(guestProjects.length, Number(_guestProjectsVisibleCount || GUEST_PROJECTS_PAGE_SIZE) + GUEST_PROJECTS_PAGE_SIZE);
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    if (window.renderGuestProjectsSection) {
+        window.renderGuestProjectsSection(true);
+    }
+}
+
+function normalizeGuestInviteLanguage(inviteLang, fallbackLang) {
+    const fallback = String(fallbackLang || lang || 'en').trim().toLowerCase() === 'ru' ? 'ru' : 'en';
+    const normalized = String(inviteLang || '').trim().toLowerCase();
+    return normalized === 'ru' || normalized === 'en' ? normalized : fallback;
+}
+
+function getDefaultGuestInviteLanguage(guestLang) {
+    const normalizedGuestLang = String(guestLang || '').trim().toUpperCase();
+    if (normalizedGuestLang === 'RU' || normalizedGuestLang === 'EN') {
+        return normalizedGuestLang.toLowerCase();
+    }
+    return normalizeGuestInviteLanguage(lang);
+}
+
+function buildGuestInviteDeepLink(guestAppId, inviterId, inviteLang, startappValue) {
+    const normalizedLang = normalizeGuestInviteLanguage(inviteLang);
+    const params = new URLSearchParams();
+    params.set('startapp', String(startappValue || `guest_${guestAppId}_${inviterId}`));
+    params.set('lang', normalizedLang);
+    return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORTNAME}?${params.toString()}`;
+}
+
 function _syncGuestProjectsCache() {
     setGuestProjectsCache({
         filters: Object.assign({}, _guestProjectsFilters),
@@ -470,6 +690,7 @@ async function loadGuestApps(options) {
 
     if (!options.force && filtersMatch && Array.isArray(cached.items) && cached.items.length) {
         guestProjects = cached.items;
+        resetGuestProjectsPagination();
         _guestProjectsLoadedOnce = true;
         _guestProjectsLoadError = false;
         if (window.renderGuestProjectsSection) {
@@ -483,6 +704,7 @@ async function loadGuestApps(options) {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
             guestProjects = Array.isArray(data.items) ? data.items : [];
+            resetGuestProjectsPagination();
             _guestProjectsLoadedOnce = true;
             _guestProjectsLoadError = false;
             _syncGuestProjectsCache();
@@ -532,6 +754,7 @@ async function updateGuestProjectsFilter(field, value) {
         return;
     }
     _guestProjectsFilters[normalizedField] = String(value || 'ALL').toUpperCase();
+    resetGuestProjectsPagination();
     _guestProjectsLoadError = false;
     if (window.renderGuestProjectsSection) {
         window.renderGuestProjectsSection(true);
@@ -4408,17 +4631,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     _loadFirstDayScreenshotState();
     _loadTimerReadyState();
-    loadTasks();
-    loadReliabilitySummary();
-    loadReliabilityBreakdown(true);
-    loadIncomingOffers();
-    startOffersPolling();
-    startMarketPolling();
-    loadEvents();
     _loadPersistedActiveTimer();
-    scheduleDeferredBootstrap();
-    _handleInitialRoute().catch(function(error) {
-        console.error('Initial route handler failed:', error);
+
+    (async function() {
+        var guestIntent = _parseGuestClaimIntent();
+        if (guestIntent) {
+            await _handleGuestClaimIntent(guestIntent);
+        }
+
+        loadTasks();
+        loadReliabilitySummary();
+        loadReliabilityBreakdown(true);
+        loadIncomingOffers();
+        startOffersPolling();
+        startMarketPolling();
+        loadEvents();
+        scheduleDeferredBootstrap();
+        await _handleInitialRoute();
+    })().catch(function(error) {
+        console.error('Initial bootstrap failed:', error);
     });
 });
 
@@ -4466,6 +4697,13 @@ Object.assign(window, {
     openEarnBustModal,
     toggleGuestProjectsAccordion,
     updateGuestProjectsFilter,
+    showMoreGuestProjects,
+    getGuestProjectsPageSize,
+    getVisibleGuestProjects,
+    canShowMoreGuestProjects,
+    normalizeGuestInviteLanguage,
+    getDefaultGuestInviteLanguage,
+    buildGuestInviteDeepLink,
     initiateProjectFeedback,
     openProjectFeedback,
     sendProjectFeedbackMedia,

@@ -2191,7 +2191,7 @@ details[open] > summary .details-arrow {
     border-radius: 18px;
     background: color-mix(in srgb, var(--secondary-bg-color) 82%, rgba(0, 0, 0, 0.18));
     border: 1px solid rgba(142, 142, 147, 0.18);
-    overflow: hidden;
+    overflow: visible;
 }
 
 .guest-projects-toggle {
@@ -2225,13 +2225,13 @@ details[open] > summary .details-arrow {
 .guest-projects-body {
     max-height: 0;
     opacity: 0;
-    overflow: hidden;
+    overflow: visible;
     padding: 0 16px;
-    transition: max-height 0.28s ease, opacity 0.22s ease, padding 0.22s ease;
+    transition: opacity 0.22s ease, padding 0.22s ease;
 }
 
 .guest-projects-section.expanded .guest-projects-body {
-    max-height: 1600px;
+    max-height: none;
     opacity: 1;
     padding: 0 16px 16px;
 }
@@ -2294,6 +2294,34 @@ details[open] > summary .details-arrow {
     line-height: 1;
 }
 
+.guest-freshness-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.guest-freshness-chip-today {
+    background: rgba(52, 199, 89, 0.14);
+    border: 1px solid rgba(52, 199, 89, 0.24);
+    color: #8ff0a4;
+}
+
+.guest-freshness-chip-yesterday {
+    background: rgba(10, 132, 255, 0.14);
+    border: 1px solid rgba(10, 132, 255, 0.24);
+    color: #8ccaff;
+}
+
+.guest-freshness-chip-older {
+    background: rgba(142, 142, 147, 0.16);
+    border: 1px solid rgba(142, 142, 147, 0.24);
+    color: var(--hint-color);
+}
+
 .guest-market-desc {
     margin: 10px 0 12px;
     font-size: 13px;
@@ -2301,6 +2329,16 @@ details[open] > summary .details-arrow {
     color: var(--hint-color);
     white-space: normal;
     word-break: break-word;
+}
+
+.guest-projects-more-wrap {
+    margin-top: 12px;
+}
+
+.guest-projects-more-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+    border: 1px solid rgba(142, 142, 147, 0.2);
 }
 
 .guest-invite-note {
@@ -2341,10 +2379,154 @@ details[open] > summary .details-arrow {
     color: var(--hint-color);
 }
 
+.guest-invite-language-row {
+    margin-bottom: 12px;
+}
+
+.guest-invite-language-label {
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--hint-color);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.guest-invite-language-toggle {
+    margin-bottom: 0;
+}
+
+.guest-invite-preview-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.guest-invite-preview-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.guest-invite-preview-caption {
+    font-size: 11px;
+    color: var(--hint-color);
+    text-align: right;
+}
+
+.guest-invite-preview-shell {
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(142, 142, 147, 0.18);
+}
+
+.guest-invite-preview-text {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-color);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 @media (max-width: 640px) {
     .guest-projects-filters {
         grid-template-columns: 1fr;
     }
+
+    .guest-invite-preview-head {
+        flex-direction: column;
+    }
+
+    .guest-invite-preview-caption {
+        text-align: left;
+    }
+}
+
+.guest-claim-loading-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(10, 12, 16, 0.66);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 10020;
+}
+
+.guest-claim-loading-overlay.active {
+    display: flex;
+}
+
+.guest-claim-loading-box {
+    width: min(92vw, 320px);
+    padding: 22px 18px;
+    border-radius: 20px;
+    background: rgba(23, 27, 34, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
+    text-align: center;
+}
+
+.guest-claim-loading-spinner {
+    width: 34px;
+    height: 34px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.16);
+    border-top-color: var(--button-color);
+    animation: guestClaimSpin 0.9s linear infinite;
+}
+
+.guest-claim-loading-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.guest-claim-status-content {
+    width: min(92vw, 420px);
+}
+
+.guest-claim-status-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+}
+
+.guest-claim-status-icon {
+    font-size: 36px;
+    line-height: 1;
+}
+
+.guest-claim-status-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-color);
+}
+
+.guest-claim-status-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--hint-color);
+}
+
+.guest-claim-status-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+@keyframes guestClaimSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 @keyframes highlightPulse {

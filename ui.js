@@ -1,4 +1,5 @@
 window.App = window.App || {};
+window.ui = window.ui || {};
 
 window.escapeHTML = function (value) {
     return String(value ?? '')
@@ -25,6 +26,7 @@ var _reliabilityDashboardFilter = 'projects';
 var _inviteMode = 'mutual';
 var _guestInviteGuestId = null;
 var _guestInviteSending = false;
+var _guestInviteLang = null;
 
 function showSkeleton(containerId) {
     const container = document.getElementById(containerId);
@@ -133,6 +135,48 @@ function getDayDiffFromToday(dateValue) {
     if (!source) return 0;
     const today = parseLocalDateOnly(getLocalDate());
     return Math.max(0, Math.floor((today - source) / (1000 * 60 * 60 * 24)));
+}
+
+function getGuestProjectFreshness(createdAt) {
+    const createdDate = parseLocalDateOnly(createdAt);
+    const today = parseLocalDateOnly(getLocalDate());
+    if (!createdDate || !today) return null;
+    const diffDays = Math.max(0, Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
+    if (diffDays <= 0) {
+        return {
+            label: window.t('guestFreshnessToday', {}, lang),
+            tone: 'today'
+        };
+    }
+    if (diffDays === 1) {
+        return {
+            label: window.t('guestFreshnessYesterday', {}, lang),
+            tone: 'yesterday'
+        };
+    }
+    return {
+        label: window.t('guestFreshnessDaysAgo', { count: diffDays }, lang),
+        tone: 'older'
+    };
+}
+
+function resolveGuestInviteLanguage(guest) {
+    if (!_guestInviteLang) {
+        _guestInviteLang = typeof window.getDefaultGuestInviteLanguage === 'function'
+            ? window.getDefaultGuestInviteLanguage(guest && guest.lang)
+            : 'en';
+    }
+    if (typeof window.normalizeGuestInviteLanguage === 'function') {
+        _guestInviteLang = window.normalizeGuestInviteLanguage(_guestInviteLang, lang);
+    }
+    return _guestInviteLang;
+}
+
+function getGuestInvitePreviewText(guest, inviteLang, inviteLink) {
+    return window.t('guestInviteMessageTemplate', {
+        app_name: String((guest && (guest.package_name || guest.name)) || '').trim(),
+        invite_link: String(inviteLink || '').trim(),
+    }, inviteLang);
 }
 
 function formatDdMmYyyy(dateValue) {
@@ -1896,6 +1940,10 @@ function renderGuestProjectCard(item) {
     const categoryKey = String(item.category || 'app').toLowerCase() === 'game'
         ? 'guestFilterCategoryGame'
         : 'guestFilterCategoryApp';
+    const freshness = getGuestProjectFreshness(item.created_at);
+    const freshnessChip = freshness
+        ? `<span class="guest-freshness-chip guest-freshness-chip-${window.escapeHTML(freshness.tone)}">${window.escapeHTML(freshness.label)}</span>`
+        : '';
 
     return `
         <div class="market-card guest-market-card" data-guest-app-id="${window.escapeHTML(String(item.id || ''))}">
@@ -1904,6 +1952,7 @@ function renderGuestProjectCard(item) {
                     <div class="guest-market-headline">
                         <div class="card-title guest-market-title">${appName}</div>
                         <span class="guest-market-badge">${window.escapeHTML(window.t('guestCardBadge', {}, lang))}</span>
+                        ${freshnessChip}
                     </div>
                     <div class="market-owner">${window.escapeHTML(ownerLabel)}</div>
                 </div>
@@ -1971,7 +2020,23 @@ function renderGuestProjectsSection(force) {
         return;
     }
 
-    list.innerHTML = guestProjects.map(renderGuestProjectCard).join('');
+    const visibleItems = typeof window.getVisibleGuestProjects === 'function'
+        ? window.getVisibleGuestProjects()
+        : guestProjects;
+    const remaining = Math.max(0, guestProjects.length - visibleItems.length);
+    const nextCount = Math.min(
+        typeof window.getGuestProjectsPageSize === 'function' ? window.getGuestProjectsPageSize() : 5,
+        remaining
+    );
+
+    list.innerHTML = visibleItems.map(renderGuestProjectCard).join('');
+    if (typeof window.canShowMoreGuestProjects === 'function' && window.canShowMoreGuestProjects()) {
+        list.innerHTML += `
+            <div class="guest-projects-more-wrap">
+                <button type="button" class="btn btn-secondary guest-projects-more-btn" onclick="showMoreGuestProjects()">${window.escapeHTML(window.t('guestProjectsShowMore', { count: nextCount || 5 }, lang))}</button>
+            </div>
+        `;
+    }
 }
 
 function renderGuestInviteModal() {
@@ -1994,6 +2059,12 @@ function renderGuestInviteModal() {
 
     const ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
     const packageName = String(guest.package_name || guest.name || '').trim();
+    const selectedInviteLang = resolveGuestInviteLanguage(guest);
+    const inviteLink = typeof window.buildGuestInviteDeepLink === 'function'
+        ? window.buildGuestInviteDeepLink(String(guest.id || ''), userId, selectedInviteLang)
+        : '';
+    const previewText = getGuestInvitePreviewText(guest, selectedInviteLang, inviteLink);
+    const previewHtml = escapeHtmlWithBreaks(previewText);
     const inviterProjects = (Array.isArray(myProjects) ? myProjects : []).filter(function(project) {
         const mode = String(project && project.mode || 'mutual').toLowerCase();
         return !!project && (mode === 'mutual' || mode === 'hybrid');
@@ -2015,6 +2086,20 @@ function renderGuestInviteModal() {
                     <div class="market-owner">${window.escapeHTML(ownerUsername ? '@' + ownerUsername : window.t('guestInviteOwnerMissing', {}, lang))}</div>
                 </div>
             </div>
+            <div class="guest-invite-language-row">
+                <div class="guest-invite-language-label">${window.escapeHTML(window.t('guestInviteLanguageLabel', {}, lang))}</div>
+                <div class="segmented-control guest-invite-language-toggle">
+                    <button type="button" class="seg-btn ${selectedInviteLang === 'ru' ? 'active' : ''}" onclick="setGuestInviteLanguage('ru')">${window.escapeHTML(window.t('guestInviteLanguageRu', {}, lang))}</button>
+                    <button type="button" class="seg-btn ${selectedInviteLang === 'en' ? 'active' : ''}" onclick="setGuestInviteLanguage('en')">${window.escapeHTML(window.t('guestInviteLanguageEn', {}, lang))}</button>
+                </div>
+            </div>
+            <div class="guest-invite-preview-head">
+                <div class="guest-invite-preview-title">${window.escapeHTML(window.t('guestInvitePreviewTitle', {}, lang))}</div>
+                <div class="guest-invite-preview-caption">${window.escapeHTML(window.t('guestInvitePreviewCaption', {}, lang))}</div>
+            </div>
+            <div class="guest-invite-preview-shell">
+                <div class="guest-invite-preview-text">${previewHtml}</div>
+            </div>
             <div class="guest-invite-help">${window.escapeHTML(window.t(noteKey, {}, lang))}</div>
             <button class="btn ${disabled ? 'btn-secondary disabled' : 'btn-primary'}" ${disabled ? 'disabled' : ''} style="width:100%;" onclick="sendGuestProjectInvite()">${window.escapeHTML(window.t(_guestInviteSending ? 'guestInviteSending' : 'guestInviteSendBtn', {}, lang))}</button>
         </div>
@@ -2026,6 +2111,12 @@ function openGuestInviteModal(guestAppId, event) {
         event.stopPropagation();
     }
     _guestInviteGuestId = String(guestAppId || '');
+    const guest = (Array.isArray(guestProjects) ? guestProjects : []).find(function(item) {
+        return String(item.id || '') === _guestInviteGuestId;
+    });
+    _guestInviteLang = typeof window.getDefaultGuestInviteLanguage === 'function'
+        ? window.getDefaultGuestInviteLanguage(guest && guest.lang)
+        : null;
     _guestInviteSending = false;
     renderGuestInviteModal();
     const modal = document.getElementById('guest-invite-modal');
@@ -2042,7 +2133,16 @@ function closeGuestInviteModal(event) {
         modal.classList.remove('active');
     }
     _guestInviteGuestId = null;
+    _guestInviteLang = null;
     _guestInviteSending = false;
+}
+
+function setGuestInviteLanguage(nextLang) {
+    _guestInviteLang = typeof window.normalizeGuestInviteLanguage === 'function'
+        ? window.normalizeGuestInviteLanguage(nextLang, lang)
+        : String(nextLang || 'en');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    renderGuestInviteModal();
 }
 
 async function sendGuestProjectInvite() {
@@ -2069,6 +2169,7 @@ async function sendGuestProjectInvite() {
     _guestInviteSending = true;
     renderGuestInviteModal();
     try {
+        const selectedInviteLang = resolveGuestInviteLanguage(guest);
         const response = await fetch(`${API_BASE}/guest-apps/${encodeURIComponent(String(guest.id || ''))}/invite`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2080,11 +2181,11 @@ async function sendGuestProjectInvite() {
             return;
         }
 
-        const inviteLink = String(data.invite_link || '').trim();
-        const messageText = window.t('guestInviteMessageTemplate', {
-            app_name: String(guest.package_name || guest.name || '').trim(),
-            invite_link: inviteLink,
-        }, lang);
+        const inviteStartapp = String(data.startapp || `guest_${guest.id}_${userId}`).trim();
+        const inviteLink = typeof window.buildGuestInviteDeepLink === 'function'
+            ? window.buildGuestInviteDeepLink(String(guest.id || ''), userId, selectedInviteLang, inviteStartapp)
+            : String(data.invite_link || '').trim();
+        const messageText = getGuestInvitePreviewText(guest, selectedInviteLang, inviteLink);
         const encodedText = encodeURIComponent(messageText);
 
         guest.invites_sent = Number(data.invites_sent || guest.invites_sent || 0);
@@ -3688,6 +3789,115 @@ function closeCustomAlert(event) {
     document.getElementById('custom-alert-overlay').classList.remove('active');
 }
 
+function ensureGuestClaimLoadingOverlay() {
+    var overlay = document.getElementById('guest-claim-loading-overlay');
+    if (overlay) return overlay;
+
+    overlay = document.createElement('div');
+    overlay.id = 'guest-claim-loading-overlay';
+    overlay.className = 'guest-claim-loading-overlay';
+    overlay.innerHTML = `
+        <div class="guest-claim-loading-box">
+            <div class="guest-claim-loading-spinner"></div>
+            <div id="guest-claim-loading-text" class="guest-claim-loading-text"></div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+function showLoading(message) {
+    var overlay = ensureGuestClaimLoadingOverlay();
+    var textEl = document.getElementById('guest-claim-loading-text');
+    if (textEl) {
+        textEl.textContent = String(message || window.t('guestClaimLoading', {}, lang));
+    }
+    overlay.classList.add('active');
+}
+
+function hideLoading() {
+    var overlay = document.getElementById('guest-claim-loading-overlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+}
+
+function ensureGuestClaimStatusModal() {
+    var overlay = document.getElementById('guest-claim-status-modal');
+    if (overlay) return overlay;
+
+    overlay = document.createElement('div');
+    overlay.id = 'guest-claim-status-modal';
+    overlay.className = 'modal-overlay guest-claim-status-modal';
+    overlay.onclick = function(event) {
+        closeGuestClaimStatusModal(event);
+    };
+    overlay.innerHTML = `
+        <div class="modal-content guest-claim-status-content" onclick="event.stopPropagation()">
+            <div id="guest-claim-status-body" class="guest-claim-status-body"></div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+function showGuestClaimStatusModal(options) {
+    var config = options || {};
+    var overlay = ensureGuestClaimStatusModal();
+    var body = document.getElementById('guest-claim-status-body');
+    if (!body) return;
+
+    var isSuccess = config.variant === 'success';
+    var titleKey = isSuccess ? 'guestClaimSuccessTitle' : 'guestClaimNotOwnerTitle';
+    var textKey = isSuccess ? 'guestClaimSuccessText' : 'guestClaimNotOwnerText';
+    var primaryAction = isSuccess
+        ? `<button class="btn btn-primary" onclick="openGuestClaimEditFlow(${Number(config.appId || 0)})">${window.escapeHTML(window.t('guestClaimEditProjectBtn', {}, lang))}</button>`
+        : `<button class="btn btn-primary" onclick="openGuestClaimSupportFromModal()">${window.escapeHTML(window.t('guestClaimContactSupportBtn', {}, lang))}</button>`;
+
+    body.innerHTML = `
+        <div class="guest-claim-status-icon">${isSuccess ? '🎉' : '⚠️'}</div>
+        <div class="guest-claim-status-title">${window.escapeHTML(window.t(titleKey, {}, lang))}</div>
+        <div class="guest-claim-status-text">${escapeHtmlWithBreaks(window.t(textKey, {}, lang))}</div>
+        <div class="guest-claim-status-actions">
+            ${primaryAction}
+            <button class="btn btn-secondary" onclick="closeGuestClaimStatusModal()">${window.escapeHTML(window.t('inviteClose', {}, lang))}</button>
+        </div>
+    `;
+
+    overlay.classList.add('active');
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred(isSuccess ? 'success' : 'warning');
+}
+
+function closeGuestClaimStatusModal(event) {
+    var overlay = document.getElementById('guest-claim-status-modal');
+    if (!overlay) return;
+    if (event && event.target && event.target !== overlay) {
+        return;
+    }
+    overlay.classList.remove('active');
+}
+
+function openGuestClaimSupportFromModal() {
+    closeGuestClaimStatusModal();
+    if (typeof window.sendFeedback === 'function') {
+        window.sendFeedback('question');
+    }
+}
+
+function openGuestClaimEditFlow(appId) {
+    var targetAppId = Number(appId || 0);
+    closeGuestClaimStatusModal();
+    if (typeof window.switchTab === 'function') {
+        window.switchTab('projects');
+    }
+    Promise.resolve(typeof window.loadProjects === 'function' ? window.loadProjects(true) : null)
+        .finally(function() {
+            if (targetAppId > 0 && typeof window.openEditModal === 'function') {
+                window.openEditModal(targetAppId);
+            }
+        });
+}
+
 function showToast(message) {
     let toast = document.getElementById('custom-toast');
     if (!toast) {
@@ -5033,7 +5243,13 @@ Object.assign(window, {
     showKarmaPopup,
     showCustomAlert,
     closeCustomAlert,
+    showLoading,
+    hideLoading,
     showToast,
+    showGuestClaimStatusModal,
+    closeGuestClaimStatusModal,
+    openGuestClaimSupportFromModal,
+    openGuestClaimEditFlow,
     showOwnerLastSeenToast,
     switchTab,
     toggleAccordion,
@@ -5044,6 +5260,7 @@ Object.assign(window, {
     openInviteModal,
     openGuestInviteModal,
     sendGuestProjectInvite,
+    setGuestInviteLanguage,
     setInviteMode,
     escapeForAttr,
     copyAndAction,
@@ -5077,4 +5294,9 @@ Object.assign(window, {
     openKarmaSelectPopup,
     closeKarmaSelectPopup,
     confirmKarmaSelect,
+});
+
+Object.assign(window.ui, {
+    showLoading,
+    hideLoading,
 });
