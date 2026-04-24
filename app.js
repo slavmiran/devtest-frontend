@@ -4152,10 +4152,15 @@ async function sendKarmaReward(appId, testerId, rewardType) {
 async function confirmStart(id) {
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
+    const actionKey = 'checkin_' + id;
+    if (_pendingActions.has(actionKey)) return false;
+    _pendingActions.add(actionKey);
+
     const test = myTests.find(function(item) { return Number(item.id) === Number(id); });
     if (test) {
         var isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' || String(test.progress_status || 'active').toLowerCase() !== 'active';
         if (isArchivedOrCompleted) {
+            _pendingActions.delete(actionKey);
             if (!test.isReadyToClaim && !test.isGrantAvailableTomorrow) {
                 _removeLocalTest(id);
                 persistTestsCacheSnapshot();
@@ -4281,6 +4286,8 @@ async function confirmStart(id) {
         }
         handleApiError('network_error');
         return false;
+    } finally {
+        _pendingActions.delete(actionKey);
     }
 }
 
