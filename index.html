@@ -468,6 +468,19 @@
         </div>
     </div>
 
+    <!-- Checkin Options Modal -->
+    <div id="checkin-options-modal" class="modal-overlay" onclick="closeCheckinOptionsModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="t-checkinOptionsTitle"></h3>
+            <p id="t-checkinOptionsSubtitle" style="color: var(--hint-color); font-size: 14px; line-height: 1.5; margin: 8px 0 20px;"></p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn btn-secondary" id="t-checkinOptionsSendScreenshot" style="width: 100%; justify-content: flex-start;" onclick="checkinOptionsScreenshot()"></button>
+                <button class="btn btn-secondary" id="t-checkinOptionsSendIdea" style="width: 100%; justify-content: flex-start;" onclick="checkinOptionsIdea()"></button>
+                <button class="btn btn-success" id="t-checkinOptionsJustConfirm" style="width: 100%; font-weight: 600;" onclick="checkinOptionsConfirm()"></button>
+            </div>
+        </div>
+    </div>
+
     <!-- Issue Report Modal -->
     <div id="issue-report-modal" class="modal-overlay" onclick="closeIssueReportModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">

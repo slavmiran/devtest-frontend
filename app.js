@@ -1933,8 +1933,19 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         btn.innerText = '💬 ' + t.screenshotBtn;
         btn.onclick = function() { handleScreenshotAndConfirm(finishedId, ownerUsername || ''); };
     } else {
-        btn.innerText = t.confirmStart;
-        btn.onclick = function() { confirmStart(finishedId); };
+        // Replace single button with split button group
+        var safeOwner = window.escapeInlineJsString ? window.escapeInlineJsString(ownerUsername || '') : (ownerUsername || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        var splitWrapper = document.createElement('div');
+        splitWrapper.className = 'split-btn-group';
+        splitWrapper.style.flex = '2';
+        splitWrapper.innerHTML =
+            '<button id="btn-confirm-' + finishedId + '" class="btn btn-success split-btn-main" onclick="confirmStart(' + finishedId + ')">' +
+            window.escapeHTML(window.t('confirmTest', {}, lang)) +
+            '</button>' +
+            '<button class="btn btn-success split-btn-options" onclick="openCheckinOptionsModal(' + finishedId + ', \'' + safeOwner + '\')" title="' + window.escapeHTML(window.t('checkinOptionsTitle', {}, lang)) + '">' +
+            '📎' +
+            '</button>';
+        btn.parentNode.replaceChild(splitWrapper, btn);
     }
     return true;
 }
@@ -4291,6 +4302,19 @@ async function confirmStart(id) {
     }
 }
 
+function handleClaimGrantClick(progressId, appId) {
+    const test = myTests.find(function(item) {
+        return Number(item.id) === Number(appId);
+    });
+    const skipsCount = countGrantSkips(test);
+    if (skipsCount > 3) {
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        showToast(window.t('claimGrantMissedToast', { count: skipsCount }, lang));
+        return;
+    }
+    claimGrant(progressId, appId);
+}
+
 async function claimGrant(progressId, appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
     const btn = document.getElementById(`btn-claim-${appId}`);
@@ -4731,6 +4755,7 @@ Object.assign(window, {
     fetchKarmaBreakdown,
     sendKarmaReward,
     confirmStart,
+    handleClaimGrantClick,
     deleteTester,
     confirmDeleteProject,
     formatAmountValue,

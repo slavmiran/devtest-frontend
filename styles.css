@@ -188,6 +188,26 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     gap: 8px;
 }
 
+/* Split button for checkin confirm */
+.split-btn-group {
+    display: flex;
+    gap: 0;
+    flex: 2;
+}
+.split-btn-main {
+    flex: 1;
+    border-radius: 12px 0 0 12px !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+.split-btn-options {
+    width: 48px;
+    flex-shrink: 0;
+    border-radius: 0 12px 12px 0 !important;
+    padding: 0 !important;
+    font-size: 18px;
+    min-width: 48px;
+}
+
 .btn-icon {
     width: 44px;
     height: 44px;
@@ -3585,6 +3605,21 @@ details[open] > summary .details-arrow {
 }
 
 .btn-claim-grant:active { opacity: 0.7; }
+
+.btn-claim-grant.btn-missed-grant {
+    background: rgba(142, 142, 147, 0.18);
+    color: var(--hint-color);
+    border: 1px dashed rgba(142, 142, 147, 0.35);
+    opacity: 0.72;
+    text-decoration: line-through;
+    animation: none;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.btn-claim-grant.btn-missed-grant:active {
+    opacity: 0.72;
+}
 
 @keyframes claimPulse {
     0%, 100% { box-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }

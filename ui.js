@@ -1488,8 +1488,12 @@ function renderTests(force) {
                 `;
             }
             
+            const grantSkipsCount = String(test.daily_timeline || '')
+                ? Math.max(0, (String(test.daily_timeline || '').substring(0, 14).match(/[03]/g) || []).length)
+                : Math.max(0, Number(test.skips_count || 0));
+            const grantMissedClass = grantSkipsCount > 3 ? ' btn-missed-grant' : '';
             actionsHtml = `
-                <button id="btn-claim-${test.id}" class="btn btn-claim-grant" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="claimGrant(${test.progress_id}, ${test.id})">
+                <button id="btn-claim-${test.id}" class="btn btn-claim-grant${grantMissedClass}" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="handleClaimGrantClick(${test.progress_id}, ${test.id})">
                     🎁 ${window.t('claimGrantBtn')}
                 </button>
                 <div class="action-row" style="gap: 8px;">
@@ -2756,6 +2760,67 @@ function confirmScreenshotGuard() {
     const owner = window._screenshotGuardOwner || '';
     closeScreenshotGuardModal();
     openReportModal(appId, owner);
+}
+
+// === CHECKIN OPTIONS MODAL ===
+var _checkinOptionsAppId = null;
+var _checkinOptionsOwner = '';
+
+function openCheckinOptionsModal(appId, ownerUsername) {
+    _checkinOptionsAppId = appId;
+    _checkinOptionsOwner = ownerUsername || '';
+    const modal = document.getElementById('checkin-options-modal');
+    if (!modal) return;
+    const titleEl = document.getElementById('t-checkinOptionsTitle');
+    const subtitleEl = document.getElementById('t-checkinOptionsSubtitle');
+    const screenshotBtn = document.getElementById('t-checkinOptionsSendScreenshot');
+    const ideaBtn = document.getElementById('t-checkinOptionsSendIdea');
+    const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
+    if (titleEl) titleEl.innerText = window.t('checkinOptionsTitle', {}, lang);
+    if (subtitleEl) subtitleEl.innerText = window.t('checkinOptionsSubtitle', {}, lang);
+    if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
+    if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
+    if (confirmBtn) confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
+    modal.classList.add('active');
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+}
+
+function closeCheckinOptionsModal(event) {
+    const modal = document.getElementById('checkin-options-modal');
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
+}
+
+function _closeCheckinOptionsModalImmediate() {
+    const modal = document.getElementById('checkin-options-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function checkinOptionsScreenshot() {
+    const appId = _checkinOptionsAppId;
+    const owner = _checkinOptionsOwner;
+    _closeCheckinOptionsModalImmediate();
+    if (appId == null) return;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+    handleScreenshotAndConfirm(appId, owner);
+}
+
+function checkinOptionsIdea() {
+    const appId = _checkinOptionsAppId;
+    const owner = _checkinOptionsOwner;
+    _closeCheckinOptionsModalImmediate();
+    if (appId == null) return;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+    openReportModal(appId, owner);
+}
+
+function checkinOptionsConfirm() {
+    const appId = _checkinOptionsAppId;
+    _closeCheckinOptionsModalImmediate();
+    if (appId == null) return;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+    if (typeof confirmStart === 'function') confirmStart(appId);
 }
 
 function openIssueReportModal(appId) {
@@ -5198,6 +5263,11 @@ Object.assign(window, {
     closeIssueReportModal,
     submitIssueReportFromModal,
     insertReportChip,
+    openCheckinOptionsModal,
+    closeCheckinOptionsModal,
+    checkinOptionsScreenshot,
+    checkinOptionsIdea,
+    checkinOptionsConfirm,
     openDropTestModal,
     closeDropTestModal,
     openLeaveMutualModal,
