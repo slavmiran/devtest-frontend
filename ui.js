@@ -1433,6 +1433,14 @@ function renderTests(force) {
     let doneCount = 0;
 
     myTests.forEach((test) => {
+        // Skip archived cards with no actionable state (no grant, no early finish bonus).
+        // This prevents cards from hanging in My Tests when neither reward applies.
+        const isArchivedWithNoAction = String(test.app_status || 'active').toLowerCase() !== 'active'
+            && !test.isReadyToClaim
+            && !test.isGrantAvailableTomorrow
+            && !test.isEarlyFinish;
+        if (isArchivedWithNoAction) return;
+
         const card = document.createElement('div');
         
         // Determine if test should go to active or done list:
@@ -1443,8 +1451,8 @@ function renderTests(force) {
         // - If isGrantAvailableTomorrow: move to done list (grant pending)
         // - Else if status='done': go to done list
         // - Else: go to active list
-        const shouldShowInActiveList = test.isReadyToClaim || (test.status !== 'done' && !test.isGrantAvailableTomorrow);
-        const shouldShowInDoneList = test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim);
+        const shouldShowInActiveList = test.isReadyToClaim || test.isEarlyFinish || (test.status !== 'done' && !test.isGrantAvailableTomorrow);
+        const shouldShowInDoneList = !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
         
         card.className = shouldShowInDoneList ? 'card card-done' : 'card';
         card.id = `test-card-${test.id}`;
@@ -1505,6 +1513,32 @@ function renderTests(force) {
                 <button id="btn-claim-${test.id}" class="btn btn-claim-grant" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
                     ${window.t('claimGrantTomorrowBtn', {}, lang)}
                 </button>
+            `;
+        // State C: archived app — Early Finish Bonus card
+        } else if (test.isEarlyFinish) {
+            const efDays = Number(test.testing_days || 0);
+            const efSkips = Number(test.skips_count || 0);
+            const qualifies = efDays >= 5 && efSkips <= 1;
+            const efDaysLabel = window.t('earlyFinishDays', { days: efDays }, lang);
+            const efSkipsLabel = efSkips === 0
+                ? window.t('earlyFinishPerfect', {}, lang)
+                : window.t('earlyFinishSkips', { count: efSkips }, lang);
+            const efBonusNote = qualifies
+                ? `<div class="early-finish-bonus-badge">+25 $BUST</div>`
+                : '';
+            actionsHtml = `
+                <div class="early-finish-banner">
+                    <div class="early-finish-header">
+                        <span class="early-finish-icon">🏁</span>
+                        <span class="early-finish-title">${window.t('earlyFinishCardTitle', {}, lang)}</span>
+                        ${efBonusNote}
+                    </div>
+                    <div class="early-finish-desc">${window.t('earlyFinishCardDesc', { days: efDays }, lang)}</div>
+                    <div class="early-finish-meta">${efDaysLabel}&nbsp;&nbsp;·&nbsp;&nbsp;${efSkipsLabel}</div>
+                    <button id="btn-early-finish-${test.id}" class="btn btn-early-finish" onclick="claimEarlyFinishBonus(${test.progress_id}, ${test.id})">
+                        ⭐ ${window.t('earlyFinishClaimBtn', {}, lang)}
+                    </button>
+                </div>
             `;
         }
         // State B: status = 'new' OR status = 'daily'/'opened' without ready to claim

@@ -10,6 +10,7 @@ const BOT_USERNAME = 'Android12TestersBot';
 const WEBAPP_SHORTNAME = 'app';
 const BOT_CHAT_URL = `https://t.me/${BOT_USERNAME}`;
 const GUEST_CLAIM_START_PARAM_RE = /^guest_([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})_(\d+)$/i;
+const LEAD_INVITE_START_PARAM_RE = /^lead_(\d+)$/i;
 const GUEST_CLAIM_SESSION_PREFIX = 'guest_claim_handled_v1:';
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
@@ -171,6 +172,14 @@ function _parseGuestClaimIntent() {
     };
 }
 
+function _getLeadInviteInviterId() {
+    var rawStartParam = _getStartappParam();
+    if (!rawStartParam) return 0;
+    var match = rawStartParam.match(LEAD_INVITE_START_PARAM_RE);
+    if (!match) return 0;
+    return Number(match[1] || 0);
+}
+
 function _getGuestClaimHandledKey(rawStartParam) {
     return GUEST_CLAIM_SESSION_PREFIX + String(rawStartParam || '');
 }
@@ -257,6 +266,12 @@ function _parseInitialRouteTarget() {
         if (normalized === 'market') {
             routeKind = 'market';
         }
+        if (normalized === 'add_app' || normalized === 'add-app' || normalized === 'new_project' || normalized === 'new-project') {
+            routeKind = 'add_app';
+        }
+        if (normalized === 'guest_projects' || normalized === 'guestprojects') {
+            routeKind = 'guest_projects';
+        }
     }
 
     if (routeKind === 'feedback' || params.get('feedback') === '1') {
@@ -284,6 +299,22 @@ function _parseInitialRouteTarget() {
         return {
             tab: 'market',
             openFeedback: false,
+            appId: null,
+        };
+    }
+    if (routeKind === 'add_app') {
+        return {
+            tab: 'projects',
+            openAdd: true,
+            openFeedback: false,
+            appId: null,
+        };
+    }
+    if (routeKind === 'guest_projects') {
+        return {
+            tab: 'market',
+            openFeedback: false,
+            openGuestProjects: true,
             appId: null,
         };
     }
@@ -348,6 +379,28 @@ async function _handleInitialRoute() {
             }, 500);
         } catch (error) {
             console.error('Initial project route error:', error);
+        }
+        return;
+    }
+
+    if (route.openGuestProjects) {
+        try {
+            if (typeof window.loadMarketData === 'function') {
+                await window.loadMarketData(true);
+            }
+            await toggleGuestProjectsAccordion(true);
+        } catch (error) {
+            console.error('Initial guest projects route error:', error);
+        }
+        return;
+    }
+
+    if (route.openAdd) {
+        try {
+            openModal();
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial add project route error:', error);
         }
         return;
     }
@@ -901,6 +954,15 @@ function buildCheckpointTestLink(appId) {
     return `https://t.me/${BOT_USERNAME}?start=app_${Number(appId || 0)}`;
 }
 
+function getCheckpointJoinSourceLabel(test) {
+    var joinType = String(test && test.join_type || 'invite').trim().toLowerCase();
+    if (joinType === 'mutual') return window.t('testerSourceMutualFull', {}, lang);
+    if (joinType === 'bounty') return window.t('testerSourceBountyFull', {}, lang);
+    if (joinType === 'prelaunch') return window.t('testerSourcePrelaunchFull', {}, lang);
+    if (joinType === 'direct') return window.t('testerSourceDirectFull', {}, lang);
+    return window.t('testerSourceInviteFull', {}, lang);
+}
+
 function buildCheckpointReportPrefill(appId) {
     var prefill = window.t('reportPrefill', {}, lang);
     var test = myTests.find(function(item) {
@@ -909,14 +971,29 @@ function buildCheckpointReportPrefill(appId) {
     if (!test) {
         return prefill;
     }
-    var appName = String(test.name || test.package || '').trim();
-    if (!appName) {
-        return prefill;
+    var blocks = [prefill.trim()];
+    var testedAppName = String(test.name || test.package || '').trim();
+    if (testedAppName) {
+        blocks.push(window.t('reportPrefillTestedAppLine', {
+            app_name: testedAppName
+        }, lang));
     }
-    return prefill + window.t('reportPrefillLinkLine', {
-        app_name: appName,
-        app_link: buildCheckpointTestLink(appId)
-    }, lang) + '\n\n';
+
+    var reciprocalAppId = Number(test.reciprocal_app_id || 0);
+    var reciprocalAppName = String(test.reciprocal_app_name || '').trim();
+    if (reciprocalAppId > 0 && reciprocalAppName) {
+        blocks.push(window.t('reportPrefillMyAppLinkLine', {
+            app_name: reciprocalAppName,
+            app_link: buildCheckpointTestLink(reciprocalAppId)
+        }, lang));
+    } else {
+        blocks.push(window.t('reportPrefillSourceLine', {
+            source: getCheckpointJoinSourceLabel(test)
+        }, lang));
+    }
+    return blocks.filter(function(item) {
+        return String(item || '').trim() !== '';
+    }).join('\n\n') + '\n\n';
 }
 
 function openOwnerCheckpointChat(ownerUsername, text) {
@@ -2200,6 +2277,9 @@ function _mapTestsFromApi(data) {
         var canEverClaim = !app.grant_claimed && skipsCount <= 3 && app.progress_id;
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && testingDays === 14 && isTestedToday);
         var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
+        // Early finish: archived app qualifies for bonus (>=5 days tested, <=1 skip).
+        // Cards that don't meet these criteria are excluded on the backend and skipped here too.
+        var isEarlyFinish = !!(isArchivedOrCompleted && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays >= 5 && skipsCount <= 1);
 
         if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow) {
             status = 'done';
@@ -2236,10 +2316,13 @@ function _mapTestsFromApi(data) {
             issue_reported_at: app.issue_reported_at || null,
             issue_reason: app.issue_reason || '',
             issue_fixed_at: app.issue_fixed_at || null,
+            reciprocal_app_id: app.reciprocal_app_id || null,
+            reciprocal_app_name: app.reciprocal_app_name || '',
             has_clicked_store: existingTest ? !!existingTest.has_clicked_store : false,
             isTestedToday: isTestedToday,
             isGrantAvailableTomorrow: isGrantAvailableTomorrow,
             isReadyToClaim: isReadyToClaim,
+            isEarlyFinish: isEarlyFinish,
         };
     });
 }
@@ -4403,6 +4486,46 @@ async function claimGrant(progressId, appId) {
     }
 }
 
+async function claimEarlyFinishBonus(progressId, appId) {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    const btn = document.getElementById('btn-early-finish-' + appId);
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+    try {
+        const response = await fetch(`${API_BASE}/testing/${progressId}/claim_early_finish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tester_id: userId })
+        });
+        const result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+            if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+            handleApiError(getBackendErrorCode(result), result.details || {});
+            return;
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        const test = myTests.find(t => Number(t.id) === Number(appId));
+        if (test) {
+            test.grant_claimed = true;
+            test.isEarlyFinish = false;
+        }
+        persistTestsCacheSnapshot();
+        if (result.qualified) {
+            if (result.already_awarded) {
+                showToast(window.t('earlyFinishAlreadyToast', {}, lang));
+            } else {
+                showToast(window.t('earlyFinishClaimedToast', { amount: result.amount }, lang));
+            }
+        } else {
+            showToast(window.t('earlyFinishNoBonus', {}, lang));
+        }
+        if (window.renderTests) window.renderTests(true);
+    } catch (error) {
+        console.error('Claim early finish error:', error);
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+        handleApiError('network_error');
+    }
+}
+
 async function deleteTester(appId, testerId, testerName) {
     const confirmed = await new Promise(resolve => {
         const message = t.deleteTesterConfirm.replace('{name}', testerName);
@@ -4577,14 +4700,20 @@ async function doSaveProject(projectData) {
     saveBtn.innerText = '...';
     saveBtn.disabled = true;
     try {
+        var leadInviterId = _getLeadInviteInviterId();
         const response = await fetch(`${API_BASE}/projects`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(projectData)
+            body: JSON.stringify(Object.assign({}, projectData, {
+                lead_inviter_id: leadInviterId > 0 ? leadInviterId : null,
+            }))
         });
         const result = await response.json();
         if (result.status === 'success') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            if (leadInviterId > 0) {
+                _clearStartappQueryParam();
+            }
             closeModal();
             loadProjects();
         } else {
@@ -4803,6 +4932,7 @@ Object.assign(window, {
     sendKarmaReward,
     confirmStart,
     handleClaimGrantClick,
+    claimEarlyFinishBonus,
     deleteTester,
     confirmDeleteProject,
     formatAmountValue,
