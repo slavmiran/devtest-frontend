@@ -23,6 +23,16 @@
                 <button class="seg-btn" id="lang-btn-ru" onclick="applyLanguage('ru')">🇷🇺 RU</button>
                 <button class="seg-btn" id="lang-btn-en" onclick="applyLanguage('en')">🇬🇧 EN</button>
             </div>
+            <div class="system-setting-row">
+                <div class="system-setting-copy-wrap">
+                    <button type="button" class="system-setting-copy" onclick="showAutoAcceptMutualInfo()" data-i18n="autoAcceptMutualLabel">Авто-принятие взаимок</button>
+                    <div class="system-setting-meta" data-i18n="autoAcceptMutualMeta">Новые заявки подтверждаются без ожидания</div>
+                </div>
+                <label class="toggle-switch" aria-label="Auto-accept mutual offers">
+                    <input type="checkbox" id="auto-accept-mutual-toggle" onchange="handleAutoAcceptMutualToggle(this)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
             <div class="system-feedback-buttons">
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('bug')" data-i18n="feedbackBug">🐛 Сообщить о баге</button>
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('idea')" data-i18n="feedbackIdea">💡 Идея / Нашли баг?</button>

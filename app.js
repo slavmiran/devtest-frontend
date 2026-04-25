@@ -128,6 +128,10 @@ var _reliabilitySummaryLoadError = false;
 var _reliabilityBreakdownLoadError = false;
 
 var _pendingActions = new Set();
+var _autoAcceptMutualEnabled = false;
+var _autoAcceptToggleInFlight = false;
+var _pendingInitialHighlightTestId = null;
+var _highlightTestTimerId = null;
 var _backgroundSyncState = { tests: 0, projects: 0, market: 0 };
 var _deferredBootstrapStarted = false;
 var _initialRouteHandled = false;
@@ -257,6 +261,12 @@ function _parseInitialRouteTarget() {
             feedbackProjectId = Number(projectMatch[1] || 0);
             break;
         }
+        var testsHighlightMatch = normalized.match(/^my_tests_highlight[_:](\d+)$/);
+        if (testsHighlightMatch) {
+            routeKind = 'tests_highlight';
+            feedbackProjectId = Number(testsHighlightMatch[1] || 0);
+            break;
+        }
         if (normalized === 'projects') {
             routeKind = 'projects';
         }
@@ -293,6 +303,14 @@ function _parseInitialRouteTarget() {
             tab: 'tests',
             openFeedback: false,
             appId: null,
+        };
+    }
+    if (routeKind === 'tests_highlight') {
+        return {
+            tab: 'tests',
+            openFeedback: false,
+            appId: null,
+            highlightTestId: feedbackProjectId > 0 ? feedbackProjectId : null,
         };
     }
     if (routeKind === 'market') {
@@ -348,6 +366,18 @@ async function _handleInitialRoute() {
     if (route.tab === 'tests') {
         switchTab('tests');
     }
+        if (route.highlightTestId) {
+            try {
+                _pendingInitialHighlightTestId = Number(route.highlightTestId || 0) || null;
+                await loadTasks(true);
+                _highlightTestCardWhenReady(_pendingInitialHighlightTestId);
+                _clearStartappQueryParam();
+            } catch (error) {
+                console.error('Initial tests highlight route error:', error);
+            }
+            return;
+        }
+
     if (route.tab === 'market') {
         switchTab('market');
     }
@@ -1579,6 +1609,7 @@ function handleApiError(code, details = {}) {
     var keyMap = {
         insufficient_bust_balance: 'err_insufficient_bust_balance',
         transaction_failed: 'err_transaction_failed',
+        invalid_init_data: 'guestClaimAuthErrorToast',
         grant_not_ready: 'err_grant_not_ready',
         grant_too_many_skips: 'err_grant_too_many_skips',
         grant_already_claimed: 'err_grant_already_claimed',
@@ -1844,6 +1875,114 @@ function refreshLanguageUi() {
     if (select && select.options.length > 0 && !select.value) {
         select.options[0].text = window.t('contactSelectPlaceholder', {}, lang);
     }
+
+    syncAutoAcceptToggleUi();
+}
+
+function syncAutoAcceptToggleUi() {
+    var toggle = document.getElementById('auto-accept-mutual-toggle');
+    if (!toggle) return;
+    toggle.checked = !!_autoAcceptMutualEnabled;
+    toggle.disabled = !!_autoAcceptToggleInFlight;
+}
+
+async function loadUserProfilePreferences() {
+    try {
+        var response = await fetchWithRetry(API_BASE + '/users/' + userId + '/profile');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        var profile = await response.json();
+        _autoAcceptMutualEnabled = !!profile.auto_accept_mutual;
+        syncAutoAcceptToggleUi();
+        window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
+    } catch (error) {
+        console.error('Profile preferences load error:', error);
+        syncAutoAcceptToggleUi();
+    }
+}
+
+function showAutoAcceptMutualInfo() {
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    showToast(window.t('autoAcceptMutualInfoToast', {}, lang));
+}
+
+async function handleAutoAcceptMutualToggle(input) {
+    if (!input || _autoAcceptToggleInFlight) {
+        syncAutoAcceptToggleUi();
+        return;
+    }
+
+    var previousValue = !!_autoAcceptMutualEnabled;
+    var nextValue = !!input.checked;
+    if (nextValue === previousValue) {
+        syncAutoAcceptToggleUi();
+        return;
+    }
+
+    _autoAcceptToggleInFlight = true;
+    _autoAcceptMutualEnabled = nextValue;
+    syncAutoAcceptToggleUi();
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+    try {
+        var response = await fetch(API_BASE + '/users/me/auto-accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ init_data: (tg && tg.initData) ? tg.initData : '', enabled: nextValue })
+        });
+        var result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+            _autoAcceptMutualEnabled = previousValue;
+            syncAutoAcceptToggleUi();
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            return;
+        }
+
+        _autoAcceptMutualEnabled = !!result.auto_accept_mutual;
+        window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
+        syncAutoAcceptToggleUi();
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t(_autoAcceptMutualEnabled ? 'autoAcceptMutualEnabledToast' : 'autoAcceptMutualDisabledToast', {}, lang));
+    } catch (error) {
+        console.error('Auto-accept toggle error:', error);
+        _autoAcceptMutualEnabled = previousValue;
+        syncAutoAcceptToggleUi();
+        handleApiError('network_error');
+    } finally {
+        _autoAcceptToggleInFlight = false;
+        syncAutoAcceptToggleUi();
+    }
+}
+
+function _highlightTestCard(appId) {
+    var normalizedId = Number(appId || 0);
+    if (!normalizedId) return false;
+    var card = document.getElementById('test-card-' + normalizedId);
+    if (!card) return false;
+
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.remove('test-card-highlight-pulse');
+    void card.offsetWidth;
+    card.classList.add('test-card-highlight-pulse');
+    if (_highlightTestTimerId) {
+        clearTimeout(_highlightTestTimerId);
+    }
+    _highlightTestTimerId = setTimeout(function() {
+        card.classList.remove('test-card-highlight-pulse');
+        _highlightTestTimerId = null;
+    }, 3600);
+    return true;
+}
+
+function _highlightTestCardWhenReady(appId, attemptsLeft) {
+    var remaining = Number.isFinite(attemptsLeft) ? attemptsLeft : 8;
+    if (_highlightTestCard(appId)) {
+        _pendingInitialHighlightTestId = null;
+        return;
+    }
+    if (remaining <= 0) return;
+    setTimeout(function() {
+        _highlightTestCardWhenReady(appId, remaining - 1);
+    }, 180);
 }
 
 function toggleSystemMenu() {
@@ -3088,6 +3227,17 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (result.mode === 'auto_accepted') {
+            closeProjectSelectModal();
+            showToast(window.t('offerStartedInstantly', {}, lang));
+            switchTab('tests');
+            await Promise.allSettled([
+                loadTasks(true),
+                loadProjects(true),
+                loadIncomingOffers({ background: true })
+            ]);
+            return;
+        }
         if (uiContext && uiContext.targetOwnerId) {
             var ownerKey = String(uiContext.targetOwnerId);
             var ownerLocks = _blockedOfferProjectsByOwner[ownerKey] || {};
@@ -4791,6 +4941,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     refreshLanguageUi();
+    loadUserProfilePreferences().catch(function() {});
 
     fetch(`${API_BASE}/users/${userId}/language`)
         .then(response => response.json())
@@ -4868,7 +5019,10 @@ Object.assign(window, {
     resetMarketFeedStates,
     setMarketForceSkeleton,
     refreshLanguageUi,
+    syncAutoAcceptToggleUi,
     applyLanguage,
+    showAutoAcceptMutualInfo,
+    handleAutoAcceptMutualToggle,
     toggleLanguage,
     loadTasks,
     loadIncomingOffers,
@@ -4960,9 +5114,11 @@ Object.assign(window.App, {
     API_BASE,
     userId,
     userEmail: _userEmail,
+    autoAcceptMutual: _autoAcceptMutualEnabled,
     getState: () => ({
         lang,
         userEmail: _userEmail,
+        autoAcceptMutual: _autoAcceptMutualEnabled,
         myTests,
         incomingOffers,
         myProjects,
