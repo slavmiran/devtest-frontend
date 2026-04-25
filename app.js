@@ -70,6 +70,7 @@ var _earnReferralBust = 0;
 var _earnGuestInviteCount = 0;
 var _earnGuestInviteBust = 0;
 var _earnExchangeBust = 0;
+var _earnEarlyFinishCount = 0;
 var _earnEarlyFinishBust = 0;
 var _earnFeedbackCount = 0;
 var _earnFeedbackBust = 0;
@@ -894,6 +895,51 @@ function countGrantSkips(app) {
         return Math.max(0, (timeline.substring(0, 14).match(/[03]/g) || []).length);
     }
     return Math.max(0, Number(app && app.skips_count || 0));
+}
+
+function buildCheckpointTestLink(appId) {
+    return `https://t.me/${BOT_USERNAME}?start=app_${Number(appId || 0)}`;
+}
+
+function buildCheckpointReportPrefill(appId) {
+    var prefill = window.t('reportPrefill', {}, lang);
+    var test = myTests.find(function(item) {
+        return Number(item.id) === Number(appId);
+    });
+    if (!test) {
+        return prefill;
+    }
+    var appName = String(test.name || test.package || '').trim();
+    if (!appName) {
+        return prefill;
+    }
+    return prefill + window.t('reportPrefillLinkLine', {
+        app_name: appName,
+        app_link: buildCheckpointTestLink(appId)
+    }, lang) + '\n\n';
+}
+
+function openOwnerCheckpointChat(ownerUsername, text) {
+    var normalizedUsername = String(ownerUsername || '').replace('@', '').trim();
+    if (!normalizedUsername) return false;
+
+    const encodedText = encodeURIComponent(String(text || '').trim());
+    try {
+        tg.openTelegramLink('https://t.me/' + normalizedUsername + '?text=' + encodedText);
+    } catch (error) {
+        try {
+            tg.openLink('https://t.me/' + normalizedUsername + '?text=' + encodedText);
+        } catch (fallbackError) {
+            window.location.href = 'https://t.me/' + normalizedUsername + '?text=' + encodedText;
+        }
+    }
+    _pendingScreenshotReminderUsername = normalizedUsername;
+    return true;
+}
+
+function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
+    confirmStart(appId);
+    openOwnerCheckpointChat(ownerUsername, buildCheckpointReportPrefill(appId));
 }
 
 function isValidEmail(value) {
@@ -3232,22 +3278,11 @@ async function sendReport() {
     _reportOwnerUsername = null;
     document.getElementById('report-modal').classList.remove('active');
 
-    if (ownerUsername) {
-        const encodedText = encodeURIComponent(text);
-        try {
-            tg.openTelegramLink('https://t.me/' + ownerUsername + '?text=' + encodedText);
-        } catch (error) {
-            try {
-                tg.openLink('https://t.me/' + ownerUsername + '?text=' + encodedText);
-            } catch (fallbackError) {
-                window.location.href = 'https://t.me/' + ownerUsername + '?text=' + encodedText;
-            }
-        }
-        _pendingScreenshotReminderUsername = ownerUsername;
-    }
-
     if (appId) {
         confirmStart(appId);
+    }
+    if (ownerUsername) {
+        openOwnerCheckpointChat(ownerUsername, text);
     }
 }
 
@@ -3481,7 +3516,10 @@ function renderEarnBustDynamic() {
         <span class="meta-chip accent-green">🏆 ${window.t('earnGrantTestsLabel', {}, lang)}: ${_earnGrantCount}</span>
         <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnGrantBust)}</span>
     `;
-    document.getElementById('earn-early-finish-status').innerHTML = `<span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnEarlyFinishBust)}</span>`;
+    document.getElementById('earn-early-finish-status').innerHTML = `
+        <span class="meta-chip accent-green">⚡ ${window.escapeHTML(window.t('earnEarlyFinishCountChip', { count: _earnEarlyFinishCount }, lang))}</span>
+        <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnEarlyFinishBust)}</span>
+    `;
     document.getElementById('earn-feedback-status').innerHTML = `
         <span class="meta-chip accent-green">🐞 ${window.t('earnFeedbackCountChip', { count: _earnFeedbackCount }, lang)}</span>
         <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnFeedbackBust)}</span>
@@ -3512,6 +3550,7 @@ async function openEarnBustModal() {
         _earnGuestInviteCount = Number(data.guest_invites_count || 0);
         _earnGuestInviteBust = Number(data.guest_invites_earned || 0);
         _earnExchangeBust = Number(data.exchange_bust_earned || 0);
+        _earnEarlyFinishCount = Number(data.early_finish_count || 0);
         _earnEarlyFinishBust = Number(data.early_finish_bust_earned || 0);
         _earnFeedbackCount = Number(data.feedback_sent_count || 0);
         _earnFeedbackBust = Number(data.feedback_bust_earned || 0);
@@ -3522,7 +3561,8 @@ async function openEarnBustModal() {
     }
 }
 
-async function initiateProjectFeedback(appId) {
+async function initiateProjectFeedback(appId, options) {
+    options = options || {};
     try {
         const response = await fetch(`${API_BASE}/feedback/initiate`, {
             method: 'POST',
@@ -3538,6 +3578,11 @@ async function initiateProjectFeedback(appId) {
         showToast(window.t('feedbackBotRedirectToast', {}, lang));
         if (window.closeProjectDetailsModal) {
             window.closeProjectDetailsModal();
+        }
+        if (options.confirmCheckin) {
+            confirmStart(appId);
+            _openBotDm();
+            return;
         }
         setTimeout(redirectToBotDmAndClose, 250);
     } catch (error) {
@@ -4735,6 +4780,8 @@ Object.assign(window, {
     normalizeGuestInviteLanguage,
     getDefaultGuestInviteLanguage,
     buildGuestInviteDeepLink,
+    buildCheckpointReportPrefill,
+    sendCheckpointScreenshotAndConfirm,
     initiateProjectFeedback,
     openProjectFeedback,
     sendProjectFeedbackMedia,

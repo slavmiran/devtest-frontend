@@ -2803,16 +2803,15 @@ function checkinOptionsScreenshot() {
     _closeCheckinOptionsModalImmediate();
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
-    handleScreenshotAndConfirm(appId, owner);
+    sendCheckpointScreenshotAndConfirm(appId, owner);
 }
 
 function checkinOptionsIdea() {
     const appId = _checkinOptionsAppId;
-    const owner = _checkinOptionsOwner;
     _closeCheckinOptionsModalImmediate();
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
-    openReportModal(appId, owner);
+    initiateProjectFeedback(appId, { confirmCheckin: true });
 }
 
 function checkinOptionsConfirm() {
@@ -2866,7 +2865,9 @@ function openReportModal(appId, ownerUsername) {
     _reportAppId = appId;
     _reportOwnerUsername = ownerUsername;
     const textarea = document.getElementById('report-text');
-    textarea.value = t.reportPrefill;
+    textarea.value = typeof window.buildCheckpointReportPrefill === 'function'
+        ? window.buildCheckpointReportPrefill(appId)
+        : t.reportPrefill;
     document.getElementById('t-reportModalTitle').innerText = t.reportModalTitle;
     document.getElementById('t-reportModalHint').innerText = t.reportModalHint;
     document.getElementById('t-reportBtnSend').innerText = t.reportBtnSend;
