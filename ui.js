@@ -1422,6 +1422,23 @@ function setReliabilityDashboardFilter(filterKey) {
     renderReliabilityAlphaModal();
 }
 
+function buildPlayReviewTaskHtml(test) {
+    var canPrompt = typeof window.canPromptPlayReview === 'function' ? window.canPromptPlayReview(test) : false;
+    var isMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
+    if (!canPrompt && !isMarked) return '';
+    var chipClass = isMarked ? 'review-task-chip is-complete' : 'review-task-chip';
+    var chipLabel = window.escapeHTML(window.t('playReviewChip', {}, lang));
+    var statusLabel = isMarked
+        ? `<span class="review-task-status">${window.escapeHTML(window.t('playReviewMarked', {}, lang))}</span>`
+        : `<span class="review-task-status">${window.escapeHTML(window.t('playReviewActionHint', {}, lang))}</span>`;
+    return `
+        <button type="button" class="${chipClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">
+            <span class="review-task-label">⭐ ${chipLabel}</span>
+            ${statusLabel}
+        </button>
+    `;
+}
+
 function renderTests(force) {
     if (!force && !isTabVisible('tests')) return;
     const activeList = document.getElementById('tests-list');
@@ -1637,6 +1654,7 @@ function renderTests(force) {
                 ${trailingHtml}
             </div>
             ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
+            ${buildPlayReviewTaskHtml(test)}
             <div id="actions-${test.id}">
                 ${actionsHtml}
             </div>
@@ -2799,6 +2817,64 @@ function confirmScreenshotGuard() {
 // === CHECKIN OPTIONS MODAL ===
 var _checkinOptionsAppId = null;
 var _checkinOptionsOwner = '';
+var _playReviewModalAppId = null;
+
+function renderCheckinReviewOptions() {
+    var mount = document.getElementById('checkin-review-options');
+    if (!mount) return;
+    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
+    var canPrompt = typeof window.canPromptPlayReview === 'function' ? window.canPromptPlayReview(test) : false;
+    var isMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
+    if (!canPrompt && !isMarked) {
+        mount.innerHTML = '';
+        mount.style.display = 'none';
+        return;
+    }
+    mount.style.display = 'block';
+    mount.innerHTML = `
+        <div class="review-checkin-card">
+            <div class="review-checkin-copy">
+                <div class="review-checkin-title">⭐ ${window.escapeHTML(window.t('playReviewCheckinTitle', {}, lang))}</div>
+                <div class="review-checkin-text">${window.escapeHTML(window.t('playReviewCheckinHint', {}, lang))}</div>
+            </div>
+            <div class="review-checkin-actions">
+                <label class="review-checkbox-row">
+                    <input id="checkin-review-checkbox" type="checkbox" ${isMarked ? 'checked' : ''} onchange="toggleCheckinReviewCheckbox(this)">
+                    <span>${window.escapeHTML(window.t('playReviewCheckboxLabel', {}, lang))}</span>
+                </label>
+                <button type="button" class="btn btn-secondary review-info-btn" onclick="openPlayReviewModalFromCheckinOptions(event)">ℹ️ ${window.escapeHTML(window.t('detailsBtn', {}, lang))}</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderPlayReviewModal() {
+    var body = document.getElementById('play-review-modal-body');
+    if (!body) return;
+    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_playReviewModalAppId) : null;
+    if (!test) {
+        body.innerHTML = `<div class="feedback-empty">${window.escapeHTML(window.t('unexpectedError', {}, lang))}</div>`;
+        return;
+    }
+    var isMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
+    var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
+    var safeAppName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
+    body.innerHTML = `
+        <div class="review-modal-card">
+            <div class="review-modal-title">⭐ ${window.escapeHTML(window.t('playReviewModalTitle', {}, lang))}</div>
+            <div class="review-modal-app">${safeAppName}</div>
+            <div class="review-modal-text">${window.escapeHTML(window.t('playReviewModalText', {}, lang))}</div>
+            <div class="review-modal-note">${window.escapeHTML(window.t('playReviewConfirmPenalty', {}, lang))}</div>
+            <label class="review-checkbox-row review-checkbox-row-modal">
+                <input id="play-review-modal-checkbox" type="checkbox" ${isMarked ? 'checked' : ''} onchange="togglePlayReviewModalCheckbox(this)">
+                <span>${window.escapeHTML(window.t('playReviewCheckboxLabel', {}, lang))}</span>
+            </label>
+            <button type="button" class="btn" onclick="openPlayReviewStore()" ${reviewUrl ? '' : 'disabled'}>
+                ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
+            </button>
+        </div>
+    `;
+}
 
 function openCheckinOptionsModal(appId, ownerUsername) {
     _checkinOptionsAppId = appId;
@@ -2815,6 +2891,7 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
     if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
     if (confirmBtn) confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
+    renderCheckinReviewOptions();
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
@@ -2854,6 +2931,60 @@ function checkinOptionsConfirm() {
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
     if (typeof confirmStart === 'function') confirmStart(appId);
+}
+
+async function toggleCheckinReviewCheckbox(input) {
+    if (!_checkinOptionsAppId || typeof window.setPlayReviewSubmittedPending !== 'function') return;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    await window.setPlayReviewSubmittedPending(_checkinOptionsAppId, !!(input && input.checked));
+}
+
+async function togglePlayReviewModalCheckbox(input) {
+    if (!_playReviewModalAppId || typeof window.setPlayReviewSubmittedPending !== 'function') return;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    await window.setPlayReviewSubmittedPending(_playReviewModalAppId, !!(input && input.checked));
+}
+
+function openPlayReviewModal(appId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    _playReviewModalAppId = appId;
+    renderPlayReviewModal();
+    var modal = document.getElementById('play-review-modal');
+    if (modal) modal.classList.add('active');
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+}
+
+function openPlayReviewModalFromCheckinOptions(event) {
+    if (_checkinOptionsAppId == null) return;
+    openPlayReviewModal(_checkinOptionsAppId, event);
+}
+
+function closePlayReviewModal(event) {
+    if (event && event.target !== document.getElementById('play-review-modal')) return;
+    var modal = document.getElementById('play-review-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function openPlayReviewStore() {
+    if (_playReviewModalAppId == null || typeof window.getPlayReviewUrl !== 'function') return;
+    var url = window.getPlayReviewUrl(_playReviewModalAppId);
+    if (!url) {
+        if (window.tg && typeof window.tg.showAlert === 'function') {
+            window.tg.showAlert(window.t('playReviewMissingLink', {}, lang));
+        } else {
+            alert(window.t('playReviewMissingLink', {}, lang));
+        }
+        return;
+    }
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+    if (window.tg && typeof window.tg.openLink === 'function') {
+        window.tg.openLink(url, { try_browser: 'chrome' });
+        return;
+    }
+    window.open(url, '_blank', 'noopener');
 }
 
 function openIssueReportModal(appId) {
@@ -3465,6 +3596,8 @@ function renderProjectFeedbackCards(project, items) {
     }
     const projectId = Number(project && (project.id || project.app_id) || 0);
     return `<div class="feedback-list">${items.map(function(item) {
+        const feedbackType = String(item.type || 'general').toLowerCase();
+        const isReviewTicket = feedbackType.indexOf('google_play_review') === 0;
         const username = (item.tester_username || '').replace('@', '');
         const safeUsername = escapeInlineJsString(username);
         const fullName = window.escapeHTML(item.tester_full_name || '');
@@ -3475,23 +3608,28 @@ function renderProjectFeedbackCards(project, items) {
         const authorHtml = username
             ? `<a href="javascript:void(0);" class="feedback-card-author" onclick="return openTelegramProfile('${safeUsername}', event)">${authorInnerHtml}</a>`
             : `<span class="feedback-card-author">${authorInnerHtml}</span>`;
-        const textHtml = item.message_text
-            ? escapeHtmlWithBreaks(item.message_text)
-            : `<span style="color: var(--hint-color);">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</span>`;
+        const textHtml = isReviewTicket
+            ? `<span class="feedback-review-ticket">⭐ ${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</span>`
+            : (item.message_text
+                ? escapeHtmlWithBreaks(item.message_text)
+                : `<span style="color: var(--hint-color);">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</span>`);
         const rewardBust = Number(item.reward_bust || 0);
         const rewardKarma = Number(item.reward_karma || 0);
-        const rewardSummary = item.status === 'processed'
+        const statusBadge = item.status === 'rejected'
+            ? window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang))
+            : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang));
+        const rewardSummary = item.status !== 'new'
             ? `<div class="feedback-modal-summary" style="margin-top: 10px;">
                     ${rewardBust > 0 ? `<span class="meta-chip accent-purple">💎 ${formatBustAmount(rewardBust)}</span>` : ''}
                     ${rewardKarma > 0 ? `<span class="meta-chip accent-yellow">☯️ ${rewardKarma.toFixed(1)}</span>` : ''}
-                    <span class="meta-chip">${window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang))}</span>
+                    <span class="meta-chip">${statusBadge}</span>
                </div>`
             : '';
         const replyHtml = item.developer_reply
             ? `<div class="feedback-card-reply">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang))}: ${escapeHtmlWithBreaks(item.developer_reply)}</div>`
             : '';
         return `
-            <div class="feedback-card ${item.status === 'new' ? 'is-new' : ''}">
+            <div class="feedback-card ${item.status === 'new' ? 'is-new' : ''}${item.status === 'rejected' ? ' is-rejected' : ''}">
                 <div class="feedback-card-header">
                     <div>${authorHtml}</div>
                     <div class="feedback-card-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</div>
@@ -4812,6 +4950,7 @@ function openEditModal(projectId) {
     document.getElementById('edit-limit-mutual').value = String(project.limit_mutual || 12);
     document.getElementById('edit-limit-bounty').value = String(project.limit_bounty || 12);
     document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
+    document.getElementById('edit-request-reviews').checked = project.request_reviews !== false;
     setProjectMode('edit', project.mode || 'mutual');
     setProjectTargetLang('edit', project.target_lang || 'ALL');
     updateProjectPricing('edit');
@@ -5300,9 +5439,17 @@ Object.assign(window, {
     insertReportChip,
     openCheckinOptionsModal,
     closeCheckinOptionsModal,
+    renderCheckinReviewOptions,
     checkinOptionsScreenshot,
     checkinOptionsIdea,
     checkinOptionsConfirm,
+    toggleCheckinReviewCheckbox,
+    renderPlayReviewModal,
+    togglePlayReviewModalCheckbox,
+    openPlayReviewModal,
+    openPlayReviewModalFromCheckinOptions,
+    closePlayReviewModal,
+    openPlayReviewStore,
     openDropTestModal,
     closeDropTestModal,
     openLeaveMutualModal,

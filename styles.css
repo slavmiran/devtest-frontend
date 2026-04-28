@@ -3296,6 +3296,22 @@ details[open] > summary .details-arrow {
     box-shadow: none;
 }
 
+.feedback-review-ticket {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 204, 0, 0.12);
+    color: #ffd86b;
+    font-weight: 600;
+}
+
+.feedback-card.is-rejected {
+    border-color: rgba(255, 107, 99, 0.28);
+    box-shadow: 0 0 0 1px rgba(255, 107, 99, 0.08);
+}
+
 .btn-feedback-alert {
     box-shadow: 0 0 0 1px rgba(255, 69, 58, 0.18), 0 0 24px rgba(255, 69, 58, 0.14);
     animation: feedback-pulse 1.8s ease-in-out infinite;
@@ -3362,6 +3378,126 @@ details[open] > summary .details-arrow {
     font-size: 12px;
     color: var(--hint-color);
     line-height: 1.4;
+}
+
+.review-task-chip {
+    width: 100%;
+    margin: 10px 0 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 204, 0, 0.24);
+    background: linear-gradient(135deg, rgba(255,204,0,0.16), rgba(255,255,255,0.06));
+    color: var(--text-color);
+    text-align: left;
+}
+
+.review-task-chip.is-complete {
+    border-color: rgba(48, 209, 88, 0.26);
+    background: linear-gradient(135deg, rgba(48,209,88,0.16), rgba(255,255,255,0.05));
+}
+
+.review-task-label {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.review-task-status {
+    font-size: 12px;
+    color: var(--hint-color);
+}
+
+.review-checkin-card,
+.review-modal-card,
+.project-setting-checkbox {
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(16px);
+}
+
+.review-checkin-card {
+    padding: 14px;
+}
+
+.review-checkin-copy {
+    margin-bottom: 12px;
+}
+
+.review-checkin-title,
+.review-modal-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.review-checkin-text,
+.review-modal-text,
+.review-modal-note {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--hint-color);
+}
+
+.review-checkin-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.review-checkbox-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.review-checkbox-row input {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: #ffcc00;
+}
+
+.review-checkbox-row span {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-color);
+}
+
+.review-checkbox-row small {
+    color: var(--hint-color);
+    font-size: 12px;
+}
+
+.project-setting-checkbox {
+    padding: 14px;
+}
+
+.review-info-btn {
+    width: 100%;
+}
+
+.review-modal-card {
+    padding: 18px;
+}
+
+.review-modal-app {
+    margin-top: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.review-checkbox-row-modal {
+    margin: 16px 0;
 }
 
 @keyframes timeline-pulse {

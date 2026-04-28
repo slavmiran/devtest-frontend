@@ -1774,11 +1774,13 @@ function resetProjectForms() {
     document.getElementById('app-limit-mutual').value = '12';
     document.getElementById('app-limit-bounty').value = '12';
     document.getElementById('app-bounty-per-tester').value = '100';
+    document.getElementById('app-request-reviews').checked = true;
     document.getElementById('edit-mode').value = 'mutual';
     document.getElementById('edit-target-lang').value = 'ALL';
     document.getElementById('edit-limit-mutual').value = '12';
     document.getElementById('edit-limit-bounty').value = '12';
     document.getElementById('edit-bounty-per-tester').value = '100';
+    document.getElementById('edit-request-reviews').checked = true;
     setProjectMode('add', 'mutual');
     setProjectMode('edit', 'mutual');
     setProjectTargetLang('add', 'ALL');
@@ -2310,6 +2312,14 @@ function refreshOpenModals() {
     if (reliabilityInfoModal && reliabilityInfoModal.classList.contains('active') && window.showReliabilityInfo) {
         window.showReliabilityInfo();
     }
+    const checkinOptionsModal = document.getElementById('checkin-options-modal');
+    if (checkinOptionsModal && checkinOptionsModal.classList.contains('active') && window.renderCheckinReviewOptions) {
+        window.renderCheckinReviewOptions();
+    }
+    const playReviewModal = document.getElementById('play-review-modal');
+    if (playReviewModal && playReviewModal.classList.contains('active') && window.renderPlayReviewModal) {
+        window.renderPlayReviewModal();
+    }
     const reliabilityAlphaModal = document.getElementById('reliability-alpha-modal');
     if (reliabilityAlphaModal && reliabilityAlphaModal.classList.contains('active')) {
         if (window.renderReliabilityAlphaModal) {
@@ -2458,12 +2468,83 @@ function _mapTestsFromApi(data) {
             reciprocal_app_id: app.reciprocal_app_id || null,
             reciprocal_app_name: app.reciprocal_app_name || '',
             has_clicked_store: existingTest ? !!existingTest.has_clicked_store : false,
+            request_reviews: app.request_reviews !== false,
+            play_feedback_submitted: !!app.play_feedback_submitted,
+            play_feedback_submitted_pending: existingTest
+                ? !!(existingTest.play_feedback_submitted_pending || existingTest.play_feedback_submitted)
+                : !!app.play_feedback_submitted,
             isTestedToday: isTestedToday,
             isGrantAvailableTomorrow: isGrantAvailableTomorrow,
             isReadyToClaim: isReadyToClaim,
             isEarlyFinish: isEarlyFinish,
         };
     });
+}
+
+function getMyTestById(appId) {
+    return (myTests || []).find(function(item) {
+        return Number(item.id) === Number(appId);
+    }) || null;
+}
+
+function canPromptPlayReview(test) {
+    if (!test) return false;
+    return !!test.request_reviews
+        && !test.play_feedback_submitted
+        && Number(test.testing_days || 0) >= 7
+        && String(test.app_status || 'active').toLowerCase() === 'active'
+        && String(test.progress_status || 'active').toLowerCase() === 'active';
+}
+
+function isPlayReviewMarked(testOrAppId) {
+    var test = typeof testOrAppId === 'object'
+        ? testOrAppId
+        : getMyTestById(testOrAppId);
+    return !!(test && (test.play_feedback_submitted || test.play_feedback_submitted_pending));
+}
+
+function getPlayReviewUrl(appId) {
+    var test = getMyTestById(appId);
+    var pkg = String(test && test.package || '').trim();
+    if (!pkg) return '';
+    return 'https://play.google.com/store/apps/details?id=' + encodeURIComponent(pkg);
+}
+
+async function confirmPlayReviewMarking() {
+    return new Promise(function(resolve) {
+        var message = window.t('playReviewConfirmPenalty', {}, lang);
+        if (tg && typeof tg.showConfirm === 'function') {
+            tg.showConfirm(message, function(ok) { resolve(!!ok); });
+            return;
+        }
+        resolve(confirm(message));
+    });
+}
+
+async function setPlayReviewSubmittedPending(appId, nextValue) {
+    var test = getMyTestById(appId);
+    if (!test) return false;
+
+    var normalized = !!nextValue;
+    if (normalized && !canPromptPlayReview(test)) {
+        return false;
+    }
+
+    if (normalized && !isPlayReviewMarked(test)) {
+        var confirmed = await confirmPlayReviewMarking();
+        if (!confirmed) {
+            refreshOpenModals();
+            return false;
+        }
+    }
+
+    test.play_feedback_submitted_pending = normalized || !!test.play_feedback_submitted;
+    persistTestsCacheSnapshot();
+    if (typeof window.renderTests === 'function') {
+        window.renderTests(true);
+    }
+    refreshOpenModals();
+    return true;
 }
 
 function _setIssueUiState(id, blocked) {
@@ -3006,6 +3087,7 @@ function _mapProjectsFromApi(data) {
             likes_max: project.likes_max || 1,
             mode: project.mode || 'mutual',
             target_lang: project.target_lang || 'ALL',
+            request_reviews: project.request_reviews !== false,
             limit_mutual: project.limit_mutual || 0,
             limit_bounty: project.limit_bounty || 0,
             bounty_per_tester: project.bounty_per_tester || 0,
@@ -4446,6 +4528,7 @@ async function confirmStart(id) {
     _pendingActions.add(actionKey);
 
     const test = myTests.find(function(item) { return Number(item.id) === Number(id); });
+    const shouldSubmitPlayFeedback = !!(test && canPromptPlayReview(test) && test.play_feedback_submitted_pending);
     if (test) {
         var isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' || String(test.progress_status || 'active').toLowerCase() !== 'active';
         if (isArchivedOrCompleted) {
@@ -4480,7 +4563,12 @@ async function confirmStart(id) {
         const response = await fetch(`${API_BASE}/checkin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId, app_id: id, local_date: getLocalDate() })
+            body: JSON.stringify({
+                tester_id: userId,
+                app_id: id,
+                local_date: getLocalDate(),
+                play_feedback_submitted: shouldSubmitPlayFeedback,
+            })
         });
 
         let result = null;
@@ -4546,6 +4634,10 @@ async function confirmStart(id) {
             updatedTest.daily_timeline = result.daily_timeline || updatedTest.daily_timeline || '';
             updatedTest.testing_days = Math.max(Number(updatedTest.testing_days || 0), Number(result.testing_day || 0));
             updatedTest.status = 'done';
+            updatedTest.play_feedback_submitted = Object.prototype.hasOwnProperty.call(result, 'play_feedback_submitted')
+                ? !!result.play_feedback_submitted
+                : (!!updatedTest.play_feedback_submitted || shouldSubmitPlayFeedback);
+            updatedTest.play_feedback_submitted_pending = !!updatedTest.play_feedback_submitted;
 
             // Recalculate isGrantAvailableTomorrow after optimistic update
             var skipsAfter = countGrantSkips(updatedTest);
@@ -4772,6 +4864,7 @@ async function saveProject() {
     const iconInput = document.getElementById('app-icon').value.trim();
     const instructionsInput = document.getElementById('app-instructions').value.trim();
     const targetLang = (document.getElementById('app-target-lang').value || 'ALL').toUpperCase();
+    const requestReviews = !!(document.getElementById('app-request-reviews') && document.getElementById('app-request-reviews').checked);
     const pricingPayload = buildProjectPricingPayload('add');
     if (!pricingPayload) return;
 
@@ -4818,6 +4911,7 @@ async function saveProject() {
             google_group_url: null,
             instructions: instructionsInput || null,
             target_lang: targetLang,
+            request_reviews: requestReviews,
             ...pricingPayload
         };
         document.getElementById('email-warning-modal').classList.add('active');
@@ -4832,6 +4926,7 @@ async function saveProject() {
         google_group_url: groupInput || null,
         instructions: instructionsInput || null,
         target_lang: targetLang,
+        request_reviews: requestReviews,
         ...pricingPayload
     });
 }
@@ -4885,6 +4980,7 @@ async function saveProjectEdit() {
     const iconUrl = document.getElementById('edit-icon').value.trim();
     const googleGroupUrl = document.getElementById('edit-group').value.trim();
     const targetLang = (document.getElementById('edit-target-lang').value || 'ALL').toUpperCase();
+    const requestReviews = !!(document.getElementById('edit-request-reviews') && document.getElementById('edit-request-reviews').checked);
     const pricingPayload = buildProjectPricingPayload('edit');
     if (!pricingPayload) return;
 
@@ -4914,6 +5010,7 @@ async function saveProjectEdit() {
                 icon_url: iconUrl || null,
                 google_group_url: googleGroupUrl || window.DEFAULT_GOOGLE_GROUP_URL,
                 target_lang: targetLang,
+                request_reviews: requestReviews,
                 ...pricingPayload
             })
         });
@@ -5070,6 +5167,10 @@ Object.assign(window, {
     sendProjectFeedbackMedia,
     openFeedbackRewardModal,
     closeFeedbackRewardModal,
+    canPromptPlayReview,
+    isPlayReviewMarked,
+    getPlayReviewUrl,
+    setPlayReviewSubmittedPending,
     setFeedbackRewardBust,
     setFeedbackRewardKarma,
     submitFeedbackReward,
