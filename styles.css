@@ -2243,6 +2243,10 @@ details[open] > summary .details-arrow {
     animation: highlightPulse 2s ease-out;
 }
 
+.card.highlight-pulse {
+    animation: highlightPulse 2s ease-out;
+}
+
 .card.test-card-highlight-pulse {
     animation: testCardHighlightPulse 3.6s ease-out;
 }
@@ -4147,4 +4151,82 @@ details[open] > summary .details-arrow {
     50% {
         box-shadow: 0 0 16px rgba(255, 149, 0, 0.6);
     }
+}
+
+.card-access-error-locked {
+    position: relative;
+    overflow: hidden;
+}
+
+.card-access-error-locked > :not(.access-error-overlay) {
+    pointer-events: none;
+}
+
+.card-access-error-locked .card-header,
+.card-access-error-locked .testers-section,
+.card-access-error-locked .action-row,
+.card-access-error-locked .visibility-hint,
+.card-access-error-locked .progress-container,
+.card-access-error-locked .grant-progress-container,
+.card-access-error-locked .project-feedback-btn,
+.card-access-error-locked .meta-chip,
+.card-access-error-locked .no-testers {
+    pointer-events: none;
+}
+
+.access-error-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    background: rgba(8, 10, 16, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.access-error-panel {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(22, 26, 34, 0.92);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    padding: 14px;
+}
+
+.access-error-title {
+    font-size: 14px;
+    color: #ff7b72;
+    margin-bottom: 8px;
+}
+
+.access-error-text {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-color);
+    margin-bottom: 6px;
+}
+
+.access-error-link {
+    display: inline-block;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: #8ab4ff;
+    text-decoration: underline;
+}
+
+.access-error-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.access-error-actions .btn {
+    width: 100%;
+    min-height: 40px;
+    border-radius: 12px;
+    font-size: 13px;
 }

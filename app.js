@@ -267,6 +267,12 @@ function _parseInitialRouteTarget() {
             feedbackProjectId = Number(testsHighlightMatch[1] || 0);
             break;
         }
+        var appFocusMatch = normalized.match(/^app_focus[_:](\d+)$/);
+        if (appFocusMatch) {
+            routeKind = 'app_focus';
+            feedbackProjectId = Number(appFocusMatch[1] || 0);
+            break;
+        }
         if (normalized === 'projects') {
             routeKind = 'projects';
         }
@@ -311,6 +317,14 @@ function _parseInitialRouteTarget() {
             openFeedback: false,
             appId: null,
             highlightTestId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
+    if (routeKind === 'app_focus') {
+        return {
+            tab: 'tests',
+            openFeedback: false,
+            appId: feedbackProjectId > 0 ? feedbackProjectId : null,
+            openAppFocus: feedbackProjectId > 0,
         };
     }
     if (routeKind === 'market') {
@@ -359,6 +373,16 @@ async function _handleInitialRoute() {
 
     var route = _parseInitialRouteTarget();
     if (!route) return;
+
+    if (route.openAppFocus && route.appId) {
+        try {
+            await _focusAppInMiniApp(route.appId);
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial app focus route error:', error);
+        }
+        return;
+    }
 
     if (route.tab === 'projects') {
         switchTab('projects');
@@ -455,6 +479,91 @@ async function _handleInitialRoute() {
     } catch (error) {
         console.error('Initial feedback route error:', error);
     }
+}
+
+function _highlightProjectCard(appId) {
+    var normalizedId = Number(appId || 0);
+    if (!normalizedId) return false;
+    var card = document.getElementById('project-card-' + normalizedId) || document.querySelector('[data-project-id="' + normalizedId + '"]');
+    if (!card) return false;
+
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.remove('highlight-pulse');
+    void card.offsetWidth;
+    card.classList.add('highlight-pulse');
+    setTimeout(function() {
+        card.classList.remove('highlight-pulse');
+    }, 2200);
+    return true;
+}
+
+function _highlightArchivedProjectCard(appId) {
+    var normalizedId = Number(appId || 0);
+    if (!normalizedId) return false;
+    var card = document.getElementById('archive-card-' + normalizedId) || document.querySelector('[data-archive-project-id="' + normalizedId + '"]');
+    if (!card) return false;
+
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.remove('highlight-pulse');
+    void card.offsetWidth;
+    card.classList.add('highlight-pulse');
+    setTimeout(function() {
+        card.classList.remove('highlight-pulse');
+    }, 2200);
+    return true;
+}
+
+async function _focusAppInMiniApp(appId) {
+    var normalizedId = Number(appId || 0);
+    if (!normalizedId) return false;
+
+    switchTab('tests');
+    await loadTasks(true);
+    _highlightTestCardWhenReady(normalizedId, 10);
+
+    await new Promise(function(resolve) { setTimeout(resolve, 520); });
+    if (_highlightTestCard(normalizedId)) {
+        return true;
+    }
+
+    switchTab('projects');
+    await Promise.allSettled([
+        loadProjects(true),
+        loadArchivedProjects({ silent: true })
+    ]);
+
+    await new Promise(function(resolve) { setTimeout(resolve, 260); });
+    if (_highlightProjectCard(normalizedId)) {
+        return true;
+    }
+
+    var hasArchivedProject = (archivedProjects || []).some(function(item) {
+        return Number(item && item.app_id) === normalizedId;
+    });
+    if (hasArchivedProject) {
+        var archiveList = document.getElementById('archive-list');
+        if (archiveList && archiveList.classList.contains('is-collapsed') && typeof window.toggleArchive === 'function') {
+            window.toggleArchive();
+        }
+        await new Promise(function(resolve) { setTimeout(resolve, 160); });
+        if (_highlightArchivedProjectCard(normalizedId)) {
+            return true;
+        }
+    }
+
+    switchTab('market');
+    if (typeof window.loadMarketData === 'function') {
+        await window.loadMarketData(true);
+    }
+    await new Promise(function(resolve) { setTimeout(resolve, 320); });
+    var marketCard = document.querySelector('[data-app-id="' + normalizedId + '"]');
+    if (marketCard) {
+        marketCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        marketCard.classList.add('highlight-pulse');
+        setTimeout(function() { marketCard.classList.remove('highlight-pulse'); }, 2200);
+        return true;
+    }
+    return false;
 }
 
 async function _handleGuestClaimIntent(intent) {
@@ -981,7 +1090,9 @@ function countGrantSkips(app) {
 }
 
 function buildCheckpointTestLink(appId) {
-    return `https://t.me/${BOT_USERNAME}?start=app_${Number(appId || 0)}`;
+    var normalizedId = Number(appId || 0);
+    if (!normalizedId) return '';
+    return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORTNAME}?startapp=app_focus_${normalizedId}`;
 }
 
 function getCheckpointJoinSourceLabel(test) {
@@ -1020,6 +1131,13 @@ function buildCheckpointReportPrefill(appId) {
         blocks.push(window.t('reportPrefillSourceLine', {
             source: getCheckpointJoinSourceLabel(test)
         }, lang));
+        var fallbackLink = buildCheckpointTestLink(test.id);
+        if (fallbackLink && testedAppName) {
+            blocks.push(window.t('reportPrefillLinkLine', {
+                app_name: testedAppName,
+                app_link: fallbackLink,
+            }, lang));
+        }
     }
     return blocks.filter(function(item) {
         return String(item || '').trim() !== '';
@@ -3078,14 +3196,19 @@ async function resetMassInviteCooldown(projectId) {
 
 function _mapProjectsFromApi(data) {
     return (data.projects || []).map(function(project) {
+        var testers = Array.isArray(project.testers) ? project.testers : [];
+        var hasAccessError = testers.some(function(tester) {
+            return !!tester.issue_reported_at && !tester.issue_fixed_at;
+        });
         return {
             id: project.app_id,
+            status: hasAccessError ? 'access_error' : (project.status || 'active'),
             name: project.name,
             package: project.package_name,
             icon_url: project.icon_url,
             google_group_url: project.google_group_url,
             instructions: project.instructions || '',
-            testers: project.testers || [],
+            testers: testers,
             is_visible: project.is_visible !== false,
             created_at: project.created_at || null,
             likes: project.likes || [],
@@ -4716,12 +4839,17 @@ async function claimGrant(progressId, appId) {
         if (test) {
             test.grant_claimed = true;
             test.isReadyToClaim = false;
+            test.isGrantAvailableTomorrow = false;
+            test.isEarlyFinish = false;
         }
         const isActive = test && test.app_status === 'active';
         if (isActive) {
             showToast(window.t('claimGrantOvertimeToast', { amount: amount.toFixed(1) }));
         } else {
             showToast(window.t('claimGrantToast', { amount: amount.toFixed(1) }));
+            myTests = (myTests || []).filter(function(item) {
+                return Number(item.id) !== Number(appId);
+            });
         }
         if (btn) btn.style.display = 'none';
         persistTestsCacheSnapshot();
@@ -4754,8 +4882,13 @@ async function claimEarlyFinishBonus(progressId, appId) {
         const test = myTests.find(t => Number(t.id) === Number(appId));
         if (test) {
             test.grant_claimed = true;
+            test.isReadyToClaim = false;
+            test.isGrantAvailableTomorrow = false;
             test.isEarlyFinish = false;
         }
+        myTests = (myTests || []).filter(function(item) {
+            return Number(item.id) !== Number(appId);
+        });
         persistTestsCacheSnapshot();
         if (result.qualified) {
             if (result.already_awarded) {
@@ -4798,6 +4931,76 @@ async function deleteTester(appId, testerId, testerName) {
         const message = getApiErrorMessage(error && error.message, 'networkError');
         if (tg.showAlert) tg.showAlert(message);
         else alert(message);
+    }
+}
+
+async function resolveAccessError(projectId, progressId) {
+    if (!projectId || !progressId) return;
+    try {
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        var response = await fetch(`${API_BASE}/projects/${projectId}/resolve_access_issue`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_id: userId, progress_id: progressId })
+        });
+        var result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            return;
+        }
+        if (tg.showAlert) tg.showAlert(window.t('accessOverlayResolveDone', {}, lang));
+        await loadProjects(true);
+    } catch (error) {
+        console.error('Resolve access error failed:', error);
+        handleApiError('network_error');
+    }
+}
+
+function contactAccessTester(username) {
+    var clean = String(username || '').trim().replace(/^@+/, '');
+    if (!clean) {
+        if (tg.showAlert) tg.showAlert(window.t('accessOverlayNoTesterUsername', {}, lang));
+        return;
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    if (tg.openTelegramLink) {
+        tg.openTelegramLink(`https://t.me/${clean}`);
+    } else {
+        window.open(`https://t.me/${clean}`, '_blank');
+    }
+}
+
+async function deleteAccessTester(projectId, progressId, testerLabel) {
+    if (!projectId || !progressId) return;
+    var confirmMessage = window.t('accessOverlayDeleteConfirm', {
+        name: testerLabel || window.t('unknownLabel', {}, lang)
+    }, lang);
+    var confirmed = await new Promise(function(resolve) {
+        if (tg.showConfirm) {
+            tg.showConfirm(confirmMessage, function(ok) { resolve(!!ok); });
+        } else {
+            resolve(confirm(confirmMessage));
+        }
+    });
+    if (!confirmed) return;
+
+    try {
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+        var response = await fetch(`${API_BASE}/projects/${projectId}/delete_access_tester`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_id: userId, progress_id: progressId })
+        });
+        var result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            return;
+        }
+        if (tg.showAlert) tg.showAlert(window.t('accessOverlayDeleteDone', {}, lang));
+        await loadProjects(true);
+    } catch (error) {
+        console.error('Delete access tester failed:', error);
+        handleApiError('network_error');
     }
 }
 
@@ -5196,6 +5399,9 @@ Object.assign(window, {
     handleClaimGrantClick,
     claimEarlyFinishBonus,
     deleteTester,
+    resolveAccessError,
+    contactAccessTester,
+    deleteAccessTester,
     confirmDeleteProject,
     formatAmountValue,
     formatBustAmount,

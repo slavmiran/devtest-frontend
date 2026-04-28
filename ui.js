@@ -1484,25 +1484,30 @@ function renderTests(force) {
         if (test.isReadyToClaim) {
             const testingDay = userTestingDay || 999;
             const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
+            const isArchivedClaimCard = String(test.app_status || 'active').toLowerCase() !== 'active'
+                || String(test.progress_status || 'active').toLowerCase() !== 'active';
             
-            let secondaryActions = `
-                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', ${isScreenshotDay ? 'true' : 'false'}, '${isScreenshotDay ? safeOwnerUsername : ''}')">
-                    🔗 ${t.openBtn}
-                </button>
-            `;
-            
-            if (isScreenshotDay) {
-                secondaryActions += `
-                    <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
-                        ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '💬 ' + t.screenshotBtn}
+            let secondaryActions = '';
+            if (!isArchivedClaimCard) {
+                secondaryActions = `
+                    <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', ${isScreenshotDay ? 'true' : 'false'}, '${isScreenshotDay ? safeOwnerUsername : ''}')">
+                        🔗 ${t.openBtn}
                     </button>
                 `;
-            } else {
-                secondaryActions += `
-                    <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                        ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : t.confirmStart}
-                    </button>
-                `;
+                
+                if (isScreenshotDay) {
+                    secondaryActions += `
+                        <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
+                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '💬 ' + t.screenshotBtn}
+                        </button>
+                    `;
+                } else {
+                    secondaryActions += `
+                        <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
+                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : t.confirmStart}
+                        </button>
+                    `;
+                }
             }
             
             const grantSkipsCount = String(test.daily_timeline || '')
@@ -1513,9 +1518,7 @@ function renderTests(force) {
                 <button id="btn-claim-${test.id}" class="btn btn-claim-grant${grantMissedClass}" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="handleClaimGrantClick(${test.progress_id}, ${test.id})">
                     🎁 ${window.t('claimGrantBtn')}
                 </button>
-                <div class="action-row" style="gap: 8px;">
-                    ${secondaryActions}
-                </div>
+                ${secondaryActions ? `<div class="action-row" style="gap: 8px;">${secondaryActions}</div>` : ''}
             `;
         } else if (test.isGrantAvailableTomorrow) {
             actionsHtml = `
@@ -2528,7 +2531,11 @@ function renderProjects(force) {
         const needsActivityPing = isOvertime && afkMs > 24 * 60 * 60 * 1000;
         let cardClass = isInactive ? 'card card-inactive' : 'card';
         if (isOvertime) cardClass += ' card-overtime';
-        card.className = cardClass;
+        const accessIssueTester = (project.testers || []).find((tester) => !!tester.issue_reported_at && !tester.issue_fixed_at) || null;
+        const hasAccessOverlay = project.status === 'access_error' && !!accessIssueTester;
+        card.className = cardClass + (hasAccessOverlay ? ' card-access-error-locked' : '');
+        card.id = `project-card-${project.id}`;
+        card.setAttribute('data-project-id', String(project.id));
 
         let testersHtml = '';
         if (project.testers && project.testers.length > 0) {
@@ -2611,6 +2618,35 @@ function renderProjects(force) {
         } else {
             testersHtml = `<p class="no-testers">${t.noTesters}</p>`;
         }
+
+        const issueDate = accessIssueTester && accessIssueTester.issue_reported_at ? new Date(accessIssueTester.issue_reported_at) : null;
+        const issueDateValid = !!(issueDate && !Number.isNaN(issueDate.getTime()));
+        const deadlineDate = issueDateValid ? new Date(issueDate.getTime() + 3 * 24 * 60 * 60 * 1000) : null;
+        const nowTs = Date.now();
+        const daysLeft = deadlineDate ? Math.max(0, Math.ceil((deadlineDate.getTime() - nowTs) / (24 * 60 * 60 * 1000))) : 3;
+        const testerUsernameRaw = accessIssueTester ? String(accessIssueTester.username || '').trim().replace(/^@+/, '') : '';
+        const testerLabel = testerUsernameRaw
+            ? '@' + testerUsernameRaw
+            : window.t('idLabel', { id: Number((accessIssueTester && accessIssueTester.tester_id) || 0) }, lang);
+        const safeTesterUsernameInline = escapeInlineJsString(testerUsernameRaw);
+        const safeDeleteNameInline = escapeInlineJsString(testerLabel);
+        const progressId = Number((accessIssueTester && accessIssueTester.progress_id) || 0);
+        const accessGuideUrl = 'https://t.me/googleplay_console_12testers/1/527';
+        const accessOverlayHtml = hasAccessOverlay ? `
+            <div class="access-error-overlay" onclick="event.stopPropagation();">
+                <div class="access-error-panel" onclick="event.stopPropagation();">
+                    <div class="access-error-title">🚨 <b>${window.escapeHTML(window.t('accessOverlayTitle', {}, lang))}</b></div>
+                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayTesterLine', { tester_nickname: testerLabel }, lang))}</div>
+                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayDaysLeft', { days_left: daysLeft }, lang))}</div>
+                    <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">${window.escapeHTML(window.t('accessOverlayGuideLink', {}, lang))}</a>
+                    <div class="access-error-actions">
+                        <button type="button" class="btn btn-primary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); resolveAccessError(${project.id}, ${progressId}); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayResolveBtn', {}, lang))}</button>
+                        <button type="button" class="btn btn-secondary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); contactAccessTester('${safeTesterUsernameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayWriteBtn', {}, lang))}</button>
+                        <button type="button" class="btn" style="background: rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('medium'); deleteAccessTester(${project.id}, ${progressId}, '${safeDeleteNameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayDeleteBtn', {}, lang))}</button>
+                    </div>
+                </div>
+            </div>
+        ` : '';
 
         const visibilityBadge = (() => {
             let badges = '';
@@ -2741,6 +2777,7 @@ function renderProjects(force) {
                     </button>
                 </div>
             </div>
+            ${accessOverlayHtml}
         `;
         container.appendChild(card);
     });
@@ -3707,7 +3744,7 @@ function renderArchivedProjects(force) {
         const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
         const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
         html += `
-            <div class="card archive-card">
+            <div class="card archive-card" id="archive-card-${project.app_id}" data-archive-project-id="${project.app_id}">
                 <div class="card-header archive-card-header">
                     ${renderIcon(archiveName, project.icon_url)}
                     <div class="card-info">
