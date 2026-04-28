@@ -2489,9 +2489,15 @@ function getMyTestById(appId) {
 
 function canPromptPlayReview(test) {
     if (!test) return false;
-    return !!test.request_reviews
+    return canTogglePlayReview(test)
         && !test.play_feedback_submitted
         && Number(test.testing_days || 0) >= 7
+        && String(test.progress_status || 'active').toLowerCase() === 'active';
+}
+
+function canTogglePlayReview(test) {
+    if (!test) return false;
+    return !!test.request_reviews
         && String(test.app_status || 'active').toLowerCase() === 'active'
         && String(test.progress_status || 'active').toLowerCase() === 'active';
 }
@@ -2526,7 +2532,7 @@ async function setPlayReviewSubmittedPending(appId, nextValue) {
     if (!test) return false;
 
     var normalized = !!nextValue;
-    if (normalized && !canPromptPlayReview(test)) {
+    if (normalized && !canTogglePlayReview(test)) {
         return false;
     }
 
@@ -4528,7 +4534,7 @@ async function confirmStart(id) {
     _pendingActions.add(actionKey);
 
     const test = myTests.find(function(item) { return Number(item.id) === Number(id); });
-    const shouldSubmitPlayFeedback = !!(test && canPromptPlayReview(test) && test.play_feedback_submitted_pending);
+    const shouldSubmitPlayFeedback = !!(test && canTogglePlayReview(test) && !test.play_feedback_submitted && test.play_feedback_submitted_pending);
     if (test) {
         var isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' || String(test.progress_status || 'active').toLowerCase() !== 'active';
         if (isArchivedOrCompleted) {
@@ -5168,6 +5174,7 @@ Object.assign(window, {
     openFeedbackRewardModal,
     closeFeedbackRewardModal,
     canPromptPlayReview,
+    canTogglePlayReview,
     isPlayReviewMarked,
     getPlayReviewUrl,
     setPlayReviewSubmittedPending,

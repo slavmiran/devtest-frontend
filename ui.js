@@ -791,7 +791,9 @@ function renderTesterSourceIndicator(joinType) {
     return `<button type="button" style="background:none; border:none; padding:0; margin:0; color:var(--hint-color); font-size:15px; cursor:pointer; line-height:1;" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(toastText)}')">${sourceMeta.icon}</button>`;
 }
 
-function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test) {
+function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test, options) {
+    options = options || {};
+    var showTestersCount = options.showTestersCount !== false;
     const parts = [];
     if (test) {
         const sourceChip = getTestSourceChip(test);
@@ -810,7 +812,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         const tooltip = t.chipTooltipDays.replace('{days}', daysSincePublish);
         parts.push(`<button class="meta-chip" onclick="event.stopPropagation(); showToast('${tooltip.replace(/'/g, "\\'")}')">${dayLabel}</button>`);
     }
-    if (typeof activeTestersCount === 'number') {
+    if (showTestersCount && typeof activeTestersCount === 'number') {
         const testerLabel = t.testersShort.replace('{count}', activeTestersCount);
         const tooltip = t.chipTooltipTesters.replace('{count}', activeTestersCount);
         parts.push(`<button class="meta-chip" onclick="event.stopPropagation(); showToast('${tooltip.replace(/'/g, "\\'")}')">${testerLabel}</button>`);
@@ -826,6 +828,13 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         parts.unshift(`<button class="meta-chip accent-green">${t.newBadge}</button>`);
     }
     if (test) {
+        const canShowReviewChip = typeof window.canPromptPlayReview === 'function' ? window.canPromptPlayReview(test) : false;
+        const isReviewMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
+        if (canShowReviewChip || isReviewMarked) {
+            const reviewLabel = window.escapeHTML(window.t('playReviewChip', {}, lang));
+            const reviewClass = isReviewMarked ? 'meta-chip accent-green' : 'meta-chip accent-yellow';
+            parts.push(`<button class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${reviewLabel}</button>`);
+        }
         const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
         const ownerLastSeenValue = window.escapeInlineJsString ? window.escapeInlineJsString(String(test.last_owner_activity || '')) : String(test.last_owner_activity || '').replace(/'/g, "\\'");
         const ownerChip = ownerActive
@@ -1422,23 +1431,6 @@ function setReliabilityDashboardFilter(filterKey) {
     renderReliabilityAlphaModal();
 }
 
-function buildPlayReviewTaskHtml(test) {
-    var canPrompt = typeof window.canPromptPlayReview === 'function' ? window.canPromptPlayReview(test) : false;
-    var isMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
-    if (!canPrompt && !isMarked) return '';
-    var chipClass = isMarked ? 'review-task-chip is-complete' : 'review-task-chip';
-    var chipLabel = window.escapeHTML(window.t('playReviewChip', {}, lang));
-    var statusLabel = isMarked
-        ? `<span class="review-task-status">${window.escapeHTML(window.t('playReviewMarked', {}, lang))}</span>`
-        : `<span class="review-task-status">${window.escapeHTML(window.t('playReviewActionHint', {}, lang))}</span>`;
-    return `
-        <button type="button" class="${chipClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">
-            <span class="review-task-label">⭐ ${chipLabel}</span>
-            ${statusLabel}
-        </button>
-    `;
-}
-
 function renderTests(force) {
     if (!force && !isTabVisible('tests')) return;
     const activeList = document.getElementById('tests-list');
@@ -1653,8 +1645,7 @@ function renderTests(force) {
                 ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
                 ${trailingHtml}
             </div>
-            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
-            ${buildPlayReviewTaskHtml(test)}
+            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false })}
             <div id="actions-${test.id}">
                 ${actionsHtml}
             </div>
@@ -1738,7 +1729,7 @@ function renderCompletedTests(completedTests) {
                 </div>
                 ${ownerBtnHtml}
             </div>
-            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test)}
+            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false })}
             ${devInfoHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}
@@ -2823,9 +2814,9 @@ function renderCheckinReviewOptions() {
     var mount = document.getElementById('checkin-review-options');
     if (!mount) return;
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
-    var canPrompt = typeof window.canPromptPlayReview === 'function' ? window.canPromptPlayReview(test) : false;
+    var canToggle = typeof window.canTogglePlayReview === 'function' ? window.canTogglePlayReview(test) : false;
     var isMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
-    if (!canPrompt && !isMarked) {
+    if (!canToggle && !isMarked) {
         mount.innerHTML = '';
         mount.style.display = 'none';
         return;
@@ -2981,7 +2972,7 @@ function openPlayReviewStore() {
     }
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
     if (window.tg && typeof window.tg.openLink === 'function') {
-        window.tg.openLink(url, { try_browser: 'chrome' });
+        window.tg.openLink(url);
         return;
     }
     window.open(url, '_blank', 'noopener');
