@@ -1095,17 +1095,40 @@ function buildCheckpointTestLink(appId) {
     return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORTNAME}?startapp=app_focus_${normalizedId}`;
 }
 
-function getCheckpointJoinSourceLabel(test) {
+function getCheckpointJoinSourceLabel(test, messageLang) {
+    var resolvedLang = typeof normalizeGuestInviteLanguage === 'function'
+        ? normalizeGuestInviteLanguage(messageLang, lang)
+        : lang;
     var joinType = String(test && test.join_type || 'invite').trim().toLowerCase();
-    if (joinType === 'mutual') return window.t('testerSourceMutualFull', {}, lang);
-    if (joinType === 'bounty') return window.t('testerSourceBountyFull', {}, lang);
-    if (joinType === 'prelaunch') return window.t('testerSourcePrelaunchFull', {}, lang);
-    if (joinType === 'direct') return window.t('testerSourceDirectFull', {}, lang);
-    return window.t('testerSourceInviteFull', {}, lang);
+    if (joinType === 'mutual') return window.t('testerSourceMutualFull', {}, resolvedLang);
+    if (joinType === 'bounty') return window.t('testerSourceBountyFull', {}, resolvedLang);
+    if (joinType === 'prelaunch') return window.t('testerSourcePrelaunchFull', {}, resolvedLang);
+    if (joinType === 'direct') return window.t('testerSourceDirectFull', {}, resolvedLang);
+    return window.t('testerSourceInviteFull', {}, resolvedLang);
 }
 
-function buildCheckpointReportPrefill(appId) {
-    var prefill = window.t('reportPrefill', {}, lang);
+function getDefaultCheckpointReportLanguage(appId) {
+    var test = myTests.find(function(item) {
+        return Number(item.id) === Number(appId);
+    });
+    var ownerLanguage = String(test && test.owner_language || '').trim().toLowerCase();
+    if (ownerLanguage === 'ru' || ownerLanguage === 'en') {
+        return ownerLanguage;
+    }
+    var targetLanguage = String(test && test.target_lang || '').trim().toUpperCase();
+    if (targetLanguage === 'RU' || targetLanguage === 'EN') {
+        return targetLanguage.toLowerCase();
+    }
+    return typeof normalizeGuestInviteLanguage === 'function'
+        ? normalizeGuestInviteLanguage(lang, lang)
+        : (String(lang || 'en').trim().toLowerCase() === 'ru' ? 'ru' : 'en');
+}
+
+function buildCheckpointReportPrefill(appId, messageLang) {
+    var resolvedLang = typeof normalizeGuestInviteLanguage === 'function'
+        ? normalizeGuestInviteLanguage(messageLang, getDefaultCheckpointReportLanguage(appId))
+        : getDefaultCheckpointReportLanguage(appId);
+    var prefill = window.t('reportPrefill', {}, resolvedLang);
     var test = myTests.find(function(item) {
         return Number(item.id) === Number(appId);
     });
@@ -1117,7 +1140,7 @@ function buildCheckpointReportPrefill(appId) {
     if (testedAppName) {
         blocks.push(window.t('reportPrefillTestedAppLine', {
             app_name: testedAppName
-        }, lang));
+        }, resolvedLang));
     }
 
     var reciprocalAppId = Number(test.reciprocal_app_id || 0);
@@ -1126,17 +1149,17 @@ function buildCheckpointReportPrefill(appId) {
         blocks.push(window.t('reportPrefillMyAppLinkLine', {
             app_name: reciprocalAppName,
             app_link: buildCheckpointTestLink(reciprocalAppId)
-        }, lang));
+        }, resolvedLang));
     } else {
         blocks.push(window.t('reportPrefillSourceLine', {
-            source: getCheckpointJoinSourceLabel(test)
-        }, lang));
+            source: getCheckpointJoinSourceLabel(test, resolvedLang)
+        }, resolvedLang));
         var fallbackLink = buildCheckpointTestLink(test.id);
         if (fallbackLink && testedAppName) {
             blocks.push(window.t('reportPrefillLinkLine', {
                 app_name: testedAppName,
                 app_link: fallbackLink,
-            }, lang));
+            }, resolvedLang));
         }
     }
     return blocks.filter(function(item) {
@@ -2591,6 +2614,7 @@ function _mapTestsFromApi(data) {
             play_feedback_submitted_pending: existingTest
                 ? !!(existingTest.play_feedback_submitted_pending || existingTest.play_feedback_submitted)
                 : !!app.play_feedback_submitted,
+            owner_language: app.owner_language || null,
             isTestedToday: isTestedToday,
             isGrantAvailableTomorrow: isGrantAvailableTomorrow,
             isReadyToClaim: isReadyToClaim,
@@ -4936,6 +4960,9 @@ async function deleteTester(appId, testerId, testerName) {
 
 async function resolveAccessError(projectId, progressId) {
     if (!projectId || !progressId) return;
+    var actionKey = 'resolve_access_error_' + projectId + '_' + progressId;
+    if (_pendingActions.has(actionKey)) return;
+    _pendingActions.add(actionKey);
     try {
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         var response = await fetch(`${API_BASE}/projects/${projectId}/resolve_access_issue`, {
@@ -4948,11 +4975,15 @@ async function resolveAccessError(projectId, progressId) {
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
-        if (tg.showAlert) tg.showAlert(window.t('accessOverlayResolveDone', {}, lang));
-        await loadProjects(true);
+        _markProjectAccessIssueResolved(projectId, progressId);
+        _syncProjectsUiAfterOptimisticChange();
+        showToast(window.t('accessOverlayResolveDone', {}, lang));
+        loadProjects(true).catch(function() {});
     } catch (error) {
         console.error('Resolve access error failed:', error);
         handleApiError('network_error');
+    } finally {
+        _pendingActions.delete(actionKey);
     }
 }
 
@@ -4970,8 +5001,65 @@ function contactAccessTester(username) {
     }
 }
 
+function _syncProjectsUiAfterOptimisticChange() {
+    setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+    if (window.renderProjects) window.renderProjects(true);
+    refreshOpenModals();
+}
+
+function _recomputeProjectAccessErrorState(project) {
+    if (!project) return;
+    var testers = Array.isArray(project.testers) ? project.testers : [];
+    var hasAccessError = testers.some(function(tester) {
+        return !!tester.issue_reported_at && !tester.issue_fixed_at;
+    });
+    if (hasAccessError) {
+        project.status = 'access_error';
+    } else if (String(project.status || '').toLowerCase() === 'access_error') {
+        project.status = 'active';
+    }
+}
+
+function _markProjectAccessIssueResolved(projectId, progressId) {
+    var project = (myProjects || []).find(function(item) {
+        return Number(item.id) === Number(projectId);
+    });
+    if (!project || !Array.isArray(project.testers)) return false;
+
+    var updated = false;
+    project.testers = project.testers.map(function(tester) {
+        if (Number(tester.progress_id) !== Number(progressId)) {
+            return tester;
+        }
+        updated = true;
+        return Object.assign({}, tester, {
+            issue_fixed_at: new Date().toISOString(),
+            issue_reported_at: null,
+        });
+    });
+    _recomputeProjectAccessErrorState(project);
+    return updated;
+}
+
+function _removeProjectAccessTester(projectId, progressId) {
+    var project = (myProjects || []).find(function(item) {
+        return Number(item.id) === Number(projectId);
+    });
+    if (!project || !Array.isArray(project.testers)) return false;
+
+    var beforeCount = project.testers.length;
+    project.testers = project.testers.filter(function(tester) {
+        return Number(tester.progress_id) !== Number(progressId);
+    });
+    var updated = project.testers.length !== beforeCount;
+    _recomputeProjectAccessErrorState(project);
+    return updated;
+}
+
 async function deleteAccessTester(projectId, progressId, testerLabel) {
     if (!projectId || !progressId) return;
+    var actionKey = 'delete_access_tester_' + projectId + '_' + progressId;
+    if (_pendingActions.has(actionKey)) return;
     var confirmMessage = window.t('accessOverlayDeleteConfirm', {
         name: testerLabel || window.t('unknownLabel', {}, lang)
     }, lang);
@@ -4984,6 +5072,7 @@ async function deleteAccessTester(projectId, progressId, testerLabel) {
     });
     if (!confirmed) return;
 
+    _pendingActions.add(actionKey);
     try {
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
         var response = await fetch(`${API_BASE}/projects/${projectId}/delete_access_tester`, {
@@ -4996,11 +5085,15 @@ async function deleteAccessTester(projectId, progressId, testerLabel) {
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
-        if (tg.showAlert) tg.showAlert(window.t('accessOverlayDeleteDone', {}, lang));
-        await loadProjects(true);
+        _removeProjectAccessTester(projectId, progressId);
+        _syncProjectsUiAfterOptimisticChange();
+        showToast(window.t('accessOverlayDeleteDone', {}, lang));
+        loadProjects(true).catch(function() {});
     } catch (error) {
         console.error('Delete access tester failed:', error);
         handleApiError('network_error');
+    } finally {
+        _pendingActions.delete(actionKey);
     }
 }
 
@@ -5369,6 +5462,8 @@ Object.assign(window, {
     normalizeGuestInviteLanguage,
     getDefaultGuestInviteLanguage,
     buildGuestInviteDeepLink,
+    getDefaultCheckpointReportLanguage,
+    getDefaultCheckpointReportLanguage,
     buildCheckpointReportPrefill,
     sendCheckpointScreenshotAndConfirm,
     initiateProjectFeedback,

@@ -27,6 +27,7 @@ var _inviteMode = 'mutual';
 var _guestInviteGuestId = null;
 var _guestInviteSending = false;
 var _guestInviteLang = null;
+var _reportMessageLang = null;
 
 function showSkeleton(containerId) {
     const container = document.getElementById(containerId);
@@ -176,6 +177,7 @@ function getGuestInvitePreviewText(guest, inviteLang, inviteLink) {
     return window.t('guestInviteMessageTemplate', {
         app_name: String((guest && (guest.package_name || guest.name)) || '').trim(),
         invite_link: String(inviteLink || '').trim(),
+        community_link: 'https://t.me/googleplay_console_12testers',
     }, inviteLang);
 }
 
@@ -829,10 +831,9 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
     }
     if (test) {
         const canShowReviewChip = typeof window.canPromptPlayReview === 'function' ? window.canPromptPlayReview(test) : false;
-        const isReviewMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
-        if (canShowReviewChip || isReviewMarked) {
+        if (canShowReviewChip) {
             const reviewLabel = window.escapeHTML(window.t('playReviewChip', {}, lang));
-            const reviewClass = isReviewMarked ? 'meta-chip accent-green' : 'meta-chip accent-yellow';
+            const reviewClass = 'meta-chip accent-yellow';
             parts.push(`<button class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${reviewLabel}</button>`);
         }
         const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
@@ -3054,13 +3055,46 @@ function submitIssueReportFromModal() {
     submitIssueReport(_issueReportAppId);
 }
 
+function renderReportLanguageToggle() {
+    const toggle = document.getElementById('report-language-toggle');
+    if (!toggle) return;
+    const selectedLang = typeof window.normalizeGuestInviteLanguage === 'function'
+        ? window.normalizeGuestInviteLanguage(_reportMessageLang, lang)
+        : (String(_reportMessageLang || lang || 'en').trim().toLowerCase() === 'ru' ? 'ru' : 'en');
+    toggle.innerHTML = `
+        <div class="report-language-label">${window.escapeHTML(window.t('reportLanguageLabel', {}, lang))}</div>
+        <div class="segmented-control" style="margin-bottom: 0;">
+            <button type="button" class="seg-btn ${selectedLang === 'ru' ? 'active' : ''}" onclick="setReportMessageLanguage('ru')">${window.escapeHTML(window.t('guestInviteLanguageRu', {}, lang))}</button>
+            <button type="button" class="seg-btn ${selectedLang === 'en' ? 'active' : ''}" onclick="setReportMessageLanguage('en')">${window.escapeHTML(window.t('guestInviteLanguageEn', {}, lang))}</button>
+        </div>
+    `;
+}
+
+function updateReportModalPrefill() {
+    const textarea = document.getElementById('report-text');
+    if (!textarea || !_reportAppId) return;
+    textarea.value = typeof window.buildCheckpointReportPrefill === 'function'
+        ? window.buildCheckpointReportPrefill(_reportAppId, _reportMessageLang)
+        : t.reportPrefill;
+}
+
+function setReportMessageLanguage(nextLang) {
+    _reportMessageLang = typeof window.normalizeGuestInviteLanguage === 'function'
+        ? window.normalizeGuestInviteLanguage(nextLang, _reportMessageLang || lang)
+        : (String(nextLang || 'en').trim().toLowerCase() === 'ru' ? 'ru' : 'en');
+    renderReportLanguageToggle();
+    updateReportModalPrefill();
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
 function openReportModal(appId, ownerUsername) {
     _reportAppId = appId;
     _reportOwnerUsername = ownerUsername;
-    const textarea = document.getElementById('report-text');
-    textarea.value = typeof window.buildCheckpointReportPrefill === 'function'
-        ? window.buildCheckpointReportPrefill(appId)
-        : t.reportPrefill;
+    _reportMessageLang = typeof window.getDefaultCheckpointReportLanguage === 'function'
+        ? window.getDefaultCheckpointReportLanguage(appId)
+        : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
+    renderReportLanguageToggle();
+    updateReportModalPrefill();
     document.getElementById('t-reportModalTitle').innerText = t.reportModalTitle;
     document.getElementById('t-reportModalHint').innerText = t.reportModalHint;
     document.getElementById('t-reportBtnSend').innerText = t.reportBtnSend;
@@ -3076,6 +3110,7 @@ function closeReportModal(event) {
     setTimeout(() => {
         _reportAppId = null;
         _reportOwnerUsername = null;
+        _reportMessageLang = null;
     }, 300);
 }
 
@@ -5458,6 +5493,7 @@ Object.assign(window, {
     closeScreenshotCompleteModal,
     openReportModal,
     closeReportModal,
+    setReportMessageLanguage,
     openScreenshotGuardModal,
     closeScreenshotGuardModal,
     confirmScreenshotGuard,
