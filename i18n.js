@@ -1839,7 +1839,7 @@
             developerAchievementsWithGrantFull: "{tests_count} {tests_word}  🏆 ({grants_count} {grants_word}, {golden_count} {golden_word} {grant_tag})",
             developerAchievementsWithGrant: "{tests_count} {tests_word}  🏆 ({grants_count} {grants_word})",
             developerAchievementsNoGrant: "Completed: {tests_count} {tests_word}",
-            developerGrantTag: "✨",
+            developerGrantTag: "«Gold Tester» ✨",
             countTestWord_one: "test",
             countTestWord_few: "tests",
             countTestWord_many: "tests",

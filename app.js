@@ -273,6 +273,12 @@ function _parseInitialRouteTarget() {
             feedbackProjectId = Number(appFocusMatch[1] || 0);
             break;
         }
+        var syncMatch = normalized.match(/^sync[_:](\d+)$/);
+        if (syncMatch) {
+            routeKind = 'sync';
+            feedbackProjectId = Number(syncMatch[1] || 0);
+            break;
+        }
         if (normalized === 'projects') {
             routeKind = 'projects';
         }
@@ -350,6 +356,13 @@ function _parseInitialRouteTarget() {
             appId: null,
         };
     }
+    if (routeKind === 'sync') {
+        return {
+            tab: 'projects',
+            openSync: true,
+            appId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
     if (routeKind === 'edit') {
         return {
             tab: 'projects',
@@ -404,6 +417,20 @@ async function _handleInitialRoute() {
 
     if (route.tab === 'market') {
         switchTab('market');
+    }
+
+    // ── Sync route: open sync modal ──
+    if (route.openSync && route.appId) {
+        try {
+            await loadProjects(true);
+            if (typeof window.openSyncModal === 'function') {
+                window.openSyncModal(route.appId);
+            }
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial sync route error:', error);
+        }
+        return;
     }
 
     // ── Edit route: open project edit modal ──
