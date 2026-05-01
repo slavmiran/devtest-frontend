@@ -9,9 +9,12 @@ const initData = tg.initDataUnsafe || {};
 const BOT_USERNAME = 'Android12TestersBot';
 const WEBAPP_SHORTNAME = 'app';
 const BOT_CHAT_URL = `https://t.me/${BOT_USERNAME}`;
+window.App.botUsername = BOT_USERNAME;
+window.App.webappShortname = WEBAPP_SHORTNAME;
 const GUEST_CLAIM_START_PARAM_RE = /^guest_([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})_(\d+)$/i;
 const LEAD_INVITE_START_PARAM_RE = /^lead_(\d+)$/i;
 const GUEST_CLAIM_SESSION_PREFIX = 'guest_claim_handled_v1:';
+const USER_TIMEZONE_STORAGE_KEY = 'user_system_timezone';
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
 var API_BASE = 'https://devtest-backend.onrender.com/api';
@@ -261,7 +264,7 @@ function _parseInitialRouteTarget() {
             feedbackProjectId = Number(projectMatch[1] || 0);
             break;
         }
-        var testsHighlightMatch = normalized.match(/^my_tests_highlight[_:](\d+)$/);
+        var testsHighlightMatch = normalized.match(/^(?:my_tests_highlight|test)[_:](\d+)$/);
         if (testsHighlightMatch) {
             routeKind = 'tests_highlight';
             feedbackProjectId = Number(testsHighlightMatch[1] || 0);
@@ -2123,12 +2126,23 @@ async function handleAutoAcceptMutualToggle(input) {
     }
 }
 
+function _ensureTestCardExpanded(card) {
+    if (!card) return;
+    var doneList = document.getElementById('done-list');
+    var doneSection = document.getElementById('done-section');
+    if (!doneList || !doneSection || !doneList.contains(card)) return;
+    if (!doneSection.classList.contains('active') && typeof window.toggleAccordion === 'function') {
+        window.toggleAccordion();
+    }
+}
+
 function _highlightTestCard(appId) {
     var normalizedId = Number(appId || 0);
     if (!normalizedId) return false;
     var card = document.getElementById('test-card-' + normalizedId);
     if (!card) return false;
 
+    _ensureTestCardExpanded(card);
     card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     card.classList.remove('test-card-highlight-pulse');
     void card.offsetWidth;
@@ -2179,6 +2193,38 @@ function applyLanguage(newLang) {
     rerenderDynamicUi();
     refreshActiveTabData();
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+}
+
+function getUserSystemTimezone() {
+    try {
+        var resolved = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        var normalized = String(resolved || '').trim();
+        return normalized || 'UTC';
+    } catch (error) {
+        console.warn('Timezone detection failed:', error);
+        return 'UTC';
+    }
+}
+
+async function syncUserTimezone(force) {
+    var detectedTimezone = getUserSystemTimezone();
+    var cachedTimezone = String(localStorage.getItem(USER_TIMEZONE_STORAGE_KEY) || '').trim();
+    if (!force && cachedTimezone === detectedTimezone) {
+        return;
+    }
+    try {
+        const response = await fetch(`${API_BASE}/users/${userId}/timezone`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timezone: detectedTimezone })
+        });
+        if (!response.ok) {
+            return;
+        }
+        localStorage.setItem(USER_TIMEZONE_STORAGE_KEY, detectedTimezone);
+    } catch (error) {
+        console.warn('Timezone sync failed:', error);
+    }
 }
 
 function sendFeedback(type) {
@@ -5376,6 +5422,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         })
         .catch(() => {});
+
+    syncUserTimezone(false).catch(() => {});
 
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && _pendingScreenshotReminderUsername !== null) {

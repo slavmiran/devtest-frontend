@@ -2429,6 +2429,12 @@ function formatCompactSyncLabel(project) {
     return window.t('syncDayProgress', { day: day }, lang);
 }
 
+function buildTesterReminderDeepLink(appId) {
+    var botUsername = String((window.App && window.App.botUsername) || 'Android12TestersBot').trim().replace(/^@+/, '');
+    var webappShortname = String((window.App && window.App.webappShortname) || 'app').trim().replace(/^\/+|\/+$/g, '');
+    return 'https://t.me/' + botUsername + '/' + webappShortname + '?startapp=test_' + Number(appId || 0);
+}
+
 function renderProjects(force) {
     if (!force && !isTabVisible('projects')) return;
     const container = document.getElementById('projects-list');
@@ -2560,70 +2566,94 @@ function renderProjects(force) {
                 let nameHtml = '';
                 let cleanUsername = '';
                 const isContractTester = String(tester.join_type || '').toLowerCase() === 'bounty';
-                const testerPrefix = isContractTester ? '💎 ' : '';
+                const testerPrefixHtml = isContractTester ? '<span class="tester-contract-prefix">💎</span>' : '';
+                let testerDay = 0;
+                if (tester.start_date) {
+                    const startDt = new Date(tester.start_date);
+                    if (!Number.isNaN(startDt.getTime())) {
+                        testerDay = Math.max(1, Math.floor((todayDate - startDt) / (1000 * 60 * 60 * 24)) + 1);
+                    }
+                }
+                const testerDayHtml = testerDay > 0
+                    ? `<span class="tester-day-badge">[${window.escapeHTML(String(testerDay))}]</span>`
+                    : '';
                 if (tester.username) {
                     cleanUsername = tester.username.replace('@', '');
-                    nameHtml = `<a href="javascript:void(0);" onclick="return openTelegramProfile('${escapeInlineJsString(cleanUsername)}', event)" class="tester-link">${testerPrefix}@${window.escapeHTML(cleanUsername)}</a>`;
+                    nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label">@${window.escapeHTML(cleanUsername)}</span></span>`;
                 } else {
-                    nameHtml = `<span class="tester-id">${window.t('idLabel', { id: tester.tester_id }, lang)}</span>`;
+                    nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-id">${window.t('idLabel', { id: tester.tester_id }, lang)}</span></span>`;
                 }
 
                 let statusHtml = '';
                 let showBell = false;
+                let testerStatusClass = 'is-red';
+                let testerStatusIcon = '🔴';
+                let testerStatusText = t.statusNotOpened;
                 if (!tester.last_check_date) {
-                    statusHtml = `<span style="color: #ff3b30; font-weight: 500; font-size: 13px;">🔴 ${t.statusNotOpened}</span>`;
                     showBell = true;
                 } else if (tester.last_check_date === today) {
-                    statusHtml = `<span style="color: #34c759; font-weight: 500; font-size: 13px;">🟢 ${t.statusToday}</span>`;
+                    testerStatusClass = 'is-green';
+                    testerStatusIcon = '🟢';
+                    testerStatusText = t.statusToday;
                 } else {
                     const daysDiff = getDaysDiff(tester.last_check_date);
                     if (daysDiff === 1) {
-                        statusHtml = `<span style="color: #ffcc00; font-weight: 500; font-size: 13px;">🟡 ${t.statusYesterday}</span>`;
+                        testerStatusClass = 'is-yellow';
+                        testerStatusIcon = '🟡';
+                        testerStatusText = t.statusYesterday;
+                    } else if (daysDiff >= 2 && daysDiff <= 3) {
+                        testerStatusClass = 'is-orange';
+                        testerStatusIcon = '🟠';
+                        testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
+                        showBell = daysDiff >= 3;
                     } else {
-                        statusHtml = `<span style="color: #ff3b30; font-weight: 500; font-size: 13px;">🔴 ${daysDiff} ${t.statusDaysAgo}</span>`;
+                        testerStatusClass = 'is-red';
+                        testerStatusIcon = '🔴';
+                        testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
                         showBell = true;
                     }
                 }
+                statusHtml = `<span class="tester-status ${testerStatusClass}">${testerStatusIcon} ${window.escapeHTML(testerStatusText)}</span>`;
 
                 let bellHtml = '';
                 if (showBell && cleanUsername) {
-                    const msg = t.bellNotifyMsg.replace('{name}', project.name || window.t('unknownLabel', {}, lang));
-                    bellHtml = `<a href="javascript:void(0);" onclick="tg.openTelegramLink('https://t.me/${escapeInlineJsString(cleanUsername)}?text=${escapeInlineJsString(encodeURIComponent(msg))}')" style="text-decoration: none; font-size: 16px;">🔔</a>`;
+                    const deepLink = buildTesterReminderDeepLink(project.id);
+                    const msg = window.t('bellNotifyMsg', {
+                        app_name: project.name || window.t('unknownLabel', {}, lang),
+                        deep_link: deepLink,
+                    }, lang);
+                    bellHtml = `<a href="javascript:void(0);" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${escapeInlineJsString(cleanUsername)}?text=${escapeInlineJsString(encodeURIComponent(msg))}'); return false;" class="tester-icon-action">🔔</a>`;
                 }
 
                 let screenshotDayHtml = '';
-                if (tester.start_date) {
-                    const startDt = new Date(tester.start_date);
-                    const testerDay = Math.floor((todayDate - startDt) / (1000 * 60 * 60 * 24)) + 1;
-                    if ([1, 7, 14].includes(testerDay)) {
-                        screenshotDayHtml = `<span onclick="showScreenshotDayAlert()" style="cursor: pointer; font-size: 16px;">📸</span>`;
-                    }
+                if ([1, 7, 14].includes(testerDay)) {
+                    screenshotDayHtml = `<span class="tester-icon-action" onclick="event.stopPropagation(); showScreenshotDayAlert()">📸</span>`;
                 }
 
                 let karmaHtml = '';
                 if (likesAvailable > 0) {
                     const alreadyLiked = (project.likes || []).some((like) => like.tester_id === tester.tester_id);
                     karmaHtml = alreadyLiked
-                        ? '<span style="font-size: 14px; opacity: 0.4;" title="☯️">+☯️</span>'
-                        : `<span onclick="showKarmaPopup(${project.id}, ${tester.tester_id})" style="cursor: pointer; font-size: 14px;">+☯️</span>`;
+                        ? '<span class="tester-icon-action tester-icon-muted" title="☯️">+☯️</span>'
+                        : `<span class="tester-icon-action" onclick="event.stopPropagation(); showKarmaPopup(${project.id}, ${tester.tester_id})">+☯️</span>`;
                 } else {
                     const alreadyLiked = (project.likes || []).some((like) => like.tester_id === tester.tester_id);
                     if (alreadyLiked) {
-                        karmaHtml = '<span style="font-size: 14px; opacity: 0.4;" title="☯️">+☯️</span>';
+                        karmaHtml = '<span class="tester-icon-action tester-icon-muted" title="☯️">+☯️</span>';
                     }
                 }
 
-                const chevronHtml = '<span style="font-size: 18px; opacity: 0.35; flex-shrink: 0;">›</span>';
+                const chevronHtml = '<span class="tester-chevron">›</span>';
 
                 testersHtml += `
                     <li onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;">
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" onclick="event.stopPropagation()">
+                        <div class="tester-row-main">
                             ${nameHtml}
                             ${screenshotDayHtml}
                             ${bellHtml}
                             ${karmaHtml}
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                        <div class="tester-row-meta">
                             ${statusHtml}
                             ${chevronHtml}
                         </div>

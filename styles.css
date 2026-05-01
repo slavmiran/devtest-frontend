@@ -325,9 +325,86 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     font-weight: 500;
 }
 
+.tester-row-main {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.tester-row-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.tester-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.tester-primary-label {
+    color: var(--text-color);
+}
+
+.tester-contract-prefix {
+    opacity: 0.82;
+}
+
+.tester-day-badge {
+    color: var(--hint-color);
+    opacity: 0.52;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
 .tester-id {
     color: var(--text-color);
     font-weight: 500;
+}
+
+.tester-status {
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.tester-status.is-green {
+    color: #34c759;
+}
+
+.tester-status.is-yellow {
+    color: #ffcc00;
+}
+
+.tester-status.is-orange {
+    color: #ff9f0a;
+}
+
+.tester-status.is-red {
+    color: #ff3b30;
+}
+
+.tester-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.tester-icon-muted {
+    opacity: 0.4;
+}
+
+.tester-chevron {
+    font-size: 18px;
+    opacity: 0.35;
+    flex-shrink: 0;
 }
 
 .tester-date {
