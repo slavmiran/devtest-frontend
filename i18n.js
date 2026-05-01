@@ -87,7 +87,7 @@
             activeTesters: "Активных тестеров",
             contactOwner: "Написать владельцу",
             inviteLink: "Найти тестеров",
-            deleteProject: "Завершить (Удалить)",
+            deleteProject: "Завершить проект",
             inviteCopied: "Ссылка скопирована! Отправьте её для взаимного теста.",
             confirmDelete: "Вы уверены, что хотите удалить этот проект? Все данные о тестировщиках будут потеряны.",
             deleteReminder: "⚠️ Пожалуйста, удаляйте проекты после успешного релиза в Google Play, чтобы не тратить время других тестеров впустую!",
@@ -232,7 +232,7 @@
             karmaInfoWhyTitle: "Зачем нужна Карма?",
             karmaInfoWhyText: "Карма — это ваша репутация. Во-первых, она определяет позицию ваших проектов в рейтинге Витрины. Во-вторых, она напрямую увеличивает ваши выплаты $BUST: бонус Гранта Золотого Тестера считается от вашей Кармы.",
             karmaInfoHowTitle: "Как получить и потерять?",
-            karmaInfoHowText: "🟢 От Платформы:\n• Ежедневный чекин: +0.1 ☯️\n• Чекин в овертайме: +0.5 ☯️\n• Успешный релиз (14 дней): +5.0 ☯️\n• Фидбэк саппорту: до +3.0 ☯️\n\n🤝 От Разработчиков:\n• Хороший тест / баг: от +1.5 до +3.0 ☯️\n• Лучшему тестеру овертайма (только одному!): +2.0 ☯️\n\n🔴 Штрафы:\n• Заброшенный проект (авто-архивация): -10.0 ☯️",
+            karmaInfoHowText: "🟢 От Платформы:\n• Ежедневный чекин: +0.1 ☯️\n• Чекин в овертайме: +0.5 ☯️\n• Ручное завершение проекта владельцем: +3.0 ☯️\n• Фидбэк саппорту: до +3.0 ☯️\n\n🤝 От Разработчиков:\n• Хороший тест / баг: от +1.5 до +3.0 ☯️\n• Лучшему тестеру овертайма (только одному!): +2.0 ☯️",
             karmaInfoNetworkFallbackToast: "Показываем сохранённый баланс. Детализация временно недоступна.",
             karmaInfoCloseBtn: "Закрыть",
             karmaSrc_checkin: "Ежедневные чекины",
@@ -324,6 +324,10 @@
             syncOvertimeBanner: "Официальное тестирование еще идет: сохраняйте активность ради повышенной кармы и бонусной награды от владельца.",
             syncUpdateDataBtn: "🔄 Обновить данные",
             syncNoMessage: "Сообщение для тестеров не указано",
+            pendingReleaseChip: "🏁 Ожидание релиза",
+            pendingReleaseModalTitle: "Тестирование приостановлено",
+            pendingReleaseModalText: "Разработчик достиг 14 дней тестирования. Сейчас мы ждем от него подтверждения: отправить проект в релиз или продолжить тесты. В течение 48 часов проект либо завершится и вы получите финальные награды, либо тесты продолжатся. Сейчас чекины делать не нужно, просто пропустите!",
+            pendingReleaseOwnerSyncHint: "Чекины тестеров сейчас приостановлены. Если Google Play Console показывает меньше 14 дней, обновите Sync, чтобы сразу продолжить тестирование.",
             btnCancel: "Отмена",
             btnDrop: "Отказаться",
             visibilityManualToast: "Приложение скрыто. Ваша инвайт-ссылка продолжает работать.",
@@ -1115,11 +1119,7 @@
             // Overtime & Anti-AFK
             overtimeBadge: "🔥 Овертайм",
             syncDayProgress: "🔄 День {day}/14",
-            afkWarningBanner: "⚠️ ВНИМАНИЕ: Во время Овертайма (после 14-го дня) вы обязаны ежедневно заходить и подтверждать активность. Если вы будете неактивны более 48 часов, проект удалится, а вы получите штраф -10 ☯️ Кармы!",
-            activityConfirmedBtn: "✅ Активность подтверждена. Следующая проверка через {time}",
-            activityConfirmBtn: "✅ Подтвердить активность",
-            activityPingSuccess: "✅ Активность подтверждена!",
-            activityPingError: "Не удалось подтвердить активность."
+            
 
         },
         en: {
@@ -1207,7 +1207,7 @@
             activeTesters: "Active testers",
             contactOwner: "Contact owner",
             inviteLink: "Get Testers",
-            deleteProject: "Finish (Delete)",
+            deleteProject: "Finish project",
             inviteCopied: "Link copied! Send it for mutual testing.",
             confirmDelete: "Are you sure you want to delete this project? All tester data will be lost.",
             deleteReminder: "⚠️ Please delete your projects after a successful release so as not to waste other testers' time!",
@@ -1352,7 +1352,7 @@
             karmaInfoWhyTitle: "Why karma matters",
             karmaInfoWhyText: "Karma is your reputation. First, it affects your project position in the Showcase ranking. Second, it directly increases your $BUST payouts: the Golden Tester grant bonus is calculated from your karma.",
             karmaInfoHowTitle: "How to gain and lose",
-            karmaInfoHowText: "🟢 From Platform:\n• Daily check-in: +0.1 ☯️\n• Overtime check-in: +0.5 ☯️\n• Successful release (14 days): +5.0 ☯️\n• Support feedback: up to +3.0 ☯️\n\n🤝 From Developers:\n• Good test / bug: from +1.5 to +3.0 ☯️\n• Best overtime tester (only one!): +2.0 ☯️\n\n🔴 Penalties:\n• Abandoned project (auto-archive): -10.0 ☯️",
+            karmaInfoHowText: "🟢 From Platform:\n• Daily check-in: +0.1 ☯️\n• Overtime check-in: +0.5 ☯️\n• Manual owner completion: +3.0 ☯️\n• Support feedback: up to +3.0 ☯️\n\n🤝 From Developers:\n• Good test / bug: from +1.5 to +3.0 ☯️\n• Best overtime tester (only one!): +2.0 ☯️",
             karmaInfoNetworkFallbackToast: "Showing saved balance. Breakdown is temporarily unavailable.",
             karmaInfoCloseBtn: "Close",
             karmaSrc_checkin: "Daily check-ins",
@@ -1444,6 +1444,10 @@
             syncOvertimeBanner: "The official testing cycle is still running: stay active for higher karma and an extra owner reward.",
             syncUpdateDataBtn: "🔄 Update data",
             syncNoMessage: "No message for testers",
+            pendingReleaseChip: "🏁 Pending Release",
+            pendingReleaseModalTitle: "Testing is paused",
+            pendingReleaseModalText: "The developer has reached 14 days of testing. We are waiting for their confirmation to release or continue. Within 48 hours, the project will either be completed, or testing will resume. No check-ins needed right now, just skip!",
+            pendingReleaseOwnerSyncHint: "Tester check-ins are paused right now. If Google Play Console still shows fewer than 14 days, update Sync to resume testing immediately.",
             btnCancel: "Cancel",
             btnDrop: "Drop",
             visibilityManualToast: "The app is hidden. Your invite link still works.",
@@ -2235,11 +2239,7 @@
             // Overtime & Anti-AFK
             overtimeBadge: "🔥 Overtime",
             syncDayProgress: "🔄 Day {day}/14",
-            afkWarningBanner: "⚠️ WARNING: During Overtime (after day 14), you must log in daily and confirm your activity. If you are inactive for more than 48 hours, the project will be deleted and you will receive a penalty of -10 ☯️ Karma!",
-            activityConfirmedBtn: "✅ Activity confirmed. Next check in {time}",
-            activityConfirmBtn: "✅ Confirm activity",
-            activityPingSuccess: "✅ Activity confirmed!",
-            activityPingError: "Failed to confirm activity."
+            
 
         }
     };

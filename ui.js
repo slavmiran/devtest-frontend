@@ -1443,9 +1443,11 @@ function renderTests(force) {
     let doneCount = 0;
 
     myTests.forEach((test) => {
+        const isPendingCompletion = !!test.is_pending_completion;
+        const isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' && !isPendingCompletion;
         // Skip archived cards with no actionable state (no grant, no early finish bonus).
         // This prevents cards from hanging in My Tests when neither reward applies.
-        const isArchivedWithNoAction = String(test.app_status || 'active').toLowerCase() !== 'active'
+        const isArchivedWithNoAction = isArchivedOrCompleted
             && !test.isReadyToClaim
             && !test.isGrantAvailableTomorrow
             && !test.isEarlyFinish;
@@ -1461,10 +1463,13 @@ function renderTests(force) {
         // - If isGrantAvailableTomorrow: move to done list (grant pending)
         // - Else if status='done': go to done list
         // - Else: go to active list
-        const shouldShowInActiveList = test.isReadyToClaim || test.isEarlyFinish || (test.status !== 'done' && !test.isGrantAvailableTomorrow);
-        const shouldShowInDoneList = !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
+        const shouldShowInActiveList = test.isReadyToClaim || test.isEarlyFinish || isPendingCompletion || (test.status !== 'done' && !test.isGrantAvailableTomorrow);
+        const shouldShowInDoneList = !isPendingCompletion && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
         
         card.className = shouldShowInDoneList ? 'card card-done' : 'card';
+        if (isPendingCompletion) {
+            card.className += ' card-pending-release';
+        }
         card.id = `test-card-${test.id}`;
         const userTestingDay = getUserTestingDay(test.start_date);
         const safePackage = escapeInlineJsString(test.package);
@@ -1477,6 +1482,11 @@ function renderTests(force) {
         const isIssueBlocked = !!test.issue_reported_at && !test.issue_fixed_at;
         const issueBtnText = isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : ('🚨 ' + window.t('reportIssueBtnLabel', {}, lang));
         const issueBtnHtml = `<button id="btn-issue-${test.id}" class="btn" style="display:${issueBtnDisplay}; width:100%; margin-top:8px; background:rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>${issueBtnText}</button>`;
+        const pendingReleaseButtonHtml = `
+            <button type="button" class="btn btn-secondary pending-release-chip" style="width: 100%; margin-bottom: 12px;" onclick="showPendingReleaseInfo()">
+                ${window.escapeHTML(window.t('pendingReleaseChip', {}, lang))}
+            </button>
+        `;
 
         // === ACTION BUTTONS LOGIC ===
         let actionsHtml = '';
@@ -1485,11 +1495,13 @@ function renderTests(force) {
         if (test.isReadyToClaim) {
             const testingDay = userTestingDay || 999;
             const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
-            const isArchivedClaimCard = String(test.app_status || 'active').toLowerCase() !== 'active'
+            const isArchivedClaimCard = isArchivedOrCompleted
                 || String(test.progress_status || 'active').toLowerCase() !== 'active';
             
             let secondaryActions = '';
-            if (!isArchivedClaimCard) {
+            if (isPendingCompletion) {
+                secondaryActions = pendingReleaseButtonHtml;
+            } else if (!isArchivedClaimCard) {
                 secondaryActions = `
                     <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', ${isScreenshotDay ? 'true' : 'false'}, '${isScreenshotDay ? safeOwnerUsername : ''}')">
                         🔗 ${t.openBtn}
@@ -1521,6 +1533,8 @@ function renderTests(force) {
                 </button>
                 ${secondaryActions ? `<div class="action-row" style="gap: 8px;">${secondaryActions}</div>` : ''}
             `;
+        } else if (isPendingCompletion) {
+            actionsHtml = pendingReleaseButtonHtml;
         } else if (test.isGrantAvailableTomorrow) {
             actionsHtml = `
                 <button id="btn-claim-${test.id}" class="btn btn-claim-grant" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
@@ -1621,7 +1635,7 @@ function renderTests(force) {
         }
 
         const headerActions = [];
-        if (test.status !== 'done' && !test.isReadyToClaim) {
+        if (test.status !== 'done' && !test.isReadyToClaim && !isPendingCompletion) {
             if (userTestingDay >= 15) {
                 headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #30d158;" onclick="openOvertimeModal(${test.id}, event)">🔄</button>`);
             } else {
@@ -2510,6 +2524,8 @@ function renderProjects(force) {
     myProjects.forEach((project) => {
         const card = document.createElement('div');
         const isInactive = !project.is_visible;
+        const projectStatus = String(project.app_status || project.status || 'active').toLowerCase();
+        const isPendingCompletion = projectStatus === 'pending_completion';
         const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
         const safeProjectPackage = window.escapeHTML(project.package || '');
 
@@ -2527,11 +2543,10 @@ function renderProjects(force) {
         const likesAvailable = project.likes_max - project.likes_used;
 
         const isOvertime = platformDays > 14;
-        const lastActivity = project.last_owner_activity ? new Date(project.last_owner_activity) : (createdDate || new Date());
-        const afkMs = Date.now() - lastActivity.getTime();
-        const needsActivityPing = isOvertime && afkMs > 24 * 60 * 60 * 1000;
+        const needsSyncAttention = isPendingCompletion || (platformDays >= 7 && normalizedSyncDay <= 1);
         let cardClass = isInactive ? 'card card-inactive' : 'card';
         if (isOvertime) cardClass += ' card-overtime';
+        if (isPendingCompletion) cardClass += ' card-pending-release';
         const accessIssueTester = (project.testers || []).find((tester) => !!tester.issue_reported_at && !tester.issue_fixed_at) || null;
         const hasAccessOverlay = project.status === 'access_error' && !!accessIssueTester;
         card.className = cardClass + (hasAccessOverlay ? ' card-access-error-locked' : '');
@@ -2676,6 +2691,10 @@ function renderProjects(force) {
                 badges += getLangBadge(project.target_lang);
             }
 
+            if (isPendingCompletion) {
+                badges += `<button class="meta-chip accent-red" onclick="showPendingReleaseInfo()">${window.escapeHTML(window.t('pendingReleaseChip', {}, lang))}</button>`;
+            }
+
             return badges;
         })();
 
@@ -2728,7 +2747,7 @@ function renderProjects(force) {
 
         const hasSync = (project.google_sync_day || 0) > 1;
         const overtimeBadgeHtml = isOvertime ? `<span class="meta-chip accent-red" style="font-weight:600;">${window.t('overtimeBadge', {}, lang)}</span>` : '';
-        const syncBtnStyle = needsActivityPing
+        const syncBtnStyle = needsSyncAttention
             ? 'flex: 1; background-color: rgba(255, 149, 0, 0.2); color: #ff9500; border: 1px solid rgba(255, 149, 0, 0.4); animation: pulse-attention 2s infinite;'
             : 'flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);';
         const syncActionHtml = hasSync
@@ -3477,31 +3496,9 @@ function openSyncModal(projectId) {
                 ? `<div class="details-block" style="margin-top:10px;"><div class="detail-section-title">${window.escapeHTML(window.t('syncMessageLabel', {}, lang))}</div><div style="font-size:13px;line-height:1.5;">${escapeHtmlWithBreaks(liveProject.sync_message)}</div></div>`
                 : `<div class="details-block" style="margin-top:10px;color:var(--hint-color);">${window.escapeHTML(window.t('syncNoMessage', {}, lang))}</div>`;
 
-            // Overtime Anti-AFK section
-            const projectCreated = liveProject.created_at ? new Date(liveProject.created_at) : null;
-            const projectAgeDays = projectCreated ? Math.floor((Date.now() - projectCreated.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 0;
-            const isProjectOvertime = projectAgeDays > 14;
-            let afkSectionHtml = '';
-            if (isProjectOvertime) {
-                const lastAct = liveProject.last_owner_activity ? new Date(liveProject.last_owner_activity) : (projectCreated || new Date());
-                const msSinceActivity = Date.now() - lastAct.getTime();
-                const msUntilNext = Math.max(0, 24 * 60 * 60 * 1000 - msSinceActivity);
-                const isOnCooldown = msSinceActivity < 24 * 60 * 60 * 1000;
-
-                const warningHtml = `<div style="background: rgba(255, 59, 48, 0.12); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: 12px; padding: 12px; margin-top: 12px; font-size: 12px; line-height: 1.5; color: #ff3b30; font-weight: 600;">${window.escapeHTML(window.t('afkWarningBanner', {}, lang))}</div>`;
-
-                let btnHtml = '';
-                if (isOnCooldown) {
-                    const h = Math.floor(msUntilNext / 3600000);
-                    const m = Math.floor((msUntilNext % 3600000) / 60000);
-                    const s = Math.floor((msUntilNext % 60000) / 1000);
-                    const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-                    btnHtml = `<button id="activity-ping-btn" class="btn btn-secondary" style="width:100%;margin-top:10px;opacity:0.6;" disabled>${window.escapeHTML(window.t('activityConfirmedBtn', { time: timeStr }, lang))}</button>`;
-                } else {
-                    btnHtml = `<button id="activity-ping-btn" class="btn btn-success" style="width:100%;margin-top:10px;font-size:16px;padding:14px;" onclick="pingOwnerActivity(${projectId})">${window.escapeHTML(window.t('activityConfirmBtn', {}, lang))}</button>`;
-                }
-                afkSectionHtml = warningHtml + btnHtml;
-            }
+            const syncAttentionHtml = String(liveProject.app_status || liveProject.status || 'active').toLowerCase() === 'pending_completion'
+                ? `<div style="background: rgba(255, 149, 0, 0.12); border: 1px solid rgba(255, 149, 0, 0.28); border-radius: 12px; padding: 12px; margin-top: 12px; font-size: 12px; line-height: 1.5; color: #ffb84d; font-weight: 600;">${window.escapeHTML(window.t('pendingReleaseOwnerSyncHint', {}, lang))}</div>`
+                : '';
 
             body.innerHTML = `
                 <h3 style="margin-bottom:12px;">${window.escapeHTML(window.t('syncModalTitle', {}, lang))}</h3>
@@ -3518,7 +3515,7 @@ function openSyncModal(projectId) {
                     </div>
                 </div>
                 ${syncMessageHtml}
-                ${afkSectionHtml}
+                ${syncAttentionHtml}
                 <button id="sync-switch-edit-btn" class="btn btn-primary" style="width:100%;margin-top:12px;">${window.escapeHTML(window.t('syncUpdateDataBtn', {}, lang))}</button>
                 <button id="sync-close-btn" class="btn btn-secondary" style="width:100%;margin-top:8px;">${window.escapeHTML(window.t('btnCancel', {}, lang))}</button>
             `;
@@ -4081,6 +4078,14 @@ function showCustomAlert(text) {
     const overlay = document.getElementById('custom-alert-overlay');
     document.getElementById('custom-alert-text').innerText = text;
     overlay.classList.add('active');
+}
+
+function showPendingReleaseInfo() {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    showCustomAlert(
+        window.t('pendingReleaseModalTitle', {}, lang) + '\n\n' +
+        window.t('pendingReleaseModalText', {}, lang)
+    );
 }
 
 function closeCustomAlert(event) {

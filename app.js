@@ -2553,9 +2553,11 @@ function _mapTestsFromApi(data) {
             status = 'new';
         }
         var progressStatus = String(app.progress_status || 'active').toLowerCase();
-        var isArchivedOrCompleted = String(app.app_status || 'active').toLowerCase() !== 'active' || progressStatus !== 'active';
+        var appStatus = String(app.app_status || 'active').toLowerCase();
+        var isPendingCompletion = appStatus === 'pending_completion';
+        var isArchivedOrCompleted = ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
         var existingTest = myTests.find(function(test) { return test.id === app.app_id; });
-        if (existingTest && existingTest.status === 'opened' && status !== 'done' && !isArchivedOrCompleted) {
+        if (existingTest && existingTest.status === 'opened' && status !== 'done' && !isArchivedOrCompleted && !isPendingCompletion) {
             status = 'opened';
         }
         
@@ -2565,8 +2567,8 @@ function _mapTestsFromApi(data) {
         var testingDays = Number(app.testing_days || 0);
         var skipsCount = countGrantSkips(app);
         var canEverClaim = !app.grant_claimed && skipsCount <= 3 && app.progress_id;
-        var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && testingDays === 14 && isTestedToday);
-        var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
+        var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
+        var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || ((isArchivedOrCompleted || isPendingCompletion) && testingDays >= 14)));
         // Early finish: archived app qualifies for bonus (>=5 days tested, <=1 skip).
         // Cards that don't meet these criteria are excluded on the backend and skipped here too.
         var isEarlyFinish = !!(isArchivedOrCompleted && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays >= 5 && skipsCount <= 1);
@@ -2597,6 +2599,7 @@ function _mapTestsFromApi(data) {
             grant_claimed: !!app.grant_claimed,
             progress_status: app.progress_status || 'active',
             app_status: app.app_status || 'active',
+            is_pending_completion: isPendingCompletion,
             join_type: app.join_type || 'invite',
             target_lang: app.target_lang || 'ALL',
             daily_timeline: app.daily_timeline || '',
@@ -2621,6 +2624,44 @@ function _mapTestsFromApi(data) {
             isEarlyFinish: isEarlyFinish,
         };
     });
+}
+
+function recomputeLocalTestState(test) {
+    if (!test) return test;
+    var today = getLocalDate();
+    var nextStatus = 'new';
+    if (test.last_check_date === today) {
+        nextStatus = 'done';
+    } else if (test.last_check_date && test.last_check_date < today) {
+        nextStatus = 'daily';
+    } else if (test.last_check_date === null) {
+        nextStatus = 'new';
+    }
+
+    var progressStatus = String(test.progress_status || 'active').toLowerCase();
+    var appStatus = String(test.app_status || 'active').toLowerCase();
+    var isPendingCompletion = appStatus === 'pending_completion';
+    var isArchivedOrCompleted = ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
+    if (test.status === 'opened' && nextStatus !== 'done' && !isArchivedOrCompleted && !isPendingCompletion) {
+        nextStatus = 'opened';
+    }
+
+    var isTestedToday = nextStatus === 'done';
+    var testingDays = Number(test.testing_days || 0);
+    var skipsCount = countGrantSkips(test);
+    var canEverClaim = !test.grant_claimed && skipsCount <= 3 && test.progress_id;
+
+    test.isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
+    test.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || ((isArchivedOrCompleted || isPendingCompletion) && testingDays >= 14)));
+    test.isEarlyFinish = !!(isArchivedOrCompleted && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && testingDays >= 5 && skipsCount <= 1);
+    test.is_pending_completion = isPendingCompletion;
+
+    if (isArchivedOrCompleted && !test.isReadyToClaim && !test.isGrantAvailableTomorrow) {
+        nextStatus = 'done';
+    }
+
+    test.status = nextStatus;
+    return test;
 }
 
 function getMyTestById(appId) {
@@ -3227,6 +3268,7 @@ function _mapProjectsFromApi(data) {
         return {
             id: project.app_id,
             status: hasAccessError ? 'access_error' : (project.status || 'active'),
+            app_status: project.status || 'active',
             name: project.name,
             package: project.package_name,
             icon_url: project.icon_url,
@@ -4421,6 +4463,37 @@ async function saveProjectSync() {
             showToast(getApiErrorMessage(data, 'loadError'));
             return;
         }
+        const today = getLocalDate();
+        const project = (myProjects || []).find(function(item) {
+            return Number(item.id) === Number(_syncProjectId);
+        });
+        if (project) {
+            project.google_sync_day = day;
+            project.sync_message = message;
+            project.last_sync_date = data.last_sync_date || today;
+            if (data.resumed_from_pending) {
+                project.status = 'active';
+                project.app_status = 'active';
+            }
+        }
+
+        (myTests || []).forEach(function(test) {
+            if (Number(test.id) !== Number(_syncProjectId)) return;
+            test.google_sync_day = day;
+            test.sync_message = message;
+            test.last_sync_date = data.last_sync_date || today;
+            if (data.resumed_from_pending) {
+                test.app_status = 'active';
+                recomputeLocalTestState(test);
+            }
+        });
+
+        setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+        persistTestsCacheSnapshot();
+        renderProjects(true);
+        renderTests(true);
+        refreshOpenModals();
+
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(t.syncSavedToast);
         await Promise.all([loadProjects(true), loadTasks()]);
@@ -4430,80 +4503,6 @@ async function saveProjectSync() {
         showToast(getApiErrorMessage(error && error.message, 'loadError'));
     }
 }
-
-var _syncActivityInterval = null;
-
-async function pingOwnerActivity(projectId) {
-    var btn = document.getElementById('activity-ping-btn');
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = '\u23f3...';
-    }
-
-    try {
-        var response = await fetch(API_BASE + '/projects/' + projectId + '/ping_activity', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId })
-        });
-        var data = await response.json();
-        if (!response.ok || data.status !== 'success') {
-            showToast(getApiErrorMessage(data, 'activityPingError'));
-            if (btn) { btn.disabled = false; btn.textContent = window.t('activityConfirmBtn'); }
-            return;
-        }
-
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(window.t(data.already_confirmed ? 'activityConfirmedBtn' : 'activityPingSuccess', data.already_confirmed ? { time: '24:00:00' } : {}));
-
-        var proj = myProjects.find(function(p) { return p.id === projectId; });
-        if (proj) {
-            proj.last_owner_activity = data.last_owner_activity || new Date().toISOString();
-        }
-
-        setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
-        _startActivityCountdown(btn, 24 * 60 * 60 * 1000);
-        renderProjects(true);
-        if (typeof refreshOpenModals === 'function') refreshOpenModals();
-        loadProjects(true).catch(function() {});
-    } catch (error) {
-        console.error('Ping activity error:', error);
-        showToast(window.t('activityPingError'));
-        if (btn) { btn.disabled = false; btn.textContent = window.t('activityConfirmBtn'); }
-    }
-}
-
-function _startActivityCountdown(btn, msRemaining) {
-    if (_syncActivityInterval) clearInterval(_syncActivityInterval);
-    if (!btn) return;
-
-    function update() {
-        msRemaining -= 1000;
-        if (msRemaining <= 0) {
-            clearInterval(_syncActivityInterval);
-            _syncActivityInterval = null;
-            btn.disabled = false;
-            btn.className = 'btn btn-success';
-            btn.style.opacity = '1';
-            btn.style.fontSize = '16px';
-            btn.style.padding = '14px';
-            btn.textContent = window.t('activityConfirmBtn');
-            return;
-        }
-        var h = Math.floor(msRemaining / 3600000);
-        var m = Math.floor((msRemaining % 3600000) / 60000);
-        var s = Math.floor((msRemaining % 60000) / 1000);
-        var timeStr = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-        btn.textContent = window.t('activityConfirmedBtn', { time: timeStr });
-        btn.disabled = true;
-        btn.style.opacity = '0.6';
-    }
-
-    update();
-    _syncActivityInterval = setInterval(update, 1000);
-}
-
-
 
 async function loadArchivedProjects(options) {
     var opts = options || {};
@@ -5483,7 +5482,6 @@ Object.assign(window, {
     submitFeedback,
     submitSocialLink,
     saveProjectSync,
-    pingOwnerActivity,
     loadArchivedProjects,
     loadReliabilitySummary,
     loadReliabilityBreakdown,
