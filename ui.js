@@ -734,6 +734,42 @@ function isProjectSynced(test) {
     return (test.google_sync_day || 0) > 1;
 }
 
+function isProjectUpdateTipDismissed(appId) {
+    const key = 'update_tip_dismissed_' + String(Number(appId) || 0);
+    if (key.endsWith('_0')) {
+        return true;
+    }
+    try {
+        return localStorage.getItem(key) === 'true';
+    } catch (error) {
+        return false;
+    }
+}
+
+function dismissProjectUpdateTip(appId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const normalizedId = Number(appId) || 0;
+    if (!normalizedId) {
+        return false;
+    }
+    try {
+        localStorage.setItem('update_tip_dismissed_' + String(normalizedId), 'true');
+    } catch (error) {}
+    const banner = document.getElementById('update-tip-' + normalizedId);
+    if (banner) {
+        banner.remove();
+    }
+    try {
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.impactOccurred === 'function') {
+            window.tg.HapticFeedback.impactOccurred('light');
+        }
+    } catch (error) {}
+    return false;
+}
+
 function getScreenshotReminderHtml(test) {
     const testingDay = getUserTestingDay(test.start_date);
     if (!isMandatoryScreenshotDay(testingDay)) {
@@ -2559,6 +2595,10 @@ function renderProjects(force) {
         card.className = cardClass + (hasAccessOverlay ? ' card-access-error-locked' : '');
         card.id = `project-card-${project.id}`;
         card.setAttribute('data-project-id', String(project.id));
+        const showUpdateTip = projectStatus === 'active' && platformDays >= 3 && !isProjectUpdateTipDismissed(project.id);
+        const updateTipHtml = showUpdateTip
+            ? `<div id="update-tip-${project.id}" class="project-update-tip"><div class="project-update-tip__text">${window.escapeHTML(window.t('projectUpdateTipText', {}, lang))}</div><button type="button" class="project-update-tip__close" onclick="dismissProjectUpdateTip(${project.id}, event)" aria-label="${window.escapeHTML(window.t('btnClose', {}, lang))}">✕</button></div>`
+            : '';
 
         let testersHtml = '';
         if (project.testers && project.testers.length > 0) {
@@ -2809,6 +2849,7 @@ function renderProjects(force) {
                 ${visibilityBadge}
             </div>
             ${project.is_visible === false ? `<div class="visibility-hint">${t.inviteLinkAlways}</div>` : ''}
+            ${updateTipHtml}
             ${overtimeBadgeHtml ? `<div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${overtimeBadgeHtml}</div>` : ''}
             ${projectProgressHtml}
             ${quotaSummaryHtml}
@@ -5509,6 +5550,7 @@ Object.assign(window, {
     isProjectSynced,
     showGrantBreakdownAlertById,
     getScreenshotReminderHtml,
+    dismissProjectUpdateTip,
     renderCompactMeta,
     openTelegramProfile,
     renderIncomingOffers,

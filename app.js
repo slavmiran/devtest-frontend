@@ -4757,8 +4757,10 @@ async function confirmStart(id) {
     if (test) {
         var isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' || String(test.progress_status || 'active').toLowerCase() !== 'active';
         if (isArchivedOrCompleted) {
+            // Grant-tomorrow state is invalid for archived/completed projects and can keep stale active cards.
+            test.isGrantAvailableTomorrow = false;
             _pendingActions.delete(actionKey);
-            if (!test.isReadyToClaim && !test.isGrantAvailableTomorrow) {
+            if (!test.isReadyToClaim) {
                 _removeLocalTest(id);
                 persistTestsCacheSnapshot();
                 if (typeof window.renderTests === 'function') {
