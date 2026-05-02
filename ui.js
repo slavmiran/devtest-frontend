@@ -689,7 +689,7 @@ function getUserTestingDay(startDate) {
 }
 
 function isMandatoryScreenshotDay(testingDay) {
-    return [1, 7, 14].includes(testingDay);
+    return [1, 4, 7, 10, 14].includes(testingDay);
 }
 
 function getOwnerActiveStatus(lastOwnerActivity) {
@@ -821,7 +821,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
     }
     if (typeof userTestingDay === 'number' && userTestingDay > 0) {
         const dayText = t.myTestDayShort.replace('{days}', userTestingDay);
-        const isScreenshot = [1, 7, 14].includes(userTestingDay);
+        const isScreenshot = isMandatoryScreenshotDay(userTestingDay);
         const screenshotIcon = isScreenshot ? ' 📸' : '';
         const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip accent-blue';
         parts.push(`<button class="${chipClass}" onclick="event.stopPropagation(); showTestDayPopup(${userTestingDay})">${dayText}${screenshotIcon}</button>`);
@@ -1444,6 +1444,7 @@ function renderTests(force) {
 
     myTests.forEach((test) => {
         const isPendingCompletion = !!test.is_pending_completion;
+            const isPendingForTester = isPendingCompletion && Number(test.testing_days || 0) >= 15;
         const isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' && !isPendingCompletion;
         // Skip archived cards with no actionable state (no grant, no early finish bonus).
         // This prevents cards from hanging in My Tests when neither reward applies.
@@ -1463,11 +1464,11 @@ function renderTests(force) {
         // - If isGrantAvailableTomorrow: move to done list (grant pending)
         // - Else if status='done': go to done list
         // - Else: go to active list
-        const shouldShowInActiveList = test.isReadyToClaim || test.isEarlyFinish || isPendingCompletion || (test.status !== 'done' && !test.isGrantAvailableTomorrow);
-        const shouldShowInDoneList = !isPendingCompletion && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
+        const shouldShowInActiveList = test.isReadyToClaim || test.isEarlyFinish || isPendingForTester || (test.status !== 'done' && !test.isGrantAvailableTomorrow);
+        const shouldShowInDoneList = !isPendingForTester && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
         
         card.className = shouldShowInDoneList ? 'card card-done' : 'card';
-        if (isPendingCompletion) {
+        if (isPendingForTester) {
             card.className += ' card-pending-release';
         }
         card.id = `test-card-${test.id}`;
@@ -1499,7 +1500,7 @@ function renderTests(force) {
                 || String(test.progress_status || 'active').toLowerCase() !== 'active';
             
             let secondaryActions = '';
-            if (isPendingCompletion) {
+            if (isPendingForTester) {
                 secondaryActions = pendingReleaseButtonHtml;
             } else if (!isArchivedClaimCard) {
                 secondaryActions = `
@@ -1533,7 +1534,7 @@ function renderTests(force) {
                 </button>
                 ${secondaryActions ? `<div class="action-row" style="gap: 8px;">${secondaryActions}</div>` : ''}
             `;
-        } else if (isPendingCompletion) {
+        } else if (isPendingForTester) {
             actionsHtml = pendingReleaseButtonHtml;
         } else if (test.isGrantAvailableTomorrow) {
             actionsHtml = `
@@ -1635,7 +1636,7 @@ function renderTests(force) {
         }
 
         const headerActions = [];
-        if (test.status !== 'done' && !test.isReadyToClaim && !isPendingCompletion) {
+        if (test.status !== 'done' && !test.isReadyToClaim && !isPendingForTester) {
             if (userTestingDay >= 15) {
                 headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #30d158;" onclick="openOvertimeModal(${test.id}, event)">🔄</button>`);
             } else {
@@ -2605,7 +2606,7 @@ function renderProjects(force) {
                         testerStatusClass = 'is-orange';
                         testerStatusIcon = '🟠';
                         testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
-                        showBell = daysDiff >= 3;
+                        showBell = false;
                     } else {
                         testerStatusClass = 'is-red';
                         testerStatusIcon = '🔴';
@@ -2626,7 +2627,7 @@ function renderProjects(force) {
                 }
 
                 let screenshotDayHtml = '';
-                if ([1, 7, 14].includes(testerDay)) {
+                if (isMandatoryScreenshotDay(testerDay)) {
                     screenshotDayHtml = `<span class="tester-icon-action" onclick="event.stopPropagation(); showScreenshotDayAlert()">📸</span>`;
                 }
 

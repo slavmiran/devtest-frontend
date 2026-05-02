@@ -2641,7 +2641,7 @@ function _mapTestsFromApi(data) {
         var skipsCount = countGrantSkips(app);
         var canEverClaim = !app.grant_claimed && skipsCount <= 3 && app.progress_id;
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
-        var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || ((isArchivedOrCompleted || isPendingCompletion) && testingDays >= 14)));
+        var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
         // Early finish: archived app qualifies for bonus (>=5 days tested, <=1 skip).
         // Cards that don't meet these criteria are excluded on the backend and skipped here too.
         var isEarlyFinish = !!(isArchivedOrCompleted && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays >= 5 && skipsCount <= 1);
@@ -2725,7 +2725,7 @@ function recomputeLocalTestState(test) {
     var canEverClaim = !test.grant_claimed && skipsCount <= 3 && test.progress_id;
 
     test.isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
-    test.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || ((isArchivedOrCompleted || isPendingCompletion) && testingDays >= 14)));
+    test.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
     test.isEarlyFinish = !!(isArchivedOrCompleted && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && testingDays >= 5 && skipsCount <= 1);
     test.is_pending_completion = isPendingCompletion;
 
