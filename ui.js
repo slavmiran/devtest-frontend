@@ -2173,7 +2173,7 @@ function renderGuestInviteModal() {
     });
     const hasEligibleProject = inviterProjects.length > 0;
     const hasOwnerUsername = !!ownerUsername;
-    const disabled = _guestInviteSending || !hasEligibleProject || !hasOwnerUsername;
+    const disabled = _guestInviteSending || !hasOwnerUsername;
     const noteKey = !hasOwnerUsername
         ? 'guestInviteNoUsername'
         : (!hasEligibleProject ? 'guestInviteNeedsProject' : 'guestInviteReady');
@@ -2264,7 +2264,11 @@ async function sendGuestProjectInvite() {
         return !!project && (mode === 'mutual' || mode === 'hybrid');
     });
     if (!inviterProjects.length) {
-        showToast(window.t('guestInviteNeedsProject', {}, lang));
+        if (window.tg && typeof window.tg.showAlert === 'function') {
+            window.tg.showAlert(window.t('guestInviteNeedsProject', {}, lang));
+        } else {
+            showToast(window.t('guestInviteNeedsProject', {}, lang));
+        }
         return;
     }
 
