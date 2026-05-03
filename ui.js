@@ -872,6 +872,16 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             const reviewClass = 'meta-chip accent-yellow';
             parts.push(`<button class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${reviewLabel}</button>`);
         }
+        const rewardsSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : null;
+        const rewardsKarma = Number(rewardsSummary && rewardsSummary.total_karma || 0);
+        const rewardsBust = Number(rewardsSummary && rewardsSummary.total_bust || 0);
+        if (rewardsKarma > 0 || rewardsBust > 0) {
+            const rewardLabel = window.escapeHTML(window.t('appRewardsChipLabel', {
+                karma: formatAmountValue(rewardsKarma, 1),
+                bust: formatAmountValue(rewardsBust, 1),
+            }, lang));
+            parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
+        }
         const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
         const ownerLastSeenValue = window.escapeInlineJsString ? window.escapeInlineJsString(String(test.last_owner_activity || '')) : String(test.last_owner_activity || '').replace(/'/g, "\\'");
         const ownerChip = ownerActive
@@ -2949,6 +2959,7 @@ function renderCheckinReviewOptions() {
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
     var canToggle = typeof window.canTogglePlayReview === 'function' ? window.canTogglePlayReview(test) : false;
     var isMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
+    var reviewRejected = !!(test && test.rewards_summary && test.rewards_summary.review_rejected);
     if (!canToggle && !isMarked) {
         mount.innerHTML = '';
         mount.style.display = 'none';
@@ -2966,6 +2977,8 @@ function renderCheckinReviewOptions() {
                     <input id="checkin-review-checkbox" type="checkbox" ${isMarked ? 'checked' : ''} onchange="toggleCheckinReviewCheckbox(this)">
                     <span>${window.escapeHTML(window.t('playReviewCheckboxLabel', {}, lang))}</span>
                 </label>
+                <div style="font-size: 12px; color: var(--hint-color); margin-top: 4px;">${window.escapeHTML(window.t('playReviewRequiresScreenshotHint', {}, lang))}</div>
+                ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 4px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}
                 <button type="button" class="btn btn-secondary review-info-btn" onclick="openPlayReviewModalFromCheckinOptions(event)">ℹ️ ${window.escapeHTML(window.t('detailsBtn', {}, lang))}</button>
             </div>
         </div>
@@ -2981,6 +2994,7 @@ function renderPlayReviewModal() {
         return;
     }
     var isMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
+    var reviewRejected = !!(test.rewards_summary && test.rewards_summary.review_rejected);
     var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
     var safeAppName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
     body.innerHTML = `
@@ -2993,6 +3007,8 @@ function renderPlayReviewModal() {
                 <input id="play-review-modal-checkbox" type="checkbox" ${isMarked ? 'checked' : ''} onchange="togglePlayReviewModalCheckbox(this)">
                 <span>${window.escapeHTML(window.t('playReviewCheckboxLabel', {}, lang))}</span>
             </label>
+            <div style="font-size: 12px; color: var(--hint-color); margin-top: 4px;">${window.escapeHTML(window.t('playReviewRequiresScreenshotHint', {}, lang))}</div>
+            ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 6px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}
             <button type="button" class="btn" onclick="openPlayReviewStore()" ${reviewUrl ? '' : 'disabled'}>
                 ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
             </button>
@@ -3109,6 +3125,30 @@ function openPlayReviewStore() {
         return;
     }
     window.open(url, '_blank', 'noopener');
+}
+
+function openPlayReviewStoreByAppId(appId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (typeof window.getPlayReviewUrl !== 'function') return false;
+    var url = window.getPlayReviewUrl(appId);
+    if (!url) {
+        if (window.tg && typeof window.tg.showAlert === 'function') {
+            window.tg.showAlert(window.t('playReviewMissingLink', {}, lang));
+        } else {
+            alert(window.t('playReviewMissingLink', {}, lang));
+        }
+        return false;
+    }
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    if (window.tg && typeof window.tg.openLink === 'function') {
+        window.tg.openLink(url);
+        return true;
+    }
+    window.open(url, '_blank', 'noopener');
+    return true;
 }
 
 function openIssueReportModal(appId) {
@@ -3925,6 +3965,7 @@ function getKarmaSourceLabel(sourceType) {
         bug_report: 'karmaSrc_bug_report',
         overtime_reward: 'karmaSrc_overtime_reward',
         owner_bonus: 'karmaSrc_owner_bonus',
+        play_review: 'karmaSrc_play_review',
         platform_feedback: 'karmaSrc_platform_feedback',
         penalty: 'karmaSrc_penalty',
         other: 'karmaSrc_other',
@@ -5161,6 +5202,13 @@ function openProjectDetailsModal(appId) {
     const potential = totalCheckins + left;
     const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
     const ownerKarma = Number.isFinite(Number(test.owner_karma)) ? Number(test.owner_karma) : 0;
+    const hasPlayReviewRequest = !!test.request_reviews;
+    const rewardsSummary = (test && test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
+    const reviewRejected = !!rewardsSummary.review_rejected;
+    const reviewMarked = !reviewRejected && !!(test.play_feedback_submitted || test.play_feedback_submitted_pending || rewardsSummary.review_marked);
+    const reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 0);
+    const reviewOwnerBoostBust = Number(rewardsSummary.review_owner_boost_bust || 0);
+    const reviewOwnerBoostKarma = Number(rewardsSummary.review_owner_boost_karma || 0);
 
     let currentGoogleDay = timelineMeta.currentGoogleDay;
     let projectDaysLeft = timelineMeta.projectDaysLeft;
@@ -5230,6 +5278,70 @@ function openProjectDetailsModal(appId) {
                 '<div style="margin-top:6px;">' + window.escapeHTML(window.t('contractHoldBonus', { amount: formatUiAmount(holdBonus, 1) }, lang)) + '</div>' +
                 '<div style="margin-top:6px; color: var(--hint-color);">' + window.escapeHTML(window.t('contractEarlyFinishNote', {}, lang)) + '</div>' +
             '</div>' +
+        '</div>';
+    }
+
+    var playReviewRequestHtml = '';
+    if (hasPlayReviewRequest) {
+        var reviewStatusHtml = reviewMarked
+            ? '<span class="meta-chip accent-green">✅ ' + window.escapeHTML(window.t('playReviewDetailsCompletedChip', {}, lang)) + '</span>'
+            : '<span class="meta-chip">⏳ ' + window.escapeHTML(window.t('playReviewDetailsPendingChip', {}, lang)) + '</span>';
+        var reviewRewardParts = [];
+        if (reviewPlatformKarma > 0) {
+            reviewRewardParts.push(window.escapeHTML(window.t('playReviewDetailsPlatformReward', { amount: formatAmountValue(reviewPlatformKarma, 1) }, lang)));
+        }
+        if (reviewOwnerBoostBust > 0 || reviewOwnerBoostKarma > 0) {
+            reviewRewardParts.push(window.escapeHTML(window.t('playReviewDetailsOwnerReward', {
+                bust: formatAmountValue(reviewOwnerBoostBust, 1),
+                karma: formatAmountValue(reviewOwnerBoostKarma, 1),
+            }, lang)));
+        }
+        var reviewRejectedHtml = reviewRejected
+            ? '<div style="font-size:13px; line-height:1.55; color:#ff6b6b; margin-top: 8px;">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>'
+            : '';
+        var reviewRewardHtml = reviewRewardParts.length
+            ? '<div style="font-size:13px; line-height:1.55; color: var(--hint-color); margin-top: 8px;">' + reviewRewardParts.join('<br>') + '</div>'
+            : '<div style="font-size:13px; line-height:1.55; color: var(--hint-color); margin-top: 8px;">' + window.escapeHTML(window.t('playReviewDetailsNoRewardYet', {}, lang)) + '</div>';
+        playReviewRequestHtml = '<div class="details-block">' +
+            '<div class="detail-section-title">⭐ ' + window.escapeHTML(window.t('playReviewDetailsTitle', {}, lang)) + '</div>' +
+            '<div style="font-size:13px; line-height:1.65; color: var(--text-color); margin-top: 6px;">' + window.escapeHTML(window.t('playReviewDetailsText', {}, lang)) + '</div>' +
+            '<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">' + reviewStatusHtml + '</div>' +
+            reviewRewardHtml +
+            reviewRejectedHtml +
+            '<button class="btn btn-secondary" style="width:100%; margin-top:10px; background-color: rgba(52,199,89,0.12); color: var(--text-color); border: 1px solid rgba(52,199,89,0.24);" onclick="openPlayReviewStoreByAppId(' + Number(test.id) + ', event)">' +
+                window.escapeHTML(window.t('playReviewDetailsOpenBtn', {}, lang)) +
+            '</button>' +
+        '</div>';
+    }
+
+    var rewardsByAppHtml = '';
+    var checkinKarma = Number(rewardsSummary.checkin_karma || 0);
+    var ownerKarmaTotal = Number(rewardsSummary.owner_karma_total || 0);
+    var feedbackKarma = Number(rewardsSummary.feedback_karma || 0);
+    var feedbackBust = Number(rewardsSummary.feedback_bust || 0);
+    var totalKarma = Number(rewardsSummary.total_karma || 0);
+    var totalBust = Number(rewardsSummary.total_bust || 0);
+    var rewardsRows = [];
+    if (checkinKarma > 0) {
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsCheckinKarma', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(checkinKarma, 1)) + ' ☯️</span></div>');
+    }
+    if (ownerKarmaTotal > 0) {
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsOwnerKarma', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(ownerKarmaTotal, 1)) + ' ☯️</span></div>');
+    }
+    if (feedbackKarma > 0 || feedbackBust > 0) {
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsFeedback', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(feedbackKarma, 1)) + ' ☯️ / +' + window.escapeHTML(formatAmountValue(feedbackBust, 1)) + ' $BUST</span></div>');
+    }
+    if (reviewOwnerBoostBust > 0 || reviewOwnerBoostKarma > 0) {
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsReviewBoost', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(reviewOwnerBoostKarma, 1)) + ' ☯️ / +' + window.escapeHTML(formatAmountValue(reviewOwnerBoostBust, 1)) + ' $BUST</span></div>');
+    }
+    if (reviewPlatformKarma > 0) {
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsReviewPlatform', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(reviewPlatformKarma, 1)) + ' ☯️</span></div>');
+    }
+    if (rewardsRows.length > 0) {
+        rewardsByAppHtml = '<div class="details-block">' +
+            '<div class="detail-section-title">🎁 ' + window.escapeHTML(window.t('appRewardsTitle', {}, lang)) + '</div>' +
+            rewardsRows.join('') +
+            '<div style="margin-top:8px; font-size:13px; color:var(--hint-color);">' + window.escapeHTML(window.t('appRewardsTotals', { karma: formatAmountValue(totalKarma, 1), bust: formatAmountValue(totalBust, 1) }, lang)) + '</div>' +
         '</div>';
     }
 
@@ -5332,6 +5444,10 @@ function openProjectDetailsModal(appId) {
         instructionsHtml +
 
         economicsHtml +
+
+        playReviewRequestHtml +
+
+        rewardsByAppHtml +
 
         '<div class="detail-actions">' +
             '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openTelegramProfile(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +

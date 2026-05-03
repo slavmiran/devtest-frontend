@@ -78,6 +78,8 @@ var _earnEarlyFinishCount = 0;
 var _earnEarlyFinishBust = 0;
 var _earnFeedbackCount = 0;
 var _earnFeedbackBust = 0;
+var _earnPlayReviewCount = 0;
+var _earnPlayReviewKarma = 0;
 var _feedbackType = 'bug';
 var _inviteProjectId = null;
 var archivedProjects = [];
@@ -2650,6 +2652,7 @@ function _mapTestsFromApi(data) {
             status = 'done';
         }        
         return {
+            reviewRejected: !!(app && app.rewards_summary && app.rewards_summary.review_rejected),
             id: app.app_id,
             progress_id: app.progress_id,
             name: app.name,
@@ -2687,9 +2690,48 @@ function _mapTestsFromApi(data) {
             has_clicked_store: existingTest ? !!existingTest.has_clicked_store : false,
             request_reviews: app.request_reviews !== false,
             play_feedback_submitted: !!app.play_feedback_submitted,
-            play_feedback_submitted_pending: existingTest
-                ? !!(existingTest.play_feedback_submitted_pending || existingTest.play_feedback_submitted)
-                : !!app.play_feedback_submitted,
+            rewards_summary: (app && typeof app.rewards_summary === 'object' && app.rewards_summary)
+                ? {
+                    checkin_karma: Number(app.rewards_summary.checkin_karma || 0),
+                    review_platform_karma: Number(app.rewards_summary.review_platform_karma || 0),
+                    owner_karma_good: Number(app.rewards_summary.owner_karma_good || 0),
+                    owner_karma_bug: Number(app.rewards_summary.owner_karma_bug || 0),
+                    owner_karma_overtime: Number(app.rewards_summary.owner_karma_overtime || 0),
+                    owner_karma_total: Number(app.rewards_summary.owner_karma_total || 0),
+                    feedback_karma: Number(app.rewards_summary.feedback_karma || 0),
+                    feedback_bust: Number(app.rewards_summary.feedback_bust || 0),
+                    review_owner_boost_bust: Number(app.rewards_summary.review_owner_boost_bust || 0),
+                    review_owner_boost_karma: Number(app.rewards_summary.review_owner_boost_karma || 0),
+                    review_owner_boost_count: Number(app.rewards_summary.review_owner_boost_count || 0),
+                    review_marked: !!app.rewards_summary.review_marked,
+                    review_rejected: !!app.rewards_summary.review_rejected,
+                    total_karma: Number(app.rewards_summary.total_karma || 0),
+                    total_bust: Number(app.rewards_summary.total_bust || 0),
+                }
+                : {
+                    checkin_karma: 0,
+                    review_platform_karma: 0,
+                    owner_karma_good: 0,
+                    owner_karma_bug: 0,
+                    owner_karma_overtime: 0,
+                    owner_karma_total: 0,
+                    feedback_karma: 0,
+                    feedback_bust: 0,
+                    review_owner_boost_bust: 0,
+                    review_owner_boost_karma: 0,
+                    review_owner_boost_count: 0,
+                    review_marked: !!app.play_feedback_submitted,
+                    review_rejected: false,
+                    total_karma: 0,
+                    total_bust: 0,
+                },
+            play_feedback_submitted_pending: (function() {
+                if (!!(app && app.rewards_summary && app.rewards_summary.review_rejected)) return false;
+                if (existingTest) {
+                    return !!(existingTest.play_feedback_submitted_pending || existingTest.play_feedback_submitted);
+                }
+                return !!app.play_feedback_submitted;
+            })(),
             owner_language: app.owner_language || null,
             isTestedToday: isTestedToday,
             isGrantAvailableTomorrow: isGrantAvailableTomorrow,
@@ -2762,6 +2804,9 @@ function isPlayReviewMarked(testOrAppId) {
     var test = typeof testOrAppId === 'object'
         ? testOrAppId
         : getMyTestById(testOrAppId);
+    if (test && test.rewards_summary && test.rewards_summary.review_rejected) {
+        return false;
+    }
     return !!(test && (test.play_feedback_submitted || test.play_feedback_submitted_pending));
 }
 
@@ -2774,13 +2819,91 @@ function getPlayReviewUrl(appId) {
 
 async function confirmPlayReviewMarking() {
     return new Promise(function(resolve) {
-        var message = window.t('playReviewConfirmPenalty', {}, lang);
-        if (tg && typeof tg.showConfirm === 'function') {
-            tg.showConfirm(message, function(ok) { resolve(!!ok); });
+        var modal = document.getElementById('play-review-confirm-modal');
+        var title = document.getElementById('t-playReviewConfirmTitle');
+        var text = document.getElementById('t-playReviewConfirmText');
+        var cancelBtn = document.getElementById('t-playReviewConfirmCancel');
+        var sendBtn = document.getElementById('t-playReviewConfirmSend');
+
+        if (!modal || !title || !text || !cancelBtn || !sendBtn) {
+            var message = window.t('playReviewConfirmPenalty', {}, lang);
+            if (tg && typeof tg.showConfirm === 'function') {
+                tg.showConfirm(message, function(ok) { resolve(!!ok); });
+                return;
+            }
+            resolve(confirm(message));
             return;
         }
-        resolve(confirm(message));
+
+        title.innerText = window.t('playReviewConfirmModalTitle', {}, lang);
+        text.innerText = window.t('playReviewConfirmPenalty', {}, lang);
+        cancelBtn.innerText = window.t('playReviewConfirmModalCancel', {}, lang);
+        sendBtn.innerText = window.t('playReviewConfirmModalSendDm', {}, lang);
+
+        function cleanup() {
+            modal.classList.remove('active');
+            modal.onclick = null;
+            cancelBtn.onclick = null;
+            sendBtn.onclick = null;
+        }
+
+        modal.onclick = function(event) {
+            if (event && event.target !== modal) return;
+            cleanup();
+            resolve(false);
+        };
+        cancelBtn.onclick = function(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            cleanup();
+            resolve(false);
+        };
+        sendBtn.onclick = function(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            cleanup();
+            resolve(true);
+        };
+
+        modal.classList.add('active');
     });
+}
+
+function openPlayReviewOwnerDm(appId) {
+    var test = getMyTestById(appId);
+    if (!test) return false;
+    var ownerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+    if (!ownerUsername) {
+        if (tg && typeof tg.showAlert === 'function') {
+            tg.showAlert(window.t('playReviewMissingOwnerLink', {}, lang));
+        } else {
+            alert(window.t('playReviewMissingOwnerLink', {}, lang));
+        }
+        return false;
+    }
+    var message = window.t('playReviewDmTemplate', {
+        app_name: String(test.name || window.t('unknownLabel', {}, lang)),
+    }, lang);
+    var dmUrl = `https://t.me/${ownerUsername}?text=${encodeURIComponent(message)}`;
+    try {
+        if (tg && typeof tg.openTelegramLink === 'function') {
+            tg.openTelegramLink(dmUrl);
+        } else if (tg && typeof tg.openLink === 'function') {
+            tg.openLink(dmUrl);
+        } else {
+            window.open(dmUrl, '_blank', 'noopener');
+        }
+        return true;
+    } catch (error) {
+        console.error('openPlayReviewOwnerDm error:', error);
+        return false;
+    }
 }
 
 async function setPlayReviewSubmittedPending(appId, nextValue) {
@@ -2798,9 +2921,16 @@ async function setPlayReviewSubmittedPending(appId, nextValue) {
             refreshOpenModals();
             return false;
         }
+        if (!openPlayReviewOwnerDm(appId)) {
+            refreshOpenModals();
+            return false;
+        }
     }
 
     test.play_feedback_submitted_pending = normalized || !!test.play_feedback_submitted;
+    if (test.rewards_summary && normalized) {
+        test.rewards_summary.review_rejected = false;
+    }
     persistTestsCacheSnapshot();
     if (typeof window.renderTests === 'function') {
         window.renderTests(true);
@@ -4107,6 +4237,13 @@ function renderEarnBustDynamic() {
         <span class="meta-chip accent-green">🐞 ${window.t('earnFeedbackCountChip', { count: _earnFeedbackCount }, lang)}</span>
         <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnFeedbackBust)}</span>
     `;
+    var playReviewStatus = document.getElementById('earn-play-review-status');
+    if (playReviewStatus) {
+        playReviewStatus.innerHTML = `
+            <span class="meta-chip accent-green">⭐ ${window.escapeHTML(window.t('earnPlayReviewCountChip', { count: _earnPlayReviewCount }, lang))}</span>
+            <span class="meta-chip accent-yellow">☯️ ${window.escapeHTML(window.t('earnPlayReviewKarmaChip', { amount: formatAmountValue(_earnPlayReviewKarma, 1) }, lang))}</span>
+        `;
+    }
     document.getElementById('earn-exchange-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnExchangeBust)}</span>`;
     const socialStatus = document.getElementById('earn-social-status');
     if (_socialBonusStatus === 'approved') {
@@ -4137,6 +4274,8 @@ async function openEarnBustModal() {
         _earnEarlyFinishBust = Number(data.early_finish_bust_earned || 0);
         _earnFeedbackCount = Number(data.feedback_sent_count || 0);
         _earnFeedbackBust = Number(data.feedback_bust_earned || 0);
+        _earnPlayReviewCount = Number(data.play_review_count || 0);
+        _earnPlayReviewKarma = Number(data.play_review_karma_earned || 0);
         _socialBonusStatus = data.social_bonus_status || 'none';
         renderEarnBustDynamic();
     } catch (error) {
