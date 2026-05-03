@@ -3243,8 +3243,11 @@ details[open] > summary .details-arrow {
 .detail-owner-status.online {
     color: #34c759;
 }
+.detail-owner-status.warm {
+    color: #ffd60a;
+}
 .detail-owner-status.offline {
-    color: var(--hint-color);
+    color: #ff6b6b;
 }
 .detail-actions {
     display: flex;

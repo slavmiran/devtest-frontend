@@ -693,11 +693,72 @@ function isMandatoryScreenshotDay(testingDay) {
 }
 
 function getOwnerActiveStatus(lastOwnerActivity) {
-    if (!lastOwnerActivity) return false;
+    return getOwnerActivityMeta(lastOwnerActivity).tone === 'online';
+}
+
+function getOwnerActivityMeta(lastOwnerActivity) {
+    if (!lastOwnerActivity) {
+        return {
+            tone: 'offline',
+            chipClass: 'accent-red',
+            detailClass: 'offline',
+            label: window.t('ownerInactiveText', {}, lang),
+        };
+    }
     const dt = new Date(lastOwnerActivity);
-    if (Number.isNaN(dt.getTime())) return false;
+    if (Number.isNaN(dt.getTime())) {
+        return {
+            tone: 'offline',
+            chipClass: 'accent-red',
+            detailClass: 'offline',
+            label: window.t('ownerInactiveText', {}, lang),
+        };
+    }
     const diffMs = Date.now() - dt.getTime();
-    return diffMs <= (24 * 60 * 60 * 1000);
+    if (diffMs < (24 * 60 * 60 * 1000)) {
+        return {
+            tone: 'online',
+            chipClass: 'accent-green',
+            detailClass: 'online',
+            label: window.t('ownerActiveRecentText', {}, lang),
+        };
+    }
+    if (diffMs < (72 * 60 * 60 * 1000)) {
+        return {
+            tone: 'warm',
+            chipClass: 'accent-yellow',
+            detailClass: 'warm',
+            label: window.t('ownerSeen13DaysText', {}, lang),
+        };
+    }
+    return {
+        tone: 'offline',
+        chipClass: 'accent-red',
+        detailClass: 'offline',
+        label: window.t('ownerInactiveText', {}, lang),
+    };
+}
+
+function getRewardsChipLabel(rewardsSummary) {
+    const rewardsKarma = Number(rewardsSummary && rewardsSummary.total_karma || 0);
+    const rewardsBust = Number(rewardsSummary && rewardsSummary.total_bust || 0);
+    if (rewardsKarma <= 0 && rewardsBust <= 0) {
+        return '';
+    }
+    if (rewardsKarma > 0 && rewardsBust > 0) {
+        return window.t('appRewardsChipLabel', {
+            karma: formatAmountValue(rewardsKarma, 1),
+            bust: formatAmountValue(rewardsBust, 1),
+        }, lang);
+    }
+    if (rewardsKarma > 0) {
+        return window.t('appRewardsChipKarmaOnly', {
+            karma: formatAmountValue(rewardsKarma, 1),
+        }, lang);
+    }
+    return window.t('appRewardsChipBustOnly', {
+        bust: formatAmountValue(rewardsBust, 1),
+    }, lang);
 }
 
 function getOwnerLastSeenToastText(lastOwnerActivity) {
@@ -873,20 +934,14 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             parts.push(`<button class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${reviewLabel}</button>`);
         }
         const rewardsSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : null;
-        const rewardsKarma = Number(rewardsSummary && rewardsSummary.total_karma || 0);
-        const rewardsBust = Number(rewardsSummary && rewardsSummary.total_bust || 0);
-        if (rewardsKarma > 0 || rewardsBust > 0) {
-            const rewardLabel = window.escapeHTML(window.t('appRewardsChipLabel', {
-                karma: formatAmountValue(rewardsKarma, 1),
-                bust: formatAmountValue(rewardsBust, 1),
-            }, lang));
+        const rewardChipLabel = getRewardsChipLabel(rewardsSummary);
+        if (rewardChipLabel) {
+            const rewardLabel = window.escapeHTML(rewardChipLabel);
             parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
         }
-        const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
+        const ownerActivity = getOwnerActivityMeta(test.last_owner_activity);
         const ownerLastSeenValue = window.escapeInlineJsString ? window.escapeInlineJsString(String(test.last_owner_activity || '')) : String(test.last_owner_activity || '').replace(/'/g, "\\'");
-        const ownerChip = ownerActive
-            ? `<button class="meta-chip accent-green" onclick="event.stopPropagation(); showOwnerLastSeenToast('${ownerLastSeenValue}')">${t.ownerOnlineText}</button>`
-            : `<button class="meta-chip accent-red" onclick="event.stopPropagation(); showOwnerLastSeenToast('${ownerLastSeenValue}')">${t.ownerOfflineText}</button>`;
+        const ownerChip = `<button class="meta-chip ${ownerActivity.chipClass}" onclick="event.stopPropagation(); showOwnerLastSeenToast('${ownerLastSeenValue}')">${window.escapeHTML(ownerActivity.label)}</button>`;
         parts.push(ownerChip);
         if (isProjectSynced(test)) {
             parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${t.syncDoneText}</button>`);
@@ -3085,6 +3140,12 @@ async function togglePlayReviewModalCheckbox(input) {
     await window.setPlayReviewSubmittedPending(_playReviewModalAppId, !!(input && input.checked));
 }
 
+async function toggleProjectDetailsReviewCheckbox(input, appId) {
+    if (!appId || typeof window.setPlayReviewSubmittedPending !== 'function') return;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    await window.setPlayReviewSubmittedPending(appId, !!(input && input.checked));
+}
+
 function openPlayReviewModal(appId, event) {
     if (event) {
         event.preventDefault();
@@ -4709,7 +4770,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     var finishDate = new Date(todayDate);
     finishDate.setDate(finishDate.getDate() + leftDays);
     var hasSync = syncDay > 1;
-    var ownerActive = getOwnerActiveStatus(project.last_owner_activity);
+    var ownerActivity = getOwnerActivityMeta(project.last_owner_activity);
     var reliabilityState = getDossierReliabilityState(profile || {});
     var reliabilityLine = reliabilityState.expected >= 42
         ? window.t('dossierOwnerReliability', { pct: reliabilityState.reliabilityPct, status: reliabilityState.reliabilityText }, lang)
@@ -4775,8 +4836,8 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
                 getAvatar(project.owner_username || '?') +
                 '<div>' +
                     '<div class="detail-owner-name">' + ownerDisplay + '</div>' +
-                    '<div class="detail-owner-status ' + (ownerActive ? 'online' : 'offline') + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(project.last_owner_activity || '') + '\')">' +
-                        (ownerActive ? window.t('ownerOnlineText', {}, lang) : window.t('ownerOfflineText', {}, lang)) +
+                    '<div class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(project.last_owner_activity || '') + '\')">' +
+                        window.escapeHTML(ownerActivity.label) +
                     '</div>' +
                 '</div>' +
             '</div>' +
@@ -4791,7 +4852,10 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         '</div>';
 
     var modal = document.getElementById('project-details-modal');
-    if (modal) modal.classList.add('active');
+    if (modal) {
+        modal.dataset.appId = '';
+        modal.classList.add('active');
+    }
 }
 
 async function openDossierModal(username, testerId, appId) {
@@ -5200,12 +5264,14 @@ function openProjectDetailsModal(appId) {
         ? Math.max(0, 14 - Number(test.google_sync_day || 0))
         : Math.max(0, 14 - daysSinceCreated);
     const potential = totalCheckins + left;
-    const ownerActive = getOwnerActiveStatus(test.last_owner_activity);
+    const ownerActivity = getOwnerActivityMeta(test.last_owner_activity);
     const ownerKarma = Number.isFinite(Number(test.owner_karma)) ? Number(test.owner_karma) : 0;
     const hasPlayReviewRequest = !!test.request_reviews;
     const rewardsSummary = (test && test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
     const reviewRejected = !!rewardsSummary.review_rejected;
-    const reviewMarked = !reviewRejected && !!(test.play_feedback_submitted || test.play_feedback_submitted_pending || rewardsSummary.review_marked);
+    const reviewConfirmed = !reviewRejected && !!(test.play_feedback_submitted || rewardsSummary.review_marked);
+    const reviewPending = !reviewRejected && !reviewConfirmed && !!test.play_feedback_submitted_pending;
+    const reviewMarked = reviewConfirmed || reviewPending;
     const reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 0);
     const reviewOwnerBoostBust = Number(rewardsSummary.review_owner_boost_bust || 0);
     const reviewOwnerBoostKarma = Number(rewardsSummary.review_owner_boost_karma || 0);
@@ -5283,9 +5349,13 @@ function openProjectDetailsModal(appId) {
 
     var playReviewRequestHtml = '';
     if (hasPlayReviewRequest) {
-        var reviewStatusHtml = reviewMarked
-            ? '<span class="meta-chip accent-green">✅ ' + window.escapeHTML(window.t('playReviewDetailsCompletedChip', {}, lang)) + '</span>'
-            : '<span class="meta-chip">⏳ ' + window.escapeHTML(window.t('playReviewDetailsPendingChip', {}, lang)) + '</span>';
+        var reviewStatusHtml = reviewRejected
+            ? '<span class="meta-chip accent-red">❌ ' + window.escapeHTML(window.t('playReviewDetailsRejectedChip', {}, lang)) + '</span>'
+            : (reviewConfirmed
+                ? '<span class="meta-chip accent-green">✅ ' + window.escapeHTML(window.t('playReviewDetailsCompletedChip', {}, lang)) + '</span>'
+                : (reviewPending
+                    ? '<span class="meta-chip accent-yellow">⏳ ' + window.escapeHTML(window.t('playReviewDetailsPendingChip', {}, lang)) + '</span>'
+                    : '<span class="meta-chip">⭐ ' + window.escapeHTML(window.t('playReviewDetailsNotSubmittedChip', {}, lang)) + '</span>'));
         var reviewRewardParts = [];
         if (reviewPlatformKarma > 0) {
             reviewRewardParts.push(window.escapeHTML(window.t('playReviewDetailsPlatformReward', { amount: formatAmountValue(reviewPlatformKarma, 1) }, lang)));
@@ -5299,13 +5369,19 @@ function openProjectDetailsModal(appId) {
         var reviewRejectedHtml = reviewRejected
             ? '<div style="font-size:13px; line-height:1.55; color:#ff6b6b; margin-top: 8px;">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>'
             : '';
+        var reviewCheckboxHtml = '<label class="review-checkbox-row review-checkbox-row-modal" style="margin: 14px 0 0;">' +
+            '<input type="checkbox" ' + (reviewMarked ? 'checked ' : '') + (reviewConfirmed ? 'disabled ' : '') + 'onchange="toggleProjectDetailsReviewCheckbox(this, ' + Number(test.id) + ')">' +
+            '<span>' + window.escapeHTML(window.t('playReviewCheckboxLabel', {}, lang)) + '</span>' +
+        '</label>' +
+        '<div style="font-size:12px; color: var(--hint-color); margin-top: 4px;">' + window.escapeHTML(window.t('playReviewRequiresScreenshotHint', {}, lang)) + '</div>';
         var reviewRewardHtml = reviewRewardParts.length
             ? '<div style="font-size:13px; line-height:1.55; color: var(--hint-color); margin-top: 8px;">' + reviewRewardParts.join('<br>') + '</div>'
-            : '<div style="font-size:13px; line-height:1.55; color: var(--hint-color); margin-top: 8px;">' + window.escapeHTML(window.t('playReviewDetailsNoRewardYet', {}, lang)) + '</div>';
+            : '<div style="font-size:13px; line-height:1.55; color: var(--hint-color); margin-top: 8px;">' + window.escapeHTML(window.t(reviewPending || reviewConfirmed ? 'playReviewDetailsNoRewardYet' : 'playReviewDetailsStartHint', {}, lang)) + '</div>';
         playReviewRequestHtml = '<div class="details-block">' +
             '<div class="detail-section-title">⭐ ' + window.escapeHTML(window.t('playReviewDetailsTitle', {}, lang)) + '</div>' +
             '<div style="font-size:13px; line-height:1.65; color: var(--text-color); margin-top: 6px;">' + window.escapeHTML(window.t('playReviewDetailsText', {}, lang)) + '</div>' +
             '<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">' + reviewStatusHtml + '</div>' +
+            reviewCheckboxHtml +
             reviewRewardHtml +
             reviewRejectedHtml +
             '<button class="btn btn-secondary" style="width:100%; margin-top:10px; background-color: rgba(52,199,89,0.12); color: var(--text-color); border: 1px solid rgba(52,199,89,0.24);" onclick="openPlayReviewStoreByAppId(' + Number(test.id) + ', event)">' +
@@ -5430,8 +5506,8 @@ function openProjectDetailsModal(appId) {
                 getAvatar(test.owner_username || '?') +
                 '<div>' +
                     '<div class="detail-owner-name">' + displayOwner + '</div>' +
-                    '<div class="detail-owner-status ' + (ownerActive ? 'online' : 'offline') + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(test.last_owner_activity || '') + '\')">' +
-                        (ownerActive ? window.t('ownerOnlineText', {}, lang) : window.t('ownerOfflineText', {}, lang)) +
+                    '<div class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(test.last_owner_activity || '') + '\')">' +
+                        window.escapeHTML(ownerActivity.label) +
                     '</div>' +
                 '</div>' +
             '</div>' +
@@ -5465,6 +5541,7 @@ function openProjectDetailsModal(appId) {
 
     var modal = document.getElementById('project-details-modal');
     if (modal) {
+        modal.dataset.appId = String(Number(test.id) || '');
         modal.classList.add('active');
     }
 }
@@ -5473,6 +5550,7 @@ function closeProjectDetailsModal(event) {
     if (event && event.target !== event.currentTarget) return;
     var modal = document.getElementById('project-details-modal');
     if (modal) {
+        modal.dataset.appId = '';
         modal.classList.remove('active');
     }
 }
@@ -5708,6 +5786,7 @@ Object.assign(window, {
     toggleCheckinReviewCheckbox,
     renderPlayReviewModal,
     togglePlayReviewModalCheckbox,
+    toggleProjectDetailsReviewCheckbox,
     openPlayReviewModal,
     openPlayReviewModalFromCheckinOptions,
     closePlayReviewModal,

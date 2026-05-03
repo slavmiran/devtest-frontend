@@ -2536,6 +2536,13 @@ function refreshOpenModals() {
     if (playReviewModal && playReviewModal.classList.contains('active') && window.renderPlayReviewModal) {
         window.renderPlayReviewModal();
     }
+    const projectDetailsModal = document.getElementById('project-details-modal');
+    if (projectDetailsModal && projectDetailsModal.classList.contains('active') && window.openProjectDetailsModal) {
+        const activeProjectId = Number(projectDetailsModal.dataset.appId || 0);
+        if (activeProjectId > 0) {
+            window.openProjectDetailsModal(activeProjectId);
+        }
+    }
     const reliabilityAlphaModal = document.getElementById('reliability-alpha-modal');
     if (reliabilityAlphaModal && reliabilityAlphaModal.classList.contains('active')) {
         if (window.renderReliabilityAlphaModal) {
