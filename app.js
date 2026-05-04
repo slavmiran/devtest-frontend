@@ -4572,7 +4572,17 @@ function _handleInactiveCheckinCard(appId, errorCode) {
         ? 'projectPendingCompletionAlert'
         : 'archivedNoCheckinAlert';
 
-    _removeLocalTest(appId);
+    if (normalizedCode === 'project_pending_completion') {
+        var pendingTest = getMyTestById(appId);
+        if (pendingTest) {
+            pendingTest.app_status = 'pending_completion';
+            pendingTest.is_pending_completion = true;
+            recomputeLocalTestState(pendingTest);
+        }
+    } else {
+        _removeLocalTest(appId);
+    }
+
     persistTestsCacheSnapshot();
     if (typeof window.renderTests === 'function') {
         window.renderTests(true);
@@ -5416,7 +5426,15 @@ async function confirmStart(id) {
     const test = myTests.find(function(item) { return Number(item.id) === Number(id); });
     const shouldSubmitPlayFeedback = !!(test && canTogglePlayReview(test) && !test.play_feedback_submitted && test.play_feedback_submitted_pending);
     if (test) {
-        var isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' || String(test.progress_status || 'active').toLowerCase() !== 'active';
+        var appStatus = String(test.app_status || 'active').toLowerCase();
+        var progressStatus = String(test.progress_status || 'active').toLowerCase();
+        var isPendingCompletion = appStatus === 'pending_completion';
+        var isArchivedOrCompleted = (appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active';
+        if (isPendingCompletion) {
+            _pendingActions.delete(actionKey);
+            _handleInactiveCheckinCard(id, 'project_pending_completion');
+            return false;
+        }
         if (isArchivedOrCompleted) {
             // Grant-tomorrow state is invalid for archived/completed projects and can keep stale active cards.
             test.isGrantAvailableTomorrow = false;

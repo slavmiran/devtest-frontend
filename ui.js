@@ -1672,7 +1672,7 @@ function renderTests(force) {
 
     myTests.forEach((test) => {
         const isPendingCompletion = !!test.is_pending_completion;
-            const isPendingForTester = isPendingCompletion && Number(test.testing_days || 0) >= 15;
+        const isPendingForTester = isPendingCompletion && Number(test.testing_days || 0) >= 15;
         const isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' && !isPendingCompletion;
         // Skip archived cards with no actionable state (no grant, no early finish bonus).
         // This prevents cards from hanging in My Tests when neither reward applies.
@@ -1692,8 +1692,8 @@ function renderTests(force) {
         // - If isGrantAvailableTomorrow: move to done list (grant pending)
         // - Else if status='done': go to done list
         // - Else: go to active list
-        const shouldShowInActiveList = test.isReadyToClaim || test.isEarlyFinish || isPendingForTester || (test.status !== 'done' && !test.isGrantAvailableTomorrow);
-        const shouldShowInDoneList = !isPendingForTester && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
+        const shouldShowInActiveList = test.isReadyToClaim || test.isEarlyFinish || isPendingCompletion || (test.status !== 'done' && !test.isGrantAvailableTomorrow);
+        const shouldShowInDoneList = !isPendingCompletion && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
         
         card.className = shouldShowInDoneList ? 'card card-done' : 'card';
         if (isPendingForTester) {
@@ -1762,7 +1762,7 @@ function renderTests(force) {
                 </button>
                 ${secondaryActions ? `<div class="action-row" style="gap: 8px;">${secondaryActions}</div>` : ''}
             `;
-        } else if (isPendingForTester) {
+        } else if (isPendingCompletion) {
             actionsHtml = pendingReleaseButtonHtml;
         } else if (test.isGrantAvailableTomorrow) {
             actionsHtml = `
