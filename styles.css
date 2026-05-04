@@ -315,8 +315,12 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     border-bottom: 1px solid rgba(142, 142, 147, 0.1);
 }
 
-.tester-list li:last-child {
+.tester-list li:last-child:not(.tester-list-cta-item) {
     border-bottom: none;
+}
+
+.tester-list .tester-list-cta-item:last-child {
+    border-bottom: 1px dashed rgba(10, 132, 255, 0.38);
 }
 
 .tester-list-cta-only {

@@ -2240,6 +2240,7 @@ function handleApiError(code, details = {}) {
         invalid_start_date: 'err_grant_unavailable',
         invalid_google_group_url: 'invalid_google_group_url',
         testing_not_found: 'testing_not_found',
+        project_pending_completion: 'projectPendingCompletionAlert',
         feedback_not_found: 'feedback_not_found',
         feedback_forbidden: 'feedback_forbidden',
         feedback_already_processed: 'feedback_already_processed',
@@ -4554,6 +4555,27 @@ function _removeLocalTest(appId) {
     });
 }
 
+function _handleInactiveCheckinCard(appId, errorCode) {
+    var normalizedCode = String(errorCode || '').trim().toLowerCase();
+    var alertKey = normalizedCode === 'project_pending_completion'
+        ? 'projectPendingCompletionAlert'
+        : 'archivedNoCheckinAlert';
+
+    _removeLocalTest(appId);
+    persistTestsCacheSnapshot();
+    if (typeof window.renderTests === 'function') {
+        window.renderTests(true);
+    }
+
+    if (tg.showAlert) {
+        tg.showAlert(window.t(alertKey, {}, lang));
+    } else if (typeof window.showToast === 'function') {
+        window.showToast(window.t(alertKey, {}, lang));
+    }
+
+    loadTasks(true).catch(function() {});
+}
+
 function _removeLocalTesterFromProject(appId, testerId) {
     var project = (myProjects || []).find(function(item) {
         return Number(item.id) === Number(appId);
@@ -5388,15 +5410,7 @@ async function confirmStart(id) {
             // Grant-tomorrow state is invalid for archived/completed projects and can keep stale active cards.
             test.isGrantAvailableTomorrow = false;
             _pendingActions.delete(actionKey);
-            if (!test.isReadyToClaim) {
-                _removeLocalTest(id);
-                persistTestsCacheSnapshot();
-                if (typeof window.renderTests === 'function') {
-                    window.renderTests(true);
-                }
-            }
-            if (tg.showAlert) tg.showAlert(window.t('archivedNoCheckinAlert', {}, lang));
-            loadTasks(true).catch(function() {});
+            _handleInactiveCheckinCard(id, 'app_not_found');
             return false;
         }
     }
@@ -5443,11 +5457,11 @@ async function confirmStart(id) {
 
             if (result && typeof result === 'object') {
                 var errorCode = getBackendErrorCode(result);
-                if (errorCode === 'testing_not_found') {
-                    _removeLocalTest(id);
-                    persistTestsCacheSnapshot();
-                    if (tg.showAlert) tg.showAlert(window.t('archivedNoCheckinAlert', {}, lang));
-                    loadTasks(true).catch(function() {});
+                if (errorCode === 'testing_not_found'
+                    || errorCode === 'app_not_found'
+                    || errorCode === 'test_or_app_not_found'
+                    || errorCode === 'project_pending_completion') {
+                    _handleInactiveCheckinCard(id, errorCode);
                 } else {
                     handleApiError(errorCode, result.details || {});
                 }
