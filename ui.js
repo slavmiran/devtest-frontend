@@ -2257,7 +2257,7 @@ function renderGuestProjectCard(item) {
                 </div>
             </div>
             <div class="guest-market-desc">${safeDescription}</div>
-            <button class="btn btn-primary" style="width:100%;" onclick="openGuestInviteModal('${safeGuestId}', event)">${window.escapeHTML(window.t('guestInviteBtn', {}, lang))}</button>
+            <button class="btn btn-primary guest-project-cta-btn" style="width:100%;" onclick="openGuestInviteModal('${safeGuestId}', event)">${window.escapeHTML(window.t('guestInviteBtn', {}, lang))}</button>
         </div>
     `;
 }
@@ -2791,6 +2791,16 @@ function renderProjects(force) {
             : '';
 
         let testersHtml = '';
+        const findTestersCtaHtml = `
+            <li class="tester-list-cta-item" onclick="event.stopPropagation(); openGuestProjectsTesterSearch(${project.id})">
+                <div class="tester-row-main">
+                    <span class="tester-cta-label">${window.escapeHTML(window.t('projectFindTestersCta', {}, lang))}</span>
+                </div>
+                <div class="tester-row-meta">
+                    <span class="tester-chevron">›</span>
+                </div>
+            </li>
+        `;
         if (project.testers && project.testers.length > 0) {
             testersHtml = '<ul class="tester-list">';
             project.testers.forEach((tester) => {
@@ -2891,9 +2901,9 @@ function renderProjects(force) {
                     </li>
                 `;
             });
-            testersHtml += '</ul>';
+            testersHtml += findTestersCtaHtml + '</ul>';
         } else {
-            testersHtml = `<p class="no-testers">${t.noTesters}</p>`;
+            testersHtml = `<p class="no-testers">${t.noTesters}</p><ul class="tester-list tester-list-cta-only">${findTestersCtaHtml}</ul>`;
         }
 
         const issueDate = accessIssueTester && accessIssueTester.issue_reported_at ? new Date(accessIssueTester.issue_reported_at) : null;

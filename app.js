@@ -466,6 +466,7 @@ var _guestProjectsLoadError = false;
 var _guestProjectsVisibleCount = GUEST_PROJECTS_PAGE_SIZE;
 var _guestProjectsFilters = { lang: 'ALL', category: 'ALL' };
 var _guestProjectsAvailableLangs = [];
+var _guestProjectTargetHighlightTimer = null;
 
 function setMarketForceSkeleton(enabled) {
     _marketForceSkeleton = !!enabled;
@@ -1333,6 +1334,91 @@ async function toggleGuestProjectsAccordion(forceExpanded) {
     }
     if (_guestProjectsExpanded) {
         await loadGuestApps({ force: !_guestProjectsLoadedOnce });
+    }
+}
+
+function _clearGuestProjectTargetHighlights() {
+    if (_guestProjectTargetHighlightTimer) {
+        clearTimeout(_guestProjectTargetHighlightTimer);
+        _guestProjectTargetHighlightTimer = null;
+    }
+    document.querySelectorAll('#guest-projects-list .guest-project-cta-btn.highlight-target').forEach(function(button) {
+        button.classList.remove('highlight-target');
+    });
+}
+
+function _applyGuestProjectTargetHighlights() {
+    const section = document.getElementById('guest-projects-section');
+    const list = document.getElementById('guest-projects-list');
+    const firstCard = list ? list.querySelector('[data-guest-app-id]') : null;
+    const targetButtons = list ? Array.from(list.querySelectorAll('.guest-project-cta-btn')) : [];
+    const scrollTarget = firstCard || section || list;
+
+    if (!scrollTarget) {
+        return false;
+    }
+
+    scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!targetButtons.length) {
+        _clearGuestProjectTargetHighlights();
+        return true;
+    }
+
+    _clearGuestProjectTargetHighlights();
+    targetButtons.forEach(function(button) {
+        button.classList.add('highlight-target');
+    });
+    _guestProjectTargetHighlightTimer = setTimeout(function() {
+        targetButtons.forEach(function(button) {
+            button.classList.remove('highlight-target');
+        });
+        _guestProjectTargetHighlightTimer = null;
+    }, 2600);
+    return true;
+}
+
+function _focusGuestProjectSearchTargets(attempt) {
+    const nextAttempt = Number(attempt || 0);
+    const list = document.getElementById('guest-projects-list');
+    const hasCards = !!(list && list.querySelector('[data-guest-app-id]'));
+
+    if (!hasCards && nextAttempt < 6) {
+        setTimeout(function() {
+            _focusGuestProjectSearchTargets(nextAttempt + 1);
+        }, 140);
+        return;
+    }
+
+    if (_applyGuestProjectTargetHighlights() && nextAttempt < 2) {
+        setTimeout(function() {
+            _applyGuestProjectTargetHighlights();
+        }, 420 * (nextAttempt + 1));
+    }
+}
+
+async function openGuestProjectsTesterSearch(projectId) {
+    const sourceProjectId = Number(projectId || 0);
+    try {
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        if (typeof window.switchTab === 'function') {
+            window.switchTab('market');
+        }
+        if (typeof window.switchMarketSubTab === 'function') {
+            window.switchMarketSubTab('seeking');
+        }
+
+        await toggleGuestProjectsAccordion(true);
+
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                _focusGuestProjectSearchTargets(0);
+            });
+        });
+    } catch (error) {
+        console.error('Open guest projects tester search failed sourceProject=' + sourceProjectId + ':', error);
+        if (typeof window.showToast === 'function') {
+            window.showToast(window.t('guestProjectsLoadError', {}, lang));
+        }
     }
 }
 
@@ -6084,6 +6170,7 @@ Object.assign(window, {
     confirmOvertimeLeave,
     openEarnBustModal,
     toggleGuestProjectsAccordion,
+    openGuestProjectsTesterSearch,
     updateGuestProjectsFilter,
     showMoreGuestProjects,
     getGuestProjectsPageSize,

@@ -319,6 +319,41 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     border-bottom: none;
 }
 
+.tester-list-cta-only {
+    margin-top: 8px;
+}
+
+.tester-list .tester-list-cta-item {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px dashed rgba(10, 132, 255, 0.38);
+    border-radius: 12px;
+    background: rgba(10, 132, 255, 0.08);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tester-list .tester-list-cta-item:hover {
+    background: rgba(10, 132, 255, 0.12);
+    border-color: rgba(10, 132, 255, 0.52);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(10, 132, 255, 0.12);
+}
+
+.tester-list .tester-list-cta-item .tester-row-main {
+    min-width: 0;
+}
+
+.tester-list .tester-list-cta-item .tester-chevron {
+    color: var(--link-color);
+    opacity: 0.72;
+}
+
+.tester-cta-label {
+    color: var(--link-color);
+    font-weight: 700;
+}
+
 .tester-link {
     color: var(--link-color);
     text-decoration: none;
@@ -2883,6 +2918,31 @@ html[dir="rtl"] .guest-filter-select {
     0% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.5); }
     50% { box-shadow: 0 0 16px 4px rgba(10, 132, 255, 0.3); }
     100% { box-shadow: none; }
+}
+
+@keyframes pulse-highlight {
+    0% {
+        box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.00), 0 0 0 0 rgba(48, 209, 88, 0.00);
+        transform: translateY(0);
+    }
+    35% {
+        box-shadow: 0 0 0 1px rgba(48, 209, 88, 0.48), 0 0 26px 6px rgba(48, 209, 88, 0.26);
+        transform: translateY(-1px);
+    }
+    70% {
+        box-shadow: 0 0 0 1px rgba(48, 209, 88, 0.28), 0 0 16px 2px rgba(48, 209, 88, 0.14);
+        transform: translateY(0);
+    }
+    100% {
+        box-shadow: none;
+        transform: translateY(0);
+    }
+}
+
+.highlight-target {
+    position: relative;
+    z-index: 1;
+    animation: pulse-highlight 0.9s ease-in-out 3;
 }
 
 @keyframes testCardHighlightPulse {
