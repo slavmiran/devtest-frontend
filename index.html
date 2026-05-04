@@ -19,9 +19,19 @@
     <div id="system-drop-menu" class="system-drop-menu">
         <div class="system-drop-content">
             <div class="system-drop-title" data-i18n="systemMenuTitle">Настройки и поддержка</div>
-            <div class="seg-control" style="margin-bottom: 12px;">
-                <button class="seg-btn" id="lang-btn-ru" onclick="applyLanguage('ru')">🇷🇺 RU</button>
-                <button class="seg-btn" id="lang-btn-en" onclick="applyLanguage('en')">🇬🇧 EN</button>
+            <div class="system-language-card">
+                <div class="system-language-card-title" data-i18n="appLanguageCardTitle">Язык приложения</div>
+                <div class="system-language-card-subtitle" data-i18n="appLanguageCardHint">Выберите родной интерфейс RU/EN или включите экспериментальный автоперевод Google.</div>
+                <div class="seg-control system-language-native-control">
+                    <button class="seg-btn" id="lang-btn-ru" onclick="applyLanguage('ru')" data-i18n="appLanguageNativeRu">🇷🇺 RU</button>
+                    <button class="seg-btn" id="lang-btn-en" onclick="applyLanguage('en')" data-i18n="appLanguageNativeEn">🇬🇧 EN</button>
+                </div>
+                <div class="system-language-divider" aria-hidden="true"></div>
+                <label class="system-language-select-shell" for="auto-translate-language">
+                    <span class="system-language-select-icon" aria-hidden="true">🌐</span>
+                    <select id="auto-translate-language" class="system-language-select" onchange="applyLanguage(this.value)"></select>
+                </label>
+                <div class="system-language-warning" data-i18n="appLanguageAutoTranslateWarning">Auto-translated by Google. May contain inaccuracies.</div>
             </div>
             <div class="system-setting-row">
                 <div class="system-setting-copy-wrap">
@@ -900,5 +910,7 @@
             <button class="popup-btn cancel" onclick="closeKarmaSelectPopup()" data-i18n="karmaSelectCancel">Отмена</button>
         </div>
     </div>
+    <div id="google_translate_element" style="display:none;"></div>
+    <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 </body>
 </html>

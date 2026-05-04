@@ -937,7 +937,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         const rewardChipLabel = getRewardsChipLabel(rewardsSummary);
         if (rewardChipLabel) {
             const rewardLabel = window.escapeHTML(rewardChipLabel);
-            parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
+            parts.push(`<button class="meta-chip accent-green notranslate" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
         }
         const ownerActivity = getOwnerActivityMeta(test.last_owner_activity);
         const ownerLastSeenValue = window.escapeInlineJsString ? window.escapeInlineJsString(String(test.last_owner_activity || '')) : String(test.last_owner_activity || '').replace(/'/g, "\\'");
@@ -1653,7 +1653,7 @@ function renderTests(force) {
                 ? window.t('earlyFinishPerfect', {}, lang)
                 : window.t('earlyFinishSkips', { count: efSkips }, lang);
             const efBonusNote = qualifies
-                ? `<div class="early-finish-bonus-badge">+25 $BUST</div>`
+                ? `<div class="early-finish-bonus-badge notranslate">+25 $BUST</div>`
                 : '';
             actionsHtml = `
                 <div class="early-finish-banner">
@@ -1729,7 +1729,7 @@ function renderTests(force) {
             // Bounty daily reward hint
             if (test.join_type === 'bounty' && test.bounty_per_tester > 0) {
                 var dailyReward = (test.bounty_per_tester * 0.65 / 14).toFixed(1);
-                actionsHtml += '<div style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">' + window.t('bountyDailyReward', { amount: dailyReward }, lang) + '</div>';
+                actionsHtml += '<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">' + window.t('bountyDailyReward', { amount: dailyReward }, lang) + '</div>';
             }
         } else if (test.status === 'done' && !test.isReadyToClaim) {
             // Done without claim opportunity (already claimed or ineligible)
@@ -1758,8 +1758,8 @@ function renderTests(force) {
                 <div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">
                     ${renderIcon(test.name, test.icon_url)}
                     <div class="card-info">
-                        <div class="card-title">${safeName}</div>
-                        <div class="card-subtitle">${safePackageLabel}</div>
+                        <div class="card-title notranslate">${safeName}</div>
+                        <div class="card-subtitle notranslate">${safePackageLabel}</div>
                     </div>
                 </div>
                 ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
@@ -1844,8 +1844,8 @@ function renderCompletedTests(completedTests) {
             <div class="card-header">
                 ${renderIcon(test.name, test.icon_url)}
                 <div class="card-info">
-                    <div class="card-title">${safeName}</div>
-                    <div class="card-subtitle">${safePackageLabel}</div>
+                    <div class="card-title notranslate">${safeName}</div>
+                    <div class="card-subtitle notranslate">${safePackageLabel}</div>
                 </div>
                 ${ownerBtnHtml}
             </div>
@@ -1874,8 +1874,8 @@ function renderCompletedTests(completedTests) {
 
 function getLangBadge(targetLang) {
     const langCode = String(targetLang || 'ALL').toUpperCase();
-    if (langCode === 'RU') return `<button type="button" class="lang-badge" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(getProjectLanguageToast('RU'))}')">🇷🇺</button>`;
-    if (langCode === 'EN') return `<button type="button" class="lang-badge" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(getProjectLanguageToast('EN'))}')">🇬🇧</button>`;
+    if (langCode === 'RU') return `<button type="button" class="lang-badge notranslate" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(getProjectLanguageToast('RU'))}')">🇷🇺</button>`;
+    if (langCode === 'EN') return `<button type="button" class="lang-badge notranslate" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(getProjectLanguageToast('EN'))}')">🇬🇧</button>`;
     return '';
 }
 
@@ -1887,7 +1887,7 @@ function renderFeedCard(item, kind) {
         ? `<span class="meta-chip accent-green">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
         : '';
     const bountyChip = kind === 'bounty'
-        ? `<span class="meta-chip accent-purple">💎 ${item.bounty_per_tester || 0} $BUST</span>`
+        ? `<span class="meta-chip accent-purple notranslate">💎 ${item.bounty_per_tester || 0} $BUST</span>`
         : '';
     const kindChip = kind === 'mutual-seeking'
         ? `<span class="meta-chip accent-green">👨‍💻 ${window.t('tabTestersNeeded', {}, lang)}</span>`
@@ -1965,8 +1965,8 @@ function renderFeedCard(item, kind) {
         <div class="market-card${isOwnProject ? ' market-card-own' : ''}" data-app-id="${item.app_id}">
             <div class="market-top">
                 <div>
-                    <div class="card-title">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
-                    <div class="market-owner" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
+                    <div class="card-title notranslate">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
+                    <div class="market-owner notranslate" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
                     ${langBadge}
@@ -2043,12 +2043,12 @@ function renderMutualReturns(apps, force) {
         return `
             <div class="horizontal-card mutual-return-card">
                 <div style="font-size:12px; color:var(--hint-color); margin-bottom:8px; line-height:1.4;">
-                    <button class="tester-link" style="background:none;border:none;padding:0;font-size:12px;cursor:pointer;color:var(--link-color);" onclick="openTesterDossier('${safeOwnerUsername}', ${app.owner_id}, ${app.app_id}); event.stopPropagation();">${displayOwner}</button><span>${contextText}</span>
+                    <button class="tester-link notranslate" style="background:none;border:none;padding:0;font-size:12px;cursor:pointer;color:var(--link-color);" onclick="openTesterDossier('${safeOwnerUsername}', ${app.owner_id}, ${app.app_id}); event.stopPropagation();">${displayOwner}</button><span class="notranslate">${contextText}</span>
                 </div>
                 <div class="mutual-return-card-head">
                     ${renderIcon(app.name || '', app.icon_url)}
                     <div class="mutual-return-card-main">
-                        <div class="card-title mutual-return-card-title">${appName}</div>
+                        <div class="card-title mutual-return-card-title notranslate">${appName}</div>
                         ${sourceBadge}
                     </div>
                 </div>
@@ -2117,11 +2117,11 @@ function renderGuestProjectCard(item) {
             <div class="market-top guest-market-top">
                 <div class="guest-market-title-wrap">
                     <div class="guest-market-headline">
-                        <div class="card-title guest-market-title">${appName}</div>
+                        <div class="card-title guest-market-title notranslate">${appName}</div>
                         <span class="guest-market-badge">${window.escapeHTML(window.t('guestCardBadge', {}, lang))}</span>
                         ${freshnessChip}
                     </div>
-                    <div class="market-owner">${window.escapeHTML(ownerLabel)}</div>
+                    <div class="market-owner notranslate">${window.escapeHTML(ownerLabel)}</div>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
                     ${langChip}
@@ -2244,13 +2244,13 @@ function renderGuestInviteModal() {
         : (!hasEligibleProject ? 'guestInviteNeedsProject' : 'guestInviteReady');
 
     body.innerHTML = `
-        <div class="guest-invite-note">${window.escapeHTML(window.t('guestInviteModalDesc', { owner_username: ownerUsername ? '@' + ownerUsername : window.t('unknownLabel', {}, lang) }, lang))}</div>
+        <div class="guest-invite-note notranslate">${window.escapeHTML(window.t('guestInviteModalDesc', { owner_username: ownerUsername ? '@' + ownerUsername : window.t('unknownLabel', {}, lang) }, lang))}</div>
         <div class="guest-invite-card">
             <div class="guest-invite-app-row">
                 ${renderIcon(packageName || '', null)}
                 <div class="guest-invite-app-meta">
-                    <div class="card-title guest-invite-app-title">${window.escapeHTML(packageName || window.t('unknownLabel', {}, lang))}</div>
-                    <div class="market-owner">${window.escapeHTML(ownerUsername ? '@' + ownerUsername : window.t('guestInviteOwnerMissing', {}, lang))}</div>
+                    <div class="card-title guest-invite-app-title notranslate">${window.escapeHTML(packageName || window.t('unknownLabel', {}, lang))}</div>
+                    <div class="market-owner notranslate">${window.escapeHTML(ownerUsername ? '@' + ownerUsername : window.t('guestInviteOwnerMissing', {}, lang))}</div>
                 </div>
             </div>
             <div class="guest-invite-language-row">
@@ -2265,7 +2265,7 @@ function renderGuestInviteModal() {
                 <div class="guest-invite-preview-caption">${window.escapeHTML(window.t('guestInvitePreviewCaption', {}, lang))}</div>
             </div>
             <div class="guest-invite-preview-shell">
-                <div class="guest-invite-preview-text">${previewHtml}</div>
+                <div class="guest-invite-preview-text notranslate">${previewHtml}</div>
             </div>
             <div class="guest-invite-help">${window.escapeHTML(window.t(noteKey, {}, lang))}</div>
             <button class="btn ${disabled ? 'btn-secondary disabled' : 'btn-primary'}" ${disabled ? 'disabled' : ''} style="width:100%;" onclick="sendGuestProjectInvite()">${window.escapeHTML(window.t(_guestInviteSending ? 'guestInviteSending' : 'guestInviteSendBtn', {}, lang))}</button>
@@ -2689,7 +2689,7 @@ function renderProjects(force) {
                     : '';
                 if (tester.username) {
                     cleanUsername = tester.username.replace('@', '');
-                    nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label">@${window.escapeHTML(cleanUsername)}</span></span>`;
+                    nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label notranslate">@${window.escapeHTML(cleanUsername)}</span></span>`;
                 } else {
                     nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-id">${window.t('idLabel', { id: tester.tester_id }, lang)}</span></span>`;
                 }
@@ -2792,7 +2792,7 @@ function renderProjects(force) {
             <div class="access-error-overlay" onclick="event.stopPropagation();">
                 <div class="access-error-panel" onclick="event.stopPropagation();">
                     <div class="access-error-title">🚨 <b>${window.escapeHTML(window.t('accessOverlayTitle', {}, lang))}</b></div>
-                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayTesterLine', { tester_nickname: testerLabel }, lang))}</div>
+                    <div class="access-error-text notranslate">${window.escapeHTML(window.t('accessOverlayTesterLine', { tester_nickname: testerLabel }, lang))}</div>
                     <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayDaysLeft', { days_left: daysLeft }, lang))}</div>
                     <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">${window.escapeHTML(window.t('accessOverlayGuideLink', {}, lang))}</a>
                     <div class="access-error-actions">
@@ -2904,8 +2904,8 @@ function renderProjects(force) {
             <div class="card-header" style="margin-bottom: 8px;">
                 ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
                 <div class="card-info">
-                    <div class="card-title">${safeProjectName}</div>
-                    <div class="card-subtitle">${safeProjectPackage}</div>
+                    <div class="card-title notranslate">${safeProjectName}</div>
+                    <div class="card-subtitle notranslate">${safeProjectPackage}</div>
                 </div>
                 <div class="project-header-actions">
                     <button class="project-icon-btn" onclick="openEditModal(${project.id})">✏️</button>
@@ -3816,7 +3816,7 @@ function getProjectFeedbackHeader(project) {
         <div class="detail-header" style="margin-bottom: 10px;">
             ${renderIcon((project && (project.name || project.package_name)) || '', project && project.icon_url)}
             <div class="card-info">
-                <div class="card-title">${safeName}</div>
+                <div class="card-title notranslate">${safeName}</div>
                 <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}</div>
             </div>
         </div>
@@ -3841,7 +3841,7 @@ function renderProjectFeedbackCards(project, items) {
         const usernameLabel = username ? '@' + window.escapeHTML(username) : '';
         const primaryAuthor = fullName || usernameLabel || window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang));
         const secondaryAuthor = fullName && usernameLabel ? usernameLabel : '';
-        const authorInnerHtml = `<span class="feedback-card-author-main">${primaryAuthor}</span>${secondaryAuthor ? `<span class="feedback-card-author-sub">${secondaryAuthor}</span>` : ''}`;
+        const authorInnerHtml = `<span class="feedback-card-author-main notranslate">${primaryAuthor}</span>${secondaryAuthor ? `<span class="feedback-card-author-sub notranslate">${secondaryAuthor}</span>` : ''}`;
         const authorHtml = username
             ? `<a href="javascript:void(0);" class="feedback-card-author" onclick="return openTelegramProfile('${safeUsername}', event)">${authorInnerHtml}</a>`
             : `<span class="feedback-card-author">${authorInnerHtml}</span>`;
@@ -3857,8 +3857,8 @@ function renderProjectFeedbackCards(project, items) {
             : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang));
         const rewardSummary = item.status !== 'new'
             ? `<div class="feedback-modal-summary" style="margin-top: 10px;">
-                    ${rewardBust > 0 ? `<span class="meta-chip accent-purple">💎 ${formatBustAmount(rewardBust)}</span>` : ''}
-                    ${rewardKarma > 0 ? `<span class="meta-chip accent-yellow">☯️ ${rewardKarma.toFixed(1)}</span>` : ''}
+                    ${rewardBust > 0 ? `<span class="meta-chip accent-purple notranslate">💎 ${formatBustAmount(rewardBust)}</span>` : ''}
+                    ${rewardKarma > 0 ? `<span class="meta-chip accent-yellow notranslate">☯️ ${rewardKarma.toFixed(1)}</span>` : ''}
                     <span class="meta-chip">${statusBadge}</span>
                </div>`
             : '';
@@ -3957,8 +3957,8 @@ function renderArchivedProjects(force) {
                 <div class="card-header archive-card-header">
                     ${renderIcon(archiveName, project.icon_url)}
                     <div class="card-info">
-                        <div class="card-title">${safeArchiveName}</div>
-                        <div class="card-subtitle">${safeArchivePackage}</div>
+                        <div class="card-title notranslate">${safeArchiveName}</div>
+                        <div class="card-subtitle notranslate">${safeArchivePackage}</div>
                     </div>
                     ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
                 </div>
@@ -4815,8 +4815,8 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         '<div class="detail-header">' +
             renderIcon(project.name || '', project.icon_url) +
             '<div class="card-info">' +
-                '<div class="card-title">' + safeName + '</div>' +
-                '<div class="card-subtitle">' + safePackage + '</div>' +
+                '<div class="card-title notranslate">' + safeName + '</div>' +
+                '<div class="card-subtitle notranslate">' + safePackage + '</div>' +
             '</div>' +
         '</div>' +
         '<div class="details-block">' +
@@ -4835,7 +4835,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
             '<div class="detail-owner-row">' +
                 getAvatar(project.owner_username || '?') +
                 '<div>' +
-                    '<div class="detail-owner-name">' + ownerDisplay + '</div>' +
+                    '<div class="detail-owner-name notranslate">' + ownerDisplay + '</div>' +
                     '<div class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(project.last_owner_activity || '') + '\')">' +
                         window.escapeHTML(ownerActivity.label) +
                     '</div>' +
@@ -4970,8 +4970,8 @@ async function openDossierModal(username, testerId, appId) {
                         <div class="dossier-owned-project-body">
                             <div class="dossier-owned-project-top">
                                 <div style="flex:1;min-width:0;">
-                                    <div class="dossier-owned-project-title">${safeOwnedName}</div>
-                                    <div class="dossier-owned-project-subtitle">${safeOwnedPackage}</div>
+                                    <div class="dossier-owned-project-title notranslate">${safeOwnedName}</div>
+                                    <div class="dossier-owned-project-subtitle notranslate">${safeOwnedPackage}</div>
                                 </div>
                                 <div class="dossier-owned-project-arrow">›</div>
                             </div>
@@ -5327,7 +5327,7 @@ function openProjectDetailsModal(appId) {
         googleGroupHtml = '<div class="details-block">' +
             '<div class="detail-section-title">' + window.t('detailGoogleGroup', {}, lang) + '</div>' +
             '<div style="display:flex;align-items:center;gap:8px;">' +
-                '<div style="flex:1;font-size:13px;color:var(--link-color);cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" onclick="tg.openLink(\'' + window.escapeInlineJsString(_groupUrl) + '\')">' + window.escapeHTML(_groupUrl) + '</div>' +
+                '<div class="notranslate" style="flex:1;font-size:13px;color:var(--link-color);cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" onclick="tg.openLink(\'' + window.escapeInlineJsString(_groupUrl) + '\')">' + window.escapeHTML(_groupUrl) + '</div>' +
                 '<button class="btn-icon" style="width:32px;height:32px;font-size:14px;border-radius:8px;flex-shrink:0;" onclick="event.stopPropagation();navigator.clipboard.writeText(\'' + window.escapeInlineJsString(_groupUrl) + '\');if(tg.HapticFeedback)tg.HapticFeedback.notificationOccurred(\'success\');showToast(\'' + escapeInlineJsString(window.t('detailGoogleGroupCopied', {}, lang)) + '\')">📋</button>' +
             '</div>' +
         '</div>';
@@ -5405,10 +5405,10 @@ function openProjectDetailsModal(appId) {
         rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsOwnerKarma', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(ownerKarmaTotal, 1)) + ' ☯️</span></div>');
     }
     if (feedbackKarma > 0 || feedbackBust > 0) {
-        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsFeedback', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(feedbackKarma, 1)) + ' ☯️ / +' + window.escapeHTML(formatAmountValue(feedbackBust, 1)) + ' $BUST</span></div>');
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsFeedback', {}, lang)) + '</span><span class="dashboard-label notranslate" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(feedbackKarma, 1)) + ' ☯️ / +' + window.escapeHTML(formatAmountValue(feedbackBust, 1)) + ' $BUST</span></div>');
     }
     if (reviewOwnerBoostBust > 0 || reviewOwnerBoostKarma > 0) {
-        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsReviewBoost', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(reviewOwnerBoostKarma, 1)) + ' ☯️ / +' + window.escapeHTML(formatAmountValue(reviewOwnerBoostBust, 1)) + ' $BUST</span></div>');
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsReviewBoost', {}, lang)) + '</span><span class="dashboard-label notranslate" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(reviewOwnerBoostKarma, 1)) + ' ☯️ / +' + window.escapeHTML(formatAmountValue(reviewOwnerBoostBust, 1)) + ' $BUST</span></div>');
     }
     if (reviewPlatformKarma > 0) {
         rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsReviewPlatform', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(reviewPlatformKarma, 1)) + ' ☯️</span></div>');
@@ -5417,7 +5417,7 @@ function openProjectDetailsModal(appId) {
         rewardsByAppHtml = '<div class="details-block">' +
             '<div class="detail-section-title">🎁 ' + window.escapeHTML(window.t('appRewardsTitle', {}, lang)) + '</div>' +
             rewardsRows.join('') +
-            '<div style="margin-top:8px; font-size:13px; color:var(--hint-color);">' + window.escapeHTML(window.t('appRewardsTotals', { karma: formatAmountValue(totalKarma, 1), bust: formatAmountValue(totalBust, 1) }, lang)) + '</div>' +
+            '<div class="notranslate" style="margin-top:8px; font-size:13px; color:var(--hint-color);">' + window.escapeHTML(window.t('appRewardsTotals', { karma: formatAmountValue(totalKarma, 1), bust: formatAmountValue(totalBust, 1) }, lang)) + '</div>' +
         '</div>';
     }
 
@@ -5441,7 +5441,7 @@ function openProjectDetailsModal(appId) {
                     '<div class="grant-dashboard-title">' + window.escapeHTML(window.t('grantGoldTesterTitle', {}, lang)) + '</div>' +
                     '<div class="grant-dashboard-subtitle">' + window.escapeHTML(window.t('grantDashboardSubtitle', {}, lang)) + '</div>' +
                 '</div>' +
-                '<div class="grant-dashboard-total">' + window.escapeHTML(window.t('grantTotalEstimateValue', { amount: formatBustAmount(grant.total) }, lang)) + '</div>' +
+                '<div class="grant-dashboard-total notranslate">' + window.escapeHTML(window.t('grantTotalEstimateValue', { amount: formatBustAmount(grant.total) }, lang)) + '</div>' +
             '</div>' +
             '<div class="grant-dashboard-skips-row">' +
                 '<span class="grant-skip-text">' + window.escapeHTML(window.t('grantSkipsLabel', { used: currentSkips, max: 3 }, lang)) + '</span>' +
@@ -5450,17 +5450,17 @@ function openProjectDetailsModal(appId) {
             '<div class="grant-reward-grid">' +
                 '<div class="grant-reward-card">' +
                     '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantBaseLabel', {}, lang)) + '</div>' +
-                    '<div class="grant-reward-value">' + window.escapeHTML(window.t('grantBaseValue', { amount: formatBustAmount(50) }, lang)) + '</div>' +
+                    '<div class="grant-reward-value notranslate">' + window.escapeHTML(window.t('grantBaseValue', { amount: formatBustAmount(50) }, lang)) + '</div>' +
                     '<div class="grant-reward-status is-active">' + window.escapeHTML(window.t('grantCardActive', {}, lang)) + '</div>' +
                 '</div>' +
                 '<div class="grant-reward-card' + perfectCardClass + '">' +
                     '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantPerfectLabel', {}, lang)) + '</div>' +
-                    '<div class="grant-reward-value">' + perfectValue + '</div>' +
+                    '<div class="grant-reward-value notranslate">' + perfectValue + '</div>' +
                     '<div class="grant-reward-status ' + (currentSkips > 0 ? 'is-burned' : 'is-active') + '">' + window.escapeHTML(perfectStatus) + '</div>' +
                 '</div>' +
                 '<div class="grant-reward-card">' +
                     '<div class="grant-reward-label">' + window.escapeHTML(window.t('grantKarmaBonusLabel', {}, lang)) + '</div>' +
-                    '<div class="grant-reward-value">' + window.escapeHTML(window.t('grantKarmaValue', { amount: formatBustAmount(grant.karmaBonus) }, lang)) + '</div>' +
+                    '<div class="grant-reward-value notranslate">' + window.escapeHTML(window.t('grantKarmaValue', { amount: formatBustAmount(grant.karmaBonus) }, lang)) + '</div>' +
                     '<div class="grant-reward-status is-active">' + window.escapeHTML(window.t('grantCardActive', {}, lang)) + '</div>' +
                 '</div>' +
             '</div>' +
@@ -5475,9 +5475,9 @@ function openProjectDetailsModal(appId) {
             '<div class="grant-dashboard-lost-body">' +
                 '<div class="grant-dashboard-subtitle">' + window.escapeHTML(window.t('grantLostLabel', {}, lang)) + '</div>' +
                 '<div class="grant-reward-grid grant-reward-grid-lost">' +
-                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantBaseLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantBaseValue', { amount: formatBustAmount(50) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
-                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantPerfectLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantPerfectValue', { amount: formatBustAmount(50) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
-                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantKarmaBonusLabel', {}, lang)) + '</div><div class="grant-reward-value"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantKarmaValue', { amount: formatBustAmount(grant.karmaBonus) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
+                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantBaseLabel', {}, lang)) + '</div><div class="grant-reward-value notranslate"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantBaseValue', { amount: formatBustAmount(50) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
+                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantPerfectLabel', {}, lang)) + '</div><div class="grant-reward-value notranslate"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantPerfectValue', { amount: formatBustAmount(50) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
+                    '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantKarmaBonusLabel', {}, lang)) + '</div><div class="grant-reward-value notranslate"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantKarmaValue', { amount: formatBustAmount(grant.karmaBonus) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
                 '</div>' +
             '</div>' +
         '</details>';
@@ -5487,8 +5487,8 @@ function openProjectDetailsModal(appId) {
         '<div class="detail-header">' +
             renderIcon(test.name || '', test.icon_url) +
             '<div class="card-info">' +
-                '<div class="card-title">' + safeName + '</div>' +
-                '<div class="card-subtitle">' + safePackage + '</div>' +
+                '<div class="card-title notranslate">' + safeName + '</div>' +
+                '<div class="card-subtitle notranslate">' + safePackage + '</div>' +
             '</div>' +
         '</div>' +
 
@@ -5505,7 +5505,7 @@ function openProjectDetailsModal(appId) {
             '<div class="detail-owner-row">' +
                 getAvatar(test.owner_username || '?') +
                 '<div>' +
-                    '<div class="detail-owner-name">' + displayOwner + '</div>' +
+                    '<div class="detail-owner-name notranslate">' + displayOwner + '</div>' +
                     '<div class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(test.last_owner_activity || '') + '\')">' +
                         window.escapeHTML(ownerActivity.label) +
                     '</div>' +

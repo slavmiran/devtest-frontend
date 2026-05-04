@@ -19,13 +19,290 @@ const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
 var API_BASE = 'https://devtest-backend.onrender.com/api';
 const GUEST_PROJECTS_PAGE_SIZE = 5;
+const NATIVE_APP_LANGS = ['ru', 'en'];
+const RTL_APP_LANGS = ['ar', 'he'];
+const APP_BASE_LANGUAGE_STORAGE_KEY = 'app_language';
+const APP_SELECTED_LANGUAGE_STORAGE_KEY = 'app_lang';
+const GOOGLE_TRANSLATE_COOKIE_NAME = 'googtrans';
+const GOOGLE_TRANSLATE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+const GOOGLE_TRANSLATE_SYNC_GUARD_KEY = 'google_translate_sync_guard';
+const AUTO_TRANSLATE_LANGUAGE_OPTIONS = [
+    { code: 'ar', googleCode: 'ar', shortLabel: 'AR', labelKey: 'appLanguageOptionAr' },
+    { code: 'de', googleCode: 'de', shortLabel: 'DE', labelKey: 'appLanguageOptionDe' },
+    { code: 'es', googleCode: 'es', shortLabel: 'ES', labelKey: 'appLanguageOptionEs' },
+    { code: 'fa', googleCode: 'fa', shortLabel: 'FA', labelKey: 'appLanguageOptionFa' },
+    { code: 'fr', googleCode: 'fr', shortLabel: 'FR', labelKey: 'appLanguageOptionFr' },
+    { code: 'he', googleCode: 'he', shortLabel: 'HE', labelKey: 'appLanguageOptionHe' },
+    { code: 'hi', googleCode: 'hi', shortLabel: 'HI', labelKey: 'appLanguageOptionHi' },
+    { code: 'id', googleCode: 'id', shortLabel: 'ID', labelKey: 'appLanguageOptionId' },
+    { code: 'it', googleCode: 'it', shortLabel: 'IT', labelKey: 'appLanguageOptionIt' },
+    { code: 'ja', googleCode: 'ja', shortLabel: 'JA', labelKey: 'appLanguageOptionJa' },
+    { code: 'ko', googleCode: 'ko', shortLabel: 'KO', labelKey: 'appLanguageOptionKo' },
+    { code: 'ms', googleCode: 'ms', shortLabel: 'MS', labelKey: 'appLanguageOptionMs' },
+    { code: 'nl', googleCode: 'nl', shortLabel: 'NL', labelKey: 'appLanguageOptionNl' },
+    { code: 'pl', googleCode: 'pl', shortLabel: 'PL', labelKey: 'appLanguageOptionPl' },
+    { code: 'pt', googleCode: 'pt', shortLabel: 'PT', labelKey: 'appLanguageOptionPt' },
+    { code: 'pt-br', googleCode: 'pt', shortLabel: 'BR', labelKey: 'appLanguageOptionPtBr' },
+    { code: 'th', googleCode: 'th', shortLabel: 'TH', labelKey: 'appLanguageOptionTh' },
+    { code: 'tr', googleCode: 'tr', shortLabel: 'TR', labelKey: 'appLanguageOptionTr' },
+    { code: 'uk', googleCode: 'uk', shortLabel: 'UK', labelKey: 'appLanguageOptionUk' },
+    { code: 'vi', googleCode: 'vi', shortLabel: 'VI', labelKey: 'appLanguageOptionVi' },
+    { code: 'zh-cn', googleCode: 'zh-CN', shortLabel: 'ZH', labelKey: 'appLanguageOptionZhCn' },
+    { code: 'zh-tw', googleCode: 'zh-TW', shortLabel: 'ZH', labelKey: 'appLanguageOptionZhTw' }
+];
 
-var lang = localStorage.getItem('app_language') || (Object.keys(initData).length > 0 ? (langCode === 'ru' ? 'ru' : 'en') : 'ru');
+function getDefaultBaseLanguage() {
+    var normalizedTelegramLang = String(langCode || '').trim().toLowerCase();
+    if (normalizedTelegramLang.startsWith('ru')) {
+        return 'ru';
+    }
+    return Object.keys(initData).length > 0 ? 'en' : 'ru';
+}
+
+function normalizeNativeLanguageCode(value) {
+    var normalized = String(value || '').trim().toLowerCase();
+    return NATIVE_APP_LANGS.includes(normalized) ? normalized : '';
+}
+
+function getAutoTranslateLanguageConfig(value) {
+    var normalized = String(value || '').trim().toLowerCase();
+    for (var index = 0; index < AUTO_TRANSLATE_LANGUAGE_OPTIONS.length; index += 1) {
+        if (AUTO_TRANSLATE_LANGUAGE_OPTIONS[index].code === normalized) {
+            return AUTO_TRANSLATE_LANGUAGE_OPTIONS[index];
+        }
+    }
+    return null;
+}
+
+function normalizeAppLanguage(value) {
+    var normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return '';
+    if (NATIVE_APP_LANGS.includes(normalized)) return normalized;
+    return getAutoTranslateLanguageConfig(normalized) ? normalized : '';
+}
+
+function isNativeAppLanguage(value) {
+    var normalized = normalizeAppLanguage(value);
+    return !!normalized && NATIVE_APP_LANGS.includes(normalized);
+}
+
+function isAutoTranslatedLanguage(value) {
+    var normalized = normalizeAppLanguage(value);
+    return !!normalized && !NATIVE_APP_LANGS.includes(normalized);
+}
+
+function getBaseAppLanguage(value) {
+    var normalized = normalizeAppLanguage(value);
+    if (normalized === 'ru') return 'ru';
+    if (normalized) return 'en';
+    return getDefaultBaseLanguage();
+}
+
+function getServerSafeLanguage(value) {
+    return normalizeAppLanguage(value) === 'ru' ? 'ru' : 'en';
+}
+
+function applyDocumentLanguageSettings(value) {
+    var normalized = normalizeAppLanguage(value) || getDefaultBaseLanguage();
+    document.documentElement.setAttribute('lang', normalized);
+    document.documentElement.setAttribute('dir', RTL_APP_LANGS.includes(normalized) ? 'rtl' : 'ltr');
+}
+
+var appLang = normalizeAppLanguage(localStorage.getItem(APP_SELECTED_LANGUAGE_STORAGE_KEY))
+    || normalizeNativeLanguageCode(localStorage.getItem(APP_BASE_LANGUAGE_STORAGE_KEY))
+    || getDefaultBaseLanguage();
+var lang = getBaseAppLanguage(appLang);
+applyDocumentLanguageSettings(appLang);
 const t = new Proxy({}, {
     get(_, key) {
         return window.t(key, {}, lang);
     }
 });
+
+function getSelectedAppLanguage() {
+    return normalizeAppLanguage(appLang) || getBaseAppLanguage(lang);
+}
+
+function persistLanguageSelection(nextLanguage) {
+    var normalized = normalizeAppLanguage(nextLanguage) || getDefaultBaseLanguage();
+    appLang = normalized;
+    lang = getBaseAppLanguage(normalized);
+    localStorage.setItem(APP_SELECTED_LANGUAGE_STORAGE_KEY, normalized);
+    localStorage.setItem(APP_BASE_LANGUAGE_STORAGE_KEY, lang);
+    applyDocumentLanguageSettings(normalized);
+}
+
+function getLanguageShortLabel(value) {
+    var normalized = normalizeAppLanguage(value) || getSelectedAppLanguage();
+    if (normalized === 'ru') return 'RU';
+    if (normalized === 'en') return 'EN';
+    var config = getAutoTranslateLanguageConfig(normalized);
+    return config ? config.shortLabel : String(normalized).toUpperCase();
+}
+
+function renderAutoTranslateLanguageOptions() {
+    var select = document.getElementById('auto-translate-language');
+    if (!select) return;
+
+    var selectedLanguage = getSelectedAppLanguage();
+    var selectedValue = isAutoTranslatedLanguage(selectedLanguage) ? selectedLanguage : '';
+    var fragment = document.createDocumentFragment();
+    var placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = window.t('appLanguageAutoTranslatePlaceholder', {}, lang);
+    fragment.appendChild(placeholder);
+
+    AUTO_TRANSLATE_LANGUAGE_OPTIONS.forEach(function(optionConfig) {
+        var option = document.createElement('option');
+        option.value = optionConfig.code;
+        option.textContent = window.t(optionConfig.labelKey, {}, lang);
+        fragment.appendChild(option);
+    });
+
+    select.innerHTML = '';
+    select.appendChild(fragment);
+    select.value = selectedValue;
+}
+
+function getCookieValue(name) {
+    var cookieName = String(name || '').trim();
+    if (!cookieName) return '';
+    var cookies = String(document.cookie || '').split(';');
+    for (var index = 0; index < cookies.length; index += 1) {
+        var entry = String(cookies[index] || '').trim();
+        if (!entry || !entry.startsWith(cookieName + '=')) continue;
+        return decodeURIComponent(entry.slice(cookieName.length + 1));
+    }
+    return '';
+}
+
+function getGoogleTranslateCookieValue() {
+    return getCookieValue(GOOGLE_TRANSLATE_COOKIE_NAME);
+}
+
+function getExpectedGoogleTranslateCookieValue(value) {
+    var config = getAutoTranslateLanguageConfig(value);
+    return config ? '/en/' + config.googleCode : '';
+}
+
+function setGoogleTranslateCookie(value) {
+    var cookieValue = getExpectedGoogleTranslateCookieValue(value);
+    if (!cookieValue) return;
+    document.cookie = GOOGLE_TRANSLATE_COOKIE_NAME + '=' + encodeURIComponent(cookieValue)
+        + '; path=/; max-age=' + GOOGLE_TRANSLATE_COOKIE_MAX_AGE_SECONDS + '; SameSite=Lax';
+}
+
+function clearGoogleTranslateCookies() {
+    var domains = { '': true };
+    var hostname = String(window.location.hostname || '').trim();
+    if (hostname) {
+        domains[hostname] = true;
+        domains['.' + hostname] = true;
+        var parts = hostname.split('.');
+        while (parts.length > 2) {
+            parts.shift();
+            domains[parts.join('.')] = true;
+            domains['.' + parts.join('.')] = true;
+        }
+    }
+
+    var paths = { '/': true };
+    var pathname = String(window.location.pathname || '').trim();
+    if (pathname) {
+        paths[pathname] = true;
+    }
+
+    Object.keys(domains).forEach(function(domain) {
+        Object.keys(paths).forEach(function(path) {
+            document.cookie = GOOGLE_TRANSLATE_COOKIE_NAME + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; path=' + path
+                + (domain ? '; domain=' + domain : '') + '; SameSite=Lax';
+        });
+    });
+}
+
+function hasGoogleTranslateCookie() {
+    return !!getGoogleTranslateCookieValue();
+}
+
+function requestLanguageRuntimeReload(reason) {
+    var guardReason = String(reason || 'language-sync').trim() || 'language-sync';
+    try {
+        if (sessionStorage.getItem(GOOGLE_TRANSLATE_SYNC_GUARD_KEY) === guardReason) {
+            return false;
+        }
+        sessionStorage.setItem(GOOGLE_TRANSLATE_SYNC_GUARD_KEY, guardReason);
+    } catch (error) {}
+    window.location.reload();
+    return true;
+}
+
+function clearLanguageRuntimeReloadGuard() {
+    try {
+        sessionStorage.removeItem(GOOGLE_TRANSLATE_SYNC_GUARD_KEY);
+    } catch (error) {}
+}
+
+function getGoogleTranslateIncludedLanguages() {
+    var codes = [];
+    AUTO_TRANSLATE_LANGUAGE_OPTIONS.forEach(function(optionConfig) {
+        if (!codes.includes(optionConfig.googleCode)) {
+            codes.push(optionConfig.googleCode);
+        }
+    });
+    return codes.join(',');
+}
+
+function sendLanguagePreferenceToServer(targetLanguage) {
+    var safeLanguage = normalizeNativeLanguageCode(targetLanguage) || 'en';
+    const request = `${API_BASE}/users/${userId}/language`;
+    return fetch(request, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: safeLanguage })
+    }).catch(() => {});
+}
+
+function ensureLanguageRuntimeConsistency() {
+    var selectedLanguage = getSelectedAppLanguage();
+    var currentCookieValue = getGoogleTranslateCookieValue();
+    var expectedCookieValue = isAutoTranslatedLanguage(selectedLanguage)
+        ? getExpectedGoogleTranslateCookieValue(selectedLanguage)
+        : '';
+
+    if (expectedCookieValue) {
+        if (currentCookieValue !== expectedCookieValue) {
+            setGoogleTranslateCookie(selectedLanguage);
+            return requestLanguageRuntimeReload('set:' + expectedCookieValue);
+        }
+        clearLanguageRuntimeReloadGuard();
+        return false;
+    }
+
+    if (currentCookieValue) {
+        clearGoogleTranslateCookies();
+        return requestLanguageRuntimeReload('clear');
+    }
+
+    clearLanguageRuntimeReloadGuard();
+    return false;
+}
+
+window.googleTranslateElementInit = function () {
+    var container = document.getElementById('google_translate_element');
+    if (!container || !window.google || !window.google.translate || !window.google.translate.TranslateElement) {
+        return;
+    }
+    if (window.App.googleTranslateInitialized) {
+        return;
+    }
+    new window.google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: getGoogleTranslateIncludedLanguages(),
+        autoDisplay: false,
+        layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE
+    }, 'google_translate_element');
+    window.App.googleTranslateInitialized = true;
+};
 
 var myTests = [];
 var incomingOffers = [];
@@ -2002,9 +2279,14 @@ function buildProjectPricingPayload(formKey) {
 }
 
 function refreshLanguageUi() {
+    var selectedLanguage = getSelectedAppLanguage();
+    applyDocumentLanguageSettings(selectedLanguage);
+
     if (window.updateTranslations) {
         window.updateTranslations(lang);
     }
+
+    renderAutoTranslateLanguageOptions();
 
     updateProjectPricing('add');
     updateProjectPricing('edit');
@@ -2013,15 +2295,15 @@ function refreshLanguageUi() {
     // Update language label in system menu tab
     const langLabel = document.getElementById('current-lang-label');
     if (langLabel) {
-        langLabel.innerText = lang === 'ru' ? 'RU' : 'EN';
+        langLabel.innerText = getLanguageShortLabel(selectedLanguage);
     }
 
     // Update active language button in segmented control
     const langBtnRu = document.getElementById('lang-btn-ru');
     const langBtnEn = document.getElementById('lang-btn-en');
     if (langBtnRu && langBtnEn) {
-        langBtnRu.classList.toggle('active', lang === 'ru');
-        langBtnEn.classList.toggle('active', lang === 'en');
+        langBtnRu.classList.toggle('active', selectedLanguage === 'ru');
+        langBtnEn.classList.toggle('active', selectedLanguage === 'en');
     }
 
     const chipTexts = [
@@ -2179,17 +2461,43 @@ function toggleSystemMenu() {
     }
 }
 
-function applyLanguage(newLang) {
-    if (!['ru', 'en'].includes(newLang) || newLang === lang) return;
-    lang = newLang;
-    localStorage.setItem('app_language', lang);
+function applyLanguage(newLang, options) {
+    var normalizedLang = normalizeAppLanguage(newLang);
+    var settings = options || {};
+    var previousSelectedLanguage = getSelectedAppLanguage();
+    var hadAutoTranslate = isAutoTranslatedLanguage(previousSelectedLanguage) || hasGoogleTranslateCookie();
 
-    const request = `${API_BASE}/users/${userId}/language`;
-    fetch(request, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: lang })
-    }).catch(() => {});
+    if (!normalizedLang) {
+        refreshLanguageUi();
+        return;
+    }
+    if (!settings.force && normalizedLang === previousSelectedLanguage) {
+        refreshLanguageUi();
+        return;
+    }
+
+    persistLanguageSelection(normalizedLang);
+
+    if (!settings.skipServerSync) {
+        sendLanguagePreferenceToServer(getServerSafeLanguage(normalizedLang));
+    }
+
+    if (isAutoTranslatedLanguage(normalizedLang)) {
+        setGoogleTranslateCookie(normalizedLang);
+        refreshLanguageUi();
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        window.location.reload();
+        return;
+    }
+
+    clearGoogleTranslateCookies();
+
+    if (hadAutoTranslate) {
+        refreshLanguageUi();
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        window.location.reload();
+        return;
+    }
 
     refreshLanguageUi();
     rerenderDynamicUi();
@@ -5554,6 +5862,10 @@ async function saveProjectEdit() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (ensureLanguageRuntimeConsistency()) {
+        return;
+    }
+
     if (localStorage.getItem('hideBanner') === 'true') {
         const banner = document.getElementById('main-banner');
         if (banner) banner.style.display = 'none';
@@ -5565,8 +5877,16 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch(`${API_BASE}/users/${userId}/language`)
         .then(response => response.json())
         .then(data => {
-            if (data.language && data.language !== lang) {
-                applyLanguage(data.language);
+            var serverLanguage = normalizeNativeLanguageCode(data.language);
+            var selectedLanguage = getSelectedAppLanguage();
+            if (isAutoTranslatedLanguage(selectedLanguage)) {
+                if (getServerSafeLanguage(selectedLanguage) !== serverLanguage) {
+                    sendLanguagePreferenceToServer(getServerSafeLanguage(selectedLanguage));
+                }
+                return;
+            }
+            if (serverLanguage && serverLanguage !== lang) {
+                applyLanguage(serverLanguage, { skipServerSync: true, force: true });
             }
         })
         .catch(() => {});
@@ -5747,6 +6067,7 @@ Object.assign(window.App, {
     autoAcceptMutual: _autoAcceptMutualEnabled,
     getState: () => ({
         lang,
+        appLang,
         userEmail: _userEmail,
         autoAcceptMutual: _autoAcceptMutualEnabled,
         myTests,
