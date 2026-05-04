@@ -875,7 +875,7 @@ iframe.skiptranslate,
 .system-language-select {
     flex: 1;
     min-width: 0;
-    padding: 12px 0;
+    padding: 12px 28px 12px 0;
     border: none;
     outline: none;
     background: transparent;
@@ -883,6 +883,14 @@ iframe.skiptranslate,
     font-size: 14px;
     appearance: none;
     -webkit-appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.72) 50%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.72) 50%, transparent 50%);
+    background-position:
+        calc(100% - 16px) calc(50% + 1px),
+        calc(100% - 11px) calc(50% + 1px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
 }
 
 .system-language-select option {
@@ -1026,6 +1034,14 @@ html[dir="rtl"] .system-drop-content::after {
 
 html[dir="rtl"] .system-drop-tab-container {
     justify-content: flex-start;
+}
+
+html[dir="rtl"] .system-language-select {
+    padding-right: 0;
+    padding-left: 28px;
+    background-position:
+        16px calc(50% + 1px),
+        21px calc(50% + 1px);
 }
 
 #current-lang-label {
@@ -2569,7 +2585,25 @@ details[open] > summary .details-arrow {
 
 .guest-filter-select {
     min-height: 40px;
-    padding: 0 12px;
+    padding: 0 36px 0 12px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.68) 50%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.68) 50%, transparent 50%);
+    background-position:
+        calc(100% - 16px) calc(50% + 1px),
+        calc(100% - 11px) calc(50% + 1px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+}
+
+html[dir="rtl"] .guest-filter-select {
+    padding-right: 12px;
+    padding-left: 36px;
+    background-position:
+        16px calc(50% + 1px),
+        21px calc(50% + 1px);
 }
 
 .guest-market-card {

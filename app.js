@@ -20,32 +20,66 @@ const userId = initData.user?.id || 123456789;
 var API_BASE = 'https://devtest-backend.onrender.com/api';
 const GUEST_PROJECTS_PAGE_SIZE = 5;
 const NATIVE_APP_LANGS = ['ru', 'en'];
-const RTL_APP_LANGS = ['ar', 'he'];
+const RTL_APP_LANGS = ['ar', 'fa', 'he', 'ur'];
 const APP_BASE_LANGUAGE_STORAGE_KEY = 'app_language';
 const APP_SELECTED_LANGUAGE_STORAGE_KEY = 'app_lang';
 const GOOGLE_TRANSLATE_COOKIE_NAME = 'googtrans';
 const GOOGLE_TRANSLATE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 const GOOGLE_TRANSLATE_SYNC_GUARD_KEY = 'google_translate_sync_guard';
 const AUTO_TRANSLATE_LANGUAGE_OPTIONS = [
+    { code: 'am', googleCode: 'am', shortLabel: 'AM', labelKey: 'appLanguageOptionAm' },
     { code: 'ar', googleCode: 'ar', shortLabel: 'AR', labelKey: 'appLanguageOptionAr' },
+    { code: 'az', googleCode: 'az', shortLabel: 'AZ', labelKey: 'appLanguageOptionAz' },
+    { code: 'bg', googleCode: 'bg', shortLabel: 'BG', labelKey: 'appLanguageOptionBg' },
+    { code: 'bn', googleCode: 'bn', shortLabel: 'BN', labelKey: 'appLanguageOptionBn' },
+    { code: 'bs', googleCode: 'bs', shortLabel: 'BS', labelKey: 'appLanguageOptionBs' },
+    { code: 'ca', googleCode: 'ca', shortLabel: 'CA', labelKey: 'appLanguageOptionCa' },
+    { code: 'cs', googleCode: 'cs', shortLabel: 'CS', labelKey: 'appLanguageOptionCs' },
+    { code: 'da', googleCode: 'da', shortLabel: 'DA', labelKey: 'appLanguageOptionDa' },
     { code: 'de', googleCode: 'de', shortLabel: 'DE', labelKey: 'appLanguageOptionDe' },
+    { code: 'el', googleCode: 'el', shortLabel: 'EL', labelKey: 'appLanguageOptionEl' },
     { code: 'es', googleCode: 'es', shortLabel: 'ES', labelKey: 'appLanguageOptionEs' },
+    { code: 'et', googleCode: 'et', shortLabel: 'ET', labelKey: 'appLanguageOptionEt' },
     { code: 'fa', googleCode: 'fa', shortLabel: 'FA', labelKey: 'appLanguageOptionFa' },
+    { code: 'fi', googleCode: 'fi', shortLabel: 'FI', labelKey: 'appLanguageOptionFi' },
     { code: 'fr', googleCode: 'fr', shortLabel: 'FR', labelKey: 'appLanguageOptionFr' },
+    { code: 'gu', googleCode: 'gu', shortLabel: 'GU', labelKey: 'appLanguageOptionGu' },
     { code: 'he', googleCode: 'he', shortLabel: 'HE', labelKey: 'appLanguageOptionHe' },
     { code: 'hi', googleCode: 'hi', shortLabel: 'HI', labelKey: 'appLanguageOptionHi' },
+    { code: 'hr', googleCode: 'hr', shortLabel: 'HR', labelKey: 'appLanguageOptionHr' },
+    { code: 'hu', googleCode: 'hu', shortLabel: 'HU', labelKey: 'appLanguageOptionHu' },
+    { code: 'hy', googleCode: 'hy', shortLabel: 'HY', labelKey: 'appLanguageOptionHy' },
     { code: 'id', googleCode: 'id', shortLabel: 'ID', labelKey: 'appLanguageOptionId' },
+    { code: 'is', googleCode: 'is', shortLabel: 'IS', labelKey: 'appLanguageOptionIs' },
     { code: 'it', googleCode: 'it', shortLabel: 'IT', labelKey: 'appLanguageOptionIt' },
     { code: 'ja', googleCode: 'ja', shortLabel: 'JA', labelKey: 'appLanguageOptionJa' },
+    { code: 'ka', googleCode: 'ka', shortLabel: 'KA', labelKey: 'appLanguageOptionKa' },
+    { code: 'kk', googleCode: 'kk', shortLabel: 'KK', labelKey: 'appLanguageOptionKk' },
     { code: 'ko', googleCode: 'ko', shortLabel: 'KO', labelKey: 'appLanguageOptionKo' },
+    { code: 'lt', googleCode: 'lt', shortLabel: 'LT', labelKey: 'appLanguageOptionLt' },
+    { code: 'lv', googleCode: 'lv', shortLabel: 'LV', labelKey: 'appLanguageOptionLv' },
+    { code: 'ml', googleCode: 'ml', shortLabel: 'ML', labelKey: 'appLanguageOptionMl' },
+    { code: 'mr', googleCode: 'mr', shortLabel: 'MR', labelKey: 'appLanguageOptionMr' },
     { code: 'ms', googleCode: 'ms', shortLabel: 'MS', labelKey: 'appLanguageOptionMs' },
     { code: 'nl', googleCode: 'nl', shortLabel: 'NL', labelKey: 'appLanguageOptionNl' },
+    { code: 'no', googleCode: 'no', shortLabel: 'NO', labelKey: 'appLanguageOptionNo' },
     { code: 'pl', googleCode: 'pl', shortLabel: 'PL', labelKey: 'appLanguageOptionPl' },
     { code: 'pt', googleCode: 'pt', shortLabel: 'PT', labelKey: 'appLanguageOptionPt' },
     { code: 'pt-br', googleCode: 'pt', shortLabel: 'BR', labelKey: 'appLanguageOptionPtBr' },
+    { code: 'ro', googleCode: 'ro', shortLabel: 'RO', labelKey: 'appLanguageOptionRo' },
+    { code: 'sk', googleCode: 'sk', shortLabel: 'SK', labelKey: 'appLanguageOptionSk' },
+    { code: 'sl', googleCode: 'sl', shortLabel: 'SL', labelKey: 'appLanguageOptionSl' },
+    { code: 'sq', googleCode: 'sq', shortLabel: 'SQ', labelKey: 'appLanguageOptionSq' },
+    { code: 'sr', googleCode: 'sr', shortLabel: 'SR', labelKey: 'appLanguageOptionSr' },
+    { code: 'sv', googleCode: 'sv', shortLabel: 'SV', labelKey: 'appLanguageOptionSv' },
+    { code: 'sw', googleCode: 'sw', shortLabel: 'SW', labelKey: 'appLanguageOptionSw' },
+    { code: 'ta', googleCode: 'ta', shortLabel: 'TA', labelKey: 'appLanguageOptionTa' },
+    { code: 'te', googleCode: 'te', shortLabel: 'TE', labelKey: 'appLanguageOptionTe' },
     { code: 'th', googleCode: 'th', shortLabel: 'TH', labelKey: 'appLanguageOptionTh' },
+    { code: 'tl', googleCode: 'tl', shortLabel: 'TL', labelKey: 'appLanguageOptionTl' },
     { code: 'tr', googleCode: 'tr', shortLabel: 'TR', labelKey: 'appLanguageOptionTr' },
     { code: 'uk', googleCode: 'uk', shortLabel: 'UK', labelKey: 'appLanguageOptionUk' },
+    { code: 'ur', googleCode: 'ur', shortLabel: 'UR', labelKey: 'appLanguageOptionUr' },
     { code: 'vi', googleCode: 'vi', shortLabel: 'VI', labelKey: 'appLanguageOptionVi' },
     { code: 'zh-cn', googleCode: 'zh-CN', shortLabel: 'ZH', labelKey: 'appLanguageOptionZhCn' },
     { code: 'zh-tw', googleCode: 'zh-TW', shortLabel: 'ZH', labelKey: 'appLanguageOptionZhTw' }
