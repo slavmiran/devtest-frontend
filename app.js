@@ -932,14 +932,15 @@ async function _handleGuestClaimIntent(intent) {
     };
 
     try {
-        var response = await fetch(`${API_BASE}/guest-apps/${encodeURIComponent(intent.guestAppId)}/claim`, {
+        var response = await fetchWithRetry(`${API_BASE}/guest-apps/${encodeURIComponent(intent.guestAppId)}/claim`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 inviter_id: intent.inviterId,
                 init_data: tg.initData || '',
-            })
-        });
+            }),
+            timeoutMs: 25000,
+        }, 2);
 
         var payload = null;
         try {
@@ -948,8 +949,10 @@ async function _handleGuestClaimIntent(intent) {
             payload = null;
         }
 
-        if (!response.ok) {
-            var detail = String(payload && payload.detail || '').trim();
+        var detail = String(payload && (payload.detail || payload.code) || '').trim();
+        var isSuccessPayload = !!(payload && payload.status === 'success');
+
+        if (!response.ok || !isSuccessPayload) {
             if (detail === 'own_link') {
                 _markGuestClaimHandled(intent.rawStartParam);
                 _clearStartappQueryParam();
@@ -1013,7 +1016,14 @@ async function _handleGuestClaimIntent(intent) {
     } catch (error) {
         console.error('Guest claim intent error:', error);
         hideLoading();
-        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        var message = String(error && error.message || '').trim();
+        if (/^HTTP (500|502|503|504|520|522|524)$/.test(message)) {
+            handleApiError('database_error');
+        } else if (/^HTTP \d+$/.test(message) || message === 'Request timeout') {
+            showToast(window.t('networkError', {}, lang));
+        } else {
+            showToast(getApiErrorMessage(message, 'networkError'));
+        }
         return false;
     } finally {
         hideLoading();
@@ -2240,6 +2250,7 @@ function handleApiError(code, details = {}) {
         invalid_start_date: 'err_grant_unavailable',
         invalid_google_group_url: 'invalid_google_group_url',
         testing_not_found: 'testing_not_found',
+        database_error: 'database_error',
         project_pending_completion: 'projectPendingCompletionAlert',
         feedback_not_found: 'feedback_not_found',
         feedback_forbidden: 'feedback_forbidden',
