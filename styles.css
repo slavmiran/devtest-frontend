@@ -516,6 +516,31 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 
 .modal-overlay.active .modal-content { transform: translateY(0); }
 
+#play-review-confirm-modal {
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.68);
+    z-index: 10030;
+}
+
+#play-review-confirm-modal .modal-content {
+    margin: auto;
+    width: min(92%, 420px);
+    border-radius: 20px;
+    padding: 20px 16px 16px;
+    max-height: none;
+    overflow: visible;
+    transform: translateY(10px) scale(0.98);
+    background: rgba(26, 30, 38, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#play-review-confirm-modal.active .modal-content {
+    transform: translateY(0) scale(1);
+}
+
 .form-group { margin-bottom: 16px; }
 
 .form-label {
