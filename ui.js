@@ -161,10 +161,137 @@ function getGuestProjectFreshness(createdAt) {
     };
 }
 
+const GUEST_LANGUAGE_META = {
+    ar: { flag: '🇦🇪', label: 'Arabic' },
+    az: { flag: '🇦🇿', label: 'Azerbaijani' },
+    de: { flag: '🇩🇪', label: 'German' },
+    en: { flag: '🇬🇧', label: 'English' },
+    es: { flag: '🇪🇸', label: 'Spanish' },
+    fa: { flag: '🇮🇷', label: 'Persian' },
+    fr: { flag: '🇫🇷', label: 'French' },
+    hi: { flag: '🇮🇳', label: 'Hindi' },
+    id: { flag: '🇮🇩', label: 'Indonesian' },
+    it: { flag: '🇮🇹', label: 'Italian' },
+    ja: { flag: '🇯🇵', label: 'Japanese' },
+    ko: { flag: '🇰🇷', label: 'Korean' },
+    ms: { flag: '🇲🇾', label: 'Malay' },
+    nl: { flag: '🇳🇱', label: 'Dutch' },
+    pl: { flag: '🇵🇱', label: 'Polish' },
+    pt: { flag: '🇵🇹', label: 'Portuguese' },
+    'pt-br': { flag: '🇧🇷', label: 'Portuguese (Brazil)' },
+    ru: { flag: '🇷🇺', label: 'Russian' },
+    th: { flag: '🇹🇭', label: 'Thai' },
+    tr: { flag: '🇹🇷', label: 'Turkish' },
+    uk: { flag: '🇺🇦', label: 'Ukrainian' },
+    ur: { flag: '🇵🇰', label: 'Urdu' },
+    vi: { flag: '🇻🇳', label: 'Vietnamese' },
+    'zh-cn': { flag: '🇨🇳', label: 'Chinese (Simplified)' },
+    'zh-tw': { flag: '🇹🇼', label: 'Chinese (Traditional)' },
+};
+
+function normalizeGuestLanguageCode(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return 'ALL';
+    if (raw.toUpperCase() === 'ALL') return 'ALL';
+    const normalized = raw.toLowerCase();
+    return /^[a-z]{2,3}(?:-[a-z]{2,4})?$/.test(normalized) ? normalized : 'ALL';
+}
+
+function getGuestLanguageMeta(value) {
+    const normalized = normalizeGuestLanguageCode(value);
+    if (normalized === 'ALL') {
+        const allLabel = window.t('guestFilterLangAll', {}, lang);
+        return {
+            code: 'ALL',
+            shortCode: 'ALL',
+            flag: '',
+            label: allLabel,
+            optionLabel: allLabel,
+            badgeLabel: 'ALL',
+        };
+    }
+
+    const meta = GUEST_LANGUAGE_META[normalized] || null;
+    const shortCode = normalized.toUpperCase();
+    const label = meta ? meta.label : shortCode;
+    const flag = meta ? meta.flag : '';
+    return {
+        code: normalized,
+        shortCode: shortCode,
+        flag: flag,
+        label: label,
+        optionLabel: flag ? `${flag} ${label}` : shortCode,
+        badgeLabel: flag ? `${flag} ${shortCode}` : shortCode,
+    };
+}
+
+function getGuestLanguageDisplayParts(languageValue, userLangValue) {
+    const parts = [];
+    const seen = new Set();
+    [languageValue, userLangValue].forEach(function(value) {
+        const meta = getGuestLanguageMeta(value);
+        if (meta.code === 'ALL' || seen.has(meta.code)) return;
+        seen.add(meta.code);
+        parts.push(meta);
+    });
+    return parts;
+}
+
+function renderGuestLanguageBadge(languageValue, userLangValue) {
+    const parts = getGuestLanguageDisplayParts(languageValue, userLangValue);
+    if (!parts.length) return '';
+
+    const title = parts.map(function(meta) {
+        return meta.flag ? `${meta.flag} ${meta.label}` : meta.label;
+    }).join(' | ');
+    const badgeLabel = parts.map(function(meta) {
+        return meta.badgeLabel;
+    }).join(' | ');
+
+    return `<span class="lang-badge notranslate" style="cursor:default;" title="${window.escapeHTML(title)}">${window.escapeHTML(badgeLabel)}</span>`;
+}
+
+function renderGuestLanguageFilterOptions(select, selectedValue) {
+    if (!select) return;
+
+    const explicitOptions = typeof window.getGuestProjectAvailableLangs === 'function'
+        ? window.getGuestProjectAvailableLangs()
+        : [];
+    const fallbackOptions = Array.isArray(guestProjects)
+        ? guestProjects.reduce(function(result, item) {
+            if (!item) return result;
+            result.push(item.language || item.lang, item.user_lang);
+            return result;
+        }, [])
+        : [];
+    const sourceOptions = explicitOptions.length ? explicitOptions : fallbackOptions;
+    const seen = new Set();
+    const normalizedOptions = [];
+
+    sourceOptions.forEach(function(value) {
+        const normalized = normalizeGuestLanguageCode(value);
+        if (normalized === 'ALL' || seen.has(normalized)) return;
+        seen.add(normalized);
+        normalizedOptions.push(normalized);
+    });
+
+    const optionsHtml = [`<option value="ALL">${window.escapeHTML(window.t('guestFilterLangAll', {}, lang))}</option>`];
+    normalizedOptions.forEach(function(code) {
+        const meta = getGuestLanguageMeta(code);
+        optionsHtml.push(`<option value="${window.escapeHTML(meta.code)}">${window.escapeHTML(meta.optionLabel)}</option>`);
+    });
+    select.innerHTML = optionsHtml.join('');
+
+    const requestedValue = normalizeGuestLanguageCode(selectedValue);
+    select.value = requestedValue !== 'ALL' && normalizedOptions.includes(requestedValue)
+        ? requestedValue
+        : 'ALL';
+}
+
 function resolveGuestInviteLanguage(guest) {
     if (!_guestInviteLang) {
         _guestInviteLang = typeof window.getDefaultGuestInviteLanguage === 'function'
-            ? window.getDefaultGuestInviteLanguage(guest && guest.lang)
+            ? window.getDefaultGuestInviteLanguage(guest && (guest.language || guest.lang))
             : 'en';
     }
     if (typeof window.normalizeGuestInviteLanguage === 'function') {
@@ -2101,8 +2228,8 @@ function renderGuestProjectCard(item) {
     const safeDescription = description
         ? escapeHtmlWithBreaks(description)
         : window.escapeHTML(window.t('guestCardNoInstructions', {}, lang));
-    const langChip = String(item.lang || 'ALL').toUpperCase() !== 'ALL'
-        ? getLangBadge(item.lang)
+    const langChip = getGuestLanguageDisplayParts(item.language || item.lang, item.user_lang).length
+        ? renderGuestLanguageBadge(item.language || item.lang, item.user_lang)
         : '';
     const categoryKey = String(item.category || 'app').toLowerCase() === 'game'
         ? 'guestFilterCategoryGame'
@@ -2147,9 +2274,6 @@ function renderGuestProjectsSection(force) {
     const langSelect = document.getElementById('guest-filter-lang');
     const categorySelect = document.getElementById('guest-filter-category');
     const list = document.getElementById('guest-projects-list');
-    const optionLangAll = document.getElementById('guest-filter-lang-all');
-    const optionLangRu = document.getElementById('guest-filter-lang-ru');
-    const optionLangEn = document.getElementById('guest-filter-lang-en');
     const optionCategoryAll = document.getElementById('guest-filter-category-all');
     const optionCategoryGame = document.getElementById('guest-filter-category-game');
     const optionCategoryApp = document.getElementById('guest-filter-category-app');
@@ -2163,11 +2287,8 @@ function renderGuestProjectsSection(force) {
 
     if (langLabel) langLabel.textContent = window.t('guestFilterLangLabel', {}, lang);
     if (categoryLabel) categoryLabel.textContent = window.t('guestFilterCategoryLabel', {}, lang);
-    if (langSelect) langSelect.value = String((_guestProjectsFilters && _guestProjectsFilters.lang) || 'ALL').toUpperCase();
+    renderGuestLanguageFilterOptions(langSelect, (_guestProjectsFilters && _guestProjectsFilters.lang) || 'ALL');
     if (categorySelect) categorySelect.value = String((_guestProjectsFilters && _guestProjectsFilters.category) || 'ALL').toUpperCase();
-    if (optionLangAll) optionLangAll.textContent = window.t('guestFilterLangAll', {}, lang);
-    if (optionLangRu) optionLangRu.textContent = window.t('guestFilterLangRu', {}, lang);
-    if (optionLangEn) optionLangEn.textContent = window.t('guestFilterLangEn', {}, lang);
     if (optionCategoryAll) optionCategoryAll.textContent = window.t('guestFilterCategoryAll', {}, lang);
     if (optionCategoryGame) optionCategoryGame.textContent = window.t('guestFilterCategoryGame', {}, lang);
     if (optionCategoryApp) optionCategoryApp.textContent = window.t('guestFilterCategoryApp', {}, lang);
@@ -2282,7 +2403,7 @@ function openGuestInviteModal(guestAppId, event) {
         return String(item.id || '') === _guestInviteGuestId;
     });
     _guestInviteLang = typeof window.getDefaultGuestInviteLanguage === 'function'
-        ? window.getDefaultGuestInviteLanguage(guest && guest.lang)
+        ? window.getDefaultGuestInviteLanguage(guest && (guest.language || guest.lang))
         : null;
     _guestInviteSending = false;
     renderGuestInviteModal();

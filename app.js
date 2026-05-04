@@ -465,6 +465,7 @@ var _guestProjectsExpanded = false;
 var _guestProjectsLoadError = false;
 var _guestProjectsVisibleCount = GUEST_PROJECTS_PAGE_SIZE;
 var _guestProjectsFilters = { lang: 'ALL', category: 'ALL' };
+var _guestProjectsAvailableLangs = [];
 
 function setMarketForceSkeleton(enabled) {
     _marketForceSkeleton = !!enabled;
@@ -1128,6 +1129,48 @@ function getMarketFeedState(feedKey) {
     return _marketFeedState[feedKey] || { confirmedEmpty: false, emptyStreak: 0 };
 }
 
+function normalizeGuestProjectsFilterLang(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return 'ALL';
+    if (raw.toUpperCase() === 'ALL') return 'ALL';
+    const normalized = raw.toLowerCase();
+    return /^[a-z]{2,3}(?:-[a-z]{2,4})?$/.test(normalized) ? normalized : 'ALL';
+}
+
+function normalizeGuestProjectAvailableLangs(values) {
+    const seen = new Set();
+    return (Array.isArray(values) ? values : []).reduce(function(result, value) {
+        const normalized = normalizeGuestProjectsFilterLang(value);
+        if (normalized === 'ALL' || seen.has(normalized)) {
+            return result;
+        }
+        seen.add(normalized);
+        result.push(normalized);
+        return result;
+    }, []).sort();
+}
+
+function getGuestProjectAvailableLangs() {
+    return Array.isArray(_guestProjectsAvailableLangs) ? _guestProjectsAvailableLangs.slice() : [];
+}
+
+function setGuestProjectAvailableLangs(values) {
+    _guestProjectsAvailableLangs = normalizeGuestProjectAvailableLangs(values);
+}
+
+function _guestProjectFiltersMatch(cachedFilters, liveFilters) {
+    return normalizeGuestProjectsFilterLang(cachedFilters && cachedFilters.lang) === normalizeGuestProjectsFilterLang(liveFilters && liveFilters.lang)
+        && String((cachedFilters && cachedFilters.category) || 'ALL').toUpperCase() === String((liveFilters && liveFilters.category) || 'ALL').toUpperCase();
+}
+
+function _applyGuestProjectsPayload(payload) {
+    guestProjects = Array.isArray(payload && payload.items) ? payload.items : [];
+    setGuestProjectAvailableLangs(payload && payload.available_langs);
+
+    const selectedLang = normalizeGuestProjectsFilterLang(_guestProjectsFilters.lang);
+    return selectedLang === 'ALL' || _guestProjectsAvailableLangs.includes(selectedLang);
+}
+
 function getGuestProjectsCache() {
     try {
         const raw = localStorage.getItem(GUEST_PROJECTS_CACHE_KEY);
@@ -1148,7 +1191,7 @@ function setGuestProjectsCache(payload) {
 
 function _buildGuestProjectsUrl() {
     const params = new URLSearchParams();
-    params.set('lang', String(_guestProjectsFilters.lang || 'ALL').toUpperCase());
+    params.set('lang', normalizeGuestProjectsFilterLang(_guestProjectsFilters.lang));
     params.set('category', String(_guestProjectsFilters.category || 'ALL').toUpperCase());
     return `${API_BASE}/guest-apps?${params.toString()}`;
 }
@@ -1209,6 +1252,7 @@ function _syncGuestProjectsCache() {
     setGuestProjectsCache({
         filters: Object.assign({}, _guestProjectsFilters),
         items: Array.isArray(guestProjects) ? guestProjects : [],
+        available_langs: getGuestProjectAvailableLangs(),
         ts: Date.now(),
     });
 }
@@ -1220,12 +1264,11 @@ async function loadGuestApps(options) {
     }
 
     const cached = getGuestProjectsCache();
-    const filtersMatch = cached && cached.filters
-        && String(cached.filters.lang || 'ALL').toUpperCase() === String(_guestProjectsFilters.lang || 'ALL').toUpperCase()
-        && String(cached.filters.category || 'ALL').toUpperCase() === String(_guestProjectsFilters.category || 'ALL').toUpperCase();
+    const filtersMatch = !!(cached && cached.filters && _guestProjectFiltersMatch(cached.filters, _guestProjectsFilters));
 
-    if (!options.force && filtersMatch && Array.isArray(cached.items) && cached.items.length) {
+    if (!options.force && filtersMatch && Array.isArray(cached.items)) {
         guestProjects = cached.items;
+        setGuestProjectAvailableLangs(cached.available_langs);
         resetGuestProjectsPagination();
         _guestProjectsLoadedOnce = true;
         _guestProjectsLoadError = false;
@@ -1238,8 +1281,15 @@ async function loadGuestApps(options) {
         try {
             const response = await fetchWithRetry(_buildGuestProjectsUrl());
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
-            guestProjects = Array.isArray(data.items) ? data.items : [];
+            let data = await response.json();
+            let filterStillValid = _applyGuestProjectsPayload(data);
+            if (!filterStillValid) {
+                _guestProjectsFilters.lang = 'ALL';
+                const fallbackResponse = await fetchWithRetry(_buildGuestProjectsUrl());
+                if (!fallbackResponse.ok) throw new Error(`HTTP ${fallbackResponse.status}`);
+                data = await fallbackResponse.json();
+                _applyGuestProjectsPayload(data);
+            }
             resetGuestProjectsPagination();
             _guestProjectsLoadedOnce = true;
             _guestProjectsLoadError = false;
@@ -1248,8 +1298,10 @@ async function loadGuestApps(options) {
             console.error('Error loading guest apps:', error);
             _guestProjectsLoadError = true;
             if (!_guestProjectsLoadedOnce) {
-                guestProjects = filtersMatch && Array.isArray((cached || {}).items) ? cached.items : [];
-                _guestProjectsLoadedOnce = guestProjects.length > 0;
+                const hasCachedItems = !!(filtersMatch && Array.isArray((cached || {}).items));
+                guestProjects = hasCachedItems ? cached.items : [];
+                setGuestProjectAvailableLangs(hasCachedItems ? cached.available_langs : []);
+                _guestProjectsLoadedOnce = hasCachedItems;
             }
             if (_guestProjectsExpanded && !guestProjects.length) {
                 showToast(getApiErrorMessage(error && error.message, 'networkError'));
@@ -1289,7 +1341,9 @@ async function updateGuestProjectsFilter(field, value) {
     if (normalizedField !== 'lang' && normalizedField !== 'category') {
         return;
     }
-    _guestProjectsFilters[normalizedField] = String(value || 'ALL').toUpperCase();
+    _guestProjectsFilters[normalizedField] = normalizedField === 'lang'
+        ? normalizeGuestProjectsFilterLang(value)
+        : String(value || 'ALL').toUpperCase();
     resetGuestProjectsPagination();
     _guestProjectsLoadError = false;
     if (window.renderGuestProjectsSection) {
@@ -6035,6 +6089,7 @@ Object.assign(window, {
     getGuestProjectsPageSize,
     getVisibleGuestProjects,
     canShowMoreGuestProjects,
+    getGuestProjectAvailableLangs,
     normalizeGuestInviteLanguage,
     getDefaultGuestInviteLanguage,
     buildGuestInviteDeepLink,
