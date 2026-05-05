@@ -1032,6 +1032,14 @@ function renderTesterSourceIndicator(joinType) {
     return `<button type="button" style="background:none; border:none; padding:0; margin:0; color:var(--hint-color); font-size:15px; cursor:pointer; line-height:1;" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(toastText)}')">${sourceMeta.icon}</button>`;
 }
 
+function buildRunIterationChip(runIteration, className) {
+    const normalizedIteration = Number(runIteration || 1);
+    if (!Number.isFinite(normalizedIteration) || normalizedIteration <= 1) {
+        return '';
+    }
+    return `<span class="${className || 'meta-chip accent-blue'}">${window.escapeHTML(window.t('projectRunIterationChip', { count: normalizedIteration }, lang))}</span>`;
+}
+
 function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test, options) {
     options = options || {};
     var showTestersCount = options.showTestersCount !== false;
@@ -1040,6 +1048,10 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         const sourceChip = getTestSourceChip(test);
         if (sourceChip) {
             parts.push(sourceChip);
+        }
+        const runIterationChip = buildRunIterationChip(test.run_iteration);
+        if (runIterationChip) {
+            parts.push(runIterationChip);
         }
         if (test.app_status === 'archived') {
             var archiveLabel = test.archive_reason === 'afk' ? t.archivedAfkBadge : t.archivedBadge;
@@ -2965,6 +2977,9 @@ function renderProjects(force) {
             })();
             if (statusChip) badges += statusChip;
 
+            const runIterationChip = buildRunIterationChip(project.run_iteration);
+            if (runIterationChip) badges += runIterationChip;
+
             if (likesAvailable > 0) {
                 const karmaChipText = t.karmaAvailable.replace('{count}', likesAvailable);
                 badges += `<button class="meta-chip accent-yellow" onclick="openKarmaDistribution(${project.id})">${karmaChipText}</button>`;
@@ -4069,7 +4084,14 @@ function renderArchivedProjects(force) {
     if (!force && !isTabVisible('projects')) return;
     const section = document.getElementById('archive-section');
     if (!section) return;
-    if (archivedProjects.length === 0) {
+    const activePackages = new Set((myProjects || []).map(function(project) {
+        return String(project.package || '').trim().toLowerCase();
+    }).filter(Boolean));
+    const visibleArchivedProjects = (archivedProjects || []).filter(function(project) {
+        const packageName = String(project.package_name || '').trim().toLowerCase();
+        return !packageName || !activePackages.has(packageName);
+    });
+    if (visibleArchivedProjects.length === 0) {
         section.innerHTML = `
             <div class="archive-shell is-empty">
                 <button type="button" class="archive-toggle" onclick="toggleArchive()">
@@ -4083,18 +4105,19 @@ function renderArchivedProjects(force) {
     let html = `
         <div class="archive-shell">
             <button type="button" class="archive-toggle" onclick="toggleArchive()" id="archive-toggle">
-                <span class="archive-toggle-label">${t.archiveTitle} (${archivedProjects.length})</span>
+                <span class="archive-toggle-label">${t.archiveTitle} (${visibleArchivedProjects.length})</span>
                 <span class="archive-toggle-arrow">▼</span>
             </button>
             <div id="archive-list" class="archive-list is-collapsed">
     `;
-    archivedProjects.forEach((project) => {
+    visibleArchivedProjects.forEach((project) => {
         const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
         const archiveName = project.name || window.t('unknownLabel', {}, lang);
         const safeArchiveName = window.escapeHTML(archiveName);
         const safeArchivePackage = window.escapeHTML(project.package_name || '');
         const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
         const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
+        const runIterationChip = buildRunIterationChip(project.run_iteration, 'archive-meta-chip');
         html += `
             <div class="card archive-card" id="archive-card-${project.app_id}" data-archive-project-id="${project.app_id}">
                 <div class="card-header archive-card-header">
@@ -4107,17 +4130,23 @@ function renderArchivedProjects(force) {
                 </div>
                 <div class="archive-meta-row">
                     <span class="archive-meta-chip">${modeLabel}</span>
+                    ${runIterationChip}
                     ${afkChip}
                     <span class="archive-meta-chip">👥 ${project.total_testers}</span>
                     <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
                     <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
                 </div>
-                <div class="action-row" style="margin-top: 10px;">
-                    <div style="flex: 1;">${buildProjectFeedbackButton(project.app_id, project.feedback_total_count || 0, project.feedback_new_count || 0, true)}</div>
-                    <button class="btn archive-delete-btn" style="flex: 1;"
-                        onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
-                        ${t.archiveDeletePermanent}
+                <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                    <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="restartArchivedProject(${project.app_id})">
+                        ${window.escapeHTML(t.archiveRestartBtn)}
                     </button>
+                    <div class="action-row" style="margin-top: 0;">
+                        <div style="flex: 1;">${buildProjectFeedbackButton(project.app_id, project.feedback_total_count || 0, project.feedback_new_count || 0, true)}</div>
+                        <button class="btn archive-delete-btn" style="flex: 1;"
+                            onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
+                            ${t.archiveDeletePermanent}
+                        </button>
+                    </div>
                 </div>
             </div>`;
     });
@@ -5291,6 +5320,7 @@ function closeModal(event) {
         document.getElementById('app-group').value = '';
         document.getElementById('app-icon').value = '';
         document.getElementById('app-instructions').value = '';
+        document.getElementById('package-error').innerHTML = '';
         document.getElementById('package-error').style.display = 'none';
         switchGroupTab('standard');
         resetProjectForms();

@@ -887,6 +887,14 @@ function _highlightArchivedProjectCard(appId) {
     return true;
 }
 
+function openProjectDuplicateSupport() {
+    var addModal = document.getElementById('add-modal');
+    if (addModal) {
+        addModal.classList.remove('active');
+    }
+    sendFeedback('question');
+}
+
 async function _focusAppInMiniApp(appId) {
     var normalizedId = Number(appId || 0);
     if (!normalizedId) return false;
@@ -2270,6 +2278,9 @@ function getBackendErrorCode(payload) {
 
 function handleApiError(code, details = {}) {
     var keyMap = {
+        ALREADY_OWNED: 'ALREADY_OWNED',
+        ALREADY_ACTIVE: 'ALREADY_ACTIVE',
+        NEEDS_RESTART: 'NEEDS_RESTART',
         insufficient_bust_balance: 'err_insufficient_bust_balance',
         transaction_failed: 'err_transaction_failed',
         invalid_init_data: 'guestClaimAuthErrorToast',
@@ -3217,6 +3228,7 @@ function _mapTestsFromApi(data) {
             issue_fixed_at: app.issue_fixed_at || null,
             reciprocal_app_id: app.reciprocal_app_id || null,
             reciprocal_app_name: app.reciprocal_app_name || '',
+            run_iteration: Number(app.run_iteration || 1),
             has_clicked_store: existingTest ? !!existingTest.has_clicked_store : false,
             request_reviews: app.request_reviews !== false,
             play_feedback_submitted: !!app.play_feedback_submitted,
@@ -4025,6 +4037,7 @@ function _mapProjectsFromApi(data) {
             last_owner_activity: project.last_owner_activity || null,
             published_to_market_at: project.published_to_market_at || null,
             last_mass_invite_at: project.last_mass_invite_at || null,
+            run_iteration: Number(project.run_iteration || 1),
             feedback_new_count: project.feedback_new_count || 0,
             feedback_total_count: project.feedback_total_count || 0,
         };
@@ -5439,6 +5452,7 @@ async function loadArchivedProjects(options) {
         archivedProjects = (data.archived || []).map(function(project) {
             return Object.assign({}, project, {
                 target_lang: project.target_lang || 'ALL',
+                run_iteration: Number(project.run_iteration || 1),
                 feedback_new_count: project.feedback_new_count || 0,
                 feedback_total_count: project.feedback_total_count || 0,
                 archive_reason: project.archive_reason || null,
@@ -5480,6 +5494,98 @@ async function confirmHardDelete(appId, appName) {
         }
     } catch (error) {
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
+function _clearProjectPackageError() {
+    var errorEl = document.getElementById('package-error');
+    if (!errorEl) return;
+    errorEl.innerHTML = '';
+    errorEl.style.display = 'none';
+}
+
+function _showProjectPackageError(messageKey, options) {
+    var errorEl = document.getElementById('package-error');
+    if (!errorEl) return;
+
+    var opts = options || {};
+    var message = window.t(messageKey, {}, lang);
+    var html = '<div>' + window.escapeHTML(message) + '</div>';
+    if (opts.actionLabelKey) {
+        html += '<button type="button" id="package-error-action-btn" class="btn btn-secondary" style="width:100%; margin-top:10px; background: rgba(255,255,255,0.08); color: var(--text-color); border: 1px solid rgba(255,255,255,0.14);">' + window.escapeHTML(window.t(opts.actionLabelKey, {}, lang)) + '</button>';
+    }
+    errorEl.innerHTML = html;
+    errorEl.style.display = 'block';
+
+    if (opts.actionLabelKey && typeof opts.onAction === 'function') {
+        var actionBtn = document.getElementById('package-error-action-btn');
+        if (actionBtn) {
+            actionBtn.onclick = function(event) {
+                event.preventDefault();
+                opts.onAction();
+            };
+        }
+    }
+}
+
+function _handleProjectCreateConflict(code) {
+    var normalizedCode = String(code || '').trim();
+    if (normalizedCode === 'ALREADY_OWNED') {
+        _showProjectPackageError('ALREADY_OWNED', {
+            actionLabelKey: 'projectPackageContactSupportBtn',
+            onAction: openProjectDuplicateSupport,
+        });
+        return true;
+    }
+    if (normalizedCode === 'ALREADY_ACTIVE' || normalizedCode === 'NEEDS_RESTART') {
+        _showProjectPackageError(normalizedCode);
+        return true;
+    }
+    return false;
+}
+
+async function restartArchivedProject(appId) {
+    var normalizedAppId = Number(appId || 0);
+    if (!normalizedAppId || !userId) return null;
+
+    var actionKey = 'restart_archived_' + normalizedAppId;
+    if (_pendingActions.has(actionKey)) return null;
+    _pendingActions.add(actionKey);
+
+    _apiStart();
+    try {
+        const response = await fetch(`${API_BASE}/apps/${normalizedAppId}/restart`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_id: userId })
+        });
+        const result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            return null;
+        }
+
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        await loadProjects();
+        if (typeof window.switchTab === 'function') {
+            window.switchTab('projects');
+        }
+        if (typeof window.renderArchivedProjects === 'function') {
+            window.renderArchivedProjects(true);
+        }
+        showToast(window.t('archiveRestartSuccess', { count: Number(result.run_iteration || 1) }, lang));
+        setTimeout(function() {
+            _highlightProjectCard(result.app_id);
+        }, 140);
+        loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+        return result;
+    } catch (error) {
+        console.error('Restart archived project error:', error);
+        handleApiError('network_error');
+        return null;
+    } finally {
+        _apiEnd();
+        _pendingActions.delete(actionKey);
     }
 }
 
@@ -6075,7 +6181,7 @@ async function confirmDeleteProject() {
 }
 
 async function saveProject() {
-    document.getElementById('package-error').style.display = 'none';
+    _clearProjectPackageError();
 
     const nameInput = document.getElementById('app-name').value.trim();
     let packageInput = document.getElementById('app-package').value.trim();
@@ -6095,8 +6201,7 @@ async function saveProject() {
     }
 
     if (!packageInput.includes('play.google.com/store/apps/details?id=')) {
-        document.getElementById('package-error').innerText = t.invalidPlayLink;
-        document.getElementById('package-error').style.display = 'block';
+        _showProjectPackageError('invalidPlayLink');
         return;
     }
     if (!nameInput || !packageInput) {
@@ -6162,6 +6267,7 @@ async function doSaveProject(projectData) {
     const originalText = saveBtn.innerText;
     saveBtn.innerText = '...';
     saveBtn.disabled = true;
+    _clearProjectPackageError();
     try {
         var leadInviterId = _getLeadInviteInviterId();
         const response = await fetch(`${API_BASE}/projects`, {
@@ -6177,10 +6283,15 @@ async function doSaveProject(projectData) {
             if (leadInviterId > 0) {
                 _clearStartappQueryParam();
             }
+            _clearProjectPackageError();
             closeModal();
             loadProjects();
         } else {
-            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            var backendCode = getBackendErrorCode(result);
+            if (_handleProjectCreateConflict(backendCode)) {
+                return;
+            }
+            handleApiError(backendCode, result && result.details ? result.details : {});
         }
     } catch (error) {
         console.error('Save project error:', error);
