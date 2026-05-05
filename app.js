@@ -5236,12 +5236,23 @@ async function saveProjectSync() {
         persistTestsCacheSnapshot();
         renderProjects(true);
         renderTests(true);
-        refreshOpenModals();
+        try {
+            refreshOpenModals();
+        } catch (refreshError) {
+            console.error('Project sync modal refresh error:', refreshError);
+        }
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(t.syncSavedToast);
-        await Promise.all([loadProjects(true), loadTasks()]);
         closeSyncModal({ target: document.getElementById('sync-modal') });
+
+        Promise.allSettled([loadProjects(true), loadTasks()]).then(function(results) {
+            results.forEach(function(result, index) {
+                if (result && result.status === 'rejected') {
+                    console.error(index === 0 ? 'Post-sync projects refresh failed:' : 'Post-sync tasks refresh failed:', result.reason);
+                }
+            });
+        });
     } catch (error) {
         console.error('Project sync error:', error);
         showToast(getApiErrorMessage(error && error.message, 'loadError'));
