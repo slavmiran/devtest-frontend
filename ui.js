@@ -652,11 +652,10 @@ function getTestingTimelineMeta(test) {
     var projectDaysLeft = 0;
     var expectedTotalDays = Math.max(14, userTestingDay);
     var overtimeDays = 0;
-    var isSynced = (test.google_sync_day || 0) > 1;
+    var isSynced = isProjectSynced(test);
 
     if (isSynced) {
-        var syncDiffDays = test.last_sync_date ? getDayDiffFromToday(test.last_sync_date) : 0;
-        currentGoogleDay = Number(test.google_sync_day || 0) + syncDiffDays;
+        currentGoogleDay = getProjectCurrentGoogleDay(test, 0);
         projectDaysLeft = Math.max(0, 14 - currentGoogleDay);
         expectedTotalDays = userTestingDay + projectDaysLeft;
         overtimeDays = Math.max(0, expectedTotalDays - 14);
@@ -918,8 +917,24 @@ function showOwnerLastSeenToast(lastOwnerActivity) {
     showToast(getOwnerLastSeenToastText(lastOwnerActivity));
 }
 
+function getProjectSyncStartDay(test) {
+    var syncDay = Number(test && test.google_sync_day || 0);
+    return Number.isFinite(syncDay) && syncDay >= 1 ? syncDay : 0;
+}
+
 function isProjectSynced(test) {
-    return (test.google_sync_day || 0) > 1;
+    return getProjectSyncStartDay(test) >= 1;
+}
+
+function getProjectCurrentGoogleDay(test, fallbackDay) {
+    var syncDay = getProjectSyncStartDay(test);
+    if (!syncDay) {
+        var fallback = Number(fallbackDay || 0);
+        return Number.isFinite(fallback) ? Math.max(0, fallback) : 0;
+    }
+
+    var syncDiffDays = test && test.last_sync_date ? getDayDiffFromToday(test.last_sync_date) : 0;
+    return syncDay + Math.max(0, syncDiffDays);
 }
 
 function isProjectUpdateTipDismissed(appId) {
@@ -2010,7 +2025,7 @@ function renderFeedCard(item, kind) {
     const ownerDisplay = window.escapeHTML(item.owner_full_name || (item.owner_username ? '@' + item.owner_username : window.t('idLabel', { id: item.owner_id }, lang)));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
     const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
-    const syncChip = Number(item.google_sync_day || 0) > 1
+    const syncChip = isProjectSynced(item)
         ? `<span class="meta-chip accent-green">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
         : '';
     const bountyChip = kind === 'bounty'
@@ -2649,9 +2664,7 @@ function buildProjectFeedbackButton(projectId, feedbackTotalCount, feedbackNewCo
 }
 
 function formatCompactSyncLabel(project) {
-    var syncDay = Number(project && project.google_sync_day || 0);
-    var syncDiffDays = project && project.last_sync_date ? getDayDiffFromToday(project.last_sync_date) : 0;
-    var currentGoogleDay = syncDay > 1 ? syncDay + Math.max(0, syncDiffDays) : 0;
+    var currentGoogleDay = getProjectCurrentGoogleDay(project, 0);
     var day = Math.max(1, currentGoogleDay || 1);
     return window.t('syncDayProgress', { day: day }, lang);
 }
@@ -2766,17 +2779,16 @@ function renderProjects(force) {
         const createdValid = !!(createdDate && !Number.isNaN(createdDate.getTime()));
         const rawPlatformDays = createdValid ? (Math.floor((todayDate - createdDate) / (1000 * 60 * 60 * 24)) + 1) : 1;
         const platformDays = Math.max(1, Number.isFinite(rawPlatformDays) ? rawPlatformDays : 1);
-        const syncDiffDays = project.last_sync_date ? getDayDiffFromToday(project.last_sync_date) : 0;
         const syncDay = Number(project.google_sync_day || 0);
         const normalizedSyncDay = Number.isFinite(syncDay) ? syncDay : 0;
-        const rawGoogleDay = normalizedSyncDay > 1
-            ? normalizedSyncDay + Math.max(0, syncDiffDays)
+        const rawGoogleDay = isProjectSynced(project)
+            ? getProjectCurrentGoogleDay(project, platformDays)
             : platformDays;
         const currentGoogleDay = Math.max(1, Number.isFinite(rawGoogleDay) ? rawGoogleDay : 1);
         const likesAvailable = project.likes_max - project.likes_used;
 
         const isOvertime = platformDays > 14;
-        const needsSyncAttention = isPendingCompletion || (platformDays >= 7 && normalizedSyncDay <= 1);
+        const needsSyncAttention = isPendingCompletion || (platformDays >= 7 && normalizedSyncDay < 1);
         let cardClass = isInactive ? 'card card-inactive' : 'card';
         if (isOvertime) cardClass += ' card-overtime';
         if (isPendingCompletion) cardClass += ' card-pending-release';
@@ -2970,7 +2982,7 @@ function renderProjects(force) {
         })();
 
         const projectProgressHtml = (() => {
-            if ((project.google_sync_day || 0) <= 1) {
+            if (!isProjectSynced(project)) {
                 const day = Math.min(platformDays, 14);
                 const pct = Math.min(100, Math.round((day / 14) * 100));
                 return `
@@ -3016,7 +3028,7 @@ function renderProjects(force) {
             return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
         })();
 
-        const hasSync = (project.google_sync_day || 0) > 1;
+        const hasSync = isProjectSynced(project);
         const overtimeBadgeHtml = isOvertime ? `<span class="meta-chip accent-red" style="font-weight:600;">${window.t('overtimeBadge', {}, lang)}</span>` : '';
         const syncBtnStyle = needsSyncAttention
             ? 'flex: 1; background-color: rgba(255, 149, 0, 0.2); color: #ff9500; border: 1px solid rgba(255, 149, 0, 0.4); animation: pulse-attention 2s infinite;'
@@ -3769,17 +3781,17 @@ function openSyncModal(projectId) {
     if (!project || !modal || !body) return;
 
     _syncProjectId = projectId;
-    const hasSync = (project.google_sync_day || 0) > 1;
-    let isEditMode = !hasSync;
+    const projectHasSync = isProjectSynced(project);
+    let isEditMode = !projectHasSync;
 
     const renderModalContent = () => {
         const liveProject = myProjects.find((item) => item.id === projectId) || project;
-        const currentSyncDay = Number(liveProject.google_sync_day || 0);
-        const syncDiffDays = liveProject.last_sync_date ? getDayDiffFromToday(liveProject.last_sync_date) : 0;
-        const currentGoogleDay = currentSyncDay > 1 ? currentSyncDay + syncDiffDays : 0;
+        const liveHasSync = isProjectSynced(liveProject);
+        const currentSyncDay = getProjectSyncStartDay(liveProject);
+        const currentGoogleDay = liveHasSync ? getProjectCurrentGoogleDay(liveProject, 0) : 0;
         const leftDays = Math.max(0, 14 - currentGoogleDay);
         const timelineMeta = {
-            isLastDay: currentSyncDay > 1 && leftDays === 0,
+            isLastDay: liveHasSync && leftDays === 0,
         };
         const today = parseLocalDateOnly(getLocalDate()) || new Date();
         const finishDate = new Date(today);
@@ -3788,7 +3800,7 @@ function openSyncModal(projectId) {
         const lastSyncDate = parseLocalDateOnly(liveProject.last_sync_date);
         const updatedDaysAgo = lastSyncDate ? getDayDiffFromToday(lastSyncDate) : 0;
 
-        if (!isEditMode && hasSync) {
+        if (!isEditMode && liveHasSync) {
             const segments = [];
             for (let index = 1; index <= 14; index++) {
                 segments.push(`<div class="grant-segment ${index <= Math.min(currentGoogleDay, 14) ? 'filled' : ''}"></div>`);
@@ -3860,7 +3872,7 @@ function openSyncModal(projectId) {
         const cancelBtn = document.getElementById('sync-cancel-btn');
         if (cancelBtn) {
             cancelBtn.onclick = () => {
-                if (hasSync) {
+                if (liveHasSync) {
                     isEditMode = false;
                     renderModalContent();
                     return;
@@ -4894,13 +4906,11 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     var platformDays = createdDate && !Number.isNaN(createdDate.getTime())
         ? Math.max(1, Math.floor((todayDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)) + 1)
         : 1;
-    var syncDay = Number(project.google_sync_day || 0);
-    var syncDiffDays = project.last_sync_date ? getDayDiffFromToday(project.last_sync_date) : 0;
-    var currentGoogleDay = syncDay > 1 ? syncDay + Math.max(0, syncDiffDays) : platformDays;
+    var currentGoogleDay = isProjectSynced(project) ? getProjectCurrentGoogleDay(project, platformDays) : platformDays;
     var leftDays = Math.max(0, 14 - currentGoogleDay);
     var finishDate = new Date(todayDate);
     finishDate.setDate(finishDate.getDate() + leftDays);
-    var hasSync = syncDay > 1;
+    var hasSync = isProjectSynced(project);
     var ownerActivity = getOwnerActivityMeta(project.last_owner_activity);
     var reliabilityState = getDossierReliabilityState(profile || {});
     var reliabilityLine = reliabilityState.expected >= 42
@@ -5091,9 +5101,7 @@ async function openDossierModal(username, testerId, appId) {
                 const platformDays = createdAt && !Number.isNaN(createdAt.getTime())
                     ? Math.max(1, Math.floor((todayDate.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)) + 1)
                     : 1;
-                const syncDayOwned = Number(ownedProject.google_sync_day || 0);
-                const syncDiffOwned = ownedProject.last_sync_date ? getDayDiffFromToday(ownedProject.last_sync_date) : 0;
-                const currentGoogleDayOwned = syncDayOwned > 1 ? syncDayOwned + Math.max(0, syncDiffOwned) : platformDays;
+                const currentGoogleDayOwned = isProjectSynced(ownedProject) ? getProjectCurrentGoogleDay(ownedProject, platformDays) : platformDays;
                 const leftDaysOwned = Math.max(0, 14 - currentGoogleDayOwned);
                 return `<button type="button" class="dossier-owned-project-card" onclick="openTesterOwnedProjectFromDossier(${testerId}, ${Number(ownedProject.app_id)})">
                     <div class="dossier-owned-project-card-inner">
@@ -5391,8 +5399,8 @@ function openProjectDetailsModal(appId) {
     const skips = Number(test.skips_count || 0);
     const totalCheckins = Number(test.checkins_count || 0);
     const daysSinceCreated = Number(test.days_since_publish || 0);
-    const left = (test.google_sync_day || 0) > 1
-        ? Math.max(0, 14 - Number(test.google_sync_day || 0))
+    const left = isProjectSynced(test)
+        ? Math.max(0, 14 - getProjectSyncStartDay(test))
         : Math.max(0, 14 - daysSinceCreated);
     const potential = totalCheckins + left;
     const ownerActivity = getOwnerActivityMeta(test.last_owner_activity);
