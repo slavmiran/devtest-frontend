@@ -467,6 +467,35 @@ var _guestProjectsVisibleCount = GUEST_PROJECTS_PAGE_SIZE;
 var _guestProjectsFilters = { lang: 'ALL', category: 'ALL' };
 var _guestProjectsAvailableLangs = [];
 var _guestProjectTargetHighlightTimer = null;
+var _postSyncToastSuppressionUntil = 0;
+var POST_SYNC_TOAST_SUPPRESSION_MS = 8000;
+
+function _startPostSyncToastSuppression(durationMs) {
+    var safeDuration = Math.max(0, Number(durationMs || POST_SYNC_TOAST_SUPPRESSION_MS) || POST_SYNC_TOAST_SUPPRESSION_MS);
+    _postSyncToastSuppressionUntil = Date.now() + safeDuration;
+}
+
+function _isPostSyncToastSuppressed() {
+    return Date.now() < Number(_postSyncToastSuppressionUntil || 0);
+}
+
+function _showNonCriticalLoaderToast(message, sourceLabel) {
+    if (_isPostSyncToastSuppressed()) {
+        console.error('Suppressed loader toast during post-sync refresh [' + String(sourceLabel || 'unknown') + ']:', message);
+        return false;
+    }
+    showToast(message);
+    return true;
+}
+
+function _runBestEffortUiStep(stepLabel, handler) {
+    try {
+        return typeof handler === 'function' ? handler() : null;
+    } catch (error) {
+        console.error(String(stepLabel || 'UI step') + ' failed:', error);
+        return null;
+    }
+}
 
 function setMarketForceSkeleton(enabled) {
     _marketForceSkeleton = !!enabled;
@@ -1975,7 +2004,7 @@ async function loadIncomingOffers(options) {
             _offersLoadError = true;
             renderIncomingOffers();
             if (!background && (!incomingOffers || incomingOffers.length === 0)) {
-                showToast(getApiErrorMessage(error && error.message, 'networkError'));
+                _showNonCriticalLoaderToast(getApiErrorMessage(error && error.message, 'networkError'), 'incoming_offers');
             }
         } finally {
             _apiEnd();
@@ -3509,7 +3538,7 @@ async function _loadTasksImpl(options) {
         console.error('Error loading tasks:', error);
         if (_testsLoadedOnce && myTests.length > 0) {
             // Have data from cache, just show error toast
-            showToast(getApiErrorMessage(error && error.message, 'networkError'));
+            _showNonCriticalLoaderToast(getApiErrorMessage(error && error.message, 'networkError'), 'tasks');
         } else {
             showRetry('tests-list', 'loadTasks()');
         }
@@ -3621,7 +3650,7 @@ async function _loadMutualFeedImpl(options) {
         const hasLocalData = Array.isArray(mutualSeeking) && mutualSeeking.length > 0
             || Array.isArray(mutualPrelaunch) && mutualPrelaunch.length > 0;
         if (!hasLocalData) {
-            showToast(getApiErrorMessage(error && error.message, 'networkError'));
+            _showNonCriticalLoaderToast(getApiErrorMessage(error && error.message, 'networkError'), 'mutual_feed');
             showRetry('mutual-seeking-list', 'forceRefreshMarket()');
             showRetry('mutual-prelaunch-list', 'forceRefreshMarket()');
             const returnsContainer = document.getElementById('mutual-returns-container');
@@ -3630,7 +3659,7 @@ async function _loadMutualFeedImpl(options) {
                 showRetry('mutual-returns-list', 'forceRefreshMarket()');
             }
         } else {
-            showToast(getApiErrorMessage(error && error.message, 'networkError'));
+            _showNonCriticalLoaderToast(getApiErrorMessage(error && error.message, 'networkError'), 'mutual_feed');
         }
     } finally {
         _apiEnd();
@@ -3711,10 +3740,10 @@ async function _loadBountyFeedImpl(options) {
         console.error('Error loading bounty feed:', error);
         const hasLocalData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
         if (!hasLocalData) {
-            showToast(getApiErrorMessage(error && error.message, 'networkError'));
+            _showNonCriticalLoaderToast(getApiErrorMessage(error && error.message, 'networkError'), 'bounty_feed');
             showRetry('bounty-list', 'forceRefreshMarket()');
         } else {
-            showToast(getApiErrorMessage(error && error.message, 'networkError'));
+            _showNonCriticalLoaderToast(getApiErrorMessage(error && error.message, 'networkError'), 'bounty_feed');
         }
     } finally {
         _apiEnd();
@@ -4019,6 +4048,82 @@ function _mapStatsFromApi(data) {
     };
 }
 
+async function _readJsonResponseSafely(response, requestLabel) {
+    if (!response) return null;
+
+    var bodyText = '';
+    try {
+        bodyText = await response.text();
+    } catch (error) {
+        console.error(String(requestLabel || 'API response') + ' body read failed:', error);
+        return null;
+    }
+
+    if (!bodyText) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(bodyText);
+    } catch (error) {
+        console.error(String(requestLabel || 'API response') + ' JSON parse failed:', error, bodyText.slice(0, 400));
+        return null;
+    }
+}
+
+async function _confirmProjectSyncPersistence(appId, expectedDay, expectedMessage) {
+    var normalizedAppId = Number(appId || 0);
+    var normalizedDay = Number(expectedDay || 0);
+    var normalizedMessage = String(expectedMessage || '').trim();
+    if (!normalizedAppId || !normalizedDay || !userId) {
+        return null;
+    }
+
+    for (var attempt = 0; attempt < 3; attempt++) {
+        try {
+            var response = await fetchWithRetry(API_BASE + '/projects/' + userId, { timeoutMs: 12000 }, 1);
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+
+            var data = await _readJsonResponseSafely(response, 'Project sync confirmation');
+            if (!data || typeof data !== 'object') {
+                throw new Error('Invalid project sync confirmation payload');
+            }
+
+            var freshProjects = _mapProjectsFromApi(data);
+            var freshStats = _mapStatsFromApi(data);
+            var confirmedProject = freshProjects.find(function(project) {
+                return Number(project.id) === normalizedAppId;
+            });
+
+            if (confirmedProject) {
+                var confirmedDay = Number(confirmedProject.google_sync_day || 0);
+                var confirmedMessage = String(confirmedProject.sync_message || '').trim();
+                if (confirmedDay === normalizedDay && confirmedMessage === normalizedMessage) {
+                    myProjects = freshProjects;
+                    visibilityStats = freshStats;
+                    _projectsLoadedOnce = true;
+                    myProjectsLoadError = false;
+                    _lastFetchTimes.projects = Date.now();
+                    setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+                    return confirmedProject;
+                }
+            }
+        } catch (error) {
+            console.error('Project sync confirmation check failed:', error);
+        }
+
+        if (attempt < 2) {
+            await new Promise(function(resolve) {
+                setTimeout(resolve, 250 * (attempt + 1));
+            });
+        }
+    }
+
+    return null;
+}
+
 async function _loadProjectsImpl(options) {
     var shouldMarkBackgroundSync = !!(options && options.backgroundSync);
     if (shouldMarkBackgroundSync) {
@@ -4056,7 +4161,7 @@ async function _loadProjectsImpl(options) {
         console.error('Error loading projects:', error);
         myProjectsLoadError = true;
         if (_projectsLoadedOnce && myProjects.length > 0) {
-            showToast(getApiErrorMessage(error && error.message, 'networkError'));
+            _showNonCriticalLoaderToast(getApiErrorMessage(error && error.message, 'networkError'), 'projects');
         } else {
             showRetry('projects-list', 'loadProjects()');
         }
@@ -5190,73 +5295,128 @@ async function submitFeedback() {
 async function saveProjectSync() {
     if (!_syncProjectId) return;
     const day = Number(document.getElementById('sync-day-input').value);
-    const message = document.getElementById('sync-message-input').value || '';
+    const message = String(document.getElementById('sync-message-input').value || '').trim();
     if (!Number.isInteger(day) || day < 1) {
         showToast(t.syncDayInvalid);
         return;
     }
 
+    var syncProjectId = Number(_syncProjectId);
+    var localProjectBeforeSync = (myProjects || []).find(function(item) {
+        return Number(item.id) === Number(syncProjectId);
+    }) || null;
+    var localTestBeforeSync = (myTests || []).find(function(item) {
+        return Number(item.id) === Number(syncProjectId);
+    }) || null;
+    var response = null;
+    var data = null;
+    var requestError = null;
     try {
-        const response = await fetch(`${API_BASE}/projects/${_syncProjectId}/sync`, {
+        response = await fetch(`${API_BASE}/projects/${syncProjectId}/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ google_sync_day: day, sync_message: message })
         });
-        const data = await response.json();
-        if (!response.ok || data.status !== 'success') {
-            showToast(getApiErrorMessage(data, 'loadError'));
+    } catch (error) {
+        requestError = error;
+    }
+
+    if (response) {
+        data = await _readJsonResponseSafely(response, 'Project sync');
+    }
+
+    var confirmedProject = null;
+    if (requestError || !response || !response.ok || !data || data.status !== 'success') {
+        confirmedProject = await _confirmProjectSyncPersistence(syncProjectId, day, message);
+        if (!confirmedProject) {
+            if (data && typeof data === 'object' && data.status && data.status !== 'success') {
+                handleApiError(getBackendErrorCode(data), data.details || {});
+            } else if (requestError) {
+                console.error('Project sync request error:', requestError);
+                showToast(getApiErrorMessage(requestError && requestError.message, 'networkError'));
+            } else if (response && !response.ok) {
+                showToast(getApiErrorMessage(data, 'loadError'));
+            } else {
+                showToast(getApiErrorMessage(null, 'networkError'));
+            }
             return;
         }
-        const today = getLocalDate();
-        const project = (myProjects || []).find(function(item) {
-            return Number(item.id) === Number(_syncProjectId);
-        });
-        if (project) {
-            project.google_sync_day = day;
-            project.sync_message = message;
-            project.last_sync_date = data.last_sync_date || today;
-            if (data.resumed_from_pending) {
-                project.status = 'active';
-                project.app_status = 'active';
-            }
-        }
 
+        data = {
+            status: 'success',
+            google_sync_day: confirmedProject.google_sync_day,
+            sync_message: confirmedProject.sync_message,
+            last_sync_date: confirmedProject.last_sync_date,
+            resumed_from_pending: false,
+        };
+    }
+
+    var today = getLocalDate();
+    var resolvedSyncDay = confirmedProject ? Number(confirmedProject.google_sync_day || day) : day;
+    var resolvedSyncMessage = confirmedProject ? String(confirmedProject.sync_message || '') : message;
+    var resolvedLastSyncDate = confirmedProject
+        ? (confirmedProject.last_sync_date || today)
+        : (data.last_sync_date || today);
+    var resumedFromPending = !!(data && data.resumed_from_pending);
+    if (!resumedFromPending && confirmedProject) {
+        var wasPendingBeforeSync = !!(
+            (localProjectBeforeSync && localProjectBeforeSync.app_status === 'pending_completion')
+            || (localTestBeforeSync && localTestBeforeSync.app_status === 'pending_completion')
+        );
+        resumedFromPending = wasPendingBeforeSync && String(confirmedProject.app_status || '') === 'active';
+    }
+    _startPostSyncToastSuppression();
+
+    _runBestEffortUiStep('Project sync local project update', function() {
+        const project = (myProjects || []).find(function(item) {
+            return Number(item.id) === Number(syncProjectId);
+        });
+        if (!project) return;
+        project.google_sync_day = resolvedSyncDay;
+        project.sync_message = resolvedSyncMessage;
+        project.last_sync_date = resolvedLastSyncDate;
+        if (resumedFromPending) {
+            project.status = 'active';
+            project.app_status = 'active';
+        }
+    });
+
+    _runBestEffortUiStep('Project sync local test update', function() {
         (myTests || []).forEach(function(test) {
-            if (Number(test.id) !== Number(_syncProjectId)) return;
-            test.google_sync_day = day;
-            test.sync_message = message;
-            test.last_sync_date = data.last_sync_date || today;
-            if (data.resumed_from_pending) {
+            if (Number(test.id) !== Number(syncProjectId)) return;
+            test.google_sync_day = resolvedSyncDay;
+            test.sync_message = resolvedSyncMessage;
+            test.last_sync_date = resolvedLastSyncDate;
+            if (resumedFromPending) {
                 test.app_status = 'active';
                 recomputeLocalTestState(test);
             }
         });
+    });
 
+    _runBestEffortUiStep('Project sync cache update', function() {
         setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
         persistTestsCacheSnapshot();
-        renderProjects(true);
-        renderTests(true);
-        try {
-            refreshOpenModals();
-        } catch (refreshError) {
-            console.error('Project sync modal refresh error:', refreshError);
-        }
+    });
+    _runBestEffortUiStep('Project sync render projects', function() { renderProjects(true); });
+    _runBestEffortUiStep('Project sync render tests', function() { renderTests(true); });
+    _runBestEffortUiStep('Project sync refresh modals', function() { refreshOpenModals(); });
 
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(t.syncSavedToast);
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    showToast(t.syncSavedToast);
+    _runBestEffortUiStep('Project sync close modal', function() {
         closeSyncModal({ target: document.getElementById('sync-modal') });
+    });
 
-        Promise.allSettled([loadProjects(true), loadTasks()]).then(function(results) {
-            results.forEach(function(result, index) {
-                if (result && result.status === 'rejected') {
-                    console.error(index === 0 ? 'Post-sync projects refresh failed:' : 'Post-sync tasks refresh failed:', result.reason);
-                }
-            });
+    Promise.allSettled([loadProjects(true), loadTasks(), loadIncomingOffers({ background: true })]).then(function(results) {
+        results.forEach(function(result, index) {
+            if (result && result.status === 'rejected') {
+                console.error(index === 0
+                    ? 'Post-sync projects refresh failed:'
+                    : (index === 1 ? 'Post-sync tasks refresh failed:' : 'Post-sync offers refresh failed:'), result.reason);
+            }
         });
-    } catch (error) {
-        console.error('Project sync error:', error);
-        showToast(getApiErrorMessage(error && error.message, 'loadError'));
-    }
+    });
 }
 
 async function loadArchivedProjects(options) {
