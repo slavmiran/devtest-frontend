@@ -1032,9 +1032,12 @@ function renderTesterSourceIndicator(joinType) {
     return `<button type="button" style="background:none; border:none; padding:0; margin:0; color:var(--hint-color); font-size:15px; cursor:pointer; line-height:1;" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(toastText)}')">${sourceMeta.icon}</button>`;
 }
 
-function buildRunIterationChip(runIteration, className) {
-    const normalizedIteration = Number(runIteration || 1);
+function buildRunIterationChip(item, className) {
+    const normalizedIteration = Number((item && item.run_iteration) || 1);
     if (!Number.isFinite(normalizedIteration) || normalizedIteration <= 1) {
+        return '';
+    }
+    if (!item || typeof isProjectSynced !== 'function' || !isProjectSynced(item)) {
         return '';
     }
     return `<span class="${className || 'meta-chip accent-blue'}">${window.escapeHTML(window.t('projectRunIterationChip', { count: normalizedIteration }, lang))}</span>`;
@@ -1049,7 +1052,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         if (sourceChip) {
             parts.push(sourceChip);
         }
-        const runIterationChip = buildRunIterationChip(test.run_iteration);
+        const runIterationChip = buildRunIterationChip(test);
         if (runIterationChip) {
             parts.push(runIterationChip);
         }
@@ -2977,7 +2980,7 @@ function renderProjects(force) {
             })();
             if (statusChip) badges += statusChip;
 
-            const runIterationChip = buildRunIterationChip(project.run_iteration);
+            const runIterationChip = buildRunIterationChip(project);
             if (runIterationChip) badges += runIterationChip;
 
             if (likesAvailable > 0) {
@@ -4117,7 +4120,7 @@ function renderArchivedProjects(force) {
         const safeArchivePackage = window.escapeHTML(project.package_name || '');
         const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
         const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
-        const runIterationChip = buildRunIterationChip(project.run_iteration, 'archive-meta-chip');
+        const runIterationChip = buildRunIterationChip(project, 'archive-meta-chip');
         html += `
             <div class="card archive-card" id="archive-card-${project.app_id}" data-archive-project-id="${project.app_id}">
                 <div class="card-header archive-card-header">
