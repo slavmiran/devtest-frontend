@@ -3203,6 +3203,7 @@ function _mapTestsFromApi(data) {
             instructions: app.instructions,
             status: status,
             start_date: app.start_date,
+            owner_id: Number(app.owner_id || 0),
             owner_username: app.owner_username,
             active_testers_count: app.active_testers_count,
             days_since_publish: app.days_since_publish,
@@ -4232,6 +4233,11 @@ function markMutualOfferPendingUi(targetAppId, targetOwnerId, sourceButton) {
 }
 
 async function createMutualOffer(targetAppId, targetOwnerId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     var sourceButton = event && event.currentTarget ? event.currentTarget : null;
     if (myProjectsLoadError) {
         if (tg.showAlert) tg.showAlert(window.t('projectsLoadingAlert'));
@@ -4239,7 +4245,11 @@ async function createMutualOffer(targetAppId, targetOwnerId, event) {
         loadProjects(true).catch(function() {});
         return;
     }
-    const eligible = myProjects.filter(p => (p.mode === 'mutual' || p.mode === 'hybrid') && p.id);
+    const eligible = typeof window.getAvailableMutualProjectsForOwner === 'function'
+        ? window.getAvailableMutualProjectsForOwner(targetOwnerId)
+        : myProjects.filter(function(project) {
+            return project && (project.mode === 'mutual' || project.mode === 'hybrid') && project.id;
+        });
     const blockedProjects = await fetchBlockedOfferProjects(targetOwnerId, true);
     showProjectSelectModal(eligible, targetAppId, targetOwnerId, {
         sourceButton: sourceButton,

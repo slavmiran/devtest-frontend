@@ -922,8 +922,12 @@ function getProjectSyncStartDay(test) {
     return Number.isFinite(syncDay) && syncDay >= 1 ? syncDay : 0;
 }
 
+function hasManualProjectSync(test) {
+    return !!(test && test.last_sync_date && String(test.last_sync_date).trim());
+}
+
 function isProjectSynced(test) {
-    return getProjectSyncStartDay(test) >= 1;
+    return getProjectSyncStartDay(test) >= 1 && hasManualProjectSync(test);
 }
 
 function getProjectCurrentGoogleDay(test, fallbackDay) {
@@ -1043,6 +1047,71 @@ function buildRunIterationChip(item, className) {
     return `<span class="${className || 'meta-chip accent-blue'}">${window.escapeHTML(window.t('projectRunIterationChip', { count: normalizedIteration }, lang))}</span>`;
 }
 
+function getAvailableMutualProjectsForOwner(targetOwnerId) {
+    var normalizedTargetOwnerId = Number(targetOwnerId || 0);
+    var normalizedUserId = Number(userId || 0);
+    var projects = Array.isArray(myProjects) ? myProjects : [];
+
+    if (!normalizedTargetOwnerId || !normalizedUserId || normalizedTargetOwnerId === normalizedUserId) {
+        return [];
+    }
+
+    return projects.filter(function(project) {
+        if (!project || !project.id) {
+            return false;
+        }
+
+        var mode = String(project.mode || '').toLowerCase();
+        if (mode !== 'mutual' && mode !== 'hybrid') {
+            return false;
+        }
+
+        var projectStatus = String(project.status || 'active').toLowerCase();
+        if (projectStatus === 'archived') {
+            return false;
+        }
+
+        var testers = Array.isArray(project.testers) ? project.testers : [];
+        var activeMutualTesters = testers.filter(function(tester) {
+            return String(tester && tester.join_type || 'invite').toLowerCase() !== 'bounty';
+        }).length;
+        var limitMutual = Math.max(1, Number(project.limit_mutual || 0));
+        if (activeMutualTesters >= limitMutual) {
+            return false;
+        }
+
+        return !testers.some(function(tester) {
+            return Number(tester && tester.tester_id || 0) === normalizedTargetOwnerId;
+        });
+    });
+}
+
+function canProposeMutualFromTest(test) {
+    var targetOwnerId = Number(test && test.owner_id || 0);
+    var joinType = String(test && test.join_type || '').toLowerCase();
+    var appStatus = String(test && test.app_status || 'active').toLowerCase();
+
+    if (!targetOwnerId || targetOwnerId === Number(userId || 0)) {
+        return false;
+    }
+    if (joinType === 'mutual' || appStatus === 'archived') {
+        return false;
+    }
+    if (Number(test && test.reciprocal_app_id || 0) > 0) {
+        return false;
+    }
+
+    return getAvailableMutualProjectsForOwner(targetOwnerId).length > 0;
+}
+
+function buildProposeMutualChip(test) {
+    if (!canProposeMutualFromTest(test)) {
+        return '';
+    }
+
+    return `<button class="meta-chip accent-blue" onclick="createMutualOffer(${Number(test.id || 0)}, ${Number(test.owner_id || 0)}, event)">${window.escapeHTML(window.t('proposeMutualBtn', {}, lang))}</button>`;
+}
+
 function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test, options) {
     options = options || {};
     var showTestersCount = options.showTestersCount !== false;
@@ -1051,6 +1120,10 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         const sourceChip = getTestSourceChip(test);
         if (sourceChip) {
             parts.push(sourceChip);
+        }
+        const proposeMutualChip = buildProposeMutualChip(test);
+        if (proposeMutualChip) {
+            parts.push(proposeMutualChip);
         }
         const runIterationChip = buildRunIterationChip(test);
         if (runIterationChip) {
@@ -5605,6 +5678,9 @@ function openProjectDetailsModal(appId) {
     const perfectValue = currentSkips > 0 ? '<span class="grant-burned-text">' + window.escapeHTML(perfectValueLabel) + '</span>' : window.escapeHTML(perfectValueLabel);
     const perfectStatus = currentSkips > 0 ? window.t('grantCardBurned', {}, lang) : window.t('grantCardActive', {}, lang);
     let grantDashboardHtml = '';
+    var mutualOfferButtonHtml = canProposeMutualFromTest(test)
+        ? '<button class="btn" style="background:rgba(10,132,255,0.16);color:#63adff;border:1px solid rgba(10,132,255,0.32);" onclick="closeProjectDetailsModal(); createMutualOffer(' + Number(test.id || 0) + ', ' + Number(test.owner_id || 0) + ', event)">' + window.escapeHTML(window.t('proposeMutualBtn', {}, lang)) + '</button>'
+        : '';
 
     if (grant.eligible) {
         grantDashboardHtml = '<div class="grant-dashboard-block">' +
@@ -5699,6 +5775,7 @@ function openProjectDetailsModal(appId) {
 
         '<div class="detail-actions">' +
             '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openTelegramProfile(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +
+            mutualOfferButtonHtml +
             '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); initiateProjectFeedback(' + test.id + ')">' + window.t('detail_suggest_btn', {}, lang) + '</button>' +
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'https://play.google.com/store/apps/details?id=' + window.escapeHTML(test.package || '') + '\')">' + window.t('openGooglePlay', {}, lang) + '</button>' +
             (showIssueActionInDetails
@@ -6050,6 +6127,7 @@ Object.assign(window, {
     closeProjectDetailsModal,
     openTimelineStatsSheet,
     closeTimelineStatsSheet,
+    getAvailableMutualProjectsForOwner,
     showProjectSelectModal,
     closeProjectSelectModal,
     openContractEconomyModal,
