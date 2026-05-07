@@ -869,6 +869,26 @@ function getOwnerActivityMeta(lastOwnerActivity) {
     };
 }
 
+function getOwnerDetailStatusText(lastOwnerActivity) {
+    if (!lastOwnerActivity) {
+        return window.t('ownerStatusUnknownText', {}, lang);
+    }
+    const dt = new Date(lastOwnerActivity);
+    if (Number.isNaN(dt.getTime())) {
+        return window.t('ownerStatusUnknownText', {}, lang);
+    }
+    const dayMs = 24 * 60 * 60 * 1000;
+    const diffMs = Math.max(0, Date.now() - dt.getTime());
+    if (diffMs < dayMs) {
+        return window.t('ownerStatusRecentText', {}, lang);
+    }
+    const diffDays = Math.max(1, Math.floor(diffMs / dayMs));
+    if (diffDays <= 3) {
+        return window.t('ownerStatusFewDaysText', {}, lang);
+    }
+    return window.t('ownerStatusLastSeenDaysText', { count: diffDays }, lang);
+}
+
 function getRewardsChipLabel(rewardsSummary) {
     const rewardsKarma = Number(rewardsSummary && rewardsSummary.total_karma || 0);
     const rewardsBust = Number(rewardsSummary && rewardsSummary.total_bust || 0);
@@ -1173,10 +1193,6 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             const rewardLabel = window.escapeHTML(rewardChipLabel);
             parts.push(`<button class="meta-chip accent-green notranslate" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
         }
-        const ownerActivity = getOwnerActivityMeta(test.last_owner_activity);
-        const ownerLastSeenValue = window.escapeInlineJsString ? window.escapeInlineJsString(String(test.last_owner_activity || '')) : String(test.last_owner_activity || '').replace(/'/g, "\\'");
-        const ownerChip = `<button class="meta-chip ${ownerActivity.chipClass}" onclick="event.stopPropagation(); showOwnerLastSeenToast('${ownerLastSeenValue}')">${window.escapeHTML(ownerActivity.label)}</button>`;
-        parts.push(ownerChip);
         if (isProjectSynced(test)) {
             parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${t.syncDoneText}</button>`);
         }
@@ -5793,7 +5809,7 @@ function openProjectDetailsModal(appId) {
                 '<div>' +
                     '<div class="detail-owner-name notranslate">' + displayOwner + '</div>' +
                     '<div class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(test.last_owner_activity || '') + '\')">' +
-                        window.escapeHTML(ownerActivity.label) +
+                        window.escapeHTML(getOwnerDetailStatusText(test.last_owner_activity)) +
                     '</div>' +
                 '</div>' +
             '</div>' +
