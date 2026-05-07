@@ -1842,8 +1842,8 @@ function renderTests(force) {
                 
                 if (isScreenshotDay) {
                     secondaryActions += `
-                        <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
-                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '💬 ' + t.screenshotBtn}
+                        <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
+                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '✅ ' + window.t('completeControlDayBtn', {}, lang)}
                         </button>
                     `;
                 } else {
@@ -1915,8 +1915,8 @@ function renderTests(force) {
                         ${t.downloadPlay}
                     </button>
                     <div id="new-screenshot-box-${test.id}" style="display: ${shouldShowScreenshotAction ? 'block' : 'none'};">
-                        <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
-                            💬 3. ${t.screenshotBtn}
+                        <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
+                            ✅ ${window.escapeHTML(window.t('completeControlDayBtn', {}, lang))}
                         </button>
                         <div style="color: #ff3b30; font-size: 13px; margin-top: 8px; text-align: center;">
                             ${t.screenshotWarning}
@@ -1936,7 +1936,7 @@ function renderTests(force) {
                             ${t.openBtn}
                         </button>
                         <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '💬 ' + t.screenshotBtn}
+                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '✅ ' + window.t('completeControlDayBtn', {}, lang)}
                         </button>
                         <div style="color: #ff3b30; font-size: 13px; text-align: center;">
                             ${t.screenshotWarning}
@@ -3240,13 +3240,16 @@ function confirmScreenshotGuard() {
 // === CHECKIN OPTIONS MODAL ===
 var _checkinOptionsAppId = null;
 var _checkinOptionsOwner = '';
+var _checkinOptionsIsControlDay = false;
 var _playReviewModalAppId = null;
 
 function renderCheckinReviewOptions() {
     var mount = document.getElementById('checkin-review-options');
     if (!mount) return;
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
-    var canToggle = typeof window.canTogglePlayReview === 'function' ? window.canTogglePlayReview(test) : false;
+    var canToggle = _checkinOptionsIsControlDay && typeof window.canPromptPlayReview === 'function'
+        ? window.canPromptPlayReview(test)
+        : false;
     var isMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
     var reviewRejected = !!(test && test.rewards_summary && test.rewards_summary.review_rejected);
     if (!canToggle && !isMarked) {
@@ -3256,21 +3259,12 @@ function renderCheckinReviewOptions() {
     }
     mount.style.display = 'block';
     mount.innerHTML = `
-        <div class="review-checkin-card">
-            <div class="review-checkin-copy">
-                <div class="review-checkin-title">⭐ ${window.escapeHTML(window.t('playReviewCheckinTitle', {}, lang))}</div>
-                <div class="review-checkin-text">${window.escapeHTML(window.t('playReviewCheckinHint', {}, lang))}</div>
-            </div>
-            <div class="review-checkin-actions">
-                <label class="review-checkbox-row">
-                    <input id="checkin-review-checkbox" type="checkbox" ${isMarked ? 'checked' : ''} onchange="toggleCheckinReviewCheckbox(this)">
-                    <span>${window.escapeHTML(window.t('playReviewCheckboxLabel', {}, lang))}</span>
-                </label>
-                <div style="font-size: 12px; color: var(--hint-color); margin-top: 4px;">${window.escapeHTML(window.t('playReviewRequiresScreenshotHint', {}, lang))}</div>
-                ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 4px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}
-                <button type="button" class="btn btn-secondary review-info-btn" onclick="openPlayReviewModalFromCheckinOptions(event)">ℹ️ ${window.escapeHTML(window.t('detailsBtn', {}, lang))}</button>
-            </div>
-        </div>
+        <button type="button" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;" onclick="checkinOptionsReview()">
+            ⭐ ${window.escapeHTML(window.t('checkinOptionsSendReview', {}, lang))}
+        </button>
+        <div style="font-size: 12px; color: var(--hint-color); margin-top: 6px;">${window.escapeHTML(window.t('playReviewRequiresScreenshotHint', {}, lang))}</div>
+        ${isMarked ? `<div style="font-size: 12px; color: #34c759; margin-top: 4px;">${window.escapeHTML(window.t('playReviewMarked', {}, lang))}</div>` : ''}
+        ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 4px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}
     `;
 }
 
@@ -3308,6 +3302,9 @@ function renderPlayReviewModal() {
 function openCheckinOptionsModal(appId, ownerUsername) {
     _checkinOptionsAppId = appId;
     _checkinOptionsOwner = ownerUsername || '';
+    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
+    var testingDay = test && typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date) : null;
+    _checkinOptionsIsControlDay = !!(testingDay && isMandatoryScreenshotDay(testingDay));
     const modal = document.getElementById('checkin-options-modal');
     if (!modal) return;
     const titleEl = document.getElementById('t-checkinOptionsTitle');
@@ -3315,11 +3312,14 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     const screenshotBtn = document.getElementById('t-checkinOptionsSendScreenshot');
     const ideaBtn = document.getElementById('t-checkinOptionsSendIdea');
     const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
-    if (titleEl) titleEl.innerText = window.t('checkinOptionsTitle', {}, lang);
-    if (subtitleEl) subtitleEl.innerText = window.t('checkinOptionsSubtitle', {}, lang);
+    if (titleEl) titleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinTitle' : 'checkinOptionsTitle', {}, lang);
+    if (subtitleEl) subtitleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
     if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
     if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
-    if (confirmBtn) confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
+    if (confirmBtn) {
+        confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
+        confirmBtn.style.display = _checkinOptionsIsControlDay ? 'none' : 'block';
+    }
     renderCheckinReviewOptions();
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
@@ -3348,10 +3348,16 @@ function checkinOptionsScreenshot() {
 
 function checkinOptionsIdea() {
     const appId = _checkinOptionsAppId;
+    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
+    var testingDay = test && typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date) : null;
+    var localDate = typeof getLocalDate === 'function' ? getLocalDate() : '';
+    var checkinContext = _checkinOptionsIsControlDay && testingDay && localDate
+        ? { day: Number(testingDay), local_date: localDate }
+        : null;
     _closeCheckinOptionsModalImmediate();
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
-    initiateProjectFeedback(appId, { confirmCheckin: true });
+    initiateProjectFeedback(appId, checkinContext ? { checkinContext: checkinContext } : null);
 }
 
 function checkinOptionsConfirm() {
@@ -3359,6 +3365,17 @@ function checkinOptionsConfirm() {
     _closeCheckinOptionsModalImmediate();
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+    if (typeof confirmStart === 'function') confirmStart(appId);
+}
+
+async function checkinOptionsReview() {
+    const appId = _checkinOptionsAppId;
+    _closeCheckinOptionsModalImmediate();
+    if (appId == null) return;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+    if (typeof window.setPlayReviewSubmittedPending !== 'function') return;
+    var marked = await window.setPlayReviewSubmittedPending(appId, true);
+    if (!marked) return;
     if (typeof confirmStart === 'function') confirmStart(appId);
 }
 
@@ -6032,6 +6049,7 @@ Object.assign(window, {
     checkinOptionsScreenshot,
     checkinOptionsIdea,
     checkinOptionsConfirm,
+    checkinOptionsReview,
     toggleCheckinReviewCheckbox,
     renderPlayReviewModal,
     togglePlayReviewModalCheckbox,

@@ -2944,8 +2944,8 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     btn.style.color = '#fff';
     btn.style.cursor = 'pointer';
     if (isScreenshot) {
-        btn.innerText = '💬 ' + t.screenshotBtn;
-        btn.onclick = function() { handleScreenshotAndConfirm(finishedId, ownerUsername || ''); };
+        btn.innerText = '✅ ' + window.t('completeControlDayBtn', {}, lang);
+        btn.onclick = function() { openCheckinOptionsModal(finishedId, ownerUsername || ''); };
     } else {
         // Replace single button with split button group
         var safeOwner = window.escapeInlineJsString ? window.escapeInlineJsString(ownerUsername || '') : (ownerUsername || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -4949,7 +4949,11 @@ async function initiateProjectFeedback(appId, options) {
         const response = await fetch(`${API_BASE}/feedback/initiate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, app_id: appId })
+            body: JSON.stringify({
+                user_id: userId,
+                app_id: appId,
+                checkin_context: options.checkinContext || null,
+            })
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -4957,12 +4961,16 @@ async function initiateProjectFeedback(appId, options) {
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(window.t('feedbackBotRedirectToast', {}, lang));
+        showToast(window.t(options.checkinContext ? 'feedbackBotRedirectCheckinToast' : 'feedbackBotRedirectToast', {}, lang));
         if (window.closeProjectDetailsModal) {
             window.closeProjectDetailsModal();
         }
-        if (options.confirmCheckin) {
+        if (options.confirmCheckin && !options.checkinContext) {
             confirmStart(appId);
+            _openBotDm();
+            return;
+        }
+        if (options.checkinContext) {
             _openBotDm();
             return;
         }
