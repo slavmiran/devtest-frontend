@@ -818,6 +818,10 @@ function isMandatoryScreenshotDay(testingDay) {
     return [1, 4, 7, 10, 14].includes(testingDay);
 }
 
+function isScreenshotOnlyControlDay(testingDay) {
+    return Number(testingDay || 0) === 1;
+}
+
 function getOwnerActiveStatus(lastOwnerActivity) {
     return getOwnerActivityMeta(lastOwnerActivity).tone === 'online';
 }
@@ -1915,11 +1919,11 @@ function renderTests(force) {
                         ${t.downloadPlay}
                     </button>
                     <div id="new-screenshot-box-${test.id}" style="display: ${shouldShowScreenshotAction ? 'block' : 'none'};">
-                        <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
-                            ✅ ${window.escapeHTML(window.t('completeControlDayBtn', {}, lang))}
+                        <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
+                            ${window.escapeHTML(window.t('screenshotBtn', {}, lang))}
                         </button>
                         <div style="color: #ff3b30; font-size: 13px; margin-top: 8px; text-align: center;">
-                            ${t.screenshotWarning}
+                            ${window.escapeHTML(window.t('firstDayScreenshotWarning', {}, lang))}
                         </div>
                     </div>
                 </div>
@@ -1928,6 +1932,11 @@ function renderTests(force) {
         } else if (test.status === 'daily' || test.status === 'opened') {
             const testingDay = userTestingDay || 999;
             const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
+            const isScreenshotOnlyDay = isScreenshotOnlyControlDay(testingDay);
+            const screenshotBtnText = isScreenshotOnlyDay
+                ? window.t('screenshotBtn', {}, lang)
+                : '✅ ' + window.t('completeControlDayBtn', {}, lang);
+            const screenshotWarningText = window.t(isScreenshotOnlyDay ? 'firstDayScreenshotWarning' : 'screenshotWarning', {}, lang);
 
             if (isScreenshotDay) {
                 actionsHtml = `
@@ -1936,10 +1945,10 @@ function renderTests(force) {
                             ${t.openBtn}
                         </button>
                         <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '✅ ' + window.t('completeControlDayBtn', {}, lang)}
+                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : screenshotBtnText}
                         </button>
                         <div style="color: #ff3b30; font-size: 13px; text-align: center;">
-                            ${t.screenshotWarning}
+                            ${window.escapeHTML(screenshotWarningText)}
                         </div>
                     </div>
                 `;
@@ -3257,14 +3266,23 @@ function renderCheckinReviewOptions() {
         mount.style.display = 'none';
         return;
     }
+    var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
     mount.style.display = 'block';
     mount.innerHTML = `
-        <button type="button" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;" onclick="checkinOptionsReview()">
-            ⭐ ${window.escapeHTML(window.t('checkinOptionsSendReview', {}, lang))}
-        </button>
-        <div style="font-size: 12px; color: var(--hint-color); margin-top: 6px;">${window.escapeHTML(window.t('playReviewRequiresScreenshotHint', {}, lang))}</div>
-        ${isMarked ? `<div style="font-size: 12px; color: #34c759; margin-top: 4px;">${window.escapeHTML(window.t('playReviewMarked', {}, lang))}</div>` : ''}
-        ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 4px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}
+        <div class="details-block" style="margin: 0;">
+            <div class="detail-section-title">${window.escapeHTML(window.t('playReviewCheckinTitle', {}, lang))}</div>
+            <div style="font-size: 13px; line-height: 1.6; color: var(--text-color); margin-bottom: 10px;">${window.escapeHTML(window.t('playReviewCheckinHint', {}, lang))}</div>
+            <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="checkinOptionsOpenReviewStore(event)" ${reviewUrl ? '' : 'disabled'}>
+                ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
+            </button>
+            <label class="review-checkbox-row" style="margin-top: 10px;">
+                <input type="checkbox" ${isMarked ? 'checked' : ''} onchange="toggleCheckinReviewCheckbox(this)">
+                <span>${window.escapeHTML(window.t('playReviewCheckboxLabel', {}, lang))}</span>
+            </label>
+            <div style="font-size: 12px; color: var(--hint-color); margin-top: 6px;">${window.escapeHTML(window.t('playReviewRequiresScreenshotHint', {}, lang))}</div>
+            ${isMarked ? `<div style="font-size: 12px; color: #34c759; margin-top: 4px;">${window.escapeHTML(window.t('playReviewMarked', {}, lang))}</div>` : ''}
+            ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 4px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}
+        </div>
     `;
 }
 
@@ -3305,6 +3323,10 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
     var testingDay = test && typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date) : null;
     _checkinOptionsIsControlDay = !!(testingDay && isMandatoryScreenshotDay(testingDay));
+    if (_checkinOptionsIsControlDay && isScreenshotOnlyControlDay(testingDay)) {
+        handleScreenshotAndConfirm(appId, ownerUsername || '');
+        return;
+    }
     const modal = document.getElementById('checkin-options-modal');
     if (!modal) return;
     const titleEl = document.getElementById('t-checkinOptionsTitle');
@@ -3368,21 +3390,20 @@ function checkinOptionsConfirm() {
     if (typeof confirmStart === 'function') confirmStart(appId);
 }
 
-async function checkinOptionsReview() {
-    const appId = _checkinOptionsAppId;
-    _closeCheckinOptionsModalImmediate();
-    if (appId == null) return;
-    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
-    if (typeof window.setPlayReviewSubmittedPending !== 'function') return;
-    var marked = await window.setPlayReviewSubmittedPending(appId, true);
-    if (!marked) return;
-    if (typeof confirmStart === 'function') confirmStart(appId);
+function checkinOptionsOpenReviewStore(event) {
+    if (_checkinOptionsAppId == null) return false;
+    return openPlayReviewStoreByAppId(_checkinOptionsAppId, event);
 }
 
 async function toggleCheckinReviewCheckbox(input) {
     if (!_checkinOptionsAppId || typeof window.setPlayReviewSubmittedPending !== 'function') return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
-    await window.setPlayReviewSubmittedPending(_checkinOptionsAppId, !!(input && input.checked));
+    var normalized = !!(input && input.checked);
+    var marked = await window.setPlayReviewSubmittedPending(_checkinOptionsAppId, normalized);
+    renderCheckinReviewOptions();
+    if (!marked || !normalized) return;
+    _closeCheckinOptionsModalImmediate();
+    if (typeof confirmStart === 'function') confirmStart(_checkinOptionsAppId);
 }
 
 async function togglePlayReviewModalCheckbox(input) {
@@ -6049,7 +6070,7 @@ Object.assign(window, {
     checkinOptionsScreenshot,
     checkinOptionsIdea,
     checkinOptionsConfirm,
-    checkinOptionsReview,
+    checkinOptionsOpenReviewStore,
     toggleCheckinReviewCheckbox,
     renderPlayReviewModal,
     togglePlayReviewModalCheckbox,

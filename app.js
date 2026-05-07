@@ -2930,6 +2930,10 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
 
     // Check if test has an unresolved issue — keep button disabled
     var test = myTests.find(function(item) { return Number(item.id) === Number(finishedId); });
+    var testingDay = test && typeof window.getUserTestingDay === 'function'
+        ? window.getUserTestingDay(test.start_date)
+        : null;
+    var isFirstDayScreenshot = !!(isScreenshot && Number(testingDay || 0) === 1);
     if (test && test.issue_reported_at && !test.issue_fixed_at) {
         btn.disabled = true;
         btn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
@@ -2944,8 +2948,16 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     btn.style.color = '#fff';
     btn.style.cursor = 'pointer';
     if (isScreenshot) {
-        btn.innerText = '✅ ' + window.t('completeControlDayBtn', {}, lang);
-        btn.onclick = function() { openCheckinOptionsModal(finishedId, ownerUsername || ''); };
+        btn.innerText = isFirstDayScreenshot
+            ? window.t('screenshotBtn', {}, lang)
+            : '✅ ' + window.t('completeControlDayBtn', {}, lang);
+        btn.onclick = function() {
+            if (isFirstDayScreenshot) {
+                handleScreenshotAndConfirm(finishedId, ownerUsername || '');
+                return;
+            }
+            openCheckinOptionsModal(finishedId, ownerUsername || '');
+        };
     } else {
         // Replace single button with split button group
         var safeOwner = window.escapeInlineJsString ? window.escapeInlineJsString(ownerUsername || '') : (ownerUsername || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -4764,6 +4776,13 @@ async function confirmLeaveMutual(isJustified) {
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
+            var errorCode = getBackendErrorCode(data);
+            if (errorCode === 'testing_not_found' || errorCode === 'app_not_found' || errorCode === 'project_pending_completion') {
+                closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+                loadTasks(true).catch(function() {});
+                loadProjects(true).catch(function() {});
+                return;
+            }
             myTests = previousTests;
             if (typeof window.renderTests === 'function') {
                 window.renderTests(true);
