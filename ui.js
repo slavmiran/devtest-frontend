@@ -946,12 +946,35 @@ function getProjectSyncStartDay(test) {
     return Number.isFinite(syncDay) && syncDay >= 1 ? syncDay : 0;
 }
 
+function getProjectPlatformDay(test) {
+    var createdAt = test && test.created_at ? new Date(test.created_at) : null;
+    if (!(createdAt && !Number.isNaN(createdAt.getTime()))) {
+        return 0;
+    }
+    var today = parseLocalDateOnly(getLocalDate()) || new Date();
+    return Math.max(1, Math.floor((today - createdAt) / (1000 * 60 * 60 * 24)) + 1);
+}
+
 function hasManualProjectSync(test) {
     return !!(test && test.last_sync_date && String(test.last_sync_date).trim());
 }
 
+function hasMeaningfulProjectSync(test) {
+    if (getProjectSyncStartDay(test) < 1 || !hasManualProjectSync(test)) {
+        return false;
+    }
+    if (test && test.sync_message && String(test.sync_message).trim()) {
+        return true;
+    }
+    var platformDay = getProjectPlatformDay(test);
+    if (!platformDay) {
+        return true;
+    }
+    return getProjectCurrentGoogleDay(test, platformDay) !== platformDay;
+}
+
 function isProjectSynced(test) {
-    return getProjectSyncStartDay(test) >= 1 && hasManualProjectSync(test);
+    return hasMeaningfulProjectSync(test);
 }
 
 function getProjectCurrentGoogleDay(test, fallbackDay) {
@@ -1787,11 +1810,17 @@ function renderTests(force) {
     if (!force && !isTabVisible('tests')) return;
     const activeList = document.getElementById('tests-list');
     const doneList = document.getElementById('done-list');
+    const pendingSection = document.getElementById('pending-release-section');
+    const pendingList = document.getElementById('pending-release-list');
+    const pendingCountNode = document.getElementById('pending-release-count');
+    const pendingScrollWrap = document.getElementById('pending-release-scroll-wrap');
     activeList.innerHTML = '';
     doneList.innerHTML = '';
+    if (pendingList) pendingList.innerHTML = '';
 
     let activeCount = 0;
     let doneCount = 0;
+    let pendingCount = 0;
 
     myTests.forEach((test) => {
         const isPendingCompletion = !!test.is_pending_completion;
@@ -1815,12 +1844,17 @@ function renderTests(force) {
         // - If isGrantAvailableTomorrow: move to done list (grant pending)
         // - Else if status='done': go to done list
         // - Else: go to active list
-        const shouldShowInActiveList = test.isReadyToClaim || test.isEarlyFinish || isPendingCompletion || (test.status !== 'done' && !test.isGrantAvailableTomorrow);
-        const shouldShowInDoneList = !isPendingCompletion && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
+        const shouldShowInPendingList = isPendingCompletion;
+        const shouldShowInActiveList = !shouldShowInPendingList && (test.isReadyToClaim || test.isEarlyFinish || (test.status !== 'done' && !test.isGrantAvailableTomorrow));
+        const shouldShowInDoneList = !shouldShowInPendingList && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
         
-        card.className = shouldShowInDoneList ? 'card card-done' : 'card';
-        if (isPendingForTester) {
-            card.className += ' card-pending-release';
+        if (shouldShowInPendingList) {
+            card.className = 'card card-pending-release pending-release-carousel-card horizontal-card';
+        } else {
+            card.className = shouldShowInDoneList ? 'card card-done' : 'card';
+            if (isPendingForTester) {
+                card.className += ' card-pending-release';
+            }
         }
         card.id = `test-card-${test.id}`;
         const userTestingDay = getUserTestingDay(test.start_date);
@@ -2036,6 +2070,10 @@ function renderTests(force) {
             card.onclick = () => window.openProjectDetailsModal(test.id);
             doneList.appendChild(card);
             doneCount++;
+        } else if (shouldShowInPendingList) {
+            card.innerHTML = cardContent;
+            if (pendingList) pendingList.appendChild(card);
+            pendingCount++;
         } else if (shouldShowInActiveList) {
             card.innerHTML = cardContent;
             activeList.appendChild(card);
@@ -2043,10 +2081,14 @@ function renderTests(force) {
         }
     });
 
+    if (pendingCountNode) pendingCountNode.innerText = pendingCount;
+    if (pendingSection) pendingSection.style.display = pendingCount > 0 ? 'block' : 'none';
+    if (pendingScrollWrap) pendingScrollWrap.classList.toggle('is-single', pendingCount <= 1);
+
     document.getElementById('done-count').innerText = doneCount;
     document.getElementById('done-section').style.display = doneCount > 0 ? 'block' : 'none';
 
-    if (activeCount === 0) {
+    if (activeCount === 0 && pendingCount === 0) {
         activeList.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">🎉</div>

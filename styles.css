@@ -2461,6 +2461,100 @@ details[open] > summary .details-arrow {
     color: var(--hint-color);
 }
 
+.pending-release-section {
+    margin: 4px 0 18px;
+}
+
+.pending-release-section__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.pending-release-section__header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.pending-release-section__header p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--hint-color);
+}
+
+.pending-release-section__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 149, 0, 0.22);
+    background: rgba(255, 149, 0, 0.12);
+    color: #ffb84d;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.pending-release-scroll-wrap {
+    position: relative;
+}
+
+.pending-release-scroll-wrap::after {
+    content: '›';
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 17, 21, 0.88);
+    border: 1px solid rgba(255, 149, 0, 0.18);
+    color: #ffb84d;
+    font-size: 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+}
+
+.pending-release-scroll-wrap.is-single::after {
+    display: none;
+}
+
+.pending-release-scroll {
+    padding: 2px 36px 8px 2px;
+}
+
+.pending-release-carousel-card {
+    flex: 0 0 88%;
+    max-width: 430px;
+    margin-bottom: 0;
+    scroll-snap-align: start;
+    border-color: rgba(255, 149, 0, 0.24);
+    background:
+        linear-gradient(180deg, rgba(255, 149, 0, 0.10) 0%, rgba(28, 28, 30, 0.78) 26%, rgba(28, 28, 30, 0.72) 100%),
+        rgba(28, 28, 30, 0.72);
+}
+
+.pending-release-carousel-card .card-header {
+    background: rgba(255, 149, 0, 0.08);
+}
+
+@media (min-width: 720px) {
+    .pending-release-carousel-card {
+        flex-basis: 68%;
+    }
+}
+
 .offers-carousel {
     display: flex;
     gap: 10px;

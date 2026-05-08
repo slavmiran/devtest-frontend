@@ -93,6 +93,20 @@
             </div>
         </div>
 
+        <div id="pending-release-section" class="pending-release-section" style="display:none;">
+            <div class="pending-release-section__header">
+                <div>
+                    <h3 id="t-pendingReleaseSectionTitle" data-i18n="pendingReleaseSectionTitle">🏁 Проекты на паузе</h3>
+                    <p id="t-pendingReleaseSectionDesc" data-i18n="pendingReleaseSectionDesc">Здесь собраны проекты, где тестирование временно остановлено до решения владельца.</p>
+                </div>
+                <span id="pending-release-count" class="offers-count">0</span>
+            </div>
+            <div id="t-pendingReleaseSectionHint" class="pending-release-section__hint" data-i18n="pendingReleaseSectionHint">Прокрутите влево, чтобы увидеть все paused-проекты</div>
+            <div id="pending-release-scroll-wrap" class="pending-release-scroll-wrap">
+                <div id="pending-release-list" class="horizontal-scroll pending-release-scroll"></div>
+            </div>
+        </div>
+
         <div id="done-section" class="accordion" style="display: none;">
             <div class="accordion-header" onclick="toggleAccordion()">
                 <div><span id="t-doneToday" data-i18n="doneToday">✅ Выполнено сегодня</span> (<span id="done-count">0</span>)</div>
