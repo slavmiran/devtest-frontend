@@ -6766,6 +6766,8 @@ Object.assign(window, {
     setInviteMode,
     toggleExternalTrackAcknowledged,
     showExternalTrackInfo,
+    showExternalTrackInfoClick,
+    openExternalAppLink,
     copyTextWithToast,
     escapeForAttr,
     copyAndAction,
