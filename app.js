@@ -1296,6 +1296,53 @@ function buildGuestInviteDeepLink(guestAppId, inviterId, inviteLang, startappVal
     return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORTNAME}?${params.toString()}`;
 }
 
+function buildExternalClaimStartLink(packageName) {
+    var normalizedPackage = String(packageName || '').trim();
+    var botUsername = String((window.App && window.App.botUsername) || BOT_USERNAME || 'Android12TestersBot').trim().replace(/^@+/, '');
+    return `https://t.me/${botUsername}?start=claim_app_${encodeURIComponent(normalizedPackage)}`;
+}
+
+async function startExternalTrackingSession(payload) {
+    const response = await fetchWithRetry(`${API_BASE}/external-tests/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }, 1);
+    const result = await response.json();
+    if (!response.ok || !result || result.status !== 'success') {
+        handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+        return null;
+    }
+    loadTasks(true).catch(function() {});
+    return result;
+}
+
+async function submitExternalTrackingProof(progressId, testId) {
+    const response = await fetchWithRetry(`${API_BASE}/external-tests/${progressId}/proof`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tester_id: userId, local_date: getLocalDate() })
+    }, 1);
+    const result = await response.json();
+    if (!response.ok || !result || result.status !== 'success') {
+        handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+        return null;
+    }
+
+    var test = myTests.find(function(item) { return Number(item.id) === Number(testId); });
+    if (test) {
+        test.last_check_date = result.last_check_date || getLocalDate();
+        test.checkins_count = Number(result.checkins_count || test.checkins_count || 0);
+        test.daily_timeline = String(result.daily_timeline || test.daily_timeline || '');
+        test.testing_days = Math.max(Number(test.testing_days || 0), Number(result.testing_day || 0));
+        recomputeLocalTestState(test);
+        persistTestsCacheSnapshot();
+        renderTests(true);
+    }
+
+    return result;
+}
+
 function _syncGuestProjectsCache() {
     setGuestProjectsCache({
         filters: Object.assign({}, _guestProjectsFilters),
@@ -3172,6 +3219,8 @@ async function loadTasks(isBackground) {
 function _mapTestsFromApi(data) {
     var today = getLocalDate();
     return (data.to_test_today || []).map(function(app) {
+        var isExternal = !!app.is_external;
+        var mappedId = isExternal ? (-Math.abs(Number(app.progress_id || 0))) : Number(app.app_id || 0);
         var status = 'new';
         if (app.last_check_date === today) {
             status = 'done';
@@ -3182,9 +3231,9 @@ function _mapTestsFromApi(data) {
         }
         var progressStatus = String(app.progress_status || 'active').toLowerCase();
         var appStatus = String(app.app_status || 'active').toLowerCase();
-        var isPendingCompletion = appStatus === 'pending_completion';
-        var isArchivedOrCompleted = ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
-        var existingTest = myTests.find(function(test) { return test.id === app.app_id; });
+        var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
+        var isArchivedOrCompleted = !isExternal && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
+        var existingTest = myTests.find(function(test) { return Number(test.id) === Number(mappedId); });
         if (existingTest && existingTest.status === 'opened' && status !== 'done' && !isArchivedOrCompleted && !isPendingCompletion) {
             status = 'opened';
         }
@@ -3194,7 +3243,7 @@ function _mapTestsFromApi(data) {
         var isTestedToday = status === 'done';
         var testingDays = Number(app.testing_days || 0);
         var skipsCount = countGrantSkips(app);
-        var canEverClaim = !app.grant_claimed && skipsCount <= 3 && app.progress_id;
+        var canEverClaim = !isExternal && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
         var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
         // Early finish: archived app qualifies for bonus (>=5 days tested, <=1 skip).
@@ -3206,7 +3255,8 @@ function _mapTestsFromApi(data) {
         }        
         return {
             reviewRejected: !!(app && app.rewards_summary && app.rewards_summary.review_rejected),
-            id: app.app_id,
+            id: mappedId,
+            real_app_id: Number(app.app_id || 0) || null,
             progress_id: app.progress_id,
             name: app.name,
             package: app.package_name,
@@ -3292,6 +3342,17 @@ function _mapTestsFromApi(data) {
             isGrantAvailableTomorrow: isGrantAvailableTomorrow,
             isReadyToClaim: isReadyToClaim,
             isEarlyFinish: isEarlyFinish,
+            is_external: isExternal,
+            external_source: app.external_source || '',
+            external_package_name: app.external_package_name || app.package_name || '',
+            external_owner_telegram_id: Number(app.external_owner_telegram_id || app.owner_id || 0),
+            external_category: app.external_category || 'APP',
+            external_guest_app_id: app.external_guest_app_id || '',
+            external_last_completed_control_day: Number(app.external_last_completed_control_day || 0),
+            external_days_since_last_completed: app.external_days_since_last_completed === null || typeof app.external_days_since_last_completed === 'undefined'
+                ? null
+                : Number(app.external_days_since_last_completed || 0),
+            external_control_day_due: !!(isExternal && isMandatoryScreenshotDay(testingDays)),
         };
     });
 }
@@ -3310,8 +3371,9 @@ function recomputeLocalTestState(test) {
 
     var progressStatus = String(test.progress_status || 'active').toLowerCase();
     var appStatus = String(test.app_status || 'active').toLowerCase();
-    var isPendingCompletion = appStatus === 'pending_completion';
-    var isArchivedOrCompleted = ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
+    var isExternal = !!test.is_external;
+    var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
+    var isArchivedOrCompleted = !isExternal && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
     if (test.status === 'opened' && nextStatus !== 'done' && !isArchivedOrCompleted && !isPendingCompletion) {
         nextStatus = 'opened';
     }
@@ -3319,12 +3381,13 @@ function recomputeLocalTestState(test) {
     var isTestedToday = nextStatus === 'done';
     var testingDays = Number(test.testing_days || 0);
     var skipsCount = countGrantSkips(test);
-    var canEverClaim = !test.grant_claimed && skipsCount <= 3 && test.progress_id;
+    var canEverClaim = !isExternal && !test.grant_claimed && skipsCount <= 3 && test.progress_id;
 
     test.isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
     test.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
     test.isEarlyFinish = !!(isArchivedOrCompleted && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && testingDays >= 5 && skipsCount <= 1);
     test.is_pending_completion = isPendingCompletion;
+    test.external_control_day_due = !!(isExternal && isMandatoryScreenshotDay(testingDays));
 
     if (isArchivedOrCompleted && !test.isReadyToClaim && !test.isGrantAvailableTomorrow) {
         nextStatus = 'done';
@@ -4023,6 +4086,21 @@ function _mapProjectsFromApi(data) {
         var hasAccessError = testers.some(function(tester) {
             return !!tester.issue_reported_at && !tester.issue_fixed_at;
         });
+        var mappedTesters = testers.map(function(tester) {
+            return Object.assign({}, tester, {
+                progress_id: Number(tester.progress_id || 0),
+                tester_id: Number(tester.tester_id || 0),
+                checkins_count: Number(tester.checkins_count || 0),
+                skips_count: Number(tester.skips_count || 0),
+                is_external: !!tester.is_external,
+                is_guest_tester: !!tester.is_guest_tester,
+                external_source: tester.external_source || '',
+                external_last_completed_control_day: Number(tester.external_last_completed_control_day || 0),
+                external_days_since_last_completed: tester.external_days_since_last_completed === null || typeof tester.external_days_since_last_completed === 'undefined'
+                    ? null
+                    : Number(tester.external_days_since_last_completed || 0),
+            });
+        });
         return {
             id: project.app_id,
             status: hasAccessError ? 'access_error' : (project.status || 'active'),
@@ -4032,7 +4110,7 @@ function _mapProjectsFromApi(data) {
             icon_url: project.icon_url,
             google_group_url: project.google_group_url,
             instructions: project.instructions || '',
-            testers: testers,
+            testers: mappedTesters,
             is_visible: project.is_visible !== false,
             created_at: project.created_at || null,
             likes: project.likes || [],
@@ -4053,6 +4131,7 @@ function _mapProjectsFromApi(data) {
             run_iteration: Number(project.run_iteration || 1),
             feedback_new_count: project.feedback_new_count || 0,
             feedback_total_count: project.feedback_total_count || 0,
+            guest_testers_count: Number(project.guest_testers_count || 0),
         };
     });
 }
@@ -6325,6 +6404,24 @@ async function doSaveProject(projectData) {
             loadProjects();
         } else {
             var backendCode = getBackendErrorCode(result);
+            if (backendCode === 'external_tracking_merge_required') {
+                var externalCount = Number(result && result.details && result.details.external_testers_count || 0);
+                var mergeMessage = window.t('externalMergeProjectConfirm', {
+                    count: externalCount,
+                    package_name: String(projectData && projectData.package_name || ''),
+                }, lang);
+                var confirmed = await new Promise(function(resolve) {
+                    if (tg.showConfirm) {
+                        tg.showConfirm(mergeMessage, function(ok) { resolve(!!ok); });
+                    } else {
+                        resolve(window.confirm(mergeMessage));
+                    }
+                });
+                if (confirmed) {
+                    await doSaveProject(Object.assign({}, projectData, { allow_external_merge: true }));
+                }
+                return;
+            }
             if (_handleProjectCreateConflict(backendCode)) {
                 return;
             }
@@ -6542,6 +6639,9 @@ Object.assign(window, {
     normalizeGuestInviteLanguage,
     getDefaultGuestInviteLanguage,
     buildGuestInviteDeepLink,
+    buildExternalClaimStartLink,
+    startExternalTrackingSession,
+    submitExternalTrackingProof,
     getDefaultCheckpointReportLanguage,
     getDefaultCheckpointReportLanguage,
     buildCheckpointReportPrefill,
@@ -6639,5 +6739,8 @@ Object.assign(window.App, {
     publishProjectToMarket,
     startMassInvite,
     resetMassInviteCooldown,
-    joinDirect
+    joinDirect,
+    startExternalTrackingSession,
+    submitExternalTrackingProof,
+    buildExternalClaimStartLink
 });

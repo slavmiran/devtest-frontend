@@ -372,6 +372,22 @@
         </div>
     </div>
 
+    <div id="external-track-modal" class="modal-overlay" onclick="closeExternalTrackModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
+            <h3 id="t-externalTrackModalTitle" data-i18n="externalTrackModalTitle"></h3>
+            <div id="external-track-modal-body"></div>
+            <button class="btn btn-secondary" style="margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeExternalTrackModal()" data-i18n="inviteClose">Закрыть</button>
+        </div>
+    </div>
+
+    <div id="guest-tester-modal" class="modal-overlay" onclick="closeGuestTesterDetailsModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
+            <h3 id="t-guestTesterModalTitle" data-i18n="guestTesterModalTitle"></h3>
+            <div id="guest-tester-modal-body"></div>
+            <button class="btn btn-secondary" style="margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeGuestTesterDetailsModal()" data-i18n="inviteClose">Закрыть</button>
+        </div>
+    </div>
+
     <!-- Edit Project Modal -->
     <div id="edit-project-modal" class="modal-overlay" onclick="closeEditModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
