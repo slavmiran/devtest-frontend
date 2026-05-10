@@ -2758,32 +2758,8 @@ details[open] > summary .details-arrow {
     position: relative;
 }
 
-.pending-release-scroll-wrap::after {
-    content: '›';
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 30px;
-    height: 30px;
-    border-radius: 999px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(15, 17, 21, 0.88);
-    border: 1px solid rgba(255, 149, 0, 0.18);
-    color: #ffb84d;
-    font-size: 20px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-    pointer-events: none;
-}
-
-.pending-release-scroll-wrap.is-single::after {
-    display: none;
-}
-
 .pending-release-scroll {
-    padding: 2px 36px 8px 2px;
+    padding: 2px 8px 8px 2px;
 }
 
 .pending-release-carousel-card {

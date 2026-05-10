@@ -962,7 +962,15 @@ function getProjectPlatformDay(test) {
 }
 
 function hasManualProjectSync(test) {
-    return !!(test && test.last_sync_date && String(test.last_sync_date).trim());
+    var lastSyncDate = parseLocalDateOnly(test && test.last_sync_date);
+    if (!(lastSyncDate && !Number.isNaN(lastSyncDate.getTime()))) {
+        return false;
+    }
+    var createdAt = parseLocalDateOnly(test && test.created_at);
+    if (createdAt && lastSyncDate < createdAt) {
+        return false;
+    }
+    return true;
 }
 
 function hasMeaningfulProjectSync(test) {
@@ -974,7 +982,7 @@ function hasMeaningfulProjectSync(test) {
     }
     var platformDay = getProjectPlatformDay(test);
     if (!platformDay) {
-        return true;
+        return false;
     }
     return getProjectCurrentGoogleDay(test, platformDay) !== platformDay;
 }
@@ -2832,6 +2840,82 @@ function getExternalTrackPlayUrl(guest) {
     return packageName ? ('https://play.google.com/store/apps/details?id=' + encodeURIComponent(packageName)) : '';
 }
 
+function openExternalAppLink(url, event) {
+    if (event && typeof event.preventDefault === 'function') {
+        event.preventDefault();
+    }
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+    var targetUrl = String(url || '').trim();
+    if (!targetUrl) {
+        return false;
+    }
+    try {
+        if (window.tg && typeof window.tg.openLink === 'function') {
+            window.tg.openLink(targetUrl);
+        } else {
+            window.open(targetUrl, '_blank');
+        }
+    } catch (error) {
+        window.location.href = targetUrl;
+    }
+    try {
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.impactOccurred === 'function') {
+            window.tg.HapticFeedback.impactOccurred('light');
+        }
+    } catch (error) {}
+    return false;
+}
+
+function getExternalTrackFormElements() {
+    var body = document.getElementById('external-track-modal-body');
+    if (!body) {
+        return { select: null, checkbox: null, submitBtn: null };
+    }
+    return {
+        select: body.querySelector('#external-track-project-select'),
+        checkbox: body.querySelector('#external-track-ack'),
+        submitBtn: body.querySelector('#external-track-submit-btn'),
+    };
+}
+
+function isExternalTrackFormValid() {
+    var elements = getExternalTrackFormElements();
+    return !!(
+        elements.checkbox
+        && elements.checkbox.checked === true
+        && elements.select
+        && String(elements.select.value || '').trim() !== ''
+    );
+}
+
+function updateExternalTrackSubmitState() {
+    var elements = getExternalTrackFormElements();
+    var submitBtn = elements.submitBtn;
+    if (!submitBtn) {
+        return;
+    }
+    var guest = getExternalTrackGuest() || {};
+    var ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
+    var disabled = _externalTrackSending || !ownerUsername || !isExternalTrackFormValid();
+    submitBtn.disabled = disabled;
+    submitBtn.classList.toggle('btn-primary', !disabled);
+    submitBtn.classList.toggle('btn-secondary', disabled);
+    submitBtn.classList.toggle('disabled', disabled);
+}
+
+function showExternalTrackInfoClick(event) {
+    if (event && typeof event.preventDefault === 'function') {
+        event.preventDefault();
+    }
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+    showExternalTrackInfo();
+    return false;
+}
+
 function showExternalTrackInfo() {
     var message = window.t('externalTrackExplainAlert', {}, lang);
     if (tg.showAlert) {
@@ -2861,10 +2945,6 @@ function renderExternalTrackModal() {
     var projects = getEligibleExternalTrackProjects();
     var groupUrl = String(guest.google_group_url || 'https://groups.google.com/g/google-play-dev-test').trim();
     var playUrl = getExternalTrackPlayUrl(guest);
-    var sendDisabled = _externalTrackSending || !_externalTrackAcknowledged || !selectedProject || !ownerUsername;
-    var noteKey = !ownerUsername
-        ? 'guestInviteNoUsername'
-        : (!selectedProject ? 'externalTrackNeedsProject' : (!_externalTrackAcknowledged ? 'externalTrackNeedConfirm' : 'externalTrackReady'));
     var optionsHtml = projects.length
         ? projects.map(function(project) {
             var selected = Number(project.id) === Number(_externalTrackProjectId || selectedProject && selectedProject.id || 0);
@@ -2879,23 +2959,23 @@ function renderExternalTrackModal() {
             <div class="external-track-hero-subtitle">${window.escapeHTML(window.t('externalTrackModalDesc', { owner_username: ownerUsername ? '@' + ownerUsername : window.t('guestInviteOwnerMissing', {}, lang) }, lang))}</div>
         </div>
         <div class="external-track-steps">
-            <button class="btn btn-secondary" style="width:100%;" onclick="tg.openLink('${escapeInlineJsString(groupUrl)}', { try_browser: 'chrome' }); if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');">${window.escapeHTML(window.t('externalTrackJoinGroupBtn', {}, lang))}</button>
-            <button class="btn btn-secondary" style="width:100%;" onclick="tg.openLink('${escapeInlineJsString(playUrl)}', { try_browser: 'chrome' }); if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');" ${playUrl ? '' : 'disabled'}>${window.escapeHTML(window.t('externalTrackOpenPlayBtn', {}, lang))}</button>
+            <button class="btn btn-secondary" style="width:100%;" onclick="return openExternalAppLink('${escapeInlineJsString(groupUrl)}', event)">${window.escapeHTML(window.t('externalTrackJoinGroupBtn', {}, lang))}</button>
+            <button class="btn btn-secondary" style="width:100%;" onclick="return openExternalAppLink('${escapeInlineJsString(playUrl)}', event)" ${playUrl ? '' : 'disabled'}>${window.escapeHTML(window.t('externalTrackOpenPlayBtn', {}, lang))}</button>
         </div>
         <div class="guest-invite-card external-track-card">
             <div class="guest-invite-language-row external-track-select-row">
                 <div class="guest-invite-language-label">${window.escapeHTML(window.t('externalTrackSelectProjectLabel', {}, lang))}</div>
-                <select class="form-input" onchange="setExternalTrackProject(this.value)">${optionsHtml || `<option value="">${window.escapeHTML(window.t('externalTrackNeedsProject', {}, lang))}</option>`}</select>
+                <select id="external-track-project-select" class="form-input" onchange="setExternalTrackProject(this.value, event)" oninput="setExternalTrackProject(this.value, event)">${optionsHtml || `<option value="">${window.escapeHTML(window.t('externalTrackNeedsProject', {}, lang))}</option>`}</select>
             </div>
             <label class="external-track-check">
-                <input type="checkbox" ${_externalTrackAcknowledged ? 'checked' : ''} onchange="toggleExternalTrackAcknowledged(this)">
+                <input id="external-track-ack" type="checkbox" ${_externalTrackAcknowledged ? 'checked' : ''} onchange="toggleExternalTrackAcknowledged(this, event)" oninput="toggleExternalTrackAcknowledged(this, event)">
                 <span>${window.escapeHTML(window.t('externalTrackCheckboxLabel', {}, lang))}</span>
-                <button type="button" class="external-track-info-btn" onclick="event.preventDefault(); event.stopPropagation(); showExternalTrackInfo();">${window.escapeHTML(window.t('externalTrackInfoBtn', {}, lang))}</button>
+                <button type="button" class="external-track-info-btn" onclick="return showExternalTrackInfoClick(event)">${window.escapeHTML(window.t('externalTrackInfoBtn', {}, lang))}</button>
             </label>
-            <div class="guest-invite-help">${window.escapeHTML(window.t(noteKey, {}, lang))}</div>
-            <button class="btn ${sendDisabled ? 'btn-secondary disabled' : 'btn-primary'}" ${sendDisabled ? 'disabled' : ''} style="width:100%;" onclick="sendExternalTrackInvite()">${window.escapeHTML(window.t(_externalTrackSending ? 'externalTrackSending' : 'externalTrackSendBtn', {}, lang))}</button>
+            <button id="external-track-submit-btn" class="btn btn-secondary disabled" disabled style="width:100%;" onclick="sendExternalTrackInvite()">${window.escapeHTML(window.t(_externalTrackSending ? 'externalTrackSending' : 'externalTrackSendBtn', {}, lang))}</button>
         </div>
     `;
+    updateExternalTrackSubmitState();
 }
 
 function openExternalTrackModal(guestAppId, event) {
@@ -2924,32 +3004,44 @@ function closeExternalTrackModal(event) {
     _externalTrackAcknowledged = false;
 }
 
-function setExternalTrackProject(projectId) {
+function setExternalTrackProject(projectId, event) {
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
     _externalTrackProjectId = Number(projectId || 0);
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    renderExternalTrackModal();
+    updateExternalTrackSubmitState();
 }
 
-function toggleExternalTrackAcknowledged(input) {
-    _externalTrackAcknowledged = !!(input && input.checked);
-    if (_externalTrackAcknowledged) {
-        showExternalTrackInfo();
+function toggleExternalTrackAcknowledged(input, event) {
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
     }
+    _externalTrackAcknowledged = !!(input && input.checked);
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    renderExternalTrackModal();
+    updateExternalTrackSubmitState();
 }
 
 async function sendExternalTrackInvite() {
     var guest = getExternalTrackGuest();
+    if (!guest || _externalTrackSending) return;
+
+    var elements = getExternalTrackFormElements();
+    var selectedProjectId = Number(elements.select && elements.select.value || 0);
+    _externalTrackProjectId = selectedProjectId;
+    _externalTrackAcknowledged = !!(elements.checkbox && elements.checkbox.checked === true);
     var selectedProject = getSelectedExternalTrackProject();
-    if (!guest || !selectedProject || _externalTrackSending) return;
+    if (!selectedProject) {
+        showToast(window.t('externalTrackNeedsProject', {}, lang));
+        return;
+    }
 
     var ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
     if (!ownerUsername) {
         showToast(window.t('guestInviteNoUsername', {}, lang));
         return;
     }
-    if (!_externalTrackAcknowledged) {
+    if (!isExternalTrackFormValid()) {
         if (tg.showAlert) tg.showAlert(window.t('externalTrackNeedConfirm', {}, lang));
         else showToast(window.t('externalTrackNeedConfirm', {}, lang));
         return;

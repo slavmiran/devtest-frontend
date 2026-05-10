@@ -1748,7 +1748,20 @@ function openOwnerCheckpointChat(ownerUsername, text) {
     var normalizedUsername = String(ownerUsername || '').replace('@', '').trim();
     if (!normalizedUsername) return false;
 
-    const encodedText = encodeURIComponent(String(text || '').trim());
+    var messageText = String(text || '').trim();
+    if (messageText) {
+        try {
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                navigator.clipboard.writeText(messageText).then(function() {
+                    showToast(window.t('checkpointReportCopied', {
+                        username: '@' + normalizedUsername,
+                    }, lang));
+                }).catch(function() {});
+            }
+        } catch (error) {}
+    }
+
+    const encodedText = encodeURIComponent(messageText);
     try {
         tg.openTelegramLink('https://t.me/' + normalizedUsername + '?text=' + encodedText);
     } catch (error) {
