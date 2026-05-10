@@ -428,7 +428,7 @@
             externalTrackModalTitle: "⚡ Fast Track",
             guestTesterModalTitle: "Guest Tester",
             externalTrackBadge: "⚡ Fast Track",
-            externalTrackGuestBtn: "⚡️ 100% Mutual: Install & Track",
+            externalTrackGuestBtn: "⚡️ 100% Взаимка: установить и отслеживать",
             guestInviteBtn: "Взаимный тест",
             guestInviteModalTitle: "Приглашение в DevTestHub",
             guestInviteModalDesc: "Владелец проекта ({owner_username}) еще не на платформе. Отправьте ему приглашение в ЛС. Когда он подтвердит проект и сделает первый чекин, вы получите 10 BUST!",

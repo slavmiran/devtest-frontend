@@ -506,7 +506,8 @@ window._marketForceSkeleton = _marketForceSkeleton;
 
 function _getStartappParam() {
     var params = new URLSearchParams(window.location.search || '');
-    return String(initData.start_param || params.get('startapp') || '').trim();
+    // Prefer explicit URL startapp over Telegram initData.start_param to avoid stale routing.
+    return String(params.get('startapp') || initData.start_param || '').trim();
 }
 
 function _parseGuestClaimIntent() {

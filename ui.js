@@ -2918,8 +2918,8 @@ function showExternalTrackInfoClick(event) {
 
 function showExternalTrackInfo() {
     var message = window.t('externalTrackExplainAlert', {}, lang);
-    if (tg.showAlert) {
-        tg.showAlert(message);
+    if (window.tg && typeof window.tg.showAlert === 'function') {
+        window.tg.showAlert(message);
         return;
     }
     alert(message);
@@ -2976,11 +2976,15 @@ function renderExternalTrackModal() {
                     <input id="external-track-ack" type="checkbox" ${_externalTrackAcknowledged ? 'checked' : ''} onchange="toggleExternalTrackAcknowledged(this, event)" oninput="toggleExternalTrackAcknowledged(this, event)">
                     <span class="external-track-check-text">${checkboxLabelHtml}</span>
                 </label>
-                <button type="button" class="external-track-info-btn" onclick="return showExternalTrackInfoClick(event)">${window.escapeHTML(window.t('externalTrackInfoBtn', {}, lang))}</button>
+                <button id="external-track-info-btn" type="button" class="external-track-info-btn" onclick="return showExternalTrackInfoClick(event)">${window.escapeHTML(window.t('externalTrackInfoBtn', {}, lang))}</button>
             </div>
             <button id="external-track-submit-btn" class="btn btn-secondary disabled" disabled style="width:100%;" onclick="sendExternalTrackInvite()">${window.escapeHTML(window.t(_externalTrackSending ? 'externalTrackSending' : 'externalTrackSendBtn', {}, lang))}</button>
         </div>
     `;
+    var infoBtn = document.getElementById('external-track-info-btn');
+    if (infoBtn) {
+        infoBtn.addEventListener('click', showExternalTrackInfoClick);
+    }
     updateExternalTrackSubmitState();
 }
 
@@ -3048,7 +3052,7 @@ async function sendExternalTrackInvite() {
         return;
     }
     if (!isExternalTrackFormValid()) {
-        if (tg.showAlert) tg.showAlert(window.t('externalTrackNeedConfirm', {}, lang));
+        if (window.tg && typeof window.tg.showAlert === 'function') window.tg.showAlert(window.t('externalTrackNeedConfirm', {}, lang));
         else showToast(window.t('externalTrackNeedConfirm', {}, lang));
         return;
     }
@@ -3060,6 +3064,13 @@ async function sendExternalTrackInvite() {
             tester_id: userId,
             guest_app_id: guest.id,
             source_app_id: selectedProject.id,
+            package_name: String(guest.package_name || guest.name || '').trim(),
+            owner_telegram_id: Number(guest.owner_telegram_id || guest.owner_id || 0) || null,
+            owner_username: ownerUsername || null,
+            google_group_url: String(guest.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || '').trim() || null,
+            instructions: String(guest.instructions || '').trim() || null,
+            target_lang: String(guest.target_lang || guest.lang || 'ALL').trim().toUpperCase(),
+            category: String(guest.category || 'APP').trim().toUpperCase(),
         });
         if (!result) return;
 
@@ -3077,7 +3088,9 @@ async function sendExternalTrackInvite() {
 
         copyTextWithToast(messageText, 'externalTrackCopied');
         closeExternalTrackModal();
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.notificationOccurred === 'function') {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        }
         openTelegramPrefilledMessage(ownerUsername, messageText);
     } catch (error) {
         console.error('External track send error:', error);
