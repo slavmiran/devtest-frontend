@@ -2938,6 +2938,10 @@ function renderExternalTrackModal() {
 
     var ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
     var packageName = String(guest.package_name || guest.name || '').trim();
+    var safePackageName = window.escapeHTML(packageName || window.t('unknownLabel', {}, lang));
+    var checkboxLabelHtml = window.t('externalTrackCheckboxLabel', {
+        appName: safePackageName,
+    }, lang);
     var selectedProject = getSelectedExternalTrackProject();
     if (!_externalTrackProjectId && selectedProject) {
         _externalTrackProjectId = Number(selectedProject.id || 0);
@@ -2955,7 +2959,7 @@ function renderExternalTrackModal() {
     body.innerHTML = `
         <div class="external-track-hero">
             <div class="external-track-hero-badge">${window.escapeHTML(window.t('externalTrackBadge', {}, lang))}</div>
-            <div class="external-track-hero-title notranslate">${window.escapeHTML(packageName || window.t('unknownLabel', {}, lang))}</div>
+            <div class="external-track-hero-title notranslate">${safePackageName}</div>
             <div class="external-track-hero-subtitle">${window.escapeHTML(window.t('externalTrackModalDesc', { owner_username: ownerUsername ? '@' + ownerUsername : window.t('guestInviteOwnerMissing', {}, lang) }, lang))}</div>
         </div>
         <div class="external-track-steps">
@@ -2967,11 +2971,13 @@ function renderExternalTrackModal() {
                 <div class="guest-invite-language-label">${window.escapeHTML(window.t('externalTrackSelectProjectLabel', {}, lang))}</div>
                 <select id="external-track-project-select" class="form-input" onchange="setExternalTrackProject(this.value, event)" oninput="setExternalTrackProject(this.value, event)">${optionsHtml || `<option value="">${window.escapeHTML(window.t('externalTrackNeedsProject', {}, lang))}</option>`}</select>
             </div>
-            <label class="external-track-check">
-                <input id="external-track-ack" type="checkbox" ${_externalTrackAcknowledged ? 'checked' : ''} onchange="toggleExternalTrackAcknowledged(this, event)" oninput="toggleExternalTrackAcknowledged(this, event)">
-                <span>${window.escapeHTML(window.t('externalTrackCheckboxLabel', {}, lang))}</span>
+            <div class="external-track-check">
+                <label class="external-track-check-main">
+                    <input id="external-track-ack" type="checkbox" ${_externalTrackAcknowledged ? 'checked' : ''} onchange="toggleExternalTrackAcknowledged(this, event)" oninput="toggleExternalTrackAcknowledged(this, event)">
+                    <span class="external-track-check-text">${checkboxLabelHtml}</span>
+                </label>
                 <button type="button" class="external-track-info-btn" onclick="return showExternalTrackInfoClick(event)">${window.escapeHTML(window.t('externalTrackInfoBtn', {}, lang))}</button>
-            </label>
+            </div>
             <button id="external-track-submit-btn" class="btn btn-secondary disabled" disabled style="width:100%;" onclick="sendExternalTrackInvite()">${window.escapeHTML(window.t(_externalTrackSending ? 'externalTrackSending' : 'externalTrackSendBtn', {}, lang))}</button>
         </div>
     `;

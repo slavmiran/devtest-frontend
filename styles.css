@@ -714,6 +714,7 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 .external-track-check {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
     margin: 14px 0 10px;
     padding: 12px;
@@ -722,6 +723,15 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     border: 1px solid rgba(255, 255, 255, 0.08);
     font-size: 13px;
     line-height: 1.45;
+}
+
+.external-track-check-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
 }
 
 .external-track-check input {
@@ -734,6 +744,10 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 
 .external-track-check span {
     flex: 1;
+}
+
+.external-track-check-text b {
+    color: var(--text-color);
 }
 
 .external-track-info-btn {
