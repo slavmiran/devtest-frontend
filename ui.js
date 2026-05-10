@@ -2918,8 +2918,9 @@ function showExternalTrackInfoClick(event) {
 
 function showExternalTrackInfo() {
     var message = window.t('externalTrackExplainAlert', {}, lang);
-    if (window.tg && typeof window.tg.showAlert === 'function') {
-        window.tg.showAlert(message);
+    var telegram = window.tg || window.Telegram && window.Telegram.WebApp || (typeof tg !== 'undefined' ? tg : null);
+    if (telegram && typeof telegram.showAlert === 'function') {
+        telegram.showAlert(message);
         return;
     }
     alert(message);
@@ -3052,7 +3053,8 @@ async function sendExternalTrackInvite() {
         return;
     }
     if (!isExternalTrackFormValid()) {
-        if (window.tg && typeof window.tg.showAlert === 'function') window.tg.showAlert(window.t('externalTrackNeedConfirm', {}, lang));
+        var telegram = window.tg || window.Telegram && window.Telegram.WebApp || (typeof tg !== 'undefined' ? tg : null);
+        if (telegram && typeof telegram.showAlert === 'function') telegram.showAlert(window.t('externalTrackNeedConfirm', {}, lang));
         else showToast(window.t('externalTrackNeedConfirm', {}, lang));
         return;
     }
@@ -3077,19 +3079,21 @@ async function sendExternalTrackInvite() {
         var claimLink = typeof window.buildExternalClaimStartLink === 'function'
             ? window.buildExternalClaimStartLink(guest.package_name || guest.name || '')
             : '';
+        var myGroupLink = String(selectedProject.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+        var myPackage = String(selectedProject.package || selectedProject.package_name || '').trim();
+        var myPlayLink = myPackage ? ('https://play.google.com/store/apps/details?id=' + encodeURIComponent(myPackage)) : '';
         var messageText = window.t('externalTrackInviteMessageTemplate', {
             app_name: guest.package_name || guest.name || window.t('unknownLabel', {}, lang),
-            owner_username: '@' + ownerUsername,
-            my_project_name: selectedProject.name || window.t('unknownLabel', {}, lang),
             claim_link: claimLink,
-            play_link: getExternalTrackPlayUrl(guest),
-            group_link: String(guest.google_group_url || 'https://groups.google.com/g/google-play-dev-test').trim(),
+            play_link: myPlayLink,
+            group_link: myGroupLink,
         }, lang);
 
         copyTextWithToast(messageText, 'externalTrackCopied');
         closeExternalTrackModal();
-        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.notificationOccurred === 'function') {
-            window.tg.HapticFeedback.notificationOccurred('success');
+        var telegramSuccess = window.tg || window.Telegram && window.Telegram.WebApp || (typeof tg !== 'undefined' ? tg : null);
+        if (telegramSuccess && telegramSuccess.HapticFeedback && typeof telegramSuccess.HapticFeedback.notificationOccurred === 'function') {
+            telegramSuccess.HapticFeedback.notificationOccurred('success');
         }
         openTelegramPrefilledMessage(ownerUsername, messageText);
     } catch (error) {
