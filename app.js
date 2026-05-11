@@ -5458,8 +5458,9 @@ async function saveProjectSync() {
     var messageInput = document.getElementById('sync-message-input');
     var saveBtn = document.getElementById('sync-save-btn');
     var cancelBtn = document.getElementById('sync-cancel-btn');
-    const day = Number(dayInput && dayInput.value);
-    const message = String(messageInput && messageInput.value || '').trim();
+    if (!dayInput || !messageInput) return;
+    const day = Number(dayInput.value);
+    const message = String(messageInput.value || '').trim();
     if (!Number.isInteger(day) || day < 1) {
         showToast(t.syncDayInvalid);
         return;
