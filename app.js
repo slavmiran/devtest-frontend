@@ -412,6 +412,7 @@ var PROJECTS_FETCH_THROTTLE_MS = 30000;
 var OFFERS_FETCH_THROTTLE_MS = 15000;
 var ARCHIVED_FETCH_THROTTLE_MS = 45000;
 var RELIABILITY_FETCH_THROTTLE_MS = 30000;
+var SYNC_CONFIRMATION_DELAY_MS = 450;
 var _marketInFlight = { mutual: null, bounty: null };
 window._marketInFlight = _marketInFlight;
 var OFFERS_CACHE_KEY = 'incoming_offers_cache_v1';
@@ -4206,7 +4207,7 @@ async function _confirmProjectSyncPersistence(appId, expectedDay, expectedMessag
     }
 
     await new Promise(function(resolve) {
-        setTimeout(resolve, 450);
+        setTimeout(resolve, SYNC_CONFIRMATION_DELAY_MS);
     });
 
     try {
