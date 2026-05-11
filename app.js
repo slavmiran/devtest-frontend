@@ -3259,9 +3259,10 @@ function _mapTestsFromApi(data) {
         // that a proof submission that hasn't propagated to the backend yet doesn't cause the
         // computed field `external_control_day_due` to oscillate between API and local state
         // on every loadTasks() poll (which would force renderTests() on every poll).
+        var apiTestingDays = Number(app.testing_days || 0);
         var testingDays = isExternal && existingTest
-            ? Math.max(Number(app.testing_days || 0), Number(existingTest.testing_days || 0))
-            : Number(app.testing_days || 0);
+            ? Math.max(apiTestingDays, Number(existingTest.testing_days || 0))
+            : apiTestingDays;
         var skipsCount = countGrantSkips(app);
         var canEverClaim = !isExternal && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
