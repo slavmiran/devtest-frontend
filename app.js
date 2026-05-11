@@ -4205,49 +4205,54 @@ async function _confirmProjectSyncPersistence(appId, expectedDay, expectedMessag
         return null;
     }
 
-    for (var attempt = 0; attempt < 3; attempt++) {
-        try {
-            var response = await fetchWithRetry(API_BASE + '/projects/' + userId, { timeoutMs: 12000 }, 1);
-            if (!response.ok) {
-                throw new Error('HTTP ' + response.status);
-            }
+    await new Promise(function(resolve) {
+        setTimeout(resolve, 450);
+    });
 
-            var data = await _readJsonResponseSafely(response, 'Project sync confirmation');
-            if (!data || typeof data !== 'object') {
-                throw new Error('Invalid project sync confirmation payload');
-            }
-
-            var freshProjects = _mapProjectsFromApi(data);
-            var freshStats = _mapStatsFromApi(data);
-            var confirmedProject = freshProjects.find(function(project) {
-                return Number(project.id) === normalizedAppId;
-            });
-
-            if (confirmedProject) {
-                var confirmedDay = Number(confirmedProject.google_sync_day || 0);
-                var confirmedMessage = String(confirmedProject.sync_message || '').trim();
-                if (confirmedDay === normalizedDay && confirmedMessage === normalizedMessage) {
-                    myProjects = freshProjects;
-                    visibilityStats = freshStats;
-                    _projectsLoadedOnce = true;
-                    myProjectsLoadError = false;
-                    _lastFetchTimes.projects = Date.now();
-                    setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
-                    return confirmedProject;
-                }
-            }
-        } catch (error) {
-            console.error('Project sync confirmation check failed:', error);
+    try {
+        var response = await fetchWithRetry(API_BASE + '/projects/' + userId, { timeoutMs: 12000 }, 1);
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
         }
 
-        if (attempt < 2) {
-            await new Promise(function(resolve) {
-                setTimeout(resolve, 250 * (attempt + 1));
-            });
+        var data = await _readJsonResponseSafely(response, 'Project sync confirmation');
+        if (!data || typeof data !== 'object') {
+            throw new Error('Invalid project sync confirmation payload');
         }
+
+        var freshProjects = _mapProjectsFromApi(data);
+        var freshStats = _mapStatsFromApi(data);
+        var confirmedProject = freshProjects.find(function(project) {
+            return Number(project.id) === normalizedAppId;
+        });
+
+        if (confirmedProject) {
+            var confirmedDay = Number(confirmedProject.google_sync_day || 0);
+            var confirmedMessage = String(confirmedProject.sync_message || '').trim();
+            if (confirmedDay === normalizedDay && confirmedMessage === normalizedMessage) {
+                myProjects = freshProjects;
+                visibilityStats = freshStats;
+                _projectsLoadedOnce = true;
+                myProjectsLoadError = false;
+                _lastFetchTimes.projects = Date.now();
+                setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+                return confirmedProject;
+            }
+        }
+    } catch (error) {
+        console.error('Project sync confirmation check failed:', error);
     }
 
     return null;
+}
+
+function _markPostSyncRefreshCooldown() {
+    var now = Date.now();
+    _lastFetchTimes.projects = now;
+    _lastFetchTimes.tests = now;
+    _lastFetchTimes.offers = now;
+    _lastFetchTimes.reliabilitySummary = now;
+    _lastFetchTimes.reliabilityBreakdown = now;
 }
 
 async function _loadProjectsImpl(options) {
@@ -5444,129 +5449,145 @@ async function submitFeedback() {
 
 async function saveProjectSync() {
     if (!_syncProjectId) return;
-    const day = Number(document.getElementById('sync-day-input').value);
-    const message = String(document.getElementById('sync-message-input').value || '').trim();
+    var syncProjectId = Number(_syncProjectId);
+    var actionKey = 'project_sync_' + syncProjectId;
+    if (_pendingActions.has(actionKey)) return;
+
+    var dayInput = document.getElementById('sync-day-input');
+    var messageInput = document.getElementById('sync-message-input');
+    var saveBtn = document.getElementById('sync-save-btn');
+    var cancelBtn = document.getElementById('sync-cancel-btn');
+    const day = Number(dayInput && dayInput.value);
+    const message = String(messageInput && messageInput.value || '').trim();
     if (!Number.isInteger(day) || day < 1) {
         showToast(t.syncDayInvalid);
         return;
     }
 
-    var syncProjectId = Number(_syncProjectId);
-    var localProjectBeforeSync = (myProjects || []).find(function(item) {
-        return Number(item.id) === Number(syncProjectId);
-    }) || null;
-    var localTestBeforeSync = (myTests || []).find(function(item) {
-        return Number(item.id) === Number(syncProjectId);
-    }) || null;
-    var response = null;
-    var data = null;
-    var requestError = null;
+    _pendingActions.add(actionKey);
+    if (saveBtn) {
+        saveBtn.disabled = true;
+    }
+    if (cancelBtn) {
+        cancelBtn.disabled = true;
+    }
+
     try {
-        response = await fetch(`${API_BASE}/projects/${syncProjectId}/sync`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ google_sync_day: day, sync_message: message })
-        });
-    } catch (error) {
-        requestError = error;
-    }
-
-    if (response) {
-        data = await _readJsonResponseSafely(response, 'Project sync');
-    }
-
-    var confirmedProject = null;
-    if (requestError || !response || !response.ok || !data || data.status !== 'success') {
-        confirmedProject = await _confirmProjectSyncPersistence(syncProjectId, day, message);
-        if (!confirmedProject) {
-            if (data && typeof data === 'object' && data.status && data.status !== 'success') {
-                handleApiError(getBackendErrorCode(data), data.details || {});
-            } else if (requestError) {
-                console.error('Project sync request error:', requestError);
-                showToast(getApiErrorMessage(requestError && requestError.message, 'networkError'));
-            } else if (response && !response.ok) {
-                showToast(getApiErrorMessage(data, 'loadError'));
-            } else {
-                showToast(getApiErrorMessage(null, 'networkError'));
-            }
-            return;
-        }
-
-        data = {
-            status: 'success',
-            google_sync_day: confirmedProject.google_sync_day,
-            sync_message: confirmedProject.sync_message,
-            last_sync_date: confirmedProject.last_sync_date,
-            resumed_from_pending: false,
-        };
-    }
-
-    var today = getLocalDate();
-    var resolvedSyncDay = confirmedProject ? Number(confirmedProject.google_sync_day || day) : day;
-    var resolvedSyncMessage = confirmedProject ? String(confirmedProject.sync_message || '') : message;
-    var resolvedLastSyncDate = confirmedProject
-        ? (confirmedProject.last_sync_date || today)
-        : (data.last_sync_date || today);
-    var resumedFromPending = !!(data && data.resumed_from_pending);
-    if (!resumedFromPending && confirmedProject) {
-        var wasPendingBeforeSync = !!(
-            (localProjectBeforeSync && localProjectBeforeSync.app_status === 'pending_completion')
-            || (localTestBeforeSync && localTestBeforeSync.app_status === 'pending_completion')
-        );
-        resumedFromPending = wasPendingBeforeSync && String(confirmedProject.app_status || '') === 'active';
-    }
-    _startPostSyncToastSuppression();
-
-    _runBestEffortUiStep('Project sync local project update', function() {
-        const project = (myProjects || []).find(function(item) {
+        var localProjectBeforeSync = (myProjects || []).find(function(item) {
             return Number(item.id) === Number(syncProjectId);
-        });
-        if (!project) return;
-        project.google_sync_day = resolvedSyncDay;
-        project.sync_message = resolvedSyncMessage;
-        project.last_sync_date = resolvedLastSyncDate;
-        if (resumedFromPending) {
-            project.status = 'active';
-            project.app_status = 'active';
+        }) || null;
+        var localTestBeforeSync = (myTests || []).find(function(item) {
+            return Number(item.id) === Number(syncProjectId);
+        }) || null;
+        var response = null;
+        var data = null;
+        var requestError = null;
+        try {
+            response = await fetch(`${API_BASE}/projects/${syncProjectId}/sync`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ google_sync_day: day, sync_message: message })
+            });
+        } catch (error) {
+            requestError = error;
         }
-    });
 
-    _runBestEffortUiStep('Project sync local test update', function() {
-        (myTests || []).forEach(function(test) {
-            if (Number(test.id) !== Number(syncProjectId)) return;
-            test.google_sync_day = resolvedSyncDay;
-            test.sync_message = resolvedSyncMessage;
-            test.last_sync_date = resolvedLastSyncDate;
+        if (response) {
+            data = await _readJsonResponseSafely(response, 'Project sync');
+        }
+
+        var confirmedProject = null;
+        if (requestError || !response || !response.ok || !data || data.status !== 'success') {
+            confirmedProject = await _confirmProjectSyncPersistence(syncProjectId, day, message);
+            if (!confirmedProject) {
+                if (data && typeof data === 'object' && data.status && data.status !== 'success') {
+                    handleApiError(getBackendErrorCode(data), data.details || {});
+                } else if (requestError) {
+                    console.error('Project sync request error:', requestError);
+                    showToast(getApiErrorMessage(requestError && requestError.message, 'networkError'));
+                } else if (response && !response.ok) {
+                    showToast(getApiErrorMessage(data, 'loadError'));
+                } else {
+                    showToast(getApiErrorMessage(null, 'networkError'));
+                }
+                return;
+            }
+
+            data = {
+                status: 'success',
+                google_sync_day: confirmedProject.google_sync_day,
+                sync_message: confirmedProject.sync_message,
+                last_sync_date: confirmedProject.last_sync_date,
+                resumed_from_pending: false,
+            };
+        }
+
+        var today = getLocalDate();
+        var resolvedSyncDay = confirmedProject ? Number(confirmedProject.google_sync_day || day) : day;
+        var resolvedSyncMessage = confirmedProject ? String(confirmedProject.sync_message || '') : message;
+        var resolvedLastSyncDate = confirmedProject
+            ? (confirmedProject.last_sync_date || today)
+            : (data.last_sync_date || today);
+        var resumedFromPending = !!(data && data.resumed_from_pending);
+        if (!resumedFromPending && confirmedProject) {
+            var wasPendingBeforeSync = !!(
+                (localProjectBeforeSync && localProjectBeforeSync.app_status === 'pending_completion')
+                || (localTestBeforeSync && localTestBeforeSync.app_status === 'pending_completion')
+            );
+            resumedFromPending = wasPendingBeforeSync && String(confirmedProject.app_status || '') === 'active';
+        }
+        _startPostSyncToastSuppression();
+
+        _runBestEffortUiStep('Project sync local project update', function() {
+            const project = (myProjects || []).find(function(item) {
+                return Number(item.id) === Number(syncProjectId);
+            });
+            if (!project) return;
+            project.google_sync_day = resolvedSyncDay;
+            project.sync_message = resolvedSyncMessage;
+            project.last_sync_date = resolvedLastSyncDate;
             if (resumedFromPending) {
-                test.app_status = 'active';
-                recomputeLocalTestState(test);
+                project.status = 'active';
+                project.app_status = 'active';
             }
         });
-    });
 
-    _runBestEffortUiStep('Project sync cache update', function() {
-        setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
-        persistTestsCacheSnapshot();
-    });
-    _runBestEffortUiStep('Project sync render projects', function() { renderProjects(true); });
-    _runBestEffortUiStep('Project sync render tests', function() { renderTests(true); });
-    _runBestEffortUiStep('Project sync refresh modals', function() { refreshOpenModals(); });
-
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    showToast(t.syncSavedToast);
-    _runBestEffortUiStep('Project sync close modal', function() {
-        closeSyncModal({ target: document.getElementById('sync-modal') });
-    });
-
-    Promise.allSettled([loadProjects(true), loadTasks(), loadIncomingOffers({ background: true })]).then(function(results) {
-        results.forEach(function(result, index) {
-            if (result && result.status === 'rejected') {
-                console.error(index === 0
-                    ? 'Post-sync projects refresh failed:'
-                    : (index === 1 ? 'Post-sync tasks refresh failed:' : 'Post-sync offers refresh failed:'), result.reason);
-            }
+        _runBestEffortUiStep('Project sync local test update', function() {
+            (myTests || []).forEach(function(test) {
+                if (Number(test.id) !== Number(syncProjectId)) return;
+                test.google_sync_day = resolvedSyncDay;
+                test.sync_message = resolvedSyncMessage;
+                test.last_sync_date = resolvedLastSyncDate;
+                if (resumedFromPending) {
+                    test.app_status = 'active';
+                    recomputeLocalTestState(test);
+                }
+            });
         });
-    });
+
+        _runBestEffortUiStep('Project sync cache update', function() {
+            setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+            persistTestsCacheSnapshot();
+        });
+        _markPostSyncRefreshCooldown();
+        _runBestEffortUiStep('Project sync render projects', function() { renderProjects(true); });
+        _runBestEffortUiStep('Project sync render tests', function() { renderTests(true); });
+        _runBestEffortUiStep('Project sync refresh modals', function() { refreshOpenModals(); });
+
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(t.syncSavedToast);
+        _runBestEffortUiStep('Project sync close modal', function() {
+            closeSyncModal({ target: document.getElementById('sync-modal') });
+        });
+    } finally {
+        _pendingActions.delete(actionKey);
+        if (saveBtn) {
+            saveBtn.disabled = false;
+        }
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+        }
+    }
 }
 
 async function loadArchivedProjects(options) {
@@ -6556,7 +6577,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!document.hidden) {
             _syncActiveTimerState();
             renderTests(true);
-            loadTasks(false).catch(() => {});
+            loadTasks(true).catch(() => {});
             loadIncomingOffers({ background: true }).catch(() => {});
             loadReliabilitySummary(true).catch(() => {});
         }
