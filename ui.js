@@ -1345,6 +1345,9 @@ function renderIncomingOffers() {
             const remain = formatOfferRemaining(offer.created_at);
             if (!remain) {
                 hasExpired = true;
+                if (expireEl) {
+                    expireEl.textContent = window.t('offerTimeUnknown', {}, lang);
+                }
                 return;
             }
             if (expireEl) {
@@ -1354,7 +1357,8 @@ function renderIncomingOffers() {
         });
 
         if (hasExpired) {
-            renderIncomingOffers();
+            clearInterval(_offersTimerId);
+            _offersTimerId = null;
         }
     }, 1000);
 }
@@ -2970,11 +2974,11 @@ function renderExternalTrackModal() {
         <div class="guest-invite-card external-track-card">
             <div class="guest-invite-language-row external-track-select-row">
                 <div class="guest-invite-language-label">${window.escapeHTML(window.t('externalTrackSelectProjectLabel', {}, lang))}</div>
-                <select id="external-track-project-select" class="form-input" onchange="setExternalTrackProject(this.value, event)" oninput="setExternalTrackProject(this.value, event)">${optionsHtml || `<option value="">${window.escapeHTML(window.t('externalTrackNeedsProject', {}, lang))}</option>`}</select>
+                <select id="external-track-project-select" class="form-input" onchange="setExternalTrackProject(this.value, event)">${optionsHtml || `<option value="">${window.escapeHTML(window.t('externalTrackNeedsProject', {}, lang))}</option>`}</select>
             </div>
             <div class="external-track-check">
                 <label class="external-track-check-main">
-                    <input id="external-track-ack" type="checkbox" ${_externalTrackAcknowledged ? 'checked' : ''} onchange="toggleExternalTrackAcknowledged(this, event)" oninput="toggleExternalTrackAcknowledged(this, event)">
+                    <input id="external-track-ack" type="checkbox" ${_externalTrackAcknowledged ? 'checked' : ''} onchange="toggleExternalTrackAcknowledged(this, event)">
                     <span class="external-track-check-text">${checkboxLabelHtml}</span>
                 </label>
                 <button id="external-track-info-btn" type="button" class="external-track-info-btn" onclick="return showExternalTrackInfoClick(event)">${window.escapeHTML(window.t('externalTrackInfoBtn', {}, lang))}</button>
@@ -2982,10 +2986,6 @@ function renderExternalTrackModal() {
             <button id="external-track-submit-btn" class="btn btn-secondary disabled" disabled style="width:100%;" onclick="sendExternalTrackInvite()">${window.escapeHTML(window.t(_externalTrackSending ? 'externalTrackSending' : 'externalTrackSendBtn', {}, lang))}</button>
         </div>
     `;
-    var infoBtn = document.getElementById('external-track-info-btn');
-    if (infoBtn) {
-        infoBtn.addEventListener('click', showExternalTrackInfoClick);
-    }
     updateExternalTrackSubmitState();
 }
 
