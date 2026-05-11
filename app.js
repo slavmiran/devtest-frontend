@@ -3255,7 +3255,14 @@ function _mapTestsFromApi(data) {
         // Computed: archived/completed final-day tests may claim immediately,
         // while active Day 14 done shows "available tomorrow".
         var isTestedToday = status === 'done';
-        var testingDays = Number(app.testing_days || 0);
+        // For external tests, take the max of the API value and any locally-advanced value so
+        // that a proof submission that hasn't propagated to the backend yet doesn't cause the
+        // computed field `external_control_day_due` to oscillate between API and local state
+        // on every loadTasks() poll (which would force renderTests() on every poll).
+        var apiTestingDays = Number(app.testing_days || 0);
+        var testingDays = isExternal && existingTest
+            ? Math.max(apiTestingDays, Number(existingTest.testing_days || 0))
+            : apiTestingDays;
         var skipsCount = countGrantSkips(app);
         var canEverClaim = !isExternal && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
