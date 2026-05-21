@@ -353,6 +353,7 @@ var _timerEndTimestamp = null;
 var _timerIntervalId = null;
 var _timerIsScreenshot = false;
 var _timerOwnerUsername = '';
+var _timerLocalDate = '';
 var _timerStorageKey = 'devtest_active_timer';
 var _timerReadyStateKey = 'devtest_timer_ready_state_v1';
 var _timerReadyState = {};
@@ -2917,7 +2918,8 @@ function _persistActiveTimer() {
             appId: activeTimerAppId,
             endTimestamp: _timerEndTimestamp,
             isScreenshot: !!_timerIsScreenshot,
-            ownerUsername: _timerOwnerUsername || ''
+            ownerUsername: _timerOwnerUsername || '',
+            localDate: _timerLocalDate || getLocalDate(),
         }));
     } catch (error) {
         console.warn('Failed to persist active timer:', error);
@@ -2932,7 +2934,21 @@ function _loadTimerReadyState() {
             return;
         }
         var parsed = JSON.parse(raw);
-        _timerReadyState = parsed && typeof parsed === 'object' ? parsed : {};
+        var today = getLocalDate();
+        var nextState = {};
+        if (parsed && typeof parsed === 'object') {
+            Object.keys(parsed).forEach(function(key) {
+                var payload = parsed[key];
+                if (!payload || typeof payload !== 'object') return;
+                if (String(payload.localDate || '') !== today) return;
+                nextState[key] = {
+                    isScreenshot: !!payload.isScreenshot,
+                    ownerUsername: String(payload.ownerUsername || ''),
+                    localDate: today,
+                };
+            });
+        }
+        _timerReadyState = nextState;
     } catch (error) {
         _timerReadyState = {};
     }
@@ -2950,7 +2966,8 @@ function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername) {
     if (isReady) {
         _timerReadyState[key] = {
             isScreenshot: !!isScreenshot,
-            ownerUsername: String(ownerUsername || '')
+            ownerUsername: String(ownerUsername || ''),
+            localDate: getLocalDate(),
         };
     } else {
         delete _timerReadyState[key];
@@ -2963,6 +2980,11 @@ function _getTimerReadyPayload(appId) {
     if (key === '0') return null;
     var payload = _timerReadyState[key];
     if (!payload || typeof payload !== 'object') return null;
+    if (String(payload.localDate || '') !== getLocalDate()) {
+        delete _timerReadyState[key];
+        _persistTimerReadyState();
+        return null;
+    }
     return {
         isScreenshot: !!payload.isScreenshot,
         ownerUsername: String(payload.ownerUsername || '')
@@ -2979,6 +3001,7 @@ function _applyPersistedReadyTimerButtons() {
 }
 
 function _clearPersistedActiveTimer() {
+    _timerLocalDate = '';
     try {
         localStorage.removeItem(_timerStorageKey);
     } catch (error) {
@@ -3055,6 +3078,16 @@ function _startActiveTimerInterval(id) {
 
 function _syncActiveTimerState() {
     if (!activeTimerAppId || !_timerEndTimestamp) return false;
+    if (_timerLocalDate && _timerLocalDate !== getLocalDate()) {
+        if (_timerIntervalId) clearInterval(_timerIntervalId);
+        _timerIntervalId = null;
+        _timerEndTimestamp = null;
+        activeTimerAppId = null;
+        _timerIsScreenshot = false;
+        _timerOwnerUsername = '';
+        _clearPersistedActiveTimer();
+        return false;
+    }
     if (Date.now() < _timerEndTimestamp) {
         _persistActiveTimer();
         return false;
@@ -3078,6 +3111,7 @@ function _syncActiveTimerState() {
     activeTimerAppId = null;
     _timerIsScreenshot = false;
     _timerOwnerUsername = '';
+    _timerLocalDate = '';
 
     _clearPersistedActiveTimer();
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -3097,6 +3131,7 @@ function _loadPersistedActiveTimer() {
         _timerEndTimestamp = Number(payload.endTimestamp) || null;
         _timerIsScreenshot = !!payload.isScreenshot;
         _timerOwnerUsername = String(payload.ownerUsername || '');
+        _timerLocalDate = String(payload.localDate || '');
         _syncActiveTimerState();
     } catch (error) {
         console.warn('Failed to load persisted active timer:', error);
@@ -3249,6 +3284,15 @@ function _mapTestsFromApi(data) {
         var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
         var isArchivedOrCompleted = !isExternal && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
         var existingTest = myTests.find(function(test) { return Number(test.id) === Number(mappedId); });
+        var shouldPreserveLocalDoneToday = !!(
+            existingTest
+            && existingTest.status === 'done'
+            && String(existingTest.last_check_date || '') === today
+            && String(app.last_check_date || '') !== today
+        );
+        if (shouldPreserveLocalDoneToday) {
+            status = 'done';
+        }
         if (existingTest && existingTest.status === 'opened' && status !== 'done' && !isArchivedOrCompleted && !isPendingCompletion) {
             status = 'opened';
         }
@@ -3264,7 +3308,25 @@ function _mapTestsFromApi(data) {
         var testingDays = isExternal && existingTest
             ? Math.max(apiTestingDays, Number(existingTest.testing_days || 0))
             : apiTestingDays;
+        if (shouldPreserveLocalDoneToday) {
+            testingDays = Math.max(testingDays, Number(existingTest.testing_days || 0));
+        }
         var skipsCount = countGrantSkips(app);
+        if (shouldPreserveLocalDoneToday) {
+            skipsCount = Math.max(skipsCount, Number(existingTest.skips_count || 0));
+        }
+        var resolvedCheckinsCount = shouldPreserveLocalDoneToday
+            ? Math.max(Number(app.checkins_count || 0), Number(existingTest.checkins_count || 0))
+            : Number(app.checkins_count || 0);
+        var resolvedSkipsCount = shouldPreserveLocalDoneToday
+            ? Math.max(Number(app.skips_count || 0), Number(existingTest.skips_count || 0))
+            : Number(app.skips_count || 0);
+        var resolvedDailyTimeline = shouldPreserveLocalDoneToday
+            ? (app.daily_timeline || existingTest.daily_timeline || '')
+            : (app.daily_timeline || '');
+        var resolvedLastCheckDate = shouldPreserveLocalDoneToday
+            ? (existingTest.last_check_date || today)
+            : (app.last_check_date || null);
         var canEverClaim = !isExternal && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
         var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
@@ -3294,20 +3356,20 @@ function _mapTestsFromApi(data) {
             google_sync_day: app.google_sync_day || 0,
             sync_message: app.sync_message || '',
             last_owner_activity: app.last_owner_activity || null,
-            checkins_count: app.checkins_count || 0,
-            skips_count: app.skips_count || 0,
+            checkins_count: resolvedCheckinsCount,
+            skips_count: resolvedSkipsCount,
             last_sync_date: app.last_sync_date || null,
-            testing_days: app.testing_days || 0,
+            testing_days: testingDays,
             grant_claimed: !!app.grant_claimed,
             progress_status: app.progress_status || 'active',
             app_status: app.app_status || 'active',
             is_pending_completion: isPendingCompletion,
             join_type: app.join_type || 'invite',
             target_lang: app.target_lang || 'ALL',
-            daily_timeline: app.daily_timeline || '',
+            daily_timeline: resolvedDailyTimeline,
             archive_reason: app.archive_reason || null,
             bounty_per_tester: app.bounty_per_tester || 0,
-            last_check_date: app.last_check_date || null,
+            last_check_date: resolvedLastCheckDate,
             issue_reported_at: app.issue_reported_at || null,
             issue_reason: app.issue_reason || '',
             issue_fixed_at: app.issue_fixed_at || null,
@@ -4581,7 +4643,15 @@ async function joinBounty(appId) {
 
 function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
     // Clean up stale timer (tab suspension / cache restoration scenario)
-    if (activeTimerAppId !== null && _timerEndTimestamp && Date.now() > _timerEndTimestamp + 2000) {
+    if (activeTimerAppId !== null && _timerLocalDate && _timerLocalDate !== getLocalDate()) {
+        if (_timerIntervalId) clearInterval(_timerIntervalId);
+        _timerIntervalId = null;
+        _timerEndTimestamp = null;
+        activeTimerAppId = null;
+        _timerIsScreenshot = false;
+        _timerOwnerUsername = '';
+        _clearPersistedActiveTimer();
+    } else if (activeTimerAppId !== null && _timerEndTimestamp && Date.now() > _timerEndTimestamp + 2000) {
         if (_timerIntervalId) clearInterval(_timerIntervalId);
         _timerIntervalId = null;
         _timerEndTimestamp = null;
@@ -4620,6 +4690,7 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
     _timerEndTimestamp = Date.now() + 15000;
     _timerIsScreenshot = isScreenshotDay;
     _timerOwnerUsername = ownerUsername;
+    _timerLocalDate = getLocalDate();
     _persistActiveTimer();
     btn.innerText = t.timerRemaining.replace('{sec}', 15);
     _startActiveTimerInterval(id);
@@ -6422,6 +6493,26 @@ async function confirmEmailWarning() {
     }
 }
 
+async function _confirmProjectCreationPersistence(projectData) {
+    var normalizedPackage = String(projectData && projectData.package_name || '').trim();
+    if (!userId || !normalizedPackage) return null;
+
+    try {
+        var response = await fetchWithRetry(`${API_BASE}/projects/${userId}`, {
+            timeoutMs: 10000
+        }, 1);
+        if (!response.ok) return null;
+        var payload = await response.json();
+        var projects = Array.isArray(payload && payload.projects) ? payload.projects : [];
+        return projects.find(function(project) {
+            return String(project && project.package_name || '').trim() === normalizedPackage;
+        }) || null;
+    } catch (error) {
+        console.warn('Project create persistence check failed:', error);
+        return null;
+    }
+}
+
 async function doSaveProject(projectData) {
     const saveBtn = document.getElementById('t-save');
     const originalText = saveBtn.innerText;
@@ -6430,15 +6521,38 @@ async function doSaveProject(projectData) {
     _clearProjectPackageError();
     try {
         var leadInviterId = _getLeadInviteInviterId();
-        const response = await fetch(`${API_BASE}/projects`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Object.assign({}, projectData, {
-                lead_inviter_id: leadInviterId > 0 ? leadInviterId : null,
-            }))
+        var response = null;
+        var result = null;
+        var requestError = null;
+        var requestBody = Object.assign({}, projectData, {
+            lead_inviter_id: leadInviterId > 0 ? leadInviterId : null,
         });
-        const result = await response.json();
-        if (result.status === 'success') {
+
+        try {
+            response = await fetch(`${API_BASE}/projects`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+        } catch (error) {
+            requestError = error;
+        }
+
+        if (response) {
+            result = await _readJsonResponseSafely(response, 'Project create');
+        }
+
+        if (requestError || !response || !response.ok || !result || result.status !== 'success') {
+            var confirmedProject = await _confirmProjectCreationPersistence(projectData);
+            if (confirmedProject) {
+                result = {
+                    status: 'success',
+                    app_id: Number(confirmedProject.app_id || confirmedProject.id || 0),
+                };
+            }
+        }
+
+        if (result && result.status === 'success') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             if (leadInviterId > 0) {
                 _clearStartappQueryParam();
