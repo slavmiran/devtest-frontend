@@ -806,17 +806,22 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     grid-auto-flow: column;
     grid-auto-columns: minmax(272px, 86vw);
     gap: 10px;
-    overflow-x: auto;
     align-content: start;
     width: max-content;
     min-width: 100%;
     padding: 2px 8px 8px 2px;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    overflow: visible;
 }
 
-.external-tests-list::-webkit-scrollbar {
+#external-tests-scroll-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    touch-action: pan-x;
+}
+
+#external-tests-scroll-wrap::-webkit-scrollbar {
     display: none;
 }
 
@@ -898,17 +903,28 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 
 .external-tests-actions {
     margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.external-tests-open-btn {
+    width: 100%;
+    background-color: var(--secondary-bg-color);
+    color: var(--text-color);
+    border: 1px solid rgba(142, 142, 147, 0.2);
 }
 
 .external-tests-confirm-group {
     display: flex;
-    flex: 1.2;
     gap: 6px;
+    width: 100%;
     min-width: 0;
 }
 
 .external-tests-confirm-btn {
     flex: 1;
+    min-height: 52px;
 }
 
 .external-tests-confirm-btn.is-tested,

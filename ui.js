@@ -1946,8 +1946,8 @@ function renderExternalGuestTestsSection() {
                 <div class="external-tests-owner notranslate">${window.escapeHTML(ownerLabel)}</div>
                 <div class="external-tests-status">${window.escapeHTML(nextControlText)}</div>
                 <div class="external-tests-substatus">${window.escapeHTML(substatusText)}</div>
-                <div class="action-row external-tests-actions">
-                    <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="event.stopPropagation(); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
+                <div class="external-tests-actions">
+                    <button class="btn btn-secondary external-tests-open-btn" onclick="event.stopPropagation(); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
                         ${window.escapeHTML(t.openBtn)}
                     </button>
                     <div class="external-tests-confirm-group" onclick="event.stopPropagation();">
