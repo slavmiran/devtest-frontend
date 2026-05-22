@@ -96,19 +96,21 @@
         <div id="external-tests-section" class="pending-release-section external-tests-section" style="display:none;">
             <div class="pending-release-section__header external-tests-section__header">
                 <div>
-                    <h3 id="t-externalTestsSectionTitle" data-i18n="externalTestsSectionTitle">👽 Гостевые проекты</h3>
+                    <h3 id="t-externalTestsSectionTitle" data-i18n="externalTestsSectionTitle">👽 Гостевые проекты (добровольно)</h3>
                     <p id="t-externalTestsSectionDesc" data-i18n="externalTestsSectionDesc">Эти проекты можно открывать в любой день. Обязательными они становятся только в контрольные дни.</p>
                 </div>
                 <span id="external-tests-count" class="offers-count">0</span>
             </div>
             <div id="t-externalTestsSectionNote" class="external-tests-note" data-i18n="externalTestsSectionNote">Пока проект остается внешним, карма, бонусы и штрафы не применяются. В контрольный день карточка автоматически перейдет в основной список.</div>
-            <div id="external-tests-list" class="external-tests-list"></div>
+            <div id="external-tests-scroll-wrap" class="pending-release-scroll-wrap">
+                <div id="external-tests-list" class="external-tests-list"></div>
+            </div>
         </div>
 
         <div id="pending-release-section" class="pending-release-section" style="display:none;">
             <div class="pending-release-section__header">
                 <div>
-                    <h3 id="t-pendingReleaseSectionTitle" data-i18n="pendingReleaseSectionTitle">🏁 Проекты на паузе</h3>
+                    <h3 id="t-pendingReleaseSectionTitle" data-i18n="pendingReleaseSectionTitle">🏁 Проекты на пред-релизе</h3>
                     <p id="t-pendingReleaseSectionDesc" data-i18n="pendingReleaseSectionDesc">Здесь собраны проекты, где тестирование временно остановлено до решения владельца.</p>
                 </div>
                 <span id="pending-release-count" class="offers-count">0</span>
@@ -153,7 +155,7 @@
             <div id="mutual-seeking-list"></div>
             <div id="guest-projects-section" class="guest-projects-section">
                 <button id="guest-projects-toggle" class="guest-projects-toggle" onclick="toggleGuestProjectsAccordion()" type="button">
-                    <span id="guest-projects-toggle-text" data-i18n="guestProjectsAccordionTitle">Показать гостевые проекты (Из внешних чатов)</span>
+                    <span id="guest-projects-toggle-text" data-i18n="guestProjectsAccordionTitle">👽 Показать гостевые проекты</span>
                     <span id="guest-projects-toggle-icon" class="guest-projects-toggle-icon">+</span>
                 </button>
                 <div id="guest-projects-body" class="guest-projects-body">

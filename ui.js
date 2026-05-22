@@ -1867,6 +1867,7 @@ function renderExternalGuestTestsSection() {
     var titleNode = document.getElementById('t-externalTestsSectionTitle');
     var descNode = document.getElementById('t-externalTestsSectionDesc');
     var noteNode = document.getElementById('t-externalTestsSectionNote');
+    var scrollWrap = document.getElementById('external-tests-scroll-wrap');
     var list = document.getElementById('external-tests-list');
 
     if (!section || !countNode || !list) {
@@ -1880,9 +1881,14 @@ function renderExternalGuestTestsSection() {
     var externalTests = (Array.isArray(myTests) ? myTests : []).filter(function(test) {
         return !!test
             && !!test.is_external
-            && !test.external_control_day_due
+            && (!test.external_control_day_due || String(test.status || '') === 'done')
             && String(test.progress_status || 'active').toLowerCase() === 'active';
     });
+    externalTests = externalTests.filter(function(test) {
+        return String(test.status || '') !== 'done';
+    }).concat(externalTests.filter(function(test) {
+        return String(test.status || '') === 'done';
+    }));
 
     if (!externalTests.length) {
         section.style.display = 'none';
@@ -1893,6 +1899,11 @@ function renderExternalGuestTestsSection() {
 
     section.style.display = 'block';
     countNode.textContent = String(externalTests.length);
+    list.classList.toggle('single-row', externalTests.length <= 2);
+    list.classList.toggle('single-card', externalTests.length === 1);
+    if (scrollWrap) {
+        scrollWrap.classList.toggle('is-single', externalTests.length === 1);
+    }
     list.innerHTML = externalTests.map(function(test) {
         var meta = getNextExternalControlDayMeta(test);
         var isDoneToday = String(test.status || '') === 'done';
@@ -1915,6 +1926,9 @@ function renderExternalGuestTestsSection() {
         var confirmBtnLabel = isDoneToday
             ? window.t('externalProjectCheckedTodayBtn', {}, lang)
             : window.t('externalProjectCheckinBtn', {}, lang);
+        var attachButtonHtml = !isDoneToday
+            ? `<button type="button" class="btn btn-secondary external-tests-attach-btn" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(ownerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`
+            : '';
 
         return `
             <div class="card card-external-tracking external-tests-card${isDoneToday ? ' is-tested' : ''}" id="external-test-card-${Number(test.id || 0)}" onclick="openProjectDetailsModal(${Number(test.id || 0)})">
@@ -1936,9 +1950,12 @@ function renderExternalGuestTestsSection() {
                     <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="event.stopPropagation(); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
                         ${window.escapeHTML(t.openBtn)}
                     </button>
-                    <button class="btn" style="flex: 1; ${isDoneToday ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isDoneToday ? 'disabled' : ''} onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
-                        ${window.escapeHTML(confirmBtnLabel)}
-                    </button>
+                    <div class="external-tests-confirm-group" onclick="event.stopPropagation();">
+                        <button class="btn external-tests-confirm-btn${isDoneToday ? ' is-tested' : ''}" ${isDoneToday ? 'disabled' : ''} onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
+                            ${window.escapeHTML(confirmBtnLabel)}
+                        </button>
+                        ${attachButtonHtml}
+                    </div>
                 </div>
             </div>
         `;
@@ -1976,7 +1993,7 @@ function renderTests(force) {
             && !test.isGrantAvailableTomorrow
             && !test.isEarlyFinish;
         if (isArchivedWithNoAction) return;
-        if (isExternal && !test.external_control_day_due) return;
+        if (isExternal && (!test.external_control_day_due || test.status === 'done')) return;
 
         const card = document.createElement('div');
         
@@ -3388,13 +3405,43 @@ async function sendExternalDailyCheckinFromUi(testId, event) {
     if (!test || typeof window.submitExternalDailyCheckin !== 'function') return;
 
     var result = await window.submitExternalDailyCheckin(test.progress_id, test.id);
-    if (!result) return;
+    if (!result) return null;
 
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     var modal = document.getElementById('project-details-modal');
     if (modal && modal.classList.contains('active') && String(modal.dataset.appId || '') === String(test.id)) {
         openProjectDetailsModal(test.id);
     }
+    return result;
+}
+
+async function sendExternalScreenshotAndConfirmFromUi(testId, ownerUsername, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var test = getExternalProjectTest(testId);
+    if (!test) return;
+
+    var cleanOwnerUsername = String(ownerUsername || test.owner_username || '').trim().replace(/^@+/, '');
+    if (!cleanOwnerUsername) {
+        showToast(window.t('externalProjectOwnerMissing', {}, lang));
+        return;
+    }
+
+    var result = await sendExternalDailyCheckinFromUi(testId);
+    if (!result) return;
+
+    var messageText = window.t('externalProjectScreenshotMessageTemplate', {
+        app_name: test.name || window.t('unknownLabel', {}, lang),
+        package_name: test.package || test.external_package_name || '',
+        claim_link: typeof window.buildExternalClaimStartLink === 'function'
+            ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '')
+            : '',
+    }, lang);
+    copyTextWithToast(messageText, 'externalTrackCopied');
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    openTelegramPrefilledMessage(cleanOwnerUsername, messageText);
 }
 
 function sendExternalBugReportFromUi(testId, event) {
@@ -3415,6 +3462,9 @@ function sendExternalBugReportFromUi(testId, event) {
         app_name: test.name || window.t('unknownLabel', {}, lang),
         package_name: test.package || test.external_package_name || '',
         day: getExternalCurrentTestingDay(test),
+        claim_link: typeof window.buildExternalClaimStartLink === 'function'
+            ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '')
+            : '',
     }, lang);
     copyTextWithToast(messageText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
@@ -3503,11 +3553,11 @@ function renderExternalProjectDetailsModal(test, body) {
     var safeGroupUrl = escapeInlineJsString(groupUrl);
     var isDoneToday = String(test.status || '') === 'done';
     var isControlDayDue = !!test.external_control_day_due;
-    var primaryActionDisabled = !isControlDayDue && isDoneToday;
-    var primaryActionLabel = isControlDayDue
-        ? window.t('externalTrackProofBtn', {}, lang)
-        : (isDoneToday
-            ? window.t('externalProjectCheckedTodayBtn', {}, lang)
+    var primaryActionDisabled = !!isDoneToday;
+    var primaryActionLabel = isDoneToday
+        ? window.t('externalProjectCheckedTodayBtn', {}, lang)
+        : (isControlDayDue
+            ? window.t('externalTrackProofBtn', {}, lang)
             : window.t('externalProjectCheckinBtn', {}, lang));
     var primaryActionClick = isControlDayDue
         ? `sendExternalTrackingProofFromUi(${Number(test.id || 0)}, '${escapeInlineJsString(cleanOwnerUsername)}', event)`
@@ -4248,11 +4298,17 @@ function confirmScreenshotGuard() {
 var _checkinOptionsAppId = null;
 var _checkinOptionsOwner = '';
 var _checkinOptionsIsControlDay = false;
+var _checkinOptionsFlow = 'regular';
 var _playReviewModalAppId = null;
 
 function renderCheckinReviewOptions() {
     var mount = document.getElementById('checkin-review-options');
     if (!mount) return;
+    if (_checkinOptionsFlow === 'external') {
+        mount.innerHTML = '';
+        mount.style.display = 'none';
+        return;
+    }
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
     var canToggle = _checkinOptionsIsControlDay && typeof window.canPromptPlayReview === 'function'
         ? window.canPromptPlayReview(test)
@@ -4318,6 +4374,7 @@ function renderPlayReviewModal() {
 function openCheckinOptionsModal(appId, ownerUsername) {
     _checkinOptionsAppId = appId;
     _checkinOptionsOwner = ownerUsername || '';
+    _checkinOptionsFlow = 'regular';
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
     var testingDay = test && typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date) : null;
     _checkinOptionsIsControlDay = !!(testingDay && isMandatoryScreenshotDay(testingDay));
@@ -4345,29 +4402,66 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
 
+function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    _checkinOptionsAppId = appId;
+    _checkinOptionsOwner = ownerUsername || '';
+    _checkinOptionsIsControlDay = false;
+    _checkinOptionsFlow = 'external';
+    const modal = document.getElementById('checkin-options-modal');
+    if (!modal) return;
+    const titleEl = document.getElementById('t-checkinOptionsTitle');
+    const subtitleEl = document.getElementById('t-checkinOptionsSubtitle');
+    const screenshotBtn = document.getElementById('t-checkinOptionsSendScreenshot');
+    const ideaBtn = document.getElementById('t-checkinOptionsSendIdea');
+    const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
+    if (titleEl) titleEl.innerText = window.t('checkinOptionsTitle', {}, lang);
+    if (subtitleEl) subtitleEl.innerText = window.t('checkinOptionsSubtitle', {}, lang);
+    if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
+    if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
+    if (confirmBtn) {
+        confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
+        confirmBtn.style.display = 'block';
+    }
+    renderCheckinReviewOptions();
+    modal.classList.add('active');
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+}
+
 function closeCheckinOptionsModal(event) {
     const modal = document.getElementById('checkin-options-modal');
     if (!modal) return;
     if (event && event.target !== modal) return;
     modal.classList.remove('active');
+    _checkinOptionsFlow = 'regular';
 }
 
 function _closeCheckinOptionsModalImmediate() {
     const modal = document.getElementById('checkin-options-modal');
     if (modal) modal.classList.remove('active');
+    _checkinOptionsFlow = 'regular';
 }
 
 function checkinOptionsScreenshot() {
     const appId = _checkinOptionsAppId;
     const owner = _checkinOptionsOwner;
+    const flow = _checkinOptionsFlow;
     _closeCheckinOptionsModalImmediate();
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+    if (flow === 'external') {
+        sendExternalScreenshotAndConfirmFromUi(appId, owner);
+        return;
+    }
     sendCheckpointScreenshotAndConfirm(appId, owner);
 }
 
 function checkinOptionsIdea() {
     const appId = _checkinOptionsAppId;
+    const flow = _checkinOptionsFlow;
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
     var testingDay = test && typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date) : null;
     var localDate = typeof getLocalDate === 'function' ? getLocalDate() : '';
@@ -4377,14 +4471,23 @@ function checkinOptionsIdea() {
     _closeCheckinOptionsModalImmediate();
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+    if (flow === 'external') {
+        sendExternalBugReportFromUi(appId);
+        return;
+    }
     initiateProjectFeedback(appId, checkinContext ? { checkinContext: checkinContext } : null);
 }
 
 function checkinOptionsConfirm() {
     const appId = _checkinOptionsAppId;
+    const flow = _checkinOptionsFlow;
     _closeCheckinOptionsModalImmediate();
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+    if (flow === 'external') {
+        sendExternalDailyCheckinFromUi(appId);
+        return;
+    }
     if (typeof confirmStart === 'function') confirmStart(appId);
 }
 
@@ -7156,9 +7259,11 @@ Object.assign(window, {
     sendExternalTrackInvite,
     sendExternalTrackingProofFromUi,
     sendExternalDailyCheckinFromUi,
+    sendExternalScreenshotAndConfirmFromUi,
     sendExternalBugReportFromUi,
     inviteExternalProjectOwnerToPlatform,
     cancelExternalTestingFromUi,
+    openExternalCheckinOptionsModal,
     setGuestInviteLanguage,
     setExternalTrackProject,
     setInviteMode,

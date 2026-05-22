@@ -3384,6 +3384,13 @@ function _mapTestsFromApi(data) {
     return (data.to_test_today || []).map(function(app) {
         var isExternal = !!app.is_external;
         var mappedId = isExternal ? (-Math.abs(Number(app.progress_id || 0))) : Number(app.app_id || 0);
+        var shouldTreatFastTrackFirstDayAsDone = !!(
+            isExternal
+            && String(app.external_source || '').trim().toLowerCase() === 'fast_track'
+            && String(app.start_date || '') === today
+            && !String(app.last_check_date || '').trim()
+            && Number(app.testing_days || 0) <= 1
+        );
         var status = 'new';
         if (app.last_check_date === today) {
             status = 'done';
@@ -3391,6 +3398,9 @@ function _mapTestsFromApi(data) {
             status = 'daily';
         } else if (app.last_check_date === null) {
             status = 'new';
+        }
+        if (shouldTreatFastTrackFirstDayAsDone) {
+            status = 'done';
         }
         var progressStatus = String(app.progress_status || 'active').toLowerCase();
         var appStatus = String(app.app_status || 'active').toLowerCase();
@@ -3439,7 +3449,7 @@ function _mapTestsFromApi(data) {
             : (app.daily_timeline || '');
         var resolvedLastCheckDate = shouldPreserveLocalDoneToday
             ? (existingTest.last_check_date || today)
-            : (app.last_check_date || null);
+            : (shouldTreatFastTrackFirstDayAsDone ? today : (app.last_check_date || null));
         var canEverClaim = !isExternal && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
         var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
