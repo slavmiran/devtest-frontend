@@ -1911,9 +1911,13 @@ function renderExternalGuestTestsSection() {
         var safePackage = window.escapeHTML(test.package || test.external_package_name || '');
         var safePackageInline = escapeInlineJsString(test.package || test.external_package_name || '');
         var ownerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+        var safeOwnerUsernameInline = escapeInlineJsString(ownerUsername);
         var ownerLabel = ownerUsername
             ? '@' + ownerUsername
             : window.t('guestInviteOwnerMissing', {}, lang);
+        var ownerLabelHtml = ownerUsername
+            ? `<button type="button" class="external-tests-owner external-tests-owner-link notranslate" onclick="return openTelegramProfile('${safeOwnerUsernameInline}', event)">${window.escapeHTML(ownerLabel)}</button>`
+            : `<div class="external-tests-owner">${window.escapeHTML(ownerLabel)}</div>`;
         var nextControlText = meta.nextControlDay
             ? window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang)
             : window.t('externalTestsAllControlsDone', {}, lang);
@@ -1932,7 +1936,7 @@ function renderExternalGuestTestsSection() {
 
         return `
             <div class="card card-external-tracking external-tests-card${isDoneToday ? ' is-tested' : ''}" id="external-test-card-${Number(test.id || 0)}" onclick="openProjectDetailsModal(${Number(test.id || 0)})">
-                <div class="card-header" style="margin-bottom: 10px;">
+                <div class="card-header external-tests-card-header">
                     ${renderIcon(test.name || test.package || window.t('unknownLabel', {}, lang), test.icon_url)}
                     <div class="card-info">
                         <div class="card-title notranslate">${safeName}</div>
@@ -1940,10 +1944,9 @@ function renderExternalGuestTestsSection() {
                     </div>
                 </div>
                 <div class="external-tests-meta-row">
-                    <span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackBadge', {}, lang))}</span>
                     <span class="meta-chip">${window.escapeHTML(window.t('externalTrackDayLabel', { day: meta.currentDay }, lang))}</span>
                 </div>
-                <div class="external-tests-owner notranslate">${window.escapeHTML(ownerLabel)}</div>
+                ${ownerLabelHtml}
                 <div class="external-tests-status">${window.escapeHTML(nextControlText)}</div>
                 <div class="external-tests-substatus">${window.escapeHTML(substatusText)}</div>
                 <div class="external-tests-actions">
