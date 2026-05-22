@@ -1824,6 +1824,99 @@ function setReliabilityDashboardFilter(filterKey) {
     renderReliabilityAlphaModal();
 }
 
+function getNextExternalControlDayMeta(test) {
+    var controlDays = [1, 4, 7, 10, 14];
+    var currentDay = Math.max(1, Number(test && test.testing_days || 0) || 1);
+    var nextControlDay = 0;
+
+    controlDays.some(function(day) {
+        if (day > currentDay) {
+            nextControlDay = day;
+            return true;
+        }
+        return false;
+    });
+
+    return {
+        currentDay: currentDay,
+        nextControlDay: nextControlDay,
+        daysLeft: nextControlDay > 0 ? Math.max(0, nextControlDay - currentDay) : 0,
+    };
+}
+
+function renderExternalGuestTestsSection() {
+    var section = document.getElementById('external-tests-section');
+    var countNode = document.getElementById('external-tests-count');
+    var titleNode = document.getElementById('t-externalTestsSectionTitle');
+    var descNode = document.getElementById('t-externalTestsSectionDesc');
+    var noteNode = document.getElementById('t-externalTestsSectionNote');
+    var list = document.getElementById('external-tests-list');
+
+    if (!section || !countNode || !list) {
+        return;
+    }
+
+    if (titleNode) titleNode.textContent = window.t('externalTestsSectionTitle', {}, lang);
+    if (descNode) descNode.textContent = window.t('externalTestsSectionDesc', {}, lang);
+    if (noteNode) noteNode.textContent = window.t('externalTestsSectionNote', {}, lang);
+
+    var externalTests = (Array.isArray(myTests) ? myTests : []).filter(function(test) {
+        return !!test
+            && !!test.is_external
+            && !test.external_control_day_due
+            && String(test.progress_status || 'active').toLowerCase() === 'active';
+    });
+
+    if (!externalTests.length) {
+        section.style.display = 'none';
+        countNode.textContent = '0';
+        list.innerHTML = '';
+        return;
+    }
+
+    section.style.display = 'block';
+    countNode.textContent = String(externalTests.length);
+    list.innerHTML = externalTests.map(function(test) {
+        var meta = getNextExternalControlDayMeta(test);
+        var safeName = window.escapeHTML(test.name || test.package || window.t('unknownLabel', {}, lang));
+        var safePackage = window.escapeHTML(test.package || test.external_package_name || '');
+        var safePackageInline = escapeInlineJsString(test.package || test.external_package_name || '');
+        var ownerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+        var ownerLabel = ownerUsername
+            ? '@' + ownerUsername
+            : window.t('guestInviteOwnerMissing', {}, lang);
+        var nextControlText = meta.nextControlDay
+            ? window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang)
+            : window.t('externalTestsAllControlsDone', {}, lang);
+        var lastCompletedDay = Number(test.external_last_completed_control_day || 0);
+        var lastCompletedText = lastCompletedDay > 0
+            ? window.t('guestTesterStatusCurrent', { day: lastCompletedDay }, lang)
+            : window.t('guestTesterStatusWaiting', {}, lang);
+
+        return `
+            <div class="card card-external-tracking external-tests-card" id="external-test-card-${Number(test.id || 0)}">
+                <div class="card-header" style="margin-bottom: 10px;">
+                    ${renderIcon(test.name || test.package || window.t('unknownLabel', {}, lang), test.icon_url)}
+                    <div class="card-info">
+                        <div class="card-title notranslate">${safeName}</div>
+                        <div class="card-subtitle notranslate">${safePackage}</div>
+                    </div>
+                </div>
+                <div class="external-tests-meta-row">
+                    <span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackBadge', {}, lang))}</span>
+                    <span class="meta-chip">${window.escapeHTML(window.t('externalTrackDayLabel', { day: meta.currentDay }, lang))}</span>
+                </div>
+                <div class="external-tests-owner notranslate">${window.escapeHTML(ownerLabel)}</div>
+                <div class="external-tests-status">${window.escapeHTML(nextControlText)}</div>
+                <div class="external-tests-substatus">${window.escapeHTML(lastCompletedText)}</div>
+                <button class="btn btn-secondary" style="width:100%; margin-top: 12px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
+                    ${window.escapeHTML(window.t('externalTrackOpenAppBtn', {}, lang))}
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
 function renderTests(force) {
     if (!force && !isTabVisible('tests')) return;
     const activeList = document.getElementById('tests-list');
@@ -1855,6 +1948,8 @@ function renderTests(force) {
         if (isExternal && !test.external_control_day_due) return;
 
         const card = document.createElement('div');
+
+    renderExternalGuestTestsSection();
         
         // Determine if test should go to active or done list:
         // - If isReadyToClaim or isGrantAvailableTomorrow: keep in active list
@@ -2532,16 +2627,26 @@ function renderGuestProjectsSection(force) {
         return;
     }
 
-    if (!Array.isArray(guestProjects) || !guestProjects.length) {
+    const rawGuestProjects = Array.isArray(guestProjects) ? guestProjects : [];
+    const availableItems = typeof window.getFilteredGuestProjects === 'function'
+        ? window.getFilteredGuestProjects()
+        : rawGuestProjects;
+
+    if (!rawGuestProjects.length) {
         const emptyKey = _guestProjectsLoadError ? 'guestProjectsLoadError' : 'guestProjectsEmpty';
         list.innerHTML = `<p class="no-testers">${window.escapeHTML(window.t(emptyKey, {}, lang))}</p>`;
         return;
     }
 
+    if (!availableItems.length) {
+        list.innerHTML = `<p class="no-testers">${window.escapeHTML(window.t('guestProjectsTrackedOnly', {}, lang))}</p>`;
+        return;
+    }
+
     const visibleItems = typeof window.getVisibleGuestProjects === 'function'
         ? window.getVisibleGuestProjects()
-        : guestProjects;
-    const remaining = Math.max(0, guestProjects.length - visibleItems.length);
+        : availableItems;
+    const remaining = Math.max(0, availableItems.length - visibleItems.length);
     const nextCount = Math.min(
         typeof window.getGuestProjectsPageSize === 'function' ? window.getGuestProjectsPageSize() : 5,
         remaining
@@ -2922,6 +3027,10 @@ function showExternalTrackInfoClick(event) {
 
 function showExternalTrackInfo() {
     var message = window.t('externalTrackExplainAlert', {}, lang);
+    if (typeof window.showCustomAlert === 'function') {
+        window.showCustomAlert(message);
+        return;
+    }
     var telegram = window.tg || window.Telegram && window.Telegram.WebApp || (typeof tg !== 'undefined' ? tg : null);
     if (telegram && typeof telegram.showAlert === 'function') {
         telegram.showAlert(message);
@@ -3028,8 +3137,12 @@ function toggleExternalTrackAcknowledged(input, event) {
     if (event && typeof event.stopPropagation === 'function') {
         event.stopPropagation();
     }
+    var wasAcknowledged = !!_externalTrackAcknowledged;
     _externalTrackAcknowledged = !!(input && input.checked);
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    if (_externalTrackAcknowledged && !wasAcknowledged) {
+        showExternalTrackInfo();
+    }
     updateExternalTrackSubmitState();
 }
 
@@ -3610,6 +3723,8 @@ function renderProjects(force) {
                 `;
             });
             testersHtml += findTestersCtaHtml + '</ul>';
+        } else if (guestTesters.length > 0) {
+            testersHtml = `<ul class="tester-list tester-list-cta-only">${findTestersCtaHtml}</ul>`;
         } else {
             testersHtml = `<p class="no-testers">${t.noTesters}</p><ul class="tester-list tester-list-cta-only">${findTestersCtaHtml}</ul>`;
         }
@@ -3740,7 +3855,7 @@ function renderProjects(force) {
 
         const quotaSummaryHtml = (() => {
             const chips = [];
-            const testers = allProjectTesters;
+            const testers = regularTesters;
             const mutualCount = testers.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
             const bountyCount = testers.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
             if (project.mode === 'mutual' || project.mode === 'hybrid') {
@@ -3754,7 +3869,7 @@ function renderProjects(force) {
         })();
 
         const karmaBonusChipHtml = (() => {
-            if (platformDays < 14 || !project.testers || project.testers.length < 5) return '';
+            if (platformDays < 14 || regularTesters.length < 5) return '';
             return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
         })();
 
@@ -3797,7 +3912,7 @@ function renderProjects(force) {
             ${quotaSummaryHtml}
             <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
             <div class="testers-section">
-                <div class="testers-title">${t.testersList} (${regularTesters.length})</div>
+                <div class="testers-title">${t.testersList} (${allProjectTesters.length})</div>
                 ${testersHtml}
                 ${guestTestersHtml}
             </div>

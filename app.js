@@ -1255,22 +1255,55 @@ function resetGuestProjectsPagination() {
     _guestProjectsVisibleCount = GUEST_PROJECTS_PAGE_SIZE;
 }
 
-function getVisibleGuestProjects() {
-    if (!Array.isArray(guestProjects)) {
+function isGuestProjectAlreadyTracked(guest) {
+    if (!guest) {
+        return false;
+    }
+
+    var guestId = String(guest.id || '').trim();
+    var guestPackageName = String(guest.package_name || guest.name || '').trim().toLowerCase();
+
+    return Array.isArray(myTests) && myTests.some(function(test) {
+        if (!test || !test.is_external) {
+            return false;
+        }
+
+        var trackedGuestId = String(test.external_guest_app_id || '').trim();
+        var trackedPackageName = String(test.external_package_name || test.package || '').trim().toLowerCase();
+        if (guestId && trackedGuestId && guestId === trackedGuestId) {
+            return true;
+        }
+        return !!guestPackageName && trackedPackageName === guestPackageName;
+    });
+}
+
+function getFilteredGuestProjects() {
+    if (!Array.isArray(guestProjects) || !guestProjects.length) {
         return [];
     }
-    return guestProjects.slice(0, Math.max(GUEST_PROJECTS_PAGE_SIZE, Number(_guestProjectsVisibleCount || GUEST_PROJECTS_PAGE_SIZE)));
+    return guestProjects.filter(function(guest) {
+        return !isGuestProjectAlreadyTracked(guest);
+    });
+}
+
+function getVisibleGuestProjects() {
+    var filteredGuestProjects = getFilteredGuestProjects();
+    if (!filteredGuestProjects.length) {
+        return [];
+    }
+    return filteredGuestProjects.slice(0, Math.max(GUEST_PROJECTS_PAGE_SIZE, Number(_guestProjectsVisibleCount || GUEST_PROJECTS_PAGE_SIZE)));
 }
 
 function canShowMoreGuestProjects() {
-    return Array.isArray(guestProjects) && guestProjects.length > getVisibleGuestProjects().length;
+    return getFilteredGuestProjects().length > getVisibleGuestProjects().length;
 }
 
 function showMoreGuestProjects() {
-    if (!Array.isArray(guestProjects) || guestProjects.length <= _guestProjectsVisibleCount) {
+    var filteredGuestProjects = getFilteredGuestProjects();
+    if (!filteredGuestProjects.length || filteredGuestProjects.length <= _guestProjectsVisibleCount) {
         return;
     }
-    _guestProjectsVisibleCount = Math.min(guestProjects.length, Number(_guestProjectsVisibleCount || GUEST_PROJECTS_PAGE_SIZE) + GUEST_PROJECTS_PAGE_SIZE);
+    _guestProjectsVisibleCount = Math.min(filteredGuestProjects.length, Number(_guestProjectsVisibleCount || GUEST_PROJECTS_PAGE_SIZE) + GUEST_PROJECTS_PAGE_SIZE);
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     if (window.renderGuestProjectsSection) {
         window.renderGuestProjectsSection(true);
@@ -1316,7 +1349,23 @@ async function startExternalTrackingSession(payload) {
         handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
         return null;
     }
-    loadTasks(true).catch(function() {});
+
+    const refreshPromises = [];
+    if (typeof loadTasks === 'function') {
+        refreshPromises.push(loadTasks(true));
+    }
+    if (typeof loadProjects === 'function') {
+        refreshPromises.push(loadProjects(true));
+    }
+    if (typeof loadGuestApps === 'function') {
+        refreshPromises.push(loadGuestApps({ force: true }));
+    }
+    if (refreshPromises.length) {
+        await Promise.allSettled(refreshPromises);
+    }
+    if (window.renderGuestProjectsSection) {
+        window.renderGuestProjectsSection(true);
+    }
     return result;
 }
 
@@ -6791,6 +6840,7 @@ Object.assign(window, {
     updateGuestProjectsFilter,
     showMoreGuestProjects,
     getGuestProjectsPageSize,
+    getFilteredGuestProjects,
     getVisibleGuestProjects,
     canShowMoreGuestProjects,
     getGuestProjectAvailableLangs,
