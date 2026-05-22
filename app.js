@@ -1395,6 +1395,70 @@ async function submitExternalTrackingProof(progressId, testId) {
     return result;
 }
 
+async function submitExternalDailyCheckin(progressId, testId) {
+    const response = await fetchWithRetry(`${API_BASE}/external-tests/${progressId}/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tester_id: userId, local_date: getLocalDate() })
+    }, 1);
+    const result = await response.json();
+    if (!response.ok || !result || result.status !== 'success') {
+        handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+        return null;
+    }
+
+    var test = myTests.find(function(item) { return Number(item.id) === Number(testId); });
+    if (test) {
+        test.last_check_date = result.last_check_date || getLocalDate();
+        test.testing_days = Math.max(Number(test.testing_days || 0), Number(result.testing_day || 0));
+        recomputeLocalTestState(test);
+        persistTestsCacheSnapshot();
+        renderTests(true);
+    }
+
+    return result;
+}
+
+async function cancelExternalTracking(progressId, testId) {
+    const response = await fetchWithRetry(`${API_BASE}/external-tests/${progressId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tester_id: userId })
+    }, 1);
+    const result = await response.json();
+    if (!response.ok || !result || result.status !== 'success') {
+        handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+        return null;
+    }
+
+    myTests = (Array.isArray(myTests) ? myTests : []).filter(function(item) {
+        return Number(item.id) !== Number(testId);
+    });
+    persistTestsCacheSnapshot();
+
+    const refreshPromises = [];
+    if (typeof loadTasks === 'function') {
+        refreshPromises.push(loadTasks(true));
+    }
+    if (typeof loadProjects === 'function') {
+        refreshPromises.push(loadProjects(true));
+    }
+    if (typeof loadGuestApps === 'function') {
+        refreshPromises.push(loadGuestApps({ force: true }));
+    }
+    if (refreshPromises.length) {
+        await Promise.allSettled(refreshPromises);
+    }
+    if (window.renderGuestProjectsSection) {
+        window.renderGuestProjectsSection(true);
+    }
+    if (window.renderTests) {
+        window.renderTests(true);
+    }
+
+    return result;
+}
+
 function _syncGuestProjectsCache() {
     setGuestProjectsCache({
         filters: Object.assign({}, _guestProjectsFilters),
@@ -6850,6 +6914,8 @@ Object.assign(window, {
     buildExternalClaimStartLink,
     startExternalTrackingSession,
     submitExternalTrackingProof,
+    submitExternalDailyCheckin,
+    cancelExternalTracking,
     getDefaultCheckpointReportLanguage,
     getDefaultCheckpointReportLanguage,
     buildCheckpointReportPrefill,
@@ -6950,5 +7016,7 @@ Object.assign(window.App, {
     joinDirect,
     startExternalTrackingSession,
     submitExternalTrackingProof,
+    submitExternalDailyCheckin,
+    cancelExternalTracking,
     buildExternalClaimStartLink
 });

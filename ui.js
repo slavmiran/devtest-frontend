@@ -1824,9 +1824,26 @@ function setReliabilityDashboardFilter(filterKey) {
     renderReliabilityAlphaModal();
 }
 
+function getExternalCurrentTestingDay(record) {
+    var explicitDay = Number(record && record.testing_days || 0) || 0;
+    if (explicitDay > 0) {
+        return Math.max(1, explicitDay);
+    }
+
+    if (record && record.start_date) {
+        var computedDay = Number(getUserTestingDay(record.start_date) || 0);
+        if (computedDay > 0) {
+            return Math.max(1, computedDay);
+        }
+    }
+
+    var lastCompletedDay = Number(record && record.external_last_completed_control_day || 0) || 0;
+    return Math.max(1, lastCompletedDay || 1);
+}
+
 function getNextExternalControlDayMeta(test) {
     var controlDays = [1, 4, 7, 10, 14];
-    var currentDay = Math.max(1, Number(test && test.testing_days || 0) || 1);
+    var currentDay = getExternalCurrentTestingDay(test);
     var nextControlDay = 0;
 
     controlDays.some(function(day) {
@@ -1853,7 +1870,7 @@ function renderExternalGuestTestsSection() {
     var list = document.getElementById('external-tests-list');
 
     if (!section || !countNode || !list) {
-        return;
+        return 0;
     }
 
     if (titleNode) titleNode.textContent = window.t('externalTestsSectionTitle', {}, lang);
@@ -1871,13 +1888,14 @@ function renderExternalGuestTestsSection() {
         section.style.display = 'none';
         countNode.textContent = '0';
         list.innerHTML = '';
-        return;
+        return 0;
     }
 
     section.style.display = 'block';
     countNode.textContent = String(externalTests.length);
     list.innerHTML = externalTests.map(function(test) {
         var meta = getNextExternalControlDayMeta(test);
+        var isDoneToday = String(test.status || '') === 'done';
         var safeName = window.escapeHTML(test.name || test.package || window.t('unknownLabel', {}, lang));
         var safePackage = window.escapeHTML(test.package || test.external_package_name || '');
         var safePackageInline = escapeInlineJsString(test.package || test.external_package_name || '');
@@ -1889,12 +1907,17 @@ function renderExternalGuestTestsSection() {
             ? window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang)
             : window.t('externalTestsAllControlsDone', {}, lang);
         var lastCompletedDay = Number(test.external_last_completed_control_day || 0);
-        var lastCompletedText = lastCompletedDay > 0
-            ? window.t('guestTesterStatusCurrent', { day: lastCompletedDay }, lang)
-            : window.t('guestTesterStatusWaiting', {}, lang);
+        var substatusText = isDoneToday
+            ? window.t('externalProjectCheckedToday', {}, lang)
+            : (lastCompletedDay > 0
+                ? window.t('externalTestsLastControlDay', { day: lastCompletedDay }, lang)
+                : '');
+        var confirmBtnLabel = isDoneToday
+            ? window.t('externalProjectCheckedTodayBtn', {}, lang)
+            : window.t('externalProjectCheckinBtn', {}, lang);
 
         return `
-            <div class="card card-external-tracking external-tests-card" id="external-test-card-${Number(test.id || 0)}">
+            <div class="card card-external-tracking external-tests-card${isDoneToday ? ' is-tested' : ''}" id="external-test-card-${Number(test.id || 0)}" onclick="openProjectDetailsModal(${Number(test.id || 0)})">
                 <div class="card-header" style="margin-bottom: 10px;">
                     ${renderIcon(test.name || test.package || window.t('unknownLabel', {}, lang), test.icon_url)}
                     <div class="card-info">
@@ -1908,13 +1931,20 @@ function renderExternalGuestTestsSection() {
                 </div>
                 <div class="external-tests-owner notranslate">${window.escapeHTML(ownerLabel)}</div>
                 <div class="external-tests-status">${window.escapeHTML(nextControlText)}</div>
-                <div class="external-tests-substatus">${window.escapeHTML(lastCompletedText)}</div>
-                <button class="btn btn-secondary" style="width:100%; margin-top: 12px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
-                    ${window.escapeHTML(window.t('externalTrackOpenAppBtn', {}, lang))}
-                </button>
+                <div class="external-tests-substatus">${window.escapeHTML(substatusText)}</div>
+                <div class="action-row external-tests-actions">
+                    <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="event.stopPropagation(); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
+                        ${window.escapeHTML(t.openBtn)}
+                    </button>
+                    <button class="btn" style="flex: 1; ${isDoneToday ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isDoneToday ? 'disabled' : ''} onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
+                        ${window.escapeHTML(confirmBtnLabel)}
+                    </button>
+                </div>
             </div>
         `;
     }).join('');
+
+    return externalTests.length;
 }
 
 function renderTests(force) {
@@ -1932,6 +1962,7 @@ function renderTests(force) {
     let activeCount = 0;
     let doneCount = 0;
     let pendingCount = 0;
+    const externalGuestTestsCount = renderExternalGuestTestsSection();
 
     myTests.forEach((test) => {
         const isExternal = !!test.is_external;
@@ -1948,8 +1979,6 @@ function renderTests(force) {
         if (isExternal && !test.external_control_day_due) return;
 
         const card = document.createElement('div');
-
-    renderExternalGuestTestsSection();
         
         // Determine if test should go to active or done list:
         // - If isReadyToClaim or isGrantAvailableTomorrow: keep in active list
@@ -2188,7 +2217,7 @@ function renderTests(force) {
         const externalMetaHtml = isExternal
             ? `<div class="external-track-inline-meta"><span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackCardChip', {}, lang))}</span><span class="external-track-inline-note">${window.escapeHTML(window.t('externalTrackInlineMeta', { source: formatExternalSourceLabel(test.external_source) }, lang))}</span></div>`
             : '';
-        const cardHeaderLinkStart = isExternal ? '<div class="card-header-link">' : `<div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">`;
+        const cardHeaderLinkStart = `<div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">`;
 
         let cardContent = `
             ${doneBadgeHtml}
@@ -2240,7 +2269,7 @@ function renderTests(force) {
     document.getElementById('done-count').innerText = doneCount;
     document.getElementById('done-section').style.display = doneCount > 0 ? 'block' : 'none';
 
-    if (activeCount === 0 && pendingCount === 0) {
+    if (activeCount === 0 && pendingCount === 0 && externalGuestTestsCount === 0) {
         activeList.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">🎉</div>
@@ -2936,6 +2965,32 @@ function getExternalTesterStatusMeta(tester) {
     };
 }
 
+function getExternalTesterControlMeta(tester) {
+    var meta = getNextExternalControlDayMeta(tester);
+    if (!meta.nextControlDay) {
+        return {
+            tone: 'soft',
+            label: window.t('guestTesterControlDone', {}, lang)
+        };
+    }
+    if (meta.daysLeft <= 0) {
+        return {
+            tone: 'green',
+            label: window.t('guestTesterControlToday', {}, lang)
+        };
+    }
+    if (meta.daysLeft === 1) {
+        return {
+            tone: 'yellow',
+            label: window.t('guestTesterControlTomorrow', {}, lang)
+        };
+    }
+    return {
+        tone: 'soft',
+        label: window.t('guestTesterControlInDays', { count: meta.daysLeft }, lang)
+    };
+}
+
 function formatExternalSourceLabel(source) {
     var normalized = String(source || '').trim().toLowerCase();
     if (normalized === 'fast_track') {
@@ -3243,6 +3298,10 @@ function renderGuestTesterDetailsModal() {
         app_name: project.name || window.t('unknownLabel', {}, lang),
         invite_link: buildProjectInviteStartLink(project.id),
     }, lang);
+    var sourcePackage = String(tester.external_package_name || '').trim();
+    var sourcePackageHtml = sourcePackage
+        ? `<div class="guest-tester-detail-line notranslate">${window.escapeHTML(window.t('guestTesterDetailPackage', { package: sourcePackage }, lang))}</div>`
+        : '';
 
     body.innerHTML = `
         <div class="guest-tester-detail-card">
@@ -3251,6 +3310,7 @@ function renderGuestTesterDetailsModal() {
                 <span class="guest-tester-status-chip is-${window.escapeHTML(statusMeta.tone)}">${window.escapeHTML(statusMeta.label)}</span>
             </div>
             <div class="guest-tester-detail-line">${window.escapeHTML(window.t('guestTesterDetailCurrentDay', { day: Number(currentDay || 0) }, lang))}</div>
+            ${sourcePackageHtml}
             <div class="guest-tester-detail-line">${window.escapeHTML(window.t('guestTesterDetailLastControlDay', { day: Number(tester.external_last_completed_control_day || 0) }, lang))}</div>
             <div class="guest-tester-detail-line">${window.escapeHTML(window.t('guestTesterDetailSource', { source: formatExternalSourceLabel(tester.external_source) }, lang))}</div>
             <div class="guest-tester-detail-actions">
@@ -3311,6 +3371,201 @@ async function sendExternalTrackingProofFromUi(testId, ownerUsername, event) {
     copyTextWithToast(proofText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     openTelegramPrefilledMessage(cleanUsername, proofText);
+}
+
+function getExternalProjectTest(testId) {
+    return (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item.id) === Number(testId || 0) && !!item.is_external;
+    }) || null;
+}
+
+async function sendExternalDailyCheckinFromUi(testId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var test = getExternalProjectTest(testId);
+    if (!test || typeof window.submitExternalDailyCheckin !== 'function') return;
+
+    var result = await window.submitExternalDailyCheckin(test.progress_id, test.id);
+    if (!result) return;
+
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    var modal = document.getElementById('project-details-modal');
+    if (modal && modal.classList.contains('active') && String(modal.dataset.appId || '') === String(test.id)) {
+        openProjectDetailsModal(test.id);
+    }
+}
+
+function sendExternalBugReportFromUi(testId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var test = getExternalProjectTest(testId);
+    if (!test) return;
+
+    var cleanOwnerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+    if (!cleanOwnerUsername) {
+        showToast(window.t('externalProjectOwnerMissing', {}, lang));
+        return;
+    }
+
+    var messageText = window.t('externalProjectBugReportMessageTemplate', {
+        app_name: test.name || window.t('unknownLabel', {}, lang),
+        package_name: test.package || test.external_package_name || '',
+        day: getExternalCurrentTestingDay(test),
+    }, lang);
+    copyTextWithToast(messageText, 'externalTrackCopied');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    openTelegramPrefilledMessage(cleanOwnerUsername, messageText);
+}
+
+function inviteExternalProjectOwnerToPlatform(testId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var test = getExternalProjectTest(testId);
+    if (!test) return;
+
+    var cleanOwnerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+    if (!cleanOwnerUsername) {
+        showToast(window.t('externalProjectOwnerMissing', {}, lang));
+        return;
+    }
+
+    var messageText = window.t('externalProjectInvitePlatformMessage', {
+        app_name: test.name || window.t('unknownLabel', {}, lang),
+        claim_link: typeof window.buildExternalClaimStartLink === 'function'
+            ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '')
+            : '',
+    }, lang);
+    copyTextWithToast(messageText, 'externalTrackCopied');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    openTelegramPrefilledMessage(cleanOwnerUsername, messageText);
+}
+
+async function _confirmExternalTestingCancel(test) {
+    if (!test || typeof window.cancelExternalTracking !== 'function') return;
+    var result = await window.cancelExternalTracking(test.progress_id, test.id);
+    if (!result) return;
+
+    closeProjectDetailsModal();
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    showToast(window.t('externalProjectCancelSuccess', {}, lang));
+}
+
+function cancelExternalTestingFromUi(testId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var test = getExternalProjectTest(testId);
+    if (!test) return;
+
+    var confirmText = window.t('externalProjectCancelConfirm', {
+        app_name: test.name || test.package || window.t('unknownLabel', {}, lang)
+    }, lang);
+    if (window.tg && typeof window.tg.showConfirm === 'function') {
+        window.tg.showConfirm(confirmText, function(confirmed) {
+            if (!confirmed) return;
+            _confirmExternalTestingCancel(test).catch(function(error) {
+                console.error('External cancel error:', error);
+                showToast(getApiErrorMessage(error && error.message, 'networkError'));
+            });
+        });
+        return;
+    }
+
+    if (!window.confirm(confirmText)) {
+        return;
+    }
+    _confirmExternalTestingCancel(test).catch(function(error) {
+        console.error('External cancel error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    });
+}
+
+function renderExternalProjectDetailsModal(test, body) {
+    var safeName = window.escapeHTML(test.name || test.package || window.t('unknownLabel', {}, lang));
+    var safePackage = window.escapeHTML(test.package || test.external_package_name || '');
+    var safePackageInline = escapeInlineJsString(test.package || test.external_package_name || '');
+    var cleanOwnerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+    var ownerLabel = cleanOwnerUsername
+        ? '@' + cleanOwnerUsername
+        : window.t('externalProjectOwnerMissing', {}, lang);
+    var currentDay = getExternalCurrentTestingDay(test);
+    var controlMeta = getExternalTesterControlMeta(test);
+    var playUrl = getExternalTrackPlayUrl(test);
+    var safePlayUrl = escapeInlineJsString(playUrl);
+    var groupUrl = String(test.google_group_url || '').trim();
+    var safeGroupUrl = escapeInlineJsString(groupUrl);
+    var isDoneToday = String(test.status || '') === 'done';
+    var isControlDayDue = !!test.external_control_day_due;
+    var primaryActionDisabled = !isControlDayDue && isDoneToday;
+    var primaryActionLabel = isControlDayDue
+        ? window.t('externalTrackProofBtn', {}, lang)
+        : (isDoneToday
+            ? window.t('externalProjectCheckedTodayBtn', {}, lang)
+            : window.t('externalProjectCheckinBtn', {}, lang));
+    var primaryActionClick = isControlDayDue
+        ? `sendExternalTrackingProofFromUi(${Number(test.id || 0)}, '${escapeInlineJsString(cleanOwnerUsername)}', event)`
+        : `sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)`;
+    var groupBlockHtml = groupUrl
+        ? '<div class="details-block">' +
+            '<div class="detail-section-title">' + window.escapeHTML(window.t('detailGoogleGroup', {}, lang)) + '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+                '<div class="notranslate" style="flex:1;font-size:13px;color:var(--link-color);cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" onclick="event.stopPropagation(); tg.openLink(\'' + safeGroupUrl + '\')">' + window.escapeHTML(groupUrl) + '</div>' +
+                '<button class="btn-icon" style="width:32px;height:32px;font-size:14px;border-radius:8px;flex-shrink:0;" onclick="event.stopPropagation();navigator.clipboard.writeText(\'' + safeGroupUrl + '\');if(tg.HapticFeedback)tg.HapticFeedback.notificationOccurred(\'success\');showToast(\'' + escapeInlineJsString(window.t('detailGoogleGroupCopied', {}, lang)) + '\')">📋</button>' +
+            '</div>' +
+        '</div>'
+        : '';
+
+    body.innerHTML = `
+        <div class="card-header" style="margin-bottom: 14px;">
+            ${renderIcon(test.name || test.package || window.t('unknownLabel', {}, lang), test.icon_url)}
+            <div class="card-info">
+                <div class="card-title notranslate">${safeName}</div>
+                <div class="card-subtitle notranslate">${safePackage}</div>
+            </div>
+        </div>
+        <div class="details-block">
+            <div class="detail-section-title">${window.escapeHTML(window.t('externalProjectDetailTitle', {}, lang))}</div>
+            <div class="guest-tester-detail-line">${window.escapeHTML(window.t('externalProjectDayProgress', { day: currentDay }, lang))}</div>
+            <div class="guest-tester-detail-line notranslate">${window.escapeHTML(ownerLabel)}</div>
+            <div class="guest-tester-detail-line">${window.escapeHTML(controlMeta.label)}</div>
+            <div class="guest-tester-detail-line">${window.escapeHTML(window.t('externalProjectNoEconomyNote', {}, lang))}</div>
+        </div>
+        ${groupBlockHtml}
+        <div class="details-block">
+            <div class="action-row" style="margin-top: 0; margin-bottom: 8px;">
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="event.stopPropagation(); openExternalAppLink('${safePlayUrl}', event)">
+                    ${window.escapeHTML(window.t('externalProjectOpenPlayBtn', {}, lang))}
+                </button>
+                <button class="btn" style="flex: 1; ${primaryActionDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${primaryActionDisabled ? 'disabled' : ''} onclick="${primaryActionClick}">
+                    ${window.escapeHTML(primaryActionLabel)}
+                </button>
+            </div>
+            <div class="action-row" style="margin-top: 0; margin-bottom: 8px;">
+                <button class="btn btn-secondary" style="flex: 1; background-color: rgba(255, 59, 48, 0.12); color: #ff8d84; border: 1px solid rgba(255, 59, 48, 0.24);" onclick="sendExternalBugReportFromUi(${Number(test.id || 0)}, event)" ${cleanOwnerUsername ? '' : 'disabled'}>
+                    ${window.escapeHTML(window.t('externalProjectReportBugBtn', {}, lang))}
+                </button>
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="return openTelegramProfile('${escapeInlineJsString(cleanOwnerUsername)}', event)" ${cleanOwnerUsername ? '' : 'disabled'}>
+                    ${window.escapeHTML(window.t('externalProjectContactOwnerBtn', {}, lang))}
+                </button>
+            </div>
+            <button class="btn" style="width: 100%; margin-bottom: 8px;" onclick="inviteExternalProjectOwnerToPlatform(${Number(test.id || 0)}, event)" ${cleanOwnerUsername ? '' : 'disabled'}>
+                ${window.escapeHTML(window.t('externalProjectInvitePlatformBtn', {}, lang))}
+            </button>
+            <button class="btn" style="width: 100%; background-color: rgba(255, 59, 48, 0.12); color: #ff6b63; border: 1px solid rgba(255, 59, 48, 0.32);" onclick="cancelExternalTestingFromUi(${Number(test.id || 0)}, event)">
+                ${window.escapeHTML(window.t('externalProjectCancelBtn', {}, lang))}
+            </button>
+        </div>
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeProjectDetailsModal()">
+            ${window.escapeHTML(window.t('inviteClose', {}, lang))}
+        </button>
+    `;
 }
 
 function switchMarketSubTab(tab) {
@@ -3611,7 +3866,6 @@ function renderProjects(force) {
         const guestTesterCount = Math.max(Number(project.guest_testers_count || 0), guestTesters.length);
 
         let testersHtml = '';
-        let guestTestersHtml = '';
         const findTestersCtaHtml = `
             <li class="tester-list-cta-item" onclick="event.stopPropagation(); openGuestProjectsTesterSearch(${project.id})">
                 <div class="tester-row-main">
@@ -3622,8 +3876,8 @@ function renderProjects(force) {
                 </div>
             </li>
         `;
+        let testerRowsHtml = '';
         if (regularTesters.length > 0) {
-            testersHtml = '<ul class="tester-list">';
             regularTesters.forEach((tester) => {
                 let nameHtml = '';
                 let cleanUsername = '';
@@ -3707,7 +3961,7 @@ function renderProjects(force) {
 
                 const chevronHtml = '<span class="tester-chevron">›</span>';
 
-                testersHtml += `
+                testerRowsHtml += `
                     <li onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;">
                         <div class="tester-row-main">
                             ${nameHtml}
@@ -3722,38 +3976,37 @@ function renderProjects(force) {
                     </li>
                 `;
             });
-            testersHtml += findTestersCtaHtml + '</ul>';
-        } else if (guestTesters.length > 0) {
-            testersHtml = `<ul class="tester-list tester-list-cta-only">${findTestersCtaHtml}</ul>`;
-        } else {
-            testersHtml = `<p class="no-testers">${t.noTesters}</p><ul class="tester-list tester-list-cta-only">${findTestersCtaHtml}</ul>`;
         }
 
         if (guestTesters.length > 0) {
-            guestTestersHtml = '<div class="guest-testers-section">' +
-                '<div class="testers-title guest-testers-title">' + window.escapeHTML(window.t('projectGuestTestersTitle', { count: guestTesters.length }, lang)) + '</div>' +
-                '<ul class="tester-list guest-tester-list">';
             guestTesters.forEach(function(tester) {
                 var cleanUsername = String(tester.username || '').trim().replace(/^@+/, '');
                 var testerLabel = cleanUsername
                     ? '@' + cleanUsername
                     : window.t('idLabel', { id: Number(tester.tester_id || 0) }, lang);
-                var statusMeta = getExternalTesterStatusMeta(tester);
-                var currentDay = tester.start_date ? getUserTestingDay(tester.start_date) : Number(tester.external_last_completed_control_day || 0);
-                guestTestersHtml += `
-                    <li class="guest-tester-row" onclick="openGuestTesterDetailsModal(${project.id}, ${Number(tester.progress_id || 0)}, event)" style="cursor: pointer;">
+                var controlMeta = getExternalTesterControlMeta(tester);
+                var currentDay = getExternalCurrentTestingDay(tester);
+                var testerDayHtml = currentDay > 0
+                    ? `<span class="tester-day-badge">[${window.escapeHTML(String(Number(currentDay || 0)))}]</span>`
+                    : '';
+                testerRowsHtml += `
+                    <li onclick="openGuestTesterDetailsModal(${project.id}, ${Number(tester.progress_id || 0)}, event)" style="cursor: pointer;">
                         <div class="tester-row-main">
-                            <span class="tester-name"><span class="tester-day-badge">[${window.escapeHTML(String(Number(currentDay || 0)))}]</span><span class="tester-primary-label notranslate">${window.escapeHTML(testerLabel)}</span></span>
-                            <span class="guest-tester-source-chip">👽 ${window.escapeHTML(window.t('guestTesterSourceChip', { source: formatExternalSourceLabel(tester.external_source) }, lang))}</span>
+                            <span class="tester-name">${testerDayHtml}<span class="tester-guest-prefix">👽</span><span class="tester-primary-label notranslate">${window.escapeHTML(testerLabel)}</span></span>
                         </div>
                         <div class="tester-row-meta">
-                            <span class="tester-status guest-tester-status is-${window.escapeHTML(statusMeta.tone)}">${window.escapeHTML(statusMeta.label)}</span>
+                            <span class="tester-status is-${window.escapeHTML(controlMeta.tone)}">${window.escapeHTML(controlMeta.label)}</span>
                             <span class="tester-chevron">›</span>
                         </div>
                     </li>
                 `;
             });
-            guestTestersHtml += '</ul></div>';
+        }
+
+        if (testerRowsHtml) {
+            testersHtml = `<ul class="tester-list">${testerRowsHtml}${findTestersCtaHtml}</ul>`;
+        } else {
+            testersHtml = `<p class="no-testers">${t.noTesters}</p><ul class="tester-list tester-list-cta-only">${findTestersCtaHtml}</ul>`;
         }
 
         const issueDate = accessIssueTester && accessIssueTester.issue_reported_at ? new Date(accessIssueTester.issue_reported_at) : null;
@@ -3912,9 +4165,8 @@ function renderProjects(force) {
             ${quotaSummaryHtml}
             <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
             <div class="testers-section">
-                <div class="testers-title">${t.testersList} (${allProjectTesters.length})</div>
+                <div class="testers-title">${t.testersList} (${allProjectTesters.length})${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(regularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
                 ${testersHtml}
-                ${guestTestersHtml}
             </div>
             <div style="margin-top: 16px;">
                 ${syncActionHtml}
@@ -6280,6 +6532,16 @@ function openProjectDetailsModal(appId) {
     const body = document.getElementById('project-details-body');
     if (!body) return;
 
+    if (test.is_external) {
+        renderExternalProjectDetailsModal(test, body);
+        var externalModal = document.getElementById('project-details-modal');
+        if (externalModal) {
+            externalModal.dataset.appId = String(Number(test.id) || '');
+            externalModal.classList.add('active');
+        }
+        return;
+    }
+
     const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
     const safePackage = window.escapeHTML(test.package || '');
     const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
@@ -6893,6 +7155,10 @@ Object.assign(window, {
     sendGuestProjectInvite,
     sendExternalTrackInvite,
     sendExternalTrackingProofFromUi,
+    sendExternalDailyCheckinFromUi,
+    sendExternalBugReportFromUi,
+    inviteExternalProjectOwnerToPlatform,
+    cancelExternalTestingFromUi,
     setGuestInviteLanguage,
     setExternalTrackProject,
     setInviteMode,
