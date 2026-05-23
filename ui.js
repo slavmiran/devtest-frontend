@@ -123,6 +123,57 @@ function parseLocalDateOnly(dateValue) {
     return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 }
 
+function getIssueRemovalDeadline(issueReportedAt) {
+    if (!issueReportedAt) return null;
+    var issueDate = new Date(issueReportedAt);
+    if (Number.isNaN(issueDate.getTime())) return null;
+    return new Date(issueDate.getTime() + (72 * 60 * 60 * 1000));
+}
+
+function getIssueRemovalCountdownText(issueReportedAt) {
+    var deadline = getIssueRemovalDeadline(issueReportedAt);
+    if (!deadline) return '';
+
+    var remainingMs = deadline.getTime() - Date.now();
+    if (remainingMs <= 0) {
+        return window.t('issueCountdownExpired', {}, lang);
+    }
+    if (remainingMs < (60 * 60 * 1000)) {
+        return window.t('issueCountdownLessThanHour', {}, lang);
+    }
+
+    var totalHours = Math.floor(remainingMs / (60 * 60 * 1000));
+    var days = Math.floor(totalHours / 24);
+    var hours = totalHours % 24;
+    if (days > 0) {
+        return window.t('issueCountdownDaysHours', {
+            days: days,
+            hours: hours,
+        }, lang);
+    }
+    return window.t('issueCountdownHoursOnly', {
+        hours: Math.max(1, totalHours),
+    }, lang);
+}
+
+function getIssueAwaitingFixLabel(test) {
+    var countdownText = getIssueRemovalCountdownText(test && test.issue_reported_at);
+    if (!countdownText) {
+        return window.t('issueAwaitingFix', {}, lang);
+    }
+    return window.t('issueAwaitingFixCountdown', {
+        time_left: countdownText,
+    }, lang);
+}
+
+function getResolvedTestingDay(test) {
+    var serverTestingDays = Number(test && test.testing_days || 0);
+    if (Number.isFinite(serverTestingDays) && serverTestingDays > 0) {
+        return serverTestingDays;
+    }
+    return getUserTestingDay(test && test.start_date);
+}
+
 function isTestedToday(test) {
     if (!test || !test.last_check_date) return false;
     try {
@@ -652,7 +703,7 @@ function renderGrantPreviewChip(test) {
 
 function getTestingTimelineMeta(test) {
     var today = parseLocalDateOnly(getLocalDate()) || new Date();
-    var userTestingDayRaw = getUserTestingDay(test.start_date);
+    var userTestingDayRaw = getResolvedTestingDay(test);
     var userTestingDay = typeof userTestingDayRaw === 'number' && userTestingDayRaw > 0 ? userTestingDayRaw : 1;
     var currentGoogleDay = 0;
     var projectDaysLeft = 0;
@@ -812,7 +863,11 @@ function getMarketCandidateByAppId(appId) {
     return null;
 }
 
-function getUserTestingDay(startDate) {
+function getUserTestingDay(startDate, explicitTestingDays) {
+    var resolvedTestingDays = Number(explicitTestingDays || 0);
+    if (Number.isFinite(resolvedTestingDays) && resolvedTestingDays > 0) {
+        return resolvedTestingDays;
+    }
     if (!startDate) return null;
     const startedAt = new Date(startDate);
     if (Number.isNaN(startedAt.getTime())) return null;
@@ -1039,7 +1094,7 @@ function dismissProjectUpdateTip(appId, event) {
 }
 
 function getScreenshotReminderHtml(test) {
-    const testingDay = getUserTestingDay(test.start_date);
+    const testingDay = getResolvedTestingDay(test);
     if (!isMandatoryScreenshotDay(testingDay)) {
         return '';
     }
@@ -2024,7 +2079,7 @@ function renderTests(force) {
             }
         }
         card.id = `test-card-${test.id}`;
-        const userTestingDay = getUserTestingDay(test.start_date);
+        const userTestingDay = getResolvedTestingDay(test);
         const safePackage = escapeInlineJsString(test.package);
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
         const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
@@ -2033,7 +2088,7 @@ function renderTests(force) {
         const shouldShowIssueOnCard = test.status === 'new' && !!test.has_clicked_store;
         const issueBtnDisplay = shouldShowIssueOnCard ? 'inline-flex' : 'none';
         const isIssueBlocked = !!test.issue_reported_at && !test.issue_fixed_at;
-        const issueBtnText = isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : ('🚨 ' + window.t('reportIssueBtnLabel', {}, lang));
+        const issueBtnText = isIssueBlocked ? getIssueAwaitingFixLabel(test) : ('🚨 ' + window.t('reportIssueBtnLabel', {}, lang));
         const issueBtnHtml = `<button id="btn-issue-${test.id}" class="btn" style="display:${issueBtnDisplay}; width:100%; margin-top:8px; background:rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>${issueBtnText}</button>`;
         const pendingReleaseButtonHtml = `
             <button type="button" class="btn btn-secondary pending-release-chip" style="width: 100%; margin-bottom: 12px;" onclick="showPendingReleaseInfo()">
@@ -2087,13 +2142,13 @@ function renderTests(force) {
                 if (isScreenshotDay) {
                     secondaryActions += `
                         <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
-                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : '✅ ' + window.t('completeControlDayBtn', {}, lang)}
+                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : '✅ ' + window.t('completeControlDayBtn', {}, lang)}
                         </button>
                     `;
                 } else {
                     secondaryActions += `
                         <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : t.confirmStart}
+                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : t.confirmStart}
                         </button>
                     `;
                 }
@@ -2185,7 +2240,7 @@ function renderTests(force) {
                             ${t.openBtn}
                         </button>
                         <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : screenshotBtnText}
+                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText}
                         </button>
                         <div style="color: #ff3b30; font-size: 13px; text-align: center;">
                             ${window.escapeHTML(screenshotWarningText)}
@@ -2199,7 +2254,7 @@ function renderTests(force) {
                             ${t.openBtn}
                         </button>
                         <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                            ${isIssueBlocked ? window.t('issueAwaitingFix', {}, lang) : t.confirmStart}
+                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : t.confirmStart}
                         </button>
                     </div>
                 `;
@@ -2312,7 +2367,7 @@ function renderCompletedTests(completedTests) {
         const card = document.createElement('div');
         card.className = 'card card-done';
         card.id = `test-card-${test.id}`;
-        const userTestingDay = getUserTestingDay(test.start_date);
+        const userTestingDay = getResolvedTestingDay(test);
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
         const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
         const safePackageLabel = window.escapeHTML(test.package || '');
@@ -3899,8 +3954,8 @@ function renderProjects(force) {
         let cardClass = isInactive ? 'card card-inactive' : 'card';
         if (isOvertime) cardClass += ' card-overtime';
         if (isPendingCompletion) cardClass += ' card-pending-release';
-        const accessIssueTester = (project.testers || []).find((tester) => !!tester.issue_reported_at && !tester.issue_fixed_at) || null;
-        const hasAccessOverlay = project.status === 'access_error' && !!accessIssueTester;
+        const pendingIssueTesters = (project.testers || []).filter((tester) => !!tester.issue_reported_at && !tester.issue_fixed_at);
+        const hasAccessOverlay = project.status === 'access_error' && pendingIssueTesters.length > 0;
         card.className = cardClass + (hasAccessOverlay ? ' card-access-error-locked' : '');
         card.id = `project-card-${project.id}`;
         card.setAttribute('data-project-id', String(project.id));
@@ -4062,30 +4117,48 @@ function renderProjects(force) {
             testersHtml = `<p class="no-testers">${t.noTesters}</p><ul class="tester-list tester-list-cta-only">${findTestersCtaHtml}</ul>`;
         }
 
-        const issueDate = accessIssueTester && accessIssueTester.issue_reported_at ? new Date(accessIssueTester.issue_reported_at) : null;
-        const issueDateValid = !!(issueDate && !Number.isNaN(issueDate.getTime()));
-        const deadlineDate = issueDateValid ? new Date(issueDate.getTime() + 3 * 24 * 60 * 60 * 1000) : null;
-        const nowTs = Date.now();
-        const daysLeft = deadlineDate ? Math.max(0, Math.ceil((deadlineDate.getTime() - nowTs) / (24 * 60 * 60 * 1000))) : 3;
-        const testerUsernameRaw = accessIssueTester ? String(accessIssueTester.username || '').trim().replace(/^@+/, '') : '';
-        const testerLabel = testerUsernameRaw
-            ? '@' + testerUsernameRaw
-            : window.t('idLabel', { id: Number((accessIssueTester && accessIssueTester.tester_id) || 0) }, lang);
-        const safeTesterUsernameInline = escapeInlineJsString(testerUsernameRaw);
-        const safeDeleteNameInline = escapeInlineJsString(testerLabel);
-        const progressId = Number((accessIssueTester && accessIssueTester.progress_id) || 0);
+        const pendingIssueProgressIds = pendingIssueTesters
+            .map(function(tester) {
+                return Number(tester.progress_id || 0);
+            })
+            .filter(function(progressId) {
+                return progressId > 0;
+            });
+        const resolveAllLabel = pendingIssueProgressIds.length > 1
+            ? window.t('accessOverlayResolveAllBtn', {}, lang)
+            : window.t('accessOverlayResolveBtn', {}, lang);
+        const accessIssueRowsHtml = pendingIssueTesters.map(function(tester) {
+            const testerUsernameRaw = String(tester.username || '').trim().replace(/^@+/, '');
+            const testerLabel = testerUsernameRaw
+                ? '@' + testerUsernameRaw
+                : window.t('idLabel', { id: Number(tester.tester_id || 0) }, lang);
+            const safeTesterUsernameInline = escapeInlineJsString(testerUsernameRaw);
+            const safeDeleteNameInline = escapeInlineJsString(testerLabel);
+            const countdownText = getIssueRemovalCountdownText(tester.issue_reported_at) || window.t('issueCountdownExpired', {}, lang);
+            return `
+                <div class="access-error-tester-row">
+                    <div class="access-error-tester-main">
+                        <div class="access-error-tester-name notranslate">${window.escapeHTML(testerLabel)}</div>
+                        <div class="access-error-tester-meta">${window.escapeHTML(window.t('accessOverlayTesterCountdown', { time_left: countdownText }, lang))}</div>
+                    </div>
+                    <div class="access-error-tester-actions">
+                        <button type="button" class="btn btn-secondary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); contactAccessTester('${safeTesterUsernameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayWriteBtn', {}, lang))}</button>
+                        <button type="button" class="btn" style="background: rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('medium'); deleteAccessTester(${project.id}, ${Number(tester.progress_id || 0)}, '${safeDeleteNameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayDeleteBtn', {}, lang))}</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
         const accessGuideUrl = 'https://t.me/googleplay_console_12testers/1/527';
         const accessOverlayHtml = hasAccessOverlay ? `
             <div class="access-error-overlay" onclick="event.stopPropagation();">
                 <div class="access-error-panel" onclick="event.stopPropagation();">
                     <div class="access-error-title">🚨 <b>${window.escapeHTML(window.t('accessOverlayTitle', {}, lang))}</b></div>
-                    <div class="access-error-text notranslate">${window.escapeHTML(window.t('accessOverlayTesterLine', { tester_nickname: testerLabel }, lang))}</div>
-                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayDaysLeft', { days_left: daysLeft }, lang))}</div>
+                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayIntro', {}, lang))}</div>
+                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayAffectedCount', { count: pendingIssueTesters.length }, lang))}</div>
                     <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">${window.escapeHTML(window.t('accessOverlayGuideLink', {}, lang))}</a>
+                    <div class="access-error-tester-list">${accessIssueRowsHtml}</div>
                     <div class="access-error-actions">
-                        <button type="button" class="btn btn-primary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); resolveAccessError(${project.id}, ${progressId}); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayResolveBtn', {}, lang))}</button>
-                        <button type="button" class="btn btn-secondary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); contactAccessTester('${safeTesterUsernameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayWriteBtn', {}, lang))}</button>
-                        <button type="button" class="btn" style="background: rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('medium'); deleteAccessTester(${project.id}, ${progressId}, '${safeDeleteNameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayDeleteBtn', {}, lang))}</button>
+                        <button type="button" class="btn btn-primary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); resolveAllAccessErrors(${project.id}, ${JSON.stringify(pendingIssueProgressIds)}); event.stopPropagation();">${window.escapeHTML(resolveAllLabel)}</button>
                     </div>
                 </div>
             </div>
@@ -4379,7 +4452,7 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     _checkinOptionsOwner = ownerUsername || '';
     _checkinOptionsFlow = 'regular';
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
-    var testingDay = test && typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date) : null;
+    var testingDay = test ? getResolvedTestingDay(test) : null;
     _checkinOptionsIsControlDay = !!(testingDay && isMandatoryScreenshotDay(testingDay));
     if (_checkinOptionsIsControlDay && isScreenshotOnlyControlDay(testingDay)) {
         handleScreenshotAndConfirm(appId, ownerUsername || '');
@@ -6932,7 +7005,7 @@ function openProjectDetailsModal(appId) {
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'https://play.google.com/store/apps/details?id=' + window.escapeHTML(test.package || '') + '\')">' + window.t('openGooglePlay', {}, lang) + '</button>' +
             (showIssueActionInDetails
                 ? (isIssueBlocked
-                    ? '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--hint-color);cursor:not-allowed;" disabled>' + window.t('issueAwaitingFix', {}, lang) + '</button>'
+                    ? '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--hint-color);cursor:not-allowed;" disabled>' + getIssueAwaitingFixLabel(test) + '</button>'
                     : '<button class="btn" style="background:rgba(255,59,48,0.12);color:#ff6b63;border:1px solid rgba(255,59,48,0.35);" onclick="closeProjectDetailsModal(); openIssueReportModal(' + test.id + ')">' + window.t('reportIssueBtnLabel', {}, lang) + '</button>')
                 : '') +
             (userTestingDay >= 15

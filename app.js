@@ -2971,6 +2971,39 @@ async function syncUserTimezone(force) {
     }
 }
 
+async function syncTelegramProfile() {
+    if (!tg || !tg.initData || !hasTelegramUsername()) {
+        return false;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/users/me/profile/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ init_data: tg.initData || '' })
+        });
+
+        var result = null;
+        try {
+            result = await response.json();
+        } catch (parseError) {
+            result = null;
+        }
+
+        if (!response.ok || !result || result.status !== 'success') {
+            if (getBackendErrorCode(result) === 'username_required') {
+                showNoUsernameOverlay();
+            }
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.warn('Telegram profile sync failed:', error);
+        return false;
+    }
+}
+
 function sendFeedback(type) {
     const typeKeyMap = {
         bug: 'feedbackTypeBug',
@@ -3176,7 +3209,7 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     // Check if test has an unresolved issue — keep button disabled
     var test = myTests.find(function(item) { return Number(item.id) === Number(finishedId); });
     var testingDay = test && typeof window.getUserTestingDay === 'function'
-        ? window.getUserTestingDay(test.start_date)
+        ? window.getUserTestingDay(test.start_date, test.testing_days)
         : null;
     var isFirstDayScreenshot = !!(isScreenshot && Number(testingDay || 0) === 1);
     if (test && test.issue_reported_at && !test.issue_fixed_at) {
@@ -3184,7 +3217,9 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         btn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
         btn.style.color = 'var(--hint-color)';
         btn.style.cursor = 'not-allowed';
-        btn.innerText = window.t('issueAwaitingFix', {}, lang);
+        btn.innerText = typeof window.getIssueAwaitingFixLabel === 'function'
+            ? window.getIssueAwaitingFixLabel(test)
+            : window.t('issueAwaitingFix', {}, lang);
         return true;
     }
 
@@ -3841,8 +3876,11 @@ function _setIssueUiState(id, blocked) {
     var btnConfirm = document.getElementById('btn-confirm-' + id);
     if (!btnConfirm) return;
     if (blocked) {
+        var test = myTests.find(function(item) { return Number(item.id) === Number(id); });
         btnConfirm.disabled = true;
-        btnConfirm.innerText = window.t('issueAwaitingFix', {}, lang);
+        btnConfirm.innerText = typeof window.getIssueAwaitingFixLabel === 'function'
+            ? window.getIssueAwaitingFixLabel(test)
+            : window.t('issueAwaitingFix', {}, lang);
         btnConfirm.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
         btnConfirm.style.color = 'var(--hint-color)';
     }
@@ -4982,7 +5020,9 @@ async function submitIssueReport(appId) {
         if (issueBtn) {
             issueBtn.disabled = true;
             issueBtn.style.opacity = '0.55';
-            issueBtn.innerText = window.t('issueAwaitingFix', {}, lang);
+            issueBtn.innerText = typeof window.getIssueAwaitingFixLabel === 'function'
+                ? window.getIssueAwaitingFixLabel(test)
+                : window.t('issueAwaitingFix', {}, lang);
         }
 
         persistTestsCacheSnapshot();
@@ -6408,6 +6448,19 @@ async function deleteTester(appId, testerId, testerName) {
     }
 }
 
+async function _postResolveAccessError(projectId, progressId) {
+    var response = await fetch(`${API_BASE}/projects/${projectId}/resolve_access_issue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner_id: userId, progress_id: progressId })
+    });
+    var result = await response.json();
+    return {
+        ok: !!(response.ok && result && result.status === 'success'),
+        result: result,
+    };
+}
+
 async function resolveAccessError(projectId, progressId) {
     if (!projectId || !progressId) return;
     var actionKey = 'resolve_access_error_' + projectId + '_' + progressId;
@@ -6415,14 +6468,9 @@ async function resolveAccessError(projectId, progressId) {
     _pendingActions.add(actionKey);
     try {
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-        var response = await fetch(`${API_BASE}/projects/${projectId}/resolve_access_issue`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId, progress_id: progressId })
-        });
-        var result = await response.json();
-        if (!response.ok || result.status !== 'success') {
-            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+        var request = await _postResolveAccessError(projectId, progressId);
+        if (!request.ok) {
+            handleApiError(getBackendErrorCode(request.result), request.result && request.result.details ? request.result.details : {});
             return;
         }
         _markProjectAccessIssueResolved(projectId, progressId);
@@ -6431,6 +6479,44 @@ async function resolveAccessError(projectId, progressId) {
         loadProjects(true).catch(function() {});
     } catch (error) {
         console.error('Resolve access error failed:', error);
+        handleApiError('network_error');
+    } finally {
+        _pendingActions.delete(actionKey);
+    }
+}
+
+async function resolveAllAccessErrors(projectId, progressIds) {
+    if (!projectId || !Array.isArray(progressIds)) return;
+    var normalizedIds = Array.from(new Set(progressIds.map(function(id) {
+        return Number(id || 0);
+    }).filter(function(id) {
+        return id > 0;
+    })));
+    if (!normalizedIds.length) return;
+
+    var actionKey = 'resolve_access_error_all_' + projectId;
+    if (_pendingActions.has(actionKey)) return;
+    _pendingActions.add(actionKey);
+
+    try {
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+        for (var index = 0; index < normalizedIds.length; index++) {
+            var progressId = normalizedIds[index];
+            var request = await _postResolveAccessError(projectId, progressId);
+            if (!request.ok) {
+                handleApiError(getBackendErrorCode(request.result), request.result && request.result.details ? request.result.details : {});
+                loadProjects(true).catch(function() {});
+                return;
+            }
+            _markProjectAccessIssueResolved(projectId, progressId);
+        }
+
+        _syncProjectsUiAfterOptimisticChange();
+        showToast(window.t(normalizedIds.length > 1 ? 'accessOverlayResolveAllDone' : 'accessOverlayResolveDone', {}, lang));
+        loadProjects(true).catch(function() {});
+    } catch (error) {
+        console.error('Resolve all access errors failed:', error);
         handleApiError('network_error');
     } finally {
         _pendingActions.delete(actionKey);
@@ -6484,7 +6570,6 @@ function _markProjectAccessIssueResolved(projectId, progressId) {
         updated = true;
         return Object.assign({}, tester, {
             issue_fixed_at: new Date().toISOString(),
-            issue_reported_at: null,
         });
     });
     _recomputeProjectAccessErrorState(project);
@@ -6869,6 +6954,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showNoUsernameOverlay();
         return;
     }
+    var bootstrapProfileSyncPromise = syncTelegramProfile();
     loadUserProfilePreferences().catch(function() {});
 
     fetch(`${API_BASE}/users/${userId}/language`)
@@ -6928,6 +7014,7 @@ document.addEventListener('DOMContentLoaded', () => {
     _loadPersistedActiveTimer();
 
     (async function() {
+        await bootstrapProfileSyncPromise;
         var guestIntent = _parseGuestClaimIntent();
         if (guestIntent) {
             await _handleGuestClaimIntent(guestIntent);

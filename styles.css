@@ -5213,6 +5213,8 @@ html[dir="rtl"] .guest-filter-select {
 
 .access-error-panel {
     width: 100%;
+    max-height: 100%;
+    overflow-y: auto;
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(22, 26, 34, 0.92);
@@ -5240,6 +5242,50 @@ html[dir="rtl"] .guest-filter-select {
     font-size: 12px;
     color: #8ab4ff;
     text-decoration: underline;
+}
+
+.access-error-tester-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.access-error-tester-row {
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 10px;
+}
+
+.access-error-tester-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.access-error-tester-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.access-error-tester-meta {
+    font-size: 12px;
+    color: var(--hint-color);
+}
+
+.access-error-tester-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.access-error-tester-actions .btn {
+    flex: 1 1 140px;
+    min-height: 38px;
+    border-radius: 12px;
 }
 
 .access-error-actions {
