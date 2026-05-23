@@ -1936,7 +1936,7 @@ function renderExternalGuestTestsSection() {
     var externalTests = (Array.isArray(myTests) ? myTests : []).filter(function(test) {
         return !!test
             && !!test.is_external
-            && (!test.external_control_day_due || String(test.status || '') === 'done')
+            && shouldKeepExternalTestInVoluntarySection(test)
             && String(test.progress_status || 'active').toLowerCase() === 'active';
     });
     externalTests = externalTests.filter(function(test) {
@@ -2051,7 +2051,7 @@ function renderTests(force) {
             && !test.isGrantAvailableTomorrow
             && !test.isEarlyFinish;
         if (isArchivedWithNoAction) return;
-        if (isExternal && (!test.external_control_day_due || test.status === 'done')) return;
+        if (isExternal && shouldKeepExternalTestInVoluntarySection(test)) return;
 
         const card = document.createElement('div');
         
@@ -3071,7 +3071,17 @@ function formatExternalSourceLabel(source) {
     if (normalized === 'fast_track') {
         return window.t('externalSourceFastTrack', {}, lang);
     }
+    if (normalized === 'manual') {
+        return window.t('externalSourceManual', {}, lang);
+    }
     return window.t('externalSourceGeneric', {}, lang);
+}
+
+function shouldKeepExternalTestInVoluntarySection(test) {
+    if (!test || !test.is_external) return false;
+    var source = String(test.external_source || '').trim().toLowerCase();
+    if (source === 'manual') return true;
+    return !test.external_control_day_due || String(test.status || '') === 'done';
 }
 
 function getExternalTrackPlayUrl(guest) {
@@ -3226,6 +3236,65 @@ function renderExternalTrackModal() {
         </div>
     `;
     updateExternalTrackSubmitState();
+}
+
+function resetManualExternalAddForm() {
+    var form = document.getElementById('manual-external-add-form');
+    var sourceInput = document.getElementById('manual-external-source-project-id');
+    if (form) form.reset();
+    if (sourceInput) sourceInput.value = '';
+    updateManualExternalTestingDayValue(1);
+}
+
+function updateManualExternalTestingDayValue(value) {
+    var dayNode = document.getElementById('manual-external-testing-day-value');
+    var rangeInput = document.getElementById('manual-external-testing-day');
+    var numericValue = Number(value || (rangeInput && rangeInput.value) || 1);
+    if (!Number.isFinite(numericValue)) numericValue = 1;
+    numericValue = Math.max(1, Math.min(14, numericValue));
+    if (rangeInput) rangeInput.value = String(numericValue);
+    if (dayNode) dayNode.textContent = String(numericValue);
+}
+
+function normalizeManualExternalOwnerNicknameInput(eventOrInput) {
+    var input = eventOrInput && eventOrInput.target ? eventOrInput.target : eventOrInput;
+    if (!input) {
+        input = document.getElementById('manual-external-owner-username');
+    }
+    if (!input) return '';
+
+    var rawValue = String(input.value || '').trim().replace(/\s+/g, '');
+    if (!rawValue) {
+        input.value = '';
+        return '';
+    }
+
+    var normalizedValue = '@' + rawValue.replace(/^@+/, '');
+    input.value = normalizedValue;
+    return normalizedValue;
+}
+
+function openManualExternalAddModal(projectId, event) {
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+    resetManualExternalAddForm();
+    var modal = document.getElementById('manual-external-add-modal');
+    var sourceInput = document.getElementById('manual-external-source-project-id');
+    if (sourceInput) sourceInput.value = String(Number(projectId || 0) || 0);
+    if (modal) modal.classList.add('active');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    var playUrlInput = document.getElementById('manual-external-play-url');
+    if (playUrlInput && typeof playUrlInput.focus === 'function') {
+        playUrlInput.focus();
+    }
+}
+
+function closeManualExternalAddModal(event) {
+    var modal = document.getElementById('manual-external-add-modal');
+    if (!modal) return;
+    if (event && event.target && event.target !== modal) return;
+    modal.classList.remove('active');
 }
 
 function openExternalTrackModal(guestAppId, event) {
@@ -3974,13 +4043,11 @@ function renderProjects(force) {
         const guestTesterCount = Math.max(Number(project.guest_testers_count || 0), guestTesters.length);
 
         let testersHtml = '';
-        const findTestersCtaHtml = `
-            <li class="tester-list-cta-item" onclick="event.stopPropagation(); openGuestProjectsTesterSearch(${project.id})">
-                <div class="tester-row-main">
-                    <span class="tester-cta-label">${window.escapeHTML(window.t('projectFindTestersCta', {}, lang))}</span>
-                </div>
-                <div class="tester-row-meta">
-                    <span class="tester-chevron">›</span>
+        const testerActionsCtaHtml = `
+            <li class="tester-list-cta-actions-item" onclick="event.stopPropagation();">
+                <div class="tester-cta-actions">
+                    <button type="button" class="btn tester-cta-action-btn" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); openGuestProjectsTesterSearch(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('projectFindTestersCta', {}, lang))}</button>
+                    <button type="button" class="btn tester-cta-action-btn" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); openManualExternalAddModal(${project.id}, event); event.stopPropagation();">${window.escapeHTML(window.t('projectManualExternalCta', {}, lang))}</button>
                 </div>
             </li>
         `;
@@ -4112,9 +4179,9 @@ function renderProjects(force) {
         }
 
         if (testerRowsHtml) {
-            testersHtml = `<ul class="tester-list">${testerRowsHtml}${findTestersCtaHtml}</ul>`;
+            testersHtml = `<ul class="tester-list">${testerRowsHtml}${testerActionsCtaHtml}</ul>`;
         } else {
-            testersHtml = `<p class="no-testers">${t.noTesters}</p><ul class="tester-list tester-list-cta-only">${findTestersCtaHtml}</ul>`;
+            testersHtml = `<p class="no-testers">${t.noTesters}</p><ul class="tester-list tester-list-cta-only">${testerActionsCtaHtml}</ul>`;
         }
 
         const pendingIssueProgressIds = pendingIssueTesters
@@ -7330,6 +7397,7 @@ Object.assign(window, {
     openInviteModal,
     openGuestInviteModal,
     openExternalTrackModal,
+    openManualExternalAddModal,
     openGuestTesterDetailsModal,
     sendGuestProjectInvite,
     sendExternalTrackInvite,
@@ -7353,6 +7421,7 @@ Object.assign(window, {
     publishProjectToMarketAction,
     closeGuestInviteModal,
     closeExternalTrackModal,
+    closeManualExternalAddModal,
     closeGuestTesterDetailsModal,
     closeInviteModal,
     openDossierModal,
@@ -7362,6 +7431,9 @@ Object.assign(window, {
     closeDeleteModal,
     openModal,
     closeModal,
+    resetManualExternalAddForm,
+    updateManualExternalTestingDayValue,
+    normalizeManualExternalOwnerNicknameInput,
     switchGroupTab,
     closeEmailWarningModal,
     showReadonlyAlert,

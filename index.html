@@ -408,6 +408,44 @@
         </div>
     </div>
 
+    <div id="manual-external-add-modal" class="modal-overlay" onclick="closeManualExternalAddModal(event)">
+        <div class="modal-content manual-external-modal" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
+            <h3 id="t-manualExternalModalTitle" data-i18n="manualExternalModalTitle">➕ Добавить внешний проект</h3>
+            <form id="manual-external-add-form" onsubmit="submitManualExternalTrack(event)">
+                <input type="hidden" id="manual-external-source-project-id" value="">
+
+                <div class="form-group">
+                    <label class="form-label" for="manual-external-play-url" data-i18n="manualExternalPlayUrlLabel">Google Play URL</label>
+                    <input type="url" id="manual-external-play-url" class="form-input" required data-i18n-placeholder="playLinkPlaceholder" placeholder="https://play.google.com/store/apps/details?id=com.example.app">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="manual-external-owner-username" data-i18n="manualExternalOwnerUsernameLabel">Telegram @nickname владельца</label>
+                    <input type="text" id="manual-external-owner-username" class="form-input" required data-i18n-placeholder="manualExternalOwnerUsernamePlaceholder" placeholder="@owner_nickname" oninput="normalizeManualExternalOwnerNicknameInput(event)" onblur="normalizeManualExternalOwnerNicknameInput(event)">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="manual-external-group-url" data-i18n="manualExternalGroupUrlLabel">Google Group URL</label>
+                    <input type="url" id="manual-external-group-url" class="form-input" placeholder="https://groups.google.com/g/your-group">
+                    <div class="form-hint" data-i18n="manualExternalGroupHint">If left blank (e.g. email testing), this project will only be visible to you and won't appear in the public Guest Showcase.</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="manual-external-testing-day" data-i18n="manualExternalDayLabel">Текущий день тестирования</label>
+                    <div class="manual-external-day-shell">
+                        <div id="manual-external-testing-day-value" class="manual-external-day-value">1</div>
+                        <input type="range" id="manual-external-testing-day" class="manual-external-day-range" min="1" max="14" step="1" value="1" oninput="updateManualExternalTestingDayValue(this.value)">
+                    </div>
+                </div>
+
+                <div class="manual-external-modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeManualExternalAddModal()" data-i18n="inviteClose">Закрыть</button>
+                    <button type="submit" class="btn btn-primary" id="t-manualExternalSubmitBtn" data-i18n="manualExternalSubmitBtn">Добавить проект</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="guest-tester-modal" class="modal-overlay" onclick="closeGuestTesterDetailsModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
             <h3 id="t-guestTesterModalTitle" data-i18n="guestTesterModalTitle"></h3>

@@ -1369,6 +1369,128 @@ function buildExternalClaimStartLink(packageName) {
     return `https://t.me/${botUsername}?start=claim_app_${encodeURIComponent(normalizedPackage)}`;
 }
 
+function extractPackageNameFromPlayUrl(playUrl) {
+    var normalizedUrl = String(playUrl || '').trim();
+    if (!normalizedUrl || normalizedUrl.indexOf('id=') === -1) {
+        return '';
+    }
+
+    try {
+        var parsedUrl = new URL(normalizedUrl);
+        return String(parsedUrl.searchParams.get('id') || '').trim();
+    } catch (error) {
+        console.error('Manual external Play URL parse error:', error);
+        return '';
+    }
+}
+
+async function submitManualExternalTrack(event) {
+    if (event && typeof event.preventDefault === 'function') {
+        event.preventDefault();
+    }
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+
+    var form = document.getElementById('manual-external-add-form');
+    if (form && typeof form.reportValidity === 'function' && !form.reportValidity()) {
+        return false;
+    }
+
+    var sourceProjectInput = document.getElementById('manual-external-source-project-id');
+    var playUrlInput = document.getElementById('manual-external-play-url');
+    var ownerUsernameInput = document.getElementById('manual-external-owner-username');
+    var groupUrlInput = document.getElementById('manual-external-group-url');
+    var testingDayInput = document.getElementById('manual-external-testing-day');
+
+    var sourceProjectId = Number(sourceProjectInput && sourceProjectInput.value || 0);
+    if (!sourceProjectId) {
+        showToast(window.t('manualExternalProjectMissing', {}, lang));
+        return false;
+    }
+
+    var playUrl = String(playUrlInput && playUrlInput.value || '').trim();
+    if (playUrl.indexOf('id=') === -1) {
+        showToast(window.t('invalidPlayLink', {}, lang));
+        return false;
+    }
+
+    var packageName = extractPackageNameFromPlayUrl(playUrl);
+    if (!packageName) {
+        showToast(window.t('invalidPlayLink', {}, lang));
+        return false;
+    }
+
+    if (typeof window.normalizeManualExternalOwnerNicknameInput === 'function') {
+        window.normalizeManualExternalOwnerNicknameInput(ownerUsernameInput);
+    }
+    var ownerUsername = String(ownerUsernameInput && ownerUsernameInput.value || '').trim();
+    if (!ownerUsername || ownerUsername === '@') {
+        showToast(window.t('manualExternalInvalidOwnerUsername', {}, lang));
+        if (ownerUsernameInput && typeof ownerUsernameInput.focus === 'function') {
+            ownerUsernameInput.focus();
+        }
+        return false;
+    }
+
+    var groupUrl = String(groupUrlInput && groupUrlInput.value || '').trim();
+    if (groupUrl && !isValidGoogleGroupUrl(groupUrl)) {
+        handleApiError('invalid_google_group_url');
+        return false;
+    }
+
+    var testingDay = Math.max(1, Math.min(14, Number(testingDayInput && testingDayInput.value || 1) || 1));
+    if (typeof window.updateManualExternalTestingDayValue === 'function') {
+        window.updateManualExternalTestingDayValue(testingDay);
+    }
+
+    try {
+        var response = await fetchWithRetry(`${API_BASE}/external-tracks/manual`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tester_id: userId,
+                source_app_id: sourceProjectId,
+                package_name: packageName,
+                owner_username: ownerUsername,
+                google_group_url: groupUrl || null,
+                testing_day: testingDay,
+            })
+        }, 1);
+        var result = await response.json();
+        if (!response.ok || !result || result.status !== 'success') {
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            return false;
+        }
+
+        if (typeof window.closeManualExternalAddModal === 'function') {
+            window.closeManualExternalAddModal();
+        }
+        if (typeof window.resetManualExternalAddForm === 'function') {
+            window.resetManualExternalAddForm();
+        }
+        showToast(window.t('manualExternalAddedToast', {}, lang));
+        const refreshPromises = [];
+        if (typeof loadTasks === 'function') {
+            refreshPromises.push(loadTasks(true));
+        }
+        if (typeof loadProjects === 'function') {
+            refreshPromises.push(loadProjects(true));
+        }
+        if (typeof loadGuestApps === 'function') {
+            refreshPromises.push(loadGuestApps({ force: true }));
+        }
+        if (refreshPromises.length) {
+            await Promise.allSettled(refreshPromises);
+        }
+        return true;
+    } catch (error) {
+        console.error('Manual external track submit failed:', error);
+        showToast(window.t('networkError', {}, lang));
+        return false;
+    }
+}
+
 async function startExternalTrackingSession(payload) {
     const response = await fetchWithRetry(`${API_BASE}/external-tests/start`, {
         method: 'POST',
@@ -7092,6 +7214,7 @@ Object.assign(window, {
     getDefaultGuestInviteLanguage,
     buildGuestInviteDeepLink,
     buildExternalClaimStartLink,
+    submitManualExternalTrack,
     startExternalTrackingSession,
     submitExternalTrackingProof,
     submitExternalDailyCheckin,
@@ -7194,6 +7317,7 @@ Object.assign(window.App, {
     startMassInvite,
     resetMassInviteCooldown,
     joinDirect,
+    submitManualExternalTrack,
     startExternalTrackingSession,
     submitExternalTrackingProof,
     submitExternalDailyCheckin,
