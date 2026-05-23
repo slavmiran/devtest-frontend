@@ -1971,21 +1971,31 @@ function renderExternalGuestTestsSection() {
         var ownerLabelHtml = ownerUsername
             ? `<button type="button" class="external-tests-owner external-tests-owner-link notranslate" onclick="return openTelegramProfile('${safeOwnerUsernameInline}', event)">${window.escapeHTML(ownerLabel)}</button>`
             : `<div class="external-tests-owner">${window.escapeHTML(ownerLabel)}</div>`;
+        var dayChipHtml = `<span class="meta-chip">${window.escapeHTML(window.t('externalTrackDayLabel', { day: meta.currentDay }, lang))}</span>`;
         var nextControlText = meta.nextControlDay
             ? window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang)
             : window.t('externalTestsAllControlsDone', {}, lang);
         var lastCompletedDay = Number(test.external_last_completed_control_day || 0);
-        var substatusText = isDoneToday
-            ? window.t('externalProjectCheckedToday', {}, lang)
-            : (lastCompletedDay > 0
-                ? window.t('externalTestsLastControlDay', { day: lastCompletedDay }, lang)
-                : '');
-        var confirmBtnLabel = isDoneToday
-            ? window.t('externalProjectCheckedTodayBtn', {}, lang)
-            : window.t('externalProjectCheckinBtn', {}, lang);
-        var attachButtonHtml = !isDoneToday
-            ? `<button type="button" class="btn btn-secondary external-tests-attach-btn" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(ownerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`
+        var substatusText = !isDoneToday && lastCompletedDay > 0
+            ? window.t('externalTestsLastControlDay', { day: lastCompletedDay }, lang)
             : '';
+        var actionsHtml = '';
+        if (!isDoneToday) {
+            var attachButtonHtml = `<button type="button" class="btn btn-secondary external-tests-attach-btn" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(ownerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`;
+            actionsHtml = `
+                <div class="external-tests-actions">
+                    <button class="btn btn-secondary external-tests-open-btn" onclick="event.stopPropagation(); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
+                        ${window.escapeHTML(t.openBtn)}
+                    </button>
+                    <div class="external-tests-confirm-group" onclick="event.stopPropagation();">
+                        <button class="btn external-tests-confirm-btn" onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
+                            ${window.escapeHTML(window.t('externalProjectCheckinBtn', {}, lang))}
+                        </button>
+                        ${attachButtonHtml}
+                    </div>
+                </div>
+            `;
+        }
 
         return `
             <div class="card card-external-tracking external-tests-card${isDoneToday ? ' is-tested' : ''}" id="external-test-card-${Number(test.id || 0)}" onclick="openProjectDetailsModal(${Number(test.id || 0)})">
@@ -1996,23 +2006,13 @@ function renderExternalGuestTestsSection() {
                         <div class="card-subtitle notranslate">${safePackage}</div>
                     </div>
                 </div>
-                <div class="external-tests-meta-row">
-                    <span class="meta-chip">${window.escapeHTML(window.t('externalTrackDayLabel', { day: meta.currentDay }, lang))}</span>
+                <div class="external-tests-topline">
+                    ${ownerLabelHtml}
+                    ${dayChipHtml}
                 </div>
-                ${ownerLabelHtml}
                 <div class="external-tests-status">${window.escapeHTML(nextControlText)}</div>
                 <div class="external-tests-substatus">${window.escapeHTML(substatusText)}</div>
-                <div class="external-tests-actions">
-                    <button class="btn btn-secondary external-tests-open-btn" onclick="event.stopPropagation(); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
-                        ${window.escapeHTML(t.openBtn)}
-                    </button>
-                    <div class="external-tests-confirm-group" onclick="event.stopPropagation();">
-                        <button class="btn external-tests-confirm-btn${isDoneToday ? ' is-tested' : ''}" ${isDoneToday ? 'disabled' : ''} onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
-                            ${window.escapeHTML(confirmBtnLabel)}
-                        </button>
-                        ${attachButtonHtml}
-                    </div>
-                </div>
+                ${actionsHtml}
             </div>
         `;
     }).join('');
@@ -3245,11 +3245,17 @@ function resetManualExternalAddForm() {
 function updateManualExternalTestingDayValue(value) {
     var dayNode = document.getElementById('manual-external-testing-day-value');
     var rangeInput = document.getElementById('manual-external-testing-day');
+    var dotNodes = document.querySelectorAll('.manual-external-day-dot');
     var numericValue = Number(value || (rangeInput && rangeInput.value) || 1);
     if (!Number.isFinite(numericValue)) numericValue = 1;
     numericValue = Math.max(1, Math.min(14, numericValue));
     if (rangeInput) rangeInput.value = String(numericValue);
     if (dayNode) dayNode.textContent = String(numericValue);
+    if (dotNodes && dotNodes.length) {
+        dotNodes.forEach(function(dotNode, index) {
+            dotNode.classList.toggle('is-active', index < numericValue);
+        });
+    }
 }
 
 function normalizeManualExternalOwnerNicknameInput(eventOrInput) {
@@ -4044,7 +4050,6 @@ function renderProjects(force) {
                 <div class="tester-cta-actions">
                     <button type="button" class="btn tester-cta-action-btn" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); openGuestProjectsTesterSearch(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('projectFindTestersCta', {}, lang))}</button>
                     <button type="button" class="btn tester-cta-action-btn" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); openManualExternalAddModal(${project.id}, event); event.stopPropagation();">${window.escapeHTML(window.t('projectManualExternalCta', {}, lang))}</button>
-                    <div class="info-link-text" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); window.ui.showGuestTestsInfoAlert(); event.stopPropagation();">${window.escapeHTML(window.t('guestTestsInfoLink', {}, lang))}</div>
                 </div>
             </li>
         `;

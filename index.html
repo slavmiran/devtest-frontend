@@ -424,16 +424,35 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="manual-external-group-url" data-i18n="manualExternalGroupUrlLabel">Google Group URL</label>
+                    <label class="form-label" for="manual-external-group-url" data-i18n="manualExternalGroupUrlLabel">Google Group URL (optional)</label>
                     <input type="url" id="manual-external-group-url" class="form-input" placeholder="https://groups.google.com/g/your-group">
-                    <div class="form-hint" data-i18n="manualExternalGroupHint">If left blank (e.g. email testing), this project will only be visible to you and won't appear in the public Guest Showcase.</div>
+                    <div class="form-hint manual-external-group-hint" data-i18n="manualExternalGroupHint">If left blank (e.g. email testing), this project will only be visible to you and won't appear in the public Guest Showcase.</div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="manual-external-testing-day" data-i18n="manualExternalDayLabel">Текущий день тестирования</label>
                     <div class="manual-external-day-shell">
                         <div id="manual-external-testing-day-value" class="manual-external-day-value">1</div>
-                        <input type="range" id="manual-external-testing-day" class="manual-external-day-range" min="1" max="14" step="1" value="1" oninput="updateManualExternalTestingDayValue(this.value)">
+                        <div class="manual-external-day-track" aria-hidden="true">
+                            <div class="manual-external-day-line"></div>
+                            <div class="manual-external-day-dots">
+                                <span class="manual-external-day-dot is-active"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                                <span class="manual-external-day-dot"></span>
+                            </div>
+                            <input type="range" id="manual-external-testing-day" class="manual-external-day-range" min="1" max="14" step="1" value="1" oninput="updateManualExternalTestingDayValue(this.value)">
+                        </div>
                     </div>
                 </div>
 
