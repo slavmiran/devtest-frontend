@@ -1923,8 +1923,9 @@ function openOwnerCheckpointChat(ownerUsername, text) {
 }
 
 function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
+    var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(appId, ownerUsername);
     confirmStart(appId);
-    openOwnerCheckpointChat(ownerUsername, buildCheckpointReportPrefill(appId));
+    openOwnerCheckpointChat(resolvedOwnerUsername, buildCheckpointReportPrefill(appId));
 }
 
 function isValidEmail(value) {
@@ -3153,9 +3154,24 @@ function _clearPersistedActiveTimer() {
     }
 }
 
+function _resolveCheckpointOwnerUsername(appId, ownerUsername) {
+    var normalized = String(ownerUsername || '').trim().replace(/^@+/, '');
+    if (normalized) {
+        return normalized;
+    }
+
+    var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+    if (!test) {
+        return '';
+    }
+
+    return String(test.owner_username || '').trim().replace(/^@+/, '');
+}
+
 function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     const btn = document.getElementById('btn-confirm-' + finishedId);
     if (!btn) return false;
+    var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(finishedId, ownerUsername);
 
     // Check if test has an unresolved issue — keep button disabled
     var test = myTests.find(function(item) { return Number(item.id) === Number(finishedId); });
@@ -3182,14 +3198,40 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             : '✅ ' + window.t('completeControlDayBtn', {}, lang);
         btn.onclick = function() {
             if (isFirstDayScreenshot) {
-                handleScreenshotAndConfirm(finishedId, ownerUsername || '');
+                handleScreenshotAndConfirm(finishedId, resolvedOwnerUsername || '');
                 return;
             }
-            openCheckinOptionsModal(finishedId, ownerUsername || '');
+            openCheckinOptionsModal(finishedId, resolvedOwnerUsername || '');
         };
     } else {
+        var existingSplitGroup = btn.parentNode && btn.parentNode.classList && btn.parentNode.classList.contains('split-btn-group')
+            ? btn.parentNode
+            : null;
+        if (existingSplitGroup) {
+            btn.className = 'btn btn-success split-btn-main';
+            btn.textContent = window.t('confirmTest', {}, lang);
+            btn.onclick = function() {
+                confirmStart(finishedId);
+            };
+
+            var existingOptionsBtn = existingSplitGroup.querySelector('.split-btn-options');
+            if (!existingOptionsBtn) {
+                existingOptionsBtn = document.createElement('button');
+                existingOptionsBtn.className = 'btn btn-success split-btn-options';
+                existingSplitGroup.appendChild(existingOptionsBtn);
+            }
+            existingOptionsBtn.textContent = '📎';
+            existingOptionsBtn.title = window.t('checkinOptionsTitle', {}, lang);
+            existingOptionsBtn.setAttribute('aria-label', window.t('checkinOptionsTitle', {}, lang));
+            existingOptionsBtn.onclick = function() {
+                openCheckinOptionsModal(finishedId, resolvedOwnerUsername || '');
+            };
+            existingSplitGroup.style.flex = '2';
+            return true;
+        }
+
         // Replace single button with split button group
-        var safeOwner = window.escapeInlineJsString ? window.escapeInlineJsString(ownerUsername || '') : (ownerUsername || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        var safeOwner = window.escapeInlineJsString ? window.escapeInlineJsString(resolvedOwnerUsername || '') : (resolvedOwnerUsername || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         var splitWrapper = document.createElement('div');
         splitWrapper.className = 'split-btn-group';
         splitWrapper.style.flex = '2';
@@ -4796,6 +4838,7 @@ async function joinBounty(appId) {
 }
 
 function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
+    var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(id, ownerUsername);
     // Clean up stale timer (tab suspension / cache restoration scenario)
     if (activeTimerAppId !== null && _timerLocalDate && _timerLocalDate !== getLocalDate()) {
         if (_timerIntervalId) clearInterval(_timerIntervalId);
@@ -4823,7 +4866,7 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
 
     var readyPayload = _getTimerReadyPayload(id);
     if (readyPayload) {
-        _setTimerButtonReady(id, readyPayload.isScreenshot, readyPayload.ownerUsername);
+        _setTimerButtonReady(id, readyPayload.isScreenshot, readyPayload.ownerUsername || resolvedOwnerUsername);
         tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
         _onStoreLinkClickedForIssueFlow(id);
         return;
@@ -4843,7 +4886,7 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
     activeTimerAppId = id;
     _timerEndTimestamp = Date.now() + 15000;
     _timerIsScreenshot = isScreenshotDay;
-    _timerOwnerUsername = ownerUsername;
+    _timerOwnerUsername = resolvedOwnerUsername;
     _timerLocalDate = getLocalDate();
     _persistActiveTimer();
     btn.innerText = t.timerRemaining.replace('{sec}', 15);
