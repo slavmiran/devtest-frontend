@@ -15,6 +15,21 @@
 
     <div id="background-sync-bar" class="background-sync-bar hidden" aria-hidden="true"></div>
 
+    <div id="no-username-overlay" class="no-username-overlay" aria-hidden="true">
+        <div class="no-username-overlay__card" role="alertdialog" aria-modal="true" aria-labelledby="no-username-overlay-title">
+            <div class="no-username-overlay__eyebrow" data-i18n="noUsernameOverlayEyebrow">Telegram Username required</div>
+            <h1 id="no-username-overlay-title" class="no-username-overlay__title" data-i18n="noUsernameOverlayTitle">Нужен Telegram @username</h1>
+            <p class="no-username-overlay__desc" data-i18n="noUsernameOverlayDesc">Без публичного username DevTest Hub не может безопасно открывать личные сообщения, выдавать приглашения и подтверждать чекины.</p>
+            <div class="no-username-overlay__steps">
+                <div class="no-username-overlay__step" data-i18n="noUsernameOverlayStep1">1. Откройте Telegram Settings → My Profile → Username.</div>
+                <div class="no-username-overlay__step" data-i18n="noUsernameOverlayStep2">2. Придумайте любой свободный @username и сохраните его.</div>
+                <div class="no-username-overlay__step" data-i18n="noUsernameOverlayStep3">3. Вернитесь в бота и заново откройте WebApp.</div>
+            </div>
+            <p class="no-username-overlay__note" data-i18n="noUsernameOverlayNote">Пока username не установлен, интерфейс и действия с проектами заблокированы.</p>
+            <button type="button" class="btn btn-primary no-username-overlay__button" onclick="closeNoUsernameOverlay()" data-i18n="noUsernameOverlayClose">Закрыть</button>
+        </div>
+    </div>
+
     <!-- System Drop Menu (Pull-down drawer with tab) -->
     <div id="system-drop-menu" class="system-drop-menu">
         <div class="system-drop-content">

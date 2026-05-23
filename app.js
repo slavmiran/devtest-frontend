@@ -17,6 +17,7 @@ const GUEST_CLAIM_SESSION_PREFIX = 'guest_claim_handled_v1:';
 const USER_TIMEZONE_STORAGE_KEY = 'user_system_timezone';
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
+const telegramUsername = String(initData.user?.username || '').trim().replace(/^@+/, '');
 var API_BASE = 'https://devtest-backend.onrender.com/api';
 const GUEST_PROJECTS_PAGE_SIZE = 5;
 const NATIVE_APP_LANGS = ['ru', 'en'];
@@ -26,6 +27,36 @@ const APP_SELECTED_LANGUAGE_STORAGE_KEY = 'app_lang';
 const GOOGLE_TRANSLATE_COOKIE_NAME = 'googtrans';
 const GOOGLE_TRANSLATE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 const GOOGLE_TRANSLATE_SYNC_GUARD_KEY = 'google_translate_sync_guard';
+
+function hasTelegramUsername() {
+    return telegramUsername.length > 0;
+}
+
+function showNoUsernameOverlay() {
+    const overlay = document.getElementById('no-username-overlay');
+    if (!overlay) {
+        return;
+    }
+    document.body.classList.add('no-username-blocked');
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+    try {
+        tg.expand();
+    } catch (error) {}
+}
+
+function closeNoUsernameOverlay() {
+    try {
+        if (tg.HapticFeedback && typeof tg.HapticFeedback.impactOccurred === 'function') {
+            tg.HapticFeedback.impactOccurred('light');
+        }
+    } catch (error) {}
+    try {
+        tg.close();
+    } catch (error) {}
+}
+
+window.App.hasTelegramUsername = hasTelegramUsername;
 const AUTO_TRANSLATE_LANGUAGE_OPTIONS = [
     { code: 'am', googleCode: 'am', shortLabel: 'AM', labelKey: 'appLanguageOptionAm' },
     { code: 'ar', googleCode: 'ar', shortLabel: 'AR', labelKey: 'appLanguageOptionAr' },
@@ -6649,6 +6680,7 @@ async function doSaveProject(projectData) {
         var requestError = null;
         var requestBody = Object.assign({}, projectData, {
             lead_inviter_id: leadInviterId > 0 ? leadInviterId : null,
+            init_data: tg.initData || '',
         });
 
         try {
@@ -6663,6 +6695,10 @@ async function doSaveProject(projectData) {
 
         if (response) {
             result = await _readJsonResponseSafely(response, 'Project create');
+            if (getBackendErrorCode(result) === 'username_required') {
+                showNoUsernameOverlay();
+                return;
+            }
         }
 
         if (requestError || !response || !response.ok || !result || result.status !== 'success') {
@@ -6786,6 +6822,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     refreshLanguageUi();
+    if (!hasTelegramUsername()) {
+        showNoUsernameOverlay();
+        return;
+    }
     loadUserProfilePreferences().catch(function() {});
 
     fetch(`${API_BASE}/users/${userId}/language`)
