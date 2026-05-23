@@ -437,6 +437,7 @@ var myProjectsLoadError = false;
 var marketCache = null;
 var MARKET_CACHE_KEY = 'market_cache_v1';
 var GUEST_PROJECTS_CACHE_KEY = 'guest_projects_cache_v1';
+var EXTERNAL_COUNTS_CACHE_KEY = 'external_counts_cache_v1';
 var _lastFetchTimes = { mutual: 0, bounty: 0, tests: 0, projects: 0, offers: 0, archived: 0, reliabilitySummary: 0, reliabilityBreakdown: 0 };
 var MARKET_FETCH_THROTTLE_MS = 15000;
 var TESTS_FETCH_THROTTLE_MS = 20000;
@@ -444,6 +445,7 @@ var PROJECTS_FETCH_THROTTLE_MS = 30000;
 var OFFERS_FETCH_THROTTLE_MS = 15000;
 var ARCHIVED_FETCH_THROTTLE_MS = 45000;
 var RELIABILITY_FETCH_THROTTLE_MS = 30000;
+var EXTERNAL_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 var SYNC_CONFIRMATION_DELAY_MS = 450;
 var _marketInFlight = { mutual: null, bounty: null };
 window._marketInFlight = _marketInFlight;
@@ -496,6 +498,9 @@ var _guestProjectsInFlight = null;
 var _guestProjectsLoadedOnce = false;
 var _guestProjectsExpanded = false;
 var _guestProjectsLoadError = false;
+var _externalCountsInFlight = null;
+var _externalCountsLoadedOnce = false;
+var _externalCounts = { leads_count: 0, guest_projects_count: 0, updated_at: 0 };
 var _guestProjectsVisibleCount = GUEST_PROJECTS_PAGE_SIZE;
 var _guestProjectsFilters = { lang: 'ALL', category: 'ALL' };
 var _guestProjectsAvailableLangs = [];
@@ -1268,6 +1273,118 @@ function setGuestProjectsCache(payload) {
         localStorage.setItem(GUEST_PROJECTS_CACHE_KEY, JSON.stringify(payload || {}));
     } catch (error) {
         console.warn('Failed to cache guest projects:', error);
+    }
+}
+
+function getExternalCountsCache() {
+    try {
+        const raw = localStorage.getItem(EXTERNAL_COUNTS_CACHE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (error) {
+        return null;
+    }
+}
+
+function setExternalCountsCache(payload) {
+    try {
+        localStorage.setItem(EXTERNAL_COUNTS_CACHE_KEY, JSON.stringify(payload || {}));
+    } catch (error) {
+        console.warn('Failed to cache external counts:', error);
+    }
+}
+
+function _normalizeExternalCountsPayload(payload, fallbackPayload) {
+    const fallback = fallbackPayload || {};
+    var guestCount = Math.max(0, Number((payload && payload.guest_projects_count) || 0));
+    var leadsCount = Math.max(0, Number((payload && payload.leads_count) || 0));
+    var fallbackGuestCount = Math.max(0, Number(fallback.guest_projects_count || 0));
+    var fallbackLeadsCount = Math.max(0, Number(fallback.leads_count || 0));
+    var updatedAt = Math.max(0, Number((payload && payload.updated_at) || 0));
+
+    if (guestCount <= 0 && fallbackGuestCount > 0) {
+        guestCount = fallbackGuestCount;
+    }
+    if (leadsCount <= 0 && fallbackLeadsCount > 0) {
+        leadsCount = fallbackLeadsCount;
+    }
+
+    return {
+        guest_projects_count: guestCount,
+        leads_count: leadsCount,
+        updated_at: updatedAt || Date.now(),
+    };
+}
+
+function _applyExternalCountsPayload(payload, fallbackPayload) {
+    _externalCounts = _normalizeExternalCountsPayload(payload, fallbackPayload);
+    window.__guestTestsLeadsCount = Number(_externalCounts.leads_count || 0);
+    if (Number(_externalCounts.guest_projects_count || 0) > 0 || Number(_externalCounts.leads_count || 0) > 0) {
+        _externalCountsLoadedOnce = true;
+        setExternalCountsCache(_externalCounts);
+    }
+    return Object.assign({}, _externalCounts);
+}
+
+function _hydrateExternalCountsFromCache() {
+    const cached = getExternalCountsCache();
+    if (!cached) {
+        return false;
+    }
+    _applyExternalCountsPayload(cached, _externalCounts);
+    return _externalCountsLoadedOnce;
+}
+
+function getExternalCounts() {
+    return Object.assign({}, _externalCounts);
+}
+
+async function loadExternalCounts(options) {
+    options = options || {};
+    const force = !!options.force;
+    const allowCachedFallback = options.allowCachedFallback !== false;
+
+    if (!_externalCountsLoadedOnce && allowCachedFallback) {
+        _hydrateExternalCountsFromCache();
+    }
+
+    const hasUsableCounts = Number(_externalCounts.guest_projects_count || 0) > 0 || Number(_externalCounts.leads_count || 0) > 0;
+    const isFresh = (Date.now() - Number(_externalCounts.updated_at || 0)) < EXTERNAL_COUNTS_CACHE_TTL_MS;
+    if (!force && hasUsableCounts && isFresh) {
+        return getExternalCounts();
+    }
+
+    if (_externalCountsInFlight) {
+        return _externalCountsInFlight;
+    }
+
+    const requestPromise = (async function() {
+        try {
+            const response = await fetchWithRetry(`${API_BASE}/external-counts`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const data = await response.json();
+            if (!data || data.status !== 'success') {
+                throw new Error('Invalid external counts response');
+            }
+            _applyExternalCountsPayload(data, _externalCounts);
+        } catch (error) {
+            console.error('Error loading external counts:', error);
+            if (!_externalCountsLoadedOnce && allowCachedFallback) {
+                _hydrateExternalCountsFromCache();
+            }
+        }
+        return getExternalCounts();
+    })();
+
+    _externalCountsInFlight = requestPromise;
+    try {
+        return await requestPromise;
+    } finally {
+        if (_externalCountsInFlight === requestPromise) {
+            _externalCountsInFlight = null;
+        }
     }
 }
 
@@ -7149,6 +7266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startOffersPolling();
         startMarketPolling();
         loadEvents();
+        loadExternalCounts();
         scheduleDeferredBootstrap();
         await _handleInitialRoute();
     })().catch(function(error) {
@@ -7203,6 +7321,8 @@ Object.assign(window, {
     openEarnBustModal,
     toggleGuestProjectsAccordion,
     openGuestProjectsTesterSearch,
+    loadExternalCounts,
+    getExternalCounts,
     updateGuestProjectsFilter,
     showMoreGuestProjects,
     getGuestProjectsPageSize,
@@ -7288,11 +7408,13 @@ Object.assign(window.App, {
         myTests,
         incomingOffers,
         myProjects,
+        guestProjects,
         mutualSeeking,
         mutualPrelaunch,
         bountyContracts,
         communityEvents,
         eventsExpanded,
+        externalCounts: getExternalCounts(),
         visibilityStats,
         reliabilitySummary,
         reliabilityBreakdown,
@@ -7316,6 +7438,8 @@ Object.assign(window.App, {
     publishProjectToMarket,
     startMassInvite,
     resetMassInviteCooldown,
+    loadExternalCounts,
+    getExternalCounts,
     joinDirect,
     submitManualExternalTrack,
     startExternalTrackingSession,

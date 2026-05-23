@@ -5797,6 +5797,9 @@ function _getGuestTestsInfoCounts() {
     var state = window.App && typeof window.App.getState === 'function'
         ? window.App.getState()
         : null;
+    var externalCounts = typeof window.getExternalCounts === 'function'
+        ? window.getExternalCounts()
+        : (state && state.externalCounts) || null;
     var guestCount = 0;
     if (typeof window.getFilteredGuestProjects === 'function') {
         try {
@@ -5814,8 +5817,13 @@ function _getGuestTestsInfoCounts() {
     if (!guestCount && Array.isArray(window.guestProjects)) {
         guestCount = window.guestProjects.length;
     }
+    if (!guestCount && externalCounts) {
+        guestCount = Math.max(0, Number(externalCounts.guest_projects_count || 0));
+    }
 
     var leadsCountCandidates = [
+        externalCounts && externalCounts.leads_count,
+        state && state.externalCounts && state.externalCounts.leads_count,
         state && state.leadsCount,
         state && state.offerCounts && state.offerCounts.leadsCount,
         state && state.visibilityStats && state.visibilityStats.leads_count,
@@ -5840,8 +5848,24 @@ function _getGuestTestsInfoCounts() {
     };
 }
 
-function showGuestTestsInfoAlert() {
+async function showGuestTestsInfoAlert() {
     var counts = _getGuestTestsInfoCounts();
+    var shouldAwaitExternalCounts = counts.guestCount <= 0 || counts.leadsCount <= 0;
+    if (typeof window.loadExternalCounts === 'function') {
+        try {
+            if (shouldAwaitExternalCounts) {
+                await window.loadExternalCounts({ force: true });
+            } else {
+                window.loadExternalCounts().catch(function(error) {
+                    console.warn('Background external counts refresh failed:', error);
+                });
+            }
+            counts = _getGuestTestsInfoCounts();
+        } catch (error) {
+            console.warn('Guest tests info counts refresh failed:', error);
+            counts = _getGuestTestsInfoCounts();
+        }
+    }
     var infoHtml = String(window.t('guestTestsFullInfo', {
         guest_count: counts.guestCount,
         leads_count: counts.leadsCount,
