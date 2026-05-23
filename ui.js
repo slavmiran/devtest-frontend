@@ -3079,8 +3079,6 @@ function formatExternalSourceLabel(source) {
 
 function shouldKeepExternalTestInVoluntarySection(test) {
     if (!test || !test.is_external) return false;
-    var source = String(test.external_source || '').trim().toLowerCase();
-    if (source === 'manual') return true;
     return !test.external_control_day_due || String(test.status || '') === 'done';
 }
 
