@@ -1920,8 +1920,7 @@ function renderExternalGuestTestsSection() {
     var section = document.getElementById('external-tests-section');
     var countNode = document.getElementById('external-tests-count');
     var titleNode = document.getElementById('t-externalTestsSectionTitle');
-    var descNode = document.getElementById('t-externalTestsSectionDesc');
-    var noteNode = document.getElementById('t-externalTestsSectionNote');
+    var infoLinkNode = document.getElementById('t-externalTestsInfoLink');
     var scrollWrap = document.getElementById('external-tests-scroll-wrap');
     var list = document.getElementById('external-tests-list');
 
@@ -1930,8 +1929,7 @@ function renderExternalGuestTestsSection() {
     }
 
     if (titleNode) titleNode.textContent = window.t('externalTestsSectionTitle', {}, lang);
-    if (descNode) descNode.textContent = window.t('externalTestsSectionDesc', {}, lang);
-    if (noteNode) noteNode.textContent = window.t('externalTestsSectionNote', {}, lang);
+    if (infoLinkNode) infoLinkNode.textContent = window.t('guestTestsInfoLink', {}, lang);
 
     var externalTests = (Array.isArray(myTests) ? myTests : []).filter(function(test) {
         return !!test
@@ -4046,6 +4044,7 @@ function renderProjects(force) {
                 <div class="tester-cta-actions">
                     <button type="button" class="btn tester-cta-action-btn" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); openGuestProjectsTesterSearch(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('projectFindTestersCta', {}, lang))}</button>
                     <button type="button" class="btn tester-cta-action-btn" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); openManualExternalAddModal(${project.id}, event); event.stopPropagation();">${window.escapeHTML(window.t('projectManualExternalCta', {}, lang))}</button>
+                    <div class="info-link-text" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); window.ui.showGuestTestsInfoAlert(); event.stopPropagation();">${window.escapeHTML(window.t('guestTestsInfoLink', {}, lang))}</div>
                 </div>
             </li>
         `;
@@ -5780,10 +5779,75 @@ function showKarmaPopup(appId, testerId) {
     openKarmaSelectPopup(appId, testerId);
 }
 
-function showCustomAlert(text) {
+function showCustomAlert(text, options) {
     const overlay = document.getElementById('custom-alert-overlay');
-    document.getElementById('custom-alert-text').innerText = text;
+    const textNode = document.getElementById('custom-alert-text');
+    const allowHtml = !!(options && options.html);
+    if (!overlay || !textNode) return;
+    textNode.classList.toggle('custom-alert-text--html', allowHtml);
+    if (allowHtml) {
+        textNode.innerHTML = text;
+    } else {
+        textNode.innerText = text;
+    }
     overlay.classList.add('active');
+}
+
+function _getGuestTestsInfoCounts() {
+    var state = window.App && typeof window.App.getState === 'function'
+        ? window.App.getState()
+        : null;
+    var guestCount = 0;
+    if (typeof window.getFilteredGuestProjects === 'function') {
+        try {
+            var filteredGuestProjects = window.getFilteredGuestProjects();
+            if (Array.isArray(filteredGuestProjects)) {
+                guestCount = filteredGuestProjects.length;
+            }
+        } catch (error) {
+            console.warn('Guest projects count lookup failed:', error);
+        }
+    }
+    if (!guestCount && state && Array.isArray(state.guestProjects)) {
+        guestCount = state.guestProjects.length;
+    }
+    if (!guestCount && Array.isArray(window.guestProjects)) {
+        guestCount = window.guestProjects.length;
+    }
+
+    var leadsCountCandidates = [
+        state && state.leadsCount,
+        state && state.offerCounts && state.offerCounts.leadsCount,
+        state && state.visibilityStats && state.visibilityStats.leads_count,
+        state && state.visibilityStats && state.visibilityStats.raw_leads_count,
+        window.visibilityStats && window.visibilityStats.leads_count,
+        window.visibilityStats && window.visibilityStats.raw_leads_count,
+        window.rawLeadsCount,
+        window.__guestTestsLeadsCount,
+    ];
+    var leadsCount = 0;
+    for (var index = 0; index < leadsCountCandidates.length; index += 1) {
+        var parsed = Number(leadsCountCandidates[index]);
+        if (Number.isFinite(parsed) && parsed >= 0) {
+            leadsCount = parsed;
+            break;
+        }
+    }
+
+    return {
+        guestCount: Math.max(0, Number(guestCount || 0)),
+        leadsCount: Math.max(0, Number(leadsCount || 0)),
+    };
+}
+
+function showGuestTestsInfoAlert() {
+    var counts = _getGuestTestsInfoCounts();
+    var infoHtml = String(window.t('guestTestsFullInfo', {
+        guest_count: counts.guestCount,
+        leads_count: counts.leadsCount,
+    }, lang) || '').replace(/\n/g, '<br>');
+    var actionBtnHtml = `<button type="button" class="popup-action-btn" onclick="window.ui.triggerGuestShowcaseNavigation()">${window.escapeHTML(window.t('guestTestsActionBtn', {}, lang))}</button>`;
+    showCustomAlert(infoHtml + actionBtnHtml, { html: true });
 }
 
 function showPendingReleaseInfo() {
@@ -5798,7 +5862,32 @@ function closeCustomAlert(event) {
     if (event && event.target && event.target.id !== 'custom-alert-overlay') {
         return;
     }
-    document.getElementById('custom-alert-overlay').classList.remove('active');
+    var overlay = document.getElementById('custom-alert-overlay');
+    var textNode = document.getElementById('custom-alert-text');
+    if (textNode) {
+        textNode.classList.remove('custom-alert-text--html');
+        textNode.innerHTML = '';
+    }
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+}
+
+async function triggerGuestShowcaseNavigation() {
+    closeCustomAlert();
+    if (typeof window.openGuestProjectsTesterSearch === 'function') {
+        await window.openGuestProjectsTesterSearch(0);
+        return;
+    }
+    if (typeof window.switchTab === 'function') {
+        window.switchTab('market');
+    }
+    if (typeof window.switchMarketSubTab === 'function') {
+        window.switchMarketSubTab('seeking');
+    }
+    if (typeof window.toggleGuestProjectsAccordion === 'function') {
+        await window.toggleGuestProjectsAccordion(true);
+    }
 }
 
 function ensureGuestClaimLoadingOverlay() {
@@ -7375,7 +7464,9 @@ Object.assign(window, {
     insertChip,
     showKarmaPopup,
     showCustomAlert,
+    showGuestTestsInfoAlert,
     closeCustomAlert,
+    triggerGuestShowcaseNavigation,
     showLoading,
     hideLoading,
     showToast,
@@ -7458,4 +7549,6 @@ Object.assign(window, {
 Object.assign(window.ui, {
     showLoading,
     hideLoading,
+    showGuestTestsInfoAlert,
+    triggerGuestShowcaseNavigation,
 });
