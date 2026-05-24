@@ -3561,16 +3561,32 @@ async function sendExternalScreenshotAndConfirmFromUi(testId, ownerUsername, eve
     var result = await sendExternalDailyCheckinFromUi(testId);
     if (!result) return;
 
-    var messageText = window.t('externalProjectScreenshotMessageTemplate', {
-        app_name: test.name || window.t('unknownLabel', {}, lang),
-        package_name: test.package || test.external_package_name || '',
-        claim_link: typeof window.buildExternalClaimStartLink === 'function'
-            ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '')
-            : '',
-    }, lang);
+    var messageText = window.t('externalProjectScreenshotMessageTemplate', getExternalProjectOwnerMessageParams(test), lang);
     copyTextWithToast(messageText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     openTelegramPrefilledMessage(cleanOwnerUsername, messageText);
+}
+
+function getExternalProjectOwnerMessageParams(test) {
+    var rawAppName = String(test && test.name || '').trim();
+    var packageName = String(test && (test.package || test.external_package_name) || '').trim();
+    var fallbackName = window.t('unknownLabel', {}, lang);
+    var appNameDisplay = rawAppName || packageName || fallbackName;
+
+    if (rawAppName && packageName && rawAppName.toLowerCase() !== packageName.toLowerCase()) {
+        appNameDisplay = rawAppName + ' (' + packageName + ')';
+    } else if (packageName) {
+        appNameDisplay = packageName;
+    }
+
+    return {
+        app_name_display: appNameDisplay,
+        package_name: packageName || appNameDisplay,
+        day: getExternalCurrentTestingDay(test),
+        claim_link: typeof window.buildExternalClaimStartLink === 'function'
+            ? window.buildExternalClaimStartLink(packageName)
+            : '',
+    };
 }
 
 function sendExternalBugReportFromUi(testId, event) {
@@ -3587,14 +3603,7 @@ function sendExternalBugReportFromUi(testId, event) {
         return;
     }
 
-    var messageText = window.t('externalProjectBugReportMessageTemplate', {
-        app_name: test.name || window.t('unknownLabel', {}, lang),
-        package_name: test.package || test.external_package_name || '',
-        day: getExternalCurrentTestingDay(test),
-        claim_link: typeof window.buildExternalClaimStartLink === 'function'
-            ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '')
-            : '',
-    }, lang);
+    var messageText = window.t('externalProjectBugReportMessageTemplate', getExternalProjectOwnerMessageParams(test), lang);
     copyTextWithToast(messageText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     openTelegramPrefilledMessage(cleanOwnerUsername, messageText);

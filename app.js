@@ -2058,6 +2058,27 @@ function buildCheckpointTestLink(appId) {
     return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORTNAME}?startapp=app_focus_${normalizedId}`;
 }
 
+function buildCheckpointGooglePlayLink(packageName, explicitUrl) {
+    var normalizedUrl = String(explicitUrl || '').trim();
+    if (normalizedUrl) return normalizedUrl;
+    var normalizedPackage = String(packageName || '').trim();
+    if (!normalizedPackage) return '';
+    return 'https://play.google.com/store/apps/details?id=' + encodeURIComponent(normalizedPackage);
+}
+
+function buildCheckpointReciprocalAppLink(test) {
+    if (!test || typeof test !== 'object') return '';
+    var reciprocalAppId = Number(test.reciprocal_app_id || 0);
+    var reciprocalStatus = String(test.reciprocal_app_status || '').trim().toLowerCase();
+    if (reciprocalAppId > 0 && (!reciprocalStatus || reciprocalStatus === 'active')) {
+        return buildCheckpointTestLink(reciprocalAppId);
+    }
+    return buildCheckpointGooglePlayLink(
+        test.reciprocal_app_package_name,
+        test.reciprocal_app_play_store_url
+    );
+}
+
 function getCheckpointJoinSourceLabel(test, messageLang) {
     var resolvedLang = typeof normalizeGuestInviteLanguage === 'function'
         ? normalizeGuestInviteLanguage(messageLang, lang)
@@ -2107,23 +2128,17 @@ function buildCheckpointReportPrefill(appId, messageLang) {
     }
 
     var reciprocalAppId = Number(test.reciprocal_app_id || 0);
-    var reciprocalAppName = String(test.reciprocal_app_name || '').trim();
-    if (reciprocalAppId > 0 && reciprocalAppName) {
+    var reciprocalAppName = String(test.reciprocal_app_name || test.reciprocal_app_package_name || '').trim();
+    var reciprocalAppLink = buildCheckpointReciprocalAppLink(test);
+    if (reciprocalAppId > 0 && reciprocalAppName && reciprocalAppLink) {
         blocks.push(window.t('reportPrefillMyAppLinkLine', {
             app_name: reciprocalAppName,
-            app_link: buildCheckpointTestLink(reciprocalAppId)
+            app_link: reciprocalAppLink
         }, resolvedLang));
     } else {
         blocks.push(window.t('reportPrefillSourceLine', {
             source: getCheckpointJoinSourceLabel(test, resolvedLang)
         }, resolvedLang));
-        var fallbackLink = buildCheckpointTestLink(test.id);
-        if (fallbackLink && testedAppName) {
-            blocks.push(window.t('reportPrefillLinkLine', {
-                app_name: testedAppName,
-                app_link: fallbackLink,
-            }, resolvedLang));
-        }
     }
     return blocks.filter(function(item) {
         return String(item || '').trim() !== '';
@@ -3845,6 +3860,9 @@ function _mapTestsFromApi(data) {
             issue_fixed_at: app.issue_fixed_at || null,
             reciprocal_app_id: app.reciprocal_app_id || null,
             reciprocal_app_name: app.reciprocal_app_name || '',
+            reciprocal_app_status: app.reciprocal_app_status || '',
+            reciprocal_app_package_name: app.reciprocal_app_package_name || '',
+            reciprocal_app_play_store_url: app.reciprocal_app_play_store_url || '',
             run_iteration: Number(app.run_iteration || 1),
             has_clicked_store: existingTest ? !!existingTest.has_clicked_store : false,
             request_reviews: app.request_reviews !== false,
