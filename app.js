@@ -2127,10 +2127,9 @@ function buildCheckpointReportPrefill(appId, messageLang) {
         }, resolvedLang));
     }
 
-    var reciprocalAppId = Number(test.reciprocal_app_id || 0);
     var reciprocalAppName = String(test.reciprocal_app_name || test.reciprocal_app_package_name || '').trim();
     var reciprocalAppLink = buildCheckpointReciprocalAppLink(test);
-    if (reciprocalAppId > 0 && reciprocalAppName && reciprocalAppLink) {
+    if (reciprocalAppName && reciprocalAppLink) {
         blocks.push(window.t('reportPrefillMyAppLinkLine', {
             app_name: reciprocalAppName,
             app_link: reciprocalAppLink
