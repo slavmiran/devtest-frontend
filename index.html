@@ -567,9 +567,37 @@
                 </label>
             </div>
             <div id="edit-created-at" style="font-size: 12px; color: var(--hint-color); opacity: 0.75; margin: 6px 2px 12px 2px;"></div>
+            <button class="btn btn-secondary transfer-trigger-btn" type="button" onclick="openProjectTransferModal(projectToEdit)" data-i18n="transferOwnershipBtn">🔐 Передать права</button>
             <div class="action-row">
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEditModal()" id="t-editCancel" data-i18n="editCancel">Отмена</button>
                 <button class="btn btn-primary" style="flex: 1;" onclick="saveProjectEdit()" id="t-editSave" data-i18n="save">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-transfer-modal" class="modal-overlay" onclick="closeProjectTransferModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="transferModalTitle">Передача прав на проект</h3>
+            <p class="transfer-modal-subtitle" data-i18n="transferModalIntro">Найдите пользователя платформы по @username, затем мы сгенерируем одноразовую ссылку и откроем ЛС с готовым сообщением.</p>
+            <div class="transfer-project-chip">
+                <div>
+                    <div class="transfer-project-chip-label" data-i18n="transferModalProjectLabel">Проект</div>
+                    <div class="transfer-project-chip-value notranslate" id="transfer-project-name"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="transfer-username-input" data-i18n="transferUsernameLabel">Username получателя</label>
+                <div class="transfer-search-row">
+                    <input type="text" id="transfer-username-input" class="form-input" data-i18n-placeholder="transferUsernamePlaceholder" placeholder="@username" oninput="resetProjectTransferRecipient()">
+                    <button type="button" class="btn btn-secondary" id="transfer-search-btn" onclick="searchProjectTransferUser()" data-i18n="transferSearchBtn">Найти</button>
+                </div>
+                <div class="form-hint" data-i18n="transferUsernameHint">Передать проект можно только пользователю платформы с активным Telegram username.</div>
+            </div>
+            <div id="transfer-user-result" class="transfer-result-card"></div>
+            <div id="transfer-link-status" class="transfer-status"></div>
+            <div class="action-row" style="margin-top: 0;">
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeProjectTransferModal()" data-i18n="editCancel">Отмена</button>
+                <button class="btn btn-primary" style="flex: 1;" id="transfer-generate-btn" onclick="generateProjectTransferLink()" data-i18n="transferGenerateBtn">Создать ссылку и открыть ЛС</button>
             </div>
         </div>
     </div>

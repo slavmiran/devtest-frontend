@@ -392,6 +392,8 @@ var _firstDayScreenshotStateKey = 'devtest_firstday_screenshot_state_v1';
 var _firstDayScreenshotState = {};
 var pendingProjectData = null;
 var projectToEdit = null;
+var _transferProjectId = null;
+var _transferTargetUser = null;
 var visibilityStats = {};
 var _activeRequests = 0;
 var _karmaAppId = null;
@@ -2781,6 +2783,15 @@ function handleApiError(code, details = {}) {
         offer_accept_failed: 'err_offer_accept_failed',
         offer_create_failed: 'err_offer_create_failed',
         user_not_found: 'err_user_not_found',
+        transfer_self_forbidden: 'err_transfer_self_forbidden',
+        transfer_generate_failed: 'err_transfer_generate_failed',
+        transfer_failed: 'err_transfer_failed',
+        transfer_not_found: 'err_transfer_not_found',
+        transfer_expired: 'err_transfer_expired',
+        transfer_already_used: 'err_transfer_already_used',
+        transfer_wrong_recipient: 'err_transfer_wrong_recipient',
+        transfer_sender_not_owner: 'err_transfer_sender_not_owner',
+        transfer_app_unavailable: 'err_transfer_app_unavailable',
         mass_invite_project_unavailable: 'massInviteUnavailable',
         mass_invite_cooldown_active: 'massInviteCooldownActiveError',
         mass_invite_cooldown_not_active: 'massInviteCooldownNotActive',
@@ -6268,6 +6279,327 @@ function _handleProjectCreateConflict(code) {
     return false;
 }
 
+function _findTransferProject(projectId) {
+    var normalizedProjectId = Number(projectId || 0);
+    if (!normalizedProjectId) {
+        return null;
+    }
+
+    var activeProject = (myProjects || []).find(function(project) {
+        return Number(project && project.id) === normalizedProjectId;
+    });
+    if (activeProject) {
+        return {
+            app_id: normalizedProjectId,
+            name: String(activeProject.name || '').trim(),
+            package_name: String(activeProject.package || '').trim(),
+            source: 'active'
+        };
+    }
+
+    var archivedProject = (archivedProjects || []).find(function(project) {
+        return Number(project && project.app_id) === normalizedProjectId;
+    });
+    if (archivedProject) {
+        return {
+            app_id: normalizedProjectId,
+            name: String(archivedProject.name || '').trim(),
+            package_name: String(archivedProject.package_name || '').trim(),
+            source: 'archived'
+        };
+    }
+
+    return null;
+}
+
+function _renderProjectTransferTargetUser() {
+    var resultEl = document.getElementById('transfer-user-result');
+    var generateBtn = document.getElementById('transfer-generate-btn');
+    if (!resultEl) {
+        return;
+    }
+
+    if (!_transferTargetUser) {
+        resultEl.innerHTML = '';
+        resultEl.classList.remove('active');
+        if (generateBtn) {
+            generateBtn.disabled = true;
+        }
+        return;
+    }
+
+    var username = String(_transferTargetUser.username || '').trim().replace(/^@+/, '');
+    var fullName = String(_transferTargetUser.full_name || '').trim();
+    var displayName = fullName || ('@' + username);
+
+    resultEl.innerHTML = ''
+        + '<div class="transfer-result-title">' + window.escapeHTML(window.t('transferRecipientFoundLabel', {}, lang)) + '</div>'
+        + '<div class="transfer-result-name notranslate">' + window.escapeHTML(displayName) + '</div>'
+        + '<div class="transfer-result-username notranslate">@' + window.escapeHTML(username) + '</div>'
+        + '<div class="transfer-result-note">' + window.escapeHTML(window.t('transferRecipientCardHint', {}, lang)) + '</div>';
+    resultEl.classList.add('active');
+    if (generateBtn) {
+        generateBtn.disabled = false;
+    }
+}
+
+function _syncProjectTransferModalUi(project) {
+    var projectEl = document.getElementById('transfer-project-name');
+    var inputEl = document.getElementById('transfer-username-input');
+    var searchBtn = document.getElementById('transfer-search-btn');
+    var generateBtn = document.getElementById('transfer-generate-btn');
+    var statusEl = document.getElementById('transfer-link-status');
+
+    if (projectEl) {
+        projectEl.textContent = (project && project.name) ? project.name : window.t('unknownLabel', {}, lang);
+    }
+    if (inputEl) {
+        inputEl.value = '';
+    }
+    if (searchBtn) {
+        searchBtn.disabled = false;
+        searchBtn.textContent = window.t('transferSearchBtn', {}, lang);
+    }
+    if (generateBtn) {
+        generateBtn.disabled = true;
+        generateBtn.textContent = window.t('transferGenerateBtn', {}, lang);
+    }
+    if (statusEl) {
+        statusEl.textContent = window.t('transferExpiryHint', { minutes: 15 }, lang);
+        statusEl.classList.add('active');
+    }
+
+    _renderProjectTransferTargetUser();
+}
+
+function resetProjectTransferRecipient() {
+    _transferTargetUser = null;
+    _renderProjectTransferTargetUser();
+}
+
+function _clearProjectTransferState() {
+    _transferProjectId = null;
+    _transferTargetUser = null;
+
+    var inputEl = document.getElementById('transfer-username-input');
+    var statusEl = document.getElementById('transfer-link-status');
+    var projectEl = document.getElementById('transfer-project-name');
+    if (inputEl) {
+        inputEl.value = '';
+    }
+    if (statusEl) {
+        statusEl.textContent = '';
+        statusEl.classList.remove('active');
+    }
+    if (projectEl) {
+        projectEl.textContent = '';
+    }
+    _renderProjectTransferTargetUser();
+}
+
+function openProjectTransferModal(projectId) {
+    var project = _findTransferProject(projectId);
+    var modal = document.getElementById('project-transfer-modal');
+    if (!project || !modal) {
+        handleApiError('app_not_found');
+        return;
+    }
+
+    _transferProjectId = Number(project.app_id || 0);
+    _transferTargetUser = null;
+    _syncProjectTransferModalUi(project);
+
+    try {
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    } catch (error) {}
+
+    if (typeof window.closeEditModal === 'function') {
+        var editModal = document.getElementById('edit-project-modal');
+        if (editModal && editModal.classList.contains('active')) {
+            window.closeEditModal();
+        }
+    }
+
+    modal.classList.add('active');
+}
+
+function closeProjectTransferModal(event) {
+    var modal = document.getElementById('project-transfer-modal');
+    if (!modal) {
+        return;
+    }
+    if (event && event.target !== modal) {
+        return;
+    }
+    modal.classList.remove('active');
+    setTimeout(_clearProjectTransferState, 180);
+}
+
+async function searchProjectTransferUser() {
+    var inputEl = document.getElementById('transfer-username-input');
+    var searchBtn = document.getElementById('transfer-search-btn');
+    var normalizedUsername = String(inputEl && inputEl.value || '').trim().replace(/^@+/, '');
+
+    if (!normalizedUsername) {
+        showToast(window.t('transferSearchEmpty', {}, lang));
+        return null;
+    }
+
+    var actionKey = 'project_transfer_search';
+    if (_pendingActions.has(actionKey)) {
+        return null;
+    }
+    _pendingActions.add(actionKey);
+
+    try {
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    } catch (error) {}
+
+    _apiStart();
+    if (searchBtn) {
+        searchBtn.disabled = true;
+        searchBtn.textContent = '...';
+    }
+
+    try {
+        var params = new URLSearchParams({
+            username: normalizedUsername,
+            init_data: tg.initData || ''
+        });
+        var response = await fetchWithRetry(`${API_BASE}/users/search?${params.toString()}`, {
+            timeoutMs: 15000
+        }, 1);
+        var payload = await _readJsonResponseSafely(response, 'Transfer search');
+        if (!response.ok || !payload || payload.status !== 'success') {
+            handleApiError(getBackendErrorCode(payload) || 'user_not_found', payload && payload.details ? payload.details : {});
+            return null;
+        }
+
+        _transferTargetUser = payload.user || null;
+        _renderProjectTransferTargetUser();
+        return _transferTargetUser;
+    } catch (error) {
+        console.error('Transfer recipient search error:', error);
+        handleApiError('network_error');
+        return null;
+    } finally {
+        if (searchBtn) {
+            searchBtn.disabled = false;
+            searchBtn.textContent = window.t('transferSearchBtn', {}, lang);
+        }
+        _apiEnd();
+        _pendingActions.delete(actionKey);
+    }
+}
+
+function _buildProjectTransferDmText(payload) {
+    return window.t('transferDmTemplate', {
+        app_name: String(payload && payload.app_name || '').trim() || window.t('unknownLabel', {}, lang),
+        transfer_link: String(payload && payload.transfer_link || '').trim(),
+        minutes: 15
+    }, lang);
+}
+
+function _openProjectTransferDm(recipientUsername, text) {
+    var normalizedUsername = String(recipientUsername || '').trim().replace(/^@+/, '');
+    if (!normalizedUsername || !text) {
+        return false;
+    }
+
+    var encodedText = encodeURIComponent(text);
+    var tgUrl = 'tg://resolve?domain=' + encodeURIComponent(normalizedUsername) + '&text=' + encodedText;
+    var webUrl = 'https://t.me/' + encodeURIComponent(normalizedUsername) + '?text=' + encodedText;
+
+    try {
+        window.location.href = tgUrl;
+        setTimeout(function() {
+            if (document.visibilityState !== 'visible') {
+                return;
+            }
+            try {
+                if (tg && typeof tg.openTelegramLink === 'function') {
+                    tg.openTelegramLink(webUrl);
+                } else {
+                    window.open(webUrl, '_blank');
+                }
+            } catch (error) {
+                console.error('Transfer DM fallback open error:', error);
+            }
+        }, 450);
+        return true;
+    } catch (error) {
+        console.error('Transfer DM open error:', error);
+        try {
+            if (tg && typeof tg.openTelegramLink === 'function') {
+                tg.openTelegramLink(webUrl);
+                return true;
+            }
+        } catch (fallbackError) {
+            console.error('Transfer DM fallback error:', fallbackError);
+        }
+    }
+    return false;
+}
+
+async function generateProjectTransferLink() {
+    if (!_transferProjectId || !_transferTargetUser || !_transferTargetUser.user_id) {
+        handleApiError('user_not_found');
+        return null;
+    }
+
+    var generateBtn = document.getElementById('transfer-generate-btn');
+    var actionKey = 'project_transfer_generate_' + Number(_transferProjectId || 0);
+    if (_pendingActions.has(actionKey)) {
+        return null;
+    }
+    _pendingActions.add(actionKey);
+
+    try {
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    } catch (error) {}
+
+    _apiStart();
+    if (generateBtn) {
+        generateBtn.disabled = true;
+        generateBtn.textContent = '...';
+    }
+
+    try {
+        var response = await fetchWithRetry(`${API_BASE}/projects/${Number(_transferProjectId)}/transfer/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                recipient_id: Number(_transferTargetUser.user_id || 0),
+                init_data: tg.initData || ''
+            }),
+            timeoutMs: 15000
+        }, 1);
+        var payload = await _readJsonResponseSafely(response, 'Transfer generate');
+        if (!response.ok || !payload || payload.status !== 'success') {
+            handleApiError(getBackendErrorCode(payload) || 'transfer_generate_failed', payload && payload.details ? payload.details : {});
+            return null;
+        }
+
+        var dmText = _buildProjectTransferDmText(payload);
+        _openProjectTransferDm(payload.recipient_username || (_transferTargetUser && _transferTargetUser.username), dmText);
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('transferDmOpenedToast', {}, lang));
+        closeProjectTransferModal();
+        return payload;
+    } catch (error) {
+        console.error('Transfer generate error:', error);
+        handleApiError('network_error');
+        return null;
+    } finally {
+        if (generateBtn) {
+            generateBtn.disabled = !_transferTargetUser;
+            generateBtn.textContent = window.t('transferGenerateBtn', {}, lang);
+        }
+        _apiEnd();
+        _pendingActions.delete(actionKey);
+    }
+}
+
 async function restartArchivedProject(appId) {
     var normalizedAppId = Number(appId || 0);
     if (!normalizedAppId || !userId) return null;
@@ -7405,6 +7737,11 @@ Object.assign(window, {
     saveProject,
     confirmEmailWarning,
     saveProjectEdit,
+    openProjectTransferModal,
+    closeProjectTransferModal,
+    resetProjectTransferRecipient,
+    searchProjectTransferUser,
+    generateProjectTransferLink,
     publishProjectToMarket,
     showFeedbackRewardKarmaInfo,
     isFirstDayScreenshotVisible,
@@ -7452,6 +7789,10 @@ Object.assign(window.App, {
     saveProject,
     setProjectTargetLang,
     saveProjectEdit,
+    openProjectTransferModal,
+    closeProjectTransferModal,
+    searchProjectTransferUser,
+    generateProjectTransferLink,
     publishProjectToMarket,
     startMassInvite,
     resetMassInviteCooldown,

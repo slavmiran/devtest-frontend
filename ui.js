@@ -5509,6 +5509,9 @@ function renderArchivedProjects(force) {
                     <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="restartArchivedProject(${project.app_id})">
                         ${window.escapeHTML(t.archiveRestartBtn)}
                     </button>
+                    <button class="btn btn-secondary archive-transfer-btn" style="width: 100%;" onclick="openProjectTransferModal(${project.app_id})">
+                        ${window.escapeHTML(t.transferOwnershipBtn)}
+                    </button>
                     <div class="action-row" style="margin-top: 0;">
                         <div style="flex: 1;">${buildProjectFeedbackButton(project.app_id, project.feedback_total_count || 0, project.feedback_new_count || 0, true)}</div>
                         <button class="btn archive-delete-btn" style="flex: 1;"
