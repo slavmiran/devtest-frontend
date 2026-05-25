@@ -1517,6 +1517,7 @@ async function submitManualExternalTrack(event) {
     }
 
     var sourceProjectInput = document.getElementById('manual-external-source-project-id');
+    var appNameInput = document.getElementById('manual-external-app-name');
     var playUrlInput = document.getElementById('manual-external-play-url');
     var ownerUsernameInput = document.getElementById('manual-external-owner-username');
     var groupUrlInput = document.getElementById('manual-external-group-url');
@@ -1531,6 +1532,7 @@ async function submitManualExternalTrack(event) {
     }
 
     var playUrl = String(playUrlInput && playUrlInput.value || '').trim();
+    var appName = String(appNameInput && appNameInput.value || '').trim();
     if (playUrl.indexOf('id=') === -1) {
         showToast(window.t('invalidPlayLink', {}, lang));
         return false;
@@ -1577,6 +1579,7 @@ async function submitManualExternalTrack(event) {
             body: JSON.stringify({
                 tester_id: userId,
                 source_app_id: sourceProjectId,
+                app_name: appName || null,
                 play_store_url: playUrl,
                 package_name: packageName,
                 owner_username: ownerUsername,
@@ -1626,6 +1629,8 @@ async function refreshGuestProjectSlices() {
 
 function applyEditedGuestProjectToLocalState(result) {
     var normalizedPackage = String(result && result.package_name || '').trim();
+    var appName = String(result && result.app_name || '').trim();
+    var displayName = appName || normalizedPackage;
     var ownerUsername = String(result && result.owner_username || '').trim().replace(/^@+/, '');
     var groupUrl = String(result && result.google_group_url || '').trim();
     var playStoreUrl = String(result && result.play_store_url || '').trim();
@@ -1636,6 +1641,7 @@ function applyEditedGuestProjectToLocalState(result) {
         if (!test || !test.is_external || testPackage !== normalizedPackage) {
             return;
         }
+        test.name = displayName;
         test.owner_username = ownerUsername;
         test.google_group_url = groupUrl;
         test.play_store_url = playStoreUrl;
@@ -1653,6 +1659,8 @@ function applyEditedGuestProjectToLocalState(result) {
         }
         return {
             ...project,
+            name: displayName,
+            app_name: appName,
             owner_username: ownerUsername,
             google_group_url: groupUrl,
             play_store_url: playStoreUrl,
@@ -1684,6 +1692,7 @@ async function submitEditGuestProject(event) {
     }
 
     var packageInput = document.getElementById('edit-guest-project-package-name');
+    var appNameInput = document.getElementById('edit-guest-project-app-name');
     var playUrlInput = document.getElementById('edit-guest-project-play-url');
     var ownerUsernameInput = document.getElementById('edit-guest-project-owner-username');
     var groupUrlInput = document.getElementById('edit-guest-project-group-url');
@@ -1696,6 +1705,7 @@ async function submitEditGuestProject(event) {
     }
 
     var playUrl = String(playUrlInput && playUrlInput.value || '').trim();
+    var appName = String(appNameInput && appNameInput.value || '').trim();
     if (playUrl.indexOf('id=') === -1 || extractPackageNameFromPlayUrl(playUrl) !== packageName) {
         showToast(window.t('invalidPlayLink', {}, lang));
         return false;
@@ -1722,6 +1732,7 @@ async function submitEditGuestProject(event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 tester_id: userId,
+                app_name: appName || null,
                 owner_username: ownerUsername,
                 google_group_url: groupUrl || null,
                 play_store_url: playUrl,
@@ -1873,6 +1884,84 @@ async function cancelExternalTracking(progressId, testId) {
     }
     if (window.renderTests) {
         window.renderTests(true);
+    }
+
+    return result;
+}
+
+async function unlinkGuestRelationship(progressId, options) {
+    options = options || {};
+    var safeProgressId = Number(progressId || 0);
+    if (safeProgressId <= 0) {
+        return null;
+    }
+
+    var requestBody = {
+        user_id: userId,
+        remove_from_my_tests: options.removeFromMyTests !== false,
+        remove_from_my_testers: options.removeFromMyTesters !== false,
+        source_app_id: Number(options.sourceAppId || 0) || null,
+    };
+
+    const response = await fetchWithRetry(`${API_BASE}/guest-links/${safeProgressId}/unlink`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+    }, 1);
+    const result = await response.json();
+    if (!response.ok || !result || result.status !== 'success') {
+        handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+        return null;
+    }
+
+    if (requestBody.remove_from_my_tests) {
+        myTests = (Array.isArray(myTests) ? myTests : []).filter(function(item) {
+            return Number(item.progress_id || 0) !== safeProgressId;
+        });
+        persistTestsCacheSnapshot();
+    }
+
+    if (requestBody.remove_from_my_testers) {
+        var sourceAppId = Number(requestBody.source_app_id || 0);
+        myProjects = (Array.isArray(myProjects) ? myProjects : []).map(function(project) {
+            if (sourceAppId > 0 && Number(project.id || 0) !== sourceAppId) {
+                return project;
+            }
+            var currentTesters = Array.isArray(project.testers) ? project.testers : [];
+            var nextTesters = currentTesters.filter(function(tester) {
+                return Number(tester.progress_id || 0) !== safeProgressId;
+            });
+            if (nextTesters.length === currentTesters.length) {
+                return project;
+            }
+            return Object.assign({}, project, { testers: nextTesters });
+        });
+    }
+
+    const refreshPromises = [];
+    if (typeof loadTasks === 'function') {
+        refreshPromises.push(loadTasks(true));
+    }
+    if (typeof loadProjects === 'function') {
+        refreshPromises.push(loadProjects(true));
+    }
+    if (typeof loadGuestApps === 'function') {
+        refreshPromises.push(loadGuestApps({ force: true }));
+    }
+    if (refreshPromises.length) {
+        await Promise.allSettled(refreshPromises);
+    }
+    if (typeof refreshOpenModals === 'function') {
+        refreshOpenModals();
+    }
+    if (window.renderGuestProjectsSection) {
+        window.renderGuestProjectsSection(true);
+    }
+    if (window.renderTests) {
+        window.renderTests(true);
+    }
+    if (window.renderProjects) {
+        window.renderProjects(true);
     }
 
     return result;
@@ -4083,6 +4172,7 @@ function _mapTestsFromApi(data) {
             external_owner_telegram_id: Number(app.external_owner_telegram_id || app.owner_id || 0),
             external_category: app.external_category || 'APP',
             external_guest_app_id: app.external_guest_app_id || '',
+            external_source_app_id: Number(app.external_source_app_id || 0) || null,
             added_by_tester_id: Number(app.added_by_tester_id || 0),
             external_last_completed_control_day: Number(app.external_last_completed_control_day || 0),
             external_days_since_last_completed: app.external_days_since_last_completed === null || typeof app.external_days_since_last_completed === 'undefined'
@@ -7842,6 +7932,7 @@ Object.assign(window, {
     submitExternalTrackingProof,
     submitExternalDailyCheckin,
     cancelExternalTracking,
+    unlinkGuestRelationship,
     getDefaultCheckpointReportLanguage,
     getDefaultCheckpointReportLanguage,
     buildCheckpointReportPrefill,

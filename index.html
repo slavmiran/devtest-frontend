@@ -414,6 +414,11 @@
                 <input type="hidden" id="manual-external-source-project-id" value="">
 
                 <div class="form-group">
+                    <label class="form-label" for="manual-external-app-name" data-i18n="manualExternalAppNameLabel">Название приложения (необязательно)</label>
+                    <input type="text" id="manual-external-app-name" class="form-input" data-i18n-placeholder="manualExternalAppNamePlaceholder" placeholder="Например, My Awesome App">
+                </div>
+
+                <div class="form-group">
                     <label class="form-label" for="manual-external-play-url" data-i18n="manualExternalPlayUrlLabel">Google Play URL</label>
                     <input type="url" id="manual-external-play-url" class="form-input" required data-i18n-placeholder="playLinkPlaceholder" placeholder="https://play.google.com/store/apps/details?id=com.example.app">
                 </div>
@@ -430,16 +435,17 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="manual-external-check" for="manual-external-is-mutual">
-                        <input type="checkbox" id="manual-external-is-mutual" checked onchange="toggleManualExternalMutualFields(event)">
-                        <span class="manual-external-check-text" data-i18n="manualExternalMutualLabel">Создать ответную взаимку для владельца</span>
-                    </label>
-                    <div class="form-hint" data-i18n="manualExternalMutualHint">Выберите, какой из ваших mutual/combo проектов владелец будет тестировать в ответ.</div>
-                </div>
-
-                <div class="form-group" id="manual-external-linked-project-group">
-                    <label class="form-label" for="manual-external-linked-project" data-i18n="manualExternalLinkedProjectLabel">Какой из моих проектов идет в ответ</label>
-                    <select id="manual-external-linked-project" class="form-input"></select>
+                    <div class="manual-external-mutual-block">
+                        <label class="manual-external-check" for="manual-external-is-mutual">
+                            <input type="checkbox" id="manual-external-is-mutual" checked onchange="toggleManualExternalMutualFields(event)">
+                            <span class="manual-external-check-text" data-i18n="manualExternalMutualLabel">Попросить владельца протестировать мой проект в ответ</span>
+                        </label>
+                        <div class="form-hint manual-external-mutual-note" data-i18n="manualExternalMutualHint">Если включено, ниже выберите один из своих active mutual/combo проектов. Именно его владелец увидит как встречный тест.</div>
+                        <div class="form-group" id="manual-external-linked-project-group">
+                            <label class="form-label" for="manual-external-linked-project" data-i18n="manualExternalLinkedProjectLabel">Какой из моих проектов идет в ответ</label>
+                            <select id="manual-external-linked-project" class="form-input"></select>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -483,6 +489,11 @@
             <form id="edit-guest-project-form" onsubmit="submitEditGuestProject(event)">
                 <input type="hidden" id="edit-guest-project-package-name" value="">
                 <input type="hidden" id="edit-guest-project-test-id" value="">
+
+                <div class="form-group">
+                    <label class="form-label" for="edit-guest-project-app-name" data-i18n="manualExternalAppNameLabel">Название приложения (необязательно)</label>
+                    <input type="text" id="edit-guest-project-app-name" class="form-input" data-i18n-placeholder="manualExternalAppNamePlaceholder" placeholder="Например, My Awesome App">
+                </div>
 
                 <div class="form-group">
                     <label class="form-label" for="edit-guest-project-play-url" data-i18n="manualExternalPlayUrlLabel">Google Play URL</label>

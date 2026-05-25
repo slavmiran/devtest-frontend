@@ -33,6 +33,7 @@ var _externalTrackProjectId = 0;
 var _externalTrackAcknowledged = false;
 var _guestTesterProjectId = 0;
 var _guestTesterProgressId = 0;
+var _guestLinkRemoveState = null;
 var _reportMessageLang = null;
 
 function showSkeleton(containerId) {
@@ -357,9 +358,13 @@ function resolveGuestInviteLanguage(guest) {
     return _guestInviteLang;
 }
 
+function getGuestDisplayName(guest) {
+    return String((guest && (guest.name || guest.package_name)) || '').trim();
+}
+
 function getGuestInvitePreviewText(guest, inviteLang, inviteLink) {
     return window.t('guestInviteMessageTemplate', {
-        app_name: String((guest && (guest.package_name || guest.name)) || '').trim(),
+        app_name: getGuestDisplayName(guest),
         invite_link: String(inviteLink || '').trim(),
         community_link: 'https://t.me/googleplay_console_12testers',
     }, inviteLang);
@@ -1972,6 +1977,7 @@ function renderExternalGuestTestsSection() {
             ? `<button type="button" class="external-tests-owner external-tests-owner-link notranslate" onclick="return openTelegramProfile('${safeOwnerUsernameInline}', event)">${window.escapeHTML(ownerLabel)}</button>`
             : `<div class="external-tests-owner">${window.escapeHTML(ownerLabel)}</div>`;
         var dayChipHtml = `<span class="meta-chip">${window.escapeHTML(window.t('externalTrackDayLabel', { day: meta.currentDay }, lang))}</span>`;
+        var originChipHtml = renderGuestOriginChip(test.external_source);
         var nextControlText = meta.nextControlDay
             ? window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang)
             : window.t('externalTestsAllControlsDone', {}, lang);
@@ -2008,7 +2014,7 @@ function renderExternalGuestTestsSection() {
                 </div>
                 <div class="external-tests-topline">
                     ${ownerLabelHtml}
-                    ${dayChipHtml}
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${originChipHtml}${dayChipHtml}</div>
                 </div>
                 <div class="external-tests-status">${window.escapeHTML(nextControlText)}</div>
                 <div class="external-tests-substatus">${window.escapeHTML(substatusText)}</div>
@@ -2039,6 +2045,7 @@ function renderTests(force) {
 
     myTests.forEach((test) => {
         const isExternal = !!test.is_external;
+        const hasGuestOrigin = isGuestOriginTest(test);
         const isPendingCompletion = !!test.is_pending_completion;
         const isPendingForTester = isPendingCompletion && Number(test.testing_days || 0) >= 15;
         const isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' && !isPendingCompletion;
@@ -2277,7 +2284,7 @@ function renderTests(force) {
             if (userTestingDay >= 15) {
                 headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #30d158;" onclick="openOvertimeModal(${test.id}, event)">🔄</button>`);
             } else {
-                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="${isMutualExitFlow(test) ? `openLeaveMutualModal(${test.id}, event)` : `openDropTestModal(${test.id}, event)`}">🗑️</button>`);
+                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="${hasGuestOrigin ? `openGuestLinkRemoveModalFromTest(${test.id}, event)` : (isMutualExitFlow(test) ? `openLeaveMutualModal(${test.id}, event)` : `openDropTestModal(${test.id}, event)`)}">🗑️</button>`);
             }
         }
         const trailingHtml = headerActions.length
@@ -2287,8 +2294,8 @@ function renderTests(force) {
         const doneBadgeHtml = test.status === 'done' && !test.isReadyToClaim
             ? '<div class="done-status-pill">' + window.escapeHTML(t.doneTodayText) + '</div><div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
             : '';
-        const externalMetaHtml = isExternal
-            ? `<div class="external-track-inline-meta"><span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackCardChip', {}, lang))}</span><span class="external-track-inline-note">${window.escapeHTML(window.t('externalTrackInlineMeta', { source: formatExternalSourceLabel(test.external_source) }, lang))}</span></div>`
+        const externalMetaHtml = hasGuestOrigin
+            ? `<div class="external-track-inline-meta">${isExternal ? `<span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackCardChip', {}, lang))}</span>` : ''}${renderGuestOriginChip(test.external_source)}${isExternal ? `<span class="external-track-inline-note">${window.escapeHTML(window.t('externalTrackInlineMeta', { source: formatExternalSourceLabel(test.external_source) }, lang))}</span>` : ''}</div>`
             : '';
         const cardHeaderLinkStart = `<div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">`;
 
@@ -2783,7 +2790,7 @@ function renderGuestInviteModal() {
     }
 
     const ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
-    const packageName = String(guest.package_name || guest.name || '').trim();
+    const guestDisplayName = getGuestDisplayName(guest);
     const selectedInviteLang = resolveGuestInviteLanguage(guest);
     const inviteLink = typeof window.buildGuestInviteDeepLink === 'function'
         ? window.buildGuestInviteDeepLink(String(guest.id || ''), userId, selectedInviteLang)
@@ -2805,9 +2812,9 @@ function renderGuestInviteModal() {
         <div class="guest-invite-note notranslate">${window.escapeHTML(window.t('guestInviteModalDesc', { owner_username: ownerUsername ? '@' + ownerUsername : window.t('unknownLabel', {}, lang) }, lang))}</div>
         <div class="guest-invite-card">
             <div class="guest-invite-app-row">
-                ${renderIcon(packageName || '', null)}
+                ${renderIcon(guestDisplayName || '', null)}
                 <div class="guest-invite-app-meta">
-                    <div class="card-title guest-invite-app-title notranslate">${window.escapeHTML(packageName || window.t('unknownLabel', {}, lang))}</div>
+                    <div class="card-title guest-invite-app-title notranslate">${window.escapeHTML(guestDisplayName || window.t('unknownLabel', {}, lang))}</div>
                     <div class="market-owner notranslate">${window.escapeHTML(ownerUsername ? '@' + ownerUsername : window.t('guestInviteOwnerMissing', {}, lang))}</div>
                 </div>
             </div>
@@ -3075,6 +3082,38 @@ function formatExternalSourceLabel(source) {
     return window.t('externalSourceGeneric', {}, lang);
 }
 
+function getGuestOriginType(source) {
+    return String(source || '').trim().toLowerCase() === 'manual' ? 'manual' : 'showcase';
+}
+
+function getGuestOriginMeta(source) {
+    var originType = getGuestOriginType(source);
+    if (originType === 'manual') {
+        return {
+            chipIcon: '✍️',
+            listIcon: '✍️',
+            label: window.t('guestOriginManualChip', {}, lang),
+            className: 'accent-yellow'
+        };
+    }
+    return {
+        chipIcon: '🌍',
+        listIcon: '👽',
+        label: window.t('guestOriginShowcaseChip', {}, lang),
+        className: 'accent-blue'
+    };
+}
+
+function renderGuestOriginChip(source) {
+    var meta = getGuestOriginMeta(source);
+    return `<span class="meta-chip ${meta.className}">${window.escapeHTML(meta.chipIcon + ' ' + meta.label)}</span>`;
+}
+
+function isGuestOriginTest(test) {
+    if (!test) return false;
+    return !!test.is_external || !!String(test.external_source || '').trim();
+}
+
 function shouldKeepExternalTestInVoluntarySection(test) {
     if (!test || !test.is_external) return false;
     return !test.external_control_day_due || String(test.status || '') === 'done';
@@ -3246,8 +3285,8 @@ function renderExternalTrackModal() {
     }
 
     var ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
-    var packageName = String(guest.package_name || guest.name || '').trim();
-    var safePackageName = window.escapeHTML(packageName || window.t('unknownLabel', {}, lang));
+    var guestDisplayName = getGuestDisplayName(guest);
+    var safePackageName = window.escapeHTML(guestDisplayName || window.t('unknownLabel', {}, lang));
     var checkboxLabelHtml = window.t('externalTrackCheckboxLabel', {
         appName: safePackageName,
     }, lang);
@@ -3352,9 +3391,9 @@ function openManualExternalAddModal(projectId, event) {
     renderManualExternalLinkedProjectOptions(projectId);
     if (modal) modal.classList.add('active');
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-    var playUrlInput = document.getElementById('manual-external-play-url');
-    if (playUrlInput && typeof playUrlInput.focus === 'function') {
-        playUrlInput.focus();
+    var appNameInput = document.getElementById('manual-external-app-name');
+    if (appNameInput && typeof appNameInput.focus === 'function') {
+        appNameInput.focus();
     }
 }
 
@@ -3388,11 +3427,15 @@ function openEditGuestProjectModal(testId, event) {
     resetEditGuestProjectForm();
     var packageInput = document.getElementById('edit-guest-project-package-name');
     var testIdInput = document.getElementById('edit-guest-project-test-id');
+    var appNameInput = document.getElementById('edit-guest-project-app-name');
     var playUrlInput = document.getElementById('edit-guest-project-play-url');
     var ownerInput = document.getElementById('edit-guest-project-owner-username');
     var groupUrlInput = document.getElementById('edit-guest-project-group-url');
-    if (packageInput) packageInput.value = String(targetTest.external_package_name || targetTest.package || '').trim();
+    var packageName = String(targetTest.external_package_name || targetTest.package || '').trim();
+    var currentDisplayName = String(targetTest.name || '').trim();
+    if (packageInput) packageInput.value = packageName;
     if (testIdInput) testIdInput.value = String(Number(targetTest.id || 0) || 0);
+    if (appNameInput) appNameInput.value = currentDisplayName && currentDisplayName !== packageName ? currentDisplayName : '';
     if (playUrlInput) playUrlInput.value = getExternalTrackPlayUrl(targetTest);
     if (ownerInput) ownerInput.value = targetTest.owner_username ? ('@' + String(targetTest.owner_username).trim().replace(/^@+/, '')) : '';
     if (groupUrlInput) groupUrlInput.value = String(targetTest.google_group_url || '').trim();
@@ -3400,8 +3443,8 @@ function openEditGuestProjectModal(testId, event) {
     var modal = document.getElementById('edit-guest-project-modal');
     if (modal) modal.classList.add('active');
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-    if (playUrlInput && typeof playUrlInput.focus === 'function') {
-        playUrlInput.focus();
+    if (appNameInput && typeof appNameInput.focus === 'function') {
+        appNameInput.focus();
     }
 }
 
@@ -3510,7 +3553,7 @@ async function sendExternalTrackInvite() {
         var myPackage = String(selectedProject.package || selectedProject.package_name || '').trim();
         var myPlayLink = myPackage ? ('https://play.google.com/store/apps/details?id=' + encodeURIComponent(myPackage)) : '';
         var messageText = window.t('externalTrackInviteMessageTemplate', {
-            app_name: guest.package_name || guest.name || window.t('unknownLabel', {}, lang),
+            app_name: getGuestDisplayName(guest) || window.t('unknownLabel', {}, lang),
             claim_link: claimLink,
             play_link: myPlayLink,
             group_link: myGroupLink,
@@ -3557,6 +3600,7 @@ function renderGuestTesterDetailsModal() {
         app_name: project.name || window.t('unknownLabel', {}, lang),
         invite_link: buildProjectInviteStartLink(project.id),
     }, lang);
+    var originChipHtml = renderGuestOriginChip(tester.external_source);
     var sourcePackage = String(tester.external_package_name || '').trim();
     var sourcePackageHtml = sourcePackage
         ? `<div class="guest-tester-detail-line notranslate">${window.escapeHTML(window.t('guestTesterDetailPackage', { package: sourcePackage }, lang))}</div>`
@@ -3568,6 +3612,7 @@ function renderGuestTesterDetailsModal() {
                 <div class="guest-tester-detail-title notranslate">${window.escapeHTML(testerLabel)}</div>
                 <span class="guest-tester-status-chip is-${window.escapeHTML(statusMeta.tone)}">${window.escapeHTML(statusMeta.label)}</span>
             </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">${originChipHtml}</div>
             <div class="guest-tester-detail-line">${window.escapeHTML(window.t('guestTesterDetailCurrentDay', { day: Number(currentDay || 0) }, lang))}</div>
             ${sourcePackageHtml}
             <div class="guest-tester-detail-line">${window.escapeHTML(window.t('guestTesterDetailLastControlDay', { day: Number(tester.external_last_completed_control_day || 0) }, lang))}</div>
@@ -3575,6 +3620,7 @@ function renderGuestTesterDetailsModal() {
             <div class="guest-tester-detail-actions">
                 <button class="btn btn-secondary" style="width:100%;" onclick="return openTelegramProfile('${escapeInlineJsString(cleanUsername)}', event)" ${cleanUsername ? '' : 'disabled'}>${window.escapeHTML(window.t('guestTesterContactBtn', {}, lang))}</button>
                 <button class="btn btn-primary" style="width:100%;" onclick="copyTextWithToast('${escapeInlineJsString(inviteText)}', 'externalTrackCopied'); openTelegramPrefilledMessage('${escapeInlineJsString(cleanUsername)}', '${escapeInlineJsString(inviteText)}'); if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');" ${cleanUsername ? '' : 'disabled'}>${window.escapeHTML(window.t('guestTesterInvitePlatformBtn', {}, lang))}</button>
+                <button class="btn" style="width:100%; background-color: rgba(255, 59, 48, 0.12); color: #ff6b63; border: 1px solid rgba(255, 59, 48, 0.32);" onclick="openGuestLinkRemoveModalFromTester(${Number(project.id || 0)}, ${Number(tester.progress_id || 0)}, event)">${window.escapeHTML(window.t('guestLinkRemoveBtn', {}, lang))}</button>
             </div>
         </div>
     `;
@@ -3599,6 +3645,175 @@ function closeGuestTesterDetailsModal(event) {
     modal.classList.remove('active');
     _guestTesterProjectId = 0;
     _guestTesterProgressId = 0;
+}
+
+function ensureGuestLinkRemoveModal() {
+    var modal = document.getElementById('guest-link-remove-modal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.id = 'guest-link-remove-modal';
+    modal.className = 'modal-overlay';
+    modal.onclick = function(event) { closeGuestLinkRemoveModal(event); };
+    modal.innerHTML = '<div class="modal-content" onclick="event.stopPropagation()"><div id="guest-link-remove-modal-body"></div></div>';
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function renderGuestLinkRemoveModal() {
+    var modal = ensureGuestLinkRemoveModal();
+    var body = document.getElementById('guest-link-remove-modal-body');
+    if (!modal || !body || !_guestLinkRemoveState) return;
+
+    var state = _guestLinkRemoveState;
+    var canSubmit = !!(state.removeFromMyTests || state.removeFromMyTesters);
+    var appNameHtml = state.appName
+        ? `<div class="guest-link-remove-meta">${window.escapeHTML(state.appName)}</div>`
+        : '';
+    var testerLabelHtml = state.testerLabel
+        ? `<div class="guest-link-remove-meta notranslate">${window.escapeHTML(state.testerLabel)}</div>`
+        : '';
+
+    body.innerHTML = `
+        <div class="guest-link-remove-sheet">
+            <div class="detail-section-title">${window.escapeHTML(window.t('guestLinkRemoveTitle', {}, lang))}</div>
+            <div class="guest-link-remove-text">${window.escapeHTML(window.t('guestLinkRemoveText', {}, lang))}</div>
+            ${appNameHtml}
+            ${testerLabelHtml}
+            <label class="guest-link-remove-option">
+                <input type="checkbox" ${state.removeFromMyTests ? 'checked' : ''} onchange="toggleGuestLinkRemoveOption('removeFromMyTests', this.checked)">
+                <span class="guest-link-remove-copy">
+                    <span class="guest-link-remove-option-title">${window.escapeHTML(window.t('guestLinkRemoveMyTestsLabel', {}, lang))}</span>
+                    <span class="guest-link-remove-option-hint">${window.escapeHTML(window.t('guestLinkRemoveMyTestsHint', {}, lang))}</span>
+                </span>
+            </label>
+            <label class="guest-link-remove-option">
+                <input type="checkbox" ${state.removeFromMyTesters ? 'checked' : ''} onchange="toggleGuestLinkRemoveOption('removeFromMyTesters', this.checked)">
+                <span class="guest-link-remove-copy">
+                    <span class="guest-link-remove-option-title">${window.escapeHTML(window.t('guestLinkRemoveMyTestersLabel', {}, lang))}</span>
+                    <span class="guest-link-remove-option-hint">${window.escapeHTML(window.t('guestLinkRemoveMyTestersHint', {}, lang))}</span>
+                </span>
+            </label>
+            <div class="action-row" style="margin-top: 16px;">
+                <button class="btn btn-secondary" style="flex: 1;" onclick="closeGuestLinkRemoveModal()">${window.escapeHTML(window.t('btnCancel', {}, lang))}</button>
+                <button class="btn" style="flex: 1; ${(!canSubmit || state.isSubmitting) ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${(!canSubmit || state.isSubmitting) ? 'disabled' : ''} onclick="confirmGuestLinkRemove(event)">${window.escapeHTML(window.t('guestLinkRemoveConfirmBtn', {}, lang))}</button>
+            </div>
+        </div>
+    `;
+}
+
+function openGuestLinkRemoveModal(context, event) {
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+    _guestLinkRemoveState = Object.assign({
+        progressId: 0,
+        sourceAppId: 0,
+        appName: '',
+        testerLabel: '',
+        removeFromMyTests: true,
+        removeFromMyTesters: true,
+        isSubmitting: false,
+    }, context || {});
+    renderGuestLinkRemoveModal();
+    var modal = ensureGuestLinkRemoveModal();
+    if (modal) modal.classList.add('active');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+function openGuestLinkRemoveModalFromTest(testId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item.id) === Number(testId || 0);
+    }) || null;
+    if (!test || !isGuestOriginTest(test)) return;
+
+    var ownerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+    openGuestLinkRemoveModal({
+        progressId: Number(test.progress_id || 0),
+        sourceAppId: Number(test.external_source_app_id || 0),
+        appName: test.name || test.package || window.t('unknownLabel', {}, lang),
+        testerLabel: ownerUsername ? '@' + ownerUsername : '',
+    });
+}
+
+function openGuestLinkRemoveModalFromTester(projectId, progressId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var record = getGuestTesterRecord(projectId, progressId);
+    if (!record || !record.project || !record.tester) return;
+
+    var tester = record.tester;
+    var cleanUsername = String(tester.username || '').trim().replace(/^@+/, '');
+    var testerLabel = cleanUsername
+        ? '@' + cleanUsername
+        : window.t('idLabel', { id: Number(tester.tester_id || 0) }, lang);
+
+    openGuestLinkRemoveModal({
+        progressId: Number(tester.progress_id || 0),
+        sourceAppId: Number(projectId || 0),
+        appName: record.project.name || window.t('unknownLabel', {}, lang),
+        testerLabel: testerLabel,
+    });
+}
+
+function toggleGuestLinkRemoveOption(field, checked) {
+    if (!_guestLinkRemoveState) return;
+    _guestLinkRemoveState[field] = !!checked;
+    renderGuestLinkRemoveModal();
+}
+
+async function confirmGuestLinkRemove(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (!_guestLinkRemoveState) return;
+    if (!_guestLinkRemoveState.removeFromMyTests && !_guestLinkRemoveState.removeFromMyTesters) {
+        showToast(window.t('guestLinkRemoveSelectionRequired', {}, lang));
+        return;
+    }
+    if (_guestLinkRemoveState.isSubmitting) {
+        return;
+    }
+
+    _guestLinkRemoveState.isSubmitting = true;
+    renderGuestLinkRemoveModal();
+    try {
+        var result = await window.unlinkGuestRelationship(_guestLinkRemoveState.progressId, {
+            sourceAppId: _guestLinkRemoveState.sourceAppId,
+            removeFromMyTests: _guestLinkRemoveState.removeFromMyTests,
+            removeFromMyTesters: _guestLinkRemoveState.removeFromMyTesters,
+        });
+        if (!result) return;
+
+        closeGuestLinkRemoveModal();
+        closeGuestTesterDetailsModal();
+        closeProjectDetailsModal();
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showToast(window.t('guestLinkRemoveSuccess', {}, lang));
+    } catch (error) {
+        console.error('Guest link unlink error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    } finally {
+        if (_guestLinkRemoveState) {
+            _guestLinkRemoveState.isSubmitting = false;
+        }
+        renderGuestLinkRemoveModal();
+    }
+}
+
+function closeGuestLinkRemoveModal(event) {
+    var modal = document.getElementById('guest-link-remove-modal');
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
+    _guestLinkRemoveState = null;
 }
 
 async function sendExternalTrackingProofFromUi(testId, ownerUsername, event) {
@@ -3762,30 +3977,7 @@ function cancelExternalTestingFromUi(testId, event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    var test = getExternalProjectTest(testId);
-    if (!test) return;
-
-    var confirmText = window.t('externalProjectCancelConfirm', {
-        app_name: test.name || test.package || window.t('unknownLabel', {}, lang)
-    }, lang);
-    if (window.tg && typeof window.tg.showConfirm === 'function') {
-        window.tg.showConfirm(confirmText, function(confirmed) {
-            if (!confirmed) return;
-            _confirmExternalTestingCancel(test).catch(function(error) {
-                console.error('External cancel error:', error);
-                showToast(getApiErrorMessage(error && error.message, 'networkError'));
-            });
-        });
-        return;
-    }
-
-    if (!window.confirm(confirmText)) {
-        return;
-    }
-    _confirmExternalTestingCancel(test).catch(function(error) {
-        console.error('External cancel error:', error);
-        showToast(getApiErrorMessage(error && error.message, 'networkError'));
-    });
+    openGuestLinkRemoveModalFromTest(testId, event);
 }
 
 function renderExternalProjectDetailsModal(test, body) {
@@ -3806,6 +3998,7 @@ function renderExternalProjectDetailsModal(test, body) {
     var safeGroupUrl = escapeInlineJsString(groupUrl);
     var isDoneToday = String(test.status || '') === 'done';
     var isControlDayDue = !!test.external_control_day_due;
+    var originChipHtml = renderGuestOriginChip(test.external_source);
     var primaryActionDisabled = !!isDoneToday;
     var primaryActionLabel = isDoneToday
         ? window.t('externalProjectCheckedTodayBtn', {}, lang)
@@ -3836,6 +4029,7 @@ function renderExternalProjectDetailsModal(test, body) {
         </div>
         <div class="details-block">
             <div class="detail-section-title">${window.escapeHTML(window.t('externalProjectDetailTitle', {}, lang))}</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">${originChipHtml}</div>
             <div class="guest-tester-detail-line">${window.escapeHTML(window.t('externalProjectDayProgress', { day: currentDay }, lang))}</div>
             <div class="guest-tester-detail-line notranslate">${window.escapeHTML(ownerLabel)}</div>
             <div class="guest-tester-detail-line">${window.escapeHTML(controlMeta.label)}</div>
@@ -3863,7 +4057,7 @@ function renderExternalProjectDetailsModal(test, body) {
                 ${window.escapeHTML(window.t('externalProjectInvitePlatformBtn', {}, lang))}
             </button>
             <button class="btn" style="width: 100%; background-color: rgba(255, 59, 48, 0.12); color: #ff6b63; border: 1px solid rgba(255, 59, 48, 0.32);" onclick="cancelExternalTestingFromUi(${Number(test.id || 0)}, event)">
-                ${window.escapeHTML(window.t('externalProjectCancelBtn', {}, lang))}
+                ${window.escapeHTML(window.t('guestLinkRemoveBtn', {}, lang))}
             </button>
         </div>
         <button class="btn btn-secondary" style="width: 100%; margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeProjectDetailsModal()">
@@ -4290,13 +4484,14 @@ function renderProjects(force) {
                     : window.t('idLabel', { id: Number(tester.tester_id || 0) }, lang);
                 var controlMeta = getExternalTesterControlMeta(tester);
                 var currentDay = getExternalCurrentTestingDay(tester);
+                var originMeta = getGuestOriginMeta(tester.external_source);
                 var testerDayHtml = currentDay > 0
                     ? `<span class="tester-day-badge">[${window.escapeHTML(String(Number(currentDay || 0)))}]</span>`
                     : '';
                 testerRowsHtml += `
                     <li onclick="openGuestTesterDetailsModal(${project.id}, ${Number(tester.progress_id || 0)}, event)" style="cursor: pointer;">
                         <div class="tester-row-main">
-                            <span class="tester-name">${testerDayHtml}<span class="tester-guest-prefix">👽</span><span class="tester-primary-label notranslate">${window.escapeHTML(testerLabel)}</span></span>
+                            <span class="tester-name">${testerDayHtml}<span class="tester-guest-prefix">${window.escapeHTML(originMeta.listIcon)}</span><span class="tester-primary-label notranslate">${window.escapeHTML(testerLabel)}</span></span>
                         </div>
                         <div class="tester-row-meta">
                             <span class="tester-status is-${window.escapeHTML(controlMeta.tone)}">${window.escapeHTML(controlMeta.label)}</span>
@@ -7060,6 +7255,7 @@ function openProjectDetailsModal(appId) {
     const reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 0);
     const reviewOwnerBoostBust = Number(rewardsSummary.review_owner_boost_bust || 0);
     const reviewOwnerBoostKarma = Number(rewardsSummary.review_owner_boost_karma || 0);
+    const hasGuestOrigin = isGuestOriginTest(test);
 
     let currentGoogleDay = timelineMeta.currentGoogleDay;
     let projectDaysLeft = timelineMeta.projectDaysLeft;
@@ -7325,7 +7521,9 @@ function openProjectDetailsModal(appId) {
                 : '') +
             (userTestingDay >= 15
                 ? '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="closeProjectDetailsModal(); openOvertimeModal(' + test.id + ')">' + window.t('finish_project', {}, lang) + '</button>'
-                : '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); ' + (isMutualExitFlow(test) ? 'openLeaveMutualModal(' + test.id + ')' : 'openDropTestModal(' + test.id + ')') + '">' + window.t('detail_leave_btn', {}, lang) + '</button>') +
+                : (hasGuestOrigin
+                    ? '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="openGuestLinkRemoveModalFromTest(' + test.id + ', event)">' + window.t('guestLinkRemoveBtn', {}, lang) + '</button>'
+                    : '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); ' + (isMutualExitFlow(test) ? 'openLeaveMutualModal(' + test.id + ')' : 'openDropTestModal(' + test.id + ')') + '">' + window.t('detail_leave_btn', {}, lang) + '</button>')) +
         '</div>';
 
     var modal = document.getElementById('project-details-modal');
@@ -7649,6 +7847,11 @@ Object.assign(window, {
     openExternalTrackModal,
     openManualExternalAddModal,
     openGuestTesterDetailsModal,
+    openGuestLinkRemoveModalFromTest,
+    openGuestLinkRemoveModalFromTester,
+    closeGuestLinkRemoveModal,
+    confirmGuestLinkRemove,
+    toggleGuestLinkRemoveOption,
     sendGuestProjectInvite,
     sendExternalTrackInvite,
     sendExternalTrackingProofFromUi,
