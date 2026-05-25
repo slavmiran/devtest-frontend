@@ -33,7 +33,7 @@ function hasTelegramUsername() {
 }
 
 function showNoUsernameOverlay() {
-    const overlay = document.getElementById('no-username-overlay');
+    var overlay = document.getElementById('no-username-overlay');
     if (!overlay) {
         return;
     }
@@ -1586,7 +1586,22 @@ async function submitManualExternalTrack(event) {
         }, 1);
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {
-            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            var backendCode = getBackendErrorCode(result);
+            if (backendCode === 'user_already_registered' || Number(response.status || 0) === 409) {
+                var registeredOwnerMessage = window.t('manualExternalOwnerAlreadyRegisteredAlert', {}, lang);
+                if (window.tg && typeof window.tg.showAlert === 'function') {
+                    window.tg.showAlert(registeredOwnerMessage);
+                } else if (typeof window.showCustomAlert === 'function') {
+                    window.showCustomAlert(registeredOwnerMessage);
+                } else {
+                    alert(registeredOwnerMessage);
+                }
+                if (ownerUsernameInput && typeof ownerUsernameInput.focus === 'function') {
+                    ownerUsernameInput.focus();
+                }
+                return false;
+            }
+            handleApiError(backendCode, result && result.details ? result.details : {});
             return false;
         }
 
@@ -2985,6 +3000,7 @@ function handleApiError(code, details = {}) {
         invalid_start_date: 'err_grant_unavailable',
         invalid_google_group_url: 'invalid_google_group_url',
         manual_external_owner_missing: 'manualExternalInvalidOwnerUsername',
+        user_already_registered: 'manualExternalOwnerAlreadyRegisteredAlert',
         testing_not_found: 'testing_not_found',
         database_error: 'database_error',
         project_pending_completion: 'projectPendingCompletionAlert',
