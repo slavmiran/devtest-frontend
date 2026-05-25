@@ -430,6 +430,19 @@
                 </div>
 
                 <div class="form-group">
+                    <label class="manual-external-check" for="manual-external-is-mutual">
+                        <input type="checkbox" id="manual-external-is-mutual" checked onchange="toggleManualExternalMutualFields(event)">
+                        <span class="manual-external-check-text" data-i18n="manualExternalMutualLabel">Создать ответную взаимку для владельца</span>
+                    </label>
+                    <div class="form-hint" data-i18n="manualExternalMutualHint">Выберите, какой из ваших mutual/combo проектов владелец будет тестировать в ответ.</div>
+                </div>
+
+                <div class="form-group" id="manual-external-linked-project-group">
+                    <label class="form-label" for="manual-external-linked-project" data-i18n="manualExternalLinkedProjectLabel">Какой из моих проектов идет в ответ</label>
+                    <select id="manual-external-linked-project" class="form-input"></select>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label" for="manual-external-testing-day" data-i18n="manualExternalDayLabel">Текущий день тестирования</label>
                     <div class="manual-external-day-shell">
                         <div id="manual-external-testing-day-value" class="manual-external-day-value">1</div>
@@ -459,6 +472,37 @@
                 <div class="manual-external-modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeManualExternalAddModal()" data-i18n="inviteClose">Закрыть</button>
                     <button type="submit" class="btn btn-primary" id="t-manualExternalSubmitBtn" data-i18n="manualExternalSubmitBtn">Добавить проект</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-guest-project-modal" class="modal-overlay" onclick="closeEditGuestProjectModal(event)">
+        <div class="modal-content manual-external-modal" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
+            <h3 data-i18n="guestProjectEditModalTitle">✏️ Редактировать гостевой проект</h3>
+            <form id="edit-guest-project-form" onsubmit="submitEditGuestProject(event)">
+                <input type="hidden" id="edit-guest-project-package-name" value="">
+                <input type="hidden" id="edit-guest-project-test-id" value="">
+
+                <div class="form-group">
+                    <label class="form-label" for="edit-guest-project-play-url" data-i18n="manualExternalPlayUrlLabel">Google Play URL</label>
+                    <input type="url" id="edit-guest-project-play-url" class="form-input" required data-i18n-placeholder="playLinkPlaceholder" placeholder="https://play.google.com/store/apps/details?id=com.example.app">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="edit-guest-project-owner-username" data-i18n="manualExternalOwnerUsernameLabel">Telegram @nickname владельца</label>
+                    <input type="text" id="edit-guest-project-owner-username" class="form-input" required data-i18n-placeholder="manualExternalOwnerUsernamePlaceholder" placeholder="@owner_nickname" oninput="normalizeManualExternalOwnerNicknameInput(event)" onblur="normalizeManualExternalOwnerNicknameInput(event)">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="edit-guest-project-group-url" data-i18n="manualExternalGroupUrlLabel">Google Group URL (optional)</label>
+                    <input type="url" id="edit-guest-project-group-url" class="form-input" placeholder="https://groups.google.com/g/your-group">
+                    <div class="form-hint manual-external-group-hint" data-i18n="manualExternalGroupHint">If left blank (e.g. email testing), this project will only be visible to you and won't appear in the public Guest Showcase.</div>
+                </div>
+
+                <div class="manual-external-modal-actions">
+                    <button type="submit" class="btn" data-i18n="guestProjectEditSaveBtn">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditGuestProjectModal()" data-i18n="inviteClose">Закрыть</button>
                 </div>
             </form>
         </div>

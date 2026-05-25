@@ -3081,8 +3081,67 @@ function shouldKeepExternalTestInVoluntarySection(test) {
 }
 
 function getExternalTrackPlayUrl(guest) {
+    var explicitPlayUrl = String(guest && guest.play_store_url || '').trim();
+    if (explicitPlayUrl) {
+        return explicitPlayUrl;
+    }
     var packageName = String(guest && (guest.package_name || guest.name) || '').trim();
     return packageName ? ('https://play.google.com/store/apps/details?id=' + encodeURIComponent(packageName)) : '';
+}
+
+function renderManualExternalLinkedProjectOptions(preferredProjectId) {
+    var select = document.getElementById('manual-external-linked-project');
+    if (!select) return;
+
+    var projects = getEligibleExternalTrackProjects();
+    if (!projects.length) {
+        select.innerHTML = `<option value="">${window.escapeHTML(window.t('manualExternalLinkedProjectPlaceholder', {}, lang))}</option>`;
+        select.value = '';
+        updateManualExternalMutualState();
+        return;
+    }
+
+    var resolvedPreferredId = Number(preferredProjectId || select.value || 0);
+    var hasPreferred = projects.some(function(project) {
+        return Number(project.id) === resolvedPreferredId;
+    });
+    var selectedProjectId = hasPreferred ? resolvedPreferredId : Number(projects[0].id || 0);
+
+    select.innerHTML = projects.map(function(project) {
+        var projectId = Number(project.id || 0);
+        var isSelected = projectId === selectedProjectId;
+        return `<option value="${window.escapeHTML(String(projectId || ''))}"${isSelected ? ' selected' : ''}>${window.escapeHTML(project.name || window.t('unknownLabel', {}, lang))}</option>`;
+    }).join('');
+    select.value = String(selectedProjectId || '');
+    updateManualExternalMutualState();
+}
+
+function updateManualExternalMutualState() {
+    var checkbox = document.getElementById('manual-external-is-mutual');
+    var select = document.getElementById('manual-external-linked-project');
+    var group = document.getElementById('manual-external-linked-project-group');
+    var hasProjectOptions = !!(select && select.options.length && String(select.options[0].value || '').trim() !== '');
+    var isEnabled = !!(checkbox && checkbox.checked && hasProjectOptions);
+    if (group) {
+        group.classList.toggle('is-hidden', !(checkbox && checkbox.checked));
+    }
+    if (checkbox) {
+        checkbox.disabled = !hasProjectOptions;
+        if (!hasProjectOptions) {
+            checkbox.checked = false;
+        }
+    }
+    if (select) {
+        select.disabled = !isEnabled;
+    }
+}
+
+function toggleManualExternalMutualFields(event) {
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+    updateManualExternalMutualState();
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
 function openExternalAppLink(url, event) {
@@ -3237,8 +3296,14 @@ function renderExternalTrackModal() {
 function resetManualExternalAddForm() {
     var form = document.getElementById('manual-external-add-form');
     var sourceInput = document.getElementById('manual-external-source-project-id');
+    var mutualCheckbox = document.getElementById('manual-external-is-mutual');
     if (form) form.reset();
     if (sourceInput) sourceInput.value = '';
+    if (mutualCheckbox) {
+        mutualCheckbox.checked = true;
+        mutualCheckbox.disabled = false;
+    }
+    renderManualExternalLinkedProjectOptions(0);
     updateManualExternalTestingDayValue(1);
 }
 
@@ -3284,6 +3349,7 @@ function openManualExternalAddModal(projectId, event) {
     var modal = document.getElementById('manual-external-add-modal');
     var sourceInput = document.getElementById('manual-external-source-project-id');
     if (sourceInput) sourceInput.value = String(Number(projectId || 0) || 0);
+    renderManualExternalLinkedProjectOptions(projectId);
     if (modal) modal.classList.add('active');
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     var playUrlInput = document.getElementById('manual-external-play-url');
@@ -3294,6 +3360,53 @@ function openManualExternalAddModal(projectId, event) {
 
 function closeManualExternalAddModal(event) {
     var modal = document.getElementById('manual-external-add-modal');
+    if (!modal) return;
+    if (event && event.target && event.target !== modal) return;
+    modal.classList.remove('active');
+}
+
+function resetEditGuestProjectForm() {
+    var form = document.getElementById('edit-guest-project-form');
+    var packageInput = document.getElementById('edit-guest-project-package-name');
+    var testIdInput = document.getElementById('edit-guest-project-test-id');
+    if (form) form.reset();
+    if (packageInput) packageInput.value = '';
+    if (testIdInput) testIdInput.value = '';
+}
+
+function openEditGuestProjectModal(testId, event) {
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+    var targetTest = (Array.isArray(myTests) ? myTests : []).find(function(test) {
+        return Number(test.id) === Number(testId || 0);
+    }) || null;
+    if (!targetTest || !targetTest.is_external) {
+        return;
+    }
+
+    resetEditGuestProjectForm();
+    var packageInput = document.getElementById('edit-guest-project-package-name');
+    var testIdInput = document.getElementById('edit-guest-project-test-id');
+    var playUrlInput = document.getElementById('edit-guest-project-play-url');
+    var ownerInput = document.getElementById('edit-guest-project-owner-username');
+    var groupUrlInput = document.getElementById('edit-guest-project-group-url');
+    if (packageInput) packageInput.value = String(targetTest.external_package_name || targetTest.package || '').trim();
+    if (testIdInput) testIdInput.value = String(Number(targetTest.id || 0) || 0);
+    if (playUrlInput) playUrlInput.value = getExternalTrackPlayUrl(targetTest);
+    if (ownerInput) ownerInput.value = targetTest.owner_username ? ('@' + String(targetTest.owner_username).trim().replace(/^@+/, '')) : '';
+    if (groupUrlInput) groupUrlInput.value = String(targetTest.google_group_url || '').trim();
+
+    var modal = document.getElementById('edit-guest-project-modal');
+    if (modal) modal.classList.add('active');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    if (playUrlInput && typeof playUrlInput.focus === 'function') {
+        playUrlInput.focus();
+    }
+}
+
+function closeEditGuestProjectModal(event) {
+    var modal = document.getElementById('edit-guest-project-modal');
     if (!modal) return;
     if (event && event.target && event.target !== modal) return;
     modal.classList.remove('active');
@@ -3680,6 +3793,8 @@ function renderExternalProjectDetailsModal(test, body) {
     var safePackage = window.escapeHTML(test.package || test.external_package_name || '');
     var safePackageInline = escapeInlineJsString(test.package || test.external_package_name || '');
     var cleanOwnerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+    var canEditGuestProject = Number(test.added_by_tester_id || 0) === Number(userId || 0);
+    var editButtonLabel = window.t('guestProjectEditBtn', {}, lang);
     var ownerLabel = cleanOwnerUsername
         ? '@' + cleanOwnerUsername
         : window.t('externalProjectOwnerMissing', {}, lang);
@@ -3711,12 +3826,13 @@ function renderExternalProjectDetailsModal(test, body) {
         : '';
 
     body.innerHTML = `
-        <div class="card-header" style="margin-bottom: 14px;">
+        <div class="card-header card-header--with-action" style="margin-bottom: 14px;">
             ${renderIcon(test.name || test.package || window.t('unknownLabel', {}, lang), test.icon_url)}
-            <div class="card-info">
+            <div class="card-info card-info--grow">
                 <div class="card-title notranslate">${safeName}</div>
                 <div class="card-subtitle notranslate">${safePackage}</div>
             </div>
+            ${canEditGuestProject ? `<button type="button" class="guest-project-edit-btn" onclick="openEditGuestProjectModal(${Number(test.id || 0)}, event)" aria-label="${window.escapeHTML(editButtonLabel)}" title="${window.escapeHTML(editButtonLabel)}">✏️</button>` : ''}
         </div>
         <div class="details-block">
             <div class="detail-section-title">${window.escapeHTML(window.t('externalProjectDetailTitle', {}, lang))}</div>
@@ -4082,6 +4198,8 @@ function renderProjects(force) {
                 if (tester.username) {
                     cleanUsername = tester.username.replace('@', '');
                     nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label notranslate">@${window.escapeHTML(cleanUsername)}</span></span>`;
+                } else if (tester.full_name) {
+                    nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label">${window.escapeHTML(tester.full_name)}</span></span>`;
                 } else {
                     nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-id">${window.t('idLabel', { id: tester.tester_id }, lang)}</span></span>`;
                 }
@@ -5747,6 +5865,8 @@ function openKarmaDistribution(projectId) {
         const liked = (project.likes || []).find((like) => like.tester_id === tester.tester_id);
         const name = tester.username
             ? '@' + window.escapeHTML(tester.username.replace('@', ''))
+            : tester.full_name
+                ? window.escapeHTML(tester.full_name)
             : window.escapeHTML(window.t('idLabel', { id: tester.tester_id }));
         const stats = window.escapeHTML(window.t('karmaDistributionTesterStats', {
             day: testerDay,

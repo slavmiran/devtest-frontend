@@ -1521,6 +1521,8 @@ async function submitManualExternalTrack(event) {
     var ownerUsernameInput = document.getElementById('manual-external-owner-username');
     var groupUrlInput = document.getElementById('manual-external-group-url');
     var testingDayInput = document.getElementById('manual-external-testing-day');
+    var mutualCheckbox = document.getElementById('manual-external-is-mutual');
+    var linkedProjectInput = document.getElementById('manual-external-linked-project');
 
     var sourceProjectId = Number(sourceProjectInput && sourceProjectInput.value || 0);
     if (!sourceProjectId) {
@@ -1563,6 +1565,11 @@ async function submitManualExternalTrack(event) {
         window.updateManualExternalTestingDayValue(testingDay);
     }
 
+    var isMutual = !!(mutualCheckbox && mutualCheckbox.checked);
+    var linkedMyAppId = isMutual
+        ? Number(linkedProjectInput && linkedProjectInput.value || sourceProjectId || 0)
+        : 0;
+
     try {
         var response = await fetchWithRetry(`${API_BASE}/external-tracks/manual`, {
             method: 'POST',
@@ -1570,10 +1577,13 @@ async function submitManualExternalTrack(event) {
             body: JSON.stringify({
                 tester_id: userId,
                 source_app_id: sourceProjectId,
+                play_store_url: playUrl,
                 package_name: packageName,
                 owner_username: ownerUsername,
                 google_group_url: groupUrl || null,
                 testing_day: testingDay,
+                is_mutual: isMutual,
+                linked_my_app_id: linkedMyAppId || null,
             })
         }, 1);
         var result = await response.json();
@@ -1589,22 +1599,159 @@ async function submitManualExternalTrack(event) {
             window.resetManualExternalAddForm();
         }
         showToast(window.t('manualExternalAddedToast', {}, lang));
-        const refreshPromises = [];
-        if (typeof loadTasks === 'function') {
-            refreshPromises.push(loadTasks(true));
-        }
-        if (typeof loadProjects === 'function') {
-            refreshPromises.push(loadProjects(true));
-        }
-        if (typeof loadGuestApps === 'function') {
-            refreshPromises.push(loadGuestApps({ force: true }));
-        }
-        if (refreshPromises.length) {
-            await Promise.allSettled(refreshPromises);
-        }
+        await refreshGuestProjectSlices();
         return true;
     } catch (error) {
         console.error('Manual external track submit failed:', error);
+        showToast(window.t('networkError', {}, lang));
+        return false;
+    }
+}
+
+async function refreshGuestProjectSlices() {
+    const refreshPromises = [];
+    if (typeof loadTasks === 'function') {
+        refreshPromises.push(loadTasks(true));
+    }
+    if (typeof loadProjects === 'function') {
+        refreshPromises.push(loadProjects(true));
+    }
+    if (typeof loadGuestApps === 'function') {
+        refreshPromises.push(loadGuestApps({ force: true }));
+    }
+    if (refreshPromises.length) {
+        await Promise.allSettled(refreshPromises);
+    }
+}
+
+function applyEditedGuestProjectToLocalState(result) {
+    var normalizedPackage = String(result && result.package_name || '').trim();
+    var ownerUsername = String(result && result.owner_username || '').trim().replace(/^@+/, '');
+    var groupUrl = String(result && result.google_group_url || '').trim();
+    var playStoreUrl = String(result && result.play_store_url || '').trim();
+    var addedByTesterId = Number(result && result.added_by_tester_id || 0);
+
+    myTests.forEach(function(test) {
+        var testPackage = String(test && (test.external_package_name || test.package) || '').trim();
+        if (!test || !test.is_external || testPackage !== normalizedPackage) {
+            return;
+        }
+        test.owner_username = ownerUsername;
+        test.google_group_url = groupUrl;
+        test.play_store_url = playStoreUrl;
+        test.added_by_tester_id = addedByTesterId;
+        if (Number(result && result.owner_telegram_id || 0) > 0) {
+            test.owner_id = Number(result.owner_telegram_id || 0);
+            test.external_owner_telegram_id = Number(result.owner_telegram_id || 0);
+        }
+    });
+
+    guestProjects = (Array.isArray(guestProjects) ? guestProjects : []).map(function(project) {
+        var projectPackage = String(project && (project.package_name || project.name) || '').trim();
+        if (!project || projectPackage !== normalizedPackage) {
+            return project;
+        }
+        return {
+            ...project,
+            owner_username: ownerUsername,
+            google_group_url: groupUrl,
+            play_store_url: playStoreUrl,
+            added_by_tester_id: addedByTesterId,
+            owner_telegram_id: Number(result && result.owner_telegram_id || project.owner_telegram_id || 0),
+            owner_id: Number(result && result.owner_telegram_id || project.owner_id || 0),
+        };
+    });
+
+    persistTestsCacheSnapshot();
+    renderTests(true);
+    if (typeof renderGuestProjectsSection === 'function') {
+        renderGuestProjectsSection(true);
+    }
+    refreshOpenModals();
+}
+
+async function submitEditGuestProject(event) {
+    if (event && typeof event.preventDefault === 'function') {
+        event.preventDefault();
+    }
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+
+    var form = document.getElementById('edit-guest-project-form');
+    if (form && typeof form.reportValidity === 'function' && !form.reportValidity()) {
+        return false;
+    }
+
+    var packageInput = document.getElementById('edit-guest-project-package-name');
+    var playUrlInput = document.getElementById('edit-guest-project-play-url');
+    var ownerUsernameInput = document.getElementById('edit-guest-project-owner-username');
+    var groupUrlInput = document.getElementById('edit-guest-project-group-url');
+    var testIdInput = document.getElementById('edit-guest-project-test-id');
+
+    var packageName = String(packageInput && packageInput.value || '').trim();
+    if (!packageName) {
+        handleApiError('guest_app_not_found');
+        return false;
+    }
+
+    var playUrl = String(playUrlInput && playUrlInput.value || '').trim();
+    if (playUrl.indexOf('id=') === -1 || extractPackageNameFromPlayUrl(playUrl) !== packageName) {
+        showToast(window.t('invalidPlayLink', {}, lang));
+        return false;
+    }
+
+    if (typeof window.normalizeManualExternalOwnerNicknameInput === 'function') {
+        window.normalizeManualExternalOwnerNicknameInput(ownerUsernameInput);
+    }
+    var ownerUsername = String(ownerUsernameInput && ownerUsernameInput.value || '').trim();
+    if (!ownerUsername || ownerUsername === '@') {
+        showToast(window.t('manualExternalInvalidOwnerUsername', {}, lang));
+        return false;
+    }
+
+    var groupUrl = String(groupUrlInput && groupUrlInput.value || '').trim();
+    if (groupUrl && !isValidGoogleGroupUrl(groupUrl)) {
+        handleApiError('invalid_google_group_url');
+        return false;
+    }
+
+    try {
+        var response = await fetchWithRetry(`${API_BASE}/guest-apps/${encodeURIComponent(packageName)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tester_id: userId,
+                owner_username: ownerUsername,
+                google_group_url: groupUrl || null,
+                play_store_url: playUrl,
+            })
+        }, 1);
+        var result = await response.json();
+        if (!response.ok || !result || result.status !== 'success') {
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            return false;
+        }
+
+        applyEditedGuestProjectToLocalState(result);
+        if (typeof window.closeEditGuestProjectModal === 'function') {
+            window.closeEditGuestProjectModal();
+        }
+        if (typeof window.resetEditGuestProjectForm === 'function') {
+            window.resetEditGuestProjectForm();
+        }
+        showToast(window.t('guestProjectEditSaveToast', {}, lang));
+        await refreshGuestProjectSlices();
+        var editedTestId = Number(testIdInput && testIdInput.value || 0);
+        if (editedTestId) {
+            var detailsModal = document.getElementById('project-details-modal');
+            if (detailsModal) {
+                detailsModal.dataset.appId = String(editedTestId);
+            }
+        }
+        return true;
+    } catch (error) {
+        console.error('Guest project edit submit failed:', error);
         showToast(window.t('networkError', {}, lang));
         return false;
     }
@@ -2747,14 +2894,19 @@ function handleApiError(code, details = {}) {
         insufficient_bust_balance: 'err_insufficient_bust_balance',
         transaction_failed: 'err_transaction_failed',
         invalid_init_data: 'guestClaimAuthErrorToast',
+        invalid_play_link: 'invalidPlayLink',
         grant_not_ready: 'err_grant_not_ready',
         grant_too_many_skips: 'err_grant_too_many_skips',
         grant_already_claimed: 'err_grant_already_claimed',
         invalid_start_date: 'err_grant_unavailable',
         invalid_google_group_url: 'invalid_google_group_url',
+        manual_external_owner_missing: 'manualExternalInvalidOwnerUsername',
         testing_not_found: 'testing_not_found',
         database_error: 'database_error',
         project_pending_completion: 'projectPendingCompletionAlert',
+        external_source_project_invalid: 'external_source_project_invalid',
+        guest_app_not_found: 'guest_app_not_found',
+        guest_app_forbidden: 'guest_app_forbidden',
         feedback_not_found: 'feedback_not_found',
         feedback_forbidden: 'feedback_forbidden',
         feedback_already_processed: 'feedback_already_processed',
@@ -3667,7 +3819,7 @@ function refreshOpenModals() {
     const projectDetailsModal = document.getElementById('project-details-modal');
     if (projectDetailsModal && projectDetailsModal.classList.contains('active') && window.openProjectDetailsModal) {
         const activeProjectId = Number(projectDetailsModal.dataset.appId || 0);
-        if (activeProjectId > 0) {
+        if (activeProjectId !== 0) {
             window.openProjectDetailsModal(activeProjectId);
         }
     }
@@ -3874,6 +4026,7 @@ function _mapTestsFromApi(data) {
             reciprocal_app_package_name: app.reciprocal_app_package_name || '',
             reciprocal_app_play_store_url: app.reciprocal_app_play_store_url || '',
             run_iteration: Number(app.run_iteration || 1),
+            play_store_url: app.play_store_url || '',
             has_clicked_store: existingTest ? !!existingTest.has_clicked_store : false,
             request_reviews: app.request_reviews !== false,
             play_feedback_submitted: !!app.play_feedback_submitted,
@@ -3930,6 +4083,7 @@ function _mapTestsFromApi(data) {
             external_owner_telegram_id: Number(app.external_owner_telegram_id || app.owner_id || 0),
             external_category: app.external_category || 'APP',
             external_guest_app_id: app.external_guest_app_id || '',
+            added_by_tester_id: Number(app.added_by_tester_id || 0),
             external_last_completed_control_day: Number(app.external_last_completed_control_day || 0),
             external_days_since_last_completed: app.external_days_since_last_completed === null || typeof app.external_days_since_last_completed === 'undefined'
                 ? null

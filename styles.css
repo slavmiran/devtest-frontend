@@ -1308,6 +1308,7 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     appearance: none;
     width: 18px;
     height: 18px;
+    margin-top: -6px;
     border-radius: 50%;
     border: 2px solid rgba(10, 132, 255, 0.85);
     background: #fff;
@@ -1320,9 +1321,81 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     height: 18px;
     border-radius: 50%;
     border: 2px solid rgba(10, 132, 255, 0.85);
+    transform: translateY(-6px);
+    box-sizing: border-box;
     background: #fff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
     cursor: pointer;
+}
+
+.manual-external-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+}
+
+.manual-external-check input {
+    margin-top: 4px;
+}
+
+.manual-external-check-text {
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--text-color);
+}
+
+#manual-external-linked-project-group.is-hidden {
+    display: none;
+}
+
+.card-header--with-action {
+    align-items: flex-start;
+}
+
+.card-info--grow {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.guest-project-edit-btn {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 16px;
+    flex-shrink: 0;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.guest-project-edit-btn:active {
+    transform: scale(0.97);
+}
+
+.guest-project-edit-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.manual-external-day-range::-moz-range-track {
+    height: 6px;
+    background: transparent;
+    border: none;
+}
+
+.manual-external-day-range::-webkit-slider-runnable-track {
+    height: 6px;
+    background: transparent;
+    border: none;
 }
 
 .manual-external-modal-actions {
