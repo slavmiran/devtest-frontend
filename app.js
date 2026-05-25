@@ -3163,7 +3163,7 @@ function resetProjectForms() {
     document.getElementById('app-limit-mutual').value = '12';
     document.getElementById('app-limit-bounty').value = '12';
     document.getElementById('app-bounty-per-tester').value = '100';
-    document.getElementById('app-request-reviews').checked = true;
+    document.getElementById('app-request-reviews').checked = false;
     document.getElementById('edit-mode').value = 'mutual';
     document.getElementById('edit-target-lang').value = 'ALL';
     document.getElementById('edit-limit-mutual').value = '12';
@@ -4087,6 +4087,7 @@ function _mapTestsFromApi(data) {
             start_date: app.start_date,
             owner_id: Number(app.owner_id || 0),
             owner_username: app.owner_username,
+            owner_karma: Number(app.owner_karma || 0),
             active_testers_count: app.active_testers_count,
             days_since_publish: app.days_since_publish,
             google_sync_day: app.google_sync_day || 0,
@@ -4954,6 +4955,7 @@ function _mapProjectsFromApi(data) {
             google_sync_day: project.google_sync_day || 0,
             sync_message: project.sync_message || '',
             last_sync_date: project.last_sync_date || null,
+            sync_notification_sent: !!project.sync_notification_sent,
             last_owner_activity: project.last_owner_activity || null,
             published_to_market_at: project.published_to_market_at || null,
             last_mass_invite_at: project.last_mass_invite_at || null,
@@ -6339,6 +6341,7 @@ async function saveProjectSync() {
                 google_sync_day: confirmedProject.google_sync_day,
                 sync_message: confirmedProject.sync_message,
                 last_sync_date: confirmedProject.last_sync_date,
+                sync_notification_sent: !!confirmedProject.sync_notification_sent,
                 resumed_from_pending: false,
             };
         }
@@ -6349,6 +6352,9 @@ async function saveProjectSync() {
         var resolvedLastSyncDate = confirmedProject
             ? (confirmedProject.last_sync_date || today)
             : (data.last_sync_date || today);
+        var resolvedSyncNotificationSent = confirmedProject
+            ? !!confirmedProject.sync_notification_sent
+            : (data.sync_notification_sent !== false);
         var resumedFromPending = !!(data && data.resumed_from_pending);
         if (!resumedFromPending && confirmedProject) {
             var wasPendingBeforeSync = !!(
@@ -6367,6 +6373,7 @@ async function saveProjectSync() {
             project.google_sync_day = resolvedSyncDay;
             project.sync_message = resolvedSyncMessage;
             project.last_sync_date = resolvedLastSyncDate;
+            project.sync_notification_sent = resolvedSyncNotificationSent;
             if (resumedFromPending) {
                 project.status = 'active';
                 project.app_status = 'active';
@@ -6379,6 +6386,7 @@ async function saveProjectSync() {
                 test.google_sync_day = resolvedSyncDay;
                 test.sync_message = resolvedSyncMessage;
                 test.last_sync_date = resolvedLastSyncDate;
+                test.sync_notification_sent = resolvedSyncNotificationSent;
                 if (resumedFromPending) {
                     test.app_status = 'active';
                     recomputeLocalTestState(test);

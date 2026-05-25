@@ -1040,11 +1040,12 @@ function hasMeaningfulProjectSync(test) {
     if (test && test.sync_message && String(test.sync_message).trim()) {
         return true;
     }
-    var platformDay = getProjectPlatformDay(test);
-    if (!platformDay) {
-        return false;
+    var createdAt = parseLocalDateOnly(test && test.created_at);
+    var lastSyncDate = parseLocalDateOnly(test && test.last_sync_date);
+    if (createdAt && lastSyncDate && createdAt.getTime() !== lastSyncDate.getTime()) {
+        return true;
     }
-    return getProjectCurrentGoogleDay(test, platformDay) !== platformDay;
+    return !!(test && test.sync_notification_sent);
 }
 
 function isProjectSynced(test) {
@@ -7245,7 +7246,8 @@ function openProjectDetailsModal(appId) {
         : Math.max(0, 14 - daysSinceCreated);
     const potential = totalCheckins + left;
     const ownerActivity = getOwnerActivityMeta(test.last_owner_activity);
-    const ownerKarma = Number.isFinite(Number(test.owner_karma)) ? Number(test.owner_karma) : 0;
+    const ownerKarmaRaw = test && typeof test.owner_karma !== 'undefined' ? test.owner_karma : test.ownerKarma;
+    const ownerKarma = Number.isFinite(Number(ownerKarmaRaw)) ? Number(ownerKarmaRaw) : 0;
     const hasPlayReviewRequest = !!test.request_reviews;
     const rewardsSummary = (test && test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
     const reviewRejected = !!rewardsSummary.review_rejected;
