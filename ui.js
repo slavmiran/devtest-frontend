@@ -1922,6 +1922,187 @@ function getNextExternalControlDayMeta(test) {
     };
 }
 
+var _externalContinueModeState = null;
+var _externalContinueModeStorageKey = 'devtest_external_continue_mode_v1';
+
+function _loadExternalContinueModeState() {
+    if (_externalContinueModeState && typeof _externalContinueModeState === 'object') {
+        return _externalContinueModeState;
+    }
+    try {
+        var raw = localStorage.getItem(_externalContinueModeStorageKey);
+        var parsed = raw ? JSON.parse(raw) : {};
+        _externalContinueModeState = parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        _externalContinueModeState = {};
+    }
+    return _externalContinueModeState;
+}
+
+function _persistExternalContinueModeState() {
+    try {
+        var state = _loadExternalContinueModeState();
+        if (!state || !Object.keys(state).length) {
+            localStorage.removeItem(_externalContinueModeStorageKey);
+            return;
+        }
+        localStorage.setItem(_externalContinueModeStorageKey, JSON.stringify(state));
+    } catch (error) {}
+}
+
+function getExternalContinueModeKey(test) {
+    var progressId = Number(test && test.progress_id || 0);
+    var startDate = String(test && test.start_date || '').trim();
+    if (progressId <= 0 || !startDate) return '';
+    return String(progressId) + ':' + startDate;
+}
+
+function syncExternalContinueModeState() {
+    var state = _loadExternalContinueModeState();
+    var tests = Array.isArray(myTests) ? myTests : [];
+    var validKeys = {};
+    var didChange = false;
+
+    tests.forEach(function(test) {
+        if (!test || !test.is_external) return;
+        var key = getExternalContinueModeKey(test);
+        if (!key) return;
+        validKeys[key] = true;
+    });
+
+    Object.keys(state).forEach(function(key) {
+        if (!validKeys[key]) {
+            delete state[key];
+            didChange = true;
+        }
+    });
+
+    if (didChange) {
+        _persistExternalContinueModeState();
+    }
+}
+
+function isExternalContinueModeEnabled(test) {
+    if (!test || !test.is_external) return false;
+    var meta = getNextExternalControlDayMeta(test);
+    if (meta.nextControlDay) return false;
+    var key = getExternalContinueModeKey(test);
+    if (!key) return false;
+    return !!_loadExternalContinueModeState()[key];
+}
+
+function setExternalContinueModeEnabled(test, enabled) {
+    var key = getExternalContinueModeKey(test);
+    if (!key) return;
+    var state = _loadExternalContinueModeState();
+    if (enabled) {
+        state[key] = true;
+    } else {
+        delete state[key];
+    }
+    _persistExternalContinueModeState();
+}
+
+function activateExternalContinueModeFromUi(testId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var test = getExternalProjectTest(testId);
+    if (!test || !getExternalStatusPresentation(test).isPostControlWindow) return;
+
+    setExternalContinueModeEnabled(test, true);
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    renderTests(true);
+    showToast(window.t('externalProjectContinueToast', {}, lang));
+    setTimeout(function() {
+        var card = document.getElementById('test-card-' + Number(test.id || 0));
+        if (!card) return;
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.remove('test-card-highlight-pulse');
+        void card.offsetWidth;
+        card.classList.add('test-card-highlight-pulse');
+        setTimeout(function() {
+            card.classList.remove('test-card-highlight-pulse');
+        }, 3600);
+    }, 80);
+}
+
+function getExternalStatusPresentation(test) {
+    var meta = getNextExternalControlDayMeta(test);
+    var isDoneToday = String(test && test.status || '') === 'done';
+    var lastCheckDate = String(test && test.last_check_date || '').trim();
+    var statusText = '';
+    var substatusText = '';
+
+    if (isDoneToday) {
+        statusText = window.t('externalProjectCheckedTodayBtn', {}, lang);
+        substatusText = meta.nextControlDay
+            ? window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang)
+            : window.t('externalTestsAllControlsDone', {}, lang);
+    } else if (test && test.external_control_day_due) {
+        statusText = window.t('externalTestsControlDayDue', { day: meta.currentDay }, lang);
+        substatusText = lastCheckDate
+            ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
+            : '';
+    } else if (meta.nextControlDay) {
+        statusText = window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang);
+        substatusText = lastCheckDate
+            ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
+            : '';
+    } else {
+        statusText = window.t('externalTestsAllControlsDone', {}, lang);
+        substatusText = lastCheckDate
+            ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
+            : '';
+    }
+
+    return {
+        meta: meta,
+        statusText: statusText,
+        substatusText: substatusText,
+        isDoneToday: isDoneToday,
+        isPostControlWindow: !meta.nextControlDay,
+    };
+}
+
+function highlightExternalTestActionRow(testId) {
+    var actionRow = document.getElementById('external-test-actions-' + Number(testId || 0));
+    if (!actionRow) return false;
+
+    actionRow.classList.remove('highlight-target');
+    void actionRow.offsetWidth;
+    actionRow.classList.add('highlight-target');
+    if (window._externalTestsActionHighlightTimer) {
+        clearTimeout(window._externalTestsActionHighlightTimer);
+    }
+    window._externalTestsActionHighlightTimer = setTimeout(function() {
+        actionRow.classList.remove('highlight-target');
+        window._externalTestsActionHighlightTimer = null;
+    }, 2600);
+    return true;
+}
+
+function renderExternalContinuedActions(test, safePackageInline, ownerUsername) {
+    if (!test || String(test.status || '') === 'done') {
+        return '';
+    }
+    var safeOwner = escapeInlineJsString(ownerUsername || '');
+    return `
+        <div class="action-row external-tests-actions" id="external-test-actions-${Number(test.id || 0)}">
+            <button class="btn btn-secondary external-tests-open-btn" onclick="event.stopPropagation(); highlightExternalTestActionRow(${Number(test.id || 0)}); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
+                ${window.escapeHTML(t.openBtn)}
+            </button>
+            <div class="split-btn-group external-tests-confirm-group" onclick="event.stopPropagation();">
+                <button class="btn external-tests-confirm-btn split-btn-main" onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
+                    ${window.escapeHTML(window.t('externalProjectCheckinBtn', {}, lang))}
+                </button>
+                <button type="button" class="btn external-tests-attach-btn split-btn-options" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${safeOwner}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>
+            </div>
+        </div>
+    `;
+}
+
 function renderExternalGuestTestsSection() {
     var section = document.getElementById('external-tests-section');
     var countNode = document.getElementById('external-tests-count');
@@ -1964,8 +2145,9 @@ function renderExternalGuestTestsSection() {
         scrollWrap.classList.toggle('is-single', externalTests.length === 1);
     }
     list.innerHTML = externalTests.map(function(test) {
-        var meta = getNextExternalControlDayMeta(test);
-        var isDoneToday = String(test.status || '') === 'done';
+        var statusMeta = getExternalStatusPresentation(test);
+        var meta = statusMeta.meta;
+        var isDoneToday = statusMeta.isDoneToday;
         var safeName = window.escapeHTML(test.name || test.package || window.t('unknownLabel', {}, lang));
         var safePackage = window.escapeHTML(test.package || test.external_package_name || '');
         var safePackageInline = escapeInlineJsString(test.package || test.external_package_name || '');
@@ -1978,25 +2160,28 @@ function renderExternalGuestTestsSection() {
             ? `<button type="button" class="external-tests-owner external-tests-owner-link notranslate" onclick="return openTelegramProfile('${safeOwnerUsernameInline}', event)">${window.escapeHTML(ownerLabel)}</button>`
             : `<div class="external-tests-owner">${window.escapeHTML(ownerLabel)}</div>`;
         var dayChipHtml = `<span class="meta-chip">${window.escapeHTML(window.t('externalTrackDayLabel', { day: meta.currentDay }, lang))}</span>`;
-        var originChipHtml = renderGuestOriginChip(test.external_source);
-        var nextControlText = meta.nextControlDay
-            ? window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang)
-            : window.t('externalTestsAllControlsDone', {}, lang);
-        var lastCompletedDay = Number(test.external_last_completed_control_day || 0);
-        var substatusText = !isDoneToday && lastCompletedDay > 0
-            ? window.t('externalTestsLastControlDay', { day: lastCompletedDay }, lang)
+        var originChipHtml = (!!test.is_external && !!String(test.external_source || '').trim())
+            ? renderGuestOriginChip(test.external_source)
             : '';
+        var primaryActionLabel = statusMeta.isPostControlWindow
+            ? window.t('externalProjectContinueBtn', {}, lang)
+            : window.t('externalProjectCheckinBtn', {}, lang);
+        var primaryActionClick = statusMeta.isPostControlWindow
+            ? `activateExternalContinueModeFromUi(${Number(test.id || 0)}, event)`
+            : `sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)`;
         var actionsHtml = '';
         if (!isDoneToday) {
-            var attachButtonHtml = `<button type="button" class="btn btn-secondary external-tests-attach-btn" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(ownerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`;
+            var attachButtonHtml = statusMeta.isPostControlWindow
+                ? ''
+                : `<button type="button" class="btn external-tests-attach-btn split-btn-options" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(ownerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`;
             actionsHtml = `
-                <div class="external-tests-actions">
-                    <button class="btn btn-secondary external-tests-open-btn" onclick="event.stopPropagation(); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
+                <div class="action-row external-tests-actions" id="external-test-actions-${Number(test.id || 0)}">
+                    <button class="btn btn-secondary external-tests-open-btn" onclick="event.stopPropagation(); highlightExternalTestActionRow(${Number(test.id || 0)}); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
                         ${window.escapeHTML(t.openBtn)}
                     </button>
-                    <div class="external-tests-confirm-group" onclick="event.stopPropagation();">
-                        <button class="btn external-tests-confirm-btn" onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
-                            ${window.escapeHTML(window.t('externalProjectCheckinBtn', {}, lang))}
+                    <div class="${statusMeta.isPostControlWindow ? 'external-tests-confirm-group' : 'split-btn-group external-tests-confirm-group'}" onclick="event.stopPropagation();">
+                        <button class="btn external-tests-confirm-btn ${statusMeta.isPostControlWindow ? '' : 'split-btn-main'}" onclick="${primaryActionClick}">
+                            ${window.escapeHTML(primaryActionLabel)}
                         </button>
                         ${attachButtonHtml}
                     </div>
@@ -2017,8 +2202,8 @@ function renderExternalGuestTestsSection() {
                     ${ownerLabelHtml}
                     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${originChipHtml}${dayChipHtml}</div>
                 </div>
-                <div class="external-tests-status">${window.escapeHTML(nextControlText)}</div>
-                <div class="external-tests-substatus">${window.escapeHTML(substatusText)}</div>
+                <div class="external-tests-status">${window.escapeHTML(statusMeta.statusText)}</div>
+                <div class="external-tests-substatus">${window.escapeHTML(statusMeta.substatusText)}</div>
                 ${actionsHtml}
             </div>
         `;
@@ -2029,6 +2214,7 @@ function renderExternalGuestTestsSection() {
 
 function renderTests(force) {
     if (!force && !isTabVisible('tests')) return;
+    syncExternalContinueModeState();
     const activeList = document.getElementById('tests-list');
     const doneList = document.getElementById('done-list');
     const pendingSection = document.getElementById('pending-release-section');
@@ -2046,7 +2232,8 @@ function renderTests(force) {
 
     myTests.forEach((test) => {
         const isExternal = !!test.is_external;
-        const hasGuestOrigin = isGuestOriginTest(test);
+        const hasGuestOrigin = hasGuestLinkRelationship(test);
+        const showGuestOriginChip = shouldShowGuestOriginChip(test);
         const isPendingCompletion = !!test.is_pending_completion;
         const isPendingForTester = isPendingCompletion && Number(test.testing_days || 0) >= 15;
         const isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' && !isPendingCompletion;
@@ -2106,27 +2293,32 @@ function renderTests(force) {
         let actionsHtml = '';
         
         if (isExternal) {
-            var externalProofDisabled = !safeOwnerUsername || test.status === 'done';
-            var externalNoteKey = externalProofDisabled && !safeOwnerUsername
-                ? 'externalTrackOwnerMissing'
-                : (test.status === 'done' ? 'externalTrackDoneToday' : 'externalTrackActionHint');
-            actionsHtml = `
-                <div class="external-track-banner">
-                    <div class="external-track-banner-top">
-                        <span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackBadge', {}, lang))}</span>
-                        <span class="external-track-day">${window.escapeHTML(window.t('externalTrackDayLabel', { day: userTestingDay || Number(test.testing_days || 0) || 0 }, lang))}</span>
+            var isContinuedExternal = isExternalContinueModeEnabled(test);
+            if (isContinuedExternal) {
+                actionsHtml = renderExternalContinuedActions(test, safePackage, safeOwnerUsername);
+            } else {
+                var externalProofDisabled = !safeOwnerUsername || test.status === 'done';
+                var externalNoteKey = externalProofDisabled && !safeOwnerUsername
+                    ? 'externalTrackOwnerMissing'
+                    : (test.status === 'done' ? 'externalTrackDoneToday' : 'externalTrackActionHint');
+                actionsHtml = `
+                    <div class="external-track-banner">
+                        <div class="external-track-banner-top">
+                            <span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackBadge', {}, lang))}</span>
+                            <span class="external-track-day">${window.escapeHTML(window.t('externalTrackDayLabel', { day: userTestingDay || Number(test.testing_days || 0) || 0 }, lang))}</span>
+                        </div>
+                        <div class="external-track-banner-text">${window.escapeHTML(window.t(externalNoteKey, { day: userTestingDay || Number(test.testing_days || 0) || 0 }, lang))}</div>
                     </div>
-                    <div class="external-track-banner-text">${window.escapeHTML(window.t(externalNoteKey, { day: userTestingDay || Number(test.testing_days || 0) || 0 }, lang))}</div>
-                </div>
-                <div class="action-row">
-                    <button class="btn btn-secondary" style="flex:1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '')">
-                        ${window.escapeHTML(window.t('externalTrackOpenAppBtn', {}, lang))}
-                    </button>
-                    <button class="btn" style="flex:1; ${externalProofDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${externalProofDisabled ? 'disabled' : ''} onclick="sendExternalTrackingProofFromUi(${test.id}, '${safeOwnerUsername}', event)">
-                        ${window.escapeHTML(window.t(test.status === 'done' ? 'externalTrackProofSentBtn' : 'externalTrackProofBtn', {}, lang))}
-                    </button>
-                </div>
-            `;
+                    <div class="action-row">
+                        <button class="btn btn-secondary" style="flex:1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '')">
+                            ${window.escapeHTML(window.t('externalTrackOpenAppBtn', {}, lang))}
+                        </button>
+                        <button class="btn" style="flex:1; ${externalProofDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${externalProofDisabled ? 'disabled' : ''} onclick="sendExternalTrackingProofFromUi(${test.id}, '${safeOwnerUsername}', event)">
+                            ${window.escapeHTML(window.t(test.status === 'done' ? 'externalTrackProofSentBtn' : 'externalTrackProofBtn', {}, lang))}
+                        </button>
+                    </div>
+                `;
+            }
         }
         // State A: grant available now (Day >= 15)
         else if (test.isReadyToClaim) {
@@ -2295,7 +2487,7 @@ function renderTests(force) {
         const doneBadgeHtml = test.status === 'done' && !test.isReadyToClaim
             ? '<div class="done-status-pill">' + window.escapeHTML(t.doneTodayText) + '</div><div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
             : '';
-        const externalMetaHtml = hasGuestOrigin
+        const externalMetaHtml = showGuestOriginChip
             ? `<div class="external-track-inline-meta">${isExternal ? `<span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackCardChip', {}, lang))}</span>` : ''}${renderGuestOriginChip(test.external_source)}${isExternal ? `<span class="external-track-inline-note">${window.escapeHTML(window.t('externalTrackInlineMeta', { source: formatExternalSourceLabel(test.external_source) }, lang))}</span>` : ''}</div>`
             : '';
         const cardHeaderLinkStart = `<div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">`;
@@ -3110,13 +3302,23 @@ function renderGuestOriginChip(source) {
     return `<span class="meta-chip ${meta.className}">${window.escapeHTML(meta.chipIcon + ' ' + meta.label)}</span>`;
 }
 
-function isGuestOriginTest(test) {
+function hasGuestLinkRelationship(test) {
     if (!test) return false;
-    return !!test.is_external || !!String(test.external_source || '').trim();
+    return !!test.is_external || !!String(test.external_source || '').trim() || Number(test.external_source_app_id || 0) > 0;
+}
+
+function shouldShowGuestOriginChip(test) {
+    if (!test) return false;
+    return !!test.is_external && !!String(test.external_source || '').trim();
+}
+
+function isGuestOriginTest(test) {
+    return hasGuestLinkRelationship(test);
 }
 
 function shouldKeepExternalTestInVoluntarySection(test) {
     if (!test || !test.is_external) return false;
+    if (isExternalContinueModeEnabled(test)) return false;
     return !test.external_control_day_due || String(test.status || '') === 'done';
 }
 
@@ -3130,29 +3332,20 @@ function getExternalTrackPlayUrl(guest) {
 }
 
 function renderManualExternalLinkedProjectOptions(preferredProjectId) {
-    var select = document.getElementById('manual-external-linked-project');
-    if (!select) return;
-
+    var checkbox = document.getElementById('manual-external-is-mutual');
+    var sourceInput = document.getElementById('manual-external-source-project-id');
     var projects = getEligibleExternalTrackProjects();
-    if (!projects.length) {
-        select.innerHTML = `<option value="">${window.escapeHTML(window.t('manualExternalLinkedProjectPlaceholder', {}, lang))}</option>`;
-        select.value = '';
-        updateManualExternalMutualState();
-        return;
-    }
-
-    var resolvedPreferredId = Number(preferredProjectId || select.value || 0);
-    var hasPreferred = projects.some(function(project) {
-        return Number(project.id) === resolvedPreferredId;
+    var resolvedSourceProjectId = Number(preferredProjectId || (sourceInput && sourceInput.value) || 0);
+    var hasEligibleSource = projects.some(function(project) {
+        return Number(project.id) === resolvedSourceProjectId;
     });
-    var selectedProjectId = hasPreferred ? resolvedPreferredId : Number(projects[0].id || 0);
 
-    select.innerHTML = projects.map(function(project) {
-        var projectId = Number(project.id || 0);
-        var isSelected = projectId === selectedProjectId;
-        return `<option value="${window.escapeHTML(String(projectId || ''))}"${isSelected ? ' selected' : ''}>${window.escapeHTML(project.name || window.t('unknownLabel', {}, lang))}</option>`;
-    }).join('');
-    select.value = String(selectedProjectId || '');
+    if (checkbox) {
+        checkbox.disabled = !hasEligibleSource;
+        if (!hasEligibleSource) {
+            checkbox.checked = false;
+        }
+    }
     updateManualExternalMutualState();
 }
 
@@ -3160,19 +3353,22 @@ function updateManualExternalMutualState() {
     var checkbox = document.getElementById('manual-external-is-mutual');
     var select = document.getElementById('manual-external-linked-project');
     var group = document.getElementById('manual-external-linked-project-group');
-    var hasProjectOptions = !!(select && select.options.length && String(select.options[0].value || '').trim() !== '');
-    var isEnabled = !!(checkbox && checkbox.checked && hasProjectOptions);
+    var sourceInput = document.getElementById('manual-external-source-project-id');
+    var sourceProjectId = Number(sourceInput && sourceInput.value || 0);
+    var hasEligibleSource = getEligibleExternalTrackProjects().some(function(project) {
+        return Number(project.id) === sourceProjectId;
+    });
     if (group) {
-        group.classList.toggle('is-hidden', !(checkbox && checkbox.checked));
+        group.classList.add('is-hidden');
     }
     if (checkbox) {
-        checkbox.disabled = !hasProjectOptions;
-        if (!hasProjectOptions) {
+        checkbox.disabled = !hasEligibleSource;
+        if (!hasEligibleSource) {
             checkbox.checked = false;
         }
     }
     if (select) {
-        select.disabled = !isEnabled;
+        select.disabled = true;
     }
 }
 
@@ -3738,6 +3934,8 @@ function openGuestLinkRemoveModalFromTest(testId, event) {
         sourceAppId: Number(test.external_source_app_id || 0),
         appName: test.name || test.package || window.t('unknownLabel', {}, lang),
         testerLabel: ownerUsername ? '@' + ownerUsername : '',
+        removeFromMyTests: true,
+        removeFromMyTesters: false,
     });
 }
 
@@ -3760,6 +3958,8 @@ function openGuestLinkRemoveModalFromTester(projectId, progressId, event) {
         sourceAppId: Number(projectId || 0),
         appName: record.project.name || window.t('unknownLabel', {}, lang),
         testerLabel: testerLabel,
+        removeFromMyTests: false,
+        removeFromMyTesters: true,
     });
 }
 
@@ -3873,6 +4073,26 @@ async function sendExternalDailyCheckinFromUi(testId, event) {
     return result;
 }
 
+async function submitExternalGuestActivityFromUi(testId) {
+    var test = getExternalProjectTest(testId);
+    if (!test) return null;
+
+    if (!test.external_control_day_due) {
+        return sendExternalDailyCheckinFromUi(testId);
+    }
+    if (typeof window.submitExternalTrackingProof !== 'function') return null;
+
+    var result = await window.submitExternalTrackingProof(test.progress_id, test.id);
+    if (!result) return null;
+
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    var modal = document.getElementById('project-details-modal');
+    if (modal && modal.classList.contains('active') && String(modal.dataset.appId || '') === String(test.id)) {
+        openProjectDetailsModal(test.id);
+    }
+    return result;
+}
+
 async function sendExternalScreenshotAndConfirmFromUi(testId, ownerUsername, event) {
     if (event) {
         event.preventDefault();
@@ -3887,7 +4107,7 @@ async function sendExternalScreenshotAndConfirmFromUi(testId, ownerUsername, eve
         return;
     }
 
-    var result = await sendExternalDailyCheckinFromUi(testId);
+    var result = await submitExternalGuestActivityFromUi(testId);
     if (!result) return;
 
     var messageText = window.t('externalProjectScreenshotMessageTemplate', getExternalProjectOwnerMessageParams(test), lang);
@@ -3918,7 +4138,7 @@ function getExternalProjectOwnerMessageParams(test) {
     };
 }
 
-function sendExternalBugReportFromUi(testId, event) {
+async function sendExternalBugReportFromUi(testId, event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -3931,6 +4151,9 @@ function sendExternalBugReportFromUi(testId, event) {
         showToast(window.t('externalProjectOwnerMissing', {}, lang));
         return;
     }
+
+    var result = await submitExternalGuestActivityFromUi(testId);
+    if (!result) return;
 
     var messageText = window.t('externalProjectBugReportMessageTemplate', getExternalProjectOwnerMessageParams(test), lang);
     copyTextWithToast(messageText, 'externalTrackCopied');
@@ -3991,24 +4214,31 @@ function renderExternalProjectDetailsModal(test, body) {
     var ownerLabel = cleanOwnerUsername
         ? '@' + cleanOwnerUsername
         : window.t('externalProjectOwnerMissing', {}, lang);
-    var currentDay = getExternalCurrentTestingDay(test);
-    var controlMeta = getExternalTesterControlMeta(test);
+    var statusMeta = getExternalStatusPresentation(test);
+    var currentDay = statusMeta.meta.currentDay;
     var playUrl = getExternalTrackPlayUrl(test);
     var safePlayUrl = escapeInlineJsString(playUrl);
     var groupUrl = String(test.google_group_url || '').trim();
     var safeGroupUrl = escapeInlineJsString(groupUrl);
-    var isDoneToday = String(test.status || '') === 'done';
+    var isDoneToday = statusMeta.isDoneToday;
     var isControlDayDue = !!test.external_control_day_due;
-    var originChipHtml = renderGuestOriginChip(test.external_source);
+    var originChipHtml = shouldShowGuestOriginChip(test) ? renderGuestOriginChip(test.external_source) : '';
     var primaryActionDisabled = !!isDoneToday;
     var primaryActionLabel = isDoneToday
         ? window.t('externalProjectCheckedTodayBtn', {}, lang)
-        : (isControlDayDue
+        : (statusMeta.isPostControlWindow
+            ? window.t('externalProjectContinueBtn', {}, lang)
+            : (isControlDayDue
             ? window.t('externalTrackProofBtn', {}, lang)
-            : window.t('externalProjectCheckinBtn', {}, lang));
-    var primaryActionClick = isControlDayDue
+            : window.t('externalProjectCheckinBtn', {}, lang)));
+    var primaryActionClick = statusMeta.isPostControlWindow
+        ? `activateExternalContinueModeFromUi(${Number(test.id || 0)}, event)`
+        : (isControlDayDue
         ? `sendExternalTrackingProofFromUi(${Number(test.id || 0)}, '${escapeInlineJsString(cleanOwnerUsername)}', event)`
-        : `sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)`;
+        : `sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)`);
+    var attachButtonHtml = statusMeta.isPostControlWindow
+        ? ''
+        : `<button class="btn external-tests-attach-btn split-btn-options" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(cleanOwnerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}" ${primaryActionDisabled ? 'disabled' : ''}>${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`;
     var groupBlockHtml = groupUrl
         ? '<div class="details-block">' +
             '<div class="detail-section-title">' + window.escapeHTML(window.t('detailGoogleGroup', {}, lang)) + '</div>' +
@@ -4033,21 +4263,25 @@ function renderExternalProjectDetailsModal(test, body) {
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">${originChipHtml}</div>
             <div class="guest-tester-detail-line">${window.escapeHTML(window.t('externalProjectDayProgress', { day: currentDay }, lang))}</div>
             <div class="guest-tester-detail-line notranslate">${window.escapeHTML(ownerLabel)}</div>
-            <div class="guest-tester-detail-line">${window.escapeHTML(controlMeta.label)}</div>
+            <div class="guest-tester-detail-line">${window.escapeHTML(statusMeta.statusText)}</div>
+            ${statusMeta.substatusText ? `<div class="guest-tester-detail-line">${window.escapeHTML(statusMeta.substatusText)}</div>` : ''}
             <div class="guest-tester-detail-line">${window.escapeHTML(window.t('externalProjectNoEconomyNote', {}, lang))}</div>
         </div>
         ${groupBlockHtml}
         <div class="details-block">
-            <div class="action-row" style="margin-top: 0; margin-bottom: 8px;">
+            <div class="action-row external-tests-actions external-tests-actions--detail" style="margin-top: 0; margin-bottom: 8px;">
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="event.stopPropagation(); openExternalAppLink('${safePlayUrl}', event)">
                     ${window.escapeHTML(window.t('externalProjectOpenPlayBtn', {}, lang))}
                 </button>
-                <button class="btn" style="flex: 1; ${primaryActionDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${primaryActionDisabled ? 'disabled' : ''} onclick="${primaryActionClick}">
-                    ${window.escapeHTML(primaryActionLabel)}
-                </button>
+                <div class="${statusMeta.isPostControlWindow ? 'external-tests-confirm-group' : 'split-btn-group external-tests-confirm-group'}" onclick="event.stopPropagation();">
+                    <button class="btn external-tests-confirm-btn ${statusMeta.isPostControlWindow ? '' : 'split-btn-main'}" style="${primaryActionDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${primaryActionDisabled ? 'disabled' : ''} onclick="${primaryActionClick}">
+                        ${window.escapeHTML(primaryActionLabel)}
+                    </button>
+                    ${attachButtonHtml}
+                </div>
             </div>
             <div class="action-row" style="margin-top: 0; margin-bottom: 8px;">
-                <button class="btn btn-secondary" style="flex: 1; background-color: rgba(255, 59, 48, 0.12); color: #ff8d84; border: 1px solid rgba(255, 59, 48, 0.24);" onclick="sendExternalBugReportFromUi(${Number(test.id || 0)}, event)" ${cleanOwnerUsername ? '' : 'disabled'}>
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="sendExternalBugReportFromUi(${Number(test.id || 0)}, event)" ${cleanOwnerUsername ? '' : 'disabled'}>
                     ${window.escapeHTML(window.t('externalProjectReportBugBtn', {}, lang))}
                 </button>
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="return openTelegramProfile('${escapeInlineJsString(cleanOwnerUsername)}', event)" ${cleanOwnerUsername ? '' : 'disabled'}>
@@ -4875,9 +5109,10 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
         event.preventDefault();
         event.stopPropagation();
     }
+    var test = getExternalProjectTest(appId);
     _checkinOptionsAppId = appId;
     _checkinOptionsOwner = ownerUsername || '';
-    _checkinOptionsIsControlDay = false;
+    _checkinOptionsIsControlDay = !!(test && test.external_control_day_due);
     _checkinOptionsFlow = 'external';
     const modal = document.getElementById('checkin-options-modal');
     if (!modal) return;
@@ -4886,13 +5121,13 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     const screenshotBtn = document.getElementById('t-checkinOptionsSendScreenshot');
     const ideaBtn = document.getElementById('t-checkinOptionsSendIdea');
     const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
-    if (titleEl) titleEl.innerText = window.t('checkinOptionsTitle', {}, lang);
-    if (subtitleEl) subtitleEl.innerText = window.t('checkinOptionsSubtitle', {}, lang);
+    if (titleEl) titleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinTitle' : 'checkinOptionsTitle', {}, lang);
+    if (subtitleEl) subtitleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
     if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
     if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
-        confirmBtn.style.display = 'block';
+        confirmBtn.style.display = _checkinOptionsIsControlDay ? 'none' : 'block';
     }
     renderCheckinReviewOptions();
     modal.classList.add('active');
@@ -7257,7 +7492,7 @@ function openProjectDetailsModal(appId) {
     const reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 0);
     const reviewOwnerBoostBust = Number(rewardsSummary.review_owner_boost_bust || 0);
     const reviewOwnerBoostKarma = Number(rewardsSummary.review_owner_boost_karma || 0);
-    const hasGuestOrigin = isGuestOriginTest(test);
+    const hasGuestOrigin = hasGuestLinkRelationship(test);
 
     let currentGoogleDay = timelineMeta.currentGoogleDay;
     let projectDaysLeft = timelineMeta.projectDaysLeft;
@@ -7781,6 +8016,7 @@ Object.assign(window, {
     openPlayReviewModalFromCheckinOptions,
     closePlayReviewModal,
     openPlayReviewStore,
+    activateExternalContinueModeFromUi,
     openDropTestModal,
     closeDropTestModal,
     openLeaveMutualModal,

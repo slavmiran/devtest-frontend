@@ -1523,7 +1523,6 @@ async function submitManualExternalTrack(event) {
     var groupUrlInput = document.getElementById('manual-external-group-url');
     var testingDayInput = document.getElementById('manual-external-testing-day');
     var mutualCheckbox = document.getElementById('manual-external-is-mutual');
-    var linkedProjectInput = document.getElementById('manual-external-linked-project');
 
     var sourceProjectId = Number(sourceProjectInput && sourceProjectInput.value || 0);
     if (!sourceProjectId) {
@@ -1568,9 +1567,6 @@ async function submitManualExternalTrack(event) {
     }
 
     var isMutual = !!(mutualCheckbox && mutualCheckbox.checked);
-    var linkedMyAppId = isMutual
-        ? Number(linkedProjectInput && linkedProjectInput.value || sourceProjectId || 0)
-        : 0;
 
     try {
         var response = await fetchWithRetry(`${API_BASE}/external-tracks/manual`, {
@@ -1586,7 +1582,6 @@ async function submitManualExternalTrack(event) {
                 google_group_url: groupUrl || null,
                 testing_day: testingDay,
                 is_mutual: isMutual,
-                linked_my_app_id: linkedMyAppId || null,
             })
         }, 1);
         var result = await response.json();
