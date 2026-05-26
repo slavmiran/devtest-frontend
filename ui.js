@@ -1909,9 +1909,6 @@ function getExternalCurrentTestingDay(record) {
 }
 
 function getExternalDisplayTestingDay(record) {
-    if (record && record.is_external && isExternalContinueModeEnabled(record)) {
-        return 14;
-    }
     return getExternalCurrentTestingDay(record);
 }
 
@@ -2271,7 +2268,7 @@ function renderTests(force) {
         const showGuestOriginChip = shouldShowGuestOriginChip(test);
         const isPendingCompletion = !!test.is_pending_completion;
         const isPendingForTester = isPendingCompletion && Number(test.testing_days || 0) >= 15;
-        const isArchivedOrCompleted = String(test.app_status || 'active').toLowerCase() !== 'active' && !isPendingCompletion;
+        const isArchivedOrCompleted = !isExternal && String(test.app_status || 'active').toLowerCase() !== 'active' && !isPendingCompletion;
         // Skip archived cards with no actionable state (no grant, no early finish bonus).
         // This prevents cards from hanging in My Tests when neither reward applies.
         const isArchivedWithNoAction = isArchivedOrCompleted
