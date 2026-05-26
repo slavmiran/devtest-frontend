@@ -1992,8 +1992,14 @@ function getExternalContinueModeKey(test) {
 }
 
 function syncExternalContinueModeState() {
+    if (typeof _testsLoadedOnce !== 'undefined' && !_testsLoadedOnce) {
+        return;
+    }
     var state = _loadExternalContinueModeState();
     var tests = Array.isArray(myTests) ? myTests : [];
+    if (!tests.length) {
+        return;
+    }
     var validKeys = {};
     var didChange = false;
 
@@ -2048,18 +2054,6 @@ function activateExternalContinueModeFromUi(testId, event) {
     setExternalContinueModeEnabled(test, true);
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     renderTests(true);
-    showToast(window.t('externalProjectContinueToast', {}, lang));
-    setTimeout(function() {
-        var card = document.getElementById('test-card-' + Number(test.id || 0));
-        if (!card) return;
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        card.classList.remove('test-card-highlight-pulse');
-        void card.offsetWidth;
-        card.classList.add('test-card-highlight-pulse');
-        setTimeout(function() {
-            card.classList.remove('test-card-highlight-pulse');
-        }, 3600);
-    }, 80);
 }
 
 function getExternalStatusPresentation(test) {
@@ -2182,6 +2176,8 @@ function renderExternalGuestTestsSection() {
         var statusMeta = getExternalStatusPresentation(test);
         var meta = statusMeta.meta;
         var isDoneToday = statusMeta.isDoneToday;
+        var isContinuedExternal = isExternalContinueModeEnabled(test);
+        var showPost14Choice = statusMeta.isPostControlWindow && !isContinuedExternal && !isDoneToday;
         var displayDay = getExternalDisplayTestingDay(test);
         var safeName = window.escapeHTML(test.name || test.package || window.t('unknownLabel', {}, lang));
         var safePackage = window.escapeHTML(test.package || test.external_package_name || '');
@@ -2198,16 +2194,18 @@ function renderExternalGuestTestsSection() {
         var originChipHtml = (!!test.is_external && !!String(test.external_source || '').trim())
             ? renderGuestOriginChip(test.external_source)
             : '';
-        var primaryActionLabel = statusMeta.isPostControlWindow
+        var primaryActionLabel = statusMeta.isPostControlWindow && !isContinuedExternal
             ? window.t('externalProjectContinueBtn', {}, lang)
             : window.t('externalProjectCheckinBtn', {}, lang);
-        var primaryActionClick = statusMeta.isPostControlWindow
+        var primaryActionClick = statusMeta.isPostControlWindow && !isContinuedExternal
             ? `activateExternalContinueModeFromUi(${Number(test.id || 0)}, event)`
             : `sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)`;
         var actionsHtml = '';
         if (!isDoneToday) {
-            if (statusMeta.isPostControlWindow && !isExternalContinueModeEnabled(test)) {
+            if (showPost14Choice) {
                 actionsHtml = renderExternalPost14ChoiceBlock(test);
+            } else if (isContinuedExternal) {
+                actionsHtml = renderExternalContinuedActions(test, safePackageInline, ownerUsername);
             } else {
                 var attachButtonHtml = `<button type="button" class="btn external-tests-attach-btn split-btn-options" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(ownerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`;
                 actionsHtml = `
@@ -2239,8 +2237,8 @@ function renderExternalGuestTestsSection() {
                     ${ownerLabelHtml}
                     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${originChipHtml}${dayChipHtml}</div>
                 </div>
-                <div class="external-tests-status">${window.escapeHTML(statusMeta.statusText)}</div>
-                <div class="external-tests-substatus">${window.escapeHTML(statusMeta.substatusText)}</div>
+                ${showPost14Choice ? '' : `<div class="external-tests-status">${window.escapeHTML(statusMeta.statusText)}</div>`}
+                ${showPost14Choice ? '' : `<div class="external-tests-substatus">${window.escapeHTML(statusMeta.substatusText)}</div>`}
                 ${actionsHtml}
             </div>
         `;
@@ -3378,7 +3376,6 @@ function isGuestOriginTest(test) {
 
 function shouldKeepExternalTestInVoluntarySection(test) {
     if (!test || !test.is_external) return false;
-    if (isExternalContinueModeEnabled(test)) return false;
     return !test.external_control_day_due || String(test.status || '') === 'done';
 }
 
@@ -4284,22 +4281,23 @@ function renderExternalProjectDetailsModal(test, body) {
     var safeGroupUrl = escapeInlineJsString(groupUrl);
     var isDoneToday = statusMeta.isDoneToday;
     var isControlDayDue = !!test.external_control_day_due;
-    var showPost14Choice = statusMeta.isPostControlWindow && !isExternalContinueModeEnabled(test) && !isDoneToday;
+    var isContinuedExternal = isExternalContinueModeEnabled(test);
+    var showPost14Choice = statusMeta.isPostControlWindow && !isContinuedExternal && !isDoneToday;
     var originChipHtml = shouldShowGuestOriginChip(test) ? renderGuestOriginChip(test.external_source) : '';
     var primaryActionDisabled = !!isDoneToday;
     var primaryActionLabel = isDoneToday
         ? window.t('externalProjectCheckedTodayBtn', {}, lang)
-        : (statusMeta.isPostControlWindow
+        : (statusMeta.isPostControlWindow && !isContinuedExternal
             ? window.t('externalProjectContinueBtn', {}, lang)
             : (isControlDayDue
             ? window.t('externalTrackProofBtn', {}, lang)
             : window.t('externalProjectCheckinBtn', {}, lang)));
-    var primaryActionClick = statusMeta.isPostControlWindow
+    var primaryActionClick = statusMeta.isPostControlWindow && !isContinuedExternal
         ? `activateExternalContinueModeFromUi(${Number(test.id || 0)}, event)`
         : (isControlDayDue
         ? `sendExternalTrackingProofFromUi(${Number(test.id || 0)}, '${escapeInlineJsString(cleanOwnerUsername)}', event)`
         : `sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)`);
-    var attachButtonHtml = statusMeta.isPostControlWindow
+    var attachButtonHtml = statusMeta.isPostControlWindow && !isContinuedExternal
         ? ''
         : `<button class="btn external-tests-attach-btn split-btn-options" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(cleanOwnerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}" ${primaryActionDisabled ? 'disabled' : ''}>${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`;
     var primaryActionsHtml = showPost14Choice
@@ -4308,8 +4306,8 @@ function renderExternalProjectDetailsModal(test, body) {
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="event.stopPropagation(); openExternalAppLink('${safePlayUrl}', event)">
                     ${window.escapeHTML(window.t('externalProjectOpenPlayBtn', {}, lang))}
                 </button>
-                <div class="${statusMeta.isPostControlWindow ? 'external-tests-confirm-group' : 'split-btn-group external-tests-confirm-group'}" onclick="event.stopPropagation();">
-                    <button class="btn external-tests-confirm-btn ${statusMeta.isPostControlWindow ? '' : 'split-btn-main'}" style="${primaryActionDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${primaryActionDisabled ? 'disabled' : ''} onclick="${primaryActionClick}">
+                <div class="${statusMeta.isPostControlWindow && !isContinuedExternal ? 'external-tests-confirm-group' : 'split-btn-group external-tests-confirm-group'}" onclick="event.stopPropagation();">
+                    <button class="btn external-tests-confirm-btn ${statusMeta.isPostControlWindow && !isContinuedExternal ? '' : 'split-btn-main'}" style="${primaryActionDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${primaryActionDisabled ? 'disabled' : ''} onclick="${primaryActionClick}">
                         ${window.escapeHTML(primaryActionLabel)}
                     </button>
                     ${attachButtonHtml}
@@ -4339,8 +4337,8 @@ function renderExternalProjectDetailsModal(test, body) {
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">${originChipHtml}</div>
             <div class="guest-tester-detail-line">${window.escapeHTML(window.t('externalProjectDayProgress', { day: currentDay }, lang))}</div>
             <div class="guest-tester-detail-line notranslate">${window.escapeHTML(ownerLabel)}</div>
-            <div class="guest-tester-detail-line">${window.escapeHTML(statusMeta.statusText)}</div>
-            ${statusMeta.substatusText ? `<div class="guest-tester-detail-line">${window.escapeHTML(statusMeta.substatusText)}</div>` : ''}
+            ${showPost14Choice ? '' : `<div class="guest-tester-detail-line">${window.escapeHTML(statusMeta.statusText)}</div>`}
+            ${showPost14Choice || !statusMeta.substatusText ? '' : `<div class="guest-tester-detail-line">${window.escapeHTML(statusMeta.substatusText)}</div>`}
             <div class="guest-tester-detail-line">${window.escapeHTML(window.t('externalProjectNoEconomyNote', {}, lang))}</div>
         </div>
         ${groupBlockHtml}
