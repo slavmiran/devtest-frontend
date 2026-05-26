@@ -1823,6 +1823,7 @@ async function submitExternalTrackingProof(progressId, testId) {
 
     var test = myTests.find(function(item) { return Number(item.id) === Number(testId); });
     if (test) {
+        setTimerReadyForConfirm(testId, false, false, '');
         test.last_check_date = result.last_check_date || getLocalDate();
         test.checkins_count = Number(result.checkins_count || test.checkins_count || 0);
         test.daily_timeline = String(result.daily_timeline || test.daily_timeline || '');
@@ -1849,6 +1850,7 @@ async function submitExternalDailyCheckin(progressId, testId) {
 
     var test = myTests.find(function(item) { return Number(item.id) === Number(testId); });
     if (test) {
+        setTimerReadyForConfirm(testId, false, false, '');
         test.last_check_date = result.last_check_date || getLocalDate();
         test.testing_days = Math.max(Number(test.testing_days || 0), Number(result.testing_day || 0));
         recomputeLocalTestState(test);
@@ -3667,6 +3669,18 @@ function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername) {
         delete _timerReadyState[key];
     }
     _persistTimerReadyState();
+    _syncExternalTimerReadyVisual(appId, isReady);
+}
+
+function _syncExternalTimerReadyVisual(appId, isReady) {
+    var btn = document.getElementById('btn-confirm-' + Number(appId || 0));
+    if (!btn || !btn.classList.contains('external-tests-confirm-btn')) return;
+    btn.classList.toggle('external-tests-confirm-ready', !!isReady);
+    if (isReady) {
+        btn.style.backgroundColor = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+    }
 }
 
 function _getTimerReadyPayload(appId) {
@@ -3724,11 +3738,13 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
 
     // Check if test has an unresolved issue — keep button disabled
     var test = myTests.find(function(item) { return Number(item.id) === Number(finishedId); });
+    var isExternalTest = !!(test && test.is_external);
     var testingDay = test && typeof window.getUserTestingDay === 'function'
         ? window.getUserTestingDay(test.start_date, test.testing_days)
         : null;
     var isFirstDayScreenshot = !!(isScreenshot && Number(testingDay || 0) === 1);
     if (test && test.issue_reported_at && !test.issue_fixed_at) {
+        btn.classList.remove('external-tests-confirm-ready');
         btn.disabled = true;
         btn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
         btn.style.color = 'var(--hint-color)';
@@ -3758,12 +3774,31 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         var existingSplitGroup = btn.parentNode && btn.parentNode.classList && btn.parentNode.classList.contains('split-btn-group')
             ? btn.parentNode
             : null;
+        if (isExternalTest) {
+            btn.style.backgroundColor = '';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+        }
         if (existingSplitGroup) {
-            btn.className = 'btn btn-success split-btn-main';
-            btn.textContent = window.t('confirmTest', {}, lang);
-            btn.onclick = function() {
-                confirmStart(finishedId);
-            };
+            if (isExternalTest) {
+                btn.className = 'btn btn-success split-btn-main external-tests-confirm-btn external-tests-confirm-ready';
+                btn.textContent = window.t('externalProjectCheckinBtn', {}, lang);
+                btn.onclick = function(event) {
+                    if (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    if (typeof window.sendExternalDailyCheckinFromUi === 'function') {
+                        window.sendExternalDailyCheckinFromUi(finishedId, event);
+                    }
+                };
+            } else {
+                btn.className = 'btn btn-success split-btn-main';
+                btn.textContent = window.t('confirmTest', {}, lang);
+                btn.onclick = function() {
+                    confirmStart(finishedId);
+                };
+            }
 
             var existingOptionsBtn = existingSplitGroup.querySelector('.split-btn-options');
             if (!existingOptionsBtn) {
@@ -3771,10 +3806,21 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
                 existingOptionsBtn.className = 'btn btn-success split-btn-options';
                 existingSplitGroup.appendChild(existingOptionsBtn);
             }
+            existingOptionsBtn.className = isExternalTest
+                ? 'btn btn-success split-btn-options external-tests-attach-btn'
+                : 'btn btn-success split-btn-options';
             existingOptionsBtn.textContent = '📎';
             existingOptionsBtn.title = window.t('checkinOptionsTitle', {}, lang);
             existingOptionsBtn.setAttribute('aria-label', window.t('checkinOptionsTitle', {}, lang));
-            existingOptionsBtn.onclick = function() {
+            existingOptionsBtn.onclick = function(event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                if (isExternalTest) {
+                    openExternalCheckinOptionsModal(finishedId, resolvedOwnerUsername || '', event);
+                    return;
+                }
                 openCheckinOptionsModal(finishedId, resolvedOwnerUsername || '');
             };
             existingSplitGroup.style.flex = '2';
@@ -3784,13 +3830,17 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         // Replace single button with split button group
         var safeOwner = window.escapeInlineJsString ? window.escapeInlineJsString(resolvedOwnerUsername || '') : (resolvedOwnerUsername || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         var splitWrapper = document.createElement('div');
-        splitWrapper.className = 'split-btn-group';
+        splitWrapper.className = isExternalTest ? 'split-btn-group external-tests-confirm-group' : 'split-btn-group';
         splitWrapper.style.flex = '2';
         splitWrapper.innerHTML =
-            '<button id="btn-confirm-' + finishedId + '" class="btn btn-success split-btn-main" onclick="confirmStart(' + finishedId + ')">' +
-            window.escapeHTML(window.t('confirmTest', {}, lang)) +
+            '<button id="btn-confirm-' + finishedId + '" class="' + (isExternalTest ? 'btn btn-success split-btn-main external-tests-confirm-btn external-tests-confirm-ready' : 'btn btn-success split-btn-main') + '" onclick="' + (isExternalTest
+                ? 'sendExternalDailyCheckinFromUi(' + finishedId + ', event)'
+                : 'confirmStart(' + finishedId + ')') + '">' +
+            window.escapeHTML(window.t(isExternalTest ? 'externalProjectCheckinBtn' : 'confirmTest', {}, lang)) +
             '</button>' +
-            '<button class="btn btn-success split-btn-options" onclick="openCheckinOptionsModal(' + finishedId + ', \'' + safeOwner + '\')" title="' + window.escapeHTML(window.t('checkinOptionsTitle', {}, lang)) + '">' +
+            '<button class="btn btn-success split-btn-options' + (isExternalTest ? ' external-tests-attach-btn' : '') + '" onclick="' + (isExternalTest
+                ? 'openExternalCheckinOptionsModal(' + finishedId + ', \'' + safeOwner + '\', event)'
+                : 'openCheckinOptionsModal(' + finishedId + ', \'' + safeOwner + '\')') + '" title="' + window.escapeHTML(window.t('checkinOptionsTitle', {}, lang)) + '">' +
             '📎' +
             '</button>';
         btn.parentNode.replaceChild(splitWrapper, btn);
@@ -4101,8 +4151,10 @@ function _mapTestsFromApi(data) {
             owner_karma: Number(app.owner_karma || 0),
             active_testers_count: app.active_testers_count,
             days_since_publish: app.days_since_publish,
+            created_at: app.created_at || null,
             google_sync_day: app.google_sync_day || 0,
             sync_message: app.sync_message || '',
+            sync_notification_sent: !!app.sync_notification_sent,
             last_owner_activity: app.last_owner_activity || null,
             checkins_count: resolvedCheckinsCount,
             skips_count: resolvedSkipsCount,

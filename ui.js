@@ -168,6 +168,9 @@ function getIssueAwaitingFixLabel(test) {
 }
 
 function getResolvedTestingDay(test) {
+    if (test && test.is_external && typeof isExternalContinueModeEnabled === 'function' && isExternalContinueModeEnabled(test)) {
+        return 14;
+    }
     var serverTestingDays = Number(test && test.testing_days || 0);
     if (Number.isFinite(serverTestingDays) && serverTestingDays > 0) {
         return serverTestingDays;
@@ -1040,6 +1043,9 @@ function hasMeaningfulProjectSync(test) {
     if (test && test.sync_message && String(test.sync_message).trim()) {
         return true;
     }
+    if (getProjectSyncStartDay(test) > 1) {
+        return true;
+    }
     var createdAt = parseLocalDateOnly(test && test.created_at);
     var lastSyncDate = parseLocalDateOnly(test && test.last_sync_date);
     if (createdAt && lastSyncDate && createdAt.getTime() !== lastSyncDate.getTime()) {
@@ -1902,6 +1908,34 @@ function getExternalCurrentTestingDay(record) {
     return Math.max(1, lastCompletedDay || 1);
 }
 
+function getExternalDisplayTestingDay(record) {
+    if (record && record.is_external && isExternalContinueModeEnabled(record)) {
+        return 14;
+    }
+    return getExternalCurrentTestingDay(record);
+}
+
+function renderExternalPost14ChoiceBlock(test) {
+    if (!test) {
+        return '';
+    }
+    var actualDay = getExternalCurrentTestingDay(test);
+    return `
+        <div class="external-post14-banner">
+            <div class="external-post14-title">${window.escapeHTML(window.t('externalProjectPost14Banner', { day: actualDay }, lang))}</div>
+            <div class="external-post14-subtitle">${window.escapeHTML(window.t('externalProjectPost14Hint', {}, lang))}</div>
+            <div class="action-row external-tests-actions external-tests-actions-post14">
+                <button type="button" class="btn btn-secondary" onclick="cancelExternalTestingFromUi(${Number(test.id || 0)}, event)">
+                    ${window.escapeHTML(window.t('externalProjectFinishTestBtn', {}, lang))}
+                </button>
+                <button type="button" class="btn" onclick="activateExternalContinueModeFromUi(${Number(test.id || 0)}, event)">
+                    ${window.escapeHTML(window.t('externalProjectContinueBtn', {}, lang))}
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 function getNextExternalControlDayMeta(test) {
     var controlDays = [1, 4, 7, 10, 14];
     var currentDay = getExternalCurrentTestingDay(test);
@@ -2090,11 +2124,11 @@ function renderExternalContinuedActions(test, safePackageInline, ownerUsername) 
     var safeOwner = escapeInlineJsString(ownerUsername || '');
     return `
         <div class="action-row external-tests-actions" id="external-test-actions-${Number(test.id || 0)}">
-            <button class="btn btn-secondary external-tests-open-btn" onclick="event.stopPropagation(); highlightExternalTestActionRow(${Number(test.id || 0)}); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
+            <button class="btn btn-secondary external-tests-open-btn" onclick="event.stopPropagation(); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
                 ${window.escapeHTML(t.openBtn)}
             </button>
             <div class="split-btn-group external-tests-confirm-group" onclick="event.stopPropagation();">
-                <button class="btn external-tests-confirm-btn split-btn-main" onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
+                <button id="btn-confirm-${Number(test.id || 0)}" class="btn external-tests-confirm-btn split-btn-main" onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
                     ${window.escapeHTML(window.t('externalProjectCheckinBtn', {}, lang))}
                 </button>
                 <button type="button" class="btn external-tests-attach-btn split-btn-options" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${safeOwner}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>
@@ -2148,6 +2182,7 @@ function renderExternalGuestTestsSection() {
         var statusMeta = getExternalStatusPresentation(test);
         var meta = statusMeta.meta;
         var isDoneToday = statusMeta.isDoneToday;
+        var displayDay = getExternalDisplayTestingDay(test);
         var safeName = window.escapeHTML(test.name || test.package || window.t('unknownLabel', {}, lang));
         var safePackage = window.escapeHTML(test.package || test.external_package_name || '');
         var safePackageInline = escapeInlineJsString(test.package || test.external_package_name || '');
@@ -2159,7 +2194,7 @@ function renderExternalGuestTestsSection() {
         var ownerLabelHtml = ownerUsername
             ? `<button type="button" class="external-tests-owner external-tests-owner-link notranslate" onclick="return openTelegramProfile('${safeOwnerUsernameInline}', event)">${window.escapeHTML(ownerLabel)}</button>`
             : `<div class="external-tests-owner">${window.escapeHTML(ownerLabel)}</div>`;
-        var dayChipHtml = `<span class="meta-chip">${window.escapeHTML(window.t('externalTrackDayLabel', { day: meta.currentDay }, lang))}</span>`;
+        var dayChipHtml = `<span class="meta-chip">${window.escapeHTML(window.t('externalTrackDayLabel', { day: displayDay }, lang))}</span>`;
         var originChipHtml = (!!test.is_external && !!String(test.external_source || '').trim())
             ? renderGuestOriginChip(test.external_source)
             : '';
@@ -2171,22 +2206,24 @@ function renderExternalGuestTestsSection() {
             : `sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)`;
         var actionsHtml = '';
         if (!isDoneToday) {
-            var attachButtonHtml = statusMeta.isPostControlWindow
-                ? ''
-                : `<button type="button" class="btn external-tests-attach-btn split-btn-options" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(ownerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`;
-            actionsHtml = `
-                <div class="action-row external-tests-actions" id="external-test-actions-${Number(test.id || 0)}">
-                    <button class="btn btn-secondary external-tests-open-btn" onclick="event.stopPropagation(); highlightExternalTestActionRow(${Number(test.id || 0)}); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
-                        ${window.escapeHTML(t.openBtn)}
-                    </button>
-                    <div class="${statusMeta.isPostControlWindow ? 'external-tests-confirm-group' : 'split-btn-group external-tests-confirm-group'}" onclick="event.stopPropagation();">
-                        <button class="btn external-tests-confirm-btn ${statusMeta.isPostControlWindow ? '' : 'split-btn-main'}" onclick="${primaryActionClick}">
-                            ${window.escapeHTML(primaryActionLabel)}
+            if (statusMeta.isPostControlWindow && !isExternalContinueModeEnabled(test)) {
+                actionsHtml = renderExternalPost14ChoiceBlock(test);
+            } else {
+                var attachButtonHtml = `<button type="button" class="btn external-tests-attach-btn split-btn-options" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(ownerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`;
+                actionsHtml = `
+                    <div class="action-row external-tests-actions" id="external-test-actions-${Number(test.id || 0)}">
+                        <button class="btn btn-secondary external-tests-open-btn" onclick="event.stopPropagation(); startTimer(${Number(test.id || 0)}, '${safePackageInline}', false, '')">
+                            ${window.escapeHTML(t.openBtn)}
                         </button>
-                        ${attachButtonHtml}
+                        <div class="split-btn-group external-tests-confirm-group" onclick="event.stopPropagation();">
+                            <button id="btn-confirm-${Number(test.id || 0)}" class="btn external-tests-confirm-btn split-btn-main" onclick="${primaryActionClick}">
+                                ${window.escapeHTML(primaryActionLabel)}
+                            </button>
+                            ${attachButtonHtml}
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
         }
 
         return `
@@ -3367,6 +3404,8 @@ function renderManualExternalLinkedProjectOptions(preferredProjectId) {
         checkbox.disabled = !hasEligibleSource;
         if (!hasEligibleSource) {
             checkbox.checked = false;
+        } else {
+            checkbox.checked = true;
         }
     }
     updateManualExternalMutualState();
@@ -4238,13 +4277,14 @@ function renderExternalProjectDetailsModal(test, body) {
         ? '@' + cleanOwnerUsername
         : window.t('externalProjectOwnerMissing', {}, lang);
     var statusMeta = getExternalStatusPresentation(test);
-    var currentDay = statusMeta.meta.currentDay;
+    var currentDay = getExternalDisplayTestingDay(test);
     var playUrl = getExternalTrackPlayUrl(test);
     var safePlayUrl = escapeInlineJsString(playUrl);
     var groupUrl = String(test.google_group_url || '').trim();
     var safeGroupUrl = escapeInlineJsString(groupUrl);
     var isDoneToday = statusMeta.isDoneToday;
     var isControlDayDue = !!test.external_control_day_due;
+    var showPost14Choice = statusMeta.isPostControlWindow && !isExternalContinueModeEnabled(test) && !isDoneToday;
     var originChipHtml = shouldShowGuestOriginChip(test) ? renderGuestOriginChip(test.external_source) : '';
     var primaryActionDisabled = !!isDoneToday;
     var primaryActionLabel = isDoneToday
@@ -4262,6 +4302,19 @@ function renderExternalProjectDetailsModal(test, body) {
     var attachButtonHtml = statusMeta.isPostControlWindow
         ? ''
         : `<button class="btn external-tests-attach-btn split-btn-options" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${escapeInlineJsString(cleanOwnerUsername)}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}" ${primaryActionDisabled ? 'disabled' : ''}>${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>`;
+    var primaryActionsHtml = showPost14Choice
+        ? renderExternalPost14ChoiceBlock(test)
+        : `<div class="action-row external-tests-actions external-tests-actions--detail" style="margin-top: 0; margin-bottom: 8px;">
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="event.stopPropagation(); openExternalAppLink('${safePlayUrl}', event)">
+                    ${window.escapeHTML(window.t('externalProjectOpenPlayBtn', {}, lang))}
+                </button>
+                <div class="${statusMeta.isPostControlWindow ? 'external-tests-confirm-group' : 'split-btn-group external-tests-confirm-group'}" onclick="event.stopPropagation();">
+                    <button class="btn external-tests-confirm-btn ${statusMeta.isPostControlWindow ? '' : 'split-btn-main'}" style="${primaryActionDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${primaryActionDisabled ? 'disabled' : ''} onclick="${primaryActionClick}">
+                        ${window.escapeHTML(primaryActionLabel)}
+                    </button>
+                    ${attachButtonHtml}
+                </div>
+            </div>`;
     var groupBlockHtml = groupUrl
         ? '<div class="details-block">' +
             '<div class="detail-section-title">' + window.escapeHTML(window.t('detailGoogleGroup', {}, lang)) + '</div>' +
@@ -4292,17 +4345,7 @@ function renderExternalProjectDetailsModal(test, body) {
         </div>
         ${groupBlockHtml}
         <div class="details-block">
-            <div class="action-row external-tests-actions external-tests-actions--detail" style="margin-top: 0; margin-bottom: 8px;">
-                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="event.stopPropagation(); openExternalAppLink('${safePlayUrl}', event)">
-                    ${window.escapeHTML(window.t('externalProjectOpenPlayBtn', {}, lang))}
-                </button>
-                <div class="${statusMeta.isPostControlWindow ? 'external-tests-confirm-group' : 'split-btn-group external-tests-confirm-group'}" onclick="event.stopPropagation();">
-                    <button class="btn external-tests-confirm-btn ${statusMeta.isPostControlWindow ? '' : 'split-btn-main'}" style="${primaryActionDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${primaryActionDisabled ? 'disabled' : ''} onclick="${primaryActionClick}">
-                        ${window.escapeHTML(primaryActionLabel)}
-                    </button>
-                    ${attachButtonHtml}
-                </div>
-            </div>
+            ${primaryActionsHtml}
             <div class="action-row" style="margin-top: 0; margin-bottom: 8px;">
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="sendExternalBugReportFromUi(${Number(test.id || 0)}, event)" ${cleanOwnerUsername ? '' : 'disabled'}>
                     ${window.escapeHTML(window.t('externalProjectReportBugBtn', {}, lang))}
@@ -4806,6 +4849,7 @@ function renderProjects(force) {
                     <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayAffectedCount', { count: pendingIssueTesters.length }, lang))}</div>
                     <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">${window.escapeHTML(window.t('accessOverlayGuideLink', {}, lang))}</a>
                     <div class="access-error-tester-list">${accessIssueRowsHtml}</div>
+                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayResolveHint', {}, lang))}</div>
                     <div class="access-error-actions">
                         <button type="button" class="btn btn-primary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); resolveAllAccessErrors(${project.id}, ${JSON.stringify(pendingIssueProgressIds)}); event.stopPropagation();">${window.escapeHTML(resolveAllLabel)}</button>
                     </div>
