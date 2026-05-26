@@ -2487,8 +2487,18 @@ function renderTests(force) {
         const doneBadgeHtml = test.status === 'done' && !test.isReadyToClaim
             ? '<div class="done-status-pill">' + window.escapeHTML(t.doneTodayText) + '</div><div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
             : '';
-        const externalMetaHtml = showGuestOriginChip
-            ? `<div class="external-track-inline-meta">${isExternal ? `<span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackCardChip', {}, lang))}</span>` : ''}${renderGuestOriginChip(test.external_source)}${isExternal ? `<span class="external-track-inline-note">${window.escapeHTML(window.t('externalTrackInlineMeta', { source: formatExternalSourceLabel(test.external_source) }, lang))}</span>` : ''}</div>`
+        const externalMetaChips = [];
+        if (isExternal && !test.real_app_id) {
+            externalMetaChips.push(`<span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalGuestMainListChip', {}, lang))}</span>`);
+        }
+        if (isExternal) {
+            externalMetaChips.push(`<span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackCardChip', {}, lang))}</span>`);
+        }
+        if (showGuestOriginChip) {
+            externalMetaChips.push(renderGuestOriginChip(test.external_source));
+        }
+        const externalMetaHtml = (externalMetaChips.length || isExternal)
+            ? `<div class="external-track-inline-meta">${externalMetaChips.join('')}${isExternal ? `<span class="external-track-inline-note">${window.escapeHTML(window.t('externalTrackInlineMeta', { source: formatExternalSourceLabel(test.external_source) }, lang))}</span>` : ''}</div>`
             : '';
         const cardHeaderLinkStart = `<div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">`;
 
@@ -2511,6 +2521,19 @@ function renderTests(force) {
                 ${actionsHtml}
             </div>
         `;
+
+        if (isExternal) {
+            card.style.cursor = 'pointer';
+            card.onclick = function(event) {
+                if (event && event.target && typeof event.target.closest === 'function') {
+                    var interactiveTarget = event.target.closest('.card-header-link, button, a, input, select, textarea, label, summary, details');
+                    if (interactiveTarget) {
+                        return;
+                    }
+                }
+                window.openProjectDetailsModal(test.id);
+            };
+        }
 
         if (shouldShowInDoneList) {
             const reminderHtml = getScreenshotReminderHtml(test);
