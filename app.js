@@ -3760,6 +3760,27 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     btn.style.color = '#fff';
     btn.style.cursor = 'pointer';
     if (isScreenshot) {
+        if (isExternalTest) {
+            btn.innerText = isFirstDayScreenshot
+                ? window.t('screenshotBtn', {}, lang)
+                : '✅ ' + window.t('completeControlDayBtn', {}, lang);
+            btn.onclick = function(event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                if (isFirstDayScreenshot) {
+                    if (typeof window.sendExternalScreenshotAndConfirmFromUi === 'function') {
+                        window.sendExternalScreenshotAndConfirmFromUi(finishedId, resolvedOwnerUsername || '', event);
+                    }
+                    return;
+                }
+                if (typeof window.openExternalCheckinOptionsModal === 'function') {
+                    window.openExternalCheckinOptionsModal(finishedId, resolvedOwnerUsername || '', event);
+                }
+            };
+            return true;
+        }
         btn.innerText = isFirstDayScreenshot
             ? window.t('screenshotBtn', {}, lang)
             : '✅ ' + window.t('completeControlDayBtn', {}, lang);
@@ -5451,8 +5472,12 @@ async function joinBounty(appId) {
     }
 }
 
-function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
+function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '', durationSeconds = 15) {
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(id, ownerUsername);
+    var resolvedDurationSeconds = Number(durationSeconds || 15);
+    if (!Number.isFinite(resolvedDurationSeconds) || resolvedDurationSeconds < 1) {
+        resolvedDurationSeconds = 15;
+    }
     // Clean up stale timer (tab suspension / cache restoration scenario)
     if (activeTimerAppId !== null && _timerLocalDate && _timerLocalDate !== getLocalDate()) {
         if (_timerIntervalId) clearInterval(_timerIntervalId);
@@ -5498,12 +5523,12 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '') {
     if (!btn || !btn.disabled) return;
 
     activeTimerAppId = id;
-    _timerEndTimestamp = Date.now() + 15000;
+    _timerEndTimestamp = Date.now() + (resolvedDurationSeconds * 1000);
     _timerIsScreenshot = isScreenshotDay;
     _timerOwnerUsername = resolvedOwnerUsername;
     _timerLocalDate = getLocalDate();
     _persistActiveTimer();
-    btn.innerText = t.timerRemaining.replace('{sec}', 15);
+    btn.innerText = t.timerRemaining.replace('{sec}', resolvedDurationSeconds);
     _startActiveTimerInterval(id);
 }
 

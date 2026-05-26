@@ -1301,6 +1301,13 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${t.syncDoneText}</button>`);
         }
     }
+    if (Array.isArray(options.extraParts)) {
+        options.extraParts.forEach(function(part) {
+            if (part) {
+                parts.push(part);
+            }
+        });
+    }
     if (parts.length === 0) {
         return '';
     }
@@ -2305,7 +2312,7 @@ function renderTests(force) {
         }
         card.id = `test-card-${test.id}`;
         const userTestingDay = getResolvedTestingDay(test);
-        const safePackage = escapeInlineJsString(test.package);
+        const safePackage = escapeInlineJsString(test.package || test.external_package_name || '');
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
         const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
         const safePackageLabel = window.escapeHTML(test.package || '');
@@ -2329,25 +2336,23 @@ function renderTests(force) {
             if (isContinuedExternal) {
                 actionsHtml = renderExternalContinuedActions(test, safePackage, safeOwnerUsername);
             } else {
-                var externalProofDisabled = !safeOwnerUsername || test.status === 'done';
-                var externalNoteKey = externalProofDisabled && !safeOwnerUsername
-                    ? 'externalTrackOwnerMissing'
-                    : (test.status === 'done' ? 'externalTrackDoneToday' : 'externalTrackActionHint');
+                var externalTestingDay = getExternalCurrentTestingDay(test);
+                var isExternalScreenshotOnlyDay = isScreenshotOnlyControlDay(externalTestingDay);
+                var externalConfirmLabel = isExternalScreenshotOnlyDay
+                    ? window.t('screenshotBtn', {}, lang)
+                    : '✅ ' + window.t('completeControlDayBtn', {}, lang);
+                var externalWarningText = window.t(isExternalScreenshotOnlyDay ? 'firstDayScreenshotWarning' : 'screenshotWarning', {}, lang);
                 actionsHtml = `
-                    <div class="external-track-banner">
-                        <div class="external-track-banner-top">
-                            <span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackBadge', {}, lang))}</span>
-                            <span class="external-track-day">${window.escapeHTML(window.t('externalTrackDayLabel', { day: userTestingDay || Number(test.testing_days || 0) || 0 }, lang))}</span>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}', 10)">
+                            ${t.openBtn}
+                        </button>
+                        <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
+                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : window.escapeHTML(externalConfirmLabel)}
+                        </button>
+                        <div style="color: #ff3b30; font-size: 13px; text-align: center;">
+                            ${window.escapeHTML(externalWarningText)}
                         </div>
-                        <div class="external-track-banner-text">${window.escapeHTML(window.t(externalNoteKey, { day: userTestingDay || Number(test.testing_days || 0) || 0 }, lang))}</div>
-                    </div>
-                    <div class="action-row">
-                        <button class="btn btn-secondary" style="flex:1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '')">
-                            ${window.escapeHTML(window.t('externalTrackOpenAppBtn', {}, lang))}
-                        </button>
-                        <button class="btn" style="flex:1; ${externalProofDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${externalProofDisabled ? 'disabled' : ''} onclick="sendExternalTrackingProofFromUi(${test.id}, '${safeOwnerUsername}', event)">
-                            ${window.escapeHTML(window.t(test.status === 'done' ? 'externalTrackProofSentBtn' : 'externalTrackProofBtn', {}, lang))}
-                        </button>
                     </div>
                 `;
             }
@@ -2520,18 +2525,12 @@ function renderTests(force) {
             ? '<div class="done-status-pill">' + window.escapeHTML(t.doneTodayText) + '</div><div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
             : '';
         const externalMetaChips = [];
-        if (isExternal && !test.real_app_id) {
-            externalMetaChips.push(`<span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalGuestMainListChip', {}, lang))}</span>`);
-        }
         if (isExternal) {
-            externalMetaChips.push(`<span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalTrackCardChip', {}, lang))}</span>`);
+            externalMetaChips.push(`<span class="meta-chip accent-blue">${window.escapeHTML(window.t('externalGuestMainListChip', {}, lang))}</span>`);
         }
         if (showGuestOriginChip) {
             externalMetaChips.push(renderGuestOriginChip(test.external_source));
         }
-        const externalMetaHtml = (externalMetaChips.length || isExternal)
-            ? `<div class="external-track-inline-meta">${externalMetaChips.join('')}${isExternal ? `<span class="external-track-inline-note">${window.escapeHTML(window.t('externalTrackInlineMeta', { source: formatExternalSourceLabel(test.external_source) }, lang))}</span>` : ''}</div>`
-            : '';
         const cardHeaderLinkStart = `<div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">`;
 
         let cardContent = `
@@ -2547,8 +2546,7 @@ function renderTests(force) {
                 ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
                 ${trailingHtml}
             </div>
-            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false })}
-            ${externalMetaHtml}
+            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips })}
             <div id="actions-${test.id}">
                 ${actionsHtml}
             </div>
@@ -3345,8 +3343,8 @@ function getGuestOriginMeta(source) {
         };
     }
     return {
-        chipIcon: '🌍',
-        listIcon: '👽',
+        chipIcon: '🛒',
+        listIcon: '🛒',
         label: window.t('guestOriginShowcaseChip', {}, lang),
         className: 'accent-blue'
     };

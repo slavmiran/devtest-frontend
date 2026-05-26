@@ -1928,7 +1928,7 @@
             externalSourceFastTrack: "Fast Track",
             externalSourceManual: "Manual add",
             externalSourceGeneric: "External Tracking",
-            guestOriginManualChip: "Added manually",
+            guestOriginManualChip: "Manually Added",
             guestOriginShowcaseChip: "Showcase",
             projectGuestCountChip: "Guests: {count}",
             projectGuestCountToast: "This project currently has {count} guest testers from external tracking.",
