@@ -7393,15 +7393,15 @@ async function resolveAllAccessErrors(projectId, progressIds) {
     try {
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
+        var request = await _postResolveAccessError(projectId, normalizedIds[0]);
+        if (!request.ok) {
+            handleApiError(getBackendErrorCode(request.result), request.result && request.result.details ? request.result.details : {});
+            loadProjects(true).catch(function() {});
+            return;
+        }
+
         for (var index = 0; index < normalizedIds.length; index++) {
-            var progressId = normalizedIds[index];
-            var request = await _postResolveAccessError(projectId, progressId);
-            if (!request.ok) {
-                handleApiError(getBackendErrorCode(request.result), request.result && request.result.details ? request.result.details : {});
-                loadProjects(true).catch(function() {});
-                return;
-            }
-            _markProjectAccessIssueResolved(projectId, progressId);
+            _markProjectAccessIssueResolved(projectId, normalizedIds[index]);
         }
 
         _syncProjectsUiAfterOptimisticChange();
