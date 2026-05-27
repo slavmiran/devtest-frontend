@@ -1482,10 +1482,24 @@ function buildGuestInviteDeepLink(guestAppId, inviterId, inviteLang, startappVal
     return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORTNAME}?${params.toString()}`;
 }
 
+function buildProjectReferralStartLink(projectId) {
+    var normalizedProjectId = Number(projectId || 0);
+    var normalizedInviterId = Number(userId || 0);
+    var botUsername = String((window.App && window.App.botUsername) || BOT_USERNAME || 'Android12TestersBot').trim().replace(/^@+/, '');
+    if (normalizedProjectId <= 0 || normalizedInviterId <= 0) {
+        return `https://t.me/${botUsername}?start=mutual_${normalizedProjectId}`;
+    }
+    return `https://t.me/${botUsername}?start=ref_mutual_${normalizedInviterId}_${normalizedProjectId}`;
+}
+
 function buildExternalClaimStartLink(packageName) {
     var normalizedPackage = String(packageName || '').trim();
     var botUsername = String((window.App && window.App.botUsername) || BOT_USERNAME || 'Android12TestersBot').trim().replace(/^@+/, '');
-    return `https://t.me/${botUsername}?start=claim_app_${encodeURIComponent(normalizedPackage)}`;
+    var normalizedInviterId = Number(userId || 0);
+    if (!normalizedPackage || normalizedInviterId <= 0) {
+        return `https://t.me/${botUsername}?start=claim_app_${encodeURIComponent(normalizedPackage)}`;
+    }
+    return `https://t.me/${botUsername}?start=ref_claim_${normalizedInviterId}_${encodeURIComponent(normalizedPackage)}`;
 }
 
 function extractPackageNameFromPlayUrl(playUrl) {
@@ -7972,6 +7986,7 @@ Object.assign(window, {
     normalizeGuestInviteLanguage,
     getDefaultGuestInviteLanguage,
     buildGuestInviteDeepLink,
+    buildProjectReferralStartLink,
     buildExternalClaimStartLink,
     submitManualExternalTrack,
     startExternalTrackingSession,
@@ -8090,6 +8105,7 @@ Object.assign(window.App, {
     loadExternalCounts,
     getExternalCounts,
     joinDirect,
+    buildProjectReferralStartLink,
     submitManualExternalTrack,
     startExternalTrackingSession,
     submitExternalTrackingProof,
