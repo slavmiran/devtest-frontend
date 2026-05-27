@@ -1915,6 +1915,13 @@ function getExternalCurrentTestingDay(record) {
     return Math.max(1, lastCompletedDay || 1);
 }
 
+function isExternalControlDayDue(test) {
+    if (!test || !test.is_external) {
+        return false;
+    }
+    return isMandatoryScreenshotDay(getExternalCurrentTestingDay(test));
+}
+
 function getExternalDisplayTestingDay(record) {
     return getExternalCurrentTestingDay(record);
 }
@@ -2072,7 +2079,7 @@ function getExternalStatusPresentation(test) {
         substatusText = meta.nextControlDay
             ? window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang)
             : window.t('externalTestsAllControlsDone', {}, lang);
-    } else if (test && test.external_control_day_due) {
+    } else if (test && isExternalControlDayDue(test)) {
         statusText = window.t('externalTestsControlDayDue', { day: meta.currentDay }, lang);
         substatusText = lastCheckDate
             ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
@@ -3371,7 +3378,7 @@ function isGuestOriginTest(test) {
 
 function shouldKeepExternalTestInVoluntarySection(test) {
     if (!test || !test.is_external) return false;
-    return !test.external_control_day_due || String(test.status || '') === 'done';
+    return !isExternalControlDayDue(test) || String(test.status || '') === 'done';
 }
 
 function getExternalTrackPlayUrl(guest) {
@@ -4131,7 +4138,7 @@ async function submitExternalGuestActivityFromUi(testId) {
     var test = getExternalProjectTest(testId);
     if (!test) return null;
 
-    if (!test.external_control_day_due) {
+    if (!isExternalControlDayDue(test)) {
         return sendExternalDailyCheckinFromUi(testId);
     }
     if (typeof window.submitExternalTrackingProof !== 'function') return null;
@@ -4275,7 +4282,7 @@ function renderExternalProjectDetailsModal(test, body) {
     var groupUrl = String(test.google_group_url || '').trim();
     var safeGroupUrl = escapeInlineJsString(groupUrl);
     var isDoneToday = statusMeta.isDoneToday;
-    var isControlDayDue = !!test.external_control_day_due;
+    var isControlDayDue = isExternalControlDayDue(test);
     var isContinuedExternal = isExternalContinueModeEnabled(test);
     var showPost14Choice = statusMeta.isPostControlWindow && !isContinuedExternal && !isDoneToday;
     var originChipHtml = shouldShowGuestOriginChip(test) ? renderGuestOriginChip(test.external_source) : '';
@@ -5172,7 +5179,7 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     var test = getExternalProjectTest(appId);
     _checkinOptionsAppId = appId;
     _checkinOptionsOwner = ownerUsername || '';
-    _checkinOptionsIsControlDay = !!(test && test.external_control_day_due);
+    _checkinOptionsIsControlDay = !!(test && isExternalControlDayDue(test));
     _checkinOptionsFlow = 'external';
     const modal = document.getElementById('checkin-options-modal');
     if (!modal) return;

@@ -3046,6 +3046,7 @@ function handleApiError(code, details = {}) {
         transfer_wrong_recipient: 'err_transfer_wrong_recipient',
         transfer_sender_not_owner: 'err_transfer_sender_not_owner',
         transfer_app_unavailable: 'err_transfer_app_unavailable',
+        bot_is_blocked: 'err_bot_is_blocked',
         mass_invite_project_unavailable: 'massInviteUnavailable',
         mass_invite_cooldown_active: 'massInviteCooldownActiveError',
         mass_invite_cooldown_not_active: 'massInviteCooldownNotActive',
@@ -6832,55 +6833,6 @@ async function searchProjectTransferUser() {
     }
 }
 
-function _buildProjectTransferDmText(payload) {
-    return window.t('transferDmTemplate', {
-        app_name: String(payload && payload.app_name || '').trim() || window.t('unknownLabel', {}, lang),
-        transfer_link: String(payload && payload.transfer_link || '').trim(),
-        minutes: 15
-    }, lang);
-}
-
-function _openProjectTransferDm(recipientUsername, text) {
-    var normalizedUsername = String(recipientUsername || '').trim().replace(/^@+/, '');
-    if (!normalizedUsername || !text) {
-        return false;
-    }
-
-    var encodedText = encodeURIComponent(text);
-    var tgUrl = 'tg://resolve?domain=' + encodeURIComponent(normalizedUsername) + '&text=' + encodedText;
-    var webUrl = 'https://t.me/' + encodeURIComponent(normalizedUsername) + '?text=' + encodedText;
-
-    try {
-        window.location.href = tgUrl;
-        setTimeout(function() {
-            if (document.visibilityState !== 'visible') {
-                return;
-            }
-            try {
-                if (tg && typeof tg.openTelegramLink === 'function') {
-                    tg.openTelegramLink(webUrl);
-                } else {
-                    window.open(webUrl, '_blank');
-                }
-            } catch (error) {
-                console.error('Transfer DM fallback open error:', error);
-            }
-        }, 450);
-        return true;
-    } catch (error) {
-        console.error('Transfer DM open error:', error);
-        try {
-            if (tg && typeof tg.openTelegramLink === 'function') {
-                tg.openTelegramLink(webUrl);
-                return true;
-            }
-        } catch (fallbackError) {
-            console.error('Transfer DM fallback error:', fallbackError);
-        }
-    }
-    return false;
-}
-
 async function generateProjectTransferLink() {
     if (!_transferProjectId || !_transferTargetUser || !_transferTargetUser.user_id) {
         handleApiError('user_not_found');
@@ -6920,10 +6872,8 @@ async function generateProjectTransferLink() {
             return null;
         }
 
-        var dmText = _buildProjectTransferDmText(payload);
-        _openProjectTransferDm(payload.recipient_username || (_transferTargetUser && _transferTargetUser.username), dmText);
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(window.t('transferDmOpenedToast', {}, lang));
+        showToast(window.t('transferSentByBotToast', {}, lang));
         closeProjectTransferModal();
         return payload;
     } catch (error) {

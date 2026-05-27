@@ -629,13 +629,14 @@
     <div id="project-transfer-modal" class="modal-overlay" onclick="closeProjectTransferModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 data-i18n="transferModalTitle">Передача прав на проект</h3>
-            <p class="transfer-modal-subtitle" data-i18n="transferModalIntro">Найдите пользователя платформы по @username, затем мы сгенерируем одноразовую ссылку и откроем ЛС с готовым сообщением.</p>
+            <p class="transfer-modal-subtitle" data-i18n="transferModalIntro">Найдите пользователя платформы по @username, затем мы отправим ему одноразовую ключ-ссылку через бота.</p>
             <div class="transfer-project-chip">
                 <div>
                     <div class="transfer-project-chip-label" data-i18n="transferModalProjectLabel">Проект</div>
                     <div class="transfer-project-chip-value notranslate" id="transfer-project-name"></div>
                 </div>
             </div>
+            <p class="transfer-modal-note" data-i18n="transferDeliveryNote">⚠️ Важно: Получатель должен хотя бы раз запустить нашего бота (@Android12TestersBot). Если бот у него не запущен или заблокирован, мы не сможем доставить ему ключ-ссылку.</p>
             <div class="form-group">
                 <label class="form-label" for="transfer-username-input" data-i18n="transferUsernameLabel">Username получателя</label>
                 <div class="transfer-search-row">
@@ -648,7 +649,7 @@
             <div id="transfer-link-status" class="transfer-status"></div>
             <div class="action-row" style="margin-top: 0;">
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeProjectTransferModal()" data-i18n="editCancel">Отмена</button>
-                <button class="btn btn-primary" style="flex: 1;" id="transfer-generate-btn" onclick="generateProjectTransferLink()" data-i18n="transferGenerateBtn">Создать ссылку и открыть ЛС</button>
+                <button class="btn btn-primary" style="flex: 1;" id="transfer-generate-btn" onclick="generateProjectTransferLink()" data-i18n="transferGenerateBtn">Отправить Проект</button>
             </div>
         </div>
     </div>
