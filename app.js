@@ -18,7 +18,9 @@ const USER_TIMEZONE_STORAGE_KEY = 'user_system_timezone';
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
 const telegramUsername = String(initData.user?.username || '').trim().replace(/^@+/, '');
-var API_BASE = 'https://devtest-backend.onrender.com/api';
+let API_BASE = window.location.hostname.includes('vercel.app')
+    ? 'https://usable-epidemic-askew.ngrok-free.dev/api'
+    : 'https://devtest-backend.onrender.com/api';
 const GUEST_PROJECTS_PAGE_SIZE = 5;
 const NATIVE_APP_LANGS = ['ru', 'en'];
 const RTL_APP_LANGS = ['ar', 'fa', 'he', 'ur'];
