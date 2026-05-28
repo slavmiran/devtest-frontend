@@ -21,6 +21,31 @@ const telegramUsername = String(initData.user?.username || '').trim().replace(/^
 let API_BASE = window.location.hostname.includes('vercel.app')
     ? 'https://usable-epidemic-askew.ngrok-free.dev/api'
     : 'https://devtest-backend.onrender.com/api';
+const API_USES_NGROK = API_BASE.includes('ngrok');
+const _nativeFetch = window.fetch.bind(window);
+
+function _resolveFetchRequestUrl(input) {
+    if (typeof input === 'string') {
+        return input;
+    }
+    if (input && typeof input.url === 'string') {
+        return input.url;
+    }
+    return '';
+}
+
+window.fetch = function(input, init) {
+    var requestUrl = _resolveFetchRequestUrl(input);
+    if (!API_USES_NGROK || requestUrl.indexOf(API_BASE) !== 0) {
+        return _nativeFetch(input, init);
+    }
+
+    var request = new Request(input, init);
+    var headers = new Headers(request.headers || undefined);
+    headers.set('ngrok-skip-browser-warning', 'true');
+
+    return _nativeFetch(new Request(request, { headers: headers }));
+};
 const GUEST_PROJECTS_PAGE_SIZE = 5;
 const NATIVE_APP_LANGS = ['ru', 'en'];
 const RTL_APP_LANGS = ['ar', 'fa', 'he', 'ur'];
