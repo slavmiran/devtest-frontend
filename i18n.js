@@ -2179,7 +2179,7 @@
             mutualChipLabel: "🤝 Mutual: {current}/{target}",
             contractChipLabel: "💎 Contracts: {current}/{target} · {price} $BUST",
             archivedAfkBadge: "📦 Archived (AFK)",
-            archivedAfkToast: "Project was auto-archived due to owner inactivity. Owner received -10 ☧️ karma penalty.",
+            archivedAfkToast: "Project was auto-archived due to owner inactivity. Owner received -10 ☧️ karma penalty!",
             archivedBadge: "📦 Archived",
             archivedAfkOwnerChip: "⚠️ AFK · -10 ☧️",
             err_offer_proposer_app_locked_owner: "This app is already used in another active offer to this developer for {target_app}.",
