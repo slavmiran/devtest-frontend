@@ -6,7 +6,17 @@ tg.ready();
 window.DEFAULT_GOOGLE_GROUP_URL = 'https://groups.google.com/g/google-play-dev-test';
 
 const initData = tg.initDataUnsafe || {};
-const BOT_USERNAME = 'Android12TestersBot';
+const TELEGRAM_RUNTIME_BOT_USERNAME = String(
+    (initData.receiver && initData.receiver.username)
+    || (initData.chat && initData.chat.username)
+    || ''
+).trim().replace(/^@+/, '');
+const BOT_USERNAME = String(
+    window.__BOT_USERNAME__
+    || TELEGRAM_RUNTIME_BOT_USERNAME
+    || window.App.botUsername
+    || 'Android12TestersBot'
+).trim().replace(/^@+/, '');
 const WEBAPP_SHORTNAME = 'app';
 const BOT_CHAT_URL = `https://t.me/${BOT_USERNAME}`;
 window.App.botUsername = BOT_USERNAME;
@@ -18,7 +28,66 @@ const USER_TIMEZONE_STORAGE_KEY = 'user_system_timezone';
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
 const telegramUsername = String(initData.user?.username || '').trim().replace(/^@+/, '');
-var API_BASE = 'https://devtest-backend.onrender.com/api';
+const API_BASE_OVERRIDE = String(window.__API_BASE__ || '').trim();
+let API_BASE = API_BASE_OVERRIDE || (window.location.hostname.includes('vercel.app')
+    ? 'https://usable-epidemic-askew.ngrok-free.dev/api'
+    : 'https://devtest-backend.onrender.com/api');
+const API_USES_NGROK = API_BASE.includes('ngrok');
+const _nativeFetch = window.fetch.bind(window);
+
+function _resolveFetchRequestUrl(input) {
+    if (typeof input === 'string') {
+        return input;
+    }
+    if (input && typeof input.url === 'string') {
+        return input.url;
+    }
+    return '';
+}
+
+window.fetch = function(input, init) {
+    var requestUrl = _resolveFetchRequestUrl(input);
+    if (!API_USES_NGROK || requestUrl.indexOf(API_BASE) !== 0) {
+        return _nativeFetch(input, init);
+    }
+
+    var request = new Request(input, init);
+    var headers = new Headers(request.headers || undefined);
+    headers.set('ngrok-skip-browser-warning', 'true');
+
+    return _nativeFetch(new Request(request, { headers: headers }));
+};
+
+function _normalizeBotUsername(rawValue) {
+    var normalized = String(rawValue || '').trim().replace(/^@+/, '');
+    return normalized || BOT_USERNAME;
+}
+
+async function loadRuntimeConfig() {
+    try {
+        var response = await fetch(`${API_BASE}/runtime-config`);
+        if (!response.ok) {
+            return;
+        }
+        var payload = await response.json();
+        var runtimeBotUsername = _normalizeBotUsername(
+            TELEGRAM_RUNTIME_BOT_USERNAME
+            || (payload && payload.bot_username)
+            || (window.App && window.App.botUsername)
+            || BOT_USERNAME
+        );
+        if (runtimeBotUsername) {
+            window.App.botUsername = runtimeBotUsername;
+        }
+        var runtimeShortname = String((payload && payload.webapp_shortname) || '').trim().replace(/^\/+|\/+$/g, '');
+        if (runtimeShortname) {
+            window.App.webappShortname = runtimeShortname;
+        }
+    } catch (error) {
+        console.warn('Runtime config fetch failed:', error);
+    }
+}
+
 const GUEST_PROJECTS_PAGE_SIZE = 5;
 const NATIVE_APP_LANGS = ['ru', 'en'];
 const RTL_APP_LANGS = ['ar', 'fa', 'he', 'ur'];
@@ -1479,13 +1548,14 @@ function buildGuestInviteDeepLink(guestAppId, inviterId, inviteLang, startappVal
     const params = new URLSearchParams();
     params.set('startapp', String(startappValue || `guest_${guestAppId}_${inviterId}`));
     params.set('lang', normalizedLang);
-    return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORTNAME}?${params.toString()}`;
+    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || TELEGRAM_RUNTIME_BOT_USERNAME || BOT_USERNAME);
+    return `https://t.me/${botUsername}/${WEBAPP_SHORTNAME}?${params.toString()}`;
 }
 
 function buildProjectReferralStartLink(projectId) {
     var normalizedProjectId = Number(projectId || 0);
     var normalizedInviterId = Number(userId || 0);
-    var botUsername = String((window.App && window.App.botUsername) || BOT_USERNAME || 'Android12TestersBot').trim().replace(/^@+/, '');
+    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || BOT_USERNAME);
     if (normalizedProjectId <= 0 || normalizedInviterId <= 0) {
         return `https://t.me/${botUsername}?start=mutual_${normalizedProjectId}`;
     }
@@ -1494,7 +1564,7 @@ function buildProjectReferralStartLink(projectId) {
 
 function buildExternalClaimStartLink(packageName) {
     var normalizedPackage = String(packageName || '').trim();
-    var botUsername = String((window.App && window.App.botUsername) || BOT_USERNAME || 'Android12TestersBot').trim().replace(/^@+/, '');
+    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || BOT_USERNAME);
     var normalizedInviterId = Number(userId || 0);
     if (!normalizedPackage || normalizedInviterId <= 0) {
         return `https://t.me/${botUsername}?start=claim_app_${encodeURIComponent(normalizedPackage)}`;
@@ -2319,7 +2389,8 @@ function countGrantSkips(app) {
 function buildCheckpointTestLink(appId) {
     var normalizedId = Number(appId || 0);
     if (!normalizedId) return '';
-    return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORTNAME}?startapp=app_focus_${normalizedId}`;
+    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || TELEGRAM_RUNTIME_BOT_USERNAME || BOT_USERNAME);
+    return `https://t.me/${botUsername}/${WEBAPP_SHORTNAME}?startapp=app_focus_${normalizedId}`;
 }
 
 function buildCheckpointGooglePlayLink(packageName, explicitUrl) {
@@ -3986,6 +4057,10 @@ function refreshOpenModals() {
     if (inviteModal && inviteModal.classList.contains('active') && _inviteProjectId) {
         openInviteModal(_inviteProjectId);
     }
+    const visibilityModal = document.getElementById('visibility-mode-modal');
+    if (visibilityModal && visibilityModal.classList.contains('active') && window.renderVisibilityModeModal) {
+        window.renderVisibilityModeModal();
+    }
     const guestInviteModal = document.getElementById('guest-invite-modal');
     if (guestInviteModal && guestInviteModal.classList.contains('active') && window.renderGuestInviteModal) {
         window.renderGuestInviteModal();
@@ -5015,6 +5090,13 @@ function _mapProjectsFromApi(data) {
         var hasAccessError = testers.some(function(tester) {
             return !!tester.issue_reported_at && !tester.issue_fixed_at;
         });
+        var isAcceptingNewTesters = project.is_accepting_new_testers !== false;
+        var visibilityMode = 'public';
+        if (project.is_visible === false && !isAcceptingNewTesters) {
+            visibilityMode = 'isolated';
+        } else if (project.is_visible === false) {
+            visibilityMode = 'hidden_manual';
+        }
         var mappedTesters = testers.map(function(tester) {
             return Object.assign({}, tester, {
                 progress_id: Number(tester.progress_id || 0),
@@ -5041,6 +5123,8 @@ function _mapProjectsFromApi(data) {
             instructions: project.instructions || '',
             testers: mappedTesters,
             is_visible: project.is_visible !== false,
+            is_accepting_new_testers: isAcceptingNewTesters,
+            visibility_mode: visibilityMode,
             created_at: project.created_at || null,
             likes: project.likes || [],
             likes_used: project.likes_used || 0,
@@ -5670,33 +5754,90 @@ async function sendReport() {
     }
 }
 
-async function toggleVisibility(appId, isVisible) {
-    const project = myProjects.find(item => item.id === appId);
-    if (!project) return;
+function getProjectVisibilityMode(project) {
+    var explicitMode = String(project && project.visibility_mode || '').trim().toLowerCase();
+    if (explicitMode === 'isolated' || explicitMode === 'hidden_manual' || explicitMode === 'public') {
+        return explicitMode;
+    }
+    if (project && project.is_visible === false && project.is_accepting_new_testers === false) {
+        return 'isolated';
+    }
+    if (project && project.is_visible === false) {
+        return 'hidden_manual';
+    }
+    return 'public';
+}
 
-    const previousVisibility = project.is_visible;
-    project.is_visible = isVisible;
-    renderProjects();
+function _applyProjectVisibilityMode(project, nextMode) {
+    if (!project) return 'public';
+    var normalizedMode = String(nextMode || '').trim().toLowerCase();
+    if (normalizedMode !== 'isolated' && normalizedMode !== 'hidden_manual') {
+        normalizedMode = 'public';
+    }
+    project.visibility_mode = normalizedMode;
+    project.is_visible = normalizedMode === 'public';
+    project.is_accepting_new_testers = normalizedMode !== 'isolated';
+    return normalizedMode;
+}
+
+function _snapshotProjectVisibility(project) {
+    return {
+        is_visible: !!(project && project.is_visible),
+        is_accepting_new_testers: !(project && project.is_accepting_new_testers === false),
+        visibility_mode: getProjectVisibilityMode(project),
+    };
+}
+
+function _restoreProjectVisibility(project, snapshot) {
+    if (!project || !snapshot) return;
+    project.is_visible = !!snapshot.is_visible;
+    project.is_accepting_new_testers = snapshot.is_accepting_new_testers !== false;
+    project.visibility_mode = String(snapshot.visibility_mode || '').trim().toLowerCase() || getProjectVisibilityMode(project);
+}
+
+async function setProjectVisibilityMode(appId, nextMode) {
+    const project = myProjects.find(function(item) { return Number(item.id) === Number(appId); });
+    if (!project) return null;
+
+    const previousState = _snapshotProjectVisibility(project);
+    const normalizedMode = _applyProjectVisibilityMode(project, nextMode);
+    _syncProjectsUiAfterOptimisticChange();
 
     try {
         const response = await fetch(`${API_BASE}/projects/${appId}/toggle_visibility`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_visible: isVisible })
+            body: JSON.stringify({
+                owner_id: userId,
+                visibility_mode: normalizedMode,
+            })
         });
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        const result = await response.json();
-        if (result.status && result.status !== 'success' && result.status !== 'ok') {
+        const result = await _readJsonResponseSafely(response, 'Project visibility update');
+        if (!response.ok || !result || result.status !== 'success') {
             throw new Error(getApiErrorMessage(result, 'visibilityUpdateError'));
         }
+        _applyProjectVisibilityMode(project, result.visibility_mode || normalizedMode);
+        if (typeof result.is_visible !== 'undefined') {
+            project.is_visible = result.is_visible !== false;
+        }
+        if (typeof result.is_accepting_new_testers !== 'undefined') {
+            project.is_accepting_new_testers = result.is_accepting_new_testers !== false;
+        }
         if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-        loadProjects(true).catch(() => {});
+        _syncProjectsUiAfterOptimisticChange();
+        loadProjects(true).catch(function() {});
+        return result;
     } catch (error) {
-        console.error('Toggle visibility error:', error);
-        project.is_visible = previousVisibility;
-        renderProjects();
+        console.error('Set project visibility mode error:', error);
+        _restoreProjectVisibility(project, previousState);
+        _syncProjectsUiAfterOptimisticChange();
         showToast(error && error.message && error.message !== '[object Object]' ? error.message : t.visibilityUpdateError);
+        return null;
     }
+}
+
+async function toggleVisibility(appId, isVisible) {
+    return setProjectVisibilityMode(appId, isVisible ? 'public' : 'hidden_manual');
 }
 
 async function confirmDropTest() {
@@ -7846,6 +7987,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showNoUsernameOverlay();
         return;
     }
+    var runtimeConfigPromise = loadRuntimeConfig();
     var bootstrapProfileSyncPromise = syncTelegramProfile();
     loadUserProfilePreferences().catch(function() {});
 
@@ -7907,6 +8049,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     (async function() {
         await bootstrapProfileSyncPromise;
+        await runtimeConfigPromise;
         var guestIntent = _parseGuestClaimIntent();
         if (guestIntent) {
             await _handleGuestClaimIntent(guestIntent);
@@ -7967,6 +8110,8 @@ Object.assign(window, {
     submitIssueReport,
     sendReport,
     toggleVisibility,
+    getProjectVisibilityMode,
+    setProjectVisibilityMode,
     confirmDropTest,
     confirmLeaveMutual,
     confirmKickTester,
@@ -8060,6 +8205,7 @@ Object.assign(window.App, {
     userId,
     userEmail: _userEmail,
     autoAcceptMutual: _autoAcceptMutualEnabled,
+    getProjectVisibilityMode: getProjectVisibilityMode,
     getState: () => ({
         lang,
         appLang,
