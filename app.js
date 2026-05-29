@@ -6,7 +6,7 @@ tg.ready();
 window.DEFAULT_GOOGLE_GROUP_URL = 'https://groups.google.com/g/google-play-dev-test';
 
 const initData = tg.initDataUnsafe || {};
-const BOT_USERNAME = 'Android12TestersBot';
+const BOT_USERNAME = String(window.__BOT_USERNAME__ || window.App.botUsername || 'Android12TestersBot').trim().replace(/^@+/, '');
 const WEBAPP_SHORTNAME = 'app';
 const BOT_CHAT_URL = `https://t.me/${BOT_USERNAME}`;
 window.App.botUsername = BOT_USERNAME;

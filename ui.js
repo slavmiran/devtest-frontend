@@ -3251,7 +3251,7 @@ function buildProjectInviteStartLink(projectId) {
     if (typeof window.buildProjectReferralStartLink === 'function') {
         return window.buildProjectReferralStartLink(projectId);
     }
-    var botUsername = String((window.App && window.App.botUsername) || 'Android12TestersBot').trim().replace(/^@+/, '');
+    var botUsername = String((window.App && window.App.botUsername) || window.__BOT_USERNAME__ || 'Android12TestersBot').trim().replace(/^@+/, '');
     return 'https://t.me/' + botUsername + '?start=mutual_' + Number(projectId || 0);
 }
 
@@ -4577,7 +4577,7 @@ function formatCompactSyncLabel(project) {
 }
 
 function buildTesterReminderDeepLink(appId) {
-    var botUsername = String((window.App && window.App.botUsername) || 'Android12TestersBot').trim().replace(/^@+/, '');
+    var botUsername = String((window.App && window.App.botUsername) || window.__BOT_USERNAME__ || 'Android12TestersBot').trim().replace(/^@+/, '');
     var webappShortname = String((window.App && window.App.webappShortname) || 'app').trim().replace(/^\/+|\/+$/g, '');
     return 'https://t.me/' + botUsername + '/' + webappShortname + '?startapp=test_' + Number(appId || 0);
 }
@@ -7006,7 +7006,8 @@ function openInviteModal(projectId) {
     const isPublished = true;
     const massInviteMeta = getProjectMassInviteMeta(project);
 
-    const buildInviteLink = (mode) => `https://t.me/Android12TestersBot?start=${mode === 'mutual' ? 'mutual' : 'app'}_${project.id}`;
+    const inviteBotUsername = String((window.App && window.App.botUsername) || window.__BOT_USERNAME__ || 'Android12TestersBot').trim().replace(/^@+/, '');
+    const buildInviteLink = (mode) => `https://t.me/${inviteBotUsername}?start=${mode === 'mutual' ? 'mutual' : 'app'}_${project.id}`;
     const instrLine = project.instructions ? `\n${t.inviteDescLabel}${project.instructions}` : '';
     const getBlock1Text = (mode) => t.inviteBlock1Text.replace('{name}', project.name).replace('{instr}', instrLine).replace('{link}', buildInviteLink(mode));
     const getBlock2Text = (mode) => {
