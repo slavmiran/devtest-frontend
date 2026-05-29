@@ -23,7 +23,10 @@ function escapeHtmlWithBreaks(value) {
 }
 
 var _reliabilityDashboardFilter = 'projects';
+var _inviteProjectId = null;
 var _inviteMode = 'mutual';
+var _visibilityModalProjectId = 0;
+var _visibilityModalSubmitting = false;
 var _guestInviteGuestId = null;
 var _guestInviteSending = false;
 var _guestInviteLang = null;
@@ -35,6 +38,54 @@ var _guestTesterProjectId = 0;
 var _guestTesterProgressId = 0;
 var _guestLinkRemoveState = null;
 var _reportMessageLang = null;
+
+function getProjectVisibilityMeta(project) {
+    var mode = typeof window.getProjectVisibilityMode === 'function'
+        ? window.getProjectVisibilityMode(project)
+        : ((project && project.is_visible === false) ? 'hidden_manual' : 'public');
+
+    if (mode === 'isolated') {
+        return {
+            mode: 'isolated',
+            label: window.t('visibilityIsolated', {}, lang),
+            hint: window.t('visibilityIsolatedHint', {}, lang),
+            buttonClass: 'eye-locked',
+            buttonIcon: '🔒',
+            chipClass: ' accent-red',
+        };
+    }
+
+    if (mode === 'hidden_manual') {
+        return {
+            mode: 'hidden_manual',
+            label: window.t('visibilityPrivate', {}, lang),
+            hint: window.t('inviteLinkAlways', {}, lang),
+            buttonClass: 'eye-off',
+            buttonIcon: '🙈',
+            chipClass: '',
+        };
+    }
+
+    return {
+        mode: 'public',
+        label: window.t('visibilityPublic', {}, lang),
+        hint: '',
+        buttonClass: 'eye-on',
+        buttonIcon: '👁️',
+        chipClass: ' accent-green',
+    };
+}
+
+function buildProjectModeChip(project) {
+    var mode = project.mode || 'mutual';
+    if (mode === 'bounty') {
+        return `<button class="meta-chip accent-purple" onclick="void(0)">${window.escapeHTML(t.modeBounty)}</button>`;
+    }
+    if (mode === 'hybrid') {
+        return `<button class="meta-chip accent-orange" onclick="void(0)">${window.escapeHTML(t.modeHybrid)}</button>`;
+    }
+    return `<button class="meta-chip accent-green" onclick="void(0)">${window.escapeHTML(t.modeMutual)}</button>`;
+}
 
 function showSkeleton(containerId) {
     const container = document.getElementById(containerId);
@@ -4869,21 +4920,12 @@ function renderProjects(force) {
 
         const visibilityBadge = (() => {
             let badges = '';
+            const visibilityMeta = getProjectVisibilityMeta(project);
 
-            const statusChip = (() => {
-                if (!project.is_visible) {
-                    return `<button class="meta-chip" style="background: rgba(142,142,147,0.15);" onclick="showToast('${escapeInlineJsString(t.visibilityManualToast)}')">🚫 ${t.statusHiddenManual}</button>`;
-                }
-                const mode = project.mode || 'mutual';
-                if (mode === 'bounty') {
-                    return `<button class="meta-chip accent-purple" onclick="void(0)">${t.modeBounty}</button>`;
-                }
-                if (mode === 'hybrid') {
-                    return `<button class="meta-chip accent-orange" onclick="void(0)">${t.modeHybrid}</button>`;
-                }
-                return `<button class="meta-chip accent-green" onclick="void(0)">${t.modeMutual}</button>`;
-            })();
+            const statusChip = `<button type="button" class="meta-chip${visibilityMeta.chipClass}" onclick="openVisibilityModeModal(${project.id}, event)">${window.escapeHTML(visibilityMeta.label)}</button>`;
             if (statusChip) badges += statusChip;
+
+            badges += buildProjectModeChip(project);
 
             const runIterationChip = buildRunIterationChip(project);
             if (runIterationChip) badges += runIterationChip;
@@ -4979,15 +5021,13 @@ function renderProjects(force) {
                 </div>
                 <div class="project-header-actions">
                     <button class="project-icon-btn" onclick="openEditModal(${project.id})">✏️</button>
-                    ${project.is_visible
-                        ? `<button class="project-icon-btn eye-on" onclick="toggleVisibility(${project.id}, false)">👁️</button>`
-                        : `<button class="project-icon-btn eye-off" onclick="toggleVisibility(${project.id}, true)">🚫</button>`}
+                    <button class="project-icon-btn ${getProjectVisibilityMeta(project).buttonClass}" onclick="openVisibilityModeModal(${project.id}, event)">${window.escapeHTML(getProjectVisibilityMeta(project).buttonIcon)}</button>
                 </div>
             </div>
             <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                 ${visibilityBadge}
             </div>
-            ${project.is_visible === false ? `<div class="visibility-hint">${t.inviteLinkAlways}</div>` : ''}
+            ${getProjectVisibilityMeta(project).hint ? `<div class="visibility-hint ${getProjectVisibilityMeta(project).mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(getProjectVisibilityMeta(project).hint)}</div>` : ''}
             ${updateTipHtml}
             ${overtimeBadgeHtml ? `<div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${overtimeBadgeHtml}</div>` : ''}
             ${projectProgressHtml}
@@ -6187,6 +6227,117 @@ function showVisibilityToast() {
     showToast(t.visibilityHint);
 }
 
+function renderVisibilityModeModal() {
+    const body = document.getElementById('visibility-mode-modal-body');
+    const hint = document.getElementById('visibility-mode-modal-hint');
+    if (!body) return;
+
+    const project = myProjects.find(function(item) {
+        return Number(item.id) === Number(_visibilityModalProjectId || 0);
+    });
+    if (!project) {
+        body.innerHTML = '';
+        if (hint) hint.innerText = '';
+        return;
+    }
+
+    const safeProjectName = String(project.name || window.t('unknownLabel', {}, lang));
+    const currentMode = getProjectVisibilityMeta(project).mode;
+    const options = [
+        {
+            mode: 'public',
+            icon: '🌍',
+            title: window.t('visibilityModePublicTitle', {}, lang),
+            desc: window.t('visibilityModePublicDesc', {}, lang),
+            tone: 'is-public'
+        },
+        {
+            mode: 'hidden_manual',
+            icon: '🙈',
+            title: window.t('visibilityModeHiddenTitle', {}, lang),
+            desc: window.t('visibilityModeHiddenDesc', {}, lang),
+            tone: 'is-hidden'
+        },
+        {
+            mode: 'isolated',
+            icon: '🔒',
+            title: window.t('visibilityModeIsolatedTitle', {}, lang),
+            desc: window.t('visibilityModeIsolatedDesc', {}, lang),
+            tone: 'is-isolated'
+        }
+    ];
+
+    if (hint) {
+        hint.innerText = window.t('visibilityModalHint', { name: safeProjectName }, lang);
+    }
+
+    body.innerHTML = options.map(function(option) {
+        const isActive = option.mode === currentMode;
+        const isDisabled = _visibilityModalSubmitting || isActive;
+        const footerText = _visibilityModalSubmitting && isActive
+            ? window.t('visibilityModeUpdating', {}, lang)
+            : (isActive ? window.t('visibilityModeCurrent', {}, lang) : window.t('visibilityModeApply', {}, lang));
+        return `
+            <button
+                type="button"
+                class="visibility-option-card ${option.tone}${isActive ? ' is-active' : ''}"
+                onclick="applyVisibilityModeFromModal('${option.mode}')"
+                ${isDisabled ? 'disabled' : ''}
+            >
+                <div class="visibility-option-card__head">
+                    <div class="visibility-option-card__title">${window.escapeHTML(option.icon + ' ' + option.title)}</div>
+                    ${isActive ? `<span class="visibility-option-card__badge">${window.escapeHTML(window.t('visibilityModeCurrentBadge', {}, lang))}</span>` : ''}
+                </div>
+                <div class="visibility-option-card__desc">${window.escapeHTML(option.desc)}</div>
+                <div class="visibility-option-card__footer">${window.escapeHTML(footerText)}</div>
+            </button>
+        `;
+    }).join('');
+}
+
+function openVisibilityModeModal(projectId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    _visibilityModalProjectId = Number(projectId || 0);
+    _visibilityModalSubmitting = false;
+    renderVisibilityModeModal();
+    const modal = document.getElementById('visibility-mode-modal');
+    if (modal) modal.classList.add('active');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+function closeVisibilityModeModal(event) {
+    const modal = document.getElementById('visibility-mode-modal');
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
+    _visibilityModalProjectId = 0;
+    _visibilityModalSubmitting = false;
+}
+
+async function applyVisibilityModeFromModal(mode) {
+    if (_visibilityModalSubmitting || !_visibilityModalProjectId || typeof window.setProjectVisibilityMode !== 'function') {
+        return;
+    }
+    _visibilityModalSubmitting = true;
+    renderVisibilityModeModal();
+    try {
+        const result = await window.setProjectVisibilityMode(_visibilityModalProjectId, mode);
+        if (result) {
+            showToast(window.t('visibilityModeSaved', {}, lang));
+            closeVisibilityModeModal();
+        }
+    } finally {
+        _visibilityModalSubmitting = false;
+        const modal = document.getElementById('visibility-mode-modal');
+        if (modal && modal.classList.contains('active')) {
+            renderVisibilityModeModal();
+        }
+    }
+}
+
 function getKarmaSourceLabel(sourceType) {
     const normalized = String(sourceType || '').toLowerCase();
     const keyMap = {
@@ -6850,6 +7001,8 @@ function openInviteModal(projectId) {
     }
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
+    const visibilityMeta = getProjectVisibilityMeta(project);
+    const isIsolated = visibilityMeta.mode === 'isolated';
     const isPublished = true;
     const massInviteMeta = getProjectMassInviteMeta(project);
 
@@ -6861,25 +7014,45 @@ function openInviteModal(projectId) {
         return window.t(templateKey, { name: project.name, link: buildInviteLink(mode) }, lang);
     };
     const getBlock3Text = (mode) => buildInviteLink(mode);
-    const massInviteButtonLabel = massInviteMeta.isAvailable
+    const buildCopyButtonHtml = (text) => {
+        const baseStyle = 'width:42px;height:42px;font-size:18px;border-radius:12px;flex-shrink:0;';
+        if (isIsolated) {
+            return `<button class="btn-icon" style="${baseStyle} opacity:0.45; cursor:not-allowed;" disabled>🔒</button>`;
+        }
+        return `<button class="btn-icon" style="${baseStyle}" onclick="copyAndAction('${escapeForAttr(text)}', 'saved')">📋</button>`;
+    };
+    const buildActionButtonHtml = (text, label) => {
+        const baseStyle = 'width: 100%; background: rgba(51,144,236,0.12); color: var(--link-color); border: none;';
+        if (isIsolated) {
+            return `<button class="btn" style="${baseStyle} opacity:0.45; cursor:not-allowed;" disabled>${window.escapeHTML(window.t('inviteIsolationDisabledBtn', {}, lang))}</button>`;
+        }
+        return `<button class="btn" style="${baseStyle}" onclick="copyAndAction('${escapeForAttr(text)}', 'saved')">${window.escapeHTML(label)}</button>`;
+    };
+    const massInviteButtonLabel = isIsolated
+        ? window.t('inviteIsolationDisabledBtn', {}, lang)
+        : (massInviteMeta.isAvailable
         ? window.t('massInviteLaunchBtn', {}, lang)
-        : window.t('massInviteUnavailableBtn', {}, lang);
-    const massInviteLimitHintHtml = massInviteMeta.isAvailable
+        : window.t('massInviteUnavailableBtn', {}, lang));
+    const massInviteLimitHintHtml = !isIsolated && massInviteMeta.isAvailable
         ? `<div class="mass-invite-hint" style="text-align:center;">${window.escapeHTML(window.t('massInviteLimitHint', { count: massInviteMeta.maxRecipients }, lang))}</div>`
         : '';
-    const massInviteCooldownHtml = massInviteMeta.isCooldownActive
+    const massInviteCooldownHtml = isIsolated
+        ? `<div class="mass-invite-hint">${window.escapeHTML(window.t('inviteIsolationMassInviteHint', {}, lang))}</div>`
+        : (massInviteMeta.isCooldownActive
         ? `<div class="mass-invite-subhint">${window.escapeHTML(window.t('massInviteCooldownRemaining', { time: formatMassInviteRemaining(massInviteMeta.remainingMs) }, lang))}</div>
            <div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteResetCostHint', {}, lang))}</div>
            <div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteCooldownManualHint', {}, lang))}</div>`
         : (!massInviteMeta.isAvailable
             ? `<div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteUnavailableNote', {}, lang))}</div>`
-            : '');
-    const massInviteButtonClass = massInviteMeta.isCooldownActive
+            : ''));
+    const massInviteButtonClass = isIsolated
+        ? 'btn btn-secondary mass-invite-btn is-disabled'
+        : (massInviteMeta.isCooldownActive
         ? 'btn mass-invite-btn is-locked'
         : massInviteMeta.isAvailable
             ? 'btn btn-primary mass-invite-btn'
-            : 'btn btn-secondary mass-invite-btn is-disabled';
-    const massInviteButtonAttrs = massInviteMeta.isCooldownActive || massInviteMeta.isAvailable
+            : 'btn btn-secondary mass-invite-btn is-disabled');
+    const massInviteButtonAttrs = !isIsolated && (massInviteMeta.isCooldownActive || massInviteMeta.isAvailable)
         ? `onclick="handleMassInviteAction(${project.id})"`
         : 'disabled';
 
@@ -6895,13 +7068,17 @@ function openInviteModal(projectId) {
         const block3Text = getBlock3Text(_inviteMode);
         const mutualTabActive = _inviteMode === 'mutual';
         const block2Title = mutualTabActive ? t.inviteBlock2Title : t.inviteBlock2TitleDirect;
+        const isolationBannerHtml = isIsolated
+            ? `<div class="invite-isolated-banner"><div class="invite-isolated-banner__title">${window.escapeHTML(window.t('inviteIsolationBannerTitle', {}, lang))}</div><div class="invite-isolated-banner__text">${window.escapeHTML(window.t('inviteIsolationBannerText', {}, lang))}</div></div>`
+            : '';
         body.innerHTML = `
+        ${isolationBannerHtml}
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock1Title}</div>
             <div style="${preStyle}">${window.escapeHTML(block1Text)}</div>
             <div style="display:flex;gap:8px;">
                 <button class="btn" id="invite-publish-btn" style="flex:1; background: rgba(52,199,89,0.15); color: #34c759;" disabled>${window.escapeHTML(t.invitePublishedBtn)}</button>
-                <button class="btn-icon" style="width:42px;height:42px;font-size:18px;border-radius:12px;flex-shrink:0;" onclick="copyAndAction('${escapeForAttr(block1Text)}', 'saved')">📋</button>
+                ${buildCopyButtonHtml(block1Text)}
             </div>
         </div>
         <div class="mass-invite-card">
@@ -6918,12 +7095,12 @@ function openInviteModal(projectId) {
         <div style="${cardStyle}">
             <div style="${titleStyle}">${window.escapeHTML(block2Title)}</div>
             <div style="${preStyle}">${window.escapeHTML(block2Text)}</div>
-            <button class="btn" style="width: 100%; background: rgba(51,144,236,0.12); color: var(--link-color); border: none;" onclick="copyAndAction('${escapeForAttr(block2Text)}', 'saved')">${t.inviteBlock2Btn}</button>
+            ${buildActionButtonHtml(block2Text, t.inviteBlock2Btn)}
         </div>
         <div style="${cardStyle}">
             <div style="${titleStyle}">${t.inviteBlock3Title}</div>
             <div style="${preStyle}">${window.escapeHTML(block3Text)}</div>
-            <button class="btn" style="width: 100%; background: rgba(51,144,236,0.12); color: var(--link-color); border: none;" onclick="copyAndAction('${escapeForAttr(block3Text)}', 'saved')">${t.inviteBlock3Btn}</button>
+            ${buildActionButtonHtml(block3Text, t.inviteBlock3Btn)}
         </div>
     `;
     }
@@ -7110,7 +7287,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
                 window.escapeHTML(window.t('dossierOwnedProjectEta', { count: leftDays }, lang)) + '<br>' +
                 window.escapeHTML(getProjectModeText(project.mode)) + '<br>' +
                 window.escapeHTML(window.t('detail_testers_label', { count: project.active_testers_count || 0 }, lang)) + '<br>' +
-                window.escapeHTML(project.is_visible === false ? window.t('visibilityPrivate', {}, lang) : window.t('visibilityPublic', {}, lang)) +
+                window.escapeHTML(getProjectVisibilityMeta(project).label) +
             '</div>' +
         '</div>' +
         syncHtml +
@@ -8122,6 +8299,10 @@ Object.assign(window, {
     toggleArchive,
     showScreenshotDayAlert,
     showVisibilityToast,
+    renderVisibilityModeModal,
+    openVisibilityModeModal,
+    closeVisibilityModeModal,
+    applyVisibilityModeFromModal,
     showKarmaInfo,
     closeKarmaInfoModal,
     openReliabilityAlphaModal,
