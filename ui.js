@@ -4837,6 +4837,8 @@ function renderProjects(force) {
                 var testerLabel = cleanUsername
                     ? '@' + cleanUsername
                     : window.t('idLabel', { id: Number(tester.tester_id || 0) }, lang);
+                var guestOriginType = getGuestOriginType(tester.external_source);
+                var guestListPrefix = guestOriginType === 'manual' ? '✍️' : '👽';
                 var controlMeta = getExternalTesterControlMeta(tester);
                 var currentDay = getExternalCurrentTestingDay(tester);
                 var isControlToday = controlMeta.tone === 'green';
@@ -4844,15 +4846,13 @@ function renderProjects(force) {
                     ? `<span class="tester-day-badge">[${window.escapeHTML(String(Number(currentDay || 0)))}]</span>`
                     : '';
                 var screenshotDayHtml = isControlToday
-                    ? `<span class="tester-icon-action" onclick="event.stopPropagation(); showScreenshotDayAlert()">📷</span>`
+                    ? `<span class="tester-icon-action" onclick="event.stopPropagation(); showScreenshotDayAlert()">📸</span>`
                     : '';
-                var statusLabel = isControlToday
-                    ? window.t('statusToday', {}, lang)
-                    : controlMeta.label;
+                var statusLabel = controlMeta.label;
                 testerRowsHtml += `
                     <li onclick="openGuestTesterDetailsModal(${project.id}, ${Number(tester.progress_id || 0)}, event)" style="cursor: pointer;">
                         <div class="tester-row-main">
-                            <span class="tester-name">${testerDayHtml}<span class="tester-guest-prefix">👽</span><span class="tester-primary-label notranslate">${window.escapeHTML(testerLabel)}</span></span>
+                            <span class="tester-name">${testerDayHtml}<span class="tester-guest-prefix">${window.escapeHTML(guestListPrefix)}</span><span class="tester-primary-label notranslate">${window.escapeHTML(testerLabel)}</span></span>
                             ${screenshotDayHtml}
                         </div>
                         <div class="tester-row-meta">
