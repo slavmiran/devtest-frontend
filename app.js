@@ -6,11 +6,15 @@ tg.ready();
 window.DEFAULT_GOOGLE_GROUP_URL = 'https://groups.google.com/g/google-play-dev-test';
 
 const initData = tg.initDataUnsafe || {};
+const TELEGRAM_RUNTIME_BOT_USERNAME = String(
+    (initData.receiver && initData.receiver.username)
+    || (initData.chat && initData.chat.username)
+    || ''
+).trim().replace(/^@+/, '');
 const BOT_USERNAME = String(
     window.__BOT_USERNAME__
+    || TELEGRAM_RUNTIME_BOT_USERNAME
     || window.App.botUsername
-    || (initData.receiver && initData.receiver.username)
-    || (initData.chat && initData.chat.username)
     || 'Android12TestersBot'
 ).trim().replace(/^@+/, '');
 const WEBAPP_SHORTNAME = 'app';
@@ -24,9 +28,10 @@ const USER_TIMEZONE_STORAGE_KEY = 'user_system_timezone';
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
 const telegramUsername = String(initData.user?.username || '').trim().replace(/^@+/, '');
-let API_BASE = window.location.hostname.includes('vercel.app')
+const API_BASE_OVERRIDE = String(window.__API_BASE__ || '').trim();
+let API_BASE = API_BASE_OVERRIDE || (window.location.hostname.includes('vercel.app')
     ? 'https://usable-epidemic-askew.ngrok-free.dev/api'
-    : 'https://devtest-backend.onrender.com/api';
+    : 'https://devtest-backend.onrender.com/api');
 const API_USES_NGROK = API_BASE.includes('ngrok');
 const _nativeFetch = window.fetch.bind(window);
 
@@ -52,6 +57,37 @@ window.fetch = function(input, init) {
 
     return _nativeFetch(new Request(request, { headers: headers }));
 };
+
+function _normalizeBotUsername(rawValue) {
+    var normalized = String(rawValue || '').trim().replace(/^@+/, '');
+    return normalized || BOT_USERNAME;
+}
+
+async function loadRuntimeConfig() {
+    try {
+        var response = await fetch(`${API_BASE}/runtime-config`);
+        if (!response.ok) {
+            return;
+        }
+        var payload = await response.json();
+        var runtimeBotUsername = _normalizeBotUsername(
+            TELEGRAM_RUNTIME_BOT_USERNAME
+            || (payload && payload.bot_username)
+            || (window.App && window.App.botUsername)
+            || BOT_USERNAME
+        );
+        if (runtimeBotUsername) {
+            window.App.botUsername = runtimeBotUsername;
+        }
+        var runtimeShortname = String((payload && payload.webapp_shortname) || '').trim().replace(/^\/+|\/+$/g, '');
+        if (runtimeShortname) {
+            window.App.webappShortname = runtimeShortname;
+        }
+    } catch (error) {
+        console.warn('Runtime config fetch failed:', error);
+    }
+}
+
 const GUEST_PROJECTS_PAGE_SIZE = 5;
 const NATIVE_APP_LANGS = ['ru', 'en'];
 const RTL_APP_LANGS = ['ar', 'fa', 'he', 'ur'];
@@ -1512,13 +1548,14 @@ function buildGuestInviteDeepLink(guestAppId, inviterId, inviteLang, startappVal
     const params = new URLSearchParams();
     params.set('startapp', String(startappValue || `guest_${guestAppId}_${inviterId}`));
     params.set('lang', normalizedLang);
-    return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORTNAME}?${params.toString()}`;
+    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || TELEGRAM_RUNTIME_BOT_USERNAME || BOT_USERNAME);
+    return `https://t.me/${botUsername}/${WEBAPP_SHORTNAME}?${params.toString()}`;
 }
 
 function buildProjectReferralStartLink(projectId) {
     var normalizedProjectId = Number(projectId || 0);
     var normalizedInviterId = Number(userId || 0);
-    var botUsername = String((window.App && window.App.botUsername) || BOT_USERNAME || 'Android12TestersBot').trim().replace(/^@+/, '');
+    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || BOT_USERNAME);
     if (normalizedProjectId <= 0 || normalizedInviterId <= 0) {
         return `https://t.me/${botUsername}?start=mutual_${normalizedProjectId}`;
     }
@@ -1527,7 +1564,7 @@ function buildProjectReferralStartLink(projectId) {
 
 function buildExternalClaimStartLink(packageName) {
     var normalizedPackage = String(packageName || '').trim();
-    var botUsername = String((window.App && window.App.botUsername) || BOT_USERNAME || 'Android12TestersBot').trim().replace(/^@+/, '');
+    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || BOT_USERNAME);
     var normalizedInviterId = Number(userId || 0);
     if (!normalizedPackage || normalizedInviterId <= 0) {
         return `https://t.me/${botUsername}?start=claim_app_${encodeURIComponent(normalizedPackage)}`;
@@ -2352,7 +2389,8 @@ function countGrantSkips(app) {
 function buildCheckpointTestLink(appId) {
     var normalizedId = Number(appId || 0);
     if (!normalizedId) return '';
-    return `https://t.me/${BOT_USERNAME}/${WEBAPP_SHORTNAME}?startapp=app_focus_${normalizedId}`;
+    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || TELEGRAM_RUNTIME_BOT_USERNAME || BOT_USERNAME);
+    return `https://t.me/${botUsername}/${WEBAPP_SHORTNAME}?startapp=app_focus_${normalizedId}`;
 }
 
 function buildCheckpointGooglePlayLink(packageName, explicitUrl) {
@@ -7949,6 +7987,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showNoUsernameOverlay();
         return;
     }
+    var runtimeConfigPromise = loadRuntimeConfig();
     var bootstrapProfileSyncPromise = syncTelegramProfile();
     loadUserProfilePreferences().catch(function() {});
 
@@ -8010,6 +8049,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     (async function() {
         await bootstrapProfileSyncPromise;
+        await runtimeConfigPromise;
         var guestIntent = _parseGuestClaimIntent();
         if (guestIntent) {
             await _handleGuestClaimIntent(guestIntent);

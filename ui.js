@@ -7121,9 +7121,10 @@ function copyAndAction(text, target) {
     const decoded = text.replace(/\\n/g, '\n').replace(/\\'/g, "'").replace(/\\\\/g, '\\');
     navigator.clipboard.writeText(decoded).catch((error) => console.error('Copy failed', error));
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    showToast(window.t('inviteCopied', {}, lang));
     if (target === 'exchange') {
         tg.openTelegramLink('https://t.me/googleplay_console_12testers/2');
-    } else {
+    } else if (target === 'share') {
         tg.openTelegramLink('https://t.me/share/url?text=' + encodeURIComponent(decoded));
     }
 }
