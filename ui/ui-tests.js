@@ -269,15 +269,6 @@ function showGrantBreakdownAlertById(appId, event) {
     }
 }
 
-function renderGrantPreviewChip(test) {
-    const grant = getGrantEstimateData(test);
-    const chipClass = grant.eligible ? 'meta-chip accent-yellow grant-chip' : 'meta-chip grant-chip grant-chip-lost';
-    const label = grant.eligible
-        ? window.t('grantChipEligible', { amount: formatUiAmount(grant.total, 1) }, lang)
-        : window.t('grantChipLost', {}, lang);
-    return `<button type="button" class="${chipClass}" onclick="showGrantBreakdownAlertById(${test.id}, event)">${window.escapeHTML(label)}</button>`;
-}
-
 function getTestingTimelineMeta(test) {
     var today = parseLocalDateOnly(getLocalDate()) || new Date();
     var userTestingDayRaw = getResolvedTestingDay(test);
@@ -552,15 +543,6 @@ function getProjectSyncStartDay(test) {
     return Number.isFinite(syncDay) && syncDay >= 1 ? syncDay : 0;
 }
 
-function getProjectPlatformDay(test) {
-    var createdAt = test && test.created_at ? new Date(test.created_at) : null;
-    if (!(createdAt && !Number.isNaN(createdAt.getTime()))) {
-        return 0;
-    }
-    var today = parseLocalDateOnly(getLocalDate()) || new Date();
-    return Math.max(1, Math.floor((today - createdAt) / (1000 * 60 * 60 * 24)) + 1);
-}
-
 function hasManualProjectSync(test) {
     var lastSyncDate = parseLocalDateOnly(test && test.last_sync_date);
     if (!(lastSyncDate && !Number.isNaN(lastSyncDate.getTime()))) {
@@ -693,12 +675,6 @@ function getTesterSourceMeta(joinType) {
         return { icon: '🚀', label: window.t('testerSourceDirectFull', {}, lang) };
     }
     return { icon: '🚀', label: window.t('testerSourceInviteFull', {}, lang) };
-}
-
-function renderTesterSourceIndicator(joinType) {
-    const sourceMeta = getTesterSourceMeta(joinType);
-    const toastText = window.t('testerSourceToast', { source: sourceMeta.label }, lang);
-    return `<button type="button" style="background:none; border:none; padding:0; margin:0; color:var(--hint-color); font-size:15px; cursor:pointer; line-height:1;" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(toastText)}')">${sourceMeta.icon}</button>`;
 }
 
 function buildRunIterationChip(item, className) {
@@ -1185,23 +1161,6 @@ function getExternalStatusPresentation(test) {
         isDoneToday: isDoneToday,
         isPostControlWindow: !meta.nextControlDay,
     };
-}
-
-function highlightExternalTestActionRow(testId) {
-    var actionRow = document.getElementById('external-test-actions-' + Number(testId || 0));
-    if (!actionRow) return false;
-
-    actionRow.classList.remove('highlight-target');
-    void actionRow.offsetWidth;
-    actionRow.classList.add('highlight-target');
-    if (window._externalTestsActionHighlightTimer) {
-        clearTimeout(window._externalTestsActionHighlightTimer);
-    }
-    window._externalTestsActionHighlightTimer = setTimeout(function() {
-        actionRow.classList.remove('highlight-target');
-        window._externalTestsActionHighlightTimer = null;
-    }, 2600);
-    return true;
 }
 
 function renderExternalContinuedActions(test, safePackageInline, ownerUsername) {

@@ -2080,16 +2080,6 @@ function inviteExternalProjectOwnerToPlatform(testId, event) {
     openTelegramPrefilledMessage(cleanOwnerUsername, messageText);
 }
 
-async function _confirmExternalTestingCancel(test) {
-    if (!test || typeof window.cancelExternalTracking !== 'function') return;
-    var result = await window.cancelExternalTracking(test.progress_id, test.id);
-    if (!result) return;
-
-    closeProjectDetailsModal();
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    showToast(window.t('externalProjectCancelSuccess', {}, lang));
-}
-
 function cancelExternalTestingFromUi(testId, event) {
     if (event) {
         event.preventDefault();

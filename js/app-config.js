@@ -218,11 +218,6 @@ function normalizeAppLanguage(value) {
     return getAutoTranslateLanguageConfig(normalized) ? normalized : '';
 }
 
-function isNativeAppLanguage(value) {
-    var normalized = normalizeAppLanguage(value);
-    return !!normalized && NATIVE_APP_LANGS.includes(normalized);
-}
-
 function isAutoTranslatedLanguage(value) {
     var normalized = normalizeAppLanguage(value);
     return !!normalized && !NATIVE_APP_LANGS.includes(normalized);

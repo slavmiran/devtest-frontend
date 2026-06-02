@@ -924,10 +924,6 @@ function getApiErrorMessage(payload, fallbackKey = 'genericError') {
     return t[fallbackKey] || t.genericError;
 }
 
-function getProjectApiErrorMessage(message, details = {}) {
-    return getApiErrorMessage({ code: message, details }, 'saveProjectError');
-}
-
 function _applyTemplateDetails(message, details) {
     var text = String(message || '');
     var safeDetails = details && typeof details === 'object' ? details : {};
