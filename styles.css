@@ -1628,6 +1628,235 @@ iframe.skiptranslate,
     margin-bottom: 16px;
 }
 
+/* ── Progressive disclosure stages (Add Project) ───────────── */
+.stage-panel {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(-6px);
+    transition: max-height 0.35s ease, opacity 0.25s ease, transform 0.35s ease;
+}
+
+.stage-panel.active {
+    max-height: 4000px;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Email address box + copy */
+.setup-email-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--secondary-bg-color);
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(142, 142, 147, 0.18);
+}
+
+.setup-email-address {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--link-color);
+    word-break: break-all;
+}
+
+.setup-email-copy {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+}
+
+.setup-note {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-color);
+    background: rgba(255, 204, 0, 0.10);
+    border-left: 3px solid var(--warning-color);
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.setup-note b { color: var(--text-color); }
+
+/* Unified Go-to-console + accordion card */
+.setup-card {
+    margin-top: 14px;
+    border: 1px solid rgba(142, 142, 147, 0.22);
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(142, 142, 147, 0.06);
+}
+
+.setup-console-btn {
+    width: 100%;
+    border-radius: 0;
+    text-align: center;
+}
+
+.setup-accordion {
+    border-top: 1px solid rgba(142, 142, 147, 0.18);
+}
+
+.setup-accordion-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 14px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.setup-accordion-arrow {
+    transition: transform 0.25s ease;
+    color: var(--hint-color);
+    font-size: 12px;
+}
+
+.setup-accordion.open .setup-accordion-arrow {
+    transform: rotate(180deg);
+}
+
+.setup-accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.35s ease, opacity 0.25s ease;
+}
+
+.setup-accordion.open .setup-accordion-content {
+    max-height: 3000px;
+    opacity: 1;
+}
+
+.setup-step {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 14px 16px;
+}
+
+.setup-step img {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(142, 142, 147, 0.2);
+    background: var(--secondary-bg-color);
+    display: block;
+}
+
+.setup-step-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.setup-step-path {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--hint-color);
+}
+
+/* Checklist */
+.setup-checklist {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(142, 142, 147, 0.08);
+    border: 1px solid rgba(142, 142, 147, 0.18);
+}
+
+.setup-checklist-lock {
+    font-size: 12px;
+    color: var(--hint-color);
+    line-height: 1.4;
+}
+
+.setup-checklist.unlocked .setup-checklist-lock {
+    display: none;
+}
+
+.checklist-item input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.checklist-item.is-locked {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.checklist-item.field-error {
+    background: rgba(255, 59, 48, 0.10);
+    border-radius: 8px;
+    outline: 1px solid rgba(255, 59, 48, 0.5);
+    outline-offset: 2px;
+}
+
+/* Email mode banner + escape-hatch toggle */
+.email-mode-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: rgba(77, 163, 255, 0.12);
+    border: 1px solid rgba(77, 163, 255, 0.3);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.email-mode-change {
+    background: transparent;
+    border: none;
+    color: var(--link-color);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.setup-email-toggle {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    background: transparent;
+    border: none;
+    color: var(--hint-color);
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+    opacity: 0.75;
+    padding: 6px;
+}
+
+.setup-email-toggle:active { opacity: 0.5; }
+
+/* Locked Save button + error highlight */
+.btn.is-locked {
+    opacity: 0.5;
+}
+
+.field-error.form-input,
+.form-input.field-error {
+    border-color: #ff3b30 !important;
+    background-color: rgba(255, 59, 48, 0.08) !important;
+}
+
 .form-inline {
     display: flex;
     gap: 12px;

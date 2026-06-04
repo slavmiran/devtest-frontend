@@ -1390,10 +1390,16 @@ function closeDeleteModal(event) {
     }, 300);
 }
 
+/* ── Add Project: Progressive Disclosure state & helpers ───── */
+window.addProjectFlow = window.addProjectFlow || { emailCopied: false, emailMode: false };
+
 function openModal() {
     document.getElementById('add-modal').classList.add('active');
+    resetAddFlow();
+    renderGroupSection();
     setProjectTargetLang('add', 'ALL');
     updateProjectPricing('add');
+    evaluateAddStages();
     document.getElementById('app-name').focus();
 }
 
@@ -1409,27 +1415,206 @@ function closeModal(event) {
         document.getElementById('app-instructions').value = '';
         document.getElementById('package-error').innerHTML = '';
         document.getElementById('package-error').style.display = 'none';
+        resetAddFlow();
         switchGroupTab('standard');
         resetProjectForms();
+        evaluateAddStages();
     }, 300);
+}
+
+function resetAddFlow() {
+    window.addProjectFlow = { emailCopied: false, emailMode: false };
+
+    ['check-email', 'check-countries', 'check-review'].forEach((id) => {
+        const box = document.getElementById(id);
+        if (box) {
+            box.checked = false;
+            box.disabled = true;
+        }
+    });
+    const checklist = document.getElementById('setup-checklist');
+    if (checklist) checklist.classList.remove('unlocked');
+
+    const accordion = document.getElementById('setup-accordion');
+    if (accordion) accordion.classList.remove('open');
+
+    const acceptsBox = document.getElementById('app-accepts-email-testers');
+    if (acceptsBox) acceptsBox.checked = false;
+    const testerGroup = document.getElementById('tester-email-group');
+    if (testerGroup) testerGroup.style.display = 'none';
+    const testerEmail = document.getElementById('app-tester-email');
+    if (testerEmail) testerEmail.value = '';
+
+    _clearAddFieldErrors();
 }
 
 function switchGroupTab(tab) {
     const stdBtn = document.getElementById('seg-standard');
     const custBtn = document.getElementById('seg-custom');
-    const stdBlock = document.getElementById('group-standard-block');
-    const custBlock = document.getElementById('group-custom-block');
-    if (tab === 'standard') {
-        stdBtn.classList.add('active');
-        custBtn.classList.remove('active');
-        stdBlock.style.display = '';
-        custBlock.style.display = 'none';
-    } else {
+    if (window.addProjectFlow) window.addProjectFlow.emailMode = false;
+    if (tab === 'custom') {
         stdBtn.classList.remove('active');
         custBtn.classList.add('active');
-        stdBlock.style.display = 'none';
-        custBlock.style.display = '';
+    } else {
+        stdBtn.classList.add('active');
+        custBtn.classList.remove('active');
     }
+    renderGroupSection();
+    evaluateAddStages();
+}
+
+function renderGroupSection() {
+    const emailMode = !!(window.addProjectFlow && window.addProjectFlow.emailMode);
+    const isStandard = document.getElementById('seg-standard').classList.contains('active');
+    const segControl = document.getElementById('group-seg-control');
+    const stdBlock = document.getElementById('group-standard-block');
+    const custBlock = document.getElementById('group-custom-block');
+    const banner = document.getElementById('email-mode-banner');
+    const toggleBtn = document.getElementById('use-email-testing-btn');
+
+    if (emailMode) {
+        if (segControl) segControl.style.display = 'none';
+        if (stdBlock) stdBlock.style.display = 'none';
+        if (custBlock) custBlock.style.display = 'none';
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        if (banner) banner.style.display = 'flex';
+        return;
+    }
+
+    if (segControl) segControl.style.display = '';
+    if (toggleBtn) toggleBtn.style.display = '';
+    if (banner) banner.style.display = 'none';
+    if (stdBlock) stdBlock.style.display = isStandard ? '' : 'none';
+    if (custBlock) custBlock.style.display = isStandard ? 'none' : '';
+}
+
+function isAddPlayLinkValid() {
+    const value = (document.getElementById('app-package').value || '').trim();
+    return value.includes('play.google.com/store/apps/details?id=');
+}
+
+function isAddChecklistComplete() {
+    return ['check-email', 'check-countries', 'check-review'].every((id) => {
+        const box = document.getElementById(id);
+        return box && box.checked;
+    });
+}
+
+function isAddStage2Complete() {
+    if (window.addProjectFlow && window.addProjectFlow.emailMode) return true;
+    const isStandard = document.getElementById('seg-standard').classList.contains('active');
+    if (isStandard) {
+        return isAddChecklistComplete();
+    }
+    return isValidGoogleGroupUrl((document.getElementById('app-group').value || '').trim());
+}
+
+function isAddStage3Valid() {
+    const acceptsBox = document.getElementById('app-accepts-email-testers');
+    if (acceptsBox && acceptsBox.checked) {
+        return isValidEmail((document.getElementById('app-tester-email').value || '').trim());
+    }
+    return true;
+}
+
+function onAddPlayLinkInput() {
+    _clearProjectPackageError();
+    evaluateAddStages();
+}
+
+function onAddChecklistChange() {
+    _clearAddFieldErrors();
+    evaluateAddStages();
+}
+
+function onAcceptsEmailTestersChange() {
+    const acceptsBox = document.getElementById('app-accepts-email-testers');
+    const testerGroup = document.getElementById('tester-email-group');
+    if (testerGroup) {
+        testerGroup.style.display = acceptsBox && acceptsBox.checked ? '' : 'none';
+    }
+    if (acceptsBox && acceptsBox.checked) {
+        const testerEmail = document.getElementById('app-tester-email');
+        if (testerEmail && !testerEmail.value) {
+            const prefill = (window.App && window.App.userEmail) || '';
+            if (prefill) testerEmail.value = prefill;
+        }
+    }
+    evaluateAddStages();
+}
+
+function evaluateAddStages() {
+    const stage2 = document.getElementById('add-stage-2');
+    const stage3 = document.getElementById('add-stage-3');
+    if (!stage2 || !stage3) return;
+
+    const playValid = isAddPlayLinkValid();
+    stage2.classList.toggle('active', playValid);
+
+    const stage2Done = playValid && isAddStage2Complete();
+    stage3.classList.toggle('active', stage2Done);
+
+    updateAddSaveButtonState();
+}
+
+function updateAddSaveButtonState() {
+    const saveBtn = document.getElementById('t-save');
+    if (!saveBtn) return;
+    const nameFilled = !!(document.getElementById('app-name').value || '').trim();
+    const ready = nameFilled && isAddPlayLinkValid() && isAddStage2Complete() && isAddStage3Valid();
+    saveBtn.classList.toggle('is-locked', !ready);
+}
+
+function toggleSetupAccordion() {
+    const accordion = document.getElementById('setup-accordion');
+    if (accordion) accordion.classList.toggle('open');
+}
+
+function openEmailTestingModal() {
+    document.getElementById('email-testing-modal').classList.add('active');
+}
+
+function closeEmailTestingModal(event) {
+    if (event && event.target !== document.getElementById('email-testing-modal')) return;
+    document.getElementById('email-testing-modal').classList.remove('active');
+}
+
+function confirmEmailTesting() {
+    document.getElementById('email-testing-modal').classList.remove('active');
+    if (window.addProjectFlow) window.addProjectFlow.emailMode = true;
+    renderGroupSection();
+    evaluateAddStages();
+}
+
+function exitEmailTestingMode() {
+    if (window.addProjectFlow) window.addProjectFlow.emailMode = false;
+    switchGroupTab('standard');
+}
+
+function _clearAddFieldErrors() {
+    document.querySelectorAll('#add-modal .field-error').forEach((el) => el.classList.remove('field-error'));
+}
+
+function _markAddFieldError(el) {
+    if (!el) return;
+    el.classList.add('field-error');
+    if (typeof el.focus === 'function') {
+        try { el.focus(); } catch (e) { /* noop */ }
+    }
+}
+
+function _markChecklistErrors() {
+    [
+        ['check-email', 'checklist-item-email'],
+        ['check-countries', 'checklist-item-countries'],
+        ['check-review', 'checklist-item-review'],
+    ].forEach(([boxId, itemId]) => {
+        const box = document.getElementById(boxId);
+        const item = document.getElementById(itemId);
+        if (item && box && !box.checked) {
+            item.classList.add('field-error');
+        }
+    });
 }
 
 function closeEmailWarningModal(event) {
@@ -1483,11 +1668,23 @@ function resetEditGoogleGroupToDefault() {
 function copyEmail() {
     navigator.clipboard.writeText('google-play-dev-test@googlegroups.com').then(() => {
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        unlockSetupChecklist();
         if (tg.showAlert) tg.showAlert(t.copied);
         else alert(t.copied);
     }).catch((error) => {
         console.error('Failed to copy text: ', error);
+        unlockSetupChecklist();
     });
+}
+
+function unlockSetupChecklist() {
+    if (window.addProjectFlow) window.addProjectFlow.emailCopied = true;
+    ['check-email', 'check-countries', 'check-review'].forEach((id) => {
+        const box = document.getElementById(id);
+        if (box) box.disabled = false;
+    });
+    const checklist = document.getElementById('setup-checklist');
+    if (checklist) checklist.classList.add('unlocked');
 }
 
 document.addEventListener('click', (event) => {

@@ -2225,8 +2225,14 @@ async function confirmDeleteProject() {
     }
 }
 
+function _saveProjectAlert(message) {
+    if (tg.showAlert) tg.showAlert(message);
+    else alert(message);
+}
+
 async function saveProject() {
     _clearProjectPackageError();
+    _clearAddFieldErrors();
 
     const nameInput = document.getElementById('app-name').value.trim();
     let packageInput = document.getElementById('app-package').value.trim();
@@ -2234,31 +2240,71 @@ async function saveProject() {
     const instructionsInput = document.getElementById('app-instructions').value.trim();
     const targetLang = (document.getElementById('app-target-lang').value || 'ALL').toUpperCase();
     const requestReviews = !!(document.getElementById('app-request-reviews') && document.getElementById('app-request-reviews').checked);
-    const pricingPayload = buildProjectPricingPayload('add');
-    if (!pricingPayload) return;
 
+    const emailMode = !!(window.addProjectFlow && window.addProjectFlow.emailMode);
     const isStandard = document.getElementById('seg-standard').classList.contains('active');
-    const groupInput = isStandard ? '' : document.getElementById('app-group').value.trim();
+    const acceptsBox = document.getElementById('app-accepts-email-testers');
+    const acceptsEmailTesters = !!(acceptsBox && acceptsBox.checked);
+    const testerEmailInput = (document.getElementById('app-tester-email').value || '').trim();
 
-    if (!isStandard && groupInput && !isValidGoogleGroupUrl(groupInput)) {
-        handleApiError('invalid_google_group_url');
-        return;
-    }
-
+    // ── Stage 1: name + valid Google Play link ──
     if (!packageInput.includes('play.google.com/store/apps/details?id=')) {
+        _markAddFieldError(document.getElementById('app-package'));
         _showProjectPackageError('invalidPlayLink');
         return;
     }
-    if (!nameInput || !packageInput) {
-        if (tg.showAlert) tg.showAlert(t.fillFields);
-        else alert(t.fillFields);
+    if (!nameInput) {
+        _markAddFieldError(document.getElementById('app-name'));
+        _saveProjectAlert(t.fillFields);
         return;
     }
     if (nameInput.length > 30) {
-        if (tg.showAlert) tg.showAlert(t.appNameTooLong);
-        else alert(t.appNameTooLong);
+        _markAddFieldError(document.getElementById('app-name'));
+        _saveProjectAlert(t.appNameTooLong);
         return;
     }
+
+    // ── Stage 2: access setup ──
+    let groupUrl = null;
+    if (emailMode) {
+        groupUrl = null;
+    } else if (isStandard) {
+        if (!isAddChecklistComplete()) {
+            _markChecklistErrors();
+            _saveProjectAlert(window.t('completeChecklistError', {}, lang));
+            return;
+        }
+    } else {
+        const customUrl = (document.getElementById('app-group').value || '').trim();
+        if (!customUrl) {
+            _markAddFieldError(document.getElementById('app-group'));
+            _saveProjectAlert(window.t('customGroupRequired', {}, lang));
+            return;
+        }
+        if (!isValidGoogleGroupUrl(customUrl)) {
+            _markAddFieldError(document.getElementById('app-group'));
+            handleApiError('invalid_google_group_url');
+            return;
+        }
+        groupUrl = customUrl;
+    }
+
+    // ── Stage 3: optional tester email ──
+    if (acceptsEmailTesters) {
+        if (!testerEmailInput) {
+            _markAddFieldError(document.getElementById('app-tester-email'));
+            _saveProjectAlert(window.t('testerEmailRequired', {}, lang));
+            return;
+        }
+        if (!isValidEmail(testerEmailInput)) {
+            _markAddFieldError(document.getElementById('app-tester-email'));
+            _saveProjectAlert(window.t('invalidEmail', {}, lang));
+            return;
+        }
+    }
+
+    const pricingPayload = buildProjectPricingPayload('add');
+    if (!pricingPayload) return;
 
     try {
         if (packageInput.includes('play.google.com')) {
@@ -2270,31 +2316,19 @@ async function saveProject() {
         console.error('Play URL parse error:', error);
     }
 
-    if (isStandard) {
-        pendingProjectData = {
-            owner_id: userId,
-            name: nameInput,
-            package_name: packageInput,
-            icon_url: iconInput || null,
-            google_group_url: null,
-            instructions: instructionsInput || null,
-            target_lang: targetLang,
-            request_reviews: requestReviews,
-            ...pricingPayload
-        };
-        document.getElementById('email-warning-modal').classList.add('active');
-        return;
-    }
-
     await doSaveProject({
         owner_id: userId,
         name: nameInput,
         package_name: packageInput,
         icon_url: iconInput || null,
-        google_group_url: groupInput || null,
+        google_group_url: groupUrl,
         instructions: instructionsInput || null,
         target_lang: targetLang,
         request_reviews: requestReviews,
+        test_mode: emailMode ? 'email_list' : 'google_group',
+        is_setup_completed: true,
+        accepts_email_testers: acceptsEmailTesters,
+        tester_email: acceptsEmailTesters ? testerEmailInput : null,
         ...pricingPayload
     });
 }

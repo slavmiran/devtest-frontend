@@ -254,30 +254,89 @@
             <h3 id="t-modalTitle" data-i18n="addApp">Добавить приложение</h3>
             <div class="form-group">
                 <label class="form-label" id="t-appName" data-i18n="appName">Название приложения</label>
-                <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="" data-i18n-placeholder="appNamePlaceholder">
+                <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="" data-i18n-placeholder="appNamePlaceholder" oninput="evaluateAddStages()">
             </div>
             <div class="form-group">
                 <label class="form-label" id="t-packageName" data-i18n="packageName">Ссылка на Google Play</label>
-                <input type="text" id="app-package" class="form-input" placeholder="" data-i18n-placeholder="playLinkPlaceholder">
+                <input type="text" id="app-package" class="form-input" placeholder="" data-i18n-placeholder="playLinkPlaceholder" oninput="onAddPlayLinkInput()">
                 <div id="package-error" style="color: #ff3b30; font-size: 13px; margin-top: 8px; display: none;"></div>
             </div>
-            <div class="form-group">
-                <label class="form-label" id="t-googleGroup" data-i18n="googleGroup">Ссылка на Google Group</label>
-                <div class="seg-control">
-                    <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')" data-i18n="groupStandard">Standard</button>
-                    <button type="button" class="seg-btn" id="seg-custom" onclick="switchGroupTab('custom')" data-i18n="groupCustom">Custom</button>
-                </div>
-                <div id="group-standard-block">
-                    <div style="display: flex; align-items: center; gap: 8px; background: var(--secondary-bg-color); padding: 12px; border-radius: 8px;">
-                        <span style="font-size: 14px; color: var(--link-color); font-weight: 500; word-break: break-all;">google-play-dev-test@googlegroups.com</span>
-                        <button type="button" class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; flex-shrink: 0;" onclick="copyEmail()">📋</button>
+            <div id="add-stage-2" class="stage-panel">
+                <div class="form-group">
+                    <label class="form-label" id="t-googleGroup" data-i18n="googleGroup">Ссылка на Google Group</label>
+                    <div class="seg-control" id="group-seg-control">
+                        <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')" data-i18n="groupStandard">Standard Group</button>
+                        <button type="button" class="seg-btn" id="seg-custom" onclick="switchGroupTab('custom')" data-i18n="groupCustom">Custom Group</button>
                     </div>
-                    <div class="form-hint helper-quote" id="t-groupHint" style="margin-top: 8px;" data-i18n="standardGroupHint">Добавьте эту группу как тестера в Play Console</div>
-                </div>
-                <div id="group-custom-block" style="display: none;">
-                    <input type="url" id="app-group" class="form-input" placeholder="" data-i18n-placeholder="groupUrlPlaceholder">
+
+                    <div id="group-standard-block">
+                        <div class="setup-email-box">
+                            <span class="setup-email-address">google-play-dev-test@googlegroups.com</span>
+                            <button type="button" class="btn-icon setup-email-copy" onclick="copyEmail()">📋</button>
+                        </div>
+                        <div class="setup-note" id="t-standardGroupNote" data-i18n-html="standardGroupNote">В Play Console обязательно выберите режим тестирования через <b>Группы Google</b> (не email-списки) и вставьте этот адрес.</div>
+
+                        <div class="setup-card">
+                            <a href="https://play.google.com/console/" target="_blank" rel="noopener" class="btn btn-primary setup-console-btn" id="t-goToPlayConsole" data-i18n="goToPlayConsole">🚀 Перейти в Play Console</a>
+                            <div class="setup-accordion" id="setup-accordion">
+                                <button type="button" class="setup-accordion-head" onclick="toggleSetupAccordion()">
+                                    <span data-i18n="setupAccordionTitle">Как настроить Play Console?</span>
+                                    <span class="setup-accordion-arrow">▼</span>
+                                </button>
+                                <div class="setup-accordion-content">
+                                    <div class="setup-step">
+                                        <img src="/images/step1.png" alt="Step 1" loading="lazy">
+                                        <div class="setup-step-title" data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</div>
+                                        <div class="setup-step-path" data-i18n="setupStep1Path"></div>
+                                    </div>
+                                    <div class="setup-step">
+                                        <img src="/images/step2.png" alt="Step 2" loading="lazy">
+                                        <div class="setup-step-title" data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</div>
+                                        <div class="setup-step-path" data-i18n="setupStep2Path"></div>
+                                    </div>
+                                    <div class="setup-step">
+                                        <img src="/images/step3.png" alt="Step 3" loading="lazy">
+                                        <div class="setup-step-title" data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</div>
+                                        <div class="setup-step-path" data-i18n="setupStep3Path"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setup-checklist" id="setup-checklist">
+                            <div class="setup-checklist-lock" id="setup-checklist-lock" data-i18n="checklistLockedHint">🔒 Скопируйте email выше, чтобы разблокировать чеклист.</div>
+                            <label class="review-checkbox-row checklist-item" id="checklist-item-email">
+                                <input type="checkbox" id="check-email" disabled onchange="onAddChecklistChange()">
+                                <span>
+                                    <strong data-i18n="checklistAddedEmail">Я добавил email в Play Console</strong>
+                                    <small data-i18n="checklistAddedEmailSub1">Выбрал «Группы Google»</small>
+                                    <small data-i18n="checklistAddedEmailSub2">Вставил google-play-dev-test@googlegroups.com</small>
+                                </span>
+                            </label>
+                            <label class="review-checkbox-row checklist-item" id="checklist-item-countries">
+                                <input type="checkbox" id="check-countries" disabled onchange="onAddChecklistChange()">
+                                <span><strong data-i18n="checklistAllCountries">Я выбрал все страны</strong></span>
+                            </label>
+                            <label class="review-checkbox-row checklist-item" id="checklist-item-review">
+                                <input type="checkbox" id="check-review" disabled onchange="onAddChecklistChange()">
+                                <span><strong data-i18n="checklistSubmittedReview">Я отправил на проверку</strong></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="group-custom-block" style="display: none;">
+                        <input type="url" id="app-group" class="form-input" placeholder="" data-i18n-placeholder="groupUrlPlaceholder" oninput="evaluateAddStages()">
+                    </div>
+
+                    <div id="email-mode-banner" class="email-mode-banner" style="display: none;">
+                        <span data-i18n="emailModeActive">✉️ Выбрано тестирование по email</span>
+                        <button type="button" class="email-mode-change" onclick="exitEmailTestingMode()" data-i18n="emailModeChange">Изменить</button>
+                    </div>
+
+                    <button type="button" class="setup-email-toggle" id="use-email-testing-btn" onclick="openEmailTestingModal()" data-i18n="useEmailTesting">Использовать тестирование по email</button>
                 </div>
             </div>
+            <div id="add-stage-3" class="stage-panel">
             <div class="form-group">
                 <label class="form-label" id="t-modeLabel" data-i18n="modeLabel">Режим проекта</label>
                 <div class="form-hint" id="t-modeHint" data-i18n="modeHint">Выберите, где хотите набирать тестеров: взаимно, платно или в обоих каналах.</div>
@@ -357,6 +416,21 @@
                     <div id="chips-instructions" class="chip-scroll"></div>
                 </div>
             </details>
+            <div class="form-group">
+                <label class="review-checkbox-row project-setting-checkbox">
+                    <input type="checkbox" id="app-accepts-email-testers" onchange="onAcceptsEmailTestersChange()">
+                    <span>
+                        <strong data-i18n="acceptsEmailTestersLabel">Хотите получать ещё больше взаимных тестов?</strong>
+                        <small data-i18n="acceptsEmailTestersHint">Другие разработчики, использующие email-списки, смогут добавить вас в тестеры.</small>
+                    </span>
+                </label>
+                <div id="tester-email-group" class="form-group" style="display: none; margin-top: 12px;">
+                    <label class="form-label" id="t-testerEmail" data-i18n="testerEmailLabel">Ваш Email тестировщика</label>
+                    <input type="email" id="app-tester-email" class="form-input" placeholder="" data-i18n-placeholder="testerEmailPlaceholder" oninput="evaluateAddStages()">
+                    <div class="form-hint" id="t-testerEmailHint" data-i18n="testerEmailHint">Укажите email аккаунта Google Play, с которого вы будете устанавливать чужие приложения для теста.</div>
+                </div>
+            </div>
+            </div>
             <button class="btn btn-primary" onclick="saveProject()" id="t-save" data-i18n="save">Сохранить</button>
         </div>
     </div>
@@ -389,6 +463,20 @@
             <div class="action-row">
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEmailWarningModal()" id="t-emailWarningCancel" data-i18n="emailWarningCancel">❌ Отмена</button>
                 <button class="btn btn-success" style="flex: 1;" onclick="confirmEmailWarning()" id="t-emailWarningYes" data-i18n="emailWarningYes">✅ Да, добавил (Создать)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Testing Confirmation Modal -->
+    <div id="email-testing-modal" class="modal-overlay" onclick="closeEmailTestingModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="t-emailTestingAlertTitle" data-i18n="emailTestingAlertTitle">⚠️ Внимание!</h3>
+            <p id="t-emailTestingAlertText" data-i18n="emailTestingAlertText" style="color: var(--text-color); font-size: 15px; font-weight: 600; line-height: 1.5; margin-bottom: 10px;">Выбирая этот метод, вы получите значительно меньше заявок на взаимное тестирование!</p>
+            <p id="t-emailTestingAlertText2" data-i18n="emailTestingAlertText2" style="color: var(--hint-color); font-size: 13px; line-height: 1.5; margin-bottom: 12px;">Так как вам придётся вручную добавлять email тестировщиков в консоль перед каждой отправкой запроса на взаимку.</p>
+            <p id="t-emailTestingAlertAccent" data-i18n="emailTestingAlertAccent" style="color: var(--link-color); font-size: 14px; font-weight: 700; line-height: 1.5; margin-bottom: 16px;">Рекомендуется использовать Google Groups.</p>
+            <div class="action-row">
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEmailTestingModal()" id="t-emailTestingCancel" data-i18n="emailTestingCancel">Отмена</button>
+                <button class="btn btn-warning" style="flex: 1;" onclick="confirmEmailTesting()" id="t-emailTestingContinue" data-i18n="emailTestingContinue">Продолжить с Email</button>
             </div>
         </div>
     </div>
