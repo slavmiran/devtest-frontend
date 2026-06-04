@@ -212,6 +212,14 @@
         <div id="market-subtab-prelaunch" style="display:none;">
             <div id="mutual-prelaunch-list"></div>
         </div>
+
+        <div id="showcase-active-tests" class="accordion" style="display:none;">
+            <div class="accordion-header" onclick="toggleShowcaseActiveTests()">
+                <div><span id="showcase-active-tests-title"></span></div>
+                <div class="accordion-icon">▼</div>
+            </div>
+            <div class="accordion-content" id="showcase-active-tests-list"></div>
+        </div>
     </div>
 
     <!-- TAB 2: Мои проекты -->
@@ -1190,6 +1198,37 @@
     <div id="contract-economy-modal" class="modal-overlay" onclick="closeContractEconomyModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div id="contract-economy-body"></div>
+        </div>
+    </div>
+
+    <!-- Email collect modal (interceptor): asks the user for their tester email -->
+    <div id="email-collect-modal" class="modal-overlay" onclick="closeEmailCollectModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="email-collect-title"></h3>
+            <p id="email-collect-text" class="form-hint" style="margin-bottom: 12px;"></p>
+            <input type="email" id="email-collect-input" class="form-input" autocomplete="email" inputmode="email" placeholder="you@example.com" />
+            <div id="email-collect-error" class="field-error" style="display:none;"></div>
+            <button class="btn btn-primary" id="email-collect-save" style="width:100%; margin-top:12px;"></button>
+            <button class="btn btn-secondary" id="email-collect-skip" style="width:100%; margin-top:8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2); display:none;"></button>
+        </div>
+    </div>
+
+    <!-- EmailTesterModal: enforce adding tester emails to Play Console before sending -->
+    <div id="email-tester-modal" class="modal-overlay" onclick="closeEmailTesterModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="email-tester-title" data-i18n="emailTesterModalTitle"></h3>
+            <p id="email-tester-text" class="form-hint" style="margin-bottom: 12px;"></p>
+            <div id="email-tester-emails" class="copyable-email" style="margin-bottom: 10px;"></div>
+            <div style="display:flex; gap:8px; margin-bottom: 12px;">
+                <button class="btn btn-secondary" id="email-tester-copy" style="flex:1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);"></button>
+                <a class="btn btn-secondary" id="email-tester-console" target="_blank" rel="noopener" href="https://play.google.com/console" style="flex:1; display:flex; align-items:center; justify-content:center; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);"></a>
+            </div>
+            <label class="review-checkbox-row" for="email-tester-confirm" style="margin-bottom: 12px;">
+                <input type="checkbox" id="email-tester-confirm" />
+                <span id="email-tester-confirm-label"></span>
+            </label>
+            <div id="email-tester-info" class="setup-note" style="margin-bottom: 12px;"></div>
+            <button class="btn btn-primary is-locked" id="email-tester-action" style="width:100%;" disabled></button>
         </div>
     </div>
 

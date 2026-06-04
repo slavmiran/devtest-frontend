@@ -1359,6 +1359,92 @@ async function syncTelegramProfile() {
     }
 }
 
+async function saveTesterEmail(email) {
+    var candidate = String(email || '').trim();
+    if (!isValidEmail(candidate)) {
+        return { ok: false, code: 'invalid_email' };
+    }
+    try {
+        var response = await fetch(`${API_BASE}/users/me/email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ init_data: tg.initData || '', email: candidate })
+        });
+        var result = null;
+        try { result = await response.json(); } catch (e) { result = null; }
+        if (!response.ok || !result || result.status !== 'success') {
+            return { ok: false, code: getBackendErrorCode(result) || 'database_error' };
+        }
+        _userEmail = String(result.email || candidate).trim();
+        window.App.userEmail = _userEmail;
+        if (window.App && window.App.state) {
+            try { window.App.state._userEmail = _userEmail; } catch (e) {}
+        }
+        return { ok: true, email: _userEmail };
+    } catch (error) {
+        console.warn('Save tester email failed:', error);
+        return { ok: false, code: 'network_error' };
+    }
+}
+
+async function fetchMassInvitePreviewEmails(projectId) {
+    try {
+        var response = await fetch(`${API_BASE}/projects/${Number(projectId)}/mass_invite/preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ init_data: tg.initData || '' })
+        });
+        var result = null;
+        try { result = await response.json(); } catch (e) { result = null; }
+        if (!response.ok || !result || result.status !== 'success') {
+            return { ok: false, emails: [], code: getBackendErrorCode(result) || 'database_error' };
+        }
+        return {
+            ok: true,
+            emails: Array.isArray(result.emails) ? result.emails.filter(Boolean) : [],
+            found: Number(result.found_count || 0),
+            total: Number(result.total_count || 0),
+        };
+    } catch (error) {
+        console.warn('Mass invite preview failed:', error);
+        return { ok: false, emails: [], code: 'network_error' };
+    }
+}
+
+async function fetchOfferEmailPreview(targetAppId, proposerAppId) {
+    try {
+        var response = await fetch(`${API_BASE}/offers/email-preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                init_data: tg.initData || '',
+                target_app_id: Number(targetAppId),
+                proposer_app_id: Number(proposerAppId)
+            })
+        });
+        var result = null;
+        try { result = await response.json(); } catch (e) { result = null; }
+        if (!response.ok || !result || result.status !== 'success') {
+            return { ok: false, emails: [], code: getBackendErrorCode(result) || 'database_error' };
+        }
+        return { ok: true, emails: Array.isArray(result.emails) ? result.emails.filter(Boolean) : [] };
+    } catch (error) {
+        console.warn('Offer email preview failed:', error);
+        return { ok: false, emails: [], code: 'network_error' };
+    }
+}
+
+function getCurrentUserEmail() {
+    try {
+        if (window.App && typeof window.App.getState === 'function') {
+            var st = window.App.getState();
+            if (st && st.userEmail) return String(st.userEmail).trim();
+        }
+    } catch (e) {}
+    if (window.App && window.App.userEmail) return String(window.App.userEmail).trim();
+    return String(typeof _userEmail !== 'undefined' ? _userEmail : '').trim();
+}
+
 function _openBotDm() {
     try {
         if (tg.openTelegramLink) {

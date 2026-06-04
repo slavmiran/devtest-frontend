@@ -728,6 +728,7 @@ function renderMutualFeed(force) {
     }
 
     renderGuestProjectsSection(true);
+    if (typeof renderShowcaseActiveTests === 'function') renderShowcaseActiveTests(true);
 }
 
 function renderGuestProjectCard(item) {
@@ -4089,12 +4090,15 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
     const footerEl = document.getElementById('project-select-footer');
     if (!listEl) return;
     const blockedProjects = options && options.blockedProjects ? options.blockedProjects : {};
+    // Task 2: when the target owner has no email on file, the user's Email-list projects are incompatible.
+    const targetOwnerHasEmail = !!(options && options.targetOwnerHasEmail);
     const availableProjects = Array.isArray(projects) ? projects : [];
     listEl.innerHTML = availableProjects.length ? availableProjects.map(p => {
         const safeName = window.escapeHTML(p.name || window.t('unknownLabel'));
         const targetAlreadyTesting = (p.testers || []).some(tester => Number(tester.tester_id) === Number(targetOwnerId));
         const blockedEntry = blockedProjects[String(p.id)] || null;
-        const isDisabled = targetAlreadyTesting || !!blockedEntry;
+        const emailIncompatible = String(p.test_mode || 'google_group') === 'email_list' && !targetOwnerHasEmail;
+        const isDisabled = targetAlreadyTesting || !!blockedEntry || emailIncompatible;
         const disabledClass = isDisabled ? ' disabled' : '';
         const badges = [];
         if (targetAlreadyTesting) {
@@ -4103,10 +4107,16 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         if (blockedEntry) {
             badges.push(`<span class="meta-chip accent-orange">${window.escapeHTML(window.t('offerProjectLockedBadge', {}, lang))}</span>`);
         }
+        if (emailIncompatible && !targetAlreadyTesting && !blockedEntry) {
+            badges.push('<span class="project-select-lock">🔒</span>');
+        }
         const badgeHtml = badges.join('');
-        const reasonHtml = blockedEntry
-            ? `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectLockedDetails', { target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang) }, lang))}</span>`
-            : '';
+        let reasonHtml = '';
+        if (blockedEntry) {
+            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectLockedDetails', { target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang) }, lang))}</span>`;
+        } else if (emailIncompatible) {
+            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectGroupsOnly', {}, lang))}</span>`;
+        }
 
         const clickHandler = isDisabled
             ? 'event.preventDefault(); event.stopPropagation();'
@@ -4122,11 +4132,29 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         </button>`;
     }).join('') : `<div class="details-block"><div style="font-size:13px; color: var(--hint-color);">${window.escapeHTML(window.t('offerNoProjects', {}, lang))}</div></div>`;
     window._selectProjectForOffer = async function(proposerAppId) {
+        const selectedProject = availableProjects.find(function(item) { return Number(item.id) === Number(proposerAppId); });
+        const proceed = async function() {
+            await window.sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, {
+                targetAppId: targetAppId,
+                targetOwnerId: targetOwnerId,
+            });
+        };
+        // EmailTesterModal: the user's selected project uses manual Email testing → confirm console setup first.
+        if (selectedProject && String(selectedProject.test_mode || 'google_group') === 'email_list' && typeof window.openEmailTesterModal === 'function') {
+            closeProjectSelectModal();
+            window.openEmailTesterModal({
+                actionLabel: window.t('emailTesterSendOfferBtn', {}, lang),
+                loadEmails: function() {
+                    return (typeof fetchOfferEmailPreview === 'function')
+                        ? fetchOfferEmailPreview(targetAppId, proposerAppId)
+                        : Promise.resolve({ ok: false, emails: [] });
+                },
+                onConfirm: function() { proceed(); },
+            });
+            return;
+        }
         closeProjectSelectModal();
-        await window.sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, {
-            targetAppId: targetAppId,
-            targetOwnerId: targetOwnerId,
-        });
+        await proceed();
     };
     if (footerEl) {
         footerEl.innerHTML = `<button class="btn btn-secondary" style="width: 100%;" onclick="joinDirect(${targetAppId})">${window.escapeHTML(window.t('takeWithoutMutualBtn', {}, lang))}</button>`;
@@ -4200,7 +4228,208 @@ function confirmKarmaSelect(type) {
     _karmaTesterId = null;
 }
 
+/* === Email-testing interceptors (EmailTesterModal + email-collect gate) === */
+var _emailCollectCtx = null;
+function _emailCurrentUser() {
+    return (typeof getCurrentUserEmail === 'function') ? getCurrentUserEmail() : String((window.App && window.App.userEmail) || '').trim();
+}
+function openEmailCollectModal(opts) {
+    opts = opts || {};
+    _emailCollectCtx = opts;
+    var modal = document.getElementById('email-collect-modal');
+    if (!modal) return;
+    var titleEl = document.getElementById('email-collect-title');
+    var textEl = document.getElementById('email-collect-text');
+    var input = document.getElementById('email-collect-input');
+    var errEl = document.getElementById('email-collect-error');
+    var saveBtn = document.getElementById('email-collect-save');
+    var skipBtn = document.getElementById('email-collect-skip');
+    if (titleEl) titleEl.textContent = opts.title || window.t('emailGateOfferTitle', {}, lang);
+    if (textEl) textEl.textContent = opts.text || '';
+    if (input) input.value = _emailCurrentUser() || '';
+    if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+    if (saveBtn) { saveBtn.textContent = opts.primaryLabel || window.t('emailGateSaveContinue', {}, lang); saveBtn.onclick = _submitEmailCollect; }
+    if (skipBtn) {
+        if (opts.secondaryLabel) { skipBtn.style.display = ''; skipBtn.textContent = opts.secondaryLabel; skipBtn.onclick = _skipEmailCollect; }
+        else { skipBtn.style.display = 'none'; skipBtn.onclick = null; }
+    }
+    modal.classList.add('active');
+    setTimeout(function() { if (input) { try { input.focus(); } catch (e) {} } }, 60);
+}
+async function _submitEmailCollect() {
+    var ctx = _emailCollectCtx || {};
+    var input = document.getElementById('email-collect-input');
+    var errEl = document.getElementById('email-collect-error');
+    var saveBtn = document.getElementById('email-collect-save');
+    var value = input ? String(input.value || '').trim() : '';
+    if (typeof isValidEmail === 'function' && !isValidEmail(value)) {
+        if (errEl) { errEl.textContent = window.t('invalidEmail', {}, lang); errEl.style.display = 'block'; }
+        return;
+    }
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.classList.add('is-locked'); }
+    var res = (typeof saveTesterEmail === 'function') ? await saveTesterEmail(value) : { ok: false };
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.classList.remove('is-locked'); }
+    if (!res || !res.ok) {
+        if (errEl) { errEl.textContent = window.t('emailSaveFailed', {}, lang); errEl.style.display = 'block'; }
+        return;
+    }
+    closeEmailCollectModal();
+    if (typeof ctx.onSave === 'function') ctx.onSave(res.email);
+}
+function _skipEmailCollect() {
+    var ctx = _emailCollectCtx || {};
+    closeEmailCollectModal();
+    if (typeof ctx.onSkip === 'function') ctx.onSkip();
+}
+function closeEmailCollectModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    var modal = document.getElementById('email-collect-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+var _emailTesterCtx = null;
+var _emailTesterToken = 0;
+function _setEmailTesterEmails(emails, stateText) {
+    var emailsEl = document.getElementById('email-tester-emails');
+    var copyBtn = document.getElementById('email-tester-copy');
+    var list = Array.isArray(emails) ? emails.filter(Boolean) : [];
+    if (emailsEl) {
+        emailsEl.textContent = list.length ? list.join(', ') : (stateText || window.t('emailTesterNoEmails', {}, lang));
+    }
+    if (copyBtn) {
+        copyBtn.style.display = list.length ? '' : 'none';
+        copyBtn.onclick = function() {
+            var text = list.join(', ');
+            if (!text) return;
+            if (typeof copyTextWithToast === 'function') copyTextWithToast(text);
+            else if (navigator.clipboard) navigator.clipboard.writeText(text).then(function() { showToast(window.t('emailTesterCopied', {}, lang)); });
+        };
+    }
+}
+function openEmailTesterModal(opts) {
+    opts = opts || {};
+    _emailTesterCtx = opts;
+    var token = ++_emailTesterToken;
+    var modal = document.getElementById('email-tester-modal');
+    if (!modal) return;
+    var emails = Array.isArray(opts.emails) ? opts.emails.filter(Boolean) : [];
+    var titleEl = document.getElementById('email-tester-title');
+    var textEl = document.getElementById('email-tester-text');
+    var copyBtn = document.getElementById('email-tester-copy');
+    var consoleBtn = document.getElementById('email-tester-console');
+    var checkbox = document.getElementById('email-tester-confirm');
+    var confirmLabel = document.getElementById('email-tester-confirm-label');
+    var infoEl = document.getElementById('email-tester-info');
+    var actionBtn = document.getElementById('email-tester-action');
+    if (titleEl) titleEl.textContent = window.t('emailTesterModalTitle', {}, lang);
+    if (textEl) textEl.textContent = opts.text || window.t('emailTesterModalText', {}, lang);
+    if (copyBtn) copyBtn.textContent = window.t('emailTesterCopyBtn', {}, lang);
+    if (consoleBtn) consoleBtn.textContent = window.t('emailTesterConsoleBtn', {}, lang);
+    if (confirmLabel) confirmLabel.textContent = window.t('emailTesterConfirmLabel', {}, lang);
+    if (infoEl) infoEl.innerHTML = window.t('emailTesterInfo', {}, lang);
+    if (checkbox) { checkbox.checked = false; checkbox.onchange = _updateEmailTesterAction; }
+    if (actionBtn) {
+        actionBtn.textContent = opts.actionLabel || window.t('emailTesterDefaultAction', {}, lang);
+        actionBtn.onclick = _confirmEmailTester;
+    }
+    _updateEmailTesterAction();
+    modal.classList.add('active');
+
+    if (typeof opts.loadEmails === 'function') {
+        _setEmailTesterEmails([], window.t('emailTesterLoading', {}, lang));
+        Promise.resolve()
+            .then(function() { return opts.loadEmails(); })
+            .then(function(res) {
+                if (token !== _emailTesterToken) return; // a newer modal opened
+                var loaded = (res && Array.isArray(res.emails)) ? res.emails : (Array.isArray(res) ? res : []);
+                _setEmailTesterEmails(loaded, (res && res.ok === false) ? window.t('emailTesterLoadFailed', {}, lang) : null);
+            })
+            .catch(function() {
+                if (token !== _emailTesterToken) return;
+                _setEmailTesterEmails([], window.t('emailTesterLoadFailed', {}, lang));
+            });
+    } else {
+        _setEmailTesterEmails(emails, null);
+    }
+}
+function _updateEmailTesterAction() {
+    var checkbox = document.getElementById('email-tester-confirm');
+    var actionBtn = document.getElementById('email-tester-action');
+    if (!actionBtn) return;
+    var ok = !!(checkbox && checkbox.checked);
+    actionBtn.disabled = !ok;
+    if (ok) actionBtn.classList.remove('is-locked'); else actionBtn.classList.add('is-locked');
+}
+function _confirmEmailTester() {
+    var ctx = _emailTesterCtx || {};
+    var checkbox = document.getElementById('email-tester-confirm');
+    if (!checkbox || !checkbox.checked) return;
+    closeEmailTesterModal();
+    if (typeof ctx.onConfirm === 'function') ctx.onConfirm();
+}
+function closeEmailTesterModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    var modal = document.getElementById('email-tester-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+/* === Showcase: "My active tests" accordion === */
+function _showcaseActiveTestsItems() {
+    var tests = Array.isArray(myTests) ? myTests : [];
+    return tests.filter(function(test) {
+        if (!test || !test.id) return false;
+        var status = String(test.status || '').toLowerCase();
+        return status !== 'done';
+    });
+}
+function renderShowcaseActiveTests(force) {
+    var section = document.getElementById('showcase-active-tests');
+    var listEl = document.getElementById('showcase-active-tests-list');
+    var titleEl = document.getElementById('showcase-active-tests-title');
+    if (!section || !listEl) return;
+    var items = _showcaseActiveTestsItems();
+    if (titleEl) titleEl.textContent = window.t('showcaseActiveTestsTitle', { count: items.length }, lang);
+    if (!items.length) {
+        section.style.display = 'none';
+        section.classList.remove('active');
+        listEl.innerHTML = '';
+        return;
+    }
+    section.style.display = '';
+    listEl.innerHTML = items.map(function(test) {
+        var safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
+        var statusLabel = _showcaseTestStatusLabel(test);
+        return '<button class="showcase-active-test-item" onclick="openProjectDetailsModal(' + Number(test.id) + ')">' +
+            '<span class="showcase-active-test-icon">' + renderIcon(test.name || '', test.icon_url) + '</span>' +
+            '<span class="showcase-active-test-text">' +
+                '<span class="showcase-active-test-name notranslate">' + safeName + '</span>' +
+                '<span class="showcase-active-test-status">' + window.escapeHTML(statusLabel) + '</span>' +
+            '</span>' +
+        '</button>';
+    }).join('');
+}
+function _showcaseTestStatusLabel(test) {
+    var status = String(test && test.status || '').toLowerCase();
+    var key = 'showcaseActiveStatusActive';
+    if (status === 'new') key = 'showcaseActiveStatusNew';
+    else if (status === 'daily') key = 'showcaseActiveStatusDaily';
+    else if (status === 'opened') key = 'showcaseActiveStatusOpened';
+    return window.t(key, {}, lang);
+}
+function toggleShowcaseActiveTests() {
+    var section = document.getElementById('showcase-active-tests');
+    if (!section) return;
+    section.classList.toggle('active');
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
 Object.assign(window, {
+    openEmailCollectModal,
+    closeEmailCollectModal,
+    openEmailTesterModal,
+    closeEmailTesterModal,
+    renderShowcaseActiveTests,
+    toggleShowcaseActiveTests,
     getLangBadge,
     renderFeedCard,
     renderMutualReturns,

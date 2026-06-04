@@ -1132,7 +1132,41 @@ async function handleMassInviteAction(projectId) {
     }
 
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-    await window.startMassInvite(projectId);
+    _launchMassInviteWithEmailGate(project, projectId);
+}
+
+function _launchMassInviteWithEmailGate(project, projectId) {
+    var run = function() { window.startMassInvite(projectId); };
+
+    // EmailTesterModal: the project itself uses manual Email testing → confirm console setup before blasting.
+    if (project && String(project.test_mode || 'google_group') === 'email_list' && typeof window.openEmailTesterModal === 'function') {
+        window.openEmailTesterModal({
+            actionLabel: window.t('emailTesterMassInviteBtn', {}, lang),
+            loadEmails: function() {
+                return (typeof fetchMassInvitePreviewEmails === 'function')
+                    ? fetchMassInvitePreviewEmails(projectId)
+                    : Promise.resolve({ ok: false, emails: [] });
+            },
+            onConfirm: run,
+        });
+        return;
+    }
+
+    // Interceptor (Task 3): no tester email → invite the user to add one so manual-mode testers can be reached.
+    var currentEmail = (typeof getCurrentUserEmail === 'function') ? getCurrentUserEmail() : String((window.App && window.App.userEmail) || '').trim();
+    if (!currentEmail && typeof window.openEmailCollectModal === 'function') {
+        window.openEmailCollectModal({
+            title: window.t('emailGateMassTitle', {}, lang),
+            text: window.t('emailGateMassText', {}, lang),
+            primaryLabel: window.t('emailGateSaveLaunchBtn', {}, lang),
+            secondaryLabel: window.t('emailGateSkipGroupsBtn', {}, lang),
+            onSave: run,
+            onSkip: run,
+        });
+        return;
+    }
+
+    run();
 }
 
 function openInviteModal(projectId) {

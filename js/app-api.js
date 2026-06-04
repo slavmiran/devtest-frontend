@@ -1288,6 +1288,7 @@ async function _loadTasksImpl(options) {
         if (testsChanged) {
             myTests = nextTests;
             renderTests();
+            if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
         }
 
         if (nextOffers !== null) {
@@ -1696,6 +1697,8 @@ function _mapProjectsFromApi(data) {
             likes_used: project.likes_used || 0,
             likes_max: project.likes_max || 1,
             mode: project.mode || 'mutual',
+            test_mode: project.test_mode === 'email_list' ? 'email_list' : 'google_group',
+            accepts_email_testers: !!project.accepts_email_testers,
             target_lang: project.target_lang || 'ALL',
             request_reviews: project.request_reviews !== false,
             limit_mutual: project.limit_mutual || 0,

@@ -1023,17 +1023,44 @@ async function createMutualOffer(targetAppId, targetOwnerId, event) {
         loadProjects(true).catch(function() {});
         return;
     }
+
+    // Interceptor (Task 1): the target uses Email-list testing and the current user has no email yet.
+    var target = (typeof window.getMarketCandidateByAppId === 'function') ? window.getMarketCandidateByAppId(targetAppId) : null;
+    var targetIsEmailList = !!(target && target.test_mode === 'email_list');
+    var currentEmail = (typeof getCurrentUserEmail === 'function') ? getCurrentUserEmail() : String((window.App && window.App.userEmail) || '').trim();
+    if (targetIsEmailList && !currentEmail && typeof window.openEmailCollectModal === 'function') {
+        window.openEmailCollectModal({
+            title: window.t('emailGateOfferTitle', {}, lang),
+            text: window.t('emailGateOfferText', {}, lang),
+            primaryLabel: window.t('emailGateSaveContinue', {}, lang),
+            onSave: function() { _continueMutualOffer(targetAppId, targetOwnerId, sourceButton); },
+        });
+        return;
+    }
+
+    await _continueMutualOffer(targetAppId, targetOwnerId, sourceButton);
+}
+
+async function _continueMutualOffer(targetAppId, targetOwnerId, sourceButton) {
+    if (myProjectsLoadError) {
+        if (tg.showAlert) tg.showAlert(window.t('projectsLoadingAlert'));
+        loadProjects(true).catch(function() {});
+        return;
+    }
     const eligible = typeof window.getAvailableMutualProjectsForOwner === 'function'
         ? window.getAvailableMutualProjectsForOwner(targetOwnerId)
         : myProjects.filter(function(project) {
             return project && (project.mode === 'mutual' || project.mode === 'hybrid') && project.id;
         });
     const blockedProjects = await fetchBlockedOfferProjects(targetOwnerId, true);
+    var target = (typeof window.getMarketCandidateByAppId === 'function') ? window.getMarketCandidateByAppId(targetAppId) : null;
+    var targetOwnerHasEmail = !!(target && target.owner_has_email);
     showProjectSelectModal(eligible, targetAppId, targetOwnerId, {
         sourceButton: sourceButton,
         targetAppId: targetAppId,
         targetOwnerId: targetOwnerId,
         blockedProjects: blockedProjects,
+        targetOwnerHasEmail: targetOwnerHasEmail,
     });
 }
 
