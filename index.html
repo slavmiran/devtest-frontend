@@ -252,18 +252,16 @@
     <div id="add-modal" class="modal-overlay" onclick="closeModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-modalTitle" data-i18n="addApp">Добавить приложение</h3>
-            <div id="add-stage-1" class="add-stage-section" data-add-stage="1">
-                <div class="form-group">
-                    <label class="form-label" id="t-appName" data-i18n="appName">Название приложения</label>
-                    <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="" data-i18n-placeholder="appNamePlaceholder" oninput="evaluateAddStages()">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" id="t-packageName" data-i18n="packageName">Ссылка на Google Play</label>
-                    <input type="text" id="app-package" class="form-input" placeholder="" data-i18n-placeholder="playLinkPlaceholder" oninput="onAddPlayLinkInput()">
-                    <div id="package-error" style="color: #ff3b30; font-size: 13px; margin-top: 8px; display: none;"></div>
-                </div>
+            <div class="form-group">
+                <label class="form-label" id="t-appName" data-i18n="appName">Название приложения</label>
+                <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="" data-i18n-placeholder="appNamePlaceholder" oninput="evaluateAddStages()">
             </div>
-            <div id="add-stage-2" class="stage-panel add-stage-section" data-add-stage="2">
+            <div class="form-group">
+                <label class="form-label" id="t-packageName" data-i18n="packageName">Ссылка на Google Play</label>
+                <input type="text" id="app-package" class="form-input" placeholder="" data-i18n-placeholder="playLinkPlaceholder" oninput="onAddPlayLinkInput()">
+                <div id="package-error" style="color: #ff3b30; font-size: 13px; margin-top: 8px; display: none;"></div>
+            </div>
+            <div id="add-stage-2" class="stage-panel">
                 <div class="form-group">
                     <label class="form-label" id="t-googleGroup" data-i18n="googleGroup">Ссылка на Google Group</label>
                     <div class="seg-control" id="group-seg-control">
@@ -340,7 +338,7 @@
                     <button type="button" class="setup-email-toggle" id="use-email-testing-btn" onclick="openEmailTestingModal()" data-i18n="useEmailTesting">Использовать тестирование по email</button>
                 </div>
             </div>
-            <div id="add-stage-3" class="stage-panel add-stage-section" data-add-stage="3">
+            <div id="add-stage-3" class="stage-panel">
             <div class="form-group">
                 <label class="form-label" id="t-modeLabel" data-i18n="modeLabel">Режим проекта</label>
                 <div class="form-hint" id="t-modeHint" data-i18n="modeHint">Выберите, где хотите набирать тестеров: взаимно, платно или в обоих каналах.</div>
@@ -420,18 +418,18 @@
                     <div id="chips-instructions" class="chip-scroll"></div>
                 </div>
             </details>
-            <div class="add-email-testers-option" id="add-email-testers-option">
-                <label class="review-checkbox-row project-setting-checkbox add-email-testers-option__toggle">
+            <div class="project-setting-checkbox add-email-testers-box" id="add-email-testers-box">
+                <label class="review-checkbox-row add-email-testers-box__toggle">
                     <input type="checkbox" id="app-accepts-email-testers" onchange="onAcceptsEmailTestersChange()">
                     <span>
                         <strong data-i18n="acceptsEmailTestersLabel">Хотите получать ещё больше взаимных тестов?</strong>
                         <small data-i18n="acceptsEmailTestersHint">Другие разработчики, использующие email-списки, смогут добавить вас в тестеры.</small>
                     </span>
                 </label>
-                <div id="tester-email-group" class="add-email-testers-fields">
+                <div id="tester-email-group" class="add-email-testers-expand">
                     <label class="form-label" id="t-testerEmail" data-i18n="testerEmailLabel">Ваш Email тестировщика</label>
                     <input type="email" id="app-tester-email" class="form-input" placeholder="" data-i18n-placeholder="testerEmailPlaceholder" oninput="evaluateAddStages()">
-                    <div class="form-hint add-email-testers-fields__hint" id="t-testerEmailHint" data-i18n="testerEmailHint">Укажите email аккаунта Google Play, с которого вы будете устанавливать чужие приложения для теста.</div>
+                    <div class="form-hint" id="t-testerEmailHint" data-i18n="testerEmailHint">Укажите email аккаунта Google Play, с которого вы будете устанавливать чужие приложения для теста.</div>
                 </div>
             </div>
             </div>

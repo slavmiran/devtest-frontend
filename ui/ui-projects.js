@@ -1393,53 +1393,7 @@ function closeDeleteModal(event) {
 /* ── Add Project: Progressive Disclosure state & helpers ───── */
 window.addProjectFlow = window.addProjectFlow || { emailCopied: false, emailMode: false };
 
-function initAddModalFocusTracking() {
-    const modal = document.getElementById('add-modal');
-    if (!modal || modal.dataset.focusBound === '1') return;
-    modal.dataset.focusBound = '1';
-    modal.addEventListener('focusin', () => {
-        updateAddStageEmphasis();
-    });
-}
-
-function getAddFocusedStage() {
-    const modal = document.getElementById('add-modal');
-    if (!modal || !modal.classList.contains('active')) return 0;
-    const active = document.activeElement;
-    if (!active || !modal.contains(active)) return 0;
-    const section = active.closest('[data-add-stage]');
-    if (!section) return 0;
-    return parseInt(section.getAttribute('data-add-stage'), 10) || 0;
-}
-
-function updateAddStageEmphasis() {
-    const playValid = isAddPlayLinkValid();
-    const stage2Done = playValid && isAddStage2Complete();
-    let activeStage = getAddFocusedStage();
-    if (!activeStage) {
-        if (!playValid) activeStage = 1;
-        else if (!stage2Done) activeStage = 2;
-        else activeStage = 3;
-    }
-
-    function applySection(el, num) {
-        if (!el) return;
-        const visible = num === 1
-            || (num === 2 && playValid)
-            || (num === 3 && stage2Done);
-        const isActive = visible && num === activeStage;
-        const isMuted = visible && num !== activeStage;
-        el.classList.toggle('stage-section--active', isActive);
-        el.classList.toggle('stage-section--muted', isMuted);
-    }
-
-    applySection(document.getElementById('add-stage-1'), 1);
-    applySection(document.getElementById('add-stage-2'), 2);
-    applySection(document.getElementById('add-stage-3'), 3);
-}
-
 function openModal() {
-    initAddModalFocusTracking();
     document.getElementById('add-modal').classList.add('active');
     resetAddFlow();
     renderGroupSection();
@@ -1486,8 +1440,8 @@ function resetAddFlow() {
 
     const acceptsBox = document.getElementById('app-accepts-email-testers');
     if (acceptsBox) acceptsBox.checked = false;
-    const emailOption = document.getElementById('add-email-testers-option');
-    if (emailOption) emailOption.classList.remove('is-expanded');
+    const emailBox = document.getElementById('add-email-testers-box');
+    if (emailBox) emailBox.classList.remove('is-expanded');
     const testerEmail = document.getElementById('app-tester-email');
     if (testerEmail) testerEmail.value = '';
 
@@ -1575,9 +1529,9 @@ function onAddChecklistChange() {
 
 function onAcceptsEmailTestersChange() {
     const acceptsBox = document.getElementById('app-accepts-email-testers');
-    const emailOption = document.getElementById('add-email-testers-option');
-    if (emailOption) {
-        emailOption.classList.toggle('is-expanded', !!(acceptsBox && acceptsBox.checked));
+    const emailBox = document.getElementById('add-email-testers-box');
+    if (emailBox) {
+        emailBox.classList.toggle('is-expanded', !!(acceptsBox && acceptsBox.checked));
     }
     if (acceptsBox && acceptsBox.checked) {
         const testerEmail = document.getElementById('app-tester-email');
@@ -1600,7 +1554,6 @@ function evaluateAddStages() {
     const stage2Done = playValid && isAddStage2Complete();
     stage3.classList.toggle('active', stage2Done);
 
-    updateAddStageEmphasis();
     updateAddSaveButtonState();
 }
 
