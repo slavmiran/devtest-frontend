@@ -1433,6 +1433,7 @@ function closeDeleteModal(event) {
 
 /* ── Add Project: Progressive Disclosure state & helpers ───── */
 window.addProjectFlow = window.addProjectFlow || { emailCopied: false, emailMode: false };
+window.editProjectFlow = window.editProjectFlow || { emailMode: false };
 
 function openModal() {
     document.getElementById('add-modal').classList.add('active');
@@ -1607,6 +1608,9 @@ function _updateTesterEmailValidIcon() {
     const input = document.getElementById('app-tester-email');
     const icon = document.getElementById('tester-email-valid-icon');
     if (!input || !icon) return;
+    if (typeof sanitizeSingleEmailInputValue === 'function') {
+        input.value = sanitizeSingleEmailInputValue(input.value);
+    }
     const value = (input.value || '').trim();
     const valid = !!value && (typeof isValidEmail === 'function') && isValidEmail(value);
     icon.classList.toggle('is-valid', valid);
@@ -1802,20 +1806,46 @@ function openEditModal(projectId) {
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
     projectToEdit = projectId;
+    const editEmailMode = String(project.test_mode || '').toLowerCase() === 'email_list';
     document.getElementById('edit-name').value = project.name || '';
     document.getElementById('edit-description').value = project.instructions || '';
     document.getElementById('edit-icon').value = project.icon_url || '';
     document.getElementById('edit-package').value = project.package || '';
-    document.getElementById('edit-group').value = project.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
+    document.getElementById('edit-group').value = editEmailMode
+        ? ''
+        : (project.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test');
+    if (window.editProjectFlow) {
+        window.editProjectFlow.emailMode = editEmailMode;
+    }
     document.getElementById('edit-limit-mutual').value = String(project.limit_mutual || 12);
     document.getElementById('edit-limit-bounty').value = String(project.limit_bounty || 12);
     document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
     document.getElementById('edit-request-reviews').checked = project.request_reviews !== false;
     setProjectMode('edit', project.mode || 'mutual');
     setProjectTargetLang('edit', project.target_lang || 'ALL');
+    renderEditGroupSection();
     updateProjectPricing('edit');
     renderEditCreatedAtMeta();
     document.getElementById('edit-project-modal').classList.add('active');
+}
+
+function renderEditGroupSection() {
+    var emailMode = !!(window.editProjectFlow && window.editProjectFlow.emailMode);
+    var banner = document.getElementById('edit-email-mode-banner');
+    var groupShell = document.getElementById('edit-google-group-shell');
+    if (banner) banner.style.display = emailMode ? 'flex' : 'none';
+    if (groupShell) groupShell.style.display = emailMode ? 'none' : '';
+}
+
+function exitEditEmailTestingMode() {
+    if (window.editProjectFlow) {
+        window.editProjectFlow.emailMode = false;
+    }
+    renderEditGroupSection();
+    var input = document.getElementById('edit-group');
+    if (input && !input.value) {
+        input.value = window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
+    }
 }
 
 function closeEditModal(event) {
@@ -1823,6 +1853,8 @@ function closeEditModal(event) {
     document.getElementById('edit-project-modal').classList.remove('active');
     setTimeout(() => {
         projectToEdit = null;
+        if (window.editProjectFlow) window.editProjectFlow.emailMode = false;
+        renderEditGroupSection();
         resetProjectForms();
         renderEditCreatedAtMeta();
     }, 300);

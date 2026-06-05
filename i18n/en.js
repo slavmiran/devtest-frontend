@@ -243,6 +243,8 @@
             customGroupRequired: "Please enter a link to your Google Group.",
             testerEmailRequired: "Please enter your tester email.",
             invalidEmail: "Please enter a valid email address.",
+            invalidEmailCommas: "Enter a single email address without commas.",
+            invalidEmailSpaces: "Email must not contain spaces.",
             emailSaveFailed: "Couldn't save your email. Please try again.",
             emailCopiedToast: "Copied! Open Play Console and add this email to the Google Groups section.",
             appNameOptionalHint: "Enter an app name, or we'll automatically keep \"{package}\".",

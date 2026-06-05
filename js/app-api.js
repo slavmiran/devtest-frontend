@@ -1005,6 +1005,9 @@ function handleApiError(code, details = {}) {
         mass_invite_project_unavailable: 'massInviteUnavailable',
         mass_invite_cooldown_active: 'massInviteCooldownActiveError',
         mass_invite_cooldown_not_active: 'massInviteCooldownNotActive',
+        invalid_email_commas: 'invalidEmailCommas',
+        invalid_email_spaces: 'invalidEmailSpaces',
+        invalid_email_format: 'invalidEmail',
     };
 
     var normalizedCode = String(code || '').trim();
@@ -2504,7 +2507,8 @@ async function saveProjectEdit() {
     const name = document.getElementById('edit-name').value.trim();
     const instructions = document.getElementById('edit-description').value.trim();
     const iconUrl = document.getElementById('edit-icon').value.trim();
-    const googleGroupUrl = document.getElementById('edit-group').value.trim();
+    const editEmailMode = !!(window.editProjectFlow && window.editProjectFlow.emailMode);
+    const googleGroupUrl = editEmailMode ? '' : document.getElementById('edit-group').value.trim();
     const targetLang = (document.getElementById('edit-target-lang').value || 'ALL').toUpperCase();
     const requestReviews = !!(document.getElementById('edit-request-reviews') && document.getElementById('edit-request-reviews').checked);
     const pricingPayload = buildProjectPricingPayload('edit');
@@ -2516,7 +2520,7 @@ async function saveProjectEdit() {
         return;
     }
 
-    if (googleGroupUrl && !isValidGoogleGroupUrl(googleGroupUrl)) {
+    if (!editEmailMode && googleGroupUrl && !isValidGoogleGroupUrl(googleGroupUrl)) {
         handleApiError('invalid_google_group_url');
         return;
     }
@@ -2534,7 +2538,8 @@ async function saveProjectEdit() {
                 name,
                 instructions: instructions || null,
                 icon_url: iconUrl || null,
-                google_group_url: googleGroupUrl || window.DEFAULT_GOOGLE_GROUP_URL,
+                google_group_url: editEmailMode ? null : (googleGroupUrl || window.DEFAULT_GOOGLE_GROUP_URL),
+                test_mode: editEmailMode ? 'email_list' : 'google_group',
                 target_lang: targetLang,
                 request_reviews: requestReviews,
                 ...pricingPayload

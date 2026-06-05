@@ -946,10 +946,42 @@ async function updateGuestProjectsFilter(field, value) {
     }
 }
 
+function sanitizeSingleEmailInputValue(value) {
+    return String(value || '').replace(/[\s,;]+/g, '').trim();
+}
+
+function getEmailValidationErrorCode(value) {
+    var raw = String(value || '');
+    if (!raw.trim()) return 'invalid_email_format';
+    if (/[\s]/.test(raw)) return 'invalid_email_spaces';
+    if (/[,;]/.test(raw)) return 'invalid_email_commas';
+    var email = raw.trim();
+    if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) return 'invalid_email_format';
+    return '';
+}
+
+function getEmailValidationMessage(code) {
+    var normalized = String(code || '').trim();
+    if (normalized === 'invalid_email_commas') return window.t('invalidEmailCommas', {}, lang);
+    if (normalized === 'invalid_email_spaces') return window.t('invalidEmailSpaces', {}, lang);
+    return window.t('invalidEmail', {}, lang);
+}
+
 function isValidEmail(value) {
-    var email = String(value || '').trim();
-    if (!email) return false;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    return !getEmailValidationErrorCode(value);
+}
+
+if (!window.__singleEmailInputGuardBound) {
+    window.__singleEmailInputGuardBound = true;
+    document.addEventListener('input', function(event) {
+        var target = event && event.target;
+        if (!target || String(target.tagName || '').toLowerCase() !== 'input') return;
+        if (String(target.type || '').toLowerCase() !== 'email') return;
+        var sanitized = sanitizeSingleEmailInputValue(target.value);
+        if (sanitized !== target.value) {
+            target.value = sanitized;
+        }
+    });
 }
 
 function isValidGoogleGroupUrl(value) {
@@ -1360,9 +1392,10 @@ async function syncTelegramProfile() {
 }
 
 async function saveTesterEmail(email) {
-    var candidate = String(email || '').trim();
-    if (!isValidEmail(candidate)) {
-        return { ok: false, code: 'invalid_email' };
+    var candidate = sanitizeSingleEmailInputValue(email);
+    var emailValidationCode = getEmailValidationErrorCode(candidate);
+    if (emailValidationCode) {
+        return { ok: false, code: emailValidationCode, message: getEmailValidationMessage(emailValidationCode) };
     }
     try {
         var response = await fetch(`${API_BASE}/users/me/email`, {
@@ -1373,7 +1406,9 @@ async function saveTesterEmail(email) {
         var result = null;
         try { result = await response.json(); } catch (e) { result = null; }
         if (!response.ok || !result || result.status !== 'success') {
-            return { ok: false, code: getBackendErrorCode(result) || 'database_error' };
+            var backendCode = getBackendErrorCode(result) || 'database_error';
+            var backendMessage = String((result && result.details && result.details.message) || result && result.detail || '').trim();
+            return { ok: false, code: backendCode, message: backendMessage || getEmailValidationMessage(backendCode) };
         }
         _userEmail = String(result.email || candidate).trim();
         window.App.userEmail = _userEmail;
@@ -1391,6 +1426,7 @@ function _updateSettingsEmailValidIcon() {
     var input = document.getElementById('settings-tester-email');
     var icon = document.getElementById('settings-email-valid-icon');
     if (!input || !icon) return;
+    input.value = sanitizeSingleEmailInputValue(input.value);
     var value = (input.value || '').trim();
     var valid = !!value && isValidEmail(value);
     icon.classList.toggle('is-valid', valid);
@@ -1413,9 +1449,11 @@ async function saveSettingsEmail() {
     var input = document.getElementById('settings-tester-email');
     var btn = document.getElementById('settings-email-save');
     if (!input) return;
-    var value = (input.value || '').trim();
-    if (!isValidEmail(value)) {
-        if (typeof window.showToast === 'function') window.showToast(window.t('invalidEmail', {}, lang));
+    var value = sanitizeSingleEmailInputValue(input.value);
+    input.value = value;
+    var validationCode = getEmailValidationErrorCode(value);
+    if (validationCode) {
+        if (typeof window.showToast === 'function') window.showToast(getEmailValidationMessage(validationCode));
         try { input.focus(); } catch (e) {}
         return;
     }
@@ -1427,7 +1465,14 @@ async function saveSettingsEmail() {
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         if (typeof window.showToast === 'function') window.showToast(window.t('settingsEmailSaved', {}, lang));
     } else {
-        if (typeof window.showToast === 'function') window.showToast(window.t('emailSaveFailed', {}, lang));
+        var errorMessage = String(res && res.message || '').trim();
+        if (!errorMessage) {
+            errorMessage = getEmailValidationMessage(res && res.code);
+        }
+        if (!errorMessage) {
+            errorMessage = window.t('emailSaveFailed', {}, lang);
+        }
+        if (typeof window.showToast === 'function') window.showToast(errorMessage);
     }
 }
 

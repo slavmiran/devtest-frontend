@@ -4262,15 +4262,26 @@ async function _submitEmailCollect() {
     var errEl = document.getElementById('email-collect-error');
     var saveBtn = document.getElementById('email-collect-save');
     var value = input ? String(input.value || '').trim() : '';
+    if (typeof sanitizeSingleEmailInputValue === 'function') {
+        value = sanitizeSingleEmailInputValue(value);
+        if (input) input.value = value;
+    }
     if (typeof isValidEmail === 'function' && !isValidEmail(value)) {
-        if (errEl) { errEl.textContent = window.t('invalidEmail', {}, lang); errEl.style.display = 'block'; }
+        var localCode = (typeof getEmailValidationErrorCode === 'function') ? getEmailValidationErrorCode(value) : 'invalid_email_format';
+        var localMessage = (typeof getEmailValidationMessage === 'function') ? getEmailValidationMessage(localCode) : window.t('invalidEmail', {}, lang);
+        if (errEl) { errEl.textContent = localMessage; errEl.style.display = 'block'; }
         return;
     }
     if (saveBtn) { saveBtn.disabled = true; saveBtn.classList.add('is-locked'); }
     var res = (typeof saveTesterEmail === 'function') ? await saveTesterEmail(value) : { ok: false };
     if (saveBtn) { saveBtn.disabled = false; saveBtn.classList.remove('is-locked'); }
     if (!res || !res.ok) {
-        if (errEl) { errEl.textContent = window.t('emailSaveFailed', {}, lang); errEl.style.display = 'block'; }
+        var msg = String(res && res.message || '').trim();
+        if (!msg && typeof getEmailValidationMessage === 'function') {
+            msg = getEmailValidationMessage(res && res.code);
+        }
+        if (!msg) msg = window.t('emailSaveFailed', {}, lang);
+        if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
         return;
     }
     closeEmailCollectModal();
