@@ -42,6 +42,8 @@ Object.assign(window, {
     showReadonlyAlert,
     openEditModal,
     closeEditModal,
+    openImageZoom,
+    closeImageZoom,
     escapeHTML: window.escapeHTML,
     copyEmail,
     openProjectDetailsModal,

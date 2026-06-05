@@ -1512,6 +1512,38 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     opacity: 0.6;
 }
 
+.zoomable-img {
+    cursor: zoom-in;
+}
+
+.image-zoom-overlay {
+    align-items: center;
+    z-index: 10002;
+}
+
+.image-zoom-content {
+    width: min(96vw, 980px);
+    max-height: 92vh;
+    border-radius: 16px;
+    overflow: hidden;
+    background: transparent;
+    padding: 0;
+    transform: none;
+}
+
+.image-zoom-overlay.active .image-zoom-content {
+    transform: none;
+}
+
+#image-zoom-img {
+    width: 100%;
+    height: auto;
+    max-height: 92vh;
+    object-fit: contain;
+    display: block;
+    background: #000;
+}
+
 .empty-state {
     text-align: center;
     padding: 40px 20px;

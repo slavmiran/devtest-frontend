@@ -294,17 +294,17 @@
                                     </button>
                                     <div class="setup-accordion-content" id="setup-accordion-panel">
                                         <div class="setup-step">
-                                            <img src="/images/step1.png" alt="Step 1" loading="lazy">
+                                            <img src="images/step1.png" alt="Step 1" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-title" data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</div>
                                             <div class="setup-step-path" data-i18n="setupStep1Path"></div>
                                         </div>
                                         <div class="setup-step">
-                                            <img src="/images/step2.png" alt="Step 2" loading="lazy">
+                                            <img src="images/step2.png" alt="Step 2" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-title" data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</div>
                                             <div class="setup-step-path" data-i18n="setupStep2Path"></div>
                                         </div>
                                         <div class="setup-step">
-                                            <img src="/images/step3.png" alt="Step 3" loading="lazy">
+                                            <img src="images/step3.png" alt="Step 3" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-title" data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</div>
                                             <div class="setup-step-path" data-i18n="setupStep3Path"></div>
                                         </div>
@@ -1229,6 +1229,13 @@
             </label>
             <div id="email-tester-info" class="setup-note" style="margin-bottom: 12px;"></div>
             <button class="btn btn-primary is-locked" id="email-tester-action" style="width:100%;" disabled></button>
+        </div>
+    </div>
+
+    <!-- Image zoom viewer (for setup screenshots, etc.) -->
+    <div id="image-zoom-modal" class="modal-overlay image-zoom-overlay" onclick="closeImageZoom(event)">
+        <div class="modal-content image-zoom-content" onclick="event.stopPropagation()">
+            <img id="image-zoom-img" src="" alt="">
         </div>
     </div>
 

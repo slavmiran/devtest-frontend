@@ -1609,6 +1609,27 @@ function toggleSetupAccordion() {
     }
 }
 
+function openImageZoom(src, alt) {
+    const modal = document.getElementById('image-zoom-modal');
+    const img = document.getElementById('image-zoom-img');
+    if (!modal || !img) return;
+    img.src = String(src || '');
+    img.alt = String(alt || '');
+    modal.classList.add('active');
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+function closeImageZoom(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('image-zoom-modal');
+    const img = document.getElementById('image-zoom-img');
+    if (img) {
+        img.src = '';
+        img.alt = '';
+    }
+    if (modal) modal.classList.remove('active');
+}
+
 function openEmailTestingModal() {
     document.getElementById('email-testing-modal').classList.add('active');
 }
