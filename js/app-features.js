@@ -1387,6 +1387,50 @@ async function saveTesterEmail(email) {
     }
 }
 
+function _updateSettingsEmailValidIcon() {
+    var input = document.getElementById('settings-tester-email');
+    var icon = document.getElementById('settings-email-valid-icon');
+    if (!input || !icon) return;
+    var value = (input.value || '').trim();
+    var valid = !!value && isValidEmail(value);
+    icon.classList.toggle('is-valid', valid);
+    input.classList.toggle('input-valid', valid);
+}
+
+function onSettingsEmailInput() {
+    _updateSettingsEmailValidIcon();
+}
+
+function populateSettingsEmail() {
+    var input = document.getElementById('settings-tester-email');
+    if (!input) return;
+    var current = getCurrentUserEmail();
+    if (current && !input.value) input.value = current;
+    _updateSettingsEmailValidIcon();
+}
+
+async function saveSettingsEmail() {
+    var input = document.getElementById('settings-tester-email');
+    var btn = document.getElementById('settings-email-save');
+    if (!input) return;
+    var value = (input.value || '').trim();
+    if (!isValidEmail(value)) {
+        if (typeof window.showToast === 'function') window.showToast(window.t('invalidEmail', {}, lang));
+        try { input.focus(); } catch (e) {}
+        return;
+    }
+    if (btn) btn.classList.add('is-loading');
+    var res = await saveTesterEmail(value);
+    if (btn) btn.classList.remove('is-loading');
+    if (res && res.ok) {
+        _updateSettingsEmailValidIcon();
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (typeof window.showToast === 'function') window.showToast(window.t('settingsEmailSaved', {}, lang));
+    } else {
+        if (typeof window.showToast === 'function') window.showToast(window.t('emailSaveFailed', {}, lang));
+    }
+}
+
 async function fetchMassInvitePreviewEmails(projectId) {
     try {
         var response = await fetch(`${API_BASE}/projects/${Number(projectId)}/mass_invite/preview`, {

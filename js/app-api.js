@@ -1169,6 +1169,7 @@ function _mapTestsFromApi(data) {
             start_date: app.start_date,
             owner_id: Number(app.owner_id || 0),
             owner_username: app.owner_username,
+            owner_full_name: app.owner_full_name || '',
             owner_karma: Number(app.owner_karma || 0),
             active_testers_count: app.active_testers_count,
             days_since_publish: app.days_since_publish,
@@ -2250,20 +2251,44 @@ async function saveProject() {
     const acceptsEmailTesters = !!(acceptsBox && acceptsBox.checked);
     const testerEmailInput = (document.getElementById('app-tester-email').value || '').trim();
 
-    // ── Stage 1: name + valid Google Play link ──
+    // ── Stage 1: valid Google Play link (name is optional) ──
     if (!packageInput.includes('play.google.com/store/apps/details?id=')) {
         _markAddFieldError(document.getElementById('app-package'));
         _showProjectPackageError('invalidPlayLink');
+        _focusAddError(document.getElementById('app-package'));
         return;
     }
-    if (!nameInput) {
-        _markAddFieldError(document.getElementById('app-name'));
-        _saveProjectAlert(t.fillFields);
-        return;
+
+    // Derive the package id early so it can serve as a name fallback (item 6).
+    let packageIdForName = packageInput;
+    try {
+        if (packageInput.includes('play.google.com')) {
+            const parsedId = new URL(packageInput).searchParams.get('id');
+            if (parsedId) packageIdForName = parsedId;
+        }
+    } catch (e) { /* noop */ }
+
+    let finalName = nameInput;
+    if (!finalName) {
+        const nameEl = document.getElementById('app-name');
+        const hintEl = document.getElementById('app-name-hint');
+        if (!(window.addProjectFlow && window.addProjectFlow.namePromptShown)) {
+            // First save attempt without a name: focus the field and ask to confirm the fallback.
+            if (window.addProjectFlow) window.addProjectFlow.namePromptShown = true;
+            if (hintEl) {
+                hintEl.textContent = window.t('appNameOptionalHint', { package: packageIdForName }, lang);
+                hintEl.style.display = '';
+            }
+            _focusAddError(nameEl);
+            return;
+        }
+        // Acknowledged: fall back to the package id as the project name.
+        finalName = packageIdForName;
     }
-    if (nameInput.length > 30) {
+    if (finalName.length > 30) {
         _markAddFieldError(document.getElementById('app-name'));
         _saveProjectAlert(t.appNameTooLong);
+        _focusAddError(document.getElementById('app-name'));
         return;
     }
 
@@ -2275,6 +2300,7 @@ async function saveProject() {
         if (!isAddChecklistComplete()) {
             _markChecklistErrors();
             _saveProjectAlert(window.t('completeChecklistError', {}, lang));
+            _focusAddError(document.querySelector('#setup-checklist .field-error') || document.getElementById('setup-checklist'));
             return;
         }
     } else {
@@ -2282,11 +2308,13 @@ async function saveProject() {
         if (!customUrl) {
             _markAddFieldError(document.getElementById('app-group'));
             _saveProjectAlert(window.t('customGroupRequired', {}, lang));
+            _focusAddError(document.getElementById('app-group'));
             return;
         }
         if (!isValidGoogleGroupUrl(customUrl)) {
             _markAddFieldError(document.getElementById('app-group'));
             handleApiError('invalid_google_group_url');
+            _focusAddError(document.getElementById('app-group'));
             return;
         }
         groupUrl = customUrl;
@@ -2297,11 +2325,13 @@ async function saveProject() {
         if (!testerEmailInput) {
             _markAddFieldError(document.getElementById('app-tester-email'));
             _saveProjectAlert(window.t('testerEmailRequired', {}, lang));
+            _focusAddError(document.getElementById('app-tester-email'));
             return;
         }
         if (!isValidEmail(testerEmailInput)) {
             _markAddFieldError(document.getElementById('app-tester-email'));
             _saveProjectAlert(window.t('invalidEmail', {}, lang));
+            _focusAddError(document.getElementById('app-tester-email'));
             return;
         }
     }
@@ -2319,9 +2349,18 @@ async function saveProject() {
         console.error('Play URL parse error:', error);
     }
 
+    // Item 8: keep the client-side email state in sync so the Mass Invite gate
+    // does not re-prompt for an email the user just saved during project creation.
+    if (acceptsEmailTesters && testerEmailInput) {
+        try {
+            window.App.userEmail = testerEmailInput;
+            if (window.App && window.App.state) window.App.state._userEmail = testerEmailInput;
+        } catch (e) { /* noop */ }
+    }
+
     await doSaveProject({
         owner_id: userId,
-        name: nameInput,
+        name: finalName,
         package_name: packageInput,
         icon_url: iconInput || null,
         google_group_url: groupUrl,
@@ -2334,6 +2373,16 @@ async function saveProject() {
         tester_email: acceptsEmailTesters ? testerEmailInput : null,
         ...pricingPayload
     });
+}
+
+function _focusAddError(el) {
+    if (!el) return;
+    try {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (e) { /* noop */ }
+    setTimeout(function () {
+        try { if (typeof el.focus === 'function') el.focus({ preventScroll: true }); } catch (e2) { /* noop */ }
+    }, 250);
 }
 
 async function confirmEmailWarning() {

@@ -3883,6 +3883,90 @@ details[open] > summary .details-arrow {
     font-size: 12px;
     color: var(--hint-color);
 }
+.showcase-active-test-owner {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    max-width: 45%;
+    text-align: right;
+    color: var(--text-color);
+}
+.showcase-active-test-owner-name {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.showcase-active-test-owner-nick {
+    font-size: 12px;
+    color: var(--hint-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.showcase-active-test-owner:active { opacity: 0.6; }
+
+/* Clickable Google Group email + tester email validity */
+.setup-email-address {
+    cursor: pointer;
+    word-break: break-all;
+}
+.email-input-wrap {
+    position: relative;
+}
+.email-input-wrap .form-input {
+    padding-right: 38px;
+}
+.email-valid-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.6);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #34c759;
+    color: #fff;
+    font-size: 13px;
+    line-height: 20px;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.email-valid-icon.is-valid {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+}
+.form-input.input-valid {
+    border-color: #34c759;
+}
+
+/* Settings: tester email card */
+.system-email-card {
+    background: var(--secondary-bg-color);
+    border-radius: 16px;
+    padding: 14px;
+    margin: 12px 0;
+}
+.system-email-card .email-input-wrap {
+    margin: 10px 0;
+}
+.system-email-save {
+    width: 100%;
+}
+
+/* Image zoom: allow real pinch/pan zoom */
+#image-zoom-img {
+    transform-origin: center center;
+    touch-action: none;
+    will-change: transform;
+    user-select: none;
+}
 
 #contact-text {
     resize: none;

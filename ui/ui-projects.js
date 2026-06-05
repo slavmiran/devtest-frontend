@@ -47,6 +47,12 @@ function buildProjectModeChip(project) {
     return `<button class="meta-chip accent-green" onclick="void(0)">${window.escapeHTML(t.modeMutual)}</button>`;
 }
 
+function buildEmailTestModeChip(project) {
+    if (!project || String(project.test_mode || 'google_group') !== 'email_list') return '';
+    const label = window.t('emailTestModeChip', {}, lang);
+    return `<button type="button" class="meta-chip accent-orange" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('emailTestModeChipToast', {}, lang))}')">⚠️ ${window.escapeHTML(label)}</button>`;
+}
+
 
 
 function renderProjects(force) {
@@ -393,6 +399,7 @@ function renderProjects(force) {
             if (statusChip) badges += statusChip;
 
             badges += buildProjectModeChip(project);
+            badges += buildEmailTestModeChip(project);
 
             const runIterationChip = buildRunIterationChip(project);
             if (runIterationChip) badges += runIterationChip;
@@ -1433,6 +1440,17 @@ function openModal() {
     renderGroupSection();
     setProjectTargetLang('add', 'ALL');
     updateProjectPricing('add');
+
+    // Item 10: if the user already has a saved tester email, pre-enable the opt-in and prefill it.
+    const savedEmail = (typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : '') || (window.App && window.App.userEmail) || '';
+    if (savedEmail) {
+        const acceptsBox = document.getElementById('app-accepts-email-testers');
+        const testerEmail = document.getElementById('app-tester-email');
+        if (acceptsBox) acceptsBox.checked = true;
+        if (testerEmail) testerEmail.value = savedEmail;
+        onAcceptsEmailTestersChange();
+    }
+
     evaluateAddStages();
     document.getElementById('app-name').focus();
 }
@@ -1457,7 +1475,14 @@ function closeModal(event) {
 }
 
 function resetAddFlow() {
-    window.addProjectFlow = { emailCopied: false, emailMode: false };
+    window.addProjectFlow = { emailCopied: false, emailMode: false, namePromptShown: false };
+
+    const nameHint = document.getElementById('app-name-hint');
+    if (nameHint) { nameHint.style.display = 'none'; nameHint.textContent = ''; }
+    const validIcon = document.getElementById('tester-email-valid-icon');
+    if (validIcon) validIcon.classList.remove('is-valid');
+    const testerEmailInput = document.getElementById('app-tester-email');
+    if (testerEmailInput) testerEmailInput.classList.remove('input-valid');
 
     ['check-email', 'check-countries', 'check-review'].forEach((id) => {
         const box = document.getElementById(id);
@@ -1570,10 +1595,26 @@ function onAcceptsEmailTestersChange() {
     if (acceptsBox && acceptsBox.checked) {
         const testerEmail = document.getElementById('app-tester-email');
         if (testerEmail && !testerEmail.value) {
-            const prefill = (window.App && window.App.userEmail) || '';
+            const prefill = (typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : '') || (window.App && window.App.userEmail) || '';
             if (prefill) testerEmail.value = prefill;
         }
     }
+    _updateTesterEmailValidIcon();
+    evaluateAddStages();
+}
+
+function _updateTesterEmailValidIcon() {
+    const input = document.getElementById('app-tester-email');
+    const icon = document.getElementById('tester-email-valid-icon');
+    if (!input || !icon) return;
+    const value = (input.value || '').trim();
+    const valid = !!value && (typeof isValidEmail === 'function') && isValidEmail(value);
+    icon.classList.toggle('is-valid', valid);
+    input.classList.toggle('input-valid', valid);
+}
+
+function onTesterEmailInput() {
+    _updateTesterEmailValidIcon();
     evaluateAddStages();
 }
 
@@ -1594,8 +1635,8 @@ function evaluateAddStages() {
 function updateAddSaveButtonState() {
     const saveBtn = document.getElementById('t-save');
     if (!saveBtn) return;
-    const nameFilled = !!(document.getElementById('app-name').value || '').trim();
-    const ready = nameFilled && isAddPlayLinkValid() && isAddStage2Complete() && isAddStage3Valid();
+    // Name is now optional (item 6): it falls back to the package name on save.
+    const ready = isAddPlayLinkValid() && isAddStage2Complete() && isAddStage3Valid();
     saveBtn.classList.toggle('is-locked', !ready);
 }
 
@@ -1609,6 +1650,23 @@ function toggleSetupAccordion() {
     }
 }
 
+var _imageZoomState = { scale: 1, tx: 0, ty: 0, startDist: 0, startScale: 1, lastX: 0, lastY: 0, panning: false, pointers: {} };
+
+function _applyImageZoomTransform() {
+    const img = document.getElementById('image-zoom-img');
+    if (!img) return;
+    const s = _imageZoomState;
+    s.scale = Math.max(1, Math.min(s.scale, 6));
+    if (s.scale <= 1) { s.tx = 0; s.ty = 0; }
+    img.style.transform = 'translate3d(' + s.tx + 'px,' + s.ty + 'px,0) scale(' + s.scale + ')';
+    img.style.cursor = s.scale > 1 ? 'grab' : 'zoom-in';
+}
+
+function _resetImageZoom() {
+    _imageZoomState = { scale: 1, tx: 0, ty: 0, startDist: 0, startScale: 1, lastX: 0, lastY: 0, panning: false, pointers: {} };
+    _applyImageZoomTransform();
+}
+
 function openImageZoom(src, alt) {
     const modal = document.getElementById('image-zoom-modal');
     const img = document.getElementById('image-zoom-img');
@@ -1616,6 +1674,56 @@ function openImageZoom(src, alt) {
     img.src = String(src || '');
     img.alt = String(alt || '');
     modal.classList.add('active');
+    _resetImageZoom();
+    if (!img._zoomBound) {
+        img._zoomBound = true;
+        const s = _imageZoomState;
+        const dist = function (a, b) { return Math.hypot(a.x - b.x, a.y - b.y); };
+        img.addEventListener('pointerdown', function (e) {
+            e.preventDefault();
+            img.setPointerCapture && img.setPointerCapture(e.pointerId);
+            s.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+            const ids = Object.keys(s.pointers);
+            if (ids.length === 2) {
+                s.startDist = dist(s.pointers[ids[0]], s.pointers[ids[1]]);
+                s.startScale = s.scale;
+            } else if (ids.length === 1) {
+                s.panning = s.scale > 1;
+                s.lastX = e.clientX; s.lastY = e.clientY;
+            }
+        });
+        img.addEventListener('pointermove', function (e) {
+            if (!s.pointers[e.pointerId]) return;
+            s.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+            const ids = Object.keys(s.pointers);
+            if (ids.length === 2) {
+                const d = dist(s.pointers[ids[0]], s.pointers[ids[1]]);
+                if (s.startDist > 0) { s.scale = s.startScale * (d / s.startDist); _applyImageZoomTransform(); }
+            } else if (ids.length === 1 && s.panning) {
+                s.tx += e.clientX - s.lastX;
+                s.ty += e.clientY - s.lastY;
+                s.lastX = e.clientX; s.lastY = e.clientY;
+                _applyImageZoomTransform();
+            }
+        });
+        const onUp = function (e) {
+            delete s.pointers[e.pointerId];
+            if (Object.keys(s.pointers).length < 2) s.startDist = 0;
+            if (Object.keys(s.pointers).length === 0) s.panning = false;
+        };
+        img.addEventListener('pointerup', onUp);
+        img.addEventListener('pointercancel', onUp);
+        img.addEventListener('dblclick', function (e) {
+            e.preventDefault();
+            s.scale = s.scale > 1 ? 1 : 2.5;
+            _applyImageZoomTransform();
+        });
+        img.addEventListener('wheel', function (e) {
+            e.preventDefault();
+            s.scale += e.deltaY < 0 ? 0.3 : -0.3;
+            _applyImageZoomTransform();
+        }, { passive: false });
+    }
     if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 }
 
@@ -1623,7 +1731,9 @@ function closeImageZoom(event) {
     if (event && event.target !== event.currentTarget) return;
     const modal = document.getElementById('image-zoom-modal');
     const img = document.getElementById('image-zoom-img');
+    _resetImageZoom();
     if (img) {
+        img.style.transform = '';
         img.src = '';
         img.alt = '';
     }
@@ -1726,15 +1836,23 @@ function resetEditGoogleGroupToDefault() {
 }
 
 function copyEmail() {
-    navigator.clipboard.writeText('google-play-dev-test@googlegroups.com').then(() => {
+    const _toast = function () {
+        const msg = window.t('emailCopiedToast', {}, lang);
+        if (typeof window.showToast === 'function') window.showToast(msg);
+    };
+    const _done = function () {
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         unlockSetupChecklist();
-        if (tg.showAlert) tg.showAlert(t.copied);
-        else alert(t.copied);
-    }).catch((error) => {
-        console.error('Failed to copy text: ', error);
-        unlockSetupChecklist();
-    });
+        _toast();
+    };
+    try {
+        navigator.clipboard.writeText('google-play-dev-test@googlegroups.com').then(_done).catch((error) => {
+            console.error('Failed to copy text: ', error);
+            _done();
+        });
+    } catch (e) {
+        _done();
+    }
 }
 
 function unlockSetupChecklist() {

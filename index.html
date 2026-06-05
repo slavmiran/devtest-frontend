@@ -69,6 +69,15 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
+            <div class="system-email-card">
+                <div class="system-language-card-title" data-i18n="settingsEmailTitle">✉️ Тестовый email</div>
+                <div class="system-language-card-subtitle" data-i18n="settingsEmailHint">Укажите email Google Play — это даёт больше взаимных тестов от разработчиков с ручным режимом.</div>
+                <div class="email-input-wrap">
+                    <input type="email" id="settings-tester-email" class="form-input" placeholder="" data-i18n-placeholder="testerEmailPlaceholder" oninput="onSettingsEmailInput()">
+                    <span id="settings-email-valid-icon" class="email-valid-icon" aria-hidden="true">✓</span>
+                </div>
+                <button type="button" class="btn btn-primary system-email-save" id="settings-email-save" onclick="saveSettingsEmail()" data-i18n="settingsEmailSave">Сохранить email</button>
+            </div>
             <div class="system-feedback-buttons">
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('bug')" data-i18n="feedbackBug">🐛 Сообщить о баге</button>
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('idea')" data-i18n="feedbackIdea">💡 Идея / Нашли баг?</button>
@@ -263,6 +272,7 @@
             <div class="form-group">
                 <label class="form-label" id="t-appName" data-i18n="appName">Название приложения</label>
                 <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="" data-i18n-placeholder="appNamePlaceholder" oninput="evaluateAddStages()">
+                <div class="form-hint" id="app-name-hint" style="display:none;"></div>
             </div>
             <div class="form-group">
                 <label class="form-label" id="t-packageName" data-i18n="packageName">Ссылка на Google Play</label>
@@ -279,7 +289,7 @@
 
                     <div id="group-standard-block">
                         <div class="setup-email-box">
-                            <span class="setup-email-address">google-play-dev-test@googlegroups.com</span>
+                            <span class="setup-email-address" role="button" tabindex="0" onclick="copyEmail()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyEmail();}">google-play-dev-test@googlegroups.com</span>
                             <button type="button" class="btn-icon setup-email-copy" onclick="copyEmail()">📋</button>
                         </div>
                         <div class="setup-note" id="t-standardGroupNote" data-i18n-html="standardGroupNote">В Play Console обязательно выберите режим тестирования через <b>Группы Google</b> (не email-списки) и вставьте этот адрес.</div>
@@ -294,18 +304,18 @@
                                     </button>
                                     <div class="setup-accordion-content" id="setup-accordion-panel">
                                         <div class="setup-step">
-                                            <img src="images/step1.png" alt="Step 1" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-title" data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</div>
+                                            <img src="images/step1.png" alt="Step 1" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-path" data-i18n="setupStep1Path"></div>
                                         </div>
                                         <div class="setup-step">
-                                            <img src="images/step2.png" alt="Step 2" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-title" data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</div>
+                                            <img src="images/step2.png" alt="Step 2" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-path" data-i18n="setupStep2Path"></div>
                                         </div>
                                         <div class="setup-step">
-                                            <img src="images/step3.png" alt="Step 3" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-title" data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</div>
+                                            <img src="images/step3.png" alt="Step 3" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-path" data-i18n="setupStep3Path"></div>
                                         </div>
                                     </div>
@@ -436,7 +446,10 @@
                 </label>
                 <div id="tester-email-group" class="add-email-testers-expand">
                     <label class="form-label" id="t-testerEmail" data-i18n="testerEmailLabel">Ваш Email тестировщика</label>
-                    <input type="email" id="app-tester-email" class="form-input" placeholder="" data-i18n-placeholder="testerEmailPlaceholder" oninput="evaluateAddStages()">
+                    <div class="email-input-wrap">
+                        <input type="email" id="app-tester-email" class="form-input" placeholder="" data-i18n-placeholder="testerEmailPlaceholder" oninput="onTesterEmailInput()">
+                        <span id="tester-email-valid-icon" class="email-valid-icon" aria-hidden="true">✓</span>
+                    </div>
                     <div class="form-hint" id="t-testerEmailHint" data-i18n="testerEmailHint">Укажите email аккаунта Google Play, с которого вы будете устанавливать чужие приложения для теста.</div>
                 </div>
             </div>

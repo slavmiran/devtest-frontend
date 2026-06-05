@@ -4399,13 +4399,26 @@ function renderShowcaseActiveTests(force) {
     listEl.innerHTML = items.map(function(test) {
         var safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
         var statusLabel = _showcaseTestStatusLabel(test);
-        return '<button class="showcase-active-test-item" onclick="openProjectDetailsModal(' + Number(test.id) + ')">' +
+        var ownerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+        var ownerFullName = String(test.owner_full_name || '').trim();
+        var ownerHtml = '';
+        if (ownerFullName || ownerUsername) {
+            var ownerInner = '';
+            if (ownerFullName) ownerInner += '<span class="showcase-active-test-owner-name notranslate">' + window.escapeHTML(ownerFullName) + '</span>';
+            if (ownerUsername) ownerInner += '<span class="showcase-active-test-owner-nick notranslate">@' + window.escapeHTML(ownerUsername) + '</span>';
+            var ownerClickable = ownerUsername
+                ? ' role="button" tabindex="0" onclick="event.stopPropagation(); tg.openTelegramLink(\'https://t.me/' + escapeInlineJsString(ownerUsername) + '\')"'
+                : '';
+            ownerHtml = '<span class="showcase-active-test-owner"' + ownerClickable + '>' + ownerInner + '</span>';
+        }
+        return '<div class="showcase-active-test-item" onclick="openProjectDetailsModal(' + Number(test.id) + ')">' +
             '<span class="showcase-active-test-icon">' + renderIcon(test.name || '', test.icon_url) + '</span>' +
             '<span class="showcase-active-test-text">' +
                 '<span class="showcase-active-test-name notranslate">' + safeName + '</span>' +
                 '<span class="showcase-active-test-status">' + window.escapeHTML(statusLabel) + '</span>' +
             '</span>' +
-        '</button>';
+            ownerHtml +
+        '</div>';
     }).join('');
 }
 function _showcaseTestStatusLabel(test) {

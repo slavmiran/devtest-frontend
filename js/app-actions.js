@@ -245,7 +245,11 @@ function _highlightTestCardWhenReady(appId, attemptsLeft) {
 function toggleSystemMenu() {
     const menu = document.getElementById('system-drop-menu');
     if (menu) {
+        const willOpen = !menu.classList.contains('active');
         menu.classList.toggle('active');
+        if (willOpen && typeof window.populateSettingsEmail === 'function') {
+            window.populateSettingsEmail();
+        }
         if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     }
 }
