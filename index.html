@@ -1228,20 +1228,64 @@
 
     <!-- EmailTesterModal: enforce adding tester emails to Play Console before sending -->
     <div id="email-tester-modal" class="modal-overlay" onclick="closeEmailTesterModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-content email-tester-modal-content" onclick="event.stopPropagation()">
             <h3 id="email-tester-title" data-i18n="emailTesterModalTitle"></h3>
-            <p id="email-tester-text" class="form-hint" style="margin-bottom: 12px;"></p>
-            <div id="email-tester-emails" class="copyable-email" style="margin-bottom: 10px;"></div>
-            <div style="display:flex; gap:8px; margin-bottom: 12px;">
-                <button class="btn btn-secondary" id="email-tester-copy" style="flex:1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);"></button>
-                <a class="btn btn-secondary" id="email-tester-console" target="_blank" rel="noopener" href="https://play.google.com/console" style="flex:1; display:flex; align-items:center; justify-content:center; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);"></a>
+            <p id="email-tester-text" class="form-hint email-tester-lead"></p>
+            <div id="email-tester-fomo" class="email-tester-fomo" style="display:none;"></div>
+
+            <div class="email-tester-steps">
+                <section class="form-surface email-tester-step-card">
+                    <div class="email-tester-step-head">
+                        <span class="email-tester-step-number" aria-hidden="true">1</span>
+                        <div class="email-tester-step-meta">
+                            <div id="email-tester-step1-title" class="form-section-title"></div>
+                        </div>
+                    </div>
+
+                    <div id="email-tester-emails" class="copyable-email email-tester-email-list notranslate"></div>
+                    <div id="email-tester-hint" class="email-tester-hint"></div>
+
+                    <div class="email-tester-actions-row">
+                        <button class="btn btn-secondary email-tester-secondary-btn" id="email-tester-copy"></button>
+                        <a class="btn btn-secondary email-tester-secondary-btn" id="email-tester-console" target="_blank" rel="noopener" href="https://play.google.com/console"></a>
+                    </div>
+                </section>
+
+                <section class="form-surface email-tester-step-card">
+                    <div class="email-tester-step-head">
+                        <span class="email-tester-step-number" aria-hidden="true">2</span>
+                        <div class="email-tester-step-meta">
+                            <div id="email-tester-step2-title" class="form-section-title"></div>
+                        </div>
+                    </div>
+
+                    <label class="review-checkbox-row email-tester-checkbox-row" for="email-tester-confirm">
+                        <input type="checkbox" id="email-tester-confirm" />
+                        <span id="email-tester-confirm-label"></span>
+                    </label>
+                </section>
+
+                <section class="form-surface email-tester-step-card">
+                    <div class="email-tester-step-head">
+                        <span class="email-tester-step-number" aria-hidden="true">3</span>
+                        <div class="email-tester-step-meta">
+                            <div id="email-tester-step3-title" class="form-section-title"></div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary is-locked email-tester-action-btn" id="email-tester-action" disabled></button>
+                </section>
             </div>
-            <label class="review-checkbox-row" for="email-tester-confirm" style="margin-bottom: 12px;">
-                <input type="checkbox" id="email-tester-confirm" />
-                <span id="email-tester-confirm-label"></span>
-            </label>
-            <div id="email-tester-info" class="setup-note" style="margin-bottom: 12px;"></div>
-            <button class="btn btn-primary is-locked" id="email-tester-action" style="width:100%;" disabled></button>
+
+            <div class="setup-accordion email-tester-accordion" id="email-tester-accordion">
+                <button type="button" class="setup-accordion-head" id="email-tester-accordion-toggle" onclick="toggleEmailTesterAccordion()" aria-expanded="false" aria-controls="email-tester-accordion-panel">
+                    <span id="email-tester-accordion-title"></span>
+                    <span class="setup-accordion-arrow" aria-hidden="true">▼</span>
+                </button>
+                <div class="setup-accordion-content" id="email-tester-accordion-panel">
+                    <div id="email-tester-info" class="setup-note email-tester-automation-note"></div>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -4289,10 +4289,53 @@ function closeEmailCollectModal(event) {
 
 var _emailTesterCtx = null;
 var _emailTesterToken = 0;
-function _setEmailTesterEmails(emails, stateText) {
+var _emailTesterPreviewMeta = null;
+
+function _setEmailTesterAccordionOpen(isOpen) {
+    var accordion = document.getElementById('email-tester-accordion');
+    if (!accordion) return;
+    accordion.classList.toggle('open', !!isOpen);
+    var head = document.getElementById('email-tester-accordion-toggle');
+    if (head) {
+        head.setAttribute('aria-expanded', accordion.classList.contains('open') ? 'true' : 'false');
+    }
+}
+
+function toggleEmailTesterAccordion() {
+    var accordion = document.getElementById('email-tester-accordion');
+    if (!accordion) return;
+    _setEmailTesterAccordionOpen(!accordion.classList.contains('open'));
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function _setEmailTesterFomo(meta) {
+    var fomoEl = document.getElementById('email-tester-fomo');
+    if (!fomoEl) return;
+    var found = Number(meta && meta.found);
+    var total = Number(meta && meta.total);
+    var visible = !!(meta && meta.isMassInvite && Number.isFinite(found) && Number.isFinite(total));
+    if (!visible) {
+        fomoEl.style.display = 'none';
+        fomoEl.innerHTML = '';
+        return;
+    }
+    fomoEl.style.display = '';
+    fomoEl.innerHTML = window.t('emailTesterFomoHtml', {
+        found: '<span class="email-tester-fomo-value">' + window.escapeHTML(String(found)) + '</span>',
+        total: '<span class="email-tester-fomo-value">' + window.escapeHTML(String(total)) + '</span>'
+    }, lang);
+}
+
+function _getEmailTesterCopyToastKey() {
+    return _emailTesterPreviewMeta && _emailTesterPreviewMeta.isMassInvite ? 'emailTesterCopiedMass' : 'emailTesterCopied';
+}
+
+function _setEmailTesterEmails(emails, stateText, meta) {
     var emailsEl = document.getElementById('email-tester-emails');
     var copyBtn = document.getElementById('email-tester-copy');
     var list = Array.isArray(emails) ? emails.filter(Boolean) : [];
+    _emailTesterPreviewMeta = meta || null;
+    _setEmailTesterFomo(_emailTesterPreviewMeta);
     if (emailsEl) {
         emailsEl.textContent = list.length ? list.join(', ') : (stateText || window.t('emailTesterNoEmails', {}, lang));
     }
@@ -4301,8 +4344,8 @@ function _setEmailTesterEmails(emails, stateText) {
         copyBtn.onclick = function() {
             var text = list.join(', ');
             if (!text) return;
-            if (typeof copyTextWithToast === 'function') copyTextWithToast(text);
-            else if (navigator.clipboard) navigator.clipboard.writeText(text).then(function() { showToast(window.t('emailTesterCopied', {}, lang)); });
+            if (typeof copyTextWithToast === 'function') copyTextWithToast(text, _getEmailTesterCopyToastKey());
+            else if (navigator.clipboard) navigator.clipboard.writeText(text).then(function() { showToast(window.t(_getEmailTesterCopyToastKey(), {}, lang)); });
         };
     }
 }
@@ -4319,37 +4362,62 @@ function openEmailTesterModal(opts) {
     var consoleBtn = document.getElementById('email-tester-console');
     var checkbox = document.getElementById('email-tester-confirm');
     var confirmLabel = document.getElementById('email-tester-confirm-label');
+    var step1Title = document.getElementById('email-tester-step1-title');
+    var step2Title = document.getElementById('email-tester-step2-title');
+    var step3Title = document.getElementById('email-tester-step3-title');
+    var hintEl = document.getElementById('email-tester-hint');
+    var accordionTitle = document.getElementById('email-tester-accordion-title');
     var infoEl = document.getElementById('email-tester-info');
     var actionBtn = document.getElementById('email-tester-action');
     if (titleEl) titleEl.textContent = window.t('emailTesterModalTitle', {}, lang);
     if (textEl) textEl.textContent = opts.text || window.t('emailTesterModalText', {}, lang);
+    if (step1Title) step1Title.textContent = window.t('emailTesterStep1Title', {}, lang);
+    if (step2Title) step2Title.textContent = window.t('emailTesterStep2Title', {}, lang);
+    if (step3Title) step3Title.textContent = window.t('emailTesterStep3Title', {}, lang);
+    if (hintEl) hintEl.textContent = window.t('emailTesterPasteHint', {}, lang);
     if (copyBtn) copyBtn.textContent = window.t('emailTesterCopyBtn', {}, lang);
     if (consoleBtn) consoleBtn.textContent = window.t('emailTesterConsoleBtn', {}, lang);
     if (confirmLabel) confirmLabel.textContent = window.t('emailTesterConfirmLabel', {}, lang);
-    if (infoEl) infoEl.innerHTML = window.t('emailTesterInfo', {}, lang);
+    if (accordionTitle) accordionTitle.textContent = window.t('emailTesterAutomationToggle', {}, lang);
+    if (infoEl) infoEl.textContent = window.t('emailTesterInfo', {}, lang);
     if (checkbox) { checkbox.checked = false; checkbox.onchange = _updateEmailTesterAction; }
     if (actionBtn) {
         actionBtn.textContent = opts.actionLabel || window.t('emailTesterDefaultAction', {}, lang);
         actionBtn.onclick = _confirmEmailTester;
     }
+    _emailTesterPreviewMeta = null;
+    _setEmailTesterFomo(null);
+    _setEmailTesterAccordionOpen(false);
     _updateEmailTesterAction();
     modal.classList.add('active');
 
     if (typeof opts.loadEmails === 'function') {
-        _setEmailTesterEmails([], window.t('emailTesterLoading', {}, lang));
+        _setEmailTesterEmails([], window.t('emailTesterLoading', {}, lang), null);
         Promise.resolve()
             .then(function() { return opts.loadEmails(); })
             .then(function(res) {
                 if (token !== _emailTesterToken) return; // a newer modal opened
                 var loaded = (res && Array.isArray(res.emails)) ? res.emails : (Array.isArray(res) ? res : []);
-                _setEmailTesterEmails(loaded, (res && res.ok === false) ? window.t('emailTesterLoadFailed', {}, lang) : null);
+                var meta = null;
+                if (res && typeof res.found !== 'undefined' && typeof res.total !== 'undefined') {
+                    meta = {
+                        isMassInvite: true,
+                        found: Number(res.found || 0),
+                        total: Number(res.total || 0)
+                    };
+                }
+                _setEmailTesterEmails(loaded, (res && res.ok === false) ? window.t('emailTesterLoadFailed', {}, lang) : null, meta);
             })
             .catch(function() {
                 if (token !== _emailTesterToken) return;
-                _setEmailTesterEmails([], window.t('emailTesterLoadFailed', {}, lang));
+                _setEmailTesterEmails([], window.t('emailTesterLoadFailed', {}, lang), null);
             });
     } else {
-        _setEmailTesterEmails(emails, null);
+        _setEmailTesterEmails(emails, null, {
+            isMassInvite: !!opts.isMassInvite,
+            found: Number(opts.found || 0),
+            total: Number(opts.total || 0)
+        });
     }
 }
 function _updateEmailTesterAction() {
@@ -4371,6 +4439,11 @@ function closeEmailTesterModal(event) {
     if (event && event.target !== event.currentTarget) return;
     var modal = document.getElementById('email-tester-modal');
     if (modal) modal.classList.remove('active');
+    _emailTesterCtx = null;
+    _emailTesterPreviewMeta = null;
+    _emailTesterToken += 1;
+    _setEmailTesterFomo(null);
+    _setEmailTesterAccordionOpen(false);
 }
 
 /* === Showcase: "My active tests" accordion === */
@@ -4441,6 +4514,7 @@ Object.assign(window, {
     closeEmailCollectModal,
     openEmailTesterModal,
     closeEmailTesterModal,
+    toggleEmailTesterAccordion,
     renderShowcaseActiveTests,
     toggleShowcaseActiveTests,
     getLangBadge,
