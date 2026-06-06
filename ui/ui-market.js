@@ -3605,6 +3605,11 @@ function switchTab(tabId, navElement) {
     const tabEl = document.getElementById(`tab-${finalTab}`);
     if (tabEl) tabEl.classList.add('active');
 
+    const doneSection = document.getElementById('done-section');
+    if (doneSection && finalTab !== 'tests') {
+        doneSection.style.display = 'none';
+    }
+
     if (finalTab === 'tests') {
         renderEvents(true);
         renderIncomingOffers(true);
@@ -3659,15 +3664,9 @@ function switchTab(tabId, navElement) {
 
 function toggleAccordion() {
     const accordion = document.getElementById('done-section');
-    const content = document.getElementById('done-list');
-
-    if (content.classList.contains('active')) {
-        content.classList.remove('active');
-        accordion.classList.remove('active');
-    } else {
-        content.classList.add('active');
-        accordion.classList.add('active');
-    }
+    if (!accordion) return;
+    const willOpen = !accordion.classList.contains('active');
+    accordion.classList.toggle('active', willOpen);
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 

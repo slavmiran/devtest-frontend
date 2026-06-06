@@ -130,14 +130,9 @@
 
         <div id="external-tests-section" class="pending-release-section external-tests-section" style="display:none;">
             <div class="pending-release-section__header external-tests-section__header">
-                        <div class="custom-group-meta">
-                            <span class="setup-step-badge" data-i18n="customGroupStepBadge">Шаг 1</span>
-                            <strong data-i18n="customGroupStepTitle">Укажите вашу ссылку</strong>
-                        </div>
-                        <div class="setup-note" data-i18n="customGroupManualHint">Вы сами управляете группой: добавляйте тестеров вручную из дашборда.</div>
-                    </div>
-
-                    <div id="email-mode-banner" class="email-mode-banner" style="display:none;">
+                <div>
+                    <h3 id="t-externalTestsSectionTitle" data-i18n="externalTestsSectionTitle">👽 Гостевые проекты</h3>
+                    <button type="button" id="t-externalTestsInfoLink" class="external-tests-info-link" onclick="showGuestTestsInfoAlert()" data-i18n="guestTestsInfoLink">ℹ️ Как работает гостевой режим</button>
                 </div>
                 <span id="external-tests-count" class="offers-count">0</span>
             </div>
@@ -357,7 +352,6 @@
 
                     <div id="group-custom-block" style="display: none;" class="group-setup-card">
                         <div class="custom-group-meta">
-                            <span class="setup-step-badge" data-i18n="customGroupStepBadge">Шаг 1</span>
                             <strong data-i18n="customGroupStepTitle">Укажите вашу ссылку</strong>
                         </div>
                         <input type="url" id="app-group" class="form-input" placeholder="" data-i18n-placeholder="groupUrlPlaceholder" oninput="evaluateAddStages()">
@@ -774,7 +768,6 @@
 
                     <div id="edit-group-custom-block" style="display:none;" class="group-setup-card">
                         <div class="custom-group-meta">
-                            <span class="setup-step-badge" data-i18n="customGroupStepBadge">Шаг 1</span>
                             <strong data-i18n="customGroupStepTitle">Укажите вашу ссылку</strong>
                         </div>
                         <input type="url" id="edit-group" class="form-input" placeholder="" data-i18n-placeholder="groupUrlPlaceholder" oninput="onEditAccessGroupInput()">
@@ -783,6 +776,7 @@
 
                     <div id="edit-email-mode-banner" class="email-mode-banner" style="display:none; margin-top: 10px;">
                         <span data-i18n="emailModeActive">✉️ Выбрано тестирование по email</span>
+                        <button type="button" class="email-mode-change" onclick="exitEditEmailTestingMode()" data-i18n="emailModeChange">Изменить</button>
                     </div>
 
                     <button type="button" class="setup-email-toggle" id="edit-use-email-testing-btn" onclick="enableEditEmailTestingMode()" data-i18n="useEmailTesting">Использовать тестирование по email</button>

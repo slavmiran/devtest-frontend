@@ -1640,8 +1640,7 @@ function renderTests(force) {
     if (pendingSection) pendingSection.style.display = pendingCount > 0 ? 'block' : 'none';
     if (pendingScrollWrap) pendingScrollWrap.classList.toggle('is-single', pendingCount <= 1);
 
-    document.getElementById('done-count').innerText = doneCount;
-    document.getElementById('done-section').style.display = doneCount > 0 ? 'block' : 'none';
+    _updateDoneSectionVisibility(doneCount);
 
     if (activeCount === 0 && pendingCount === 0 && externalGuestTestsCount === 0) {
         activeList.innerHTML = `
@@ -1720,8 +1719,17 @@ function renderCompletedTests(completedTests) {
         doneCount++;
     });
 
-    document.getElementById('done-count').innerText = doneCount;
-    document.getElementById('done-section').style.display = doneCount > 0 ? 'block' : 'none';
+    _updateDoneSectionVisibility(doneCount);
+}
+
+function _updateDoneSectionVisibility(doneCount) {
+    var doneSection = document.getElementById('done-section');
+    if (!doneSection) return;
+    var countNode = document.getElementById('done-count');
+    if (countNode) countNode.innerText = String(doneCount || 0);
+    var testsTab = document.getElementById('tab-tests');
+    var isTestsActive = !!(testsTab && testsTab.classList.contains('active'));
+    doneSection.style.display = (isTestsActive && doneCount > 0) ? 'block' : 'none';
 }
 
 Object.assign(window, {
