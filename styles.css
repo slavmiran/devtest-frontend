@@ -1973,6 +1973,11 @@ iframe.skiptranslate,
     margin-top: 8px;
 }
 
+.setup-guide-inline .setup-accordion.open .setup-accordion-content,
+.setup-guide-inline .setup-accordion.open .setup-accordion-panel {
+    padding-top: 10px;
+}
+
 .setup-guide-inline .setup-accordion-head {
     display: none;
 }
@@ -2007,9 +2012,9 @@ iframe.skiptranslate,
     opacity: 1;
 }
 
-.setup-checklist.setup-checklist-pulse .checklist-item {
+.setup-checklist.setup-checklist-pulse .checklist-item input[type="checkbox"]:enabled:not(:checked) {
     animation: setup-accent-pulse 2s ease-in-out infinite;
-    border-radius: 10px;
+    border-radius: 4px;
 }
 
 @media (max-width: 420px) {

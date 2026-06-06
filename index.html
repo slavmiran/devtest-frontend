@@ -679,7 +679,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label" id="t-editIconUrl" data-i18n="iconUrl">Ссылка на иконку</label>
-                <input type="url" id="edit-icon" class="form-input">
+                <input type="url" id="edit-icon" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder">
             </div>
             <div class="form-group">
                 <label class="form-label" id="t-editPackage" data-i18n="editPackage">Пакет (Play Store Link)</label>
@@ -725,17 +725,20 @@
                                         <span data-i18n="setupGuideToggle">❓ Как настроить</span>
                                         <span class="setup-accordion-arrow" aria-hidden="true">▼</span>
                                     </button>
-                                    <div class="setup-accordion-panel" id="edit-setup-accordion-panel">
+                                    <div class="setup-accordion-content" id="edit-setup-accordion-panel">
                                         <div class="setup-step">
-                                            <strong data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</strong>
+                                            <div class="setup-step-title" data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</div>
+                                            <img src="images/step1.png" alt="Step 1" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-path" data-i18n="setupStep1Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Страны/регионы → Включить все.</div>
                                         </div>
                                         <div class="setup-step">
-                                            <strong data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</strong>
+                                            <div class="setup-step-title" data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</div>
+                                            <img src="images/step2.png" alt="Step 2" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-path" data-i18n="setupStep2Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Количество тестировщиков → Выбрать Группы Google → Вставить email.</div>
                                         </div>
                                         <div class="setup-step">
-                                            <strong data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</strong>
+                                            <div class="setup-step-title" data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</div>
+                                            <img src="images/step3.png" alt="Step 3" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
                                             <div class="setup-step-path" data-i18n="setupStep3Path">Play Console → Обзор публикации → Отправить «X» изменений на проверку.</div>
                                         </div>
                                     </div>

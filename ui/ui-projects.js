@@ -1479,7 +1479,6 @@ function _scheduleAddChecklistReveal() {
         var flow = window.addProjectFlow || {};
         if (flow.isEmailCopied && !flow.isChecklistRevealed) {
             flow.isChecklistRevealed = true;
-            flow.setupFocusStage = 'checklist';
             syncStandardGroupUiState();
             evaluateAddStages();
         }
@@ -1493,7 +1492,6 @@ function _scheduleEditChecklistReveal() {
         var flow = window.editAccessFlow || {};
         if (flow.isEmailCopied && !flow.isChecklistRevealed) {
             flow.isChecklistRevealed = true;
-            flow.setupFocusStage = 'checklist';
             syncEditStandardGroupUiState();
             updateEditSaveButtonState();
         }
@@ -1763,6 +1761,10 @@ function onAddPlayLinkInput() {
 
 function onAddChecklistChange() {
     _clearAddFieldErrors();
+    if (window.addProjectFlow && isAddChecklistComplete()) {
+        window.addProjectFlow.setupFocusStage = 'done';
+    }
+    syncStandardGroupUiState();
     evaluateAddStages();
 }
 
@@ -2162,9 +2164,9 @@ function _getEditAccessViewMeta() {
     }
     return {
         title: '👥 ' + window.t('accessViewStandardMode', {}, lang),
-        value: (window.AccessSetupManager && window.AccessSetupManager._standardEmail)
-            ? window.AccessSetupManager._standardEmail()
-            : 'google-play-dev-test@googlegroups.com',
+        value: (window.AccessSetupManager && typeof window.AccessSetupManager._defaultGroupUrl === 'function')
+            ? window.AccessSetupManager._defaultGroupUrl()
+            : 'https://groups.google.com/g/google-play-dev-test',
         canCopy: true,
     };
 }
@@ -2364,6 +2366,10 @@ function onEditAccessChecklistChange(item, checked) {
         window.editAccessFlow.checklist = { email: false, countries: false, review: false };
     }
     window.editAccessFlow.checklist[item] = !!checked;
+    if (window.AccessSetupManager && window.AccessSetupManager.isChecklistComplete()) {
+        window.editAccessFlow.setupFocusStage = 'done';
+    }
+    syncEditStandardGroupUiState();
     updateEditSaveButtonState();
 }
 
@@ -2466,10 +2472,19 @@ function syncStandardGroupUiState() {
         box.disabled = !(inStandardFlow && isChecklistRevealed);
     });
 
+    const checklistComplete = isAddChecklistComplete();
+    if (checklistComplete && flow.setupFocusStage === 'checklist') {
+        flow.setupFocusStage = 'done';
+    }
+    const activeFocusStage = flow.setupFocusStage || focusStage;
+
     const checklist = document.getElementById('setup-checklist');
     if (checklist) {
         checklist.classList.toggle('unlocked', inStandardFlow && isChecklistRevealed);
-        checklist.classList.toggle('setup-checklist-pulse', inStandardFlow && isChecklistRevealed && focusStage === 'checklist');
+        checklist.classList.toggle(
+            'setup-checklist-pulse',
+            inStandardFlow && isChecklistRevealed && activeFocusStage === 'checklist' && !checklistComplete
+        );
     }
 
     const lockHint = document.getElementById('setup-checklist-lock');
@@ -2526,10 +2541,19 @@ function syncEditStandardGroupUiState() {
         box.disabled = !(inStandardFlow && isChecklistRevealed);
     });
 
+    var checklistComplete = !!(window.AccessSetupManager && window.AccessSetupManager.isChecklistComplete());
+    if (checklistComplete && flow.setupFocusStage === 'checklist') {
+        flow.setupFocusStage = 'done';
+    }
+    var activeFocusStage = flow.setupFocusStage || focusStage;
+
     var checklist = document.getElementById('edit-setup-checklist');
     if (checklist) {
         checklist.classList.toggle('unlocked', inStandardFlow && isChecklistRevealed);
-        checklist.classList.toggle('setup-checklist-pulse', inStandardFlow && isChecklistRevealed && focusStage === 'checklist');
+        checklist.classList.toggle(
+            'setup-checklist-pulse',
+            inStandardFlow && isChecklistRevealed && activeFocusStage === 'checklist' && !checklistComplete
+        );
     }
 }
 
