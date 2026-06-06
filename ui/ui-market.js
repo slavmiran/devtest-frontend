@@ -3849,6 +3849,29 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     }
 }
 
+function _resolveDossierOwnedProjects(tester, testerProjects) {
+    const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
+    let relevant = reciprocalOwnedProjectId > 0
+        ? (testerProjects || []).filter((ownedProject) => Number(ownedProject && ownedProject.app_id || 0) === reciprocalOwnedProjectId)
+        : (testerProjects || []).slice();
+
+    // Fallback: reciprocal metadata is known from the mutual link, but the projects API
+    // did not return the row (stale cache, archived edge case, etc.).
+    if (reciprocalOwnedProjectId > 0 && !relevant.length && tester) {
+        relevant = [{
+            app_id: reciprocalOwnedProjectId,
+            name: tester.reciprocal_app_name || '',
+            package_name: tester.reciprocal_app_package_name || '',
+            icon_url: '',
+            status: String(tester.reciprocal_app_status || 'active').toLowerCase() || 'active',
+            mode: 'mutual',
+            created_at: null,
+            finished_at: null,
+        }];
+    }
+    return { reciprocalOwnedProjectId: reciprocalOwnedProjectId, relevant: relevant };
+}
+
 async function openDossierModal(username, testerId, appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     const modal = document.getElementById('dossier-modal');
@@ -3857,7 +3880,7 @@ async function openDossierModal(username, testerId, appId) {
     modal.classList.add('active');
 
     const project = myProjects.find((item) => item.id === appId);
-    const tester = project ? (project.testers || []).find((candidate) => candidate.tester_id === testerId) : null;
+    const tester = project ? (project.testers || []).find((candidate) => Number(candidate.tester_id) === Number(testerId)) : null;
     const marketCandidate = getMarketCandidateByAppId(appId);
     const today = getLocalDate();
     const todayDate = new Date(today);
@@ -3896,9 +3919,13 @@ async function openDossierModal(username, testerId, appId) {
         console.error('Dossier fetch error:', error);
     }
 
+    const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
     let testerProjects = [];
     try {
-        const resp = await fetch(`${API_BASE}/users/${testerId}/projects`);
+        const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (
+            reciprocalOwnedProjectId > 0 ? `?focus_app_id=${reciprocalOwnedProjectId}` : ''
+        );
+        const resp = await fetch(projectsUrl);
         if (resp.ok) {
             const data = await resp.json();
             testerProjects = Array.isArray(data && data.projects) ? data.projects : [];
@@ -3909,10 +3936,8 @@ async function openDossierModal(username, testerId, appId) {
     testerProjects = testerProjects.map(function(item) {
         return Object.assign({}, item, { owner_username: tgName || '' });
     });
-    const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
-    const relevantTesterProjects = reciprocalOwnedProjectId > 0
-        ? testerProjects.filter((ownedProject) => Number(ownedProject && ownedProject.app_id || 0) === reciprocalOwnedProjectId)
-        : testerProjects;
+    const ownedProjectsResolved = _resolveDossierOwnedProjects(tester, testerProjects);
+    const relevantTesterProjects = ownedProjectsResolved.relevant;
     const activeOwnedProjects = relevantTesterProjects.filter((ownedProject) => {
         const status = String(ownedProject && ownedProject.status || 'active').toLowerCase();
         return status === 'active' || status === 'pending_completion';

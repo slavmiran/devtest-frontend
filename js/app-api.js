@@ -1681,6 +1681,10 @@ function _mapProjectsFromApi(data) {
                 external_days_since_last_completed: tester.external_days_since_last_completed === null || typeof tester.external_days_since_last_completed === 'undefined'
                     ? null
                     : Number(tester.external_days_since_last_completed || 0),
+                reciprocal_app_id: Number(tester.reciprocal_app_id || 0) || null,
+                reciprocal_app_name: tester.reciprocal_app_name || '',
+                reciprocal_app_status: tester.reciprocal_app_status || '',
+                reciprocal_app_package_name: tester.reciprocal_app_package_name || '',
             });
         });
         return {
