@@ -216,6 +216,8 @@
             publicGroupStepBadge: "Step 1",
             publicGroupCardTitle: "Add Google Group to Play Console",
             publicGroupCardSubtitle: "Copy our group email and add it in Google Play Console.",
+            publicGroupState0Hint: "💡 Copy our group email and add it in Play Console.",
+            publicGroupOpenConsoleBtn: "🌐 Open Play Console",
             customGroupStepBadge: "Step 1",
             customGroupStepTitle: "Provide your group link",
             customGroupManualHint: "You manage this group yourself: add testers manually from the dashboard.",

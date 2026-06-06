@@ -216,6 +216,8 @@
             publicGroupStepBadge: "Шаг 1",
             publicGroupCardTitle: "Добавьте Google Group в Play Console",
             publicGroupCardSubtitle: "Скопируйте email нашей группы и добавьте его в Google Play Console.",
+            publicGroupState0Hint: "💡 Скопируйте email нашей группы и добавьте его в Play Console.",
+            publicGroupOpenConsoleBtn: "🌐 Открыть Play Console",
             customGroupStepBadge: "Шаг 1",
             customGroupStepTitle: "Укажите вашу ссылку",
             customGroupManualHint: "Вы сами управляете группой: добавляйте тестеров вручную из дашборда.",

@@ -1436,6 +1436,7 @@ window.addProjectFlow = window.addProjectFlow || {
     emailCopied: false,
     isEmailCopied: false,
     isConsoleOpened: false,
+    isChecklistRevealed: false,
     emailMode: false
 };
 window.editProjectFlow = window.editProjectFlow || { emailMode: false };
@@ -1447,9 +1448,53 @@ window.editAccessFlow = window.editAccessFlow || {
     initialGroupUrl: '',
     isEmailCopied: false,
     isConsoleOpened: false,
+    isChecklistRevealed: false,
     checklist: { email: false, countries: false, review: false },
     migrationWarnShown: false
 };
+
+var _addSetupChecklistTimer = null;
+var _editSetupChecklistTimer = null;
+
+function _clearAddSetupChecklistTimer() {
+    if (_addSetupChecklistTimer) {
+        clearTimeout(_addSetupChecklistTimer);
+        _addSetupChecklistTimer = null;
+    }
+}
+
+function _clearEditSetupChecklistTimer() {
+    if (_editSetupChecklistTimer) {
+        clearTimeout(_editSetupChecklistTimer);
+        _editSetupChecklistTimer = null;
+    }
+}
+
+function _scheduleAddChecklistReveal() {
+    _clearAddSetupChecklistTimer();
+    _addSetupChecklistTimer = setTimeout(function () {
+        _addSetupChecklistTimer = null;
+        var flow = window.addProjectFlow || {};
+        if (flow.isEmailCopied && !flow.isChecklistRevealed) {
+            flow.isChecklistRevealed = true;
+            syncStandardGroupUiState();
+            evaluateAddStages();
+        }
+    }, 5000);
+}
+
+function _scheduleEditChecklistReveal() {
+    _clearEditSetupChecklistTimer();
+    _editSetupChecklistTimer = setTimeout(function () {
+        _editSetupChecklistTimer = null;
+        var flow = window.editAccessFlow || {};
+        if (flow.isEmailCopied && !flow.isChecklistRevealed) {
+            flow.isChecklistRevealed = true;
+            syncEditStandardGroupUiState();
+            updateEditSaveButtonState();
+        }
+    }, 5000);
+}
 
 window.AccessSetupManager = window.AccessSetupManager || {
     _defaultGroupUrl: function() {
@@ -1478,9 +1523,11 @@ window.AccessSetupManager = window.AccessSetupManager || {
             initialGroupUrl: groupUrl,
             isEmailCopied: false,
             isConsoleOpened: false,
+            isChecklistRevealed: false,
             checklist: { email: false, countries: false, review: false },
             migrationWarnShown: false
         };
+        _clearEditSetupChecklistTimer();
         if (window.editProjectFlow) {
             window.editProjectFlow.emailMode = mode === 'email_list';
         }
@@ -1590,10 +1637,12 @@ function closeModal(event) {
 }
 
 function resetAddFlow() {
+    _clearAddSetupChecklistTimer();
     window.addProjectFlow = {
         emailCopied: false,
         isEmailCopied: false,
         isConsoleOpened: false,
+        isChecklistRevealed: false,
         emailMode: false,
         namePromptShown: false
     };
@@ -2034,8 +2083,10 @@ function exitEditEmailTestingMode() {
         window.editAccessFlow.mode = 'standard_group';
         window.editAccessFlow.isEmailCopied = false;
         window.editAccessFlow.isConsoleOpened = false;
+        window.editAccessFlow.isChecklistRevealed = false;
         window.editAccessFlow.checklist = { email: false, countries: false, review: false };
     }
+    _clearEditSetupChecklistTimer();
     if (window.editProjectFlow) {
         window.editProjectFlow.emailMode = false;
     }
@@ -2067,8 +2118,10 @@ function resetEditGoogleGroupToDefault() {
         window.editAccessFlow.currentGroupUrl = '';
         window.editAccessFlow.isEmailCopied = false;
         window.editAccessFlow.isConsoleOpened = false;
+        window.editAccessFlow.isChecklistRevealed = false;
         window.editAccessFlow.checklist = { email: false, countries: false, review: false };
     }
+    _clearEditSetupChecklistTimer();
     renderEditAccessSetup();
 }
 
@@ -2156,42 +2209,28 @@ function renderEditAccessSetup() {
         customInput.value = String(flow.currentGroupUrl || '');
     }
 
-    var isEmailCopied = !!flow.isEmailCopied;
-    var isConsoleOpened = !!flow.isConsoleOpened;
-    var copyBtn = document.getElementById('edit-setup-email-copy-btn');
-    var copyIcon = document.getElementById('edit-setup-email-copy-icon');
-    if (copyBtn) copyBtn.classList.toggle('is-done', isEmailCopied);
-    if (copyIcon) copyIcon.textContent = isEmailCopied ? '✅' : '📋';
-
-    var warningReveal = document.getElementById('edit-setup-warning-reveal');
-    if (warningReveal) warningReveal.classList.toggle('is-open', mode === 'standard_group');
-
-    var consoleBtn = document.getElementById('edit-setup-console-btn');
-    var consoleBtnLabel = document.getElementById('edit-setup-console-btn-label');
-    if (consoleBtn) consoleBtn.classList.toggle('is-opened', isConsoleOpened);
-    if (consoleBtnLabel) consoleBtnLabel.textContent = window.t('publicGroupOpenConsoleBtn', {}, lang);
-
-    var checklistVisible = mode === 'standard_group';
-    var checklistReveal = document.getElementById('edit-setup-checklist-reveal');
-    if (checklistReveal) checklistReveal.classList.toggle('is-open', checklistVisible);
-
-    ['edit-check-email', 'edit-check-countries', 'edit-check-review'].forEach(function(id) {
-        var box = document.getElementById(id);
-        if (!box) return;
-        if (id === 'edit-check-email') box.checked = !!(flow.checklist && flow.checklist.email);
-        if (id === 'edit-check-countries') box.checked = !!(flow.checklist && flow.checklist.countries);
-        if (id === 'edit-check-review') box.checked = !!(flow.checklist && flow.checklist.review);
-        box.disabled = !checklistVisible || !isEmailCopied;
-    });
-    var checklist = document.getElementById('edit-setup-checklist');
-    if (checklist) checklist.classList.toggle('unlocked', checklistVisible && isEmailCopied);
+    if (mode === 'standard_group') {
+        syncEditStandardGroupUiState();
+    }
 
     updateEditSaveButtonState();
 }
 
 function enterEditAccessMode() {
     if (!window.editAccessFlow) return;
-    window.editAccessFlow.uiMode = 'edit';
+    var flow = window.editAccessFlow;
+    flow.uiMode = 'edit';
+    if (flow.initialMode === 'email_list' || flow.mode === 'email_list') {
+        flow.mode = 'standard_group';
+    }
+    flow.isEmailCopied = false;
+    flow.isConsoleOpened = false;
+    flow.isChecklistRevealed = false;
+    flow.checklist = { email: false, countries: false, review: false };
+    _clearEditSetupChecklistTimer();
+    if (window.editProjectFlow) {
+        window.editProjectFlow.emailMode = false;
+    }
     renderEditAccessSetup();
 }
 
@@ -2202,7 +2241,9 @@ function cancelEditAccessMode() {
     flow.currentGroupUrl = flow.mode === 'custom_group' ? String(flow.initialGroupUrl || '') : '';
     flow.isEmailCopied = false;
     flow.isConsoleOpened = false;
+    flow.isChecklistRevealed = false;
     flow.checklist = { email: false, countries: false, review: false };
+    _clearEditSetupChecklistTimer();
     if (window.editProjectFlow) {
         window.editProjectFlow.emailMode = flow.mode === 'email_list';
     }
@@ -2226,7 +2267,9 @@ function setEditAccessTab(mode) {
     }
     flow.isEmailCopied = false;
     flow.isConsoleOpened = false;
+    flow.isChecklistRevealed = false;
     flow.checklist = { email: false, countries: false, review: false };
+    _clearEditSetupChecklistTimer();
     if (window.editProjectFlow) {
         window.editProjectFlow.emailMode = nextMode === 'email_list';
     }
@@ -2255,24 +2298,28 @@ function copyEditAccessStandardEmail() {
     var value = (window.AccessSetupManager && window.AccessSetupManager._standardEmail)
         ? window.AccessSetupManager._standardEmail()
         : 'google-play-dev-test@googlegroups.com';
-    try {
-        navigator.clipboard.writeText(value).then(function() {
-            if (window.editAccessFlow) window.editAccessFlow.isEmailCopied = true;
-            if (typeof window.showToast === 'function') window.showToast(window.t('emailCopiedToast', {}, lang));
-            renderEditAccessSetup();
-        }).catch(function() {
-            if (window.editAccessFlow) window.editAccessFlow.isEmailCopied = true;
-            renderEditAccessSetup();
-        });
-    } catch (e) {
+    var _done = function () {
         if (window.editAccessFlow) window.editAccessFlow.isEmailCopied = true;
-        renderEditAccessSetup();
+        _scheduleEditChecklistReveal();
+        syncEditStandardGroupUiState();
+        updateEditSaveButtonState();
+        if (typeof window.showToast === 'function') window.showToast(window.t('emailCopiedToast', {}, lang));
+    };
+    try {
+        navigator.clipboard.writeText(value).then(_done).catch(_done);
+    } catch (e) {
+        _done();
     }
 }
 
 function onEditAccessConsoleClick() {
-    if (window.editAccessFlow) window.editAccessFlow.isConsoleOpened = true;
-    renderEditAccessSetup();
+    if (window.editAccessFlow) {
+        window.editAccessFlow.isConsoleOpened = true;
+        window.editAccessFlow.isChecklistRevealed = true;
+    }
+    _clearEditSetupChecklistTimer();
+    syncEditStandardGroupUiState();
+    updateEditSaveButtonState();
     var targetUrl = 'https://play.google.com/console/';
     try {
         if (tg && typeof tg.openLink === 'function') {
@@ -2322,7 +2369,9 @@ function onSetupConsoleClick() {
     const targetUrl = 'https://play.google.com/console/';
     if (window.addProjectFlow) {
         window.addProjectFlow.isConsoleOpened = true;
+        window.addProjectFlow.isChecklistRevealed = true;
     }
+    _clearAddSetupChecklistTimer();
     syncStandardGroupUiState();
     evaluateAddStages();
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
@@ -2345,38 +2394,98 @@ function syncStandardGroupUiState() {
     const flow = window.addProjectFlow || {};
     const isEmailCopied = !!flow.isEmailCopied;
     const isConsoleOpened = !!flow.isConsoleOpened;
+    const isChecklistRevealed = !!flow.isChecklistRevealed || isConsoleOpened;
     const isStandard = !!(document.getElementById('seg-standard') && document.getElementById('seg-standard').classList.contains('active'));
     const isEmailMode = !!flow.emailMode;
+    const inStandardFlow = isStandard && !isEmailMode;
 
     const copyBtn = document.getElementById('setup-email-copy-btn');
     const copyIcon = document.getElementById('setup-email-copy-icon');
-    if (copyBtn) copyBtn.classList.toggle('is-done', isEmailCopied);
+    if (copyBtn) {
+        copyBtn.classList.toggle('is-done', isEmailCopied);
+        copyBtn.classList.toggle('setup-pulse-accent', inStandardFlow && !isEmailCopied);
+    }
     if (copyIcon) copyIcon.textContent = isEmailCopied ? '✅' : '📋';
 
-    const warningReveal = document.getElementById('setup-warning-reveal');
-    if (warningReveal) {
-        warningReveal.classList.toggle('is-open', isStandard && !isEmailMode);
+    const actionsReveal = document.getElementById('setup-actions-reveal');
+    if (actionsReveal) {
+        actionsReveal.classList.toggle('is-open', inStandardFlow && isEmailCopied);
     }
 
     const consoleBtn = document.getElementById('setup-console-btn');
     const consoleBtnLabel = document.getElementById('setup-console-btn-label');
-    if (consoleBtn) consoleBtn.classList.toggle('is-opened', isConsoleOpened);
+    if (consoleBtn) {
+        consoleBtn.classList.toggle('is-opened', isConsoleOpened);
+        consoleBtn.classList.toggle('setup-pulse-accent', inStandardFlow && isEmailCopied && !isChecklistRevealed);
+    }
     if (consoleBtnLabel) {
-        consoleBtnLabel.textContent = window.t('publicGroupOpenConsoleBtn', {}, lang);
+        consoleBtnLabel.textContent = window.t(isConsoleOpened ? 'goToPlayConsoleOpened' : 'publicGroupOpenConsoleBtn', {}, lang);
     }
 
-    const checklistVisible = isStandard && !isEmailMode;
     const checklistReveal = document.getElementById('setup-checklist-reveal');
-    if (checklistReveal) checklistReveal.classList.toggle('is-open', checklistVisible);
+    if (checklistReveal) {
+        checklistReveal.classList.toggle('is-open', inStandardFlow && isChecklistRevealed);
+    }
 
-    ['check-email', 'check-countries', 'check-review'].forEach(function(id) {
+    ['check-email', 'check-countries', 'check-review'].forEach(function (id) {
         const box = document.getElementById(id);
         if (!box) return;
-        box.disabled = !checklistVisible || !isEmailCopied;
+        box.disabled = !(inStandardFlow && isChecklistRevealed);
     });
 
     const checklist = document.getElementById('setup-checklist');
-    if (checklist) checklist.classList.toggle('unlocked', checklistVisible && isEmailCopied);
+    if (checklist) checklist.classList.toggle('unlocked', inStandardFlow && isChecklistRevealed);
+
+    const lockHint = document.getElementById('setup-checklist-lock');
+    if (lockHint) lockHint.style.display = (inStandardFlow && isChecklistRevealed) ? 'none' : '';
+}
+
+function syncEditStandardGroupUiState() {
+    var flow = window.editAccessFlow || {};
+    var isEmailCopied = !!flow.isEmailCopied;
+    var isConsoleOpened = !!flow.isConsoleOpened;
+    var isChecklistRevealed = !!flow.isChecklistRevealed || isConsoleOpened;
+    var inStandardFlow = flow.mode === 'standard_group';
+
+    var copyBtn = document.getElementById('edit-setup-email-copy-btn');
+    var copyIcon = document.getElementById('edit-setup-email-copy-icon');
+    if (copyBtn) {
+        copyBtn.classList.toggle('is-done', isEmailCopied);
+        copyBtn.classList.toggle('setup-pulse-accent', inStandardFlow && !isEmailCopied);
+    }
+    if (copyIcon) copyIcon.textContent = isEmailCopied ? '✅' : '📋';
+
+    var actionsReveal = document.getElementById('edit-setup-actions-reveal');
+    if (actionsReveal) {
+        actionsReveal.classList.toggle('is-open', inStandardFlow && isEmailCopied);
+    }
+
+    var consoleBtn = document.getElementById('edit-setup-console-btn');
+    var consoleBtnLabel = document.getElementById('edit-setup-console-btn-label');
+    if (consoleBtn) {
+        consoleBtn.classList.toggle('is-opened', isConsoleOpened);
+        consoleBtn.classList.toggle('setup-pulse-accent', inStandardFlow && isEmailCopied && !isChecklistRevealed);
+    }
+    if (consoleBtnLabel) {
+        consoleBtnLabel.textContent = window.t(isConsoleOpened ? 'goToPlayConsoleOpened' : 'publicGroupOpenConsoleBtn', {}, lang);
+    }
+
+    var checklistReveal = document.getElementById('edit-setup-checklist-reveal');
+    if (checklistReveal) {
+        checklistReveal.classList.toggle('is-open', inStandardFlow && isChecklistRevealed);
+    }
+
+    ['edit-check-email', 'edit-check-countries', 'edit-check-review'].forEach(function (id) {
+        var box = document.getElementById(id);
+        if (!box) return;
+        if (id === 'edit-check-email') box.checked = !!(flow.checklist && flow.checklist.email);
+        if (id === 'edit-check-countries') box.checked = !!(flow.checklist && flow.checklist.countries);
+        if (id === 'edit-check-review') box.checked = !!(flow.checklist && flow.checklist.review);
+        box.disabled = !(inStandardFlow && isChecklistRevealed);
+    });
+
+    var checklist = document.getElementById('edit-setup-checklist');
+    if (checklist) checklist.classList.toggle('unlocked', inStandardFlow && isChecklistRevealed);
 }
 
 function unlockSetupChecklist() {
@@ -2384,6 +2493,7 @@ function unlockSetupChecklist() {
         window.addProjectFlow.emailCopied = true;
         window.addProjectFlow.isEmailCopied = true;
     }
+    _scheduleAddChecklistReveal();
     syncStandardGroupUiState();
     evaluateAddStages();
 }
