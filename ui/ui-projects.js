@@ -1495,7 +1495,7 @@ window.AccessSetupManager = window.AccessSetupManager || {
     },
     isChecklistVisible: function() {
         var flow = this.getEditFlow();
-        return flow.mode === 'standard_group' && !!flow.isEmailCopied && !!flow.isConsoleOpened;
+        return flow.mode === 'standard_group';
     },
     canSaveEdit: function() {
         var flow = this.getEditFlow();
@@ -1687,8 +1687,7 @@ function isAddStage2Complete() {
     const isStandard = document.getElementById('seg-standard').classList.contains('active');
     if (isStandard) {
         const isEmailCopied = !!(window.addProjectFlow && window.addProjectFlow.isEmailCopied);
-        const isConsoleOpened = !!(window.addProjectFlow && window.addProjectFlow.isConsoleOpened);
-        if (!isEmailCopied || !isConsoleOpened) return false;
+        if (!isEmailCopied) return false;
         return isAddChecklistComplete();
     }
     return isValidGoogleGroupUrl((document.getElementById('app-group').value || '').trim());
@@ -2165,14 +2164,14 @@ function renderEditAccessSetup() {
     if (copyIcon) copyIcon.textContent = isEmailCopied ? '✅' : '📋';
 
     var warningReveal = document.getElementById('edit-setup-warning-reveal');
-    if (warningReveal) warningReveal.classList.toggle('is-open', mode === 'standard_group' && isEmailCopied);
+    if (warningReveal) warningReveal.classList.toggle('is-open', mode === 'standard_group');
 
     var consoleBtn = document.getElementById('edit-setup-console-btn');
     var consoleBtnLabel = document.getElementById('edit-setup-console-btn-label');
     if (consoleBtn) consoleBtn.classList.toggle('is-opened', isConsoleOpened);
-    if (consoleBtnLabel) consoleBtnLabel.textContent = window.t(isConsoleOpened ? 'goToPlayConsoleOpened' : 'goToPlayConsole', {}, lang);
+    if (consoleBtnLabel) consoleBtnLabel.textContent = window.t('publicGroupOpenConsoleBtn', {}, lang);
 
-    var checklistVisible = mode === 'standard_group' && isEmailCopied && isConsoleOpened;
+    var checklistVisible = mode === 'standard_group';
     var checklistReveal = document.getElementById('edit-setup-checklist-reveal');
     if (checklistReveal) checklistReveal.classList.toggle('is-open', checklistVisible);
 
@@ -2182,10 +2181,10 @@ function renderEditAccessSetup() {
         if (id === 'edit-check-email') box.checked = !!(flow.checklist && flow.checklist.email);
         if (id === 'edit-check-countries') box.checked = !!(flow.checklist && flow.checklist.countries);
         if (id === 'edit-check-review') box.checked = !!(flow.checklist && flow.checklist.review);
-        box.disabled = !checklistVisible;
+        box.disabled = !checklistVisible || !isEmailCopied;
     });
     var checklist = document.getElementById('edit-setup-checklist');
-    if (checklist) checklist.classList.toggle('unlocked', checklistVisible);
+    if (checklist) checklist.classList.toggle('unlocked', checklistVisible && isEmailCopied);
 
     updateEditSaveButtonState();
 }
@@ -2356,28 +2355,28 @@ function syncStandardGroupUiState() {
 
     const warningReveal = document.getElementById('setup-warning-reveal');
     if (warningReveal) {
-        warningReveal.classList.toggle('is-open', isStandard && !isEmailMode && isEmailCopied);
+        warningReveal.classList.toggle('is-open', isStandard && !isEmailMode);
     }
 
     const consoleBtn = document.getElementById('setup-console-btn');
     const consoleBtnLabel = document.getElementById('setup-console-btn-label');
     if (consoleBtn) consoleBtn.classList.toggle('is-opened', isConsoleOpened);
     if (consoleBtnLabel) {
-        consoleBtnLabel.textContent = window.t(isConsoleOpened ? 'goToPlayConsoleOpened' : 'goToPlayConsole', {}, lang);
+        consoleBtnLabel.textContent = window.t('publicGroupOpenConsoleBtn', {}, lang);
     }
 
-    const checklistVisible = isStandard && !isEmailMode && isEmailCopied && isConsoleOpened;
+    const checklistVisible = isStandard && !isEmailMode;
     const checklistReveal = document.getElementById('setup-checklist-reveal');
     if (checklistReveal) checklistReveal.classList.toggle('is-open', checklistVisible);
 
     ['check-email', 'check-countries', 'check-review'].forEach(function(id) {
         const box = document.getElementById(id);
         if (!box) return;
-        box.disabled = !checklistVisible;
+        box.disabled = !checklistVisible || !isEmailCopied;
     });
 
     const checklist = document.getElementById('setup-checklist');
-    if (checklist) checklist.classList.toggle('unlocked', checklistVisible);
+    if (checklist) checklist.classList.toggle('unlocked', checklistVisible && isEmailCopied);
 }
 
 function unlockSetupChecklist() {

@@ -130,9 +130,14 @@
 
         <div id="external-tests-section" class="pending-release-section external-tests-section" style="display:none;">
             <div class="pending-release-section__header external-tests-section__header">
-                <div>
-                    <h3 id="t-externalTestsSectionTitle" data-i18n="externalTestsSectionTitle">👽 Гостевые проекты</h3>
-                    <div id="t-externalTestsInfoLink" class="info-link-text" data-i18n="guestTestsInfoLink" onclick="window.ui.showGuestTestsInfoAlert()">ℹ️ Как работают гостевые тесты</div>
+                        <div class="custom-group-meta">
+                            <span class="setup-step-badge" data-i18n="customGroupStepBadge">Шаг 1</span>
+                            <strong data-i18n="customGroupStepTitle">Укажите вашу ссылку</strong>
+                        </div>
+                        <div class="setup-note" data-i18n="customGroupManualHint">Вы сами управляете группой: добавляйте тестеров вручную из дашборда.</div>
+                    </div>
+
+                    <div id="email-mode-banner" class="email-mode-banner" style="display:none;">
                 </div>
                 <span id="external-tests-count" class="offers-count">0</span>
             </div>
@@ -283,49 +288,55 @@
                 <div class="form-group">
                     <label class="form-label" id="t-googleGroup" data-i18n="googleGroup">Ссылка на Google Group</label>
                     <div class="seg-control" id="group-seg-control">
-                        <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')" data-i18n="groupStandard">Standard Group</button>
+                        <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')" data-i18n="groupStandard">Public Group</button>
                         <button type="button" class="seg-btn" id="seg-custom" onclick="switchGroupTab('custom')" data-i18n="groupCustom">Custom Group</button>
                     </div>
 
-                    <div id="group-standard-block">
-                        <div class="setup-email-box">
+                    <div id="group-standard-block" class="group-setup-card">
+                        <div class="custom-group-meta">
+                            <span class="setup-step-badge" data-i18n="publicGroupStepBadge">Шаг 1</span>
+                            <strong class="group-setup-headline" data-i18n="publicGroupCardTitle">Добавьте Google Group в Play Console</strong>
+                        </div>
+                        <div class="group-setup-subtitle" data-i18n="publicGroupCardSubtitle">Скопируйте email нашей группы и добавьте его в Google Play Console.</div>
+                        <div class="setup-email-box setup-email-box-inputlike">
                             <span class="setup-email-address" role="button" tabindex="0" onclick="copyEmail()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyEmail();}">google-play-dev-test@googlegroups.com</span>
                             <button type="button" id="setup-email-copy-btn" class="btn-icon setup-email-copy" onclick="copyEmail()"><span id="setup-email-copy-icon">📋</span></button>
                         </div>
-                        <div class="setup-reveal" id="setup-warning-reveal">
+                        <div class="setup-reveal is-open" id="setup-warning-reveal">
                             <div class="setup-note" id="t-standardGroupNote" data-i18n-html="standardGroupNote">В Play Console обязательно выберите режим тестирования через <b>Группы Google</b> (не email-списки) и вставьте этот адрес.</div>
                         </div>
 
-                        <div class="setup-console-block">
-                            <button type="button" class="btn btn-primary setup-console-btn" id="setup-console-btn" onclick="onSetupConsoleClick()"><span id="setup-console-btn-label" data-i18n="goToPlayConsole">🚀 Перейти в Play Console</span></button>
-                            <div class="setup-guide">
-                                <div class="setup-accordion" id="setup-accordion">
-                                    <button type="button" class="setup-accordion-head" onclick="toggleSetupAccordion()" aria-expanded="false" aria-controls="setup-accordion-panel">
-                                        <span data-i18n="setupGuideToggle">📖 Как настроить?</span>
-                                        <span class="setup-accordion-arrow" aria-hidden="true">▼</span>
-                                    </button>
-                                    <div class="setup-accordion-content" id="setup-accordion-panel">
-                                        <div class="setup-step">
-                                            <div class="setup-step-title" data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</div>
-                                            <img src="images/step1.png" alt="Step 1" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
-                                            <div class="setup-step-path" data-i18n="setupStep1Path"></div>
-                                        </div>
-                                        <div class="setup-step">
-                                            <div class="setup-step-title" data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</div>
-                                            <img src="images/step2.png" alt="Step 2" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
-                                            <div class="setup-step-path" data-i18n="setupStep2Path"></div>
-                                        </div>
-                                        <div class="setup-step">
-                                            <div class="setup-step-title" data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</div>
-                                            <img src="images/step3.png" alt="Step 3" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
-                                            <div class="setup-step-path" data-i18n="setupStep3Path"></div>
-                                        </div>
+                        <div class="setup-action-row">
+                            <button type="button" class="btn btn-primary setup-console-btn" id="setup-console-btn" onclick="onSetupConsoleClick()"><span id="setup-console-btn-label" data-i18n="goToPlayConsole">🔗 Открыть Play Console</span></button>
+                            <button type="button" class="btn btn-secondary setup-help-btn" onclick="toggleSetupAccordion()" data-i18n="setupGuideToggle">❓ Как настроить</button>
+                        </div>
+                        <div class="setup-guide setup-guide-inline">
+                            <div class="setup-accordion" id="setup-accordion">
+                                <button type="button" class="setup-accordion-head" onclick="toggleSetupAccordion()" aria-expanded="false" aria-controls="setup-accordion-panel">
+                                    <span data-i18n="setupGuideToggle">❓ Как настроить</span>
+                                    <span class="setup-accordion-arrow" aria-hidden="true">▼</span>
+                                </button>
+                                <div class="setup-accordion-content" id="setup-accordion-panel">
+                                    <div class="setup-step">
+                                        <div class="setup-step-title" data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</div>
+                                        <img src="images/step1.png" alt="Step 1" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                                        <div class="setup-step-path" data-i18n="setupStep1Path"></div>
+                                    </div>
+                                    <div class="setup-step">
+                                        <div class="setup-step-title" data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</div>
+                                        <img src="images/step2.png" alt="Step 2" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                                        <div class="setup-step-path" data-i18n="setupStep2Path"></div>
+                                    </div>
+                                    <div class="setup-step">
+                                        <div class="setup-step-title" data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</div>
+                                        <img src="images/step3.png" alt="Step 3" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                                        <div class="setup-step-path" data-i18n="setupStep3Path"></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="setup-reveal" id="setup-checklist-reveal">
+                        <div class="setup-reveal is-open" id="setup-checklist-reveal">
                             <div class="setup-checklist" id="setup-checklist">
                                 <div class="setup-checklist-lock" id="setup-checklist-lock" data-i18n="checklistLockedHint">🔒 Скопируйте email выше, чтобы разблокировать чеклист.</div>
                                 <label class="review-checkbox-row checklist-item" id="checklist-item-email">
@@ -348,8 +359,13 @@
                         </div>
                     </div>
 
-                    <div id="group-custom-block" style="display: none;">
+                    <div id="group-custom-block" style="display: none;" class="group-setup-card">
+                        <div class="custom-group-meta">
+                            <span class="setup-step-badge" data-i18n="customGroupStepBadge">Шаг 1</span>
+                            <strong data-i18n="customGroupStepTitle">Укажите вашу ссылку</strong>
+                        </div>
                         <input type="url" id="app-group" class="form-input" placeholder="" data-i18n-placeholder="groupUrlPlaceholder" oninput="evaluateAddStages()">
+                        <div class="setup-note" data-i18n="customGroupManualHint">Вы сами управляете группой: добавляйте тестеров вручную из дашборда.</div>
                     </div>
 
                     <div id="email-mode-banner" class="email-mode-banner" style="display: none;">
@@ -696,46 +712,52 @@
 
                 <div id="edit-access-edit-shell" class="access-edit-shell" style="display:none;">
                     <div class="seg-control" id="edit-group-seg-control">
-                        <button type="button" class="seg-btn active" id="edit-seg-standard" onclick="setEditAccessTab('standard_group')" data-i18n="groupStandard">Standard Group</button>
+                        <button type="button" class="seg-btn active" id="edit-seg-standard" onclick="setEditAccessTab('standard_group')" data-i18n="groupStandard">Public Group</button>
                         <button type="button" class="seg-btn" id="edit-seg-custom" onclick="setEditAccessTab('custom_group')" data-i18n="groupCustom">Custom Group</button>
                     </div>
 
-                    <div id="edit-group-standard-block">
-                        <div class="setup-email-box">
+                    <div id="edit-group-standard-block" class="group-setup-card">
+                        <div class="custom-group-meta">
+                            <span class="setup-step-badge" data-i18n="publicGroupStepBadge">Шаг 1</span>
+                            <strong class="group-setup-headline" data-i18n="publicGroupCardTitle">Добавьте Google Group в Play Console</strong>
+                        </div>
+                        <div class="group-setup-subtitle" data-i18n="publicGroupCardSubtitle">Скопируйте email нашей группы и добавьте его в Google Play Console.</div>
+                        <div class="setup-email-box setup-email-box-inputlike">
                             <span class="setup-email-address" role="button" tabindex="0" onclick="copyEditAccessStandardEmail()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyEditAccessStandardEmail();}">google-play-dev-test@googlegroups.com</span>
                             <button type="button" id="edit-setup-email-copy-btn" class="btn-icon setup-email-copy" onclick="copyEditAccessStandardEmail()"><span id="edit-setup-email-copy-icon">📋</span></button>
                         </div>
-                        <div class="setup-reveal" id="edit-setup-warning-reveal">
+                        <div class="setup-reveal is-open" id="edit-setup-warning-reveal">
                             <div class="setup-note" data-i18n-html="standardGroupNote">В Play Console обязательно выберите режим тестирования через <b>Группы Google</b> (не email-списки) и вставьте этот адрес.</div>
                         </div>
 
-                        <div class="setup-console-block">
-                            <button type="button" class="btn btn-primary setup-console-btn" id="edit-setup-console-btn" onclick="onEditAccessConsoleClick()"><span id="edit-setup-console-btn-label" data-i18n="goToPlayConsole">🚀 Перейти в Play Console</span></button>
-                            <div class="setup-guide">
-                                <div class="setup-accordion" id="edit-setup-accordion">
-                                    <button type="button" class="setup-accordion-head" onclick="toggleEditSetupAccordion()" aria-expanded="false" aria-controls="edit-setup-accordion-panel">
-                                        <span data-i18n="setupGuideToggle">📖 Как настроить?</span>
-                                        <span class="setup-accordion-arrow" aria-hidden="true">▼</span>
-                                    </button>
-                                    <div class="setup-accordion-panel" id="edit-setup-accordion-panel">
-                                        <div class="setup-step">
-                                            <strong data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</strong>
-                                            <div class="setup-step-path" data-i18n="setupStep1Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Страны/регионы → Включить все.</div>
-                                        </div>
-                                        <div class="setup-step">
-                                            <strong data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</strong>
-                                            <div class="setup-step-path" data-i18n="setupStep2Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Количество тестировщиков → Выбрать Группы Google → Вставить email.</div>
-                                        </div>
-                                        <div class="setup-step">
-                                            <strong data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</strong>
-                                            <div class="setup-step-path" data-i18n="setupStep3Path">Play Console → Обзор публикации → Отправить «X» изменений на проверку.</div>
-                                        </div>
+                        <div class="setup-action-row">
+                            <button type="button" class="btn btn-primary setup-console-btn" id="edit-setup-console-btn" onclick="onEditAccessConsoleClick()"><span id="edit-setup-console-btn-label" data-i18n="goToPlayConsole">🔗 Открыть Play Console</span></button>
+                            <button type="button" class="btn btn-secondary setup-help-btn" onclick="toggleEditSetupAccordion()" data-i18n="setupGuideToggle">❓ Как настроить</button>
+                        </div>
+                        <div class="setup-guide setup-guide-inline">
+                            <div class="setup-accordion" id="edit-setup-accordion">
+                                <button type="button" class="setup-accordion-head" onclick="toggleEditSetupAccordion()" aria-expanded="false" aria-controls="edit-setup-accordion-panel">
+                                    <span data-i18n="setupGuideToggle">❓ Как настроить</span>
+                                    <span class="setup-accordion-arrow" aria-hidden="true">▼</span>
+                                </button>
+                                <div class="setup-accordion-panel" id="edit-setup-accordion-panel">
+                                    <div class="setup-step">
+                                        <strong data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</strong>
+                                        <div class="setup-step-path" data-i18n="setupStep1Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Страны/регионы → Включить все.</div>
+                                    </div>
+                                    <div class="setup-step">
+                                        <strong data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</strong>
+                                        <div class="setup-step-path" data-i18n="setupStep2Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Количество тестировщиков → Выбрать Группы Google → Вставить email.</div>
+                                    </div>
+                                    <div class="setup-step">
+                                        <strong data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</strong>
+                                        <div class="setup-step-path" data-i18n="setupStep3Path">Play Console → Обзор публикации → Отправить «X» изменений на проверку.</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="setup-reveal" id="edit-setup-checklist-reveal">
+                        <div class="setup-reveal is-open" id="edit-setup-checklist-reveal">
                             <div class="setup-checklist" id="edit-setup-checklist">
                                 <div class="setup-checklist-lock" data-i18n="checklistLockedHint">🔒 Скопируйте email выше, чтобы разблокировать чеклист.</div>
                                 <label class="review-checkbox-row checklist-item" id="edit-checklist-item-email">
@@ -758,8 +780,13 @@
                         </div>
                     </div>
 
-                    <div id="edit-group-custom-block" style="display:none;">
+                    <div id="edit-group-custom-block" style="display:none;" class="group-setup-card">
+                        <div class="custom-group-meta">
+                            <span class="setup-step-badge" data-i18n="customGroupStepBadge">Шаг 1</span>
+                            <strong data-i18n="customGroupStepTitle">Укажите вашу ссылку</strong>
+                        </div>
                         <input type="url" id="edit-group" class="form-input" placeholder="" data-i18n-placeholder="groupUrlPlaceholder" oninput="onEditAccessGroupInput()">
+                        <div class="setup-note" data-i18n="customGroupManualHint">Вы сами управляете группой: добавляйте тестеров вручную из дашборда.</div>
                     </div>
 
                     <div id="edit-email-mode-banner" class="email-mode-banner" style="display:none; margin-top: 10px;">
