@@ -891,6 +891,9 @@ function _parseInitialRouteTarget() {
         if (normalized === 'guest_projects' || normalized === 'guestprojects') {
             routeKind = 'guest_projects';
         }
+        if (normalized === 'invite_links' || normalized === 'invitelinks') {
+            routeKind = 'invite_links';
+        }
     }
 
     if (routeKind === 'feedback' || params.get('feedback') === '1') {
@@ -950,6 +953,14 @@ function _parseInitialRouteTarget() {
             tab: 'market',
             openFeedback: false,
             openGuestProjects: true,
+            appId: null,
+        };
+    }
+    if (routeKind === 'invite_links') {
+        return {
+            tab: 'projects',
+            openFeedback: false,
+            openInviteLinks: true,
             appId: null,
         };
     }
@@ -1079,6 +1090,23 @@ async function _handleInitialRoute() {
             _clearStartappQueryParam();
         } catch (error) {
             console.error('Initial add project route error:', error);
+        }
+        return;
+    }
+
+    if (route.openInviteLinks) {
+        try {
+            await loadProjects(true);
+            var candidate = Array.isArray(myProjects) && myProjects.length ? myProjects[0] : null;
+            var candidateId = Number(candidate && candidate.id || 0);
+            if (candidateId > 0 && typeof openInviteModal === 'function') {
+                openInviteModal(candidateId);
+            } else {
+                openModal();
+            }
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial invite links route error:', error);
         }
         return;
     }

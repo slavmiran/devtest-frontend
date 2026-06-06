@@ -3909,6 +3909,14 @@ async function openDossierModal(username, testerId, appId) {
     testerProjects = testerProjects.map(function(item) {
         return Object.assign({}, item, { owner_username: tgName || '' });
     });
+    const activeOwnedProjects = testerProjects.filter((ownedProject) => {
+        const status = String(ownedProject && ownedProject.status || 'active').toLowerCase();
+        return status === 'active' || status === 'pending_completion';
+    });
+    const completedOwnedProjects = testerProjects.filter((ownedProject) => {
+        const status = String(ownedProject && ownedProject.status || '').toLowerCase();
+        return status === 'completed' || status === 'archived';
+    });
     _dossierProjectsCache[String(testerId)] = testerProjects;
     _dossierProfilesCache[String(testerId)] = profile;
 
@@ -3942,8 +3950,8 @@ async function openDossierModal(username, testerId, appId) {
 
     html += `<div style="margin-bottom: 16px;">
         <div style="font-weight: 600; margin-bottom: 8px;">${window.escapeHTML(window.t('dossierOwnedProjectsTitle', {}, lang))}</div>
-        ${testerProjects.length
-            ? '<div class="dossier-owned-projects-list">' + testerProjects.map((ownedProject) => {
+        ${activeOwnedProjects.length
+            ? '<div class="dossier-owned-projects-list">' + activeOwnedProjects.map((ownedProject) => {
                 const safeOwnedName = window.escapeHTML(ownedProject.name || window.t('unknownLabel', {}, lang));
                 const safeOwnedPackage = window.escapeHTML(ownedProject.package_name || '');
                 const alreadyTestingOwned = (myTests || []).some((test) => Number(test.id) === Number(ownedProject.app_id));
@@ -3973,7 +3981,41 @@ async function openDossierModal(username, testerId, appId) {
                     </div>
                 </button>`;
             }).join('') + '</div>'
-            : `<div class="dossier-owned-project-empty">${window.escapeHTML(window.t('dossierOwnedProjectsEmpty', {}, lang))}</div>`}
+            : ''}
+        ${completedOwnedProjects.length
+            ? '<div style="font-weight: 600; margin: 10px 0 8px;">' + window.escapeHTML(window.t('dossierOwnedProjectsCompletedTitle', {}, lang)) + '</div>' +
+              '<div class="dossier-owned-projects-list">' + completedOwnedProjects.map((ownedProject) => {
+                const safeOwnedName = window.escapeHTML(ownedProject.name || window.t('unknownLabel', {}, lang));
+                const safeOwnedPackage = window.escapeHTML(ownedProject.package_name || '');
+                const finishedAt = ownedProject.finished_at ? new Date(ownedProject.finished_at) : null;
+                const finishedMs = finishedAt && !Number.isNaN(finishedAt.getTime()) ? finishedAt.getTime() : NaN;
+                const daysAgo = Number.isFinite(finishedMs)
+                    ? Math.max(0, Math.floor((todayDate.getTime() - finishedMs) / (1000 * 60 * 60 * 24)))
+                    : null;
+                const finishedLabel = daysAgo === null
+                    ? window.t('dossierOwnedProjectFinishedUnknown', {}, lang)
+                    : window.t('dossierOwnedProjectFinishedDaysAgo', { count: daysAgo }, lang);
+                return `<div class="dossier-owned-project-card" style="cursor:default;">
+                    <div class="dossier-owned-project-card-inner">
+                        ${renderIcon(ownedProject.name || '', ownedProject.icon_url)}
+                        <div class="dossier-owned-project-body">
+                            <div class="dossier-owned-project-top">
+                                <div style="flex:1;min-width:0;">
+                                    <div class="dossier-owned-project-title notranslate">${safeOwnedName}</div>
+                                    <div class="dossier-owned-project-subtitle notranslate">${safeOwnedPackage}</div>
+                                </div>
+                            </div>
+                            <div class="dossier-owned-project-meta">
+                                <span class="meta-chip">${window.escapeHTML(finishedLabel)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('') + '</div>'
+            : ''}
+        ${!activeOwnedProjects.length && !completedOwnedProjects.length
+            ? `<div class="dossier-owned-project-empty">${window.escapeHTML(window.t('dossierOwnedProjectsEmpty', {}, lang))}</div>`
+            : ''}
     </div>`;
 
     if (tester) {
