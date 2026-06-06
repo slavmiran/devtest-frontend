@@ -1802,6 +1802,67 @@ function showReadonlyAlert() {
     else alert(t.readonlyFieldAlert);
 }
 
+var _editModalSnapshot = null;
+var _editSaveAndCloseRequested = false;
+
+function _captureEditModalSnapshot() {
+    return {
+        name: (document.getElementById('edit-name') || {}).value || '',
+        description: (document.getElementById('edit-description') || {}).value || '',
+        icon: (document.getElementById('edit-icon') || {}).value || '',
+        group: (document.getElementById('edit-group') || {}).value || '',
+        mode: (document.getElementById('edit-mode') || {}).value || 'mutual',
+        targetLang: (document.getElementById('edit-target-lang') || {}).value || 'ALL',
+        limitMutual: String((document.getElementById('edit-limit-mutual') || {}).value || ''),
+        limitBounty: String((document.getElementById('edit-limit-bounty') || {}).value || ''),
+        bountyPerTester: String((document.getElementById('edit-bounty-per-tester') || {}).value || ''),
+        requestReviews: !!(document.getElementById('edit-request-reviews') && document.getElementById('edit-request-reviews').checked),
+        emailMode: !!(window.editProjectFlow && window.editProjectFlow.emailMode)
+    };
+}
+
+function _isEditModalDirty() {
+    if (!_editModalSnapshot) return false;
+    return JSON.stringify(_captureEditModalSnapshot()) !== JSON.stringify(_editModalSnapshot);
+}
+
+function markEditModalSavedState() {
+    _editModalSnapshot = _captureEditModalSnapshot();
+}
+
+function _openEditUnsavedModal() {
+    var overlay = document.getElementById('edit-unsaved-modal');
+    if (!overlay) return;
+    overlay.classList.add('active');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+function closeEditUnsavedModal(event) {
+    var overlay = document.getElementById('edit-unsaved-modal');
+    if (!overlay) return;
+    if (event && event.target && event.target !== overlay) return;
+    overlay.classList.remove('active');
+}
+
+function requestEditSaveAndClose() {
+    _editSaveAndCloseRequested = true;
+    closeEditUnsavedModal();
+    if (typeof saveProjectEdit === 'function') {
+        saveProjectEdit();
+    }
+}
+
+function consumeEditSaveAndCloseRequest() {
+    var requested = !!_editSaveAndCloseRequested;
+    _editSaveAndCloseRequested = false;
+    return requested;
+}
+
+function discardEditAndClose() {
+    closeEditUnsavedModal();
+    closeEditModal(null, { force: true });
+}
+
 function openEditModal(projectId) {
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
@@ -1826,6 +1887,8 @@ function openEditModal(projectId) {
     renderEditGroupSection();
     updateProjectPricing('edit');
     renderEditCreatedAtMeta();
+    _editSaveAndCloseRequested = false;
+    markEditModalSavedState();
     document.getElementById('edit-project-modal').classList.add('active');
 }
 
@@ -1850,9 +1913,16 @@ function exitEditEmailTestingMode() {
 
 function closeEditModal(event) {
     if (event && event.target !== document.getElementById('edit-project-modal')) return;
+    var forceClose = !!(arguments[1] && arguments[1].force);
+    if (!forceClose && _isEditModalDirty()) {
+        _openEditUnsavedModal();
+        return;
+    }
     document.getElementById('edit-project-modal').classList.remove('active');
     setTimeout(() => {
         projectToEdit = null;
+        _editModalSnapshot = null;
+        _editSaveAndCloseRequested = false;
         if (window.editProjectFlow) window.editProjectFlow.emailMode = false;
         renderEditGroupSection();
         resetProjectForms();

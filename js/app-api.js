@@ -2548,7 +2548,16 @@ async function saveProjectEdit() {
         const result = await response.json();
         if (result.status === 'success') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            closeEditModal();
+            if (typeof window.markEditModalSavedState === 'function') {
+                window.markEditModalSavedState();
+            }
+            if (typeof window.closeEditUnsavedModal === 'function') {
+                window.closeEditUnsavedModal();
+            }
+            if (typeof window.consumeEditSaveAndCloseRequest === 'function') {
+                window.consumeEditSaveAndCloseRequest();
+            }
+            closeEditModal(null, { force: true });
             loadProjects();
         } else {
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});

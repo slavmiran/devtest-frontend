@@ -763,6 +763,17 @@
         </div>
     </div>
 
+    <div id="edit-unsaved-modal" class="modal-overlay" onclick="closeEditUnsavedModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="editUnsavedTitle">Закрыть без сохранения?</h3>
+            <p data-i18n="editUnsavedText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; margin-bottom: 16px;">Все внесенные изменения будут удалены, если закрыть окно без сохранения.</p>
+            <div class="action-row">
+                <button class="btn btn-primary" style="flex: 1;" onclick="requestEditSaveAndClose()" data-i18n="editUnsavedSaveClose">Сохранить и закрыть</button>
+                <button class="btn btn-secondary" style="flex: 1; background-color: rgba(255, 59, 48, 0.12); color: #ff6b6b; border: 1px solid rgba(255, 59, 48, 0.25);" onclick="discardEditAndClose()" data-i18n="editUnsavedExitWithoutSave">Выйти без сохранения</button>
+            </div>
+        </div>
+    </div>
+
     <div id="project-transfer-modal" class="modal-overlay" onclick="closeProjectTransferModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 data-i18n="transferModalTitle">Передача прав на проект</h3>

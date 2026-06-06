@@ -4406,7 +4406,8 @@ details[open] > summary .details-arrow {
 .guest-projects-body {
     max-height: 0;
     opacity: 0;
-    overflow: visible;
+    overflow: hidden;
+    pointer-events: none;
     padding: 0 16px;
     transition: opacity 0.22s ease, padding 0.22s ease;
 }
@@ -4414,6 +4415,8 @@ details[open] > summary .details-arrow {
 .guest-projects-section.expanded .guest-projects-body {
     max-height: none;
     opacity: 1;
+    overflow: visible;
+    pointer-events: auto;
     padding: 0 16px 16px;
 }
 
