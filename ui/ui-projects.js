@@ -1432,8 +1432,122 @@ function closeDeleteModal(event) {
 }
 
 /* ── Add Project: Progressive Disclosure state & helpers ───── */
-window.addProjectFlow = window.addProjectFlow || { emailCopied: false, emailMode: false };
+window.addProjectFlow = window.addProjectFlow || {
+    emailCopied: false,
+    isEmailCopied: false,
+    isConsoleOpened: false,
+    emailMode: false
+};
 window.editProjectFlow = window.editProjectFlow || { emailMode: false };
+window.editAccessFlow = window.editAccessFlow || {
+    uiMode: 'view',
+    mode: 'standard_group',
+    initialMode: 'standard_group',
+    currentGroupUrl: '',
+    initialGroupUrl: '',
+    isEmailCopied: false,
+    isConsoleOpened: false,
+    checklist: { email: false, countries: false, review: false },
+    migrationWarnShown: false
+};
+
+window.AccessSetupManager = window.AccessSetupManager || {
+    _defaultGroupUrl: function() {
+        return String(window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    },
+    _standardEmail: function() {
+        return 'google-play-dev-test@googlegroups.com';
+    },
+    _normalizeGroupUrl: function(url) {
+        return String(url || '').trim().replace(/\/+$/, '').toLowerCase();
+    },
+    isDefaultGroup: function(url) {
+        return this._normalizeGroupUrl(url) === this._normalizeGroupUrl(this._defaultGroupUrl());
+    },
+    initEdit: function(project) {
+        var testMode = String(project && project.test_mode || 'google_group').toLowerCase();
+        var groupUrl = String(project && project.google_group_url || '').trim();
+        var mode = 'standard_group';
+        if (testMode === 'email_list') mode = 'email_list';
+        else if (groupUrl && !this.isDefaultGroup(groupUrl)) mode = 'custom_group';
+        window.editAccessFlow = {
+            uiMode: 'view',
+            mode: mode,
+            initialMode: mode,
+            currentGroupUrl: mode === 'custom_group' ? groupUrl : '',
+            initialGroupUrl: groupUrl,
+            isEmailCopied: false,
+            isConsoleOpened: false,
+            checklist: { email: false, countries: false, review: false },
+            migrationWarnShown: false
+        };
+        if (window.editProjectFlow) {
+            window.editProjectFlow.emailMode = mode === 'email_list';
+        }
+    },
+    getEditFlow: function() {
+        return window.editAccessFlow || {};
+    },
+    isChecklistComplete: function() {
+        var flow = this.getEditFlow();
+        var checklist = flow.checklist || {};
+        return !!(checklist.email && checklist.countries && checklist.review);
+    },
+    isChecklistVisible: function() {
+        var flow = this.getEditFlow();
+        return flow.mode === 'standard_group' && !!flow.isEmailCopied && !!flow.isConsoleOpened;
+    },
+    canSaveEdit: function() {
+        var flow = this.getEditFlow();
+        if (flow.uiMode !== 'edit') return true;
+        if (flow.mode === 'standard_group') return this.isChecklistComplete();
+        return true;
+    },
+    getEditPayload: function() {
+        var flow = this.getEditFlow();
+        var mode = flow.mode || 'standard_group';
+        if (mode === 'email_list') {
+            return {
+                test_mode: 'email_list',
+                google_group_url: null,
+                canSave: this.canSaveEdit(),
+                mode: mode,
+                uiMode: flow.uiMode || 'view'
+            };
+        }
+        if (mode === 'custom_group') {
+            return {
+                test_mode: 'google_group',
+                google_group_url: String(flow.currentGroupUrl || '').trim(),
+                canSave: this.canSaveEdit(),
+                mode: mode,
+                uiMode: flow.uiMode || 'view'
+            };
+        }
+        return {
+            test_mode: 'google_group',
+            google_group_url: this._defaultGroupUrl(),
+            canSave: this.canSaveEdit(),
+            mode: mode,
+            uiMode: flow.uiMode || 'view'
+        };
+    },
+    serializeEdit: function() {
+        var flow = this.getEditFlow();
+        return {
+            uiMode: flow.uiMode || 'view',
+            mode: flow.mode || 'standard_group',
+            currentGroupUrl: String(flow.currentGroupUrl || ''),
+            isEmailCopied: !!flow.isEmailCopied,
+            isConsoleOpened: !!flow.isConsoleOpened,
+            checklist: {
+                email: !!(flow.checklist && flow.checklist.email),
+                countries: !!(flow.checklist && flow.checklist.countries),
+                review: !!(flow.checklist && flow.checklist.review),
+            }
+        };
+    }
+};
 
 function openModal() {
     document.getElementById('add-modal').classList.add('active');
@@ -1476,7 +1590,13 @@ function closeModal(event) {
 }
 
 function resetAddFlow() {
-    window.addProjectFlow = { emailCopied: false, emailMode: false, namePromptShown: false };
+    window.addProjectFlow = {
+        emailCopied: false,
+        isEmailCopied: false,
+        isConsoleOpened: false,
+        emailMode: false,
+        namePromptShown: false
+    };
 
     const nameHint = document.getElementById('app-name-hint');
     if (nameHint) { nameHint.style.display = 'none'; nameHint.textContent = ''; }
@@ -1506,6 +1626,7 @@ function resetAddFlow() {
     if (testerEmail) testerEmail.value = '';
 
     _clearAddFieldErrors();
+    syncStandardGroupUiState();
 }
 
 function switchGroupTab(tab) {
@@ -1546,6 +1667,7 @@ function renderGroupSection() {
     if (banner) banner.style.display = 'none';
     if (stdBlock) stdBlock.style.display = isStandard ? '' : 'none';
     if (custBlock) custBlock.style.display = isStandard ? 'none' : '';
+    syncStandardGroupUiState();
 }
 
 function isAddPlayLinkValid() {
@@ -1564,6 +1686,9 @@ function isAddStage2Complete() {
     if (window.addProjectFlow && window.addProjectFlow.emailMode) return true;
     const isStandard = document.getElementById('seg-standard').classList.contains('active');
     if (isStandard) {
+        const isEmailCopied = !!(window.addProjectFlow && window.addProjectFlow.isEmailCopied);
+        const isConsoleOpened = !!(window.addProjectFlow && window.addProjectFlow.isConsoleOpened);
+        if (!isEmailCopied || !isConsoleOpened) return false;
         return isAddChecklistComplete();
     }
     return isValidGoogleGroupUrl((document.getElementById('app-group').value || '').trim());
@@ -1646,6 +1771,16 @@ function updateAddSaveButtonState() {
 
 function toggleSetupAccordion() {
     const accordion = document.getElementById('setup-accordion');
+    if (!accordion) return;
+    accordion.classList.toggle('open');
+    const head = accordion.querySelector('.setup-accordion-head');
+    if (head) {
+        head.setAttribute('aria-expanded', accordion.classList.contains('open') ? 'true' : 'false');
+    }
+}
+
+function toggleEditSetupAccordion() {
+    const accordion = document.getElementById('edit-setup-accordion');
     if (!accordion) return;
     accordion.classList.toggle('open');
     const head = accordion.querySelector('.setup-accordion-head');
@@ -1817,7 +1952,10 @@ function _captureEditModalSnapshot() {
         limitBounty: String((document.getElementById('edit-limit-bounty') || {}).value || ''),
         bountyPerTester: String((document.getElementById('edit-bounty-per-tester') || {}).value || ''),
         requestReviews: !!(document.getElementById('edit-request-reviews') && document.getElementById('edit-request-reviews').checked),
-        emailMode: !!(window.editProjectFlow && window.editProjectFlow.emailMode)
+        emailMode: !!(window.editProjectFlow && window.editProjectFlow.emailMode),
+        accessSetup: (window.AccessSetupManager && typeof window.AccessSetupManager.serializeEdit === 'function')
+            ? window.AccessSetupManager.serializeEdit()
+            : {}
     };
 }
 
@@ -1867,16 +2005,12 @@ function openEditModal(projectId) {
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
     projectToEdit = projectId;
-    const editEmailMode = String(project.test_mode || '').toLowerCase() === 'email_list';
     document.getElementById('edit-name').value = project.name || '';
     document.getElementById('edit-description').value = project.instructions || '';
     document.getElementById('edit-icon').value = project.icon_url || '';
     document.getElementById('edit-package').value = project.package || '';
-    document.getElementById('edit-group').value = editEmailMode
-        ? ''
-        : (project.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test');
-    if (window.editProjectFlow) {
-        window.editProjectFlow.emailMode = editEmailMode;
+    if (window.AccessSetupManager && typeof window.AccessSetupManager.initEdit === 'function') {
+        window.AccessSetupManager.initEdit(project);
     }
     document.getElementById('edit-limit-mutual').value = String(project.limit_mutual || 12);
     document.getElementById('edit-limit-bounty').value = String(project.limit_bounty || 12);
@@ -1884,7 +2018,7 @@ function openEditModal(projectId) {
     document.getElementById('edit-request-reviews').checked = project.request_reviews !== false;
     setProjectMode('edit', project.mode || 'mutual');
     setProjectTargetLang('edit', project.target_lang || 'ALL');
-    renderEditGroupSection();
+    renderEditAccessSetup();
     updateProjectPricing('edit');
     renderEditCreatedAtMeta();
     _editSaveAndCloseRequested = false;
@@ -1893,22 +2027,20 @@ function openEditModal(projectId) {
 }
 
 function renderEditGroupSection() {
-    var emailMode = !!(window.editProjectFlow && window.editProjectFlow.emailMode);
-    var banner = document.getElementById('edit-email-mode-banner');
-    var groupShell = document.getElementById('edit-google-group-shell');
-    if (banner) banner.style.display = emailMode ? 'flex' : 'none';
-    if (groupShell) groupShell.style.display = emailMode ? 'none' : '';
+    renderEditAccessSetup();
 }
 
 function exitEditEmailTestingMode() {
+    if (window.editAccessFlow) {
+        window.editAccessFlow.mode = 'standard_group';
+        window.editAccessFlow.isEmailCopied = false;
+        window.editAccessFlow.isConsoleOpened = false;
+        window.editAccessFlow.checklist = { email: false, countries: false, review: false };
+    }
     if (window.editProjectFlow) {
         window.editProjectFlow.emailMode = false;
     }
-    renderEditGroupSection();
-    var input = document.getElementById('edit-group');
-    if (input && !input.value) {
-        input.value = window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
-    }
+    renderEditAccessSetup();
 }
 
 function closeEditModal(event) {
@@ -1924,17 +2056,247 @@ function closeEditModal(event) {
         _editModalSnapshot = null;
         _editSaveAndCloseRequested = false;
         if (window.editProjectFlow) window.editProjectFlow.emailMode = false;
-        renderEditGroupSection();
+        renderEditAccessSetup();
         resetProjectForms();
         renderEditCreatedAtMeta();
     }, 300);
 }
 
 function resetEditGoogleGroupToDefault() {
+    if (window.editAccessFlow) {
+        window.editAccessFlow.mode = 'standard_group';
+        window.editAccessFlow.currentGroupUrl = '';
+        window.editAccessFlow.isEmailCopied = false;
+        window.editAccessFlow.isConsoleOpened = false;
+        window.editAccessFlow.checklist = { email: false, countries: false, review: false };
+    }
+    renderEditAccessSetup();
+}
+
+function _getEditAccessViewMeta() {
+    var flow = window.editAccessFlow || {};
+    if (flow.mode === 'email_list') {
+        return {
+            title: '✉️ ' + window.t('accessViewEmailMode', {}, lang),
+            value: '',
+            canCopy: false,
+        };
+    }
+    if (flow.mode === 'custom_group') {
+        return {
+            title: '🔗 ' + window.t('accessViewCustomMode', {}, lang),
+            value: String(flow.currentGroupUrl || flow.initialGroupUrl || '').trim(),
+            canCopy: true,
+        };
+    }
+    return {
+        title: '👥 ' + window.t('accessViewStandardMode', {}, lang),
+        value: (window.AccessSetupManager && window.AccessSetupManager._standardEmail)
+            ? window.AccessSetupManager._standardEmail()
+            : 'google-play-dev-test@googlegroups.com',
+        canCopy: true,
+    };
+}
+
+function updateEditSaveButtonState() {
+    var btn = document.getElementById('t-editSave');
+    if (!btn) return;
+    var canSave = true;
+    if (window.AccessSetupManager && typeof window.AccessSetupManager.canSaveEdit === 'function') {
+        canSave = !!window.AccessSetupManager.canSaveEdit();
+    }
+    btn.disabled = !canSave;
+    btn.classList.toggle('is-locked', !canSave);
+}
+
+function renderEditAccessSetup() {
+    var flow = window.editAccessFlow || {};
+    var viewCard = document.getElementById('edit-access-view-card');
+    var editShell = document.getElementById('edit-access-edit-shell');
+    var inEditMode = flow.uiMode === 'edit';
+    if (viewCard) viewCard.style.display = inEditMode ? 'none' : '';
+    if (editShell) editShell.style.display = inEditMode ? '' : 'none';
+
+    var viewMeta = _getEditAccessViewMeta();
+    var viewTitle = document.getElementById('edit-access-view-title');
+    var viewValue = document.getElementById('edit-access-view-value');
+    var quickCopyBtn = document.getElementById('edit-access-quick-copy-btn');
+    if (viewTitle) viewTitle.textContent = viewMeta.title;
+    if (viewValue) {
+        viewValue.textContent = viewMeta.value || '';
+        viewValue.style.display = viewMeta.value ? '' : 'none';
+    }
+    if (quickCopyBtn) quickCopyBtn.style.display = viewMeta.canCopy ? '' : 'none';
+
+    if (!inEditMode) {
+        updateEditSaveButtonState();
+        return;
+    }
+
+    var mode = flow.mode || 'standard_group';
+    var segStandard = document.getElementById('edit-seg-standard');
+    var segCustom = document.getElementById('edit-seg-custom');
+    if (segStandard) segStandard.classList.toggle('active', mode === 'standard_group');
+    if (segCustom) segCustom.classList.toggle('active', mode === 'custom_group');
+
+    var segControl = document.getElementById('edit-group-seg-control');
+    var standardBlock = document.getElementById('edit-group-standard-block');
+    var customBlock = document.getElementById('edit-group-custom-block');
+    var emailBanner = document.getElementById('edit-email-mode-banner');
+    var emailToggle = document.getElementById('edit-use-email-testing-btn');
+    var isEmailMode = mode === 'email_list';
+
+    if (segControl) segControl.style.display = isEmailMode ? 'none' : '';
+    if (standardBlock) standardBlock.style.display = (!isEmailMode && mode === 'standard_group') ? '' : 'none';
+    if (customBlock) customBlock.style.display = (!isEmailMode && mode === 'custom_group') ? '' : 'none';
+    if (emailBanner) emailBanner.style.display = isEmailMode ? 'flex' : 'none';
+    if (emailToggle) emailToggle.style.display = isEmailMode ? 'none' : '';
+
+    var customInput = document.getElementById('edit-group');
+    if (customInput && mode === 'custom_group') {
+        customInput.value = String(flow.currentGroupUrl || '');
+    }
+
+    var isEmailCopied = !!flow.isEmailCopied;
+    var isConsoleOpened = !!flow.isConsoleOpened;
+    var copyBtn = document.getElementById('edit-setup-email-copy-btn');
+    var copyIcon = document.getElementById('edit-setup-email-copy-icon');
+    if (copyBtn) copyBtn.classList.toggle('is-done', isEmailCopied);
+    if (copyIcon) copyIcon.textContent = isEmailCopied ? '✅' : '📋';
+
+    var warningReveal = document.getElementById('edit-setup-warning-reveal');
+    if (warningReveal) warningReveal.classList.toggle('is-open', mode === 'standard_group' && isEmailCopied);
+
+    var consoleBtn = document.getElementById('edit-setup-console-btn');
+    var consoleBtnLabel = document.getElementById('edit-setup-console-btn-label');
+    if (consoleBtn) consoleBtn.classList.toggle('is-opened', isConsoleOpened);
+    if (consoleBtnLabel) consoleBtnLabel.textContent = window.t(isConsoleOpened ? 'goToPlayConsoleOpened' : 'goToPlayConsole', {}, lang);
+
+    var checklistVisible = mode === 'standard_group' && isEmailCopied && isConsoleOpened;
+    var checklistReveal = document.getElementById('edit-setup-checklist-reveal');
+    if (checklistReveal) checklistReveal.classList.toggle('is-open', checklistVisible);
+
+    ['edit-check-email', 'edit-check-countries', 'edit-check-review'].forEach(function(id) {
+        var box = document.getElementById(id);
+        if (!box) return;
+        if (id === 'edit-check-email') box.checked = !!(flow.checklist && flow.checklist.email);
+        if (id === 'edit-check-countries') box.checked = !!(flow.checklist && flow.checklist.countries);
+        if (id === 'edit-check-review') box.checked = !!(flow.checklist && flow.checklist.review);
+        box.disabled = !checklistVisible;
+    });
+    var checklist = document.getElementById('edit-setup-checklist');
+    if (checklist) checklist.classList.toggle('unlocked', checklistVisible);
+
+    updateEditSaveButtonState();
+}
+
+function enterEditAccessMode() {
+    if (!window.editAccessFlow) return;
+    window.editAccessFlow.uiMode = 'edit';
+    renderEditAccessSetup();
+}
+
+function cancelEditAccessMode() {
+    var flow = window.editAccessFlow || {};
+    flow.uiMode = 'view';
+    flow.mode = flow.initialMode || 'standard_group';
+    flow.currentGroupUrl = flow.mode === 'custom_group' ? String(flow.initialGroupUrl || '') : '';
+    flow.isEmailCopied = false;
+    flow.isConsoleOpened = false;
+    flow.checklist = { email: false, countries: false, review: false };
+    if (window.editProjectFlow) {
+        window.editProjectFlow.emailMode = flow.mode === 'email_list';
+    }
+    renderEditAccessSetup();
+}
+
+function setEditAccessTab(mode) {
+    if (!window.editAccessFlow) return;
+    var nextMode = mode || 'standard_group';
+    var flow = window.editAccessFlow;
+    if (nextMode === 'standard_group' && flow.mode !== 'standard_group' && flow.initialMode !== 'standard_group' && !flow.migrationWarnShown) {
+        flow.migrationWarnShown = true;
+        var warnText = window.t('editAccessMigrationWarning', {}, lang);
+        if (typeof window.showToast === 'function') window.showToast(warnText);
+        else if (tg && typeof tg.showAlert === 'function') tg.showAlert(warnText);
+        else alert(warnText);
+    }
+    flow.mode = nextMode;
+    if (nextMode !== 'custom_group') {
+        flow.currentGroupUrl = '';
+    }
+    flow.isEmailCopied = false;
+    flow.isConsoleOpened = false;
+    flow.checklist = { email: false, countries: false, review: false };
+    if (window.editProjectFlow) {
+        window.editProjectFlow.emailMode = nextMode === 'email_list';
+    }
+    renderEditAccessSetup();
+}
+
+function onEditAccessGroupInput() {
+    if (!window.editAccessFlow) return;
     var input = document.getElementById('edit-group');
-    if (!input) return;
-    input.value = window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
-    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    window.editAccessFlow.currentGroupUrl = String((input && input.value) || '').trim();
+    updateEditSaveButtonState();
+}
+
+function copyEditAccessValue() {
+    var viewMeta = _getEditAccessViewMeta();
+    var value = String(viewMeta.value || '').trim();
+    if (!value) return;
+    try {
+        navigator.clipboard.writeText(value).then(function() {
+            if (typeof window.showToast === 'function') window.showToast(window.t('emailCopiedToast', {}, lang));
+        }).catch(function() {});
+    } catch (e) {}
+}
+
+function copyEditAccessStandardEmail() {
+    var value = (window.AccessSetupManager && window.AccessSetupManager._standardEmail)
+        ? window.AccessSetupManager._standardEmail()
+        : 'google-play-dev-test@googlegroups.com';
+    try {
+        navigator.clipboard.writeText(value).then(function() {
+            if (window.editAccessFlow) window.editAccessFlow.isEmailCopied = true;
+            if (typeof window.showToast === 'function') window.showToast(window.t('emailCopiedToast', {}, lang));
+            renderEditAccessSetup();
+        }).catch(function() {
+            if (window.editAccessFlow) window.editAccessFlow.isEmailCopied = true;
+            renderEditAccessSetup();
+        });
+    } catch (e) {
+        if (window.editAccessFlow) window.editAccessFlow.isEmailCopied = true;
+        renderEditAccessSetup();
+    }
+}
+
+function onEditAccessConsoleClick() {
+    if (window.editAccessFlow) window.editAccessFlow.isConsoleOpened = true;
+    renderEditAccessSetup();
+    var targetUrl = 'https://play.google.com/console/';
+    try {
+        if (tg && typeof tg.openLink === 'function') {
+            tg.openLink(targetUrl);
+            return;
+        }
+    } catch (e) {}
+    try {
+        window.open(targetUrl, '_blank', 'noopener');
+    } catch (e) {}
+}
+
+function onEditAccessChecklistChange(item, checked) {
+    if (!window.editAccessFlow) return;
+    if (!window.editAccessFlow.checklist) {
+        window.editAccessFlow.checklist = { email: false, countries: false, review: false };
+    }
+    window.editAccessFlow.checklist[item] = !!checked;
+    updateEditSaveButtonState();
+}
+
+function enableEditEmailTestingMode() {
+    setEditAccessTab('email_list');
 }
 
 function copyEmail() {
@@ -1957,14 +2319,74 @@ function copyEmail() {
     }
 }
 
-function unlockSetupChecklist() {
-    if (window.addProjectFlow) window.addProjectFlow.emailCopied = true;
-    ['check-email', 'check-countries', 'check-review'].forEach((id) => {
+function onSetupConsoleClick() {
+    const targetUrl = 'https://play.google.com/console/';
+    if (window.addProjectFlow) {
+        window.addProjectFlow.isConsoleOpened = true;
+    }
+    syncStandardGroupUiState();
+    evaluateAddStages();
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    try {
+        if (tg && typeof tg.openLink === 'function') {
+            tg.openLink(targetUrl);
+            return;
+        }
+    } catch (e) {
+        console.error('Failed to open Play Console via tg.openLink', e);
+    }
+    try {
+        window.open(targetUrl, '_blank', 'noopener');
+    } catch (e) {
+        console.error('Failed to open Play Console link', e);
+    }
+}
+
+function syncStandardGroupUiState() {
+    const flow = window.addProjectFlow || {};
+    const isEmailCopied = !!flow.isEmailCopied;
+    const isConsoleOpened = !!flow.isConsoleOpened;
+    const isStandard = !!(document.getElementById('seg-standard') && document.getElementById('seg-standard').classList.contains('active'));
+    const isEmailMode = !!flow.emailMode;
+
+    const copyBtn = document.getElementById('setup-email-copy-btn');
+    const copyIcon = document.getElementById('setup-email-copy-icon');
+    if (copyBtn) copyBtn.classList.toggle('is-done', isEmailCopied);
+    if (copyIcon) copyIcon.textContent = isEmailCopied ? '✅' : '📋';
+
+    const warningReveal = document.getElementById('setup-warning-reveal');
+    if (warningReveal) {
+        warningReveal.classList.toggle('is-open', isStandard && !isEmailMode && isEmailCopied);
+    }
+
+    const consoleBtn = document.getElementById('setup-console-btn');
+    const consoleBtnLabel = document.getElementById('setup-console-btn-label');
+    if (consoleBtn) consoleBtn.classList.toggle('is-opened', isConsoleOpened);
+    if (consoleBtnLabel) {
+        consoleBtnLabel.textContent = window.t(isConsoleOpened ? 'goToPlayConsoleOpened' : 'goToPlayConsole', {}, lang);
+    }
+
+    const checklistVisible = isStandard && !isEmailMode && isEmailCopied && isConsoleOpened;
+    const checklistReveal = document.getElementById('setup-checklist-reveal');
+    if (checklistReveal) checklistReveal.classList.toggle('is-open', checklistVisible);
+
+    ['check-email', 'check-countries', 'check-review'].forEach(function(id) {
         const box = document.getElementById(id);
-        if (box) box.disabled = false;
+        if (!box) return;
+        box.disabled = !checklistVisible;
     });
+
     const checklist = document.getElementById('setup-checklist');
-    if (checklist) checklist.classList.add('unlocked');
+    if (checklist) checklist.classList.toggle('unlocked', checklistVisible);
+}
+
+function unlockSetupChecklist() {
+    if (window.addProjectFlow) {
+        window.addProjectFlow.emailCopied = true;
+        window.addProjectFlow.isEmailCopied = true;
+    }
+    syncStandardGroupUiState();
+    evaluateAddStages();
 }
 
 document.addEventListener('click', (event) => {

@@ -290,16 +290,18 @@
                     <div id="group-standard-block">
                         <div class="setup-email-box">
                             <span class="setup-email-address" role="button" tabindex="0" onclick="copyEmail()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyEmail();}">google-play-dev-test@googlegroups.com</span>
-                            <button type="button" class="btn-icon setup-email-copy" onclick="copyEmail()">📋</button>
+                            <button type="button" id="setup-email-copy-btn" class="btn-icon setup-email-copy" onclick="copyEmail()"><span id="setup-email-copy-icon">📋</span></button>
                         </div>
-                        <div class="setup-note" id="t-standardGroupNote" data-i18n-html="standardGroupNote">В Play Console обязательно выберите режим тестирования через <b>Группы Google</b> (не email-списки) и вставьте этот адрес.</div>
+                        <div class="setup-reveal" id="setup-warning-reveal">
+                            <div class="setup-note" id="t-standardGroupNote" data-i18n-html="standardGroupNote">В Play Console обязательно выберите режим тестирования через <b>Группы Google</b> (не email-списки) и вставьте этот адрес.</div>
+                        </div>
 
                         <div class="setup-console-block">
-                            <a href="https://play.google.com/console/" target="_blank" rel="noopener" class="btn btn-primary setup-console-btn" id="t-goToPlayConsole" data-i18n="goToPlayConsole">🚀 Перейти в Play Console</a>
+                            <button type="button" class="btn btn-primary setup-console-btn" id="setup-console-btn" onclick="onSetupConsoleClick()"><span id="setup-console-btn-label" data-i18n="goToPlayConsole">🚀 Перейти в Play Console</span></button>
                             <div class="setup-guide">
                                 <div class="setup-accordion" id="setup-accordion">
                                     <button type="button" class="setup-accordion-head" onclick="toggleSetupAccordion()" aria-expanded="false" aria-controls="setup-accordion-panel">
-                                        <span data-i18n="setupAccordionTitle">Как настроить Play Console?</span>
+                                        <span data-i18n="setupGuideToggle">📖 Как настроить?</span>
                                         <span class="setup-accordion-arrow" aria-hidden="true">▼</span>
                                     </button>
                                     <div class="setup-accordion-content" id="setup-accordion-panel">
@@ -323,24 +325,26 @@
                             </div>
                         </div>
 
-                        <div class="setup-checklist" id="setup-checklist">
-                            <div class="setup-checklist-lock" id="setup-checklist-lock" data-i18n="checklistLockedHint">🔒 Скопируйте email выше, чтобы разблокировать чеклист.</div>
-                            <label class="review-checkbox-row checklist-item" id="checklist-item-email">
-                                <input type="checkbox" id="check-email" disabled onchange="onAddChecklistChange()">
-                                <span>
-                                    <strong data-i18n="checklistAddedEmail">Я добавил email в Play Console</strong>
-                                    <small data-i18n="checklistAddedEmailSub1">Выбрал «Группы Google»</small>
-                                    <small data-i18n="checklistAddedEmailSub2">Вставил google-play-dev-test@googlegroups.com</small>
-                                </span>
-                            </label>
-                            <label class="review-checkbox-row checklist-item" id="checklist-item-countries">
-                                <input type="checkbox" id="check-countries" disabled onchange="onAddChecklistChange()">
-                                <span><strong data-i18n="checklistAllCountries">Я выбрал все страны</strong></span>
-                            </label>
-                            <label class="review-checkbox-row checklist-item" id="checklist-item-review">
-                                <input type="checkbox" id="check-review" disabled onchange="onAddChecklistChange()">
-                                <span><strong data-i18n="checklistSubmittedReview">Я отправил на проверку</strong></span>
-                            </label>
+                        <div class="setup-reveal" id="setup-checklist-reveal">
+                            <div class="setup-checklist" id="setup-checklist">
+                                <div class="setup-checklist-lock" id="setup-checklist-lock" data-i18n="checklistLockedHint">🔒 Скопируйте email выше, чтобы разблокировать чеклист.</div>
+                                <label class="review-checkbox-row checklist-item" id="checklist-item-email">
+                                    <input type="checkbox" id="check-email" disabled onchange="onAddChecklistChange()">
+                                    <span>
+                                        <strong data-i18n="checklistAddedEmail">Я добавил email в Play Console</strong>
+                                        <small data-i18n="checklistAddedEmailSub1">Выбрал «Группы Google»</small>
+                                        <small data-i18n="checklistAddedEmailSub2">Вставил google-play-dev-test@googlegroups.com</small>
+                                    </span>
+                                </label>
+                                <label class="review-checkbox-row checklist-item" id="checklist-item-countries">
+                                    <input type="checkbox" id="check-countries" disabled onchange="onAddChecklistChange()">
+                                    <span><strong data-i18n="checklistAllCountries">Я выбрал все страны</strong></span>
+                                </label>
+                                <label class="review-checkbox-row checklist-item" id="checklist-item-review">
+                                    <input type="checkbox" id="check-review" disabled onchange="onAddChecklistChange()">
+                                    <span><strong data-i18n="checklistSubmittedReview">Я отправил на проверку</strong></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -677,14 +681,93 @@
             </div>
             <div class="form-group">
                 <label class="form-label" id="t-editGroup" data-i18n="googleGroup">Ссылка на Google Group</label>
-                <div id="edit-email-mode-banner" class="email-mode-banner" style="display:none;">
-                    <span data-i18n="emailModeActive">✉️ Выбрано тестирование по email</span>
-                    <button type="button" class="email-mode-change" onclick="exitEditEmailTestingMode()" data-i18n="emailModeChange">Изменить</button>
+                <div id="edit-access-view-card" class="access-view-card">
+                    <div class="access-view-row">
+                        <div class="access-view-main">
+                            <div id="edit-access-view-title" class="access-view-title"></div>
+                            <div id="edit-access-view-value" class="access-view-value notranslate"></div>
+                        </div>
+                        <div class="access-view-actions">
+                            <button type="button" id="edit-access-quick-copy-btn" class="btn-icon setup-email-copy" onclick="copyEditAccessValue()">📋</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="enterEditAccessMode()" data-i18n="editAccessChangeBtn">Изменить</button>
                 </div>
-                <div id="edit-google-group-shell">
-                    <input type="text" id="edit-group" class="form-input">
-                    <div class="form-hint" data-i18n="editGoogleGroupHint">Можно указать свою ссылку или быстро вернуть стандартную группу платформы.</div>
-                    <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="resetEditGoogleGroupToDefault()" data-i18n="resetDefaultGoogleGroup">Сбросить на стандартную группу</button>
+
+                <div id="edit-access-edit-shell" class="access-edit-shell" style="display:none;">
+                    <div class="seg-control" id="edit-group-seg-control">
+                        <button type="button" class="seg-btn active" id="edit-seg-standard" onclick="setEditAccessTab('standard_group')" data-i18n="groupStandard">Standard Group</button>
+                        <button type="button" class="seg-btn" id="edit-seg-custom" onclick="setEditAccessTab('custom_group')" data-i18n="groupCustom">Custom Group</button>
+                    </div>
+
+                    <div id="edit-group-standard-block">
+                        <div class="setup-email-box">
+                            <span class="setup-email-address" role="button" tabindex="0" onclick="copyEditAccessStandardEmail()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyEditAccessStandardEmail();}">google-play-dev-test@googlegroups.com</span>
+                            <button type="button" id="edit-setup-email-copy-btn" class="btn-icon setup-email-copy" onclick="copyEditAccessStandardEmail()"><span id="edit-setup-email-copy-icon">📋</span></button>
+                        </div>
+                        <div class="setup-reveal" id="edit-setup-warning-reveal">
+                            <div class="setup-note" data-i18n-html="standardGroupNote">В Play Console обязательно выберите режим тестирования через <b>Группы Google</b> (не email-списки) и вставьте этот адрес.</div>
+                        </div>
+
+                        <div class="setup-console-block">
+                            <button type="button" class="btn btn-primary setup-console-btn" id="edit-setup-console-btn" onclick="onEditAccessConsoleClick()"><span id="edit-setup-console-btn-label" data-i18n="goToPlayConsole">🚀 Перейти в Play Console</span></button>
+                            <div class="setup-guide">
+                                <div class="setup-accordion" id="edit-setup-accordion">
+                                    <button type="button" class="setup-accordion-head" onclick="toggleEditSetupAccordion()" aria-expanded="false" aria-controls="edit-setup-accordion-panel">
+                                        <span data-i18n="setupGuideToggle">📖 Как настроить?</span>
+                                        <span class="setup-accordion-arrow" aria-hidden="true">▼</span>
+                                    </button>
+                                    <div class="setup-accordion-panel" id="edit-setup-accordion-panel">
+                                        <div class="setup-step">
+                                            <strong data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</strong>
+                                            <div class="setup-step-path" data-i18n="setupStep1Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Страны/регионы → Включить все.</div>
+                                        </div>
+                                        <div class="setup-step">
+                                            <strong data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</strong>
+                                            <div class="setup-step-path" data-i18n="setupStep2Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Количество тестировщиков → Выбрать Группы Google → Вставить email.</div>
+                                        </div>
+                                        <div class="setup-step">
+                                            <strong data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</strong>
+                                            <div class="setup-step-path" data-i18n="setupStep3Path">Play Console → Обзор публикации → Отправить «X» изменений на проверку.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setup-reveal" id="edit-setup-checklist-reveal">
+                            <div class="setup-checklist" id="edit-setup-checklist">
+                                <div class="setup-checklist-lock" data-i18n="checklistLockedHint">🔒 Скопируйте email выше, чтобы разблокировать чеклист.</div>
+                                <label class="review-checkbox-row checklist-item" id="edit-checklist-item-email">
+                                    <input type="checkbox" id="edit-check-email" disabled onchange="onEditAccessChecklistChange('email', this.checked)">
+                                    <span>
+                                        <strong data-i18n="checklistAddedEmail">Я добавил email в Play Console</strong>
+                                        <small data-i18n="checklistAddedEmailSub1">Выбрал «Группы Google»</small>
+                                        <small data-i18n="checklistAddedEmailSub2">Вставил google-play-dev-test@googlegroups.com</small>
+                                    </span>
+                                </label>
+                                <label class="review-checkbox-row checklist-item" id="edit-checklist-item-countries">
+                                    <input type="checkbox" id="edit-check-countries" disabled onchange="onEditAccessChecklistChange('countries', this.checked)">
+                                    <span><strong data-i18n="checklistAllCountries">Я выбрал все страны</strong></span>
+                                </label>
+                                <label class="review-checkbox-row checklist-item" id="edit-checklist-item-review">
+                                    <input type="checkbox" id="edit-check-review" disabled onchange="onEditAccessChecklistChange('review', this.checked)">
+                                    <span><strong data-i18n="checklistSubmittedReview">Я отправил на проверку</strong></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="edit-group-custom-block" style="display:none;">
+                        <input type="url" id="edit-group" class="form-input" placeholder="" data-i18n-placeholder="groupUrlPlaceholder" oninput="onEditAccessGroupInput()">
+                    </div>
+
+                    <div id="edit-email-mode-banner" class="email-mode-banner" style="display:none; margin-top: 10px;">
+                        <span data-i18n="emailModeActive">✉️ Выбрано тестирование по email</span>
+                    </div>
+
+                    <button type="button" class="setup-email-toggle" id="edit-use-email-testing-btn" onclick="enableEditEmailTestingMode()" data-i18n="useEmailTesting">Использовать тестирование по email</button>
+                    <button type="button" class="btn btn-secondary access-edit-cancel" onclick="cancelEditAccessMode()" data-i18n="editAccessCancelBtn">Отмена</button>
                 </div>
             </div>
             <div class="form-group">

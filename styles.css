@@ -1700,6 +1700,26 @@ iframe.skiptranslate,
     font-size: 18px;
 }
 
+.setup-email-copy.is-done {
+    color: #34c759;
+    background: rgba(52, 199, 89, 0.14);
+    border: 1px solid rgba(52, 199, 89, 0.38);
+}
+
+.setup-reveal {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateY(-6px);
+    transition: max-height 0.36s ease, opacity 0.28s ease, transform 0.36s ease;
+}
+
+.setup-reveal.is-open {
+    max-height: 1200px;
+    opacity: 1;
+    transform: translateY(0);
+}
+
 .setup-note {
     font-size: 13px;
     line-height: 1.5;
@@ -1727,6 +1747,13 @@ iframe.skiptranslate,
     text-align: center;
     display: block;
     box-shadow: 0 6px 16px rgba(51, 144, 236, 0.28);
+}
+
+.setup-console-btn.is-opened {
+    box-shadow: 0 6px 16px rgba(52, 199, 89, 0.22);
+    background: rgba(52, 199, 89, 0.16);
+    color: #34c759;
+    border: 1px solid rgba(52, 199, 89, 0.36);
 }
 
 .setup-guide {
@@ -1773,9 +1800,70 @@ iframe.skiptranslate,
     transition: max-height 0.55s ease, opacity 0.45s ease;
 }
 
+.setup-accordion-panel {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.55s ease, opacity 0.45s ease;
+}
+
 .setup-accordion.open .setup-accordion-content {
     max-height: 3000px;
     opacity: 1;
+}
+
+.setup-accordion.open .setup-accordion-panel {
+    max-height: 3000px;
+    opacity: 1;
+}
+
+.access-view-card {
+    border: 1px solid rgba(142, 142, 147, 0.22);
+    background: rgba(142, 142, 147, 0.07);
+    border-radius: 14px;
+    padding: 12px;
+}
+
+.access-view-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.access-view-main {
+    min-width: 0;
+    flex: 1;
+}
+
+.access-view-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.access-view-value {
+    margin-top: 4px;
+    color: var(--link-color);
+    font-size: 13px;
+    line-height: 1.35;
+    word-break: break-all;
+}
+
+.access-view-actions {
+    flex-shrink: 0;
+}
+
+.access-edit-shell {
+    margin-top: 2px;
+}
+
+.access-edit-cancel {
+    width: 100%;
+    margin-top: 8px;
+    background-color: var(--secondary-bg-color);
+    color: var(--text-color);
+    border: 1px solid rgba(142, 142, 147, 0.2);
 }
 
 #email-tester-modal .email-tester-modal-content {

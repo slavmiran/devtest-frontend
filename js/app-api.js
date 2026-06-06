@@ -2507,8 +2507,16 @@ async function saveProjectEdit() {
     const name = document.getElementById('edit-name').value.trim();
     const instructions = document.getElementById('edit-description').value.trim();
     const iconUrl = document.getElementById('edit-icon').value.trim();
-    const editEmailMode = !!(window.editProjectFlow && window.editProjectFlow.emailMode);
-    const googleGroupUrl = editEmailMode ? '' : document.getElementById('edit-group').value.trim();
+    const accessPayload = (window.AccessSetupManager && typeof window.AccessSetupManager.getEditPayload === 'function')
+        ? window.AccessSetupManager.getEditPayload()
+        : null;
+    const accessMode = accessPayload ? String(accessPayload.mode || '') : '';
+    const fallbackEditEmailMode = !!(window.editProjectFlow && window.editProjectFlow.emailMode);
+    const fallbackGroupUrl = fallbackEditEmailMode ? '' : document.getElementById('edit-group').value.trim();
+    const editEmailMode = accessPayload ? (String(accessPayload.test_mode || '') === 'email_list') : fallbackEditEmailMode;
+    const googleGroupUrl = accessPayload
+        ? String(accessPayload.google_group_url || '').trim()
+        : fallbackGroupUrl;
     const targetLang = (document.getElementById('edit-target-lang').value || 'ALL').toUpperCase();
     const requestReviews = !!(document.getElementById('edit-request-reviews') && document.getElementById('edit-request-reviews').checked);
     const pricingPayload = buildProjectPricingPayload('edit');
@@ -2520,10 +2528,29 @@ async function saveProjectEdit() {
         return;
     }
 
+    if (accessPayload && !accessPayload.canSave) {
+        _saveProjectAlert(window.t('completeChecklistError', {}, lang));
+        if (typeof window.updateEditSaveButtonState === 'function') {
+            window.updateEditSaveButtonState();
+        }
+        return;
+    }
+
+    if (accessMode === 'custom_group' && !googleGroupUrl) {
+        _saveProjectAlert(window.t('customGroupRequired', {}, lang));
+        return;
+    }
+
     if (!editEmailMode && googleGroupUrl && !isValidGoogleGroupUrl(googleGroupUrl)) {
         handleApiError('invalid_google_group_url');
         return;
     }
+
+    const resolvedGoogleGroupUrl = editEmailMode
+        ? null
+        : (accessMode === 'custom_group'
+            ? googleGroupUrl
+            : (window.DEFAULT_GOOGLE_GROUP_URL || googleGroupUrl));
 
     const editBtn = document.getElementById('t-editSave');
     const originalText = editBtn.innerText;
@@ -2538,7 +2565,7 @@ async function saveProjectEdit() {
                 name,
                 instructions: instructions || null,
                 icon_url: iconUrl || null,
-                google_group_url: editEmailMode ? null : (googleGroupUrl || window.DEFAULT_GOOGLE_GROUP_URL),
+                google_group_url: resolvedGoogleGroupUrl,
                 test_mode: editEmailMode ? 'email_list' : 'google_group',
                 target_lang: targetLang,
                 request_reviews: requestReviews,
@@ -2568,6 +2595,9 @@ async function saveProjectEdit() {
     } finally {
         editBtn.innerText = originalText;
         editBtn.disabled = false;
+        if (typeof window.updateEditSaveButtonState === 'function') {
+            window.updateEditSaveButtonState();
+        }
     }
 }
 

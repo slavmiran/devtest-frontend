@@ -3909,15 +3909,19 @@ async function openDossierModal(username, testerId, appId) {
     testerProjects = testerProjects.map(function(item) {
         return Object.assign({}, item, { owner_username: tgName || '' });
     });
-    const activeOwnedProjects = testerProjects.filter((ownedProject) => {
+    const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
+    const relevantTesterProjects = reciprocalOwnedProjectId > 0
+        ? testerProjects.filter((ownedProject) => Number(ownedProject && ownedProject.app_id || 0) === reciprocalOwnedProjectId)
+        : testerProjects;
+    const activeOwnedProjects = relevantTesterProjects.filter((ownedProject) => {
         const status = String(ownedProject && ownedProject.status || 'active').toLowerCase();
         return status === 'active' || status === 'pending_completion';
     });
-    const completedOwnedProjects = testerProjects.filter((ownedProject) => {
+    const completedOwnedProjects = relevantTesterProjects.filter((ownedProject) => {
         const status = String(ownedProject && ownedProject.status || '').toLowerCase();
         return status === 'completed' || status === 'archived';
     });
-    _dossierProjectsCache[String(testerId)] = testerProjects;
+    _dossierProjectsCache[String(testerId)] = relevantTesterProjects;
     _dossierProfilesCache[String(testerId)] = profile;
 
     const reliabilityState = getDossierReliabilityState(profile);
