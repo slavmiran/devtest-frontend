@@ -147,7 +147,7 @@ function renderProjects(force) {
         return Math.floor(diffTime / (1000 * 60 * 60 * 24));
     }
 
-    myProjects.forEach((project) => {
+    myProjects.forEach((project, index) => {
         const card = document.createElement('div');
         const isInactive = !project.is_visible;
         const projectStatus = String(project.app_status || project.status || 'active').toLowerCase();
@@ -175,9 +175,8 @@ function renderProjects(force) {
         const pendingIssueTesters = (project.testers || []).filter((tester) => !!tester.issue_reported_at && !tester.issue_fixed_at);
         const hasAccessOverlay = project.status === 'access_error' && pendingIssueTesters.length > 0;
 
-        const isProjectActive = projectStatus === 'active' && project.is_visible && !isPendingCompletion;
         const collapsedVal = localStorage.getItem('project_card_collapsed_' + project.id);
-        const isCollapsed = collapsedVal !== null ? (collapsedVal === 'true') : !isProjectActive;
+        const isCollapsed = collapsedVal !== null ? (collapsedVal === 'true') : (index !== 0);
         if (isCollapsed) cardClass += ' card-collapsed';
 
         card.className = cardClass + (hasAccessOverlay ? ' card-access-error-locked' : '');
@@ -499,11 +498,28 @@ function renderProjects(force) {
             }
         });
 
+        const targetCheckins = project.expected_checkins || 12;
+        const percentage = Math.min((count_done / targetCheckins) * 100, 100);
+        const isOverachieved = count_done > targetCheckins;
+        const energyBarHtml = `
+            <div class="energy-bar-wrapper">
+                <div class="energy-bar-label">
+                    <span>${window.escapeHTML(window.t('dailyProgressLabel', {}, lang))}</span>
+                    <span>${count_done} / ${targetCheckins}</span>
+                </div>
+                <div class="energy-bar-container ${isOverachieved ? 'overachieved' : ''}">
+                    <div class="energy-bar-fill" style="width: ${percentage}%">
+                        <div class="energy-bar-shimmer"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+
         card.innerHTML = `
             <div class="card-header" onclick="toggleProjectSettingsDrawer(${project.id}, event)" style="cursor: pointer; user-select: none;">
                 <div class="project-avatar-container">
                     ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
-                    <div class="project-visibility-badge-overlay ${getProjectVisibilityMeta(project).mode}">
+                    <div class="project-visibility-badge-overlay ${getProjectVisibilityMeta(project).mode}" onclick="openVisibilityModeModal(${project.id}, event)">
                         ${getProjectVisibilityMeta(project).buttonIcon}
                     </div>
                 </div>
@@ -520,13 +536,12 @@ function renderProjects(force) {
                 <div class="drawer-item" onclick="openVisibilityModeModal(${project.id}, event)">
                     <div class="drawer-item-left">
                         <span class="drawer-item-icon">👁️</span>
-                        <span class="drawer-item-label">${window.escapeHTML(window.t('settingsVisibilityText', {}, lang))}</span>
+                        <span class="drawer-item-label">${window.escapeHTML(window.t('settingsVisibilityText', { mode: getProjectVisibilityMeta(project).label }, lang))}</span>
                     </div>
-                    <div class="drawer-item-right" onclick="event.stopPropagation();">
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${project.is_visible !== false ? 'checked' : ''} onchange="toggleProjectVisibility(${project.id}, this.checked)">
-                            <span class="toggle-slider"></span>
-                        </label>
+                    <div class="drawer-item-right">
+                        <span class="drawer-edit-btn" style="color: var(--link-color); font-size: 14px; font-weight: 500; cursor: pointer; padding: 4px 8px;">
+                            ${window.escapeHTML(window.t('changeBtnLabel', {}, lang))}
+                        </span>
                     </div>
                 </div>
                 <div class="drawer-item" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
@@ -550,46 +565,62 @@ function renderProjects(force) {
                 <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                     ${visibilityBadge}
                 </div>
+                ${energyBarHtml}
                 ${projectProgressHtml}
                 ${quotaSummaryHtml}
                 <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
-                <div class="card-collapsed-summary">
-                    ${window.escapeHTML(window.t('cardCollapsedSummary', { done: count_done, waiting: count_waiting }, lang))}
-                </div>
             </div>
             
             <!-- EXPANDED ZONE (Visible only when expanded) -->
             <div class="card-expanded-zone" id="expanded-${project.id}">
-                ${getProjectVisibilityMeta(project).hint ? `<div class="visibility-hint ${getProjectVisibilityMeta(project).mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(getProjectVisibilityMeta(project).hint)}</div>` : ''}
-                ${updateTipHtml}
-                ${overtimeBadgeHtml ? `<div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${overtimeBadgeHtml}</div>` : ''}
-                <div class="testers-section">
-                    <div class="testers-title">${t.testersList} (${allProjectTesters.length})${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(regularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
-                    ${testersHtml}
-                </div>
-                <div class="card-actions-grid">
-                    <button type="button" class="btn btn-primary card-action-full" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
-                        🚀 ${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}
-                    </button>
-                    <div class="card-action-half-row">
-                        <button type="button" class="btn btn-secondary card-action-half" style="${syncBtnStyle}" onclick="openSyncModal(${project.id}); event.stopPropagation();">
-                            <div class="sync-btn-content">
-                                <span class="sync-btn-title">${window.escapeHTML(window.t('syncBtnTitle', {}, lang))}</span>
-                                <span class="sync-btn-subtitle">${window.escapeHTML(syncSubtitle)}</span>
+                <div class="card-expanded-inner">
+                    ${getProjectVisibilityMeta(project).hint ? `<div class="visibility-hint ${getProjectVisibilityMeta(project).mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(getProjectVisibilityMeta(project).hint)}</div>` : ''}
+                    ${updateTipHtml}
+                    ${overtimeBadgeHtml ? `<div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${overtimeBadgeHtml}</div>` : ''}
+                    <div class="testers-section">
+                        <div class="testers-title-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <div class="testers-title">${t.testersList} (${allProjectTesters.length})${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(regularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
+                            <div class="energy-bar-mini-wrapper" style="width: 80px; flex-shrink: 0;" title="${count_done}/${targetCheckins}">
+                                <div class="energy-bar-container mini ${isOverachieved ? 'overachieved' : ''}">
+                                    <div class="energy-bar-fill" style="width: ${percentage}%">
+                                        <div class="energy-bar-shimmer"></div>
+                                    </div>
+                                </div>
                             </div>
-                        </button>
-                        ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22); flex: 1; margin-bottom: 0; min-height: 44px; display: flex; align-items: center; justify-content: center;')}
+                        </div>
+                        ${testersHtml}
                     </div>
-                    ${platformDays >= 12 ? `
-                        <button type="button" class="btn btn-archive-neon card-action-full" onclick="openDeleteModal(${project.id}); event.stopPropagation();">
-                            🗑️ ${window.escapeHTML(window.t('kebabArchive', {}, lang))}
+                    <div class="card-actions-grid">
+                        <button type="button" class="btn btn-primary card-action-full" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
+                            🚀 ${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}
                         </button>
-                    ` : ''}
+                        <div class="card-action-half-row">
+                            <button type="button" class="btn btn-secondary card-action-half" style="${syncBtnStyle}" onclick="openSyncModal(${project.id}); event.stopPropagation();">
+                                <div class="sync-btn-content">
+                                    <span class="sync-btn-title">${window.escapeHTML(window.t('syncBtnTitle', {}, lang))}</span>
+                                    <span class="sync-btn-subtitle">${window.escapeHTML(syncSubtitle)}</span>
+                                </div>
+                            </button>
+                            ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22); flex: 1; margin-bottom: 0; min-height: 44px; display: flex; align-items: center; justify-content: center;')}
+                        </div>
+                        ${platformDays >= 12 ? `
+                            <button type="button" class="btn btn-archive-neon card-action-full" onclick="openDeleteModal(${project.id}); event.stopPropagation();">
+                                🗑️ ${window.escapeHTML(window.t('kebabArchive', {}, lang))}
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
             </div>
             
             <div class="card-expand-bar" onclick="toggleProjectCard(${project.id}, event)">
-                <span class="card-expand-chevron">${isCollapsed ? '▼' : '▲'}</span>
+                <div class="card-expand-handle-line"></div>
+                <div class="card-expand-handle-circle">
+                    <span class="card-expand-chevron ${isCollapsed ? 'is-collapsed' : ''}">
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </div>
             </div>
             
             ${accessOverlayHtml}
@@ -2957,11 +2988,11 @@ function toggleProjectCard(projectId, event) {
     if (isCollapsed) {
         card.classList.remove('card-collapsed');
         localStorage.setItem('project_card_collapsed_' + projectId, 'false');
-        if (chevron) chevron.textContent = '▲';
+        if (chevron) chevron.classList.remove('is-collapsed');
     } else {
         card.classList.add('card-collapsed');
         localStorage.setItem('project_card_collapsed_' + projectId, 'true');
-        if (chevron) chevron.textContent = '▼';
+        if (chevron) chevron.classList.add('is-collapsed');
     }
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
@@ -3080,6 +3111,8 @@ function openAttractTestersSheet(projectId) {
     const massInviteMeta = getProjectMassInviteMeta(project);
     const guestCount = getGuestProjectsCount();
     const leadsCount = getLeadsRadarCount();
+    const testersList = Array.isArray(project.testers) ? project.testers : [];
+    const manualCount = testersList.filter(t => t.join_type === 'manual').length;
 
     content.innerHTML = `
         <!-- Item 1: Mass Invite -->
@@ -3125,7 +3158,10 @@ function openAttractTestersSheet(projectId) {
         <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openManualExternalAddModal(${projectId}, event);">
             <div class="attract-sheet-item-icon">➕</div>
             <div class="attract-sheet-item-info">
-                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractManualTitle', {}, lang))}</div>
+                <div class="attract-sheet-item-title-row">
+                    <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractManualTitle', {}, lang))}</div>
+                    <span class="attract-sheet-item-badge accent-blue">${window.escapeHTML(window.t('badgeManualAdded', { count: manualCount }, lang))}</span>
+                </div>
                 <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractManualSubtitle', {}, lang))}</div>
             </div>
             <span class="attract-sheet-item-chevron">›</span>
