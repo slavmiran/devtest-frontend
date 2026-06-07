@@ -169,6 +169,8 @@ function renderProjects(force) {
 
         const isOvertime = platformDays > 14;
         const needsSyncAttention = isPendingCompletion || (platformDays >= 7 && normalizedSyncDay < 1);
+        const hasNewFeedback = (project.feedback_new_count || 0) > 0;
+        const requiresAttention = needsSyncAttention || hasNewFeedback;
         let cardClass = isInactive ? 'card card-inactive' : 'card';
         if (isOvertime) cardClass += ' card-overtime';
         if (isPendingCompletion) cardClass += ' card-pending-release';
@@ -535,12 +537,19 @@ function renderProjects(force) {
             energyBarTopHtml = commonBarHtml('top-bar');
         }
 
+        const visibilityMeta = getProjectVisibilityMeta(project);
+        const visibilitySubText = (() => {
+            if (visibilityMeta.mode === 'isolated') return window.t('settingsVisibilityIsolated', {}, lang) || 'Полная изоляция';
+            if (visibilityMeta.mode === 'hidden_manual') return window.t('settingsVisibilityPrivate', {}, lang) || 'Скрыто из витрины';
+            return window.t('settingsVisibilityPublic', {}, lang) || 'Публичный';
+        })();
+
         card.innerHTML = `
             <div class="card-header" onclick="toggleProjectSettingsDrawer(${project.id}, event)" style="cursor: pointer; user-select: none;">
                 <div class="project-avatar-container">
                     ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
-                    <div class="project-visibility-badge-overlay ${getProjectVisibilityMeta(project).mode}" onclick="openVisibilityModeModal(${project.id}, event)">
-                        ${getProjectVisibilityMeta(project).buttonIcon}
+                    <div class="project-visibility-badge-overlay ${visibilityMeta.mode}" onclick="openVisibilityModeModal(${project.id}, event)">
+                        ${visibilityMeta.buttonIcon}
                     </div>
                 </div>
                 <div class="card-info">
@@ -556,18 +565,14 @@ function renderProjects(force) {
                 <div class="drawer-item" onclick="openVisibilityModeModal(${project.id}, event)" style="cursor: pointer;">
                     <div class="drawer-item-left">
                         <div class="drawer-item-icon-box visibility">
-                            <span>${getProjectVisibilityMeta(project).buttonIcon}</span>
+                            <span>${visibilityMeta.buttonIcon}</span>
                         </div>
                         <div class="drawer-item-text-group">
                             <span class="drawer-item-title">${window.escapeHTML(window.t('settingsVisibilityTitle', {}, lang))}</span>
-                            <span class="drawer-item-subtitle">${window.escapeHTML(getProjectVisibilityMeta(project).label)}</span>
+                            <span class="drawer-item-subtitle">${window.escapeHTML(visibilitySubText)}</span>
                         </div>
                     </div>
-                    <div class="drawer-item-right">
-                        <span class="drawer-edit-link">
-                            ${window.escapeHTML(window.t('changeBtnLabel', {}, lang))}
-                        </span>
-                    </div>
+                    <span class="drawer-chevron">›</span>
                 </div>
                 <div class="drawer-item" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);" style="cursor: pointer;">
                     <div class="drawer-item-left">
@@ -602,7 +607,7 @@ function renderProjects(force) {
             <!-- EXPANDED ZONE (Visible only when expanded) -->
             <div class="card-expanded-zone" id="expanded-${project.id}">
                 <div class="card-expanded-inner">
-                    ${getProjectVisibilityMeta(project).hint ? `<div class="visibility-hint ${getProjectVisibilityMeta(project).mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(getProjectVisibilityMeta(project).hint)}</div>` : ''}
+                    ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
                     ${updateTipHtml}
                     ${overtimeBadgeHtml ? `<div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${overtimeBadgeHtml}</div>` : ''}
                     <div class="testers-section">
@@ -643,6 +648,7 @@ function renderProjects(force) {
                             <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </span>
+                    ${requiresAttention ? `<div class="footer-notification-dot"></div>` : ''}
                 </div>
             </div>
             

@@ -71,7 +71,9 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     margin-bottom: 12px;
 }
 
-.card.card-inactive .card-header {
+.card.card-inactive .card-header .avatar,
+.card.card-inactive .card-header .card-info,
+.card.card-inactive .card-header .project-header-actions {
     opacity: 0.5;
     filter: grayscale(100%);
 }
@@ -7127,34 +7129,34 @@ html[dir="rtl"] .guest-filter-select {
     cursor: pointer;
 }
 .project-visibility-badge-overlay.isolated {
-    background: rgba(255, 59, 48, 0.95);
-    border-color: rgba(255, 59, 48, 0.5);
+    background: rgba(136, 19, 55, 0.95);
+    border-color: rgba(136, 19, 55, 0.5);
 }
 .project-visibility-badge-overlay.hidden_manual {
-    background: rgba(142, 142, 147, 0.95);
-    border-color: rgba(142, 142, 147, 0.5);
+    background: rgba(198, 86, 43, 0.95);
+    border-color: rgba(198, 86, 43, 0.5);
 }
 .project-visibility-badge-overlay.public {
-    background: rgba(52, 199, 89, 0.95);
-    border-color: rgba(52, 199, 89, 0.5);
+    background: rgba(16, 124, 65, 0.95);
+    border-color: rgba(16, 124, 65, 0.5);
 }
 
-/* iOS style Settings Drawer */
+/* Seamless iOS style Settings Drawer */
 .project-settings-drawer {
     max-height: 0;
     overflow: hidden;
     opacity: 0;
     transition: max-height 0.35s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease, margin-bottom 0.35s ease;
-    background: rgba(28, 28, 30, 0.85);
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: none;
+    border: none;
+    box-shadow: none;
     margin-bottom: 0;
 }
 .project-settings-drawer.active {
-    max-height: 220px;
+    max-height: 240px;
     opacity: 1;
     margin-bottom: 16px;
-    padding: 0;
+    padding-top: 4px;
 }
 .project-settings-drawer .drawer-item {
     display: flex;
@@ -7162,14 +7164,20 @@ html[dir="rtl"] .guest-filter-select {
     justify-content: space-between;
     padding: 12px 16px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    transition: background-color 0.2s ease, transform 0.15s ease;
 }
 .project-settings-drawer .drawer-item:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
 }
 .project-settings-drawer .drawer-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
+}
+.project-settings-drawer .drawer-item:active {
+    transform: scale(0.98);
 }
 .project-settings-drawer .drawer-item-left {
     display: flex;
@@ -7185,16 +7193,11 @@ html[dir="rtl"] .guest-filter-select {
     justify-content: center;
     font-size: 15px;
     flex-shrink: 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-}
-.project-settings-drawer .drawer-item-icon-box.visibility {
-    background: #007aff;
-}
-.project-settings-drawer .drawer-item-icon-box.edit {
-    background: #ff9500;
-}
-.project-settings-drawer .drawer-item-icon-box.danger {
-    background: #ff3b30;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 .project-settings-drawer .drawer-item-text-group {
     display: flex;
@@ -7210,17 +7213,6 @@ html[dir="rtl"] .guest-filter-select {
     font-size: 11px;
     color: var(--hint-color, #8e8e93);
     margin-top: 2px;
-}
-.project-settings-drawer .drawer-edit-link {
-    color: #30b0c7;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
-}
-.project-settings-drawer .drawer-edit-link:hover {
-    background: rgba(48, 176, 199, 0.15);
 }
 .project-settings-drawer .drawer-chevron {
     color: var(--hint-color, #8e8e93);
@@ -7337,7 +7329,26 @@ html[dir="rtl"] .guest-filter-select {
     margin-bottom: 14px;
 }
 .energy-bar-wrapper.bottom-bar {
-    padding: 0 16px;
+    padding: 0;
+}
+
+/* Footer Notification Dot style */
+.footer-notification-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #ff4757;
+    border: 1.5px solid #1c1c1e;
+    z-index: 3;
+    box-shadow: 0 0 6px rgba(255, 71, 87, 0.6);
+    transition: opacity 0.2s ease;
+}
+.card:not(.card-collapsed) .footer-notification-dot {
+    opacity: 0;
+    pointer-events: none;
 }
 .energy-bar-wrapper.top-bar {
     padding: 0;
