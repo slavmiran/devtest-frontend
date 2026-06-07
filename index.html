@@ -1431,6 +1431,17 @@
             <button class="popup-btn cancel" onclick="closeKarmaSelectPopup()" data-i18n="karmaSelectCancel">Отмена</button>
         </div>
     </div>
+    <!-- Attract Testers Bottom Sheet -->
+    <div id="attract-testers-sheet-overlay" class="attract-sheet-overlay" onclick="closeAttractTestersSheet(event)">
+        <div class="attract-sheet" onclick="event.stopPropagation()">
+            <div class="attract-sheet-header">
+                <span class="attract-sheet-title" data-i18n="attractTestersTitle">Привлечь тестеров</span>
+                <button type="button" class="attract-sheet-close" onclick="closeAttractTestersSheet()">✕</button>
+            </div>
+            <div class="attract-sheet-content" id="attract-testers-sheet-content"></div>
+        </div>
+    </div>
+
     <div id="google_translate_element" style="display:none;"></div>
     <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 </body>

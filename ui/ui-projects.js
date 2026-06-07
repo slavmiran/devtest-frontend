@@ -174,6 +174,12 @@ function renderProjects(force) {
         if (isPendingCompletion) cardClass += ' card-pending-release';
         const pendingIssueTesters = (project.testers || []).filter((tester) => !!tester.issue_reported_at && !tester.issue_fixed_at);
         const hasAccessOverlay = project.status === 'access_error' && pendingIssueTesters.length > 0;
+
+        const isProjectActive = projectStatus === 'active' && project.is_visible && !isPendingCompletion;
+        const collapsedVal = localStorage.getItem('project_card_collapsed_' + project.id);
+        const isCollapsed = collapsedVal !== null ? (collapsedVal === 'true') : !isProjectActive;
+        if (isCollapsed) cardClass += ' card-collapsed';
+
         card.className = cardClass + (hasAccessOverlay ? ' card-access-error-locked' : '');
         card.id = `project-card-${project.id}`;
         card.setAttribute('data-project-id', String(project.id));
@@ -393,12 +399,7 @@ function renderProjects(force) {
 
         const visibilityBadge = (() => {
             let badges = '';
-            const visibilityMeta = getProjectVisibilityMeta(project);
 
-            const statusChip = `<button type="button" class="meta-chip${visibilityMeta.chipClass}" onclick="openVisibilityModeModal(${project.id}, event)">${window.escapeHTML(visibilityMeta.label)}</button>`;
-            if (statusChip) badges += statusChip;
-
-            badges += buildProjectModeChip(project);
             badges += buildEmailTestModeChip(project);
 
             const runIterationChip = buildRunIterationChip(project);
@@ -457,13 +458,16 @@ function renderProjects(force) {
             const mutualCount = testers.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
             const bountyCount = testers.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
             if (project.mode === 'mutual' || project.mode === 'hybrid') {
-                chips.push(`<span class="meta-chip">${window.escapeHTML(window.t('mutualChipLabel', { current: mutualCount, target: project.limit_mutual || 0 }, lang))}</span>`);
+                chips.push(`<span class="card-summary-chip">${window.escapeHTML(window.t('mutualChipLabel', { current: mutualCount, target: project.limit_mutual || 0 }, lang))}</span>`);
             }
             if (project.mode === 'bounty' || project.mode === 'hybrid') {
-                chips.push(`<button type="button" class="meta-chip accent-purple" onclick="openContractEconomyModal(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('contractChipLabel', { current: bountyCount, target: project.limit_bounty || 0, price: formatUiAmount(project.bounty_per_tester || 0, 1) }, lang))}</button>`);
+                chips.push(`<span class="card-summary-chip accent-purple" style="cursor: pointer;" onclick="openContractEconomyModal(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('contractChipLabel', { current: bountyCount, target: project.limit_bounty || 0, price: formatUiAmount(project.bounty_per_tester || 0, 1) }, lang))}</span>`);
+            }
+            if (guestTesterCount > 0) {
+                chips.push(`<span class="card-summary-chip accent-blue">👽 ${window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang))}</span>`);
             }
             if (!chips.length) return '';
-            return `<div style="margin: 8px 0 10px; display: flex; gap: 6px; flex-wrap: wrap;">${chips.join('')}</div>`;
+            return `<div class="card-summary-chips" onclick="event.stopPropagation();">${chips.join('')}</div>`;
         })();
 
         const karmaBonusChipHtml = (() => {
@@ -487,39 +491,55 @@ function renderProjects(force) {
                 ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false)}`;
 
         card.innerHTML = `
-            <div class="card-header" style="margin-bottom: 8px;">
+            <div class="card-header" onclick="toggleProjectCard(${project.id}, event)" style="cursor: pointer; user-select: none;">
                 ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
                 <div class="card-info">
                     <div class="card-title notranslate">${safeProjectName}</div>
                     <div class="card-subtitle notranslate">${safeProjectPackage}</div>
                 </div>
                 <div class="project-header-actions">
-                    <button class="project-icon-btn" onclick="openEditModal(${project.id})">✏️</button>
-                    <button class="project-icon-btn ${getProjectVisibilityMeta(project).buttonClass}" onclick="openVisibilityModeModal(${project.id}, event)">${window.escapeHTML(getProjectVisibilityMeta(project).buttonIcon)}</button>
+                    <button class="project-icon-btn ${getProjectVisibilityMeta(project).buttonClass}" onclick="event.stopPropagation(); openVisibilityModeModal(${project.id}, event)">${window.escapeHTML(getProjectVisibilityMeta(project).buttonIcon)}</button>
+                    <button class="project-icon-btn" onclick="event.stopPropagation(); toggleProjectKebab(${project.id}, event)">⋮</button>
+                    <div id="project-kebab-${project.id}" class="project-kebab-dropdown" onclick="event.stopPropagation()">
+                        <button type="button" class="project-kebab-item" onclick="openEditModal(${project.id}); closeAllKebabs();">${window.escapeHTML(window.t('kebabEdit', {}, lang))}</button>
+                        <button type="button" class="project-kebab-item is-danger" onclick="openDeleteModal(${project.id}); closeAllKebabs();">${window.escapeHTML(window.t('kebabArchive', {}, lang))}</button>
+                    </div>
+                    <span class="project-collapse-chevron">▾</span>
                 </div>
             </div>
-            <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                ${visibilityBadge}
+            
+            <!-- COLLAPSED ZONE (Always visible) -->
+            <div class="card-collapsed-zone">
+                <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    ${visibilityBadge}
+                </div>
+                ${projectProgressHtml}
+                ${quotaSummaryHtml}
+                <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
             </div>
-            ${getProjectVisibilityMeta(project).hint ? `<div class="visibility-hint ${getProjectVisibilityMeta(project).mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(getProjectVisibilityMeta(project).hint)}</div>` : ''}
-            ${updateTipHtml}
-            ${overtimeBadgeHtml ? `<div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${overtimeBadgeHtml}</div>` : ''}
-            ${projectProgressHtml}
-            ${quotaSummaryHtml}
-            <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
-            <div class="testers-section">
-                <div class="testers-title">${t.testersList} (${allProjectTesters.length})${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(regularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
-                ${testersHtml}
-            </div>
-            <div style="margin-top: 16px;">
-                ${syncActionHtml}
-                <div class="action-row" style="margin-top: 10px;">
-                    <button class="btn ${project.published_to_market_at ? 'btn-secondary' : 'btn-primary'}" style="flex: 1; ${project.published_to_market_at ? 'background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);' : ''}" onclick="openInviteModal(${project.id})">
-                        ${project.published_to_market_at ? '🔗 ' + t.inviteLink : t.inviteLinkNextStep}
+            
+            <!-- EXPANDED ZONE (Visible only when expanded) -->
+            <div class="card-expanded-zone" id="expanded-${project.id}">
+                ${getProjectVisibilityMeta(project).hint ? `<div class="visibility-hint ${getProjectVisibilityMeta(project).mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(getProjectVisibilityMeta(project).hint)}</div>` : ''}
+                ${updateTipHtml}
+                ${overtimeBadgeHtml ? `<div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${overtimeBadgeHtml}</div>` : ''}
+                <div class="testers-section">
+                    <div class="testers-title">${t.testersList} (${allProjectTesters.length})${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(regularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
+                    ${testersHtml}
+                </div>
+                <div class="card-actions-grid">
+                    <button type="button" class="btn btn-primary card-action-full" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
+                        🚀 ${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}
                     </button>
-                    <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="openDeleteModal(${project.id})">
-                        🗑 ${t.deleteProject}
-                    </button>
+                    <div class="card-action-half-row">
+                        <button type="button" class="btn btn-secondary card-action-half" style="${syncBtnStyle}" onclick="openSyncModal(${project.id}); event.stopPropagation();">
+                            <div class="sync-btn-content">
+                                <span class="sync-btn-title">${window.escapeHTML(window.t('syncBtnTitle', {}, lang))}</span>
+                                <span class="sync-btn-subtitle">${window.escapeHTML(hasSync ? formatCompactSyncLabel(project) : t.syncBtnLong)}</span>
+                            </div>
+                        </button>
+                        ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22); flex: 1; margin-bottom: 0; min-height: 44px; display: flex; align-items: center; justify-content: center;')}
+                    </div>
                 </div>
             </div>
             ${accessOverlayHtml}
@@ -2904,6 +2924,142 @@ function closeProjectDetailsModal(event) {
     if (modal) {
         modal.dataset.appId = '';
         modal.classList.remove('active');
+    }
+}
+
+// --- Collapsible Cards & Kebab Dropdowns Helper Functions ---
+function toggleProjectCard(projectId, event) {
+    if (event) {
+        // Do not toggle collapse if clicking on visibility button, kebab button, or kebab dropdown items
+        if (event.target.closest('.project-icon-btn') || event.target.closest('.project-kebab-dropdown')) {
+            return;
+        }
+    }
+    const card = document.getElementById('project-card-' + projectId);
+    if (!card) return;
+    const isCollapsed = card.classList.contains('card-collapsed');
+    if (isCollapsed) {
+        card.classList.remove('card-collapsed');
+        localStorage.setItem('project_card_collapsed_' + projectId, 'false');
+    } else {
+        card.classList.add('card-collapsed');
+        localStorage.setItem('project_card_collapsed_' + projectId, 'true');
+    }
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+}
+
+function toggleProjectKebab(projectId, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const dropdown = document.getElementById('project-kebab-' + projectId);
+    if (!dropdown) return;
+    const isActive = dropdown.classList.contains('is-active');
+    closeAllKebabs();
+    if (!isActive) {
+        dropdown.classList.add('is-active');
+        setTimeout(() => {
+            document.addEventListener('click', closeAllKebabsOnOutsideClick);
+        }, 0);
+    }
+}
+
+function closeAllKebabs() {
+    document.querySelectorAll('.project-kebab-dropdown').forEach((el) => {
+        el.classList.remove('is-active');
+    });
+    document.removeEventListener('click', closeAllKebabsOnOutsideClick);
+}
+
+function closeAllKebabsOnOutsideClick(event) {
+    if (!event.target.closest('.project-kebab-dropdown') && !event.target.closest('.project-icon-btn')) {
+        closeAllKebabs();
+    }
+}
+
+// --- Attract Testers Bottom Sheet Helper Functions ---
+function openAttractTestersSheet(projectId) {
+    const project = myProjects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    const overlay = document.getElementById('attract-testers-sheet-overlay');
+    const content = document.getElementById('attract-testers-sheet-content');
+    if (!overlay || !content) return;
+
+    content.innerHTML = `
+        <!-- Item 1: Mass Invite -->
+        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); handleMassInviteAction(${projectId});">
+            <div class="attract-sheet-item-icon">📨</div>
+            <div class="attract-sheet-item-info">
+                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractMassInviteTitle', {}, lang))}</div>
+                <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractMassInviteSubtitle', {}, lang))}</div>
+            </div>
+            <span class="attract-sheet-item-chevron">›</span>
+        </div>
+
+        <!-- Item 2: Guest Projects -->
+        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openGuestProjectsTesterSearch(${projectId});">
+            <div class="attract-sheet-item-icon">👽</div>
+            <div class="attract-sheet-item-info">
+                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractGuestTitle', {}, lang))}</div>
+                <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractGuestSubtitle', {}, lang))}</div>
+            </div>
+            <span class="attract-sheet-item-chevron">›</span>
+        </div>
+
+        <!-- Item 3: Leads Radar -->
+        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); handleLeadsRadarAction();">
+            <div class="attract-sheet-item-icon">📡</div>
+            <div class="attract-sheet-item-info">
+                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractLeadsTitle', {}, lang))}</div>
+                <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractLeadsSubtitle', {}, lang))}</div>
+            </div>
+            <span class="attract-sheet-item-chevron">›</span>
+        </div>
+
+        <!-- Item 4: Add manually -->
+        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openManualExternalAddModal(${projectId}, event);">
+            <div class="attract-sheet-item-icon">➕</div>
+            <div class="attract-sheet-item-info">
+                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractManualTitle', {}, lang))}</div>
+                <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractManualSubtitle', {}, lang))}</div>
+            </div>
+            <span class="attract-sheet-item-chevron">›</span>
+        </div>
+
+        <!-- Item 5: Invites & Exchange -->
+        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openInviteModal(${projectId});">
+            <div class="attract-sheet-item-icon">🔗</div>
+            <div class="attract-sheet-item-info">
+                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractInviteTitle', {}, lang))}</div>
+                <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractInviteSubtitle', {}, lang))}</div>
+            </div>
+            <span class="attract-sheet-item-chevron">›</span>
+        </div>
+    `;
+
+    overlay.classList.add('is-active');
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+}
+
+function closeAttractTestersSheet(event) {
+    const overlay = document.getElementById('attract-testers-sheet-overlay');
+    if (!overlay) return;
+    if (event && event.target !== overlay) return;
+    overlay.classList.remove('is-active');
+}
+
+function handleLeadsRadarAction() {
+    if (window.tg) {
+        if (typeof window.tg.sendData === 'function') {
+            window.tg.sendData('/leads');
+            window.tg.close();
+        } else {
+            window.tg.close();
+        }
+    } else {
+        alert('Leads radar action (/leads) triggered.');
     }
 }
 
