@@ -7139,22 +7139,22 @@ html[dir="rtl"] .guest-filter-select {
     border-color: rgba(52, 199, 89, 0.5);
 }
 
-/* Settings Drawer styles */
+/* iOS style Settings Drawer */
 .project-settings-drawer {
     max-height: 0;
     overflow: hidden;
     opacity: 0;
-    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin-bottom 0.35s ease;
-    background: rgba(20, 20, 22, 0.95);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: max-height 0.35s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease, margin-bottom 0.35s ease;
+    background: rgba(28, 28, 30, 0.85);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     margin-bottom: 0;
 }
 .project-settings-drawer.active {
-    max-height: 180px;
+    max-height: 220px;
     opacity: 1;
-    margin-bottom: 12px;
-    padding: 4px 0;
+    margin-bottom: 16px;
+    padding: 0;
 }
 .project-settings-drawer .drawer-item {
     display: flex;
@@ -7162,9 +7162,8 @@ html[dir="rtl"] .guest-filter-select {
     justify-content: space-between;
     padding: 12px 16px;
     cursor: pointer;
-    font-size: 14px;
-    transition: background 0.2s ease;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .project-settings-drawer .drawer-item:last-child {
     border-bottom: none;
@@ -7175,30 +7174,60 @@ html[dir="rtl"] .guest-filter-select {
 .project-settings-drawer .drawer-item-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
-.project-settings-drawer .drawer-item-icon {
-    font-size: 16px;
-    width: 20px;
-    text-align: center;
+.project-settings-drawer .drawer-item-icon-box {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
-.project-settings-drawer .drawer-item-label {
-    color: var(--text-color);
+.project-settings-drawer .drawer-item-icon-box.visibility {
+    background: #007aff;
+}
+.project-settings-drawer .drawer-item-icon-box.edit {
+    background: #ff9500;
+}
+.project-settings-drawer .drawer-item-icon-box.danger {
+    background: #ff3b30;
+}
+.project-settings-drawer .drawer-item-text-group {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+.project-settings-drawer .drawer-item-title {
+    font-size: 14px;
     font-weight: 500;
+    color: var(--text-color, #ffffff);
 }
-.project-settings-drawer .drawer-item-value {
-    color: var(--hint-color);
+.project-settings-drawer .drawer-item-subtitle {
+    font-size: 11px;
+    color: var(--hint-color, #8e8e93);
+    margin-top: 2px;
+}
+.project-settings-drawer .drawer-edit-link {
+    color: #30b0c7;
     font-size: 13px;
-    margin-left: auto;
-    margin-right: 6px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+.project-settings-drawer .drawer-edit-link:hover {
+    background: rgba(48, 176, 199, 0.15);
 }
 .project-settings-drawer .drawer-chevron {
-    color: var(--hint-color);
+    color: var(--hint-color, #8e8e93);
     font-size: 16px;
     opacity: 0.6;
 }
-.project-settings-drawer .drawer-item.is-danger .drawer-item-label,
-.project-settings-drawer .drawer-item.is-danger .drawer-item-icon {
+.project-settings-drawer .drawer-item.is-danger .drawer-item-title {
     color: #ff3b30;
 }
 
@@ -7241,48 +7270,48 @@ html[dir="rtl"] .guest-filter-select {
     transform: translateX(20px);
 }
 
-/* Expand Tab / Bottom Expand Bar */
-.card-expand-bar {
-    width: 100%;
+/* Expand Tab / Bottom Card Footer */
+.card-footer {
+    width: calc(100% + 32px);
+    margin-left: -16px;
+    margin-right: -16px;
+    margin-bottom: -16px;
     margin-top: 12px;
-    height: 32px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
     position: relative;
+    cursor: pointer;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.01);
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    transition: background-color 0.2s ease;
     user-select: none;
 }
-.card-expand-handle-line {
-    position: absolute;
-    width: 40px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.15);
-    z-index: 1;
-    transition: background-color 0.2s ease;
-}
-.card-expand-bar:hover .card-expand-handle-line {
-    background: rgba(255, 255, 255, 0.25);
+.card-footer:hover {
+    background: rgba(255, 255, 255, 0.03);
 }
 .card-expand-handle-circle {
-    position: absolute;
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: rgba(28, 28, 30, 0.95);
+    background: #1c1c1e;
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
     z-index: 2;
-    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease;
 }
-.card-expand-bar:hover .card-expand-handle-circle {
-    background: rgba(38, 38, 40, 0.95);
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: scale(1.05);
+.card-footer:hover .card-expand-handle-circle {
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-50%) scale(1.08);
 }
 .card-expand-chevron {
     display: inline-flex;
@@ -7304,39 +7333,92 @@ html[dir="rtl"] .guest-filter-select {
 
 /* Energy Bar (daily progress) */
 .energy-bar-wrapper {
-    margin-top: 8px;
+    margin-top: 10px;
+    margin-bottom: 14px;
+}
+.energy-bar-wrapper.bottom-bar {
+    padding: 0 16px;
+}
+.energy-bar-wrapper.top-bar {
+    padding: 0;
+    margin-top: 4px;
     margin-bottom: 12px;
 }
+
+/* Toggle visibility: only one is shown depending on collapsed state */
+.card.card-collapsed .energy-bar-wrapper.bottom-bar {
+    display: block;
+}
+.card.card-collapsed .energy-bar-wrapper.top-bar {
+    display: none;
+}
+.card:not(.card-collapsed) .energy-bar-wrapper.bottom-bar {
+    display: none;
+}
+.card:not(.card-collapsed) .energy-bar-wrapper.top-bar {
+    display: block;
+}
+
 .energy-bar-label {
     display: flex;
     justify-content: space-between;
     font-size: 11px;
     color: var(--hint-color);
-    margin-bottom: 4px;
+    margin-bottom: 5px;
     font-weight: 500;
 }
+.energy-bar-value {
+    font-weight: 600;
+}
+.energy-bar-value.is-overcharged {
+    color: #ff9500;
+    text-shadow: 0 0 8px rgba(255, 149, 0, 0.5);
+    font-weight: 700;
+}
 .energy-bar-container {
-    height: 6px;
+    height: 7px;
     background: rgba(255, 255, 255, 0.08);
-    border-radius: 3px;
-    overflow: hidden;
+    border-radius: 3.5px;
+    overflow: visible; /* to allow glowing tip dot to spill over container boundary slightly */
     position: relative;
     width: 100%;
 }
 .energy-bar-container.mini {
-    height: 4px;
-    border-radius: 2px;
+    height: 5px;
+    border-radius: 2.5px;
 }
 .energy-bar-fill {
     height: 100%;
     border-radius: inherit;
     background: linear-gradient(90deg, #34c759, #30b0c7);
+    box-shadow: 0 0 10px rgba(52, 199, 89, 0.4);
     position: relative;
     transition: width 0.5s ease-out;
 }
 .energy-bar-container.overachieved .energy-bar-fill {
-    background: linear-gradient(90deg, #30b0c7, #af52de, #ff2d55);
-    box-shadow: 0 0 8px rgba(175, 82, 222, 0.6);
+    background: linear-gradient(90deg, #af52de, #ff9500, #ff2d55);
+    box-shadow: 0 0 16px rgba(255, 149, 0, 0.7), 0 0 24px rgba(255, 45, 85, 0.4);
+}
+.energy-bar-fill::after {
+    content: '';
+    position: absolute;
+    right: -3.5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.8), 0 0 16px currentColor;
+    animation: energy-pulse-glow 1.5s infinite alternate;
+}
+@keyframes energy-pulse-glow {
+    0% {
+        box-shadow: 0 0 6px rgba(255, 255, 255, 0.8), 0 0 10px currentColor;
+    }
+    100% {
+        box-shadow: 0 0 14px rgba(255, 255, 255, 1), 0 0 24px currentColor;
+    }
 }
 .energy-bar-shimmer {
     position: absolute;
@@ -7352,6 +7434,8 @@ html[dir="rtl"] .guest-filter-select {
     );
     background-size: 200% 100%;
     animation: energy-shimmer 6s linear infinite;
+    border-radius: inherit;
+    overflow: hidden;
 }
 @keyframes energy-shimmer {
     0% {

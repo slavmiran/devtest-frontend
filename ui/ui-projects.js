@@ -498,22 +498,42 @@ function renderProjects(force) {
             }
         });
 
-        const targetCheckins = project.expected_checkins || 12;
-        const percentage = Math.min((count_done / targetCheckins) * 100, 100);
-        const isOverachieved = count_done > targetCheckins;
-        const energyBarHtml = `
-            <div class="energy-bar-wrapper">
-                <div class="energy-bar-label">
-                    <span>${window.escapeHTML(window.t('dailyProgressLabel', {}, lang))}</span>
-                    <span>${count_done} / ${targetCheckins}</span>
-                </div>
-                <div class="energy-bar-container ${isOverachieved ? 'overachieved' : ''}">
-                    <div class="energy-bar-fill" style="width: ${percentage}%">
-                        <div class="energy-bar-shimmer"></div>
+        const totalTesters = allProjectTesters.length;
+        const targetCheckins = Math.min(totalTesters, 12);
+        const hasEnergyBar = totalTesters > 0;
+        
+        let energyBarBottomHtml = '';
+        let energyBarTopHtml = '';
+        
+        if (hasEnergyBar) {
+            const percentage = targetCheckins > 0 ? (count_done / targetCheckins) * 100 : 0;
+            const displayPercentage = Math.round(percentage);
+            const barWidthPercentage = Math.min(percentage, 100);
+            const isOverachieved = percentage > 100;
+            
+            let percentText = `${displayPercentage}%`;
+            if (isOverachieved) {
+                const overchargeLabel = lang === 'ru' ? '⚡ Перевыполнение' : '⚡ Overcharge';
+                percentText = `${overchargeLabel} ${displayPercentage}%!`;
+            }
+            
+            const commonBarHtml = (className) => `
+                <div class="energy-bar-wrapper ${className}">
+                    <div class="energy-bar-label">
+                        <span>${window.escapeHTML(window.t('dailyProgressLabel', {}, lang))}</span>
+                        <span class="energy-bar-value ${isOverachieved ? 'is-overcharged' : ''}">${window.escapeHTML(percentText)}</span>
+                    </div>
+                    <div class="energy-bar-container ${isOverachieved ? 'overachieved' : ''}">
+                        <div class="energy-bar-fill" style="width: ${barWidthPercentage}%">
+                            <div class="energy-bar-shimmer"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+            
+            energyBarBottomHtml = commonBarHtml('bottom-bar');
+            energyBarTopHtml = commonBarHtml('top-bar');
+        }
 
         card.innerHTML = `
             <div class="card-header" onclick="toggleProjectSettingsDrawer(${project.id}, event)" style="cursor: pointer; user-select: none;">
@@ -533,28 +553,37 @@ function renderProjects(force) {
             </div>
             
             <div id="settings-drawer-${project.id}" class="project-settings-drawer" onclick="event.stopPropagation();">
-                <div class="drawer-item" onclick="openVisibilityModeModal(${project.id}, event)">
+                <div class="drawer-item" onclick="openVisibilityModeModal(${project.id}, event)" style="cursor: pointer;">
                     <div class="drawer-item-left">
-                        <span class="drawer-item-icon">👁️</span>
-                        <span class="drawer-item-label">${window.escapeHTML(window.t('settingsVisibilityText', { mode: getProjectVisibilityMeta(project).label }, lang))}</span>
+                        <div class="drawer-item-icon-box visibility">
+                            <span>${getProjectVisibilityMeta(project).buttonIcon}</span>
+                        </div>
+                        <div class="drawer-item-text-group">
+                            <span class="drawer-item-title">${window.escapeHTML(window.t('settingsVisibilityTitle', {}, lang))}</span>
+                            <span class="drawer-item-subtitle">${window.escapeHTML(getProjectVisibilityMeta(project).label)}</span>
+                        </div>
                     </div>
                     <div class="drawer-item-right">
-                        <span class="drawer-edit-btn" style="color: var(--link-color); font-size: 14px; font-weight: 500; cursor: pointer; padding: 4px 8px;">
+                        <span class="drawer-edit-link">
                             ${window.escapeHTML(window.t('changeBtnLabel', {}, lang))}
                         </span>
                     </div>
                 </div>
-                <div class="drawer-item" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
+                <div class="drawer-item" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);" style="cursor: pointer;">
                     <div class="drawer-item-left">
-                        <span class="drawer-item-icon">✏️</span>
-                        <span class="drawer-item-label">${window.escapeHTML(window.t('kebabEdit', {}, lang))}</span>
+                        <div class="drawer-item-icon-box edit">
+                            <span>✏️</span>
+                        </div>
+                        <span class="drawer-item-title">${window.escapeHTML(window.t('kebabEdit', {}, lang))}</span>
                     </div>
                     <span class="drawer-chevron">›</span>
                 </div>
-                <div class="drawer-item is-danger" onclick="openDeleteModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
+                <div class="drawer-item is-danger" onclick="openDeleteModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);" style="cursor: pointer;">
                     <div class="drawer-item-left">
-                        <span class="drawer-item-icon">🗑️</span>
-                        <span class="drawer-item-label">${window.escapeHTML(window.t('kebabArchive', {}, lang))}</span>
+                        <div class="drawer-item-icon-box danger">
+                            <span>🗑️</span>
+                        </div>
+                        <span class="drawer-item-title">${window.escapeHTML(window.t('kebabArchive', {}, lang))}</span>
                     </div>
                     <span class="drawer-chevron">›</span>
                 </div>
@@ -565,7 +594,6 @@ function renderProjects(force) {
                 <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                     ${visibilityBadge}
                 </div>
-                ${energyBarHtml}
                 ${projectProgressHtml}
                 ${quotaSummaryHtml}
                 <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
@@ -580,14 +608,8 @@ function renderProjects(force) {
                     <div class="testers-section">
                         <div class="testers-title-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                             <div class="testers-title">${t.testersList} (${allProjectTesters.length})${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(regularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
-                            <div class="energy-bar-mini-wrapper" style="width: 80px; flex-shrink: 0;" title="${count_done}/${targetCheckins}">
-                                <div class="energy-bar-container mini ${isOverachieved ? 'overachieved' : ''}">
-                                    <div class="energy-bar-fill" style="width: ${percentage}%">
-                                        <div class="energy-bar-shimmer"></div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
+                        ${energyBarTopHtml}
                         ${testersHtml}
                     </div>
                     <div class="card-actions-grid">
@@ -612,8 +634,9 @@ function renderProjects(force) {
                 </div>
             </div>
             
-            <div class="card-expand-bar" onclick="toggleProjectCard(${project.id}, event)">
-                <div class="card-expand-handle-line"></div>
+            ${energyBarBottomHtml}
+            
+            <div class="card-footer" onclick="toggleProjectCard(${project.id}, event)">
                 <div class="card-expand-handle-circle">
                     <span class="card-expand-chevron ${isCollapsed ? 'is-collapsed' : ''}">
                         <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
