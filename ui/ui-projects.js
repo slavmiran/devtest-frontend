@@ -198,14 +198,6 @@ function renderProjects(force) {
         const guestTesterCount = Math.max(Number(project.guest_testers_count || 0), guestTesters.length);
 
         let testersHtml = '';
-        const testerActionsCtaHtml = `
-            <li class="tester-list-cta-actions-item" onclick="event.stopPropagation();">
-                <div class="tester-cta-actions">
-                    <button type="button" class="btn tester-cta-action-btn" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); openGuestProjectsTesterSearch(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('projectFindTestersCta', {}, lang))}</button>
-                    <button type="button" class="btn tester-cta-action-btn" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); openManualExternalAddModal(${project.id}, event); event.stopPropagation();">${window.escapeHTML(window.t('projectManualExternalCta', {}, lang))}</button>
-                </div>
-            </li>
-        `;
         let testerRowsHtml = '';
         if (regularTesters.length > 0) {
             regularTesters.forEach((tester) => {
@@ -344,9 +336,9 @@ function renderProjects(force) {
         }
 
         if (testerRowsHtml) {
-            testersHtml = `<ul class="tester-list">${testerRowsHtml}${testerActionsCtaHtml}</ul>`;
+            testersHtml = `<ul class="tester-list">${testerRowsHtml}</ul>`;
         } else {
-            testersHtml = `<p class="no-testers">${t.noTesters}</p><ul class="tester-list tester-list-cta-only">${testerActionsCtaHtml}</ul>`;
+            testersHtml = `<p class="no-testers">${t.noTesters}</p>`;
         }
 
         const pendingIssueProgressIds = pendingIssueTesters
@@ -418,10 +410,6 @@ function renderProjects(force) {
                 badges += `<button class="meta-chip accent-red" onclick="showPendingReleaseInfo()">${window.escapeHTML(window.t('pendingReleaseChip', {}, lang))}</button>`;
             }
 
-            if (guestTesterCount > 0) {
-                badges += `<button class="meta-chip accent-blue" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('projectGuestCountToast', { count: guestTesterCount }, lang))}')">👽 ${window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang))}</button>`;
-            }
-
             return badges;
         })();
 
@@ -480,31 +468,80 @@ function renderProjects(force) {
         const syncBtnStyle = needsSyncAttention
             ? 'flex: 1; background-color: rgba(255, 149, 0, 0.2); color: #ff9500; border: 1px solid rgba(255, 149, 0, 0.4); animation: pulse-attention 2s infinite;'
             : 'flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);';
-        const syncActionHtml = hasSync
-            ? `<div class="action-row" style="margin-top: 0; margin-bottom: 10px;">
-                <button class="btn btn-secondary" style="${syncBtnStyle}" onclick="openSyncModal(${project.id})">${window.escapeHTML(formatCompactSyncLabel(project))}</button>
-                    ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'flex: 1; margin-bottom: 0; background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22);')}
-                </div>`
-            : `<button class="btn btn-secondary" style="width: 100%; margin-bottom: 10px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="openSyncModal(${project.id})">
-                    ${t.syncBtnLong}
-                </button>
-                ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false)}`;
+        
+        const syncSubtitle = (() => {
+            if (!hasSync) {
+                return window.t('syncSubtitleConsole', {}, lang) || 'Play Console';
+            }
+            const daysAgo = project.last_sync_date ? getDayDiffFromToday(project.last_sync_date) : 0;
+            if (daysAgo === 0) {
+                return window.t('syncSubtitleToday', {}, lang) || 'Synced today';
+            }
+            return window.t('syncSubtitleDaysAgo', { days: daysAgo }, lang) || `Synced ${daysAgo} d. ago`;
+        })();
+
+        let count_done = 0;
+        let count_waiting = 0;
+        allProjectTesters.forEach((tester) => {
+            if (tester.is_guest_tester || tester.is_external) {
+                var controlMeta = getExternalTesterControlMeta(tester);
+                if (controlMeta.tone === 'green') {
+                    count_done++;
+                } else {
+                    count_waiting++;
+                }
+            } else {
+                if (tester.last_check_date === today) {
+                    count_done++;
+                } else {
+                    count_waiting++;
+                }
+            }
+        });
 
         card.innerHTML = `
-            <div class="card-header" onclick="toggleProjectCard(${project.id}, event)" style="cursor: pointer; user-select: none;">
-                ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
+            <div class="card-header" onclick="toggleProjectSettingsDrawer(${project.id}, event)" style="cursor: pointer; user-select: none;">
+                <div class="project-avatar-container">
+                    ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
+                    <div class="project-visibility-badge-overlay ${getProjectVisibilityMeta(project).mode}">
+                        ${getProjectVisibilityMeta(project).buttonIcon}
+                    </div>
+                </div>
                 <div class="card-info">
                     <div class="card-title notranslate">${safeProjectName}</div>
                     <div class="card-subtitle notranslate">${safeProjectPackage}</div>
                 </div>
                 <div class="project-header-actions">
-                    <button class="project-icon-btn ${getProjectVisibilityMeta(project).buttonClass}" onclick="event.stopPropagation(); openVisibilityModeModal(${project.id}, event)">${window.escapeHTML(getProjectVisibilityMeta(project).buttonIcon)}</button>
-                    <button class="project-icon-btn" onclick="event.stopPropagation(); toggleProjectKebab(${project.id}, event)">⋮</button>
-                    <div id="project-kebab-${project.id}" class="project-kebab-dropdown" onclick="event.stopPropagation()">
-                        <button type="button" class="project-kebab-item" onclick="openEditModal(${project.id}); closeAllKebabs();">${window.escapeHTML(window.t('kebabEdit', {}, lang))}</button>
-                        <button type="button" class="project-kebab-item is-danger" onclick="openDeleteModal(${project.id}); closeAllKebabs();">${window.escapeHTML(window.t('kebabArchive', {}, lang))}</button>
+                    <button type="button" class="project-icon-btn" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">⚙️</button>
+                </div>
+            </div>
+            
+            <div id="settings-drawer-${project.id}" class="project-settings-drawer" onclick="event.stopPropagation();">
+                <div class="drawer-item" onclick="openVisibilityModeModal(${project.id}, event)">
+                    <div class="drawer-item-left">
+                        <span class="drawer-item-icon">👁️</span>
+                        <span class="drawer-item-label">${window.escapeHTML(window.t('settingsVisibilityText', {}, lang))}</span>
                     </div>
-                    <span class="project-collapse-chevron">▾</span>
+                    <div class="drawer-item-right" onclick="event.stopPropagation();">
+                        <label class="toggle-switch">
+                            <input type="checkbox" ${project.is_visible !== false ? 'checked' : ''} onchange="toggleProjectVisibility(${project.id}, this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="drawer-item" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
+                    <div class="drawer-item-left">
+                        <span class="drawer-item-icon">✏️</span>
+                        <span class="drawer-item-label">${window.escapeHTML(window.t('kebabEdit', {}, lang))}</span>
+                    </div>
+                    <span class="drawer-chevron">›</span>
+                </div>
+                <div class="drawer-item is-danger" onclick="openDeleteModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
+                    <div class="drawer-item-left">
+                        <span class="drawer-item-icon">🗑️</span>
+                        <span class="drawer-item-label">${window.escapeHTML(window.t('kebabArchive', {}, lang))}</span>
+                    </div>
+                    <span class="drawer-chevron">›</span>
                 </div>
             </div>
             
@@ -516,6 +553,9 @@ function renderProjects(force) {
                 ${projectProgressHtml}
                 ${quotaSummaryHtml}
                 <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
+                <div class="card-collapsed-summary">
+                    ${window.escapeHTML(window.t('cardCollapsedSummary', { done: count_done, waiting: count_waiting }, lang))}
+                </div>
             </div>
             
             <!-- EXPANDED ZONE (Visible only when expanded) -->
@@ -535,13 +575,23 @@ function renderProjects(force) {
                         <button type="button" class="btn btn-secondary card-action-half" style="${syncBtnStyle}" onclick="openSyncModal(${project.id}); event.stopPropagation();">
                             <div class="sync-btn-content">
                                 <span class="sync-btn-title">${window.escapeHTML(window.t('syncBtnTitle', {}, lang))}</span>
-                                <span class="sync-btn-subtitle">${window.escapeHTML(hasSync ? formatCompactSyncLabel(project) : t.syncBtnLong)}</span>
+                                <span class="sync-btn-subtitle">${window.escapeHTML(syncSubtitle)}</span>
                             </div>
                         </button>
                         ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22); flex: 1; margin-bottom: 0; min-height: 44px; display: flex; align-items: center; justify-content: center;')}
                     </div>
+                    ${platformDays >= 12 ? `
+                        <button type="button" class="btn btn-archive-neon card-action-full" onclick="openDeleteModal(${project.id}); event.stopPropagation();">
+                            🗑️ ${window.escapeHTML(window.t('kebabArchive', {}, lang))}
+                        </button>
+                    ` : ''}
                 </div>
             </div>
+            
+            <div class="card-expand-bar" onclick="toggleProjectCard(${project.id}, event)">
+                <span class="card-expand-chevron">${isCollapsed ? '▼' : '▲'}</span>
+            </div>
+            
             ${accessOverlayHtml}
         `;
         container.appendChild(card);
@@ -1207,7 +1257,6 @@ function openInviteModal(projectId) {
     const visibilityMeta = getProjectVisibilityMeta(project);
     const isIsolated = visibilityMeta.mode === 'isolated';
     const isPublished = true;
-    const massInviteMeta = getProjectMassInviteMeta(project);
 
     const inviteBotUsername = String((window.App && window.App.botUsername) || window.__BOT_USERNAME__ || 'Android12TestersBot').trim().replace(/^@+/, '');
     const buildInviteLink = (mode) => `https://t.me/${inviteBotUsername}?start=${mode === 'mutual' ? 'mutual' : 'app'}_${project.id}`;
@@ -1232,33 +1281,6 @@ function openInviteModal(projectId) {
         }
         return `<button class="btn" style="${baseStyle}" onclick="copyAndAction('${escapeForAttr(text)}', 'saved')">${window.escapeHTML(label)}</button>`;
     };
-    const massInviteButtonLabel = isIsolated
-        ? window.t('inviteIsolationDisabledBtn', {}, lang)
-        : (massInviteMeta.isAvailable
-        ? window.t('massInviteLaunchBtn', {}, lang)
-        : window.t('massInviteUnavailableBtn', {}, lang));
-    const massInviteLimitHintHtml = !isIsolated && massInviteMeta.isAvailable
-        ? `<div class="mass-invite-hint" style="text-align:center;">${window.escapeHTML(window.t('massInviteLimitHint', { count: massInviteMeta.maxRecipients }, lang))}</div>`
-        : '';
-    const massInviteCooldownHtml = isIsolated
-        ? `<div class="mass-invite-hint">${window.escapeHTML(window.t('inviteIsolationMassInviteHint', {}, lang))}</div>`
-        : (massInviteMeta.isCooldownActive
-        ? `<div class="mass-invite-subhint">${window.escapeHTML(window.t('massInviteCooldownRemaining', { time: formatMassInviteRemaining(massInviteMeta.remainingMs) }, lang))}</div>
-           <div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteResetCostHint', {}, lang))}</div>
-           <div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteCooldownManualHint', {}, lang))}</div>`
-        : (!massInviteMeta.isAvailable
-            ? `<div class="mass-invite-hint">${window.escapeHTML(window.t('massInviteUnavailableNote', {}, lang))}</div>`
-            : ''));
-    const massInviteButtonClass = isIsolated
-        ? 'btn btn-secondary mass-invite-btn is-disabled'
-        : (massInviteMeta.isCooldownActive
-        ? 'btn mass-invite-btn is-locked'
-        : massInviteMeta.isAvailable
-            ? 'btn btn-primary mass-invite-btn'
-            : 'btn btn-secondary mass-invite-btn is-disabled');
-    const massInviteButtonAttrs = !isIsolated && (massInviteMeta.isCooldownActive || massInviteMeta.isAvailable)
-        ? `onclick="handleMassInviteAction(${project.id})"`
-        : 'disabled';
 
     const cardStyle = 'background: var(--secondary-bg-color); border-radius: 12px; padding: 14px; margin-bottom: 12px;';
     const titleStyle = 'font-size: 15px; font-weight: 600; margin-bottom: 10px;';
@@ -1284,13 +1306,6 @@ function openInviteModal(projectId) {
                 <button class="btn" id="invite-publish-btn" style="flex:1; background: rgba(52,199,89,0.15); color: #34c759;" disabled>${window.escapeHTML(t.invitePublishedBtn)}</button>
                 ${buildCopyButtonHtml(block1Text)}
             </div>
-        </div>
-        <div class="mass-invite-card">
-            <div class="mass-invite-title">${window.escapeHTML(window.t('massInviteBlockTitle', {}, lang))}</div>
-            <div class="mass-invite-desc">${window.escapeHTML(window.t('massInviteBlockDesc', {}, lang))}</div>
-            <button id="mass-invite-btn" class="${massInviteButtonClass}" style="width: 100%;" ${massInviteButtonAttrs}>${window.escapeHTML(massInviteButtonLabel)}</button>
-            ${massInviteLimitHintHtml}
-            ${massInviteCooldownHtml}
         </div>
         <div style="display:flex;gap:8px;margin:12px 0 10px;">
             <button class="btn ${mutualTabActive ? 'btn-primary' : ''}" style="flex:1; ${mutualTabActive ? '' : 'background: var(--secondary-bg-color); color: var(--text-color);'}" onclick="window.setInviteMode('mutual')">${window.escapeHTML(window.t('inviteModeMutualTab', {}, lang))}</button>
@@ -2930,53 +2945,128 @@ function closeProjectDetailsModal(event) {
 // --- Collapsible Cards & Kebab Dropdowns Helper Functions ---
 function toggleProjectCard(projectId, event) {
     if (event) {
-        // Do not toggle collapse if clicking on visibility button, kebab button, or kebab dropdown items
-        if (event.target.closest('.project-icon-btn') || event.target.closest('.project-kebab-dropdown')) {
-            return;
-        }
+        event.stopPropagation();
     }
     const card = document.getElementById('project-card-' + projectId);
     if (!card) return;
     const isCollapsed = card.classList.contains('card-collapsed');
+    
+    // Find the expand bar chevron inside this card
+    const chevron = card.querySelector('.card-expand-chevron');
+    
     if (isCollapsed) {
         card.classList.remove('card-collapsed');
         localStorage.setItem('project_card_collapsed_' + projectId, 'false');
+        if (chevron) chevron.textContent = '▲';
     } else {
         card.classList.add('card-collapsed');
         localStorage.setItem('project_card_collapsed_' + projectId, 'true');
+        if (chevron) chevron.textContent = '▼';
     }
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
 
-function toggleProjectKebab(projectId, event) {
+function toggleProjectSettingsDrawer(projectId, event) {
     if (event) {
         event.stopPropagation();
         event.preventDefault();
     }
-    const dropdown = document.getElementById('project-kebab-' + projectId);
-    if (!dropdown) return;
-    const isActive = dropdown.classList.contains('is-active');
-    closeAllKebabs();
-    if (!isActive) {
-        dropdown.classList.add('is-active');
-        setTimeout(() => {
-            document.addEventListener('click', closeAllKebabsOnOutsideClick);
-        }, 0);
-    }
-}
-
-function closeAllKebabs() {
-    document.querySelectorAll('.project-kebab-dropdown').forEach((el) => {
-        el.classList.remove('is-active');
+    const drawer = document.getElementById('settings-drawer-' + projectId);
+    if (!drawer) return;
+    const isActive = drawer.classList.contains('active');
+    
+    // Close all settings drawers first
+    document.querySelectorAll('.project-settings-drawer').forEach((el) => {
+        el.classList.remove('active');
     });
-    document.removeEventListener('click', closeAllKebabsOnOutsideClick);
-}
-
-function closeAllKebabsOnOutsideClick(event) {
-    if (!event.target.closest('.project-kebab-dropdown') && !event.target.closest('.project-icon-btn')) {
-        closeAllKebabs();
+    
+    if (!isActive) {
+        drawer.classList.add('active');
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+        setTimeout(() => {
+            document.addEventListener('click', closeAllDrawersOnOutsideClick);
+        }, 0);
+    } else {
+        document.removeEventListener('click', closeAllDrawersOnOutsideClick);
     }
 }
+
+function closeAllSettingsDrawers() {
+    document.querySelectorAll('.project-settings-drawer').forEach((el) => {
+        el.classList.remove('active');
+    });
+    document.removeEventListener('click', closeAllDrawersOnOutsideClick);
+}
+
+function closeAllDrawersOnOutsideClick(event) {
+    if (!event.target.closest('.project-settings-drawer') && !event.target.closest('.project-icon-btn') && !event.target.closest('.card-header')) {
+        closeAllSettingsDrawers();
+    }
+}
+
+async function toggleProjectVisibility(projectId, isChecked) {
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    const mode = isChecked ? 'public' : 'hidden_manual';
+    try {
+        if (typeof window.setProjectVisibilityMode === 'function') {
+            const result = await window.setProjectVisibilityMode(projectId, mode);
+            if (result) {
+                showToast(window.t('visibilityModeSaved', {}, lang));
+                
+                // Update project visibility indicator badge overlay on avatar
+                const card = document.getElementById('project-card-' + projectId);
+                if (card) {
+                    const overlay = card.querySelector('.project-visibility-badge-overlay');
+                    if (overlay) {
+                        const project = myProjects.find(p => p.id === projectId);
+                        if (project) {
+                            project.is_visible = isChecked;
+                            const meta = getProjectVisibilityMeta(project);
+                            overlay.className = 'project-visibility-badge-overlay ' + meta.mode;
+                            overlay.textContent = meta.buttonIcon;
+                            
+                            // Dim or undim the card
+                            if (isChecked) {
+                                card.classList.remove('card-inactive');
+                            } else {
+                                card.classList.add('card-inactive');
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error toggling visibility');
+    }
+}
+
+function getGuestProjectsCount() {
+    if (typeof _externalCounts !== 'undefined' && _externalCounts && typeof _externalCounts.guest_projects_count !== 'undefined') {
+        return Math.max(0, Number(_externalCounts.guest_projects_count));
+    }
+    return 0;
+}
+
+function getLeadsRadarCount() {
+    var candidates = [
+        window.__guestTestsLeadsCount,
+        typeof _externalCounts !== 'undefined' && _externalCounts && _externalCounts.leads_count,
+        window.visibilityStats && window.visibilityStats.leads_count,
+        window.visibilityStats && window.visibilityStats.raw_leads_count,
+    ];
+    for (var i = 0; i < candidates.length; i++) {
+        var parsed = Number(candidates[i]);
+        if (Number.isFinite(parsed) && parsed > 0) {
+            return parsed;
+        }
+    }
+    return 0;
+}
+
+window.toggleProjectVisibility = toggleProjectVisibility;
+window.toggleProjectSettingsDrawer = toggleProjectSettingsDrawer;
 
 // --- Attract Testers Bottom Sheet Helper Functions ---
 function openAttractTestersSheet(projectId) {
@@ -2987,12 +3077,19 @@ function openAttractTestersSheet(projectId) {
     const content = document.getElementById('attract-testers-sheet-content');
     if (!overlay || !content) return;
 
+    const massInviteMeta = getProjectMassInviteMeta(project);
+    const guestCount = getGuestProjectsCount();
+    const leadsCount = getLeadsRadarCount();
+
     content.innerHTML = `
         <!-- Item 1: Mass Invite -->
-        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); handleMassInviteAction(${projectId});">
+        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openMassInviteModal(${projectId});">
             <div class="attract-sheet-item-icon">📨</div>
             <div class="attract-sheet-item-info">
-                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractMassInviteTitle', {}, lang))}</div>
+                <div class="attract-sheet-item-title-row">
+                    <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractMassInviteTitle', {}, lang))}</div>
+                    <span class="attract-sheet-item-badge accent-green">${window.escapeHTML(window.t('badgeAvailable', { count: massInviteMeta.maxRecipients }, lang))}</span>
+                </div>
                 <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractMassInviteSubtitle', {}, lang))}</div>
             </div>
             <span class="attract-sheet-item-chevron">›</span>
@@ -3002,7 +3099,10 @@ function openAttractTestersSheet(projectId) {
         <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openGuestProjectsTesterSearch(${projectId});">
             <div class="attract-sheet-item-icon">👽</div>
             <div class="attract-sheet-item-info">
-                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractGuestTitle', {}, lang))}</div>
+                <div class="attract-sheet-item-title-row">
+                    <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractGuestTitle', {}, lang))}</div>
+                    <span class="attract-sheet-item-badge accent-blue">${window.escapeHTML(window.t('badgeWaiting', { count: guestCount }, lang))}</span>
+                </div>
                 <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractGuestSubtitle', {}, lang))}</div>
             </div>
             <span class="attract-sheet-item-chevron">›</span>
@@ -3012,7 +3112,10 @@ function openAttractTestersSheet(projectId) {
         <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); handleLeadsRadarAction();">
             <div class="attract-sheet-item-icon">📡</div>
             <div class="attract-sheet-item-info">
-                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractLeadsTitle', {}, lang))}</div>
+                <div class="attract-sheet-item-title-row">
+                    <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractLeadsTitle', {}, lang))}</div>
+                    <span class="attract-sheet-item-badge accent-yellow">${window.escapeHTML(window.t('badgeNew', { count: leadsCount }, lang))}</span>
+                </div>
                 <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractLeadsSubtitle', {}, lang))}</div>
             </div>
             <span class="attract-sheet-item-chevron">›</span>
@@ -3062,4 +3165,122 @@ function handleLeadsRadarAction() {
         alert('Leads radar action (/leads) triggered.');
     }
 }
+
+let _massInviteProjectId = null;
+let _massInviteInterval = null;
+
+function openMassInviteModal(projectId) {
+    _massInviteProjectId = projectId;
+    const project = myProjects.find((item) => item.id === projectId);
+    if (!project) return;
+    
+    // Close Action Sheet first if open
+    closeAttractTestersSheet();
+    
+    const modal = document.getElementById('mass-invite-modal');
+    if (!modal) return;
+    
+    renderMassInviteModalContent();
+    modal.classList.add('active');
+    
+    // Start interval to update cooldown timer live
+    if (_massInviteInterval) clearInterval(_massInviteInterval);
+    _massInviteInterval = setInterval(renderMassInviteModalContent, 1000);
+}
+
+function closeMassInviteModal(event) {
+    const modal = document.getElementById('mass-invite-modal');
+    if (event && event.target !== modal && event.target !== document.getElementById('t-massInviteClose')) return;
+    if (modal) modal.classList.remove('active');
+    if (_massInviteInterval) {
+        clearInterval(_massInviteInterval);
+        _massInviteInterval = null;
+    }
+    _massInviteProjectId = null;
+}
+
+function renderMassInviteModalContent() {
+    const modalBody = document.getElementById('mass-invite-modal-body');
+    if (!modalBody || !_massInviteProjectId) return;
+    
+    const project = myProjects.find((p) => p.id === _massInviteProjectId);
+    if (!project) return;
+    
+    const isIsolated = getProjectVisibilityMeta(project).mode === 'isolated';
+    const massInviteMeta = getProjectMassInviteMeta(project);
+    
+    let launchBtnLabel = window.t('massInviteLaunchBtn', {}, lang);
+    let launchBtnClass = 'btn btn-primary mass-invite-btn';
+    let launchBtnAttrs = `onclick="handleMassInviteAction(${project.id})"`;
+    
+    if (isIsolated) {
+        launchBtnLabel = window.t('inviteIsolationDisabledBtn', {}, lang);
+        launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
+        launchBtnAttrs = 'disabled';
+    } else if (!massInviteMeta.isAvailable) {
+        launchBtnLabel = window.t('massInviteUnavailableBtn', {}, lang);
+        launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
+        launchBtnAttrs = 'disabled';
+    } else if (massInviteMeta.isCooldownActive) {
+        launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
+        launchBtnAttrs = 'disabled';
+    }
+    
+    let cooldownBlockHtml = '';
+    if (!isIsolated && massInviteMeta.isCooldownActive) {
+        const remainingTime = formatMassInviteRemaining(massInviteMeta.remainingMs);
+        cooldownBlockHtml = `
+            <div class="mass-invite-cooldown-container" style="margin-top: 14px; text-align: center;">
+                <div class="mass-invite-timer" style="font-size: 16px; font-weight: 700; color: #ff9500; margin-bottom: 8px;">
+                    ⏳ ${window.t('massInviteCooldownRemaining', { time: remainingTime }, lang)}
+                </div>
+                <div class="mass-invite-hint" style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">
+                    ${window.t('massInviteCooldownManualHint', {}, lang)}
+                </div>
+                <button type="button" class="btn mass-invite-btn is-locked" style="width: 100%;" onclick="triggerResetCooldown(${project.id})">
+                    🔄 ${window.t('massInviteResetCostHint', {}, lang)}
+                </button>
+            </div>
+        `;
+    }
+    
+    const limitHintHtml = !isIsolated && massInviteMeta.isAvailable
+        ? `<div class="mass-invite-hint" style="text-align:center; margin-top: 8px; font-size: 12px; color: var(--hint-color);">${window.escapeHTML(window.t('massInviteLimitHint', { count: massInviteMeta.maxRecipients }, lang))}</div>`
+        : '';
+        
+    const infoDesc = !isIsolated && !massInviteMeta.isAvailable
+        ? window.t('massInviteUnavailableNote', {}, lang)
+        : window.t('massInviteBlockDesc', {}, lang);
+        
+    modalBody.innerHTML = `
+        <div class="mass-invite-card" style="background: var(--secondary-bg-color); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+            <div class="mass-invite-title" style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">${window.escapeHTML(window.t('massInviteBlockTitle', {}, lang))}</div>
+            <div class="mass-invite-desc" style="font-size: 13px; color: var(--hint-color); margin-bottom: 16px; line-height: 1.4;">${window.escapeHTML(infoDesc)}</div>
+            
+            <button id="mass-invite-btn" class="${launchBtnClass}" style="width: 100%;" ${launchBtnAttrs}>${window.escapeHTML(launchBtnLabel)}</button>
+            ${limitHintHtml}
+            
+            ${cooldownBlockHtml}
+        </div>
+    `;
+}
+
+async function triggerResetCooldown(projectId) {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    var confirmed = await new Promise(function(resolve) {
+        var message = window.t('massInviteResetConfirm', {}, lang);
+        if (tg.showConfirm) {
+            tg.showConfirm(message, function(ok) { resolve(!!ok); });
+        } else {
+            resolve(confirm(message));
+        }
+    });
+    if (!confirmed) return;
+    await window.resetMassInviteCooldown(projectId);
+    renderMassInviteModalContent();
+}
+
+window.openMassInviteModal = openMassInviteModal;
+window.closeMassInviteModal = closeMassInviteModal;
+window.triggerResetCooldown = triggerResetCooldown;
 

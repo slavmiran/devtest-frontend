@@ -2015,6 +2015,15 @@ iframe.skiptranslate,
 .setup-checklist.setup-checklist-pulse .checklist-item input[type="checkbox"]:enabled:not(:checked) {
     animation: setup-accent-pulse 2s ease-in-out infinite;
     border-radius: 4px;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background-color: transparent;
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    outline: none;
+    cursor: pointer;
 }
 
 @media (max-width: 420px) {
@@ -7083,4 +7092,225 @@ html[dir="rtl"] .guest-filter-select {
     font-size: 16px;
     color: var(--hint-color, #8e8e93);
     opacity: 0.5;
+}
+
+/* Project Avatar Container & Visibility Indicator Overlay */
+.project-avatar-container {
+    position: relative;
+    margin-right: 12px;
+    flex-shrink: 0;
+    display: inline-block;
+    width: 48px;
+    height: 48px;
+}
+.project-avatar-container .avatar {
+    margin-right: 0 !important;
+}
+.project-visibility-badge-overlay {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(30, 30, 32, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    z-index: 2;
+}
+.project-visibility-badge-overlay.isolated {
+    background: rgba(255, 59, 48, 0.95);
+    border-color: rgba(255, 59, 48, 0.5);
+}
+.project-visibility-badge-overlay.hidden_manual {
+    background: rgba(142, 142, 147, 0.95);
+    border-color: rgba(142, 142, 147, 0.5);
+}
+.project-visibility-badge-overlay.public {
+    background: rgba(52, 199, 89, 0.95);
+    border-color: rgba(52, 199, 89, 0.5);
+}
+
+/* Settings Drawer styles */
+.project-settings-drawer {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin-bottom 0.35s ease;
+    background: rgba(20, 20, 22, 0.95);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0;
+}
+.project-settings-drawer.active {
+    max-height: 180px;
+    opacity: 1;
+    margin-bottom: 12px;
+    padding: 4px 0;
+}
+.project-settings-drawer .drawer-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.project-settings-drawer .drawer-item:last-child {
+    border-bottom: none;
+}
+.project-settings-drawer .drawer-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+.project-settings-drawer .drawer-item-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.project-settings-drawer .drawer-item-icon {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+.project-settings-drawer .drawer-item-label {
+    color: var(--text-color);
+    font-weight: 500;
+}
+.project-settings-drawer .drawer-item-value {
+    color: var(--hint-color);
+    font-size: 13px;
+    margin-left: auto;
+    margin-right: 6px;
+}
+.project-settings-drawer .drawer-chevron {
+    color: var(--hint-color);
+    font-size: 16px;
+    opacity: 0.6;
+}
+.project-settings-drawer .drawer-item.is-danger .drawer-item-label,
+.project-settings-drawer .drawer-item.is-danger .drawer-item-icon {
+    color: #ff3b30;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(255,255,255,0.15);
+    transition: .3s;
+    border-radius: 24px;
+}
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+.toggle-switch input:checked + .toggle-slider {
+    background-color: #34c759;
+}
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+
+/* Expand Tab / Bottom Expand Bar */
+.card-expand-bar {
+    width: 100%;
+    margin-top: 12px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    transition: background 0.2s ease;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+.card-expand-bar:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+.card-expand-chevron {
+    font-size: 12px;
+    color: var(--hint-color);
+    transition: transform 0.3s ease;
+}
+
+/* Collapsed view summary */
+.card-collapsed-summary {
+    display: none;
+    font-size: 12px;
+    color: var(--hint-color);
+    margin-top: 8px;
+    text-align: center;
+    border-top: 1px dotted rgba(255, 255, 255, 0.1);
+    padding-top: 8px;
+}
+.card.card-collapsed .card-collapsed-summary {
+    display: block;
+}
+
+/* Action Sheet dynamic badge */
+.attract-sheet-item-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.attract-sheet-item-badge {
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+}
+.attract-sheet-item-badge.accent-green {
+    background: rgba(52, 199, 89, 0.15);
+    color: #34c759;
+}
+.attract-sheet-item-badge.accent-blue {
+    background: rgba(10, 132, 255, 0.15);
+    color: #0a84ff;
+}
+.attract-sheet-item-badge.accent-yellow {
+    background: rgba(255, 204, 0, 0.15);
+    color: #ffcc00;
+}
+
+/* Orange neon archive button */
+.btn-archive-neon {
+    background-color: rgba(255, 149, 0, 0.12) !important;
+    color: #ff9500 !important;
+    border: 1px solid rgba(255, 149, 0, 0.5) !important;
+    box-shadow: 0 0 12px rgba(255, 149, 0, 0.35);
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+.btn-archive-neon:hover {
+    box-shadow: 0 0 18px rgba(255, 149, 0, 0.6);
+    background-color: rgba(255, 149, 0, 0.2) !important;
 }

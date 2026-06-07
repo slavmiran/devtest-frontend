@@ -523,6 +523,15 @@
         </div>
     </div>
 
+    <!-- Mass Invite Modal -->
+    <div id="mass-invite-modal" class="modal-overlay" onclick="closeMassInviteModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
+            <h3 id="t-massInviteModalTitle" data-i18n="massInviteModalTitle">Массовая рассылка</h3>
+            <div id="mass-invite-modal-body"></div>
+            <button class="btn btn-secondary" style="margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeMassInviteModal()" id="t-massInviteClose" data-i18n="inviteClose">Закрыть</button>
+        </div>
+    </div>
+
     <div id="visibility-mode-modal" class="modal-overlay" onclick="closeVisibilityModeModal(event)">
         <div class="modal-content visibility-mode-modal-content" onclick="event.stopPropagation()">
             <h3 id="t-visibilityModalTitle" data-i18n="visibilityModalTitle">Режим набора тестеров</h3>
