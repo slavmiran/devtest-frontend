@@ -10,6 +10,7 @@
             mutualEmpty: "В этом разделе пока нет проектов",
             bountyEmpty: "Контракты пока не найдены",
             mutualJoinBtn: "🤝 Предложить взаимный тест",
+            takeDirectBtn: "🆓 Взять на тестирование",
             prelaunchJoinBtn: "🔓 Войти в Pre-Launch",
             bountyTakeBtn: "💎 Взять контракт",
             scoreLabel: "Score",

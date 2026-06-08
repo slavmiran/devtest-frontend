@@ -7511,3 +7511,8 @@ html[dir="rtl"] .guest-filter-select {
     box-shadow: 0 0 18px rgba(255, 149, 0, 0.6);
     background-color: rgba(255, 149, 0, 0.2) !important;
 }
+
+/* Prevent glow clipping on expanded cards */
+.card:not(.card-collapsed) .card-expanded-inner {
+    overflow: visible;
+}

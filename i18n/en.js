@@ -10,6 +10,7 @@
             mutualEmpty: "No projects in this section yet",
             bountyEmpty: "No contracts found yet",
             mutualJoinBtn: "🤝 Join mutual",
+            takeDirectBtn: "🆓 Take for testing",
             prelaunchJoinBtn: "🔓 Join pre-launch",
             bountyTakeBtn: "💎 Take contract",
             scoreLabel: "Score",

@@ -549,6 +549,16 @@ function renderFeedCard(item, kind) {
     let buttonExtraAttrs = `data-offer-target-app="${item.app_id}" data-offer-target-owner="${item.owner_id}"`;
     const isOwnProject = !!item.is_own_project;
 
+    if (kind === 'mutual-seeking' && !isOwnProject) {
+        const hasAvailableMutual = typeof window.getAvailableMutualProjectsForOwner === 'function'
+            ? window.getAvailableMutualProjectsForOwner(item.owner_id).length > 0
+            : true;
+        if (!hasAvailableMutual) {
+            buttonText = window.t('takeDirectBtn', {}, lang);
+            buttonClass = 'btn btn-secondary';
+        }
+    }
+
     const hasPendingOffer = !!item.has_pending_offer;
     const incomingFromOwnerOffers = (incomingOffers || []).filter((offer) => {
         if (!offer || offer.status !== 'pending') return false;
@@ -3850,14 +3860,12 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
 
 function _resolveDossierOwnedProjects(tester, testerProjects) {
     const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
-    let relevant = reciprocalOwnedProjectId > 0
-        ? (testerProjects || []).filter((ownedProject) => Number(ownedProject && ownedProject.app_id || 0) === reciprocalOwnedProjectId)
-        : (testerProjects || []).slice();
+    let relevant = (testerProjects || []).slice();
 
     // Fallback: reciprocal metadata is known from the mutual link, but the projects API
     // did not return the row (stale cache, archived edge case, etc.).
-    if (reciprocalOwnedProjectId > 0 && !relevant.length && tester) {
-        relevant = [{
+    if (reciprocalOwnedProjectId > 0 && !relevant.some(ownedProject => Number(ownedProject && ownedProject.app_id || 0) === reciprocalOwnedProjectId) && tester) {
+        relevant.push({
             app_id: reciprocalOwnedProjectId,
             name: tester.reciprocal_app_name || '',
             package_name: tester.reciprocal_app_package_name || '',
@@ -3866,7 +3874,7 @@ function _resolveDossierOwnedProjects(tester, testerProjects) {
             mode: 'mutual',
             created_at: null,
             finished_at: null,
-        }];
+        });
     }
     return { reciprocalOwnedProjectId: reciprocalOwnedProjectId, relevant: relevant };
 }
@@ -3989,6 +3997,20 @@ async function openDossierModal(username, testerId, appId) {
                     : 1;
                 const currentGoogleDayOwned = isProjectSynced(ownedProject) ? getProjectCurrentGoogleDay(ownedProject, platformDays) : platformDays;
                 const leftDaysOwned = Math.max(0, 14 - currentGoogleDayOwned);
+
+                let participationChip = '';
+                if (alreadyTestingOwned) {
+                    const matchingTest = (myTests || []).find((test) => Number(test.id) === Number(ownedProject.app_id));
+                    const joinType = matchingTest ? String(matchingTest.join_type || '').toLowerCase() : '';
+                    if (joinType === 'bounty') {
+                        participationChip = `<span class="meta-chip accent-purple">💎 ${lang === 'ru' ? 'Контракт' : 'Contract'}</span>`;
+                    } else if (joinType === 'mutual') {
+                        participationChip = `<span class="meta-chip accent-green">🤝 ${lang === 'ru' ? 'Взаимка' : 'Mutual'}</span>`;
+                    } else {
+                        participationChip = `<span class="meta-chip accent-blue">🆓 ${lang === 'ru' ? 'Прямое тестирование' : 'Direct Testing'}</span>`;
+                    }
+                }
+
                 return `<button type="button" class="dossier-owned-project-card" onclick="openTesterOwnedProjectFromDossier(${testerId}, ${Number(ownedProject.app_id)})">
                     <div class="dossier-owned-project-card-inner">
                         ${renderIcon(ownedProject.name || '', ownedProject.icon_url)}
@@ -4004,6 +4026,7 @@ async function openDossierModal(username, testerId, appId) {
                                 <span class="meta-chip accent-blue">${window.escapeHTML(getProjectModeText(ownedProject.mode))}</span>
                                 <span class="meta-chip">${window.escapeHTML(window.t('dossierOwnedProjectEta', { count: leftDaysOwned }, lang))}</span>
                                 ${alreadyTestingOwned ? '<span class="meta-chip accent-green">' + window.escapeHTML(window.t('dossierOwnedProjectAlreadyTesting', {}, lang)) + '</span>' : ''}
+                                ${participationChip}
                             </div>
                         </div>
                     </div>
