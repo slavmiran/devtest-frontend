@@ -550,12 +550,21 @@ function renderFeedCard(item, kind) {
     const isOwnProject = !!item.is_own_project;
 
     if (kind === 'mutual-seeking' && !isOwnProject) {
+        const ownerAlreadyTestsYou = Number(item.owner_tests_you_count || 0) > 0;
+        if (ownerAlreadyTestsYou) {
+            buttonText = window.t('takeDirectBtn', {}, lang);
+            buttonClass = 'btn btn-secondary';
+            clickAction = `joinDirect(${item.app_id})`;
+            buttonExtraAttrs = '';
+        }
         const hasAvailableMutual = typeof window.getAvailableMutualProjectsForOwner === 'function'
             ? window.getAvailableMutualProjectsForOwner(item.owner_id).length > 0
             : true;
-        if (!hasAvailableMutual) {
+        if (!ownerAlreadyTestsYou && !hasAvailableMutual) {
             buttonText = window.t('takeDirectBtn', {}, lang);
             buttonClass = 'btn btn-secondary';
+            clickAction = `joinDirect(${item.app_id})`;
+            buttonExtraAttrs = '';
         }
     }
 
@@ -3876,6 +3885,16 @@ function _resolveDossierOwnedProjects(tester, testerProjects) {
             finished_at: null,
         });
     }
+    if (reciprocalOwnedProjectId > 0) {
+        relevant.sort((a, b) => {
+            const aId = Number(a && a.app_id || 0);
+            const bId = Number(b && b.app_id || 0);
+            if (aId === reciprocalOwnedProjectId && bId !== reciprocalOwnedProjectId) return -1;
+            if (bId === reciprocalOwnedProjectId && aId !== reciprocalOwnedProjectId) return 1;
+            return 0;
+        });
+    }
+
     return { reciprocalOwnedProjectId: reciprocalOwnedProjectId, relevant: relevant };
 }
 
@@ -3926,7 +3945,15 @@ async function openDossierModal(username, testerId, appId) {
         console.error('Dossier fetch error:', error);
     }
 
-    const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
+    const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || marketCandidate && marketCandidate.app_id || 0);
+    const dossierContextTester = tester || (reciprocalOwnedProjectId > 0
+        ? {
+            reciprocal_app_id: reciprocalOwnedProjectId,
+            reciprocal_app_name: marketCandidate && marketCandidate.name || '',
+            reciprocal_app_package_name: marketCandidate && marketCandidate.package_name || '',
+            reciprocal_app_status: 'active',
+        }
+        : null);
     let testerProjects = [];
     try {
         const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (
@@ -3943,8 +3970,9 @@ async function openDossierModal(username, testerId, appId) {
     testerProjects = testerProjects.map(function(item) {
         return Object.assign({}, item, { owner_username: tgName || '' });
     });
-    const ownedProjectsResolved = _resolveDossierOwnedProjects(tester, testerProjects);
+    const ownedProjectsResolved = _resolveDossierOwnedProjects(dossierContextTester, testerProjects);
     const relevantTesterProjects = ownedProjectsResolved.relevant;
+    const linkedOwnedProjectId = Number(ownedProjectsResolved.reciprocalOwnedProjectId || 0);
     const activeOwnedProjects = relevantTesterProjects.filter((ownedProject) => {
         const status = String(ownedProject && ownedProject.status || 'active').toLowerCase();
         return status === 'active' || status === 'pending_completion';
@@ -4011,7 +4039,8 @@ async function openDossierModal(username, testerId, appId) {
                     }
                 }
 
-                return `<button type="button" class="dossier-owned-project-card" onclick="openTesterOwnedProjectFromDossier(${testerId}, ${Number(ownedProject.app_id)})">
+                const isLinkedProject = Number(ownedProject.app_id || 0) === linkedOwnedProjectId;
+                return `<button type="button" class="dossier-owned-project-card${isLinkedProject ? ' dossier-owned-project-card-linked' : ''}" onclick="openTesterOwnedProjectFromDossier(${testerId}, ${Number(ownedProject.app_id)})">
                     <div class="dossier-owned-project-card-inner">
                         ${renderIcon(ownedProject.name || '', ownedProject.icon_url)}
                         <div class="dossier-owned-project-body">
@@ -4023,6 +4052,7 @@ async function openDossierModal(username, testerId, appId) {
                                 <div class="dossier-owned-project-arrow">›</div>
                             </div>
                             <div class="dossier-owned-project-meta">
+                                ${isLinkedProject ? '<span class="meta-chip accent-gold">' + window.escapeHTML(window.t('dossierOwnedProjectLinked', {}, lang)) + '</span>' : ''}
                                 <span class="meta-chip accent-blue">${window.escapeHTML(getProjectModeText(ownedProject.mode))}</span>
                                 <span class="meta-chip">${window.escapeHTML(window.t('dossierOwnedProjectEta', { count: leftDaysOwned }, lang))}</span>
                                 ${alreadyTestingOwned ? '<span class="meta-chip accent-green">' + window.escapeHTML(window.t('dossierOwnedProjectAlreadyTesting', {}, lang)) + '</span>' : ''}
@@ -4046,7 +4076,11 @@ async function openDossierModal(username, testerId, appId) {
                 const finishedLabel = daysAgo === null
                     ? window.t('dossierOwnedProjectFinishedUnknown', {}, lang)
                     : window.t('dossierOwnedProjectFinishedDaysAgo', { count: daysAgo }, lang);
-                return `<div class="dossier-owned-project-card" style="cursor:default;">
+                const isLinkedProject = Number(ownedProject.app_id || 0) === linkedOwnedProjectId;
+                const archivedChip = String(ownedProject.status || '').toLowerCase() === 'archived'
+                    ? '<span class="meta-chip">' + window.escapeHTML(window.t('dossierOwnedProjectArchived', {}, lang)) + '</span>'
+                    : '<span class="meta-chip">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</span>';
+                return `<div class="dossier-owned-project-card${isLinkedProject ? ' dossier-owned-project-card-linked' : ''}" style="cursor:default;">
                     <div class="dossier-owned-project-card-inner">
                         ${renderIcon(ownedProject.name || '', ownedProject.icon_url)}
                         <div class="dossier-owned-project-body">
@@ -4057,6 +4091,8 @@ async function openDossierModal(username, testerId, appId) {
                                 </div>
                             </div>
                             <div class="dossier-owned-project-meta">
+                                ${isLinkedProject ? '<span class="meta-chip accent-gold">' + window.escapeHTML(window.t('dossierOwnedProjectLinked', {}, lang)) + '</span>' : ''}
+                                ${archivedChip}
                                 <span class="meta-chip">${window.escapeHTML(finishedLabel)}</span>
                             </div>
                         </div>
