@@ -4270,6 +4270,20 @@ details[open] > summary .details-arrow {
     cursor: not-allowed;
 }
 
+.project-select-item.disabled.is-owner-linked {
+    opacity: 0.72;
+    background: rgba(142, 142, 147, 0.14);
+    border: 1px solid rgba(142, 142, 147, 0.18);
+}
+
+.project-select-item.disabled.is-owner-linked .project-select-name {
+    color: var(--hint-color);
+}
+
+.project-select-direct-btn {
+    margin-top: 4px;
+}
+
 .project-select-icon { flex-shrink: 0; }
 
 .project-select-text {

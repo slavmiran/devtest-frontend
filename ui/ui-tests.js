@@ -688,7 +688,15 @@ function buildRunIterationChip(item, className) {
     return `<span class="${className || 'meta-chip accent-blue'}">${window.escapeHTML(window.t('projectRunIterationChip', { count: normalizedIteration }, lang))}</span>`;
 }
 
-function getAvailableMutualProjectsForOwner(targetOwnerId) {
+function _isMutualOfferProjectCandidate(project) {
+    if (!project || !project.id) return false;
+    var mode = String(project.mode || '').toLowerCase();
+    if (mode !== 'mutual' && mode !== 'hybrid') return false;
+    var projectStatus = String(project.status || 'active').toLowerCase();
+    return projectStatus !== 'archived';
+}
+
+function getMutualOfferProjectChoicesForOwner(targetOwnerId) {
     var normalizedTargetOwnerId = Number(targetOwnerId || 0);
     var normalizedUserId = Number(userId || 0);
     var projects = Array.isArray(myProjects) ? myProjects : [];
@@ -697,21 +705,14 @@ function getAvailableMutualProjectsForOwner(targetOwnerId) {
         return [];
     }
 
-    return projects.filter(function(project) {
-        if (!project || !project.id) {
-            return false;
-        }
+    return projects.filter(_isMutualOfferProjectCandidate);
+}
 
-        var mode = String(project.mode || '').toLowerCase();
-        if (mode !== 'mutual' && mode !== 'hybrid') {
-            return false;
-        }
+function getAvailableMutualProjectsForOwner(targetOwnerId) {
+    var normalizedTargetOwnerId = Number(targetOwnerId || 0);
+    if (!normalizedTargetOwnerId) return [];
 
-        var projectStatus = String(project.status || 'active').toLowerCase();
-        if (projectStatus === 'archived') {
-            return false;
-        }
-
+    return getMutualOfferProjectChoicesForOwner(targetOwnerId).filter(function(project) {
         var testers = Array.isArray(project.testers) ? project.testers : [];
         var activeMutualTesters = testers.filter(function(tester) {
             return String(tester && tester.join_type || 'invite').toLowerCase() !== 'bounty';
@@ -1751,4 +1752,5 @@ Object.assign(window, {
     activateExternalContinueModeFromUi,
     showOwnerLastSeenToast,
     getAvailableMutualProjectsForOwner,
+    getMutualOfferProjectChoicesForOwner,
 });

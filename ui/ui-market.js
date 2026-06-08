@@ -4242,6 +4242,33 @@ window.showTimelineStats = showTimelineStats;
 window.openTimelineStatsSheet = openTimelineStatsSheet;
 window.closeTimelineStatsSheet = closeTimelineStatsSheet;
 
+function _getProjectOwnerLinkMeta(project, targetOwnerId, fallbackOwnerAppName) {
+    const testers = Array.isArray(project && project.testers) ? project.testers : [];
+    const ownerTester = testers.find(function(tester) {
+        return Number(tester && tester.tester_id || 0) === Number(targetOwnerId);
+    });
+    if (!ownerTester) return null;
+
+    let linkedProjectName = String(ownerTester.reciprocal_app_name || ownerTester.reciprocal_app_package_name || '').trim();
+    if (!linkedProjectName) {
+        const myLinkedTest = (myTests || []).find(function(test) {
+            return Number(test && test.owner_id || 0) === Number(targetOwnerId)
+                && Number(test.reciprocal_app_id || 0) === Number(project && project.id || 0);
+        });
+        if (myLinkedTest) {
+            linkedProjectName = String(myLinkedTest.name || myLinkedTest.package || '').trim();
+        }
+    }
+    if (!linkedProjectName) {
+        linkedProjectName = String(fallbackOwnerAppName || '').trim();
+    }
+
+    return {
+        linkedProjectName: linkedProjectName || window.t('unknownLabel', {}, lang),
+        joinType: String(ownerTester.join_type || '').toLowerCase(),
+    };
+}
+
 function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
     let modal = document.getElementById('project-select-modal');
     if (!modal) return;
@@ -4249,16 +4276,18 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
     const footerEl = document.getElementById('project-select-footer');
     if (!listEl) return;
     const blockedProjects = options && options.blockedProjects ? options.blockedProjects : {};
-    // Task 2: when the target owner has no email on file, the user's Email-list projects are incompatible.
     const targetOwnerHasEmail = !!(options && options.targetOwnerHasEmail);
+    const fallbackOwnerAppName = options && options.targetAppName ? String(options.targetAppName) : '';
     const availableProjects = Array.isArray(projects) ? projects : [];
     listEl.innerHTML = availableProjects.length ? availableProjects.map(p => {
         const safeName = window.escapeHTML(p.name || window.t('unknownLabel'));
-        const targetAlreadyTesting = (p.testers || []).some(tester => Number(tester.tester_id) === Number(targetOwnerId));
+        const ownerLinkMeta = _getProjectOwnerLinkMeta(p, targetOwnerId, fallbackOwnerAppName);
+        const targetAlreadyTesting = !!ownerLinkMeta;
         const blockedEntry = blockedProjects[String(p.id)] || null;
         const emailIncompatible = String(p.test_mode || 'google_group') === 'email_list' && !targetOwnerHasEmail;
         const isDisabled = targetAlreadyTesting || !!blockedEntry || emailIncompatible;
         const disabledClass = isDisabled ? ' disabled' : '';
+        const linkedClass = targetAlreadyTesting ? ' is-owner-linked' : '';
         const badges = [];
         if (targetAlreadyTesting) {
             badges.push(`<span class="meta-chip accent-purple">${window.escapeHTML(window.t('alreadyTestingBadge', {}, lang))}</span>`);
@@ -4271,7 +4300,9 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         }
         const badgeHtml = badges.join('');
         let reasonHtml = '';
-        if (blockedEntry) {
+        if (targetAlreadyTesting && ownerLinkMeta) {
+            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('projectSelectOwnerLinkedDetails', { owner_app: ownerLinkMeta.linkedProjectName }, lang))}</span>`;
+        } else if (blockedEntry) {
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectLockedDetails', { target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang) }, lang))}</span>`;
         } else if (emailIncompatible) {
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectGroupsOnly', {}, lang))}</span>`;
@@ -4281,7 +4312,7 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
             ? 'event.preventDefault(); event.stopPropagation();'
             : `window._selectProjectForOffer(${p.id}); event.stopPropagation();`;
 
-        return `<button class="project-select-item${disabledClass}" onclick="${clickHandler}">
+        return `<button class="project-select-item${disabledClass}${linkedClass}" onclick="${clickHandler}">
             <span class="project-select-icon">${renderIcon(p.name || '', p.icon_url)}</span>
             <span class="project-select-text">
                 <span class="project-select-name">${safeName}</span>
@@ -4316,7 +4347,7 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         await proceed();
     };
     if (footerEl) {
-        footerEl.innerHTML = `<button class="btn btn-secondary" style="width: 100%;" onclick="joinDirect(${targetAppId})">${window.escapeHTML(window.t('takeWithoutMutualBtn', {}, lang))}</button>`;
+        footerEl.innerHTML = `<button class="btn btn-secondary project-select-direct-btn" style="width: 100%;" onclick="closeProjectSelectModal(); joinDirect(${targetAppId});">${window.escapeHTML(window.t('takeWithoutMutualBtn', {}, lang))}</button>`;
     }
     modal.classList.add('active');
 }

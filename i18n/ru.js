@@ -867,6 +867,7 @@
             offerReviewOwnerOffersBtn: "📬 Открыть входящие заявки",
             takeWithoutMutualBtn: "🚀 Взять без взаимки",
             alreadyTestingBadge: "Уже тестирует",
+            projectSelectOwnerLinkedDetails: "Связан с проектом владельца: {owner_app}",
             testSourceMutual: "Бартер",
             testSourceBounty: "Биржа",
             testSourcePrelaunch: "Предзапуск",

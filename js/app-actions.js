@@ -1051,18 +1051,21 @@ async function _continueMutualOffer(targetAppId, targetOwnerId, sourceButton) {
         loadProjects(true).catch(function() {});
         return;
     }
-    const eligible = typeof window.getAvailableMutualProjectsForOwner === 'function'
-        ? window.getAvailableMutualProjectsForOwner(targetOwnerId)
-        : myProjects.filter(function(project) {
-            return project && (project.mode === 'mutual' || project.mode === 'hybrid') && project.id;
-        });
+    const projectChoices = typeof window.getMutualOfferProjectChoicesForOwner === 'function'
+        ? window.getMutualOfferProjectChoicesForOwner(targetOwnerId)
+        : (typeof window.getAvailableMutualProjectsForOwner === 'function'
+            ? window.getAvailableMutualProjectsForOwner(targetOwnerId)
+            : myProjects.filter(function(project) {
+                return project && (project.mode === 'mutual' || project.mode === 'hybrid') && project.id;
+            }));
     const blockedProjects = await fetchBlockedOfferProjects(targetOwnerId, true);
     var target = (typeof window.getMarketCandidateByAppId === 'function') ? window.getMarketCandidateByAppId(targetAppId) : null;
     var targetOwnerHasEmail = !!(target && target.owner_has_email);
-    showProjectSelectModal(eligible, targetAppId, targetOwnerId, {
+    showProjectSelectModal(projectChoices, targetAppId, targetOwnerId, {
         sourceButton: sourceButton,
         targetAppId: targetAppId,
         targetOwnerId: targetOwnerId,
+        targetAppName: target && target.name ? String(target.name) : '',
         blockedProjects: blockedProjects,
         targetOwnerHasEmail: targetOwnerHasEmail,
     });

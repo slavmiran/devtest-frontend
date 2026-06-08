@@ -866,6 +866,7 @@
             offerReviewOwnerOffersBtn: "📬 Review incoming offers",
             takeWithoutMutualBtn: "🚀 Take without mutual",
             alreadyTestingBadge: "Already testing",
+            projectSelectOwnerLinkedDetails: "Linked to owner's project: {owner_app}",
             testSourceMutual: "Barter",
             testSourceBounty: "Market",
             testSourcePrelaunch: "Prelaunch",
