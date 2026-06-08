@@ -3860,9 +3860,79 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     }
 }
 
-function _resolveDossierOwnedProjects(tester, testerProjects) {
+function _normalizeDossierOwnedProjectRow(raw) {
+    const appId = Number(raw && (raw.app_id != null ? raw.app_id : raw.id) || 0);
+    if (appId <= 0) return null;
+    const status = String(raw.status || raw.app_status || 'active').toLowerCase() || 'active';
+    return {
+        app_id: appId,
+        name: String(raw.name || '').trim(),
+        package_name: String(raw.package_name || raw.package || '').trim(),
+        icon_url: raw.icon_url || '',
+        status: status,
+        mode: String(raw.mode || 'mutual').toLowerCase() || 'mutual',
+        created_at: raw.created_at || null,
+        finished_at: raw.finished_at || null,
+    };
+}
+
+function _mergeDossierOwnedProjectsFromLocalState(testerId, apiProjects) {
+    const normalizedTesterId = Number(testerId || 0);
+    const byId = new Map();
+
+    function upsert(raw) {
+        const normalized = _normalizeDossierOwnedProjectRow(raw);
+        if (!normalized) return;
+        const existing = byId.get(normalized.app_id);
+        if (!existing) {
+            byId.set(normalized.app_id, normalized);
+            return;
+        }
+        byId.set(normalized.app_id, {
+            app_id: normalized.app_id,
+            name: existing.name || normalized.name,
+            package_name: existing.package_name || normalized.package_name,
+            icon_url: existing.icon_url || normalized.icon_url,
+            status: existing.status || normalized.status,
+            mode: existing.mode || normalized.mode,
+            created_at: existing.created_at || normalized.created_at,
+            finished_at: existing.finished_at || normalized.finished_at,
+        });
+    }
+
+    (apiProjects || []).forEach(upsert);
+
+    if (normalizedTesterId <= 0) {
+        return Array.from(byId.values());
+    }
+
+    (myProjects || []).forEach(function(project) {
+        (project.testers || []).forEach(function(row) {
+            if (Number(row && row.tester_id || 0) !== normalizedTesterId) return;
+            const reciprocalId = Number(row.reciprocal_app_id || 0);
+            if (reciprocalId <= 0) return;
+            upsert({
+                app_id: reciprocalId,
+                name: row.reciprocal_app_name || '',
+                package_name: row.reciprocal_app_package_name || '',
+                icon_url: '',
+                status: row.reciprocal_app_status || 'active',
+                mode: 'mutual',
+            });
+        });
+    });
+
+    (myTests || []).forEach(function(test) {
+        if (Number(test && test.owner_id || 0) !== normalizedTesterId) return;
+        upsert(test);
+    });
+
+    return Array.from(byId.values());
+}
+
+function _resolveDossierOwnedProjects(tester, testerProjects, testerId) {
     const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
-    let relevant = (testerProjects || []).slice();
+    let relevant = _mergeDossierOwnedProjectsFromLocalState(testerId, testerProjects);
 
     // Fallback: reciprocal metadata is known from the mutual link, but the projects API
     // did not return the row (stale cache, archived edge case, etc.).
@@ -4076,7 +4146,7 @@ async function openDossierModal(username, testerId, appId) {
     testerProjects = testerProjects.map(function(item) {
         return Object.assign({}, item, { owner_username: tgName || '' });
     });
-    const ownedProjectsResolved = _resolveDossierOwnedProjects(dossierContextTester, testerProjects);
+    const ownedProjectsResolved = _resolveDossierOwnedProjects(dossierContextTester, testerProjects, testerId);
     const relevantTesterProjects = ownedProjectsResolved.relevant;
     const linkedOwnedProjectId = Number(ownedProjectsResolved.reciprocalOwnedProjectId || 0);
     const dossierBlocks = _resolveDossierProjectBlocks(tester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId);
