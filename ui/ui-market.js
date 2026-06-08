@@ -3991,6 +3991,10 @@ function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects,
     }
 
     const otherProjects = (relevantProjects || []).filter(function(ownedProject) {
+        const status = String(ownedProject && ownedProject.status || 'active').toLowerCase();
+        if (status === 'completed' || status === 'archived') {
+            return false;
+        }
         if (focusId <= 0 || !linkedProject) {
             return true;
         }
@@ -4195,7 +4199,6 @@ async function openDossierModal(username, testerId, appId) {
         </div>
     </div>`;
 
-    const contextProjectName = String(project && project.name || project && project.package || '').trim();
     let linkedBlockHtml = '';
     if (dossierBlocks.linkedState === 'one_sided') {
         const oneSidedText = dossierBlocks.otherProjects.length > 0 
@@ -4204,11 +4207,7 @@ async function openDossierModal(username, testerId, appId) {
         linkedBlockHtml = '<div class="dossier-one-sided-notice">' + window.escapeHTML(oneSidedText) + '</div>';
     } else if (dossierBlocks.linkedProject) {
         linkedBlockHtml = '<div class="dossier-owned-projects-list">' +
-            _renderDossierOwnedProjectCard(dossierBlocks.linkedProject, testerId, linkedOwnedProjectId, todayDate, {
-                fallbackLinkType: dossierBlocks.linkedProject.link_type === 'none' ? 'mutual' : dossierBlocks.linkedProject.link_type,
-                fallbackDirection: dossierBlocks.linkedProject.direction === 'none' ? 'both' : dossierBlocks.linkedProject.direction,
-                fallbackLinkedMyAppName: dossierBlocks.linkedProject.linked_my_app_name || contextProjectName,
-            }) +
+            _renderDossierOwnedProjectCard(dossierBlocks.linkedProject, testerId, linkedOwnedProjectId, todayDate) +
             '</div>';
     } else {
         linkedBlockHtml = '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierLinkedProjectEmpty', {}, lang)) + '</div>';
