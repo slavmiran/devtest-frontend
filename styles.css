@@ -2041,6 +2041,16 @@ iframe.skiptranslate,
     }
 }
 
+.dossier-one-sided-notice {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(255, 204, 0, 0.12);
+    border: 1px solid rgba(255, 204, 0, 0.28);
+    color: var(--text-color);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
 .access-view-card {
     border: 1px solid rgba(142, 142, 147, 0.22);
     background: rgba(142, 142, 147, 0.07);

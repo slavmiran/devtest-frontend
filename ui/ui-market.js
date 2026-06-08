@@ -550,21 +550,14 @@ function renderFeedCard(item, kind) {
     const isOwnProject = !!item.is_own_project;
 
     if (kind === 'mutual-seeking' && !isOwnProject) {
-        const ownerAlreadyTestsYou = Number(item.owner_tests_you_count || 0) > 0;
-        if (ownerAlreadyTestsYou) {
-            buttonText = window.t('takeDirectBtn', {}, lang);
-            buttonClass = 'btn btn-secondary';
-            clickAction = `joinDirect(${item.app_id})`;
-            buttonExtraAttrs = '';
-        }
         const hasAvailableMutual = typeof window.getAvailableMutualProjectsForOwner === 'function'
             ? window.getAvailableMutualProjectsForOwner(item.owner_id).length > 0
             : true;
-        if (!ownerAlreadyTestsYou && !hasAvailableMutual) {
+        if (!hasAvailableMutual) {
             buttonText = window.t('takeDirectBtn', {}, lang);
             buttonClass = 'btn btn-secondary';
-            clickAction = `joinDirect(${item.app_id})`;
-            buttonExtraAttrs = '';
+            clickAction = `createMutualOffer(${item.app_id}, ${item.owner_id}, event)`;
+            buttonExtraAttrs = `data-offer-target-app="${item.app_id}" data-offer-target-owner="${item.owner_id}"`;
         }
     }
 
@@ -3898,6 +3891,119 @@ function _resolveDossierOwnedProjects(tester, testerProjects) {
     return { reciprocalOwnedProjectId: reciprocalOwnedProjectId, relevant: relevant };
 }
 
+function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects, linkedOwnedProjectId) {
+    const reciprocalId = Number(linkedOwnedProjectId || 0);
+    const testerOwnerId = Number((tester && tester.tester_id) || (marketCandidate && marketCandidate.owner_id) || 0);
+    const linkedProject = reciprocalId > 0
+        ? (relevantProjects || []).find(function(ownedProject) {
+            return Number(ownedProject && ownedProject.app_id || 0) === reciprocalId;
+        }) || null
+        : null;
+    const iTestAnyOfTheirs = testerOwnerId > 0 && (myTests || []).some(function(test) {
+        return Number(test && test.owner_id || 0) === testerOwnerId;
+    });
+    const joinType = tester ? String(tester.join_type || '').toLowerCase() : '';
+    const isMutualReturnContext = !!(marketCandidate && marketCandidate.market_kind === 'mutual-return');
+    const isDirectOnMyProject = joinType === 'direct' || isMutualReturnContext;
+
+    let linkedState = 'none';
+    if (linkedProject) {
+        const status = String(linkedProject.status || 'active').toLowerCase();
+        linkedState = (status === 'completed' || status === 'archived') ? 'mutual_archived' : 'mutual_active';
+    } else if ((tester || isMutualReturnContext) && isDirectOnMyProject && !iTestAnyOfTheirs) {
+        linkedState = 'one_sided';
+    }
+
+    const excludeId = linkedProject
+        ? Number(linkedProject.app_id || 0)
+        : (reciprocalId > 0 ? reciprocalId : 0);
+    const otherProjects = (relevantProjects || []).filter(function(ownedProject) {
+        return Number(ownedProject && ownedProject.app_id || 0) !== excludeId;
+    });
+
+    return {
+        linkedState: linkedState,
+        linkedProject: linkedProject,
+        otherProjects: otherProjects,
+    };
+}
+
+function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProjectId, todayDate, options) {
+    options = options || {};
+    const safeOwnedName = window.escapeHTML(ownedProject.name || window.t('unknownLabel', {}, lang));
+    const safeOwnedPackage = window.escapeHTML(ownedProject.package_name || '');
+    const alreadyTestingOwned = (myTests || []).some(function(test) {
+        return Number(test.id) === Number(ownedProject.app_id);
+    });
+    const createdAt = ownedProject.created_at ? new Date(ownedProject.created_at) : null;
+    const platformDays = createdAt && !Number.isNaN(createdAt.getTime())
+        ? Math.max(1, Math.floor((todayDate.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+        : 1;
+    const currentGoogleDayOwned = isProjectSynced(ownedProject) ? getProjectCurrentGoogleDay(ownedProject, platformDays) : platformDays;
+    const leftDaysOwned = Math.max(0, 14 - currentGoogleDayOwned);
+    const isLinkedProject = Number(ownedProject.app_id || 0) === Number(linkedOwnedProjectId || 0);
+    const status = String(ownedProject.status || 'active').toLowerCase();
+    const isArchivedLike = status === 'completed' || status === 'archived';
+    const finishedAt = ownedProject.finished_at ? new Date(ownedProject.finished_at) : null;
+    const finishedMs = finishedAt && !Number.isNaN(finishedAt.getTime()) ? finishedAt.getTime() : NaN;
+    const daysAgo = Number.isFinite(finishedMs)
+        ? Math.max(0, Math.floor((todayDate.getTime() - finishedMs) / (1000 * 60 * 60 * 24)))
+        : null;
+    const finishedLabel = daysAgo === null
+        ? window.t('dossierOwnedProjectFinishedUnknown', {}, lang)
+        : window.t('dossierOwnedProjectFinishedDaysAgo', { count: daysAgo }, lang);
+
+    let participationChip = '';
+    if (alreadyTestingOwned) {
+        const matchingTest = (myTests || []).find(function(test) { return Number(test.id) === Number(ownedProject.app_id); });
+        const joinType = matchingTest ? String(matchingTest.join_type || '').toLowerCase() : '';
+        if (joinType === 'bounty') {
+            participationChip = '<span class="meta-chip accent-purple">💎 ' + window.escapeHTML(lang === 'ru' ? 'Контракт' : 'Contract') + '</span>';
+        } else if (joinType === 'mutual') {
+            participationChip = '<span class="meta-chip accent-green">🤝 ' + window.escapeHTML(lang === 'ru' ? 'Взаимка' : 'Mutual') + '</span>';
+        } else {
+            participationChip = '<span class="meta-chip accent-blue">🆓 ' + window.escapeHTML(lang === 'ru' ? 'Прямое тестирование' : 'Direct Testing') + '</span>';
+        }
+    }
+
+    const metaChips = [];
+    if (isLinkedProject) {
+        metaChips.push('<span class="meta-chip accent-gold">' + window.escapeHTML(window.t('dossierOwnedProjectLinked', {}, lang)) + '</span>');
+    }
+    if (options.showAlreadyTestingChip && alreadyTestingOwned) {
+        metaChips.push('<span class="meta-chip accent-green">' + window.escapeHTML(window.t('dossierOwnedProjectAlreadyTesting', {}, lang)) + '</span>');
+    }
+    if (isArchivedLike) {
+        metaChips.push('<span class="meta-chip">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</span>');
+        metaChips.push('<span class="meta-chip">' + window.escapeHTML(finishedLabel) + '</span>');
+    } else {
+        metaChips.push('<span class="meta-chip accent-blue">' + window.escapeHTML(getProjectModeText(ownedProject.mode)) + '</span>');
+        metaChips.push('<span class="meta-chip">' + window.escapeHTML(window.t('dossierOwnedProjectEta', { count: leftDaysOwned }, lang)) + '</span>');
+        if (participationChip) metaChips.push(participationChip);
+    }
+
+    const cardClass = 'dossier-owned-project-card' + (isLinkedProject ? ' dossier-owned-project-card-linked' : '');
+    const innerOpen = isArchivedLike
+        ? '<div class="' + cardClass + '" style="cursor:default;">'
+        : '<button type="button" class="' + cardClass + '" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ')">';
+
+    return innerOpen +
+        '<div class="dossier-owned-project-card-inner">' +
+            renderIcon(ownedProject.name || '', ownedProject.icon_url) +
+            '<div class="dossier-owned-project-body">' +
+                '<div class="dossier-owned-project-top">' +
+                    '<div style="flex:1;min-width:0;">' +
+                        '<div class="dossier-owned-project-title notranslate">' + safeOwnedName + '</div>' +
+                        '<div class="dossier-owned-project-subtitle notranslate">' + safeOwnedPackage + '</div>' +
+                    '</div>' +
+                    (isArchivedLike ? '' : '<div class="dossier-owned-project-arrow">›</div>') +
+                '</div>' +
+                '<div class="dossier-owned-project-meta">' + metaChips.join('') + '</div>' +
+            '</div>' +
+        '</div>' +
+        (isArchivedLike ? '</div>' : '</button>');
+}
+
 async function openDossierModal(username, testerId, appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     const modal = document.getElementById('dossier-modal');
@@ -3973,14 +4079,7 @@ async function openDossierModal(username, testerId, appId) {
     const ownedProjectsResolved = _resolveDossierOwnedProjects(dossierContextTester, testerProjects);
     const relevantTesterProjects = ownedProjectsResolved.relevant;
     const linkedOwnedProjectId = Number(ownedProjectsResolved.reciprocalOwnedProjectId || 0);
-    const activeOwnedProjects = relevantTesterProjects.filter((ownedProject) => {
-        const status = String(ownedProject && ownedProject.status || 'active').toLowerCase();
-        return status === 'active' || status === 'pending_completion';
-    });
-    const completedOwnedProjects = relevantTesterProjects.filter((ownedProject) => {
-        const status = String(ownedProject && ownedProject.status || '').toLowerCase();
-        return status === 'completed' || status === 'archived';
-    });
+    const dossierBlocks = _resolveDossierProjectBlocks(tester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId);
     _dossierProjectsCache[String(testerId)] = relevantTesterProjects;
     _dossierProfilesCache[String(testerId)] = profile;
 
@@ -4012,98 +4111,29 @@ async function openDossierModal(username, testerId, appId) {
         </div>
     </div>`;
 
-    html += `<div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; margin-bottom: 8px;">${window.escapeHTML(window.t('dossierOwnedProjectsTitle', {}, lang))}</div>
-        ${activeOwnedProjects.length
-            ? '<div class="dossier-owned-projects-list">' + activeOwnedProjects.map((ownedProject) => {
-                const safeOwnedName = window.escapeHTML(ownedProject.name || window.t('unknownLabel', {}, lang));
-                const safeOwnedPackage = window.escapeHTML(ownedProject.package_name || '');
-                const alreadyTestingOwned = (myTests || []).some((test) => Number(test.id) === Number(ownedProject.app_id));
-                const createdAt = ownedProject.created_at ? new Date(ownedProject.created_at) : null;
-                const platformDays = createdAt && !Number.isNaN(createdAt.getTime())
-                    ? Math.max(1, Math.floor((todayDate.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)) + 1)
-                    : 1;
-                const currentGoogleDayOwned = isProjectSynced(ownedProject) ? getProjectCurrentGoogleDay(ownedProject, platformDays) : platformDays;
-                const leftDaysOwned = Math.max(0, 14 - currentGoogleDayOwned);
+    let linkedBlockHtml = '';
+    if (dossierBlocks.linkedState === 'one_sided') {
+        linkedBlockHtml = '<div class="dossier-one-sided-notice">' + window.escapeHTML(window.t('dossierOneSidedNotice', {}, lang)) + '</div>';
+    } else if (dossierBlocks.linkedProject) {
+        linkedBlockHtml = '<div class="dossier-owned-projects-list">' +
+            _renderDossierOwnedProjectCard(dossierBlocks.linkedProject, testerId, linkedOwnedProjectId, todayDate, { showAlreadyTestingChip: false }) +
+            '</div>';
+    } else {
+        linkedBlockHtml = '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierLinkedProjectEmpty', {}, lang)) + '</div>';
+    }
 
-                let participationChip = '';
-                if (alreadyTestingOwned) {
-                    const matchingTest = (myTests || []).find((test) => Number(test.id) === Number(ownedProject.app_id));
-                    const joinType = matchingTest ? String(matchingTest.join_type || '').toLowerCase() : '';
-                    if (joinType === 'bounty') {
-                        participationChip = `<span class="meta-chip accent-purple">💎 ${lang === 'ru' ? 'Контракт' : 'Contract'}</span>`;
-                    } else if (joinType === 'mutual') {
-                        participationChip = `<span class="meta-chip accent-green">🤝 ${lang === 'ru' ? 'Взаимка' : 'Mutual'}</span>`;
-                    } else {
-                        participationChip = `<span class="meta-chip accent-blue">🆓 ${lang === 'ru' ? 'Прямое тестирование' : 'Direct Testing'}</span>`;
-                    }
-                }
+    const otherProjectsHtml = dossierBlocks.otherProjects.length
+        ? '<div class="dossier-owned-projects-list">' + dossierBlocks.otherProjects.map(function(ownedProject) {
+            return _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProjectId, todayDate, { showAlreadyTestingChip: true });
+        }).join('') + '</div>'
+        : '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierOtherProjectsEmpty', {}, lang)) + '</div>';
 
-                const isLinkedProject = Number(ownedProject.app_id || 0) === linkedOwnedProjectId;
-                return `<button type="button" class="dossier-owned-project-card${isLinkedProject ? ' dossier-owned-project-card-linked' : ''}" onclick="openTesterOwnedProjectFromDossier(${testerId}, ${Number(ownedProject.app_id)})">
-                    <div class="dossier-owned-project-card-inner">
-                        ${renderIcon(ownedProject.name || '', ownedProject.icon_url)}
-                        <div class="dossier-owned-project-body">
-                            <div class="dossier-owned-project-top">
-                                <div style="flex:1;min-width:0;">
-                                    <div class="dossier-owned-project-title notranslate">${safeOwnedName}</div>
-                                    <div class="dossier-owned-project-subtitle notranslate">${safeOwnedPackage}</div>
-                                </div>
-                                <div class="dossier-owned-project-arrow">›</div>
-                            </div>
-                            <div class="dossier-owned-project-meta">
-                                ${isLinkedProject ? '<span class="meta-chip accent-gold">' + window.escapeHTML(window.t('dossierOwnedProjectLinked', {}, lang)) + '</span>' : ''}
-                                <span class="meta-chip accent-blue">${window.escapeHTML(getProjectModeText(ownedProject.mode))}</span>
-                                <span class="meta-chip">${window.escapeHTML(window.t('dossierOwnedProjectEta', { count: leftDaysOwned }, lang))}</span>
-                                ${alreadyTestingOwned ? '<span class="meta-chip accent-green">' + window.escapeHTML(window.t('dossierOwnedProjectAlreadyTesting', {}, lang)) + '</span>' : ''}
-                                ${participationChip}
-                            </div>
-                        </div>
-                    </div>
-                </button>`;
-            }).join('') + '</div>'
-            : ''}
-        ${completedOwnedProjects.length
-            ? '<div style="font-weight: 600; margin: 10px 0 8px;">' + window.escapeHTML(window.t('dossierOwnedProjectsCompletedTitle', {}, lang)) + '</div>' +
-              '<div class="dossier-owned-projects-list">' + completedOwnedProjects.map((ownedProject) => {
-                const safeOwnedName = window.escapeHTML(ownedProject.name || window.t('unknownLabel', {}, lang));
-                const safeOwnedPackage = window.escapeHTML(ownedProject.package_name || '');
-                const finishedAt = ownedProject.finished_at ? new Date(ownedProject.finished_at) : null;
-                const finishedMs = finishedAt && !Number.isNaN(finishedAt.getTime()) ? finishedAt.getTime() : NaN;
-                const daysAgo = Number.isFinite(finishedMs)
-                    ? Math.max(0, Math.floor((todayDate.getTime() - finishedMs) / (1000 * 60 * 60 * 24)))
-                    : null;
-                const finishedLabel = daysAgo === null
-                    ? window.t('dossierOwnedProjectFinishedUnknown', {}, lang)
-                    : window.t('dossierOwnedProjectFinishedDaysAgo', { count: daysAgo }, lang);
-                const isLinkedProject = Number(ownedProject.app_id || 0) === linkedOwnedProjectId;
-                const archivedChip = String(ownedProject.status || '').toLowerCase() === 'archived'
-                    ? '<span class="meta-chip">' + window.escapeHTML(window.t('dossierOwnedProjectArchived', {}, lang)) + '</span>'
-                    : '<span class="meta-chip">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</span>';
-                return `<div class="dossier-owned-project-card${isLinkedProject ? ' dossier-owned-project-card-linked' : ''}" style="cursor:default;">
-                    <div class="dossier-owned-project-card-inner">
-                        ${renderIcon(ownedProject.name || '', ownedProject.icon_url)}
-                        <div class="dossier-owned-project-body">
-                            <div class="dossier-owned-project-top">
-                                <div style="flex:1;min-width:0;">
-                                    <div class="dossier-owned-project-title notranslate">${safeOwnedName}</div>
-                                    <div class="dossier-owned-project-subtitle notranslate">${safeOwnedPackage}</div>
-                                </div>
-                            </div>
-                            <div class="dossier-owned-project-meta">
-                                ${isLinkedProject ? '<span class="meta-chip accent-gold">' + window.escapeHTML(window.t('dossierOwnedProjectLinked', {}, lang)) + '</span>' : ''}
-                                ${archivedChip}
-                                <span class="meta-chip">${window.escapeHTML(finishedLabel)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('') + '</div>'
-            : ''}
-        ${!activeOwnedProjects.length && !completedOwnedProjects.length
-            ? `<div class="dossier-owned-project-empty">${window.escapeHTML(window.t('dossierOwnedProjectsEmpty', {}, lang))}</div>`
-            : ''}
-    </div>`;
+    html += '<div style="margin-bottom: 16px;">' +
+        '<div style="font-weight: 600; margin-bottom: 8px;">' + window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) + '</div>' +
+        linkedBlockHtml +
+        '<div style="font-weight: 600; margin: 14px 0 8px;">' + window.escapeHTML(window.t('dossierOtherProjectsTitle', {}, lang)) + '</div>' +
+        otherProjectsHtml +
+    '</div>';
 
     if (tester) {
         const sourceMeta = getTesterSourceMeta(tester.join_type);
@@ -4591,6 +4621,8 @@ function _showcaseActiveTestsItems() {
     var tests = Array.isArray(myTests) ? myTests : [];
     return tests.filter(function(test) {
         if (!test || !test.id) return false;
+        var progressStatus = String(test.progress_status || 'active').toLowerCase();
+        if (progressStatus === 'active') return true;
         var status = String(test.status || '').toLowerCase();
         return status !== 'done';
     });
