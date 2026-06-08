@@ -3869,6 +3869,7 @@ function _normalizeDossierOwnedProjectRow(raw) {
     const daysLeft = daysLeftRaw == null || daysLeftRaw === ''
         ? null
         : Math.max(0, Number(daysLeftRaw) || 0);
+    const direction = String(raw.direction || 'none').toLowerCase();
     return {
         app_id: appId,
         name: String(raw.name || '').trim(),
@@ -3881,6 +3882,7 @@ function _normalizeDossierOwnedProjectRow(raw) {
         google_sync_day: Number(raw.google_sync_day || 0),
         last_sync_date: raw.last_sync_date || null,
         link_type: linkType,
+        direction: direction,
         linked_my_app_name: String(raw.linked_my_app_name || '').trim(),
         days_left: daysLeft,
     };
@@ -3897,19 +3899,32 @@ function _buildDossierProjectLinkSubtitle(ownedProject, options) {
     const linkType = String(
         ownedProject && ownedProject.link_type || options.fallbackLinkType || 'none'
     ).toLowerCase();
+    const direction = String(
+        ownedProject && ownedProject.direction || options.fallbackDirection || 'none'
+    ).toLowerCase();
+    const status = String(ownedProject && ownedProject.status || 'active').toLowerCase();
     const linkedName = String(
         ownedProject && ownedProject.linked_my_app_name || options.fallbackLinkedMyAppName || ''
     ).trim();
+
+    const isArchivedLike = status === 'completed' || status === 'archived';
+
     if (linkType === 'mutual') {
         if (linkedName) {
-            return window.t('dossierLinkMutual', { app: linkedName }, lang);
+            return isArchivedLike 
+                ? window.t('dossierLinkMutualArchived', { app: linkedName }, lang)
+                : window.t('dossierLinkMutual', { app: linkedName }, lang);
         }
         return window.t('dossierLinkNone', {}, lang);
     }
     if (linkType === 'direct') {
+        if (direction === 'i_test_them') return window.t('dossierLinkDirectITestThem', {}, lang);
+        if (direction === 'they_test_me') return window.t('dossierLinkDirectTheyTestMe', {}, lang);
         return window.t('dossierLinkDirect', {}, lang);
     }
     if (linkType === 'contract') {
+        if (direction === 'i_test_them') return window.t('dossierLinkContractITestThem', {}, lang);
+        if (direction === 'they_test_me') return window.t('dossierLinkContractTheyTestMe', {}, lang);
         return window.t('dossierLinkContract', {}, lang);
     }
     return window.t('dossierLinkNone', {}, lang);
@@ -3979,7 +3994,7 @@ function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects,
         ? Number(linkedProject.app_id || 0)
         : (reciprocalId > 0 ? reciprocalId : 0);
     const otherProjects = (relevantProjects || []).filter(function(ownedProject) {
-        return Number(ownedProject && ownedProject.app_id || 0) !== excludeId;
+        return String(ownedProject && ownedProject.app_id || 0) !== String(excludeId);
     });
 
     return {
@@ -4168,11 +4183,15 @@ async function openDossierModal(username, testerId, appId) {
     const contextProjectName = String(project && project.name || project && project.package || '').trim();
     let linkedBlockHtml = '';
     if (dossierBlocks.linkedState === 'one_sided') {
-        linkedBlockHtml = '<div class="dossier-one-sided-notice">' + window.escapeHTML(window.t('dossierOneSidedNotice', {}, lang)) + '</div>';
+        const oneSidedText = dossierBlocks.otherProjects.length > 0 
+            ? window.t('dossierOneSidedWithProjects', {}, lang)
+            : window.t('dossierOneSidedNoProjects', {}, lang);
+        linkedBlockHtml = '<div class="dossier-one-sided-notice">' + window.escapeHTML(oneSidedText) + '</div>';
     } else if (dossierBlocks.linkedProject) {
         linkedBlockHtml = '<div class="dossier-owned-projects-list">' +
             _renderDossierOwnedProjectCard(dossierBlocks.linkedProject, testerId, linkedOwnedProjectId, todayDate, {
                 fallbackLinkType: dossierBlocks.linkedProject.link_type === 'none' ? 'mutual' : dossierBlocks.linkedProject.link_type,
+                fallbackDirection: dossierBlocks.linkedProject.direction === 'none' ? 'both' : dossierBlocks.linkedProject.direction,
                 fallbackLinkedMyAppName: dossierBlocks.linkedProject.linked_my_app_name || contextProjectName,
             }) +
             '</div>';
