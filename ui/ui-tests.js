@@ -577,6 +577,19 @@ function isProjectSynced(test) {
     return hasMeaningfulProjectSync(test);
 }
 
+function buildTestOwnerSubtitle(test) {
+    if (!test || typeof test !== 'object') return '';
+    var username = String(test.owner_username || '').trim().replace(/^@+/, '');
+    var fullName = String(test.owner_full_name || '').trim();
+    if (fullName && username) {
+        return window.t('testCardOwnerSubtitle', { name: fullName, username: username }, lang);
+    }
+    if (username) {
+        return window.t('testCardOwnerUsernameOnly', { username: username }, lang);
+    }
+    return fullName;
+}
+
 function getProjectCurrentGoogleDay(test, fallbackDay) {
     var syncDay = getProjectSyncStartDay(test);
     if (!syncDay) {
@@ -1363,8 +1376,8 @@ function renderTests(force) {
         const userTestingDay = getResolvedTestingDay(test);
         const safePackage = escapeInlineJsString(test.package || test.external_package_name || '');
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
-        const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
-        const safePackageLabel = window.escapeHTML(test.package || '');
+        const safeName = window.escapeHTML(test.name || test.package || window.t('unknownLabel', {}, lang));
+        const safeOwnerSubtitle = window.escapeHTML(buildTestOwnerSubtitle(test));
         const langBadge = (test.target_lang && test.target_lang !== 'ALL') ? getLangBadge(test.target_lang) : '';
         const shouldShowIssueOnCard = test.status === 'new' && !!test.has_clicked_store;
         const issueBtnDisplay = shouldShowIssueOnCard ? 'inline-flex' : 'none';
@@ -1589,7 +1602,7 @@ function renderTests(force) {
                     ${renderIcon(test.name, test.icon_url)}
                     <div class="card-info">
                         <div class="card-title notranslate">${safeName}</div>
-                        <div class="card-subtitle notranslate">${safePackageLabel}</div>
+                        <div class="card-subtitle notranslate">${safeOwnerSubtitle}</div>
                     </div>
                 </div>
                 ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
@@ -1668,8 +1681,8 @@ function renderCompletedTests(completedTests) {
         card.id = `test-card-${test.id}`;
         const userTestingDay = getResolvedTestingDay(test);
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
-        const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
-        const safePackageLabel = window.escapeHTML(test.package || '');
+        const safeName = window.escapeHTML(test.name || test.package || window.t('unknownLabel', {}, lang));
+        const safeOwnerSubtitle = window.escapeHTML(buildTestOwnerSubtitle(test));
 
         const actionsHtml = '';
 
@@ -1697,7 +1710,7 @@ function renderCompletedTests(completedTests) {
                 ${renderIcon(test.name, test.icon_url)}
                 <div class="card-info">
                     <div class="card-title notranslate">${safeName}</div>
-                    <div class="card-subtitle notranslate">${safePackageLabel}</div>
+                    <div class="card-subtitle notranslate">${safeOwnerSubtitle}</div>
                 </div>
                 ${ownerBtnHtml}
             </div>

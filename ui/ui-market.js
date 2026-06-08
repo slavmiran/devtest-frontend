@@ -3864,6 +3864,11 @@ function _normalizeDossierOwnedProjectRow(raw) {
     const appId = Number(raw && (raw.app_id != null ? raw.app_id : raw.id) || 0);
     if (appId <= 0) return null;
     const status = String(raw.status || raw.app_status || 'active').toLowerCase() || 'active';
+    const linkType = String(raw.link_type || 'none').toLowerCase() || 'none';
+    const daysLeftRaw = raw.days_left;
+    const daysLeft = daysLeftRaw == null || daysLeftRaw === ''
+        ? null
+        : Math.max(0, Number(daysLeftRaw) || 0);
     return {
         app_id: appId,
         name: String(raw.name || '').trim(),
@@ -3873,66 +3878,52 @@ function _normalizeDossierOwnedProjectRow(raw) {
         mode: String(raw.mode || 'mutual').toLowerCase() || 'mutual',
         created_at: raw.created_at || null,
         finished_at: raw.finished_at || null,
+        google_sync_day: Number(raw.google_sync_day || 0),
+        last_sync_date: raw.last_sync_date || null,
+        link_type: linkType,
+        linked_my_app_name: String(raw.linked_my_app_name || '').trim(),
+        days_left: daysLeft,
     };
 }
 
-function _mergeDossierOwnedProjectsFromLocalState(testerId, apiProjects) {
-    const normalizedTesterId = Number(testerId || 0);
-    const byId = new Map();
-
-    function upsert(raw) {
-        const normalized = _normalizeDossierOwnedProjectRow(raw);
-        if (!normalized) return;
-        const existing = byId.get(normalized.app_id);
-        if (!existing) {
-            byId.set(normalized.app_id, normalized);
-            return;
-        }
-        byId.set(normalized.app_id, {
-            app_id: normalized.app_id,
-            name: existing.name || normalized.name,
-            package_name: existing.package_name || normalized.package_name,
-            icon_url: existing.icon_url || normalized.icon_url,
-            status: existing.status || normalized.status,
-            mode: existing.mode || normalized.mode,
-            created_at: existing.created_at || normalized.created_at,
-            finished_at: existing.finished_at || normalized.finished_at,
-        });
-    }
-
-    (apiProjects || []).forEach(upsert);
-
-    if (normalizedTesterId <= 0) {
-        return Array.from(byId.values());
-    }
-
-    (myProjects || []).forEach(function(project) {
-        (project.testers || []).forEach(function(row) {
-            if (Number(row && row.tester_id || 0) !== normalizedTesterId) return;
-            const reciprocalId = Number(row.reciprocal_app_id || 0);
-            if (reciprocalId <= 0) return;
-            upsert({
-                app_id: reciprocalId,
-                name: row.reciprocal_app_name || '',
-                package_name: row.reciprocal_app_package_name || '',
-                icon_url: '',
-                status: row.reciprocal_app_status || 'active',
-                mode: 'mutual',
-            });
-        });
-    });
-
-    (myTests || []).forEach(function(test) {
-        if (Number(test && test.owner_id || 0) !== normalizedTesterId) return;
-        upsert(test);
-    });
-
-    return Array.from(byId.values());
+function _normalizeDossierProjectsList(apiProjects) {
+    return (apiProjects || [])
+        .map(_normalizeDossierOwnedProjectRow)
+        .filter(Boolean);
 }
 
-function _resolveDossierOwnedProjects(tester, testerProjects, testerId) {
+function _buildDossierProjectLinkSubtitle(ownedProject, options) {
+    options = options || {};
+    const linkType = String(
+        ownedProject && ownedProject.link_type || options.fallbackLinkType || 'none'
+    ).toLowerCase();
+    const linkedName = String(
+        ownedProject && ownedProject.linked_my_app_name || options.fallbackLinkedMyAppName || ''
+    ).trim();
+    if (linkType === 'mutual') {
+        if (linkedName) {
+            return window.t('dossierLinkMutual', { app: linkedName }, lang);
+        }
+        return window.t('dossierLinkNone', {}, lang);
+    }
+    if (linkType === 'direct') {
+        return window.t('dossierLinkDirect', {}, lang);
+    }
+    if (linkType === 'contract') {
+        return window.t('dossierLinkContract', {}, lang);
+    }
+    return window.t('dossierLinkNone', {}, lang);
+}
+
+function _getDossierProjectDisplayName(ownedProject) {
+    return String(
+        ownedProject && (ownedProject.name || ownedProject.package_name) || window.t('unknownLabel', {}, lang)
+    ).trim() || window.t('unknownLabel', {}, lang);
+}
+
+function _resolveDossierOwnedProjects(tester, testerProjects) {
     const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
-    let relevant = _mergeDossierOwnedProjectsFromLocalState(testerId, testerProjects);
+    let relevant = _normalizeDossierProjectsList(testerProjects);
 
     // Fallback: reciprocal metadata is known from the mutual link, but the projects API
     // did not return the row (stale cache, archived edge case, etc.).
@@ -4000,57 +3991,16 @@ function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects,
 
 function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProjectId, todayDate, options) {
     options = options || {};
-    const safeOwnedName = window.escapeHTML(ownedProject.name || window.t('unknownLabel', {}, lang));
-    const safeOwnedPackage = window.escapeHTML(ownedProject.package_name || '');
-    const alreadyTestingOwned = (myTests || []).some(function(test) {
-        return Number(test.id) === Number(ownedProject.app_id);
+    const displayName = _getDossierProjectDisplayName(ownedProject);
+    const safeOwnedName = window.escapeHTML(displayName);
+    const linkSubtitle = _buildDossierProjectLinkSubtitle(ownedProject, {
+        fallbackLinkType: options.fallbackLinkType,
+        fallbackLinkedMyAppName: options.fallbackLinkedMyAppName,
     });
-    const createdAt = ownedProject.created_at ? new Date(ownedProject.created_at) : null;
-    const platformDays = createdAt && !Number.isNaN(createdAt.getTime())
-        ? Math.max(1, Math.floor((todayDate.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)) + 1)
-        : 1;
-    const currentGoogleDayOwned = isProjectSynced(ownedProject) ? getProjectCurrentGoogleDay(ownedProject, platformDays) : platformDays;
-    const leftDaysOwned = Math.max(0, 14 - currentGoogleDayOwned);
+    const safeLinkSubtitle = window.escapeHTML(linkSubtitle);
     const isLinkedProject = Number(ownedProject.app_id || 0) === Number(linkedOwnedProjectId || 0);
     const status = String(ownedProject.status || 'active').toLowerCase();
     const isArchivedLike = status === 'completed' || status === 'archived';
-    const finishedAt = ownedProject.finished_at ? new Date(ownedProject.finished_at) : null;
-    const finishedMs = finishedAt && !Number.isNaN(finishedAt.getTime()) ? finishedAt.getTime() : NaN;
-    const daysAgo = Number.isFinite(finishedMs)
-        ? Math.max(0, Math.floor((todayDate.getTime() - finishedMs) / (1000 * 60 * 60 * 24)))
-        : null;
-    const finishedLabel = daysAgo === null
-        ? window.t('dossierOwnedProjectFinishedUnknown', {}, lang)
-        : window.t('dossierOwnedProjectFinishedDaysAgo', { count: daysAgo }, lang);
-
-    let participationChip = '';
-    if (alreadyTestingOwned) {
-        const matchingTest = (myTests || []).find(function(test) { return Number(test.id) === Number(ownedProject.app_id); });
-        const joinType = matchingTest ? String(matchingTest.join_type || '').toLowerCase() : '';
-        if (joinType === 'bounty') {
-            participationChip = '<span class="meta-chip accent-purple">💎 ' + window.escapeHTML(lang === 'ru' ? 'Контракт' : 'Contract') + '</span>';
-        } else if (joinType === 'mutual') {
-            participationChip = '<span class="meta-chip accent-green">🤝 ' + window.escapeHTML(lang === 'ru' ? 'Взаимка' : 'Mutual') + '</span>';
-        } else {
-            participationChip = '<span class="meta-chip accent-blue">🆓 ' + window.escapeHTML(lang === 'ru' ? 'Прямое тестирование' : 'Direct Testing') + '</span>';
-        }
-    }
-
-    const metaChips = [];
-    if (isLinkedProject) {
-        metaChips.push('<span class="meta-chip accent-gold">' + window.escapeHTML(window.t('dossierOwnedProjectLinked', {}, lang)) + '</span>');
-    }
-    if (options.showAlreadyTestingChip && alreadyTestingOwned) {
-        metaChips.push('<span class="meta-chip accent-green">' + window.escapeHTML(window.t('dossierOwnedProjectAlreadyTesting', {}, lang)) + '</span>');
-    }
-    if (isArchivedLike) {
-        metaChips.push('<span class="meta-chip">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</span>');
-        metaChips.push('<span class="meta-chip">' + window.escapeHTML(finishedLabel) + '</span>');
-    } else {
-        metaChips.push('<span class="meta-chip accent-blue">' + window.escapeHTML(getProjectModeText(ownedProject.mode)) + '</span>');
-        metaChips.push('<span class="meta-chip">' + window.escapeHTML(window.t('dossierOwnedProjectEta', { count: leftDaysOwned }, lang)) + '</span>');
-        if (participationChip) metaChips.push(participationChip);
-    }
 
     const cardClass = 'dossier-owned-project-card' + (isLinkedProject ? ' dossier-owned-project-card-linked' : '');
     const innerOpen = isArchivedLike
@@ -4059,16 +4009,44 @@ function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProje
 
     return innerOpen +
         '<div class="dossier-owned-project-card-inner">' +
-            renderIcon(ownedProject.name || '', ownedProject.icon_url) +
+            renderIcon(displayName, ownedProject.icon_url) +
             '<div class="dossier-owned-project-body">' +
                 '<div class="dossier-owned-project-top">' +
                     '<div style="flex:1;min-width:0;">' +
                         '<div class="dossier-owned-project-title notranslate">' + safeOwnedName + '</div>' +
-                        '<div class="dossier-owned-project-subtitle notranslate">' + safeOwnedPackage + '</div>' +
+                        '<div class="dossier-owned-project-subtitle notranslate">' + safeLinkSubtitle + '</div>' +
                     '</div>' +
                     (isArchivedLike ? '' : '<div class="dossier-owned-project-arrow">›</div>') +
                 '</div>' +
-                '<div class="dossier-owned-project-meta">' + metaChips.join('') + '</div>' +
+            '</div>' +
+        '</div>' +
+        (isArchivedLike ? '</div>' : '</button>');
+}
+
+function _renderDossierOtherProjectMiniCard(ownedProject, testerId) {
+    const displayName = _getDossierProjectDisplayName(ownedProject);
+    const safeOwnedName = window.escapeHTML(displayName);
+    const linkSubtitle = _buildDossierProjectLinkSubtitle(ownedProject);
+    const safeLinkSubtitle = window.escapeHTML(linkSubtitle);
+    const linkType = String(ownedProject.link_type || 'none').toLowerCase();
+    const daysLeft = ownedProject.days_left;
+    const showDaysLeft = linkType !== 'none' && daysLeft != null;
+    const daysLeftHtml = showDaysLeft
+        ? '<div class="dossier-other-mini-days">' + window.escapeHTML(window.t('dossierLinkDaysLeft', { count: daysLeft }, lang)) + '</div>'
+        : '';
+    const status = String(ownedProject.status || 'active').toLowerCase();
+    const isArchivedLike = status === 'completed' || status === 'archived';
+    const cardTag = isArchivedLike
+        ? '<div class="dossier-other-mini-card is-archived">'
+        : '<button type="button" class="dossier-other-mini-card" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ')">';
+
+    return cardTag +
+        '<div class="dossier-other-mini-inner">' +
+            renderIcon(displayName, ownedProject.icon_url) +
+            '<div class="dossier-other-mini-body">' +
+                '<div class="dossier-other-mini-title notranslate">' + safeOwnedName + '</div>' +
+                '<div class="dossier-other-mini-subtitle notranslate">' + safeLinkSubtitle + '</div>' +
+                daysLeftHtml +
             '</div>' +
         '</div>' +
         (isArchivedLike ? '</div>' : '</button>');
@@ -4132,9 +4110,15 @@ async function openDossierModal(username, testerId, appId) {
         : null);
     let testerProjects = [];
     try {
-        const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (
-            reciprocalOwnedProjectId > 0 ? `?focus_app_id=${reciprocalOwnedProjectId}` : ''
-        );
+        const projectsParams = new URLSearchParams();
+        if (Number(userId || 0) > 0) {
+            projectsParams.set('viewer_id', String(userId));
+        }
+        if (reciprocalOwnedProjectId > 0) {
+            projectsParams.set('focus_app_id', String(reciprocalOwnedProjectId));
+        }
+        const projectsQuery = projectsParams.toString();
+        const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (projectsQuery ? `?${projectsQuery}` : '');
         const resp = await fetch(projectsUrl);
         if (resp.ok) {
             const data = await resp.json();
@@ -4146,7 +4130,7 @@ async function openDossierModal(username, testerId, appId) {
     testerProjects = testerProjects.map(function(item) {
         return Object.assign({}, item, { owner_username: tgName || '' });
     });
-    const ownedProjectsResolved = _resolveDossierOwnedProjects(dossierContextTester, testerProjects, testerId);
+    const ownedProjectsResolved = _resolveDossierOwnedProjects(dossierContextTester, testerProjects);
     const relevantTesterProjects = ownedProjectsResolved.relevant;
     const linkedOwnedProjectId = Number(ownedProjectsResolved.reciprocalOwnedProjectId || 0);
     const dossierBlocks = _resolveDossierProjectBlocks(tester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId);
@@ -4181,20 +4165,24 @@ async function openDossierModal(username, testerId, appId) {
         </div>
     </div>`;
 
+    const contextProjectName = String(project && project.name || project && project.package || '').trim();
     let linkedBlockHtml = '';
     if (dossierBlocks.linkedState === 'one_sided') {
         linkedBlockHtml = '<div class="dossier-one-sided-notice">' + window.escapeHTML(window.t('dossierOneSidedNotice', {}, lang)) + '</div>';
     } else if (dossierBlocks.linkedProject) {
         linkedBlockHtml = '<div class="dossier-owned-projects-list">' +
-            _renderDossierOwnedProjectCard(dossierBlocks.linkedProject, testerId, linkedOwnedProjectId, todayDate, { showAlreadyTestingChip: false }) +
+            _renderDossierOwnedProjectCard(dossierBlocks.linkedProject, testerId, linkedOwnedProjectId, todayDate, {
+                fallbackLinkType: dossierBlocks.linkedProject.link_type === 'none' ? 'mutual' : dossierBlocks.linkedProject.link_type,
+                fallbackLinkedMyAppName: dossierBlocks.linkedProject.linked_my_app_name || contextProjectName,
+            }) +
             '</div>';
     } else {
         linkedBlockHtml = '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierLinkedProjectEmpty', {}, lang)) + '</div>';
     }
 
     const otherProjectsHtml = dossierBlocks.otherProjects.length
-        ? '<div class="dossier-owned-projects-list">' + dossierBlocks.otherProjects.map(function(ownedProject) {
-            return _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProjectId, todayDate, { showAlreadyTestingChip: true });
+        ? '<div class="dossier-other-projects-carousel">' + dossierBlocks.otherProjects.map(function(ownedProject) {
+            return _renderDossierOtherProjectMiniCard(ownedProject, testerId);
         }).join('') + '</div>'
         : '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierOtherProjectsEmpty', {}, lang)) + '</div>';
 

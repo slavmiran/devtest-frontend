@@ -5571,6 +5571,94 @@ html[dir="rtl"] .guest-filter-select {
     color: var(--hint-color);
 }
 
+#dossier-modal .dossier-other-projects-carousel {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+}
+
+#dossier-modal .dossier-other-mini-card {
+    min-width: 240px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    display: block;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.03));
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+#dossier-modal .dossier-other-mini-card:active {
+    opacity: 0.92;
+    transform: scale(0.995);
+}
+
+#dossier-modal .dossier-other-mini-card.is-archived {
+    cursor: default;
+    opacity: 0.82;
+}
+
+#dossier-modal .dossier-other-mini-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    min-height: 88px;
+}
+
+#dossier-modal .dossier-other-mini-card .avatar {
+    width: 40px;
+    height: 40px;
+    margin-right: 0;
+    border-radius: 12px;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+#dossier-modal .dossier-other-mini-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#dossier-modal .dossier-other-mini-title {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#dossier-modal .dossier-other-mini-subtitle {
+    font-size: 11px;
+    color: var(--hint-color);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
+}
+
+#dossier-modal .dossier-other-mini-days {
+    margin-top: 2px;
+    font-size: 11px;
+    color: rgba(255, 204, 0, 0.92);
+    line-height: 1.3;
+}
+
 /* ── Project Detail Modal (Bottom Sheet) ─────────── */
 #project-details-modal .modal-content {
     border-radius: 20px 20px 0 0;
