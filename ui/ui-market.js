@@ -3952,6 +3952,10 @@ function _resolveDossierOwnedProjects(tester, testerProjects) {
             mode: 'mutual',
             created_at: null,
             finished_at: null,
+            link_type: 'mutual',
+            direction: 'they_test_me',
+            linked_my_app_name: '',
+            days_left: null,
         });
     }
     if (reciprocalOwnedProjectId > 0) {
@@ -3967,17 +3971,13 @@ function _resolveDossierOwnedProjects(tester, testerProjects) {
     return { reciprocalOwnedProjectId: reciprocalOwnedProjectId, relevant: relevant };
 }
 
-function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects, linkedOwnedProjectId) {
-    const reciprocalId = Number(linkedOwnedProjectId || 0);
-    const testerOwnerId = Number((tester && tester.tester_id) || (marketCandidate && marketCandidate.owner_id) || 0);
-    const linkedProject = reciprocalId > 0
+function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects, focusAppId) {
+    const focusId = Number(focusAppId || 0);
+    const linkedProject = focusId > 0
         ? (relevantProjects || []).find(function(ownedProject) {
-            return Number(ownedProject && ownedProject.app_id || 0) === reciprocalId;
+            return Number(ownedProject && ownedProject.app_id || 0) === focusId;
         }) || null
         : null;
-    const iTestAnyOfTheirs = testerOwnerId > 0 && (myTests || []).some(function(test) {
-        return Number(test && test.owner_id || 0) === testerOwnerId;
-    });
     const joinType = tester ? String(tester.join_type || '').toLowerCase() : '';
     const isMutualReturnContext = !!(marketCandidate && marketCandidate.market_kind === 'mutual-return');
     const isDirectOnMyProject = joinType === 'direct' || isMutualReturnContext;
@@ -3986,21 +3986,22 @@ function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects,
     if (linkedProject) {
         const status = String(linkedProject.status || 'active').toLowerCase();
         linkedState = (status === 'completed' || status === 'archived') ? 'mutual_archived' : 'mutual_active';
-    } else if ((tester || isMutualReturnContext) && isDirectOnMyProject && !iTestAnyOfTheirs) {
+    } else if ((tester || isMutualReturnContext) && isDirectOnMyProject) {
         linkedState = 'one_sided';
     }
 
-    const excludeId = linkedProject
-        ? Number(linkedProject.app_id || 0)
-        : (reciprocalId > 0 ? reciprocalId : 0);
     const otherProjects = (relevantProjects || []).filter(function(ownedProject) {
-        return String(ownedProject && ownedProject.app_id || 0) !== String(excludeId);
+        if (focusId <= 0 || !linkedProject) {
+            return true;
+        }
+        return String(ownedProject && ownedProject.app_id || 0) !== String(focusId);
     });
 
     return {
         linkedState: linkedState,
         linkedProject: linkedProject,
         otherProjects: otherProjects,
+        focusAppId: focusId,
     };
 }
 
@@ -4010,6 +4011,7 @@ function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProje
     const safeOwnedName = window.escapeHTML(displayName);
     const linkSubtitle = _buildDossierProjectLinkSubtitle(ownedProject, {
         fallbackLinkType: options.fallbackLinkType,
+        fallbackDirection: options.fallbackDirection,
         fallbackLinkedMyAppName: options.fallbackLinkedMyAppName,
     });
     const safeLinkSubtitle = window.escapeHTML(linkSubtitle);
@@ -4017,10 +4019,19 @@ function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProje
     const status = String(ownedProject.status || 'active').toLowerCase();
     const isArchivedLike = status === 'completed' || status === 'archived';
 
-    const cardClass = 'dossier-owned-project-card' + (isLinkedProject ? ' dossier-owned-project-card-linked' : '');
+    let cardClass = 'dossier-owned-project-card';
+    if (isLinkedProject) {
+        cardClass += ' dossier-owned-project-card-linked';
+    }
+    if (isArchivedLike) {
+        cardClass += ' is-archived';
+    }
     const innerOpen = isArchivedLike
         ? '<div class="' + cardClass + '" style="cursor:default;">'
         : '<button type="button" class="' + cardClass + '" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ')">';
+    const archivedChipHtml = isArchivedLike
+        ? '<div class="dossier-linked-archived-chip">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</div>'
+        : '';
 
     return innerOpen +
         '<div class="dossier-owned-project-card-inner">' +
@@ -4030,6 +4041,7 @@ function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProje
                     '<div style="flex:1;min-width:0;">' +
                         '<div class="dossier-owned-project-title notranslate">' + safeOwnedName + '</div>' +
                         '<div class="dossier-owned-project-subtitle notranslate">' + safeLinkSubtitle + '</div>' +
+                        archivedChipHtml +
                     '</div>' +
                     (isArchivedLike ? '' : '<div class="dossier-owned-project-arrow">›</div>') +
                 '</div>' +
@@ -4074,7 +4086,7 @@ async function openDossierModal(username, testerId, appId) {
     document.getElementById('dossier-body').innerHTML = `<p style="text-align:center; color: var(--hint-color);">${t.dossierLoading}</p>`;
     modal.classList.add('active');
 
-    const project = myProjects.find((item) => item.id === appId);
+    const project = myProjects.find((item) => Number(item.id) === Number(appId));
     const tester = project ? (project.testers || []).find((candidate) => Number(candidate.tester_id) === Number(testerId)) : null;
     const marketCandidate = getMarketCandidateByAppId(appId);
     const today = getLocalDate();
@@ -4132,6 +4144,9 @@ async function openDossierModal(username, testerId, appId) {
         if (reciprocalOwnedProjectId > 0) {
             projectsParams.set('focus_app_id', String(reciprocalOwnedProjectId));
         }
+        if (Number(appId || 0) > 0) {
+            projectsParams.set('context_app_id', String(appId));
+        }
         const projectsQuery = projectsParams.toString();
         const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (projectsQuery ? `?${projectsQuery}` : '');
         const resp = await fetch(projectsUrl);
@@ -4148,7 +4163,7 @@ async function openDossierModal(username, testerId, appId) {
     const ownedProjectsResolved = _resolveDossierOwnedProjects(dossierContextTester, testerProjects);
     const relevantTesterProjects = ownedProjectsResolved.relevant;
     const linkedOwnedProjectId = Number(ownedProjectsResolved.reciprocalOwnedProjectId || 0);
-    const dossierBlocks = _resolveDossierProjectBlocks(tester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId);
+    const dossierBlocks = _resolveDossierProjectBlocks(tester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId > 0 ? linkedOwnedProjectId : 0);
     _dossierProjectsCache[String(testerId)] = relevantTesterProjects;
     _dossierProfilesCache[String(testerId)] = profile;
 
