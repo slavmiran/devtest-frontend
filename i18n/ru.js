@@ -1421,7 +1421,7 @@
             mutualReturnsSubtitle: "Эти разработчики установили ваше приложение. Вы можете вступить во взаимный обмен (по желанию)!",
             mutualReturnContext: " тестирует ваш проект: {project}",
             mutualReturnProfileText: "{username} тестирует ваш проект: {project}",
-            mutualReturnBtn: "🤝 Ответить взаимностью",
+            mutualReturnBtn: "🤝 Тестировать взаимно",
             openGooglePlay: "▶ Открыть Google Play",
             projectsLoadingAlert: "Проекты ещё загружаются. Нажмите ещё раз через секунду.",
             systemMenuTitle: "Настройки и поддержка",

@@ -1414,7 +1414,7 @@
             mutualReturnsSubtitle: "These developers installed your app. You can join a mutual exchange (optional)!",
             mutualReturnContext: " is testing your project: {project}",
             mutualReturnProfileText: "{username} is testing your project: {project}",
-            mutualReturnBtn: "🤝 Respond with mutual",
+            mutualReturnBtn: "🤝 Join cross-testing",
             openGooglePlay: "▶ Open Google Play",
             projectsLoadingAlert: "Projects are still loading. Please try again in a moment.",
             systemMenuTitle: "Settings & Support",

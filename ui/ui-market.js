@@ -4051,17 +4051,15 @@ function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects,
         linkedState = 'one_sided';
     }
 
-    const showLinkedInBlockA = linkedState === 'mutual_active' || linkedState === 'mutual_archived';
+    const focusKey = focusId > 0 ? String(focusId) : '';
     const otherProjects = (relevantProjects || []).filter(function(ownedProject) {
-        const appId = Number(ownedProject && ownedProject.app_id || 0);
-        if (appId <= 0) {
+        const rowId = String(
+            ownedProject && (ownedProject.app_id != null ? ownedProject.app_id : ownedProject.id) || ''
+        ).trim();
+        if (!rowId || rowId === '0') {
             return false;
         }
-        const status = String(ownedProject && ownedProject.status || 'active').toLowerCase();
-        if (status === 'completed' || status === 'archived') {
-            return false;
-        }
-        if (showLinkedInBlockA && focusId > 0 && appId === focusId) {
+        if (focusKey && rowId === focusKey) {
             return false;
         }
         return true;
@@ -4225,9 +4223,24 @@ async function openDossierModal(username, testerId, appId) {
         const projectsQuery = projectsParams.toString();
         const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (projectsQuery ? `?${projectsQuery}` : '');
         const resp = await fetch(projectsUrl);
+        let data = {};
+        try {
+            data = await resp.json();
+        } catch (parseError) {
+            console.error('Dossier projects JSON parse error:', parseError);
+        }
+        console.log('[DOSSIER DIAGNOSTICS] RAW API RESPONSE:', resp.status, data);
         if (resp.ok) {
-            const data = await resp.json();
-            testerProjects = Array.isArray(data && data.projects) ? data.projects : [];
+            if (Array.isArray(data)) {
+                testerProjects = data;
+            } else if (Array.isArray(data && data.projects)) {
+                testerProjects = data.projects;
+            } else {
+                testerProjects = [];
+                console.warn('[DOSSIER DIAGNOSTICS] Unexpected projects payload shape:', data);
+            }
+        } else {
+            console.warn('[DOSSIER DIAGNOSTICS] projects request failed:', resp.status, projectsUrl);
         }
     } catch (error) {
         console.error('Dossier projects fetch error:', error);
@@ -4239,6 +4252,11 @@ async function openDossierModal(username, testerId, appId) {
     const relevantTesterProjects = ownedProjectsResolved.relevant;
     const linkedOwnedProjectId = Number(ownedProjectsResolved.reciprocalOwnedProjectId || 0);
     const dossierBlocks = _resolveDossierProjectBlocks(dossierContextTester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId > 0 ? linkedOwnedProjectId : 0);
+    console.log('[DOSSIER DIAGNOSTICS] PROCESSED BLOCKS:', {
+        rawCount: testerProjects.length,
+        otherCount: dossierBlocks.otherProjects.length,
+        linkedState: dossierBlocks.linkedState,
+    });
     _dossierProjectsCache[String(testerId)] = relevantTesterProjects;
     _dossierProfilesCache[String(testerId)] = profile;
 
