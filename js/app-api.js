@@ -1403,19 +1403,18 @@ async function _loadMutualFeedImpl(options) {
         const nextCount = nextMutual.seeking.length + nextMutual.prelaunch.length + nextMutual.returns.length;
         const prevMutual = cached && cached.mutual ? cached.mutual : null;
         const changed = JSON.stringify(prevMutual) !== JSON.stringify(nextMutual);
-        const canApply = _resolveMarketResponse('mutual', nextCount, hadVisibleData);
 
-        if (canApply && (!hasMutualCache || changed)) {
-            mutualSeeking = nextMutual.seeking;
-            mutualPrelaunch = nextMutual.prelaunch;
-            mutualReturns = nextMutual.returns;
-            renderMutualFeed();
-            if (window.renderMutualReturns) {
-                window.renderMutualReturns(mutualReturns);
-            }
+        mutualSeeking = nextMutual.seeking;
+        mutualPrelaunch = nextMutual.prelaunch;
+        mutualReturns = nextMutual.returns;
+        renderMutualFeed();
+        if (window.renderMutualReturns) {
+            window.renderMutualReturns(mutualReturns);
         }
 
-        if (canApply) {
+        _resolveMarketResponse('mutual', nextCount, hadVisibleData);
+
+        if (!hasMutualCache || changed) {
             const nextCache = Object.assign({}, cached || {});
             nextCache.mutual = nextMutual;
             nextCache.ts = Date.now();
