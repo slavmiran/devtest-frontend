@@ -1037,6 +1037,161 @@ function handleApiError(code, details = {}) {
     return message;
 }
 
+function _emptyTestRewardsSummary() {
+    return {
+        checkin_karma: 0,
+        review_platform_karma: 0,
+        owner_karma_good: 0,
+        owner_karma_bug: 0,
+        owner_karma_overtime: 0,
+        owner_karma_total: 0,
+        feedback_karma: 0,
+        feedback_bust: 0,
+        review_owner_boost_bust: 0,
+        review_owner_boost_karma: 0,
+        review_owner_boost_count: 0,
+        review_marked: false,
+        review_rejected: false,
+        total_karma: 0,
+        total_bust: 0,
+    };
+}
+
+function _findFeedItemForOptimisticJoin(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return null;
+    var pools = [mutualSeeking, mutualPrelaunch, bountyContracts];
+    for (var i = 0; i < pools.length; i++) {
+        var pool = pools[i];
+        if (!Array.isArray(pool)) continue;
+        var found = pool.find(function(item) {
+            return Number(item && item.app_id) === normalizedId;
+        });
+        if (found) return found;
+    }
+    if (typeof window.getMarketCandidateByAppId === 'function') {
+        return window.getMarketCandidateByAppId(normalizedId);
+    }
+    return null;
+}
+
+function _buildOptimisticMyTestFromFeedItem(feedItem, options) {
+    options = options || {};
+    var appId = Number((feedItem && feedItem.app_id) || options.appId || 0);
+    if (appId <= 0) return null;
+    var today = getLocalDate();
+    var isBounty = !!options.isBounty;
+    var joinType = String(options.join_type || (isBounty ? 'bounty' : 'mutual')).toLowerCase();
+    return {
+        reviewRejected: false,
+        id: appId,
+        real_app_id: appId,
+        progress_id: null,
+        name: (feedItem && feedItem.name) || '',
+        package: (feedItem && feedItem.package_name) || '',
+        icon_url: (feedItem && feedItem.icon_url) || '',
+        google_group_url: (feedItem && feedItem.google_group_url) || '',
+        instructions: (feedItem && feedItem.instructions) || '',
+        status: 'new',
+        start_date: today,
+        owner_id: Number((feedItem && feedItem.owner_id) || 0),
+        owner_username: (feedItem && feedItem.owner_username) || '',
+        owner_full_name: (feedItem && feedItem.owner_full_name) || '',
+        owner_karma: Number((feedItem && feedItem.owner_karma) || 0),
+        active_testers_count: Number((feedItem && feedItem.mutual_testers_count) || (feedItem && feedItem.bounty_testers_count) || 0),
+        days_since_publish: (feedItem && feedItem.days_since_publish) || null,
+        created_at: (feedItem && feedItem.created_at) || null,
+        google_sync_day: Number((feedItem && feedItem.google_sync_day) || 0),
+        sync_message: (feedItem && feedItem.sync_message) || '',
+        sync_notification_sent: false,
+        last_owner_activity: (feedItem && feedItem.last_owner_activity) || null,
+        checkins_count: 0,
+        skips_count: 0,
+        last_sync_date: (feedItem && feedItem.last_sync_date) || null,
+        testing_days: 1,
+        grant_claimed: false,
+        progress_status: 'active',
+        app_status: 'active',
+        is_pending_completion: false,
+        join_type: joinType,
+        target_lang: (feedItem && feedItem.target_lang) || 'ALL',
+        daily_timeline: '',
+        archive_reason: null,
+        bounty_per_tester: Number((feedItem && feedItem.bounty_per_tester) || 0),
+        last_check_date: null,
+        issue_reported_at: null,
+        issue_reason: '',
+        issue_fixed_at: null,
+        reciprocal_app_id: null,
+        reciprocal_app_name: '',
+        reciprocal_app_status: '',
+        reciprocal_app_package_name: '',
+        reciprocal_app_play_store_url: '',
+        run_iteration: 1,
+        play_store_url: '',
+        has_clicked_store: false,
+        request_reviews: true,
+        play_feedback_submitted: false,
+        rewards_summary: _emptyTestRewardsSummary(),
+        play_feedback_submitted_pending: false,
+        owner_language: null,
+        isTestedToday: false,
+        isGrantAvailableTomorrow: false,
+        isReadyToClaim: false,
+        isEarlyFinish: false,
+        is_external: false,
+        external_source: '',
+        external_package_name: '',
+        external_owner_telegram_id: 0,
+        external_category: 'APP',
+        external_guest_app_id: '',
+        external_source_app_id: null,
+        added_by_tester_id: 0,
+        external_last_completed_control_day: 0,
+        external_days_since_last_completed: null,
+        external_control_day_due: false,
+        mode: isBounty ? 'bounty' : ((feedItem && feedItem.mode) || 'mutual'),
+        test_mode: (feedItem && feedItem.test_mode) || 'google_group',
+    };
+}
+
+function applyOptimisticMyTestJoin(appId, options) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return;
+    var feedItem = _findFeedItemForOptimisticJoin(normalizedId) || { app_id: normalizedId };
+    var optimisticRow = _buildOptimisticMyTestFromFeedItem(feedItem, Object.assign({ appId: normalizedId }, options || {}));
+    if (!optimisticRow) return;
+    var alreadyExists = (myTests || []).some(function(test) {
+        return Number(test && test.id) === normalizedId;
+    });
+    if (!alreadyExists) {
+        myTests = [optimisticRow].concat(Array.isArray(myTests) ? myTests : []);
+    }
+    _testsLoadedOnce = true;
+    _lastFetchTimes.tests = 0;
+    persistTestsCacheSnapshot();
+    if (typeof renderTests === 'function') {
+        renderTests(true);
+    }
+}
+
+function refreshMyTestsNow() {
+    _lastFetchTimes.tests = 0;
+    return loadTasks(false);
+}
+
+function removeOptimisticMyTest(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return;
+    myTests = (Array.isArray(myTests) ? myTests : []).filter(function(test) {
+        return Number(test && test.id) !== normalizedId;
+    });
+    persistTestsCacheSnapshot();
+    if (typeof renderTests === 'function') {
+        renderTests(true);
+    }
+}
+
 async function loadTasks(isBackground) {
     if (_testsInFlight) {
         return _testsInFlight;
@@ -1875,6 +2030,15 @@ async function _loadProjectsImpl(options) {
 
 function getProjectVisibilityMode(project) {
     var explicitMode = String(project && project.visibility_mode || '').trim().toLowerCase();
+    if (explicitMode === 'full_isolation') {
+        return 'isolated';
+    }
+    if (explicitMode === 'hidden_from_showcase') {
+        return 'hidden_manual';
+    }
+    if (explicitMode === 'visible') {
+        return 'public';
+    }
     if (explicitMode === 'isolated' || explicitMode === 'hidden_manual' || explicitMode === 'public') {
         return explicitMode;
     }

@@ -244,6 +244,32 @@ function _highlightTestCardWhenReady(appId, attemptsLeft) {
     }, 180);
 }
 
+function _expandProjectCardWhenReady(projectId, attemptsLeft) {
+    var normalizedId = Number(projectId || 0);
+    if (normalizedId <= 0) return false;
+    var card = document.getElementById('project-card-' + normalizedId);
+    if (card) {
+        if (card.classList.contains('card-collapsed')) {
+            card.classList.remove('card-collapsed');
+            localStorage.setItem('project_card_collapsed_' + normalizedId, 'false');
+            var chevron = card.querySelector('.card-expand-chevron');
+            if (chevron) chevron.classList.remove('is-collapsed');
+        }
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('highlight-pulse');
+        setTimeout(function() {
+            card.classList.remove('highlight-pulse');
+        }, 2000);
+        return true;
+    }
+    var remaining = Number.isFinite(attemptsLeft) ? attemptsLeft : 10;
+    if (remaining <= 0) return false;
+    setTimeout(function() {
+        _expandProjectCardWhenReady(normalizedId, remaining - 1);
+    }, 220);
+    return false;
+}
+
 function toggleSystemMenu() {
     const menu = document.getElementById('system-drop-menu');
     if (menu) {
@@ -1115,9 +1141,12 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
         if (result.mode === 'auto_accepted') {
             closeProjectSelectModal();
             showToast(window.t('offerStartedInstantly', {}, lang));
+            if (typeof applyOptimisticMyTestJoin === 'function') {
+                applyOptimisticMyTestJoin(targetAppId, { join_type: 'mutual' });
+            }
             switchTab('tests');
             await Promise.allSettled([
-                loadTasks(true),
+                typeof refreshMyTestsNow === 'function' ? refreshMyTestsNow() : loadTasks(false),
                 loadProjects(true),
                 loadIncomingOffers({ background: true })
             ]);

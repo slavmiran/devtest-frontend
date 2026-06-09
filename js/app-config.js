@@ -868,6 +868,12 @@ function _parseInitialRouteTarget() {
             feedbackProjectId = Number(projectMatch[1] || 0);
             break;
         }
+        var manageMatch = normalized.match(/^(?:manage|owner)[_:](\d+)$/);
+        if (manageMatch) {
+            routeKind = 'manage_project';
+            feedbackProjectId = Number(manageMatch[1] || 0);
+            break;
+        }
         var testsHighlightMatch = normalized.match(/^(?:my_tests_highlight|test)[_:](\d+)$/);
         if (testsHighlightMatch) {
             routeKind = 'tests_highlight';
@@ -995,6 +1001,12 @@ function _parseInitialRouteTarget() {
             appId: feedbackProjectId > 0 ? feedbackProjectId : null,
         };
     }
+    if (routeKind === 'manage_project') {
+        return {
+            tab: 'projects',
+            expandProjectId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
     return null;
 }
 
@@ -1058,6 +1070,21 @@ async function _handleInitialRoute() {
             openEditModal(route.appId);
         } catch (error) {
             console.error('Initial edit route error:', error);
+        }
+        return;
+    }
+
+    // ── Manage route: open owner's project card on "My Projects" ──
+    if (route.expandProjectId) {
+        try {
+            switchTab('projects');
+            await loadProjects(true);
+            if (typeof _expandProjectCardWhenReady === 'function') {
+                _expandProjectCardWhenReady(route.expandProjectId);
+            }
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial manage project route error:', error);
         }
         return;
     }

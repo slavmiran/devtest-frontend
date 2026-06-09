@@ -28,6 +28,71 @@ function openTesterDossier(username, testerId, appId) {
     return openDossierModal(username || '', testerId, appId || 0);
 }
 
+function formatDeveloperOwnerLine(fullName, username, fallbackId) {
+    const name = String(fullName || '').trim();
+    const nick = String(username || '').trim().replace(/^@+/, '');
+    if (name && nick) return name + ' • @' + nick;
+    if (nick) return '@' + nick;
+    if (name) return name;
+    return window.t('idLabel', { id: fallbackId || 0 }, lang);
+}
+
+function _isDossierFlagFalse(value) {
+    if (value === false || value === 0 || value === '0') return true;
+    return String(value || '').trim().toLowerCase() === 'false';
+}
+
+function _isDossierEmailTestProject(project) {
+    if (!project) return false;
+    const mode = String(project.test_mode || project.testing_mode || 'google_group').trim().toLowerCase();
+    return mode === 'email_list' || mode === 'email' || project.is_email_test === true;
+}
+
+function _resolveDossierOwnerProfile(testerId, appId, username, tester, marketCandidate) {
+    const normalizedTesterId = Number(testerId || 0);
+    const cleanUsername = String(username || '').trim().replace(/^@+/, '');
+    let ownerUsername = cleanUsername;
+    let ownerFullName = '';
+
+    if (marketCandidate) {
+        ownerFullName = String(marketCandidate.owner_full_name || '').trim();
+        if (!ownerUsername) {
+            ownerUsername = String(marketCandidate.owner_username || '').trim().replace(/^@+/, '');
+        }
+    }
+
+    if (!ownerFullName) {
+        const feedSources = [mutualSeeking, mutualPrelaunch, bountyContracts];
+        for (let i = 0; i < feedSources.length; i += 1) {
+            const feed = feedSources[i];
+            if (!Array.isArray(feed)) continue;
+            const hit = feed.find(function(item) {
+                return Number(item && item.owner_id) === normalizedTesterId;
+            });
+            if (hit && hit.owner_full_name) {
+                ownerFullName = String(hit.owner_full_name).trim();
+                if (!ownerUsername) {
+                    ownerUsername = String(hit.owner_username || '').trim().replace(/^@+/, '');
+                }
+                break;
+            }
+        }
+    }
+
+    if (!ownerFullName && tester && tester.full_name) {
+        ownerFullName = String(tester.full_name).trim();
+    }
+    if (!ownerUsername && tester && tester.username) {
+        ownerUsername = String(tester.username).trim().replace(/^@+/, '');
+    }
+
+    return {
+        owner_id: normalizedTesterId,
+        owner_username: ownerUsername,
+        owner_full_name: ownerFullName,
+    };
+}
+
 function getMarketCandidateByAppId(appId, testerId) {
     const normalizedAppId = Number(appId || 0);
     const normalizedTesterId = Number(testerId || 0);
@@ -525,7 +590,7 @@ function getLangBadge(targetLang) {
 }
 
 function renderFeedCard(item, kind) {
-    const ownerDisplay = window.escapeHTML(item.owner_full_name || (item.owner_username ? '@' + item.owner_username : window.t('idLabel', { id: item.owner_id }, lang)));
+    const ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(item.owner_full_name, item.owner_username, item.owner_id));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
     const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
     const syncChip = isProjectSynced(item)
@@ -537,11 +602,9 @@ function renderFeedCard(item, kind) {
     const bountyChip = kind === 'bounty'
         ? `<span class="meta-chip accent-purple notranslate">💎 ${item.bounty_per_tester || 0} $BUST</span>`
         : '';
-    const kindChip = kind === 'mutual-seeking'
-        ? `<span class="meta-chip accent-green">👨‍💻 ${window.t('tabTestersNeeded', {}, lang)}</span>`
-        : (kind === 'mutual-prelaunch'
-            ? `<span class="meta-chip accent-blue">${window.t('tabPreLaunch', {}, lang)}</span>`
-            : '');
+    const kindChip = kind === 'mutual-prelaunch'
+        ? `<span class="meta-chip accent-blue">${window.t('tabPreLaunch', {}, lang)}</span>`
+        : '';
     const testerChipCount = kind === 'bounty'
         ? Number(item.bounty_testers_count || 0)
         : Number(item.mutual_testers_count || 0);
@@ -3760,8 +3823,10 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
 
     var safeName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
     var safePackage = window.escapeHTML(project.package_name || '');
-    var safeOwnerUsername = escapeInlineJsString(project.owner_username || '');
-    var ownerDisplay = window.escapeHTML(project.owner_username ? '@' + String(project.owner_username).replace('@', '') : window.t('idLabel', { id: testerId }, lang));
+    var ownerUsername = String(project.owner_username || profile.owner_username || '').trim().replace(/^@+/, '');
+    var ownerFullName = String(project.owner_full_name || profile.owner_full_name || '').trim();
+    var safeOwnerUsername = escapeInlineJsString(ownerUsername);
+    var ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(ownerFullName, ownerUsername, testerId));
     var createdDate = project.created_at ? new Date(project.created_at) : null;
     var todayDate = new Date(getLocalDate());
     var platformDays = createdDate && !Number.isNaN(createdDate.getTime())
@@ -3838,7 +3903,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         '<div class="details-block">' +
             '<div class="detail-section-title">' + window.escapeHTML(window.t('detail_owner_label', {}, lang)) + '</div>' +
             '<div class="detail-owner-row">' +
-                getAvatar(project.owner_username || '?') +
+                getAvatar(ownerUsername || '?') +
                 '<div>' +
                     '<div class="detail-owner-name notranslate">' + ownerDisplay + '</div>' +
                     '<div class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(project.last_owner_activity || '') + '\')">' +
@@ -3867,18 +3932,25 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
 
 function _normalizeDossierVisibilityProject(raw) {
     if (!raw) return { is_visible: true, is_accepting_new_testers: true, visibility_mode: 'visible' };
-    const explicitMode = String(raw.visibility_mode || '').trim().toLowerCase();
-    let visibilityMode = 'visible';
+    const explicitMode = String(raw.visibility_mode || raw._legacy_visibility_mode || '').trim().toLowerCase();
+    const visibleFalse = _isDossierFlagFalse(raw.is_visible);
+    const acceptsFalse = _isDossierFlagFalse(raw.is_accepting_new_testers);
+    let visibilityMode = '';
+
     if (explicitMode === 'full_isolation' || explicitMode === 'isolated') {
         visibilityMode = 'full_isolation';
     } else if (explicitMode === 'hidden_from_showcase' || explicitMode === 'hidden_manual') {
         visibilityMode = 'hidden_from_showcase';
     } else if (explicitMode === 'visible' || explicitMode === 'public') {
         visibilityMode = 'visible';
-    } else if (raw.is_visible === false && raw.is_accepting_new_testers === false) {
+    }
+
+    if (visibleFalse && acceptsFalse) {
         visibilityMode = 'full_isolation';
-    } else if (raw.is_visible === false) {
+    } else if (!visibilityMode && visibleFalse) {
         visibilityMode = 'hidden_from_showcase';
+    } else if (!visibilityMode) {
+        visibilityMode = 'visible';
     }
     const legacyMode = visibilityMode === 'full_isolation'
         ? 'isolated'
@@ -3900,7 +3972,7 @@ function _buildDossierProjectMetaChips(ownedProject) {
     } else if (visibilitySnapshot.visibility_mode === 'full_isolation') {
         chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-isolated">' + window.escapeHTML(window.t('dossierVisibilityIsolated', {}, lang)) + '</span>');
     }
-    if (String(ownedProject.test_mode || 'google_group') === 'email_list') {
+    if (_isDossierEmailTestProject(ownedProject)) {
         chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-email">📧 ' + window.escapeHTML(window.t('emailTestBadge', {}, lang)) + '</span>');
     }
     if (!chips.length) return '';
@@ -3941,7 +4013,7 @@ function _normalizeDossierOwnedProjectRow(raw) {
         is_visible: visibilitySnapshot.is_visible,
         is_accepting_new_testers: visibilitySnapshot.is_accepting_new_testers,
         visibility_mode: visibilitySnapshot.visibility_mode,
-        test_mode: String(raw.test_mode || 'google_group') === 'email_list' ? 'email_list' : 'google_group',
+        test_mode: _isDossierEmailTestProject(raw) ? 'email_list' : 'google_group',
         link_type: linkType,
         direction: direction,
         linked_my_app_name: String(raw.linked_my_app_name || '').trim(),
@@ -4088,9 +4160,6 @@ function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProje
     const isArchivedLike = status === 'completed' || status === 'archived';
 
     let cardClass = 'dossier-owned-project-card';
-    if (isLinkedProject) {
-        cardClass += ' dossier-owned-project-card-linked';
-    }
     if (isArchivedLike) {
         cardClass += ' is-archived';
     }
@@ -4245,11 +4314,14 @@ async function openDossierModal(username, testerId, appId) {
     } catch (error) {
         console.error('Dossier projects fetch error:', error);
     }
+    const dossierOwnerProfile = _resolveDossierOwnerProfile(testerId, appId, tgName, tester, marketCandidate);
     testerProjects = testerProjects.map(function(item) {
-        return Object.assign({}, item, { owner_username: tgName || '' });
+        return Object.assign({}, item, dossierOwnerProfile);
     });
     const ownedProjectsResolved = _resolveDossierOwnedProjects(dossierContextTester, testerProjects);
-    const relevantTesterProjects = ownedProjectsResolved.relevant;
+    const relevantTesterProjects = ownedProjectsResolved.relevant.map(function(item) {
+        return Object.assign({}, item, dossierOwnerProfile);
+    });
     const linkedOwnedProjectId = Number(ownedProjectsResolved.reciprocalOwnedProjectId || 0);
     const dossierBlocks = _resolveDossierProjectBlocks(dossierContextTester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId > 0 ? linkedOwnedProjectId : 0);
     console.log('[DOSSIER DIAGNOSTICS] PROCESSED BLOCKS:', {
@@ -4258,7 +4330,7 @@ async function openDossierModal(username, testerId, appId) {
         linkedState: dossierBlocks.linkedState,
     });
     _dossierProjectsCache[String(testerId)] = relevantTesterProjects;
-    _dossierProfilesCache[String(testerId)] = profile;
+    _dossierProfilesCache[String(testerId)] = Object.assign({}, profile, dossierOwnerProfile);
 
     const reliabilityState = getDossierReliabilityState(profile);
     const expected = reliabilityState.expected;

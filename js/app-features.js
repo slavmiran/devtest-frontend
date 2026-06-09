@@ -1689,6 +1689,9 @@ async function joinDirect(appId) {
     renderMutualFeed();
     closeProjectSelectModal();
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    if (typeof applyOptimisticMyTestJoin === 'function') {
+        applyOptimisticMyTestJoin(appId, { join_type: 'direct' });
+    }
     switchTab('tests');
 
     try {
@@ -1701,16 +1704,19 @@ async function joinDirect(appId) {
         if (result.status !== 'success') {
             mutualSeeking = rollback;
             renderMutualFeed();
+            if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
             if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
             return;
         }
-        loadTasks(true);
+        if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
+        else loadTasks(false);
         loadMutualFeed();
         loadProjects(true);
     } catch (error) {
         console.error('Join direct error:', error);
         mutualSeeking = rollback;
         renderMutualFeed();
+        if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
         if (tg.showAlert) tg.showAlert(t.networkError);
     } finally {
         _pendingActions.delete(actionKey);
@@ -1733,6 +1739,9 @@ async function joinMutual(appId, allowOverLimit = false) {
         window.renderMutualReturns(mutualReturns, true);
     }
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    if (typeof applyOptimisticMyTestJoin === 'function') {
+        applyOptimisticMyTestJoin(appId, { join_type: 'mutual' });
+    }
     switchTab('tests');
 
     try {
@@ -1750,10 +1759,12 @@ async function joinMutual(appId, allowOverLimit = false) {
             if (window.renderMutualReturns) {
                 window.renderMutualReturns(mutualReturns, true);
             }
+            if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
             if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
             return;
         }
-        loadTasks(true);
+        if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
+        else loadTasks(false);
         loadMutualFeed();
         loadProjects(true);
     } catch (error) {
@@ -1765,6 +1776,7 @@ async function joinMutual(appId, allowOverLimit = false) {
         if (window.renderMutualReturns) {
             window.renderMutualReturns(mutualReturns, true);
         }
+        if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
         if (tg.showAlert) tg.showAlert(t.networkError);
     } finally {
         _pendingActions.delete(actionKey);
@@ -1780,6 +1792,9 @@ async function joinBounty(appId) {
     bountyContracts = bountyContracts.filter(c => c.app_id !== appId);
     renderBountyFeed();
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    if (typeof applyOptimisticMyTestJoin === 'function') {
+        applyOptimisticMyTestJoin(appId, { join_type: 'bounty', isBounty: true });
+    }
     switchTab('tests');
 
     try {
@@ -1792,16 +1807,19 @@ async function joinBounty(appId) {
         if (result.status !== 'success') {
             bountyContracts = rollback;
             renderBountyFeed();
+            if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
             if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
             return;
         }
-        loadTasks(true);
+        if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
+        else loadTasks(false);
         loadBountyFeed();
         loadProjects(true);
     } catch (error) {
         console.error('Join bounty error:', error);
         bountyContracts = rollback;
         renderBountyFeed();
+        if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
         if (tg.showAlert) tg.showAlert(t.networkError);
     } finally {
         _pendingActions.delete(actionKey);
