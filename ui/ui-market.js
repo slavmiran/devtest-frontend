@@ -531,6 +531,9 @@ function renderFeedCard(item, kind) {
     const syncChip = isProjectSynced(item)
         ? `<span class="meta-chip accent-green">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
         : '';
+    const emailChip = String(item.test_mode || 'google_group') === 'email_list'
+        ? `<span class="meta-chip accent-orange">📧 ${window.escapeHTML(window.t('emailTestBadge', {}, lang))}</span>`
+        : '';
     const bountyChip = kind === 'bounty'
         ? `<span class="meta-chip accent-purple notranslate">💎 ${item.bounty_per_tester || 0} $BUST</span>`
         : '';
@@ -633,6 +636,7 @@ function renderFeedCard(item, kind) {
             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
                 <span class="meta-chip">👥 ${testerChipCount}/${testerChipLimit || 12}</span>
                 ${kindChip}
+                ${emailChip}
                 ${bountyChip}
                 ${syncChip}
             </div>
@@ -3773,9 +3777,11 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     var reliabilityLine = reliabilityState.expected >= 42
         ? window.t('dossierOwnerReliability', { pct: reliabilityState.reliabilityPct, status: reliabilityState.reliabilityText }, lang)
         : window.t('dossierOwnerReliabilityNewbie', {}, lang);
+    var joinBlocked = _isDossierProjectJoinBlocked(project);
     var takeAction = String(project.mode || 'mutual').toLowerCase() === 'bounty'
         ? 'closeProjectDetailsModal(); joinBounty(' + Number(project.app_id) + ')'
         : 'closeProjectDetailsModal(); joinMutual(' + Number(project.app_id) + ', false)';
+    var dossierMetaChipsHtml = _buildDossierProjectMetaChips(project);
     var contactButtonHtml = safeOwnerUsername
         ? '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openTelegramProfile(\'' + safeOwnerUsername + '\')">' + window.escapeHTML(window.t('detail_contact_btn', {}, lang)) + '</button>'
         : '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(window.t('usernameUnavailable', {}, lang)) + '</button>';
@@ -3815,6 +3821,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
             '<div class="card-info">' +
                 '<div class="card-title notranslate">' + safeName + '</div>' +
                 '<div class="card-subtitle notranslate">' + safePackage + '</div>' +
+                dossierMetaChipsHtml +
             '</div>' +
         '</div>' +
         '<div class="details-block">' +
@@ -3846,7 +3853,9 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         '<div class="detail-actions">' +
             contactButtonHtml +
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'' + escapeInlineJsString(project.package_name || '') + '\')">' + window.escapeHTML(window.t('openGooglePlay', {}, lang)) + '</button>' +
-            '<button class="btn" style="background:rgba(0,122,255,0.16);color:var(--button-color);" onclick="' + takeAction + '">' + window.escapeHTML(window.t('dossierBtnTakeTest', {}, lang)) + '</button>' +
+            (joinBlocked
+                ? '<button class="btn disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(window.t('dossierBtnTakeTestBlocked', {}, lang)) + '</button>'
+                : '<button class="btn" style="background:rgba(0,122,255,0.16);color:var(--button-color);" onclick="' + takeAction + '">' + window.escapeHTML(window.t('dossierBtnTakeTest', {}, lang)) + '</button>') +
         '</div>';
 
     var modal = document.getElementById('project-details-modal');
@@ -3854,6 +3863,52 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         modal.dataset.appId = '';
         modal.classList.add('active');
     }
+}
+
+function _normalizeDossierVisibilityProject(raw) {
+    if (!raw) return { is_visible: true, is_accepting_new_testers: true, visibility_mode: 'visible' };
+    const explicitMode = String(raw.visibility_mode || '').trim().toLowerCase();
+    let visibilityMode = 'visible';
+    if (explicitMode === 'full_isolation' || explicitMode === 'isolated') {
+        visibilityMode = 'full_isolation';
+    } else if (explicitMode === 'hidden_from_showcase' || explicitMode === 'hidden_manual') {
+        visibilityMode = 'hidden_from_showcase';
+    } else if (explicitMode === 'visible' || explicitMode === 'public') {
+        visibilityMode = 'visible';
+    } else if (raw.is_visible === false && raw.is_accepting_new_testers === false) {
+        visibilityMode = 'full_isolation';
+    } else if (raw.is_visible === false) {
+        visibilityMode = 'hidden_from_showcase';
+    }
+    const legacyMode = visibilityMode === 'full_isolation'
+        ? 'isolated'
+        : (visibilityMode === 'hidden_from_showcase' ? 'hidden_manual' : 'public');
+    return {
+        is_visible: visibilityMode === 'visible',
+        is_accepting_new_testers: visibilityMode !== 'full_isolation',
+        visibility_mode: visibilityMode,
+        _legacy_visibility_mode: legacyMode,
+    };
+}
+
+function _buildDossierProjectMetaChips(ownedProject) {
+    if (!ownedProject) return '';
+    const visibilitySnapshot = _normalizeDossierVisibilityProject(ownedProject);
+    const chips = [];
+    if (visibilitySnapshot.visibility_mode === 'hidden_from_showcase') {
+        chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-hidden">' + window.escapeHTML(window.t('dossierVisibilityHidden', {}, lang)) + '</span>');
+    } else if (visibilitySnapshot.visibility_mode === 'full_isolation') {
+        chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-isolated">' + window.escapeHTML(window.t('dossierVisibilityIsolated', {}, lang)) + '</span>');
+    }
+    if (String(ownedProject.test_mode || 'google_group') === 'email_list') {
+        chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-email">📧 ' + window.escapeHTML(window.t('emailTestBadge', {}, lang)) + '</span>');
+    }
+    if (!chips.length) return '';
+    return '<div class="dossier-project-meta-chips">' + chips.join('') + '</div>';
+}
+
+function _isDossierProjectJoinBlocked(ownedProject) {
+    return _normalizeDossierVisibilityProject(ownedProject).visibility_mode === 'full_isolation';
 }
 
 function _normalizeDossierOwnedProjectRow(raw) {
@@ -3866,17 +3921,27 @@ function _normalizeDossierOwnedProjectRow(raw) {
         ? null
         : Math.max(0, Number(daysLeftRaw) || 0);
     const direction = String(raw.direction || 'none').toLowerCase();
+    const visibilitySnapshot = _normalizeDossierVisibilityProject(raw);
     return {
         app_id: appId,
         name: String(raw.name || '').trim(),
         package_name: String(raw.package_name || raw.package || '').trim(),
         icon_url: raw.icon_url || '',
+        instructions: raw.instructions || '',
         status: status,
         mode: String(raw.mode || 'mutual').toLowerCase() || 'mutual',
         created_at: raw.created_at || null,
         finished_at: raw.finished_at || null,
         google_sync_day: Number(raw.google_sync_day || 0),
         last_sync_date: raw.last_sync_date || null,
+        last_owner_activity: raw.last_owner_activity || null,
+        bounty_per_tester: Number(raw.bounty_per_tester || 0),
+        active_testers_count: Number(raw.active_testers_count || 0),
+        sync_message: raw.sync_message || '',
+        is_visible: visibilitySnapshot.is_visible,
+        is_accepting_new_testers: visibilitySnapshot.is_accepting_new_testers,
+        visibility_mode: visibilitySnapshot.visibility_mode,
+        test_mode: String(raw.test_mode || 'google_group') === 'email_list' ? 'email_list' : 'google_group',
         link_type: linkType,
         direction: direction,
         linked_my_app_name: String(raw.linked_my_app_name || '').trim(),
@@ -3991,6 +4056,9 @@ function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects,
         if (status === 'completed' || status === 'archived') {
             return false;
         }
+        if (linkedState === 'one_sided') {
+            return true;
+        }
         if (focusId <= 0 || !linkedProject) {
             return true;
         }
@@ -4063,8 +4131,10 @@ function _renderDossierOtherProjectMiniCard(ownedProject, testerId) {
         : '';
     const status = String(ownedProject.status || 'active').toLowerCase();
     const isArchivedLike = status === 'completed' || status === 'archived';
-    const cardTag = isArchivedLike
-        ? '<div class="dossier-other-mini-card is-archived">'
+    const isJoinBlocked = _isDossierProjectJoinBlocked(ownedProject);
+    const metaChipsHtml = _buildDossierProjectMetaChips(ownedProject);
+    const cardTag = (isArchivedLike || isJoinBlocked)
+        ? '<div class="dossier-other-mini-card' + (isArchivedLike ? ' is-archived' : '') + (isJoinBlocked ? ' is-join-blocked' : '') + '">'
         : '<button type="button" class="dossier-other-mini-card" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ')">';
 
     return cardTag +
@@ -4073,10 +4143,11 @@ function _renderDossierOtherProjectMiniCard(ownedProject, testerId) {
             '<div class="dossier-other-mini-body">' +
                 '<div class="dossier-other-mini-title notranslate">' + safeOwnedName + '</div>' +
                 '<div class="dossier-other-mini-subtitle notranslate">' + safeLinkSubtitle + '</div>' +
+                metaChipsHtml +
                 daysLeftHtml +
             '</div>' +
         '</div>' +
-        (isArchivedLike ? '</div>' : '</button>');
+        ((isArchivedLike || isJoinBlocked) ? '</div>' : '</button>');
 }
 
 async function openDossierModal(username, testerId, appId) {
