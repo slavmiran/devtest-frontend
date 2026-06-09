@@ -936,6 +936,7 @@
             dossierVisibilityIsolated: "🔒 Full isolation",
             dossierBtnTakeTestBlocked: "🔒 Closed for testers",
             dossierLinkMutual: "🤝 Mutual with: {app}",
+            dossierLinkMutualBare: "🤝 Mutual testing",
             dossierLinkMutualArchived: "🤝 Mutual (Completed) with: {app}",
             dossierLinkDirect: "🆓 Testing via direct link",
             dossierLinkDirectITestThem: "🆓 I test via direct link",

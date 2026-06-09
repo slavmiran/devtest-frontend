@@ -936,6 +936,7 @@
             dossierVisibilityIsolated: "🔒 Полная изоляция",
             dossierBtnTakeTestBlocked: "🔒 Набор закрыт",
             dossierLinkMutual: "🤝 Взаимка с: {app}",
+            dossierLinkMutualBare: "🤝 Взаимное тестирование",
             dossierLinkMutualArchived: "🤝 Взаимка (Завершен) с: {app}",
             dossierLinkDirect: "🆓 Тестирую по прямой ссылке",
             dossierLinkDirectITestThem: "🆓 Я тестирую по прямой ссылке",

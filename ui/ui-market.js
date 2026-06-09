@@ -3972,11 +3972,11 @@ function _buildDossierProjectLinkSubtitle(ownedProject, options) {
 
     if (linkType === 'mutual') {
         if (linkedName) {
-            return isArchivedLike 
+            return isArchivedLike
                 ? window.t('dossierLinkMutualArchived', { app: linkedName }, lang)
                 : window.t('dossierLinkMutual', { app: linkedName }, lang);
         }
-        return window.t('dossierLinkNone', {}, lang);
+        return window.t('dossierLinkMutualBare', {}, lang);
     }
     if (linkType === 'direct') {
         if (direction === 'i_test_them') return window.t('dossierLinkDirectITestThem', {}, lang);
@@ -4051,18 +4051,20 @@ function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects,
         linkedState = 'one_sided';
     }
 
+    const showLinkedInBlockA = linkedState === 'mutual_active' || linkedState === 'mutual_archived';
     const otherProjects = (relevantProjects || []).filter(function(ownedProject) {
+        const appId = Number(ownedProject && ownedProject.app_id || 0);
+        if (appId <= 0) {
+            return false;
+        }
         const status = String(ownedProject && ownedProject.status || 'active').toLowerCase();
         if (status === 'completed' || status === 'archived') {
             return false;
         }
-        if (linkedState === 'one_sided') {
-            return true;
+        if (showLinkedInBlockA && focusId > 0 && appId === focusId) {
+            return false;
         }
-        if (focusId <= 0 || !linkedProject) {
-            return true;
-        }
-        return String(ownedProject && ownedProject.app_id || 0) !== String(focusId);
+        return true;
     });
 
     return {
@@ -4281,8 +4283,23 @@ async function openDossierModal(username, testerId, appId) {
             : window.t('dossierOneSidedNoProjects', { project: myProjectNameForNotice }, lang);
         linkedBlockHtml = '<div class="dossier-one-sided-notice">' + window.escapeHTML(oneSidedText) + '</div>';
     } else if (dossierBlocks.linkedProject) {
+        const linkedCardFallbackName = String(
+            (project && (project.name || project.package_name))
+            || (marketCandidate && marketCandidate.my_project_name)
+            || ''
+        ).trim();
+        const linkedCardOptions = {
+            fallbackLinkedMyAppName: linkedCardFallbackName,
+        };
+        if (
+            String(dossierBlocks.linkedProject.link_type || 'none').toLowerCase() === 'none'
+            && (tester && tester.reciprocal_app_id || linkedOwnedProjectId > 0)
+        ) {
+            linkedCardOptions.fallbackLinkType = 'mutual';
+            linkedCardOptions.fallbackDirection = 'both';
+        }
         linkedBlockHtml = '<div class="dossier-owned-projects-list">' +
-            _renderDossierOwnedProjectCard(dossierBlocks.linkedProject, testerId, linkedOwnedProjectId, todayDate) +
+            _renderDossierOwnedProjectCard(dossierBlocks.linkedProject, testerId, linkedOwnedProjectId, todayDate, linkedCardOptions) +
             '</div>';
     } else {
         linkedBlockHtml = '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierLinkedProjectEmpty', {}, lang)) + '</div>';
