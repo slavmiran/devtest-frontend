@@ -28,15 +28,19 @@ function openTesterDossier(username, testerId, appId) {
     return openDossierModal(username || '', testerId, appId || 0);
 }
 
-function getMarketCandidateByAppId(appId) {
+function getMarketCandidateByAppId(appId, testerId) {
     const normalizedAppId = Number(appId || 0);
-    if (!normalizedAppId) return null;
+    const normalizedTesterId = Number(testerId || 0);
+    if (!normalizedAppId && !normalizedTesterId) return null;
 
-    const returnsCandidate = (Array.isArray(mutualReturns) ? mutualReturns : []).find(function(item) {
-        return Number(item && item.app_id) === normalizedAppId;
-    });
-    if (returnsCandidate) {
-        return Object.assign({ market_kind: 'mutual-return' }, returnsCandidate);
+    if (normalizedTesterId > 0 && normalizedAppId > 0) {
+        const returnsCandidate = (Array.isArray(mutualReturns) ? mutualReturns : []).find(function(item) {
+            const contextProjectId = Number(item && (item.my_project_id || item.app_id) || 0);
+            return Number(item && item.owner_id) === normalizedTesterId && contextProjectId === normalizedAppId;
+        });
+        if (returnsCandidate) {
+            return Object.assign({ market_kind: 'mutual-return' }, returnsCandidate);
+        }
     }
 
     const seekingCandidate = (Array.isArray(mutualSeeking) ? mutualSeeking : []).find(function(item) {
@@ -668,15 +672,16 @@ function renderMutualReturns(apps, force) {
     }
 
     container.style.display = '';
-    list.innerHTML = items.map(app => {
+    list.innerHTML = items.map(function(app) {
         const ownerUsername = (app.owner_username || '').replace('@', '');
         const safeOwnerUsername = escapeInlineJsString(ownerUsername);
         const displayOwner = window.escapeHTML(ownerUsername ? '@' + ownerUsername : window.t('idLabel', { id: app.owner_id }, lang));
-        const appName = window.escapeHTML(app.name || window.t('unknownLabel', {}, lang));
+        const myProjectId = Number(app.my_project_id || app.app_id || 0);
         const myProjectNameRaw = app.my_project_name || '';
-        const contextText = window.escapeHTML(window.t('mutualReturnContext', { project: myProjectNameRaw }, lang));
-        const sourceMeta = getTesterSourceMeta(app.join_type);
-        const sourceBadge = `<span class="mutual-return-source-badge" title="${window.escapeHTML(sourceMeta.label)}">${window.escapeHTML(sourceMeta.icon + ' ' + sourceMeta.label)}</span>`;
+        const profileText = window.escapeHTML(window.t('mutualReturnProfileText', {
+            username: ownerUsername ? '@' + ownerUsername : window.t('idLabel', { id: app.owner_id }, lang),
+            project: myProjectNameRaw,
+        }, lang));
         const hasPendingOffer = !!app.has_pending_offer;
         const returnBtnText = window.escapeHTML(window.t(hasPendingOffer ? 'offerPending' : 'mutualReturnBtn', {}, lang));
         const btnClass = hasPendingOffer ? 'btn pending disabled' : 'btn btn-primary';
@@ -692,20 +697,11 @@ function renderMutualReturns(apps, force) {
             : '';
         const btnClick = hasPendingOffer
             ? 'void(0)'
-            : `if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); openTesterDossier('${safeOwnerUsername}', ${app.owner_id}, ${app.app_id}); event.stopPropagation();`;
+            : `if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); openTesterDossier('${safeOwnerUsername}', ${app.owner_id}, ${myProjectId}); event.stopPropagation();`;
         return `
-            <div class="horizontal-card mutual-return-card">
-                <div style="font-size:12px; color:var(--hint-color); margin-bottom:8px; line-height:1.4;">
-                    <button class="tester-link notranslate" style="background:none;border:none;padding:0;font-size:12px;cursor:pointer;color:var(--link-color);" onclick="openTesterDossier('${safeOwnerUsername}', ${app.owner_id}, ${app.app_id}); event.stopPropagation();">${displayOwner}</button><span class="notranslate">${contextText}</span>
-                </div>
-                <div class="mutual-return-card-head">
-                    ${renderIcon(app.name || '', app.icon_url)}
-                    <div class="mutual-return-card-main">
-                        <div class="card-title mutual-return-card-title notranslate">${appName}</div>
-                        ${sourceBadge}
-                    </div>
-                </div>
-                <button class="${btnClass}" ${btnDisabled} style="width:100%;" data-offer-target-app="${app.app_id}" data-offer-target-owner="${app.owner_id}" onclick="${btnClick}">${returnBtnText}</button>
+            <div class="horizontal-card mutual-return-card mutual-return-profile-card">
+                <div class="mutual-return-profile-text notranslate">${profileText}</div>
+                <button class="${btnClass}" ${btnDisabled} style="width:100%;" data-offer-context-project="${myProjectId}" data-offer-target-owner="${app.owner_id}" onclick="${btnClick}">${returnBtnText}</button>
                 ${pendingOfferMeta ? `<div class="market-offer-note">${pendingOfferMeta}</div>` : ''}
             </div>
         `;
@@ -3980,7 +3976,7 @@ function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects,
         : null;
     const joinType = tester ? String(tester.join_type || '').toLowerCase() : '';
     const isMutualReturnContext = !!(marketCandidate && marketCandidate.market_kind === 'mutual-return');
-    const isDirectOnMyProject = joinType === 'direct' || isMutualReturnContext;
+    const isDirectOnMyProject = joinType === 'direct' || joinType === 'invite' || isMutualReturnContext;
 
     let linkedState = 'none';
     if (linkedProject) {
@@ -4092,7 +4088,7 @@ async function openDossierModal(username, testerId, appId) {
 
     const project = myProjects.find((item) => Number(item.id) === Number(appId));
     const tester = project ? (project.testers || []).find((candidate) => Number(candidate.tester_id) === Number(testerId)) : null;
-    const marketCandidate = getMarketCandidateByAppId(appId);
+    const marketCandidate = getMarketCandidateByAppId(appId, testerId);
     const today = getLocalDate();
     const todayDate = new Date(today);
 
@@ -4130,15 +4126,17 @@ async function openDossierModal(username, testerId, appId) {
         console.error('Dossier fetch error:', error);
     }
 
-    const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || marketCandidate && marketCandidate.app_id || 0);
+    const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
     const dossierContextTester = tester || (reciprocalOwnedProjectId > 0
         ? {
             reciprocal_app_id: reciprocalOwnedProjectId,
-            reciprocal_app_name: marketCandidate && marketCandidate.name || '',
-            reciprocal_app_package_name: marketCandidate && marketCandidate.package_name || '',
-            reciprocal_app_status: 'active',
+            reciprocal_app_name: tester && tester.reciprocal_app_name || '',
+            reciprocal_app_package_name: tester && tester.reciprocal_app_package_name || '',
+            reciprocal_app_status: tester && tester.reciprocal_app_status || 'active',
         }
-        : null);
+        : (marketCandidate && marketCandidate.market_kind === 'mutual-return'
+            ? { join_type: marketCandidate.join_type || 'invite' }
+            : null));
     let testerProjects = [];
     try {
         const projectsParams = new URLSearchParams();
@@ -4167,7 +4165,7 @@ async function openDossierModal(username, testerId, appId) {
     const ownedProjectsResolved = _resolveDossierOwnedProjects(dossierContextTester, testerProjects);
     const relevantTesterProjects = ownedProjectsResolved.relevant;
     const linkedOwnedProjectId = Number(ownedProjectsResolved.reciprocalOwnedProjectId || 0);
-    const dossierBlocks = _resolveDossierProjectBlocks(tester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId > 0 ? linkedOwnedProjectId : 0);
+    const dossierBlocks = _resolveDossierProjectBlocks(dossierContextTester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId > 0 ? linkedOwnedProjectId : 0);
     _dossierProjectsCache[String(testerId)] = relevantTesterProjects;
     _dossierProfilesCache[String(testerId)] = profile;
 
@@ -4181,7 +4179,8 @@ async function openDossierModal(username, testerId, appId) {
     const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
     const canReward = likesAvailable > 0 && !alreadyLiked;
     const canDeleteFromProject = !!tester && !!project && !!appId && testingDay > 0 && testingDay <= 7;
-    const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project;
+    const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project
+        && marketCandidate.market_kind !== 'mutual-return';
     const takeFromShowcaseDisabled = !!(marketCandidate && marketCandidate.has_pending_offer);
     const takeFromShowcaseIsPrelaunch = !!(marketCandidate && marketCandidate.market_kind === 'mutual-prelaunch');
 
@@ -4201,9 +4200,14 @@ async function openDossierModal(username, testerId, appId) {
 
     let linkedBlockHtml = '';
     if (dossierBlocks.linkedState === 'one_sided') {
-        const oneSidedText = dossierBlocks.otherProjects.length > 0 
-            ? window.t('dossierOneSidedWithProjects', {}, lang)
-            : window.t('dossierOneSidedNoProjects', {}, lang);
+        const myProjectNameForNotice = String(
+            (project && (project.name || project.package_name))
+            || (marketCandidate && marketCandidate.my_project_name)
+            || ''
+        ).trim();
+        const oneSidedText = dossierBlocks.otherProjects.length > 0
+            ? window.t('dossierOneSidedWithProjects', { project: myProjectNameForNotice }, lang)
+            : window.t('dossierOneSidedNoProjects', { project: myProjectNameForNotice }, lang);
         linkedBlockHtml = '<div class="dossier-one-sided-notice">' + window.escapeHTML(oneSidedText) + '</div>';
     } else if (dossierBlocks.linkedProject) {
         linkedBlockHtml = '<div class="dossier-owned-projects-list">' +

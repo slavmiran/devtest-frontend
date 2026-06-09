@@ -4470,6 +4470,19 @@ details[open] > summary .details-arrow {
     border: 1px solid rgba(142, 142, 147, 0.16);
 }
 
+.mutual-return-profile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mutual-return-profile-text {
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
 .mutual-return-card-head {
     display: flex;
     align-items: center;
