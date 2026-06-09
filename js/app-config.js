@@ -30,7 +30,11 @@ const GUEST_CLAIM_SESSION_PREFIX = 'guest_claim_handled_v1:';
 const USER_TIMEZONE_STORAGE_KEY = 'user_system_timezone';
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
-const telegramUsername = String(initData.user?.username || '').trim().replace(/^@+/, '');
+// DEBUG: set true to test WebApp without Telegram @username (revert before release).
+const DEBUG_BYPASS_USERNAME_GATE = true;
+const telegramUsername = DEBUG_BYPASS_USERNAME_GATE
+    ? (String(initData.user?.username || '').trim().replace(/^@+/, '') || 'tester_no_name')
+    : String(initData.user?.username || '').trim().replace(/^@+/, '');
 const API_BASE_OVERRIDE = String(window.__API_BASE__ || '').trim();
 let API_BASE = API_BASE_OVERRIDE || (window.location.hostname.includes('vercel.app')
     ? 'https://usable-epidemic-askew.ngrok-free.dev/api'
@@ -101,10 +105,16 @@ const GOOGLE_TRANSLATE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 const GOOGLE_TRANSLATE_SYNC_GUARD_KEY = 'google_translate_sync_guard';
 
 function hasTelegramUsername() {
+    if (DEBUG_BYPASS_USERNAME_GATE) {
+        return true;
+    }
     return telegramUsername.length > 0;
 }
 
 function showNoUsernameOverlay() {
+    if (DEBUG_BYPASS_USERNAME_GATE) {
+        return;
+    }
     var overlay = document.getElementById('no-username-overlay');
     if (!overlay) {
         return;
