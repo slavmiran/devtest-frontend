@@ -204,8 +204,15 @@ function renderProjects(force) {
             regularTesters.forEach((tester) => {
                 let nameHtml = '';
                 let cleanUsername = '';
-                const isContractTester = String(tester.join_type || '').toLowerCase() === 'bounty';
-                const testerPrefixHtml = isContractTester ? '<span class="tester-contract-prefix">💎</span>' : '';
+                const joinType = String(tester.join_type || 'invite').toLowerCase();
+                const isContractTester = joinType === 'bounty';
+                const isInviteLikeTester = joinType === 'direct' || joinType === 'invite';
+                let testerPrefixHtml = '';
+                if (isContractTester) {
+                    testerPrefixHtml = '<span class="tester-contract-prefix">💎</span>';
+                } else if (isInviteLikeTester) {
+                    testerPrefixHtml = '<span class="tester-invite-prefix">🔗</span>';
+                }
                 let testerDay = 0;
                 if (tester.start_date) {
                     const startDt = new Date(tester.start_date);

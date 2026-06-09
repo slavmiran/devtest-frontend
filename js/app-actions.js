@@ -45,8 +45,10 @@ function getCheckpointJoinSourceLabel(test, messageLang) {
     if (joinType === 'mutual') return window.t('testerSourceMutualFull', {}, resolvedLang);
     if (joinType === 'bounty') return window.t('testerSourceBountyFull', {}, resolvedLang);
     if (joinType === 'prelaunch') return window.t('testerSourcePrelaunchFull', {}, resolvedLang);
-    if (joinType === 'direct') return window.t('testerSourceDirectFull', {}, resolvedLang);
-    return window.t('testerSourceInviteFull', {}, resolvedLang);
+    if (joinType === 'direct' || joinType === 'invite') {
+        return window.t('testerSourceInviteNoMutualFull', {}, resolvedLang);
+    }
+    return window.t('testerSourceInviteNoMutualFull', {}, resolvedLang);
 }
 
 function getDefaultCheckpointReportLanguage(appId) {

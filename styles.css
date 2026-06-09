@@ -515,7 +515,8 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     opacity: 0.8;
 }
 
-.tester-contract-prefix {
+.tester-contract-prefix,
+.tester-invite-prefix {
     opacity: 0.82;
 }
 

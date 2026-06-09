@@ -667,7 +667,7 @@ function getTestSourceChip(test) {
     if (joinType === 'mutual') {
         return `<span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('testSourceMutual', {}, lang))}</span>`;
     }
-    if (joinType === 'invite') {
+    if (joinType === 'direct' || joinType === 'invite') {
         return `<span class="meta-chip">🔗 ${window.escapeHTML(window.t('testSourceInvite', {}, lang))}</span>`;
     }
     return '';
@@ -684,10 +684,10 @@ function getTesterSourceMeta(joinType) {
     if (normalized === 'prelaunch') {
         return { icon: '🚀', label: window.t('testerSourcePrelaunchFull', {}, lang) };
     }
-    if (normalized === 'direct') {
-        return { icon: '🚀', label: window.t('testerSourceDirectFull', {}, lang) };
+    if (normalized === 'direct' || normalized === 'invite') {
+        return { icon: '🔗', label: window.t('testerSourceInviteNoMutualFull', {}, lang) };
     }
-    return { icon: '🚀', label: window.t('testerSourceInviteFull', {}, lang) };
+    return { icon: '🔗', label: window.t('testerSourceInviteNoMutualFull', {}, lang) };
 }
 
 function buildRunIterationChip(item, className) {
