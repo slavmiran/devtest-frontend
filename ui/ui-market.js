@@ -3968,14 +3968,21 @@ function _normalizeDossierVisibilityProject(raw) {
 
 function _buildDossierProjectMetaChips(ownedProject) {
     if (!ownedProject) return '';
+    const status = String(ownedProject.status || '').toLowerCase();
+    const isArchivedLike = status === 'completed' || status === 'archived';
+    
     const visibilitySnapshot = _normalizeDossierVisibilityProject(ownedProject);
     const chips = [];
+    
+    if (isArchivedLike) {
+        chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-completed" style="background: rgba(52, 199, 89, 0.14); color: #30d158;">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</span>');
+    }
     if (visibilitySnapshot.visibility_mode === 'hidden_from_showcase') {
         chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-hidden">' + window.escapeHTML(window.t('dossierVisibilityHidden', {}, lang)) + '</span>');
     } else if (visibilitySnapshot.visibility_mode === 'full_isolation') {
         chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-isolated">' + window.escapeHTML(window.t('dossierVisibilityIsolated', {}, lang)) + '</span>');
     }
-    if (_isDossierEmailTestProject(ownedProject)) {
+    if (_isDossierEmailTestProject(ownedProject) || (ownedProject && ownedProject.test_mode === 'email_list')) {
         chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-email">📧 ' + window.escapeHTML(window.t('emailTestBadge', {}, lang)) + '</span>');
     }
     if (!chips.length) return '';
