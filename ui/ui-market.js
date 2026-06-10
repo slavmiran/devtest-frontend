@@ -3933,8 +3933,6 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
 function _normalizeDossierVisibilityProject(raw) {
     if (!raw) return { is_visible: true, is_accepting_new_testers: true, visibility_mode: 'visible' };
     const explicitMode = String(raw.visibility_mode || raw._legacy_visibility_mode || '').trim().toLowerCase();
-    const visibleFalse = _isDossierFlagFalse(raw.is_visible);
-    const acceptsFalse = _isDossierFlagFalse(raw.is_accepting_new_testers);
     let visibilityMode = '';
 
     if (explicitMode === 'full_isolation' || explicitMode === 'isolated') {
@@ -3945,13 +3943,18 @@ function _normalizeDossierVisibilityProject(raw) {
         visibilityMode = 'visible';
     }
 
-    if (visibleFalse && acceptsFalse) {
-        visibilityMode = 'full_isolation';
-    } else if (!visibilityMode && visibleFalse) {
-        visibilityMode = 'hidden_from_showcase';
-    } else if (!visibilityMode) {
-        visibilityMode = 'visible';
+    if (!visibilityMode) {
+        const visibleFalse = _isDossierFlagFalse(raw.is_visible);
+        const acceptsFalse = _isDossierFlagFalse(raw.is_accepting_new_testers);
+        if (visibleFalse && acceptsFalse) {
+            visibilityMode = 'full_isolation';
+        } else if (visibleFalse) {
+            visibilityMode = 'hidden_from_showcase';
+        } else {
+            visibilityMode = 'visible';
+        }
     }
+
     const legacyMode = visibilityMode === 'full_isolation'
         ? 'isolated'
         : (visibilityMode === 'hidden_from_showcase' ? 'hidden_manual' : 'public');
@@ -4105,43 +4108,18 @@ function _resolveDossierOwnedProjects(tester, testerProjects) {
 }
 
 function _resolveDossierProjectBlocks(tester, marketCandidate, relevantProjects, focusAppId) {
-    const focusId = Number(focusAppId || 0);
-    const linkedProject = focusId > 0
-        ? (relevantProjects || []).find(function(ownedProject) {
-            return Number(ownedProject && ownedProject.app_id || 0) === focusId;
-        }) || null
-        : null;
-    const joinType = tester ? String(tester.join_type || '').toLowerCase() : '';
-    const isMutualReturnContext = !!(marketCandidate && marketCandidate.market_kind === 'mutual-return');
-    const isDirectOnMyProject = joinType === 'direct' || joinType === 'invite' || isMutualReturnContext;
-
-    let linkedState = 'none';
-    if (linkedProject) {
-        const status = String(linkedProject.status || 'active').toLowerCase();
-        linkedState = (status === 'completed' || status === 'archived') ? 'mutual_archived' : 'mutual_active';
-    } else if ((tester || isMutualReturnContext) && isDirectOnMyProject) {
-        linkedState = 'one_sided';
-    }
-
-    const focusKey = focusId > 0 ? String(focusId) : '';
     const otherProjects = (relevantProjects || []).filter(function(ownedProject) {
         const rowId = String(
             ownedProject && (ownedProject.app_id != null ? ownedProject.app_id : ownedProject.id) || ''
         ).trim();
-        if (!rowId || rowId === '0') {
-            return false;
-        }
-        if (focusKey && rowId === focusKey) {
-            return false;
-        }
-        return true;
+        return !!rowId && rowId !== '0';
     });
 
     return {
-        linkedState: linkedState,
-        linkedProject: linkedProject,
+        linkedState: 'none',
+        linkedProject: null,
         otherProjects: otherProjects,
-        focusAppId: focusId,
+        focusAppId: 0,
     };
 }
 
@@ -4278,6 +4256,7 @@ async function openDossierModal(username, testerId, appId) {
             ? { join_type: marketCandidate.join_type || 'invite' }
             : null));
     let testerProjects = [];
+    let relations = [];
     try {
         const projectsParams = new URLSearchParams();
         if (Number(userId || 0) > 0) {
@@ -4302,8 +4281,9 @@ async function openDossierModal(username, testerId, appId) {
         if (resp.ok) {
             if (Array.isArray(data)) {
                 testerProjects = data;
-            } else if (Array.isArray(data && data.projects)) {
-                testerProjects = data.projects;
+            } else if (data && typeof data === 'object') {
+                testerProjects = Array.isArray(data.projects) ? data.projects : [];
+                relations = Array.isArray(data.relations) ? data.relations : [];
             } else {
                 testerProjects = [];
                 console.warn('[DOSSIER DIAGNOSTICS] Unexpected projects payload shape:', data);
@@ -4361,38 +4341,25 @@ async function openDossierModal(username, testerId, appId) {
         </div>
     </div>`;
 
-    let linkedBlockHtml = '';
-    if (dossierBlocks.linkedState === 'one_sided') {
-        const myProjectNameForNotice = String(
-            (project && (project.name || project.package_name))
-            || (marketCandidate && marketCandidate.my_project_name)
-            || ''
-        ).trim();
-        const oneSidedText = dossierBlocks.otherProjects.length > 0
-            ? window.t('dossierOneSidedWithProjects', { project: myProjectNameForNotice }, lang)
-            : window.t('dossierOneSidedNoProjects', { project: myProjectNameForNotice }, lang);
-        linkedBlockHtml = '<div class="dossier-one-sided-notice">' + window.escapeHTML(oneSidedText) + '</div>';
-    } else if (dossierBlocks.linkedProject) {
-        const linkedCardFallbackName = String(
-            (project && (project.name || project.package_name))
-            || (marketCandidate && marketCandidate.my_project_name)
-            || ''
-        ).trim();
-        const linkedCardOptions = {
-            fallbackLinkedMyAppName: linkedCardFallbackName,
-        };
-        if (
-            String(dossierBlocks.linkedProject.link_type || 'none').toLowerCase() === 'none'
-            && (tester && tester.reciprocal_app_id || linkedOwnedProjectId > 0)
-        ) {
-            linkedCardOptions.fallbackLinkType = 'mutual';
-            linkedCardOptions.fallbackDirection = 'both';
-        }
-        linkedBlockHtml = '<div class="dossier-owned-projects-list">' +
-            _renderDossierOwnedProjectCard(dossierBlocks.linkedProject, testerId, linkedOwnedProjectId, todayDate, linkedCardOptions) +
-            '</div>';
+    let relationsHtml = '';
+    if (relations.length > 0) {
+        relationsHtml = '<div class="dossier-relations-list" style="display:flex; flex-direction:column; gap:8px;">';
+        relations.forEach(function(rel) {
+            let relText = '';
+            if (rel.type === 'mutual') {
+                relText = window.t('dossierRelationMutual', { my_app: rel.my_app, their_app: rel.their_app }, lang);
+            } else if (rel.type === 'direct_they_test_me') {
+                relText = window.t('dossierRelationTheyTestMe', { my_app: rel.my_app }, lang);
+            } else if (rel.type === 'direct_i_test_them') {
+                relText = window.t('dossierRelationITestThem', { their_app: rel.their_app }, lang);
+            }
+            if (relText) {
+                relationsHtml += '<div class="dossier-relation-item" style="padding:10px 12px; background:var(--secondary-bg-color); border-radius:10px; font-size:13px; font-weight:500; line-height:1.4;">' + window.escapeHTML(relText) + '</div>';
+            }
+        });
+        relationsHtml += '</div>';
     } else {
-        linkedBlockHtml = '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierLinkedProjectEmpty', {}, lang)) + '</div>';
+        relationsHtml = '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierRelationsEmpty', {}, lang)) + '</div>';
     }
 
     const otherProjectsHtml = dossierBlocks.otherProjects.length
@@ -4403,7 +4370,7 @@ async function openDossierModal(username, testerId, appId) {
 
     html += '<div style="margin-bottom: 16px;">' +
         '<div style="font-weight: 600; margin-bottom: 8px;">' + window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) + '</div>' +
-        linkedBlockHtml +
+        relationsHtml +
         '<div style="font-weight: 600; margin: 14px 0 8px;">' + window.escapeHTML(window.t('dossierOtherProjectsTitle', {}, lang)) + '</div>' +
         otherProjectsHtml +
     '</div>';
