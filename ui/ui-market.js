@@ -1714,7 +1714,7 @@ async function sendExternalTrackInvite() {
         if (!result) return;
 
         var claimLink = typeof window.buildExternalClaimStartLink === 'function'
-            ? window.buildExternalClaimStartLink(guest.package_name || guest.name || '')
+            ? window.buildExternalClaimStartLink(guest.package_name || guest.name || '', guest.id)
             : '';
         var myGroupLink = String(selectedProject.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
         var myPackage = String(selectedProject.package || selectedProject.package_name || '').trim();
@@ -2010,7 +2010,7 @@ async function sendExternalTrackingProofFromUi(testId, ownerUsername, event) {
         app_name: test.name || window.t('unknownLabel', {}, lang),
         day: Number(result.testing_day || test.testing_days || 0),
         claim_link: typeof window.buildExternalClaimStartLink === 'function'
-            ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '')
+            ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '', test.external_guest_app_id)
             : '',
     }, lang);
     copyTextWithToast(proofText, 'externalTrackCopied');
@@ -2103,7 +2103,7 @@ function getExternalProjectOwnerMessageParams(test) {
         package_name: packageName || appNameDisplay,
         day: getExternalCurrentTestingDay(test),
         claim_link: typeof window.buildExternalClaimStartLink === 'function'
-            ? window.buildExternalClaimStartLink(packageName)
+            ? window.buildExternalClaimStartLink(packageName, test.external_guest_app_id)
             : '',
     };
 }
@@ -2148,7 +2148,7 @@ function inviteExternalProjectOwnerToPlatform(testId, event) {
     var messageText = window.t('externalProjectInvitePlatformMessage', {
         app_name: test.name || window.t('unknownLabel', {}, lang),
         claim_link: typeof window.buildExternalClaimStartLink === 'function'
-            ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '')
+            ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '', test.external_guest_app_id)
             : '',
     }, lang);
     copyTextWithToast(messageText, 'externalTrackCopied');
@@ -4187,8 +4187,12 @@ function _renderDossierOtherProjectMiniCard(ownedProject, testerId) {
     const isArchivedLike = status === 'completed' || status === 'archived';
     const isJoinBlocked = _isDossierProjectJoinBlocked(ownedProject);
     const metaChipsHtml = _buildDossierProjectMetaChips(ownedProject);
+    let cardStyle = '';
+    if (isArchivedLike) {
+        cardStyle = ' style="opacity: 0.6; pointer-events: none;"';
+    }
     const cardTag = (isArchivedLike || isJoinBlocked)
-        ? '<div class="dossier-other-mini-card' + (isArchivedLike ? ' is-archived' : '') + (isJoinBlocked ? ' is-join-blocked' : '') + '">'
+        ? '<div class="dossier-other-mini-card' + (isArchivedLike ? ' is-archived' : '') + (isJoinBlocked ? ' is-join-blocked' : '') + '"' + cardStyle + '>'
         : '<button type="button" class="dossier-other-mini-card" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ')">';
 
     return cardTag +
@@ -4353,15 +4357,30 @@ async function openDossierModal(username, testerId, appId) {
         relationsHtml = '<div class="dossier-relations-list" style="display:flex; flex-direction:column; gap:8px;">';
         relations.forEach(function(rel) {
             let relText = '';
+            function formatRelationAppName(name, status) {
+                const escapedName = window.escapeHTML(name);
+                if (status === 'completed' || status === 'archived') {
+                    const tagText = lang === 'ru' ? 'Завершен' : 'Completed';
+                    return escapedName + ' <span style="color:#ff9800; font-weight:bold;">(' + tagText + ')</span>';
+                }
+                return escapedName;
+            }
+            const myAppFormatted = rel.my_app ? formatRelationAppName(rel.my_app, rel.my_app_status) : '';
+            const theirAppFormatted = rel.their_app ? formatRelationAppName(rel.their_app, rel.their_app_status) : '';
+
             if (rel.type === 'mutual') {
-                relText = window.t('dossierRelationMutual', { my_app: rel.my_app, their_app: rel.their_app }, lang);
+                relText = window.t('dossierRelationMutual', { my_app: myAppFormatted, their_app: theirAppFormatted }, lang);
             } else if (rel.type === 'direct_they_test_me') {
-                relText = window.t('dossierRelationTheyTestMe', { my_app: rel.my_app }, lang);
+                relText = window.t('dossierRelationTheyTestMe', { my_app: myAppFormatted }, lang);
             } else if (rel.type === 'direct_i_test_them') {
-                relText = window.t('dossierRelationITestThem', { their_app: rel.their_app }, lang);
+                relText = window.t('dossierRelationITestThem', { their_app: theirAppFormatted }, lang);
+            } else if (rel.type === 'contract_they_test_me') {
+                relText = window.t('dossierRelationContractTheyTestMe', { my_app: myAppFormatted }, lang);
+            } else if (rel.type === 'contract_i_test_them') {
+                relText = window.t('dossierRelationContractITestThem', { their_app: theirAppFormatted }, lang);
             }
             if (relText) {
-                relationsHtml += '<div class="dossier-relation-item" style="padding:10px 12px; background:var(--secondary-bg-color); border-radius:10px; font-size:13px; font-weight:500; line-height:1.4;">' + window.escapeHTML(relText) + '</div>';
+                relationsHtml += '<div class="dossier-relation-item" style="padding:10px 12px; background:var(--secondary-bg-color); border-radius:10px; font-size:13px; font-weight:500; line-height:1.4;">' + relText + '</div>';
             }
         });
         relationsHtml += '</div>';

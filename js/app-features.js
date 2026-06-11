@@ -116,10 +116,11 @@ async function _handleGuestClaimIntent(intent) {
     };
 
     try {
-        var response = await fetchWithRetry(`${API_BASE}/guest-apps/${encodeURIComponent(intent.guestAppId)}/claim`, {
+        var response = await fetchWithRetry(`${API_BASE}/projects/claim`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                app_id: intent.guestAppId,
                 inviter_id: intent.inviterId,
                 init_data: tg.initData || '',
             }),
@@ -188,13 +189,13 @@ async function _handleGuestClaimIntent(intent) {
         ]);
 
         hideLoading();
-        switchTab('tests');
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        if (typeof window.showGuestClaimStatusModal === 'function') {
-            window.showGuestClaimStatusModal({
-                variant: 'success',
-                appId: Number(payload && payload.new_app_id || 0),
-            });
+        showToast(window.t('guestClaimSuccessText', {}, lang));
+
+        switchTab('projects');
+        var newAppId = Number(payload && payload.new_app_id || 0);
+        if (newAppId > 0 && typeof window.openEditModal === 'function') {
+            window.openEditModal(newAppId);
         }
         return true;
     } catch (error) {
@@ -329,14 +330,16 @@ function buildProjectReferralStartLink(projectId) {
     return `https://t.me/${botUsername}?start=ref_mutual_${normalizedInviterId}_${normalizedProjectId}`;
 }
 
-function buildExternalClaimStartLink(packageName) {
+function buildExternalClaimStartLink(packageName, guestAppId) {
     var normalizedPackage = String(packageName || '').trim();
     var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || BOT_USERNAME);
+    var webappShortname = String((window.App && window.App.webappShortname) || 'app').trim();
     var normalizedInviterId = Number(userId || 0);
-    if (!normalizedPackage || normalizedInviterId <= 0) {
-        return `https://t.me/${botUsername}?start=claim_app_${encodeURIComponent(normalizedPackage)}`;
+    var appIdParam = guestAppId ? String(guestAppId).trim() : normalizedPackage;
+    if (!appIdParam || normalizedInviterId <= 0) {
+        return `https://t.me/${botUsername}/${webappShortname}?startapp=claim_${encodeURIComponent(appIdParam)}_0`;
     }
-    return `https://t.me/${botUsername}?start=ref_claim_${normalizedInviterId}_${encodeURIComponent(normalizedPackage)}`;
+    return `https://t.me/${botUsername}/${webappShortname}?startapp=claim_${encodeURIComponent(appIdParam)}_${normalizedInviterId}`;
 }
 
 function extractPackageNameFromPlayUrl(playUrl) {
