@@ -3739,6 +3739,7 @@ function renderGuestClaimWelcomeBody() {
     var isReady = claimState === 'ready';
     var isNotOwner = claimState === 'not_owner';
     var isAlreadyOwned = claimState === 'already_owned';
+    var isNotFound = claimState === 'not_found' || loadFailed;
     var screenTitle = isAlreadyOwned
         ? window.t('guestClaimWelcomeAlreadyOwnedTitle', {}, lang)
         : window.t('guestClaimWelcomeTitle', {}, lang);
@@ -3747,7 +3748,9 @@ function renderGuestClaimWelcomeBody() {
         ? window.t('guestClaimWelcomeOwnerOk', {}, lang)
         : (isAlreadyOwned
             ? window.t('guestClaimWelcomeAlreadyOwnedText', {}, lang)
-            : window.t('guestClaimWelcomeOwnerFail', {}, lang));
+            : (isNotOwner
+                ? window.t('guestClaimWelcomeOwnerFail', {}, lang)
+                : window.t('guestClaimWelcomeNotFound', {}, lang)));
     var primaryAction = '';
     if (isReady) {
         primaryAction = `<button type="button" class="btn btn-primary" ${_guestClaimWelcomeSubmitting ? 'disabled' : ''} onclick="handleGuestClaimWelcomeContinue()">${
@@ -3758,10 +3761,10 @@ function renderGuestClaimWelcomeBody() {
     } else if (isAlreadyOwned) {
         primaryAction = `<button type="button" class="btn btn-primary" onclick="handleGuestClaimWelcomeGoToDashboard()">${window.escapeHTML(window.t('guestClaimWelcomeGoToDashboardBtn', {}, lang))}</button>`;
     }
-    var supportBtn = (isNotOwner || loadFailed)
+    var supportBtn = isNotOwner
         ? `<button type="button" class="btn btn-secondary" onclick="openGuestClaimSupportFromWelcome()">${window.escapeHTML(window.t('guestClaimContactSupportBtn', {}, lang))}</button>`
         : '';
-    var infoBlock = (loadFailed || isAlreadyOwned)
+    var infoBlock = (isNotFound || isAlreadyOwned)
         ? ''
         : `<div class="guest-claim-welcome-info">${window.escapeHTML(window.t('guestClaimWelcomeInfo', {}, lang))}</div>`;
     var safeCommunityUrl = escapeInlineJsString(communityUrl);

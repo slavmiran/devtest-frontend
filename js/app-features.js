@@ -155,6 +155,9 @@ async function _handleGuestClaimIntent(intent) {
 
     if (_isGuestClaimHandled(intent.rawStartParam)) {
         _clearStartappQueryParam();
+        if (typeof window.showGuestClaimWelcomeScreen === 'function') {
+            await window.showGuestClaimWelcomeScreen(intent);
+        }
         return true;
     }
 
