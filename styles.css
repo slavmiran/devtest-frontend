@@ -5138,6 +5138,21 @@ html[dir="rtl"] .guest-filter-select {
     margin: 0;
 }
 
+.guest-claim-welcome-app-title {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.25;
+    color: var(--text-color);
+}
+
+.guest-claim-welcome-package {
+    margin-top: 4px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--hint-color);
+    word-break: break-word;
+}
+
 .guest-claim-welcome-info {
     font-size: 14px;
     line-height: 1.6;

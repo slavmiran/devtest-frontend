@@ -3665,8 +3665,9 @@ function ensureGuestClaimWelcomeOverlay() {
 }
 
 function renderGuestClaimWelcomeCard(guest) {
-    var packageName = String(guest.package_name || guest.name || '').trim();
-    var appName = window.escapeHTML(packageName || window.t('unknownLabel', {}, lang));
+    var packageName = String(guest.package_name || guest.app_id || '').trim();
+    var displayName = String(guest.app_name || guest.name || guest.title || '').trim();
+    var titleText = displayName || window.t('guestClaimWelcomeNoTitle', {}, lang);
     var ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
     var ownerLabel = ownerUsername
         ? '@' + ownerUsername
@@ -3685,16 +3686,20 @@ function renderGuestClaimWelcomeCard(guest) {
     var freshnessChip = freshness
         ? `<span class="guest-freshness-chip guest-freshness-chip-${window.escapeHTML(freshness.tone)}">${window.escapeHTML(freshness.label)}</span>`
         : '';
+    var packageLine = packageName
+        ? `<div class="guest-claim-welcome-package notranslate">${window.escapeHTML(packageName)}</div>`
+        : '';
 
     return `
         <div class="market-card guest-market-card guest-claim-welcome-card">
             <div class="market-top guest-market-top">
                 <div class="guest-market-title-wrap">
                     <div class="guest-market-headline">
-                        <div class="card-title guest-market-title notranslate">${appName}</div>
+                        <div class="guest-claim-welcome-app-title notranslate">${window.escapeHTML(titleText)}</div>
                         <span class="guest-market-badge">${window.escapeHTML(window.t('guestCardBadge', {}, lang))}</span>
                         ${freshnessChip}
                     </div>
+                    ${packageLine}
                     <div class="market-owner notranslate">${window.escapeHTML(ownerLabel)}</div>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
@@ -3729,35 +3734,47 @@ function renderGuestClaimWelcomeBody() {
     }
 
     var guest = state.guest || null;
-    var canClaim = !!state.canClaim;
+    var claimState = String(state.claimState || '').trim();
     var loadFailed = !!state.loadFailed;
-    var statusClass = canClaim ? 'is-success' : 'is-error';
-    var statusText = canClaim
+    var isReady = claimState === 'ready';
+    var isNotOwner = claimState === 'not_owner';
+    var isAlreadyOwned = claimState === 'already_owned';
+    var screenTitle = isAlreadyOwned
+        ? window.t('guestClaimWelcomeAlreadyOwnedTitle', {}, lang)
+        : window.t('guestClaimWelcomeTitle', {}, lang);
+    var statusClass = isReady || isAlreadyOwned ? 'is-success' : 'is-error';
+    var statusText = isReady
         ? window.t('guestClaimWelcomeOwnerOk', {}, lang)
-        : window.t('guestClaimWelcomeOwnerFail', {}, lang);
-    var continueLabel = canClaim
-        ? window.t('guestClaimWelcomeContinueBtn', {}, lang)
-        : window.t('guestClaimWelcomeContinueDisabledBtn', {}, lang);
-    var continueDisabled = !canClaim || _guestClaimWelcomeSubmitting || loadFailed;
-    var supportBtn = (!canClaim || loadFailed)
+        : (isAlreadyOwned
+            ? window.t('guestClaimWelcomeAlreadyOwnedText', {}, lang)
+            : window.t('guestClaimWelcomeOwnerFail', {}, lang));
+    var primaryAction = '';
+    if (isReady) {
+        primaryAction = `<button type="button" class="btn btn-primary" ${_guestClaimWelcomeSubmitting ? 'disabled' : ''} onclick="handleGuestClaimWelcomeContinue()">${
+            _guestClaimWelcomeSubmitting
+                ? window.escapeHTML(window.t('guestClaimLoading', {}, lang))
+                : window.escapeHTML(window.t('guestClaimWelcomeContinueBtn', {}, lang))
+        }</button>`;
+    } else if (isAlreadyOwned) {
+        primaryAction = `<button type="button" class="btn btn-primary" onclick="handleGuestClaimWelcomeGoToDashboard()">${window.escapeHTML(window.t('guestClaimWelcomeGoToDashboardBtn', {}, lang))}</button>`;
+    }
+    var supportBtn = (isNotOwner || loadFailed)
         ? `<button type="button" class="btn btn-secondary" onclick="openGuestClaimSupportFromWelcome()">${window.escapeHTML(window.t('guestClaimContactSupportBtn', {}, lang))}</button>`
         : '';
-    var infoBlock = loadFailed
+    var infoBlock = (loadFailed || isAlreadyOwned)
         ? ''
         : `<div class="guest-claim-welcome-info">${window.escapeHTML(window.t('guestClaimWelcomeInfo', {}, lang))}</div>`;
     var safeCommunityUrl = escapeInlineJsString(communityUrl);
 
     shell.innerHTML = `
-        <div class="guest-claim-welcome-title">${window.escapeHTML(window.t('guestClaimWelcomeTitle', {}, lang))}</div>
+        <div class="guest-claim-welcome-title">${window.escapeHTML(screenTitle)}</div>
         <div class="guest-claim-welcome-card-wrap">
             ${guest ? renderGuestClaimWelcomeCard(guest) : `<div class="guest-claim-welcome-info">${window.escapeHTML(window.t('guestClaimWelcomeNotFound', {}, lang))}</div>`}
         </div>
         ${infoBlock}
         <div class="guest-claim-welcome-status ${statusClass}">${window.escapeHTML(statusText)}</div>
         <div class="guest-claim-welcome-actions">
-            <button type="button" class="btn btn-primary" ${continueDisabled ? 'disabled' : ''} onclick="handleGuestClaimWelcomeContinue()">
-                ${_guestClaimWelcomeSubmitting ? window.escapeHTML(window.t('guestClaimLoading', {}, lang)) : window.escapeHTML(continueLabel)}
-            </button>
+            ${primaryAction}
             ${supportBtn}
         </div>
         <div class="guest-claim-welcome-community">
@@ -3774,7 +3791,10 @@ async function showGuestClaimWelcomeScreen(intent) {
     _guestClaimWelcomeState = {
         intent: intent,
         guest: null,
+        claimState: 'loading',
         canClaim: false,
+        alreadyClaimed: false,
+        ownedAppId: 0,
         loadFailed: false,
         loading: true,
     };
@@ -3785,25 +3805,29 @@ async function showGuestClaimWelcomeScreen(intent) {
     renderGuestClaimWelcomeBody();
 
     try {
-        var guest = typeof window._loadGuestAppPreview === 'function'
+        var preview = typeof window._loadGuestAppPreview === 'function'
             ? await window._loadGuestAppPreview(intent.guestAppId)
             : null;
-        if (!guest) {
+        if (!preview || !preview.item) {
             _guestClaimWelcomeState = {
                 intent: intent,
                 guest: null,
+                claimState: 'not_found',
                 canClaim: false,
+                alreadyClaimed: false,
+                ownedAppId: 0,
                 loadFailed: true,
                 loading: false,
             };
         } else {
-            var canClaim = typeof window._canUserClaimGuestApp === 'function'
-                ? window._canUserClaimGuestApp(guest)
-                : false;
+            var claimState = String(preview.claimState || '').trim() || 'not_found';
             _guestClaimWelcomeState = {
                 intent: intent,
-                guest: guest,
-                canClaim: canClaim,
+                guest: preview.item,
+                claimState: claimState,
+                canClaim: claimState === 'ready',
+                alreadyClaimed: !!preview.alreadyClaimed,
+                ownedAppId: Number(preview.ownedAppId || 0),
                 loadFailed: false,
                 loading: false,
             };
@@ -3813,7 +3837,10 @@ async function showGuestClaimWelcomeScreen(intent) {
         _guestClaimWelcomeState = {
             intent: intent,
             guest: null,
+            claimState: 'not_found',
             canClaim: false,
+            alreadyClaimed: false,
+            ownedAppId: 0,
             loadFailed: true,
             loading: false,
         };
@@ -3842,7 +3869,7 @@ function openGuestClaimSupportFromWelcome() {
 
 async function handleGuestClaimWelcomeContinue() {
     var state = _guestClaimWelcomeState;
-    if (!state || !state.canClaim || !state.intent || _guestClaimWelcomeSubmitting) {
+    if (!state || state.claimState !== 'ready' || !state.canClaim || !state.intent || _guestClaimWelcomeSubmitting) {
         return;
     }
 
@@ -3856,6 +3883,31 @@ async function handleGuestClaimWelcomeContinue() {
     _guestClaimWelcomeSubmitting = false;
     if (_guestClaimWelcomeState) {
         renderGuestClaimWelcomeBody();
+    }
+}
+
+function handleGuestClaimWelcomeGoToDashboard() {
+    var state = _guestClaimWelcomeState;
+    if (!state || state.claimState !== 'already_owned') {
+        return;
+    }
+
+    if (state.intent && state.intent.rawStartParam) {
+        if (typeof _markGuestClaimHandled === 'function') {
+            _markGuestClaimHandled(state.intent.rawStartParam);
+        }
+        if (typeof _clearStartappQueryParam === 'function') {
+            _clearStartappQueryParam();
+        }
+    }
+
+    closeGuestClaimWelcomeScreen();
+
+    if (typeof window.switchTab === 'function') {
+        window.switchTab('projects');
+    }
+    if (typeof window.loadProjects === 'function') {
+        window.loadProjects(true);
     }
 }
 
@@ -5276,6 +5328,7 @@ Object.assign(window, {
     closeGuestClaimWelcomeScreen,
     openGuestClaimSupportFromWelcome,
     handleGuestClaimWelcomeContinue,
+    handleGuestClaimWelcomeGoToDashboard,
     switchTab,
     toggleAccordion,
     closeBanner,

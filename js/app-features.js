@@ -122,7 +122,11 @@ async function _loadGuestAppPreview(guestAppId) {
     if (!normalizedGuestAppId) {
         return null;
     }
-    var response = await fetchWithRetry(`${API_BASE}/guest-apps/${encodeURIComponent(normalizedGuestAppId)}`, {
+    var requestUrl = `${API_BASE}/guest-apps/${encodeURIComponent(normalizedGuestAppId)}`;
+    if (tg && tg.initData) {
+        requestUrl += `?init_data=${encodeURIComponent(tg.initData)}`;
+    }
+    var response = await fetchWithRetry(requestUrl, {
         method: 'GET',
         timeoutMs: 20000,
     }, 2);
@@ -132,10 +136,16 @@ async function _loadGuestAppPreview(guestAppId) {
     } catch (error) {
         payload = null;
     }
-    if (!response.ok || !payload || payload.status !== 'success' || !payload.item) {
+    if (!response.ok || !payload || payload.status !== 'success') {
         return null;
     }
-    return payload.item;
+    return {
+        item: payload.item || null,
+        claimState: String(payload.claim_state || '').trim() || 'not_found',
+        alreadyClaimed: !!payload.already_claimed,
+        canClaim: !!payload.can_claim,
+        ownedAppId: Number(payload.owned_app_id || 0),
+    };
 }
 
 async function _handleGuestClaimIntent(intent) {
