@@ -963,6 +963,7 @@ function handleApiError(code, details = {}) {
         project_pending_completion: 'projectPendingCompletionAlert',
         external_source_project_invalid: 'external_source_project_invalid',
         guest_app_not_found: 'guest_app_not_found',
+        guest_claim_wrong_owner: 'guest_claim_wrong_owner',
         guest_app_forbidden: 'guest_app_forbidden',
         feedback_not_found: 'feedback_not_found',
         feedback_forbidden: 'feedback_forbidden',

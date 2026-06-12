@@ -152,14 +152,14 @@ async function _handleGuestClaimIntent(intent) {
                 showToast(window.t('guestClaimAlreadyClaimedToast', {}, lang));
                 return true;
             }
-            if (detail === 'not_owner') {
+            if (detail === 'not_owner' || detail === 'guest_claim_wrong_owner') {
                 _markGuestClaimHandled(intent.rawStartParam);
                 _clearStartappQueryParam();
                 hideLoading();
                 if (typeof window.showGuestClaimStatusModal === 'function') {
                     window.showGuestClaimStatusModal({ variant: 'not-owner' });
                 } else {
-                    showToast(window.t('guestClaimNotOwnerTitle', {}, lang));
+                    showToast(window.t('guestClaimWrongOwner', {}, lang));
                 }
                 return true;
             }
@@ -311,13 +311,18 @@ function getDefaultGuestInviteLanguage(guestLang) {
     return normalizeGuestInviteLanguage(lang);
 }
 
+function buildGuestClaimStartappValue(guestAppId, inviterId) {
+    return `claim_${String(guestAppId || '').trim()}_${Number(inviterId || 0)}`;
+}
+
 function buildGuestInviteDeepLink(guestAppId, inviterId, inviteLang, startappValue) {
     const normalizedLang = normalizeGuestInviteLanguage(inviteLang);
     const params = new URLSearchParams();
-    params.set('startapp', String(startappValue || `guest_${guestAppId}_${inviterId}`));
+    params.set('startapp', String(startappValue || buildGuestClaimStartappValue(guestAppId, inviterId)));
     params.set('lang', normalizedLang);
     var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || TELEGRAM_RUNTIME_BOT_USERNAME || BOT_USERNAME);
-    return `https://t.me/${botUsername}/${WEBAPP_SHORTNAME}?${params.toString()}`;
+    var webappShortname = String((window.App && window.App.webappShortname) || WEBAPP_SHORTNAME || 'app').trim();
+    return `https://t.me/${botUsername}/${webappShortname}?${params.toString()}`;
 }
 
 function buildProjectReferralStartLink(projectId) {
@@ -332,15 +337,14 @@ function buildProjectReferralStartLink(projectId) {
 }
 
 function buildExternalClaimStartLink(packageName, guestAppId) {
-    var normalizedPackage = String(packageName || '').trim();
-    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || BOT_USERNAME);
-    var webappShortname = String((window.App && window.App.webappShortname) || 'app').trim();
+    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || TELEGRAM_RUNTIME_BOT_USERNAME || BOT_USERNAME);
+    var webappShortname = String((window.App && window.App.webappShortname) || WEBAPP_SHORTNAME || 'app').trim();
     var normalizedInviterId = Number(userId || 0);
-    var appIdParam = guestAppId ? String(guestAppId).trim() : normalizedPackage;
+    var appIdParam = String(guestAppId || packageName || '').trim();
     if (!appIdParam || normalizedInviterId <= 0) {
         return `https://t.me/${botUsername}/${webappShortname}?startapp=claim_${encodeURIComponent(appIdParam)}_0`;
     }
-    return `https://t.me/${botUsername}/${webappShortname}?startapp=claim_${encodeURIComponent(appIdParam)}_${normalizedInviterId}`;
+    return `https://t.me/${botUsername}/${webappShortname}?startapp=${buildGuestClaimStartappValue(appIdParam, normalizedInviterId)}`;
 }
 
 function extractPackageNameFromPlayUrl(playUrl) {

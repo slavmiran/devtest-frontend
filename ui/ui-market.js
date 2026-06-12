@@ -1076,7 +1076,12 @@ async function sendGuestProjectInvite() {
             return;
         }
 
-        const inviteStartapp = String(data.startapp || `guest_${guest.id}_${userId}`).trim();
+        const inviteStartapp = String(
+            data.startapp
+            || (typeof window.buildGuestClaimStartappValue === 'function'
+                ? window.buildGuestClaimStartappValue(String(guest.id || ''), userId)
+                : `claim_${guest.id}_${userId}`)
+        ).trim();
         const inviteLink = typeof window.buildGuestInviteDeepLink === 'function'
             ? window.buildGuestInviteDeepLink(String(guest.id || ''), userId, selectedInviteLang, inviteStartapp)
             : String(data.invite_link || '').trim();

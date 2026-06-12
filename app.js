@@ -160,6 +160,7 @@ Object.assign(window, {
     getGuestProjectAvailableLangs,
     normalizeGuestInviteLanguage,
     getDefaultGuestInviteLanguage,
+    buildGuestClaimStartappValue,
     buildGuestInviteDeepLink,
     buildProjectReferralStartLink,
     buildExternalClaimStartLink,
