@@ -95,6 +95,49 @@ async function _focusAppInMiniApp(appId) {
     return false;
 }
 
+const GUEST_CLAIM_COMMUNITY_URL = 'https://t.me/googleplay_console_12testers';
+
+function _normalizeTelegramUsernameForClaim(username) {
+    return String(username || '').trim().replace(/\s+/g, '').replace(/^@+/, '').toLowerCase();
+}
+
+function _canUserClaimGuestApp(guest) {
+    if (!guest || typeof guest !== 'object') {
+        return false;
+    }
+    var ownerId = Number(guest.owner_id || guest.owner_telegram_id || 0);
+    var ownerUsername = _normalizeTelegramUsernameForClaim(guest.owner_username);
+    var actualUsername = _normalizeTelegramUsernameForClaim(telegramUsername);
+    if (ownerId > 0) {
+        return Number(userId) === ownerId;
+    }
+    if (ownerUsername) {
+        return !!actualUsername && actualUsername === ownerUsername;
+    }
+    return true;
+}
+
+async function _loadGuestAppPreview(guestAppId) {
+    var normalizedGuestAppId = String(guestAppId || '').trim();
+    if (!normalizedGuestAppId) {
+        return null;
+    }
+    var response = await fetchWithRetry(`${API_BASE}/guest-apps/${encodeURIComponent(normalizedGuestAppId)}`, {
+        method: 'GET',
+        timeoutMs: 20000,
+    }, 2);
+    var payload = null;
+    try {
+        payload = await response.json();
+    } catch (error) {
+        payload = null;
+    }
+    if (!response.ok || !payload || payload.status !== 'success' || !payload.item) {
+        return null;
+    }
+    return payload.item;
+}
+
 async function _handleGuestClaimIntent(intent) {
     if (!intent || !intent.guestAppId || intent.inviterId <= 0) {
         return false;
@@ -103,6 +146,26 @@ async function _handleGuestClaimIntent(intent) {
     if (_isGuestClaimHandled(intent.rawStartParam)) {
         _clearStartappQueryParam();
         return true;
+    }
+
+    if (Number(intent.inviterId) === Number(userId)) {
+        _markGuestClaimHandled(intent.rawStartParam);
+        _clearStartappQueryParam();
+        showToast(window.t('guestClaimOwnLinkToast', {}, lang));
+        return true;
+    }
+
+    if (typeof window.showGuestClaimWelcomeScreen === 'function') {
+        await window.showGuestClaimWelcomeScreen(intent);
+        return true;
+    }
+
+    return _executeGuestClaimIntent(intent);
+}
+
+async function _executeGuestClaimIntent(intent) {
+    if (!intent || !intent.guestAppId || intent.inviterId <= 0) {
+        return false;
     }
 
     if (window.ui && typeof window.ui.showLoading === 'function') {
@@ -149,6 +212,9 @@ async function _handleGuestClaimIntent(intent) {
                 _markGuestClaimHandled(intent.rawStartParam);
                 _clearStartappQueryParam();
                 hideLoading();
+                if (typeof window.closeGuestClaimWelcomeScreen === 'function') {
+                    window.closeGuestClaimWelcomeScreen();
+                }
                 showToast(window.t('guestClaimAlreadyClaimedToast', {}, lang));
                 return true;
             }
@@ -156,6 +222,9 @@ async function _handleGuestClaimIntent(intent) {
                 _markGuestClaimHandled(intent.rawStartParam);
                 _clearStartappQueryParam();
                 hideLoading();
+                if (typeof window.closeGuestClaimWelcomeScreen === 'function') {
+                    window.closeGuestClaimWelcomeScreen();
+                }
                 if (typeof window.showGuestClaimStatusModal === 'function') {
                     window.showGuestClaimStatusModal({ variant: 'not-owner' });
                 } else {
@@ -191,6 +260,10 @@ async function _handleGuestClaimIntent(intent) {
         hideLoading();
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t('guestClaimSuccessText', {}, lang));
+
+        if (typeof window.closeGuestClaimWelcomeScreen === 'function') {
+            window.closeGuestClaimWelcomeScreen();
+        }
 
         switchTab('projects');
         var newAppId = Number(payload && payload.new_app_id || 0);
@@ -1368,7 +1441,7 @@ async function syncUserTimezone(force) {
 
 async function syncTelegramProfile() {
     if (!tg || !tg.initData || !hasTelegramUsername()) {
-        return false;
+        return { ok: false };
     }
 
     try {
@@ -1389,14 +1462,54 @@ async function syncTelegramProfile() {
             if (getBackendErrorCode(result) === 'username_required') {
                 showNoUsernameOverlay();
             }
-            return false;
+            return { ok: false };
         }
 
-        return true;
+        return {
+            ok: true,
+            interface_language: normalizeNativeLanguageCode(result.interface_language) || '',
+        };
     } catch (error) {
         console.warn('Telegram profile sync failed:', error);
-        return false;
+        return { ok: false };
     }
+}
+
+async function bootstrapInterfaceLanguage(options) {
+    var settings = options || {};
+    var selectedLanguage = getSelectedAppLanguage();
+    if (isAutoTranslatedLanguage(selectedLanguage)) {
+        return getServerSafeLanguage(selectedLanguage);
+    }
+
+    var profileLanguage = normalizeNativeLanguageCode(
+        settings.profileSyncResult && settings.profileSyncResult.interface_language
+    );
+    if (profileLanguage) {
+        applyInterfaceLanguageFromServer(profileLanguage);
+        return profileLanguage;
+    }
+
+    var serverLanguage = '';
+    try {
+        const response = await fetch(`${API_BASE}/users/${userId}/language`);
+        const data = await response.json();
+        serverLanguage = normalizeNativeLanguageCode(data && data.language);
+    } catch (error) {
+        serverLanguage = '';
+    }
+
+    if (serverLanguage) {
+        applyInterfaceLanguageFromServer(serverLanguage);
+        return serverLanguage;
+    }
+
+    var detectedLanguage = resolveInterfaceLanguage(langCode);
+    try {
+        await sendLanguagePreferenceToServer(detectedLanguage);
+    } catch (error) {}
+    applyInterfaceLanguageFromServer(detectedLanguage);
+    return detectedLanguage;
 }
 
 async function saveTesterEmail(email) {

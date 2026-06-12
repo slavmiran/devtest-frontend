@@ -5098,6 +5098,111 @@ html[dir="rtl"] .guest-filter-select {
     to { transform: rotate(360deg); }
 }
 
+.guest-claim-welcome-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 10015;
+    background: var(--bg-color);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.guest-claim-welcome-overlay.active {
+    display: block;
+}
+
+.guest-claim-welcome-shell {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.guest-claim-welcome-title {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.25;
+    color: var(--text-color);
+    margin: 8px 0 16px;
+    text-align: center;
+}
+
+.guest-claim-welcome-card-wrap {
+    margin-bottom: 14px;
+}
+
+.guest-claim-welcome-card {
+    margin: 0;
+}
+
+.guest-claim-welcome-info {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--hint-color);
+    margin-bottom: 14px;
+    text-align: left;
+}
+
+.guest-claim-welcome-status {
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.45;
+    margin-bottom: 14px;
+}
+
+.guest-claim-welcome-status.is-success {
+    background: rgba(48, 209, 88, 0.12);
+    border: 1px solid rgba(48, 209, 88, 0.28);
+    color: #7dffb0;
+}
+
+.guest-claim-welcome-status.is-error {
+    background: rgba(255, 159, 10, 0.12);
+    border: 1px solid rgba(255, 159, 10, 0.28);
+    color: #ffd28a;
+}
+
+.guest-claim-welcome-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 8px;
+}
+
+.guest-claim-welcome-community {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 13px;
+}
+
+.guest-claim-welcome-community a {
+    color: var(--button-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.guest-claim-welcome-community a:active {
+    opacity: 0.8;
+}
+
+.guest-claim-welcome-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 220px;
+    color: var(--hint-color);
+    font-size: 14px;
+    font-weight: 600;
+}
+
 @keyframes highlightPulse {
     0% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.5); }
     50% { box-shadow: 0 0 16px 4px rgba(10, 132, 255, 0.3); }

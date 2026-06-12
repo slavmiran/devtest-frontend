@@ -3649,6 +3649,216 @@ function openGuestClaimEditFlow(appId) {
         });
 }
 
+var _guestClaimWelcomeState = null;
+var _guestClaimWelcomeSubmitting = false;
+
+function ensureGuestClaimWelcomeOverlay() {
+    var overlay = document.getElementById('guest-claim-welcome-overlay');
+    if (overlay) return overlay;
+
+    overlay = document.createElement('div');
+    overlay.id = 'guest-claim-welcome-overlay';
+    overlay.className = 'guest-claim-welcome-overlay';
+    overlay.innerHTML = '<div class="guest-claim-welcome-shell" id="guest-claim-welcome-shell"></div>';
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+function renderGuestClaimWelcomeCard(guest) {
+    var packageName = String(guest.package_name || guest.name || '').trim();
+    var appName = window.escapeHTML(packageName || window.t('unknownLabel', {}, lang));
+    var ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
+    var ownerLabel = ownerUsername
+        ? '@' + ownerUsername
+        : window.t('idLabel', { id: Number(guest.owner_telegram_id || guest.owner_id || 0) }, lang);
+    var description = String(guest.instructions || '').trim();
+    var safeDescription = description
+        ? escapeHtmlWithBreaks(description)
+        : window.escapeHTML(window.t('guestCardNoInstructions', {}, lang));
+    var langChip = getGuestLanguageDisplayParts(guest.language || guest.lang, guest.user_lang).length
+        ? renderGuestLanguageBadge(guest.language || guest.lang, guest.user_lang)
+        : '';
+    var categoryKey = String(guest.category || 'app').toLowerCase() === 'game'
+        ? 'guestFilterCategoryGame'
+        : 'guestFilterCategoryApp';
+    var freshness = getGuestProjectFreshness(guest.created_at);
+    var freshnessChip = freshness
+        ? `<span class="guest-freshness-chip guest-freshness-chip-${window.escapeHTML(freshness.tone)}">${window.escapeHTML(freshness.label)}</span>`
+        : '';
+
+    return `
+        <div class="market-card guest-market-card guest-claim-welcome-card">
+            <div class="market-top guest-market-top">
+                <div class="guest-market-title-wrap">
+                    <div class="guest-market-headline">
+                        <div class="card-title guest-market-title notranslate">${appName}</div>
+                        <span class="guest-market-badge">${window.escapeHTML(window.t('guestCardBadge', {}, lang))}</span>
+                        ${freshnessChip}
+                    </div>
+                    <div class="market-owner notranslate">${window.escapeHTML(ownerLabel)}</div>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                    ${langChip}
+                    <span class="meta-chip">${window.escapeHTML(window.t(categoryKey, {}, lang))}</span>
+                </div>
+            </div>
+            <div class="guest-market-desc">${safeDescription}</div>
+        </div>
+    `;
+}
+
+function renderGuestClaimWelcomeBody() {
+    var shell = document.getElementById('guest-claim-welcome-shell');
+    if (!shell) return;
+
+    var state = _guestClaimWelcomeState || {};
+    var communityUrl = String(
+        (typeof window.GUEST_CLAIM_COMMUNITY_URL === 'string' && window.GUEST_CLAIM_COMMUNITY_URL)
+        || 'https://t.me/googleplay_console_12testers'
+    ).trim();
+
+    if (state.loading) {
+        shell.innerHTML = `
+            <div class="guest-claim-welcome-title">${window.escapeHTML(window.t('guestClaimWelcomeTitle', {}, lang))}</div>
+            <div class="guest-claim-welcome-loading">
+                <div class="guest-claim-loading-spinner"></div>
+                <div>${window.escapeHTML(window.t('guestClaimWelcomeLoading', {}, lang))}</div>
+            </div>
+        `;
+        return;
+    }
+
+    var guest = state.guest || null;
+    var canClaim = !!state.canClaim;
+    var loadFailed = !!state.loadFailed;
+    var statusClass = canClaim ? 'is-success' : 'is-error';
+    var statusText = canClaim
+        ? window.t('guestClaimWelcomeOwnerOk', {}, lang)
+        : window.t('guestClaimWelcomeOwnerFail', {}, lang);
+    var continueLabel = canClaim
+        ? window.t('guestClaimWelcomeContinueBtn', {}, lang)
+        : window.t('guestClaimWelcomeContinueDisabledBtn', {}, lang);
+    var continueDisabled = !canClaim || _guestClaimWelcomeSubmitting || loadFailed;
+    var supportBtn = (!canClaim || loadFailed)
+        ? `<button type="button" class="btn btn-secondary" onclick="openGuestClaimSupportFromWelcome()">${window.escapeHTML(window.t('guestClaimContactSupportBtn', {}, lang))}</button>`
+        : '';
+    var infoBlock = loadFailed
+        ? ''
+        : `<div class="guest-claim-welcome-info">${window.escapeHTML(window.t('guestClaimWelcomeInfo', {}, lang))}</div>`;
+    var safeCommunityUrl = escapeInlineJsString(communityUrl);
+
+    shell.innerHTML = `
+        <div class="guest-claim-welcome-title">${window.escapeHTML(window.t('guestClaimWelcomeTitle', {}, lang))}</div>
+        <div class="guest-claim-welcome-card-wrap">
+            ${guest ? renderGuestClaimWelcomeCard(guest) : `<div class="guest-claim-welcome-info">${window.escapeHTML(window.t('guestClaimWelcomeNotFound', {}, lang))}</div>`}
+        </div>
+        ${infoBlock}
+        <div class="guest-claim-welcome-status ${statusClass}">${window.escapeHTML(statusText)}</div>
+        <div class="guest-claim-welcome-actions">
+            <button type="button" class="btn btn-primary" ${continueDisabled ? 'disabled' : ''} onclick="handleGuestClaimWelcomeContinue()">
+                ${_guestClaimWelcomeSubmitting ? window.escapeHTML(window.t('guestClaimLoading', {}, lang)) : window.escapeHTML(continueLabel)}
+            </button>
+            ${supportBtn}
+        </div>
+        <div class="guest-claim-welcome-community">
+            <a href="javascript:void(0)" onclick="tg.openTelegramLink('${safeCommunityUrl}')">${window.escapeHTML(window.t('guestClaimWelcomeCommunityLink', {}, lang))}</a>
+        </div>
+    `;
+}
+
+async function showGuestClaimWelcomeScreen(intent) {
+    if (!intent || !intent.guestAppId) {
+        return false;
+    }
+
+    _guestClaimWelcomeState = {
+        intent: intent,
+        guest: null,
+        canClaim: false,
+        loadFailed: false,
+        loading: true,
+    };
+    _guestClaimWelcomeSubmitting = false;
+
+    var overlay = ensureGuestClaimWelcomeOverlay();
+    overlay.classList.add('active');
+    renderGuestClaimWelcomeBody();
+
+    try {
+        var guest = typeof window._loadGuestAppPreview === 'function'
+            ? await window._loadGuestAppPreview(intent.guestAppId)
+            : null;
+        if (!guest) {
+            _guestClaimWelcomeState = {
+                intent: intent,
+                guest: null,
+                canClaim: false,
+                loadFailed: true,
+                loading: false,
+            };
+        } else {
+            var canClaim = typeof window._canUserClaimGuestApp === 'function'
+                ? window._canUserClaimGuestApp(guest)
+                : false;
+            _guestClaimWelcomeState = {
+                intent: intent,
+                guest: guest,
+                canClaim: canClaim,
+                loadFailed: false,
+                loading: false,
+            };
+        }
+    } catch (error) {
+        console.error('Guest claim welcome load error:', error);
+        _guestClaimWelcomeState = {
+            intent: intent,
+            guest: null,
+            canClaim: false,
+            loadFailed: true,
+            loading: false,
+        };
+    }
+
+    renderGuestClaimWelcomeBody();
+    return true;
+}
+
+function closeGuestClaimWelcomeScreen() {
+    var overlay = document.getElementById('guest-claim-welcome-overlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+    _guestClaimWelcomeState = null;
+    _guestClaimWelcomeSubmitting = false;
+}
+
+function openGuestClaimSupportFromWelcome() {
+    if (typeof window.sendFeedback === 'function') {
+        window.sendFeedback('question');
+    } else if (typeof openGuestClaimSupportFromModal === 'function') {
+        openGuestClaimSupportFromModal();
+    }
+}
+
+async function handleGuestClaimWelcomeContinue() {
+    var state = _guestClaimWelcomeState;
+    if (!state || !state.canClaim || !state.intent || _guestClaimWelcomeSubmitting) {
+        return;
+    }
+
+    _guestClaimWelcomeSubmitting = true;
+    renderGuestClaimWelcomeBody();
+
+    if (typeof window._executeGuestClaimIntent === 'function') {
+        await window._executeGuestClaimIntent(state.intent);
+    }
+
+    _guestClaimWelcomeSubmitting = false;
+    if (_guestClaimWelcomeState) {
+        renderGuestClaimWelcomeBody();
+    }
+}
+
 function showToast(message) {
     let toast = document.getElementById('custom-toast');
     if (!toast) {
@@ -5062,6 +5272,10 @@ Object.assign(window, {
     closeGuestClaimStatusModal,
     openGuestClaimSupportFromModal,
     openGuestClaimEditFlow,
+    showGuestClaimWelcomeScreen,
+    closeGuestClaimWelcomeScreen,
+    openGuestClaimSupportFromWelcome,
+    handleGuestClaimWelcomeContinue,
     switchTab,
     toggleAccordion,
     closeBanner,

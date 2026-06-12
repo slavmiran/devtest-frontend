@@ -24,6 +24,7 @@ const WEBAPP_SHORTNAME = 'app';
 const BOT_CHAT_URL = `https://t.me/${BOT_USERNAME}`;
 window.App.botUsername = BOT_USERNAME;
 window.App.webappShortname = WEBAPP_SHORTNAME;
+const RU_INTERFACE_LANGUAGE_CODES = ['ru', 'by', 'kz', 'kg', 'md', 'am', 'az', 'tj', 'uz', 'tm'];
 const GUEST_CLAIM_START_PARAM_RE = /^(?:guest_|claim_)([a-zA-Z0-9.\-_]+)_(\d+)$/i;
 const LEAD_INVITE_START_PARAM_RE = /^lead_(\d+)$/i;
 const GUEST_CLAIM_SESSION_PREFIX = 'guest_claim_handled_v1:';
@@ -198,12 +199,38 @@ const AUTO_TRANSLATE_LANGUAGE_OPTIONS = [
     { code: 'zh-tw', googleCode: 'zh-TW', shortLabel: 'ZH', labelKey: 'appLanguageOptionZhTw' }
 ];
 
+function resolveInterfaceLanguage(languageCode) {
+    var normalized = String(languageCode || '').trim().toLowerCase();
+    if (!normalized) {
+        return 'en';
+    }
+    var primary = normalized.replace(/_/g, '-').split('-')[0];
+    return RU_INTERFACE_LANGUAGE_CODES.indexOf(primary) >= 0 ? 'ru' : 'en';
+}
+
 function getDefaultBaseLanguage() {
-    var normalizedTelegramLang = String(langCode || '').trim().toLowerCase();
-    if (normalizedTelegramLang.startsWith('ru')) {
+    if (Object.keys(initData).length === 0) {
         return 'ru';
     }
-    return Object.keys(initData).length > 0 ? 'en' : 'ru';
+    return resolveInterfaceLanguage(langCode);
+}
+
+function applyInterfaceLanguageFromServer(serverLanguage) {
+    var normalized = normalizeNativeLanguageCode(serverLanguage);
+    if (!normalized) {
+        return false;
+    }
+    var selectedLanguage = getSelectedAppLanguage();
+    if (isAutoTranslatedLanguage(selectedLanguage)) {
+        if (getServerSafeLanguage(selectedLanguage) !== normalized) {
+            sendLanguagePreferenceToServer(getServerSafeLanguage(selectedLanguage));
+        }
+        return true;
+    }
+    if (normalized !== lang) {
+        applyLanguage(normalized, { skipServerSync: true, force: true });
+    }
+    return true;
 }
 
 function normalizeNativeLanguageCode(value) {

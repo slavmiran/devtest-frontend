@@ -21,23 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
     var bootstrapProfileSyncPromise = syncTelegramProfile();
     loadUserProfilePreferences().catch(function() {});
 
-    fetch(`${API_BASE}/users/${userId}/language`)
-        .then(response => response.json())
-        .then(data => {
-            var serverLanguage = normalizeNativeLanguageCode(data.language);
-            var selectedLanguage = getSelectedAppLanguage();
-            if (isAutoTranslatedLanguage(selectedLanguage)) {
-                if (getServerSafeLanguage(selectedLanguage) !== serverLanguage) {
-                    sendLanguagePreferenceToServer(getServerSafeLanguage(selectedLanguage));
-                }
-                return;
-            }
-            if (serverLanguage && serverLanguage !== lang) {
-                applyLanguage(serverLanguage, { skipServerSync: true, force: true });
-            }
-        })
-        .catch(() => {});
-
     syncUserTimezone(false).catch(() => {});
 
     document.addEventListener('visibilitychange', () => {
@@ -78,7 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     _loadPersistedActiveTimer();
 
     (async function() {
-        await bootstrapProfileSyncPromise;
+        var profileSyncResult = await bootstrapProfileSyncPromise;
+        await bootstrapInterfaceLanguage({ profileSyncResult: profileSyncResult });
         await runtimeConfigPromise;
         var guestIntent = _parseGuestClaimIntent();
         if (guestIntent) {
@@ -101,6 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 Object.assign(window, {
+    GUEST_CLAIM_COMMUNITY_URL,
+    resolveInterfaceLanguage,
+    applyInterfaceLanguageFromServer,
+    bootstrapInterfaceLanguage,
     fetchWithRetry,
     markMutualOfferPendingUi,
     loadAllData,
@@ -161,6 +149,9 @@ Object.assign(window, {
     normalizeGuestInviteLanguage,
     getDefaultGuestInviteLanguage,
     buildGuestClaimStartappValue,
+    _canUserClaimGuestApp,
+    _loadGuestAppPreview,
+    _executeGuestClaimIntent,
     buildGuestInviteDeepLink,
     buildProjectReferralStartLink,
     buildExternalClaimStartLink,
