@@ -136,12 +136,45 @@ async function _loadGuestAppPreview(guestAppId) {
     } catch (error) {
         payload = null;
     }
-    if (!response.ok || !payload || payload.status !== 'success') {
-        return null;
+    var responseStatus = String(payload && payload.status || '').trim();
+    if (responseStatus === 'already_owned') {
+        return {
+            item: payload.item || null,
+            claimState: 'already_owned',
+            status: 'already_owned',
+            message: String(payload.message || '').trim(),
+            alreadyClaimed: true,
+            canClaim: false,
+            ownedAppId: Number(payload.owned_app_id || 0),
+        };
+    }
+    if (!response.ok || responseStatus === 'error') {
+        return {
+            item: null,
+            claimState: 'error',
+            status: 'error',
+            message: String(payload && (payload.message || payload.detail) || '').trim(),
+            alreadyClaimed: false,
+            canClaim: false,
+            ownedAppId: 0,
+        };
+    }
+    if (!payload || responseStatus !== 'success') {
+        return {
+            item: null,
+            claimState: 'error',
+            status: 'error',
+            message: '',
+            alreadyClaimed: false,
+            canClaim: false,
+            ownedAppId: 0,
+        };
     }
     return {
         item: payload.item || null,
-        claimState: String(payload.claim_state || '').trim() || 'not_found',
+        claimState: String(payload.claim_state || '').trim() || 'ready',
+        status: 'success',
+        message: String(payload.message || '').trim(),
         alreadyClaimed: !!payload.already_claimed,
         canClaim: !!payload.can_claim,
         ownedAppId: Number(payload.owned_app_id || 0),

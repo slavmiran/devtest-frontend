@@ -3721,6 +3721,7 @@ function renderGuestClaimWelcomeBody() {
         (typeof window.GUEST_CLAIM_COMMUNITY_URL === 'string' && window.GUEST_CLAIM_COMMUNITY_URL)
         || 'https://t.me/googleplay_console_12testers'
     ).trim();
+    var safeCommunityUrl = escapeInlineJsString(communityUrl);
 
     if (state.loading) {
         shell.innerHTML = `
@@ -3735,50 +3736,54 @@ function renderGuestClaimWelcomeBody() {
 
     var guest = state.guest || null;
     var claimState = String(state.claimState || '').trim();
-    var loadFailed = !!state.loadFailed;
     var isReady = claimState === 'ready';
-    var isNotOwner = claimState === 'not_owner';
     var isAlreadyOwned = claimState === 'already_owned';
-    var isNotFound = claimState === 'not_found' || loadFailed;
-    var screenTitle = isAlreadyOwned
-        ? window.t('guestClaimWelcomeAlreadyOwnedTitle', {}, lang)
-        : window.t('guestClaimWelcomeTitle', {}, lang);
-    var statusClass = isReady || isAlreadyOwned ? 'is-success' : 'is-error';
-    var statusText = isReady
-        ? window.t('guestClaimWelcomeOwnerOk', {}, lang)
-        : (isAlreadyOwned
-            ? window.t('guestClaimWelcomeAlreadyOwnedText', {}, lang)
-            : (isNotOwner
-                ? window.t('guestClaimWelcomeOwnerFail', {}, lang)
-                : window.t('guestClaimWelcomeNotFound', {}, lang)));
-    var primaryAction = '';
-    if (isReady) {
-        primaryAction = `<button type="button" class="btn btn-primary" ${_guestClaimWelcomeSubmitting ? 'disabled' : ''} onclick="handleGuestClaimWelcomeContinue()">${
-            _guestClaimWelcomeSubmitting
-                ? window.escapeHTML(window.t('guestClaimLoading', {}, lang))
-                : window.escapeHTML(window.t('guestClaimWelcomeContinueBtn', {}, lang))
-        }</button>`;
-    } else if (isAlreadyOwned) {
-        primaryAction = `<button type="button" class="btn btn-primary" onclick="handleGuestClaimWelcomeGoToDashboard()">${window.escapeHTML(window.t('guestClaimWelcomeGoToDashboardBtn', {}, lang))}</button>`;
-    }
-    var supportBtn = isNotOwner
-        ? `<button type="button" class="btn btn-secondary" onclick="openGuestClaimSupportFromWelcome()">${window.escapeHTML(window.t('guestClaimContactSupportBtn', {}, lang))}</button>`
+    var isError = claimState === 'error' || !!state.loadFailed;
+    var cardBlock = guest
+        ? `<div class="guest-claim-welcome-card-wrap">${renderGuestClaimWelcomeCard(guest)}</div>`
         : '';
-    var infoBlock = (isNotFound || isAlreadyOwned)
-        ? ''
-        : `<div class="guest-claim-welcome-info">${window.escapeHTML(window.t('guestClaimWelcomeInfo', {}, lang))}</div>`;
-    var safeCommunityUrl = escapeInlineJsString(communityUrl);
+
+    if (isError) {
+        shell.innerHTML = `
+            <div class="guest-claim-welcome-title">${window.escapeHTML(window.t('guestClaimWelcomeTitle', {}, lang))}</div>
+            <div class="guest-claim-welcome-status is-error">${window.escapeHTML(window.t('guestClaimWelcomeErrorBanner', {}, lang))}</div>
+            <div class="guest-claim-welcome-hint">${window.escapeHTML(window.t('guestClaimWelcomeErrorHint', {}, lang))}</div>
+            <div class="guest-claim-welcome-actions">
+                <button type="button" class="btn btn-primary" onclick="openGuestClaimSupportFromWelcome()">${window.escapeHTML(window.t('guestClaimWelcomeSupportBtn', {}, lang))}</button>
+            </div>
+            <div class="guest-claim-welcome-community">
+                <a href="javascript:void(0)" onclick="tg.openTelegramLink('${safeCommunityUrl}')">${window.escapeHTML(window.t('guestClaimWelcomeCommunityLink', {}, lang))}</a>
+            </div>
+        `;
+        return;
+    }
+
+    if (isAlreadyOwned) {
+        shell.innerHTML = `
+            <div class="guest-claim-welcome-title">${window.escapeHTML(window.t('guestClaimWelcomeAlreadyOwnedTitle', {}, lang))}</div>
+            ${cardBlock}
+            <div class="guest-claim-welcome-lead">${window.escapeHTML(window.t('guestClaimWelcomeAlreadyOwnedText', {}, lang))}</div>
+            <div class="guest-claim-welcome-actions">
+                <button type="button" class="btn btn-primary" onclick="handleGuestClaimWelcomeGoToDashboard()">${window.escapeHTML(window.t('guestClaimWelcomeGoToDashboardBtn', {}, lang))}</button>
+            </div>
+            <div class="guest-claim-welcome-community">
+                <a href="javascript:void(0)" onclick="tg.openTelegramLink('${safeCommunityUrl}')">${window.escapeHTML(window.t('guestClaimWelcomeCommunityLink', {}, lang))}</a>
+            </div>
+        `;
+        return;
+    }
 
     shell.innerHTML = `
-        <div class="guest-claim-welcome-title">${window.escapeHTML(screenTitle)}</div>
-        <div class="guest-claim-welcome-card-wrap">
-            ${guest ? renderGuestClaimWelcomeCard(guest) : `<div class="guest-claim-welcome-info">${window.escapeHTML(window.t('guestClaimWelcomeNotFound', {}, lang))}</div>`}
-        </div>
-        ${infoBlock}
-        <div class="guest-claim-welcome-status ${statusClass}">${window.escapeHTML(statusText)}</div>
+        <div class="guest-claim-welcome-title">${window.escapeHTML(window.t('guestClaimWelcomeTitle', {}, lang))}</div>
+        ${cardBlock}
+        <div class="guest-claim-welcome-info">${window.escapeHTML(window.t('guestClaimWelcomeInfo', {}, lang))}</div>
+        <div class="guest-claim-welcome-status is-success">${window.escapeHTML(window.t('guestClaimWelcomeOwnerOk', {}, lang))}</div>
         <div class="guest-claim-welcome-actions">
-            ${primaryAction}
-            ${supportBtn}
+            <button type="button" class="btn btn-primary" ${isReady && !_guestClaimWelcomeSubmitting ? '' : 'disabled'} onclick="handleGuestClaimWelcomeContinue()">${
+                _guestClaimWelcomeSubmitting
+                    ? window.escapeHTML(window.t('guestClaimLoading', {}, lang))
+                    : window.escapeHTML(window.t('guestClaimWelcomeContinueBtn', {}, lang))
+            }</button>
         </div>
         <div class="guest-claim-welcome-community">
             <a href="javascript:void(0)" onclick="tg.openTelegramLink('${safeCommunityUrl}')">${window.escapeHTML(window.t('guestClaimWelcomeCommunityLink', {}, lang))}</a>
@@ -3811,11 +3816,12 @@ async function showGuestClaimWelcomeScreen(intent) {
         var preview = typeof window._loadGuestAppPreview === 'function'
             ? await window._loadGuestAppPreview(intent.guestAppId)
             : null;
-        if (!preview || !preview.item) {
+        if (!preview) {
             _guestClaimWelcomeState = {
                 intent: intent,
                 guest: null,
-                claimState: 'not_found',
+                claimState: 'error',
+                message: '',
                 canClaim: false,
                 alreadyClaimed: false,
                 ownedAppId: 0,
@@ -3823,15 +3829,16 @@ async function showGuestClaimWelcomeScreen(intent) {
                 loading: false,
             };
         } else {
-            var claimState = String(preview.claimState || '').trim() || 'not_found';
+            var claimState = String(preview.claimState || '').trim() || 'error';
             _guestClaimWelcomeState = {
                 intent: intent,
-                guest: preview.item,
+                guest: preview.item || null,
                 claimState: claimState,
-                canClaim: claimState === 'ready',
+                message: String(preview.message || '').trim(),
+                canClaim: claimState === 'ready' && !!preview.canClaim,
                 alreadyClaimed: !!preview.alreadyClaimed,
                 ownedAppId: Number(preview.ownedAppId || 0),
-                loadFailed: false,
+                loadFailed: claimState === 'error',
                 loading: false,
             };
         }
@@ -3840,7 +3847,8 @@ async function showGuestClaimWelcomeScreen(intent) {
         _guestClaimWelcomeState = {
             intent: intent,
             guest: null,
-            claimState: 'not_found',
+            claimState: 'error',
+            message: '',
             canClaim: false,
             alreadyClaimed: false,
             ownedAppId: 0,
