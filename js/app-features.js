@@ -323,11 +323,12 @@ function buildGuestInviteDeepLink(guestAppId, inviterId, inviteLang, startappVal
 function buildProjectReferralStartLink(projectId) {
     var normalizedProjectId = Number(projectId || 0);
     var normalizedInviterId = Number(userId || 0);
-    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || BOT_USERNAME);
+    var botUsername = _normalizeBotUsername((window.App && window.App.botUsername) || TELEGRAM_RUNTIME_BOT_USERNAME || BOT_USERNAME);
+    var webappShortname = String((window.App && window.App.webappShortname) || WEBAPP_SHORTNAME || 'app').trim();
     if (normalizedProjectId <= 0 || normalizedInviterId <= 0) {
-        return `https://t.me/${botUsername}?start=mutual_${normalizedProjectId}`;
+        return `https://t.me/${botUsername}/${webappShortname}?startapp=mutual_${normalizedProjectId}`;
     }
-    return `https://t.me/${botUsername}?start=ref_mutual_${normalizedInviterId}_${normalizedProjectId}`;
+    return `https://t.me/${botUsername}/${webappShortname}?startapp=ref_mutual_${normalizedInviterId}_${normalizedProjectId}`;
 }
 
 function buildExternalClaimStartLink(packageName, guestAppId) {
