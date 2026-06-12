@@ -26,6 +26,8 @@ window.App.botUsername = BOT_USERNAME;
 window.App.webappShortname = WEBAPP_SHORTNAME;
 const RU_INTERFACE_LANGUAGE_CODES = ['ru', 'by', 'kz', 'kg', 'md', 'am', 'az', 'tj', 'uz', 'tm'];
 const GUEST_CLAIM_START_PARAM_RE = /^(?:guest_|claim_)([a-zA-Z0-9.\-_]+)_(\d+)$/i;
+const MUTUAL_INVITE_START_PARAM_RE = /^ref_mutual_(\d+)_(\d+)$/i;
+const MUTUAL_DIRECT_START_PARAM_RE = /^mutual_(\d+)$/i;
 const LEAD_INVITE_START_PARAM_RE = /^lead_(\d+)$/i;
 const GUEST_CLAIM_SESSION_PREFIX = 'guest_claim_handled_v1:';
 const USER_TIMEZONE_STORAGE_KEY = 'user_system_timezone';
@@ -808,6 +810,31 @@ function _parseGuestClaimIntent() {
         guestAppId: String(match[1] || '').trim(),
         inviterId: Number(match[2] || 0),
     };
+}
+
+function _parseMutualInviteIntent() {
+    var rawStartParam = _getStartappParam();
+    if (!rawStartParam) return null;
+
+    var refMatch = rawStartParam.match(MUTUAL_INVITE_START_PARAM_RE);
+    if (refMatch) {
+        return {
+            rawStartParam: rawStartParam,
+            inviterId: Number(refMatch[1] || 0),
+            targetAppId: Number(refMatch[2] || 0),
+        };
+    }
+
+    var directMatch = rawStartParam.match(MUTUAL_DIRECT_START_PARAM_RE);
+    if (directMatch) {
+        return {
+            rawStartParam: rawStartParam,
+            inviterId: 0,
+            targetAppId: Number(directMatch[1] || 0),
+        };
+    }
+
+    return null;
 }
 
 function _getLeadInviteInviterId() {

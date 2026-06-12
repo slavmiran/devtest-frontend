@@ -136,16 +136,106 @@ async function _loadGuestAppPreview(guestAppId) {
     } catch (error) {
         payload = null;
     }
-    if (!response.ok || !payload || payload.status !== 'success') {
-        return null;
+    var responseStatus = String(payload && payload.status || '').trim();
+    var claimState = String(payload && payload.claim_state || '').trim();
+    if (!response.ok || responseStatus === 'error') {
+        return {
+            item: null,
+            claimState: 'error',
+            status: 'error',
+            message: String(payload && (payload.message || payload.detail) || '').trim(),
+            alreadyClaimed: false,
+            canClaim: false,
+            ownedAppId: 0,
+        };
+    }
+    if (!payload || responseStatus !== 'success') {
+        return {
+            item: null,
+            claimState: 'error',
+            status: 'error',
+            message: '',
+            alreadyClaimed: false,
+            canClaim: false,
+            ownedAppId: 0,
+        };
+    }
+    if (claimState === 'already_owned') {
+        return {
+            item: payload.item || null,
+            claimState: 'already_owned',
+            status: 'already_owned',
+            message: String(payload.message || '').trim(),
+            alreadyClaimed: true,
+            canClaim: false,
+            ownedAppId: Number(payload.owned_app_id || 0),
+        };
+    }
+    if (claimState === 'not_owner' || claimState === 'not_found') {
+        return {
+            item: payload.item || null,
+            claimState: 'error',
+            status: 'error',
+            message: String(payload.message || '').trim(),
+            alreadyClaimed: false,
+            canClaim: false,
+            ownedAppId: 0,
+        };
     }
     return {
         item: payload.item || null,
-        claimState: String(payload.claim_state || '').trim() || 'not_found',
+        claimState: claimState || 'ready',
+        status: 'success',
+        message: String(payload.message || '').trim(),
         alreadyClaimed: !!payload.already_claimed,
         canClaim: !!payload.can_claim,
         ownedAppId: Number(payload.owned_app_id || 0),
     };
+}
+
+async function _bindReferralInviter(inviterId) {
+    var normalizedInviterId = Number(inviterId || 0);
+    if (!normalizedInviterId || normalizedInviterId === Number(userId || 0)) {
+        return;
+    }
+    try {
+        await fetchWithRetry(`${API_BASE}/users/me/referral/bind`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                init_data: tg.initData || '',
+                inviter_id: normalizedInviterId,
+            }),
+        }, 1);
+    } catch (error) {
+        console.warn('Referral bind failed:', error);
+    }
+}
+
+async function _handleMutualInviteIntent(intent) {
+    if (!intent || intent.targetAppId <= 0) {
+        return false;
+    }
+
+    if (intent.inviterId > 0 && intent.inviterId === Number(userId || 0)) {
+        _clearStartappQueryParam();
+        showToast(window.t('guestClaimOwnLinkToast', {}, lang));
+        return true;
+    }
+
+    if (intent.inviterId > 0) {
+        await _bindReferralInviter(intent.inviterId);
+    }
+
+    _clearStartappQueryParam();
+
+    if (typeof joinMutual === 'function') {
+        await joinMutual(intent.targetAppId, false);
+        return true;
+    }
+
+    switchTab('market');
+    return true;
 }
 
 async function _handleGuestClaimIntent(intent) {

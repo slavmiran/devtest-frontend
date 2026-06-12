@@ -1832,6 +1832,8 @@ function _mapProjectsFromApi(data) {
                 is_external: !!tester.is_external,
                 is_guest_tester: !!tester.is_guest_tester,
                 external_source: tester.external_source || '',
+                external_package_name: tester.external_package_name || '',
+                external_guest_app_id: tester.external_guest_app_id || '',
                 external_last_completed_control_day: Number(tester.external_last_completed_control_day || 0),
                 external_days_since_last_completed: tester.external_days_since_last_completed === null || typeof tester.external_days_since_last_completed === 'undefined'
                     ? null

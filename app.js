@@ -67,6 +67,11 @@ document.addEventListener('DOMContentLoaded', () => {
         var guestIntent = _parseGuestClaimIntent();
         if (guestIntent) {
             await _handleGuestClaimIntent(guestIntent);
+        } else {
+            var mutualIntent = _parseMutualInviteIntent();
+            if (mutualIntent) {
+                await _handleMutualInviteIntent(mutualIntent);
+            }
         }
 
         loadTasks();

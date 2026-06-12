@@ -1115,6 +1115,21 @@ function buildProjectInviteStartLink(projectId) {
     return 'https://t.me/' + botUsername + '?start=mutual_' + Number(projectId || 0);
 }
 
+function buildGuestTesterPlatformInviteLink(project, tester) {
+    var guestAppId = String((tester && tester.external_guest_app_id) || '').trim();
+    var packageName = String((tester && tester.external_package_name) || '').trim();
+    var isGuestTester = !!(tester && (tester.is_guest_tester || tester.is_external));
+    if (isGuestTester && (guestAppId || packageName)) {
+        if (typeof window.buildGuestInviteDeepLink === 'function') {
+            return window.buildGuestInviteDeepLink(guestAppId || packageName, Number(userId || 0), lang);
+        }
+        if (typeof window.buildExternalClaimStartLink === 'function') {
+            return window.buildExternalClaimStartLink(packageName, guestAppId);
+        }
+    }
+    return buildProjectInviteStartLink(project && project.id);
+}
+
 function openTelegramPrefilledMessage(username, text) {
     var cleanUsername = String(username || '').trim().replace(/^@+/, '');
     if (!cleanUsername) {
@@ -1770,7 +1785,7 @@ function renderGuestTesterDetailsModal() {
     var currentDay = tester.start_date ? getUserTestingDay(tester.start_date) : Number(tester.external_last_completed_control_day || 0);
     var inviteText = window.t('guestTesterInvitePlatformMessage', {
         app_name: project.name || window.t('unknownLabel', {}, lang),
-        invite_link: buildProjectInviteStartLink(project.id),
+        invite_link: buildGuestTesterPlatformInviteLink(project, tester),
     }, lang);
     var originChipHtml = renderGuestOriginChip(tester.external_source);
     var sourcePackage = String(tester.external_package_name || '').trim();
