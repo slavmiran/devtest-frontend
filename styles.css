@@ -5161,22 +5161,6 @@ html[dir="rtl"] .guest-filter-select {
     text-align: left;
 }
 
-.guest-claim-welcome-lead {
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--hint-color);
-    margin-bottom: 14px;
-    text-align: left;
-}
-
-.guest-claim-welcome-hint {
-    font-size: 13px;
-    line-height: 1.55;
-    color: var(--hint-color);
-    margin-bottom: 16px;
-    text-align: left;
-}
-
 .guest-claim-welcome-status {
     border-radius: 12px;
     padding: 10px 12px;
