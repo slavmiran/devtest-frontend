@@ -418,6 +418,10 @@ function renderProjects(force) {
                 badges += `<button class="meta-chip accent-red" onclick="showPendingReleaseInfo()">${window.escapeHTML(window.t('pendingReleaseChip', {}, lang))}</button>`;
             }
 
+            if (isOvertime) {
+                badges += `<span class="meta-chip accent-red" style="font-weight:600;">${window.escapeHTML(window.t('overtimeBadge', {}, lang))}</span>`;
+            }
+
             return badges;
         })();
 
@@ -472,7 +476,6 @@ function renderProjects(force) {
         })();
 
         const hasSync = isProjectSynced(project);
-        const overtimeBadgeHtml = isOvertime ? `<span class="meta-chip accent-red" style="font-weight:600;">${window.t('overtimeBadge', {}, lang)}</span>` : '';
         const syncBtnStyle = needsSyncAttention
             ? 'flex: 1; background-color: rgba(255, 149, 0, 0.2); color: #ff9500; border: 1px solid rgba(255, 149, 0, 0.4); animation: pulse-attention 2s infinite;'
             : 'flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);';
@@ -616,7 +619,6 @@ function renderProjects(force) {
                 <div class="card-expanded-inner">
                     ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
                     ${updateTipHtml}
-                    ${overtimeBadgeHtml ? `<div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${overtimeBadgeHtml}</div>` : ''}
                     <div class="testers-section">
                         <div class="testers-title-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                             <div class="testers-title">${t.testersList} (${allProjectTesters.length})${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(regularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
