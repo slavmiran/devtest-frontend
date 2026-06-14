@@ -185,6 +185,7 @@
             projectUpdateTipText: "💡 Pro-Tip: Push 1-2 app updates in Google Console during this test (even a minor bug fix). This proves to reviewers that your test is active and boosts your chances of approval!",
             inviteModalTitle: "Invite testers",
             inviteClose: "Close",
+            backLabel: "Back",
             inviteBlock1Title: "📢 Post on our Exchange",
             inviteBlock1Btn: "Publish",
             inviteLinkNextStep: "🚀 Get Testers",

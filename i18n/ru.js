@@ -185,6 +185,7 @@
             projectUpdateTipText: "💡 Совет: Выпустите 1-2 обновления в Google Console во время этого теста (даже мелкий bug fix). Это покажет модераторам вашу активность и сильно повысит шансы на успешный релиз!",
             inviteModalTitle: "Пригласить тестеров",
             inviteClose: "Закрыть",
+            backLabel: "Назад",
             inviteBlock1Title: "📢 Опубликовать на нашей Бирже",
             inviteBlock1Btn: "Опубликовать",
             inviteLinkNextStep: "🚀 Найти тестеров",

@@ -950,6 +950,9 @@ function renderGuestInviteModal() {
 
     const ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
     const guestDisplayName = getGuestDisplayName(guest);
+    const langChip = getGuestLanguageDisplayParts(guest.language || guest.lang, guest.user_lang).length
+        ? renderGuestLanguageBadge(guest.language || guest.lang, guest.user_lang)
+        : '';
     const selectedInviteLang = resolveGuestInviteLanguage(guest);
     const inviteLink = typeof window.buildGuestInviteDeepLink === 'function'
         ? window.buildGuestInviteDeepLink(String(guest.id || ''), userId, selectedInviteLang)
@@ -974,7 +977,10 @@ function renderGuestInviteModal() {
                 ${renderIcon(guestDisplayName || '', null)}
                 <div class="guest-invite-app-meta">
                     <div class="card-title guest-invite-app-title notranslate">${window.escapeHTML(guestDisplayName || window.t('unknownLabel', {}, lang))}</div>
-                    <div class="market-owner notranslate">${window.escapeHTML(ownerUsername ? '@' + ownerUsername : window.t('guestInviteOwnerMissing', {}, lang))}</div>
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:2px;">
+                        <span class="market-owner notranslate">${window.escapeHTML(ownerUsername ? '@' + ownerUsername : window.t('guestInviteOwnerMissing', {}, lang))}</span>
+                        ${langChip}
+                    </div>
                 </div>
             </div>
             <div class="guest-invite-language-row">
@@ -1474,6 +1480,9 @@ function renderExternalTrackModal() {
     var ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
     var guestDisplayName = getGuestDisplayName(guest);
     var safePackageName = window.escapeHTML(guestDisplayName || window.t('unknownLabel', {}, lang));
+    var langChip = getGuestLanguageDisplayParts(guest.language || guest.lang, guest.user_lang).length
+        ? renderGuestLanguageBadge(guest.language || guest.lang, guest.user_lang)
+        : '';
     var checkboxLabelHtml = window.t('externalTrackCheckboxLabel', {
         appName: safePackageName,
     }, lang);
@@ -1491,10 +1500,62 @@ function renderExternalTrackModal() {
         }).join('')
         : '';
 
+    if (_externalTrackStep === 2) {
+        var claimLink = typeof window.buildExternalClaimStartLink === 'function'
+            ? window.buildExternalClaimStartLink(guest.package_name || guest.name || '', guest.id)
+            : '';
+        var myGroupLink = String(selectedProject ? (selectedProject.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || '') : '').trim();
+        var myPackage = String(selectedProject ? (selectedProject.package || selectedProject.package_name || '') : '').trim();
+        var myPlayLink = myPackage ? ('https://play.google.com/store/apps/details?id=' + encodeURIComponent(myPackage)) : '';
+        var messageText = window.t('externalTrackInviteMessageTemplate', {
+            app_name: getGuestDisplayName(guest) || window.t('unknownLabel', {}, lang),
+            claim_link: claimLink,
+            play_link: myPlayLink,
+            group_link: myGroupLink,
+        }, _externalTrackLang);
+
+        var previewHtml = escapeHtmlWithBreaks(messageText);
+
+        body.innerHTML = `
+            <div class="external-track-hero">
+                <div class="external-track-hero-badge">${window.escapeHTML(window.t('externalTrackBadge', {}, lang))}</div>
+                <div class="external-track-hero-title notranslate" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    ${safePackageName}
+                    ${langChip}
+                </div>
+                <div class="external-track-hero-subtitle notranslate">@${ownerUsername}</div>
+            </div>
+            <div class="guest-invite-card external-track-card">
+                <div class="guest-invite-language-row">
+                    <div class="guest-invite-language-label">${window.escapeHTML(window.t('guestInviteLanguageLabel', {}, lang))}</div>
+                    <div class="segmented-control guest-invite-language-toggle">
+                        <button type="button" class="seg-btn ${_externalTrackLang === 'ru' ? 'active' : ''}" onclick="setExternalTrackLanguage('ru', event)">${window.escapeHTML(window.t('guestInviteLanguageRu', {}, lang))}</button>
+                        <button type="button" class="seg-btn ${_externalTrackLang === 'en' ? 'active' : ''}" onclick="setExternalTrackLanguage('en', event)">${window.escapeHTML(window.t('guestInviteLanguageEn', {}, lang))}</button>
+                    </div>
+                </div>
+                <div class="guest-invite-preview-head">
+                    <div class="guest-invite-preview-title">${window.escapeHTML(window.t('guestInvitePreviewTitle', {}, lang))}</div>
+                    <div class="guest-invite-preview-caption">${window.escapeHTML(window.t('guestInvitePreviewCaption', {}, lang))}</div>
+                </div>
+                <div class="guest-invite-preview-shell">
+                    <div class="guest-invite-preview-text notranslate">${previewHtml}</div>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:12px;">
+                    <button class="btn btn-secondary" style="flex:1;" onclick="setExternalTrackStep(1, event)">${window.escapeHTML(window.t('backLabel', {}, lang) || 'Назад')}</button>
+                    <button id="external-track-submit-btn" class="btn btn-primary" style="flex:2;" onclick="sendExternalTrackInvite()">${window.escapeHTML(window.t(_externalTrackSending ? 'externalTrackSending' : 'externalTrackSendBtn', {}, lang))}</button>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
     body.innerHTML = `
         <div class="external-track-hero">
             <div class="external-track-hero-badge">${window.escapeHTML(window.t('externalTrackBadge', {}, lang))}</div>
-            <div class="external-track-hero-title notranslate">${safePackageName}</div>
+            <div class="external-track-hero-title notranslate" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                ${safePackageName}
+                ${langChip}
+            </div>
             <div class="external-track-hero-subtitle">${window.escapeHTML(window.t('externalTrackModalDesc', { owner_username: ownerUsername ? '@' + ownerUsername : window.t('guestInviteOwnerMissing', {}, lang) }, lang))}</div>
         </div>
         <div class="external-track-steps">
@@ -1649,8 +1710,15 @@ function openExternalTrackModal(guestAppId, event) {
     _externalTrackGuestId = String(guestAppId || '');
     _externalTrackSending = false;
     _externalTrackAcknowledged = false;
+    _externalTrackStep = 1;
     var selectedProject = getSelectedExternalTrackProject();
     _externalTrackProjectId = selectedProject ? Number(selectedProject.id || 0) : 0;
+
+    var guest = getExternalTrackGuest();
+    _externalTrackLang = typeof window.getDefaultGuestInviteLanguage === 'function'
+        ? window.getDefaultGuestInviteLanguage(guest && (guest.language || guest.lang))
+        : 'en';
+
     renderExternalTrackModal();
     var modal = document.getElementById('external-track-modal');
     if (modal) modal.classList.add('active');
@@ -1666,6 +1734,8 @@ function closeExternalTrackModal(event) {
     _externalTrackSending = false;
     _externalTrackProjectId = 0;
     _externalTrackAcknowledged = false;
+    _externalTrackStep = 1;
+    _externalTrackLang = null;
 }
 
 function setExternalTrackProject(projectId, event) {
@@ -1675,6 +1745,24 @@ function setExternalTrackProject(projectId, event) {
     _externalTrackProjectId = Number(projectId || 0);
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     updateExternalTrackSubmitState();
+}
+
+function setExternalTrackLanguage(nextLang, event) {
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+    _externalTrackLang = String(nextLang || 'en');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    renderExternalTrackModal();
+}
+
+function setExternalTrackStep(nextStep, event) {
+    if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+    }
+    _externalTrackStep = Number(nextStep || 1);
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    renderExternalTrackModal();
 }
 
 function toggleExternalTrackAcknowledged(input, event) {
@@ -1695,9 +1783,34 @@ async function sendExternalTrackInvite() {
     if (!guest || _externalTrackSending) return;
 
     var elements = getExternalTrackFormElements();
-    var selectedProjectId = Number(elements.select && elements.select.value || 0);
+    var selectedProjectId = Number(elements.select && elements.select.value || _externalTrackProjectId || 0);
     _externalTrackProjectId = selectedProjectId;
-    _externalTrackAcknowledged = !!(elements.checkbox && elements.checkbox.checked === true);
+
+    if (_externalTrackStep === 1) {
+        _externalTrackAcknowledged = !!(elements.checkbox && elements.checkbox.checked === true);
+        var selectedProject = getSelectedExternalTrackProject();
+        if (!selectedProject) {
+            showToast(window.t('externalTrackNeedsProject', {}, lang));
+            return;
+        }
+
+        var ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
+        if (!ownerUsername) {
+            showToast(window.t('guestInviteNoUsername', {}, lang));
+            return;
+        }
+        if (!isExternalTrackFormValid()) {
+            var telegram = window.tg || window.Telegram && window.Telegram.WebApp || (typeof tg !== 'undefined' ? tg : null);
+            if (telegram && typeof telegram.showAlert === 'function') telegram.showAlert(window.t('externalTrackNeedConfirm', {}, lang));
+            else showToast(window.t('externalTrackNeedConfirm', {}, lang));
+            return;
+        }
+
+        _externalTrackStep = 2;
+        renderExternalTrackModal();
+        return;
+    }
+
     var selectedProject = getSelectedExternalTrackProject();
     if (!selectedProject) {
         showToast(window.t('externalTrackNeedsProject', {}, lang));
@@ -1707,12 +1820,6 @@ async function sendExternalTrackInvite() {
     var ownerUsername = String(guest.owner_username || '').trim().replace(/^@+/, '');
     if (!ownerUsername) {
         showToast(window.t('guestInviteNoUsername', {}, lang));
-        return;
-    }
-    if (!isExternalTrackFormValid()) {
-        var telegram = window.tg || window.Telegram && window.Telegram.WebApp || (typeof tg !== 'undefined' ? tg : null);
-        if (telegram && typeof telegram.showAlert === 'function') telegram.showAlert(window.t('externalTrackNeedConfirm', {}, lang));
-        else showToast(window.t('externalTrackNeedConfirm', {}, lang));
         return;
     }
 
@@ -1744,7 +1851,7 @@ async function sendExternalTrackInvite() {
             claim_link: claimLink,
             play_link: myPlayLink,
             group_link: myGroupLink,
-        }, lang);
+        }, _externalTrackLang);
 
         copyTextWithToast(messageText, 'externalTrackCopied');
         closeExternalTrackModal();
@@ -5397,6 +5504,8 @@ Object.assign(window, {
     openExternalCheckinOptionsModal,
     setGuestInviteLanguage,
     setExternalTrackProject,
+    setExternalTrackLanguage,
+    setExternalTrackStep,
     toggleExternalTrackAcknowledged,
     showExternalTrackInfo,
     showExternalTrackInfoClick,
