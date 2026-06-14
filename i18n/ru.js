@@ -12,6 +12,7 @@
             mutualJoinBtn: "🤝 Предложить взаимный тест",
             takeDirectBtn: "🆓 Взять на тестирование",
             prelaunchJoinBtn: "🔓 Войти в Pre-Launch",
+            prelaunchJoinModalTitle: "Вход в Pre-Launch",
             bountyTakeBtn: "💎 Взять контракт",
             scoreLabel: "Score",
             testsDesc: "Приложения, которые вы должны открывать каждый день.",

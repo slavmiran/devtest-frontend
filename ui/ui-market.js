@@ -668,7 +668,7 @@ function renderFeedCard(item, kind) {
 
     if (kind === 'mutual-prelaunch') {
         buttonText = window.t('prelaunchJoinBtn', {}, lang);
-        clickAction = `joinMutual(${item.app_id}, true)`;
+        clickAction = `openPrelaunchJoinModal(${item.app_id}, ${item.owner_id}, event)`;
         buttonExtraAttrs = '';
     }
     if (kind === 'bounty') {
@@ -4721,7 +4721,7 @@ async function openDossierModal(username, testerId, appId) {
         <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierActionsTitle}</div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
             ${tgName ? `<button class="btn" style="width: 100%; background: var(--secondary-bg-color); color: var(--link-color); border: none; font-weight: 600; padding: 10px;" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
-            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" style="width: 100%; border: none; font-weight: 600; padding: 10px;" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); joinMutual(${appId}, ${takeFromShowcaseIsPrelaunch ? 'true' : 'false'})"`}>${window.escapeHTML(window.t(takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest', {}, lang))}</button>` : ''}
+            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" style="width: 100%; border: none; font-weight: 600; padding: 10px;" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest', {}, lang))}</button>` : ''}
             ${canReward ? `<button class="btn" style="width: 100%; background: rgba(255,204,0,0.15); color: #ffcc00; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
             ${canDeleteFromProject ? `<button class="btn" style="width: 100%; background: rgba(255,59,48,0.1); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); openKickTesterModal(${appId}, ${testerId})">${t.dossierBtnDelete}</button>` : ''}
         </div>
@@ -4826,9 +4826,27 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
     const listEl = document.getElementById('project-select-list');
     const footerEl = document.getElementById('project-select-footer');
     if (!listEl) return;
+    const modalTitle = modal.querySelector('h3');
+    const isPrelaunch = !!(options && options.is_prelaunch);
     const blockedProjects = options && options.blockedProjects ? options.blockedProjects : {};
     const targetOwnerHasEmail = !!(options && options.targetOwnerHasEmail);
     const fallbackOwnerAppName = options && options.targetAppName ? String(options.targetAppName) : '';
+
+    if (isPrelaunch) {
+        if (modalTitle) {
+            modalTitle.textContent = window.t('prelaunchJoinModalTitle', {}, lang);
+        }
+        listEl.innerHTML = `<div class="details-block"><div style="font-size:13px; line-height:1.6; color: var(--hint-color);">${window.escapeHTML(window.t('mutualPrelaunchDesc', {}, lang))}</div></div>`;
+        if (footerEl) {
+            footerEl.innerHTML = `<button class="btn btn-secondary project-select-direct-btn" style="width: 100%;" onclick="closeProjectSelectModal(); joinMutual(${targetAppId}, true);">${window.escapeHTML(window.t('takeWithoutMutualBtn', {}, lang))}</button>`;
+        }
+        modal.classList.add('active');
+        return;
+    }
+
+    if (modalTitle) {
+        modalTitle.textContent = window.t('offerSelectProject', {}, lang);
+    }
     const availableProjects = Array.isArray(projects) ? projects : [];
     listEl.innerHTML = availableProjects.length ? availableProjects.map(p => {
         const safeName = window.escapeHTML(p.name || window.t('unknownLabel'));
@@ -4905,7 +4923,12 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
 
 function closeProjectSelectModal() {
     const modal = document.getElementById('project-select-modal');
-    if (modal) modal.classList.remove('active');
+    if (!modal) return;
+    modal.classList.remove('active');
+    const modalTitle = modal.querySelector('h3');
+    if (modalTitle) {
+        modalTitle.textContent = window.t('offerSelectProject', {}, lang);
+    }
 }
 
 function openContractEconomyModal(projectId) {

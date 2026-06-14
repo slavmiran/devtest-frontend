@@ -1073,6 +1073,35 @@ async function createMutualOffer(targetAppId, targetOwnerId, event) {
     await _continueMutualOffer(targetAppId, targetOwnerId, sourceButton);
 }
 
+async function openPrelaunchJoinModal(targetAppId, targetOwnerId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+    var target = (typeof window.getMarketCandidateByAppId === 'function') ? window.getMarketCandidateByAppId(targetAppId) : null;
+    var targetIsEmailList = !!(target && target.test_mode === 'email_list');
+    var currentEmail = (typeof getCurrentUserEmail === 'function') ? getCurrentUserEmail() : String((window.App && window.App.userEmail) || '').trim();
+    if (targetIsEmailList && !currentEmail && typeof window.openEmailCollectModal === 'function') {
+        window.openEmailCollectModal({
+            title: window.t('emailGateOfferTitle', {}, lang),
+            text: window.t('emailGateOfferText', {}, lang),
+            primaryLabel: window.t('emailGateSaveContinue', {}, lang),
+            onSave: function() { openPrelaunchJoinModal(targetAppId, targetOwnerId); },
+        });
+        return;
+    }
+
+    if (typeof window.showProjectSelectModal === 'function') {
+        window.showProjectSelectModal([], targetAppId, targetOwnerId, {
+            is_prelaunch: true,
+            targetAppName: target && target.name ? String(target.name) : '',
+            targetOwnerHasEmail: !!(target && target.owner_has_email),
+        });
+    }
+}
+
 async function _continueMutualOffer(targetAppId, targetOwnerId, sourceButton) {
     if (myProjectsLoadError) {
         if (tg.showAlert) tg.showAlert(window.t('projectsLoadingAlert'));
