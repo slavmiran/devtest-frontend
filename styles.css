@@ -7822,3 +7822,99 @@ html[dir="rtl"] .guest-filter-select {
 .card:not(.card-collapsed) .card-expanded-inner {
     overflow: visible;
 }
+
+/* ── Mass Invite Processing Overlay ───────────────────────────── */
+.mi-progress-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(10, 12, 16, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 10030;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+.mi-progress-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.mi-progress-card {
+    width: min(92vw, 340px);
+    padding: 28px 22px 24px;
+    border-radius: 22px;
+    background: rgba(23, 27, 34, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    animation: miProgressCardIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes miProgressCardIn {
+    from { transform: scale(0.88) translateY(16px); opacity: 0; }
+    to   { transform: scale(1)    translateY(0);    opacity: 1; }
+}
+
+.mi-progress-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1.3;
+}
+
+.mi-progress-subtitle {
+    font-size: 13px;
+    color: var(--hint-color);
+    margin: 0;
+    line-height: 1.45;
+}
+
+.mi-progress-spinner {
+    width: 52px;
+    height: 52px;
+    margin: 8px auto 4px;
+    border-radius: 50%;
+    border: 4px solid rgba(255, 255, 255, 0.10);
+    border-top-color: var(--button-color);
+    border-right-color: var(--button-color);
+    animation: miProgressSpin 0.85s linear infinite;
+}
+@keyframes miProgressSpin {
+    to { transform: rotate(360deg); }
+}
+
+.mi-progress-status {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--hint-color);
+    min-height: 20px;
+    transition: opacity 0.3s ease;
+}
+.mi-progress-status--fade {
+    opacity: 0;
+}
+
+.mi-progress-long-notice {
+    font-size: 12px;
+    color: var(--hint-color);
+    line-height: 1.55;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding-top: 10px;
+    width: 100%;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.4s ease, max-height 0.4s ease;
+}
+.mi-progress-long-notice--visible {
+    opacity: 1;
+    max-height: 80px;
+}

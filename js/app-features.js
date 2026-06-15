@@ -1794,6 +1794,79 @@ function refreshMarketAfterMassInvite() {
     setMarketCache(null);
 }
 
+// ── Mass Invite Processing Overlay ────────────────────────────
+var MassInviteProgressOverlay = (function () {
+    var _rotateInterval = null;
+    var _longTimer = null;
+    var _currentIndex = 0;
+    var STATUS_KEYS = [
+        'massInviteProgressStatus1',
+        'massInviteProgressStatus2',
+        'massInviteProgressStatus3',
+        'massInviteProgressStatus4',
+        'massInviteProgressStatus5',
+    ];
+
+    function _setStatus(text) {
+        var el = document.getElementById('mi-progress-status');
+        if (!el) return;
+        el.classList.add('mi-progress-status--fade');
+        setTimeout(function () {
+            el.textContent = text;
+            el.classList.remove('mi-progress-status--fade');
+        }, 300);
+    }
+
+    function show(lang) {
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (!overlay) return;
+        _currentIndex = 0;
+
+        // Update static localised labels
+        var titleEl        = document.getElementById('t-miProgressTitle');
+        var subEl          = document.getElementById('t-miProgressSubtitle');
+        var noticeEl       = document.getElementById('t-miProgressLongNotice');
+        var noticeDetailEl = document.getElementById('t-miProgressLongNoticeDetail');
+        if (titleEl)        titleEl.textContent        = window.t('massInviteProgressTitle', {}, lang);
+        if (subEl)          subEl.textContent          = window.t('massInviteProgressSubtitle', {}, lang);
+        if (noticeEl)       noticeEl.textContent       = window.t('massInviteProgressLongNotice', {}, lang);
+        if (noticeDetailEl) noticeDetailEl.textContent = window.t('massInviteProgressLongNoticeDetail', {}, lang);
+
+        // Reset long-running notice
+        var longNotice = document.getElementById('mi-progress-long-notice');
+        if (longNotice) longNotice.classList.remove('mi-progress-long-notice--visible');
+
+        // Show first status immediately
+        var statusEl = document.getElementById('mi-progress-status');
+        if (statusEl) statusEl.textContent = window.t(STATUS_KEYS[0], {}, lang);
+
+        // Activate overlay
+        overlay.classList.add('active');
+
+        // Rotate status messages every 2 s
+        _rotateInterval = setInterval(function () {
+            _currentIndex = (_currentIndex + 1) % STATUS_KEYS.length;
+            _setStatus(window.t(STATUS_KEYS[_currentIndex], {}, lang));
+        }, 2000);
+
+        // Show long-running notice after 10 s
+        _longTimer = setTimeout(function () {
+            if (longNotice) longNotice.classList.add('mi-progress-long-notice--visible');
+        }, 10000);
+    }
+
+    function hide() {
+        if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
+        if (_longTimer !== null)      { clearTimeout(_longTimer);       _longTimer = null; }
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (overlay) overlay.classList.remove('active');
+        _currentIndex = 0;
+    }
+
+    return { show: show, hide: hide };
+}());
+// ──────────────────────────────────────────────────────────────
+
 async function startMassInvite(projectId) {
     if (!projectId) return null;
 
@@ -1807,6 +1880,7 @@ async function startMassInvite(projectId) {
         btn.classList.add('is-loading');
         btn.disabled = true;
     }
+    MassInviteProgressOverlay.show(lang);
 
     _apiStart();
     try {
@@ -1847,6 +1921,7 @@ async function startMassInvite(projectId) {
         handleApiError('network_error');
         return null;
     } finally {
+        MassInviteProgressOverlay.hide();
         if (btn) {
             btn.classList.remove('is-loading');
             btn.disabled = false;
