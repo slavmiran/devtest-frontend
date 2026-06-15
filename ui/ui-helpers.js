@@ -34,6 +34,8 @@ var _externalTrackGuestId = null;
 var _externalTrackSending = false;
 var _externalTrackProjectId = 0;
 var _externalTrackAcknowledged = false;
+var _externalTrackLang = null;
+var _externalTrackStep = 1;
 var _guestTesterProjectId = 0;
 var _guestTesterProgressId = 0;
 var _guestLinkRemoveState = null;
@@ -121,7 +123,9 @@ function getDayDiffFromToday(dateValue) {
 }
 const GUEST_LANGUAGE_META = {
     ar: { flag: '🇦🇪', label: 'Arabic' },
+    am: { flag: '🇦🇲', label: 'Armenian' },
     az: { flag: '🇦🇿', label: 'Azerbaijani' },
+    by: { flag: '🇧🇾', label: 'Belarusian' },
     de: { flag: '🇩🇪', label: 'German' },
     en: { flag: '🇬🇧', label: 'English' },
     es: { flag: '🇪🇸', label: 'Spanish' },
@@ -131,7 +135,10 @@ const GUEST_LANGUAGE_META = {
     id: { flag: '🇮🇩', label: 'Indonesian' },
     it: { flag: '🇮🇹', label: 'Italian' },
     ja: { flag: '🇯🇵', label: 'Japanese' },
+    kg: { flag: '🇰🇬', label: 'Kyrgyz' },
     ko: { flag: '🇰🇷', label: 'Korean' },
+    kz: { flag: '🇰🇿', label: 'Kazakh' },
+    md: { flag: '🇲🇩', label: 'Moldavian' },
     ms: { flag: '🇲🇾', label: 'Malay' },
     nl: { flag: '🇳🇱', label: 'Dutch' },
     pl: { flag: '🇵🇱', label: 'Polish' },
@@ -139,9 +146,12 @@ const GUEST_LANGUAGE_META = {
     'pt-br': { flag: '🇧🇷', label: 'Portuguese (Brazil)' },
     ru: { flag: '🇷🇺', label: 'Russian' },
     th: { flag: '🇹🇭', label: 'Thai' },
+    tj: { flag: '🇹🇯', label: 'Tajik' },
+    tm: { flag: '🇹🇲', label: 'Turkmen' },
     tr: { flag: '🇹🇷', label: 'Turkish' },
     uk: { flag: '🇺🇦', label: 'Ukrainian' },
     ur: { flag: '🇵🇰', label: 'Urdu' },
+    uz: { flag: '🇺🇿', label: 'Uzbek' },
     vi: { flag: '🇻🇳', label: 'Vietnamese' },
     'zh-cn': { flag: '🇨🇳', label: 'Chinese (Simplified)' },
     'zh-tw': { flag: '🇹🇼', label: 'Chinese (Traditional)' },

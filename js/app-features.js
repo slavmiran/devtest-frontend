@@ -480,11 +480,12 @@ function normalizeGuestInviteLanguage(inviteLang, fallbackLang) {
 }
 
 function getDefaultGuestInviteLanguage(guestLang) {
+    const cisCountries = ['RU', 'BY', 'KZ', 'KG', 'MD', 'AM', 'AZ', 'TJ', 'UZ', 'TM'];
     const normalizedGuestLang = String(guestLang || '').trim().toUpperCase();
-    if (normalizedGuestLang === 'RU' || normalizedGuestLang === 'EN') {
-        return normalizedGuestLang.toLowerCase();
+    if (cisCountries.includes(normalizedGuestLang)) {
+        return 'ru';
     }
-    return normalizeGuestInviteLanguage(lang);
+    return 'en';
 }
 
 function buildGuestClaimStartappValue(guestAppId, inviterId) {
