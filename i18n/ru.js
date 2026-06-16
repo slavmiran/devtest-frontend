@@ -599,7 +599,7 @@
             externalTrackGuestBtn: "⚡️Установить и Пригласить",
             guestInviteBtn: "Пригласить",
             guestInviteModalTitle: "Приглашение в DevTestHub",
-            guestInviteModalDesc: "Владелец проекта ({owner_username}) еще не на платформе. Отправьте ему приглашение в ЛС. Когда он подтвердит проект и сделает первый чекин, вы получите 10 BUST!",
+            guestInviteModalDesc: "Владелец проекта ({owner_username}) еще не на платформе. Отправьте ему приглашение в ЛС. Когда он подтвердит проект и сделает первый чекин, вы получите 50 BUST!",
             guestInviteNeedsProject: "Нужен хотя бы один ваш активный проект в режиме взаимки или комбо.",
             guestInviteNoUsername: "У владельца гостевого проекта не указан Telegram username. Нельзя открыть ЛС-ссылку.",
             guestInviteOwnerMissing: "Username не указан",

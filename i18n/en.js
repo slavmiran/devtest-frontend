@@ -599,7 +599,7 @@
             externalTrackGuestBtn: "⚡Install and Invite",
             guestInviteBtn: "Invite",
             guestInviteModalTitle: "Invite to DevTestHub",
-            guestInviteModalDesc: "The project owner ({owner_username}) is not on the platform yet. Send them an invite in DM. When they confirm the project and make the first check-in, you'll receive 10 BUST!",
+            guestInviteModalDesc: "The project owner ({owner_username}) is not on the platform yet. Send them an invite in DM. When they confirm the project and make the first check-in, you'll receive 50 BUST!",
             guestInviteNeedsProject: "You need at least one active project in mutual or combo mode.",
             guestInviteNoUsername: "The guest project owner does not have a Telegram username. A DM link can't be opened.",
             guestInviteOwnerMissing: "Username missing",
