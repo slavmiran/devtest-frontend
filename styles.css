@@ -8469,6 +8469,11 @@ html[dir="rtl"] .guest-filter-select {
     align-items: center;
     position: relative;
     flex-shrink: 0;
+    opacity: 0.4;
+    transition: opacity 0.25s ease;
+}
+.ppc-timeline-phase.current {
+    opacity: 1;
 }
 
 .ppc-timeline-connector {
@@ -8645,5 +8650,36 @@ html[dir="rtl"] .guest-filter-select {
 /* ── Responsive: tall-enough screens get more breathing room ── */
 @media (min-height: 700px) {
     .ppc-body { padding-bottom: 48px; }
+}
+
+/* Safety Buffer progress bar & Add to Pool button */
+.ppc-buffer-progress-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+.ppc-buffer-progress-fill {
+    height: 100%;
+    background: #34c759;
+    border-radius: 3px;
+    transition: width 0.25s ease;
+}
+.ppc-add-pool-btn {
+    margin-top: 10px;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-color);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-block;
+}
+.ppc-add-pool-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
 }
 

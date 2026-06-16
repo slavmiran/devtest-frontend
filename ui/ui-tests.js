@@ -1523,44 +1523,72 @@ function renderTests(force) {
             `;
         } else if (test.status === 'daily' || test.status === 'opened') {
             const testingDay = userTestingDay || 999;
-            const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
-            const isScreenshotOnlyDay = isScreenshotOnlyControlDay(testingDay);
-            const screenshotBtnText = isScreenshotOnlyDay
-                ? window.t('screenshotBtn', {}, lang)
-                : '✅ ' + window.t('completeControlDayBtn', {}, lang);
-            const screenshotWarningText = window.t(isScreenshotOnlyDay ? 'firstDayScreenshotWarning' : 'screenshotWarning', {}, lang);
+            if (testingDay >= 15) {
+                const poolAmount = Number(test.protection_bust_pool || 0);
+                const extraPaid = Number(test.paid_protection_days || 0);
+                const rewardPerTesterDay = poolAmount > 0 ? (poolAmount / (Math.max(1, extraPaid) * 12)) : 0;
+                const rewardPerTesterDayFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(rewardPerTesterDay, 1) : rewardPerTesterDay.toFixed(1);
+                
+                let hintHtml = '';
+                if (rewardPerTesterDay > 0) {
+                    hintHtml = `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('ppcTesterCheckinHintBoth', { bust: rewardPerTesterDayFormatted }, lang))}</div>`;
+                } else {
+                    hintHtml = `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('ppcTesterCheckinHintKarma', {}, lang))}</div>`;
+                }
 
-            if (isScreenshotDay) {
-                actionsHtml = `
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
-                            ${t.openBtn}
-                        </button>
-                        <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText}
-                        </button>
-                        <div style="color: #ff3b30; font-size: 13px; text-align: center;">
-                            ${window.escapeHTML(screenshotWarningText)}
-                        </div>
-                    </div>
-                `;
-            } else {
                 actionsHtml = `
                     <div class="action-row">
-                        <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
-                            ${t.openBtn}
-                        </button>
-                        <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : t.confirmStart}
-                        </button>
+                        <div class="split-btn-group" style="width: 100%; flex: 1;">
+                            <button id="btn-confirm-${test.id}" class="btn btn-success split-btn-main" onclick="confirmStart(${test.id})">
+                                ${window.escapeHTML(window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed')}
+                            </button>
+                            <button class="btn btn-success split-btn-options" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang))}">
+                                📎
+                            </button>
+                        </div>
                     </div>
+                    ${hintHtml}
                 `;
-            }
+            } else {
+                const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
+                const isScreenshotOnlyDay = isScreenshotOnlyControlDay(testingDay);
+                const screenshotBtnText = isScreenshotOnlyDay
+                    ? window.t('screenshotBtn', {}, lang)
+                    : '✅ ' + window.t('completeControlDayBtn', {}, lang);
+                const screenshotWarningText = window.t(isScreenshotOnlyDay ? 'firstDayScreenshotWarning' : 'screenshotWarning', {}, lang);
 
-            // Bounty daily reward hint
-            if (test.join_type === 'bounty' && test.bounty_per_tester > 0) {
-                var dailyReward = (test.bounty_per_tester * 0.65 / 14).toFixed(1);
-                actionsHtml += '<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">' + window.t('bountyDailyReward', { amount: dailyReward }, lang) + '</div>';
+                if (isScreenshotDay) {
+                    actionsHtml = `
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
+                                ${t.openBtn}
+                            </button>
+                            <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
+                                ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText}
+                            </button>
+                            <div style="color: #ff3b30; font-size: 13px; text-align: center;">
+                                ${window.escapeHTML(screenshotWarningText)}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    actionsHtml = `
+                        <div class="action-row">
+                            <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
+                                ${t.openBtn}
+                            </button>
+                            <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
+                                ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : t.confirmStart}
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // Bounty daily reward hint
+                if (test.join_type === 'bounty' && test.bounty_per_tester > 0) {
+                    var dailyReward = (test.bounty_per_tester * 0.65 / 14).toFixed(1);
+                    actionsHtml += '<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">' + window.t('bountyDailyReward', { amount: dailyReward }, lang) + '</div>';
+                }
             }
         } else if (test.status === 'done' && !test.isReadyToClaim) {
             // Done without claim opportunity (already claimed or ineligible)
