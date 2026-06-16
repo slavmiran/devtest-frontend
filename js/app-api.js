@@ -2132,16 +2132,40 @@ async function saveProjectSync() {
     var actionKey = 'project_sync_' + syncProjectId;
     if (_pendingActions.has(actionKey)) return;
 
-    var dayInput = document.getElementById('sync-day-input');
-    var messageInput = document.getElementById('sync-message-input');
-    var saveBtn = document.getElementById('sync-save-btn');
-    var cancelBtn = document.getElementById('sync-cancel-btn');
-    if (!dayInput || !messageInput) return;
-    const day = Number(dayInput.value);
-    const message = String(messageInput.value || '').trim();
+    // Read from new PPC form elements (with fallbacks to old IDs for legacy safety)
+    var sliderEl = document.getElementById('ppc-slider');
+    var messageInputEl = document.getElementById('ppc-message-input') || document.getElementById('sync-message-input');
+    var tipEl = document.getElementById('ppc-tip-value');
+    var saveBtn = document.getElementById('ppc-submit-btn') || document.getElementById('sync-save-btn');
+    var cancelBtn = document.getElementById('ppc-back-btn') || document.getElementById('sync-cancel-btn');
+
+    if (!sliderEl || !messageInputEl) {
+        // Fallback: old sync-day-input path
+        var dayInputLegacy = document.getElementById('sync-day-input');
+        if (!dayInputLegacy) return;
+        var dayLegacy = Number(dayInputLegacy.value);
+        if (!Number.isInteger(dayLegacy) || dayLegacy < 1) {
+            showToast(t.syncDayInvalid);
+            return;
+        }
+    }
+
+    var day = sliderEl ? Number(sliderEl.value) : 0;
+    var message = String(messageInputEl ? messageInputEl.value || '' : '').trim();
+    var tipAmount = tipEl ? Math.max(0, Number(tipEl.textContent) || 0) : 0;
+
     if (!Number.isInteger(day) || day < 1) {
         showToast(t.syncDayInvalid);
         return;
+    }
+
+    // Calculate protection_cost to include in the payload
+    var platformDay = sliderEl ? Number(sliderEl.getAttribute('data-platform-day') || 0) : day;
+    var alreadyPaid = sliderEl ? Number(sliderEl.getAttribute('data-already-paid') || 0) : 0;
+    var gap = Math.max(0, platformDay - day);
+    var protectionCost = 0;
+    if (typeof _calcProtectionCost === 'function') {
+        protectionCost = _calcProtectionCost(gap, alreadyPaid);
     }
 
     _pendingActions.add(actionKey);
@@ -2166,7 +2190,12 @@ async function saveProjectSync() {
             response = await fetch(`${API_BASE}/projects/${syncProjectId}/sync`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ google_sync_day: day, sync_message: message })
+                body: JSON.stringify({
+                    google_sync_day: day,
+                    sync_message: message,
+                    protection_cost: protectionCost,
+                    tip_amount: tipAmount,
+                })
             });
         } catch (error) {
             requestError = error;
@@ -2262,8 +2291,12 @@ async function saveProjectSync() {
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(t.syncSavedToast);
-        _runBestEffortUiStep('Project sync close modal', function() {
-            closeSyncModal({ target: document.getElementById('sync-modal') });
+        _runBestEffortUiStep('Project sync close view', function() {
+            if (typeof closeProtectionCenter === 'function') {
+                closeProtectionCenter();
+            } else if (typeof closeSyncModal === 'function') {
+                closeSyncModal();
+            }
         });
     } finally {
         _pendingActions.delete(actionKey);

@@ -736,6 +736,37 @@ function refreshOpenModals() {
             window.renderReliabilityDashboard();
         }
     }
+    // Refresh protection center if open (re-opens with latest project data)
+    const protectionCenter = document.getElementById('protection-center');
+    if (protectionCenter && protectionCenter.classList.contains('active') && window._syncProjectId) {
+        if (typeof window.openProtectionCenter === 'function') {
+            // Re-render body without slide animation
+            const project = (window.myProjects || []).find(function(item) {
+                return Number(item.id) === Number(window._syncProjectId);
+            });
+            if (project) {
+                const createdDate = project.created_at ? new Date(project.created_at) : null;
+                const createdValid = !!(createdDate && !Number.isNaN(createdDate.getTime()));
+                const todayMs = new Date().setHours(0, 0, 0, 0);
+                const rawPlatformDays = createdValid
+                    ? Math.floor((todayMs - new Date(project.created_at).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)) + 1
+                    : 1;
+                const platformDay = Math.max(1, rawPlatformDays);
+                const isSynced = typeof isProjectSynced === 'function' && isProjectSynced(project);
+                const googleDay = (isSynced && typeof getProjectCurrentGoogleDay === 'function')
+                    ? getProjectCurrentGoogleDay(project, platformDay) : 0;
+                const body = document.getElementById('protection-center-body');
+                if (body) {
+                    if (isSynced && typeof window._renderProtectionCenterState2 === 'function') {
+                        body.innerHTML = window._renderProtectionCenterState2(project, platformDay, googleDay);
+                    } else if (!isSynced && typeof window._renderProtectionCenterState1 === 'function') {
+                        body.innerHTML = window._renderProtectionCenterState1(project, platformDay);
+                        if (typeof window._ppcUpdateCalculations === 'function') window._ppcUpdateCalculations();
+                    }
+                }
+            }
+        }
+    }
 }
 
 function refreshActiveTabData() {

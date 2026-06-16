@@ -422,6 +422,14 @@ function renderProjects(force) {
                 badges += `<span class="meta-chip accent-red" style="font-weight:600;">${window.escapeHTML(window.t('overtimeBadge', {}, lang))}</span>`;
             }
 
+            if (isProjectSynced(project)) {
+                const extraPaid = Number(project.paid_protection_days || 0);
+                const protectedText = extraPaid > 0
+                    ? window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang)
+                    : window.t('ppcProtectedBadge', {}, lang);
+                badges += `<span class="meta-chip" style="background:rgba(52,199,89,0.12);border:1px solid rgba(52,199,89,0.3);color:#34c759;">${window.escapeHTML(protectedText)}</span>`;
+            }
+
             return badges;
         })();
 
@@ -631,9 +639,9 @@ function renderProjects(force) {
                             🚀 ${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}
                         </button>
                         <div class="card-action-half-row">
-                            <button type="button" class="btn btn-secondary card-action-half" style="${syncBtnStyle}" onclick="openSyncModal(${project.id}); event.stopPropagation();">
+                            <button type="button" class="btn btn-secondary card-action-half" style="${syncBtnStyle}" onclick="openProtectionCenter(${project.id}); event.stopPropagation();">
                                 <div class="sync-btn-content">
-                                    <span class="sync-btn-title">${window.escapeHTML(window.t('syncBtnTitle', {}, lang))}</span>
+                                    <span class="sync-btn-title">${window.escapeHTML(hasSync ? window.t('ppcProtectedBadge', {}, lang) : window.t('syncBtnTitle', {}, lang))}</span>
                                     <span class="sync-btn-subtitle">${window.escapeHTML(syncSubtitle)}</span>
                                 </div>
                             </button>
@@ -869,128 +877,548 @@ function toggleKickReasonOther() {
     }
 }
 
-function openSyncModal(projectId) {
-    const project = myProjects.find((item) => item.id === projectId);
-    const modal = document.getElementById('sync-modal');
-    const body = document.getElementById('sync-modal-body');
-    if (!project || !modal || !body) return;
 
-    _syncProjectId = projectId;
-    const projectHasSync = isProjectSynced(project);
-    let isEditMode = !projectHasSync;
+// ─────────────────────────────────────────────────────────────────────────────
+// PROJECT PROTECTION CENTER — Full-Screen View
+// Replaces the old sync-modal popup with a full-screen slide-in view.
+// ─────────────────────────────────────────────────────────────────────────────
 
-    const renderModalContent = () => {
-        const liveProject = myProjects.find((item) => item.id === projectId) || project;
-        const liveHasSync = isProjectSynced(liveProject);
-        const currentSyncDay = getProjectSyncStartDay(liveProject);
-        const currentGoogleDay = liveHasSync ? getProjectCurrentGoogleDay(liveProject, 0) : 0;
-        const leftDays = Math.max(0, 14 - currentGoogleDay);
-        const timelineMeta = {
-            isLastDay: liveHasSync && leftDays === 0,
-        };
-        const today = parseLocalDateOnly(getLocalDate()) || new Date();
-        const finishDate = new Date(today);
-        finishDate.setDate(finishDate.getDate() + leftDays);
-        const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
-        const lastSyncDate = parseLocalDateOnly(liveProject.last_sync_date);
-        const updatedDaysAgo = lastSyncDate ? getDayDiffFromToday(lastSyncDate) : 0;
+// Pricing table: index = extra paid days (1–8), value = cumulative BUST cost
+const _PPC_PRICING = [0, 50, 120, 210, 320, 450, 600, 770, 960];
 
-        if (!isEditMode && liveHasSync) {
-            const segments = [];
-            for (let index = 1; index <= 14; index++) {
-                segments.push(`<div class="grant-segment ${index <= Math.min(currentGoogleDay, 14) ? 'filled' : ''}"></div>`);
+/**
+ * Calculates the BUST cost for the protection gap.
+ * @param {number} gapDays - (platformDay - googleDay), already clamped to 0-10
+ * @param {number} alreadyPaidDays - days already covered by paid protection
+ * @returns {number} BUST cost (0 if within free buffer)
+ */
+function _calcProtectionCost(gapDays, alreadyPaidDays) {
+    // Gap 0-2: free Pending Release buffer
+    const extraDays = Math.max(0, gapDays - 2);
+    if (extraDays <= 0) return 0;
+    const targetLevel = Math.min(8, extraDays);
+    const currentLevel = Math.min(8, Math.max(0, alreadyPaidDays || 0));
+    if (targetLevel <= currentLevel) return 0;
+    return _PPC_PRICING[targetLevel] - _PPC_PRICING[currentLevel];
+}
+
+/** Updates all live-calculation UI elements in State #1 after slider/tip changes. */
+function _ppcUpdateCalculations() {
+    const slider = document.getElementById('ppc-slider');
+    const tipEl = document.getElementById('ppc-tip-value');
+    if (!slider) return;
+
+    const googleDay = Number(slider.value);
+    const platformDay = Number(slider.getAttribute('data-platform-day') || 0);
+    const alreadyPaid = Number(slider.getAttribute('data-already-paid') || 0);
+    const balance = Number(slider.getAttribute('data-balance') || 0);
+
+    const gap = Math.max(0, platformDay - googleDay);
+    const protectionCost = _calcProtectionCost(gap, alreadyPaid);
+    const tipAmount = tipEl ? Number(tipEl.textContent) || 0 : 0;
+    const totalCost = protectionCost + tipAmount;
+    const insufficient = totalCost > balance;
+
+    // Update slider fill %
+    const sliderMin = Number(slider.min);
+    const sliderMax = Number(slider.max);
+    const sliderRange = sliderMax - sliderMin;
+    const sliderPct = sliderRange > 0 ? ((googleDay - sliderMin) / sliderRange) * 100 : 0;
+    slider.style.setProperty('--ppc-slider-pct', sliderPct.toFixed(1) + '%');
+
+    // Update big day display
+    const dayDisplay = document.getElementById('ppc-slider-day-value');
+    if (dayDisplay) dayDisplay.textContent = googleDay;
+
+    // Update gap block
+    const gapBlock = document.getElementById('ppc-gap-block');
+    const gapTitle = document.getElementById('ppc-gap-title');
+    const gapDesc = document.getElementById('ppc-gap-desc');
+    const gapCostEl = document.getElementById('ppc-gap-cost');
+
+    if (gapBlock && gapTitle && gapDesc) {
+        const extraDays = Math.max(0, gap - 2);
+        const isFree = protectionCost === 0;
+        gapBlock.className = 'ppc-gap-block ' + (isFree ? 'free' : 'paid');
+
+        if (isFree) {
+            gapTitle.textContent = window.t('ppcFreeBufferNote', {}, lang);
+            gapDesc.textContent = gap === 0
+                ? (lang === 'ru' ? 'Дни совпадают — синхронизация не требует оплаты.' : 'Days match — no payment required.')
+                : window.t('ppcGapFreeLabel', {}, lang);
+            if (gapCostEl) gapCostEl.style.display = 'none';
+        } else {
+            gapTitle.textContent = window.t('ppcProtectionCostLabel', {}, lang);
+            gapDesc.textContent = window.t('ppcGapCostLabel', { days: extraDays }, lang);
+            if (gapCostEl) {
+                gapCostEl.textContent = protectionCost + ' BUST';
+                gapCostEl.style.display = 'block';
             }
+        }
+    }
 
-            const updatedStyle = updatedDaysAgo >= 7 ? 'color:#ff9500;' : 'color:var(--hint-color);';
-            const updatedText = window.t('syncUpdatedAt', {
-                date: lastSyncDate ? lastSyncDate.toLocaleDateString(locale) : '-',
-                days: updatedDaysAgo,
-            });
+    // Update totals
+    const totalEl = document.getElementById('ppc-total-value');
+    const insufficientNote = document.getElementById('ppc-insufficient-note');
+    const submitBtn = document.getElementById('ppc-submit-btn');
 
-            const syncMessageHtml = liveProject.sync_message
-                ? `<div class="details-block" style="margin-top:10px;"><div class="detail-section-title">${window.escapeHTML(window.t('syncMessageLabel', {}, lang))}</div><div style="font-size:13px;line-height:1.5;">${escapeHtmlWithBreaks(liveProject.sync_message)}</div></div>`
-                : `<div class="details-block" style="margin-top:10px;color:var(--hint-color);">${window.escapeHTML(window.t('syncNoMessage', {}, lang))}</div>`;
+    if (totalEl) {
+        totalEl.textContent = totalCost + ' BUST';
+        if (insufficient) {
+            totalEl.classList.add('insufficient');
+        } else {
+            totalEl.classList.remove('insufficient');
+        }
+    }
+    if (insufficientNote) {
+        if (insufficient) {
+            insufficientNote.classList.add('visible');
+        } else {
+            insufficientNote.classList.remove('visible');
+        }
+    }
+    if (submitBtn) {
+        submitBtn.disabled = insufficient;
+        const isFree = totalCost === 0;
+        submitBtn.textContent = isFree
+            ? window.t('ppcSyncFreeBtn', {}, lang)
+            : window.t('ppcSyncBtn', {}, lang);
+    }
+}
 
-            const syncAttentionHtml = String(liveProject.app_status || liveProject.status || 'active').toLowerCase() === 'pending_completion'
-                ? `<div style="background: rgba(255, 149, 0, 0.12); border: 1px solid rgba(255, 149, 0, 0.28); border-radius: 12px; padding: 12px; margin-top: 12px; font-size: 12px; line-height: 1.5; color: #ffb84d; font-weight: 600;">${window.escapeHTML(window.t('pendingReleaseOwnerSyncHint', {}, lang))}</div>`
-                : '';
+/** Changes the tip counter value by `delta` (step of 5). */
+function _ppcChangeTip(delta) {
+    const el = document.getElementById('ppc-tip-value');
+    if (!el) return;
+    const current = Number(el.textContent) || 0;
+    const next = Math.max(0, current + delta);
+    el.textContent = String(next);
+    _ppcUpdateCalculations();
+}
 
-            body.innerHTML = `
-                <h3 style="margin-bottom:12px;">${window.escapeHTML(window.t('syncModalTitle', {}, lang))}</h3>
-                <div style="font-size:12px; margin-bottom:10px; ${updatedStyle}">${window.escapeHTML(updatedText)}</div>
-                <div class="grant-progress-container">${segments.join('')}</div>
-                <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--hint-color);">
-                    <span>${window.escapeHTML(window.t('projectGoogleDayLabel', { day: currentGoogleDay }, lang))}</span>
-                    <span>${window.escapeHTML(window.t('googleDaysLeft', { count: leftDays }, lang))}</span>
+/** Adds `amount` to the tip counter. */
+function _ppcAddTip(amount) {
+    const el = document.getElementById('ppc-tip-value');
+    if (!el) return;
+    const current = Number(el.textContent) || 0;
+    el.textContent = String(current + amount);
+    _ppcUpdateCalculations();
+}
+
+/** Builds State #1 HTML — Not Synchronized. */
+function _renderProtectionCenterState1(project, platformDay) {
+    const t = window.App ? (typeof window.t === 'function' ? {} : {}) : {};
+    const T = (key, vars) => window.t(key, vars || {}, lang) || key;
+    const balance = (visibilityStats && typeof visibilityStats.balance_bust !== 'undefined')
+        ? Number(visibilityStats.balance_bust || 0)
+        : 0;
+    const alreadyPaid = Number(project.paid_protection_days || 0); // backend field, 0 by default
+
+    // Slider bounds: min = max(1, platformDay-10), max = min(14, platformDay)
+    const sliderMin = Math.max(1, platformDay - 10);
+    const sliderMax = Math.min(14, platformDay);
+    // Default to platformDay (no gap)
+    const sliderDefault = Math.min(sliderMax, platformDay);
+
+    // Tick labels for the slider
+    const tickLabels = [];
+    for (let d = sliderMin; d <= sliderMax; d++) {
+        if (d === sliderMin || d === sliderMax || d === platformDay) {
+            tickLabels.push(`<span>${d}</span>`);
+        } else if ((sliderMax - sliderMin) <= 10) {
+            tickLabels.push(`<span>${d}</span>`);
+        } else {
+            tickLabels.push(`<span></span>`);
+        }
+    }
+    // Compute pct for initial render
+    const sliderRange = sliderMax - sliderMin;
+    const initPct = sliderRange > 0 ? ((sliderDefault - sliderMin) / sliderRange) * 100 : 100;
+
+    const initGap = Math.max(0, platformDay - sliderDefault);
+    const initCost = _calcProtectionCost(initGap, alreadyPaid);
+    const initIsFree = initCost === 0;
+
+    const prevSyncDay = getProjectSyncStartDay(project);
+    const hasExistingSync = isProjectSynced(project);
+
+    return `
+        <p class="ppc-subtitle">${window.escapeHTML(T('ppcSubtitleNotSynced'))}</p>
+
+        <div class="ppc-actions-row">
+            <a href="https://play.google.com/console/" target="_blank" class="ppc-btn-console" onclick="if(window.tg&&window.tg.openLink)window.tg.openLink('https://play.google.com/console/'); return false;">
+                ▶ ${window.escapeHTML(T('ppcOpenConsoleBtn'))}
+            </a>
+            <a href="https://t.me/googleplay_console_12testers/31/953" target="_blank" class="ppc-btn-howworks" onclick="if(window.tg&&window.tg.openLink)window.tg.openLink('https://t.me/googleplay_console_12testers/31/953'); return false;">
+                ❓ ${window.escapeHTML(T('ppcHowWorksBtn'))}
+            </a>
+        </div>
+
+        <!-- Slider Card -->
+        <div class="ppc-card">
+            <div class="ppc-card-title">${window.escapeHTML(T('ppcSliderLabel'))}</div>
+            <div class="ppc-slider-wrapper">
+                <div class="ppc-slider-day-display">
+                    <div style="display:flex;align-items:flex-end;gap:6px;">
+                        <span class="ppc-slider-day-value" id="ppc-slider-day-value">${sliderDefault}</span>
+                        <span class="ppc-slider-day-unit">/ 14</span>
+                    </div>
+                    <div class="ppc-platform-badge">${window.escapeHTML(T('ppcPlatformDayLabel', { day: platformDay }))}</div>
                 </div>
-                <div class="details-block${timelineMeta.isLastDay ? ' sync-last-day-block' : ''}" style="margin-top:10px;${timelineMeta.isLastDay ? 'cursor:pointer;' : ''}"${timelineMeta.isLastDay ? ' onclick="showSyncLastDayNotice(event)"' : ''}>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                        <div style="font-size:13px;color:var(--hint-color);">${window.escapeHTML(window.t('syncEstimatedFinish', { date: formatDdMmYyyy(finishDate) }, lang))}</div>
-                        ${timelineMeta.isLastDay ? '<button type="button" class="meta-chip accent-red sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>' : ''}
+                <input
+                    type="range"
+                    id="ppc-slider"
+                    class="ppc-slider"
+                    min="${sliderMin}"
+                    max="${sliderMax}"
+                    step="1"
+                    value="${sliderDefault}"
+                    data-platform-day="${platformDay}"
+                    data-already-paid="${alreadyPaid}"
+                    data-balance="${balance}"
+                    style="--ppc-slider-pct: ${initPct.toFixed(1)}%;"
+                    oninput="_ppcUpdateCalculations()"
+                />
+                <div class="ppc-slider-tick-row">
+                    ${tickLabels.join('')}
+                </div>
+            </div>
+
+            <!-- Gap / Cost Block -->
+            <div class="ppc-gap-block ${initIsFree ? 'free' : 'paid'}" id="ppc-gap-block">
+                <div class="ppc-gap-title" id="ppc-gap-title">${initIsFree ? window.escapeHTML(T('ppcFreeBufferNote')) : window.escapeHTML(T('ppcProtectionCostLabel'))}</div>
+                <div class="ppc-gap-desc" id="ppc-gap-desc">${initIsFree ? '' : window.escapeHTML(T('ppcGapCostLabel', { days: Math.max(0, initGap - 2) }))}</div>
+                <div class="ppc-gap-cost" id="ppc-gap-cost" style="display:${initIsFree ? 'none' : 'block'};">${initCost} BUST</div>
+            </div>
+
+            <!-- Tip Counter -->
+            <div class="ppc-tip-section">
+                <div class="ppc-tip-label">${window.escapeHTML(T('ppcTipLabel'))}</div>
+                <div class="ppc-tip-hint">${window.escapeHTML(T('ppcTipHint'))}</div>
+                <div class="ppc-tip-row">
+                    <div class="ppc-tip-counter">
+                        <button class="ppc-tip-btn" type="button" onclick="_ppcChangeTip(-5)">−</button>
+                        <span class="ppc-tip-value" id="ppc-tip-value">0</span>
+                        <button class="ppc-tip-btn" type="button" onclick="_ppcChangeTip(5)">+</button>
+                    </div>
+                    <div class="ppc-tip-chips">
+                        <button class="ppc-tip-chip" type="button" onclick="_ppcAddTip(10)">+10</button>
+                        <button class="ppc-tip-chip" type="button" onclick="_ppcAddTip(50)">+50</button>
+                        <button class="ppc-tip-chip" type="button" onclick="_ppcAddTip(100)">+100</button>
                     </div>
                 </div>
-                ${syncMessageHtml}
-                ${syncAttentionHtml}
-                <button id="sync-switch-edit-btn" class="btn btn-primary" style="width:100%;margin-top:12px;">${window.escapeHTML(window.t('syncUpdateDataBtn', {}, lang))}</button>
-                <button id="sync-close-btn" class="btn btn-secondary" style="width:100%;margin-top:8px;">${window.escapeHTML(window.t('btnCancel', {}, lang))}</button>
-            `;
+            </div>
 
-            const switchBtn = document.getElementById('sync-switch-edit-btn');
-            if (switchBtn) {
-                switchBtn.onclick = () => {
-                    isEditMode = true;
-                    renderModalContent();
-                };
-            }
-            const closeBtn = document.getElementById('sync-close-btn');
-            if (closeBtn) closeBtn.onclick = () => closeSyncModal();
-            return;
+            <!-- Finance Summary -->
+            <div class="ppc-finance-block">
+                <div class="ppc-balance-row">
+                    <span>${window.escapeHTML(T('ppcBalanceLabel', { amount: '' })).replace('{amount}', '')}</span>
+                    <span class="ppc-balance-value">${window.escapeHTML(formatBustAmount ? formatBustAmount(balance) : String(balance))} BUST</span>
+                </div>
+                <div class="ppc-total-row">
+                    <span>${window.escapeHTML(T('ppcTotalCostLabel'))}</span>
+                    <span class="ppc-total-value${initCost > balance ? ' insufficient' : ''}" id="ppc-total-value">${initCost} BUST</span>
+                </div>
+                <div class="ppc-insufficient-note${initCost > balance ? ' visible' : ''}" id="ppc-insufficient-note">
+                    ${window.escapeHTML(T('ppcInsufficientFunds'))}
+                </div>
+            </div>
+
+            <!-- Message -->
+            <textarea
+                id="ppc-message-input"
+                class="ppc-message-input"
+                rows="3"
+                placeholder="${window.escapeHTML(T('ppcMessagePlaceholder'))}"
+            >${window.escapeHTML(hasExistingSync ? (project.sync_message || '') : '')}</textarea>
+
+            <!-- Submit -->
+            <button
+                id="ppc-submit-btn"
+                class="ppc-submit-btn"
+                type="button"
+                ${initCost > balance ? 'disabled' : ''}
+                onclick="saveProjectSync()"
+            >${initCost === 0 ? window.escapeHTML(T('ppcSyncFreeBtn')) : window.escapeHTML(T('ppcSyncBtn'))}</button>
+        </div>
+    `;
+}
+
+/** Builds State #2 HTML — Project Protected. */
+function _renderProtectionCenterState2(project, platformDay, googleDay) {
+    const T = (key, vars) => window.t(key, vars || {}, lang) || key;
+    const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
+    const today = parseLocalDateOnly(getLocalDate()) || new Date();
+    const leftDays = Math.max(0, 14 - googleDay);
+
+    // Protection remaining: 14 - googleDay + extra purchased days
+    const extraPaid = Number(project.paid_protection_days || 0);
+    const protectionTotal = Math.max(0, leftDays + extraPaid);
+
+    // Estimated archive: platform day 35 — current platform day = days to archive
+    const daysToArchive = Math.max(0, 35 - platformDay);
+    const archiveDate = new Date(today);
+    archiveDate.setDate(archiveDate.getDate() + daysToArchive);
+    const archiveDateStr = archiveDate.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+
+    // Last sync note
+    const lastSyncDate = parseLocalDateOnly(project.last_sync_date);
+    const updatedDaysAgo = lastSyncDate ? getDayDiffFromToday(lastSyncDate) : 0;
+    const syncNoteStale = updatedDaysAgo >= 7;
+
+    // Lifecycle timeline phases
+    // Phase 1: Active Testing (Day 1-14) — always done if synced
+    // Phase 2: Pending Release (Day 15-16)
+    // Phase 3: Extra Protection (if purchased)
+    // Phase 4: Archive (Day 35)
+    const currentPhase = googleDay <= 14 ? 1 : (googleDay <= 16 ? 2 : 3);
+    const hasExtra = extraPaid > 0;
+
+    const phases = [];
+    // Active (Day 1-14)
+    phases.push({
+        emoji: '🟢',
+        name: T('ppcTimelineActive'),
+        days: lang === 'ru' ? 'Дни 1–14' : 'Days 1–14',
+        dotColor: 'green',
+        isCurrent: currentPhase === 1 && googleDay <= 14,
+        isPast: googleDay >= 14,
+    });
+    // Pending Release (Day 15-16)
+    phases.push({
+        emoji: '🟡',
+        name: T('ppcTimelinePending'),
+        days: lang === 'ru' ? 'Дни 15–16' : 'Days 15–16',
+        dotColor: 'yellow',
+        isCurrent: googleDay > 14 && googleDay <= 16,
+        isPast: googleDay > 16,
+    });
+    // Extra Protection (if any)
+    if (hasExtra) {
+        phases.push({
+            emoji: '⭐',
+            name: T('ppcTimelineExtra'),
+            days: '+' + extraPaid + (lang === 'ru' ? ' дн.' : 'd'),
+            dotColor: 'star',
+            isCurrent: currentPhase === 3,
+            isPast: false,
+        });
+    }
+    // Archive
+    phases.push({
+        emoji: '🏁',
+        name: T('ppcTimelineArchive'),
+        days: lang === 'ru' ? 'День 35' : 'Day 35',
+        dotColor: 'archive',
+        isCurrent: false,
+        isPast: false,
+    });
+
+    let timelineHtml = '';
+    phases.forEach((phase, i) => {
+        const isCurrentClass = phase.isCurrent ? ' current' : '';
+        const connectorFilled = phase.isPast ? ' filled' : '';
+        if (i > 0) {
+            timelineHtml += `<div class="ppc-timeline-connector${connectorFilled}"></div>`;
         }
-
-        body.innerHTML = `
-            <h3 style="margin-bottom:12px;">${window.escapeHTML(window.t('syncModalTitle', {}, lang))}</h3>
-            <label style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">${window.escapeHTML(window.t('syncDayLabel', {}, lang))}</label>
-            <input id="sync-day-input" class="form-input" type="number" min="1" step="1" style="margin-bottom: 12px;" />
-            <label style="display:block; margin-bottom: 6px; font-size: 13px; color: var(--hint-color);">${window.escapeHTML(window.t('syncMessageLabel', {}, lang))}</label>
-            <textarea id="sync-message-input" class="form-input" rows="4" style="resize: vertical; margin-bottom: 12px;" placeholder="${window.escapeHTML(window.t('syncMessagePlaceholder', {}, lang))}"></textarea>
-            <div class="action-row" style="margin-top: 0;">
-                <button id="sync-cancel-btn" class="btn btn-secondary" style="flex: 1;">${window.escapeHTML(window.t('btnCancel', {}, lang))}</button>
-                <button id="sync-save-btn" class="btn btn-primary" style="flex: 1;">${window.escapeHTML(window.t('syncSaveBtn', {}, lang))}</button>
+        timelineHtml += `
+            <div class="ppc-timeline-phase${isCurrentClass}" style="width:80px;">
+                <div class="ppc-phase-dot ${phase.dotColor}${phase.isCurrent ? ' current' : ''}"></div>
+                <div class="ppc-phase-label-wrap">
+                    <span class="ppc-phase-emoji">${phase.emoji}</span>
+                    <span class="ppc-phase-name">${window.escapeHTML(phase.name)}</span>
+                    <span class="ppc-phase-days">${window.escapeHTML(phase.days)}</span>
+                </div>
             </div>
         `;
+    });
 
-        const dayInput = document.getElementById('sync-day-input');
-        const messageInput = document.getElementById('sync-message-input');
-        if (dayInput) dayInput.value = currentSyncDay > 0 ? String(currentSyncDay) : '';
-        if (messageInput) messageInput.value = liveProject.sync_message || '';
+    // Reward pool
+    const poolAmount = Number(project.protection_pool_bust || 0);
 
-        const cancelBtn = document.getElementById('sync-cancel-btn');
-        if (cancelBtn) {
-            cancelBtn.onclick = () => {
-                if (liveHasSync) {
-                    isEditMode = false;
-                    renderModalContent();
-                    return;
-                }
-                closeSyncModal();
-            };
+    // Pending release attention
+    const isPendingCompletion = String(project.app_status || project.status || '').toLowerCase() === 'pending_completion';
+    const pendingHtml = isPendingCompletion
+        ? `<div style="background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.3);border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px;line-height:1.5;color:#ffb84d;font-weight:600;">${window.escapeHTML(window.t('pendingReleaseOwnerSyncHint', {}, lang))}</div>`
+        : '';
+
+    return `
+        <!-- Protected Hero -->
+        <div class="ppc-protected-hero">
+            <div class="ppc-shield-icon">🛡</div>
+            <div class="ppc-protected-title">${window.escapeHTML(T('ppcTitle'))}</div>
+            <div class="ppc-protected-subtitle">${window.escapeHTML(T('ppcSubtitleProtected'))}</div>
+        </div>
+
+        ${pendingHtml}
+
+        <div class="ppc-sync-note${syncNoteStale ? ' stale' : ''}">
+            ${lastSyncDate ? window.escapeHTML(T('ppcLastSyncedAt', { date: lastSyncDate.toLocaleDateString(locale), days: updatedDaysAgo })) : ''}
+        </div>
+
+        <!-- Status Metrics Card -->
+        <div class="ppc-card">
+            <div class="ppc-metrics-grid">
+                <div class="ppc-metric-item">
+                    <div class="ppc-metric-label">${window.escapeHTML(T('ppcPlatformDayCardLabel'))}</div>
+                    <div class="ppc-metric-value blue">${platformDay}<span style="font-size:13px;font-weight:500;color:var(--hint-color);">/35</span></div>
+                </div>
+                <div class="ppc-metric-item">
+                    <div class="ppc-metric-label">${window.escapeHTML(T('ppcGoogleDayCardLabel'))}</div>
+                    <div class="ppc-metric-value green">${googleDay}<span style="font-size:13px;font-weight:500;color:var(--hint-color);">/14</span></div>
+                </div>
+                <div class="ppc-metric-item">
+                    <div class="ppc-metric-label">${window.escapeHTML(T('ppcProtectionRemainingLabel'))}</div>
+                    <div class="ppc-metric-value ${protectionTotal > 0 ? 'green' : 'hint'}">${protectionTotal > 0 ? protectionTotal + (lang === 'ru' ? ' дн.' : 'd') : '—'}</div>
+                </div>
+                <div class="ppc-metric-item">
+                    <div class="ppc-metric-label">${window.escapeHTML(T('ppcArchiveDateLabel'))}</div>
+                    <div class="ppc-metric-value hint" style="font-size:15px;">${archiveDateStr}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lifecycle Timeline Card -->
+        <div class="ppc-card">
+            <div class="ppc-card-title">${lang === 'ru' ? 'Жизненный цикл проекта' : 'Project Lifecycle'}</div>
+            <div class="ppc-timeline-wrap">
+                <div class="ppc-timeline">
+                    ${timelineHtml}
+                </div>
+            </div>
+        </div>
+
+        <!-- Reward Pool Card -->
+        <div class="ppc-reward-pool-card">
+            <div class="ppc-reward-pool-header">
+                <div class="ppc-reward-pool-title">${window.escapeHTML(T('ppcRewardPoolTitle'))}</div>
+                <div class="ppc-reward-pool-amount">${window.escapeHTML(T('ppcRewardPoolAmount', { amount: poolAmount }))}</div>
+            </div>
+            <div class="ppc-reward-pool-desc">${window.escapeHTML(T('ppcRewardPoolDesc'))}</div>
+        </div>
+
+        <!-- Sync message (if any) -->
+        ${project.sync_message ? `
+            <div class="ppc-card" style="margin-bottom:14px;">
+                <div class="ppc-card-title">${window.escapeHTML(window.t('syncMessageLabel', {}, lang))}</div>
+                <div style="font-size:13px;line-height:1.55;color:var(--text-color);">${escapeHtmlWithBreaks(project.sync_message)}</div>
+            </div>
+        ` : ''}
+
+        <!-- Update sync button -->
+        <button type="button" class="ppc-submit-btn" style="background:rgba(255,255,255,0.07);color:var(--text-color);box-shadow:none;border:1px solid rgba(255,255,255,0.12);" onclick="_ppcSwitchToEditMode()">
+            ${window.escapeHTML(T('ppcUpdateSyncBtn'))}
+        </button>
+    `;
+}
+
+/** Switches from State #2 view to State #1 edit mode. */
+function _ppcSwitchToEditMode() {
+    if (!_syncProjectId) return;
+    const project = myProjects.find(item => Number(item.id) === Number(_syncProjectId));
+    if (!project) return;
+    const createdDate = project.created_at ? new Date(project.created_at) : null;
+    const createdValid = !!(createdDate && !Number.isNaN(createdDate.getTime()));
+    const todayMs = new Date().setHours(0, 0, 0, 0);
+    const rawPlatformDays = createdValid
+        ? Math.floor((todayMs - new Date(project.created_at).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)) + 1
+        : 1;
+    const platformDay = Math.max(1, rawPlatformDays);
+    const body = document.getElementById('protection-center-body');
+    if (body) body.innerHTML = _renderProtectionCenterState1(project, platformDay);
+    _ppcUpdateCalculations();
+}
+
+/**
+ * Opens the Project Protection Center full-screen view for the given project.
+ * Replaces the old openSyncModal().
+ */
+function openProtectionCenter(projectId) {
+    const project = myProjects.find(item => Number(item.id) === Number(projectId));
+    const view = document.getElementById('protection-center');
+    const body = document.getElementById('protection-center-body');
+    const headerTitle = document.getElementById('ppc-header-title');
+    const backBtn = document.getElementById('ppc-back-btn');
+
+    if (!project || !view || !body) return;
+
+    _syncProjectId = Number(projectId);
+
+    // Update back button text with i18n
+    if (backBtn) {
+        const arrowSvg = backBtn.querySelector('svg') ? backBtn.querySelector('svg').outerHTML : '';
+        backBtn.innerHTML = arrowSvg + (lang === 'ru' ? ' Назад' : ' Back');
+    }
+
+    // Header title
+    if (headerTitle) headerTitle.textContent = window.t('ppcTitle', {}, lang) || 'Project Protection Center';
+
+    // Compute platform day
+    const createdDate = project.created_at ? new Date(project.created_at) : null;
+    const createdValid = !!(createdDate && !Number.isNaN(createdDate.getTime()));
+    const todayMs = new Date().setHours(0, 0, 0, 0);
+    const rawPlatformDays = createdValid
+        ? Math.floor((todayMs - new Date(project.created_at).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)) + 1
+        : 1;
+    const platformDay = Math.max(1, rawPlatformDays);
+
+    const isSynced = isProjectSynced(project);
+    const googleDay = isSynced ? getProjectCurrentGoogleDay(project, platformDay) : 0;
+
+    // Show loading spinner briefly then render
+    body.innerHTML = `<div class="ppc-spinner"><div class="ppc-spinner-ring"></div></div>`;
+
+    // Slide in
+    view.classList.add('active');
+
+    // Hide bottom nav while open
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) bottomNav.style.display = 'none';
+
+    // Render content after a microtask (let slide animation start first)
+    setTimeout(() => {
+        if (isSynced) {
+            body.innerHTML = _renderProtectionCenterState2(project, platformDay, googleDay);
+        } else {
+            body.innerHTML = _renderProtectionCenterState1(project, platformDay);
+            _ppcUpdateCalculations();
         }
-        const saveBtn = document.getElementById('sync-save-btn');
-        if (saveBtn) saveBtn.onclick = () => saveProjectSync();
-    };
-
-    renderModalContent();
-    modal.classList.add('active');
+    }, 60);
 }
 
-function closeSyncModal(event) {
-    if (event && event.target !== document.getElementById('sync-modal')) return;
-    const modal = document.getElementById('sync-modal');
-    const body = document.getElementById('sync-modal-body');
-    if (modal) modal.classList.remove('active');
-    if (body) body.innerHTML = '';
+/**
+ * Closes the Project Protection Center.
+ * Replaces the old closeSyncModal().
+ */
+function closeProtectionCenter() {
+    const view = document.getElementById('protection-center');
+    const body = document.getElementById('protection-center-body');
+    if (view) view.classList.remove('active');
+
+    // Restore bottom nav
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) bottomNav.style.display = '';
+
     _syncProjectId = null;
+
+    // Clear body after animation completes
+    setTimeout(() => {
+        if (body && view && !view.classList.contains('active')) {
+            body.innerHTML = '';
+        }
+    }, 380);
 }
+
+// Legacy aliases for any remaining callers
+function openSyncModal(projectId) { openProtectionCenter(projectId); }
+function closeSyncModal(event) {
+    // Only close if called without event (direct call) or backdrop click pattern
+    if (!event || event.target === document.getElementById('sync-modal')) {
+        closeProtectionCenter();
+    }
+}
+
+
 
 function renderArchivedProjects(force) {
     if (!force && !isTabVisible('projects')) return;

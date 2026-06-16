@@ -1155,10 +1155,18 @@
         </div>
     </div>
 
-    <div id="sync-modal" class="modal-overlay" onclick="closeSyncModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div id="sync-modal-body"></div>
+    <!-- Project Protection Center — Full-Screen View -->
+    <div id="protection-center" class="protection-center-view">
+        <div class="ppc-header">
+            <button class="ppc-back-btn" onclick="closeProtectionCenter()" id="ppc-back-btn" type="button">
+                <svg width="8" height="13" viewBox="0 0 8 13" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 1L1 6.5L7 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Back
+            </button>
+            <div class="ppc-header-title" id="ppc-header-title">Project Protection Center</div>
         </div>
+        <div class="ppc-body" id="protection-center-body"></div>
     </div>
 
     <!-- Earn $BUST Modal -->

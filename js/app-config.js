@@ -1103,11 +1103,13 @@ async function _handleInitialRoute() {
         switchTab('market');
     }
 
-    // ── Sync route: open sync modal ──
+    // ── Sync route: open Project Protection Center ──
     if (route.openSync && route.appId) {
         try {
             await loadProjects(true);
-            if (typeof window.openSyncModal === 'function') {
+            if (typeof window.openProtectionCenter === 'function') {
+                window.openProtectionCenter(route.appId);
+            } else if (typeof window.openSyncModal === 'function') {
                 window.openSyncModal(route.appId);
             }
             _clearStartappQueryParam();
