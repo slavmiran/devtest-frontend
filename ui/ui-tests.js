@@ -825,7 +825,11 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             parts.push(`<button class="meta-chip accent-green notranslate" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
         }
         if (isProjectSynced(test)) {
-            parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${t.syncDoneText}</button>`);
+            const extraPaid = Number(test.paid_protection_days || 0);
+            const protectedText = extraPaid > 0
+                ? (window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang) || `🛡 Protected +${extraPaid}d`)
+                : (window.t('ppcProtectedBadge', {}, lang) || '🛡 Protected');
+            parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${protectedText}</button>`);
         }
     }
     if (Array.isArray(options.extraParts)) {

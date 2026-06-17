@@ -1308,7 +1308,6 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     const rewardPerTesterDayFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(rewardPerTesterDay, 1) : rewardPerTesterDay.toFixed(1);
 
     // Pending release attention
-    const isPendingCompletion = String(project.app_status || project.status || '').toLowerCase() === 'pending_completion';
     const pendingHtml = isPendingCompletion
         ? `<div style="background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.3);border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px;line-height:1.5;color:#ffb84d;font-weight:600;">${window.escapeHTML(window.t('pendingReleaseOwnerSyncHint', {}, lang))}</div>`
         : '';
