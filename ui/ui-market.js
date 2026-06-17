@@ -3448,48 +3448,39 @@ function insertChip(textareaId, chipText) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-function openKarmaDistribution(projectId) {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    const project = myProjects.find((item) => item.id === projectId);
+function buildKarmaDistributionTesterStats(tester, feedbackCountByTester) {
+    const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
+    const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
+    let stats = window.t('karmaDistributionTesterStats', {
+        day: testerDay,
+        checkins: tester.checkins_count || 0,
+        skips: actualSkips,
+    }, lang);
+    const feedbackCount = Number(feedbackCountByTester[Number(tester.tester_id)] || 0);
+    stats += window.t('karmaDistributionTesterFeedback', { count: feedbackCount }, lang);
+    return window.escapeHTML(stats);
+}
+
+function renderKarmaDistributionModal(project, feedbackCountByTester) {
     const body = document.getElementById('karma-distribution-body');
-    if (!body) return;
-
-    window._karmaDistributionProjectId = projectId;
-
-    if (!project) {
-        body.innerHTML = `<h3>${window.escapeHTML(t.karmaDistributionTitle)}</h3><p style="color:var(--hint-color);">${window.escapeHTML(t.karmaDistNoTesters)}</p>`;
-        document.getElementById('karma-distribution-modal').classList.add('active');
-        return;
-    }
+    if (!body || !project) return;
 
     const likesAvailable = Math.max(0, (project.likes_max || 0) - (project.likes_used || 0));
     const testers = project.testers || [];
-    if (!testers.length) {
-        body.innerHTML = `<h3>${window.escapeHTML(t.karmaDistributionTitle)}</h3><p style="color:var(--hint-color);">${window.escapeHTML(t.karmaDistNoTesters)}</p>`;
-        document.getElementById('karma-distribution-modal').classList.add('active');
-        return;
-    }
-
     const rowsHtml = testers.map((tester) => {
-        const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
-        const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
         const liked = (project.likes || []).find((like) => like.tester_id === tester.tester_id);
         const name = tester.username
             ? '@' + window.escapeHTML(tester.username.replace('@', ''))
             : tester.full_name
                 ? window.escapeHTML(tester.full_name)
             : window.escapeHTML(window.t('idLabel', { id: tester.tester_id }));
-        const stats = window.escapeHTML(window.t('karmaDistributionTesterStats', {
-            day: testerDay,
-            checkins: tester.checkins_count || 0,
-            skips: actualSkips,
-        }));
+        const stats = buildKarmaDistributionTesterStats(tester, feedbackCountByTester || {});
         const amountByType = liked ? (liked.type === 'bug' ? '3.0' : liked.type === 'overtime' ? '2.0' : '1.5') : '';
         const actionHtml = liked
             ? `<span class="karma-dist-btn disabled">${window.escapeHTML(window.t('karmaDistributionUsed', { amount: amountByType }))}</span>`
             : likesAvailable <= 0
                 ? '<span class="karma-dist-btn disabled">+☯️</span>'
-                : `<button class="karma-dist-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${projectId}, ${tester.tester_id})">+☯️</button>`;
+                : `<button class="karma-dist-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">+☯️</button>`;
 
         return `<div class="karma-dist-tester">
             <div>
@@ -3513,8 +3504,50 @@ function openKarmaDistribution(projectId) {
         <div>${rowsHtml}</div>
         <button class="btn btn-secondary" style="width:100%;margin-top:14px;" onclick="closeKarmaDistribution()">${window.escapeHTML(t.inviteClose)}</button>
     `;
+}
+
+async function openKarmaDistribution(projectId) {
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    const project = myProjects.find((item) => item.id === projectId);
+    const body = document.getElementById('karma-distribution-body');
+    if (!body) return;
+
+    window._karmaDistributionProjectId = projectId;
+
+    if (!project) {
+        body.innerHTML = `<h3>${window.escapeHTML(t.karmaDistributionTitle)}</h3><p style="color:var(--hint-color);">${window.escapeHTML(t.karmaDistNoTesters)}</p>`;
+        document.getElementById('karma-distribution-modal').classList.add('active');
+        return;
+    }
+
+    const testers = project.testers || [];
+    if (!testers.length) {
+        body.innerHTML = `<h3>${window.escapeHTML(t.karmaDistributionTitle)}</h3><p style="color:var(--hint-color);">${window.escapeHTML(t.karmaDistNoTesters)}</p>`;
+        document.getElementById('karma-distribution-modal').classList.add('active');
+        return;
+    }
 
     document.getElementById('karma-distribution-modal').classList.add('active');
+    renderKarmaDistributionModal(project, {});
+
+    try {
+        const response = await fetch(`${API_BASE}/projects/${projectId}/feedback?owner_id=${userId}`);
+        const data = await response.json();
+        if (response.ok && data.status === 'success' && Array.isArray(data.feedback)) {
+            const feedbackCountByTester = {};
+            data.feedback.forEach(function(item) {
+                const testerId = Number(item.tester_id || 0);
+                if (testerId > 0) {
+                    feedbackCountByTester[testerId] = (feedbackCountByTester[testerId] || 0) + 1;
+                }
+            });
+            if (window._karmaDistributionProjectId === projectId) {
+                renderKarmaDistributionModal(project, feedbackCountByTester);
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to load feedback counts for karma distribution:', error);
+    }
 }
 
 function closeKarmaDistribution(event) {
@@ -4720,6 +4753,8 @@ async function openDossierModal(username, testerId, appId) {
     const actual = reliabilityState.actual;
     const reliabilityPct = reliabilityState.reliabilityPct;
     const reliabilityText = reliabilityState.reliabilityText;
+    // Reliability row hidden in dossier global profile until calculation is fixed:
+    // expected >= 42 ? t.dossierReliability.replace('{pct}', reliabilityPct) + ' ' + reliabilityText : t.disciplineLabel + ' ' + t.dossierNewbie
 
     const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
     const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
@@ -4738,7 +4773,6 @@ async function openDossierModal(username, testerId, appId) {
         <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierGlobalTitle}</div>
         <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
             ${t.dossierExperience.replace('{count}', profile.completed_tests)}
-            <br>${expected >= 42 ? t.dossierReliability.replace('{pct}', reliabilityPct) + ' ' + reliabilityText : t.disciplineLabel + ' ' + t.dossierNewbie}
             <br>${t.dossierKarma.replace('{karma}', profile.karma)}
             ${goldenCountText ? '<br><span class="golden-badge">' + window.escapeHTML(goldenCountText) + '</span>' : ''}
         </div>

@@ -1026,7 +1026,16 @@ function renderExternalPost14ChoiceBlock(test) {
 function getNextExternalControlDayMeta(test) {
     var controlDays = [1, 4, 7, 10, 14];
     var currentDay = getExternalCurrentTestingDay(test);
+    var lastCompletedDay = Number(test && test.external_last_completed_control_day || 0);
     var nextControlDay = 0;
+
+    if (isMandatoryScreenshotDay(currentDay) && lastCompletedDay < currentDay) {
+        return {
+            currentDay: currentDay,
+            nextControlDay: currentDay,
+            daysLeft: 0,
+        };
+    }
 
     controlDays.some(function(day) {
         if (day > currentDay) {

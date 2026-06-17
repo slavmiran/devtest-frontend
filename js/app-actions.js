@@ -1425,10 +1425,6 @@ function renderEarnBustDynamic() {
         referralCountChip.innerText = `👥 ${window.t('earnReferralCountChip', { count: referralCount }, lang)}`;
     }
     document.getElementById('earn-referral-bust').innerText = `💎 ${formatBustAmount(_earnReferralBust)}`;
-    document.getElementById('earn-guest-status').innerHTML = `
-        <span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('earnGuestInviteCountChip', { count: _earnGuestInviteCount }, lang))}</span>
-        <span class="meta-chip accent-blue">💎 ${window.escapeHTML(window.t('earnGuestInviteBustChip', { amount: formatAmountValue(_earnGuestInviteBust, 1) }, lang))}</span>
-    `;
     document.getElementById('earn-grant-status').innerHTML = `
         <span class="meta-chip accent-green">🏆 ${window.t('earnGrantTestsLabel', {}, lang)}: ${_earnGrantCount}</span>
         <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnGrantBust)}</span>
@@ -1471,8 +1467,6 @@ async function openEarnBustModal() {
         _earnGrantCount = data.grant_tests_count || 0;
         _earnGrantBust = Number(data.grant_bust_earned || 0);
         _earnReferralBust = Number(data.referral_bust_earned || 0);
-        _earnGuestInviteCount = Number(data.guest_invites_count || 0);
-        _earnGuestInviteBust = Number(data.guest_invites_earned || 0);
         _earnExchangeBust = Number(data.exchange_bust_earned || 0);
         _earnEarlyFinishCount = Number(data.early_finish_count || 0);
         _earnEarlyFinishBust = Number(data.early_finish_bust_earned || 0);
@@ -1554,8 +1548,7 @@ function setFeedbackRewardKarma(amount) {
         if (chip) {
             chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
             if (code !== '0') {
-                var chipVal = code === '15' ? 1.5 : 3.0;
-                chip.classList.toggle('is-disabled', chipVal > remaining);
+                chip.classList.toggle('is-disabled', remaining <= 0);
             }
         }
     });

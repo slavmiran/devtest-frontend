@@ -279,16 +279,9 @@ function renderProjects(force) {
                 }
 
                 let karmaHtml = '';
-                if (likesAvailable > 0) {
-                    const alreadyLiked = (project.likes || []).some((like) => like.tester_id === tester.tester_id);
-                    karmaHtml = alreadyLiked
-                        ? '<span class="tester-icon-action tester-icon-muted" title="☯️">+☯️</span>'
-                        : `<span class="tester-icon-action" onclick="event.stopPropagation(); showKarmaPopup(${project.id}, ${tester.tester_id})">+☯️</span>`;
-                } else {
-                    const alreadyLiked = (project.likes || []).some((like) => like.tester_id === tester.tester_id);
-                    if (alreadyLiked) {
-                        karmaHtml = '<span class="tester-icon-action tester-icon-muted" title="☯️">+☯️</span>';
-                    }
+                const alreadyLiked = (project.likes || []).some((like) => like.tester_id === tester.tester_id);
+                if (alreadyLiked) {
+                    karmaHtml = '<span class="tester-icon-action tester-icon-muted" title="☯️">+☯️</span>';
                 }
 
                 const chevronHtml = '<span class="tester-chevron">›</span>';
@@ -404,11 +397,6 @@ function renderProjects(force) {
 
             const runIterationChip = buildRunIterationChip(project);
             if (runIterationChip) badges += runIterationChip;
-
-            if (likesAvailable > 0) {
-                const karmaChipText = t.karmaAvailable.replace('{count}', likesAvailable);
-                badges += `<button class="meta-chip accent-yellow" onclick="openKarmaDistribution(${project.id})">${karmaChipText}</button>`;
-            }
 
             if (project.target_lang && project.target_lang !== 'ALL') {
                 badges += getLangBadge(project.target_lang);
@@ -567,6 +555,10 @@ function renderProjects(force) {
             return window.t('settingsVisibilityPublic', {}, lang) || 'Публичный';
         })();
 
+        const karmaRewardsChipHtml = likesAvailable > 0
+            ? `<button type="button" class="meta-chip accent-yellow" onclick="openKarmaDistribution(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('karmaRewards', { count: likesAvailable }, lang))}</button>`
+            : '';
+
         card.innerHTML = `
             <div class="card-header" onclick="toggleProjectSettingsDrawer(${project.id}, event)" style="cursor: pointer; user-select: none;">
                 <div class="project-avatar-container">
@@ -635,6 +627,7 @@ function renderProjects(force) {
                     <div class="testers-section">
                         <div class="testers-title-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                             <div class="testers-title">${t.testersList} (${allProjectTesters.length})${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(regularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
+                            ${karmaRewardsChipHtml}
                         </div>
                         ${energyBarTopHtml}
                         ${testersHtml}
