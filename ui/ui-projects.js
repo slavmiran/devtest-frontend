@@ -983,7 +983,7 @@ function _ppcUpdateCalculations() {
     // Update Tip block visibility
     const tipSection = document.getElementById('ppc-tip-section');
     if (tipSection) {
-        tipSection.style.display = isFree ? 'none' : 'block';
+        tipSection.style.display = 'block';
     }
 
     // Update totals
@@ -1008,10 +1008,15 @@ function _ppcUpdateCalculations() {
     }
     if (submitBtn) {
         submitBtn.disabled = insufficient;
-        const isFree = totalCost === 0;
-        submitBtn.textContent = isFree
-            ? window.t('ppcSyncFreeBtn', {}, lang)
-            : window.t('ppcSyncBtn', {}, lang);
+        let btnText = '';
+        if (totalCost === 0) {
+            btnText = window.t('ppcSyncFreeBtn', {}, lang) || '🛡 Synchronize';
+        } else if (protectionCost === 0 && tipAmount > 0) {
+            btnText = window.t('ppcAddPoolBtn', {}, lang) || '🛡 Add to Pool';
+        } else {
+            btnText = window.t('ppcSyncBtn', {}, lang) || '🛡 Synchronize & Pay';
+        }
+        submitBtn.textContent = btnText;
     }
 }
 
@@ -1132,7 +1137,7 @@ function _renderProtectionCenterState1(project, platformDay) {
             </div>
 
             <!-- Tip Counter -->
-            <div class="ppc-tip-section" id="ppc-tip-section" style="display:${initIsFree ? 'none' : 'block'};">
+            <div class="ppc-tip-section" id="ppc-tip-section" style="display:block;">
                 <div class="ppc-tip-label">${window.escapeHTML(T('ppcTipLabel'))}</div>
                 <div class="ppc-tip-hint">${window.escapeHTML(T('ppcTipHint'))}</div>
                 <div class="ppc-tip-row">

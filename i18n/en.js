@@ -534,6 +534,7 @@
             ppcInsufficientFunds: "Insufficient funds",
             ppcSyncBtn: "🛡 Synchronize & Pay",
             ppcSyncFreeBtn: "🛡 Synchronize",
+            ppcAddPoolBtn: "🛡 Add to Pool",
             ppcMessagePlaceholder: "Message to testers (optional)",
             ppcProtectedBadge: "🛡 Protected",
             ppcProtectedBadgeDays: "🛡 Protected +{days}d",

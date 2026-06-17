@@ -534,6 +534,7 @@
             ppcInsufficientFunds: "Недостаточно средств",
             ppcSyncBtn: "🛡 Синхронизировать и оплатить",
             ppcSyncFreeBtn: "🛡 Синхронизировать",
+            ppcAddPoolBtn: "🛡 Пополнить пул",
             ppcMessagePlaceholder: "Сообщение для тестеров (необязательно)",
             ppcProtectedBadge: "🛡 Защищён",
             ppcProtectedBadgeDays: "🛡 Защищён +{days}д",
