@@ -1539,17 +1539,17 @@ function renderTests(force) {
             if (testingDay >= 15) {
                 const poolAmount = Number(test.protection_bust_pool || 0);
                 const extraPaid = Number(test.paid_protection_days || 0);
-                const remainingDays = Math.max(1, (14 + extraPaid) - testingDay + 1);
                 const activeTesters = Math.max(1, test.active_testers_count || 1);
-                const calculatedBust = poolAmount > 0 ? ((poolAmount / remainingDays) / activeTesters) : 0;
+                // Formula: pool / max(1, purchased_days) / active_testers
+                const calculatedBust = poolAmount > 0 && extraPaid > 0 ? (poolAmount / Math.max(1, extraPaid) / activeTesters) : 0;
                 const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
                 
                 let hintHtml = '';
                 if (calculatedBust > 0) {
                     hintHtml = `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('ppcTesterCheckinHintBoth', { bust: calculatedBustFormatted }, lang))}</div>`;
-                } else {
-                    hintHtml = `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('ppcTesterCheckinHintKarma', {}, lang))}</div>`;
                 }
+                // Do NOT show the karma-only hint when pool is empty — it promises a "Protection Bonus" that doesn't exist
+
 
                 actionsHtml = `
                     <div class="action-row">

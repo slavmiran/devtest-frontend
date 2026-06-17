@@ -2189,30 +2189,57 @@ async function saveProjectSync() {
         var localTestBeforeSync = (myTests || []).find(function(item) {
             return Number(item.id) === Number(syncProjectId);
         }) || null;
+        var currentGoogleDay = localProjectBeforeSync ? Number(localProjectBeforeSync.google_sync_day || 0) : 0;
+        var isTopup = (day === currentGoogleDay && tipAmount > 0 && protectionCost === 0);
         var response = null;
         var data = null;
         var requestError = null;
         try {
-            response = await fetch(`${API_BASE}/projects/${syncProjectId}/sync`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    google_sync_day: day,
-                    sync_message: message,
-                    protection_cost: protectionCost,
-                    tip_amount: tipAmount,
-                })
-            });
+            if (isTopup) {
+                response = await fetch(`${API_BASE}/projects/${syncProjectId}/topup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        owner_id: Number(userId),
+                        tip_amount: tipAmount,
+                    })
+                });
+            } else {
+                response = await fetch(`${API_BASE}/projects/${syncProjectId}/sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        google_sync_day: day,
+                        sync_message: message,
+                        protection_cost: protectionCost,
+                        tip_amount: tipAmount,
+                    })
+                });
+            }
         } catch (error) {
             requestError = error;
         }
 
         if (response) {
-            data = await _readJsonResponseSafely(response, 'Project sync');
+            data = await _readJsonResponseSafely(response, isTopup ? 'Project topup' : 'Project sync');
         }
 
         var confirmedProject = null;
         if (requestError || !response || !response.ok || !data || data.status !== 'success') {
+            if (isTopup) {
+                if (data && typeof data === 'object' && data.status && data.status !== 'success') {
+                    handleApiError(getBackendErrorCode(data), data.details || {});
+                } else if (requestError) {
+                    console.error('Project topup request error:', requestError);
+                    showToast(getApiErrorMessage(requestError && requestError.message, 'networkError'));
+                } else if (response && !response.ok) {
+                    showToast(getApiErrorMessage(data, 'loadError'));
+                } else {
+                    showToast(getApiErrorMessage(null, 'networkError'));
+                }
+                return;
+            }
+
             confirmedProject = await _confirmProjectSyncPersistence(syncProjectId, day, message);
             if (!confirmedProject) {
                 if (data && typeof data === 'object' && data.status && data.status !== 'success') {
@@ -2257,31 +2284,46 @@ async function saveProjectSync() {
         }
         _startPostSyncToastSuppression();
 
+        var totalCharged = isTopup ? tipAmount : (protectionCost + tipAmount);
+        if (totalCharged > 0 && visibilityStats && typeof visibilityStats.balance_bust !== 'undefined') {
+            visibilityStats.balance_bust = Math.max(0, visibilityStats.balance_bust - totalCharged);
+        }
+
         _runBestEffortUiStep('Project sync local project update', function() {
             const project = (myProjects || []).find(function(item) {
                 return Number(item.id) === Number(syncProjectId);
             });
             if (!project) return;
-            project.google_sync_day = resolvedSyncDay;
-            project.sync_message = resolvedSyncMessage;
-            project.last_sync_date = resolvedLastSyncDate;
-            project.sync_notification_sent = resolvedSyncNotificationSent;
-            if (resumedFromPending) {
-                project.status = 'active';
-                project.app_status = 'active';
+            if (!isTopup) {
+                project.google_sync_day = resolvedSyncDay;
+                project.sync_message = resolvedSyncMessage;
+                project.last_sync_date = resolvedLastSyncDate;
+                project.sync_notification_sent = resolvedSyncNotificationSent;
+                if (resumedFromPending) {
+                    project.status = 'active';
+                    project.app_status = 'active';
+                }
+            }
+            if (data && typeof data.protection_bust_pool !== 'undefined') {
+                project.protection_bust_pool = Number(data.protection_bust_pool || 0);
             }
         });
 
         _runBestEffortUiStep('Project sync local test update', function() {
             (myTests || []).forEach(function(test) {
                 if (Number(test.id) !== Number(syncProjectId)) return;
-                test.google_sync_day = resolvedSyncDay;
-                test.sync_message = resolvedSyncMessage;
-                test.last_sync_date = resolvedLastSyncDate;
-                test.sync_notification_sent = resolvedSyncNotificationSent;
-                if (resumedFromPending) {
-                    test.app_status = 'active';
-                    recomputeLocalTestState(test);
+                if (!isTopup) {
+                    test.google_sync_day = resolvedSyncDay;
+                    test.sync_message = resolvedSyncMessage;
+                    test.last_sync_date = resolvedLastSyncDate;
+                    test.sync_notification_sent = resolvedSyncNotificationSent;
+                    if (resumedFromPending) {
+                        test.app_status = 'active';
+                        recomputeLocalTestState(test);
+                    }
+                }
+                if (data && typeof data.protection_bust_pool !== 'undefined') {
+                    test.protection_bust_pool = Number(data.protection_bust_pool || 0);
                 }
             });
         });
@@ -2296,7 +2338,9 @@ async function saveProjectSync() {
         _runBestEffortUiStep('Project sync refresh modals', function() { refreshOpenModals(); });
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(t.syncSavedToast);
+        showToast(isTopup ? (t.ppcTopupSuccessToast || 'Protection pool topped up successfully!') : t.syncSavedToast);
+        loadProjects(true).catch(function() {});
+
         _runBestEffortUiStep('Project sync close view', function() {
             if (typeof closeProtectionCenter === 'function') {
                 closeProtectionCenter();
@@ -2312,6 +2356,80 @@ async function saveProjectSync() {
         if (cancelBtn) {
             cancelBtn.disabled = false;
         }
+    }
+}
+
+async function savePpcTopUp() {
+    if (!_syncProjectId) return;
+    var syncProjectId = Number(_syncProjectId);
+    var actionKey = 'project_topup_' + syncProjectId;
+    if (_pendingActions.has(actionKey)) return;
+
+    var amountEl = document.getElementById('ppc-topup-amount');
+    var submitBtn = document.getElementById('ppc-topup-submit-btn');
+    if (!amountEl) return;
+
+    var tipAmount = Math.max(0, Number(amountEl.textContent) || 0);
+    if (tipAmount <= 0) return;
+
+    _pendingActions.add(actionKey);
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        var response = await fetch(API_BASE + '/projects/' + syncProjectId + '/topup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_id: Number(userId), tip_amount: tipAmount })
+        });
+
+        var data = null;
+        try { data = await response.json(); } catch(e) {}
+
+        if (!response.ok || !data || data.status !== 'success') {
+            if (data && data.status && data.status !== 'success') {
+                handleApiError(getBackendErrorCode(data), data.details || {});
+            } else {
+                showToast(getApiErrorMessage(null, 'networkError'));
+            }
+            return;
+        }
+
+        // Debit balance locally
+        if (visibilityStats && typeof visibilityStats.balance_bust !== 'undefined') {
+            visibilityStats.balance_bust = Math.max(0, visibilityStats.balance_bust - tipAmount);
+        }
+
+        // Update protection_bust_pool in local project/test caches
+        _runBestEffortUiStep('Topup local project update', function() {
+            var project = (myProjects || []).find(function(item) { return Number(item.id) === syncProjectId; });
+            if (project && typeof data.protection_bust_pool !== 'undefined') {
+                project.protection_bust_pool = Number(data.protection_bust_pool || 0);
+            }
+        });
+        _runBestEffortUiStep('Topup local test update', function() {
+            (myTests || []).forEach(function(test) {
+                if (Number(test.id) !== syncProjectId) return;
+                if (typeof data.protection_bust_pool !== 'undefined') {
+                    test.protection_bust_pool = Number(data.protection_bust_pool || 0);
+                }
+            });
+        });
+        _runBestEffortUiStep('Topup cache update', function() {
+            setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+            persistTestsCacheSnapshot();
+        });
+        _runBestEffortUiStep('Topup render projects', function() { renderProjects(true); });
+        _runBestEffortUiStep('Topup render tests', function() { renderTests(true); });
+        _runBestEffortUiStep('Topup refresh modals', function() { refreshOpenModals(); });
+
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (typeof closePpcTopUpModal === 'function') closePpcTopUpModal();
+        showToast(t.ppcTopupSuccessToast || 'Protection pool topped up!');
+
+        loadProjects(true).catch(function() {});
+    } finally {
+        _pendingActions.delete(actionKey);
+        if (submitBtn) submitBtn.disabled = false;
     }
 }
 

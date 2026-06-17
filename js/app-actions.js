@@ -1441,7 +1441,7 @@ function renderEarnBustDynamic() {
     if (playReviewStatus) {
         playReviewStatus.innerHTML = `
             <span class="meta-chip accent-green">⭐ ${window.escapeHTML(window.t('earnPlayReviewCountChip', { count: _earnPlayReviewCount }, lang))}</span>
-            <span class="meta-chip accent-yellow">☯️ ${window.escapeHTML(window.t('earnPlayReviewKarmaChip', { amount: formatAmountValue(_earnPlayReviewKarma, 1) }, lang))}</span>
+            <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnPlayReviewBust)}</span>
         `;
     }
     document.getElementById('earn-exchange-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnExchangeBust)}</span>`;
@@ -1473,7 +1473,7 @@ async function openEarnBustModal() {
         _earnFeedbackCount = Number(data.feedback_sent_count || 0);
         _earnFeedbackBust = Number(data.feedback_bust_earned || 0);
         _earnPlayReviewCount = Number(data.play_review_count || 0);
-        _earnPlayReviewKarma = Number(data.play_review_karma_earned || 0);
+        _earnPlayReviewBust = Number(data.play_review_bust_earned || 0);
         _socialBonusStatus = data.social_bonus_status || 'none';
         renderEarnBustDynamic();
     } catch (error) {

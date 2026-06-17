@@ -59,7 +59,7 @@
         _earnFeedbackCount: 0,
         _earnFeedbackBust: 0,
         _earnPlayReviewCount: 0,
-        _earnPlayReviewKarma: 0,
+        _earnPlayReviewBust: 0,
         _feedbackType: 'bug',
         _inviteProjectId: null,
         archivedProjects: [],

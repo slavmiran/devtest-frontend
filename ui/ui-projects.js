@@ -1302,7 +1302,8 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
 
     // Reward pool
     const poolAmount = Number(project.protection_bust_pool || 0);
-    const rewardPerTesterDay = poolAmount > 0 ? (poolAmount / (Math.max(1, extraPaid) * 12)) : 0;
+    const poolActiveTesters = Math.max(1, Number(project.active_testers_count || 0) || (Array.isArray(project.testers) ? project.testers.filter(function(t) { return !t.is_guest_tester && !t.is_external; }).length : 0) || 1);
+    const rewardPerTesterDay = poolAmount > 0 && extraPaid > 0 ? (poolAmount / Math.max(1, extraPaid) / poolActiveTesters) : 0;
     const rewardPerTesterDayFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(rewardPerTesterDay, 1) : rewardPerTesterDay.toFixed(1);
 
     // Pending release attention
@@ -1367,7 +1368,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
                 <div class="ppc-reward-per-tester-day" style="font-size: 13px; color: var(--hint-color); font-weight: 500;">
                     ${window.escapeHTML(T('ppcRewardPerTesterDay', { amount: rewardPerTesterDayFormatted }))}
                 </div>
-                <button type="button" class="ppc-add-pool-btn" style="margin-top: 0;" onclick="_ppcSwitchToEditMode()">
+                <button type="button" class="ppc-add-pool-btn" style="margin-top: 0;" onclick="openPpcTopUpModal()">
                     ${lang === 'ru' ? '+ Пополнить пул' : '+ Add to Pool'}
                 </button>
             </div>
@@ -1403,6 +1404,116 @@ function _ppcSwitchToEditMode() {
     const body = document.getElementById('protection-center-body');
     if (body) body.innerHTML = _renderProtectionCenterState1(project, platformDay);
     _ppcUpdateCalculations();
+}
+
+/** Opens the dedicated Top-Up Pool bottom-sheet modal. */
+function openPpcTopUpModal() {
+    if (!_syncProjectId) return;
+    const project = myProjects.find(item => Number(item.id) === Number(_syncProjectId));
+    if (!project) return;
+    const T = (key, vars) => window.t(key, vars || {}, lang) || key;
+    const balance = (visibilityStats && typeof visibilityStats.balance_bust !== 'undefined')
+        ? Number(visibilityStats.balance_bust || 0)
+        : 0;
+    const poolAmount = Number(project.protection_bust_pool || 0);
+
+    // Remove existing topup modal if any
+    const existing = document.getElementById('ppc-topup-modal');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'ppc-topup-modal';
+    overlay.className = 'ppc-topup-overlay';
+    overlay.setAttribute('onclick', 'closePpcTopUpModal()');
+
+    overlay.innerHTML = `
+        <div class="ppc-topup-sheet" onclick="event.stopPropagation()">
+            <div class="ppc-topup-handle"></div>
+            <div class="ppc-topup-title">🏆 ${window.escapeHTML(T('ppcTopupModalTitle'))}</div>
+            <div class="ppc-topup-desc">${window.escapeHTML(T('ppcTopupModalDesc'))}</div>
+
+            <div class="ppc-topup-pool-row">
+                <span class="ppc-topup-pool-label">${window.escapeHTML(T('ppcTopupCurrentPool'))}</span>
+                <span class="ppc-topup-pool-value notranslate">${poolAmount} BUST</span>
+            </div>
+
+            <div class="ppc-topup-counter-row">
+                <button type="button" class="ppc-topup-step-btn" onclick="_ppcTopupChangeTip(-10)">−</button>
+                <div class="ppc-topup-counter-wrap">
+                    <span class="ppc-topup-value notranslate" id="ppc-topup-amount">0</span>
+                    <span class="ppc-topup-unit">BUST</span>
+                </div>
+                <button type="button" class="ppc-topup-step-btn" onclick="_ppcTopupChangeTip(10)">+</button>
+            </div>
+
+            <div class="ppc-topup-chips">
+                <button type="button" class="ppc-topup-chip" onclick="_ppcTopupAddTip(10)">+10</button>
+                <button type="button" class="ppc-topup-chip" onclick="_ppcTopupAddTip(50)">+50</button>
+                <button type="button" class="ppc-topup-chip" onclick="_ppcTopupAddTip(100)">+100</button>
+            </div>
+
+            <div class="ppc-topup-balance-row" id="ppc-topup-balance-row">
+                <span>${window.escapeHTML(T('ppcTopupBalance'))}</span>
+                <span class="notranslate" id="ppc-topup-balance-val">${balance.toFixed(1)} BUST</span>
+            </div>
+
+            <button type="button" class="ppc-topup-submit" id="ppc-topup-submit-btn" onclick="savePpcTopUp()" disabled>
+                ${window.escapeHTML(T('ppcTopupConfirmBtn'))}
+            </button>
+            <button type="button" class="ppc-topup-cancel" onclick="closePpcTopUpModal()">
+                ${window.escapeHTML(T('btnCancel'))}
+            </button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+}
+
+/** Closes the Top-Up Pool modal. */
+function closePpcTopUpModal() {
+    const overlay = document.getElementById('ppc-topup-modal');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    setTimeout(() => overlay.remove(), 280);
+}
+
+/** Steps the top-up amount by delta (multiples of 10, min 0). */
+function _ppcTopupChangeTip(delta) {
+    const el = document.getElementById('ppc-topup-amount');
+    if (!el) return;
+    const current = Number(el.textContent) || 0;
+    const next = Math.max(0, current + delta);
+    el.textContent = String(next);
+    _ppcTopupUpdateState();
+}
+
+/** Adds a fixed amount to the top-up counter. */
+function _ppcTopupAddTip(amount) {
+    const el = document.getElementById('ppc-topup-amount');
+    if (!el) return;
+    const current = Number(el.textContent) || 0;
+    el.textContent = String(current + amount);
+    _ppcTopupUpdateState();
+}
+
+/** Updates balance display and submit button state for the top-up modal. */
+function _ppcTopupUpdateState() {
+    const amountEl = document.getElementById('ppc-topup-amount');
+    const balanceEl = document.getElementById('ppc-topup-balance-val');
+    const submitBtn = document.getElementById('ppc-topup-submit-btn');
+    if (!amountEl) return;
+    const tipAmount = Number(amountEl.textContent) || 0;
+    const balance = (visibilityStats && typeof visibilityStats.balance_bust !== 'undefined')
+        ? Number(visibilityStats.balance_bust || 0)
+        : 0;
+    const remaining = balance - tipAmount;
+    if (balanceEl) {
+        balanceEl.textContent = remaining.toFixed(1) + ' BUST';
+        balanceEl.style.color = remaining < 0 ? '#ff3b30' : '';
+    }
+    if (submitBtn) {
+        submitBtn.disabled = tipAmount <= 0 || remaining < 0;
+    }
 }
 
 /**
