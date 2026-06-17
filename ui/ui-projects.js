@@ -1289,7 +1289,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
             timelineHtml += `<div class="ppc-timeline-connector${connectorFilled}"></div>`;
         }
         timelineHtml += `
-            <div class="ppc-timeline-phase${isCurrentClass}" style="width:80px;">
+            <div class="ppc-timeline-phase${isCurrentClass}" style="width:115px;">
                 <div class="ppc-phase-dot ${phase.isCurrent ? phase.dotColor : ''}${phase.isCurrent ? ' current' : ''}"></div>
                 <div class="ppc-phase-label-wrap">
                     <span class="ppc-phase-emoji">${phase.emoji}</span>
@@ -1303,7 +1303,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     // Reward pool
     const poolAmount = Number(project.protection_bust_pool || 0);
     const poolActiveTesters = Math.max(1, Number(project.active_testers_count || 0) || (Array.isArray(project.testers) ? project.testers.filter(function(t) { return !t.is_guest_tester && !t.is_external; }).length : 0) || 1);
-    const rewardPerTesterDay = poolAmount > 0 && extraPaid > 0 ? (poolAmount / Math.max(1, extraPaid) / poolActiveTesters) : 0;
+    const rewardPerTesterDay = poolAmount > 0 ? (poolAmount / Math.max(1, extraPaid) / poolActiveTesters) : 0;
     const rewardPerTesterDayFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(rewardPerTesterDay, 1) : rewardPerTesterDay.toFixed(1);
 
     // Pending release attention
@@ -1361,7 +1361,10 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
         <div class="ppc-reward-pool-card">
             <div class="ppc-reward-pool-header">
                 <div class="ppc-reward-pool-title">${window.escapeHTML(T('ppcRewardPoolTitle'))}</div>
-                <div class="ppc-reward-pool-amount">${window.escapeHTML(T('ppcRewardPoolAmount', { amount: poolAmount }))}</div>
+                <div class="ppc-reward-pool-amount-wrap">
+                    <div class="ppc-reward-pool-amount">${window.escapeHTML(T('ppcRewardPoolAmount', { amount: poolAmount }))}</div>
+                    <div class="ppc-reward-pool-status">${window.escapeHTML(T('ppcRewardPoolLocked'))}</div>
+                </div>
             </div>
             <div class="ppc-reward-pool-desc">${window.escapeHTML(T('ppcRewardPoolDesc'))}</div>
             <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">

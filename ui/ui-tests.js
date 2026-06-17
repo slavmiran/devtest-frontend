@@ -1541,7 +1541,7 @@ function renderTests(force) {
                 const extraPaid = Number(test.paid_protection_days || 0);
                 const activeTesters = Math.max(1, test.active_testers_count || 1);
                 // Formula: pool / max(1, purchased_days) / active_testers
-                const calculatedBust = poolAmount > 0 && extraPaid > 0 ? (poolAmount / Math.max(1, extraPaid) / activeTesters) : 0;
+                const calculatedBust = poolAmount > 0 ? (poolAmount / Math.max(1, extraPaid) / activeTesters) : 0;
                 const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
                 
                 let hintHtml = '';
