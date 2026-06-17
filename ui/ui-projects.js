@@ -499,9 +499,9 @@ function renderProjects(force) {
                 ? window.t('syncBtnTitleAfterDays', { days: extraPaid }, lang) || `🛡 Protected +${extraPaid}d`
                 : window.t('syncBtnTitleAfter', {}, lang) || '🛡 Protected';
             
-            const gap = Math.max(0, platformDays - currentGoogleDay);
-            const hoursLeft = Math.max(0, 48 - (gap * 24));
-            return window.t('ppcBufferHoursLeft', { hours: hoursLeft }, lang) || `Buffer: ${hoursLeft}h left`;
+            const consumedPendingHours = Number(project.consumed_pending_hours || 0);
+            const hoursLeft = Math.max(0, 48 - consumedPendingHours);
+            return window.t('ppcBufferHoursLeft', { hours: hoursLeft }, lang) || `⏳ Safety Buffer: ${hoursLeft}h left`;
         })();
 
         let count_done = 0;
@@ -970,10 +970,11 @@ function _ppcUpdateCalculations() {
     if (bufferIndicator && bufferFill && bufferText) {
         if (isFree) {
             bufferIndicator.style.display = 'block';
-            const hoursLeft = Math.max(0, 48 - (gap * 24));
+            const consumedPendingHours = Number(slider.getAttribute('data-consumed-pending-hours') || 0);
+            const hoursLeft = Math.max(0, 48 - consumedPendingHours);
             const fillPct = Math.round((hoursLeft / 48) * 100);
             bufferFill.style.width = fillPct + '%';
-            bufferText.textContent = window.t('ppcBufferHoursLeft', { hours: hoursLeft }, lang) || `Buffer: ${hoursLeft}h left`;
+            bufferText.textContent = window.t('ppcBufferHoursLeft', { hours: hoursLeft }, lang) || `⏳ Safety Buffer: ${hoursLeft}h left`;
         } else {
             bufferIndicator.style.display = 'none';
         }
@@ -1104,6 +1105,7 @@ function _renderProtectionCenterState1(project, platformDay) {
                     data-platform-day="${platformDay}"
                     data-already-paid="${alreadyPaid}"
                     data-balance="${balance}"
+                    data-consumed-pending-hours="${project.consumed_pending_hours || 0}"
                     style="--ppc-slider-pct: ${initPct.toFixed(1)}%;"
                     oninput="_ppcUpdateCalculations()"
                 />
@@ -1121,10 +1123,10 @@ function _renderProtectionCenterState1(project, platformDay) {
                 <!-- Safety Buffer Progress Bar (only shown when free) -->
                 <div id="ppc-buffer-indicator" style="display:${initIsFree ? 'block' : 'none'}; margin-top:8px;">
                     <div style="font-size:11px; color:#34c759; font-weight:500; display:flex; justify-content:space-between; margin-bottom:4px;">
-                        <span id="ppc-buffer-indicator-text">${initIsFree ? window.escapeHTML(T('ppcBufferHoursLeft', { hours: Math.max(0, 48 - (initGap * 24)) })) : ''}</span>
+                        <span id="ppc-buffer-indicator-text">${initIsFree ? window.escapeHTML(T('ppcBufferHoursLeft', { hours: Math.max(0, 48 - (project.consumed_pending_hours || 0)) })) : ''}</span>
                     </div>
                     <div class="ppc-buffer-progress-bar">
-                        <div class="ppc-buffer-progress-fill" id="ppc-buffer-progress-fill" style="width: ${initIsFree ? Math.round((Math.max(0, 48 - (initGap * 24)) / 48) * 100) : 100}%;"></div>
+                        <div class="ppc-buffer-progress-fill" id="ppc-buffer-progress-fill" style="width: ${initIsFree ? Math.round((Math.max(0, 48 - (project.consumed_pending_hours || 0)) / 48) * 100) : 100}%;"></div>
                     </div>
                 </div>
             </div>
@@ -1189,12 +1191,12 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     const today = parseLocalDateOnly(getLocalDate()) || new Date();
     const leftDays = Math.max(0, 14 - googleDay);
 
-    // Protection remaining: 14 - googleDay + extra purchased days
     const extraPaid = Number(project.paid_protection_days || 0);
     const protectionTotal = Math.max(0, leftDays + extraPaid);
 
-    // Estimated archive: platform day 24 — current platform day = days to archive
-    const daysToArchive = Math.max(0, 24 - platformDay);
+    // Estimated archive: platform day 16 + extraPaid + 1 (Day 17/Day 25)
+    const archivePlatformDay = 16 + extraPaid + 1;
+    const daysToArchive = Math.max(0, archivePlatformDay - platformDay);
     const archiveDate = new Date(today);
     archiveDate.setDate(archiveDate.getDate() + daysToArchive);
     const archiveDateStr = archiveDate.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
@@ -1204,38 +1206,82 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     const updatedDaysAgo = lastSyncDate ? getDayDiffFromToday(lastSyncDate) : 0;
     const syncNoteStale = updatedDaysAgo >= 7;
 
+    const isPendingCompletion = String(project.app_status || project.status || '').toLowerCase() === 'pending_completion';
+
     // Lifecycle timeline phases
     const phases = [];
     
-    // Phase 1: Active Testing
-    phases.push({
-        emoji: '🟢',
-        name: T('ppcTimelineActive'),
-        days: lang === 'ru' ? 'Дни 1–14' : 'Days 1–14',
-        dotColor: 'green',
-        isCurrent: googleDay <= 14,
-        isPast: googleDay > 14
-    });
+    if (extraPaid > 0) {
+        // Phase 1: Active Testing (Days 1-14)
+        phases.push({
+            emoji: '🟢',
+            name: T('ppcTimelineActive'),
+            days: lang === 'ru' ? 'Дни 1–14' : 'Days 1–14',
+            dotColor: 'green',
+            isCurrent: googleDay <= 14,
+            isPast: googleDay > 14
+        });
 
-    // Phase 2: Safety Buffer
-    phases.push({
-        emoji: '⏳',
-        name: T('ppcTimelinePending'),
-        days: lang === 'ru' ? 'Дни 15–24' : 'Days 15–24',
-        dotColor: 'yellow',
-        isCurrent: googleDay > 14 && platformDay < 24,
-        isPast: platformDay >= 24
-    });
+        // Phase 2: Extended Protection (Days 15 to 14 + extraPaid)
+        phases.push({
+            emoji: '🛡',
+            name: T('ppcTimelineExtra'),
+            days: lang === 'ru' ? `Дни 15–${14 + extraPaid}` : `Days 15–${14 + extraPaid}`,
+            dotColor: 'blue',
+            isCurrent: googleDay > 14 && googleDay <= (14 + extraPaid) && !isPendingCompletion,
+            isPast: googleDay > (14 + extraPaid) || isPendingCompletion
+        });
 
-    // Phase 3: Archive
-    phases.push({
-        emoji: '🏁',
-        name: T('ppcTimelineArchive'),
-        days: archiveDateStr,
-        dotColor: 'archive',
-        isCurrent: platformDay >= 24,
-        isPast: false
-    });
+        // Phase 3: Safety Buffer (occupies exactly 48h AFTER extended protection ends)
+        phases.push({
+            emoji: '⏳',
+            name: T('ppcTimelinePending'),
+            days: lang === 'ru' ? `Дни ${15 + extraPaid}–${16 + extraPaid}` : `Days ${15 + extraPaid}–${16 + extraPaid}`,
+            dotColor: 'yellow',
+            isCurrent: isPendingCompletion || (googleDay > (14 + extraPaid) && platformDay <= (16 + extraPaid)),
+            isPast: platformDay > (16 + extraPaid) && !isPendingCompletion
+        });
+
+        // Phase 4: Archive
+        phases.push({
+            emoji: '🏁',
+            name: T('ppcTimelineArchive'),
+            days: archiveDateStr,
+            dotColor: 'archive',
+            isCurrent: platformDay > (16 + extraPaid) && !isPendingCompletion,
+            isPast: false
+        });
+    } else {
+        // Phase 1: Active Testing (Days 1-14)
+        phases.push({
+            emoji: '🟢',
+            name: T('ppcTimelineActive'),
+            days: lang === 'ru' ? 'Дни 1–14' : 'Days 1–14',
+            dotColor: 'green',
+            isCurrent: googleDay <= 14,
+            isPast: googleDay > 14
+        });
+
+        // Phase 2: Safety Buffer (Days 15-16, 48h)
+        phases.push({
+            emoji: '⏳',
+            name: T('ppcTimelinePending'),
+            days: lang === 'ru' ? 'Дни 15–16' : 'Days 15–16',
+            dotColor: 'yellow',
+            isCurrent: isPendingCompletion || (googleDay > 14 && platformDay <= 16),
+            isPast: platformDay > 16 && !isPendingCompletion
+        });
+
+        // Phase 3: Archive
+        phases.push({
+            emoji: '🏁',
+            name: T('ppcTimelineArchive'),
+            days: archiveDateStr,
+            dotColor: 'archive',
+            isCurrent: platformDay > 16 && !isPendingCompletion,
+            isPast: false
+        });
+    }
 
     let timelineHtml = '';
     phases.forEach((phase, i) => {

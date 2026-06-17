@@ -1350,8 +1350,9 @@ function _mapTestsFromApi(data) {
             daily_timeline: resolvedDailyTimeline,
             archive_reason: app.archive_reason || null,
             bounty_per_tester: app.bounty_per_tester || 0,
-            paid_protection_days: Number(app.paid_protection_days || 0),
+            paid_protection_days: Number(app.purchased_protection_days || app.paid_protection_days || 0),
             protection_bust_pool: Number(app.protection_bust_pool || 0),
+            consumed_pending_hours: Number(app.consumed_pending_hours || 0),
             last_check_date: resolvedLastCheckDate,
             issue_reported_at: app.issue_reported_at || null,
             issue_reason: app.issue_reason || '',
@@ -1882,8 +1883,9 @@ function _mapProjectsFromApi(data) {
             feedback_new_count: project.feedback_new_count || 0,
             feedback_total_count: project.feedback_total_count || 0,
             guest_testers_count: Number(project.guest_testers_count || 0),
-            paid_protection_days: Number(project.paid_protection_days || 0),
+            paid_protection_days: Number(project.purchased_protection_days || project.paid_protection_days || 0),
             protection_bust_pool: Number(project.protection_bust_pool || 0),
+            consumed_pending_hours: Number(project.consumed_pending_hours || 0),
         };
     });
 }

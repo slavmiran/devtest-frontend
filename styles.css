@@ -8505,6 +8505,7 @@ html[dir="rtl"] .guest-filter-select {
 .ppc-phase-dot.green { background: #34c759; border-color: #34c759; }
 .ppc-phase-dot.yellow { background: #ffcc00; border-color: #ffcc00; }
 .ppc-phase-dot.star { background: #a855f7; border-color: #a855f7; }
+.ppc-phase-dot.blue { background: #007aff; border-color: #007aff; }
 .ppc-phase-dot.archive { background: var(--hint-color); border-color: var(--hint-color); }
 
 .ppc-phase-dot.current {
