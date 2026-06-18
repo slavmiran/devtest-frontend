@@ -121,6 +121,10 @@ function getDayDiffFromToday(dateValue) {
     const today = parseLocalDateOnly(getLocalDate());
     return Math.max(0, Math.floor((today - source) / (1000 * 60 * 60 * 24)));
 }
+
+function getProjectPlatformDay(createdAt) {
+    return Math.max(1, getDayDiffFromToday(createdAt) + 1);
+}
 const GUEST_LANGUAGE_META = {
     ar: { flag: '🇦🇪', label: 'Arabic' },
     am: { flag: '🇦🇲', label: 'Armenian' },

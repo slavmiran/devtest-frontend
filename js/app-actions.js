@@ -745,13 +745,7 @@ function refreshOpenModals() {
                 return Number(item.id) === Number(window._syncProjectId);
             });
             if (project) {
-                const createdDate = project.created_at ? new Date(project.created_at) : null;
-                const createdValid = !!(createdDate && !Number.isNaN(createdDate.getTime()));
-                const todayMs = new Date().setHours(0, 0, 0, 0);
-                const rawPlatformDays = createdValid
-                    ? Math.floor((todayMs - new Date(project.created_at).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)) + 1
-                    : 1;
-                const platformDay = Math.max(1, rawPlatformDays);
+                const platformDay = getProjectPlatformDay(project.created_at);
                 const isSynced = typeof isProjectSynced === 'function' && isProjectSynced(project);
                 const googleDay = (isSynced && typeof getProjectCurrentGoogleDay === 'function')
                     ? getProjectCurrentGoogleDay(project, platformDay) : 0;

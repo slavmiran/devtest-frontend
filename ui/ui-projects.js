@@ -155,10 +155,7 @@ function renderProjects(force) {
         const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
         const safeProjectPackage = window.escapeHTML(project.package || '');
 
-        const createdDate = project.created_at ? new Date(project.created_at) : null;
-        const createdValid = !!(createdDate && !Number.isNaN(createdDate.getTime()));
-        const rawPlatformDays = createdValid ? (Math.floor((todayDate - createdDate) / (1000 * 60 * 60 * 24)) + 1) : 1;
-        const platformDays = Math.max(1, Number.isFinite(rawPlatformDays) ? rawPlatformDays : 1);
+        const platformDays = getProjectPlatformDay(project.created_at);
         const syncDay = Number(project.google_sync_day || 0);
         const normalizedSyncDay = Number.isFinite(syncDay) ? syncDay : 0;
         const rawGoogleDay = isProjectSynced(project)
@@ -1011,9 +1008,14 @@ function _ppcUpdateCalculations() {
             `;
         } else {
             statusBlock.className = 'ppc-status-block state-required';
+            const extraDays = Math.max(0, gap - 2);
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateCRequiredTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateCRequiredText'))}</div>
+                <div class="ppc-status-cost-block">
+                    <div class="ppc-status-cost-days">${window.escapeHTML(T('ppcGapCostLabel', { days: extraDays }))}</div>
+                    <div class="ppc-status-cost-amount">${totalCost} BUST</div>
+                </div>
             `;
         }
         statusBlock.innerHTML = html;
@@ -1395,7 +1397,12 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
 
         <!-- Lifecycle Timeline Card -->
         <div class="ppc-card">
-            <div class="ppc-card-title">${lang === 'ru' ? 'Жизненный цикл проекта' : 'Project Lifecycle'}</div>
+            <div class="ppc-card-title" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>${lang === 'ru' ? 'Жизненный цикл проекта на DevTestHub' : 'Project Lifecycle on DevTestHub'}</span>
+                <span style="font-size:10px; font-weight:500; color:var(--hint-color); text-transform:none; letter-spacing:0; opacity:0.8; display:flex; align-items:center; gap:3px;">
+                    ${lang === 'ru' ? 'листайте' : 'swipe'} ↔
+                </span>
+            </div>
             <div class="ppc-timeline-wrap">
                 <div class="ppc-timeline">
                     ${timelineHtml}
@@ -1443,13 +1450,7 @@ function _ppcSwitchToEditMode() {
     if (!_syncProjectId) return;
     const project = myProjects.find(item => Number(item.id) === Number(_syncProjectId));
     if (!project) return;
-    const createdDate = project.created_at ? new Date(project.created_at) : null;
-    const createdValid = !!(createdDate && !Number.isNaN(createdDate.getTime()));
-    const todayMs = new Date().setHours(0, 0, 0, 0);
-    const rawPlatformDays = createdValid
-        ? Math.floor((todayMs - new Date(project.created_at).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)) + 1
-        : 1;
-    const platformDay = Math.max(1, rawPlatformDays);
+    const platformDay = getProjectPlatformDay(project.created_at);
     const body = document.getElementById('protection-center-body');
     if (body) body.innerHTML = _renderProtectionCenterState1(project, platformDay);
     _ppcUpdateCalculations();
@@ -1478,7 +1479,7 @@ function openPpcTopUpModal() {
     overlay.innerHTML = `
         <div class="ppc-topup-sheet" onclick="event.stopPropagation()">
             <div class="ppc-topup-handle"></div>
-            <div class="ppc-topup-title">🏆 ${window.escapeHTML(T('ppcTopupModalTitle'))}</div>
+            <div class="ppc-topup-title">🛡 ${window.escapeHTML(T('ppcTopupModalTitle'))}</div>
             <div class="ppc-topup-desc">${window.escapeHTML(T('ppcTopupModalDesc'))}</div>
 
             <div class="ppc-topup-pool-row">
@@ -1590,13 +1591,7 @@ function openProtectionCenter(projectId) {
     if (headerTitle) headerTitle.textContent = window.t('ppcTitle', {}, lang) || 'Project Protection Center';
 
     // Compute platform day
-    const createdDate = project.created_at ? new Date(project.created_at) : null;
-    const createdValid = !!(createdDate && !Number.isNaN(createdDate.getTime()));
-    const todayMs = new Date().setHours(0, 0, 0, 0);
-    const rawPlatformDays = createdValid
-        ? Math.floor((todayMs - new Date(project.created_at).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)) + 1
-        : 1;
-    const platformDay = Math.max(1, rawPlatformDays);
+    const platformDay = getProjectPlatformDay(project.created_at);
 
     const isSynced = isProjectSynced(project);
     const googleDay = isSynced ? getProjectCurrentGoogleDay(project, platformDay) : 0;

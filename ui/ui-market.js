@@ -4252,14 +4252,10 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     var ownerFullName = String(project.owner_full_name || profile.owner_full_name || '').trim();
     var safeOwnerUsername = escapeInlineJsString(ownerUsername);
     var ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(ownerFullName, ownerUsername, testerId));
-    var createdDate = project.created_at ? new Date(project.created_at) : null;
-    var todayDate = new Date(getLocalDate());
-    var platformDays = createdDate && !Number.isNaN(createdDate.getTime())
-        ? Math.max(1, Math.floor((todayDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)) + 1)
-        : 1;
+    var platformDays = getProjectPlatformDay(project.created_at);
     var currentGoogleDay = isProjectSynced(project) ? getProjectCurrentGoogleDay(project, platformDays) : platformDays;
     var leftDays = Math.max(0, 14 - currentGoogleDay);
-    var finishDate = new Date(todayDate);
+    var finishDate = parseLocalDateOnly(getLocalDate()) || new Date();
     finishDate.setDate(finishDate.getDate() + leftDays);
     var hasSync = isProjectSynced(project);
     var ownerActivity = getOwnerActivityMeta(project.last_owner_activity);

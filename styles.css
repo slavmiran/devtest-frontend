@@ -8449,31 +8449,18 @@ html[dir="rtl"] .guest-filter-select {
     overflow-x: auto;
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 10px;
+    padding-bottom: 4px;
     margin: 0 -16px;
     padding-left: 16px;
-    padding-right: 16px;
+    padding-right: 28px;
     position: relative;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    mask-image: linear-gradient(to right, black 85%, transparent 100%);
 }
 
 .ppc-timeline-wrap::-webkit-scrollbar {
-    height: 4px;
-    display: block;
-}
-
-.ppc-timeline-wrap::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.ppc-timeline-wrap::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
-}
-
-.ppc-timeline-wrap::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+    display: none;
 }
 
 .ppc-timeline {
@@ -8954,6 +8941,26 @@ html[dir="rtl"] .guest-filter-select {
 .ppc-status-block.state-warning .ppc-status-progress-fill {
     background-color: #ff3b30;
 }
+
+.ppc-status-cost-block {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.ppc-status-cost-days {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.5);
+}
+.ppc-status-cost-amount {
+    font-size: 28px;
+    font-weight: 800;
+    color: #a855f7;
+    letter-spacing: -0.5px;
+    line-height: 1.25;
+}
+
 
 
 
