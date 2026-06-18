@@ -1,18 +1,86 @@
 :root {
     color-scheme: dark;
-    --bg-color: #0f1115;
-    --text-color: #f3f4f6;
-    --hint-color: #9aa4b2;
-    --link-color: #4da3ff;
-    --button-color: #3390ec;
-    --button-text-color: #ffffff;
-    --secondary-bg-color: #171b22;
-    --nav-bg-color: #11151c;
-    --border-color: #2a313c;
 
-    --success-color: #34c759;
-    --warning-color: #ffcc00;
-    --warning-text-color: #0f1115;
+    /* =========================================================
+       MODERN PREMIUM — SEMANTIC TOKEN LAYER (single source of truth)
+       Step 1: tokens only. Components still consume legacy aliases
+       (defined at the bottom of this block) and migrate gradually.
+       ========================================================= */
+
+    /* --- Neutral base: backgrounds & elevation --- */
+    --bg-app: #0E1116;          /* root background (body, overlays base) */
+    --bg-surface-1: #161A21;    /* default cards / panels / list items */
+    --bg-surface-2: #1D222B;    /* raised: modals, inputs, popovers, sheets */
+    --bg-surface-3: #262C37;    /* highest: dropdowns, active/hover rows */
+    --bg-nav: #10131A;          /* bottom nav (subtly below app bg) */
+
+    /* --- Borders --- */
+    --border-subtle: rgba(255, 255, 255, 0.07);  /* hairlines, dividers */
+    --border-strong: rgba(255, 255, 255, 0.14);  /* inputs, segmented, buttons */
+
+    /* --- Text --- */
+    --text-primary: #F4F6F8;    /* titles, key values */
+    --text-secondary: #AEB7C2;  /* body, descriptions */
+    --text-tertiary: #717C89;   /* meta, captions, placeholders, disabled */
+    --text-on-accent: #FFFFFF;  /* text/icon on filled accent/status */
+    --text-on-warning: #0E1116; /* dark text on bright warning fill */
+
+    /* --- Accent: the single action color --- */
+    --accent-primary: #4C8DFF;
+    --accent-primary-hover: #3B7BEF;
+    --accent-primary-surface: rgba(76, 141, 255, 0.12); /* tinted action zones */
+    --accent-primary-border: rgba(76, 141, 255, 0.24);
+
+    /* --- Status: success (positive / complete / safe) --- */
+    --success: #30D158;
+    --success-surface: rgba(48, 209, 88, 0.12);
+    --success-border: rgba(48, 209, 88, 0.24);
+
+    /* --- Status: warning (attention / time pressure / grant & reward) --- */
+    --warning: #FFB020;
+    --warning-surface: rgba(255, 176, 32, 0.12);
+    --warning-border: rgba(255, 176, 32, 0.24);
+
+    /* --- Status: danger (destructive / blocked / late / error) --- */
+    --danger: #FF5A5F;
+    --danger-surface: rgba(255, 90, 95, 0.12);
+    --danger-border: rgba(255, 90, 95, 0.24);
+
+    /* --- Extended meaning: security (protection / reliability / trust ONLY) --- */
+    --security: #7C83FF;
+    --security-surface: rgba(124, 131, 255, 0.12);
+    --security-border: rgba(124, 131, 255, 0.24);
+
+    /* --- Extended meaning: info-alt (external tracking / source / secondary info ONLY) --- */
+    --info-alt: #2DD4BF;
+    --info-alt-surface: rgba(45, 212, 191, 0.12);
+    --info-alt-border: rgba(45, 212, 191, 0.24);
+
+    /* =========================================================
+       LEGACY ALIASES — TEMPORARY.
+       Keep existing component styles working while they migrate
+       to the semantic tokens above. Remove after migration (step 6).
+       ========================================================= */
+    --bg-color: var(--bg-app);
+    --text-color: var(--text-primary);
+    --hint-color: var(--text-secondary);
+    --link-color: var(--accent-primary);
+    --button-color: var(--accent-primary);
+    --button-text-color: var(--text-on-accent);
+    --secondary-bg-color: var(--bg-surface-1);
+    --nav-bg-color: var(--bg-nav);
+    --border-color: var(--border-strong);
+
+    --success-color: var(--success);
+    --warning-color: var(--warning);
+    --warning-text-color: var(--text-on-warning);
+
+    /* Previously phantom (referenced but never defined) — now resolved */
+    /* tune 1: map to border-strong (not accent) so .horizontal-card keeps a
+       neutral edge instead of a surprise blue outline until component cleanup */
+    --accent-color: var(--border-strong);
+    --card-bg: var(--bg-surface-1);
+    --destructive-color: var(--danger);
 }
 
 * {
@@ -8976,4 +9044,4 @@ html[dir="rtl"] .guest-filter-select {
 
 
 
-
+
