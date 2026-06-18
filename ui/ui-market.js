@@ -4991,7 +4991,11 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         const targetAlreadyTesting = !!ownerLinkMeta;
         const blockedEntry = blockedProjects[String(p.id)] || null;
         const emailIncompatible = String(p.test_mode || 'google_group') === 'email_list' && !targetOwnerHasEmail;
-        const isDisabled = targetAlreadyTesting || !!blockedEntry || emailIncompatible;
+        const isInBuffer = String(p.status || '').toLowerCase() === 'pending_completion';
+        const isArchived = String(p.status || '').toLowerCase() === 'archived';
+        const isInactiveStatus = isInBuffer || isArchived;
+        const notAcceptingTesters = p.is_accepting_new_testers === false;
+        const isDisabled = targetAlreadyTesting || !!blockedEntry || emailIncompatible || isInactiveStatus || notAcceptingTesters;
         const disabledClass = isDisabled ? ' disabled' : '';
         const linkedClass = targetAlreadyTesting ? ' is-owner-linked' : '';
         const badges = [];
@@ -5004,6 +5008,15 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         if (emailIncompatible && !targetAlreadyTesting && !blockedEntry) {
             badges.push('<span class="project-select-lock">🔒</span>');
         }
+        if (isInBuffer && !targetAlreadyTesting && !blockedEntry && !emailIncompatible) {
+            badges.push(`<span class="meta-chip accent-yellow">${window.escapeHTML(window.t('offerProjectBufferBadge', {}, lang))}</span>`);
+        }
+        if (isArchived && !targetAlreadyTesting && !blockedEntry && !emailIncompatible) {
+            badges.push(`<span class="meta-chip accent-red">${window.escapeHTML(window.t('offerProjectArchivedBadge', {}, lang))}</span>`);
+        }
+        if (notAcceptingTesters && !isInBuffer && !isArchived && !targetAlreadyTesting && !blockedEntry && !emailIncompatible) {
+            badges.push(`<span class="meta-chip accent-orange">${window.escapeHTML(window.t('offerProjectNotAcceptingBadge', {}, lang))}</span>`);
+        }
         const badgeHtml = badges.join('');
         let reasonHtml = '';
         if (targetAlreadyTesting && ownerLinkMeta) {
@@ -5012,6 +5025,12 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectLockedDetails', { target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang) }, lang))}</span>`;
         } else if (emailIncompatible) {
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectGroupsOnly', {}, lang))}</span>`;
+        } else if (isInBuffer) {
+            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectBufferDetails', {}, lang))}</span>`;
+        } else if (isArchived) {
+            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectArchivedDetails', {}, lang))}</span>`;
+        } else if (notAcceptingTesters) {
+            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectNotAcceptingDetails', {}, lang))}</span>`;
         }
 
         const clickHandler = isDisabled
