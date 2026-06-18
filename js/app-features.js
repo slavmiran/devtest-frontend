@@ -1902,6 +1902,7 @@ async function startMassInvite(projectId) {
         });
         if (project && sentCount > 0) {
             project.last_mass_invite_at = data.last_mass_invite_at || new Date().toISOString();
+            project.last_mass_invite_sent_count = sentCount;
         }
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -1958,6 +1959,7 @@ async function resetMassInviteCooldown(projectId) {
         });
         if (project) {
             project.last_mass_invite_at = null;
+            project.last_mass_invite_sent_count = null;
         }
         if (typeof data.balance_bust !== 'undefined') {
             visibilityStats.balance_bust = Number(data.balance_bust || 0);

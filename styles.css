@@ -8621,52 +8621,6 @@ html[dir="rtl"] .guest-filter-select {
 }
 
 /* ── Reward Pool Details Breakdown ── */
-.ppc-reward-pool-grid {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px dashed rgba(168, 85, 247, 0.2);
-}
-
-.ppc-reward-pool-col {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    flex: 1;
-    min-width: 0;
-}
-
-/* Make the reward column slightly wider to prevent wrapping of the reward text */
-.ppc-reward-pool-col:last-child {
-    flex: 1.5;
-    align-items: flex-end;
-    text-align: right;
-}
-
-.ppc-reward-pool-label {
-    font-size: 10px;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.45);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-}
-
-.ppc-reward-pool-val {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-color);
-}
-
-.ppc-reward-highlight {
-    color: #c084fc;
-}
 
 /* ── Protected Header Shield ── */
 .ppc-protected-hero {

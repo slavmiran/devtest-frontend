@@ -721,6 +721,10 @@ function refreshOpenModals() {
     if (playReviewModal && playReviewModal.classList.contains('active') && window.renderPlayReviewModal) {
         window.renderPlayReviewModal();
     }
+    const massInviteModal = document.getElementById('mass-invite-modal');
+    if (massInviteModal && massInviteModal.classList.contains('active') && typeof window.renderMassInviteModalContent === 'function') {
+        window.renderMassInviteModalContent();
+    }
     const projectDetailsModal = document.getElementById('project-details-modal');
     if (projectDetailsModal && projectDetailsModal.classList.contains('active') && window.openProjectDetailsModal) {
         const activeProjectId = Number(projectDetailsModal.dataset.appId || 0);

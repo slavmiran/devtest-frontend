@@ -1364,6 +1364,11 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     const rewardPerTesterDay = (poolAmount > 0 && extraPaid > 0) ? (poolAmount / extraPaid / poolActiveTesters) : 0;
     const rewardPerTesterDayFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(rewardPerTesterDay, 1) : rewardPerTesterDay.toFixed(1);
 
+    const rewardText = (poolAmount > 0 && rewardPerTesterDay > 0)
+        ? T('ppcRewardPerTesterDay', { amount: rewardPerTesterDayFormatted })
+        : T('ppcRewardPerTesterDayZero');
+    const subtitleText = T('ppcRewardPoolSubtitle', { days: extraPaid, testers: rawTestersCount });
+
     // Pending release attention
     const pendingHtml = isPendingCompletion
         ? `<div style="background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.3);border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px;line-height:1.5;color:#ffb84d;font-weight:600;">${window.escapeHTML(window.t('pendingReleaseOwnerSyncHint', {}, lang))}</div>`
@@ -1431,26 +1436,16 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
             </div>
             <div class="ppc-reward-pool-desc">${window.escapeHTML(T('ppcRewardPoolDesc'))}</div>
 
-            <!-- Reward Pool Grid -->
-            <div class="ppc-reward-pool-grid">
-                <div class="ppc-reward-pool-col">
-                    <div class="ppc-reward-pool-label">${window.escapeHTML(T('ppcRewardPoolPaidDays'))}</div>
-                    <div class="ppc-reward-pool-val">${extraPaid > 0 ? extraPaid + (lang === 'ru' ? ' дн.' : 'd') : '—'}</div>
-                </div>
-                <div class="ppc-reward-pool-col">
-                    <div class="ppc-reward-pool-label">${window.escapeHTML(T('ppcRewardPoolActiveTesters'))}</div>
-                    <div class="ppc-reward-pool-val">${rawTestersCount > 0 ? rawTestersCount : '—'}</div>
-                </div>
-                <div class="ppc-reward-pool-col">
-                    <div class="ppc-reward-pool-label">${window.escapeHTML(T('ppcRewardPoolPerTester'))}</div>
-                    <div class="ppc-reward-pool-val ppc-reward-highlight">
-                        ${poolAmount > 0 && rewardPerTesterDay > 0 ? '~' + rewardPerTesterDayFormatted + ' BUST' : window.escapeHTML(T('ppcRewardPoolZeroFallback'))}
+            <div style="margin-top: 12px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div class="ppc-reward-per-tester-day" style="font-size: 13px; color: var(--text-color); font-weight: 600;">
+                        ${window.escapeHTML(rewardText)}
+                    </div>
+                    <div class="ppc-reward-pool-details-subtitle" style="font-size: 11px; color: rgba(255, 255, 255, 0.4); font-weight: 400;">
+                        ${window.escapeHTML(subtitleText)}
                     </div>
                 </div>
-            </div>
-
-            <div style="margin-top: 12px; display: flex; align-items: center; justify-content: flex-end;">
-                <button type="button" class="ppc-add-pool-btn" style="margin-top: 0;" onclick="openPpcTopUpModal()">
+                <button type="button" class="ppc-add-pool-btn" style="margin-top: 0; flex-shrink: 0;" onclick="openPpcTopUpModal()">
                     ${lang === 'ru' ? '+ Пополнить пул' : '+ Add to Pool'}
                 </button>
             </div>
@@ -1923,6 +1918,7 @@ function getProjectMassInviteMeta(project) {
     var remainingMs = Number.isFinite(parsedLastInvite)
         ? Math.max(0, (parsedLastInvite + 24 * 60 * 60 * 1000) - Date.now())
         : 0;
+    var lastSentCount = Math.max(0, Number(project && project.last_mass_invite_sent_count || 0));
 
     return {
         isEligibleMode: isEligibleMode,
@@ -1932,6 +1928,7 @@ function getProjectMassInviteMeta(project) {
         remainingMs: remainingMs,
         isCooldownActive: remainingMs > 0,
         isAvailable: isEligibleMode && maxRecipients > 0,
+        lastSentCount: lastSentCount,
     };
 }
 
@@ -3995,8 +3992,14 @@ function renderMassInviteModalContent() {
     let cooldownBlockHtml = '';
     if (!isIsolated && massInviteMeta.isCooldownActive) {
         const remainingTime = formatMassInviteRemaining(massInviteMeta.remainingMs);
+        const sentSummaryHtml = massInviteMeta.lastSentCount > 0
+            ? `<div class="mass-invite-sent-summary" style="font-size: 22px; font-weight: 800; color: #34c759; margin-bottom: 14px; padding: 14px 12px; background: rgba(52,199,89,0.14); border-radius: 12px; border: 1px solid rgba(52,199,89,0.35); line-height: 1.3;">
+                    ✅ ${window.escapeHTML(window.t('massInviteLastSentSummary', { count: massInviteMeta.lastSentCount }, lang))}
+                </div>`
+            : '';
         cooldownBlockHtml = `
             <div class="mass-invite-cooldown-container" style="margin-top: 14px; text-align: center;">
+                ${sentSummaryHtml}
                 <div class="mass-invite-timer" style="font-size: 16px; font-weight: 700; color: #ff9500; margin-bottom: 8px;">
                     ⏳ ${window.t('massInviteCooldownRemaining', { time: remainingTime }, lang)}
                 </div>
@@ -4049,4 +4052,5 @@ async function triggerResetCooldown(projectId) {
 window.openMassInviteModal = openMassInviteModal;
 window.closeMassInviteModal = closeMassInviteModal;
 window.triggerResetCooldown = triggerResetCooldown;
+window.renderMassInviteModalContent = renderMassInviteModalContent;
 
