@@ -1244,7 +1244,12 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     const remainingProtectionMs = extraPaid * 24 * 60 * 60 * 1000;
     
     const consumedPendingHours = Number(project.consumed_pending_hours || 0);
-    const remainingBufferMs = Math.max(0, 48 - consumedPendingHours) * 60 * 60 * 1000;
+    const remainingBufferHours = Math.max(0, 48 - consumedPendingHours);
+    const remainingBufferMs = remainingBufferHours * 60 * 60 * 1000;
+    
+    const activeProtectionText = lang === 'ru'
+        ? `${extraPaid} дн. + ${remainingBufferHours}ч`
+        : `${extraPaid}d + ${remainingBufferHours}h`;
 
     const totalRemainingMs = remainingActiveMs + remainingProtectionMs + remainingBufferMs;
     const archiveDate = new Date(nowTime + totalRemainingMs);
@@ -1390,8 +1395,8 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
                     <div class="ppc-metric-value green">${googleDay}<span style="font-size:13px;font-weight:500;color:var(--hint-color);">/14</span></div>
                 </div>
                 <div class="ppc-metric-item">
-                    <div class="ppc-metric-label">${window.escapeHTML(T('ppcProtectionRemainingLabel'))}</div>
-                    <div class="ppc-metric-value ${extraPaid > 0 ? 'green' : 'hint'}">${extraPaid > 0 ? extraPaid + (lang === 'ru' ? ' дн.' : 'd') : '—'}</div>
+                    <div class="ppc-metric-label">${window.escapeHTML(T('ppcActiveProtectionLabel'))}</div>
+                    <div class="ppc-metric-value green" style="font-size:15px;">${activeProtectionText}</div>
                 </div>
                 <div class="ppc-metric-item">
                     <div class="ppc-metric-label">${window.escapeHTML(T('ppcArchiveDateLabel'))}</div>
@@ -1426,20 +1431,21 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
             </div>
             <div class="ppc-reward-pool-desc">${window.escapeHTML(T('ppcRewardPoolDesc'))}</div>
 
-            <!-- Calculation Details -->
-            <div class="ppc-reward-pool-details">
-                <div class="ppc-reward-pool-details-title">${window.escapeHTML(T('ppcRewardPoolCalcTitle'))}</div>
-                <div class="ppc-reward-pool-details-row">
-                    <span>${window.escapeHTML(T('ppcRewardPoolPaidDays'))}</span>
-                    <span class="ppc-reward-pool-details-val">${extraPaid > 0 ? extraPaid + (lang === 'ru' ? ' дн.' : 'd') : '—'}</span>
+            <!-- Reward Pool Grid -->
+            <div class="ppc-reward-pool-grid">
+                <div class="ppc-reward-pool-col">
+                    <div class="ppc-reward-pool-label">${window.escapeHTML(T('ppcRewardPoolPaidDays'))}</div>
+                    <div class="ppc-reward-pool-val">${extraPaid > 0 ? extraPaid + (lang === 'ru' ? ' дн.' : 'd') : '—'}</div>
                 </div>
-                <div class="ppc-reward-pool-details-row">
-                    <span>${window.escapeHTML(T('ppcRewardPoolActiveTesters'))}</span>
-                    <span class="ppc-reward-pool-details-val">${rawTestersCount > 0 ? rawTestersCount : '—'}</span>
+                <div class="ppc-reward-pool-col">
+                    <div class="ppc-reward-pool-label">${window.escapeHTML(T('ppcRewardPoolActiveTesters'))}</div>
+                    <div class="ppc-reward-pool-val">${rawTestersCount > 0 ? rawTestersCount : '—'}</div>
                 </div>
-                <div class="ppc-reward-pool-details-row">
-                    <span>${window.escapeHTML(T('ppcRewardPoolPerTester'))}</span>
-                    <span class="ppc-reward-pool-details-val ppc-reward-highlight">${poolAmount > 0 && rewardPerTesterDay > 0 ? '~' + rewardPerTesterDayFormatted + ' BUST' : window.escapeHTML(T('ppcRewardPoolZeroFallback'))}</span>
+                <div class="ppc-reward-pool-col">
+                    <div class="ppc-reward-pool-label">${window.escapeHTML(T('ppcRewardPoolPerTester'))}</div>
+                    <div class="ppc-reward-pool-val ppc-reward-highlight">
+                        ${poolAmount > 0 && rewardPerTesterDay > 0 ? '~' + rewardPerTesterDayFormatted + ' BUST' : window.escapeHTML(T('ppcRewardPoolZeroFallback'))}
+                    </div>
                 </div>
             </div>
 
