@@ -1475,8 +1475,100 @@ async function openEarnBustModal() {
     }
 }
 
+function hasPendingFeedbackCheckins() {
+    return Object.keys(_pendingFeedbackCheckinAppIds || {}).length > 0;
+}
+
+function isTestFeedbackCheckinPending(appId) {
+    return !!(_pendingFeedbackCheckinAppIds && _pendingFeedbackCheckinAppIds[Number(appId || 0)]);
+}
+
+function markTestFeedbackCheckinPending(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return;
+    _pendingFeedbackCheckinAppIds[normalizedId] = Date.now();
+    applyTestFeedbackCheckinPendingUi(normalizedId);
+}
+
+function clearTestFeedbackCheckinPending(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return;
+    delete _pendingFeedbackCheckinAppIds[normalizedId];
+}
+
+function applyTestFeedbackCheckinPendingUi(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0 || !isTestFeedbackCheckinPending(normalizedId)) return;
+
+    var card = document.getElementById('test-card-' + normalizedId);
+    if (card) {
+        card.classList.add('card-feedback-pending');
+    }
+
+    var pendingLabel = window.t('feedbackCheckinPendingBtn', {}, lang);
+    var confirmBtn = document.getElementById('btn-confirm-' + normalizedId);
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
+        confirmBtn.style.color = 'var(--hint-color)';
+        confirmBtn.style.cursor = 'not-allowed';
+        confirmBtn.innerText = pendingLabel;
+        confirmBtn.onclick = null;
+    }
+
+    if (!card) return;
+    var splitBtn = card.querySelector('.split-btn-options');
+    if (splitBtn) {
+        splitBtn.disabled = true;
+        splitBtn.style.pointerEvents = 'none';
+        splitBtn.style.opacity = '0.55';
+    }
+}
+
+function clearCompletedPendingFeedbackCheckins() {
+    if (!hasPendingFeedbackCheckins()) return false;
+
+    var today = getLocalDate();
+    var completingIds = [];
+    Object.keys(_pendingFeedbackCheckinAppIds).forEach(function(key) {
+        var appId = Number(key);
+        var test = (myTests || []).find(function(item) {
+            return Number(item.id) === appId;
+        });
+        if (test && test.status === 'done' && String(test.last_check_date || '') === today) {
+            completingIds.push(appId);
+        }
+    });
+    if (!completingIds.length) return false;
+
+    var hasVisibleCard = completingIds.some(function(appId) {
+        return !!document.getElementById('test-card-' + appId);
+    });
+
+    completingIds.forEach(function(appId) {
+        var card = document.getElementById('test-card-' + appId);
+        if (card) card.classList.add('card-feedback-completing');
+        clearTestFeedbackCheckinPending(appId);
+    });
+
+    var rerender = function() {
+        if (typeof renderTests === 'function') renderTests(true);
+        if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
+    };
+
+    if (hasVisibleCard) {
+        setTimeout(rerender, 300);
+    } else {
+        rerender();
+    }
+    return true;
+}
+
 async function initiateProjectFeedback(appId, options) {
     options = options || {};
+    if (options.checkinContext) {
+        markTestFeedbackCheckinPending(appId);
+    }
     try {
         const response = await fetch(`${API_BASE}/feedback/initiate`, {
             method: 'POST',
@@ -1489,6 +1581,10 @@ async function initiateProjectFeedback(appId, options) {
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
+            if (options.checkinContext) {
+                clearTestFeedbackCheckinPending(appId);
+                if (typeof renderTests === 'function') renderTests(true);
+            }
             showToast(getApiErrorMessage(data, 'genericError'));
             return;
         }
@@ -1509,6 +1605,10 @@ async function initiateProjectFeedback(appId, options) {
         setTimeout(redirectToBotDmAndClose, 250);
     } catch (error) {
         console.error('Feedback initiate error:', error);
+        if (options.checkinContext) {
+            clearTestFeedbackCheckinPending(appId);
+            if (typeof renderTests === 'function') renderTests(true);
+        }
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }

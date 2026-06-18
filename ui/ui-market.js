@@ -2788,6 +2788,9 @@ function checkinOptionsIdea() {
     var checkinContext = _checkinOptionsIsControlDay && testingDay && localDate
         ? { day: Number(testingDay), local_date: localDate }
         : null;
+    if (flow !== 'external' && checkinContext) {
+        markTestFeedbackCheckinPending(appId);
+    }
     _closeCheckinOptionsModalImmediate();
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');

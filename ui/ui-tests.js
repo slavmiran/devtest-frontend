@@ -1384,6 +1384,9 @@ function renderTests(force) {
             if (isPendingForTester) {
                 card.className += ' card-pending-release';
             }
+            if (isTestFeedbackCheckinPending(test.id) && shouldShowInActiveList) {
+                card.className += ' card-feedback-pending';
+            }
         }
         card.id = `test-card-${test.id}`;
         const userTestingDay = getResolvedTestingDay(test);
@@ -1689,6 +1692,9 @@ function renderTests(force) {
         } else if (shouldShowInActiveList) {
             card.innerHTML = cardContent;
             activeList.appendChild(card);
+            if (isTestFeedbackCheckinPending(test.id)) {
+                applyTestFeedbackCheckinPendingUi(test.id);
+            }
             activeCount++;
         }
     });

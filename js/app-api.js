@@ -1450,8 +1450,14 @@ async function _loadTasksImpl(options) {
         var testsChanged = JSON.stringify(myTests) !== JSON.stringify(nextTests);
         if (testsChanged) {
             myTests = nextTests;
-            renderTests();
-            if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
+            var pendingHandled = typeof clearCompletedPendingFeedbackCheckins === 'function'
+                && clearCompletedPendingFeedbackCheckins();
+            if (!pendingHandled) {
+                renderTests();
+                if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
+            }
+        } else if (typeof clearCompletedPendingFeedbackCheckins === 'function') {
+            clearCompletedPendingFeedbackCheckins();
         }
 
         if (nextOffers !== null) {

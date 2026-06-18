@@ -541,6 +541,7 @@ var _activeProjectFeedbackArchived = false;
 var _feedbackRewardTargetId = null;
 var _feedbackRewardBust = 0;
 var _feedbackRewardKarma = 0;
+var _pendingFeedbackCheckinAppIds = {};
 var myProjectsLoadError = false;
 var marketCache = null;
 var MARKET_CACHE_KEY = 'market_cache_v1';

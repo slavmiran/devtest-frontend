@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!document.hidden) {
             _syncActiveTimerState();
+            if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
+                _lastFetchTimes.tests = 0;
+            }
             renderTests(true);
             loadTasks(true).catch(() => {});
             loadIncomingOffers({ background: true }).catch(() => {});
@@ -40,6 +43,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('focus', function() {
         _syncActiveTimerState();
+        if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
+            _lastFetchTimes.tests = 0;
+            loadTasks(true).catch(function() {});
+        }
         if (window.renderTests) window.renderTests(true);
     });
 
@@ -171,6 +178,12 @@ Object.assign(window, {
     buildCheckpointReportPrefill,
     sendCheckpointScreenshotAndConfirm,
     initiateProjectFeedback,
+    hasPendingFeedbackCheckins,
+    isTestFeedbackCheckinPending,
+    markTestFeedbackCheckinPending,
+    clearTestFeedbackCheckinPending,
+    applyTestFeedbackCheckinPendingUi,
+    clearCompletedPendingFeedbackCheckins,
     openProjectFeedback,
     sendProjectFeedbackMedia,
     openFeedbackRewardModal,

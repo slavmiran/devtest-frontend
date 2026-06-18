@@ -251,6 +251,17 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     border-color: rgba(52, 199, 89, 0.18);
 }
 
+.card-feedback-pending {
+    opacity: 0.7;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.card-feedback-completing {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    pointer-events: none;
+}
+
 .done-status-pill {
     display: inline-flex;
     align-items: center;
