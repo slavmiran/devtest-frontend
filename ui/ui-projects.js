@@ -885,6 +885,44 @@ function toggleKickReasonOther() {
 const _PPC_PRICING = [0, 50, 120, 210, 320, 450, 600, 770, 960];
 
 /**
+ * Formats a Date object to "DD MMM, HH:MM" or relative "TODAY/TOMORROW at HH:MM"
+ * @param {Date} date - date to format
+ * @param {string} lang - language code ('ru' or others)
+ * @returns {string} formatted date string
+ */
+function formatArchiveDate(date, lang) {
+    if (!date || Number.isNaN(date.getTime())) return '';
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+    
+    if (targetDate.getTime() === today.getTime()) {
+        return lang === 'ru' ? `СЕГОДНЯ в ${timeStr}` : `TODAY at ${timeStr}`;
+    } else if (targetDate.getTime() === tomorrow.getTime()) {
+        return lang === 'ru' ? `ЗАВТРА в ${timeStr}` : `TOMORROW at ${timeStr}`;
+    } else {
+        const day = date.getDate();
+        let monthStr = '';
+        if (lang === 'ru') {
+            const monthsRu = ['янв.', 'фев.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сен.', 'окт.', 'ноя.', 'дек.'];
+            monthStr = monthsRu[date.getMonth()];
+            return `${day} ${monthStr}, ${timeStr}`;
+        } else {
+            const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            monthStr = monthsEn[date.getMonth()];
+            return `${day} ${monthStr}, ${timeStr}`;
+        }
+    }
+}
+
+/**
  * Calculates the BUST cost for the protection gap.
  * @param {number} gapDays - (platformDay - googleDay), already clamped to 0-10
  * @param {number} alreadyPaidDays - days already covered by paid protection
@@ -910,6 +948,7 @@ function _ppcUpdateCalculations() {
     const platformDay = Number(slider.getAttribute('data-platform-day') || 0);
     const alreadyPaid = Number(slider.getAttribute('data-already-paid') || 0);
     const balance = Number(slider.getAttribute('data-balance') || 0);
+    const consumedPendingHours = Number(slider.getAttribute('data-consumed-pending-hours') || 0);
 
     const gap = Math.max(0, platformDay - googleDay);
     const protectionCost = _calcProtectionCost(gap, alreadyPaid);
@@ -928,55 +967,66 @@ function _ppcUpdateCalculations() {
     const dayDisplay = document.getElementById('ppc-slider-day-value');
     if (dayDisplay) dayDisplay.textContent = googleDay;
 
-    // Update gap block
-    const gapBlock = document.getElementById('ppc-gap-block');
-    const gapTitle = document.getElementById('ppc-gap-title');
-    const gapDesc = document.getElementById('ppc-gap-desc');
-    const gapCostEl = document.getElementById('ppc-gap-cost');
-    const bufferIndicator = document.getElementById('ppc-buffer-indicator');
-    const bufferFill = document.getElementById('ppc-buffer-progress-fill');
-    const bufferText = document.getElementById('ppc-buffer-indicator-text');
+    // Math Logic for States
+    const remainingBuffer = Math.max(0, 48 - consumedPendingHours);
+    const requiredBuffer = gap * 24;
 
-    const isFree = protectionCost === 0;
-
-    if (gapBlock && gapTitle && gapDesc) {
-        const extraDays = Math.max(0, gap - 2);
-        gapBlock.className = 'ppc-gap-block ' + (isFree ? 'free' : 'paid');
-
-        if (isFree) {
-            gapTitle.textContent = window.t('ppcFreeBufferNote', {}, lang);
-            gapDesc.textContent = gap === 0
-                ? (lang === 'ru' ? 'Дни совпадают — синхронизация не требует оплаты.' : 'Days match — no payment required.')
-                : window.t('ppcGapFreeLabel', {}, lang);
-            if (gapCostEl) gapCostEl.style.display = 'none';
-        } else {
-            gapTitle.textContent = window.t('ppcProtectionCostLabel', {}, lang);
-            gapDesc.textContent = window.t('ppcGapCostLabel', { days: extraDays }, lang);
-            if (gapCostEl) {
-                gapCostEl.textContent = protectionCost + ' BUST';
-                gapCostEl.style.display = 'block';
-            }
-        }
+    let state = 'A';
+    if (gap > 2) {
+        state = 'C';
+    } else if (remainingBuffer < requiredBuffer) {
+        state = 'B';
     }
 
-    // Update Safety Buffer indicator visibility & values
-    if (bufferIndicator && bufferFill && bufferText) {
-        if (isFree) {
-            bufferIndicator.style.display = 'block';
-            const consumedPendingHours = Number(slider.getAttribute('data-consumed-pending-hours') || 0);
-            const hoursLeft = Math.max(0, 48 - consumedPendingHours);
-            const fillPct = Math.round((hoursLeft / 48) * 100);
-            bufferFill.style.width = fillPct + '%';
-            bufferText.textContent = window.t('ppcBufferHoursLeft', { hours: hoursLeft }, lang) || `⏳ Safety Buffer: ${hoursLeft}h left`;
+    // Update Smart Status Block
+    const statusBlock = document.getElementById('ppc-status-block');
+    const T = (key, vars) => window.t(key, vars || {}, lang) || key;
+    if (statusBlock) {
+        let html = '';
+        if (state === 'A') {
+            statusBlock.className = 'ppc-status-block state-safe';
+            const fillPct = Math.round((remainingBuffer / 48) * 100);
+            html = `
+                <div class="ppc-status-title">${window.escapeHTML(T('ppcStateASafeTitle'))}</div>
+                <div class="ppc-status-text">${window.escapeHTML(T('ppcStateASafeText'))}</div>
+                <div class="ppc-status-buffer">
+                    <div class="ppc-status-buffer-text">${window.escapeHTML(T('ppcStateASafeBuffer', { hours: remainingBuffer }))}</div>
+                    <div class="ppc-status-progress-bar">
+                        <div class="ppc-status-progress-fill" style="width: ${fillPct}%;"></div>
+                    </div>
+                </div>
+            `;
+        } else if (state === 'B') {
+            statusBlock.className = 'ppc-status-block state-warning';
+            const fillPct = Math.round((remainingBuffer / 48) * 100);
+            html = `
+                <div class="ppc-status-title">${window.escapeHTML(T('ppcStateBWarningTitle'))}</div>
+                <div class="ppc-status-text">${window.escapeHTML(T('ppcStateBWarningText'))}</div>
+                <div class="ppc-status-buffer">
+                    <div class="ppc-status-buffer-text">${window.escapeHTML(T('ppcStateBWarningBuffer', { hours: remainingBuffer }))}</div>
+                    <div class="ppc-status-progress-bar">
+                        <div class="ppc-status-progress-fill" style="width: ${fillPct}%;"></div>
+                    </div>
+                </div>
+            `;
         } else {
-            bufferIndicator.style.display = 'none';
+            statusBlock.className = 'ppc-status-block state-required';
+            html = `
+                <div class="ppc-status-title">${window.escapeHTML(T('ppcStateCRequiredTitle'))}</div>
+                <div class="ppc-status-text">${window.escapeHTML(T('ppcStateCRequiredText'))}</div>
+            `;
         }
+        statusBlock.innerHTML = html;
     }
 
-    // Update Tip block visibility
-    const tipSection = document.getElementById('ppc-tip-section');
-    if (tipSection) {
-        tipSection.style.display = 'block';
+    // Auto-expand/collapse BUST purchase block
+    const purchaseBlock = document.getElementById('ppc-purchase-block');
+    if (purchaseBlock) {
+        if (state === 'C') {
+            purchaseBlock.style.display = 'block';
+        } else {
+            purchaseBlock.style.display = 'none';
+        }
     }
 
     // Update totals
@@ -1112,53 +1162,42 @@ function _renderProtectionCenterState1(project, platformDay) {
                 </div>
             </div>
 
-            <!-- Gap / Cost Block -->
-            <div class="ppc-gap-block ${initIsFree ? 'free' : 'paid'}" id="ppc-gap-block">
-                <div class="ppc-gap-title" id="ppc-gap-title">${initIsFree ? window.escapeHTML(T('ppcFreeBufferNote')) : window.escapeHTML(T('ppcProtectionCostLabel'))}</div>
-                <div class="ppc-gap-desc" id="ppc-gap-desc">${initIsFree ? '' : window.escapeHTML(T('ppcGapCostLabel', { days: Math.max(0, initGap - 2) }))}</div>
-                <div class="ppc-gap-cost" id="ppc-gap-cost" style="display:${initIsFree ? 'none' : 'block'};">${initCost} BUST</div>
-                
-                <!-- Safety Buffer Progress Bar (only shown when free) -->
-                <div id="ppc-buffer-indicator" style="display:${initIsFree ? 'block' : 'none'}; margin-top:8px;">
-                    <div style="font-size:11px; color:#34c759; font-weight:500; display:flex; justify-content:space-between; margin-bottom:4px;">
-                        <span id="ppc-buffer-indicator-text">${initIsFree ? window.escapeHTML(T('ppcBufferHoursLeft', { hours: Math.max(0, 48 - (project.consumed_pending_hours || 0)) })) : ''}</span>
-                    </div>
-                    <div class="ppc-buffer-progress-bar">
-                        <div class="ppc-buffer-progress-fill" id="ppc-buffer-progress-fill" style="width: ${initIsFree ? Math.round((Math.max(0, 48 - (project.consumed_pending_hours || 0)) / 48) * 100) : 100}%;"></div>
-                    </div>
-                </div>
-            </div>
+            <!-- Smart Status Block -->
+            <div id="ppc-status-block"></div>
 
-            <!-- Tip Counter -->
-            <div class="ppc-tip-section" id="ppc-tip-section" style="display:block;">
-                <div class="ppc-tip-label">${window.escapeHTML(T('ppcTipLabel'))}</div>
-                <div class="ppc-tip-hint">${window.escapeHTML(T('ppcTipHint'))}</div>
-                <div class="ppc-tip-row">
-                    <div class="ppc-tip-counter">
-                        <button class="ppc-tip-btn" type="button" onclick="_ppcChangeTip(-5)">−</button>
-                        <span class="ppc-tip-value" id="ppc-tip-value">0</span>
-                        <button class="ppc-tip-btn" type="button" onclick="_ppcChangeTip(5)">+</button>
-                    </div>
-                    <div class="ppc-tip-chips">
-                        <button class="ppc-tip-chip" type="button" onclick="_ppcAddTip(10)">+10</button>
-                        <button class="ppc-tip-chip" type="button" onclick="_ppcAddTip(50)">+50</button>
-                        <button class="ppc-tip-chip" type="button" onclick="_ppcAddTip(100)">+100</button>
+            <!-- purchase block containing Tip Counter + Finance Summary -->
+            <div id="ppc-purchase-block" style="display: none; margin-top: 14px;">
+                <!-- Tip Counter -->
+                <div class="ppc-tip-section" id="ppc-tip-section" style="display:block;">
+                    <div class="ppc-tip-label">${window.escapeHTML(T('ppcTipLabel'))}</div>
+                    <div class="ppc-tip-hint">${window.escapeHTML(T('ppcTipHint'))}</div>
+                    <div class="ppc-tip-row">
+                        <div class="ppc-tip-counter">
+                            <button class="ppc-tip-btn" type="button" onclick="_ppcChangeTip(-5)">−</button>
+                            <span class="ppc-tip-value" id="ppc-tip-value">0</span>
+                            <button class="ppc-tip-btn" type="button" onclick="_ppcChangeTip(5)">+</button>
+                        </div>
+                        <div class="ppc-tip-chips">
+                            <button class="ppc-tip-chip" type="button" onclick="_ppcAddTip(10)">+10</button>
+                            <button class="ppc-tip-chip" type="button" onclick="_ppcAddTip(50)">+50</button>
+                            <button class="ppc-tip-chip" type="button" onclick="_ppcAddTip(100)">+100</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Finance Summary -->
-            <div class="ppc-finance-block">
-                <div class="ppc-balance-row">
-                    <span>${window.escapeHTML(T('ppcBalanceLabel', { amount: '' })).replace('{amount}', '')}</span>
-                    <span class="ppc-balance-value">${window.escapeHTML(formatBustAmount ? formatBustAmount(balance) : String(balance))} BUST</span>
-                </div>
-                <div class="ppc-total-row">
-                    <span>${window.escapeHTML(T('ppcTotalCostLabel'))}</span>
-                    <span class="ppc-total-value${initCost > balance ? ' insufficient' : ''}" id="ppc-total-value">${initCost} BUST</span>
-                </div>
-                <div class="ppc-insufficient-note${initCost > balance ? ' visible' : ''}" id="ppc-insufficient-note">
-                    ${window.escapeHTML(T('ppcInsufficientFunds'))}
+                <!-- Finance Summary -->
+                <div class="ppc-finance-block">
+                    <div class="ppc-balance-row">
+                        <span>${window.escapeHTML(T('ppcBalanceLabel', { amount: '' })).replace('{amount}', '')}</span>
+                        <span class="ppc-balance-value">${window.escapeHTML(formatBustAmount ? formatBustAmount(balance) : String(balance))} BUST</span>
+                    </div>
+                    <div class="ppc-total-row">
+                        <span>${window.escapeHTML(T('ppcTotalCostLabel'))}</span>
+                        <span class="ppc-total-value${initCost > balance ? ' insufficient' : ''}" id="ppc-total-value">${initCost} BUST</span>
+                    </div>
+                    <div class="ppc-insufficient-note${initCost > balance ? ' visible' : ''}" id="ppc-insufficient-note">
+                        ${window.escapeHTML(T('ppcInsufficientFunds'))}
+                    </div>
                 </div>
             </div>
 
@@ -1186,18 +1225,25 @@ function _renderProtectionCenterState1(project, platformDay) {
 function _renderProtectionCenterState2(project, platformDay, googleDay) {
     const T = (key, vars) => window.t(key, vars || {}, lang) || key;
     const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
-    const today = parseLocalDateOnly(getLocalDate()) || new Date();
     const leftDays = Math.max(0, 14 - googleDay);
 
     const extraPaid = Number(project.paid_protection_days || 0);
     const protectionTotal = Math.max(0, leftDays + extraPaid);
 
-    // Estimated archive: platform day 16 + extraPaid + 1 (Day 17/Day 25)
-    const archivePlatformDay = 16 + extraPaid + 1;
-    const daysToArchive = Math.max(0, archivePlatformDay - platformDay);
-    const archiveDate = new Date(today);
-    archiveDate.setDate(archiveDate.getDate() + daysToArchive);
-    const archiveDateStr = archiveDate.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+    // Exact completion timestamp based on remaining active days, extraPaid, and remaining safety buffer hours
+    const createdTime = project.created_at ? new Date(project.created_at).getTime() : Date.now();
+    const activeEndTime = createdTime + (14 * 24 * 60 * 60 * 1000);
+    const nowTime = Date.now();
+
+    const remainingActiveMs = Math.max(0, activeEndTime - nowTime);
+    const remainingProtectionMs = extraPaid * 24 * 60 * 60 * 1000;
+    
+    const consumedPendingHours = Number(project.consumed_pending_hours || 0);
+    const remainingBufferMs = Math.max(0, 48 - consumedPendingHours) * 60 * 60 * 1000;
+
+    const totalRemainingMs = remainingActiveMs + remainingProtectionMs + remainingBufferMs;
+    const archiveDate = new Date(nowTime + totalRemainingMs);
+    const archiveDateStr = formatArchiveDate(archiveDate, lang);
 
     // Last sync note
     const lastSyncDate = parseLocalDateOnly(project.last_sync_date);

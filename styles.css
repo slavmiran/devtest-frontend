@@ -8886,5 +8886,74 @@ html[dir="rtl"] .guest-filter-select {
 }
 .ppc-topup-cancel:active { background: rgba(255, 255, 255, 0.1); }
 
+/* ── Smart Status Block ── */
+.ppc-status-block {
+    margin-top: 14px;
+    border-radius: 12px;
+    padding: 14px;
+    border: 1px solid transparent;
+    transition: background 0.25s, border-color 0.25s;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.ppc-status-block.state-safe {
+    background: rgba(52, 199, 89, 0.08);
+    border-color: rgba(52, 199, 89, 0.25);
+}
+.ppc-status-block.state-warning {
+    background: rgba(255, 149, 0, 0.08);
+    border-color: rgba(255, 149, 0, 0.3);
+}
+.ppc-status-block.state-required {
+    background: rgba(168, 85, 247, 0.08);
+    border-color: rgba(168, 85, 247, 0.3);
+}
+.ppc-status-title {
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ppc-status-block.state-safe .ppc-status-title { color: #34c759; }
+.ppc-status-block.state-warning .ppc-status-title { color: #ff9500; }
+.ppc-status-block.state-required .ppc-status-title { color: #a855f7; }
+
+.ppc-status-text {
+    font-size: 12px;
+    color: var(--hint-color);
+    line-height: 1.45;
+}
+
+.ppc-status-buffer {
+    margin-top: 4px;
+}
+.ppc-status-buffer-text {
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.ppc-status-block.state-safe .ppc-status-buffer-text { color: #34c759; }
+.ppc-status-block.state-warning .ppc-status-buffer-text { color: #ff3b30; }
+
+.ppc-status-progress-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.ppc-status-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.25s ease, background-color 0.25s;
+}
+.ppc-status-block.state-safe .ppc-status-progress-fill {
+    background-color: #34c759;
+}
+.ppc-status-block.state-warning .ppc-status-progress-fill {
+    background-color: #ff3b30;
+}
+
 
 
