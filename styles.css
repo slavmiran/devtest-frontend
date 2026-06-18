@@ -48,9 +48,15 @@
     --danger-border: rgba(255, 90, 95, 0.24);
 
     /* --- Extended meaning: security (protection / reliability / trust ONLY) --- */
-    --security: #7C83FF;
-    --security-surface: rgba(124, 131, 255, 0.12);
-    --security-border: rgba(124, 131, 255, 0.24);
+    --security: #38B6E6;
+    --security-surface: rgba(56, 182, 230, 0.12);
+    --security-border: rgba(56, 182, 230, 0.24);
+
+    /* --- Extended meaning: reward (contracts / economy / $BUST ONLY) --- */
+    --reward: #A07BFF;
+    --reward-hover: #8B68F0;
+    --reward-surface: rgba(160, 123, 255, 0.12);
+    --reward-border: rgba(160, 123, 255, 0.24);
 
     /* --- Extended meaning: info-alt (external tracking / source / secondary info ONLY) --- */
     --info-alt: #2DD4BF;
@@ -82,6 +88,22 @@
     --accent-color: var(--border-strong);
     --card-bg: var(--bg-surface-1);
     --destructive-color: var(--danger);
+
+    /* =========================================================
+       PROJECT-CARD STAGE ALIASES (aliases over role tokens)
+       Stage colors are maximally distinct: green / cyan-blue / amber
+       ========================================================= */
+    --stage-active:           var(--success);
+    --stage-active-surface:   var(--success-surface);
+    --stage-active-border:    var(--success-border);
+
+    --stage-protection:         var(--security);
+    --stage-protection-surface: var(--security-surface);
+    --stage-protection-border:  var(--security-border);
+
+    --stage-buffer:           var(--warning);
+    --stage-buffer-surface:   var(--warning-surface);
+    --stage-buffer-border:    var(--warning-border);
 }
 
 * {
@@ -122,6 +144,8 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     transform-origin: top center;
     opacity: 1;
+    position: relative;
+    overflow: hidden;
 }
 
 .card.removing {
@@ -7018,22 +7042,137 @@ html[dir="rtl"] .guest-filter-select {
     color: var(--text-color);
 }
 
-/* ── Overtime project card highlighting ── */
+/* ══════════════════════════════════════════════════════════════
+   PROJECT-CARD STAGE SYSTEM (My Projects)
+   Three stages, maximally distinct: green / cyan-blue / amber
+   Each stage = rail (left border) + border color + badge
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Base stage rail & border on any staged card ── */
+.card.card-stage-active,
+.card.card-stage-protection,
+.card.card-stage-buffer {
+    border-width: 1px 1px 1px 1px;
+    border-style: solid;
+}
+
+/* Rail: thicker left edge for at-a-glance stage recognition */
+.card.card-stage-active::before,
+.card.card-stage-protection::before,
+.card.card-stage-buffer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: 16px 0 0 16px;
+}
+
+/* ── Stage 1: Active Testing (green) ── */
+.card.card-stage-active {
+    border-color: var(--stage-active-border);
+}
+.card.card-stage-active::before {
+    background: var(--stage-active);
+}
+
+/* ── Stage 2: Extended Protection (blue-cyan) ── */
+.card.card-stage-protection {
+    border-color: var(--stage-protection-border);
+    box-shadow: 0 0 12px var(--stage-protection-surface);
+}
+.card.card-stage-protection::before {
+    background: var(--stage-protection);
+}
+
+/* ── Stage 3: Safety Buffer (amber) ── */
+.card.card-stage-buffer {
+    border-color: var(--stage-buffer-border);
+    box-shadow: 0 0 14px var(--stage-buffer-surface);
+}
+.card.card-stage-buffer::before {
+    background: var(--stage-buffer);
+}
+
+/* ── Stage badges (pills in card header) ── */
+.card-stage-badge-active,
+.card-stage-badge-protection,
+.card-stage-badge-buffer {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    border: 1px solid transparent;
+}
+
+.card-stage-badge-active {
+    background: var(--stage-active-surface);
+    color: var(--stage-active);
+    border-color: var(--stage-active-border);
+}
+.card-stage-badge-protection {
+    background: var(--stage-protection-surface);
+    color: var(--stage-protection);
+    border-color: var(--stage-protection-border);
+}
+.card-stage-badge-buffer {
+    background: var(--stage-buffer-surface);
+    color: var(--stage-buffer);
+    border-color: var(--stage-buffer-border);
+}
+
+/* ── Override legacy accent-red chips inside staged cards ── */
+.card.card-stage-protection .meta-chip.accent-red {
+    background: var(--stage-protection-surface) !important;
+    color: var(--stage-protection) !important;
+    border-color: var(--stage-protection-border) !important;
+}
+.card.card-stage-buffer .meta-chip.accent-red {
+    background: var(--stage-buffer-surface) !important;
+    color: var(--stage-buffer) !important;
+    border-color: var(--stage-buffer-border) !important;
+}
+
+/* ── Legacy Overtime / Pending-Release: keep as stage aliases ── */
 .card.card-overtime {
-    border: 1px solid rgba(255, 149, 0, 0.35);
-    box-shadow: 0 0 12px rgba(255, 149, 0, 0.15);
+    border-color: var(--stage-protection-border);
+    box-shadow: 0 0 12px var(--stage-protection-surface);
+}
+.card.card-overtime::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: 16px 0 0 16px;
+    background: var(--stage-protection);
 }
 
 .card.card-pending-release {
-    opacity: 0.78;
-    border: 1px solid rgba(255, 184, 77, 0.3);
-    box-shadow: 0 0 14px rgba(255, 184, 77, 0.08);
+    border-color: var(--stage-buffer-border);
+    box-shadow: 0 0 14px var(--stage-buffer-surface);
+}
+.card.card-pending-release::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: 16px 0 0 16px;
+    background: var(--stage-buffer);
 }
 
 .pending-release-chip {
-    background: rgba(255, 184, 77, 0.14) !important;
-    color: #ffb84d !important;
-    border: 1px solid rgba(255, 184, 77, 0.28) !important;
+    background: var(--stage-buffer-surface) !important;
+    color: var(--stage-buffer) !important;
+    border-color: var(--stage-buffer-border) !important;
 }
 
 @keyframes pulse-attention {
@@ -8593,7 +8732,7 @@ html[dir="rtl"] .guest-filter-select {
 
 .ppc-phase-dot.green { background: var(--success); border-color: var(--success); }
 .ppc-phase-dot.yellow { background: #ffcc00; border-color: #ffcc00; }
-.ppc-phase-dot.star { background: #a855f7; border-color: #a855f7; }
+.ppc-phase-dot.star { background: var(--reward); border-color: var(--reward); }
 .ppc-phase-dot.blue { background: #007aff; border-color: #007aff; }
 .ppc-phase-dot.archive { background: var(--hint-color); border-color: var(--hint-color); }
 
@@ -8638,8 +8777,8 @@ html[dir="rtl"] .guest-filter-select {
 
 /* ── Reward Pool Card ── */
 .ppc-reward-pool-card {
-    background: linear-gradient(135deg, rgba(168, 85, 247, 0.06), rgba(168, 85, 247, 0.02));
-    border: 1px solid rgba(168, 85, 247, 0.18);
+    background: var(--bg-surface-1);
+    border: 1px solid var(--reward-border);
     border-radius: 16px;
     padding: 16px;
     margin-bottom: 14px;
@@ -8670,14 +8809,15 @@ html[dir="rtl"] .guest-filter-select {
 .ppc-reward-pool-amount {
     font-size: 18px;
     font-weight: 800;
-    color: #a855f7;
+    color: var(--reward);
     line-height: 1.2;
 }
 
 .ppc-reward-pool-status {
     font-size: 11px;
     font-weight: 600;
-    color: rgba(168, 85, 247, 0.75);
+    color: var(--reward);
+    opacity: 0.75;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-top: 1px;
@@ -8848,15 +8988,15 @@ html[dir="rtl"] .guest-filter-select {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(168, 85, 247, 0.08);
-    border: 1px solid rgba(168, 85, 247, 0.2);
+    background: var(--reward-surface);
+    border: 1px solid var(--reward-border);
     border-radius: 12px;
     padding: 10px 14px;
     margin-bottom: 18px;
     font-size: 13px;
 }
 .ppc-topup-pool-label { color: var(--hint-color); }
-.ppc-topup-pool-value { font-weight: 700; color: #a855f7; }
+.ppc-topup-pool-value { font-weight: 700; color: var(--reward); }
 .ppc-topup-counter-row {
     display: flex;
     align-items: center;
@@ -8869,8 +9009,8 @@ html[dir="rtl"] .guest-filter-select {
     height: 44px;
     border-radius: 50%;
     border: none;
-    background: rgba(168, 85, 247, 0.15);
-    color: #a855f7;
+    background: var(--reward-surface);
+    color: var(--reward);
     font-size: 24px;
     font-weight: 700;
     cursor: pointer;
@@ -8880,7 +9020,7 @@ html[dir="rtl"] .guest-filter-select {
     transition: background 0.18s, transform 0.1s;
     flex-shrink: 0;
 }
-.ppc-topup-step-btn:active { transform: scale(0.92); background: rgba(168, 85, 247, 0.3); }
+.ppc-topup-step-btn:active { transform: scale(0.92); background: var(--reward-border); }
 .ppc-topup-counter-wrap {
     display: flex;
     align-items: baseline;
@@ -8909,15 +9049,15 @@ html[dir="rtl"] .guest-filter-select {
     max-width: 90px;
     padding: 8px 0;
     border-radius: 10px;
-    border: 1px solid rgba(168, 85, 247, 0.3);
-    background: rgba(168, 85, 247, 0.1);
-    color: #a855f7;
+    border: 1px solid var(--reward-border);
+    background: var(--reward-surface);
+    color: var(--reward);
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
     transition: background 0.18s, transform 0.1s;
 }
-.ppc-topup-chip:active { transform: scale(0.95); background: rgba(168, 85, 247, 0.25); }
+.ppc-topup-chip:active { transform: scale(0.95); opacity: 0.8; }
 .ppc-topup-balance-row {
     display: flex;
     justify-content: space-between;
@@ -8931,8 +9071,8 @@ html[dir="rtl"] .guest-filter-select {
     padding: 14px;
     border-radius: 14px;
     border: none;
-    background: linear-gradient(135deg, #a855f7, #7c3aed);
-    color: #fff;
+    background: linear-gradient(135deg, var(--reward), var(--reward-hover));
+    color: var(--text-on-accent);
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
@@ -8975,8 +9115,8 @@ html[dir="rtl"] .guest-filter-select {
     border-color: rgba(255, 149, 0, 0.3);
 }
 .ppc-status-block.state-required {
-    background: rgba(168, 85, 247, 0.08);
-    border-color: rgba(168, 85, 247, 0.3);
+    background: var(--reward-surface);
+    border-color: var(--reward-border);
 }
 .ppc-status-title {
     font-size: 13px;
@@ -8987,7 +9127,7 @@ html[dir="rtl"] .guest-filter-select {
 }
 .ppc-status-block.state-safe .ppc-status-title { color: var(--success); }
 .ppc-status-block.state-warning .ppc-status-title { color: #ff9500; }
-.ppc-status-block.state-required .ppc-status-title { color: #a855f7; }
+.ppc-status-block.state-required .ppc-status-title { color: var(--reward); }
 
 .ppc-status-text {
     font-size: 12px;
@@ -9038,11 +9178,8 @@ html[dir="rtl"] .guest-filter-select {
 .ppc-status-cost-amount {
     font-size: 28px;
     font-weight: 800;
-    color: #a855f7;
+    color: var(--reward);
     letter-spacing: -0.5px;
     line-height: 1.25;
 }
-
-
-
 

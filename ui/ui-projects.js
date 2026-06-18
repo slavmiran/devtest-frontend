@@ -169,8 +169,9 @@ function renderProjects(force) {
         const hasNewFeedback = (project.feedback_new_count || 0) > 0;
         const requiresAttention = needsSyncAttention || hasNewFeedback;
         let cardClass = isInactive ? 'card card-inactive' : 'card';
-        if (isOvertime) cardClass += ' card-overtime';
-        if (isPendingCompletion) cardClass += ' card-pending-release';
+        if (!isInactive && !isOvertime && !isPendingCompletion) cardClass += ' card-stage-active';
+        if (isOvertime) cardClass += ' card-overtime card-stage-protection';
+        if (isPendingCompletion) cardClass += ' card-pending-release card-stage-buffer';
         const pendingIssueTesters = (project.testers || []).filter((tester) => !!tester.issue_reported_at && !tester.issue_fixed_at);
         const hasAccessOverlay = project.status === 'access_error' && pendingIssueTesters.length > 0;
 
@@ -398,15 +399,20 @@ function renderProjects(force) {
             if (project.target_lang && project.target_lang !== 'ALL') {
                 badges += getLangBadge(project.target_lang);
             }
+            const _stageBadgeAdded = !!(isPendingCompletion || isOvertime);
 
             if (isPendingCompletion) {
                 const _pendingHoursLeft = Math.max(0, 48 - Number(project.consumed_pending_hours || 0));
                 const _pendingChipText = window.t('ppcBufferHoursLeft', { hours: _pendingHoursLeft }, lang) || `⏳ Safety Buffer: ${_pendingHoursLeft}h left`;
-                badges += `<button class="meta-chip accent-red" onclick="showPendingReleaseInfo()">${window.escapeHTML(_pendingChipText)}</button>`;
+                badges += `<button class="card-stage-badge-buffer" onclick="showPendingReleaseInfo()">${window.escapeHTML(_pendingChipText)}</button>`;
             }
 
             if (isOvertime) {
-                badges += `<span class="meta-chip accent-red" style="font-weight:600;">${window.escapeHTML(window.t('overtimeBadge', {}, lang))}</span>`;
+                badges += `<span class="card-stage-badge-protection">${window.escapeHTML(window.t('cardStageProtectionBadge', {}, lang))}</span>`;
+            }
+
+            if (!_stageBadgeAdded) {
+                badges += `<span class="card-stage-badge-active">${window.escapeHTML(window.t('cardStageActiveBadge', {}, lang))}</span>`;
             }
 
             if (isProjectSynced(project)) {
@@ -4053,4 +4059,3 @@ window.openMassInviteModal = openMassInviteModal;
 window.closeMassInviteModal = closeMassInviteModal;
 window.triggerResetCooldown = triggerResetCooldown;
 window.renderMassInviteModalContent = renderMassInviteModalContent;
-

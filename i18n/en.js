@@ -571,6 +571,8 @@
             syncBtnSubtitleBefore: "Play Console Data",
             syncBtnTitleAfter: "🛡 Protected",
             syncBtnTitleAfterDays: "🛡 Protected +{days}d",
+            cardStageActiveBadge: "▶ Active",
+            cardStageProtectionBadge: "\uD83D\uDEE1 Protected",
             ppcBufferHoursLeft: "⏳ Safety Buffer: {hours}h left",
             ppcRewardPerTesterDay: "Reward: ~{amount} BUST / day",
             ppcRewardPerTesterDayZero: "Reward: ~0 BUST / day (Only +0.5 Karma)",
