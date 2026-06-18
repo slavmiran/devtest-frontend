@@ -400,7 +400,9 @@ function renderProjects(force) {
             }
 
             if (isPendingCompletion) {
-                badges += `<button class="meta-chip accent-red" onclick="showPendingReleaseInfo()">${window.escapeHTML(window.t('pendingReleaseChip', {}, lang))}</button>`;
+                const _pendingHoursLeft = Math.max(0, 48 - Number(project.consumed_pending_hours || 0));
+                const _pendingChipText = window.t('ppcBufferHoursLeft', { hours: _pendingHoursLeft }, lang) || `⏳ Safety Buffer: ${_pendingHoursLeft}h left`;
+                badges += `<button class="meta-chip accent-red" onclick="showPendingReleaseInfo()">${window.escapeHTML(_pendingChipText)}</button>`;
             }
 
             if (isOvertime) {
@@ -408,7 +410,8 @@ function renderProjects(force) {
             }
 
             if (isProjectSynced(project)) {
-                const extraPaid = Number(project.paid_protection_days || 0);
+                // Fallback for legacy projects that may use purchased_protection_days instead of paid_protection_days
+                const extraPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0);
                 const protectedText = extraPaid > 0
                     ? window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang)
                     : window.t('ppcProtectedBadge', {}, lang);
@@ -479,7 +482,7 @@ function renderProjects(force) {
                 syncBtnTitle = window.t('syncBtnTitleBefore', {}, lang) || '🛡 Setup Protection';
                 return window.t('syncBtnSubtitleBefore', {}, lang) || 'Play Console Data';
             }
-            const extraPaid = Number(project.paid_protection_days || 0);
+            const extraPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0);
             syncBtnTitle = extraPaid > 0 
                 ? window.t('syncBtnTitleAfterDays', { days: extraPaid }, lang) || `🛡 Protected +${extraPaid}d`
                 : window.t('syncBtnTitleAfter', {}, lang) || '🛡 Protected';
@@ -1091,7 +1094,7 @@ function _renderProtectionCenterState1(project, platformDay) {
     const balance = (visibilityStats && typeof visibilityStats.balance_bust !== 'undefined')
         ? Number(visibilityStats.balance_bust || 0)
         : 0;
-    const alreadyPaid = Number(project.paid_protection_days || 0); // backend field, 0 by default
+    const alreadyPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0); // backend field, 0 by default
 
     // Slider bounds: min = max(1, platformDay-10) up to 14, max = 14
     const sliderMax = 14;
@@ -1229,7 +1232,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
     const leftDays = Math.max(0, 14 - googleDay);
 
-    const extraPaid = Number(project.paid_protection_days || 0);
+    const extraPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0);
     const protectionTotal = Math.max(0, leftDays + extraPaid);
 
     // Exact completion timestamp based on remaining active days, extraPaid, and remaining safety buffer hours
@@ -1350,8 +1353,10 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
 
     // Reward pool
     const poolAmount = Number(project.protection_bust_pool || 0);
-    const poolActiveTesters = Math.max(1, Number(project.active_testers_count || 0) || (Array.isArray(project.testers) ? project.testers.filter(function(t) { return !t.is_guest_tester && !t.is_external; }).length : 0) || 1);
-    const rewardPerTesterDay = poolAmount > 0 ? (poolAmount / Math.max(1, extraPaid) / poolActiveTesters) : 0;
+    const rawTestersCount = Number(project.active_testers_count || 0) || (Array.isArray(project.testers) ? project.testers.filter(function(t) { return !t.is_guest_tester && !t.is_external; }).length : 0);
+    const poolActiveTesters = Math.max(1, rawTestersCount);
+    // Per-tester-per-day: pool / protection_days / testers. Guard against zero pool and zero days (legacy).
+    const rewardPerTesterDay = (poolAmount > 0 && extraPaid > 0) ? (poolAmount / extraPaid / poolActiveTesters) : 0;
     const rewardPerTesterDayFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(rewardPerTesterDay, 1) : rewardPerTesterDay.toFixed(1);
 
     // Pending release attention
@@ -1386,7 +1391,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
                 </div>
                 <div class="ppc-metric-item">
                     <div class="ppc-metric-label">${window.escapeHTML(T('ppcProtectionRemainingLabel'))}</div>
-                    <div class="ppc-metric-value ${protectionTotal > 0 ? 'green' : 'hint'}">${protectionTotal > 0 ? protectionTotal + (lang === 'ru' ? ' дн.' : 'd') : '—'}</div>
+                    <div class="ppc-metric-value ${extraPaid > 0 ? 'green' : 'hint'}">${extraPaid > 0 ? extraPaid + (lang === 'ru' ? ' дн.' : 'd') : '—'}</div>
                 </div>
                 <div class="ppc-metric-item">
                     <div class="ppc-metric-label">${window.escapeHTML(T('ppcArchiveDateLabel'))}</div>
@@ -1420,10 +1425,25 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
                 </div>
             </div>
             <div class="ppc-reward-pool-desc">${window.escapeHTML(T('ppcRewardPoolDesc'))}</div>
-            <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                <div class="ppc-reward-per-tester-day" style="font-size: 13px; color: var(--hint-color); font-weight: 500;">
-                    ${window.escapeHTML(T('ppcRewardPerTesterDay', { amount: rewardPerTesterDayFormatted }))}
+
+            <!-- Calculation Details -->
+            <div class="ppc-reward-pool-details">
+                <div class="ppc-reward-pool-details-title">${window.escapeHTML(T('ppcRewardPoolCalcTitle'))}</div>
+                <div class="ppc-reward-pool-details-row">
+                    <span>${window.escapeHTML(T('ppcRewardPoolPaidDays'))}</span>
+                    <span class="ppc-reward-pool-details-val">${extraPaid > 0 ? extraPaid + (lang === 'ru' ? ' дн.' : 'd') : '—'}</span>
                 </div>
+                <div class="ppc-reward-pool-details-row">
+                    <span>${window.escapeHTML(T('ppcRewardPoolActiveTesters'))}</span>
+                    <span class="ppc-reward-pool-details-val">${rawTestersCount > 0 ? rawTestersCount : '—'}</span>
+                </div>
+                <div class="ppc-reward-pool-details-row">
+                    <span>${window.escapeHTML(T('ppcRewardPoolPerTester'))}</span>
+                    <span class="ppc-reward-pool-details-val ppc-reward-highlight">${poolAmount > 0 && rewardPerTesterDay > 0 ? '~' + rewardPerTesterDayFormatted + ' BUST' : window.escapeHTML(T('ppcRewardPoolZeroFallback'))}</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 12px; display: flex; align-items: center; justify-content: flex-end;">
                 <button type="button" class="ppc-add-pool-btn" style="margin-top: 0;" onclick="openPpcTopUpModal()">
                     ${lang === 'ru' ? '+ Пополнить пул' : '+ Add to Pool'}
                 </button>
