@@ -3054,6 +3054,8 @@ details[open] > summary .details-arrow {
 .meta-chip.accent-orange { background: rgba(255,149,0,0.15); color: #ff9500; }
 .meta-chip.accent-purple { background: rgba(175, 82, 222, 0.15); color: #af52de; }
 .meta-chip.accent-red { background: rgba(255,59,48,0.15); color: var(--danger); }
+.meta-chip.accent-protection { background: var(--stage-protection-surface); color: var(--stage-protection); border: 1px solid var(--stage-protection-border); }
+.meta-chip.accent-buffer { background: var(--stage-buffer-surface); color: var(--stage-buffer); border: 1px solid var(--stage-buffer-border); }
 
 .dev-instruction {
     margin-top: 10px;
@@ -9285,5 +9287,107 @@ html[dir="rtl"] .guest-filter-select {
     color: var(--reward);
     letter-spacing: -0.5px;
     line-height: 1.25;
+}
+
+/* ── Tester Project Details Protection & Buffer Custom Styles ── */
+.protection-details-card {
+    background: var(--bg-surface-muted);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-subtle);
+}
+
+.protection-details-card.stage-protection {
+    border-color: var(--stage-protection-border);
+    box-shadow: 0 0 12px var(--stage-protection-surface);
+}
+
+.protection-details-card.stage-buffer {
+    border-color: var(--stage-buffer-border);
+    box-shadow: 0 0 14px var(--stage-buffer-surface);
+}
+
+/* Warnings and Rewards Insets */
+.protection-warning-inset {
+    background: var(--warning-surface);
+    color: var(--warning);
+    border: 1px solid var(--warning-border);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    font-weight: 500;
+    margin-top: 10px;
+}
+
+.protection-reward-chip {
+    display: inline-block;
+    background: var(--reward-surface);
+    color: var(--reward);
+    border: 1px solid var(--reward-border);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 10px;
+}
+
+/* Pulse color override for positive pre-release tone */
+.sync-last-day-chip {
+    background: var(--stage-buffer-surface) !important;
+    color: var(--stage-buffer) !important;
+    border: 1px solid var(--stage-buffer-border) !important;
+    animation: pulse-attention 2s ease-in-out infinite;
+}
+
+/* Refactored compact overtime progress bar (Stage 2 & 3) */
+.grant-progress-container.is-overtime {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 2px 0;
+}
+
+.grant-progress-container.is-overtime .grant-segment {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    min-width: 14px;
+    border: 1px solid var(--border-subtle);
+    margin: 0;
+}
+
+/* Colors for overtime segments */
+.grant-progress-container.is-overtime .grant-segment.overtime-checkin,
+.grant-progress-container.is-overtime .grant-segment.overtime-skip {
+    background: var(--stage-protection);
+    border-color: var(--stage-protection-border);
+}
+
+.grant-progress-container.is-overtime .grant-segment.remaining {
+    background: var(--text-secondary);
+    opacity: 0.4;
+    border-color: transparent;
+}
+
+.grant-progress-container.is-overtime .grant-segment.current-pending,
+.grant-progress-container.is-overtime .grant-segment.current-pending-overtime,
+.grant-progress-container.is-overtime .grant-segment.current-completed {
+    background: var(--stage-protection);
+    border-color: var(--stage-protection-border);
+    animation: protection-dot-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes protection-dot-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 4px var(--stage-protection);
+    }
+    50% {
+        transform: scale(1.2);
+        box-shadow: 0 0 12px var(--stage-protection);
+    }
 }
 

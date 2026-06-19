@@ -3526,27 +3526,69 @@ function openProjectDetailsModal(appId) {
 
     const syncHtml = (() => {
         if (!timelineMeta.isSynced) return '';
-        const finishDateText = window.escapeHTML(formatDdMmYyyy(timelineMeta.finishDate));
+        const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
         const poolAmount = Number(test.protection_bust_pool || 0);
-        let bonusHtml = '';
-        if (poolAmount > 0) {
-            bonusHtml = '<div style="font-size:13px;color:#34c759;margin-top:6px;font-weight:600;">' + window.escapeHTML(window.t('ppcProtectionBonusAvailable', { amount: poolAmount }, lang)) + '</div>';
+        const finishDateText = window.escapeHTML(formatDdMmYyyy(timelineMeta.finishDate));
+        
+        const isPendingCompletion = String(test.app_status || test.status || '').toLowerCase() === 'pending_completion';
+        const consumedPendingHours = Number(test.consumed_pending_hours || 0);
+        const pendingStartedAt = test.pending_completion_started_at ? new Date(test.pending_completion_started_at).getTime() : null;
+        
+        let remainingBufferHours;
+        if (isPendingCompletion && pendingStartedAt) {
+            remainingBufferHours = Math.max(0, 48 - consumedPendingHours);
+        } else {
+            remainingBufferHours = 48;
         }
-        return '<div class="details-block' + (timelineMeta.isLastDay ? ' sync-last-day-block' : '') + '"' + (timelineMeta.isLastDay ? ' onclick="showSyncLastDayNotice(event)" style="cursor:pointer;"' : '') + '>' +
-            '<div style="font-size:14px;font-weight:700;color:#34c759;margin-bottom:6px;">' + window.escapeHTML(window.t('projectSyncedTitle', {}, lang)) + '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:4px;">' +
-                '<div style="font-size:13px;color:var(--hint-color);">' + window.escapeHTML(window.t('syncEstimatedFinish', { date: finishDateText }, lang)) + '</div>' +
+        const bufferFillPercent = Math.min(100, Math.max(0, (consumedPendingHours / 48) * 100));
+
+        const cardTitle = extraPaid > 0
+            ? (window.t('ppcTimelineExtra', {}, lang) || 'Extended Protection')
+            : (window.t('ppcTimelinePending', {}, lang) || 'Safety Buffer');
+
+        const cardClass = extraPaid > 0 ? 'stage-protection' : 'stage-buffer';
+        const titleColor = extraPaid > 0 ? 'var(--stage-protection)' : 'var(--stage-buffer)';
+
+        const remainingDaysText = lang === 'ru'
+            ? `Осталось: ~${progressData.remainingDays} дн. (Ориентировочно до ${finishDateText})`
+            : `Remaining: ~${progressData.remainingDays} days (Estimated until ${finishDateText})`;
+
+        let bonusHtml = '';
+        if (extraPaid > 0 && poolAmount > 0) {
+            bonusHtml = '<div class="protection-reward-chip">' + 
+                window.escapeHTML(window.t('ppcProtectionBonusAvailable', { amount: poolAmount }, lang)) + 
+            '</div>';
+        }
+
+        let bufferProgressHtml = '';
+        if (extraPaid === 0) {
+            const bufferTitleText = lang === 'ru' ? 'Буфер безопасности (48ч)' : 'Safety Buffer (48h)';
+            const bufferRemainingText = lang === 'ru' ? `Осталось: ~${remainingBufferHours} ч.` : `Remaining: ~${remainingBufferHours}h`;
+            bufferProgressHtml = '<div class="buffer-progress-wrapper" style="margin-top: 12px;">' +
+                '<div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--hint-color); margin-bottom: 6px;">' +
+                    '<span>' + window.escapeHTML(bufferTitleText) + '</span>' +
+                    '<span style="font-weight: 600; color: var(--stage-buffer);">' + window.escapeHTML(bufferRemainingText) + '</span>' +
+                '</div>' +
+                '<div class="ppc-buffer-bar-container" style="margin-bottom: 4px;">' +
+                    '<div class="ppc-buffer-bar-fill" style="width: ' + bufferFillPercent + '%;"></div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        return '<div class="protection-details-card ' + cardClass + '">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">' +
+                '<div style="font-size:15px;font-weight:700;color:' + titleColor + ';">' + window.escapeHTML(cardTitle) + '</div>' +
                 (timelineMeta.isLastDay
-                    ? '<button type="button" class="meta-chip accent-red sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>'
+                    ? '<button type="button" class="meta-chip sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>'
                     : '') +
             '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.escapeHTML(window.t('timelineApproxRemaining', { count: progressData.remainingDays }, lang)) + '</div>' +
-            (overtimeDays > 0
-                ? '<div style="font-size:13px;color:#ffd460;margin-top:8px;">' + window.escapeHTML(window.t('syncOvertimeBanner', {}, lang)) + '</div>'
+            '<div style="font-size:13px;color:var(--hint-color);margin-bottom:6px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
+            (extraPaid > 0
+                ? '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">' + window.escapeHTML(remainingDaysText) + '</div>'
                 : '') +
-            '<div style="font-size:12px;color:var(--hint-color);margin-top:4px;opacity:0.8;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
-            '<div style="font-size:12px;color:#ffb84d;margin-top:6px;font-weight:600;">' + window.escapeHTML(window.t('ppcWarningUninstall', {}, lang)) + '</div>' +
+            bufferProgressHtml +
+            '<div style="font-size:12px;color:var(--hint-color);margin-top:8px;opacity:0.8;line-height:1.4;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
+            '<div class="protection-warning-inset">' + window.escapeHTML(window.t('ppcWarningUninstall', {}, lang)) + '</div>' +
             bonusHtml +
         '</div>';
     })();
@@ -3556,7 +3598,7 @@ function openProjectDetailsModal(appId) {
         (progressData.remainingDays > 0
             ? '<span>' + window.escapeHTML(window.t('timelineApproxRemaining', { count: progressData.remainingDays }, lang)) + '</span>'
             : '<span>' + window.escapeHTML(window.t('timelineNoRemaining', {}, lang)) + '</span>') +
-        (overtimeDays > 0
+        (!timelineMeta.isSynced && overtimeDays > 0
             ? '<button type="button" class="detail-overtime-banner detail-overtime-chip" onclick="showToast(\'' + escapeInlineJsString(window.t('overtimeChipToast', {}, lang)) + '\')">' + window.escapeHTML(window.t('detailOvertimeReward', {}, lang)) + '</button>'
             : '') +
     '</div>';

@@ -825,11 +825,19 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             parts.push(`<button class="meta-chip accent-green notranslate" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
         }
         if (isProjectSynced(test)) {
-            const extraPaid = Number(test.paid_protection_days || 0);
-            const protectedText = extraPaid > 0
-                ? (window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang) || `🛡 Protected +${extraPaid}d`)
-                : (window.t('ppcProtectedBadge', {}, lang) || '🛡 Protected');
-            parts.push(`<button class="meta-chip accent-green" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${protectedText}</button>`);
+            const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+            const userTestingDayRaw = getResolvedTestingDay(test);
+            const userTestingDay = typeof userTestingDayRaw === 'number' && userTestingDayRaw > 0 ? userTestingDayRaw : 1;
+            if (extraPaid > 0) {
+                const protectedText = lang === 'ru' ? '🛡 Защищён' : '🛡 Protected';
+                parts.push(`<button class="meta-chip accent-protection" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${protectedText}</button>`);
+            } else if (userTestingDay >= 15) {
+                const bufferText = lang === 'ru' ? '⏳ Буфер безопасности' : '⏳ Safety Buffer';
+                parts.push(`<button class="meta-chip accent-buffer" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${bufferText}</button>`);
+            } else {
+                const protectedText = lang === 'ru' ? '🛡 Защищён' : '🛡 Protected';
+                parts.push(`<button class="meta-chip accent-protection" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${protectedText}</button>`);
+            }
         }
     }
     if (Array.isArray(options.extraParts)) {
@@ -1636,8 +1644,13 @@ function renderTests(force) {
                 headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${safeOwnerUsername}', event)">💬</button>`);
             }
         } else if (test.status !== 'done' && !test.isReadyToClaim && !isPendingForTester) {
+            const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
             if (userTestingDay >= 15) {
-                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #30d158;" onclick="openOvertimeModal(${test.id}, event)">🔄</button>`);
+                if (extraPaid > 0) {
+                    headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: var(--stage-protection); cursor: pointer;" onclick="openProtectionInfoModal(${test.id}, event)">🛡️</button>`);
+                } else {
+                    headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: var(--stage-buffer); cursor: pointer;" onclick="openBufferInfoModal(${test.id}, event)">⏳</button>`);
+                }
             } else {
                 headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="${hasGuestOrigin ? `openGuestLinkRemoveModalFromTest(${test.id}, event)` : (isMutualExitFlow(test) ? `openLeaveMutualModal(${test.id}, event)` : `openDropTestModal(${test.id}, event)`)}">🗑️</button>`);
             }
@@ -1831,3 +1844,108 @@ Object.assign(window, {
     getAvailableMutualProjectsForOwner,
     getMutualOfferProjectChoicesForOwner,
 });
+
+let _currentInfoModalTest = null;
+
+function openProtectionInfoModal(testId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const test = myTests.find(item => item.id === testId);
+    if (!test) return;
+    
+    _currentInfoModalTest = test;
+    
+    const titleText = lang === 'ru' ? 'Проект под защитой 🛡️' : 'Project under protection 🛡️';
+    const bodyText = lang === 'ru'
+        ? 'Тестирование продолжается из-за рассинхронизации дней с Google Play. Владелец указал реальные дни тестирования. Не удаляйте приложение, иначе сбросится весь прогресс и вы потеряете награды!'
+        : 'Testing continues due to synchronization discrepancy with Google Play. The owner has specified the actual testing days. Do not delete the app, otherwise all progress will be reset and you will lose your rewards!';
+        
+    // Calculate reward pool share
+    const poolAmount = Number(test.protection_bust_pool || 0);
+    const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 1);
+    const dailyPool = poolAmount / Math.max(1, extraPaid);
+    const testersCount = Number(test.active_testers_count || 1);
+    const estimatedShare = dailyPool / Math.max(1, testersCount);
+    const shareFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(estimatedShare, 1) : estimatedShare.toFixed(1);
+    
+    const rewardLabel = lang === 'ru' ? 'Ориентировочная награда' : 'Estimated reward';
+    const rewardValue = `~${shareFormatted} BUST / ${lang === 'ru' ? 'день' : 'day'}`;
+    
+    const titleEl = document.getElementById('ppc-protection-modal-title');
+    const textEl = document.getElementById('ppc-protection-modal-text');
+    const rewardLabelEl = document.querySelector('#ppc-protection-info-modal [data-i18n="ppcModalRewardLabel"]');
+    const rewardValEl = document.getElementById('ppc-protection-modal-reward-value');
+    const okBtnEl = document.querySelector('#ppc-protection-info-modal button');
+    const leaveLinkEl = document.getElementById('ppc-protection-modal-leave-link');
+    
+    if (titleEl) titleEl.innerHTML = `🛡️ <span>${window.escapeHTML(titleText)}</span>`;
+    if (textEl) textEl.innerText = bodyText;
+    if (rewardLabelEl) rewardLabelEl.innerText = rewardLabel;
+    if (rewardValEl) rewardValEl.innerText = rewardValue;
+    if (okBtnEl) okBtnEl.innerText = lang === 'ru' ? 'Понятно, продолжаю тест' : 'Understood, continuing test';
+    if (leaveLinkEl) leaveLinkEl.innerText = lang === 'ru' ? 'Покинуть проект' : 'Leave project';
+    
+    document.getElementById('ppc-protection-info-modal').classList.add('active');
+}
+
+function closeProtectionInfoModal(event) {
+    if (event && event.target !== document.getElementById('ppc-protection-info-modal')) return;
+    const modal = document.getElementById('ppc-protection-info-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function ppcProtectionModalLeave(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const test = _currentInfoModalTest;
+    closeProtectionInfoModal();
+    if (!test) return;
+    
+    // Call the original leave modal trigger
+    if (typeof isMutualExitFlow === 'function' && isMutualExitFlow(test)) {
+        if (typeof openLeaveMutualModal === 'function') openLeaveMutualModal(test.id, event);
+    } else {
+        if (typeof openDropTestModal === 'function') openDropTestModal(test.id, event);
+    }
+}
+
+function openBufferInfoModal(testId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const test = myTests.find(item => item.id === testId);
+    if (!test) return;
+    
+    const titleText = lang === 'ru' ? 'Буфер безопасности ⏳' : 'Safety Buffer ⏳';
+    const bodyText = lang === 'ru'
+        ? 'Пожалуйста, не удаляйте приложение, пока владелец официально не завершит проект. Как только это произойдет, вы получите уведомление, а приложение исчезнет из списка активных тестов.'
+        : 'Please do not delete the app until the owner officially completes the project. Once that happens, you will receive a notification, and the app will disappear from the list of active tests.';
+        
+    const titleEl = document.getElementById('ppc-buffer-modal-title');
+    const textEl = document.getElementById('ppc-buffer-modal-text');
+    const okBtnEl = document.querySelector('#ppc-buffer-info-modal button');
+    
+    if (titleEl) titleEl.innerHTML = `⏳ <span>${window.escapeHTML(titleText)}</span>`;
+    if (textEl) textEl.innerText = bodyText;
+    if (okBtnEl) okBtnEl.innerText = lang === 'ru' ? 'Понятно' : 'Understood';
+    
+    document.getElementById('ppc-buffer-info-modal').classList.add('active');
+}
+
+function closeBufferInfoModal(event) {
+    if (event && event.target !== document.getElementById('ppc-buffer-info-modal')) return;
+    const modal = document.getElementById('ppc-buffer-info-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+// Expose functions globally
+window.openProtectionInfoModal = openProtectionInfoModal;
+window.closeProtectionInfoModal = closeProtectionInfoModal;
+window.ppcProtectionModalLeave = ppcProtectionModalLeave;
+window.openBufferInfoModal = openBufferInfoModal;
+window.closeBufferInfoModal = closeBufferInfoModal;

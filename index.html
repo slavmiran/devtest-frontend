@@ -1112,6 +1112,35 @@
         </div>
     </div>
 
+    <!-- Project Protection Info Modal -->
+    <div id="ppc-protection-info-modal" class="modal-overlay" onclick="closeProtectionInfoModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="ppc-protection-modal-title" style="display: flex; align-items: center; gap: 8px;">🛡️ <span data-i18n="ppcProtectionModalTitle">Проект под защитой</span></h3>
+            <p id="ppc-protection-modal-text" style="color: var(--text-color); font-size: 14px; line-height: 1.55; margin-bottom: 16px;"></p>
+            
+            <div class="ppc-modal-reward-card" style="background: var(--bg-surface-2); border: 1px solid var(--reward-border); border-radius: 12px; padding: 14px; margin-bottom: 20px; text-align: center;">
+                <div style="font-size: 12px; color: var(--hint-color); margin-bottom: 4px;" data-i18n="ppcModalRewardLabel">Ориентировочная награда</div>
+                <div id="ppc-protection-modal-reward-value" style="font-size: 20px; font-weight: 800; color: var(--reward);">~0 BUST / день</div>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%;" onclick="closeProtectionInfoModal()" data-i18n="ppcProtectionModalOkBtn">Понятно, продолжаю тест</button>
+            
+            <div style="text-align: center; margin-top: 14px;">
+                <a href="#" id="ppc-protection-modal-leave-link" style="font-size: 12px; color: var(--hint-color); text-decoration: underline;" onclick="ppcProtectionModalLeave(event)">Покинуть проект</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Safety Buffer Info Modal -->
+    <div id="ppc-buffer-info-modal" class="modal-overlay" onclick="closeBufferInfoModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="ppc-buffer-modal-title" style="display: flex; align-items: center; gap: 8px;">⏳ <span data-i18n="ppcBufferModalTitle">Буфер безопасности</span></h3>
+            <p id="ppc-buffer-modal-text" style="color: var(--text-color); font-size: 14px; line-height: 1.55; margin-bottom: 20px;"></p>
+            
+            <button class="btn btn-primary" style="width: 100%;" onclick="closeBufferInfoModal()" data-i18n="ppcBufferModalOkBtn">Понятно</button>
+        </div>
+    </div>
+
     <div id="leave-mutual-modal" class="modal-overlay" onclick="closeLeaveMutualModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 data-i18n="leaveModalTitle">🚪 Покинуть проект</h3>

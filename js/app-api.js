@@ -1353,6 +1353,7 @@ function _mapTestsFromApi(data) {
             paid_protection_days: Number(app.purchased_protection_days || app.paid_protection_days || 0),
             protection_bust_pool: Number(app.protection_bust_pool || 0),
             consumed_pending_hours: Number(app.consumed_pending_hours || 0),
+            pending_completion_started_at: app.pending_completion_started_at || null,
             last_check_date: resolvedLastCheckDate,
             issue_reported_at: app.issue_reported_at || null,
             issue_reason: app.issue_reason || '',
