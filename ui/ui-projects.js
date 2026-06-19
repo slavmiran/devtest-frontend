@@ -1241,32 +1241,35 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     const extraPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0);
     const protectionTotal = Math.max(0, leftDays + extraPaid);
 
-    // Exact completion timestamp based on remaining active days, extraPaid, and remaining safety buffer hours
+    // Exact completion timestamp — FIXED (does not drift on page refresh)
+    const isPendingCompletion = String(project.app_status || project.status || '').toLowerCase() === 'pending_completion';
     const createdTime = project.created_at ? new Date(project.created_at).getTime() : Date.now();
-    const activeEndTime = createdTime + (14 * 24 * 60 * 60 * 1000);
-    const nowTime = Date.now();
-
-    const remainingActiveMs = Math.max(0, activeEndTime - nowTime);
-    const remainingProtectionMs = extraPaid * 24 * 60 * 60 * 1000;
-    
     const consumedPendingHours = Number(project.consumed_pending_hours || 0);
-    const remainingBufferHours = Math.max(0, 48 - consumedPendingHours);
-    const remainingBufferMs = remainingBufferHours * 60 * 60 * 1000;
-    
+    const pendingStartedAt = project.pending_completion_started_at ? new Date(project.pending_completion_started_at).getTime() : null;
+
+    let archiveDate;
+    let remainingBufferHours;
+    if (isPendingCompletion && pendingStartedAt) {
+        // IN buffer: deadline is FIXED — pending_completion_started_at + remaining buffer
+        remainingBufferHours = Math.max(0, 48 - consumedPendingHours);
+        const remainingBufferMs = remainingBufferHours * 60 * 60 * 1000;
+        archiveDate = new Date(pendingStartedAt + remainingBufferMs);
+    } else {
+        // NOT in buffer yet: deadline is in the future — created_at + 14d + extraPaid + 48h
+        remainingBufferHours = 48;
+        const bufferStartTime = createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000);
+        archiveDate = new Date(bufferStartTime + (48 * 60 * 60 * 1000));
+    }
+
     const activeProtectionText = lang === 'ru'
         ? `${extraPaid} дн. + ${remainingBufferHours}ч`
         : `${extraPaid}d + ${remainingBufferHours}h`;
-
-    const totalRemainingMs = remainingActiveMs + remainingProtectionMs + remainingBufferMs;
-    const archiveDate = new Date(nowTime + totalRemainingMs);
     const archiveDateStr = formatArchiveDate(archiveDate, lang);
 
     // Last sync note
     const lastSyncDate = parseLocalDateOnly(project.last_sync_date);
     const updatedDaysAgo = lastSyncDate ? getDayDiffFromToday(lastSyncDate) : 0;
     const syncNoteStale = updatedDaysAgo >= 7;
-
-    const isPendingCompletion = String(project.app_status || project.status || '').toLowerCase() === 'pending_completion';
 
     // Lifecycle timeline phases
     const phases = [];

@@ -1892,6 +1892,7 @@ function _mapProjectsFromApi(data) {
             paid_protection_days: Number(project.purchased_protection_days || project.paid_protection_days || 0),
             protection_bust_pool: Number(project.protection_bust_pool || 0),
             consumed_pending_hours: Number(project.consumed_pending_hours || 0),
+            pending_completion_started_at: project.pending_completion_started_at || null,
         };
     });
 }
@@ -2932,4 +2933,3 @@ async function saveProjectEdit() {
         }
     }
 }
-
