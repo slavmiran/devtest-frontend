@@ -8164,49 +8164,23 @@ html[dir="rtl"] .guest-filter-select {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 16px 12px;
+    padding: 16px 16px 12px;
     background: rgba(15, 17, 21, 0.92);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border-subtle);
     position: relative;
-    min-height: 52px;
+    min-height: 56px;
 }
-
-.ppc-back-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--border-subtle);
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
-    padding: 8px 14px 8px 10px;
-    color: var(--link-color);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s;
-    -webkit-tap-highlight-color: transparent;
-    position: relative;
-    z-index: 10;
-    min-height: 36px;
-}
-.ppc-back-btn:active { background: var(--border-strong); }
-.ppc-back-btn svg { flex-shrink: 0; }
 
 .ppc-header-title {
-    font-size: 15px;
-    font-weight: 700;
+    font-size: 22px;
+    font-weight: 800;
     color: var(--text-color);
     flex: 1;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    /* offset for back button to center text visually */
-    margin-right: 60px;
+    text-align: left;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
 }
 
 /* ── Scrollable Body ── */

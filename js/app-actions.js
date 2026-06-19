@@ -433,8 +433,13 @@ function _applyPersistedReadyTimerButtons() {
     var keys = Object.keys(_timerReadyState || {});
     if (!keys.length) return;
     keys.forEach(function(key) {
+        var appId = Number(key);
+        if (isTestFeedbackCheckinPending(appId)) {
+            applyTestFeedbackCheckinPendingUi(appId);
+            return;
+        }
         var payload = _timerReadyState[key];
-        _setTimerButtonReady(Number(key), !!(payload && payload.isScreenshot), (payload && payload.ownerUsername) || '');
+        _setTimerButtonReady(appId, !!(payload && payload.isScreenshot), (payload && payload.ownerUsername) || '');
     });
 }
 
@@ -462,6 +467,10 @@ function _resolveCheckpointOwnerUsername(appId, ownerUsername) {
 }
 
 function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
+    if (isTestFeedbackCheckinPending(finishedId)) {
+        applyTestFeedbackCheckinPendingUi(finishedId);
+        return true;
+    }
     const btn = document.getElementById('btn-confirm-' + finishedId);
     if (!btn) return false;
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(finishedId, ownerUsername);
@@ -602,13 +611,17 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
 function _startActiveTimerInterval(id) {
     if (_timerIntervalId) clearInterval(_timerIntervalId);
     _timerIntervalId = setInterval(() => {
+        if (isTestFeedbackCheckinPending(id)) {
+            applyTestFeedbackCheckinPendingUi(id);
+            return;
+        }
         var remaining = Math.ceil((_timerEndTimestamp - Date.now()) / 1000);
         var liveBtn = document.getElementById('btn-confirm-' + id);
         if (remaining <= 0) {
             _syncActiveTimerState();
             return;
         }
-        if (liveBtn) {
+        if (liveBtn && !liveBtn.getAttribute('data-feedback-pending')) {
             liveBtn.innerText = t.timerRemaining.replace('{sec}', remaining);
         }
     }, 1000);
@@ -1498,6 +1511,14 @@ function clearTestFeedbackCheckinPending(appId) {
     var normalizedId = Number(appId || 0);
     if (normalizedId <= 0) return;
     delete _pendingFeedbackCheckinAppIds[normalizedId];
+    var confirmBtn = document.getElementById('btn-confirm-' + normalizedId);
+    if (confirmBtn) {
+        confirmBtn.removeAttribute('data-feedback-pending');
+    }
+}
+
+function getFeedbackCheckinPendingLabel() {
+    return window.t('feedbackCheckinPendingBtn', {}, lang);
 }
 
 function applyTestFeedbackCheckinPendingUi(appId) {
@@ -1509,15 +1530,20 @@ function applyTestFeedbackCheckinPendingUi(appId) {
         card.classList.add('card-feedback-pending');
     }
 
-    var pendingLabel = window.t('feedbackCheckinPendingBtn', {}, lang);
-    var confirmBtn = document.getElementById('btn-confirm-' + normalizedId);
+    var pendingLabel = getFeedbackCheckinPendingLabel();
+    var confirmBtn = document.getElementById('btn-confirm-' + normalizedId)
+        || (card ? card.querySelector('#btn-confirm-' + normalizedId) : null)
+        || (card ? card.querySelector('.split-btn-main') : null);
     if (confirmBtn) {
         confirmBtn.disabled = true;
+        confirmBtn.setAttribute('data-feedback-pending', '1');
         confirmBtn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
         confirmBtn.style.color = 'var(--hint-color)';
         confirmBtn.style.cursor = 'not-allowed';
-        confirmBtn.innerText = pendingLabel;
+        confirmBtn.classList.remove('btn-success', 'external-tests-confirm-ready');
+        confirmBtn.textContent = pendingLabel;
         confirmBtn.onclick = null;
+        confirmBtn.removeAttribute('onclick');
     }
 
     if (!card) return;
@@ -1527,6 +1553,12 @@ function applyTestFeedbackCheckinPendingUi(appId) {
         splitBtn.style.pointerEvents = 'none';
         splitBtn.style.opacity = '0.55';
     }
+}
+
+function reapplyAllFeedbackCheckinPendingUi() {
+    Object.keys(_pendingFeedbackCheckinAppIds || {}).forEach(function(key) {
+        applyTestFeedbackCheckinPendingUi(Number(key));
+    });
 }
 
 function clearCompletedPendingFeedbackCheckins() {
@@ -2298,3 +2330,8 @@ async function claimEarlyFinishBonus(progressId, appId) {
     }
 }
 
+window.isTestFeedbackCheckinPending = isTestFeedbackCheckinPending;
+window.markTestFeedbackCheckinPending = markTestFeedbackCheckinPending;
+window.applyTestFeedbackCheckinPendingUi = applyTestFeedbackCheckinPendingUi;
+window.reapplyAllFeedbackCheckinPendingUi = reapplyAllFeedbackCheckinPendingUi;
+window.getFeedbackCheckinPendingLabel = getFeedbackCheckinPendingLabel;

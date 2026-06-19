@@ -66,6 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
     _loadFirstDayScreenshotState();
     _loadTimerReadyState();
     _loadPersistedActiveTimer();
+    if (typeof initTelegramBackButton === 'function') {
+        initTelegramBackButton();
+    }
 
     (async function() {
         var profileSyncResult = await bootstrapProfileSyncPromise;

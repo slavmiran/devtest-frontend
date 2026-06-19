@@ -1408,6 +1408,9 @@ function renderTests(force) {
 
         // === ACTION BUTTONS LOGIC ===
         let actionsHtml = '';
+        const isFeedbackCheckinPending = typeof isTestFeedbackCheckinPending === 'function' && isTestFeedbackCheckinPending(test.id);
+        const feedbackPendingBtnLabel = (typeof getFeedbackCheckinPendingLabel === 'function' ? getFeedbackCheckinPendingLabel() : window.t('feedbackCheckinPendingBtn', {}, lang));
+        const feedbackPendingBtnStyle = 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;';
         
         if (isExternal) {
             var isContinuedExternal = isExternalContinueModeEnabled(test);
@@ -1557,12 +1560,12 @@ function renderTests(force) {
                 actionsHtml = `
                     <div class="action-row">
                         <div class="split-btn-group" style="width: 100%; flex: 1;">
-                            <button id="btn-confirm-${test.id}" class="btn btn-success split-btn-main" onclick="confirmStart(${test.id})">
-                                ${window.escapeHTML(window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed')}
+                            <button id="btn-confirm-${test.id}" class="btn ${isFeedbackCheckinPending ? '' : 'btn-success split-btn-main'}" style="${isFeedbackCheckinPending ? 'flex: 1; width: 100%; ' + feedbackPendingBtnStyle : ''}" ${isFeedbackCheckinPending ? 'disabled data-feedback-pending="1"' : `onclick="confirmStart(${test.id})"`}>
+                                ${window.escapeHTML(isFeedbackCheckinPending ? feedbackPendingBtnLabel : (window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed'))}
                             </button>
-                            <button class="btn btn-success split-btn-options" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang))}">
+                            ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang))}">
                                 📎
-                            </button>
+                            </button>`}
                         </div>
                     </div>
                     ${hintHtml}
@@ -1576,17 +1579,31 @@ function renderTests(force) {
                 const screenshotWarningText = window.t(isScreenshotOnlyDay ? 'firstDayScreenshotWarning' : 'screenshotWarning', {}, lang);
 
                 if (isScreenshotDay) {
+                    const confirmLabel = isFeedbackCheckinPending
+                        ? feedbackPendingBtnLabel
+                        : (isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText);
                     actionsHtml = `
                         <div style="display: flex; flex-direction: column; gap: 8px;">
                             <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
-                            <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                                ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText}
+                            <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
+                                ${window.escapeHTML(confirmLabel)}
                             </button>
                             <div style="color: #ff3b30; font-size: 13px; text-align: center;">
                                 ${window.escapeHTML(screenshotWarningText)}
                             </div>
+                        </div>
+                    `;
+                } else if (isFeedbackCheckinPending) {
+                    actionsHtml = `
+                        <div class="action-row">
+                            <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
+                                ${t.openBtn}
+                            </button>
+                            <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; ${feedbackPendingBtnStyle}" disabled data-feedback-pending="1">
+                                ${window.escapeHTML(feedbackPendingBtnLabel)}
+                            </button>
                         </div>
                     `;
                 } else {
@@ -1692,9 +1709,6 @@ function renderTests(force) {
         } else if (shouldShowInActiveList) {
             card.innerHTML = cardContent;
             activeList.appendChild(card);
-            if (isTestFeedbackCheckinPending(test.id)) {
-                applyTestFeedbackCheckinPendingUi(test.id);
-            }
             activeCount++;
         }
     });
@@ -1716,6 +1730,7 @@ function renderTests(force) {
     }
 
     if (window._restoreActiveTimer) window._restoreActiveTimer();
+    if (typeof reapplyAllFeedbackCheckinPendingUi === 'function') reapplyAllFeedbackCheckinPendingUi();
 }
 
 function renderCompletedTests(completedTests) {

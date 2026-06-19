@@ -1382,7 +1382,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
         <!-- Protected Hero -->
         <div class="ppc-protected-hero">
             <div class="ppc-shield-icon">🛡</div>
-            <div class="ppc-protected-title">${window.escapeHTML(T('ppcTitle'))}</div>
+            <div class="ppc-protected-title">${window.escapeHTML(project.name || project.package_name || project.package || ('App ' + project.id))}</div>
             <div class="ppc-protected-subtitle">${window.escapeHTML(T('ppcSubtitleProtected'))}</div>
         </div>
 
@@ -1600,19 +1600,11 @@ function openProtectionCenter(projectId) {
     const view = document.getElementById('protection-center');
     const body = document.getElementById('protection-center-body');
     const headerTitle = document.getElementById('ppc-header-title');
-    const backBtn = document.getElementById('ppc-back-btn');
 
     if (!project || !view || !body) return;
 
     _syncProjectId = Number(projectId);
 
-    // Update back button text with i18n
-    if (backBtn) {
-        const arrowSvg = backBtn.querySelector('svg') ? backBtn.querySelector('svg').outerHTML : '';
-        backBtn.innerHTML = arrowSvg + (lang === 'ru' ? ' Назад' : ' Back');
-    }
-
-    // Header title
     if (headerTitle) headerTitle.textContent = window.t('ppcTitle', {}, lang) || 'Project Protection Center';
 
     // Compute platform day
@@ -1626,6 +1618,7 @@ function openProtectionCenter(projectId) {
 
     // Slide in
     view.classList.add('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 
     // Hide bottom nav while open
     const bottomNav = document.querySelector('.bottom-nav');
@@ -1650,6 +1643,7 @@ function closeProtectionCenter() {
     const view = document.getElementById('protection-center');
     const body = document.getElementById('protection-center-body');
     if (view) view.classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 
     // Restore bottom nav
     const bottomNav = document.querySelector('.bottom-nav');

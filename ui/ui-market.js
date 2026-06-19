@@ -4163,6 +4163,7 @@ function switchTab(tabId, navElement) {
     }
 
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
 function toggleAccordion() {

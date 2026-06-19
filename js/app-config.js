@@ -6,6 +6,77 @@ window.App = window.App || {};
 var tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
+
+function _closeTopTelegramBackTarget() {
+    var protectionCenter = document.getElementById('protection-center');
+    if (protectionCenter && protectionCenter.classList.contains('active')) {
+        if (typeof closeProtectionCenter === 'function') {
+            closeProtectionCenter();
+        } else {
+            protectionCenter.classList.remove('active');
+        }
+        return true;
+    }
+
+    var attractSheet = document.getElementById('attract-testers-sheet-overlay');
+    if (attractSheet && attractSheet.classList.contains('active')) {
+        if (typeof closeAttractTestersSheet === 'function') {
+            closeAttractTestersSheet();
+        } else {
+            attractSheet.classList.remove('active');
+        }
+        return true;
+    }
+
+    var activeModals = document.querySelectorAll('.modal-overlay.active');
+    if (activeModals.length) {
+        var topModal = activeModals[activeModals.length - 1];
+        topModal.classList.remove('active');
+        return true;
+    }
+
+    return false;
+}
+
+function syncTelegramBackButton() {
+    if (!tg || !tg.BackButton) return;
+    var protectionCenter = document.getElementById('protection-center');
+    var attractSheet = document.getElementById('attract-testers-sheet-overlay');
+    var shouldShow = (protectionCenter && protectionCenter.classList.contains('active'))
+        || (attractSheet && attractSheet.classList.contains('active'))
+        || document.querySelectorAll('.modal-overlay.active').length > 0;
+    if (shouldShow) {
+        tg.BackButton.show();
+    } else {
+        tg.BackButton.hide();
+    }
+}
+
+function initTelegramBackButton() {
+    if (!tg || !tg.BackButton || tg.BackButton._devtestBound) return;
+    tg.BackButton.onClick(function() {
+        if (!_closeTopTelegramBackTarget()) {
+            tg.BackButton.hide();
+        } else {
+            syncTelegramBackButton();
+        }
+    });
+    tg.BackButton._devtestBound = true;
+
+    var watchSelectors = '.modal-overlay, .protection-center-view, #attract-testers-sheet-overlay';
+    document.querySelectorAll(watchSelectors).forEach(function(element) {
+        if (typeof MutationObserver === 'undefined') return;
+        var observer = new MutationObserver(function() {
+            syncTelegramBackButton();
+        });
+        observer.observe(element, { attributes: true, attributeFilter: ['class'] });
+    });
+
+    syncTelegramBackButton();
+}
+
+window.syncTelegramBackButton = syncTelegramBackButton;
+window.initTelegramBackButton = initTelegramBackButton;
 window.DEFAULT_GOOGLE_GROUP_URL = 'https://groups.google.com/g/google-play-dev-test';
 
 const initData = tg.initDataUnsafe || {};
