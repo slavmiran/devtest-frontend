@@ -929,6 +929,34 @@ function formatArchiveDate(date, lang) {
 }
 
 /**
+ * Switch tabs in the Project Protection Center tabbed card.
+ * Handles styling toggles and content visibility.
+ */
+function _ppcSwitchTab(btn, tabName) {
+    const parentCard = btn.closest('.ppc-tabbed-card');
+    if (!parentCard) return;
+
+    // Toggle active button class
+    parentCard.querySelectorAll('.ppc-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Toggle contents
+    const rewardContent = parentCard.querySelector('.reward-content');
+    const bufferContent = parentCard.querySelector('.buffer-content');
+
+    if (tabName === 'reward') {
+        if (rewardContent) rewardContent.style.display = 'block';
+        if (bufferContent) bufferContent.style.display = 'none';
+        parentCard.style.borderColor = 'var(--reward-border)';
+    } else {
+        if (rewardContent) rewardContent.style.display = 'none';
+        if (bufferContent) bufferContent.style.display = 'block';
+        parentCard.style.borderColor = 'var(--stage-buffer-border)';
+    }
+}
+window._ppcSwitchTab = _ppcSwitchTab;
+
+/**
  * Calculates the BUST cost for the protection gap.
  * @param {number} gapDays - (platformDay - googleDay), already clamped to 0-10
  * @param {number} alreadyPaidDays - days already covered by paid protection
@@ -1381,6 +1409,109 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
         ? `<div style="background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.3);border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px;line-height:1.5;color:#ffb84d;font-weight:600;">${window.escapeHTML(window.t('pendingReleaseOwnerSyncHint', {}, lang))}</div>`
         : '';
 
+    // Safety Buffer Calculations
+    const bufferStart = (isPendingCompletion && pendingStartedAt)
+        ? new Date(pendingStartedAt)
+        : new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
+    const equatorDate = new Date(bufferStart.getTime() + (24 * 60 * 60 * 1000));
+    const bufferStartStr = formatArchiveDate(bufferStart, lang);
+    const equatorStr = formatArchiveDate(equatorDate, lang);
+    const bufferFillPercent = Math.min(100, Math.max(0, (consumedPendingHours / 48) * 100));
+
+    let cardHtml = '';
+    if (extraPaid === 0) {
+        // Scenario A: No protection days purchased. Show Safety Buffer timeline card only.
+        cardHtml = `
+            <div class="ppc-buffer-card">
+                <div class="ppc-buffer-card-title">
+                    ⏳ <span>${window.escapeHTML(lang === 'ru' ? 'Буфер безопасности (48ч)' : 'Safety Buffer (48h)')}</span>
+                </div>
+                <div class="ppc-buffer-timeline-wrapper">
+                    <div class="ppc-buffer-bar-container">
+                        <div class="ppc-buffer-bar-fill" style="width: ${bufferFillPercent}%;"></div>
+                    </div>
+                    <div class="ppc-buffer-ticks">
+                        <div class="ppc-buffer-tick-item start">
+                            <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Старт' : 'Start')}</div>
+                            <div class="ppc-buffer-tick-time">${window.escapeHTML(bufferStartStr)}</div>
+                        </div>
+                        <div class="ppc-buffer-tick-item equator">
+                            <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Экватор (24ч)' : 'Equator (24h)')}</div>
+                            <div class="ppc-buffer-tick-time">${window.escapeHTML(equatorStr)}</div>
+                        </div>
+                        <div class="ppc-buffer-tick-item end">
+                            <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Архив (48ч)' : 'Archive (48h)')}</div>
+                            <div class="ppc-buffer-tick-time">${window.escapeHTML(archiveDateStr)}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        // Scenario B: Protection days purchased. Show Segmented Tabs Card.
+        cardHtml = `
+            <div class="ppc-tabbed-card">
+                <div class="ppc-segmented-tabs">
+                    <button type="button" class="ppc-tab-btn active" onclick="window._ppcSwitchTab(this, 'reward')">
+                        🛡 ${window.escapeHTML(lang === 'ru' ? 'Пул наград' : 'Reward Pool')}
+                    </button>
+                    <button type="button" class="ppc-tab-btn" onclick="window._ppcSwitchTab(this, 'buffer')">
+                        ⏳ ${window.escapeHTML(lang === 'ru' ? 'Буфер безопасности' : 'Safety Buffer')}
+                    </button>
+                </div>
+                
+                <!-- Tab 1: Reward Pool Content -->
+                <div class="ppc-tab-content reward-content">
+                    <div class="ppc-reward-pool-header" style="margin-bottom: 12px;">
+                        <div class="ppc-reward-pool-title" style="color: var(--reward); font-weight: 700; font-size: 15px;">${window.escapeHTML(T('ppcRewardPoolTitle'))}</div>
+                        <div class="ppc-reward-pool-amount-wrap">
+                            <div class="ppc-reward-pool-amount" style="color: var(--text-color); font-size: 18px; font-weight: 800;">${window.escapeHTML(T('ppcRewardPoolAmount', { amount: poolAmount }))}</div>
+                            <div class="ppc-reward-pool-status" style="background: var(--reward-surface); color: var(--reward); border-color: var(--reward-border); font-size: 11px;">${window.escapeHTML(T('ppcRewardPoolLocked'))}</div>
+                        </div>
+                    </div>
+                    <div class="ppc-reward-pool-desc" style="font-size: 12px; line-height: 1.5; color: var(--text-color);">${window.escapeHTML(T('ppcRewardPoolDesc'))}</div>
+
+                    <div style="margin-top: 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px;">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <div class="ppc-reward-per-tester-day" style="font-size: 13px; color: var(--hint-color); font-weight: 600;">
+                                ${window.escapeHTML(rewardText)}
+                            </div>
+                            <div class="ppc-reward-pool-details-subtitle" style="font-size: 11px; color: var(--hint-color); font-weight: 400; opacity: 0.8;">
+                                ${window.escapeHTML(subtitleText)}
+                            </div>
+                        </div>
+                        <button type="button" class="ppc-add-pool-btn" style="margin-top: 0; flex-shrink: 0;" onclick="openPpcTopUpModal()">
+                            ${lang === 'ru' ? '+ Пополнить пул' : '+ Add to Pool'}
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tab 2: Safety Buffer Content -->
+                <div class="ppc-tab-content buffer-content" style="display: none;">
+                    <div class="ppc-buffer-timeline-wrapper">
+                        <div class="ppc-buffer-bar-container">
+                            <div class="ppc-buffer-bar-fill" style="width: ${bufferFillPercent}%;"></div>
+                        </div>
+                        <div class="ppc-buffer-ticks">
+                            <div class="ppc-buffer-tick-item start">
+                                <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Старт' : 'Start')}</div>
+                                <div class="ppc-buffer-tick-time">${window.escapeHTML(bufferStartStr)}</div>
+                            </div>
+                            <div class="ppc-buffer-tick-item equator">
+                                <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Экватор (24ч)' : 'Equator (24h)')}</div>
+                                <div class="ppc-buffer-tick-time">${window.escapeHTML(equatorStr)}</div>
+                            </div>
+                            <div class="ppc-buffer-tick-item end">
+                                <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Архив (48ч)' : 'Archive (48h)')}</div>
+                                <div class="ppc-buffer-tick-time">${window.escapeHTML(archiveDateStr)}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     return `
         <!-- Protected Hero -->
         <div class="ppc-protected-hero">
@@ -1432,31 +1563,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
             </div>
         </div>
 
-        <!-- Reward Pool Card -->
-        <div class="ppc-reward-pool-card">
-            <div class="ppc-reward-pool-header">
-                <div class="ppc-reward-pool-title">${window.escapeHTML(T('ppcRewardPoolTitle'))}</div>
-                <div class="ppc-reward-pool-amount-wrap">
-                    <div class="ppc-reward-pool-amount">${window.escapeHTML(T('ppcRewardPoolAmount', { amount: poolAmount }))}</div>
-                    <div class="ppc-reward-pool-status">${window.escapeHTML(T('ppcRewardPoolLocked'))}</div>
-                </div>
-            </div>
-            <div class="ppc-reward-pool-desc">${window.escapeHTML(T('ppcRewardPoolDesc'))}</div>
-
-            <div style="margin-top: 12px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px;">
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <div class="ppc-reward-per-tester-day" style="font-size: 13px; color: var(--hint-color); font-weight: 600;">
-                        ${window.escapeHTML(rewardText)}
-                    </div>
-                    <div class="ppc-reward-pool-details-subtitle" style="font-size: 11px; color: rgba(255, 255, 255, 0.4); font-weight: 400;">
-                        ${window.escapeHTML(subtitleText)}
-                    </div>
-                </div>
-                <button type="button" class="ppc-add-pool-btn" style="margin-top: 0; flex-shrink: 0;" onclick="openPpcTopUpModal()">
-                    ${lang === 'ru' ? '+ Пополнить пул' : '+ Add to Pool'}
-                </button>
-            </div>
-        </div>
+        ${cardHtml}
 
         <!-- Sync message (if any) -->
         ${project.sync_message ? `
