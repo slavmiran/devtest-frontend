@@ -1278,8 +1278,8 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
             name: T('ppcTimelineActive'),
             days: lang === 'ru' ? 'Дни 1–14' : 'Days 1–14',
             dotColor: 'green',
-            isCurrent: googleDay <= 14,
-            isPast: googleDay > 14
+            isCurrent: platformDay <= 14,
+            isPast: platformDay > 14
         });
 
         // Phase 2: Extended Protection (Days 15 to 14 + extraPaid)
@@ -1288,8 +1288,8 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
             name: T('ppcTimelineExtra'),
             days: lang === 'ru' ? `Дни 15–${14 + extraPaid}` : `Days 15–${14 + extraPaid}`,
             dotColor: 'blue',
-            isCurrent: googleDay > 14 && googleDay <= (14 + extraPaid) && !isPendingCompletion,
-            isPast: googleDay > (14 + extraPaid) || isPendingCompletion
+            isCurrent: platformDay > 14 && platformDay <= (14 + extraPaid),
+            isPast: platformDay > (14 + extraPaid)
         });
 
         // Phase 3: Safety Buffer (occupies exactly 48h AFTER extended protection ends)
@@ -1298,7 +1298,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
             name: T('ppcTimelinePending'),
             days: lang === 'ru' ? `Дни ${15 + extraPaid}–${16 + extraPaid}` : `Days ${15 + extraPaid}–${16 + extraPaid}`,
             dotColor: 'yellow',
-            isCurrent: isPendingCompletion || (googleDay > (14 + extraPaid) && platformDay <= (16 + extraPaid)),
+            isCurrent: isPendingCompletion || (platformDay > (14 + extraPaid) && platformDay <= (16 + extraPaid)),
             isPast: platformDay > (16 + extraPaid) && !isPendingCompletion
         });
 
@@ -1318,8 +1318,8 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
             name: T('ppcTimelineActive'),
             days: lang === 'ru' ? 'Дни 1–14' : 'Days 1–14',
             dotColor: 'green',
-            isCurrent: googleDay <= 14,
-            isPast: googleDay > 14
+            isCurrent: platformDay <= 14,
+            isPast: platformDay > 14
         });
 
         // Phase 2: Safety Buffer (Days 15-16, 48h)
@@ -1328,7 +1328,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
             name: T('ppcTimelinePending'),
             days: lang === 'ru' ? 'Дни 15–16' : 'Days 15–16',
             dotColor: 'yellow',
-            isCurrent: isPendingCompletion || (googleDay > 14 && platformDay <= 16),
+            isCurrent: isPendingCompletion || (platformDay > 14 && platformDay <= 16),
             isPast: platformDay > 16 && !isPendingCompletion
         });
 
@@ -1364,16 +1364,14 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
 
     // Reward pool
     const poolAmount = Number(project.protection_bust_pool || 0);
-    const rawTestersCount = Number(project.active_testers_count || 0) || (Array.isArray(project.testers) ? project.testers.filter(function(t) { return !t.is_guest_tester && !t.is_external; }).length : 0);
-    const poolActiveTesters = Math.max(1, rawTestersCount);
-    // Per-tester-per-day: pool / protection_days / testers. Guard against zero pool and zero days (legacy).
-    const rewardPerTesterDay = (poolAmount > 0 && extraPaid > 0) ? (poolAmount / extraPaid / poolActiveTesters) : 0;
-    const rewardPerTesterDayFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(rewardPerTesterDay, 1) : rewardPerTesterDay.toFixed(1);
+    // Daily pool: poolAmount / Math.max(1, extraPaid)
+    const dailyPoolAmount = poolAmount / Math.max(1, extraPaid);
+    const dailyPoolAmountFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(dailyPoolAmount, 1) : dailyPoolAmount.toFixed(1);
 
-    const rewardText = (poolAmount > 0 && rewardPerTesterDay > 0)
-        ? T('ppcRewardPerTesterDay', { amount: rewardPerTesterDayFormatted })
+    const rewardText = (poolAmount > 0 && dailyPoolAmount > 0)
+        ? T('ppcRewardPerTesterDay', { amount: dailyPoolAmountFormatted })
         : T('ppcRewardPerTesterDayZero');
-    const subtitleText = T('ppcRewardPoolSubtitle', { days: extraPaid, testers: rawTestersCount });
+    const subtitleText = T('ppcRewardPoolSubtitle', { days: extraPaid });
 
     // Pending release attention
     const pendingHtml = isPendingCompletion
@@ -1444,7 +1442,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
 
             <div style="margin-top: 12px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px;">
                 <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <div class="ppc-reward-per-tester-day" style="font-size: 13px; color: var(--text-color); font-weight: 600;">
+                    <div class="ppc-reward-per-tester-day" style="font-size: 13px; color: var(--hint-color); font-weight: 600;">
                         ${window.escapeHTML(rewardText)}
                     </div>
                     <div class="ppc-reward-pool-details-subtitle" style="font-size: 11px; color: rgba(255, 255, 255, 0.4); font-weight: 400;">
