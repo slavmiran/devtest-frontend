@@ -3552,15 +3552,35 @@ function openProjectDetailsModal(appId) {
 
         const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
 
-        // Activation Text in relative format
-        const daysToBuffer = Math.max(0, (14 + extraPaid) - userTestingDay);
+        // Activation Text in relative format, calculated consistently from calendar dates
+        const todayVal = parseLocalDateOnly(getLocalDate()) || new Date();
+        const todayOnly = new Date(todayVal.getFullYear(), todayVal.getMonth(), todayVal.getDate());
+        const bufferStartOnly = new Date(bufferStart.getFullYear(), bufferStart.getMonth(), bufferStart.getDate());
+        const daysToBuffer = Math.max(0, Math.round((bufferStartOnly.getTime() - todayOnly.getTime()) / (24 * 60 * 60 * 1000)));
+
+        const formatBufferDate = (dateVal) => {
+            if (!dateVal || Number.isNaN(dateVal.getTime())) return '';
+            const day = dateVal.getDate();
+            const monthsRu = ['янв.', 'фев.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сен.', 'окт.', 'ноя.', 'дек.'];
+            const daysRu = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+            const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            
+            if (lang === 'ru') {
+                return `${day} ${monthsRu[dateVal.getMonth()]} • ${daysRu[dateVal.getDay()]}`;
+            } else {
+                return `${day} ${monthsEn[dateVal.getMonth()]} • ${daysEn[dateVal.getDay()]}`;
+            }
+        };
+        const formattedBufferTimeCustom = formatBufferDate(bufferStart);
+
         let activationText = '';
         if (isInSafetyBuffer || daysToBuffer <= 0) {
             activationText = lang === 'ru' ? 'Активирован' : 'Active';
         } else {
             activationText = lang === 'ru'
-                ? `Через ${daysToBuffer} дн. (${finishDateText})`
-                : `In ${daysToBuffer} days (${finishDateText})`;
+                ? `Через ${daysToBuffer} дн. (${formattedBufferTimeCustom})`
+                : `In ${daysToBuffer} days (${formattedBufferTimeCustom})`;
         }
 
         const cardTitle = extraPaid > 0
@@ -3626,7 +3646,7 @@ function openProjectDetailsModal(appId) {
                     window.escapeHTML(lang === 'ru' ? '⚠️ Не удаляйте приложение! Держите его установленным для финализации.' : '⚠️ Do not uninstall the app! Keep it installed for finalization.') +
                 '</div>' +
                 '<div class="protection-karma-line">' +
-                    '<span>' + window.escapeHTML(lang === 'ru' ? 'как повышенная карма! +0.5 ☯️ Кармы' : 'for keeping installed: +0.5 ☯️ Karma') + '</span>' +
+                    '<span>' + window.escapeHTML(lang === 'ru' ? 'Повышенная награда за чекины в овертайме: +0.5 ☯️ Кармы за каждый чекин' : 'Increased reward for check-ins in overtime: +0.5 ☯️ Karma per check-in') + '</span>' +
                 '</div>' +
                 bufferProgressHtml +
             '</div>';
