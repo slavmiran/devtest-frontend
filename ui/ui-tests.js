@@ -1410,7 +1410,6 @@ function renderTests(force) {
             }
         }
         card.id = `test-card-${test.id}`;
-        const userTestingDay = getResolvedTestingDay(test);
         const safePackage = escapeInlineJsString(test.package || test.external_package_name || '');
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
         const safeName = window.escapeHTML(test.name || test.package || window.t('unknownLabel', {}, lang));
