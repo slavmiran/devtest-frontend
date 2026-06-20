@@ -3538,8 +3538,6 @@ function openProjectDetailsModal(appId) {
             ? new Date(pendingStartedAt)
             : new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
         
-        const formattedBufferTime = formatArchiveDate(bufferStart, lang);
-        
         const bufferEndTime = bufferStart.getTime() + (48 * 60 * 60 * 1000);
         const remainingMs = Math.max(0, bufferEndTime - Date.now());
         const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
@@ -3552,36 +3550,80 @@ function openProjectDetailsModal(appId) {
 
         const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
 
-        // Activation Text in relative format, calculated consistently from calendar dates
-        const todayVal = parseLocalDateOnly(getLocalDate()) || new Date();
-        const todayOnly = new Date(todayVal.getFullYear(), todayVal.getMonth(), todayVal.getDate());
-        const bufferStartOnly = new Date(bufferStart.getFullYear(), bufferStart.getMonth(), bufferStart.getDate());
-        const daysToBuffer = Math.max(0, Math.round((bufferStartOnly.getTime() - todayOnly.getTime()) / (24 * 60 * 60 * 1000)));
-
-        const formatBufferDate = (dateVal) => {
+        // Helper formatters
+        const formatBufferTimeWithDayOfWeek = (dateVal) => {
             if (!dateVal || Number.isNaN(dateVal.getTime())) return '';
+            const hours = String(dateVal.getHours()).padStart(2, '0');
+            const minutes = String(dateVal.getMinutes()).padStart(2, '0');
+            const timeStr = `${hours}:${minutes}`;
+            
+            const todayVal = parseLocalDateOnly(getLocalDate()) || new Date();
+            const todayOnly = new Date(todayVal.getFullYear(), todayVal.getMonth(), todayVal.getDate());
+            const targetDateOnly = new Date(dateVal.getFullYear(), dateVal.getMonth(), dateVal.getDate());
+            const diffDays = Math.round((targetDateOnly.getTime() - todayOnly.getTime()) / (24 * 60 * 60 * 1000));
+            
+            if (diffDays === 0) {
+                return lang === 'ru' ? `сегодня в ${timeStr}` : `today at ${timeStr}`;
+            } else if (diffDays === 1) {
+                return lang === 'ru' ? `завтра в ${timeStr}` : `tomorrow at ${timeStr}`;
+            } else {
+                const day = dateVal.getDate();
+                const monthsRu = ['янв.', 'фев.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сен.', 'окт.', 'ноя.', 'дек.'];
+                const daysRu = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+                const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                
+                if (lang === 'ru') {
+                    return `${daysRu[dateVal.getDay()]}, ${day} ${monthsRu[dateVal.getMonth()]} в ${timeStr}`;
+                } else {
+                    return `${daysEn[dateVal.getDay()]}, ${day} ${monthsEn[dateVal.getMonth()]} at ${timeStr}`;
+                }
+            }
+        };
+
+        const formatArchiveDeadline = (dateVal) => {
+            if (!dateVal || Number.isNaN(dateVal.getTime())) return '';
+            const hours = String(dateVal.getHours()).padStart(2, '0');
+            const minutes = String(dateVal.getMinutes()).padStart(2, '0');
+            const timeStr = `${hours}:${minutes}`;
+            
             const day = dateVal.getDate();
             const monthsRu = ['янв.', 'фев.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сен.', 'окт.', 'ноя.', 'дек.'];
             const daysRu = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
             const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             
-            if (lang === 'ru') {
-                return `${day} ${monthsRu[dateVal.getMonth()]} • ${daysRu[dateVal.getDay()]}`;
+            const todayVal = parseLocalDateOnly(getLocalDate()) || new Date();
+            const todayOnly = new Date(todayVal.getFullYear(), todayVal.getMonth(), todayVal.getDate());
+            const targetDateOnly = new Date(dateVal.getFullYear(), dateVal.getMonth(), dateVal.getDate());
+            const diffDays = Math.round((targetDateOnly.getTime() - todayOnly.getTime()) / (24 * 60 * 60 * 1000));
+            
+            let relativePrefix = '';
+            if (diffDays === 0) {
+                relativePrefix = lang === 'ru' ? 'сегодня' : 'today';
+            } else if (diffDays === 1) {
+                relativePrefix = lang === 'ru' ? 'завтра' : 'tomorrow';
             } else {
-                return `${day} ${monthsEn[dateVal.getMonth()]} • ${daysEn[dateVal.getDay()]}`;
+                relativePrefix = lang === 'ru' ? `через ${diffDays} дн.` : `in ${diffDays} days`;
+            }
+            
+            if (lang === 'ru') {
+                return `${relativePrefix} (${daysRu[dateVal.getDay()]}, ${day} ${monthsRu[dateVal.getMonth()]} в ${timeStr})`;
+            } else {
+                return `${relativePrefix} (${daysEn[dateVal.getDay()]}, ${day} ${monthsEn[dateVal.getMonth()]} at ${timeStr})`;
             }
         };
-        const formattedBufferTimeCustom = formatBufferDate(bufferStart);
 
-        let activationText = '';
-        if (isInSafetyBuffer || daysToBuffer <= 0) {
-            activationText = lang === 'ru' ? 'Активирован' : 'Active';
-        } else {
-            activationText = lang === 'ru'
-                ? `Через ${daysToBuffer} дн. (${formattedBufferTimeCustom})`
-                : `In ${daysToBuffer} days (${formattedBufferTimeCustom})`;
-        }
+        const todayVal = parseLocalDateOnly(getLocalDate()) || new Date();
+        const todayOnly = new Date(todayVal.getFullYear(), todayVal.getMonth(), todayVal.getDate());
+        const bufferStartOnly = new Date(bufferStart.getFullYear(), bufferStart.getMonth(), bufferStart.getDate());
+        const daysToBuffer = Math.max(0, Math.round((bufferStartOnly.getTime() - todayOnly.getTime()) / (24 * 60 * 60 * 1000)));
+
+        const activationText = isInSafetyBuffer || daysToBuffer <= 0
+            ? (lang === 'ru' ? 'Активирован' : 'Active')
+            : formatBufferTimeWithDayOfWeek(bufferStart);
+
+        const archiveDeadlineText = formatArchiveDeadline(new Date(bufferEndTime));
 
         const cardTitle = extraPaid > 0
             ? (window.t('ppcTimelineExtra', {}, lang) || 'Extended Protection')
@@ -3589,6 +3631,7 @@ function openProjectDetailsModal(appId) {
 
         const cardClass = extraPaid > 0 ? 'stage-protection' : 'stage-buffer';
         const titleColor = extraPaid > 0 ? 'var(--stage-protection)' : 'var(--stage-buffer)';
+        const headerEmoji = extraPaid > 0 ? '🛡️ ' : '⏳ ';
 
         // Block A: "Расширенная защита (Овертайм)" HTML
         let blockAHtml = '';
@@ -3596,10 +3639,6 @@ function openProjectDetailsModal(appId) {
             const remainingCheckins = Math.max(0, (14 + extraPaid) - Math.max(14, userTestingDay));
             blockAHtml = 
                 '<div class="protection-subblock-a" style="margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed rgba(255,255,255,0.08);">' +
-                    '<div class="protection-subblock-title protection">' +
-                        '<span>🛡️</span>' +
-                        '<span>' + window.escapeHTML(lang === 'ru' ? 'Расширенная защита (Овертайм)' : 'Extended Protection (Overtime)') + '</span>' +
-                    '</div>' +
                     '<div class="protection-row">' +
                         window.escapeHTML(lang === 'ru' ? `Осталось чекинов: ${remainingCheckins} дн.` : `Check-ins remaining: ${remainingCheckins} days`) +
                     '</div>' +
@@ -3610,7 +3649,7 @@ function openProjectDetailsModal(appId) {
                     '</div>' +
                     (poolAmount > 0 
                         ? '<div class="protection-reward-chip" style="margin-top: 4px; display: inline-flex; font-size: 12px; font-weight: 600; color: var(--reward); background: var(--reward-surface); border: 1px solid var(--reward-border); padding: 4px 8px; border-radius: 6px;">' +
-                            window.escapeHTML(lang === 'ru' ? `Бонус защиты: доступно 💎 +${formatAmountValue(poolAmount, 1)} $BUST` : `Protection bonus: available 💎 +${formatAmountValue(poolAmount, 1)} $BUST`) +
+                            window.escapeHTML(lang === 'ru' ? `Бонус защиты: доступно 💎 +${formatAmountValue(poolAmount, 1)} $BUST и +0.5 ☯️ Кармы за каждый чекин` : `Protection bonus: available 💎 +${formatAmountValue(poolAmount, 1)} $BUST and +0.5 ☯️ Karma per check-in`) +
                           '</div>' 
                         : '') +
                 '</div>';
@@ -3642,18 +3681,18 @@ function openProjectDetailsModal(appId) {
                 '<div class="protection-row" style="color: var(--text-secondary);">' +
                     window.escapeHTML(lang === 'ru' ? `Активация буфера: ${activationText}` : `Buffer activation: ${activationText}`) +
                 '</div>' +
+                '<div class="protection-row" style="color: var(--text-secondary); margin-top: 4px;">' +
+                    window.escapeHTML(lang === 'ru' ? `Завершение буфера: ${archiveDeadlineText}` : `Buffer completion: ${archiveDeadlineText}`) +
+                '</div>' +
                 '<div class="protection-warning-inset" style="margin-top: 8px; margin-bottom: 8px;">' +
                     window.escapeHTML(lang === 'ru' ? '⚠️ Не удаляйте приложение! Держите его установленным для финализации.' : '⚠️ Do not uninstall the app! Keep it installed for finalization.') +
-                '</div>' +
-                '<div class="protection-karma-line">' +
-                    '<span>' + window.escapeHTML(lang === 'ru' ? 'Повышенная награда за чекины в овертайме: +0.5 ☯️ Кармы за каждый чекин' : 'Increased reward for check-ins in overtime: +0.5 ☯️ Karma per check-in') + '</span>' +
                 '</div>' +
                 bufferProgressHtml +
             '</div>';
 
         return '<div class="protection-details-card ' + cardClass + '">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">' +
-                '<div style="font-size:15px;font-weight:700;color:' + titleColor + ';">' + window.escapeHTML(cardTitle) + '</div>' +
+                '<div style="font-size:15px;font-weight:700;color:' + titleColor + ';">' + headerEmoji + window.escapeHTML(cardTitle) + '</div>' +
                 (timelineMeta.isLastDay
                     ? '<button type="button" class="meta-chip sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>'
                     : '') +
