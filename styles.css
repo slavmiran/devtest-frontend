@@ -9510,4 +9510,10 @@ html[dir="rtl"] .guest-filter-select {
     gap: 4px;
 }
 
+/* Accordion Arrow Rotation */
+details[open] .accordion-arrow {
+    transform: rotate(180deg);
+}
+
+
 

@@ -3648,8 +3648,16 @@ function openProjectDetailsModal(appId) {
                             : 'The developer paid for extra testing days to compensate for sync issues with Google Play and guarantee release. Check-ins on these days are rewarded from the bonus pool.') +
                     '</div>' +
                     (poolAmount > 0 
-                        ? '<div class="protection-reward-chip" style="margin-top: 4px; display: inline-flex; font-size: 12px; font-weight: 600; color: var(--reward); background: var(--reward-surface); border: 1px solid var(--reward-border); padding: 4px 8px; border-radius: 6px;">' +
-                            window.escapeHTML(lang === 'ru' ? `Бонус защиты: доступно 💎 +${formatAmountValue(poolAmount, 1)} $BUST и +0.5 ☯️ Кармы за каждый чекин` : `Protection bonus: available 💎 +${formatAmountValue(poolAmount, 1)} $BUST and +0.5 ☯️ Karma per check-in`) +
+                        ? '<div class="protection-reward-chip" style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px; width: 100%; box-sizing: border-box; align-items: flex-start; padding: 10px 12px;">' +
+                            '<div style="font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 4px;">' +
+                                '<span>💎</span>' +
+                                '<span>' + (lang === 'ru' ? 'Фонд наград' : 'Reward Pool') + ': ' + poolAmount + ' $BUST</span>' +
+                            '</div>' +
+                            '<div style="font-size: 11.5px; font-weight: 500; opacity: 0.95; line-height: 1.45; text-align: left;">' +
+                                (lang === 'ru' 
+                                    ? '+0.5 ☯️ за каждый чекин и возможность получить персональную Карму от владельца' 
+                                    : '+0.5 ☯️ for each check-in and opportunity for personal Karma from the owner') +
+                            '</div>' +
                           '</div>' 
                         : '') +
                 '</div>';
@@ -3690,18 +3698,37 @@ function openProjectDetailsModal(appId) {
                 bufferProgressHtml +
             '</div>';
 
-        return '<div class="protection-details-card ' + cardClass + '">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">' +
-                '<div style="font-size:15px;font-weight:700;color:' + titleColor + ';">' + headerEmoji + window.escapeHTML(cardTitle) + '</div>' +
-                (timelineMeta.isLastDay
-                    ? '<button type="button" class="meta-chip sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>'
-                    : '') +
-            '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
-            blockAHtml +
-            blockBHtml +
-            '<div style="font-size:11px;color:var(--hint-color);margin-top:12px;opacity:0.75;line-height:1.45;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
-        '</div>';
+        if (userTestingDay <= 14) {
+            return '<details class="protection-details-card ' + cardClass + '" id="protection-details-accordion">' +
+                '<summary style="list-style: none; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; outline: none;">' +
+                    '<div style="font-size:15px;font-weight:700;color:' + titleColor + ';display:flex;align-items:center;gap:6px;">' +
+                        headerEmoji + window.escapeHTML(cardTitle) +
+                    '</div>' +
+                    '<span class="accordion-arrow" style="font-size: 14px; color: var(--hint-color); transition: transform 0.2s ease;">▼</span>' +
+                '</summary>' +
+                '<div class="accordion-content" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">' +
+                    '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
+                    blockAHtml +
+                    blockBHtml +
+                    '<div style="font-size:11px;color:var(--hint-color);margin-top:12px;opacity:0.75;line-height:1.45;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
+                '</div>' +
+            '</details>';
+        } else {
+            return '<div class="protection-details-card ' + cardClass + '">' +
+                '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">' +
+                    '<div style="font-size:15px;font-weight:700;color:' + titleColor + ';display:flex;align-items:center;gap:6px;">' +
+                        headerEmoji + window.escapeHTML(cardTitle) +
+                    '</div>' +
+                    (timelineMeta.isLastDay
+                        ? '<button type="button" class="meta-chip sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>'
+                        : '') +
+                '</div>' +
+                '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
+                blockAHtml +
+                blockBHtml +
+                '<div style="font-size:11px;color:var(--hint-color);margin-top:12px;opacity:0.75;line-height:1.45;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
+            '</div>';
+        }
     })();
 
     const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:10px;">' +
@@ -3951,6 +3978,50 @@ function openProjectDetailsModal(appId) {
     if (modal) {
         modal.dataset.appId = String(Number(test.id) || '');
         modal.classList.add('active');
+
+        // Accordion & Overtime row synchronizer for days 1-14
+        const accordion = document.getElementById('protection-details-accordion');
+        const overtimeRow = document.querySelector('.timeline-row-overtime');
+        if (accordion && overtimeRow) {
+            // Initially sync visibility based on whether the accordion is open
+            if (!accordion.open) {
+                overtimeRow.style.display = 'none';
+                overtimeRow.style.maxHeight = '0px';
+                overtimeRow.style.opacity = '0';
+            } else {
+                overtimeRow.style.display = 'block';
+                overtimeRow.style.maxHeight = '120px';
+                overtimeRow.style.opacity = '1';
+            }
+
+            accordion.addEventListener('toggle', () => {
+                if (accordion.open) {
+                    overtimeRow.style.display = 'block';
+                    overtimeRow.style.maxHeight = '0px';
+                    overtimeRow.style.opacity = '0';
+                    overtimeRow.style.overflow = 'hidden';
+                    overtimeRow.style.transition = 'max-height 0.25s ease, opacity 0.25s ease';
+                    // trigger reflow
+                    overtimeRow.offsetHeight;
+                    overtimeRow.style.maxHeight = '120px';
+                    overtimeRow.style.opacity = '1';
+                } else {
+                    overtimeRow.style.transition = 'max-height 0.25s ease, opacity 0.25s ease';
+                    overtimeRow.style.maxHeight = '0px';
+                    overtimeRow.style.opacity = '0';
+                    setTimeout(() => {
+                        if (!accordion.open) {
+                            overtimeRow.style.display = 'none';
+                        }
+                    }, 250);
+                }
+            });
+        } else if (overtimeRow) {
+            // If day 15+, keep overtime row fully visible
+            overtimeRow.style.display = 'block';
+            overtimeRow.style.maxHeight = '';
+            overtimeRow.style.opacity = '';
+        }
     }
 }
 
