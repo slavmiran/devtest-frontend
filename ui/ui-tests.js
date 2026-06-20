@@ -325,6 +325,14 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
         const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
         const isBufferDay = dayNum > 14 + extraPaid;
         var ch = renderTimeline[dayNum - 1] || '';
+        
+        // Fallback: if user is on Day 15+, ensure all days 1-14 are colored
+        if (dayNum <= 14 && userTestingDay > 14) {
+            if (ch !== '0') {
+                ch = '1';
+            }
+        }
+        
         var cls = 'remaining';
         if (isBufferDay) {
             cls = 'buffer-pause';
@@ -366,12 +374,57 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
         baseSegments.push(getDayState(day));
     }
 
+    const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+    const lastPaidDay = 14 + extraPaid;
+
     var overtimeSegments = [];
-    for (var overtimeDay = 15; overtimeDay <= totalDays; overtimeDay++) {
-        overtimeSegments.push(getDayState(overtimeDay));
+    for (var overtimeDay = 15; overtimeDay <= lastPaidDay; overtimeDay++) {
+        var cls = 'future';
+        if (currentDay === null || overtimeDay < currentDay) {
+            cls = 'past';
+        } else if (currentDay === overtimeDay) {
+            cls = 'current';
+        }
+        overtimeSegments.push('<span class="grant-shield ' + cls + '" data-day="' + overtimeDay + '">🛡️</span>');
+    }
+
+    const isPendingCompletion = String(test.app_status || test.status || '').toLowerCase() === 'pending_completion';
+    const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+
+    const createdTime = test.created_at ? new Date(test.created_at).getTime() : Date.now();
+    const pendingStartedAt = test.pending_completion_started_at ? new Date(test.pending_completion_started_at).getTime() : null;
+    const bufferStart = (isPendingCompletion && pendingStartedAt)
+        ? new Date(pendingStartedAt)
+        : new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
+    const bufferEndTime = bufferStart.getTime() + (48 * 60 * 60 * 1000);
+    const remainingMs = Math.max(0, bufferEndTime - Date.now());
+    const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
+    const remainingHours = Math.floor(remainingTotalMinutes / 60);
+    const remainingMinutes = remainingTotalMinutes % 60;
+
+    let bufferBadgeHtml = '';
+    if (isProjectSynced(test) || userTestingDay >= 15 || extraPaid > 0) {
+        if (isInSafetyBuffer) {
+            const timeText = lang === 'ru' 
+                ? `⏳ Осталось ${remainingHours}ч ${remainingMinutes}м` 
+                : `⏳ Remaining ${remainingHours}h ${remainingMinutes}m`;
+            bufferBadgeHtml = '<span class="timeline-buffer-badge active">' + timeText + '</span>';
+        } else {
+            const timeText = lang === 'ru' ? '+⏳ 48ч' : '+⏳ 48h';
+            bufferBadgeHtml = '<span class="timeline-buffer-badge inactive">' + timeText + '</span>';
+        }
     }
 
     var remainingDays = Math.max(0, totalDays - renderTimeline.length);
+    const showOvertimeRow = (extraPaid > 0 || isInSafetyBuffer || userTestingDay >= 15 || isProjectSynced(test));
+    const rangeText = lastPaidDay > 14 ? '15-' + lastPaidDay : '15+';
+
+    const noteText = extraPaid > 0
+        ? (lang === 'ru' 
+            ? 'Награда за чекин: +0.5 ☯️ Кармы и доля из пула💎$BUST' 
+            : 'Reward for check-in: +0.5 ☯️ Karma and a share of the 💎$BUST pool')
+        : window.t('timelineOvertimeRewardNote', {}, lang);
+
     var html = '<div class="timeline-compact">' +
         '<div class="timeline-row">' +
             '<div class="timeline-row-head">' +
@@ -380,14 +433,17 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
             '</div>' +
             '<div class="grant-progress-container timeline-row-track is-primary">' + baseSegments.join('') + '</div>' +
         '</div>' +
-        (overtimeSegments.length
+        (showOvertimeRow
             ? '<div class="timeline-row timeline-row-overtime">' +
                 '<div class="timeline-row-head">' +
                     '<span class="timeline-row-title">' + window.escapeHTML(window.t('timelineOvertimeTitle', {}, lang)) + '</span>' +
-                    '<span class="timeline-row-range">15-' + totalDays + '</span>' +
+                    '<span class="timeline-row-range">' + rangeText + '</span>' +
                 '</div>' +
-                '<div class="grant-progress-container timeline-row-track is-overtime">' + overtimeSegments.join('') + '</div>' +
-                '<div class="timeline-row-note">' + window.escapeHTML(window.t('timelineOvertimeRewardNote', {}, lang)) + '</div>' +
+                '<div class="grant-progress-container timeline-row-track is-overtime" style="display: flex; align-items: center; gap: 8px;">' + 
+                    overtimeSegments.join('') + 
+                    bufferBadgeHtml + 
+                '</div>' +
+                '<div class="timeline-row-note">' + window.escapeHTML(noteText) + '</div>' +
             '</div>'
             : '') +
     '</div>';
@@ -838,10 +894,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
 
             if (userTestingDay >= 15) {
-                if (isInSafetyBuffer) {
-                    const bufferText = lang === 'ru' ? '⏳ Буфер безопасности' : '⏳ Safety Buffer';
-                    parts.push(`<button class="meta-chip accent-buffer" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${bufferText}</button>`);
-                } else {
+                if (!isInSafetyBuffer) {
                     const protectedText = lang === 'ru' ? '🛡 Защищён' : '🛡 Protected';
                     parts.push(`<button class="meta-chip accent-protection" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${protectedText}</button>`);
                 }

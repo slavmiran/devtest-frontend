@@ -9416,3 +9416,98 @@ html[dir="rtl"] .guest-filter-select {
     }
 }
 
+/* Custom Overtime Timeline Shields and Badges */
+.grant-shield {
+    font-size: 14px;
+    line-height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.grant-shield.past {
+    color: var(--stage-protection);
+}
+.grant-shield.current {
+    color: var(--stage-protection);
+    animation: protection-shield-pulse 1.5s ease-in-out infinite;
+}
+.grant-shield.future {
+    color: var(--text-secondary);
+    opacity: 0.4;
+}
+
+@keyframes protection-shield-pulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 2px var(--stage-protection));
+    }
+    50% {
+        transform: scale(1.25);
+        filter: drop-shadow(0 0 8px var(--stage-protection));
+    }
+}
+
+.timeline-buffer-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+.timeline-buffer-badge.active {
+    background: var(--stage-buffer-surface, rgba(255, 159, 10, 0.12));
+    color: var(--stage-buffer);
+    border: 1px solid var(--stage-buffer-border);
+}
+.timeline-buffer-badge.inactive {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    opacity: 0.6;
+}
+
+.protection-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 14px 0;
+    border: none;
+}
+.protection-subblock-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.protection-subblock-title.protection {
+    color: var(--stage-protection);
+}
+.protection-subblock-title.buffer {
+    color: var(--stage-buffer);
+}
+.protection-row {
+    font-size: 13px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+.protection-desc {
+    font-size: 11px;
+    color: var(--hint-color);
+    line-height: 1.4;
+    opacity: 0.85;
+    margin-bottom: 8px;
+}
+.protection-karma-line {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hint-color);
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+

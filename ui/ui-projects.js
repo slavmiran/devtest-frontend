@@ -3540,10 +3540,6 @@ function openProjectDetailsModal(appId) {
         
         const formattedBufferTime = formatArchiveDate(bufferStart, lang);
         
-        const bufferStartText = isPendingCompletion
-            ? (lang === 'ru' ? `Буфер включен: ${formattedBufferTime}` : `Buffer active: ${formattedBufferTime}`)
-            : (lang === 'ru' ? `Активация буфера: ${formattedBufferTime}` : `Buffer activation: ${formattedBufferTime}`);
-        
         const bufferEndTime = bufferStart.getTime() + (48 * 60 * 60 * 1000);
         const remainingMs = Math.max(0, bufferEndTime - Date.now());
         const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
@@ -3554,6 +3550,19 @@ function openProjectDetailsModal(appId) {
         const consumedHours = consumedMs / (60 * 60 * 1000);
         const bufferFillPercent = Math.min(100, Math.max(0, (consumedHours / 48) * 100));
 
+        const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+
+        // Activation Text in relative format
+        const daysToBuffer = Math.max(0, (14 + extraPaid) - userTestingDay);
+        let activationText = '';
+        if (isInSafetyBuffer || daysToBuffer <= 0) {
+            activationText = lang === 'ru' ? 'Активирован' : 'Active';
+        } else {
+            activationText = lang === 'ru'
+                ? `Через ${daysToBuffer} дн. (${finishDateText})`
+                : `In ${daysToBuffer} days (${finishDateText})`;
+        }
+
         const cardTitle = extraPaid > 0
             ? (window.t('ppcTimelineExtra', {}, lang) || 'Extended Protection')
             : (window.t('ppcTimelinePending', {}, lang) || 'Safety Buffer');
@@ -3561,24 +3570,39 @@ function openProjectDetailsModal(appId) {
         const cardClass = extraPaid > 0 ? 'stage-protection' : 'stage-buffer';
         const titleColor = extraPaid > 0 ? 'var(--stage-protection)' : 'var(--stage-buffer)';
 
-        const remainingDaysText = lang === 'ru'
-            ? `Осталось: ~${progressData.remainingDays} дн. (Ориентировочно до ${finishDateText})`
-            : `Remaining: ~${progressData.remainingDays} days (Estimated until ${finishDateText})`;
-
-        let bonusHtml = '';
-        if (extraPaid > 0 && poolAmount > 0) {
-            bonusHtml = '<div class="protection-reward-chip">' + 
-                window.escapeHTML(window.t('ppcProtectionBonusAvailable', { amount: poolAmount }, lang)) + 
-            '</div>';
+        // Block A: "Расширенная защита (Овертайм)" HTML
+        let blockAHtml = '';
+        if (extraPaid > 0) {
+            const remainingCheckins = Math.max(0, (14 + extraPaid) - Math.max(14, userTestingDay));
+            blockAHtml = 
+                '<div class="protection-subblock-a" style="margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed rgba(255,255,255,0.08);">' +
+                    '<div class="protection-subblock-title protection">' +
+                        '<span>🛡️</span>' +
+                        '<span>' + window.escapeHTML(lang === 'ru' ? 'Расширенная защита (Овертайм)' : 'Extended Protection (Overtime)') + '</span>' +
+                    '</div>' +
+                    '<div class="protection-row">' +
+                        window.escapeHTML(lang === 'ru' ? `Осталось чекинов: ${remainingCheckins} дн.` : `Check-ins remaining: ${remainingCheckins} days`) +
+                    '</div>' +
+                    '<div class="protection-desc">' +
+                        window.escapeHTML(lang === 'ru'
+                            ? 'Разработчик оплатил запасные дни тестирования для компенсации рассинхронизации с Google Play и гарантии релиза. Чекины в эти дни оплачиваются из бонусного пула.'
+                            : 'The developer paid for extra testing days to compensate for sync issues with Google Play and guarantee release. Check-ins on these days are rewarded from the bonus pool.') +
+                    '</div>' +
+                    (poolAmount > 0 
+                        ? '<div class="protection-reward-chip" style="margin-top: 4px; display: inline-flex; font-size: 12px; font-weight: 600; color: var(--reward); background: var(--reward-surface); border: 1px solid var(--reward-border); padding: 4px 8px; border-radius: 6px;">' +
+                            window.escapeHTML(lang === 'ru' ? `Бонус защиты: доступно 💎 +${formatAmountValue(poolAmount, 1)} $BUST` : `Protection bonus: available 💎 +${formatAmountValue(poolAmount, 1)} $BUST`) +
+                          '</div>' 
+                        : '') +
+                '</div>';
         }
 
-        let bufferProgressHtml = '';
-        if (extraPaid === 0) {
-            const bufferRemainingText = lang === 'ru' 
-                ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` 
-                : `Remaining: ${remainingHours}h ${remainingMinutes}m`;
-            bufferProgressHtml = '<div class="buffer-progress-wrapper" style="margin-top: 12px;">' +
-                '<div style="font-size: 12px; color: var(--hint-color); margin-bottom: 4px; font-weight: 500;">' + window.escapeHTML(bufferStartText) + '</div>' +
+        // Block B: "Буфер безопасности" HTML
+        const bufferRemainingText = lang === 'ru' 
+            ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` 
+            : `Remaining: ${remainingHours}h ${remainingMinutes}m`;
+            
+        const bufferProgressHtml = isInSafetyBuffer
+            ? '<div class="buffer-progress-wrapper" style="margin-top: 12px; padding: 10px; background: rgba(255,159,10,0.06); border: 1px solid rgba(255,159,10,0.15); border-radius: 8px;">' +
                 '<div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--hint-color); margin-bottom: 6px;">' +
                     '<span>' + window.escapeHTML(lang === 'ru' ? 'Прогресс буфера' : 'Buffer progress') + '</span>' +
                     '<span style="font-weight: 600; color: var(--stage-buffer);">' + window.escapeHTML(bufferRemainingText) + '</span>' +
@@ -3586,35 +3610,48 @@ function openProjectDetailsModal(appId) {
                 '<div class="ppc-buffer-bar-container" style="margin-bottom: 4px;">' +
                     '<div class="ppc-buffer-bar-fill" style="width: ' + bufferFillPercent + '%;"></div>' +
                 '</div>' +
+              '</div>'
+            : '';
+
+        const blockBHtml = 
+            '<div class="protection-subblock-b">' +
+                '<div class="protection-subblock-title buffer">' +
+                    '<span>⏳</span>' +
+                    '<span>' + window.escapeHTML(lang === 'ru' ? 'Буфер безопасности' : 'Safety Buffer') + '</span>' +
+                '</div>' +
+                '<div class="protection-row" style="color: var(--text-secondary);">' +
+                    window.escapeHTML(lang === 'ru' ? `Активация буфера: ${activationText}` : `Buffer activation: ${activationText}`) +
+                '</div>' +
+                '<div class="protection-warning-inset" style="margin-top: 8px; margin-bottom: 8px;">' +
+                    window.escapeHTML(lang === 'ru' ? '⚠️ Не удаляйте приложение! Держите его установленным для финализации.' : '⚠️ Do not uninstall the app! Keep it installed for finalization.') +
+                '</div>' +
+                '<div class="protection-karma-line">' +
+                    '<span>' + window.escapeHTML(lang === 'ru' ? 'как повышенная карма! +0.5 ☯️ Кармы' : 'for keeping installed: +0.5 ☯️ Karma') + '</span>' +
+                '</div>' +
+                bufferProgressHtml +
             '</div>';
-        }
 
         return '<div class="protection-details-card ' + cardClass + '">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">' +
                 '<div style="font-size:15px;font-weight:700;color:' + titleColor + ';">' + window.escapeHTML(cardTitle) + '</div>' +
                 (timelineMeta.isLastDay
                     ? '<button type="button" class="meta-chip sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>'
                     : '') +
             '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);margin-bottom:6px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
-            (extraPaid > 0
-                ? '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">' + window.escapeHTML(remainingDaysText) + '</div>'
-                : '') +
-            (extraPaid > 0
-                ? '<div style="font-size:12px;color:var(--hint-color);margin-bottom:6px;">' + window.escapeHTML(bufferStartText) + '</div>'
-                : '') +
-            bufferProgressHtml +
-            '<div style="font-size:12px;color:var(--hint-color);margin-top:8px;opacity:0.8;line-height:1.4;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
-            '<div class="protection-warning-inset">' + window.escapeHTML(window.t('ppcWarningUninstall', {}, lang)) + '</div>' +
-            bonusHtml +
+            '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
+            blockAHtml +
+            blockBHtml +
+            '<div style="font-size:11px;color:var(--hint-color);margin-top:12px;opacity:0.75;line-height:1.45;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
         '</div>';
     })();
 
     const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:10px;">' +
         '<span>' + window.escapeHTML(window.t('grantProgressText', { day: userTestingDay }, lang)) + '</span>' +
-        (progressData.remainingDays > 0
-            ? '<span>' + window.escapeHTML(window.t('timelineApproxRemaining', { count: progressData.remainingDays }, lang)) + '</span>'
-            : '<span>' + window.escapeHTML(window.t('timelineNoRemaining', {}, lang)) + '</span>') +
+        (!timelineMeta.isSynced
+            ? (progressData.remainingDays > 0
+                ? '<span>' + window.escapeHTML(window.t('timelineApproxRemaining', { count: progressData.remainingDays }, lang)) + '</span>'
+                : '<span>' + window.escapeHTML(window.t('timelineNoRemaining', {}, lang)) + '</span>')
+            : '') +
         (!timelineMeta.isSynced && overtimeDays > 0
             ? '<button type="button" class="detail-overtime-banner detail-overtime-chip" onclick="showToast(\'' + escapeInlineJsString(window.t('overtimeChipToast', {}, lang)) + '\')">' + window.escapeHTML(window.t('detailOvertimeReward', {}, lang)) + '</button>'
             : '') +

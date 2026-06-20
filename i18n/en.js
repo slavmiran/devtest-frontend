@@ -551,7 +551,7 @@
             ppcTimelineExtra: "Extended Protection",
             ppcTimelineArchive: "Archive",
             ppcRewardPoolTitle: "🛡 Reward Pool",
-            ppcRewardPoolDesc: "Protection funds are distributed among active testers who continue keeping the application installed. BUST are NOT burned.",
+            ppcRewardPoolDesc: "Protection funds are distributed among active testers who continue keeping the application installed. Any undistributed $BUST are automatically returned to your balance after the project is completed.",
             ppcRewardPoolAmount: "{amount} BUST",
             ppcRewardPoolLocked: "locked",
             ppcUpdateSyncBtn: "🔄 Update Sync",

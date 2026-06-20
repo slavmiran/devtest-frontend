@@ -2159,8 +2159,17 @@ async function confirmStart(id) {
         const sourceType = String(result.source_type || '').toLowerCase();
         setFirstDayScreenshotVisible(id, false);
         setTimerReadyForConfirm(id, false, false, '');
+        const rewardBust = Number(result.reward_bust || result.earned_bust || 0);
         if (result.already_checked_today) {
             showToast(t.checkinAlreadyDone);
+        } else if (sourceType === 'overtime_checkin' && rewardBust > 0) {
+            const karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
+            const bustVal = formatAmountValue(rewardBust, 1);
+            if (lang === 'ru') {
+                showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
+            } else {
+                showToast(`Check-in successful! +${karmaVal} ☯️ Karma and +${bustVal}💎$BUST`);
+            }
         } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
             showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
         } else if (earnedBust > 0 && earnedKarma > 0) {
