@@ -3531,16 +3531,28 @@ function openProjectDetailsModal(appId) {
         const finishDateText = window.escapeHTML(formatDdMmYyyy(timelineMeta.finishDate));
         
         const isPendingCompletion = String(test.app_status || test.status || '').toLowerCase() === 'pending_completion';
-        const consumedPendingHours = Number(test.consumed_pending_hours || 0);
+        const createdTime = test.created_at ? new Date(test.created_at).getTime() : Date.now();
         const pendingStartedAt = test.pending_completion_started_at ? new Date(test.pending_completion_started_at).getTime() : null;
         
-        let remainingBufferHours;
-        if (isPendingCompletion && pendingStartedAt) {
-            remainingBufferHours = Math.max(0, 48 - consumedPendingHours);
-        } else {
-            remainingBufferHours = 48;
-        }
-        const bufferFillPercent = Math.min(100, Math.max(0, (consumedPendingHours / 48) * 100));
+        const bufferStart = (isPendingCompletion && pendingStartedAt)
+            ? new Date(pendingStartedAt)
+            : new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
+        
+        const formattedBufferTime = formatArchiveDate(bufferStart, lang);
+        
+        const bufferStartText = isPendingCompletion
+            ? (lang === 'ru' ? `Буфер включен: ${formattedBufferTime}` : `Buffer active: ${formattedBufferTime}`)
+            : (lang === 'ru' ? `Активация буфера: ${formattedBufferTime}` : `Buffer activation: ${formattedBufferTime}`);
+        
+        const bufferEndTime = bufferStart.getTime() + (48 * 60 * 60 * 1000);
+        const remainingMs = Math.max(0, bufferEndTime - Date.now());
+        const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
+        const remainingHours = Math.floor(remainingTotalMinutes / 60);
+        const remainingMinutes = remainingTotalMinutes % 60;
+        
+        const consumedMs = Math.max(0, Date.now() - bufferStart.getTime());
+        const consumedHours = consumedMs / (60 * 60 * 1000);
+        const bufferFillPercent = Math.min(100, Math.max(0, (consumedHours / 48) * 100));
 
         const cardTitle = extraPaid > 0
             ? (window.t('ppcTimelineExtra', {}, lang) || 'Extended Protection')
@@ -3562,11 +3574,13 @@ function openProjectDetailsModal(appId) {
 
         let bufferProgressHtml = '';
         if (extraPaid === 0) {
-            const bufferTitleText = lang === 'ru' ? 'Буфер безопасности (48ч)' : 'Safety Buffer (48h)';
-            const bufferRemainingText = lang === 'ru' ? `Осталось: ~${remainingBufferHours} ч.` : `Remaining: ~${remainingBufferHours}h`;
+            const bufferRemainingText = lang === 'ru' 
+                ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` 
+                : `Remaining: ${remainingHours}h ${remainingMinutes}m`;
             bufferProgressHtml = '<div class="buffer-progress-wrapper" style="margin-top: 12px;">' +
+                '<div style="font-size: 12px; color: var(--hint-color); margin-bottom: 4px; font-weight: 500;">' + window.escapeHTML(bufferStartText) + '</div>' +
                 '<div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--hint-color); margin-bottom: 6px;">' +
-                    '<span>' + window.escapeHTML(bufferTitleText) + '</span>' +
+                    '<span>' + window.escapeHTML(lang === 'ru' ? 'Прогресс буфера' : 'Buffer progress') + '</span>' +
                     '<span style="font-weight: 600; color: var(--stage-buffer);">' + window.escapeHTML(bufferRemainingText) + '</span>' +
                 '</div>' +
                 '<div class="ppc-buffer-bar-container" style="margin-bottom: 4px;">' +
@@ -3585,6 +3599,9 @@ function openProjectDetailsModal(appId) {
             '<div style="font-size:13px;color:var(--hint-color);margin-bottom:6px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
             (extraPaid > 0
                 ? '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">' + window.escapeHTML(remainingDaysText) + '</div>'
+                : '') +
+            (extraPaid > 0
+                ? '<div style="font-size:12px;color:var(--hint-color);margin-bottom:6px;">' + window.escapeHTML(bufferStartText) + '</div>'
                 : '') +
             bufferProgressHtml +
             '<div style="font-size:12px;color:var(--hint-color);margin-top:8px;opacity:0.8;line-height:1.4;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +

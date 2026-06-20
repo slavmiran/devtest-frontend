@@ -322,12 +322,18 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     }
 
     function getDayState(dayNum) {
+        const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+        const isBufferDay = dayNum > 14 + extraPaid;
         var ch = renderTimeline[dayNum - 1] || '';
         var cls = 'remaining';
-        if (ch === '1') { cls = 'standard-checkin'; standardCheckins++; }
-        else if (ch === '0') { cls = 'standard-skip'; standardSkips++; }
-        else if (ch === '2') { cls = 'overtime-checkin'; overtimeCheckins++; }
-        else if (ch === '3') { cls = 'overtime-skip'; overtimeSkips++; }
+        if (isBufferDay) {
+            cls = 'buffer-pause';
+        } else {
+            if (ch === '1') { cls = 'standard-checkin'; standardCheckins++; }
+            else if (ch === '0') { cls = 'standard-skip'; standardSkips++; }
+            else if (ch === '2') { cls = 'overtime-checkin'; overtimeCheckins++; }
+            else if (ch === '3') { cls = 'overtime-skip'; overtimeSkips++; }
+        }
         if (currentDay === dayNum) {
             if (currentDayState === 'completed') {
                 cls += ' current-completed';
@@ -828,15 +834,17 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
             const userTestingDayRaw = getResolvedTestingDay(test);
             const userTestingDay = typeof userTestingDayRaw === 'number' && userTestingDayRaw > 0 ? userTestingDayRaw : 1;
-            if (extraPaid > 0) {
-                const protectedText = lang === 'ru' ? '🛡 Защищён' : '🛡 Protected';
-                parts.push(`<button class="meta-chip accent-protection" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${protectedText}</button>`);
-            } else if (userTestingDay >= 15) {
-                const bufferText = lang === 'ru' ? '⏳ Буфер безопасности' : '⏳ Safety Buffer';
-                parts.push(`<button class="meta-chip accent-buffer" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${bufferText}</button>`);
-            } else {
-                const protectedText = lang === 'ru' ? '🛡 Защищён' : '🛡 Protected';
-                parts.push(`<button class="meta-chip accent-protection" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${protectedText}</button>`);
+            const isPendingCompletion = !!test.is_pending_completion;
+            const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+
+            if (userTestingDay >= 15) {
+                if (isInSafetyBuffer) {
+                    const bufferText = lang === 'ru' ? '⏳ Буфер безопасности' : '⏳ Safety Buffer';
+                    parts.push(`<button class="meta-chip accent-buffer" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${bufferText}</button>`);
+                } else {
+                    const protectedText = lang === 'ru' ? '🛡 Защищён' : '🛡 Protected';
+                    parts.push(`<button class="meta-chip accent-protection" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${protectedText}</button>`);
+                }
             }
         }
     }
@@ -1357,8 +1365,13 @@ function renderTests(force) {
         const hasGuestOrigin = hasGuestLinkRelationship(test);
         const showGuestOriginChip = shouldShowGuestOriginChip(test);
         const isPendingCompletion = !!test.is_pending_completion;
-        const isPendingForTester = isPendingCompletion && Number(test.testing_days || 0) >= 15;
-        const isArchivedOrCompleted = !isExternal && String(test.app_status || 'active').toLowerCase() !== 'active' && !isPendingCompletion;
+        
+        const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+        const userTestingDay = getResolvedTestingDay(test);
+        const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+        
+        const isPendingForTester = isInSafetyBuffer;
+        const isArchivedOrCompleted = !isExternal && String(test.app_status || 'active').toLowerCase() !== 'active' && !isInSafetyBuffer;
         // Skip archived cards with no actionable state (no grant, no early finish bonus).
         // This prevents cards from hanging in My Tests when neither reward applies.
         const isArchivedWithNoAction = isArchivedOrCompleted
@@ -1378,7 +1391,7 @@ function renderTests(force) {
         // - If isGrantAvailableTomorrow: move to done list (grant pending)
         // - Else if status='done': go to done list
         // - Else: go to active list
-        const shouldShowInPendingList = isPendingCompletion;
+        const shouldShowInPendingList = isInSafetyBuffer;
         const shouldShowInActiveList = !shouldShowInPendingList && (test.isReadyToClaim || test.isEarlyFinish || (test.status !== 'done' && !test.isGrantAvailableTomorrow));
         const shouldShowInDoneList = !shouldShowInPendingList && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
         
@@ -1488,7 +1501,7 @@ function renderTests(force) {
                 </button>
                 ${secondaryActions ? `<div class="action-row" style="gap: 8px;">${secondaryActions}</div>` : ''}
             `;
-        } else if (isPendingCompletion) {
+        } else if (isPendingForTester) {
             actionsHtml = pendingReleaseButtonHtml;
         } else if (test.isGrantAvailableTomorrow) {
             actionsHtml = `
@@ -1643,16 +1656,13 @@ function renderTests(force) {
             if (safeOwnerUsername) {
                 headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${safeOwnerUsername}', event)">💬</button>`);
             }
-        } else if (test.status !== 'done' && !test.isReadyToClaim && !isPendingForTester) {
-            const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+        } else {
             if (userTestingDay >= 15) {
-                if (extraPaid > 0) {
-                    headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: var(--stage-protection); cursor: pointer;" onclick="openProtectionInfoModal(${test.id}, event)">🛡️</button>`);
-                } else {
+                if (isInSafetyBuffer) {
                     headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: var(--stage-buffer); cursor: pointer;" onclick="openBufferInfoModal(${test.id}, event)">⏳</button>`);
+                } else {
+                    headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: var(--stage-protection); cursor: pointer;" onclick="openProtectionInfoModal(${test.id}, event)">🛡️</button>`);
                 }
-            } else {
-                headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="${hasGuestOrigin ? `openGuestLinkRemoveModalFromTest(${test.id}, event)` : (isMutualExitFlow(test) ? `openLeaveMutualModal(${test.id}, event)` : `openDropTestModal(${test.id}, event)`)}">🗑️</button>`);
             }
         }
         const trailingHtml = headerActions.length

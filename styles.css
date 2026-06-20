@@ -9391,3 +9391,28 @@ html[dir="rtl"] .guest-filter-select {
     }
 }
 
+/* Color for buffer days on the timeline */
+.grant-segment.buffer-pause {
+    background: var(--stage-buffer) !important;
+    border-color: var(--stage-buffer-border) !important;
+    opacity: 0.8;
+}
+
+.grant-segment.buffer-pause.current-pending {
+    background: var(--stage-buffer) !important;
+    border-color: var(--stage-buffer-border) !important;
+    box-shadow: 0 0 10px var(--stage-buffer) !important;
+    animation: timeline-pulse-buffer 1.5s ease-in-out infinite !important;
+}
+
+@keyframes timeline-pulse-buffer {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 4px var(--stage-buffer);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 12px var(--stage-buffer);
+    }
+}
+
