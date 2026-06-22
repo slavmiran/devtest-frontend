@@ -1,5 +1,6 @@
 /* Phase 4.4 — ui/ui-market.js (structural split from ui.js + reliability cleanup from ui-tests.js) */
 
+console.log('[DEBUG] ui-market.js START');
 window.feedbackMediaRegistry = window.feedbackMediaRegistry || {};
 
 /* === Reliability / dossier / guest helpers (moved from ui-tests.js) === */
@@ -3257,7 +3258,6 @@ function renderProjectFeedbackCards(project, items) {
             '<div class="feedback-card-text">' + textHtml + '</div>' +
             '<div class="feedback-card-actions">' + mediaBtnHtml + topicBtnHtml + rewardBtnHtml + '</div>' +
             rewardSummary + replyHtml + '</div>';
-        }
     }).join('')}</div>`;
 }
 
@@ -5685,3 +5685,5 @@ Object.assign(window, {
     closeFeedbackImageSlider,
     openFeedbackTopicLink,
 });
+
+console.log('[DEBUG] ui-market.js END — switchTab=', typeof switchTab, 'showLoading=', typeof showLoading);

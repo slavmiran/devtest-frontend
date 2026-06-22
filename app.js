@@ -71,7 +71,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     (async function() {
+        console.log('[DEBUG] bootstrap IIFE started');
         var profileSyncResult = await bootstrapProfileSyncPromise;
+        console.log('[DEBUG] bootstrap: profileSync done, ok=', profileSyncResult && profileSyncResult.ok);
         await bootstrapInterfaceLanguage({ profileSyncResult: profileSyncResult });
         await runtimeConfigPromise;
         var guestIntent = _parseGuestClaimIntent();
@@ -93,7 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
         loadEvents().catch(function(e) { console.error('Bootstrap loadEvents error:', e); });
         loadExternalCounts().catch(function(e) { console.error('Bootstrap loadExternalCounts error:', e); });
         try { scheduleDeferredBootstrap(); } catch (e) { console.error('Bootstrap deferred error:', e); }
+        console.log('[DEBUG] bootstrap: all fire-and-forget launched, calling _handleInitialRoute');
         await _handleInitialRoute();
+        console.log('[DEBUG] bootstrap IIFE completed successfully');
     })().catch(function(error) {
         console.error('Initial bootstrap failed:', error);
     });
