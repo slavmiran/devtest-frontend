@@ -886,6 +886,8 @@
             feedbackRewardInsufficientBust: "Insufficient $BUST balance",
             earnDailyTitle: "Contracts",
             earnDailyDesc: "Test apps from the Showcase in the Contracts section and earn $BUST for each check-in (65%) + Hold Bonus (35%).",
+            earnRetentionTitle: "Retention under Protection",
+            earnRetentionDesc: "Do not delete apps after day 14 of testing if the developer has activated Extended Protection. For each extra day of retention you earn a share of the daily $BUST pool.",
             earnSocialTitle: "Social media",
             earnSocialDesc: "Post about DevTestHub with #DevTestHub #12testersGooglePlay, send the link for review and get 1500 $BUST!",
             earnSocialBtn: "Submit for review",

@@ -596,6 +596,7 @@ var _earnReferralBust = 0;
 var _earnGuestInviteCount = 0;
 var _earnGuestInviteBust = 0;
 var _earnExchangeBust = 0;
+var _earnRetentionBust = 0;
 var _earnEarlyFinishCount = 0;
 var _earnEarlyFinishBust = 0;
 var _earnFeedbackCount = 0;
@@ -743,6 +744,7 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_earnGuestInviteCount', function () { return _earnGuestInviteCount; }, function (value) { _earnGuestInviteCount = value; });
     window.App.bindStateProperty('_earnGuestInviteBust', function () { return _earnGuestInviteBust; }, function (value) { _earnGuestInviteBust = value; });
     window.App.bindStateProperty('_earnExchangeBust', function () { return _earnExchangeBust; }, function (value) { _earnExchangeBust = value; });
+    window.App.bindStateProperty('_earnRetentionBust', function () { return _earnRetentionBust; }, function (value) { _earnRetentionBust = value; });
     window.App.bindStateProperty('_earnEarlyFinishCount', function () { return _earnEarlyFinishCount; }, function (value) { _earnEarlyFinishCount = value; });
     window.App.bindStateProperty('_earnEarlyFinishBust', function () { return _earnEarlyFinishBust; }, function (value) { _earnEarlyFinishBust = value; });
     window.App.bindStateProperty('_earnFeedbackCount', function () { return _earnFeedbackCount; }, function (value) { _earnFeedbackCount = value; });

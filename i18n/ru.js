@@ -886,6 +886,8 @@
             feedbackRewardInsufficientBust: "Недостаточно $BUST на балансе",
             earnDailyTitle: "Контракты",
             earnDailyDesc: "Тестируйте приложения на «Витрине» из раздела «Контракты» и получайте $BUST за каждый чекин (65%) + Hold Bonus (35%).",
+            earnRetentionTitle: "Удержание под защитой",
+            earnRetentionDesc: "Не удаляйте приложения после 14-го дня тестирования, если разработчик активировал Расширенную защиту. За каждый дополнительный день удержания вы получаете долю из ежедневного пула $BUST.",
             earnSocialTitle: "Социальные сети",
             earnSocialDesc: "Размести пост о DevTestHub с #DevTestHub #12testersGooglePlay, пришли ссылку на проверку и получи 1500 $BUST!",
             earnSocialBtn: "Отправить на проверку",

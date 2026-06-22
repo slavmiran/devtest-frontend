@@ -3700,11 +3700,11 @@ function openProjectDetailsModal(appId) {
 
         if (userTestingDay <= 14) {
             return '<details class="protection-details-card ' + cardClass + '" id="protection-details-accordion">' +
-                '<summary style="list-style: none; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; outline: none;">' +
-                    '<div style="font-size:15px;font-weight:700;color:' + titleColor + ';display:flex;align-items:center;gap:6px;">' +
+                '<summary class="protection-details-summary">' +
+                    '<div class="protection-details-title" style="color:' + titleColor + ';">' +
                         headerEmoji + window.escapeHTML(cardTitle) +
                     '</div>' +
-                    '<span class="accordion-arrow" style="font-size: 14px; color: var(--hint-color); transition: transform 0.2s ease;">▼</span>' +
+                    '<span class="grant-dashboard-lost-arrow" aria-hidden="true">›</span>' +
                 '</summary>' +
                 '<div class="protection-accordion-content" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">' +
                     '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +

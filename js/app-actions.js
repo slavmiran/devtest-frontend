@@ -1438,24 +1438,25 @@ function renderEarnBustDynamic() {
     document.getElementById('earn-referral-bust').innerText = `💎 ${formatBustAmount(_earnReferralBust)}`;
     document.getElementById('earn-grant-status').innerHTML = `
         <span class="meta-chip accent-green">🏆 ${window.t('earnGrantTestsLabel', {}, lang)}: ${_earnGrantCount}</span>
-        <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnGrantBust)}</span>
+        <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnGrantBust)}</span>
     `;
     document.getElementById('earn-early-finish-status').innerHTML = `
         <span class="meta-chip accent-green">⚡ ${window.escapeHTML(window.t('earnEarlyFinishCountChip', { count: _earnEarlyFinishCount }, lang))}</span>
-        <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnEarlyFinishBust)}</span>
+        <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnEarlyFinishBust)}</span>
     `;
     document.getElementById('earn-feedback-status').innerHTML = `
         <span class="meta-chip accent-green">🐞 ${window.t('earnFeedbackCountChip', { count: _earnFeedbackCount }, lang)}</span>
-        <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnFeedbackBust)}</span>
+        <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnFeedbackBust)}</span>
     `;
     var playReviewStatus = document.getElementById('earn-play-review-status');
     if (playReviewStatus) {
         playReviewStatus.innerHTML = `
             <span class="meta-chip accent-green">⭐ ${window.escapeHTML(window.t('earnPlayReviewCountChip', { count: _earnPlayReviewCount }, lang))}</span>
-            <span class="meta-chip accent-blue">💎 ${formatBustAmount(_earnPlayReviewBust)}</span>
+            <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnPlayReviewBust)}</span>
         `;
     }
     document.getElementById('earn-exchange-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnExchangeBust)}</span>`;
+    document.getElementById('earn-retention-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnRetentionBust)}</span>`;
     const socialStatus = document.getElementById('earn-social-status');
     if (_socialBonusStatus === 'approved') {
         socialStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnSocialApproved}</span>`;
@@ -1479,6 +1480,7 @@ async function openEarnBustModal() {
         _earnGrantBust = Number(data.grant_bust_earned || 0);
         _earnReferralBust = Number(data.referral_bust_earned || 0);
         _earnExchangeBust = Number(data.exchange_bust_earned || 0);
+        _earnRetentionBust = Number(data.retention_bust_earned || 0);
         _earnEarlyFinishCount = Number(data.early_finish_count || 0);
         _earnEarlyFinishBust = Number(data.early_finish_bust_earned || 0);
         _earnFeedbackCount = Number(data.feedback_sent_count || 0);

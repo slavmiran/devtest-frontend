@@ -54,6 +54,7 @@
         _earnGuestInviteCount: 0,
         _earnGuestInviteBust: 0,
         _earnExchangeBust: 0,
+        _earnRetentionBust: 0,
         _earnEarlyFinishCount: 0,
         _earnEarlyFinishBust: 0,
         _earnFeedbackCount: 0,
