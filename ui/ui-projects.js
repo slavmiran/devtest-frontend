@@ -3551,7 +3551,7 @@ function openProjectDetailsModal(appId) {
     let projectDaysLeft = timelineMeta.projectDaysLeft;
     let expectedTotalDays = timelineMeta.expectedTotalDays;
     let overtimeDays = timelineMeta.overtimeDays;
-    const progressData = buildGrantProgressSegments(test, userTestingDay, expectedTotalDays);
+    const progressData = buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, true);
     const isIssueBlocked = !!test.issue_reported_at && !test.issue_fixed_at;
     const showIssueActionInDetails = test.status !== 'new' && test.status !== 'done';
 
@@ -3743,39 +3743,26 @@ function openProjectDetailsModal(appId) {
                 bufferProgressHtml +
             '</div>';
 
-        if (userTestingDay <= 14) {
-            return '<details class="protection-details-card ' + cardClass + '" id="protection-details-accordion">' +
-                '<summary class="protection-details-summary">' +
+        return '<details class="protection-details-card ' + cardClass + '" id="protection-details-accordion">' +
+            '<summary class="protection-details-summary">' +
+                '<div style="display:flex;align-items:center;gap:8px;">' +
                     '<div class="protection-details-title" style="color:' + titleColor + ';">' +
-                        headerEmoji + window.escapeHTML(cardTitle) +
-                    '</div>' +
-                    '<span class="grant-dashboard-lost-arrow" aria-hidden="true">›</span>' +
-                '</summary>' +
-                '<div class="protection-accordion-content" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">' +
-                    '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
-                    blockAHtml +
-                    (blockAHtml && blockBHtml ? '<div class="ppc-subblock-separator"><span class="ppc-separator-plus">+</span></div>' : '') +
-                    blockBHtml +
-                    '<div style="font-size:11px;color:var(--hint-color);margin-top:12px;opacity:0.75;line-height:1.45;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
-                '</div>' +
-            '</details>';
-        } else {
-            return '<div class="protection-details-card ' + cardClass + '">' +
-                '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">' +
-                    '<div style="font-size:15px;font-weight:700;color:' + titleColor + ';display:flex;align-items:center;gap:6px;">' +
                         headerEmoji + window.escapeHTML(cardTitle) +
                     '</div>' +
                     (timelineMeta.isLastDay
                         ? '<button type="button" class="meta-chip sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>'
                         : '') +
                 '</div>' +
+                '<span class="grant-dashboard-lost-arrow" aria-hidden="true">›</span>' +
+            '</summary>' +
+            '<div class="protection-accordion-content" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">' +
                 '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
                 blockAHtml +
                 (blockAHtml && blockBHtml ? '<div class="ppc-subblock-separator"><span class="ppc-separator-plus">+</span></div>' : '') +
                 blockBHtml +
                 '<div style="font-size:11px;color:var(--hint-color);margin-top:12px;opacity:0.75;line-height:1.45;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
-            '</div>';
-        }
+            '</div>' +
+        '</details>';
     })();
 
     const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:10px;">' +
@@ -3789,10 +3776,10 @@ function openProjectDetailsModal(appId) {
             ? '<button type="button" class="detail-overtime-banner detail-overtime-chip" onclick="showToast(\'' + escapeInlineJsString(window.t('overtimeChipToast', {}, lang)) + '\')">' + window.escapeHTML(window.t('detailOvertimeReward', {}, lang)) + '</button>'
             : '') +
     '</div>';
-    const timelinePanelHtml = '<button type="button" class="grant-progress-hitbox" onclick="openTimelineStatsSheet(' + test.id + ')">' +
+    const timelinePanelHtml = '<div class="grant-progress-panel" style="width: 100%; text-align: left;">' +
         progressData.html +
         progressFooterHtml +
-    '</button>';
+    '</div>';
 
     var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
         '<div class="detail-instruction-body">' + (test.instructions ? escapeHtmlWithBreaks(test.instructions) : '—') + '</div></div>';

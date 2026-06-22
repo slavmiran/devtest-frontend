@@ -300,7 +300,7 @@ function getTestingTimelineMeta(test) {
     };
 }
 
-function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
+function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, isClickable) {
     var timeline = test.daily_timeline || '';
     var renderTimeline = timeline;
     var totalDays = Math.max(expectedTotalDays || 14, userTestingDay || 0, 1);
@@ -421,13 +421,18 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
         ? window.t('timelineOvertimeRewardNotePaid', {}, lang) || 'Награда за чекин: +0.5 ☯️ Кармы и доля из пула 💎$BUST'
         : window.t('timelineOvertimeRewardNote', {}, lang);
 
+    const clickAttr = isClickable ? ' onclick="openTimelineStatsSheet(' + test.id + ')" style="cursor: pointer;"' : '';
+    const overtimeStyle = isClickable
+        ? ' style="display: flex; align-items: center; gap: 8px; cursor: pointer;"'
+        : ' style="display: flex; align-items: center; gap: 8px;"';
+
     var html = '<div class="timeline-compact">' +
         '<div class="timeline-row">' +
             '<div class="timeline-row-head">' +
                 '<span class="timeline-row-title">' + window.escapeHTML(window.t('timelinePrimaryTitle', {}, lang)) + '</span>' +
                 '<span class="timeline-row-range">1-14</span>' +
             '</div>' +
-            '<div class="grant-progress-container timeline-row-track is-primary">' + baseSegments.join('') + '</div>' +
+            '<div class="grant-progress-container timeline-row-track is-primary"' + clickAttr + '>' + baseSegments.join('') + '</div>' +
         '</div>' +
         (showOvertimeRow
             ? '<div class="timeline-row timeline-row-overtime">' +
@@ -435,12 +440,12 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
                     '<span class="timeline-row-title">' + window.escapeHTML(window.t('timelineOvertimeTitle', {}, lang)) + '</span>' +
                     '<span class="timeline-row-range">' + rangeText + '</span>' +
                 '</div>' +
-                '<div class="grant-progress-container timeline-row-track is-overtime" style="display: flex; align-items: center; gap: 8px;">' + 
+                '<div class="grant-progress-container timeline-row-track is-overtime"' + (isClickable ? ' onclick="openTimelineStatsSheet(' + test.id + ')"' : '') + overtimeStyle + '>' + 
                     overtimeSegments.join('') + 
                     bufferBadgeHtml + 
                 '</div>' +
-                '<div class="timeline-row-note">' + window.escapeHTML(noteText) + '</div>' +
-            '</div>'
+              '</div>' +
+              '<div class="timeline-row-note">' + window.escapeHTML(noteText) + '</div>'
             : '') +
     '</div>';
 
@@ -1928,14 +1933,14 @@ function openProtectionInfoModal(testId, event) {
     // Calculate reward pool share
     const testingDay = typeof getResolvedTestingDay === 'function' ? getResolvedTestingDay(test) : 15;
     const poolAmount = Number(test.protection_bust_pool || 0);
-    const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+    const extraPaid = Number(test.paid_protection_days || 0);
     const remainingDays = Math.max(1, (14 + extraPaid) - testingDay + 1);
     const eligibleTesters = Math.max(1, test.eligible_testers_count || 1);
     const estimatedShare = poolAmount > 0 ? (poolAmount / remainingDays / eligibleTesters) : 0;
     const shareFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(estimatedShare, 1) : estimatedShare.toFixed(1);
     
-    const rewardLabel = window.t('ppcModalRewardLabel', {}, lang) || 'Ориентировочная награда';
-    const rewardValue = window.t('ppcModalRewardValueFormat', { shareFormatted: shareFormatted }, lang) || `~${shareFormatted} $BUST / день`;
+    const rewardLabel = window.t('ppcModalRewardLabel', {}, lang) || 'Ориентировочно';
+    const rewardValue = window.t('ppcModalRewardValueFormat', { shareFormatted: shareFormatted }, lang) || `~${shareFormatted} $BUST`;
     
     const titleEl = document.getElementById('ppc-protection-modal-title');
     const textEl = document.getElementById('ppc-protection-modal-text');

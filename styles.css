@@ -5461,14 +5461,10 @@ html[dir="rtl"] .guest-filter-select {
     margin: 10px 0 0;
 }
 
-.grant-progress-hitbox {
+.grant-progress-panel {
     display: block;
     width: 100%;
-    padding: 0;
-    border: none;
-    background: transparent;
     text-align: left;
-    cursor: pointer;
 }
 
 .grant-segment {
@@ -5569,8 +5565,13 @@ html[dir="rtl"] .guest-filter-select {
 }
 
 .timeline-row-note {
-    font-size: 12px;
-    color: #ffd460;
+    font-size: 11px;
+    color: var(--hint-color);
+    text-align: center;
+    margin-top: 10px;
+    display: block;
+    line-height: 1.45;
+    opacity: 0.75;
 }
 
 /* Grant Dashboard Block */
