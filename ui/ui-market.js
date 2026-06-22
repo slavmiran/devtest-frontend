@@ -3223,7 +3223,7 @@ function renderProjectFeedbackCards(project, items) {
                 : `<span style="color: var(--hint-color);">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</span>`);
         const rewardBust = Number(item.reward_bust || 0);
         const rewardKarma = Number(item.reward_karma || 0);
-        const statusBadge = item.status === 'rejected'
+        const statusBadge = item.status === 'declined'
             ? window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang))
             : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang));
         const rewardSummary = item.status !== 'new'
