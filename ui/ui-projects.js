@@ -399,29 +399,13 @@ function renderProjects(force) {
             if (project.target_lang && project.target_lang !== 'ALL') {
                 badges += getLangBadge(project.target_lang);
             }
-            const _stageBadgeAdded = !!(isPendingCompletion || isOvertime);
-
-            if (isPendingCompletion) {
-                const _pendingHoursLeft = Math.max(0, 48 - Number(project.consumed_pending_hours || 0));
-                const _pendingChipText = window.t('ppcBufferHoursLeft', { hours: _pendingHoursLeft }, lang) || `⏳ Safety Buffer: ${_pendingHoursLeft}h left`;
-                badges += `<button class="card-stage-badge-buffer" onclick="showPendingReleaseInfo()">${window.escapeHTML(_pendingChipText)}</button>`;
-            }
-
-            if (isOvertime) {
-                badges += `<span class="card-stage-badge-protection">${window.escapeHTML(window.t('cardStageProtectionBadge', {}, lang))}</span>`;
-            }
-
-            if (!_stageBadgeAdded) {
-                badges += `<span class="card-stage-badge-active">${window.escapeHTML(window.t('cardStageActiveBadge', {}, lang))}</span>`;
-            }
-
             if (isProjectSynced(project)) {
                 // Fallback for legacy projects that may use purchased_protection_days instead of paid_protection_days
                 const extraPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0);
                 const protectedText = extraPaid > 0
                     ? window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang)
                     : window.t('ppcProtectedBadge', {}, lang);
-                badges += `<span class="meta-chip" style="background:rgba(52,199,89,0.12);border:1px solid rgba(52,199,89,0.3);color:#34c759;">${window.escapeHTML(protectedText)}</span>`;
+                badges += `<span class="meta-chip accent-protection">${window.escapeHTML(protectedText)}</span>`;
             }
 
             return badges;
@@ -933,25 +917,27 @@ function formatArchiveDate(date, lang) {
  * Handles styling toggles and content visibility.
  */
 function _ppcSwitchTab(btn, tabName) {
-    const parentCard = btn.closest('.ppc-tabbed-card');
-    if (!parentCard) return;
+    const section = btn.closest('.ppc-center-section');
+    if (!section) return;
 
     // Toggle active button class
-    parentCard.querySelectorAll('.ppc-tab-btn').forEach(b => b.classList.remove('active'));
+    section.querySelectorAll('.ppc-tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
-    // Toggle contents
-    const rewardContent = parentCard.querySelector('.reward-content');
-    const bufferContent = parentCard.querySelector('.buffer-content');
+    // Toggle tab content visibility
+    const rewardContent = section.querySelector('.reward-content');
+    const bufferContent = section.querySelector('.buffer-content');
 
     if (tabName === 'reward') {
         if (rewardContent) rewardContent.style.display = 'block';
         if (bufferContent) bufferContent.style.display = 'none';
-        parentCard.style.borderColor = 'var(--reward-border)';
+        section.classList.remove('tab-buffer');
+        section.classList.add('tab-reward');
     } else {
         if (rewardContent) rewardContent.style.display = 'none';
         if (bufferContent) bufferContent.style.display = 'block';
-        parentCard.style.borderColor = 'var(--stage-buffer-border)';
+        section.classList.remove('tab-reward');
+        section.classList.add('tab-buffer');
     }
 }
 window._ppcSwitchTab = _ppcSwitchTab;
@@ -1426,6 +1412,9 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
                 <div class="ppc-buffer-card-title">
                     ⏳ <span>${window.escapeHTML(lang === 'ru' ? 'Буфер безопасности (48ч)' : 'Safety Buffer (48h)')}</span>
                 </div>
+                <div class="ppc-buffer-desc" style="font-size: 12px; line-height: 1.5; color: var(--hint-color); margin-bottom: 12px;">
+                    ${window.escapeHTML(T('ppcBufferTabDesc'))}
+                </div>
                 <div class="ppc-buffer-timeline-wrapper">
                     <div class="ppc-buffer-bar-container">
                         <div class="ppc-buffer-bar-fill" style="width: ${bufferFillPercent}%;"></div>
@@ -1450,60 +1439,65 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     } else {
         // Scenario B: Protection days purchased. Show Segmented Tabs Card.
         cardHtml = `
-            <div class="ppc-tabbed-card">
+            <div class="ppc-center-section tab-reward">
                 <div class="ppc-segmented-tabs">
-                    <button type="button" class="ppc-tab-btn active" onclick="window._ppcSwitchTab(this, 'reward')">
+                    <button type="button" class="ppc-tab-btn active" data-tab="reward" onclick="window._ppcSwitchTab(this, 'reward')">
                         🛡 ${window.escapeHTML(lang === 'ru' ? 'Пул наград' : 'Reward Pool')}
                     </button>
-                    <button type="button" class="ppc-tab-btn" onclick="window._ppcSwitchTab(this, 'buffer')">
+                    <button type="button" class="ppc-tab-btn" data-tab="buffer" onclick="window._ppcSwitchTab(this, 'buffer')">
                         ⏳ ${window.escapeHTML(lang === 'ru' ? 'Буфер безопасности' : 'Safety Buffer')}
                     </button>
                 </div>
-                
-                <!-- Tab 1: Reward Pool Content -->
-                <div class="ppc-tab-content reward-content">
-                    <div class="ppc-reward-pool-header" style="margin-bottom: 12px;">
-                        <div class="ppc-reward-pool-title" style="color: var(--reward); font-weight: 700; font-size: 15px;">${window.escapeHTML(T('ppcRewardPoolTitle'))}</div>
-                        <div class="ppc-reward-pool-amount-wrap">
-                            <div class="ppc-reward-pool-amount" style="color: var(--text-color); font-size: 18px; font-weight: 800;">${window.escapeHTML(T('ppcRewardPoolAmount', { amount: poolAmount }))}</div>
-                            <div class="ppc-reward-pool-status" style="background: var(--reward-surface); color: var(--reward); border-color: var(--reward-border); font-size: 11px;">${window.escapeHTML(T('ppcRewardPoolLocked'))}</div>
-                        </div>
-                    </div>
-                    <div class="ppc-reward-pool-desc" style="font-size: 12px; line-height: 1.5; color: var(--text-color);">${window.escapeHTML(T('ppcRewardPoolDesc'))}</div>
 
-                    <div style="margin-top: 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px;">
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <div class="ppc-reward-per-tester-day" style="font-size: 13px; color: var(--hint-color); font-weight: 600;">
-                                ${window.escapeHTML(rewardText)}
-                            </div>
-                            <div class="ppc-reward-pool-details-subtitle" style="font-size: 11px; color: var(--hint-color); font-weight: 400; opacity: 0.8;">
-                                ${window.escapeHTML(subtitleText)}
+                <div class="ppc-tabbed-card">
+                    <!-- Tab 1: Reward Pool Content -->
+                    <div class="ppc-tab-content reward-content">
+                        <div class="ppc-reward-pool-header" style="margin-bottom: 12px;">
+                            <div class="ppc-reward-pool-title" style="color: var(--reward); font-weight: 700; font-size: 15px;">${window.escapeHTML(T('ppcRewardPoolTitle'))}</div>
+                            <div class="ppc-reward-pool-amount-wrap">
+                                <div class="ppc-reward-pool-amount" style="color: var(--reward); font-size: 18px; font-weight: 800;">${window.escapeHTML(T('ppcRewardPoolAmount', { amount: poolAmount }))}</div>
+                                <div class="ppc-reward-pool-status" style="background: var(--reward-surface); color: var(--reward); border-color: var(--reward-border); font-size: 11px;">${window.escapeHTML(T('ppcRewardPoolLocked'))}</div>
                             </div>
                         </div>
-                        <button type="button" class="ppc-add-pool-btn" style="margin-top: 0; flex-shrink: 0;" onclick="openPpcTopUpModal()">
-                            ${lang === 'ru' ? '+ Пополнить пул' : '+ Add to Pool'}
-                        </button>
+                        <div class="ppc-reward-pool-desc" style="font-size: 12px; line-height: 1.5; color: var(--hint-color);">${window.escapeHTML(T('ppcRewardPoolDesc'))}</div>
+
+                        <div style="margin-top: 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px;">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div class="ppc-reward-per-tester-day" style="font-size: 13px; color: var(--hint-color); font-weight: 600;">
+                                    ${window.escapeHTML(rewardText)}
+                                </div>
+                                <div class="ppc-reward-pool-details-subtitle" style="font-size: 11px; color: var(--hint-color); font-weight: 400; opacity: 0.8;">
+                                    ${window.escapeHTML(subtitleText)}
+                                </div>
+                            </div>
+                            <button type="button" class="ppc-add-pool-btn" style="margin-top: 0; flex-shrink: 0;" onclick="openPpcTopUpModal()">
+                                ${lang === 'ru' ? '+ Пополнить пул' : '+ Add to Pool'}
+                            </button>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- Tab 2: Safety Buffer Content -->
-                <div class="ppc-tab-content buffer-content" style="display: none;">
-                    <div class="ppc-buffer-timeline-wrapper">
-                        <div class="ppc-buffer-bar-container">
-                            <div class="ppc-buffer-bar-fill" style="width: ${bufferFillPercent}%;"></div>
+
+                    <!-- Tab 2: Safety Buffer Content -->
+                    <div class="ppc-tab-content buffer-content" style="display: none;">
+                        <div class="ppc-buffer-desc" style="font-size: 12px; line-height: 1.5; color: var(--hint-color); margin-bottom: 12px;">
+                            ${window.escapeHTML(T('ppcBufferTabDesc'))}
                         </div>
-                        <div class="ppc-buffer-ticks">
-                            <div class="ppc-buffer-tick-item start">
-                                <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Старт' : 'Start')}</div>
-                                <div class="ppc-buffer-tick-time">${window.escapeHTML(bufferStartStr)}</div>
+                        <div class="ppc-buffer-timeline-wrapper">
+                            <div class="ppc-buffer-bar-container">
+                                <div class="ppc-buffer-bar-fill" style="width: ${bufferFillPercent}%;"></div>
                             </div>
-                            <div class="ppc-buffer-tick-item equator">
-                                <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Экватор (24ч)' : 'Equator (24h)')}</div>
-                                <div class="ppc-buffer-tick-time">${window.escapeHTML(equatorStr)}</div>
-                            </div>
-                            <div class="ppc-buffer-tick-item end">
-                                <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Архив (48ч)' : 'Archive (48h)')}</div>
-                                <div class="ppc-buffer-tick-time">${window.escapeHTML(archiveDateStr)}</div>
+                            <div class="ppc-buffer-ticks">
+                                <div class="ppc-buffer-tick-item start">
+                                    <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Старт' : 'Start')}</div>
+                                    <div class="ppc-buffer-tick-time">${window.escapeHTML(bufferStartStr)}</div>
+                                </div>
+                                <div class="ppc-buffer-tick-item equator">
+                                    <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Экватор (24ч)' : 'Equator (24h)')}</div>
+                                    <div class="ppc-buffer-tick-time">${window.escapeHTML(equatorStr)}</div>
+                                </div>
+                                <div class="ppc-buffer-tick-item end">
+                                    <div class="ppc-buffer-tick-label">${window.escapeHTML(lang === 'ru' ? 'Архив (48ч)' : 'Archive (48h)')}</div>
+                                    <div class="ppc-buffer-tick-time">${window.escapeHTML(archiveDateStr)}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
