@@ -7048,36 +7048,20 @@ html[dir="rtl"] .guest-filter-select {
 /* ══════════════════════════════════════════════════════════════
    PROJECT-CARD STAGE SYSTEM (My Projects)
    Three stages, maximally distinct: green / cyan-blue / amber
-   Each stage = rail (left border) + border color + badge
+   Each stage = border color + badge
    ══════════════════════════════════════════════════════════════ */
 
-/* ── Base stage rail & border on any staged card ── */
+/* ── Base border on any staged card ── */
 .card.card-stage-active,
 .card.card-stage-protection,
 .card.card-stage-buffer {
-    border-width: 1px 1px 1px 1px;
+    border-width: 1px;
     border-style: solid;
-}
-
-/* Rail: thicker left edge for at-a-glance stage recognition */
-.card.card-stage-active::before,
-.card.card-stage-protection::before,
-.card.card-stage-buffer::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 4px;
-    border-radius: 16px 0 0 16px;
 }
 
 /* ── Stage 1: Active Testing (green) ── */
 .card.card-stage-active {
     border-color: var(--stage-active-border);
-}
-.card.card-stage-active::before {
-    background: var(--stage-active);
 }
 
 /* ── Stage 2: Extended Protection (blue-cyan) ── */
@@ -7085,17 +7069,11 @@ html[dir="rtl"] .guest-filter-select {
     border-color: var(--stage-protection-border);
     box-shadow: 0 0 12px var(--stage-protection-surface);
 }
-.card.card-stage-protection::before {
-    background: var(--stage-protection);
-}
 
 /* ── Stage 3: Safety Buffer (amber) ── */
 .card.card-stage-buffer {
     border-color: var(--stage-buffer-border);
     box-shadow: 0 0 14px var(--stage-buffer-surface);
-}
-.card.card-stage-buffer::before {
-    background: var(--stage-buffer);
 }
 
 /* ── Stage badges (pills in card header) ── */
@@ -9584,6 +9562,111 @@ details[open] .accordion-arrow {
     align-items: center;
     gap: 6px;
     min-width: 0;
+}
+
+/* ── Split rewards presentation in details modal ── */
+.ppc-rewards-split-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ppc-reward-split-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-2);
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.ppc-reward-split-card.bust-pool {
+    border-color: rgba(160, 123, 255, 0.15);
+    background: rgba(160, 123, 255, 0.04);
+}
+
+.ppc-reward-split-card.karma-boost {
+    border-color: rgba(52, 199, 89, 0.15);
+    background: rgba(52, 199, 89, 0.04);
+}
+
+.ppc-reward-split-emoji {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.ppc-reward-split-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.ppc-reward-split-value {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.ppc-reward-split-label {
+    font-size: 10px;
+    color: var(--hint-color);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+.ppc-reward-split-footer {
+    font-size: 11px;
+    color: var(--hint-color);
+    margin-top: 6px;
+    text-align: left;
+    opacity: 0.85;
+}
+
+/* ── Centered Plus Separator line ── */
+.ppc-subblock-separator {
+    position: relative;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ppc-separator-plus {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg-surface-muted);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    line-height: 1;
+}
+
+@media (max-width: 360px) {
+    .ppc-rewards-split-container {
+        flex-direction: column;
+        gap: 8px;
+    }
 }
 
 

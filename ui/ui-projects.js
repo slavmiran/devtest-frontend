@@ -478,7 +478,10 @@ function renderProjects(force) {
                 : window.t('syncBtnTitleAfter', {}, lang) || '🛡 Protected';
             
             const consumedPendingHours = Number(project.consumed_pending_hours || 0);
-            const hoursLeft = Math.max(0, 48 - consumedPendingHours);
+            const hoursLeft = Math.min(48, Math.max(0, 48 - consumedPendingHours));
+            if (hoursLeft <= 0) {
+                return window.t('ppcBufferAwaitingArchiving', {}, lang) || 'Awaiting archiving...';
+            }
             return window.t('ppcBufferHoursLeft', { hours: hoursLeft }, lang) || `⏳ Safety Buffer: ${hoursLeft}h left`;
         })();
 
@@ -880,7 +883,7 @@ const _PPC_PRICING = [0, 50, 120, 210, 320, 450, 600, 770, 960];
  * @param {string} lang - language code ('ru' or others)
  * @returns {string} formatted date string
  */
-function formatArchiveDate(date, lang) {
+function formatArchiveDate(date, lang, dateOnly = false) {
     if (!date || Number.isNaN(date.getTime())) return '';
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -894,20 +897,24 @@ function formatArchiveDate(date, lang) {
     const timeStr = `${hours}:${minutes}`;
     
     if (targetDate.getTime() === today.getTime()) {
-        return lang === 'ru' ? `СЕГОДНЯ в ${timeStr}` : `TODAY at ${timeStr}`;
+        return dateOnly
+            ? (lang === 'ru' ? 'СЕГОДНЯ' : 'TODAY')
+            : (lang === 'ru' ? `СЕГОДНЯ в ${timeStr}` : `TODAY at ${timeStr}`);
     } else if (targetDate.getTime() === tomorrow.getTime()) {
-        return lang === 'ru' ? `ЗАВТРА в ${timeStr}` : `TOMORROW at ${timeStr}`;
+        return dateOnly
+            ? (lang === 'ru' ? 'ЗАВТРА' : 'TOMORROW')
+            : (lang === 'ru' ? `ЗАВТРА в ${timeStr}` : `TOMORROW at ${timeStr}`);
     } else {
         const day = date.getDate();
         let monthStr = '';
         if (lang === 'ru') {
             const monthsRu = ['янв.', 'фев.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сен.', 'окт.', 'ноя.', 'дек.'];
             monthStr = monthsRu[date.getMonth()];
-            return `${day} ${monthStr}, ${timeStr}`;
+            return dateOnly ? `${day} ${monthStr}` : `${day} ${monthStr}, ${timeStr}`;
         } else {
             const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             monthStr = monthsEn[date.getMonth()];
-            return `${day} ${monthStr}, ${timeStr}`;
+            return dateOnly ? `${day} ${monthStr}` : `${day} ${monthStr}, ${timeStr}`;
         }
     }
 }
@@ -1265,7 +1272,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     let remainingBufferHours;
     if (isPendingCompletion && pendingStartedAt) {
         // IN buffer: deadline is FIXED — pending_completion_started_at + remaining buffer
-        remainingBufferHours = Math.max(0, 48 - consumedPendingHours);
+        remainingBufferHours = Math.min(48, Math.max(0, 48 - consumedPendingHours));
         const remainingBufferMs = remainingBufferHours * 60 * 60 * 1000;
         archiveDate = new Date(pendingStartedAt + remainingBufferMs);
     } else {
@@ -1401,7 +1408,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
         : new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
     const equatorDate = new Date(bufferStart.getTime() + (24 * 60 * 60 * 1000));
     const bufferStartStr = formatArchiveDate(bufferStart, lang);
-    const equatorStr = formatArchiveDate(equatorDate, lang);
+    const equatorStr = formatArchiveDate(equatorDate, lang, true);
     const bufferFillPercent = Math.min(100, Math.max(0, (consumedPendingHours / 48) * 100));
 
     let cardHtml = '';
@@ -1409,8 +1416,22 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
         // Scenario A: No protection days purchased. Show Safety Buffer timeline card only.
         cardHtml = `
             <div class="ppc-buffer-card">
-                <div class="ppc-buffer-card-title">
-                    ⏳ <span>${window.escapeHTML(lang === 'ru' ? 'Буфер безопасности (48ч)' : 'Safety Buffer (48h)')}</span>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                    <div class="ppc-buffer-card-title" style="margin-bottom: 0;">
+                        ⏳ <span>${window.escapeHTML(lang === 'ru' ? 'Буфер безопасности' : 'Safety Buffer')}</span>
+                    </div>
+                    <div class="ppc-reward-pool-amount-wrap">
+                        <div class="ppc-reward-pool-amount" style="color: var(--stage-buffer); font-size: 18px; font-weight: 800;">
+                            ${remainingBufferHours <= 0 
+                                ? window.escapeHTML(T('ppcBufferAwaitingArchiving'))
+                                : window.escapeHTML(T('ppcBufferRemainingHours', { hours: remainingBufferHours }))}
+                        </div>
+                        ${remainingBufferHours > 0 ? `
+                        <div class="ppc-reward-pool-status" style="background: var(--stage-buffer-surface); color: var(--stage-buffer); border-color: var(--stage-buffer-border); font-size: 11px;">
+                            ${window.escapeHTML(T('ppcBufferRemainingLabel'))}
+                        </div>
+                        ` : ''}
+                    </div>
                 </div>
                 <div class="ppc-buffer-desc" style="font-size: 12px; line-height: 1.5; color: var(--hint-color); margin-bottom: 12px;">
                     ${window.escapeHTML(T('ppcBufferTabDesc'))}
@@ -1452,8 +1473,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
                 <div class="ppc-tabbed-card">
                     <!-- Tab 1: Reward Pool Content -->
                     <div class="ppc-tab-content reward-content">
-                        <div class="ppc-reward-pool-header" style="margin-bottom: 12px;">
-                            <div class="ppc-reward-pool-title" style="color: var(--reward); font-weight: 700; font-size: 15px;">${window.escapeHTML(T('ppcRewardPoolTitle'))}</div>
+                        <div class="ppc-reward-pool-header" style="margin-bottom: 12px; justify-content: flex-end;">
                             <div class="ppc-reward-pool-amount-wrap">
                                 <div class="ppc-reward-pool-amount" style="color: var(--reward); font-size: 18px; font-weight: 800;">${window.escapeHTML(T('ppcRewardPoolAmount', { amount: poolAmount }))}</div>
                                 <div class="ppc-reward-pool-status" style="background: var(--reward-surface); color: var(--reward); border-color: var(--reward-border); font-size: 11px;">${window.escapeHTML(T('ppcRewardPoolLocked'))}</div>
@@ -1478,6 +1498,20 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
 
                     <!-- Tab 2: Safety Buffer Content -->
                     <div class="ppc-tab-content buffer-content" style="display: none;">
+                        <div class="ppc-reward-pool-header" style="margin-bottom: 12px; justify-content: flex-end;">
+                            <div class="ppc-reward-pool-amount-wrap">
+                                <div class="ppc-reward-pool-amount" style="color: var(--stage-buffer); font-size: 18px; font-weight: 800;">
+                                    ${remainingBufferHours <= 0 
+                                        ? window.escapeHTML(T('ppcBufferAwaitingArchiving'))
+                                        : window.escapeHTML(T('ppcBufferRemainingHours', { hours: remainingBufferHours }))}
+                                </div>
+                                ${remainingBufferHours > 0 ? `
+                                <div class="ppc-reward-pool-status" style="background: var(--stage-buffer-surface); color: var(--stage-buffer); border-color: var(--stage-buffer-border); font-size: 11px;">
+                                    ${window.escapeHTML(T('ppcBufferRemainingLabel'))}
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
                         <div class="ppc-buffer-desc" style="font-size: 12px; line-height: 1.5; color: var(--hint-color); margin-bottom: 12px;">
                             ${window.escapeHTML(T('ppcBufferTabDesc'))}
                         </div>
@@ -3533,7 +3567,7 @@ function openProjectDetailsModal(appId) {
             : new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
         
         const bufferEndTime = bufferStart.getTime() + (48 * 60 * 60 * 1000);
-        const remainingMs = Math.max(0, bufferEndTime - Date.now());
+        const remainingMs = Math.min(48 * 60 * 60 * 1000, Math.max(0, bufferEndTime - Date.now()));
         const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
         const remainingHours = Math.floor(remainingTotalMinutes / 60);
         const remainingMinutes = remainingTotalMinutes % 60;
@@ -3632,7 +3666,7 @@ function openProjectDetailsModal(appId) {
         if (extraPaid > 0) {
             const remainingCheckins = Math.max(0, (14 + extraPaid) - Math.max(14, userTestingDay));
             blockAHtml = 
-                '<div class="protection-subblock-a" style="margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed rgba(255,255,255,0.08);">' +
+                '<div class="protection-subblock-a">' +
                     '<div class="protection-row">' +
                         window.escapeHTML(lang === 'ru' ? `Осталось чекинов: ${remainingCheckins} дн.` : `Check-ins remaining: ${remainingCheckins} days`) +
                     '</div>' +
@@ -3642,25 +3676,35 @@ function openProjectDetailsModal(appId) {
                             : 'The developer paid for extra testing days to compensate for sync issues with Google Play and guarantee release. Check-ins on these days are rewarded from the bonus pool.') +
                     '</div>' +
                     (poolAmount > 0 
-                        ? '<div class="protection-reward-chip" style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px; width: 100%; box-sizing: border-box; align-items: flex-start; padding: 10px 12px;">' +
-                            '<div style="font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 4px;">' +
-                                '<span>💎</span>' +
-                                '<span>' + (lang === 'ru' ? 'Фонд наград' : 'Reward Pool') + ': ' + poolAmount + ' $BUST</span>' +
+                        ? '<div class="ppc-rewards-split-container">' +
+                            '<div class="ppc-reward-split-card bust-pool">' +
+                                '<span class="ppc-reward-split-emoji">💎</span>' +
+                                '<div class="ppc-reward-split-info">' +
+                                    '<span class="ppc-reward-split-value">' + poolAmount + ' $BUST</span>' +
+                                    '<span class="ppc-reward-split-label">' + window.escapeHTML(window.t('ppcRewardSplitBustLabel', {}, lang)) + '</span>' +
+                                '</div>' +
                             '</div>' +
-                            '<div style="font-size: 11.5px; font-weight: 500; opacity: 0.95; line-height: 1.45; text-align: left;">' +
-                                (lang === 'ru' 
-                                    ? '+0.5 ☯️ за каждый чекин и возможность получить персональную Карму от владельца' 
-                                    : '+0.5 ☯️ for each check-in and opportunity for personal Karma from the owner') +
+                            '<div class="ppc-reward-split-card karma-boost">' +
+                                '<span class="ppc-reward-split-emoji">☯️</span>' +
+                                '<div class="ppc-reward-split-info">' +
+                                    '<span class="ppc-reward-split-value">+0.5</span>' +
+                                    '<span class="ppc-reward-split-label">' + window.escapeHTML(window.t('ppcRewardSplitKarmaLabel', {}, lang)) + '</span>' +
+                                '</div>' +
                             '</div>' +
-                          '</div>' 
+                          '</div>' +
+                          '<div class="ppc-reward-split-footer">' +
+                            window.escapeHTML(window.t('ppcRewardSplitHint', {}, lang)) +
+                          '</div>'
                         : '') +
                 '</div>';
         }
 
         // Block B: "Буфер безопасности" HTML
-        const bufferRemainingText = lang === 'ru' 
-            ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` 
-            : `Remaining: ${remainingHours}h ${remainingMinutes}m`;
+        const bufferRemainingText = (remainingHours <= 0 && remainingMinutes <= 0)
+            ? (window.t('ppcBufferAwaitingArchiving', {}, lang) || 'Awaiting archiving...')
+            : (lang === 'ru' 
+                ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` 
+                : `Remaining: ${remainingHours}h ${remainingMinutes}m`);
             
         const bufferProgressHtml = isInSafetyBuffer
             ? '<div class="buffer-progress-wrapper" style="margin-top: 12px; padding: 10px; background: rgba(255,159,10,0.06); border: 1px solid rgba(255,159,10,0.15); border-radius: 8px;">' +
@@ -3703,6 +3747,7 @@ function openProjectDetailsModal(appId) {
                 '<div class="protection-accordion-content" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">' +
                     '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
                     blockAHtml +
+                    (blockAHtml && blockBHtml ? '<div class="ppc-subblock-separator"><span class="ppc-separator-plus">+</span></div>' : '') +
                     blockBHtml +
                     '<div style="font-size:11px;color:var(--hint-color);margin-top:12px;opacity:0.75;line-height:1.45;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
                 '</div>' +
@@ -3719,6 +3764,7 @@ function openProjectDetailsModal(appId) {
                 '</div>' +
                 '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
                 blockAHtml +
+                (blockAHtml && blockBHtml ? '<div class="ppc-subblock-separator"><span class="ppc-separator-plus">+</span></div>' : '') +
                 blockBHtml +
                 '<div style="font-size:11px;color:var(--hint-color);margin-top:12px;opacity:0.75;line-height:1.45;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
             '</div>';
