@@ -3308,7 +3308,7 @@ function renderFeedbackImageSlider() {
 
     overlay.innerHTML = '<div class="feedback-slider-container">' +
         '<button class="feedback-slider-close" onclick="closeFeedbackImageSlider()">&times;</button>' +
-        '<img class="feedback-slider-image" src="' + window.escapeHTML(currentUrl) + '" alt="Screenshot" onerror="this.onerror=null;this.style.display=\'none\';var fb=this.nextElementSibling;if(fb)fb.style.display=\'block\';">' +
+        "<img class='feedback-slider-image' src='" + window.escapeHTML(currentUrl) + "' alt='Screenshot' onerror=\"this.onerror=null;this.style.display='none';var fb=this.nextElementSibling;if(fb)fb.style.display='block';\">" +
         '<div class="feedback-slider-fallback" style="display:none;">📷 ' + window.escapeHTML(window.t('projectFeedbackImageUnavailable', {}, lang)) + '</div>' +
         (total > 1 ? '<div class="feedback-slider-dots">' + _feedbackSliderImages.map(function(_, i) {
             return '<span class="feedback-slider-dot' + (i === _feedbackSliderIndex ? ' active' : '') + '" onclick="event.stopPropagation(); _feedbackSliderIndex=' + i + '; renderFeedbackImageSlider();"></span>';

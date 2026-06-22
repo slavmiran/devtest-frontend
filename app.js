@@ -84,15 +84,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        loadTasks();
-        loadReliabilitySummary();
-        loadReliabilityBreakdown(true);
-        loadIncomingOffers();
-        startOffersPolling();
-        startMarketPolling();
-        loadEvents();
-        loadExternalCounts();
-        scheduleDeferredBootstrap();
+        loadTasks().catch(function(e) { console.error('Bootstrap loadTasks error:', e); });
+        loadReliabilitySummary().catch(function(e) { console.error('Bootstrap loadReliabilitySummary error:', e); });
+        loadReliabilityBreakdown(true).catch(function(e) { console.error('Bootstrap loadReliabilityBreakdown error:', e); });
+        loadIncomingOffers().catch(function(e) { console.error('Bootstrap loadIncomingOffers error:', e); });
+        try { startOffersPolling(); } catch (e) { console.error('Bootstrap startOffersPolling error:', e); }
+        try { startMarketPolling(); } catch (e) { console.error('Bootstrap startMarketPolling error:', e); }
+        loadEvents().catch(function(e) { console.error('Bootstrap loadEvents error:', e); });
+        loadExternalCounts().catch(function(e) { console.error('Bootstrap loadExternalCounts error:', e); });
+        try { scheduleDeferredBootstrap(); } catch (e) { console.error('Bootstrap deferred error:', e); }
         await _handleInitialRoute();
     })().catch(function(error) {
         console.error('Initial bootstrap failed:', error);
