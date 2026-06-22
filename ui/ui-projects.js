@@ -148,6 +148,7 @@ function renderProjects(force) {
     }
 
     myProjects.forEach((project, index) => {
+        try {
         const card = document.createElement('div');
         const isInactive = !project.is_visible;
         const projectStatus = String(project.app_status || project.status || 'active').toLowerCase();
@@ -663,6 +664,10 @@ function renderProjects(force) {
             ${accessOverlayHtml}
         `;
         container.appendChild(card);
+        } catch (e) {
+            console.error('Project card render error:', e);
+            if (window.reportSystemError) window.reportSystemError('renderProjects: ' + e.message, e.stack);
+        }
     });
 }
 

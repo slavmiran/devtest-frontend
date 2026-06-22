@@ -2,6 +2,29 @@
 /* All functions are now defined in ui/ui-*.js modules. */
 /* This file exists only for Object.assign(window, {...}) re-exports. */
 
+var _lastSystemErrorReport = 0;
+var SYSTEM_ERROR_THROTTLE_MS = 10000;
+
+window.reportSystemError = function(message, details) {
+    var now = Date.now();
+    if (now - _lastSystemErrorReport < SYSTEM_ERROR_THROTTLE_MS) return;
+    _lastSystemErrorReport = now;
+
+    var payload = {
+        message: String(message || 'unknown error').substring(0, 500),
+        stack_trace: String(details || '').substring(0, 1000),
+        user_id: (window.userId || 0),
+        source: 'frontend'
+    };
+
+    try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', (window.API_BASE || '') + '/log-error', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify(payload));
+    } catch (e) {}
+};
+
 Object.assign(window, {
     showSkeleton,
     showRetry,
