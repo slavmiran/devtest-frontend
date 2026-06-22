@@ -3241,22 +3241,26 @@ function renderProjectFeedbackCards(project, items) {
             : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0 ? item.tg_file_ids : (item.tg_file_id ? [item.tg_file_id] : []));
         const hasMedia = mediaUrls.length > 0;
         const hasTopicLink = !!item.telegram_message_id;
-        return `
-            <div class="feedback-card ${item.status === 'new' ? 'is-new' : ''}${item.status === 'declined' ? ' is-rejected' : ''}">
-                <div class="feedback-card-header">
-                    <div>${authorHtml}</div>
-                    <div class="feedback-card-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</div>
-                </div>
-                <div class="feedback-card-text">${textHtml}</div>
-                <div class="feedback-card-actions">
-                    ${hasMedia ? `<button class="btn btn-secondary" style="width:auto;" onclick="openFeedbackImageSlider(${JSON.stringify(mediaUrls).replace(/"/g, '&quot;')}, 0)">🖼 ${window.escapeHTML(window.t('projectFeedbackViewScreenshotBtn', {}, lang))}${mediaUrls.length > 1 ? ' (' + mediaUrls.length + ')' : ''}</button>` : ''}
-                    ${hasTopicLink ? `<button class="btn btn-secondary" style="width:auto; background: var(--accent-primary-surface); color: var(--accent-primary); border-color: var(--accent-primary-border);" onclick="openFeedbackTopicLink(${item.telegram_message_id})">💬 ${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang))}</button>` : ''}
-                    ${item.status === 'new' ? `<button class="btn btn-primary" style="width:auto;" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">🎁 ${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang))}</button>` : ''}
-                </div>
-                ${rewardSummary}
-                ${replyHtml}
-            </div>
-        `;
+        var escapedMediaUrls = JSON.stringify(mediaUrls).replace(/\"/g, '&quot;');
+        var screenshotLabel = window.escapeHTML(window.t('projectFeedbackViewScreenshotBtn', {}, lang));
+        var topicBtnLabel = window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang));
+        var rewardBtnLabel = window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang));
+        var countSuffix = mediaUrls.length > 1 ? ' (' + mediaUrls.length + ')' : '';
+        return '<div class="feedback-card' + (item.status === 'new' ? ' is-new' : '') + (item.status === 'declined' ? ' is-rejected' : '') + '">' +
+            '<div class="feedback-card-header">' +
+                '<div>' + authorHtml + '</div>' +
+                '<div class="feedback-card-date">' + window.escapeHTML(formatFeedbackDate(item.created_at)) + '</div>' +
+            '</div>' +
+            '<div class="feedback-card-text">' + textHtml + '</div>' +
+            '<div class="feedback-card-actions">' +
+                (hasMedia ? '<button class="btn btn-secondary" style="width:auto;" onclick="openFeedbackImageSlider(' + escapedMediaUrls + ', 0)">🖼 ' + screenshotLabel + countSuffix + '</button>' : '') +
+                (hasTopicLink ? '<button class="btn btn-secondary" style="width:auto; background: var(--accent-primary-surface); color: var(--accent-primary); border-color: var(--accent-primary-border);" onclick="openFeedbackTopicLink(' + item.telegram_message_id + ')">💬 ' + topicBtnLabel + '</button>' : '') +
+                (item.status === 'new' ? '<button class="btn btn-primary" style="width:auto;" onclick="openFeedbackRewardModal(' + projectId + ', ' + item.id + ')">🎁 ' + rewardBtnLabel + '</button>' : '') +
+            '</div>' +
+            rewardSummary +
+            replyHtml +
+            '</div>';
+        }
     }).join('')}</div>`;
 }
 
@@ -3314,7 +3318,7 @@ function renderFeedbackImageSlider() {
 
 function openFeedbackTopicLink(telegramMessageId) {
     if (!telegramMessageId) return;
-    var base = (window.FEEDBACK_PUBLIC_LINK_BASE || 'https://t.me/googleplay_console_12testers').replace(/\\/+$/, '');
+    var base = (window.FEEDBACK_PUBLIC_LINK_BASE || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
     var url = base + '/' + telegramMessageId;
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
         window.Telegram.WebApp.openTelegramLink(url);
