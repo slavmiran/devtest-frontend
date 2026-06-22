@@ -873,6 +873,8 @@
             projectFeedbackNoText: "No text",
             projectFeedbackReviewTicketText: "Tester marked that they left a Google Play review",
             projectFeedbackViewScreenshotBtn: "View screenshot",
+            projectFeedbackOpenTopicBtn: "Open in chat",
+            projectFeedbackImageUnavailable: "Image not available",
             projectFeedbackRewardBtn: "Thank / Close",
             projectFeedbackProcessedBadge: "Closed",
             projectFeedbackRejectedBadge: "Rejected",

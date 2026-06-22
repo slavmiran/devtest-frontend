@@ -873,6 +873,8 @@
             projectFeedbackNoText: "Без текста",
             projectFeedbackReviewTicketText: "Тестер отметил, что оставил отзыв в Google Play",
             projectFeedbackViewScreenshotBtn: "Посмотреть скриншот",
+            projectFeedbackOpenTopicBtn: "Перейти в чат",
+            projectFeedbackImageUnavailable: "Изображение недоступно",
             projectFeedbackRewardBtn: "Поблагодарить / Закрыть",
             projectFeedbackProcessedBadge: "Закрыт",
             projectFeedbackRejectedBadge: "Отклонен",

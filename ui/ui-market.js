@@ -3236,15 +3236,21 @@ function renderProjectFeedbackCards(project, items) {
         const replyHtml = item.developer_reply
             ? `<div class="feedback-card-reply">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang))}: ${escapeHtmlWithBreaks(item.developer_reply)}</div>`
             : '';
+        const mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
+            ? item.media_urls
+            : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0 ? item.tg_file_ids : (item.tg_file_id ? [item.tg_file_id] : []));
+        const hasMedia = mediaUrls.length > 0;
+        const hasTopicLink = !!item.telegram_message_id;
         return `
-            <div class="feedback-card ${item.status === 'new' ? 'is-new' : ''}${item.status === 'rejected' ? ' is-rejected' : ''}">
+            <div class="feedback-card ${item.status === 'new' ? 'is-new' : ''}${item.status === 'declined' ? ' is-rejected' : ''}">
                 <div class="feedback-card-header">
                     <div>${authorHtml}</div>
                     <div class="feedback-card-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</div>
                 </div>
                 <div class="feedback-card-text">${textHtml}</div>
                 <div class="feedback-card-actions">
-                    ${item.tg_file_id ? `<button class="btn btn-secondary" style="width:auto;" onclick="sendProjectFeedbackMedia(${item.id})">🖼 ${window.escapeHTML(window.t('projectFeedbackViewScreenshotBtn', {}, lang))}</button>` : ''}
+                    ${hasMedia ? `<button class="btn btn-secondary" style="width:auto;" onclick="openFeedbackImageSlider(${JSON.stringify(mediaUrls).replace(/"/g, '&quot;')}, 0)">🖼 ${window.escapeHTML(window.t('projectFeedbackViewScreenshotBtn', {}, lang))}${mediaUrls.length > 1 ? ' (' + mediaUrls.length + ')' : ''}</button>` : ''}
+                    ${hasTopicLink ? `<button class="btn btn-secondary" style="width:auto; background: var(--accent-primary-surface); color: var(--accent-primary); border-color: var(--accent-primary-border);" onclick="openFeedbackTopicLink(${item.telegram_message_id})">💬 ${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang))}</button>` : ''}
                     ${item.status === 'new' ? `<button class="btn btn-primary" style="width:auto;" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">🎁 ${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang))}</button>` : ''}
                 </div>
                 ${rewardSummary}
@@ -3252,6 +3258,69 @@ function renderProjectFeedbackCards(project, items) {
             </div>
         `;
     }).join('')}</div>`;
+}
+
+var _feedbackSliderImages = [];
+var _feedbackSliderIndex = 0;
+
+function openFeedbackImageSlider(mediaUrls, startIndex) {
+    if (!Array.isArray(mediaUrls) || mediaUrls.length === 0) return;
+    _feedbackSliderImages = mediaUrls.slice();
+    _feedbackSliderIndex = Math.max(0, Math.min(startIndex || 0, _feedbackSliderImages.length - 1));
+    renderFeedbackImageSlider();
+}
+
+function closeFeedbackImageSlider() {
+    var overlay = document.getElementById('feedback-image-overlay');
+    if (overlay) overlay.remove();
+    _feedbackSliderImages = [];
+    _feedbackSliderIndex = 0;
+}
+
+function renderFeedbackImageSlider() {
+    var existing = document.getElementById('feedback-image-overlay');
+    if (existing) existing.remove();
+    if (_feedbackSliderImages.length === 0) return;
+
+    var overlay = document.createElement('div');
+    overlay.id = 'feedback-image-overlay';
+    overlay.className = 'feedback-image-overlay';
+    overlay.onclick = function(e) { if (e.target === overlay) closeFeedbackImageSlider(); };
+
+    var total = _feedbackSliderImages.length;
+    var currentUrl = _feedbackSliderImages[_feedbackSliderIndex];
+
+    var navHtml = '';
+    if (total > 1) {
+        navHtml = '<div class="feedback-slider-nav">' +
+            '<button class="feedback-slider-arrow feedback-slider-prev" onclick="event.stopPropagation(); _feedbackSliderIndex = (_feedbackSliderIndex - 1 + ' + total + ') % ' + total + '; renderFeedbackImageSlider();">&larr;</button>' +
+            '<span class="feedback-slider-counter">' + (_feedbackSliderIndex + 1) + ' / ' + total + '</span>' +
+            '<button class="feedback-slider-arrow feedback-slider-next" onclick="event.stopPropagation(); _feedbackSliderIndex = (_feedbackSliderIndex + 1) % ' + total + '; renderFeedbackImageSlider();">&rarr;</button>' +
+            '</div>';
+    }
+
+    overlay.innerHTML = '<div class="feedback-slider-container">' +
+        '<button class="feedback-slider-close" onclick="closeFeedbackImageSlider()">&times;</button>' +
+        '<img class="feedback-slider-image" src="' + window.escapeHTML(currentUrl) + '" alt="Screenshot" onerror="this.onerror=null;this.style.display=\'none\';var fb=this.nextElementSibling;if(fb)fb.style.display=\'block\';">' +
+        '<div class="feedback-slider-fallback" style="display:none;">📷 ' + window.escapeHTML(window.t('projectFeedbackImageUnavailable', {}, lang)) + '</div>' +
+        (total > 1 ? '<div class="feedback-slider-dots">' + _feedbackSliderImages.map(function(_, i) {
+            return '<span class="feedback-slider-dot' + (i === _feedbackSliderIndex ? ' active' : '') + '" onclick="event.stopPropagation(); _feedbackSliderIndex=' + i + '; renderFeedbackImageSlider();"></span>';
+        }).join('') + '</div>' : '') +
+        navHtml +
+        '</div>';
+
+    document.body.appendChild(overlay);
+}
+
+function openFeedbackTopicLink(telegramMessageId) {
+    if (!telegramMessageId) return;
+    var base = (window.FEEDBACK_PUBLIC_LINK_BASE || 'https://t.me/googleplay_console_12testers').replace(/\\/+$/, '');
+    var url = base + '/' + telegramMessageId;
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
+        window.Telegram.WebApp.openTelegramLink(url);
+    } else {
+        window.open(url, '_blank');
+    }
 }
 
 function showProjectFeedbackModalLoading(project) {
@@ -5610,4 +5679,7 @@ Object.assign(window, {
     getGuestProjectFreshness,
     openTesterDossier,
     getMarketCandidateByAppId,
+    openFeedbackImageSlider,
+    closeFeedbackImageSlider,
+    openFeedbackTopicLink,
 });
