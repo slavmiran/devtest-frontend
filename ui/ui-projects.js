@@ -1582,7 +1582,7 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
         <!-- Lifecycle Timeline Card -->
         <div class="ppc-card">
             <div class="ppc-card-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>${lang === 'ru' ? 'Жизненный цикл проекта на DevTestHub' : 'Project Lifecycle on DevTestHub'}</span>
+                <span>${lang === 'ru' ? 'Жизненный цикл проекта' : 'Project Lifecycle'}</span>
                 <span style="font-size:10px; font-weight:500; color:var(--hint-color); text-transform:none; letter-spacing:0; opacity:0.8; display:flex; align-items:center; gap:3px;">
                     ${lang === 'ru' ? 'листайте' : 'swipe'} ↔
                 </span>

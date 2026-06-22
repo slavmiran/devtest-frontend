@@ -300,7 +300,7 @@ function getTestingTimelineMeta(test) {
     };
 }
 
-function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, isClickable) {
+function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     var timeline = test.daily_timeline || '';
     var renderTimeline = timeline;
     var totalDays = Math.max(expectedTotalDays || 14, userTestingDay || 0, 1);
@@ -405,11 +405,13 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, isC
     let bufferBadgeHtml = '';
     if (isProjectSynced(test) || userTestingDay >= 15 || extraPaid > 0) {
         if (isInSafetyBuffer) {
-            const timeText = window.t('ppcBufferActiveTime', { hours: remainingHours, minutes: remainingMinutes }, lang) || `⏳ Осталось ${remainingHours}ч ${remainingMinutes}м`;
-            bufferBadgeHtml = '<span class="timeline-buffer-badge active">' + window.escapeHTML(timeText) + '</span>';
+            const timeText = lang === 'ru' 
+                ? `⏳ Осталось ${remainingHours}ч ${remainingMinutes}м` 
+                : `⏳ Remaining ${remainingHours}h ${remainingMinutes}m`;
+            bufferBadgeHtml = '<span class="timeline-buffer-badge active">' + timeText + '</span>';
         } else {
-            const timeText = window.t('ppcBufferInactiveTime', {}, lang) || '+⏳ 48ч';
-            bufferBadgeHtml = '<span class="timeline-buffer-badge inactive">' + window.escapeHTML(timeText) + '</span>';
+            const timeText = lang === 'ru' ? '+⏳ 48ч' : '+⏳ 48h';
+            bufferBadgeHtml = '<span class="timeline-buffer-badge inactive">' + timeText + '</span>';
         }
     }
 
@@ -418,13 +420,10 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, isC
     const rangeText = lastPaidDay > 14 ? '15-' + lastPaidDay : '15+';
 
     const noteText = extraPaid > 0
-        ? window.t('timelineOvertimeRewardNotePaid', {}, lang) || 'Награда за чекин: +0.5 ☯️ Кармы и доля из пула 💎$BUST'
+        ? (lang === 'ru' 
+            ? 'Награда за чекин: +0.5 ☯️ Кармы и доля из фонда💎$BUST' 
+            : 'Reward for check-in: +0.5 ☯️ Karma and a share of the 💎$BUST pool')
         : window.t('timelineOvertimeRewardNote', {}, lang);
-
-    const clickAttr = isClickable ? ' onclick="openTimelineStatsSheet(' + test.id + ')" style="cursor: pointer;"' : '';
-    const overtimeStyle = isClickable
-        ? ' style="display: flex; align-items: center; gap: 8px; cursor: pointer;"'
-        : ' style="display: flex; align-items: center; gap: 8px;"';
 
     var html = '<div class="timeline-compact">' +
         '<div class="timeline-row">' +
@@ -432,7 +431,7 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, isC
                 '<span class="timeline-row-title">' + window.escapeHTML(window.t('timelinePrimaryTitle', {}, lang)) + '</span>' +
                 '<span class="timeline-row-range">1-14</span>' +
             '</div>' +
-            '<div class="grant-progress-container timeline-row-track is-primary"' + clickAttr + '>' + baseSegments.join('') + '</div>' +
+            '<div class="grant-progress-container timeline-row-track is-primary">' + baseSegments.join('') + '</div>' +
         '</div>' +
         (showOvertimeRow
             ? '<div class="timeline-row timeline-row-overtime">' +
@@ -440,12 +439,12 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, isC
                     '<span class="timeline-row-title">' + window.escapeHTML(window.t('timelineOvertimeTitle', {}, lang)) + '</span>' +
                     '<span class="timeline-row-range">' + rangeText + '</span>' +
                 '</div>' +
-                '<div class="grant-progress-container timeline-row-track is-overtime"' + (isClickable ? ' onclick="openTimelineStatsSheet(' + test.id + ')"' : '') + overtimeStyle + '>' + 
+                '<div class="grant-progress-container timeline-row-track is-overtime" style="display: flex; align-items: center; gap: 8px;">' + 
                     overtimeSegments.join('') + 
                     bufferBadgeHtml + 
                 '</div>' +
-              '</div>' +
-              '<div class="timeline-row-note">' + window.escapeHTML(noteText) + '</div>'
+                '<div class="timeline-row-note">' + window.escapeHTML(noteText) + '</div>' +
+            '</div>'
             : '') +
     '</div>';
 
@@ -1462,10 +1461,6 @@ function renderTests(force) {
             if (isTestFeedbackCheckinPending(test.id) && shouldShowInActiveList) {
                 card.className += ' card-feedback-pending';
             }
-            const isPaidProtectionDay = userTestingDay >= 15 && !isInSafetyBuffer;
-            if (isPaidProtectionDay) {
-                card.className += ' card-stage-protection-glow';
-            }
         }
         card.id = `test-card-${test.id}`;
         const safePackage = escapeInlineJsString(test.package || test.external_package_name || '');
@@ -1623,10 +1618,9 @@ function renderTests(force) {
             if (testingDay >= 15) {
                 const poolAmount = Number(test.protection_bust_pool || 0);
                 const extraPaid = Number(test.paid_protection_days || 0);
-                const remainingDays = Math.max(1, (14 + extraPaid) - testingDay + 1);
-                const eligibleTesters = Math.max(1, test.eligible_testers_count || 1);
-                // Formula: poolAmount / remainingDays / eligibleTesters
-                const calculatedBust = poolAmount > 0 ? (poolAmount / remainingDays / eligibleTesters) : 0;
+                const activeTesters = Math.max(1, test.active_testers_count || 1);
+                // Formula: pool / max(1, purchased_days) / active_testers
+                const calculatedBust = poolAmount > 0 ? (poolAmount / Math.max(1, extraPaid) / activeTesters) : 0;
                 const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
                 
                 let hintHtml = '';
@@ -1772,7 +1766,6 @@ function renderTests(force) {
         }
 
         if (shouldShowInDoneList) {
-            card.classList.add('done-today-card');
             const reminderHtml = getScreenshotReminderHtml(test);
             if (reminderHtml) {
                 cardContent += reminderHtml;
@@ -1823,7 +1816,7 @@ function renderCompletedTests(completedTests) {
 
     completedTests.forEach((test) => {
         const card = document.createElement('div');
-        card.className = 'card card-done done-today-card';
+        card.className = 'card card-done';
         card.id = `test-card-${test.id}`;
         const userTestingDay = getResolvedTestingDay(test);
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
@@ -1887,7 +1880,6 @@ function _updateDoneSectionVisibility(doneCount) {
     if (!doneSection) return;
     var countNode = document.getElementById('done-count');
     if (countNode) countNode.innerText = String(doneCount || 0);
-    doneSection.classList.toggle('is-single-done', Number(doneCount || 0) <= 1);
     var testsTab = document.getElementById('tab-tests');
     var isTestsActive = !!(testsTab && testsTab.classList.contains('active'));
     doneSection.style.display = (isTestsActive && doneCount > 0) ? 'block' : 'none';
@@ -1927,20 +1919,21 @@ function openProtectionInfoModal(testId, event) {
     
     _currentInfoModalTest = test;
     
-    const titleText = window.t('ppcModalProtectionTitle', {}, lang) || 'Проект под защитой 🛡️';
-    const bodyText = window.t('ppcModalProtectionText', {}, lang) || 'Тестирование продолжается из-за рассинхронизации дней с Google Play...';
+    const titleText = lang === 'ru' ? 'Проект под защитой' : 'Project under protection';
+    const bodyText = lang === 'ru'
+        ? 'Тестирование продолжается из-за рассинхронизации дней с Google Play. Владелец проекта активировал дополнительную защиту, чтобы тестирование завершилось безопасно и без риска сброса прогресса.\n\nНа этом этапе вам больше не нужно проходить обычные ежедневные проверки. Достаточно просто оставить приложение установленным на устройстве. Не удаляйте приложение, иначе сбросится весь прогресс вашего тестерования!'
+        : 'Testing is continuing due to day desync with Google Play. The project owner has activated extra protection to ensure the testing can be completed safely without risking progress reset.\n\nAt this stage, you no longer need to go through the usual daily check-ins. Just keep the app installed on your device. Do not uninstall the app, or you will lose all your testing progress!';
         
     // Calculate reward pool share
-    const testingDay = typeof getResolvedTestingDay === 'function' ? getResolvedTestingDay(test) : 15;
     const poolAmount = Number(test.protection_bust_pool || 0);
-    const extraPaid = Number(test.paid_protection_days || 0);
-    const remainingDays = Math.max(1, (14 + extraPaid) - testingDay + 1);
-    const eligibleTesters = Math.max(1, test.eligible_testers_count || 1);
-    const estimatedShare = poolAmount > 0 ? (poolAmount / remainingDays / eligibleTesters) : 0;
+    const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 1);
+    const dailyPool = poolAmount / Math.max(1, extraPaid);
+    const testersCount = Number(test.active_testers_count || 1);
+    const estimatedShare = dailyPool / Math.max(1, testersCount);
     const shareFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(estimatedShare, 1) : estimatedShare.toFixed(1);
     
-    const rewardLabel = window.t('ppcModalRewardLabel', {}, lang) || 'Ориентировочно';
-    const rewardValue = window.t('ppcModalRewardValueFormat', { shareFormatted: shareFormatted }, lang) || `~${shareFormatted} $BUST`;
+    const rewardLabel = lang === 'ru' ? 'Ориентировочная награда' : 'Estimated reward';
+    const rewardValue = `~${shareFormatted} BUST / ${lang === 'ru' ? 'день' : 'day'}`;
     
     const titleEl = document.getElementById('ppc-protection-modal-title');
     const textEl = document.getElementById('ppc-protection-modal-text');
@@ -1953,14 +1946,8 @@ function openProtectionInfoModal(testId, event) {
     if (textEl) textEl.innerText = bodyText;
     if (rewardLabelEl) rewardLabelEl.innerText = rewardLabel;
     if (rewardValEl) rewardValEl.innerText = rewardValue;
-    
-    const karmaBonusEl = document.getElementById('ppc-protection-modal-karma-bonus');
-    if (karmaBonusEl) {
-        karmaBonusEl.innerText = '+0.5';
-    }
-    
-    if (okBtnEl) okBtnEl.innerText = window.t('ppcModalProtectionOk', {}, lang) || 'Понятно, продолжаю тест';
-    if (leaveLinkEl) leaveLinkEl.innerText = window.t('ppcModalProtectionLeave', {}, lang) || 'Покинуть проект';
+    if (okBtnEl) okBtnEl.innerText = lang === 'ru' ? 'Понятно, продолжаю тест' : 'Understood, continuing test';
+    if (leaveLinkEl) leaveLinkEl.innerText = lang === 'ru' ? 'Покинуть проект' : 'Leave project';
     
     document.getElementById('ppc-protection-info-modal').classList.add('active');
 }
@@ -1996,8 +1983,10 @@ function openBufferInfoModal(testId, event) {
     const test = myTests.find(item => item.id === testId);
     if (!test) return;
     
-    const titleText = window.t('ppcModalBufferTitle', {}, lang) || 'Буфер безопасности ⏳';
-    const bodyText = window.t('ppcModalBufferText', {}, lang) || 'Пожалуйста, не удаляйте приложение, пока владелец официально не завершит проект...';
+    const titleText = lang === 'ru' ? 'Буфер безопасности ⏳' : 'Safety Buffer ⏳';
+    const bodyText = lang === 'ru'
+        ? 'Пожалуйста, не удаляйте приложение, пока владелец официально не завершит проект. Как только это произойдет, вы получите уведомление, а приложение исчезнет из списка активных тестов.'
+        : 'Please do not delete the app until the owner officially completes the project. Once that happens, you will receive a notification, and the app will disappear from the list of active tests.';
         
     const titleEl = document.getElementById('ppc-buffer-modal-title');
     const textEl = document.getElementById('ppc-buffer-modal-text');
@@ -2005,7 +1994,7 @@ function openBufferInfoModal(testId, event) {
     
     if (titleEl) titleEl.innerHTML = `⏳ <span>${window.escapeHTML(titleText)}</span>`;
     if (textEl) textEl.innerText = bodyText;
-    if (okBtnEl) okBtnEl.innerText = window.t('ppcModalBufferOk', {}, lang) || 'Понятно';
+    if (okBtnEl) okBtnEl.innerText = lang === 'ru' ? 'Понятно' : 'Understood';
     
     document.getElementById('ppc-buffer-info-modal').classList.add('active');
 }
