@@ -7170,6 +7170,13 @@ html[dir="rtl"] .guest-filter-select {
     border-radius: 16px 0 0 16px;
     background: var(--stage-buffer);
 }
+.pending-release-carousel-card::before {
+    display: none !important;
+}
+.card.card-stage-protection-glow {
+    border-color: var(--stage-protection-border);
+    box-shadow: 0 0 12px var(--stage-protection-surface);
+}
 
 .pending-release-chip {
     background: var(--stage-buffer-surface) !important;

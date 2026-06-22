@@ -1331,6 +1331,7 @@ function _mapTestsFromApi(data) {
             owner_full_name: app.owner_full_name || '',
             owner_karma: Number(app.owner_karma || 0),
             active_testers_count: app.active_testers_count,
+            eligible_testers_count: Number(app.eligible_testers_count || 0),
             days_since_publish: app.days_since_publish,
             created_at: app.created_at || null,
             google_sync_day: app.google_sync_day || 0,

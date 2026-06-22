@@ -405,13 +405,11 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     let bufferBadgeHtml = '';
     if (isProjectSynced(test) || userTestingDay >= 15 || extraPaid > 0) {
         if (isInSafetyBuffer) {
-            const timeText = lang === 'ru' 
-                ? `⏳ Осталось ${remainingHours}ч ${remainingMinutes}м` 
-                : `⏳ Remaining ${remainingHours}h ${remainingMinutes}m`;
-            bufferBadgeHtml = '<span class="timeline-buffer-badge active">' + timeText + '</span>';
+            const timeText = window.t('ppcBufferActiveTime', { hours: remainingHours, minutes: remainingMinutes }, lang) || `⏳ Осталось ${remainingHours}ч ${remainingMinutes}м`;
+            bufferBadgeHtml = '<span class="timeline-buffer-badge active">' + window.escapeHTML(timeText) + '</span>';
         } else {
-            const timeText = lang === 'ru' ? '+⏳ 48ч' : '+⏳ 48h';
-            bufferBadgeHtml = '<span class="timeline-buffer-badge inactive">' + timeText + '</span>';
+            const timeText = window.t('ppcBufferInactiveTime', {}, lang) || '+⏳ 48ч';
+            bufferBadgeHtml = '<span class="timeline-buffer-badge inactive">' + window.escapeHTML(timeText) + '</span>';
         }
     }
 
@@ -420,9 +418,7 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     const rangeText = lastPaidDay > 14 ? '15-' + lastPaidDay : '15+';
 
     const noteText = extraPaid > 0
-        ? (lang === 'ru' 
-            ? 'Награда за чекин: +0.5 ☯️ Кармы и доля из пула💎$BUST' 
-            : 'Reward for check-in: +0.5 ☯️ Karma and a share of the 💎$BUST pool')
+        ? window.t('timelineOvertimeRewardNotePaid', {}, lang) || 'Награда за чекин: +0.5 ☯️ Кармы и доля из пула 💎$BUST'
         : window.t('timelineOvertimeRewardNote', {}, lang);
 
     var html = '<div class="timeline-compact">' +
@@ -1461,6 +1457,10 @@ function renderTests(force) {
             if (isTestFeedbackCheckinPending(test.id) && shouldShowInActiveList) {
                 card.className += ' card-feedback-pending';
             }
+            const isPaidProtectionDay = userTestingDay >= 15 && !isInSafetyBuffer;
+            if (isPaidProtectionDay) {
+                card.className += ' card-stage-protection-glow';
+            }
         }
         card.id = `test-card-${test.id}`;
         const safePackage = escapeInlineJsString(test.package || test.external_package_name || '');
@@ -1618,9 +1618,10 @@ function renderTests(force) {
             if (testingDay >= 15) {
                 const poolAmount = Number(test.protection_bust_pool || 0);
                 const extraPaid = Number(test.paid_protection_days || 0);
-                const activeTesters = Math.max(1, test.active_testers_count || 1);
-                // Formula: pool / max(1, purchased_days) / active_testers
-                const calculatedBust = poolAmount > 0 ? (poolAmount / Math.max(1, extraPaid) / activeTesters) : 0;
+                const remainingDays = Math.max(1, (14 + extraPaid) - testingDay + 1);
+                const eligibleTesters = Math.max(1, test.eligible_testers_count || 1);
+                // Formula: poolAmount / remainingDays / eligibleTesters
+                const calculatedBust = poolAmount > 0 ? (poolAmount / remainingDays / eligibleTesters) : 0;
                 const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
                 
                 let hintHtml = '';
@@ -1919,10 +1920,8 @@ function openProtectionInfoModal(testId, event) {
     
     _currentInfoModalTest = test;
     
-    const titleText = lang === 'ru' ? 'Проект под защитой 🛡️' : 'Project under protection 🛡️';
-    const bodyText = lang === 'ru'
-        ? 'Тестирование продолжается из-за рассинхронизации дней с Google Play. Владелец указал реальные дни тестирования. Не удаляйте приложение, иначе сбросится весь прогресс и вы потеряете награды!'
-        : 'Testing continues due to synchronization discrepancy with Google Play. The owner has specified the actual testing days. Do not delete the app, otherwise all progress will be reset and you will lose your rewards!';
+    const titleText = window.t('ppcModalProtectionTitle', {}, lang) || 'Проект под защитой 🛡️';
+    const bodyText = window.t('ppcModalProtectionText', {}, lang) || 'Тестирование продолжается из-за рассинхронизации дней с Google Play...';
         
     // Calculate reward pool share
     const poolAmount = Number(test.protection_bust_pool || 0);
@@ -1932,8 +1931,8 @@ function openProtectionInfoModal(testId, event) {
     const estimatedShare = dailyPool / Math.max(1, testersCount);
     const shareFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(estimatedShare, 1) : estimatedShare.toFixed(1);
     
-    const rewardLabel = lang === 'ru' ? 'Ориентировочная награда' : 'Estimated reward';
-    const rewardValue = `~${shareFormatted} BUST / ${lang === 'ru' ? 'день' : 'day'}`;
+    const rewardLabel = window.t('ppcModalRewardLabel', {}, lang) || 'Ориентировочная награда';
+    const rewardValue = window.t('ppcModalRewardValueFormat', { shareFormatted: shareFormatted }, lang) || `~${shareFormatted} $BUST / день`;
     
     const titleEl = document.getElementById('ppc-protection-modal-title');
     const textEl = document.getElementById('ppc-protection-modal-text');
@@ -1946,8 +1945,14 @@ function openProtectionInfoModal(testId, event) {
     if (textEl) textEl.innerText = bodyText;
     if (rewardLabelEl) rewardLabelEl.innerText = rewardLabel;
     if (rewardValEl) rewardValEl.innerText = rewardValue;
-    if (okBtnEl) okBtnEl.innerText = lang === 'ru' ? 'Понятно, продолжаю тест' : 'Understood, continuing test';
-    if (leaveLinkEl) leaveLinkEl.innerText = lang === 'ru' ? 'Покинуть проект' : 'Leave project';
+    
+    const karmaBonusEl = document.getElementById('ppc-protection-modal-karma-bonus');
+    if (karmaBonusEl) {
+        karmaBonusEl.innerText = window.t('ppcModalKarmaBonus', {}, lang) || 'Повышенная карма + 0,5';
+    }
+    
+    if (okBtnEl) okBtnEl.innerText = window.t('ppcModalProtectionOk', {}, lang) || 'Понятно, продолжаю тест';
+    if (leaveLinkEl) leaveLinkEl.innerText = window.t('ppcModalProtectionLeave', {}, lang) || 'Покинуть проект';
     
     document.getElementById('ppc-protection-info-modal').classList.add('active');
 }
@@ -1983,10 +1988,8 @@ function openBufferInfoModal(testId, event) {
     const test = myTests.find(item => item.id === testId);
     if (!test) return;
     
-    const titleText = lang === 'ru' ? 'Буфер безопасности ⏳' : 'Safety Buffer ⏳';
-    const bodyText = lang === 'ru'
-        ? 'Пожалуйста, не удаляйте приложение, пока владелец официально не завершит проект. Как только это произойдет, вы получите уведомление, а приложение исчезнет из списка активных тестов.'
-        : 'Please do not delete the app until the owner officially completes the project. Once that happens, you will receive a notification, and the app will disappear from the list of active tests.';
+    const titleText = window.t('ppcModalBufferTitle', {}, lang) || 'Буфер безопасности ⏳';
+    const bodyText = window.t('ppcModalBufferText', {}, lang) || 'Пожалуйста, не удаляйте приложение, пока владелец официально не завершит проект...';
         
     const titleEl = document.getElementById('ppc-buffer-modal-title');
     const textEl = document.getElementById('ppc-buffer-modal-text');
@@ -1994,7 +1997,7 @@ function openBufferInfoModal(testId, event) {
     
     if (titleEl) titleEl.innerHTML = `⏳ <span>${window.escapeHTML(titleText)}</span>`;
     if (textEl) textEl.innerText = bodyText;
-    if (okBtnEl) okBtnEl.innerText = lang === 'ru' ? 'Понятно' : 'Understood';
+    if (okBtnEl) okBtnEl.innerText = window.t('ppcModalBufferOk', {}, lang) || 'Понятно';
     
     document.getElementById('ppc-buffer-info-modal').classList.add('active');
 }

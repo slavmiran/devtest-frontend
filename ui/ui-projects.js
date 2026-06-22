@@ -887,7 +887,7 @@ function toggleKickReasonOther() {
 // Replaces the old sync-modal popup with a full-screen slide-in view.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Pricing table: index = extra paid days (1–8), value = cumulative BUST cost
+// Pricing table: index = extra paid days (1–8), value = cumulative $BUST cost
 const _PPC_PRICING = [0, 50, 120, 210, 320, 450, 600, 770, 960];
 
 /**
@@ -957,10 +957,10 @@ function _ppcSwitchTab(btn, tabName) {
 window._ppcSwitchTab = _ppcSwitchTab;
 
 /**
- * Calculates the BUST cost for the protection gap.
+ * Calculates the $BUST cost for the protection gap.
  * @param {number} gapDays - (platformDay - googleDay), already clamped to 0-10
  * @param {number} alreadyPaidDays - days already covered by paid protection
- * @returns {number} BUST cost (0 if within free buffer)
+ * @returns {number} $BUST cost (0 if within free buffer)
  */
 function _calcProtectionCost(gapDays, alreadyPaidDays) {
     // Gap 0-2: free Pending Release buffer
@@ -1051,14 +1051,14 @@ function _ppcUpdateCalculations() {
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateCRequiredText'))}</div>
                 <div class="ppc-status-cost-block">
                     <div class="ppc-status-cost-days">${window.escapeHTML(T('ppcGapCostLabel', { days: extraDays }))}</div>
-                    <div class="ppc-status-cost-amount">${totalCost} BUST</div>
+                    <div class="ppc-status-cost-amount">${totalCost} $BUST</div>
                 </div>
             `;
         }
         statusBlock.innerHTML = html;
     }
 
-    // Auto-expand/collapse BUST purchase block
+    // Auto-expand/collapse $BUST purchase block
     const purchaseBlock = document.getElementById('ppc-purchase-block');
     if (purchaseBlock) {
         if (state === 'C') {
@@ -1074,7 +1074,7 @@ function _ppcUpdateCalculations() {
     const submitBtn = document.getElementById('ppc-submit-btn');
 
     if (totalEl) {
-        totalEl.textContent = totalCost + ' BUST';
+        totalEl.textContent = totalCost + ' $BUST';
         if (insufficient) {
             totalEl.classList.add('insufficient');
         } else {
@@ -1228,11 +1228,11 @@ function _renderProtectionCenterState1(project, platformDay) {
                 <div class="ppc-finance-block">
                     <div class="ppc-balance-row">
                         <span>${window.escapeHTML(T('ppcBalanceLabel', { amount: '' })).replace('{amount}', '')}</span>
-                        <span class="ppc-balance-value">${window.escapeHTML(formatBustAmount ? formatBustAmount(balance) : String(balance))} BUST</span>
+                        <span class="ppc-balance-value">${window.escapeHTML(formatBustAmount ? formatBustAmount(balance) : String(balance))} $BUST</span>
                     </div>
                     <div class="ppc-total-row">
                         <span>${window.escapeHTML(T('ppcTotalCostLabel'))}</span>
-                        <span class="ppc-total-value${initCost > balance ? ' insufficient' : ''}" id="ppc-total-value">${initCost} BUST</span>
+                        <span class="ppc-total-value${initCost > balance ? ' insufficient' : ''}" id="ppc-total-value">${initCost} $BUST</span>
                     </div>
                     <div class="ppc-insufficient-note${initCost > balance ? ' visible' : ''}" id="ppc-insufficient-note">
                         ${window.escapeHTML(T('ppcInsufficientFunds'))}
@@ -1619,14 +1619,14 @@ function openPpcTopUpModal() {
 
             <div class="ppc-topup-pool-row">
                 <span class="ppc-topup-pool-label">${window.escapeHTML(T('ppcTopupCurrentPool'))}</span>
-                <span class="ppc-topup-pool-value notranslate">${poolAmount} BUST</span>
+                <span class="ppc-topup-pool-value notranslate">${poolAmount} $BUST</span>
             </div>
 
             <div class="ppc-topup-counter-row">
                 <button type="button" class="ppc-topup-step-btn" onclick="_ppcTopupChangeTip(-10)">−</button>
                 <div class="ppc-topup-counter-wrap">
                     <span class="ppc-topup-value notranslate" id="ppc-topup-amount">0</span>
-                    <span class="ppc-topup-unit">BUST</span>
+                    <span class="ppc-topup-unit">$BUST</span>
                 </div>
                 <button type="button" class="ppc-topup-step-btn" onclick="_ppcTopupChangeTip(10)">+</button>
             </div>
@@ -1639,7 +1639,7 @@ function openPpcTopUpModal() {
 
             <div class="ppc-topup-balance-row" id="ppc-topup-balance-row">
                 <span>${window.escapeHTML(T('ppcTopupBalance'))}</span>
-                <span class="notranslate" id="ppc-topup-balance-val">${balance.toFixed(1)} BUST</span>
+                <span class="notranslate" id="ppc-topup-balance-val">${balance.toFixed(1)} $BUST</span>
             </div>
 
             <button type="button" class="ppc-topup-submit" id="ppc-topup-submit-btn" onclick="savePpcTopUp()" disabled>
@@ -1693,7 +1693,7 @@ function _ppcTopupUpdateState() {
         : 0;
     const remaining = balance - tipAmount;
     if (balanceEl) {
-        balanceEl.textContent = remaining.toFixed(1) + ' BUST';
+        balanceEl.textContent = remaining.toFixed(1) + ' $BUST';
         balanceEl.style.color = remaining < 0 ? '#ff3b30' : '';
     }
     if (submitBtn) {
@@ -3706,7 +3706,7 @@ function openProjectDetailsModal(appId) {
                     '</div>' +
                     '<span class="accordion-arrow" style="font-size: 14px; color: var(--hint-color); transition: transform 0.2s ease;">▼</span>' +
                 '</summary>' +
-                '<div class="accordion-content" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">' +
+                '<div class="protection-accordion-content" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">' +
                     '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
                     blockAHtml +
                     blockBHtml +
