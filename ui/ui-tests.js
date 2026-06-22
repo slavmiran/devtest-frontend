@@ -1921,8 +1921,8 @@ function openProtectionInfoModal(testId, event) {
     
     const titleText = lang === 'ru' ? 'Проект под защитой' : 'Project under protection';
     const bodyText = lang === 'ru'
-        ? 'Тестирование продолжается из-за рассинхронизации дней с Google Play. Владелец проекта активировал дополнительную защиту, чтобы тестирование завершилось безопасно и без риска сброса прогресса.\n\nНа этом этапе вам больше не нужно проходить обычные ежедневные проверки. Достаточно просто оставить приложение установленным на устройстве. Не удаляйте приложение, иначе сбросится весь прогресс вашего тестерования!'
-        : 'Testing is continuing due to day desync with Google Play. The project owner has activated extra protection to ensure the testing can be completed safely without risking progress reset.\n\nAt this stage, you no longer need to go through the usual daily check-ins. Just keep the app installed on your device. Do not uninstall the app, or you will lose all your testing progress!';
+        ? 'Тестирование продолжается из-за рассинхронизации дней с Google Play. Владелец проекта активировал дополнительную защиту, чтобы тестирование завершилось безопасно и без риска сброса прогресса.\n\nНа этом этапе вам больше не нужно проходить ежедневные тесты. Достаточно просто сохранять приложение установленным на устройстве. Не удаляйте приложение, иначе сбросится весь прогресс вашего тестерования!'
+        : 'Testing is continuing due to day desync with Google Play. The project owner has activated extra protection to ensure the testing can be completed safely without risking progress reset.\n\nAt this stage, you no longer need to go through the daily check-ins. Just keep the app installed on your device. Do not uninstall the app, or you will lose all your testing progress!';
         
     // Calculate reward pool share
     const poolAmount = Number(test.protection_bust_pool || 0);
