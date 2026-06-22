@@ -105,7 +105,7 @@ const USER_TIMEZONE_STORAGE_KEY = 'user_system_timezone';
 const langCode = initData.user?.language_code;
 const userId = initData.user?.id || 123456789;
 // DEBUG: set true to test WebApp without Telegram @username (revert before release).
-const DEBUG_BYPASS_USERNAME_GATE = false;
+const DEBUG_BYPASS_USERNAME_GATE = true;
 const telegramUsername = DEBUG_BYPASS_USERNAME_GATE
     ? (String(initData.user?.username || '').trim().replace(/^@+/, '') || 'tester_no_name')
     : String(initData.user?.username || '').trim().replace(/^@+/, '');
