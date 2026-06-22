@@ -1474,7 +1474,8 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
                 <div class="ppc-tabbed-card">
                     <!-- Tab 1: Reward Pool Content -->
                     <div class="ppc-tab-content reward-content">
-                        <div class="ppc-reward-pool-header" style="margin-bottom: 12px; justify-content: flex-end;">
+                        <div class="ppc-reward-pool-header" style="margin-bottom: 12px;">
+                            <div class="ppc-reward-pool-label-left" style="color: var(--reward);">${window.escapeHTML(T('ppcRewardPoolLeftLabel'))}</div>
                             <div class="ppc-reward-pool-amount-wrap">
                                 <div class="ppc-reward-pool-amount" style="color: var(--reward); font-size: 18px; font-weight: 800;">${window.escapeHTML(T('ppcRewardPoolAmount', { amount: poolAmount }))}</div>
                                 <div class="ppc-reward-pool-status" style="background: var(--reward-surface); color: var(--reward); border-color: var(--reward-border); font-size: 11px;">${window.escapeHTML(T('ppcRewardPoolLocked'))}</div>
@@ -1499,7 +1500,8 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
 
                     <!-- Tab 2: Safety Buffer Content -->
                     <div class="ppc-tab-content buffer-content" style="display: none;">
-                        <div class="ppc-reward-pool-header" style="margin-bottom: 12px; justify-content: flex-end;">
+                        <div class="ppc-reward-pool-header" style="margin-bottom: 12px;">
+                            <div class="ppc-reward-pool-label-left" style="color: var(--stage-buffer);">${window.escapeHTML(T('ppcBufferRemainingLeftLabel'))}</div>
                             <div class="ppc-reward-pool-amount-wrap">
                                 <div class="ppc-reward-pool-amount" style="color: var(--stage-buffer); font-size: 18px; font-weight: 800;">
                                     ${remainingBufferHours <= 0 

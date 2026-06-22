@@ -159,7 +159,7 @@
                 <div><span id="t-doneToday" data-i18n="doneToday">✅ Выполнено сегодня</span> (<span id="done-count">0</span>)</div>
                 <div class="accordion-icon">▼</div>
             </div>
-            <div class="accordion-content" id="done-list">
+            <div class="accordion-content done-today-scroll" id="done-list">
                 <!-- Done cards will be injected here -->
             </div>
         </div>
@@ -1118,14 +1118,24 @@
             <h3 id="ppc-protection-modal-title" style="display: flex; align-items: center; gap: 8px;">🛡️ <span data-i18n="ppcProtectionModalTitle">Проект под защитой</span></h3>
             <p id="ppc-protection-modal-text" style="color: var(--text-color); font-size: 14px; line-height: 1.55; margin-bottom: 16px;"></p>
             
-            <div class="ppc-modal-reward-card" style="background: var(--bg-surface-2); border: 1px solid var(--reward-border); border-radius: 12px; padding: 14px; margin-bottom: 20px; text-align: center;">
-                <div style="font-size: 12px; color: var(--hint-color); margin-bottom: 4px;" data-i18n="ppcModalRewardLabel">Ориентировочная награда</div>
-                <div id="ppc-protection-modal-reward-value" style="font-size: 20px; font-weight: 800; color: var(--reward);">~0 $BUST / день</div>
+            <div class="ppc-rewards-split-container" style="margin-bottom: 20px; margin-top: 10px;">
+                <div class="ppc-reward-split-card bust-pool">
+                    <span class="ppc-reward-split-emoji">💎</span>
+                    <div class="ppc-reward-split-info">
+                        <span id="ppc-protection-modal-reward-value" class="ppc-reward-split-value" style="color: var(--reward);">~0 $BUST / день</span>
+                        <span class="ppc-reward-split-label" data-i18n="ppcModalRewardLabel">Ориентировочная награда</span>
+                    </div>
+                </div>
+                <div class="ppc-reward-split-card karma-boost">
+                    <span class="ppc-reward-split-emoji">☯️</span>
+                    <div class="ppc-reward-split-info">
+                        <span id="ppc-protection-modal-karma-bonus" class="ppc-reward-split-value" style="color: var(--stage-protection);">+0.5</span>
+                        <span class="ppc-reward-split-label" data-i18n="ppcRewardSplitKarmaLabel">Карма за чекин</span>
+                    </div>
+                </div>
             </div>
-            
-            <div id="ppc-protection-modal-karma-bonus" style="text-align: center; font-size: 14px; color: var(--stage-protection); font-weight: 600; margin-top: -10px; margin-bottom: 18px;"></div>
 
-            <button class="btn btn-primary" style="width: 100%;" onclick="closeProtectionInfoModal()" data-i18n="ppcProtectionModalOkBtn">Понятно, продолжаю тест</button>
+            <button class="btn btn-primary" style="width: 100%;" onclick="closeProtectionInfoModal()" data-i18n="ppcModalProtectionOk">Понятно, продолжаю тест</button>
             
             <div style="text-align: center; margin-top: 14px;">
                 <a href="#" id="ppc-protection-modal-leave-link" style="font-size: 12px; color: var(--hint-color); text-decoration: underline;" onclick="ppcProtectionModalLeave(event)">Покинуть проект</a>

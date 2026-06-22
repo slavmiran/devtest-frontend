@@ -2,6 +2,7 @@
     window.I18NEN = {
             ppcModalProtectionTitle: "Project under protection 🛡️",
             ppcModalProtectionText: "Testing continues due to synchronization discrepancy with Google Play. The owner has specified the actual testing days. Do not delete the app, otherwise all progress will be reset and you will lose your rewards!",
+            ppcModalRewardLabel: "Estimated reward",
             ppcModalRewardValueFormat: "~{shareFormatted} $BUST / day",
             ppcModalKarmaBonus: "Increased karma +0.5",
             ppcModalProtectionOk: "Understood, continuing test",
@@ -566,6 +567,8 @@
             ppcRewardPoolDesc: "Protection funds are distributed among active testers who continue keeping the application installed. Any undistributed $BUST are automatically returned to your balance after the project is completed.",
             ppcRewardPoolAmount: "{amount} $BUST",
             ppcRewardPoolLocked: "locked",
+            ppcRewardPoolLeftLabel: "Current fund balance",
+            ppcBufferRemainingLeftLabel: "Remaining protection time",
             ppcBufferAwaitingArchiving: "Awaiting archiving...",
             ppcBufferRemainingHours: "{hours}h",
             ppcBufferRemainingLabel: "remaining",

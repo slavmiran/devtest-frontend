@@ -1767,6 +1767,7 @@ function renderTests(force) {
         }
 
         if (shouldShowInDoneList) {
+            card.classList.add('done-today-card');
             const reminderHtml = getScreenshotReminderHtml(test);
             if (reminderHtml) {
                 cardContent += reminderHtml;
@@ -1817,7 +1818,7 @@ function renderCompletedTests(completedTests) {
 
     completedTests.forEach((test) => {
         const card = document.createElement('div');
-        card.className = 'card card-done';
+        card.className = 'card card-done done-today-card';
         card.id = `test-card-${test.id}`;
         const userTestingDay = getResolvedTestingDay(test);
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
@@ -1881,6 +1882,7 @@ function _updateDoneSectionVisibility(doneCount) {
     if (!doneSection) return;
     var countNode = document.getElementById('done-count');
     if (countNode) countNode.innerText = String(doneCount || 0);
+    doneSection.classList.toggle('is-single-done', Number(doneCount || 0) <= 1);
     var testsTab = document.getElementById('tab-tests');
     var isTestsActive = !!(testsTab && testsTab.classList.contains('active'));
     doneSection.style.display = (isTestsActive && doneCount > 0) ? 'block' : 'none';
@@ -1924,11 +1926,12 @@ function openProtectionInfoModal(testId, event) {
     const bodyText = window.t('ppcModalProtectionText', {}, lang) || 'Тестирование продолжается из-за рассинхронизации дней с Google Play...';
         
     // Calculate reward pool share
+    const testingDay = typeof getResolvedTestingDay === 'function' ? getResolvedTestingDay(test) : 15;
     const poolAmount = Number(test.protection_bust_pool || 0);
-    const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 1);
-    const dailyPool = poolAmount / Math.max(1, extraPaid);
-    const testersCount = Number(test.active_testers_count || 1);
-    const estimatedShare = dailyPool / Math.max(1, testersCount);
+    const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+    const remainingDays = Math.max(1, (14 + extraPaid) - testingDay + 1);
+    const eligibleTesters = Math.max(1, test.eligible_testers_count || 1);
+    const estimatedShare = poolAmount > 0 ? (poolAmount / remainingDays / eligibleTesters) : 0;
     const shareFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(estimatedShare, 1) : estimatedShare.toFixed(1);
     
     const rewardLabel = window.t('ppcModalRewardLabel', {}, lang) || 'Ориентировочная награда';
@@ -1948,7 +1951,7 @@ function openProtectionInfoModal(testId, event) {
     
     const karmaBonusEl = document.getElementById('ppc-protection-modal-karma-bonus');
     if (karmaBonusEl) {
-        karmaBonusEl.innerText = window.t('ppcModalKarmaBonus', {}, lang) || 'Повышенная карма + 0,5';
+        karmaBonusEl.innerText = '+0.5';
     }
     
     if (okBtnEl) okBtnEl.innerText = window.t('ppcModalProtectionOk', {}, lang) || 'Понятно, продолжаю тест';

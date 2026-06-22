@@ -2,6 +2,7 @@
     window.I18NRU = {
             ppcModalProtectionTitle: "Проект под защитой 🛡️",
             ppcModalProtectionText: "Тестирование продолжается из-за рассинхронизации дней с Google Play. Владелец указал реальные дни тестирования. Не удаляйте приложение, иначе сбросится весь прогресс и вы потеряете награды!",
+            ppcModalRewardLabel: "Ориентировочная награда",
             ppcModalRewardValueFormat: "~{shareFormatted} $BUST / день",
             ppcModalKarmaBonus: "Повышенная карма + 0,5",
             ppcModalProtectionOk: "Понятно, продолжаю тест",
@@ -565,7 +566,9 @@
             ppcRewardPoolTitle: "🛡 Пул наград",
             ppcRewardPoolDesc: "Средства защиты распределяются между активными тестерами, которые продолжают держать приложение установленным. Нераспределённые $BUST автоматически возвращаются на ваш баланс после завершения проекта.",
             ppcRewardPoolAmount: "{amount} $BUST",
-            ppcRewardPoolLocked: "заблокировано",
+            ppcRewardPoolLocked: "зарезервировано",
+            ppcRewardPoolLeftLabel: "Текущий баланс фонда",
+            ppcBufferRemainingLeftLabel: "Остаток времени защиты",
             ppcBufferAwaitingArchiving: "Ожидание архивации...",
             ppcBufferRemainingHours: "{hours}ч",
             ppcBufferRemainingLabel: "осталось",
