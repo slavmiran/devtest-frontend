@@ -3248,20 +3248,15 @@ function renderProjectFeedbackCards(project, items) {
         var topicBtnLabel = window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang));
         var rewardBtnLabel = window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang));
         var countSuffix = mediaUrls.length > 1 ? ' (' + mediaUrls.length + ')' : '';
-        return '<div class="feedback-card' + (item.status === 'new' ? ' is-new' : '') + (item.status === 'declined' ? ' is-rejected' : '') + '">' +
-            '<div class="feedback-card-header">' +
-                '<div>' + authorHtml + '</div>' +
-                '<div class="feedback-card-date">' + window.escapeHTML(formatFeedbackDate(item.created_at)) + '</div>' +
-            '</div>' +
+        var cardClasses = (item.status === 'new' ? ' is-new' : '') + (item.status === 'declined' ? ' is-rejected' : '');
+        var mediaBtnHtml = hasMedia ? '<button class="btn btn-secondary" style="width:auto;" onclick="openFeedbackImageSlider(' + item.id + ')">🖼 ' + screenshotLabel + countSuffix + '</button>' : '';
+        var topicBtnHtml = hasTopicLink ? '<button class="btn btn-secondary" style="width:auto; background: var(--accent-primary-surface); color: var(--accent-primary); border-color: var(--accent-primary-border);" onclick="openFeedbackTopicLink(' + item.telegram_message_id + ')">💬 ' + topicBtnLabel + '</button>' : '';
+        var rewardBtnHtml = item.status === 'new' ? '<button class="btn btn-primary" style="width:auto;" onclick="openFeedbackRewardModal(' + projectId + ', ' + item.id + ')">🎁 ' + rewardBtnLabel + '</button>' : '';
+        return '<div class="feedback-card' + cardClasses + '">' +
+            '<div class="feedback-card-header"><div>' + authorHtml + '</div><div class="feedback-card-date">' + window.escapeHTML(formatFeedbackDate(item.created_at)) + '</div></div>' +
             '<div class="feedback-card-text">' + textHtml + '</div>' +
-            '<div class="feedback-card-actions">' +
-                (hasMedia ? '<button class="btn btn-secondary" style="width:auto;" onclick="openFeedbackImageSlider(' + item.id + ')">🖼 ' + screenshotLabel + countSuffix + '</button>' : '') +
-                (hasTopicLink ? '<button class="btn btn-secondary" style="width:auto; background: var(--accent-primary-surface); color: var(--accent-primary); border-color: var(--accent-primary-border);" onclick="openFeedbackTopicLink(' + item.telegram_message_id + ')">💬 ' + topicBtnLabel + '</button>' : '') +
-                (item.status === 'new' ? '<button class="btn btn-primary" style="width:auto;" onclick="openFeedbackRewardModal(' + projectId + ', ' + item.id + ')">🎁 ' + rewardBtnLabel + '</button>' : '') +
-            '</div>' +
-            rewardSummary +
-            replyHtml +
-            '</div>';
+            '<div class="feedback-card-actions">' + mediaBtnHtml + topicBtnHtml + rewardBtnHtml + '</div>' +
+            rewardSummary + replyHtml + '</div>';
         }
     }).join('')}</div>`;
 }
