@@ -533,7 +533,7 @@
             syncUpdateDataBtn: "🔄 Обновить данные",
             syncNoMessage: "Сообщение для тестеров не указано",
             // Project Protection Center (PPC)
-            ppcTitle: "Центр защиты проекта",
+            ppcTitle: "Центр защиты (Синхронизация)",
             ppcSubtitleNotSynced: "Синхронизируйте проект с Google Play Console, чтобы рассчитать защиту и ориентировочную дату завершения.",
             ppcSubtitleProtected: "Ваш проект синхронизирован с Google Play Console.",
             ppcOpenConsoleBtn: "Открыть Google Play Console",

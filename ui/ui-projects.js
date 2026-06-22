@@ -1271,10 +1271,10 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     let archiveDate;
     let remainingBufferHours;
     if (isPendingCompletion && pendingStartedAt) {
-        // IN buffer: deadline is FIXED — pending_completion_started_at + remaining buffer
-        remainingBufferHours = Math.min(48, Math.max(0, 48 - consumedPendingHours));
-        const remainingBufferMs = remainingBufferHours * 60 * 60 * 1000;
-        archiveDate = new Date(pendingStartedAt + remainingBufferMs);
+        // IN buffer: deadline is FIXED — pending_completion_started_at + 48h
+        const remainingMs = Math.max(0, (pendingStartedAt + 48 * 60 * 60 * 1000) - Date.now());
+        remainingBufferHours = Math.min(48, Math.max(0, Math.ceil(remainingMs / (60 * 60 * 1000))));
+        archiveDate = new Date(pendingStartedAt + 48 * 60 * 60 * 1000);
     } else {
         // NOT in buffer yet: deadline is in the future — created_at + 14d + extraPaid + 48h
         remainingBufferHours = 48;
@@ -1409,7 +1409,8 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
     const equatorDate = new Date(bufferStart.getTime() + (24 * 60 * 60 * 1000));
     const bufferStartStr = formatArchiveDate(bufferStart, lang);
     const equatorStr = formatArchiveDate(equatorDate, lang, true);
-    const bufferFillPercent = Math.min(100, Math.max(0, (consumedPendingHours / 48) * 100));
+    const dynamicConsumedHours = 48 - remainingBufferHours;
+    const bufferFillPercent = Math.min(100, Math.max(0, (dynamicConsumedHours / 48) * 100));
 
     let cardHtml = '';
     if (extraPaid === 0) {
@@ -3718,12 +3719,16 @@ function openProjectDetailsModal(appId) {
               '</div>'
             : '';
 
+        const blockBTitleHtml = extraPaid > 0
+            ? '<div class="protection-subblock-title buffer">' +
+                '<span>⏳</span>' +
+                '<span>' + window.escapeHTML(lang === 'ru' ? 'Буфер безопасности' : 'Safety Buffer') + '</span>' +
+              '</div>'
+            : '';
+
         const blockBHtml = 
             '<div class="protection-subblock-b">' +
-                '<div class="protection-subblock-title buffer">' +
-                    '<span>⏳</span>' +
-                    '<span>' + window.escapeHTML(lang === 'ru' ? 'Буфер безопасности' : 'Safety Buffer') + '</span>' +
-                '</div>' +
+                blockBTitleHtml +
                 '<div class="protection-row" style="color: var(--text-secondary);">' +
                     window.escapeHTML(lang === 'ru' ? `Активация буфера: ${activationText}` : `Buffer activation: ${activationText}`) +
                 '</div>' +

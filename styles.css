@@ -7124,30 +7124,10 @@ html[dir="rtl"] .guest-filter-select {
     border-color: var(--stage-protection-border);
     box-shadow: 0 0 12px var(--stage-protection-surface);
 }
-.card.card-overtime::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 4px;
-    border-radius: 16px 0 0 16px;
-    background: var(--stage-protection);
-}
 
 .card.card-pending-release {
     border-color: var(--stage-buffer-border);
     box-shadow: 0 0 14px var(--stage-buffer-surface);
-}
-.card.card-pending-release::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 4px;
-    border-radius: 16px 0 0 16px;
-    background: var(--stage-buffer);
 }
 .pending-release-carousel-card::before {
     display: none !important;
@@ -8162,7 +8142,7 @@ html[dir="rtl"] .guest-filter-select {
 }
 
 .ppc-header-title {
-    font-size: 22px;
+    font-size: 17px;
     font-weight: 800;
     color: var(--text-color);
     flex: 1;
@@ -9636,17 +9616,23 @@ details[open] .accordion-arrow {
 
 /* ── Centered Plus Separator line ── */
 .ppc-subblock-separator {
-    position: relative;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.08);
-    margin: 16px 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin: 16px 0;
+    height: auto;
+}
+
+.ppc-subblock-separator::before,
+.ppc-subblock-separator::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .ppc-separator-plus {
-    position: absolute;
+    margin: 0 8px;
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -9660,6 +9646,7 @@ details[open] .accordion-arrow {
     justify-content: center;
     user-select: none;
     line-height: 1;
+    flex-shrink: 0;
 }
 
 @media (max-width: 360px) {
