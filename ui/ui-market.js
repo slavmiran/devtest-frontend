@@ -1,5 +1,7 @@
 /* Phase 4.4 — ui/ui-market.js (structural split from ui.js + reliability cleanup from ui-tests.js) */
 
+window.feedbackMediaRegistry = window.feedbackMediaRegistry || {};
+
 /* === Reliability / dossier / guest helpers (moved from ui-tests.js) === */
 function getGuestProjectFreshness(createdAt) {
     const createdDate = parseLocalDateOnly(createdAt);
@@ -3236,12 +3238,12 @@ function renderProjectFeedbackCards(project, items) {
         const replyHtml = item.developer_reply
             ? `<div class="feedback-card-reply">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang))}: ${escapeHtmlWithBreaks(item.developer_reply)}</div>`
             : '';
-        const mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
+        var mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
             ? item.media_urls
             : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0 ? item.tg_file_ids : (item.tg_file_id ? [item.tg_file_id] : []));
-        const hasMedia = mediaUrls.length > 0;
-        const hasTopicLink = !!item.telegram_message_id;
-        var escapedMediaUrls = JSON.stringify(mediaUrls).replace(/\"/g, '&quot;');
+        window.feedbackMediaRegistry[item.id] = mediaUrls;
+        var hasMedia = mediaUrls.length > 0;
+        var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
         var screenshotLabel = window.escapeHTML(window.t('projectFeedbackViewScreenshotBtn', {}, lang));
         var topicBtnLabel = window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang));
         var rewardBtnLabel = window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang));
@@ -3253,7 +3255,7 @@ function renderProjectFeedbackCards(project, items) {
             '</div>' +
             '<div class="feedback-card-text">' + textHtml + '</div>' +
             '<div class="feedback-card-actions">' +
-                (hasMedia ? '<button class="btn btn-secondary" style="width:auto;" onclick="openFeedbackImageSlider(' + escapedMediaUrls + ', 0)">🖼 ' + screenshotLabel + countSuffix + '</button>' : '') +
+                (hasMedia ? '<button class="btn btn-secondary" style="width:auto;" onclick="openFeedbackImageSlider(' + item.id + ')">🖼 ' + screenshotLabel + countSuffix + '</button>' : '') +
                 (hasTopicLink ? '<button class="btn btn-secondary" style="width:auto; background: var(--accent-primary-surface); color: var(--accent-primary); border-color: var(--accent-primary-border);" onclick="openFeedbackTopicLink(' + item.telegram_message_id + ')">💬 ' + topicBtnLabel + '</button>' : '') +
                 (item.status === 'new' ? '<button class="btn btn-primary" style="width:auto;" onclick="openFeedbackRewardModal(' + projectId + ', ' + item.id + ')">🎁 ' + rewardBtnLabel + '</button>' : '') +
             '</div>' +
@@ -3267,7 +3269,8 @@ function renderProjectFeedbackCards(project, items) {
 var _feedbackSliderImages = [];
 var _feedbackSliderIndex = 0;
 
-function openFeedbackImageSlider(mediaUrls, startIndex) {
+function openFeedbackImageSlider(feedbackId, startIndex) {
+    var mediaUrls = window.feedbackMediaRegistry[feedbackId] || [];
     if (!Array.isArray(mediaUrls) || mediaUrls.length === 0) return;
     _feedbackSliderImages = mediaUrls.slice();
     _feedbackSliderIndex = Math.max(0, Math.min(startIndex || 0, _feedbackSliderImages.length - 1));
