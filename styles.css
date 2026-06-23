@@ -1293,19 +1293,56 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     border: 1px solid var(--border-strong);
 }
 
+.external-tests-confirm-group:has(.external-tests-confirm-btn:not(.external-tests-confirm-ready):not(.is-tested)) .external-tests-attach-btn {
+    background: var(--bg-surface-muted);
+    color: var(--hint-color);
+    border: 1px solid var(--border-strong);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+}
+
+.external-tests-confirm-group:has(.external-tests-confirm-ready) {
+    border-radius: 12px;
+    box-shadow: 0 0 0 1px rgba(52, 199, 89, 0.06), 0 3px 8px rgba(48, 209, 88, 0.08);
+}
+
 .external-tests-confirm-btn.external-tests-confirm-ready,
 .external-tests-confirm-ready {
-    background: linear-gradient(180deg, rgba(52, 199, 89, 0.28), rgba(48, 209, 88, 0.18));
-    border: 1px solid rgba(52, 199, 89, 0.42);
+    background: linear-gradient(180deg, rgba(52, 199, 89, 0.24), rgba(48, 209, 88, 0.14));
+    border: 1px solid rgba(52, 199, 89, 0.34);
     color: #f4fff7;
-    box-shadow: 0 0 0 1px var(--success-surface), 0 10px 24px rgba(48, 209, 88, 0.18);
+    box-shadow: none;
+}
+
+.external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-attach-btn {
+    background: linear-gradient(180deg, rgba(52, 199, 89, 0.24), rgba(48, 209, 88, 0.14));
+    border: 1px solid rgba(52, 199, 89, 0.34);
+    border-left: 1px solid rgba(255, 255, 255, 0.14);
+    color: #f4fff7;
+    box-shadow: none;
+}
+
+.external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-confirm-btn.split-btn-main {
+    border-right-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) {
+    box-shadow: 0 0 0 1px rgba(77, 163, 255, 0.07), 0 3px 8px rgba(77, 163, 255, 0.09);
 }
 
 .external-tests-card .external-tests-confirm-btn.external-tests-confirm-ready {
-    background: linear-gradient(180deg, rgba(77, 163, 255, 0.34), rgba(77, 163, 255, 0.2));
-    border: 1px solid rgba(77, 163, 255, 0.48);
+    background: linear-gradient(180deg, rgba(77, 163, 255, 0.28), rgba(77, 163, 255, 0.16));
+    border: 1px solid rgba(77, 163, 255, 0.38);
     color: #f0f7ff;
-    box-shadow: 0 0 0 1px rgba(77, 163, 255, 0.14), 0 10px 24px rgba(77, 163, 255, 0.2);
+    box-shadow: none;
+}
+
+.external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-attach-btn {
+    background: linear-gradient(180deg, rgba(77, 163, 255, 0.28), rgba(77, 163, 255, 0.16));
+    border: 1px solid rgba(77, 163, 255, 0.38);
+    border-left: 1px solid rgba(255, 255, 255, 0.14);
+    color: #f0f7ff;
+    box-shadow: none;
 }
 
 .external-tests-confirm-btn.is-tested,
@@ -1313,6 +1350,15 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     background: var(--bg-surface-muted);
     color: var(--hint-color);
     border: 1px solid var(--border-strong);
+    box-shadow: none;
+    cursor: default;
+}
+
+.external-tests-confirm-group:has(.external-tests-confirm-btn.is-tested) .external-tests-attach-btn {
+    background: var(--bg-surface-muted);
+    color: var(--hint-color);
+    border: 1px solid var(--border-strong);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: none;
     cursor: default;
 }
