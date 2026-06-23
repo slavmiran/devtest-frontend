@@ -2338,7 +2338,7 @@ function renderExternalProjectDetailsModal(test, body) {
                     ${window.escapeHTML(window.t('externalProjectOpenPlayBtn', {}, lang))}
                 </button>
                 <div class="${statusMeta.isPostControlWindow && !isContinuedExternal ? 'external-tests-confirm-group' : 'split-btn-group external-tests-confirm-group'}" onclick="event.stopPropagation();">
-                    <button class="btn external-tests-confirm-btn ${statusMeta.isPostControlWindow && !isContinuedExternal ? '' : 'split-btn-main'}" style="${primaryActionDisabled ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${primaryActionDisabled ? 'disabled' : ''} onclick="${primaryActionClick}">
+                    <button class="${getExternalConfirmButtonClasses(test, !(statusMeta.isPostControlWindow && !isContinuedExternal))}" ${primaryActionDisabled ? 'disabled' : ''} onclick="${primaryActionClick}">
                         ${window.escapeHTML(primaryActionLabel)}
                     </button>
                     ${attachButtonHtml}

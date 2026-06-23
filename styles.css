@@ -1287,12 +1287,25 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     min-height: 44px;
 }
 
+.external-tests-confirm-btn:not(.external-tests-confirm-ready):not(.is-tested) {
+    background: var(--bg-surface-muted);
+    color: var(--hint-color);
+    border: 1px solid var(--border-strong);
+}
+
 .external-tests-confirm-btn.external-tests-confirm-ready,
 .external-tests-confirm-ready {
     background: linear-gradient(180deg, rgba(52, 199, 89, 0.28), rgba(48, 209, 88, 0.18));
     border: 1px solid rgba(52, 199, 89, 0.42);
     color: #f4fff7;
     box-shadow: 0 0 0 1px var(--success-surface), 0 10px 24px rgba(48, 209, 88, 0.18);
+}
+
+.external-tests-card .external-tests-confirm-btn.external-tests-confirm-ready {
+    background: linear-gradient(180deg, rgba(77, 163, 255, 0.34), rgba(77, 163, 255, 0.2));
+    border: 1px solid rgba(77, 163, 255, 0.48);
+    color: #f0f7ff;
+    box-shadow: 0 0 0 1px rgba(77, 163, 255, 0.14), 0 10px 24px rgba(77, 163, 255, 0.2);
 }
 
 .external-tests-confirm-btn.is-tested,

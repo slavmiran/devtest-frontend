@@ -1281,6 +1281,26 @@ function getExternalStatusPresentation(test) {
     };
 }
 
+function isExternalNormalCheckinDay(test) {
+    if (!test || String(test.status || '') === 'done') {
+        return false;
+    }
+    return !isExternalControlDayDue(test);
+}
+
+function getExternalConfirmButtonClasses(test, includeSplitMain) {
+    var classes = ['btn', 'external-tests-confirm-btn'];
+    if (includeSplitMain !== false) {
+        classes.push('split-btn-main');
+    }
+    if (String(test && test.status || '') === 'done') {
+        classes.push('is-tested');
+    } else if (isExternalNormalCheckinDay(test)) {
+        classes.push('external-tests-confirm-ready');
+    }
+    return classes.join(' ');
+}
+
 function renderExternalContinuedActions(test, safePackageInline, ownerUsername) {
     if (!test || String(test.status || '') === 'done') {
         return '';
@@ -1292,7 +1312,7 @@ function renderExternalContinuedActions(test, safePackageInline, ownerUsername) 
                 ${window.escapeHTML(t.openBtn)}
             </button>
             <div class="split-btn-group external-tests-confirm-group" onclick="event.stopPropagation();">
-                <button id="btn-confirm-${Number(test.id || 0)}" class="btn external-tests-confirm-btn split-btn-main" onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
+                <button id="btn-confirm-${Number(test.id || 0)}" class="${getExternalConfirmButtonClasses(test)}" onclick="sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)">
                     ${window.escapeHTML(window.t('externalProjectCheckinBtn', {}, lang))}
                 </button>
                 <button type="button" class="btn external-tests-attach-btn split-btn-options" onclick="openExternalCheckinOptionsModal(${Number(test.id || 0)}, '${safeOwner}', event)" aria-label="${window.escapeHTML(window.t('externalProjectAttachmentAria', {}, lang))}">${window.escapeHTML(window.t('externalProjectAttachmentBtn', {}, lang))}</button>
@@ -1384,7 +1404,7 @@ function renderExternalGuestTestsSection() {
                             ${window.escapeHTML(t.openBtn)}
                         </button>
                         <div class="split-btn-group external-tests-confirm-group" onclick="event.stopPropagation();">
-                            <button id="btn-confirm-${Number(test.id || 0)}" class="btn external-tests-confirm-btn split-btn-main" onclick="${primaryActionClick}">
+                            <button id="btn-confirm-${Number(test.id || 0)}" class="${getExternalConfirmButtonClasses(test)}" onclick="${primaryActionClick}">
                                 ${window.escapeHTML(primaryActionLabel)}
                             </button>
                             ${attachButtonHtml}
@@ -1918,6 +1938,8 @@ Object.assign(window, {
     showOwnerLastSeenToast,
     getAvailableMutualProjectsForOwner,
     getMutualOfferProjectChoicesForOwner,
+    isExternalNormalCheckinDay,
+    getExternalConfirmButtonClasses,
 });
 
 let _currentInfoModalTest = null;

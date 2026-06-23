@@ -776,7 +776,7 @@
             externalProjectInvitePlatformMessage: "Привет! Если хочешь перевести это тестирование в стандартный режим DevTest Hub, вот claim-ссылка для проекта {app_name}:\n{claim_link}",
             externalProjectBugReportMessageTemplate: "Привет! Я тестирую {app_name_display} через DevTest Hub, день {day}.\nНашел баг / есть идея по улучшению.\n\nЕсли хочешь подключить {package_name} к DevTest Hub и получать тестеров через платформу, вот claim-ссылка:\n{claim_link}",
             externalProjectScreenshotMessageTemplate: "Привет! Отправляю скриншот по сегодняшнему тесту {app_name_display}.\n\nЕсли хочешь подключить {package_name} к DevTest Hub и перевести набор тестеров в поток внутри платформы, вот claim-ссылка:\n{claim_link}",
-            externalProjectCheckinBtn: "2️⃣ Подтвердить тест",
+            externalProjectCheckinBtn: "2️⃣ Подтвердить",
             externalProjectContinueBtn: "2️⃣ Продолжить",
             externalProjectFinishTestBtn: "🏁 Завершить тест",
             externalProjectPost14Banner: "🎉 Прошло {day} дней!",
