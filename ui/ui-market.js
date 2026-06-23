@@ -3293,8 +3293,11 @@ function renderFeedbackImageSlider() {
     var rawUrl = _feedbackSliderImages[_feedbackSliderIndex];
     var currentUrl = rawUrl;
     if (rawUrl && rawUrl.charAt(0) === '/' && !rawUrl.startsWith('//')) {
-        var apiBase = (window.API_BASE || '').replace(/\/+$/, '');
-        currentUrl = apiBase + rawUrl;
+        var apiBase = String((window.App && window.App.API_BASE) || window.API_BASE || '');
+        apiBase = apiBase.replace(/\/+$/, '');
+        if (apiBase) {
+            currentUrl = apiBase + rawUrl;
+        }
     }
 
     var navHtml = '';
