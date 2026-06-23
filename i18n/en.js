@@ -10,6 +10,8 @@
             ppcModalBufferTitle: "Safety Buffer ⏳",
             ppcModalBufferText: "Please do not delete the app until the owner officially completes the project. Once that happens, you will receive a notification, and the app will disappear from the list of active tests.",
             ppcModalBufferOk: "Understood",
+            ppcModalActiveTitle: "🧪 Active testing phase",
+            ppcModalActiveText: "The project is in the primary phase. Test the app, look for bugs, and suggest ideas! For high-quality feedback, you can earn extra karma ☯️ (+1.5 or +3) and unlimited 💎$BUST.",
             ppcBufferActiveTime: "⏳ Remaining {hours}h {minutes}m",
             ppcBufferInactiveTime: "+⏳ 48h",
             timelineOvertimeRewardNotePaid: "Reward for check-in: +0.5 ☯️ Karma and a share of the 💎$BUST pool",

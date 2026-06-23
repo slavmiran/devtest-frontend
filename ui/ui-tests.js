@@ -1416,15 +1416,17 @@ function renderExternalGuestTestsSection() {
 
         return `
             <div class="card card-external-tracking external-tests-card${isDoneToday ? ' is-tested' : ''}" id="external-test-card-${Number(test.id || 0)}">
-                <div class="card-header external-tests-card-header">
+                <div class="card-header external-tests-card-header" onclick="openProjectDetailsModal(${test.id})" style="cursor: pointer; user-select: none;">
                     <div class="card-header-main">
-                        ${renderIcon(test.name || test.package || window.t('unknownLabel', {}, lang), test.icon_url)}
-                        <div class="card-info">
+                        ${renderTestAvatarWithPhaseBadge(test, lang)}
+                        <div class="card-info" onclick="openProjectDetailsModal(${test.id}); event.stopPropagation();" style="cursor: pointer;">
                             <div class="card-title notranslate">${safeName}</div>
                             <div class="card-subtitle notranslate">${safePackage}</div>
                         </div>
                     </div>
-                    ${renderTestCardDetailsButton(test.id)}
+                    <div onclick="event.stopPropagation();" style="display: flex; align-items: center;">
+                        ${renderTestCardDetailsButton(test.id)}
+                    </div>
                 </div>
                 <div class="external-tests-topline">
                     ${ownerLabelHtml}
@@ -1755,18 +1757,10 @@ function renderTests(force) {
             }
             headerActions.push(renderTestCardDetailsButton(test.id));
         } else {
-            if (userTestingDay >= 15) {
-                if (isInSafetyBuffer) {
-                    headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: var(--stage-buffer); cursor: pointer;" onclick="openBufferInfoModal(${test.id}, event)">⏳</button>`);
-                } else {
-                    headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: var(--stage-protection); cursor: pointer;" onclick="openProtectionInfoModal(${test.id}, event)">🛡️</button>`);
-                }
-            } else if (isRegularTestingPhaseCard(test)) {
-                headerActions.push(renderTestCardDetailsButton(test.id));
-            }
+            headerActions.push(renderTestCardDetailsButton(test.id));
         }
         const trailingHtml = headerActions.length
-            ? `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`
+            ? `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;" onclick="event.stopPropagation();">${headerActions.join('')}</div>`
             : '';
 
         const doneBadgeHtml = test.status === 'done' && !test.isReadyToClaim
@@ -1781,8 +1775,8 @@ function renderTests(force) {
         }
         const cardHeaderMainHtml = `
             <div class="card-header-main">
-                ${renderIcon(test.name, test.icon_url)}
-                <div class="card-info">
+                ${renderTestAvatarWithPhaseBadge(test, lang)}
+                <div class="card-info" onclick="openProjectDetailsModal(${test.id}); event.stopPropagation();" style="cursor: pointer;">
                     <div class="card-title notranslate">${safeName}</div>
                     <div class="card-subtitle notranslate">${safeOwnerSubtitle}</div>
                 </div>
@@ -1790,9 +1784,9 @@ function renderTests(force) {
 
         let cardContent = `
             ${doneBadgeHtml}
-            <div class="card-header">
+            <div class="card-header" onclick="openProjectDetailsModal(${test.id})" style="cursor: pointer; user-select: none;">
                 ${cardHeaderMainHtml}
-                ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
+                ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;" onclick="event.stopPropagation()">${langBadge}</div>` : ''}
                 ${trailingHtml}
             </div>
             ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips })}
@@ -1865,7 +1859,7 @@ function renderCompletedTests(completedTests) {
             headerActions.push(renderTestCardDetailsButton(test.id));
         }
         headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="${isMutualExitFlow(test) ? `openLeaveMutualModal(${test.id}, event)` : `openDropTestModal(${test.id}, event)`}">🗑️</button>`);
-        const ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`;
+        const ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;" onclick="event.stopPropagation();">${headerActions.join('')}</div>`;
 
         let devInfoHtml = '';
         if (test.instructions) {
@@ -1880,11 +1874,13 @@ function renderCompletedTests(completedTests) {
         let cardContent = `
             <div class="done-status-pill">${window.escapeHTML(t.doneTodayText)}</div>
             <div class="done-watermark">${window.escapeHTML(window.t('doneWatermarkText', {}, lang))}</div>
-            <div class="card-header">
-                ${renderIcon(test.name, test.icon_url)}
-                <div class="card-info">
-                    <div class="card-title notranslate">${safeName}</div>
-                    <div class="card-subtitle notranslate">${safeOwnerSubtitle}</div>
+            <div class="card-header" onclick="openProjectDetailsModal(${test.id})" style="cursor: pointer; user-select: none;">
+                <div class="card-header-main">
+                    ${renderTestAvatarWithPhaseBadge(test, lang)}
+                    <div class="card-info" onclick="openProjectDetailsModal(${test.id}); event.stopPropagation();" style="cursor: pointer;">
+                        <div class="card-title notranslate">${safeName}</div>
+                        <div class="card-subtitle notranslate">${safeOwnerSubtitle}</div>
+                    </div>
                 </div>
                 ${ownerBtnHtml}
             </div>
@@ -1944,7 +1940,36 @@ Object.assign(window, {
 
 let _currentInfoModalTest = null;
 
-function openProtectionInfoModal(testId, event) {
+function renderTestAvatarWithPhaseBadge(test, lang) {
+    const userTestingDay = getResolvedTestingDay(test);
+    const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+    const isInSafetyBuffer = !!test.is_pending_completion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+    
+    let phaseClass = '';
+    let phaseIcon = '';
+    
+    if (isInSafetyBuffer) {
+        phaseClass = 'buffer-phase';
+        phaseIcon = '⏳';
+    } else if (userTestingDay >= 15) {
+        phaseClass = 'protection-phase';
+        phaseIcon = '🛡️';
+    } else {
+        phaseClass = 'active-phase';
+        phaseIcon = '🧪';
+    }
+    
+    return `
+        <div class="project-avatar-container" onclick="openPhaseInfoModal(${test.id}, event); event.stopPropagation();" style="cursor: pointer; user-select: none;">
+            ${renderIcon(test.name || test.package || window.t('unknownLabel', {}, lang), test.icon_url)}
+            <div class="project-phase-badge-overlay ${phaseClass}">
+                ${phaseIcon}
+            </div>
+        </div>
+    `;
+}
+
+function openPhaseInfoModal(testId, event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -1954,52 +1979,110 @@ function openProtectionInfoModal(testId, event) {
     
     _currentInfoModalTest = test;
     
-    const titleText = lang === 'ru' ? 'Проект под защитой' : 'Project under protection';
-    const bodyText = lang === 'ru'
-        ? 'Тестирование продолжается из-за рассинхронизации дней с Google Play. Владелец проекта активировал дополнительную защиту, чтобы тестирование завершилось безопасно и без риска сброса прогресса.\n\nНа этом этапе вам больше не нужно проходить ежедневные тесты. Достаточно просто сохранять приложение установленным на устройстве. Не удаляйте приложение, иначе сбросится весь прогресс вашего тестерования!'
-        : 'Testing is continuing due to day desync with Google Play. The project owner has activated extra protection to ensure the testing can be completed safely without risking progress reset.\n\nAt this stage, you no longer need to go through the daily check-ins. Just keep the app installed on your device. Do not uninstall the app, or you will lose all your testing progress!';
+    const userTestingDay = getResolvedTestingDay(test);
+    const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+    const isInSafetyBuffer = !!test.is_pending_completion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+    
+    let titleEmoji = '';
+    let titleText = '';
+    let bodyText = '';
+    let showRewards = false;
+    let showLeaveLink = false;
+    
+    if (isInSafetyBuffer) {
+        // Buffer phase
+        titleEmoji = '⏳';
+        titleText = window.t('ppcModalBufferTitle', {}, lang) || (lang === 'ru' ? 'Буфер безопасности ⏳' : 'Safety Buffer ⏳');
+        // Clean out trailing emoji if translated key has it
+        titleText = titleText.replace(/[⏳\s]/g, '');
+        bodyText = window.t('ppcModalBufferText', {}, lang) || (lang === 'ru'
+            ? 'Пожалуйста, не удаляйте приложение, пока владелец официально не завершит проект. Как только это произойдет, вы получите уведомление, а приложение исчезнет из списка активных тестов.'
+            : 'Please do not delete the app until the owner officially completes the project. Once that happens, you will receive a notification, and the app will disappear from the list of active tests.');
+        showRewards = false;
+        showLeaveLink = false;
+    } else if (userTestingDay >= 15) {
+        // Protection phase
+        titleEmoji = '🛡️';
+        titleText = window.t('ppcModalProtectionTitle', {}, lang) || (lang === 'ru' ? 'Проект под защитой 🛡️' : 'Project under protection 🛡️');
+        titleText = titleText.replace(/[🛡️\s]/g, '');
+        bodyText = window.t('ppcModalProtectionText', {}, lang) || (lang === 'ru'
+            ? 'Тестирование продолжается из-за рассинхронизации дней с Google Play. Владелец указал реальные дни тестирования. Не удаляйте приложение, иначе сбросится весь прогресс и вы потеряете награды!'
+            : 'Testing continues due to synchronization discrepancy with Google Play. The owner has specified the actual testing days. Do not delete the app, otherwise all progress will be reset and you will lose your rewards!');
+        showRewards = true;
+        showLeaveLink = true;
         
-    // Calculate reward pool share
-    const poolAmount = Number(test.protection_bust_pool || 0);
-    const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 1);
-    const dailyPool = poolAmount / Math.max(1, extraPaid);
-    const testersCount = Number(test.active_testers_count || 1);
-    const estimatedShare = dailyPool / Math.max(1, testersCount);
-    const shareFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(estimatedShare, 1) : estimatedShare.toFixed(1);
+        // Calculate reward pool share
+        const poolAmount = Number(test.protection_bust_pool || 0);
+        const dailyPool = poolAmount / Math.max(1, extraPaid);
+        const testersCount = Number(test.active_testers_count || 1);
+        const estimatedShare = dailyPool / Math.max(1, testersCount);
+        const shareFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(estimatedShare, 1) : estimatedShare.toFixed(1);
+        
+        const rewardValue = `~${shareFormatted} BUST / ${lang === 'ru' ? 'день' : 'day'}`;
+        const rewardValEl = document.getElementById('ppc-phase-modal-reward-value');
+        if (rewardValEl) rewardValEl.innerText = rewardValue;
+        
+        // Karma bonus label
+        const karmaBonusLabelEl = document.querySelector('#ppc-phase-info-modal .karma-boost .ppc-reward-split-label');
+        if (karmaBonusLabelEl) {
+            karmaBonusLabelEl.innerText = window.t('ppcModalKarmaBonus', {}, lang) || (lang === 'ru' ? 'Повышенная карма + 0,5' : 'Increased karma +0.5');
+        }
+    } else {
+        // Active phase (days 1-14)
+        titleEmoji = '🧪';
+        titleText = window.t('ppcModalActiveTitle', {}, lang) || (lang === 'ru' ? 'Активная фаза тестирования' : 'Active testing phase');
+        titleText = titleText.replace(/[🧪\s]/g, '');
+        bodyText = window.t('ppcModalActiveText', {}, lang) || (lang === 'ru'
+            ? 'Проект находится в основной фазе. Тестируйте приложение, ищите баги и предлагайте идеи! За качественный фидбек вы можете заработать дополнительную карму ☯️ (+1.5 или +3) и неограниченное количество💎$BUST.'
+            : 'The project is in the primary phase. Test the app, look for bugs, and suggest ideas! For high-quality feedback, you can earn extra karma ☯️ (+1.5 or +3) and unlimited 💎$BUST.');
+        showRewards = false;
+        showLeaveLink = false;
+    }
     
-    const rewardLabel = lang === 'ru' ? 'Ориентировочная награда' : 'Estimated reward';
-    const rewardValue = `~${shareFormatted} BUST / ${lang === 'ru' ? 'день' : 'day'}`;
+    // Populate modal DOM
+    const titleEl = document.getElementById('ppc-phase-modal-title');
+    const textEl = document.getElementById('ppc-phase-modal-text');
+    const rewardsContainer = document.getElementById('ppc-phase-rewards-container');
+    const leaveLinkContainer = document.getElementById('ppc-phase-leave-link-container');
+    const okBtnEl = document.getElementById('ppc-phase-modal-ok-btn');
     
-    const titleEl = document.getElementById('ppc-protection-modal-title');
-    const textEl = document.getElementById('ppc-protection-modal-text');
-    const rewardLabelEl = document.querySelector('#ppc-protection-info-modal [data-i18n="ppcModalRewardLabel"]');
-    const rewardValEl = document.getElementById('ppc-protection-modal-reward-value');
-    const okBtnEl = document.querySelector('#ppc-protection-info-modal button');
-    const leaveLinkEl = document.getElementById('ppc-protection-modal-leave-link');
+    if (titleEl) {
+        titleEl.innerHTML = `${titleEmoji} <span id="ppc-phase-modal-title-text">${window.escapeHTML(titleText)}</span>`;
+    }
+    if (textEl) {
+        textEl.innerText = bodyText;
+    }
+    if (rewardsContainer) {
+        rewardsContainer.style.display = showRewards ? 'flex' : 'none';
+    }
+    if (leaveLinkContainer) {
+        leaveLinkContainer.style.display = showLeaveLink ? 'block' : 'none';
+    }
+    if (okBtnEl) {
+        if (userTestingDay >= 15 && !isInSafetyBuffer) {
+            okBtnEl.innerText = window.t('ppcModalProtectionOk', {}, lang) || (lang === 'ru' ? 'Понятно, продолжаю тест' : 'Understood, continuing test');
+        } else {
+            okBtnEl.innerText = window.t('ppcModalBufferOk', {}, lang) || (lang === 'ru' ? 'Понятно' : 'Understood');
+        }
+    }
     
-    if (titleEl) titleEl.innerHTML = `🛡️ <span>${window.escapeHTML(titleText)}</span>`;
-    if (textEl) textEl.innerText = bodyText;
-    if (rewardLabelEl) rewardLabelEl.innerText = rewardLabel;
-    if (rewardValEl) rewardValEl.innerText = rewardValue;
-    if (okBtnEl) okBtnEl.innerText = lang === 'ru' ? 'Понятно, продолжаю тест' : 'Understood, continuing test';
-    if (leaveLinkEl) leaveLinkEl.innerText = lang === 'ru' ? 'Покинуть проект' : 'Leave project';
-    
-    document.getElementById('ppc-protection-info-modal').classList.add('active');
+    const modal = document.getElementById('ppc-phase-info-modal');
+    if (modal) modal.classList.add('active');
 }
 
-function closeProtectionInfoModal(event) {
-    if (event && event.target !== document.getElementById('ppc-protection-info-modal')) return;
-    const modal = document.getElementById('ppc-protection-info-modal');
+function closePhaseInfoModal(event) {
+    if (event && event.target !== document.getElementById('ppc-phase-info-modal')) return;
+    const modal = document.getElementById('ppc-phase-info-modal');
     if (modal) modal.classList.remove('active');
 }
 
-function ppcProtectionModalLeave(event) {
+function ppcPhaseModalLeave(event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
     const test = _currentInfoModalTest;
-    closeProtectionInfoModal();
+    closePhaseInfoModal();
     if (!test) return;
     
     // Call the original leave modal trigger
@@ -2010,39 +2093,14 @@ function ppcProtectionModalLeave(event) {
     }
 }
 
-function openBufferInfoModal(testId, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    const test = myTests.find(item => item.id === testId);
-    if (!test) return;
-    
-    const titleText = lang === 'ru' ? 'Буфер безопасности ⏳' : 'Safety Buffer ⏳';
-    const bodyText = lang === 'ru'
-        ? 'Пожалуйста, не удаляйте приложение, пока владелец официально не завершит проект. Как только это произойдет, вы получите уведомление, а приложение исчезнет из списка активных тестов.'
-        : 'Please do not delete the app until the owner officially completes the project. Once that happens, you will receive a notification, and the app will disappear from the list of active tests.';
-        
-    const titleEl = document.getElementById('ppc-buffer-modal-title');
-    const textEl = document.getElementById('ppc-buffer-modal-text');
-    const okBtnEl = document.querySelector('#ppc-buffer-info-modal button');
-    
-    if (titleEl) titleEl.innerHTML = `⏳ <span>${window.escapeHTML(titleText)}</span>`;
-    if (textEl) textEl.innerText = bodyText;
-    if (okBtnEl) okBtnEl.innerText = lang === 'ru' ? 'Понятно' : 'Understood';
-    
-    document.getElementById('ppc-buffer-info-modal').classList.add('active');
-}
-
-function closeBufferInfoModal(event) {
-    if (event && event.target !== document.getElementById('ppc-buffer-info-modal')) return;
-    const modal = document.getElementById('ppc-buffer-info-modal');
-    if (modal) modal.classList.remove('active');
-}
-
 // Expose functions globally
-window.openProtectionInfoModal = openProtectionInfoModal;
-window.closeProtectionInfoModal = closeProtectionInfoModal;
-window.ppcProtectionModalLeave = ppcProtectionModalLeave;
-window.openBufferInfoModal = openBufferInfoModal;
-window.closeBufferInfoModal = closeBufferInfoModal;
+window.openPhaseInfoModal = openPhaseInfoModal;
+window.closePhaseInfoModal = closePhaseInfoModal;
+window.ppcPhaseModalLeave = ppcPhaseModalLeave;
+// Fallback compatibility aliases
+window.openProtectionInfoModal = openPhaseInfoModal;
+window.closeProtectionInfoModal = closePhaseInfoModal;
+window.ppcProtectionModalLeave = ppcPhaseModalLeave;
+window.openBufferInfoModal = openPhaseInfoModal;
+window.closeBufferInfoModal = closePhaseInfoModal;
+window.renderTestAvatarWithPhaseBadge = renderTestAvatarWithPhaseBadge;

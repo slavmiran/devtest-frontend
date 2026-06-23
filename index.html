@@ -1112,44 +1112,34 @@
         </div>
     </div>
 
-    <!-- Project Protection Info Modal -->
-    <div id="ppc-protection-info-modal" class="modal-overlay" onclick="closeProtectionInfoModal(event)">
+    <!-- Unified Project Phase Info Modal -->
+    <div id="ppc-phase-info-modal" class="modal-overlay" onclick="closePhaseInfoModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="ppc-protection-modal-title" style="display: flex; align-items: center; gap: 8px;">🛡️ <span data-i18n="ppcProtectionModalTitle">Проект под защитой</span></h3>
-            <p id="ppc-protection-modal-text" style="color: var(--text-color); font-size: 14px; line-height: 1.55; margin-bottom: 16px;"></p>
+            <h3 id="ppc-phase-modal-title" style="display: flex; align-items: center; gap: 8px;">🧪 <span id="ppc-phase-modal-title-text">Фаза тестирования</span></h3>
+            <p id="ppc-phase-modal-text" style="color: var(--text-color); font-size: 14px; line-height: 1.55; margin-bottom: 16px;"></p>
             
-            <div class="ppc-rewards-split-container" style="margin-bottom: 20px; margin-top: 10px;">
+            <div id="ppc-phase-rewards-container" class="ppc-rewards-split-container" style="margin-bottom: 20px; margin-top: 10px; display: none;">
                 <div class="ppc-reward-split-card bust-pool">
                     <span class="ppc-reward-split-emoji">💎</span>
                     <div class="ppc-reward-split-info">
-                        <span id="ppc-protection-modal-reward-value" class="ppc-reward-split-value" style="color: var(--reward);">~0 $BUST</span>
-                        <span class="ppc-reward-split-label" data-i18n="ppcModalRewardLabel">Ориентировочная награда</span>
+                        <span id="ppc-phase-modal-reward-value" class="ppc-reward-split-value" style="color: var(--reward);">~0 $BUST</span>
+                        <span class="ppc-reward-split-label" data-i18n="ppcModalRewardLabel">Ориентировочно</span>
                     </div>
                 </div>
                 <div class="ppc-reward-split-card karma-boost">
                     <span class="ppc-reward-split-emoji">☯️</span>
                     <div class="ppc-reward-split-info">
-                        <span id="ppc-protection-modal-karma-bonus" class="ppc-reward-split-value" style="color: var(--reward);">+0.5</span>
-                        <span class="ppc-reward-split-label" data-i18n="ppcRewardSplitKarmaLabel">Карма за чекин</span>
+                        <span id="ppc-phase-modal-karma-bonus" class="ppc-reward-split-value" style="color: var(--reward);">+0.5</span>
+                        <span class="ppc-reward-split-label" data-i18n="ppcModalKarmaBonus">Повышенная карма + 0,5</span>
                     </div>
                 </div>
             </div>
 
-            <button class="btn btn-primary" style="width: 100%;" onclick="closeProtectionInfoModal()" data-i18n="ppcModalProtectionOk">Понятно, продолжаю тест</button>
+            <button id="ppc-phase-modal-ok-btn" class="btn btn-primary" style="width: 100%;" onclick="closePhaseInfoModal()" data-i18n="ppcModalBufferOk">Понятно</button>
             
-            <div style="text-align: center; margin-top: 14px;">
-                <a href="#" id="ppc-protection-modal-leave-link" style="font-size: 12px; color: var(--hint-color); text-decoration: underline;" onclick="ppcProtectionModalLeave(event)">Покинуть проект</a>
+            <div id="ppc-phase-leave-link-container" style="text-align: center; margin-top: 14px; display: none;">
+                <a href="#" id="ppc-phase-modal-leave-link" style="font-size: 12px; color: var(--hint-color); text-decoration: underline;" onclick="ppcPhaseModalLeave(event)" data-i18n="ppcModalProtectionLeave">Покинуть проект</a>
             </div>
-        </div>
-    </div>
-
-    <!-- Safety Buffer Info Modal -->
-    <div id="ppc-buffer-info-modal" class="modal-overlay" onclick="closeBufferInfoModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="ppc-buffer-modal-title" style="display: flex; align-items: center; gap: 8px;">⏳ <span data-i18n="ppcBufferModalTitle">Буфер безопасности</span></h3>
-            <p id="ppc-buffer-modal-text" style="color: var(--text-color); font-size: 14px; line-height: 1.55; margin-bottom: 20px;"></p>
-            
-            <button class="btn btn-primary" style="width: 100%;" onclick="closeBufferInfoModal()" data-i18n="ppcBufferModalOkBtn">Понятно</button>
         </div>
     </div>
 
