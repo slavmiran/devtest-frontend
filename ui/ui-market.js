@@ -2,6 +2,7 @@
 
 console.log('[DEBUG] ui-market.js START');
 window.feedbackMediaRegistry = window.feedbackMediaRegistry || {};
+window.feedbackCaptionRegistry = window.feedbackCaptionRegistry || {};
 
 /* === Reliability / dossier / guest helpers (moved from ui-tests.js) === */
 function getGuestProjectFreshness(createdAt) {
@@ -3323,6 +3324,7 @@ function renderProjectFeedbackCards(project, items) {
                 : (item.tg_file_id ? [item.tg_file_id] : []));
         const resolvedMediaUrls = (mediaUrls || []).map(feedbackResolveMediaUrl).filter(Boolean);
         window.feedbackMediaRegistry[item.id] = resolvedMediaUrls;
+        window.feedbackCaptionRegistry[item.id] = item.message_text || '';
 
         var mediaHtml = '';
         if (resolvedMediaUrls.length > 0) {
@@ -3412,6 +3414,8 @@ function feedbackExpandText(feedbackId) {
 }
 
 
+var _feedbackSliderCaption = '';
+
 function openFeedbackImageSlider(feedbackId, startIndex) {
     var mediaUrls = window.feedbackMediaRegistry[feedbackId] || [];
     if (!Array.isArray(mediaUrls) || mediaUrls.length === 0) {
@@ -3420,14 +3424,39 @@ function openFeedbackImageSlider(feedbackId, startIndex) {
     }
     _feedbackSliderImages = mediaUrls.slice();
     _feedbackSliderIndex = Math.max(0, Math.min(startIndex || 0, _feedbackSliderImages.length - 1));
+    _feedbackSliderCaption = (window.feedbackCaptionRegistry && window.feedbackCaptionRegistry[feedbackId]) || '';
     renderFeedbackImageSlider();
+}
+
+function feedbackSliderStep(delta) {
+    var total = _feedbackSliderImages.length;
+    if (total <= 1) return;
+    _feedbackSliderIndex = (_feedbackSliderIndex + delta + total) % total;
+    renderFeedbackImageSlider();
+}
+
+function feedbackSliderGoTo(i) {
+    if (i < 0 || i >= _feedbackSliderImages.length) return;
+    _feedbackSliderIndex = i;
+    renderFeedbackImageSlider();
+}
+
+function _feedbackSliderKeyHandler(e) {
+    if (e.key === 'Escape') closeFeedbackImageSlider();
+    else if (e.key === 'ArrowLeft') feedbackSliderStep(-1);
+    else if (e.key === 'ArrowRight') feedbackSliderStep(1);
 }
 
 function closeFeedbackImageSlider() {
     var overlay = document.getElementById('feedback-image-overlay');
-    if (overlay) overlay.remove();
+    if (overlay) {
+        overlay.classList.add('is-closing');
+        setTimeout(function() { if (overlay.parentNode) overlay.remove(); }, 160);
+    }
+    document.removeEventListener('keydown', _feedbackSliderKeyHandler);
     _feedbackSliderImages = [];
     _feedbackSliderIndex = 0;
+    _feedbackSliderCaption = '';
 }
 
 function renderFeedbackImageSlider() {
@@ -3438,32 +3467,72 @@ function renderFeedbackImageSlider() {
     var overlay = document.createElement('div');
     overlay.id = 'feedback-image-overlay';
     overlay.className = 'feedback-image-overlay';
-    overlay.onclick = function(e) { if (e.target === overlay) closeFeedbackImageSlider(); };
+    overlay.onclick = function(e) { if (e.target === overlay || e.target.classList.contains('fb-slider-stage')) closeFeedbackImageSlider(); };
 
     var total = _feedbackSliderImages.length;
-    var rawUrl = _feedbackSliderImages[_feedbackSliderIndex];
-    var currentUrl = feedbackResolveMediaUrl(rawUrl);
+    var currentUrl = feedbackResolveMediaUrl(_feedbackSliderImages[_feedbackSliderIndex]);
+    var unavailable = window.escapeHTML(window.t('projectFeedbackImageUnavailable', {}, lang));
 
-    var navHtml = '';
+    var counterHtml = total > 1
+        ? '<span class="fb-slider-counter">' + (_feedbackSliderIndex + 1) + ' / ' + total + '</span>'
+        : '<span></span>';
+
+    var arrowsHtml = '';
     if (total > 1) {
-        navHtml = '<div class="feedback-slider-nav">' +
-            '<button class="feedback-slider-arrow feedback-slider-prev" onclick="event.stopPropagation(); _feedbackSliderIndex = (_feedbackSliderIndex - 1 + ' + total + ') % ' + total + '; renderFeedbackImageSlider();">&larr;</button>' +
-            '<span class="feedback-slider-counter">' + (_feedbackSliderIndex + 1) + ' / ' + total + '</span>' +
-            '<button class="feedback-slider-arrow feedback-slider-next" onclick="event.stopPropagation(); _feedbackSliderIndex = (_feedbackSliderIndex + 1) % ' + total + '; renderFeedbackImageSlider();">&rarr;</button>' +
-            '</div>';
+        arrowsHtml =
+            '<button class="fb-slider-arrow fb-slider-arrow--prev" aria-label="Previous" onclick="event.stopPropagation(); feedbackSliderStep(-1);">&#8249;</button>' +
+            '<button class="fb-slider-arrow fb-slider-arrow--next" aria-label="Next" onclick="event.stopPropagation(); feedbackSliderStep(1);">&#8250;</button>';
     }
 
-    overlay.innerHTML = '<div class="feedback-slider-container">' +
-        '<button class="feedback-slider-close" onclick="closeFeedbackImageSlider()">&times;</button>' +
-        "<img class='feedback-slider-image' src='" + window.escapeHTML(currentUrl) + "' alt='Screenshot' onerror=\"this.onerror=null;this.style.display='none';var fb=this.nextElementSibling;if(fb)fb.style.display='block';\">" +
-        '<div class="feedback-slider-fallback" style="display:none;">📷 ' + window.escapeHTML(window.t('projectFeedbackImageUnavailable', {}, lang)) + '</div>' +
-        (total > 1 ? '<div class="feedback-slider-dots">' + _feedbackSliderImages.map(function(_, i) {
-            return '<span class="feedback-slider-dot' + (i === _feedbackSliderIndex ? ' active' : '') + '" onclick="event.stopPropagation(); _feedbackSliderIndex=' + i + '; renderFeedbackImageSlider();"></span>';
-        }).join('') + '</div>' : '') +
-        navHtml +
+    var captionHtml = _feedbackSliderCaption
+        ? '<div class="fb-slider-caption">' + escapeHtmlWithBreaks(_feedbackSliderCaption) + '</div>'
+        : '';
+
+    var dotsHtml = '';
+    if (total > 1) {
+        dotsHtml = '<div class="fb-slider-dots">' + _feedbackSliderImages.map(function(_, i) {
+            return '<span class="fb-slider-dot' + (i === _feedbackSliderIndex ? ' active' : '') + '" onclick="event.stopPropagation(); feedbackSliderGoTo(' + i + ');"></span>';
+        }).join('') + '</div>';
+    }
+
+    overlay.innerHTML =
+        '<div class="fb-slider-topbar">' +
+            counterHtml +
+            '<button class="fb-slider-close" aria-label="Close" onclick="event.stopPropagation(); closeFeedbackImageSlider();">&times;</button>' +
+        '</div>' +
+        '<div class="fb-slider-stage">' +
+            arrowsHtml +
+            "<img class='fb-slider-image' src='" + window.escapeHTML(currentUrl) + "' alt='Screenshot' onclick='event.stopPropagation();' onerror=\"this.onerror=null;this.style.display='none';var fb=this.parentNode.querySelector('.fb-slider-fallback');if(fb)fb.style.display='flex';\">" +
+            '<div class="fb-slider-fallback" style="display:none;"><span class="fb-slider-fallback-icon">🖼️</span><span>' + unavailable + '</span></div>' +
+        '</div>' +
+        '<div class="fb-slider-bottom">' +
+            captionHtml +
+            dotsHtml +
         '</div>';
 
     document.body.appendChild(overlay);
+
+    // Touch swipe navigation
+    var stage = overlay.querySelector('.fb-slider-stage');
+    if (stage && total > 1) {
+        var startX = 0, startY = 0, tracking = false;
+        stage.addEventListener('touchstart', function(e) {
+            if (e.touches.length !== 1) return;
+            startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = true;
+        }, { passive: true });
+        stage.addEventListener('touchend', function(e) {
+            if (!tracking) return;
+            tracking = false;
+            var dx = e.changedTouches[0].clientX - startX;
+            var dy = e.changedTouches[0].clientY - startY;
+            if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+                feedbackSliderStep(dx < 0 ? 1 : -1);
+            }
+        }, { passive: true });
+    }
+
+    document.removeEventListener('keydown', _feedbackSliderKeyHandler);
+    document.addEventListener('keydown', _feedbackSliderKeyHandler);
 }
 
 function openFeedbackTopicLink(telegramMessageId) {
@@ -5842,6 +5911,8 @@ Object.assign(window, {
     getMarketCandidateByAppId,
     openFeedbackImageSlider,
     closeFeedbackImageSlider,
+    feedbackSliderStep,
+    feedbackSliderGoTo,
     openFeedbackTopicLink,
     feedbackExpandText,
     feedbackOnImageError,
