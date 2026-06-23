@@ -3290,7 +3290,12 @@ function renderFeedbackImageSlider() {
     overlay.onclick = function(e) { if (e.target === overlay) closeFeedbackImageSlider(); };
 
     var total = _feedbackSliderImages.length;
-    var currentUrl = _feedbackSliderImages[_feedbackSliderIndex];
+    var rawUrl = _feedbackSliderImages[_feedbackSliderIndex];
+    var currentUrl = rawUrl;
+    if (rawUrl && rawUrl.charAt(0) === '/' && !rawUrl.startsWith('//')) {
+        var apiBase = (window.API_BASE || '').replace(/\/+$/, '');
+        currentUrl = apiBase + rawUrl;
+    }
 
     var navHtml = '';
     if (total > 1) {
@@ -3316,8 +3321,14 @@ function renderFeedbackImageSlider() {
 
 function openFeedbackTopicLink(telegramMessageId) {
     if (!telegramMessageId) return;
-    var base = (window.FEEDBACK_PUBLIC_LINK_BASE || (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
-    var url = base + '/' + telegramMessageId;
+    var groupId = (window.App && window.App.frontendGroupId) || '';
+    var url;
+    if (groupId) {
+        url = 'https://t.me/c/' + groupId + '/' + telegramMessageId;
+    } else {
+        var base = (window.FEEDBACK_PUBLIC_LINK_BASE || (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
+        url = base + '/' + telegramMessageId;
+    }
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
         window.Telegram.WebApp.openTelegramLink(url);
     } else {

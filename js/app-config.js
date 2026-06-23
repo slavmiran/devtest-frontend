@@ -170,6 +170,10 @@ async function loadRuntimeConfig() {
             window.App.publicGroupUrl = runtimeGroupUrl;
             window.FEEDBACK_PUBLIC_LINK_BASE = runtimeGroupUrl;
         }
+        var runtimeGroupId = String((payload && payload.frontend_group_id) || '').trim();
+        if (runtimeGroupId) {
+            window.App.frontendGroupId = runtimeGroupId;
+        }
     } catch (error) {
         console.warn('Runtime config fetch failed:', error);
     }
