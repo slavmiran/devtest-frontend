@@ -3265,8 +3265,13 @@ var _feedbackSliderImages = [];
 var _feedbackSliderIndex = 0;
 
 function openFeedbackImageSlider(feedbackId, startIndex) {
+    console.log('[openFeedbackImageSlider] feedbackId=' + feedbackId + ' registry keys=' + Object.keys(window.feedbackMediaRegistry).length);
     var mediaUrls = window.feedbackMediaRegistry[feedbackId] || [];
-    if (!Array.isArray(mediaUrls) || mediaUrls.length === 0) return;
+    console.log('[openFeedbackImageSlider] mediaUrls=' + JSON.stringify(mediaUrls));
+    if (!Array.isArray(mediaUrls) || mediaUrls.length === 0) {
+        console.warn('[openFeedbackImageSlider] no media for id=' + feedbackId);
+        return;
+    }
     _feedbackSliderImages = mediaUrls.slice();
     _feedbackSliderIndex = Math.max(0, Math.min(startIndex || 0, _feedbackSliderImages.length - 1));
     renderFeedbackImageSlider();
@@ -3292,6 +3297,7 @@ function renderFeedbackImageSlider() {
     var total = _feedbackSliderImages.length;
     var rawUrl = _feedbackSliderImages[_feedbackSliderIndex];
     var currentUrl = rawUrl;
+    console.log('[renderFeedbackImageSlider] rawUrl=' + rawUrl + ' App.API_BASE=' + (window.App && window.App.API_BASE));
     if (rawUrl && rawUrl.charAt(0) === '/' && !rawUrl.startsWith('//')) {
         var apiBase = String((window.App && window.App.API_BASE) || window.API_BASE || '');
         apiBase = apiBase.replace(/\/+$/, '');
@@ -3299,6 +3305,7 @@ function renderFeedbackImageSlider() {
             currentUrl = apiBase + rawUrl;
         }
     }
+    console.log('[renderFeedbackImageSlider] final src=' + currentUrl);
 
     var navHtml = '';
     if (total > 1) {
