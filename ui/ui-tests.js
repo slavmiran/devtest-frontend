@@ -300,7 +300,8 @@ function getTestingTimelineMeta(test) {
     };
 }
 
-function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
+function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, options) {
+    options = options || {};
     var timeline = test.daily_timeline || '';
     var renderTimeline = timeline;
     var totalDays = Math.max(expectedTotalDays || 14, userTestingDay || 0, 1);
@@ -416,7 +417,7 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
     }
 
     var remainingDays = Math.max(0, totalDays - renderTimeline.length);
-    const showOvertimeRow = (extraPaid > 0 || isInSafetyBuffer || userTestingDay >= 15 || isProjectSynced(test));
+    const showOvertimeRow = !options.hideOvertimeRow && (extraPaid > 0 || isInSafetyBuffer || userTestingDay >= 15 || isProjectSynced(test));
     const rangeText = lastPaidDay > 14 ? '15-' + lastPaidDay : '15+';
 
     const noteText = extraPaid > 0
@@ -450,6 +451,7 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays) {
 
     return {
         html: html,
+        baseSegmentsHtml: baseSegments.join(''),
         standardCheckins: standardCheckins,
         standardSkips: standardSkips,
         overtimeCheckins: overtimeCheckins,

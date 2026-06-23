@@ -3556,7 +3556,7 @@ function openProjectDetailsModal(appId) {
     let projectDaysLeft = timelineMeta.projectDaysLeft;
     let expectedTotalDays = timelineMeta.expectedTotalDays;
     let overtimeDays = timelineMeta.overtimeDays;
-    const progressData = buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, true);
+    const progressData = buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, { hideOvertimeRow: timelineMeta.isSynced });
     const isIssueBlocked = !!test.issue_reported_at && !test.issue_fixed_at;
     const showIssueActionInDetails = test.status !== 'new' && test.status !== 'done';
 
@@ -3661,111 +3661,183 @@ function openProjectDetailsModal(appId) {
 
         const archiveDeadlineText = formatArchiveDeadline(new Date(bufferEndTime));
 
-        const cardTitle = extraPaid > 0
-            ? (window.t('ppcTimelineExtra', {}, lang) || 'Extended Protection')
-            : (window.t('ppcTimelinePending', {}, lang) || 'Safety Buffer');
+        // ── Unified project lifecycle: Testing → Extended Protection → Safety Buffer → Archive ──
+        const hasProtection = extraPaid > 0;
+        const lastPaidDay = 14 + extraPaid;
 
-        const cardClass = extraPaid > 0 ? 'stage-protection' : 'stage-buffer';
-        const titleColor = extraPaid > 0 ? 'var(--stage-protection)' : 'var(--stage-buffer)';
-        const headerEmoji = extraPaid > 0 ? '🛡️ ' : '⏳ ';
+        let currentStage;
+        if (isInSafetyBuffer) currentStage = 'buffer';
+        else if (hasProtection && userTestingDay >= 15) currentStage = 'protection';
+        else currentStage = 'testing';
 
-        // Block A: "Расширенная защита (Овертайм)" HTML
-        let blockAHtml = '';
-        if (extraPaid > 0) {
-            const remainingCheckins = Math.max(0, (14 + extraPaid) - Math.max(14, userTestingDay));
-            blockAHtml = 
-                '<div class="protection-subblock-a">' +
-                    '<div class="protection-row">' +
-                        window.escapeHTML(lang === 'ru' ? `Осталось чекинов: ${remainingCheckins} дн.` : `Check-ins remaining: ${remainingCheckins} days`) +
+        const stageOrder = hasProtection
+            ? ['testing', 'protection', 'buffer', 'archive']
+            : ['testing', 'buffer', 'archive'];
+        const currentIndex = stageOrder.indexOf(currentStage);
+        const stageState = (name) => {
+            const idx = stageOrder.indexOf(name);
+            if (idx < currentIndex) return 'done';
+            if (idx === currentIndex) return 'active';
+            return 'upcoming';
+        };
+
+        const stageMeta = {
+            testing: { cls: 'stage-active', icon: '🧪', title: window.t('lifecycleTestingTitle', {}, lang) },
+            protection: { cls: 'stage-protection', icon: '🛡', title: window.t('ppcTimelineExtra', {}, lang) },
+            buffer: { cls: 'stage-buffer', icon: '⏳', title: window.t('ppcTimelinePending', {}, lang) },
+            archive: { cls: 'stage-archive', icon: '🏁', title: window.t('ppcTimelineArchive', {}, lang) },
+        };
+
+        const bufferActiveStatus = (remainingHours <= 0 && remainingMinutes <= 0)
+            ? window.t('ppcBufferAwaitingArchiving', {}, lang)
+            : (lang === 'ru' ? `${remainingHours}ч ${remainingMinutes}м` : `${remainingHours}h ${remainingMinutes}m`);
+
+        const stageStatusText = (name) => {
+            const st = stageState(name);
+            if (name === 'testing') {
+                return st === 'done'
+                    ? window.t('lifecycleStatusDone', {}, lang)
+                    : window.t('grantProgressText', { day: Math.min(userTestingDay, 14) }, lang);
+            }
+            if (name === 'protection') {
+                if (st === 'done') return window.t('lifecycleStatusDone', {}, lang);
+                if (st === 'active') return window.t('ppcDaysLeft', { count: Math.max(0, lastPaidDay - Math.max(14, userTestingDay)) }, lang);
+                return window.t('lifecycleProtectionPaid', { count: extraPaid }, lang);
+            }
+            if (name === 'buffer') {
+                if (st === 'done') return window.t('lifecycleStatusDone', {}, lang);
+                if (st === 'active') return bufferActiveStatus;
+                return window.t('lifecycleBuffer48', {}, lang);
+            }
+            return window.t('lifecycleArchiveAuto', {}, lang);
+        };
+
+        const bufferRemainingText = (remainingHours <= 0 && remainingMinutes <= 0)
+            ? window.t('ppcBufferAwaitingArchiving', {}, lang)
+            : (lang === 'ru' ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` : `Remaining: ${remainingHours}h ${remainingMinutes}m`);
+        const bufferProgressHtml = isInSafetyBuffer
+            ? '<div class="lifecycle-buffer-progress">' +
+                '<div class="lifecycle-buffer-progress-head">' +
+                    '<span>' + window.escapeHTML(lang === 'ru' ? 'Прогресс буфера' : 'Buffer progress') + '</span>' +
+                    '<span class="lifecycle-buffer-progress-val">' + window.escapeHTML(bufferRemainingText) + '</span>' +
+                '</div>' +
+                '<div class="ppc-buffer-bar-container"><div class="ppc-buffer-bar-fill" style="width:' + bufferFillPercent + '%;"></div></div>' +
+              '</div>'
+            : '';
+        const bufferDatesHtml =
+            '<div class="lifecycle-meta-line">' + window.escapeHTML(lang === 'ru' ? `Активация: ${activationText}` : `Activation: ${activationText}`) + '</div>' +
+            '<div class="lifecycle-meta-line">' + window.escapeHTML(lang === 'ru' ? `Завершение: ${archiveDeadlineText}` : `Completion: ${archiveDeadlineText}`) + '</div>';
+        const bufferWarningHtml = '<div class="protection-warning-inset" style="margin-top:8px;">' +
+            window.escapeHTML(lang === 'ru' ? '⚠️ Не удаляйте приложение! Держите его установленным для финализации.' : '⚠️ Do not uninstall the app! Keep it installed for finalization.') +
+        '</div>';
+
+        const protectionDayChips = (() => {
+            let chips = '';
+            for (let d = 15; d <= lastPaidDay; d++) {
+                let s = 'upcoming';
+                if (d < userTestingDay) s = 'done';
+                else if (d === userTestingDay) s = 'current';
+                chips += '<span class="lifecycle-day-chip ' + s + '">' + window.escapeHTML(window.t('lifecycleDayShort', { day: d }, lang)) + '</span>';
+            }
+            return '<div class="lifecycle-day-chips">' + chips + '</div>';
+        })();
+
+        const stageContentHtml = (name) => {
+            if (name === 'testing') {
+                return '<div class="grant-progress-container timeline-row-track is-primary lifecycle-testing-track">' + (progressData.baseSegmentsHtml || '') + '</div>';
+            }
+            if (name === 'protection') {
+                return protectionDayChips +
+                    '<div class="lifecycle-stage-desc">' + window.escapeHTML(window.t('lifecycleProtectionDesc', {}, lang)) + '</div>';
+            }
+            if (name === 'buffer') {
+                let html = '<div class="lifecycle-stage-desc">' + window.escapeHTML(window.t('lifecycleBufferDesc', {}, lang)) + '</div>';
+                if (stageState('buffer') === 'active') {
+                    html += bufferProgressHtml + bufferDatesHtml + bufferWarningHtml;
+                } else {
+                    html += bufferDatesHtml;
+                }
+                return html;
+            }
+            return '<div class="lifecycle-stage-desc">' + window.escapeHTML(window.t('lifecycleArchiveDesc', {}, lang)) + '</div>';
+        };
+
+        const stagesHtml = stageOrder.map((name, i) => {
+            const meta = stageMeta[name];
+            const st = stageState(name);
+            const nodeInner = st === 'done' ? '✓' : meta.icon;
+            const isLast = i === stageOrder.length - 1;
+            return '<div class="lifecycle-stage ' + meta.cls + ' is-' + st + (isLast ? ' is-last' : '') + '">' +
+                '<div class="lifecycle-rail"><span class="lifecycle-node">' + nodeInner + '</span></div>' +
+                '<div class="lifecycle-stage-content">' +
+                    '<div class="lifecycle-stage-head">' +
+                        '<span class="lifecycle-stage-title">' + window.escapeHTML(meta.title) + '</span>' +
+                        '<span class="lifecycle-stage-status">' + window.escapeHTML(stageStatusText(name)) + '</span>' +
                     '</div>' +
-                    '<div class="protection-desc">' +
-                        window.escapeHTML(lang === 'ru'
-                            ? 'Разработчик оплатил запасные дни тестирования для компенсации рассинхронизации с Google Play и гарантии релиза. Чекины в эти дни оплачиваются из бонусного пула.'
-                            : 'The developer paid for extra testing days to compensate for sync issues with Google Play and guarantee release. Check-ins on these days are rewarded from the bonus pool.') +
+                    stageContentHtml(name) +
+                '</div>' +
+            '</div>';
+        }).join('');
+
+        const rewardCardsHtml = (hasProtection && poolAmount > 0)
+            ? '<div class="lifecycle-rewards">' +
+                '<div class="lifecycle-rewards-title">✨ ' + window.escapeHTML(window.t('lifecycleRewardsHeader', {}, lang)) + '</div>' +
+                '<div class="ppc-rewards-split-container">' +
+                    '<div class="ppc-reward-split-card bust-pool">' +
+                        '<span class="ppc-reward-split-emoji">💎</span>' +
+                        '<div class="ppc-reward-split-info">' +
+                            '<span class="ppc-reward-split-value notranslate">' + poolAmount + ' $BUST</span>' +
+                            '<span class="ppc-reward-split-label">' + window.escapeHTML(window.t('ppcRewardSplitBustLabel', {}, lang)) + '</span>' +
+                        '</div>' +
                     '</div>' +
-                    (poolAmount > 0 
-                        ? '<div class="ppc-rewards-split-container">' +
-                            '<div class="ppc-reward-split-card bust-pool">' +
-                                '<span class="ppc-reward-split-emoji">💎</span>' +
-                                '<div class="ppc-reward-split-info">' +
-                                    '<span class="ppc-reward-split-value">' + poolAmount + ' $BUST</span>' +
-                                    '<span class="ppc-reward-split-label">' + window.escapeHTML(window.t('ppcRewardSplitBustLabel', {}, lang)) + '</span>' +
-                                '</div>' +
-                            '</div>' +
-                            '<div class="ppc-reward-split-card karma-boost">' +
-                                '<span class="ppc-reward-split-emoji">☯️</span>' +
-                                '<div class="ppc-reward-split-info">' +
-                                    '<span class="ppc-reward-split-value">+0.5</span>' +
-                                    '<span class="ppc-reward-split-label">' + window.escapeHTML(window.t('ppcRewardSplitKarmaLabel', {}, lang)) + '</span>' +
-                                '</div>' +
-                            '</div>' +
-                          '</div>' +
-                          '<div class="ppc-reward-split-footer">' +
-                            window.escapeHTML(window.t('ppcRewardSplitHint', {}, lang)) +
-                          '</div>'
-                        : '') +
-                '</div>';
+                    '<div class="ppc-reward-split-card karma-boost">' +
+                        '<span class="ppc-reward-split-emoji">☯️</span>' +
+                        '<div class="ppc-reward-split-info">' +
+                            '<span class="ppc-reward-split-value notranslate">+0.5</span>' +
+                            '<span class="ppc-reward-split-label">' + window.escapeHTML(window.t('ppcRewardSplitKarmaLabel', {}, lang)) + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="ppc-reward-split-footer">' + window.escapeHTML(window.t('lifecycleRewardsSubtext', {}, lang)) + '</div>' +
+              '</div>'
+            : '';
+
+        const summaryMeta = stageMeta[currentStage];
+        const summaryStatus = stageStatusText(currentStage);
+        let summaryHint;
+        if (currentStage === 'buffer') {
+            summaryHint = window.t('lifecycleSummaryNoCheckins', {}, lang);
+        } else if (currentStage === 'protection') {
+            summaryHint = poolAmount > 0
+                ? '💎 ' + poolAmount + ' $BUST · ☯️ +0.5'
+                : window.t('lifecycleSummaryOneTap', {}, lang);
+        } else {
+            summaryHint = hasProtection
+                ? '🛡 ' + window.t('lifecycleProtectionPaid', { count: extraPaid }, lang)
+                : window.t('lifecycleSummaryKeepApp', {}, lang);
         }
 
-        // Block B: "Буфер безопасности" HTML
-        const bufferRemainingText = (remainingHours <= 0 && remainingMinutes <= 0)
-            ? (window.t('ppcBufferAwaitingArchiving', {}, lang) || 'Awaiting archiving...')
-            : (lang === 'ru' 
-                ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` 
-                : `Remaining: ${remainingHours}h ${remainingMinutes}m`);
-            
-        const bufferProgressHtml = isInSafetyBuffer
-            ? '<div class="buffer-progress-wrapper" style="margin-top: 12px; padding: 10px; background: rgba(255,159,10,0.06); border: 1px solid rgba(255,159,10,0.15); border-radius: 8px;">' +
-                '<div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--hint-color); margin-bottom: 6px;">' +
-                    '<span>' + window.escapeHTML(lang === 'ru' ? 'Прогресс буфера' : 'Buffer progress') + '</span>' +
-                    '<span style="font-weight: 600; color: var(--stage-buffer);">' + window.escapeHTML(bufferRemainingText) + '</span>' +
-                '</div>' +
-                '<div class="ppc-buffer-bar-container" style="margin-bottom: 4px;">' +
-                    '<div class="ppc-buffer-bar-fill" style="width: ' + bufferFillPercent + '%;"></div>' +
-                '</div>' +
-              '</div>'
-            : '';
+        const startOpen = currentStage === 'protection' || currentStage === 'buffer';
 
-        const blockBTitleHtml = extraPaid > 0
-            ? '<div class="protection-subblock-title buffer">' +
-                '<span>⏳</span>' +
-                '<span>' + window.escapeHTML(lang === 'ru' ? 'Буфер безопасности' : 'Safety Buffer') + '</span>' +
-              '</div>'
-            : '';
-
-        const blockBHtml = 
-            '<div class="protection-subblock-b">' +
-                blockBTitleHtml +
-                '<div class="protection-row" style="color: var(--text-secondary);">' +
-                    window.escapeHTML(lang === 'ru' ? `Активация буфера: ${activationText}` : `Buffer activation: ${activationText}`) +
-                '</div>' +
-                '<div class="protection-row" style="color: var(--text-secondary); margin-top: 4px;">' +
-                    window.escapeHTML(lang === 'ru' ? `Завершение буфера: ${archiveDeadlineText}` : `Buffer completion: ${archiveDeadlineText}`) +
-                '</div>' +
-                '<div class="protection-warning-inset" style="margin-top: 8px; margin-bottom: 8px;">' +
-                    window.escapeHTML(lang === 'ru' ? '⚠️ Не удаляйте приложение! Держите его установленным для финализации.' : '⚠️ Do not uninstall the app! Keep it installed for finalization.') +
-                '</div>' +
-                bufferProgressHtml +
-            '</div>';
-
-        return '<details class="protection-details-card ' + cardClass + '" id="protection-details-accordion">' +
-            '<summary class="protection-details-summary">' +
-                '<div style="display:flex;align-items:center;gap:8px;">' +
-                    '<div class="protection-details-title" style="color:' + titleColor + ';">' +
-                        headerEmoji + window.escapeHTML(cardTitle) +
+        return '<details class="protection-details-card lifecycle-card ' + summaryMeta.cls + '" id="protection-details-accordion"' + (startOpen ? ' open' : '') + '>' +
+            '<summary class="protection-details-summary lifecycle-summary">' +
+                '<div class="lifecycle-summary-main">' +
+                    '<div class="lifecycle-summary-row">' +
+                        '<span class="lifecycle-summary-badge ' + summaryMeta.cls + '">' + summaryMeta.icon + ' ' + window.escapeHTML(summaryMeta.title) + '</span>' +
+                        '<span class="lifecycle-summary-status">' + window.escapeHTML(summaryStatus) + '</span>' +
+                        (timelineMeta.isLastDay
+                            ? '<button type="button" class="meta-chip sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>'
+                            : '') +
+                        '<span class="grant-dashboard-lost-arrow" aria-hidden="true">›</span>' +
                     '</div>' +
-                    (timelineMeta.isLastDay
-                        ? '<button type="button" class="meta-chip sync-last-day-chip" onclick="showSyncLastDayNotice(event)">' + window.escapeHTML(window.t('syncLastDayChip', {}, lang)) + '</button>'
-                        : '') +
+                    '<div class="lifecycle-summary-hint">' + window.escapeHTML(summaryHint) + '</div>' +
                 '</div>' +
-                '<span class="grant-dashboard-lost-arrow" aria-hidden="true">›</span>' +
             '</summary>' +
-            '<div class="protection-accordion-content" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">' +
-                '<div style="font-size:13px;color:var(--hint-color);margin-bottom:12px;">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
-                blockAHtml +
-                (blockAHtml && blockBHtml ? '<div class="ppc-subblock-separator"><span class="ppc-separator-plus">+</span></div>' : '') +
-                blockBHtml +
-                '<div style="font-size:11px;color:var(--hint-color);margin-top:12px;opacity:0.75;line-height:1.45;">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
+            '<div class="protection-accordion-content lifecycle-body">' +
+                '<div class="lifecycle-official-day">' + window.escapeHTML(window.t('syncOfficialDay', { day: currentGoogleDay }, lang)) + '</div>' +
+                '<div class="lifecycle-track">' + stagesHtml + '</div>' +
+                rewardCardsHtml +
+                '<div class="lifecycle-lag-note">' + window.escapeHTML(window.t('syncLagNote', {}, lang)) + '</div>' +
             '</div>' +
         '</details>';
     })();
@@ -3965,9 +4037,9 @@ function openProjectDetailsModal(appId) {
 
         grantDashboardHtml +
 
-        '<div class="details-block">' +
-            timelinePanelHtml +
-        '</div>' +
+        (timelineMeta.isSynced
+            ? ''
+            : '<div class="details-block">' + timelinePanelHtml + '</div>') +
 
         syncHtml +
 
