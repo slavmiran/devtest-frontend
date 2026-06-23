@@ -3201,6 +3201,30 @@ function getProjectFeedbackHeader(project) {
     `;
 }
 
+function feedbackOnImageError(imgEl) {
+    const isDev = window.location.hostname === 'localhost' || 
+                  window.location.hostname === '127.0.0.1' || 
+                  window.location.hostname.indexOf('ngrok') !== -1 || 
+                  window.location.hostname.indexOf('gitpod') !== -1;
+    if (isDev) {
+        imgEl.onerror = null;
+        imgEl.style.display = 'none';
+        const parent = imgEl.parentNode;
+        if (parent) {
+            parent.classList.add('fb-media-thumb--mock');
+            let mockIcon = parent.querySelector('.fb-media-mock-icon');
+            if (!mockIcon) {
+                mockIcon = document.createElement('div');
+                mockIcon.className = 'fb-media-mock-icon';
+                mockIcon.innerHTML = '🖼️';
+                parent.appendChild(mockIcon);
+            }
+        }
+    } else {
+        imgEl.parentNode.style.display = 'none';
+    }
+}
+
 function feedbackResolveMediaUrl(url) {
     if (!url) return '';
     // If it starts with /telegram-media or telegram-media, resolve absolutely
@@ -3309,7 +3333,7 @@ function renderProjectFeedbackCards(project, items) {
                         ? `<div class="fb-media-overlay">+${extra + 1}</div>`
                         : '';
                     thumbsHtml += `<div class="fb-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
-                        <img src="${resolvedSrc}" loading="lazy" onerror="this.parentNode.style.display='none'">
+                        <img src="${resolvedSrc}" loading="lazy" onerror="feedbackOnImageError(this)">
                         ${overlay}
                     </div>`;
                 }
@@ -5816,6 +5840,7 @@ Object.assign(window, {
     closeFeedbackImageSlider,
     openFeedbackTopicLink,
     feedbackExpandText,
+    feedbackOnImageError,
 });
 
 console.log('[DEBUG] ui-market.js END — switchTab=', typeof switchTab, 'showLoading=', typeof showLoading);
