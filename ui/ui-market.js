@@ -3213,17 +3213,75 @@ function renderProjectFeedbackCards(project, items) {
         const safeUsername = escapeInlineJsString(username);
         const fullName = window.escapeHTML(item.tester_full_name || '');
         const usernameLabel = username ? '@' + window.escapeHTML(username) : '';
-        const primaryAuthor = fullName || usernameLabel || window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang));
-        const secondaryAuthor = fullName && usernameLabel ? usernameLabel : '';
-        const authorInnerHtml = `<span class="feedback-card-author-main notranslate">${primaryAuthor}</span>${secondaryAuthor ? `<span class="feedback-card-author-sub notranslate">${secondaryAuthor}</span>` : ''}`;
-        const authorHtml = username
-            ? `<a href="javascript:void(0);" class="feedback-card-author" onclick="return openTelegramProfile('${safeUsername}', event)">${authorInnerHtml}</a>`
-            : `<span class="feedback-card-author">${authorInnerHtml}</span>`;
-        const textHtml = isReviewTicket
-            ? `<span class="feedback-review-ticket">⭐ ${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</span>`
-            : (item.message_text
-                ? escapeHtmlWithBreaks(item.message_text)
-                : `<span style="color: var(--hint-color);">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</span>`);
+        const displayName = fullName || usernameLabel || window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang));
+
+        // --- Header: name + username link on left, date + NEW badge on right ---
+        const usernameHtml = username
+            ? `<a href="javascript:void(0);" class="feedback-card-username-link notranslate" onclick="return openTelegramProfile('${safeUsername}', event)">👤 ${window.escapeHTML('@' + username)}</a>`
+            : '';
+        const isNew = item.status === 'new';
+        const newBadgeHtml = isNew ? `<span class="feedback-new-badge">🟢 NEW</span>` : '';
+        const headerHtml = `
+            <div class="feedback-card-header">
+                <div class="feedback-card-author-block">
+                    <span class="feedback-card-author-name notranslate">${displayName}</span>
+                    ${usernameHtml}
+                </div>
+                <div class="feedback-card-meta-right">
+                    ${newBadgeHtml}
+                    <span class="feedback-card-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</span>
+                </div>
+            </div>`;
+
+        // --- Body: clamped text with show-all ---
+        var rawText = '';
+        var textBodyHtml = '';
+        if (isReviewTicket) {
+            textBodyHtml = `<div class="feedback-card-text"><span class="feedback-review-ticket">⭐ ${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</span></div>`;
+        } else if (item.message_text) {
+            rawText = item.message_text;
+            const escapedText = escapeHtmlWithBreaks(rawText);
+            const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
+            textBodyHtml = `
+                <div class="feedback-card-text feedback-card-text--clamped" id="fbt-${item.id}">${escapedText}</div>
+                <a href="javascript:void(0);" class="feedback-show-all-link" id="fbtl-${item.id}" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`;
+        } else {
+            textBodyHtml = `<div class="feedback-card-text"><span style="color: var(--hint-color);">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</span></div>`;
+        }
+
+        // --- Media thumbnails ---
+        var mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
+            ? item.media_urls
+            : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0 ? item.tg_file_ids : (item.tg_file_id ? [item.tg_file_id] : []));
+        window.feedbackMediaRegistry[item.id] = mediaUrls;
+        var hasMedia = mediaUrls.length > 0;
+        var mediaHtml = '';
+        if (hasMedia) {
+            const total = mediaUrls.length;
+            if (total === 1) {
+                // Single image: wider card style
+                mediaHtml = `<div class="feedback-media-single" onclick="openFeedbackImageSlider(${item.id}, 0)">
+                    <img src="${window.escapeHTML(mediaUrls[0])}" class="feedback-media-single-img" loading="lazy" onerror="this.parentNode.style.display='none'">
+                </div>`;
+            } else {
+                // Multiple: up to 3 thumbnails, last may have +N overlay
+                const MAX_THUMB = 3;
+                const shown = Math.min(total, MAX_THUMB);
+                var thumbsHtml = '';
+                for (var ti = 0; ti < shown; ti++) {
+                    const isLast = ti === MAX_THUMB - 1 && total > MAX_THUMB;
+                    const extra = total - MAX_THUMB;
+                    const overlay = isLast ? `<div class="feedback-media-overlay">+${extra}</div>` : '';
+                    thumbsHtml += `<div class="feedback-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
+                        <img src="${window.escapeHTML(mediaUrls[ti])}" loading="lazy" onerror="this.parentNode.style.display='none'">
+                        ${overlay}
+                    </div>`;
+                }
+                mediaHtml = `<div class="feedback-media-grid">${thumbsHtml}</div>`;
+            }
+        }
+
+        // --- Reward summary (for processed/declined items) ---
         const rewardBust = Number(item.reward_bust || 0);
         const rewardKarma = Number(item.reward_karma || 0);
         const statusBadge = item.status === 'declined'
@@ -3236,33 +3294,59 @@ function renderProjectFeedbackCards(project, items) {
                     <span class="meta-chip">${statusBadge}</span>
                </div>`
             : '';
+
+        // --- Developer reply ---
         const replyHtml = item.developer_reply
             ? `<div class="feedback-card-reply">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang))}: ${escapeHtmlWithBreaks(item.developer_reply)}</div>`
             : '';
-        var mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
-            ? item.media_urls
-            : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0 ? item.tg_file_ids : (item.tg_file_id ? [item.tg_file_id] : []));
-        window.feedbackMediaRegistry[item.id] = mediaUrls;
-        var hasMedia = mediaUrls.length > 0;
+
+        // --- Footer buttons ---
         var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
-        var screenshotLabel = window.escapeHTML(window.t('projectFeedbackViewScreenshotBtn', {}, lang));
-        var topicBtnLabel = window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang));
-        var rewardBtnLabel = window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang));
-        var countSuffix = mediaUrls.length > 1 ? ' (' + mediaUrls.length + ')' : '';
-        var cardClasses = (item.status === 'new' ? ' is-new' : '') + (item.status === 'declined' ? ' is-rejected' : '');
-        var mediaBtnHtml = hasMedia ? '<button class="btn btn-secondary" style="width:auto;" onclick="openFeedbackImageSlider(' + item.id + ')">🖼 ' + screenshotLabel + countSuffix + '</button>' : '';
-        var topicBtnHtml = hasTopicLink ? '<button class="btn btn-secondary" style="width:auto; background: var(--accent-primary-surface); color: var(--accent-primary); border-color: var(--accent-primary-border);" onclick="openFeedbackTopicLink(' + item.telegram_message_id + ')">💬 ' + topicBtnLabel + '</button>' : '';
-        var rewardBtnHtml = item.status === 'new' ? '<button class="btn btn-primary" style="width:auto;" onclick="openFeedbackRewardModal(' + projectId + ', ' + item.id + ')">🎁 ' + rewardBtnLabel + '</button>' : '';
-        return '<div class="feedback-card' + cardClasses + '">' +
-            '<div class="feedback-card-header"><div>' + authorHtml + '</div><div class="feedback-card-date">' + window.escapeHTML(formatFeedbackDate(item.created_at)) + '</div></div>' +
-            '<div class="feedback-card-text">' + textHtml + '</div>' +
-            '<div class="feedback-card-actions">' + mediaBtnHtml + topicBtnHtml + rewardBtnHtml + '</div>' +
-            rewardSummary + replyHtml + '</div>';
+        const dmBtnLabel = window.escapeHTML(window.t('feedbackDmBtn', {}, lang));
+        const topicBtnLabel = window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang));
+        const rewardBtnLabel = window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang));
+
+        // Secondary row: DM + Discussion (only if there's a username or topic)
+        const hasDm = !!username;
+        var secondaryActionsHtml = '';
+        if (hasDm || hasTopicLink) {
+            const dmBtn = hasDm
+                ? `<button class="btn btn-secondary feedback-action-secondary" onclick="return openTelegramProfile('${safeUsername}', event)">${dmBtnLabel}</button>`
+                : '';
+            const topicBtn = hasTopicLink
+                ? `<button class="btn btn-secondary feedback-action-secondary feedback-action-topic" onclick="openFeedbackTopicLink(${item.telegram_message_id})">📌 ${topicBtnLabel}</button>`
+                : '';
+            secondaryActionsHtml = `<div class="feedback-footer-secondary">${dmBtn}${topicBtn}</div>`;
+        }
+
+        // Primary button — only for 'new' tickets
+        const primaryBtnHtml = isNew
+            ? `<div class="feedback-footer-divider"></div>
+               <button class="btn btn-primary feedback-action-primary" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">${rewardBtnLabel}</button>`
+            : '';
+
+        const cardClasses = (isNew ? ' is-new' : '') + (item.status === 'declined' ? ' is-rejected' : '');
+        return `<div class="feedback-card${cardClasses}">
+            ${headerHtml}
+            ${textBodyHtml}
+            ${mediaHtml}
+            ${rewardSummary}
+            ${replyHtml}
+            ${secondaryActionsHtml || primaryBtnHtml ? `<div class="feedback-footer">${secondaryActionsHtml}${primaryBtnHtml}</div>` : ''}
+        </div>`;
     }).join('')}</div>`;
 }
 
 var _feedbackSliderImages = [];
 var _feedbackSliderIndex = 0;
+
+function feedbackExpandText(feedbackId) {
+    var el = document.getElementById('fbt-' + feedbackId);
+    var link = document.getElementById('fbtl-' + feedbackId);
+    if (el) el.classList.remove('feedback-card-text--clamped');
+    if (link) link.style.display = 'none';
+}
+
 
 function openFeedbackImageSlider(feedbackId, startIndex) {
     console.log('[openFeedbackImageSlider] feedbackId=' + feedbackId + ' registry keys=' + Object.keys(window.feedbackMediaRegistry).length);
@@ -5705,6 +5789,7 @@ Object.assign(window, {
     openFeedbackImageSlider,
     closeFeedbackImageSlider,
     openFeedbackTopicLink,
+    feedbackExpandText,
 });
 
 console.log('[DEBUG] ui-market.js END — switchTab=', typeof switchTab, 'showLoading=', typeof showLoading);
