@@ -3262,7 +3262,7 @@ function renderProjectFeedbackCards(project, items) {
         } else if (item.message_text) {
             const rawText = item.message_text;
             const escapedText = escapeHtmlWithBreaks(rawText);
-            const isLong = rawText.length > 150 || (rawText.split('\n').length > 4);
+            const isLong = rawText.length > 150;
             const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
             const clampClass = isLong ? ' fb-text--clamped' : '';
             const showAllLink = isLong
@@ -3282,24 +3282,31 @@ function renderProjectFeedbackCards(project, items) {
         window.feedbackMediaRegistry[item.id] = mediaUrls;
 
         var mediaHtml = '';
-        if (mediaUrls.length > 0) {
+        if (mediaUrls && mediaUrls.length > 0) {
             const total = mediaUrls.length;
-            const MAX_THUMB = 4;
+            const MAX_THUMB = 3;
             const shown = Math.min(total, MAX_THUMB);
             var thumbsHtml = '';
             for (var ti = 0; ti < shown; ti++) {
-                const resolvedSrc = window.escapeHTML(feedbackResolveMediaUrl(mediaUrls[ti]));
-                const isOverflow = ti === MAX_THUMB - 1 && total > MAX_THUMB;
-                const extra = total - MAX_THUMB;
-                const overlay = isOverflow
-                    ? `<div class="fb-media-overlay">+${extra + 1}</div>`
-                    : '';
-                thumbsHtml += `<div class="fb-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
-                    <img src="${resolvedSrc}" loading="lazy" onerror="this.parentNode.style.display='none'">
-                    ${overlay}
-                </div>`;
+                var url = mediaUrls[ti];
+                if (url) {
+                    let finalSrc = url.startsWith('/telegram-media') ? (window.App.API_BASE || '') + url : url;
+                    console.log('[renderFeedbackImageSlider] final src=', finalSrc);
+                    const resolvedSrc = window.escapeHTML(finalSrc);
+                    const isOverflow = ti === MAX_THUMB - 1 && total > MAX_THUMB;
+                    const extra = total - MAX_THUMB;
+                    const overlay = isOverflow
+                        ? `<div class="fb-media-overlay">+${extra + 1}</div>`
+                        : '';
+                    thumbsHtml += `<div class="fb-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
+                        <img src="${resolvedSrc}" loading="lazy" onerror="this.parentNode.style.display='none'">
+                        ${overlay}
+                    </div>`;
+                }
             }
-            mediaHtml = `<div class="fb-media-grid">${thumbsHtml}</div>`;
+            if (thumbsHtml) {
+                mediaHtml = `<div class="fb-media-grid">${thumbsHtml}</div>`;
+            }
         }
 
         // ── Reward summary chips ──
