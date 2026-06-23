@@ -3202,26 +3202,18 @@ function getProjectFeedbackHeader(project) {
 }
 
 function feedbackOnImageError(imgEl) {
-    const isDev = window.location.hostname === 'localhost' || 
-                  window.location.hostname === '127.0.0.1' || 
-                  window.location.hostname.indexOf('ngrok') !== -1 || 
-                  window.location.hostname.indexOf('gitpod') !== -1;
-    if (isDev) {
-        imgEl.onerror = null;
-        imgEl.style.display = 'none';
-        const parent = imgEl.parentNode;
-        if (parent) {
-            parent.classList.add('fb-media-thumb--mock');
-            let mockIcon = parent.querySelector('.fb-media-mock-icon');
-            if (!mockIcon) {
-                mockIcon = document.createElement('div');
-                mockIcon.className = 'fb-media-mock-icon';
-                mockIcon.innerHTML = '🖼️';
-                parent.appendChild(mockIcon);
-            }
+    imgEl.onerror = null;
+    imgEl.style.display = 'none';
+    const parent = imgEl.parentNode;
+    if (parent) {
+        parent.classList.add('fb-media-thumb--mock');
+        let mock = parent.querySelector('.fb-media-mock');
+        if (!mock) {
+            mock = document.createElement('div');
+            mock.className = 'fb-media-mock';
+            mock.innerHTML = '<span class="fb-media-mock-icon">🖼️</span><span class="fb-media-mock-text">' + window.escapeHTML(window.t('projectFeedbackImageUnavailable', {}, lang)) + '</span>';
+            parent.appendChild(mock);
         }
-    } else {
-        imgEl.parentNode.style.display = 'none';
     }
 }
 
@@ -3235,6 +3227,25 @@ function feedbackResolveMediaUrl(url) {
         return apiBase + path;
     }
     return url;
+}
+
+function feedbackScheduleClampMeasure() {
+    window.requestAnimationFrame(function() {
+        window.requestAnimationFrame(feedbackMeasureClampedText);
+    });
+}
+
+function feedbackMeasureClampedText() {
+    document.querySelectorAll('.fb-text[data-feedback-clamp="1"]').forEach(function(el) {
+        var id = el.getAttribute('data-feedback-id');
+        var link = id ? document.getElementById('fbtl-' + id) : null;
+        if (!link) return;
+        var isOverflowing = el.scrollHeight > el.clientHeight + 1;
+        link.style.display = isOverflowing ? 'inline-flex' : 'none';
+        if (!isOverflowing) {
+            el.classList.remove('fb-text--clamped');
+        }
+    });
 }
 
 function renderProjectFeedbackCards(project, items) {
@@ -3275,18 +3286,21 @@ function renderProjectFeedbackCards(project, items) {
         } else {
             nameHtml = `<span class="fb-name notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
         }
-        const newBadge = isNew ? `<span class="fb-new-badge">NEW</span>` : '';
+        const statusBadge = item.status === 'declined'
+            ? window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang))
+            : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang));
+        const newBadge = isNew ? `<span class="fb-status fb-status--new">NEW</span>` : `<span class="fb-status">${statusBadge}</span>`;
         const headerHtml = `
             <div class="fb-header">
                 ${avatarHtml}
                 <div class="fb-header-info">
                     <div class="fb-name-row">
                         ${nameHtml}
-                        ${newBadge}
+                        <span class="fb-date">· ${window.escapeHTML(formatFeedbackDate(item.created_at))}</span>
                     </div>
                     ${subHtml}
                 </div>
-                <span class="fb-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</span>
+                ${newBadge}
             </div>`;
 
         // ── Body text — only show "show all" when genuinely long ──
@@ -3294,15 +3308,9 @@ function renderProjectFeedbackCards(project, items) {
         if (isReviewTicket) {
             textBodyHtml = `<div class="fb-text"><span class="feedback-review-ticket">⭐ ${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</span></div>`;
         } else if (item.message_text) {
-            const rawText = item.message_text;
-            const escapedText = escapeHtmlWithBreaks(rawText);
-            const isLong = rawText.length > 150;
+            const escapedText = escapeHtmlWithBreaks(item.message_text);
             const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
-            const clampClass = isLong ? ' fb-text--clamped' : '';
-            const showAllLink = isLong
-                ? `<a href="javascript:void(0);" class="fb-show-all" id="fbtl-${item.id}" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`
-                : '';
-            textBodyHtml = `<div class="fb-text${clampClass}" id="fbt-${item.id}">${escapedText}</div>${showAllLink}`;
+            textBodyHtml = `<div class="fb-text fb-text--clamped" id="fbt-${item.id}" data-feedback-clamp="1" data-feedback-id="${item.id}">${escapedText}</div><a href="javascript:void(0);" class="fb-show-all" id="fbtl-${item.id}" style="display:none;" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`;
         } else {
             textBodyHtml = `<div class="fb-text fb-text--muted">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</div>`;
         }
@@ -3313,24 +3321,23 @@ function renderProjectFeedbackCards(project, items) {
             : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0
                 ? item.tg_file_ids
                 : (item.tg_file_id ? [item.tg_file_id] : []));
-        window.feedbackMediaRegistry[item.id] = mediaUrls;
+        const resolvedMediaUrls = (mediaUrls || []).map(feedbackResolveMediaUrl).filter(Boolean);
+        window.feedbackMediaRegistry[item.id] = resolvedMediaUrls;
 
         var mediaHtml = '';
-        if (mediaUrls && mediaUrls.length > 0) {
-            const total = mediaUrls.length;
+        if (resolvedMediaUrls.length > 0) {
+            const total = resolvedMediaUrls.length;
             const MAX_THUMB = 3;
             const shown = Math.min(total, MAX_THUMB);
             var thumbsHtml = '';
             for (var ti = 0; ti < shown; ti++) {
-                var url = mediaUrls[ti];
+                var url = resolvedMediaUrls[ti];
                 if (url) {
-                    let finalSrc = feedbackResolveMediaUrl(url);
-                    console.log('[renderFeedbackImageSlider] final src=', finalSrc);
-                    const resolvedSrc = window.escapeHTML(finalSrc);
+                    const resolvedSrc = window.escapeHTML(url);
                     const isOverflow = ti === MAX_THUMB - 1 && total > MAX_THUMB;
-                    const extra = total - MAX_THUMB;
+                    const extra = total - MAX_THUMB + 1;
                     const overlay = isOverflow
-                        ? `<div class="fb-media-overlay">+${extra + 1}</div>`
+                        ? `<div class="fb-media-overlay">+${extra}</div>`
                         : '';
                     thumbsHtml += `<div class="fb-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
                         <img src="${resolvedSrc}" loading="lazy" onerror="feedbackOnImageError(this)">
@@ -3339,21 +3346,18 @@ function renderProjectFeedbackCards(project, items) {
                 }
             }
             if (thumbsHtml) {
-                mediaHtml = `<div class="fb-media-grid">${thumbsHtml}</div>`;
+                mediaHtml = `<div class="fb-media-grid${total === 1 ? ' fb-media-grid--single' : ''}">${thumbsHtml}</div>`;
             }
         }
 
         // ── Reward summary chips ──
         const rewardBust = Number(item.reward_bust || 0);
         const rewardKarma = Number(item.reward_karma || 0);
-        const statusBadge = item.status === 'declined'
-            ? window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang))
-            : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang));
         const rewardSummary = item.status !== 'new'
-            ? `<div class="feedback-modal-summary">
+            ? `<div class="fb-reward-summary">
+                    <span class="fb-reward-state">${statusBadge}</span>
                     ${rewardBust > 0 ? `<span class="meta-chip accent-purple notranslate">💎 ${formatBustAmount(rewardBust)}</span>` : ''}
                     ${rewardKarma > 0 ? `<span class="meta-chip accent-yellow notranslate">☯️ ${rewardKarma.toFixed(1)}</span>` : ''}
-                    <span class="meta-chip">${statusBadge}</span>
                </div>`
             : '';
 
@@ -3362,18 +3366,18 @@ function renderProjectFeedbackCards(project, items) {
             ? `<div class="feedback-card-reply">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang))}: ${escapeHtmlWithBreaks(item.developer_reply)}</div>`
             : '';
 
-        // ── Footer action chips ──
+        // ── Footer action line ──
         var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
         const hasDm = !!username;
         var actionChips = '';
         if (hasDm || hasTopicLink) {
             const dmChip = hasDm
-                ? `<button class="fb-chip" onclick="return openTelegramProfile('${safeUsername}', event)">👤 ${window.escapeHTML(window.t('feedbackDmBtn', {}, lang)).replace('👤 ', '')}</button>`
+                ? `<button class="fb-link-action" onclick="return openTelegramProfile('${safeUsername}', event)">${window.escapeHTML(window.t('feedbackDmBtn', {}, lang)).replace('👤 ', '')}</button>`
                 : '';
             const topicChip = hasTopicLink
-                ? `<button class="fb-chip fb-chip--topic" onclick="openFeedbackTopicLink(${item.telegram_message_id})">📌 ${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang))}</button>`
+                ? `<button class="fb-link-action" onclick="openFeedbackTopicLink(${item.telegram_message_id})">${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang))}</button>`
                 : '';
-            actionChips = `<div class="fb-chips">${dmChip}${topicChip}</div>`;
+            actionChips = `<div class="fb-actions-left">${dmChip}${topicChip}</div>`;
         }
 
         // ── Primary CTA — only for new items ──
@@ -3385,10 +3389,12 @@ function renderProjectFeedbackCards(project, items) {
         const cardMod = (isNew ? ' fb-card--new' : '') + (item.status === 'declined' ? ' fb-card--rejected' : '');
         return `<div class="fb-card${cardMod}">
             ${headerHtml}
-            ${textBodyHtml}
-            ${mediaHtml}
-            ${rewardSummary}
-            ${replyHtml}
+            <div class="fb-message">
+                ${textBodyHtml}
+                ${mediaHtml}
+                ${rewardSummary}
+                ${replyHtml}
+            </div>
             ${hasFooter ? `<div class="fb-footer">${actionChips}${primaryBtn}</div>` : ''}
         </div>`;
     }).join('')}</div>`;
@@ -3401,14 +3407,13 @@ function feedbackExpandText(feedbackId) {
     var el = document.getElementById('fbt-' + feedbackId);
     var link = document.getElementById('fbtl-' + feedbackId);
     if (el) el.classList.remove('fb-text--clamped');
+    if (el) el.classList.add('fb-text--expanded');
     if (link) link.style.display = 'none';
 }
 
 
 function openFeedbackImageSlider(feedbackId, startIndex) {
-    console.log('[openFeedbackImageSlider] feedbackId=' + feedbackId + ' registry keys=' + Object.keys(window.feedbackMediaRegistry).length);
     var mediaUrls = window.feedbackMediaRegistry[feedbackId] || [];
-    console.log('[openFeedbackImageSlider] mediaUrls=' + JSON.stringify(mediaUrls));
     if (!Array.isArray(mediaUrls) || mediaUrls.length === 0) {
         console.warn('[openFeedbackImageSlider] no media for id=' + feedbackId);
         return;
@@ -3438,8 +3443,6 @@ function renderFeedbackImageSlider() {
     var total = _feedbackSliderImages.length;
     var rawUrl = _feedbackSliderImages[_feedbackSliderIndex];
     var currentUrl = feedbackResolveMediaUrl(rawUrl);
-    console.log('[renderFeedbackImageSlider] rawUrl=' + rawUrl + ' App.API_BASE=' + (window.App && window.App.API_BASE));
-    console.log('[renderFeedbackImageSlider] final src=' + currentUrl);
 
     var navHtml = '';
     if (total > 1) {
@@ -3503,6 +3506,7 @@ function showProjectFeedbackModal(project, items) {
     if (!body) return;
     body.innerHTML = getProjectFeedbackHeader(project) + renderProjectFeedbackCards(project, items);
     document.getElementById('project-feedback-modal').classList.add('active');
+    feedbackScheduleClampMeasure();
 }
 
 function closeProjectFeedbackModal(event) {
