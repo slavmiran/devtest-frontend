@@ -594,6 +594,7 @@
             syncBtnTitleAfterDays: "🛡 Защищено +{days}дн",
             cardStageActiveBadge: "▶ Активен",
             cardStageProtectionBadge: "\uD83D\uDEE1 Защита",
+            testCardDetailsBtnAria: "Открыть детали проекта",
             ppcBufferHoursLeft: "⏳ Буфер безопасности: осталось {hours}ч",
             ppcBufferTabDesc: "Проект находится в разделе ожидания релиза. Тестеры не могут делать чекины, но должны сохранять приложение установленным. По истечении таймера проект будет автоматически завершен.",
             ppcRewardPerTesterDay: "Дневной фонд: ~{amount} $BUST / день",

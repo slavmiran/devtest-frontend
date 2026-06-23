@@ -594,6 +594,7 @@
             syncBtnTitleAfterDays: "🛡 Protected +{days}d",
             cardStageActiveBadge: "▶ Active",
             cardStageProtectionBadge: "\uD83D\uDEE1 Protected",
+            testCardDetailsBtnAria: "Open project details",
             ppcBufferHoursLeft: "⏳ Safety Buffer: {hours}h left",
             ppcBufferTabDesc: "The project is in the release waiting section. Testers cannot make check-ins but must keep the app installed. When the timer expires, the project will automatically complete.",
             ppcRewardPerTesterDay: "Daily fund: ~{amount} $BUST / day",

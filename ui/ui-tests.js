@@ -914,6 +914,26 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
     return `<div style="margin-bottom: 12px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">${parts.join('')}</div>`;
 }
 
+function isRegularTestingPhaseCard(test) {
+    if (!test || !!test.is_external) {
+        return false;
+    }
+    const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+    const userTestingDay = getResolvedTestingDay(test);
+    const isPendingCompletion = !!test.is_pending_completion;
+    const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+    if (isInSafetyBuffer) {
+        return false;
+    }
+    const day = typeof userTestingDay === 'number' ? userTestingDay : 0;
+    return day >= 1 && day <= 14;
+}
+
+function renderTestCardDetailsButton(testId) {
+    const ariaLabel = window.escapeHTML(window.t('testCardDetailsBtnAria', {}, lang));
+    return `<button type="button" class="btn-icon test-card-details-btn" aria-label="${ariaLabel}" onclick="openProjectDetailsModal(${Number(testId)}); event.stopPropagation();">🔍</button>`;
+}
+
 function openTelegramProfile(username, event) {
     if (event) {
         event.preventDefault();
@@ -1373,13 +1393,16 @@ function renderExternalGuestTestsSection() {
         }
 
         return `
-            <div class="card card-external-tracking external-tests-card${isDoneToday ? ' is-tested' : ''}" id="external-test-card-${Number(test.id || 0)}" onclick="openProjectDetailsModal(${Number(test.id || 0)})">
+            <div class="card card-external-tracking external-tests-card${isDoneToday ? ' is-tested' : ''}" id="external-test-card-${Number(test.id || 0)}">
                 <div class="card-header external-tests-card-header">
-                    ${renderIcon(test.name || test.package || window.t('unknownLabel', {}, lang), test.icon_url)}
-                    <div class="card-info">
-                        <div class="card-title notranslate">${safeName}</div>
-                        <div class="card-subtitle notranslate">${safePackage}</div>
+                    <div class="card-header-main">
+                        ${renderIcon(test.name || test.package || window.t('unknownLabel', {}, lang), test.icon_url)}
+                        <div class="card-info">
+                            <div class="card-title notranslate">${safeName}</div>
+                            <div class="card-subtitle notranslate">${safePackage}</div>
+                        </div>
                     </div>
+                    ${renderTestCardDetailsButton(test.id)}
                 </div>
                 <div class="external-tests-topline">
                     ${ownerLabelHtml}
@@ -1708,6 +1731,7 @@ function renderTests(force) {
             if (safeOwnerUsername) {
                 headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${safeOwnerUsername}', event)">💬</button>`);
             }
+            headerActions.push(renderTestCardDetailsButton(test.id));
         } else {
             if (userTestingDay >= 15) {
                 if (isInSafetyBuffer) {
@@ -1715,6 +1739,8 @@ function renderTests(force) {
                 } else {
                     headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: var(--stage-protection); cursor: pointer;" onclick="openProtectionInfoModal(${test.id}, event)">🛡️</button>`);
                 }
+            } else if (isRegularTestingPhaseCard(test)) {
+                headerActions.push(renderTestCardDetailsButton(test.id));
             }
         }
         const trailingHtml = headerActions.length
@@ -1731,18 +1757,19 @@ function renderTests(force) {
         if (showGuestOriginChip) {
             externalMetaChips.push(renderGuestOriginChip(test.external_source));
         }
-        const cardHeaderLinkStart = `<div class="card-header-link" onclick="openProjectDetailsModal(${test.id})">`;
+        const cardHeaderMainHtml = `
+            <div class="card-header-main">
+                ${renderIcon(test.name, test.icon_url)}
+                <div class="card-info">
+                    <div class="card-title notranslate">${safeName}</div>
+                    <div class="card-subtitle notranslate">${safeOwnerSubtitle}</div>
+                </div>
+            </div>`;
 
         let cardContent = `
             ${doneBadgeHtml}
             <div class="card-header">
-                ${cardHeaderLinkStart}
-                    ${renderIcon(test.name, test.icon_url)}
-                    <div class="card-info">
-                        <div class="card-title notranslate">${safeName}</div>
-                        <div class="card-subtitle notranslate">${safeOwnerSubtitle}</div>
-                    </div>
-                </div>
+                ${cardHeaderMainHtml}
                 ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
                 ${trailingHtml}
             </div>
@@ -1752,29 +1779,12 @@ function renderTests(force) {
             </div>
         `;
 
-        if (isExternal) {
-            card.style.cursor = 'pointer';
-            card.onclick = function(event) {
-                if (event && event.target && typeof event.target.closest === 'function') {
-                    var interactiveTarget = event.target.closest('.card-header-link, button, a, input, select, textarea, label, summary, details');
-                    if (interactiveTarget) {
-                        return;
-                    }
-                }
-                window.openProjectDetailsModal(test.id);
-            };
-        }
-
         if (shouldShowInDoneList) {
             const reminderHtml = getScreenshotReminderHtml(test);
             if (reminderHtml) {
                 cardContent += reminderHtml;
             }
             card.innerHTML = cardContent;
-            if (!isExternal) {
-                card.style.cursor = 'pointer';
-                card.onclick = () => window.openProjectDetailsModal(test.id);
-            }
             doneList.appendChild(card);
             doneCount++;
         } else if (shouldShowInPendingList) {
@@ -1829,6 +1839,9 @@ function renderCompletedTests(completedTests) {
         if (test.owner_username) {
             headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent;" onclick="return openTelegramProfile('${safeOwnerUsername}', event)">💬</button>`);
         }
+        if (isRegularTestingPhaseCard(test)) {
+            headerActions.push(renderTestCardDetailsButton(test.id));
+        }
         headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="${isMutualExitFlow(test) ? `openLeaveMutualModal(${test.id}, event)` : `openDropTestModal(${test.id}, event)`}">🗑️</button>`);
         const ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">${headerActions.join('')}</div>`;
 
@@ -1866,8 +1879,6 @@ function renderCompletedTests(completedTests) {
         }
 
         card.innerHTML = cardContent;
-        card.style.cursor = 'pointer';
-        card.onclick = () => window.openProjectDetailsModal(test.id);
         doneList.appendChild(card);
         doneCount++;
     });

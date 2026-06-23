@@ -1182,7 +1182,6 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     width: 100%;
     min-height: 100%;
     padding: 12px;
-    cursor: pointer;
     scroll-snap-align: start;
     background:
         radial-gradient(circle at top left, rgba(77, 163, 255, 0.12), transparent 35%),
@@ -1192,6 +1191,9 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 
 .external-tests-card-header {
     margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .external-tests-card.is-tested {
@@ -6460,14 +6462,29 @@ html[dir="rtl"] .guest-filter-select {
     word-break: break-word;
 }
 
-/* ── Test Card clickable area ────────────────────── */
-.card-header-link {
+/* ── Test Card header layout ─────────────────────── */
+.card-header-link,
+.card-header-main {
     display: flex;
     align-items: center;
     gap: 10px;
     flex: 1;
     min-width: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.test-card-details-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    border: none;
+    background: transparent;
+    color: var(--hint-color);
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
     -webkit-tap-highlight-color: transparent;
 }
 
