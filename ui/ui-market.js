@@ -3201,15 +3201,16 @@ function getProjectFeedbackHeader(project) {
     `;
 }
 
-function feedbackResolveMediaUrl(rawUrl) {
-    if (!rawUrl) return rawUrl;
-    // If it's a relative path starting with / (but not //), prefix with the API base
-    if (rawUrl.charAt(0) === '/' && !rawUrl.startsWith('//')) {
+function feedbackResolveMediaUrl(url) {
+    if (!url) return '';
+    // If it starts with /telegram-media or telegram-media, resolve absolutely
+    if (url.startsWith('/telegram-media') || url.startsWith('telegram-media')) {
         var apiBase = String((window.App && window.App.API_BASE) || window.API_BASE || '');
         apiBase = apiBase.replace(/\/+$/, '');
-        if (apiBase) return apiBase + rawUrl;
+        var path = url.startsWith('/') ? url : '/' + url;
+        return apiBase + path;
     }
-    return rawUrl;
+    return url;
 }
 
 function renderProjectFeedbackCards(project, items) {
@@ -3238,19 +3239,28 @@ function renderProjectFeedbackCards(project, items) {
         const avatarHtml = `<div class="fb-avatar" style="--av-hue:${avatarHue}">${initials}</div>`;
 
         // ── Header ──
-        const usernameLink = username
-            ? `<a href="javascript:void(0);" class="fb-username notranslate" onclick="return openTelegramProfile('${safeUsername}', event)">@${window.escapeHTML(username)}</a>`
-            : '';
+        let nameHtml = '';
+        let subHtml = '';
+        if (fullName) {
+            nameHtml = `<span class="fb-name notranslate">${fullName}</span>`;
+            if (username) {
+                subHtml = `<a href="javascript:void(0);" class="fb-username notranslate" onclick="return openTelegramProfile('${safeUsername}', event)">@${window.escapeHTML(username)}</a>`;
+            }
+        } else if (username) {
+            nameHtml = `<a href="javascript:void(0);" class="fb-name-link notranslate" onclick="return openTelegramProfile('${safeUsername}', event)">@${window.escapeHTML(username)}</a>`;
+        } else {
+            nameHtml = `<span class="fb-name notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
+        }
         const newBadge = isNew ? `<span class="fb-new-badge">NEW</span>` : '';
         const headerHtml = `
             <div class="fb-header">
                 ${avatarHtml}
                 <div class="fb-header-info">
                     <div class="fb-name-row">
-                        <span class="fb-name notranslate">${displayName}</span>
+                        ${nameHtml}
                         ${newBadge}
                     </div>
-                    ${usernameLink}
+                    ${subHtml}
                 </div>
                 <span class="fb-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</span>
             </div>`;
@@ -3290,7 +3300,7 @@ function renderProjectFeedbackCards(project, items) {
             for (var ti = 0; ti < shown; ti++) {
                 var url = mediaUrls[ti];
                 if (url) {
-                    let finalSrc = url.startsWith('/telegram-media') ? (window.App.API_BASE || '') + url : url;
+                    let finalSrc = feedbackResolveMediaUrl(url);
                     console.log('[renderFeedbackImageSlider] final src=', finalSrc);
                     const resolvedSrc = window.escapeHTML(finalSrc);
                     const isOverflow = ti === MAX_THUMB - 1 && total > MAX_THUMB;
@@ -3344,8 +3354,7 @@ function renderProjectFeedbackCards(project, items) {
 
         // ── Primary CTA — only for new items ──
         const primaryBtn = isNew
-            ? `<div class="fb-primary-divider"></div>
-               <button class="fb-primary-btn" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang))}</button>`
+            ? `<button class="fb-primary-btn" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang))}</button>`
             : '';
 
         const hasFooter = actionChips || primaryBtn;
@@ -3404,15 +3413,8 @@ function renderFeedbackImageSlider() {
 
     var total = _feedbackSliderImages.length;
     var rawUrl = _feedbackSliderImages[_feedbackSliderIndex];
-    var currentUrl = rawUrl;
+    var currentUrl = feedbackResolveMediaUrl(rawUrl);
     console.log('[renderFeedbackImageSlider] rawUrl=' + rawUrl + ' App.API_BASE=' + (window.App && window.App.API_BASE));
-    if (rawUrl && rawUrl.charAt(0) === '/' && !rawUrl.startsWith('//')) {
-        var apiBase = String((window.App && window.App.API_BASE) || window.API_BASE || '');
-        apiBase = apiBase.replace(/\/+$/, '');
-        if (apiBase) {
-            currentUrl = apiBase + rawUrl;
-        }
-    }
     console.log('[renderFeedbackImageSlider] final src=' + currentUrl);
 
     var navHtml = '';
