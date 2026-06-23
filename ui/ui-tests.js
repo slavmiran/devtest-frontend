@@ -1994,7 +1994,7 @@ function openPhaseInfoModal(testId, event) {
         titleEmoji = '⏳';
         titleText = window.t('ppcModalBufferTitle', {}, lang) || (lang === 'ru' ? 'Буфер безопасности ⏳' : 'Safety Buffer ⏳');
         // Clean out trailing emoji if translated key has it
-        titleText = titleText.replace(/[⏳\s]/g, '');
+        titleText = titleText.replace(/⏳/g, '').trim();
         bodyText = window.t('ppcModalBufferText', {}, lang) || (lang === 'ru'
             ? 'Пожалуйста, не удаляйте приложение, пока владелец официально не завершит проект. Как только это произойдет, вы получите уведомление, а приложение исчезнет из списка активных тестов.'
             : 'Please do not delete the app until the owner officially completes the project. Once that happens, you will receive a notification, and the app will disappear from the list of active tests.');
@@ -2004,7 +2004,7 @@ function openPhaseInfoModal(testId, event) {
         // Protection phase
         titleEmoji = '🛡️';
         titleText = window.t('ppcModalProtectionTitle', {}, lang) || (lang === 'ru' ? 'Проект под защитой 🛡️' : 'Project under protection 🛡️');
-        titleText = titleText.replace(/[🛡️\s]/g, '');
+        titleText = titleText.replace(/🛡️/g, '').trim();
         bodyText = window.t('ppcModalProtectionText', {}, lang) || (lang === 'ru'
             ? 'Тестирование продолжается из-за рассинхронизации дней с Google Play. Владелец указал реальные дни тестирования. Не удаляйте приложение, иначе сбросится весь прогресс и вы потеряете награды!'
             : 'Testing continues due to synchronization discrepancy with Google Play. The owner has specified the actual testing days. Do not delete the app, otherwise all progress will be reset and you will lose your rewards!');
@@ -2031,7 +2031,7 @@ function openPhaseInfoModal(testId, event) {
         // Active phase (days 1-14)
         titleEmoji = '🧪';
         titleText = window.t('ppcModalActiveTitle', {}, lang) || (lang === 'ru' ? 'Активная фаза тестирования' : 'Active testing phase');
-        titleText = titleText.replace(/[🧪\s]/g, '');
+        titleText = titleText.replace(/🧪/g, '').trim();
         bodyText = window.t('ppcModalActiveText', {}, lang) || (lang === 'ru'
             ? 'Проект находится в основной фазе. Тестируйте приложение, ищите баги и предлагайте идеи! За качественный фидбек вы можете заработать дополнительную карму ☯️ (+1.5 или +3) и неограниченное количество💎$BUST.'
             : 'The project is in the primary phase. Test the app, look for bugs, and suggest ideas! For high-quality feedback, you can earn extra karma ☯️ (+1.5 or +3) and unlimited 💎$BUST.');

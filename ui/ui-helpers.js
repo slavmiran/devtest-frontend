@@ -280,7 +280,7 @@ function getGuestInvitePreviewText(guest, inviteLang, inviteLink) {
     return window.t('guestInviteMessageTemplate', {
         app_name: getGuestDisplayName(guest),
         invite_link: String(inviteLink || '').trim(),
-        community_link: 'https://t.me/googleplay_console_12testers',
+        community_link: (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers',
     }, inviteLang);
 }
 function sanitizePulseEventHtml(value) {

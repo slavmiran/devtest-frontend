@@ -7861,7 +7861,7 @@ html[dir="rtl"] .guest-filter-select {
 }
 
 .project-phase-badge-overlay.active-phase {
-    background: rgba(48, 209, 88, 0.16);
+    background: #132b1a;
     border-color: var(--stage-active-border);
     box-shadow: 0 0 10px var(--stage-active-surface), 0 2px 4px rgba(0,0,0,0.5);
 }
@@ -7870,7 +7870,7 @@ html[dir="rtl"] .guest-filter-select {
 }
 
 .project-phase-badge-overlay.buffer-phase {
-    background: rgba(255, 176, 32, 0.16);
+    background: #2a2010;
     border-color: var(--stage-buffer-border);
     box-shadow: 0 0 10px var(--stage-buffer-surface), 0 2px 4px rgba(0,0,0,0.5);
 }
@@ -7879,7 +7879,7 @@ html[dir="rtl"] .guest-filter-select {
 }
 
 .project-phase-badge-overlay.protection-phase {
-    background: rgba(56, 182, 230, 0.16);
+    background: #122432;
     border-color: var(--stage-protection-border);
     box-shadow: 0 0 10px var(--stage-protection-surface), 0 2px 4px rgba(0,0,0,0.5);
 }

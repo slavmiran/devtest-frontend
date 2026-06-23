@@ -3316,7 +3316,7 @@ function renderFeedbackImageSlider() {
 
 function openFeedbackTopicLink(telegramMessageId) {
     if (!telegramMessageId) return;
-    var base = (window.FEEDBACK_PUBLIC_LINK_BASE || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
+    var base = (window.FEEDBACK_PUBLIC_LINK_BASE || (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
     var url = base + '/' + telegramMessageId;
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
         window.Telegram.WebApp.openTelegramLink(url);

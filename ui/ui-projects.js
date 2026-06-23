@@ -372,7 +372,7 @@ function renderProjects(force) {
                 </div>
             `;
         }).join('');
-        const accessGuideUrl = 'https://t.me/googleplay_console_12testers/1/527';
+        const accessGuideUrl = (window.App && window.App.publicGroupUrl || 'https://t.me/googleplay_console_12testers') + '/1/527';
         const accessOverlayHtml = hasAccessOverlay ? `
             <div class="access-error-overlay" onclick="event.stopPropagation();">
                 <div class="access-error-panel" onclick="event.stopPropagation();">
@@ -1163,7 +1163,7 @@ function _renderProtectionCenterState1(project, platformDay) {
             <a href="https://play.google.com/console/" target="_blank" class="ppc-btn-console" onclick="if(window.tg&&window.tg.openLink)window.tg.openLink('https://play.google.com/console/'); return false;">
                 ▶ ${window.escapeHTML(T('ppcOpenConsoleBtn'))}
             </a>
-            <a href="https://t.me/googleplay_console_12testers/31/953" target="_blank" class="ppc-btn-howworks" onclick="if(window.tg&&window.tg.openLink)window.tg.openLink('https://t.me/googleplay_console_12testers/31/953'); return false;">
+            <a href="' + (window.App && window.App.publicGroupUrl || 'https://t.me/googleplay_console_12testers') + '/31/953" target="_blank" class="ppc-btn-howworks" onclick="if(window.tg&&window.tg.openLink)window.tg.openLink(\'' + (window.App && window.App.publicGroupUrl || 'https://t.me/googleplay_console_12testers') + '/31/953\'); return false;">
                 ❓ ${window.escapeHTML(T('ppcHowWorksBtn'))}
             </a>
         </div>
@@ -2236,7 +2236,7 @@ function copyAndAction(text, target) {
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     showToast(window.t('inviteCopied', {}, lang));
     if (target === 'exchange') {
-        tg.openTelegramLink('https://t.me/googleplay_console_12testers/2');
+        tg.openTelegramLink((window.App && window.App.publicGroupUrl || 'https://t.me/googleplay_console_12testers') + '/2');
     } else if (target === 'share') {
         tg.openTelegramLink('https://t.me/share/url?text=' + encodeURIComponent(decoded));
     }

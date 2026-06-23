@@ -95,7 +95,7 @@ async function _focusAppInMiniApp(appId) {
     return false;
 }
 
-const GUEST_CLAIM_COMMUNITY_URL = 'https://t.me/googleplay_console_12testers';
+const GUEST_CLAIM_COMMUNITY_URL = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
 
 function _normalizeTelegramUsernameForClaim(username) {
     return String(username || '').trim().replace(/\s+/g, '').replace(/^@+/, '').toLowerCase();
