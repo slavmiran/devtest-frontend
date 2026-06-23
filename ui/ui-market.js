@@ -3201,11 +3201,23 @@ function getProjectFeedbackHeader(project) {
     `;
 }
 
+function feedbackResolveMediaUrl(rawUrl) {
+    if (!rawUrl) return rawUrl;
+    // If it's a relative path starting with / (but not //), prefix with the API base
+    if (rawUrl.charAt(0) === '/' && !rawUrl.startsWith('//')) {
+        var apiBase = String((window.App && window.App.API_BASE) || window.API_BASE || '');
+        apiBase = apiBase.replace(/\/+$/, '');
+        if (apiBase) return apiBase + rawUrl;
+    }
+    return rawUrl;
+}
+
 function renderProjectFeedbackCards(project, items) {
     if (!items || !items.length) {
         return `<div class="feedback-empty">${window.escapeHTML(window.t('projectFeedbackEmpty', {}, lang))}</div>`;
     }
     const projectId = Number(project && (project.id || project.app_id) || 0);
+
     return `<div class="feedback-list">${items.map(function(item) {
         const feedbackType = String(item.type || 'general').toLowerCase();
         const isReviewTicket = feedbackType.indexOf('google_play_review') === 0;
@@ -3214,125 +3226,130 @@ function renderProjectFeedbackCards(project, items) {
         const fullName = window.escapeHTML(item.tester_full_name || '');
         const usernameLabel = username ? '@' + window.escapeHTML(username) : '';
         const displayName = fullName || usernameLabel || window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang));
-
-        // --- Header: name + username link on left, date + NEW badge on right ---
-        const usernameHtml = username
-            ? `<a href="javascript:void(0);" class="feedback-card-username-link notranslate" onclick="return openTelegramProfile('${safeUsername}', event)">👤 ${window.escapeHTML('@' + username)}</a>`
-            : '';
         const isNew = item.status === 'new';
-        const newBadgeHtml = isNew ? `<span class="feedback-new-badge">🟢 NEW</span>` : '';
+
+        // ── Avatar initials ──
+        const initials = window.escapeHTML(
+            (item.tester_full_name || item.tester_username || '?')
+                .trim().replace('@', '').substring(0, 2).toUpperCase()
+        );
+        // Generate a stable pastel hue from tester_id
+        const avatarHue = ((Number(item.tester_id || 0) * 73 + 17) % 360);
+        const avatarHtml = `<div class="fb-avatar" style="--av-hue:${avatarHue}">${initials}</div>`;
+
+        // ── Header ──
+        const usernameLink = username
+            ? `<a href="javascript:void(0);" class="fb-username notranslate" onclick="return openTelegramProfile('${safeUsername}', event)">@${window.escapeHTML(username)}</a>`
+            : '';
+        const newBadge = isNew ? `<span class="fb-new-badge">NEW</span>` : '';
         const headerHtml = `
-            <div class="feedback-card-header">
-                <div class="feedback-card-author-block">
-                    <span class="feedback-card-author-name notranslate">${displayName}</span>
-                    ${usernameHtml}
+            <div class="fb-header">
+                ${avatarHtml}
+                <div class="fb-header-info">
+                    <div class="fb-name-row">
+                        <span class="fb-name notranslate">${displayName}</span>
+                        ${newBadge}
+                    </div>
+                    ${usernameLink}
                 </div>
-                <div class="feedback-card-meta-right">
-                    ${newBadgeHtml}
-                    <span class="feedback-card-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</span>
-                </div>
+                <span class="fb-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</span>
             </div>`;
 
-        // --- Body: clamped text with show-all ---
-        var rawText = '';
+        // ── Body text — only show "show all" when genuinely long ──
         var textBodyHtml = '';
         if (isReviewTicket) {
-            textBodyHtml = `<div class="feedback-card-text"><span class="feedback-review-ticket">⭐ ${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</span></div>`;
+            textBodyHtml = `<div class="fb-text"><span class="feedback-review-ticket">⭐ ${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</span></div>`;
         } else if (item.message_text) {
-            rawText = item.message_text;
+            const rawText = item.message_text;
             const escapedText = escapeHtmlWithBreaks(rawText);
+            const isLong = rawText.length > 150 || (rawText.split('\n').length > 4);
             const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
-            textBodyHtml = `
-                <div class="feedback-card-text feedback-card-text--clamped" id="fbt-${item.id}">${escapedText}</div>
-                <a href="javascript:void(0);" class="feedback-show-all-link" id="fbtl-${item.id}" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`;
+            const clampClass = isLong ? ' fb-text--clamped' : '';
+            const showAllLink = isLong
+                ? `<a href="javascript:void(0);" class="fb-show-all" id="fbtl-${item.id}" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`
+                : '';
+            textBodyHtml = `<div class="fb-text${clampClass}" id="fbt-${item.id}">${escapedText}</div>${showAllLink}`;
         } else {
-            textBodyHtml = `<div class="feedback-card-text"><span style="color: var(--hint-color);">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</span></div>`;
+            textBodyHtml = `<div class="fb-text fb-text--muted">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</div>`;
         }
 
-        // --- Media thumbnails ---
+        // ── Media thumbnails — with correct URL proxy ──
         var mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
             ? item.media_urls
-            : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0 ? item.tg_file_ids : (item.tg_file_id ? [item.tg_file_id] : []));
+            : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0
+                ? item.tg_file_ids
+                : (item.tg_file_id ? [item.tg_file_id] : []));
         window.feedbackMediaRegistry[item.id] = mediaUrls;
-        var hasMedia = mediaUrls.length > 0;
+
         var mediaHtml = '';
-        if (hasMedia) {
+        if (mediaUrls.length > 0) {
             const total = mediaUrls.length;
-            if (total === 1) {
-                // Single image: wider card style
-                mediaHtml = `<div class="feedback-media-single" onclick="openFeedbackImageSlider(${item.id}, 0)">
-                    <img src="${window.escapeHTML(mediaUrls[0])}" class="feedback-media-single-img" loading="lazy" onerror="this.parentNode.style.display='none'">
+            const MAX_THUMB = 4;
+            const shown = Math.min(total, MAX_THUMB);
+            var thumbsHtml = '';
+            for (var ti = 0; ti < shown; ti++) {
+                const resolvedSrc = window.escapeHTML(feedbackResolveMediaUrl(mediaUrls[ti]));
+                const isOverflow = ti === MAX_THUMB - 1 && total > MAX_THUMB;
+                const extra = total - MAX_THUMB;
+                const overlay = isOverflow
+                    ? `<div class="fb-media-overlay">+${extra + 1}</div>`
+                    : '';
+                thumbsHtml += `<div class="fb-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
+                    <img src="${resolvedSrc}" loading="lazy" onerror="this.parentNode.style.display='none'">
+                    ${overlay}
                 </div>`;
-            } else {
-                // Multiple: up to 3 thumbnails, last may have +N overlay
-                const MAX_THUMB = 3;
-                const shown = Math.min(total, MAX_THUMB);
-                var thumbsHtml = '';
-                for (var ti = 0; ti < shown; ti++) {
-                    const isLast = ti === MAX_THUMB - 1 && total > MAX_THUMB;
-                    const extra = total - MAX_THUMB;
-                    const overlay = isLast ? `<div class="feedback-media-overlay">+${extra}</div>` : '';
-                    thumbsHtml += `<div class="feedback-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
-                        <img src="${window.escapeHTML(mediaUrls[ti])}" loading="lazy" onerror="this.parentNode.style.display='none'">
-                        ${overlay}
-                    </div>`;
-                }
-                mediaHtml = `<div class="feedback-media-grid">${thumbsHtml}</div>`;
             }
+            mediaHtml = `<div class="fb-media-grid">${thumbsHtml}</div>`;
         }
 
-        // --- Reward summary (for processed/declined items) ---
+        // ── Reward summary chips ──
         const rewardBust = Number(item.reward_bust || 0);
         const rewardKarma = Number(item.reward_karma || 0);
         const statusBadge = item.status === 'declined'
             ? window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang))
             : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang));
         const rewardSummary = item.status !== 'new'
-            ? `<div class="feedback-modal-summary" style="margin-top: 10px;">
+            ? `<div class="feedback-modal-summary">
                     ${rewardBust > 0 ? `<span class="meta-chip accent-purple notranslate">💎 ${formatBustAmount(rewardBust)}</span>` : ''}
                     ${rewardKarma > 0 ? `<span class="meta-chip accent-yellow notranslate">☯️ ${rewardKarma.toFixed(1)}</span>` : ''}
                     <span class="meta-chip">${statusBadge}</span>
                </div>`
             : '';
 
-        // --- Developer reply ---
+        // ── Developer reply ──
         const replyHtml = item.developer_reply
             ? `<div class="feedback-card-reply">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang))}: ${escapeHtmlWithBreaks(item.developer_reply)}</div>`
             : '';
 
-        // --- Footer buttons ---
+        // ── Footer action chips ──
         var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
-        const dmBtnLabel = window.escapeHTML(window.t('feedbackDmBtn', {}, lang));
-        const topicBtnLabel = window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang));
-        const rewardBtnLabel = window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang));
-
-        // Secondary row: DM + Discussion (only if there's a username or topic)
         const hasDm = !!username;
-        var secondaryActionsHtml = '';
+        var actionChips = '';
         if (hasDm || hasTopicLink) {
-            const dmBtn = hasDm
-                ? `<button class="btn btn-secondary feedback-action-secondary" onclick="return openTelegramProfile('${safeUsername}', event)">${dmBtnLabel}</button>`
+            const dmChip = hasDm
+                ? `<button class="fb-chip" onclick="return openTelegramProfile('${safeUsername}', event)">👤 ${window.escapeHTML(window.t('feedbackDmBtn', {}, lang)).replace('👤 ', '')}</button>`
                 : '';
-            const topicBtn = hasTopicLink
-                ? `<button class="btn btn-secondary feedback-action-secondary feedback-action-topic" onclick="openFeedbackTopicLink(${item.telegram_message_id})">📌 ${topicBtnLabel}</button>`
+            const topicChip = hasTopicLink
+                ? `<button class="fb-chip fb-chip--topic" onclick="openFeedbackTopicLink(${item.telegram_message_id})">📌 ${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang))}</button>`
                 : '';
-            secondaryActionsHtml = `<div class="feedback-footer-secondary">${dmBtn}${topicBtn}</div>`;
+            actionChips = `<div class="fb-chips">${dmChip}${topicChip}</div>`;
         }
 
-        // Primary button — only for 'new' tickets
-        const primaryBtnHtml = isNew
-            ? `<div class="feedback-footer-divider"></div>
-               <button class="btn btn-primary feedback-action-primary" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">${rewardBtnLabel}</button>`
+        // ── Primary CTA — only for new items ──
+        const primaryBtn = isNew
+            ? `<div class="fb-primary-divider"></div>
+               <button class="fb-primary-btn" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang))}</button>`
             : '';
 
-        const cardClasses = (isNew ? ' is-new' : '') + (item.status === 'declined' ? ' is-rejected' : '');
-        return `<div class="feedback-card${cardClasses}">
+        const hasFooter = actionChips || primaryBtn;
+        const cardMod = (isNew ? ' fb-card--new' : '') + (item.status === 'declined' ? ' fb-card--rejected' : '');
+        return `<div class="fb-card${cardMod}">
             ${headerHtml}
             ${textBodyHtml}
             ${mediaHtml}
             ${rewardSummary}
             ${replyHtml}
-            ${secondaryActionsHtml || primaryBtnHtml ? `<div class="feedback-footer">${secondaryActionsHtml}${primaryBtnHtml}</div>` : ''}
+            ${hasFooter ? `<div class="fb-footer">${actionChips}${primaryBtn}</div>` : ''}
         </div>`;
     }).join('')}</div>`;
 }
@@ -3343,7 +3360,7 @@ var _feedbackSliderIndex = 0;
 function feedbackExpandText(feedbackId) {
     var el = document.getElementById('fbt-' + feedbackId);
     var link = document.getElementById('fbtl-' + feedbackId);
-    if (el) el.classList.remove('feedback-card-text--clamped');
+    if (el) el.classList.remove('fb-text--clamped');
     if (link) link.style.display = 'none';
 }
 
