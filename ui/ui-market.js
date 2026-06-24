@@ -2695,9 +2695,8 @@ function renderPlayReviewModal() {
             <div class="review-modal-text">${window.escapeHTML(window.t('playReviewModalText', {}, lang))}</div>
             <div class="review-modal-note">${window.escapeHTML(window.t('playReviewConfirmPenalty', {}, lang))}</div>
             <div style="display: flex; gap: 8px; align-items: center;">
-                <input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleIconUpload(this,'play-review-screenshot-url-field')">
+                <input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleReviewScreenshotUpload(this,' + _playReviewModalAppId + ')">
                 <button type="button" class="btn btn-secondary icon-upload-btn" style="width: auto; padding: 0 12px; white-space: nowrap;" onclick="document.getElementById('play-review-file').click()">📎 Upload screenshot</button>
-                <input type="hidden" id="play-review-screenshot-url-field" value="">
             </div>
             <div id="play-review-preview-container" style="margin-top: 8px; display: none;"></div>
             ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 6px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}

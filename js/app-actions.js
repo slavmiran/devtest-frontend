@@ -2387,17 +2387,7 @@ async function handleIconUpload(fileInput, targetFieldId) {
 
         if (data && data.status === 'success' && data.url) {
             targetField.value = data.url;
-            // Update preview for all field types
-            if (targetFieldId === 'play-review-screenshot-url-field') {
-                var previewContainer = document.getElementById('play-review-preview-container');
-                var submitBtn = document.getElementById('play-review-submit-btn');
-                if (previewContainer) {
-                    var resolvedUrl = (typeof resolveIconUrl === 'function') ? resolveIconUrl(data.url) : data.url;
-                    previewContainer.innerHTML = '<img src="' + window.escapeHTML(resolvedUrl) + '" style="width: 100%; max-height: 200px; object-fit: contain; border-radius: 12px; border: 1px solid var(--border-weak);" onerror="this.style.display=\'none\'">';
-                    previewContainer.style.display = 'block';
-                }
-                if (submitBtn) submitBtn.disabled = false;
-            } else if (typeof updateIconPreview === 'function') {
+            if (typeof updateIconPreview === 'function') {
                 updateIconPreview(targetFieldId, targetFieldId.indexOf('edit-') === 0 ? 'edit-icon-preview' : 'app-icon-preview');
             }
         } else {
@@ -2417,6 +2407,68 @@ async function handleIconUpload(fileInput, targetFieldId) {
 }
 
 window.handleIconUpload = handleIconUpload;
+
+async function handleReviewScreenshotUpload(fileInput, appId) {
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file || !appId) return;
+
+    var uploadBtn = fileInput.nextElementSibling;
+    if (!uploadBtn || uploadBtn.tagName !== 'BUTTON') {
+        uploadBtn = fileInput.parentNode && fileInput.parentNode.querySelector('button');
+    }
+    var btnOrigText = uploadBtn ? uploadBtn.innerHTML : '';
+
+    if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<span class="icon-upload-spinner"></span>';
+    }
+
+    try {
+        var userId = (window.App && window.App.userId) || window.userId || 0;
+        var tgUser = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user;
+        if (tgUser && tgUser.id) userId = tgUser.id;
+        if (!userId || userId <= 0) {
+            alert('Cannot identify user — please reload the app');
+            return;
+        }
+
+        var apiBase = (window.App && window.App.API_BASE) || '';
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('user_id', String(userId));
+
+        var resp = await fetch(apiBase + '/projects/' + appId + '/play-review/upload', {
+            method: 'PUT',
+            body: formData
+        });
+        var data = await resp.json();
+
+        if (data && data.status === 'success' && data.url) {
+            var previewContainer = document.getElementById('play-review-preview-container');
+            var submitBtn = document.getElementById('play-review-submit-btn');
+            if (previewContainer) {
+                var resolvedUrl = (typeof resolveIconUrl === 'function') ? resolveIconUrl(data.url) : data.url;
+                previewContainer.innerHTML = '<img src="' + window.escapeHTML(resolvedUrl) + '" style="width: 100%; max-height: 200px; object-fit: contain; border-radius: 12px; border: 1px solid var(--border-weak);" onerror="this.style.display=\'none\'">';
+                previewContainer.style.display = 'block';
+            }
+            if (submitBtn) submitBtn.disabled = false;
+            console.log('[handleReviewScreenshotUpload] success, url=' + data.url);
+        } else {
+            alert(data && data.message ? data.message : 'Upload failed');
+        }
+    } catch (e) {
+        console.error('Review screenshot upload error:', e);
+        alert('Upload failed: network error');
+    } finally {
+        fileInput.value = '';
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = btnOrigText;
+        }
+    }
+}
+
+window.handleReviewScreenshotUpload = handleReviewScreenshotUpload;
 
 function updateIconPreview(inputId, previewId) {
     var input = document.getElementById(inputId);
