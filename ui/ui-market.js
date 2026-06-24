@@ -2678,9 +2678,9 @@ function renderPlayReviewModal() {
         body.innerHTML = `<div class="feedback-empty">${window.escapeHTML(window.t('unexpectedError', {}, lang))}</div>`;
         return;
     }
-    var isMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
     var reviewRejected = !!(test.rewards_summary && test.rewards_summary.review_rejected);
     var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
+    var screenshotUrl = test.play_review_screenshot_url || '';
     var safeAppName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
     body.innerHTML = `
         <div class="review-modal-card">
@@ -2688,14 +2688,18 @@ function renderPlayReviewModal() {
             <div class="review-modal-app">${safeAppName}</div>
             <div class="review-modal-text">${window.escapeHTML(window.t('playReviewModalText', {}, lang))}</div>
             <div class="review-modal-note">${window.escapeHTML(window.t('playReviewConfirmPenalty', {}, lang))}</div>
-            <label class="review-checkbox-row review-checkbox-row-modal">
-                <input id="play-review-modal-checkbox" type="checkbox" ${isMarked ? 'checked' : ''} onchange="togglePlayReviewModalCheckbox(this)">
-                <span>${window.escapeHTML(window.t('playReviewCheckboxLabel', {}, lang))}</span>
-            </label>
-            <div style="font-size: 12px; color: var(--hint-color); margin-top: 4px;">${window.escapeHTML(window.t('playReviewRequiresScreenshotHint', {}, lang))}</div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleIconUpload(this,'play-review-screenshot-url-field')">
+                <button type="button" class="btn btn-secondary icon-upload-btn" style="width: auto; padding: 0 12px; white-space: nowrap;" onclick="document.getElementById('play-review-file').click()">📎 Upload screenshot</button>
+                <input type="hidden" id="play-review-screenshot-url-field" value="">
+            </div>
+            <div id="play-review-preview-container" style="margin-top: 8px; display: none;"></div>
             ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 6px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}
             <button type="button" class="btn" onclick="openPlayReviewStore()" ${reviewUrl ? '' : 'disabled'}>
                 ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
+            </button>
+            <button type="button" class="btn btn-primary" id="play-review-submit-btn" style="width: 100%; margin-top: 8px;" onclick="submitPlayReview()" ${screenshotUrl ? '' : 'disabled'}>
+                ✅ Submit for review
             </button>
         </div>
     `;
@@ -2839,6 +2843,52 @@ async function toggleCheckinReviewCheckbox(input) {
     if (!marked || !normalized) return;
     _closeCheckinOptionsModalImmediate();
     if (typeof confirmStart === 'function') confirmStart(_checkinOptionsAppId);
+}
+
+async function submitPlayReview() {
+    if (!_playReviewModalAppId) return;
+    var userId = (window.App && window.App.userId) || window.userId || 0;
+    var formData = new FormData();
+    formData.append('user_id', String(userId));
+    try {
+        var apiBase = (window.App && window.App.API_BASE) || '';
+        var resp = await fetch(apiBase + '/projects/' + _playReviewModalAppId + '/play-review/submit', {
+            method: 'POST', body: formData
+        });
+        var data = await resp.json();
+        if (data && data.status === 'success') {
+            alert('Review submitted for review!');
+            closePlayReviewModal();
+            if (typeof reloadProjects === 'function') reloadProjects();
+        } else {
+            alert(data && data.message ? data.message : (data && data.code ? data.code : 'Submit failed'));
+        }
+    } catch (e) {
+        console.error('submitPlayReview error:', e);
+        alert('Network error');
+    }
+}
+
+async function rejectPlayReview(feedbackId, projectId) {
+    if (!confirm('Reject this review? The tester can upload a new screenshot.')) return;
+    var userId = (window.App && window.App.userId) || window.userId || 0;
+    var formData = new FormData();
+    formData.append('owner_id', String(userId));
+    try {
+        var apiBase = (window.App && window.App.API_BASE) || '';
+        var resp = await fetch(apiBase + '/feedback/' + feedbackId + '/reject-play-review', {
+            method: 'POST', body: formData
+        });
+        var data = await resp.json();
+        if (data && data.status === 'success') {
+            showProjectFeedbackModal(projectId);
+        } else {
+            alert(data && data.message ? data.message : 'Reject failed');
+        }
+    } catch (e) {
+        console.error('rejectPlayReview error:', e);
+        alert('Network error');
+    }
 }
 
 async function togglePlayReviewModalCheckbox(input) {
@@ -3397,8 +3447,11 @@ function renderProjectFeedbackCards(project, items) {
         const primaryBtn = isNew
             ? `<button class="fb-primary-btn" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang))}</button>`
             : '';
+        const rejectBtn = (isNew && isReviewTicket)
+            ? `<button class="fb-reject-btn" onclick="rejectPlayReview(${item.id}, ${projectId})">❌ ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>`
+            : '';
 
-        const hasFooter = actionChips || primaryBtn;
+        const hasFooter = actionChips || primaryBtn || rejectBtn;
         const cardMod = (isNew ? ' fb-card--new' : '') + (item.status === 'declined' ? ' fb-card--rejected' : '');
         return `<div class="fb-card${cardMod}">
             ${headerHtml}
@@ -3408,7 +3461,7 @@ function renderProjectFeedbackCards(project, items) {
                 ${rewardSummary}
                 ${replyHtml}
             </div>
-            ${hasFooter ? `<div class="fb-footer">${actionChips}${primaryBtn}</div>` : ''}
+            ${hasFooter ? `<div class="fb-footer">${actionChips}${primaryBtn}${rejectBtn}</div>` : ''}
         </div>`;
     }).join('')}</div>`;
 }
@@ -5992,6 +6045,8 @@ Object.assign(window, {
     openFeedbackTopicLink,
     feedbackExpandText,
     feedbackOnImageError,
+    submitPlayReview,
+    rejectPlayReview,
 });
 
 console.log('[DEBUG] ui-market.js END — switchTab=', typeof switchTab, 'showLoading=', typeof showLoading);

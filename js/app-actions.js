@@ -2387,7 +2387,17 @@ async function handleIconUpload(fileInput, targetFieldId) {
 
         if (data && data.status === 'success' && data.url) {
             targetField.value = data.url;
-            if (typeof updateIconPreview === 'function') {
+            // Update preview for all field types
+            if (targetFieldId === 'play-review-screenshot-url-field') {
+                var previewContainer = document.getElementById('play-review-preview-container');
+                var submitBtn = document.getElementById('play-review-submit-btn');
+                if (previewContainer) {
+                    var resolvedUrl = (typeof resolveIconUrl === 'function') ? resolveIconUrl(data.url) : data.url;
+                    previewContainer.innerHTML = '<img src="' + window.escapeHTML(resolvedUrl) + '" style="width: 100%; max-height: 200px; object-fit: contain; border-radius: 12px; border: 1px solid var(--border-weak);" onerror="this.style.display=\'none\'">';
+                    previewContainer.style.display = 'block';
+                }
+                if (submitBtn) submitBtn.disabled = false;
+            } else if (typeof updateIconPreview === 'function') {
                 updateIconPreview(targetFieldId, targetFieldId.indexOf('edit-') === 0 ? 'edit-icon-preview' : 'app-icon-preview');
             }
         } else {
