@@ -5107,7 +5107,6 @@ async function openDossierModal(username, testerId, appId) {
     } catch (error) {
         console.error('Dossier projects fetch error:', error);
     }
-    const dossierOwnerProfile = _resolveDossierOwnerProfile(testerId, appId, tgName, tester, marketCandidate);
     testerProjects = testerProjects.map(function(item) {
         return Object.assign({}, item, dossierOwnerProfile);
     });
