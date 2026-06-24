@@ -2634,6 +2634,12 @@ var _playReviewModalAppId = null;
 function renderCheckinReviewOptions() {
     var mount = document.getElementById('checkin-review-options');
     if (!mount) return;
+    // On control days, the review button in main options replaces this block
+    if (_checkinOptionsIsControlDay) {
+        mount.innerHTML = '';
+        mount.style.display = 'none';
+        return;
+    }
     if (_checkinOptionsFlow === 'external') {
         mount.innerHTML = '';
         mount.style.display = 'none';
@@ -2746,7 +2752,7 @@ function openCheckinOptionsModal(appId, ownerUsername) {
         var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
         var testingDay = test ? getResolvedTestingDay(test) : null;
         var canReview = testingDay && testingDay >= 7 && !(test && test.play_review_status === 'approved');
-        reviewBtn.style.display = (canReview && !_checkinOptionsIsControlDay) ? 'block' : 'none';
+        reviewBtn.style.display = canReview ? 'block' : 'none';
     }
     renderCheckinReviewOptions();
     modal.classList.add('active');
@@ -2784,7 +2790,7 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
         var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
         var testingDay = test ? getResolvedTestingDay(test) : null;
         var canReview = testingDay && testingDay >= 7 && !(test && test.play_review_status === 'approved');
-        reviewBtn.style.display = (canReview && !_checkinOptionsIsControlDay) ? 'block' : 'none';
+        reviewBtn.style.display = canReview ? 'block' : 'none';
     }
     renderCheckinReviewOptions();
     modal.classList.add('active');
@@ -2899,7 +2905,7 @@ async function submitPlayReview() {
     }
 }
 
-async function rejectPlayReview(feedbackId, projectId) {
+async function rejectPlayReview(feedbackId, projectId, btnEl) {
     if (!confirm('Reject this review? The tester can upload a new screenshot.')) return;
     var userId = (window.App && window.App.userId) || window.userId || 0;
     var formData = new FormData();
@@ -2911,7 +2917,22 @@ async function rejectPlayReview(feedbackId, projectId) {
         });
         var data = await resp.json();
         if (data && data.status === 'success') {
-            showProjectFeedbackModal(projectId);
+            // In-place DOM update — hide reject button, change status badge
+            if (btnEl) {
+                btnEl.style.display = 'none';
+                var card = btnEl.closest('.fb-card');
+                if (card) {
+                    card.classList.remove('fb-card--new');
+                    card.classList.add('fb-card--rejected');
+                    var statusEl = card.querySelector('.fb-status');
+                    if (statusEl) {
+                        statusEl.textContent = window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected';
+                        statusEl.classList.remove('fb-status--new');
+                    }
+                    var primaryBtn = card.querySelector('.fb-primary-btn');
+                    if (primaryBtn) primaryBtn.style.display = 'none';
+                }
+            }
         } else {
             alert(data && data.message ? data.message : 'Reject failed');
         }
@@ -3478,7 +3499,7 @@ function renderProjectFeedbackCards(project, items) {
             ? `<button class="fb-primary-btn" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang))}</button>`
             : '';
         const rejectBtn = (isNew && isReviewTicket)
-            ? `<button class="fb-reject-btn" onclick="rejectPlayReview(${item.id}, ${projectId})">❌ ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>`
+            ? `<button class="fb-reject-btn" onclick="rejectPlayReview(${item.id}, ${projectId}, this)">❌ ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>`
             : '';
 
         const hasFooter = actionChips || primaryBtn || rejectBtn;
