@@ -59,7 +59,7 @@ function _resolveDossierOwnerProfile(testerId, appId, username, tester, marketCa
     let ownerFullName = '';
     let ownerAvatarUrl = '';
 
-    if (marketCandidate) {
+    if (marketCandidate && Number(marketCandidate.owner_id) === normalizedTesterId) {
         ownerFullName = String(marketCandidate.owner_full_name || '').trim();
         ownerAvatarUrl = marketCandidate.owner_avatar_url || '';
         if (!ownerUsername) {
