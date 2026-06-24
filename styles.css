@@ -6465,6 +6465,91 @@ html[dir="rtl"] .guest-filter-select {
     margin: 16px 0;
 }
 
+.play-review-state {
+    margin: 12px 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: center;
+}
+.play-review-state--pending {
+    color: var(--accent-primary);
+    background: var(--accent-primary-surface);
+    border: 1px solid var(--accent-primary-border);
+}
+.play-review-state--approved {
+    color: var(--success);
+    background: var(--success-surface);
+    border: 1px solid var(--success-border);
+}
+.play-review-state--rejected {
+    color: var(--danger);
+    background: var(--danger-surface);
+    border: 1px solid var(--danger-border);
+}
+.play-review-rewards {
+    margin-top: -4px;
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+.play-review-store-btn,
+.play-review-upload-btn,
+#play-review-submit-btn {
+    width: 100%;
+    margin-top: 10px;
+    justify-content: center;
+}
+.play-review-upload-row {
+    margin-top: 2px;
+}
+.play-review-preview-container {
+    margin-top: 10px;
+}
+.play-review-preview {
+    width: 100%;
+    min-height: 120px;
+    max-height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border-subtle);
+}
+.play-review-preview img {
+    width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+    display: block;
+}
+.play-review-preview.is-broken::after {
+    content: '🖼️';
+    color: var(--text-tertiary);
+    font-size: 28px;
+}
+
+#t-checkinOptionsSendReview.is-review-pending {
+    color: var(--accent-primary);
+    background: var(--accent-primary-surface);
+    border-color: var(--accent-primary-border);
+}
+#t-checkinOptionsSendReview.is-review-approved {
+    color: var(--success);
+    background: var(--success-surface);
+    border-color: var(--success-border);
+}
+#t-checkinOptionsSendReview.is-review-rejected {
+    color: var(--danger);
+    background: var(--danger-surface);
+    border-color: var(--danger-border);
+}
+
 @keyframes timeline-pulse {
     0%, 100% { transform: scale(1); opacity: 0.92; }
     50% { transform: scale(1.08); opacity: 1; }
@@ -6792,6 +6877,7 @@ html[dir="rtl"] .guest-filter-select {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 8px;
     padding-left: 41px;
     min-height: 30px;
@@ -6821,7 +6907,6 @@ html[dir="rtl"] .guest-filter-select {
 
 .fb-primary-btn {
     flex-shrink: 0;
-    margin-left: auto;
     padding: 7px 12px;
     border-radius: 999px;
     border: none;
@@ -6836,9 +6921,17 @@ html[dir="rtl"] .guest-filter-select {
 .fb-primary-btn:hover { opacity: 0.88; }
 .fb-primary-btn:active { transform: scale(0.98); }
 
+.fb-owner-actions {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .fb-reject-btn {
     flex-shrink: 0;
-    margin-left: 6px;
     padding: 7px 14px;
     font-size: 13px;
     font-weight: 600;
@@ -6851,6 +6944,17 @@ html[dir="rtl"] .guest-filter-select {
 }
 .fb-reject-btn:hover { opacity: 0.85; }
 .fb-reject-btn:active { transform: scale(0.98); }
+
+.fb-media-missing {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--bg-surface-2);
+    border: 1px dashed var(--border-strong);
+    color: var(--text-tertiary);
+    font-size: 12.5px;
+    line-height: 1.35;
+}
 
 /* ── Shared: reply block, summary, empty ── */
 .feedback-card-reply {

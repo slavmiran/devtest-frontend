@@ -876,11 +876,28 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         parts.unshift(`<button class="meta-chip accent-green">${t.newBadge}</button>`);
     }
     if (test) {
-        const canShowReviewChip = typeof window.canPromptPlayReview === 'function' ? window.canPromptPlayReview(test) : false;
+        const reviewStatus = typeof window.getPlayReviewStatus === 'function'
+            ? window.getPlayReviewStatus(test)
+            : String(test.play_review_status || 'none').toLowerCase();
+        const canShowReviewChip = !!(
+            test.request_reviews
+            && Number(userTestingDay || 0) >= 7
+            && String(test.progress_status || 'active').toLowerCase() === 'active'
+        );
         if (canShowReviewChip) {
-            const reviewLabel = window.escapeHTML(window.t('playReviewChip', {}, lang));
-            const reviewClass = 'meta-chip accent-yellow';
-            parts.push(`<button class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${reviewLabel}</button>`);
+            let reviewLabel = window.t('playReviewChip', {}, lang);
+            let reviewClass = 'meta-chip accent-yellow';
+            if (reviewStatus === 'pending') {
+                reviewLabel = '⏳ ' + window.t('playReviewDetailsPendingChip', {}, lang);
+                reviewClass = 'meta-chip accent-blue';
+            } else if (reviewStatus === 'approved') {
+                reviewLabel = '✅ ' + window.t('playReviewDetailsCompletedChip', {}, lang);
+                reviewClass = 'meta-chip accent-green';
+            } else if (reviewStatus === 'rejected') {
+                reviewLabel = '❌ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
+                reviewClass = 'meta-chip accent-red';
+            }
+            parts.push(`<button class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${window.escapeHTML(reviewLabel)}</button>`);
         }
         const rewardsSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : null;
         const rewardChipLabel = getRewardsChipLabel(rewardsSummary);

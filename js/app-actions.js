@@ -858,8 +858,11 @@ function getMyTestById(appId) {
 
 function canPromptPlayReview(test) {
     if (!test) return false;
+    var reviewStatus = getPlayReviewStatus(test);
     return canTogglePlayReview(test)
         && !test.play_feedback_submitted
+        && reviewStatus !== 'pending'
+        && reviewStatus !== 'approved'
         && Number(test.testing_days || 0) >= 7
         && String(test.progress_status || 'active').toLowerCase() === 'active';
 }
@@ -871,14 +874,24 @@ function canTogglePlayReview(test) {
         && String(test.progress_status || 'active').toLowerCase() === 'active';
 }
 
+function getPlayReviewStatus(testOrAppId) {
+    var test = typeof testOrAppId === 'object'
+        ? testOrAppId
+        : getMyTestById(testOrAppId);
+    if (!test) return 'none';
+    var status = String(test.play_review_status || '').trim().toLowerCase();
+    if (status === 'pending' || status === 'approved' || status === 'rejected') return status;
+    if (test.rewards_summary && test.rewards_summary.review_rejected) return 'rejected';
+    if (test.play_feedback_submitted) return 'pending';
+    return 'none';
+}
+
 function isPlayReviewMarked(testOrAppId) {
     var test = typeof testOrAppId === 'object'
         ? testOrAppId
         : getMyTestById(testOrAppId);
-    if (test && test.rewards_summary && test.rewards_summary.review_rejected) {
-        return false;
-    }
-    return !!(test && (test.play_feedback_submitted || test.play_feedback_submitted_pending));
+    var status = getPlayReviewStatus(test);
+    return status === 'pending' || status === 'approved';
 }
 
 function getPlayReviewUrl(appId) {
@@ -2444,11 +2457,17 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
         var data = await resp.json();
 
         if (data && data.status === 'success' && data.url) {
+            var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+            if (test) {
+                test.play_review_screenshot_url = data.url;
+                if (data.play_review_status) test.play_review_status = String(data.play_review_status || 'none').toLowerCase();
+                persistTestsCacheSnapshot();
+            }
             var previewContainer = document.getElementById('play-review-preview-container');
             var submitBtn = document.getElementById('play-review-submit-btn');
             if (previewContainer) {
                 var resolvedUrl = (typeof resolveIconUrl === 'function') ? resolveIconUrl(data.url) : data.url;
-                previewContainer.innerHTML = '<img src="' + window.escapeHTML(resolvedUrl) + '" style="width: 100%; max-height: 200px; object-fit: contain; border-radius: 12px; border: 1px solid var(--border-weak);" onerror="this.style.display=\'none\'">';
+                previewContainer.innerHTML = '<div class="play-review-preview"><img src="' + window.escapeHTML(resolvedUrl) + '" onerror="this.style.display=\'none\'; this.parentNode.classList.add(\'is-broken\');"></div>';
                 previewContainer.style.display = 'block';
             }
             if (submitBtn) submitBtn.disabled = false;

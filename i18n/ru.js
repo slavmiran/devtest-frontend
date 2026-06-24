@@ -75,6 +75,7 @@
             playReviewMissingOwnerLink: "Не удалось открыть ЛС владельца: username не найден.",
             playReviewDmTemplate: "Привет! Отправляю скриншот опубликованного отзыва Google Play для твоего приложения: {app_name} 🚀",
             playReviewMissingLink: "Не удалось открыть страницу приложения: отсутствует ссылка на Google Play.",
+            playReviewScreenshotMissing: "Скриншот не прикреплен",
             uploadScreenshotBtn: "Загрузить скриншот",
             submitForReviewBtn: "Отправить на проверку",
             feedbackRejectBtn: "Отклонить",

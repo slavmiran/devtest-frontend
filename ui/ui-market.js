@@ -2630,50 +2630,13 @@ var _checkinOptionsOwner = '';
 var _checkinOptionsIsControlDay = false;
 var _checkinOptionsFlow = 'regular';
 var _playReviewModalAppId = null;
+var _playReviewModalSource = 'badge';
 
 function renderCheckinReviewOptions() {
     var mount = document.getElementById('checkin-review-options');
     if (!mount) return;
-    // On control days, the review button in main options replaces this block
-    if (_checkinOptionsIsControlDay) {
-        mount.innerHTML = '';
-        mount.style.display = 'none';
-        return;
-    }
-    if (_checkinOptionsFlow === 'external') {
-        mount.innerHTML = '';
-        mount.style.display = 'none';
-        return;
-    }
-    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
-    var canToggle = _checkinOptionsIsControlDay && typeof window.canPromptPlayReview === 'function'
-        ? window.canPromptPlayReview(test)
-        : false;
-    var isMarked = typeof window.isPlayReviewMarked === 'function' ? window.isPlayReviewMarked(test) : false;
-    var reviewRejected = !!(test && test.rewards_summary && test.rewards_summary.review_rejected);
-    if (!canToggle && !isMarked) {
-        mount.innerHTML = '';
-        mount.style.display = 'none';
-        return;
-    }
-    var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
-    mount.style.display = 'block';
-    mount.innerHTML = `
-        <div class="details-block" style="margin: 0;">
-            <div class="detail-section-title">${window.escapeHTML(window.t('playReviewCheckinTitle', {}, lang))}</div>
-            <div style="font-size: 13px; line-height: 1.6; color: var(--text-color); margin-bottom: 10px;">${window.escapeHTML(window.t('playReviewCheckinHint', {}, lang))}</div>
-            <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="checkinOptionsOpenReviewStore(event)" ${reviewUrl ? '' : 'disabled'}>
-                ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
-            </button>
-            <label class="review-checkbox-row" style="margin-top: 10px;">
-                <input type="checkbox" ${isMarked ? 'checked' : ''} onchange="toggleCheckinReviewCheckbox(this)">
-                <span>${window.escapeHTML(window.t('playReviewCheckboxLabel', {}, lang))}</span>
-            </label>
-            <div style="font-size: 12px; color: var(--hint-color); margin-top: 6px;">${window.escapeHTML(window.t('playReviewRequiresScreenshotHint', {}, lang))}</div>
-            ${isMarked ? `<div style="font-size: 12px; color: #34c759; margin-top: 4px;">${window.escapeHTML(window.t('playReviewMarked', {}, lang))}</div>` : ''}
-            ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 4px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}
-        </div>
-    `;
+    mount.innerHTML = '';
+    mount.style.display = 'none';
 }
 
 function renderPlayReviewModal() {
@@ -2684,28 +2647,49 @@ function renderPlayReviewModal() {
         body.innerHTML = `<div class="feedback-empty">${window.escapeHTML(window.t('unexpectedError', {}, lang))}</div>`;
         return;
     }
-    var reviewStatus = String(test.play_review_status || 'none').toLowerCase();
+    var reviewStatus = typeof window.getPlayReviewStatus === 'function'
+        ? window.getPlayReviewStatus(test)
+        : String(test.play_review_status || 'none').toLowerCase();
     var isPending = reviewStatus === 'pending';
+    var isApproved = reviewStatus === 'approved';
     var reviewRejected = reviewStatus === 'rejected' || !!(test.rewards_summary && test.rewards_summary.review_rejected);
     var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
     var screenshotUrl = test.play_review_screenshot_url || '';
     var safeAppName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
-    var pendingBanner = isPending ? '<div style="font-size: 13px; color: var(--accent-primary); margin: 10px 0; padding: 10px; background: var(--accent-primary-surface, rgba(160,123,255,0.12)); border-radius: 10px; text-align: center;">⏳ Your review is pending owner approval</div>' : '';
-    var uploadBlock = isPending ? '' : '<div style="display: flex; gap: 8px; align-items: center;"><input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleReviewScreenshotUpload(this, ' + _playReviewModalAppId + ')"><button type="button" class="btn btn-secondary icon-upload-btn" style="width: auto; padding: 0 12px; white-space: nowrap;" onclick="document.getElementById(\'play-review-file\').click()">📎 Upload screenshot</button></div>';
-    var submitBlock = isPending ? '' : '<button type="button" class="btn btn-primary" id="play-review-submit-btn" style="width: 100%; margin-top: 8px;" onclick="submitPlayReview()"' + (screenshotUrl ? '' : ' disabled') + '>✅ Submit for review</button>';
+    var rewardSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
+    var rewardHtml = '';
+    if (isApproved) {
+        var rewardParts = [];
+        if (Number(rewardSummary.review_owner_boost_bust || 0) > 0) rewardParts.push('💎 ' + formatBustAmount(Number(rewardSummary.review_owner_boost_bust || 0)));
+        if (Number(rewardSummary.review_owner_boost_karma || 0) > 0) rewardParts.push('☯️ +' + Number(rewardSummary.review_owner_boost_karma || 0).toFixed(1));
+        if (Number(rewardSummary.review_platform_karma || 0) > 0) rewardParts.push('☯️ +' + Number(rewardSummary.review_platform_karma || 0).toFixed(1));
+        rewardHtml = rewardParts.length
+            ? '<div class="play-review-rewards notranslate">' + rewardParts.join(' · ') + '</div>'
+            : '';
+    }
+    var statusBanner = '';
+    if (isPending) {
+        statusBanner = '<div class="play-review-state play-review-state--pending">⏳ ' + window.escapeHTML(window.t('playReviewDetailsPendingChip', {}, lang)) + '</div>';
+    } else if (isApproved) {
+        statusBanner = '<div class="play-review-state play-review-state--approved">✅ ' + window.escapeHTML(window.t('playReviewDetailsCompletedChip', {}, lang)) + '</div>' + rewardHtml;
+    } else if (reviewRejected) {
+        statusBanner = '<div class="play-review-state play-review-state--rejected">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>';
+    }
+    var isReadOnly = isPending || isApproved;
+    var uploadBlock = isReadOnly ? '' : '<div class="play-review-upload-row"><input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleReviewScreenshotUpload(this, ' + _playReviewModalAppId + ')"><button type="button" class="btn btn-secondary icon-upload-btn play-review-upload-btn" onclick="document.getElementById(\'play-review-file\').click()">📎 ' + window.escapeHTML(window.t('uploadScreenshotBtn', {}, lang)) + '</button></div>';
+    var submitBlock = isReadOnly ? '' : '<button type="button" class="btn btn-primary" id="play-review-submit-btn" onclick="submitPlayReview()"' + (screenshotUrl ? '' : ' disabled') + '>✅ ' + window.escapeHTML(window.t('submitForReviewBtn', {}, lang)) + '</button>';
     body.innerHTML = `
         <div class="review-modal-card">
             <div class="review-modal-title">⭐ ${window.escapeHTML(window.t('playReviewModalTitle', {}, lang))}</div>
             <div class="review-modal-app">${safeAppName}</div>
             <div class="review-modal-text">${window.escapeHTML(window.t('playReviewModalText', {}, lang))}</div>
             <div class="review-modal-note">${window.escapeHTML(window.t('playReviewConfirmPenalty', {}, lang))}</div>
-            ${pendingBanner}
-            ${uploadBlock}
-            <div id="play-review-preview-container" style="margin-top: 8px; display: none;"></div>
-            ${reviewRejected ? '<div style="font-size: 12px; color: #ff6b6b; margin-top: 6px;">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>' : ''}
-            <button type="button" class="btn" style="margin-top: 10px;" onclick="openPlayReviewStore()" ${reviewUrl ? '' : 'disabled'}>
+            ${statusBanner}
+            <button type="button" class="btn play-review-store-btn" onclick="openPlayReviewStore()" ${reviewUrl ? '' : 'disabled'}>
                 ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
             </button>
+            ${uploadBlock}
+            <div id="play-review-preview-container" class="play-review-preview-container" style="display: none;"></div>
             ${submitBlock}
         </div>
     `;
@@ -2714,7 +2698,7 @@ function renderPlayReviewModal() {
         var previewContainer = document.getElementById('play-review-preview-container');
         if (previewContainer && typeof resolveIconUrl === 'function') {
             var resolvedUrl = resolveIconUrl(screenshotUrl);
-            previewContainer.innerHTML = '<img src="' + window.escapeHTML(resolvedUrl) + '" style="width: 100%; max-height: 200px; object-fit: contain; border-radius: 12px; border: 1px solid var(--border-weak);" onerror="this.style.display=\'none\'">';
+            previewContainer.innerHTML = '<div class="play-review-preview"><img src="' + window.escapeHTML(resolvedUrl) + '" onerror="this.style.display=\'none\'; this.parentNode.classList.add(\'is-broken\');"></div>';
             previewContainer.style.display = 'block';
         }
     }
@@ -2748,10 +2732,18 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     }
     var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
     if (reviewBtn) {
-        reviewBtn.innerText = window.t('checkinOptionsSendReview', {}, lang);
         var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
         var testingDay = test ? getResolvedTestingDay(test) : null;
-        var canReview = testingDay && testingDay >= 7 && !(test && test.play_review_status === 'approved');
+        var reviewStatus = typeof window.getPlayReviewStatus === 'function' ? window.getPlayReviewStatus(test) : String(test && test.play_review_status || 'none').toLowerCase();
+        var canReview = !!(test && test.request_reviews && testingDay && testingDay >= 7);
+        var reviewLabel = window.t('checkinOptionsSendReview', {}, lang);
+        if (reviewStatus === 'pending') reviewLabel = '⏳ ' + window.t('playReviewDetailsPendingChip', {}, lang);
+        else if (reviewStatus === 'approved') reviewLabel = '✅ ' + window.t('playReviewDetailsCompletedChip', {}, lang);
+        else if (reviewStatus === 'rejected') reviewLabel = '❌ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
+        reviewBtn.innerText = reviewLabel;
+        reviewBtn.classList.toggle('is-review-pending', reviewStatus === 'pending');
+        reviewBtn.classList.toggle('is-review-approved', reviewStatus === 'approved');
+        reviewBtn.classList.toggle('is-review-rejected', reviewStatus === 'rejected');
         reviewBtn.style.display = canReview ? 'block' : 'none';
     }
     renderCheckinReviewOptions();
@@ -2787,10 +2779,8 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
     if (reviewBtn) {
         reviewBtn.innerText = window.t('checkinOptionsSendReview', {}, lang);
-        var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
-        var testingDay = test ? getResolvedTestingDay(test) : null;
-        var canReview = testingDay && testingDay >= 7 && !(test && test.play_review_status === 'approved');
-        reviewBtn.style.display = canReview ? 'block' : 'none';
+        reviewBtn.classList.remove('is-review-pending', 'is-review-approved', 'is-review-rejected');
+        reviewBtn.style.display = 'none';
     }
     renderCheckinReviewOptions();
     modal.classList.add('active');
@@ -2849,7 +2839,7 @@ function checkinOptionsIdea() {
 
 function checkinOptionsReview() {
     _closeCheckinOptionsModalImmediate();
-    openPlayReviewModal(_checkinOptionsAppId);
+    openPlayReviewModal(_checkinOptionsAppId, null, { source: 'checkin' });
 }
 
 function checkinOptionsConfirm() {
@@ -2886,6 +2876,10 @@ async function submitPlayReview() {
     var userId = (window.App && window.App.userId) || window.userId || 0;
     var formData = new FormData();
     formData.append('user_id', String(userId));
+    if (_playReviewModalSource === 'checkin') {
+        formData.append('auto_checkin', 'true');
+        if (typeof getLocalDate === 'function') formData.append('local_date', getLocalDate());
+    }
     try {
         var apiBase = (window.App && window.App.API_BASE) || '';
         var resp = await fetch(apiBase + '/projects/' + _playReviewModalAppId + '/play-review/submit', {
@@ -2893,9 +2887,25 @@ async function submitPlayReview() {
         });
         var data = await resp.json();
         if (data && data.status === 'success') {
-            alert('Review submitted for review!');
-            closePlayReviewModal();
-            if (typeof reloadProjects === 'function') reloadProjects();
+            var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_playReviewModalAppId) : null;
+            if (test) {
+                test.play_review_status = data.play_review_status || 'pending';
+                if (data.play_review_screenshot_url) test.play_review_screenshot_url = data.play_review_screenshot_url;
+                test.play_feedback_submitted = true;
+                test.play_feedback_submitted_pending = true;
+                if (data.checkin && !data.checkin.already_checked_today) {
+                    test.last_check_date = data.checkin.last_check_date || (typeof getLocalDate === 'function' ? getLocalDate() : test.last_check_date);
+                    test.checkins_count = Number(data.checkin.checkins_count || test.checkins_count || 0);
+                    test.status = 'done';
+                }
+                persistTestsCacheSnapshot();
+            }
+            if (typeof showToast === 'function') {
+                showToast(window.t('playReviewDetailsPendingChip', {}, lang));
+            }
+            renderPlayReviewModal();
+            if (typeof window.renderTests === 'function') window.renderTests(true);
+            if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
         } else {
             alert(data && data.message ? data.message : (data && data.code ? data.code : 'Submit failed'));
         }
@@ -2954,12 +2964,13 @@ async function toggleProjectDetailsReviewCheckbox(input, appId) {
     await window.setPlayReviewSubmittedPending(appId, !!(input && input.checked));
 }
 
-function openPlayReviewModal(appId, event) {
+function openPlayReviewModal(appId, event, options) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
     _playReviewModalAppId = appId;
+    _playReviewModalSource = (options && options.source) || 'badge';
     renderPlayReviewModal();
     var modal = document.getElementById('play-review-modal');
     if (modal) modal.classList.add('active');
@@ -2975,6 +2986,7 @@ function closePlayReviewModal(event) {
     if (event && event.target !== document.getElementById('play-review-modal')) return;
     var modal = document.getElementById('play-review-modal');
     if (modal) modal.classList.remove('active');
+    _playReviewModalSource = 'badge';
 }
 
 function openPlayReviewStore() {
@@ -3462,6 +3474,8 @@ function renderProjectFeedbackCards(project, items) {
             if (thumbsHtml) {
                 mediaHtml = `<div class="fb-media-grid${total === 1 ? ' fb-media-grid--single' : ''}">${thumbsHtml}</div>`;
             }
+        } else if (isReviewTicket) {
+            mediaHtml = `<div class="fb-media-missing">📎 ${window.escapeHTML(window.t('playReviewScreenshotMissing', {}, lang))}</div>`;
         }
 
         // ── Reward summary chips ──
@@ -3501,9 +3515,12 @@ function renderProjectFeedbackCards(project, items) {
         const rejectBtn = (isNew && isReviewTicket)
             ? `<button class="fb-reject-btn" onclick="rejectPlayReview(${item.id}, ${projectId}, this)">❌ ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>`
             : '';
+        const ownerActions = (primaryBtn || rejectBtn)
+            ? `<div class="fb-owner-actions">${primaryBtn}${rejectBtn}</div>`
+            : '';
 
-        const hasFooter = actionChips || primaryBtn || rejectBtn;
-        const cardMod = (isNew ? ' fb-card--new' : '') + (item.status === 'declined' ? ' fb-card--rejected' : '');
+        const hasFooter = actionChips || ownerActions;
+        const cardMod = (isNew ? ' fb-card--new' : '') + ((item.status === 'declined' || item.status === 'rejected') ? ' fb-card--rejected' : '');
         return `<div class="fb-card${cardMod}">
             ${headerHtml}
             <div class="fb-message">
@@ -3512,7 +3529,7 @@ function renderProjectFeedbackCards(project, items) {
                 ${rewardSummary}
                 ${replyHtml}
             </div>
-            ${hasFooter ? `<div class="fb-footer">${actionChips}${primaryBtn}${rejectBtn}</div>` : ''}
+            ${hasFooter ? `<div class="fb-footer">${actionChips}${ownerActions}</div>` : ''}
         </div>`;
     }).join('')}</div>`;
 }

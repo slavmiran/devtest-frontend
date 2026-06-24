@@ -1370,6 +1370,8 @@ function _mapTestsFromApi(data) {
             has_clicked_store: existingTest ? !!existingTest.has_clicked_store : false,
             request_reviews: app.request_reviews !== false,
             play_feedback_submitted: !!app.play_feedback_submitted,
+            play_review_status: String(app.play_review_status || (app.play_feedback_submitted ? 'pending' : 'none')).toLowerCase(),
+            play_review_screenshot_url: app.play_review_screenshot_url || '',
             rewards_summary: (app && typeof app.rewards_summary === 'object' && app.rewards_summary)
                 ? {
                     checkin_karma: Number(app.rewards_summary.checkin_karma || 0),

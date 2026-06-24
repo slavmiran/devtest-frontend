@@ -3558,10 +3558,12 @@ function openProjectDetailsModal(appId) {
     const ownerKarma = Number.isFinite(Number(ownerKarmaRaw)) ? Number(ownerKarmaRaw) : 0;
     const hasPlayReviewRequest = !!test.request_reviews;
     const rewardsSummary = (test && test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
-    const reviewRejected = !!rewardsSummary.review_rejected;
-    const reviewConfirmed = !reviewRejected && !!(test.play_feedback_submitted || rewardsSummary.review_marked);
-    const reviewPending = !reviewRejected && !reviewConfirmed && !!test.play_feedback_submitted_pending;
-    const reviewMarked = reviewConfirmed || reviewPending;
+    const playReviewStatus = typeof window.getPlayReviewStatus === 'function'
+        ? window.getPlayReviewStatus(test)
+        : String(test.play_review_status || (test.play_feedback_submitted ? 'pending' : 'none')).toLowerCase();
+    const reviewRejected = playReviewStatus === 'rejected' || !!rewardsSummary.review_rejected;
+    const reviewConfirmed = playReviewStatus === 'approved';
+    const reviewPending = playReviewStatus === 'pending';
     const reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 0);
     const reviewOwnerBoostBust = Number(rewardsSummary.review_owner_boost_bust || 0);
     const reviewOwnerBoostKarma = Number(rewardsSummary.review_owner_boost_karma || 0);
@@ -3924,11 +3926,16 @@ function openProjectDetailsModal(appId) {
         var reviewRejectedHtml = reviewRejected
             ? '<div style="font-size:13px; line-height:1.55; color:#ff6b6b; margin-top: 8px;">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>'
             : '';
-        var reviewCheckboxHtml = '<label class="review-checkbox-row review-checkbox-row-modal" style="margin: 14px 0 0;">' +
-            '<input type="checkbox" ' + (reviewMarked ? 'checked ' : '') + (reviewConfirmed ? 'disabled ' : '') + 'onchange="toggleProjectDetailsReviewCheckbox(this, ' + Number(test.id) + ')">' +
-            '<span>' + window.escapeHTML(window.t('playReviewCheckboxLabel', {}, lang)) + '</span>' +
-        '</label>' +
-        '<div style="font-size:12px; color: var(--hint-color); margin-top: 4px;">' + window.escapeHTML(window.t('playReviewRequiresScreenshotHint', {}, lang)) + '</div>';
+        var reviewActionLabel = reviewPending
+            ? ('⏳ ' + window.escapeHTML(window.t('playReviewDetailsPendingChip', {}, lang)))
+            : (reviewConfirmed
+                ? ('✅ ' + window.escapeHTML(window.t('playReviewDetailsCompletedChip', {}, lang)))
+                : (reviewRejected
+                    ? ('❌ ' + window.escapeHTML(window.t('playReviewDetailsRejectedChip', {}, lang)))
+                    : window.escapeHTML(window.t('playReviewDetailsOpenBtn', {}, lang))));
+        var reviewActionHtml = '<button class="btn btn-secondary" style="width:100%; margin-top:10px; background-color: rgba(255,204,0,0.12); color: var(--text-color); border: 1px solid rgba(255,204,0,0.24);" onclick="openPlayReviewModal(' + Number(test.id) + ', event)">' +
+                reviewActionLabel +
+            '</button>';
         var reviewRewardHtml = reviewRewardParts.length
             ? '<div style="font-size:13px; line-height:1.55; color: var(--hint-color); margin-top: 8px;">' + reviewRewardParts.join('<br>') + '</div>'
             : '<div style="font-size:13px; line-height:1.55; color: var(--hint-color); margin-top: 8px;">' + window.escapeHTML(window.t(reviewPending || reviewConfirmed ? 'playReviewDetailsNoRewardYet' : 'playReviewDetailsStartHint', {}, lang)) + '</div>';
@@ -3936,7 +3943,7 @@ function openProjectDetailsModal(appId) {
             '<div class="detail-section-title">⭐ ' + window.escapeHTML(window.t('playReviewDetailsTitle', {}, lang)) + '</div>' +
             '<div style="font-size:13px; line-height:1.65; color: var(--text-color); margin-top: 6px;">' + window.escapeHTML(window.t('playReviewDetailsText', {}, lang)) + '</div>' +
             '<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">' + reviewStatusHtml + '</div>' +
-            reviewCheckboxHtml +
+            reviewActionHtml +
             reviewRewardHtml +
             reviewRejectedHtml +
             '<button class="btn btn-secondary" style="width:100%; margin-top:10px; background-color: rgba(52,199,89,0.12); color: var(--text-color); border: 1px solid rgba(52,199,89,0.24);" onclick="openPlayReviewStoreByAppId(' + Number(test.id) + ', event)">' +

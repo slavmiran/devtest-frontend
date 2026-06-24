@@ -197,6 +197,7 @@ Object.assign(window, {
     closeFeedbackRewardModal,
     canPromptPlayReview,
     canTogglePlayReview,
+    getPlayReviewStatus,
     isPlayReviewMarked,
     getPlayReviewUrl,
     setPlayReviewSubmittedPending,
