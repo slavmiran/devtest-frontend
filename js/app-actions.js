@@ -2374,7 +2374,7 @@ async function handleIconUpload(fileInput, targetFieldId) {
         formData.append('user_id', String(window.App && window.App.userId || window.userId || 0));
 
         var apiBase = (window.App && window.App.API_BASE) || '';
-        var resp = await fetch(apiBase + '/api/upload-icon', { method: 'POST', body: formData });
+        var resp = await fetch(apiBase + '/upload-icon', { method: 'POST', body: formData });
         var data = await resp.json();
 
         if (data && data.status === 'success' && data.url) {
