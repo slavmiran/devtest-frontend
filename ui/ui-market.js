@@ -57,9 +57,11 @@ function _resolveDossierOwnerProfile(testerId, appId, username, tester, marketCa
     const cleanUsername = String(username || '').trim().replace(/^@+/, '');
     let ownerUsername = cleanUsername;
     let ownerFullName = '';
+    let ownerAvatarUrl = '';
 
     if (marketCandidate) {
         ownerFullName = String(marketCandidate.owner_full_name || '').trim();
+        ownerAvatarUrl = marketCandidate.owner_avatar_url || '';
         if (!ownerUsername) {
             ownerUsername = String(marketCandidate.owner_username || '').trim().replace(/^@+/, '');
         }
@@ -75,6 +77,7 @@ function _resolveDossierOwnerProfile(testerId, appId, username, tester, marketCa
             });
             if (hit && hit.owner_full_name) {
                 ownerFullName = String(hit.owner_full_name).trim();
+                ownerAvatarUrl = hit.owner_avatar_url || '';
                 if (!ownerUsername) {
                     ownerUsername = String(hit.owner_username || '').trim().replace(/^@+/, '');
                 }
@@ -89,11 +92,15 @@ function _resolveDossierOwnerProfile(testerId, appId, username, tester, marketCa
     if (!ownerUsername && tester && tester.username) {
         ownerUsername = String(tester.username).trim().replace(/^@+/, '');
     }
+    if (!ownerAvatarUrl && tester && (tester.avatar_url || tester.tester_avatar_url)) {
+        ownerAvatarUrl = tester.avatar_url || tester.tester_avatar_url;
+    }
 
     return {
         owner_id: normalizedTesterId,
         owner_username: ownerUsername,
         owner_full_name: ownerFullName,
+        owner_avatar_url: ownerAvatarUrl,
     };
 }
 
@@ -3265,14 +3272,18 @@ function renderProjectFeedbackCards(project, items) {
         const displayName = fullName || usernameLabel || window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang));
         const isNew = item.status === 'new';
 
-        // ── Avatar initials ──
+        // ── Avatar initials & image rendering ──
         const initials = window.escapeHTML(
             (item.tester_full_name || item.tester_username || '?')
                 .trim().replace('@', '').substring(0, 2).toUpperCase()
         );
         // Generate a stable pastel hue from tester_id
         const avatarHue = ((Number(item.tester_id || 0) * 73 + 17) % 360);
-        const avatarHtml = `<div class="fb-avatar" style="--av-hue:${avatarHue}">${initials}</div>`;
+        const avatarUrl = item.tester_avatar_url || item.avatar_url;
+        const avatarHtml = `<div class="fb-avatar" style="--av-hue:${avatarHue}; overflow: hidden; position: relative;">
+            ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` : ''}
+            <span class="fb-avatar-initials" style="${avatarUrl ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%;'}">${initials}</span>
+        </div>`;
 
         // ── Header ──
         let nameHtml = '';
@@ -4554,6 +4565,26 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     var ownerUsername = String(project.owner_username || profile.owner_username || '').trim().replace(/^@+/, '');
     var ownerFullName = String(project.owner_full_name || profile.owner_full_name || '').trim();
     var safeOwnerUsername = escapeInlineJsString(ownerUsername);
+    var ownerAvatarUrl = String(project.owner_avatar_url || profile.avatar_url || profile.owner_avatar_url || '').trim();
+    var ownerAvatarHtml = '';
+    var nameForHash = ownerUsername || '?';
+    var colors = ['#f5625d', '#f5b55d', '#5df562', '#5dcbf5', '#5d62f5', '#cb5df5'];
+    var hash = 0;
+    for (var index = 0; index < nameForHash.length; index++) {
+        hash = nameForHash.charCodeAt(index) + ((hash << 5) - hash);
+    }
+    var color = colors[Math.abs(hash) % colors.length];
+    var letter = nameForHash.charAt(0).toUpperCase();
+
+    if (ownerAvatarUrl) {
+        ownerAvatarHtml = '<div class="avatar" style="background-color: ' + color + '; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 50%;">' +
+            '<img src="' + window.escapeHTML(ownerAvatarUrl) + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">' +
+            '<span style="display:none; justify-content:center; align-items:center; width:100%; height:100%; color:#fff; font-weight:700;">' + window.escapeHTML(letter) + '</span>' +
+        '</div>';
+    } else {
+        ownerAvatarHtml = getAvatar(nameForHash);
+    }
+
     var ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(ownerFullName, ownerUsername, testerId));
     var platformDays = getProjectPlatformDay(project.created_at);
     var currentGoogleDay = isProjectSynced(project) ? getProjectCurrentGoogleDay(project, platformDays) : platformDays;
@@ -4627,7 +4658,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         '<div class="details-block">' +
             '<div class="detail-section-title">' + window.escapeHTML(window.t('detail_owner_label', {}, lang)) + '</div>' +
             '<div class="detail-owner-row">' +
-                getAvatar(ownerUsername || '?') +
+                ownerAvatarHtml +
                 '<div>' +
                     '<div class="detail-owner-name notranslate">' + ownerDisplay + '</div>' +
                     '<div class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(project.last_owner_activity || '') + '\')">' +
@@ -4932,10 +4963,39 @@ function _renderDossierOtherProjectMiniCard(ownedProject, testerId) {
         ((isArchivedLike || isJoinBlocked) ? '</div>' : '</button>');
 }
 
+function renderDossierHeader(fullName, username, avatarUrl, fallbackId) {
+    const initials = window.escapeHTML(
+        (fullName || username || '?')
+            .trim().replace('@', '').substring(0, 2).toUpperCase()
+    );
+    const avatarHue = ((Number(fallbackId || 0) * 73 + 17) % 360);
+    const avatarHtml = `<div class="dossier-avatar" style="--av-hue:${avatarHue}; overflow: hidden; position: relative; width: 52px; height: 52px; border-radius: 50%; background: hsl(var(--av-hue, 220), 55%, 38%); color: rgb(255, 255, 255); font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; user-select: none;">
+        ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` : ''}
+        <span class="dossier-avatar-initials" style="${avatarUrl ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%;'}">${initials}</span>
+    </div>`;
+    
+    const cleanUsername = String(username || '').replace('@', '');
+    const dispName = fullName || (username ? '@' + cleanUsername : '');
+    const mainName = dispName || window.t('idLabel', { id: fallbackId || 0 }, lang);
+    const subName = (fullName && username) ? `@${cleanUsername}` : '';
+    const subNameHtml = subName 
+        ? `<div style="font-size: 13px; color: var(--tg-theme-link-color, var(--link-color, #3390ec)); font-weight: 500;">${window.escapeHTML(subName)}</div>` 
+        : '';
+        
+    return `
+        <div class="dossier-header-layout" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+            ${avatarHtml}
+            <div style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 18px; font-weight: 700; color: var(--tg-theme-text-color, var(--text-color, #ffffff)); line-height: 1.2; word-break: break-word;">${window.escapeHTML(mainName)}</div>
+                ${subNameHtml}
+            </div>
+        </div>
+    `;
+}
+
 async function openDossierModal(username, testerId, appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     const modal = document.getElementById('dossier-modal');
-    document.getElementById('dossier-modal-title').innerText = username ? `@${username}` : window.t('idLabel', { id: testerId }, lang);
     document.getElementById('dossier-body').innerHTML = `<p style="text-align:center; color: var(--hint-color);">${t.dossierLoading}</p>`;
     modal.classList.add('active');
 
@@ -4970,11 +5030,29 @@ async function openDossierModal(username, testerId, appId) {
 
     const tgName = username || '';
     const safeTelegramUsername = escapeInlineJsString(tgName);
+    const dossierOwnerProfile = _resolveDossierOwnerProfile(testerId, appId, tgName, tester, marketCandidate);
+
+    // Render initial header
+    document.getElementById('dossier-modal-title').innerHTML = renderDossierHeader(
+        dossierOwnerProfile.owner_full_name,
+        dossierOwnerProfile.owner_username,
+        dossierOwnerProfile.owner_avatar_url,
+        testerId
+    );
 
     let profile = { karma: 0, completed_tests: 0, total_expected_checkins: 0, total_actual_checkins: 0 };
     try {
         const resp = await fetch(`${API_BASE}/users/${testerId}/profile`);
-        if (resp.ok) profile = await resp.json();
+        if (resp.ok) {
+            profile = await resp.json();
+            // Re-render header with exact profile data
+            document.getElementById('dossier-modal-title').innerHTML = renderDossierHeader(
+                profile.full_name || dossierOwnerProfile.owner_full_name,
+                profile.username || dossierOwnerProfile.owner_username,
+                profile.avatar_url,
+                testerId
+            );
+        }
     } catch (error) {
         console.error('Dossier fetch error:', error);
     }

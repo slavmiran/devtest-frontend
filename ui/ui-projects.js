@@ -3528,6 +3528,26 @@ function openProjectDetailsModal(appId) {
     const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
     const safePackage = window.escapeHTML(test.package || '');
     const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
+    const ownerAvatarUrl = String(test.owner_avatar_url || '').trim();
+    let ownerAvatarHtml = '';
+    const nameForHash = test.owner_username || '?';
+    const colors = ['#f5625d', '#f5b55d', '#5df562', '#5dcbf5', '#5d62f5', '#cb5df5'];
+    let hash = 0;
+    for (let index = 0; index < nameForHash.length; index++) {
+        hash = nameForHash.charCodeAt(index) + ((hash << 5) - hash);
+    }
+    const color = colors[Math.abs(hash) % colors.length];
+    const letter = nameForHash.charAt(0).toUpperCase();
+
+    if (ownerAvatarUrl) {
+        ownerAvatarHtml = '<div class="avatar" style="background-color: ' + color + '; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 50%;">' +
+            '<img src="' + window.escapeHTML(ownerAvatarUrl) + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">' +
+            '<span style="display:none; justify-content:center; align-items:center; width:100%; height:100%; color:#fff; font-weight:700;">' + window.escapeHTML(letter) + '</span>' +
+        '</div>';
+    } else {
+        ownerAvatarHtml = getAvatar(nameForHash);
+    }
+
     const displayOwner = window.escapeHTML(test.owner_username ? '@' + test.owner_username : window.t('unknownLabel', {}, lang));
     const timelineMeta = getTestingTimelineMeta(test);
     const userTestingDay = timelineMeta.userTestingDay;
@@ -4046,7 +4066,7 @@ function openProjectDetailsModal(appId) {
         '<div class="details-block">' +
             '<div class="detail-section-title">' + window.t('detail_owner_label', {}, lang) + '</div>' +
             '<div class="detail-owner-row">' +
-                getAvatar(test.owner_username || '?') +
+                ownerAvatarHtml +
                 '<div>' +
                     '<div class="detail-owner-name notranslate">' + displayOwner + '</div>' +
                     '<div class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(test.last_owner_activity || '') + '\')">' +
