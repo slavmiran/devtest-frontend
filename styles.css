@@ -9538,6 +9538,18 @@ html[dir="rtl"] .guest-filter-select {
     to { transform: rotate(360deg); }
 }
 
+/* ── Icon upload spinner ── */
+.icon-upload-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-strong);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: ppc-spin 0.6s linear infinite;
+    vertical-align: middle;
+}
+
 /* ── Responsive: tall-enough screens get more breathing room ── */
 @media (min-height: 700px) {
     .ppc-body { padding-bottom: 48px; }

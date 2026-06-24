@@ -2341,6 +2341,62 @@ async function claimEarlyFinishBonus(progressId, appId) {
     }
 }
 
+function _iconUploadPending(active) {
+    document.querySelectorAll('.icon-upload-btn').forEach(function(btn) {
+        btn.disabled = !!active;
+        btn.style.opacity = active ? '0.5' : '';
+    });
+}
+
+async function handleIconUpload(fileInput, targetFieldId) {
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) return;
+    var targetField = document.getElementById(targetFieldId);
+    if (!targetField) return;
+
+    var uploadBtn = fileInput.nextElementSibling;
+    if (!uploadBtn || uploadBtn.tagName !== 'BUTTON') {
+        uploadBtn = fileInput.parentNode && fileInput.parentNode.querySelector('button');
+    }
+    var btnOrigText = uploadBtn ? uploadBtn.innerHTML : '';
+    var origPlaceholder = targetField.placeholder || '';
+
+    if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<span class="icon-upload-spinner"></span>';
+    }
+    targetField.placeholder = 'Uploading...';
+    targetField.value = '';
+
+    try {
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('user_id', String(window.App && window.App.userId || window.userId || 0));
+
+        var apiBase = (window.App && window.App.API_BASE) || '';
+        var resp = await fetch(apiBase + '/api/upload-icon', { method: 'POST', body: formData });
+        var data = await resp.json();
+
+        if (data && data.status === 'success' && data.url) {
+            targetField.value = data.url;
+        } else {
+            alert(data && data.message ? data.message : 'Upload failed');
+        }
+    } catch (e) {
+        console.error('Icon upload error:', e);
+        alert('Upload failed: network error');
+    } finally {
+        fileInput.value = '';
+        targetField.placeholder = origPlaceholder;
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = btnOrigText;
+        }
+    }
+}
+
+window.handleIconUpload = handleIconUpload;
+
 window.isTestFeedbackCheckinPending = isTestFeedbackCheckinPending;
 window.markTestFeedbackCheckinPending = markTestFeedbackCheckinPending;
 window.applyTestFeedbackCheckinPendingUi = applyTestFeedbackCheckinPendingUi;

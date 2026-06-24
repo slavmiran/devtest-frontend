@@ -438,7 +438,11 @@
                 </div>
                 <div class="form-group" style="margin-top: 12px;">
                     <label class="form-label" id="t-iconUrl" data-i18n="iconUrl">Ссылка на иконку</label>
-                    <input type="url" id="app-icon" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="url" id="app-icon" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder" style="flex: 1;">
+                        <input type="file" id="app-icon-file" accept="image/*" style="display: none;" onchange="handleIconUpload(this, 'app-icon')">
+                        <button type="button" class="btn btn-secondary icon-upload-btn" style="width: auto; padding: 0 12px; white-space: nowrap;" onclick="document.getElementById('app-icon-file').click()" data-i18n-title="uploadIcon" title="Upload icon from device">📎</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label" id="t-instructions" data-i18n="instructions">Инструкции</label>
@@ -702,7 +706,11 @@
             </div>
             <div class="form-group">
                 <label class="form-label" id="t-editIconUrl" data-i18n="iconUrl">Ссылка на иконку</label>
-                <input type="url" id="edit-icon" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder">
+                <div style="display: flex; gap: 8px;">
+                    <input type="url" id="edit-icon" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder" style="flex: 1;">
+                    <input type="file" id="edit-icon-file" accept="image/*" style="display: none;" onchange="handleIconUpload(this, 'edit-icon')">
+                    <button type="button" class="btn btn-secondary icon-upload-btn" style="width: auto; padding: 0 12px; white-space: nowrap;" onclick="document.getElementById('edit-icon-file').click()" title="Upload icon from device">📎</button>
+                </div>
             </div>
             <div class="form-group">
                 <label class="form-label" id="t-editPackage" data-i18n="editPackage">Пакет (Play Store Link)</label>
