@@ -2361,6 +2361,15 @@ async function handleIconUpload(fileInput, targetFieldId) {
     var btnOrigText = uploadBtn ? uploadBtn.innerHTML : '';
     var origPlaceholder = targetField.placeholder || '';
 
+    // Handle wizard icon elements
+    var wizardPreview = document.getElementById('wizard-icon-preview');
+    var wizardImg = document.getElementById('wizard-icon-img');
+    var wizardSpinner = wizardPreview && wizardPreview.querySelector('.wizard-icon-spinner');
+    var wizardPlaceholder = wizardPreview && wizardPreview.querySelector('.wizard-icon-placeholder-symbol');
+
+    if (wizardSpinner) wizardSpinner.classList.remove('hidden');
+    if (wizardPlaceholder) wizardPlaceholder.classList.add('hidden');
+
     if (uploadBtn) {
         uploadBtn.disabled = true;
         uploadBtn.innerHTML = '<span class="icon-upload-spinner"></span>';
@@ -2379,6 +2388,11 @@ async function handleIconUpload(fileInput, targetFieldId) {
 
         if (data && data.status === 'success' && data.url) {
             targetField.value = data.url;
+            if (wizardImg) {
+                wizardImg.src = data.url;
+                wizardImg.classList.remove('hidden');
+            }
+            targetField.dispatchEvent(new Event('input', { bubbles: true }));
         } else {
             alert(data && data.message ? data.message : 'Upload failed');
         }
@@ -2391,6 +2405,14 @@ async function handleIconUpload(fileInput, targetFieldId) {
         if (uploadBtn) {
             uploadBtn.disabled = false;
             uploadBtn.innerHTML = btnOrigText;
+        }
+        if (wizardSpinner) wizardSpinner.classList.add('hidden');
+        if (wizardPlaceholder) {
+            if (!targetField.value) {
+                wizardPlaceholder.classList.remove('hidden');
+            } else {
+                wizardPlaceholder.classList.add('hidden');
+            }
         }
     }
 }
