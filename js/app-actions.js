@@ -2369,9 +2369,17 @@ async function handleIconUpload(fileInput, targetFieldId) {
     targetField.value = '';
 
     try {
+        var userId = (window.App && window.App.userId) || window.userId || 0;
+        var tgUser = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user;
+        if (tgUser && tgUser.id) userId = tgUser.id;
+        if (!userId || userId <= 0) {
+            alert('Cannot identify user — please reload the app');
+            targetField.placeholder = '';
+            return;
+        }
         var formData = new FormData();
         formData.append('file', file);
-        formData.append('user_id', String(window.App && window.App.userId || window.userId || 0));
+        formData.append('user_id', String(userId));
 
         var apiBase = (window.App && window.App.API_BASE) || '';
         var resp = await fetch(apiBase + '/upload-icon', { method: 'POST', body: formData });
