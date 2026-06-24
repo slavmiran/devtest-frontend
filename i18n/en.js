@@ -602,7 +602,7 @@
             pendingReleaseSectionDesc: "Additional safety buffer '48h' after active testing.",
             pendingReleaseSectionHint: "Swipe horizontally to see every project in the safety buffer",
             pendingReleaseModalTitle: "Safety Buffer Active",
-            pendingReleaseModalText: "The active testing phase is complete. The project is now in the 48-hour Safety Buffer. Check-ins are not required, you can skip them. Once the owner confirms release, the project will be completed.",
+            pendingReleaseModalText: "The active testing phase is complete. The project is now in the 48-hour Safety Buffer. Check-ins are not required. Once the owner confirms release, the project will be completed automatically.",
             pendingReleaseOwnerSyncHint: "Tester check-ins are paused in the Safety Buffer. If Google Play Console shows fewer than 14 days, update Sync to resume active testing.",
             projectPendingCompletionAlert: "This project is in the Safety Buffer. A daily check-in is no longer required.",
             syncBtnTitleBefore: "🛡 Setup Protection",

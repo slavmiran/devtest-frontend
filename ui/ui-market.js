@@ -4566,26 +4566,23 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     var ownerFullName = String(project.owner_full_name || profile.owner_full_name || '').trim();
     var safeOwnerUsername = escapeInlineJsString(ownerUsername);
     var ownerAvatarUrl = String(project.owner_avatar_url || profile.avatar_url || profile.owner_avatar_url || '').trim();
-    var ownerAvatarHtml = '';
-    var nameForHash = ownerUsername || '?';
-    var colors = ['#f5625d', '#f5b55d', '#5df562', '#5dcbf5', '#5d62f5', '#cb5df5'];
-    var hash = 0;
-    for (var index = 0; index < nameForHash.length; index++) {
-        hash = nameForHash.charCodeAt(index) + ((hash << 5) - hash);
-    }
-    var color = colors[Math.abs(hash) % colors.length];
+    var nameForHash = ownerUsername || ownerFullName || '?';
     var letter = nameForHash.charAt(0).toUpperCase();
-
-    if (ownerAvatarUrl) {
-        ownerAvatarHtml = '<div class="avatar" style="background-color: ' + color + '; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 50%;">' +
+    var avatarHue = ((Number(project.owner_id || testerId || 0) * 73 + 17) % 360);
+    var ownerAvatarHtml = ownerAvatarUrl
+        ? '<div class="avatar" style="background-color: hsl(' + avatarHue + ', 55%, 38%); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 52px; height: 52px; font-size: 18px; font-weight: 700; color: #fff;">' +
             '<img src="' + window.escapeHTML(ownerAvatarUrl) + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">' +
             '<span style="display:none; justify-content:center; align-items:center; width:100%; height:100%; color:#fff; font-weight:700;">' + window.escapeHTML(letter) + '</span>' +
-        '</div>';
-    } else {
-        ownerAvatarHtml = getAvatar(nameForHash);
-    }
+        '</div>'
+        : '<div class="avatar" style="background-color: hsl(' + avatarHue + ', 55%, 38%); color: #fff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%;">' + window.escapeHTML(letter) + '</div>';
 
     var ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(ownerFullName, ownerUsername, testerId));
+    var dispName = ownerFullName || (ownerUsername ? '@' + ownerUsername : '');
+    var mainName = dispName || window.t('idLabel', { id: project.owner_id || testerId || 0 }, lang);
+    var subName = (ownerFullName && ownerUsername) ? '@' + ownerUsername : '';
+    var subNameHtml = subName
+        ? '<div class="detail-owner-username notranslate" style="font-size: 13px; color: var(--tg-theme-link-color, var(--link-color, #3390ec)); font-weight: 500; margin-top: 2px;">' + window.escapeHTML(subName) + '</div>'
+        : '';
     var platformDays = getProjectPlatformDay(project.created_at);
     var currentGoogleDay = isProjectSynced(project) ? getProjectCurrentGoogleDay(project, platformDays) : platformDays;
     var leftDays = Math.max(0, 14 - currentGoogleDay);
@@ -4657,10 +4654,11 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         syncHtml +
         '<div class="details-block">' +
             '<div class="detail-section-title">' + window.escapeHTML(window.t('detail_owner_label', {}, lang)) + '</div>' +
-            '<div class="detail-owner-row">' +
+            '<div class="detail-owner-row" style="display: flex; align-items: center; gap: 12px;">' +
                 ownerAvatarHtml +
-                '<div>' +
-                    '<div class="detail-owner-name notranslate">' + ownerDisplay + '</div>' +
+                '<div style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">' +
+                    '<div class="detail-owner-name notranslate" style="font-weight: 700; font-size: 18px; color: #ffffff; line-height: 1.2;">' + window.escapeHTML(mainName) + '</div>' +
+                    subNameHtml +
                     '<div class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(project.last_owner_activity || '') + '\')">' +
                         window.escapeHTML(ownerActivity.label) +
                     '</div>' +
@@ -4986,7 +4984,7 @@ function renderDossierHeader(fullName, username, avatarUrl, fallbackId) {
         <div class="dossier-header-layout" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
             ${avatarHtml}
             <div style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">
-                <div style="font-size: 18px; font-weight: 700; color: var(--tg-theme-text-color, var(--text-color, #ffffff)); line-height: 1.2; word-break: break-word;">${window.escapeHTML(mainName)}</div>
+                <div style="font-size: 18px; font-weight: 700; color: #ffffff; line-height: 1.2; word-break: break-word;">${window.escapeHTML(mainName)}</div>
                 ${subNameHtml}
             </div>
         </div>
@@ -4996,6 +4994,7 @@ function renderDossierHeader(fullName, username, avatarUrl, fallbackId) {
 async function openDossierModal(username, testerId, appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     const modal = document.getElementById('dossier-modal');
+    document.getElementById('dossier-modal-title').innerHTML = '';
     document.getElementById('dossier-body').innerHTML = `<p style="text-align:center; color: var(--hint-color);">${t.dossierLoading}</p>`;
     modal.classList.add('active');
 

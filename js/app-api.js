@@ -1329,6 +1329,7 @@ function _mapTestsFromApi(data) {
             owner_id: Number(app.owner_id || 0),
             owner_username: app.owner_username,
             owner_full_name: app.owner_full_name || '',
+            owner_avatar_url: app.owner_avatar_url || null,
             owner_karma: Number(app.owner_karma || 0),
             active_testers_count: app.active_testers_count,
             eligible_testers_count: Number(app.eligible_testers_count || 0),
@@ -1838,6 +1839,8 @@ function _mapProjectsFromApi(data) {
             return Object.assign({}, tester, {
                 progress_id: Number(tester.progress_id || 0),
                 tester_id: Number(tester.tester_id || 0),
+                avatar_url: tester.avatar_url || null,
+                tester_avatar_url: tester.avatar_url || null,
                 checkins_count: Number(tester.checkins_count || 0),
                 skips_count: Number(tester.skips_count || 0),
                 is_external: !!tester.is_external,

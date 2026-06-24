@@ -3529,26 +3529,21 @@ function openProjectDetailsModal(appId) {
     const safePackage = window.escapeHTML(test.package || '');
     const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
     const ownerAvatarUrl = String(test.owner_avatar_url || '').trim();
-    let ownerAvatarHtml = '';
-    const nameForHash = test.owner_username || '?';
-    const colors = ['#f5625d', '#f5b55d', '#5df562', '#5dcbf5', '#5d62f5', '#cb5df5'];
-    let hash = 0;
-    for (let index = 0; index < nameForHash.length; index++) {
-        hash = nameForHash.charCodeAt(index) + ((hash << 5) - hash);
-    }
-    const color = colors[Math.abs(hash) % colors.length];
-    const letter = nameForHash.charAt(0).toUpperCase();
+    const nameForHash = test.owner_username || test.owner_full_name || '?';
+    const avatarHue = ((Number(test.owner_id || 0) * 73 + 17) % 360);
+    const letter = nameForHash.replace(/^@+/, '').charAt(0).toUpperCase();
 
-    if (ownerAvatarUrl) {
-        ownerAvatarHtml = '<div class="avatar" style="background-color: ' + color + '; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 50%;">' +
-            '<img src="' + window.escapeHTML(ownerAvatarUrl) + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">' +
-            '<span style="display:none; justify-content:center; align-items:center; width:100%; height:100%; color:#fff; font-weight:700;">' + window.escapeHTML(letter) + '</span>' +
-        '</div>';
-    } else {
-        ownerAvatarHtml = getAvatar(nameForHash);
-    }
+    const ownerAvatarHtml = '<div id="detail-owner-avatar" class="avatar" style="background-color: hsl(' + avatarHue + ', 55%, 38%); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 52px; height: 52px; font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0; user-select: none;">' +
+        (ownerAvatarUrl ? '<img src="' + window.escapeHTML(ownerAvatarUrl) + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">' : '') +
+        '<span style="' + (ownerAvatarUrl ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%; color:#fff; font-weight:700;') + '">' + window.escapeHTML(letter) + '</span>' +
+    '</div>';
 
-    const displayOwner = window.escapeHTML(test.owner_username ? '@' + test.owner_username : window.t('unknownLabel', {}, lang));
+    const dispName = test.owner_full_name || (test.owner_username ? '@' + test.owner_username.replace(/^@+/, '') : '');
+    const mainName = dispName || window.t('idLabel', { id: test.owner_id || 0 }, lang);
+    const subName = (test.owner_full_name && test.owner_username) ? '@' + test.owner_username.replace(/^@+/, '') : '';
+    const subNameHtml = subName
+        ? '<div id="detail-owner-username" class="detail-owner-username notranslate" style="font-size: 13px; color: var(--tg-theme-link-color, var(--link-color, #3390ec)); font-weight: 500;">' + window.escapeHTML(subName) + '</div>'
+        : '';
     const timelineMeta = getTestingTimelineMeta(test);
     const userTestingDay = timelineMeta.userTestingDay;
     const skips = Number(test.skips_count || 0);
@@ -4065,16 +4060,17 @@ function openProjectDetailsModal(appId) {
 
         '<div class="details-block">' +
             '<div class="detail-section-title">' + window.t('detail_owner_label', {}, lang) + '</div>' +
-            '<div class="detail-owner-row">' +
+            '<div class="detail-owner-row" style="display: flex; align-items: center; gap: 12px;">' +
                 ownerAvatarHtml +
-                '<div>' +
-                    '<div class="detail-owner-name notranslate">' + displayOwner + '</div>' +
-                    '<div class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(test.last_owner_activity || '') + '\')">' +
+                '<div style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">' +
+                    '<div id="detail-owner-name" class="detail-owner-name notranslate" style="font-weight: 700; font-size: 18px; color: #ffffff; line-height: 1.2; word-break: break-word;">' + window.escapeHTML(mainName) + '</div>' +
+                    subNameHtml +
+                    '<div id="detail-owner-status" class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(test.last_owner_activity || '') + '\')">' +
                         window.escapeHTML(getOwnerDetailStatusText(test.last_owner_activity)) +
                     '</div>' +
                 '</div>' +
             '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('ownerKarmaText', { karma: ownerKarma }, lang) + '</div>' +
+            '<div id="detail-owner-karma" style="font-size:13px;color:var(--hint-color);margin-top:8px;">' + window.t('ownerKarmaText', { karma: ownerKarma }, lang) + '</div>' +
             '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('detail_testers_label', { count: test.active_testers_count || 0 }, lang) + '</div>' +
         '</div>' +
 
@@ -4109,6 +4105,81 @@ function openProjectDetailsModal(appId) {
     if (modal) {
         modal.dataset.appId = String(Number(test.id) || '');
         modal.classList.add('active');
+
+        // Asynchronously fetch fresh owner profile details to avoid expired Telegram avatar URLs
+        const ownerId = Number(test.owner_id || 0);
+        if (ownerId > 0) {
+            setTimeout(async () => {
+                try {
+                    const resp = await fetch(`${API_BASE}/users/${ownerId}/profile`);
+                    if (resp.ok) {
+                        const profileData = await resp.json();
+                        
+                        // Update cache/test object so it persists during this session
+                        test.owner_full_name = profileData.full_name || test.owner_full_name;
+                        test.owner_username = profileData.username || test.owner_username;
+                        test.owner_avatar_url = profileData.avatar_url || test.owner_avatar_url;
+                        test.owner_karma = typeof profileData.karma !== 'undefined' ? profileData.karma : test.owner_karma;
+                        
+                        // Check if modal is still open and displays this project
+                        const currentModal = document.getElementById('project-details-modal');
+                        if (currentModal && currentModal.classList.contains('active') && String(currentModal.dataset.appId) === String(test.id)) {
+                            // Re-calculate values
+                            const updatedDispName = test.owner_full_name || (test.owner_username ? '@' + test.owner_username.replace(/^@+/, '') : '');
+                            const updatedMainName = updatedDispName || window.t('idLabel', { id: ownerId }, lang);
+                            const updatedSubName = (test.owner_full_name && test.owner_username) ? '@' + test.owner_username.replace(/^@+/, '') : '';
+                            
+                            // Update Avatar
+                            const avatarEl = document.getElementById('detail-owner-avatar');
+                            if (avatarEl) {
+                                const updatedLetter = updatedMainName.replace(/^@+/, '').charAt(0).toUpperCase();
+                                let newInner = '';
+                                if (test.owner_avatar_url) {
+                                    newInner += '<img src="' + window.escapeHTML(test.owner_avatar_url) + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">';
+                                }
+                                newInner += '<span style="' + (test.owner_avatar_url ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%; color:#fff; font-weight:700;') + '">' + window.escapeHTML(updatedLetter) + '</span>';
+                                avatarEl.innerHTML = newInner;
+                            }
+                            
+                            // Update Name
+                            const nameEl = document.getElementById('detail-owner-name');
+                            if (nameEl) {
+                                nameEl.textContent = updatedMainName;
+                            }
+                            
+                            // Update Subtitle Username
+                            const rowTextContainer = nameEl ? nameEl.parentElement : null;
+                            if (rowTextContainer) {
+                                let usernameEl = document.getElementById('detail-owner-username');
+                                if (updatedSubName) {
+                                    if (!usernameEl) {
+                                        usernameEl = document.createElement('div');
+                                        usernameEl.id = 'detail-owner-username';
+                                        usernameEl.className = 'detail-owner-username notranslate';
+                                        usernameEl.style.fontSize = '13px';
+                                        usernameEl.style.color = 'var(--tg-theme-link-color, var(--link-color, #3390ec))';
+                                        usernameEl.style.fontWeight = '500';
+                                        rowTextContainer.insertBefore(usernameEl, document.getElementById('detail-owner-status'));
+                                    }
+                                    usernameEl.textContent = updatedSubName;
+                                } else if (usernameEl) {
+                                    usernameEl.remove();
+                                }
+                            }
+                            
+                            // Update Karma
+                            const karmaEl = document.getElementById('detail-owner-karma');
+                            if (karmaEl) {
+                                const updatedKarma = Number.isFinite(Number(test.owner_karma)) ? Number(test.owner_karma) : 0;
+                                karmaEl.textContent = window.t('ownerKarmaText', { karma: updatedKarma }, lang);
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch developer profile in details modal:', err);
+                }
+            }, 50);
+        }
 
         // Accordion & Overtime row synchronizer for days 1-14
         const accordion = document.getElementById('protection-details-accordion');
