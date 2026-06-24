@@ -355,10 +355,21 @@ function getAvatar(name) {
     return `<div class="avatar" style="background-color: ${color}">${window.escapeHTML(letter)}</div>`;
 }
 
+function resolveIconUrl(iconUrl) {
+    if (iconUrl && typeof iconUrl === 'string' && iconUrl.indexOf('/telegram-media') === 0) {
+        var base = (window.App && window.App.API_BASE) || window.API_BASE || '';
+        base = base.replace(/\/+$/, '');
+        return base + iconUrl;
+    }
+    return iconUrl || '';
+}
+window.resolveIconUrl = resolveIconUrl;
+
 function renderIcon(name, iconUrl) {
     if (iconUrl) {
+        var src = resolveIconUrl(iconUrl);
         const firstLetter = name.charAt(0).toUpperCase().replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return `<img src="${window.escapeHTML(iconUrl)}" class="avatar" style="object-fit: cover;" loading="lazy" decoding="async" onerror="this.onerror=null; this.outerHTML='<div class=\\'avatar\\' style=\\'background-color: #8e8e93;\\'>${firstLetter}</div>';">`;
+        return '<img src="' + window.escapeHTML(src) + '" class="avatar" style="object-fit: cover;" loading="lazy" decoding="async" onerror="this.onerror=null; this.outerHTML=\'<div class=\\\'avatar\\\' style=\\\'background-color: #8e8e93;\\\'>' + firstLetter + '</div>\';">';
     }
     return getAvatar(name);
 }

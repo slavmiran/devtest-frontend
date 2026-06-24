@@ -2420,7 +2420,6 @@ function updateIconPreview(inputId, previewId) {
 }
 
 window.updateIconPreview = updateIconPreview;
-window.resolveIconUrl = resolveIconUrl;
 
 window.isTestFeedbackCheckinPending = isTestFeedbackCheckinPending;
 window.markTestFeedbackCheckinPending = markTestFeedbackCheckinPending;
