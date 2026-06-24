@@ -2529,53 +2529,12 @@ window.AccessSetupManager = window.AccessSetupManager || {
     }
 };
 
-function updateIconPreview() {
-    const iconUrl = document.getElementById('app-icon').value.trim();
-    const imgEl = document.getElementById('wizard-icon-img');
-    const placeholderEl = document.querySelector('.wizard-icon-placeholder-symbol');
-    if (imgEl && placeholderEl) {
-        if (iconUrl) {
-            imgEl.src = iconUrl;
-            imgEl.classList.remove('hidden');
-            placeholderEl.classList.add('hidden');
-        } else {
-            imgEl.src = '';
-            imgEl.classList.add('hidden');
-            placeholderEl.classList.remove('hidden');
-        }
-    }
-}
-
-function updateProgressBar() {
-    const progressEl = document.getElementById('wizard-progress');
-    if (!progressEl) return;
-    
-    let percent = 15;
-    if (isAddPlayLinkValid()) {
-        percent = 50;
-        if (isAddStage2Complete()) {
-            percent = 80;
-            if (isAddStage3Valid()) {
-                percent = 100;
-            }
-        }
-    }
-    progressEl.style.width = percent + '%';
-}
-
 function openModal() {
     document.getElementById('add-modal').classList.add('active');
     resetAddFlow();
     renderGroupSection();
     setProjectTargetLang('add', 'ALL');
     updateProjectPricing('add');
-
-    // Setup listener on app-icon for 80x80 selector preview
-    const appIconEl = document.getElementById('app-icon');
-    if (appIconEl && !appIconEl.hasIconListener) {
-        appIconEl.addEventListener('input', updateIconPreview);
-        appIconEl.hasIconListener = true;
-    }
 
     // Item 10: if the user already has a saved tester email, pre-enable the opt-in and prefill it.
     const savedEmail = (typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : '') || (window.App && window.App.userEmail) || '';
@@ -2587,7 +2546,6 @@ function openModal() {
         onAcceptsEmailTestersChange();
     }
 
-    updateIconPreview();
     evaluateAddStages();
     document.getElementById('app-name').focus();
 }
@@ -2607,7 +2565,6 @@ function closeModal(event) {
         resetAddFlow();
         switchGroupTab('standard');
         resetProjectForms();
-        updateIconPreview();
         evaluateAddStages();
     }, 300);
 }
@@ -2658,38 +2615,41 @@ function resetAddFlow() {
 function switchGroupTab(tab) {
     const stdBtn = document.getElementById('seg-standard');
     const custBtn = document.getElementById('seg-custom');
-    const emailBtn = document.getElementById('seg-email');
-    if (window.addProjectFlow) window.addProjectFlow.emailMode = (tab === 'email');
-    if (stdBtn) stdBtn.classList.toggle('active', tab === 'standard');
-    if (custBtn) custBtn.classList.toggle('active', tab === 'custom');
-    if (emailBtn) emailBtn.classList.toggle('active', tab === 'email');
-    
+    if (window.addProjectFlow) window.addProjectFlow.emailMode = false;
+    if (tab === 'custom') {
+        stdBtn.classList.remove('active');
+        custBtn.classList.add('active');
+    } else {
+        stdBtn.classList.add('active');
+        custBtn.classList.remove('active');
+    }
     renderGroupSection();
     evaluateAddStages();
 }
 
 function renderGroupSection() {
-    const flow = window.addProjectFlow || {};
-    const emailMode = !!flow.emailMode;
+    const emailMode = !!(window.addProjectFlow && window.addProjectFlow.emailMode);
     const isStandard = document.getElementById('seg-standard').classList.contains('active');
-    const isCustom = document.getElementById('seg-custom').classList.contains('active');
-    
+    const segControl = document.getElementById('group-seg-control');
     const stdBlock = document.getElementById('group-standard-block');
     const custBlock = document.getElementById('group-custom-block');
-    const emailBlock = document.getElementById('group-email-block');
-    
-    const stdBtn = document.getElementById('seg-standard');
-    const custBtn = document.getElementById('seg-custom');
-    const emailBtn = document.getElementById('seg-email');
-    
-    if (stdBtn) stdBtn.classList.toggle('active', !emailMode && isStandard);
-    if (custBtn) custBtn.classList.toggle('active', !emailMode && isCustom);
-    if (emailBtn) emailBtn.classList.toggle('active', emailMode);
-    
-    if (stdBlock) stdBlock.style.display = (!emailMode && isStandard) ? '' : 'none';
-    if (custBlock) custBlock.style.display = (!emailMode && isCustom) ? '' : 'none';
-    if (emailBlock) emailBlock.style.display = emailMode ? '' : 'none';
-    
+    const banner = document.getElementById('email-mode-banner');
+    const toggleBtn = document.getElementById('use-email-testing-btn');
+
+    if (emailMode) {
+        if (segControl) segControl.style.display = 'none';
+        if (stdBlock) stdBlock.style.display = 'none';
+        if (custBlock) custBlock.style.display = 'none';
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        if (banner) banner.style.display = 'flex';
+        return;
+    }
+
+    if (segControl) segControl.style.display = '';
+    if (toggleBtn) toggleBtn.style.display = '';
+    if (banner) banner.style.display = 'none';
+    if (stdBlock) stdBlock.style.display = isStandard ? '' : 'none';
+    if (custBlock) custBlock.style.display = isStandard ? 'none' : '';
     syncStandardGroupUiState();
 }
 
@@ -2785,7 +2745,6 @@ function evaluateAddStages() {
     stage3.classList.toggle('active', stage2Done);
 
     updateAddSaveButtonState();
-    updateProgressBar();
 }
 
 function updateAddSaveButtonState() {
@@ -2918,33 +2877,17 @@ function closeImageZoom(event) {
 }
 
 function openEmailTestingModal() {
-    const stdBtn = document.getElementById('seg-standard');
-    const custBtn = document.getElementById('seg-custom');
-    window.addProjectFlow = window.addProjectFlow || {};
-    window.addProjectFlow.previousTab = (stdBtn && stdBtn.classList.contains('active')) ? 'standard' : 'custom';
-    
     document.getElementById('email-testing-modal').classList.add('active');
 }
 
 function closeEmailTestingModal(event) {
     if (event && event.target !== document.getElementById('email-testing-modal')) return;
     document.getElementById('email-testing-modal').classList.remove('active');
-    
-    const prevTab = (window.addProjectFlow && window.addProjectFlow.previousTab) || 'standard';
-    switchGroupTab(prevTab);
 }
 
 function confirmEmailTesting() {
     document.getElementById('email-testing-modal').classList.remove('active');
     if (window.addProjectFlow) window.addProjectFlow.emailMode = true;
-    
-    const stdBtn = document.getElementById('seg-standard');
-    const custBtn = document.getElementById('seg-custom');
-    const emailBtn = document.getElementById('seg-email');
-    if (stdBtn) stdBtn.classList.remove('active');
-    if (custBtn) custBtn.classList.remove('active');
-    if (emailBtn) emailBtn.classList.add('active');
-    
     renderGroupSection();
     evaluateAddStages();
 }
