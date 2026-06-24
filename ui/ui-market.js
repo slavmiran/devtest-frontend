@@ -2695,7 +2695,7 @@ function renderPlayReviewModal() {
             </div>
             <div id="play-review-preview-container" style="margin-top: 8px; display: none;"></div>
             ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 6px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}
-            <button type="button" class="btn" onclick="openPlayReviewStore()" ${reviewUrl ? '' : 'disabled'}>
+            <button type="button" class="btn" style="margin-top: 10px;" onclick="openPlayReviewStore()" ${reviewUrl ? '' : 'disabled'}>
                 ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
             </button>
             <button type="button" class="btn btn-primary" id="play-review-submit-btn" style="width: 100%; margin-top: 8px;" onclick="submitPlayReview()" ${screenshotUrl ? '' : 'disabled'}>
@@ -2703,6 +2703,15 @@ function renderPlayReviewModal() {
             </button>
         </div>
     `;
+    // Show existing screenshot preview if available
+    if (screenshotUrl) {
+        var previewContainer = document.getElementById('play-review-preview-container');
+        if (previewContainer && typeof resolveIconUrl === 'function') {
+            var resolvedUrl = resolveIconUrl(screenshotUrl);
+            previewContainer.innerHTML = '<img src="' + window.escapeHTML(resolvedUrl) + '" style="width: 100%; max-height: 200px; object-fit: contain; border-radius: 12px; border: 1px solid var(--border-weak);" onerror="this.style.display=\'none\'">';
+            previewContainer.style.display = 'block';
+        }
+    }
 }
 
 function openCheckinOptionsModal(appId, ownerUsername) {
@@ -2730,6 +2739,14 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
         confirmBtn.style.display = _checkinOptionsIsControlDay ? 'none' : 'block';
+    }
+    var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
+    if (reviewBtn) {
+        reviewBtn.innerText = window.t('checkinOptionsSendReview', {}, lang);
+        var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
+        var testingDay = test ? getResolvedTestingDay(test) : null;
+        var canReview = testingDay && testingDay >= 7 && !(test && test.play_review_status === 'approved');
+        reviewBtn.style.display = (canReview && !_checkinOptionsIsControlDay) ? 'block' : 'none';
     }
     renderCheckinReviewOptions();
     modal.classList.add('active');
@@ -2760,6 +2777,14 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
         confirmBtn.style.display = _checkinOptionsIsControlDay ? 'none' : 'block';
+    }
+    var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
+    if (reviewBtn) {
+        reviewBtn.innerText = window.t('checkinOptionsSendReview', {}, lang);
+        var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
+        var testingDay = test ? getResolvedTestingDay(test) : null;
+        var canReview = testingDay && testingDay >= 7 && !(test && test.play_review_status === 'approved');
+        reviewBtn.style.display = (canReview && !_checkinOptionsIsControlDay) ? 'block' : 'none';
     }
     renderCheckinReviewOptions();
     modal.classList.add('active');

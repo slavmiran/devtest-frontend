@@ -44,6 +44,7 @@
             checkinOptionsSendScreenshot: "📸 Send a screenshot",
             checkinOptionsSendIdea: "🐞 Report a Bug / Suggest an Idea",
             checkinOptionsJustConfirm: "✅ Just confirm",
+            checkinOptionsSendReview: "📝 Leave a Google Play review",
             checkinOptionsSendReview: "Leave a Google Play Review",
             playReviewChip: "⭐ Leave Review",
             playReviewActionHint: "Open the card and mark it after posting",
