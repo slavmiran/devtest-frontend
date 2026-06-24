@@ -1950,13 +1950,21 @@ function renderTestAvatarWithPhaseBadge(test, lang) {
     
     if (isInSafetyBuffer) {
         phaseClass = 'buffer-phase';
-        phaseIcon = '⏳';
+        phaseIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 10px; height: 10px; display: block;">
+            <path d="M5 2h14M5 22h14M19 2v6a7 7 0 0 1-4.22 6.4L12 16l-2.78-1.6A7 7 0 0 1 5 8V2Z"/>
+            <path d="M5 22v-6a7 7 0 0 1 4.22-6.4L12 8l2.78 1.6A7 7 0 0 1 19 14v6Z"/>
+        </svg>`;
     } else if (userTestingDay >= 15) {
         phaseClass = 'protection-phase';
-        phaseIcon = '🛡️';
+        phaseIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 10px; height: 10px; display: block;">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>`;
     } else {
         phaseClass = 'active-phase';
-        phaseIcon = '🧪';
+        phaseIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 10px; height: 10px; display: block;">
+            <path d="M10 2v8L4.36 20.62a1 1 0 0 0 .86 1.38h13.56a1 1 0 0 0 .86-1.38L14 10V2Z"/>
+            <path d="M8.5 2h7M10 10h4M8.5 15h7"/>
+        </svg>`;
     }
     
     return `
