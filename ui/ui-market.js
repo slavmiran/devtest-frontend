@@ -2684,28 +2684,29 @@ function renderPlayReviewModal() {
         body.innerHTML = `<div class="feedback-empty">${window.escapeHTML(window.t('unexpectedError', {}, lang))}</div>`;
         return;
     }
-    var reviewRejected = !!(test.rewards_summary && test.rewards_summary.review_rejected);
+    var reviewStatus = String(test.play_review_status || 'none').toLowerCase();
+    var isPending = reviewStatus === 'pending';
+    var reviewRejected = reviewStatus === 'rejected' || !!(test.rewards_summary && test.rewards_summary.review_rejected);
     var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
     var screenshotUrl = test.play_review_screenshot_url || '';
     var safeAppName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
+    var pendingBanner = isPending ? '<div style="font-size: 13px; color: var(--accent-primary); margin: 10px 0; padding: 10px; background: var(--accent-primary-surface, rgba(160,123,255,0.12)); border-radius: 10px; text-align: center;">⏳ Your review is pending owner approval</div>' : '';
+    var uploadBlock = isPending ? '' : '<div style="display: flex; gap: 8px; align-items: center;"><input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleReviewScreenshotUpload(this, ' + _playReviewModalAppId + ')"><button type="button" class="btn btn-secondary icon-upload-btn" style="width: auto; padding: 0 12px; white-space: nowrap;" onclick="document.getElementById(\'play-review-file\').click()">📎 Upload screenshot</button></div>';
+    var submitBlock = isPending ? '' : '<button type="button" class="btn btn-primary" id="play-review-submit-btn" style="width: 100%; margin-top: 8px;" onclick="submitPlayReview()"' + (screenshotUrl ? '' : ' disabled') + '>✅ Submit for review</button>';
     body.innerHTML = `
         <div class="review-modal-card">
             <div class="review-modal-title">⭐ ${window.escapeHTML(window.t('playReviewModalTitle', {}, lang))}</div>
             <div class="review-modal-app">${safeAppName}</div>
             <div class="review-modal-text">${window.escapeHTML(window.t('playReviewModalText', {}, lang))}</div>
             <div class="review-modal-note">${window.escapeHTML(window.t('playReviewConfirmPenalty', {}, lang))}</div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleReviewScreenshotUpload(this, ${_playReviewModalAppId})">
-                <button type="button" class="btn btn-secondary icon-upload-btn" style="width: auto; padding: 0 12px; white-space: nowrap;" onclick="document.getElementById('play-review-file').click()">📎 Upload screenshot</button>
-            </div>
+            ${pendingBanner}
+            ${uploadBlock}
             <div id="play-review-preview-container" style="margin-top: 8px; display: none;"></div>
-            ${reviewRejected ? `<div style="font-size: 12px; color: #ff6b6b; margin-top: 6px;">${window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang))}</div>` : ''}
+            ${reviewRejected ? '<div style="font-size: 12px; color: #ff6b6b; margin-top: 6px;">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>' : ''}
             <button type="button" class="btn" style="margin-top: 10px;" onclick="openPlayReviewStore()" ${reviewUrl ? '' : 'disabled'}>
                 ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
             </button>
-            <button type="button" class="btn btn-primary" id="play-review-submit-btn" style="width: 100%; margin-top: 8px;" onclick="submitPlayReview()" ${screenshotUrl ? '' : 'disabled'}>
-                ✅ Submit for review
-            </button>
+            ${submitBlock}
         </div>
     `;
     // Show existing screenshot preview if available
