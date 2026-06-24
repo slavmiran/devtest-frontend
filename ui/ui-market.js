@@ -2841,6 +2841,11 @@ function checkinOptionsIdea() {
     initiateProjectFeedback(appId, checkinContext ? { checkinContext: checkinContext } : null);
 }
 
+function checkinOptionsReview() {
+    _closeCheckinOptionsModalImmediate();
+    openPlayReviewModal(_checkinOptionsAppId);
+}
+
 function checkinOptionsConfirm() {
     const appId = _checkinOptionsAppId;
     const flow = _checkinOptionsFlow;
@@ -5933,6 +5938,7 @@ Object.assign(window, {
     checkinOptionsScreenshot,
     checkinOptionsIdea,
     checkinOptionsConfirm,
+    checkinOptionsReview,
     checkinOptionsOpenReviewStore,
     toggleCheckinReviewCheckbox,
     renderPlayReviewModal,
