@@ -439,10 +439,11 @@
                 <div class="form-group" style="margin-top: 12px;">
                     <label class="form-label" id="t-iconUrl" data-i18n="iconUrl">Ссылка на иконку</label>
                     <div style="display: flex; gap: 8px;">
-                        <input type="url" id="app-icon" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder" style="flex: 1;">
+                        <input type="url" id="app-icon" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder" style="flex: 1;" oninput="updateIconPreview('app-icon', 'app-icon-preview')">
                         <input type="file" id="app-icon-file" accept="image/*" style="display: none;" onchange="handleIconUpload(this, 'app-icon')">
                         <button type="button" class="btn btn-secondary icon-upload-btn" style="width: auto; padding: 0 12px; white-space: nowrap;" onclick="document.getElementById('app-icon-file').click()" data-i18n-title="uploadIcon" title="Upload icon from device">📎</button>
                     </div>
+                    <img id="app-icon-preview" src="" alt="" style="width: 60px; height: 60px; object-fit: cover; border-radius: 12px; margin-top: 8px; display: none; border: 1px solid var(--border-weak);" onerror="this.style.display='none'">
                 </div>
                 <div class="form-group">
                     <label class="form-label" id="t-instructions" data-i18n="instructions">Инструкции</label>

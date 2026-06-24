@@ -2387,6 +2387,9 @@ async function handleIconUpload(fileInput, targetFieldId) {
 
         if (data && data.status === 'success' && data.url) {
             targetField.value = data.url;
+            if (typeof updateIconPreview === 'function') {
+                updateIconPreview(targetFieldId, targetFieldId.indexOf('edit-') === 0 ? 'edit-icon-preview' : 'app-icon-preview');
+            }
         } else {
             alert(data && data.message ? data.message : 'Upload failed');
         }
@@ -2404,6 +2407,20 @@ async function handleIconUpload(fileInput, targetFieldId) {
 }
 
 window.handleIconUpload = handleIconUpload;
+
+function updateIconPreview(inputId, previewId) {
+    var input = document.getElementById(inputId);
+    var preview = document.getElementById(previewId);
+    if (!input || !preview) return;
+    var url = (input.value || '').trim();
+    if (!url) { preview.style.display = 'none'; preview.src = ''; return; }
+    if (typeof resolveIconUrl === 'function') url = resolveIconUrl(url);
+    preview.src = url;
+    preview.style.display = 'block';
+}
+
+window.updateIconPreview = updateIconPreview;
+window.resolveIconUrl = resolveIconUrl;
 
 window.isTestFeedbackCheckinPending = isTestFeedbackCheckinPending;
 window.markTestFeedbackCheckinPending = markTestFeedbackCheckinPending;
