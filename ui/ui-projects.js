@@ -1659,12 +1659,12 @@ function openPpcTopUpModal() {
             </div>
 
             <div class="ppc-topup-counter-row">
-                <button type="button" class="ppc-topup-step-btn" onclick="_ppcTopupChangeTip(-10)">−</button>
+                <button type="button" class="ppc-topup-step-btn" onclick="_ppcTopupChangeTip(-5)">−</button>
                 <div class="ppc-topup-counter-wrap">
                     <span class="ppc-topup-value notranslate" id="ppc-topup-amount">0</span>
                     <span class="ppc-topup-unit">$BUST</span>
                 </div>
-                <button type="button" class="ppc-topup-step-btn" onclick="_ppcTopupChangeTip(10)">+</button>
+                <button type="button" class="ppc-topup-step-btn" onclick="_ppcTopupChangeTip(5)">+</button>
             </div>
 
             <div class="ppc-topup-chips">
@@ -1698,7 +1698,7 @@ function closePpcTopUpModal() {
     setTimeout(() => overlay.remove(), 280);
 }
 
-/** Steps the top-up amount by delta (multiples of 10, min 0). */
+/** Steps the top-up amount by delta (multiples of 5, min 0). */
 function _ppcTopupChangeTip(delta) {
     const el = document.getElementById('ppc-topup-amount');
     if (!el) return;
