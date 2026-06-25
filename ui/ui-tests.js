@@ -894,7 +894,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
                 reviewLabel = '✅ ' + window.t('playReviewDetailsCompletedChip', {}, lang);
                 reviewClass = 'meta-chip accent-green';
             } else if (reviewStatus === 'rejected') {
-                reviewLabel = '❌ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
+                reviewLabel = '⭐️ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
                 reviewClass = 'meta-chip accent-red';
             }
             parts.push(`<button class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${window.escapeHTML(reviewLabel)}</button>`);
