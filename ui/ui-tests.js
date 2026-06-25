@@ -1681,10 +1681,11 @@ function renderTests(force) {
             const testingDay = userTestingDay || 999;
             if (testingDay >= 15) {
                 const poolAmount = Number(test.protection_bust_pool || 0);
-                const extraPaid = Number(test.paid_protection_days || 0);
-                const activeTesters = Math.max(1, test.active_testers_count || 1);
-                // Formula: pool / max(1, purchased_days) / active_testers
-                const calculatedBust = poolAmount > 0 ? (poolAmount / Math.max(1, extraPaid) / activeTesters) : 0;
+                const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+                const remainingDays = Math.max(1, (14 + extraPaid) - testingDay + 1);
+                const eligibleTesters = Math.max(1, test.eligible_testers_count || 1);
+                const rawCalculatedBust = poolAmount > 0 ? (poolAmount / remainingDays / eligibleTesters) : 0;
+                const calculatedBust = Math.round(rawCalculatedBust * 10) / 10;
                 const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
                 
                 let hintHtml = '';
@@ -2038,12 +2039,13 @@ function openPhaseInfoModal(testId, event) {
         
         // Calculate reward pool share
         const poolAmount = Number(test.protection_bust_pool || 0);
-        const dailyPool = poolAmount / Math.max(1, extraPaid);
-        const testersCount = Number(test.active_testers_count || 1);
-        const estimatedShare = dailyPool / Math.max(1, testersCount);
+        const remainingDays = Math.max(1, (14 + extraPaid) - userTestingDay + 1);
+        const eligibleTesters = Math.max(1, test.eligible_testers_count || 1);
+        const rawEstimatedShare = poolAmount > 0 ? (poolAmount / remainingDays / eligibleTesters) : 0;
+        const estimatedShare = Math.round(rawEstimatedShare * 10) / 10;
         const shareFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(estimatedShare, 1) : estimatedShare.toFixed(1);
         
-        const rewardValue = `~${shareFormatted} BUST / ${lang === 'ru' ? 'день' : 'day'}`;
+        const rewardValue = `${shareFormatted} BUST / ${lang === 'ru' ? 'день' : 'day'}`;
         const rewardValEl = document.getElementById('ppc-phase-modal-reward-value');
         if (rewardValEl) rewardValEl.innerText = rewardValue;
         

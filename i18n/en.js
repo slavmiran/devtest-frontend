@@ -627,7 +627,7 @@
             ppcWarningUninstall: "⚠️ Do not uninstall the app! Keep it to receive additional daily rewards.",
             ppcProtectionBonusAvailable: "Protection Bonus: +{amount} $BUST available",
             ppcTitleActive: "Protection Active",
-            ppcTesterCheckinHintBoth: "Reward: ~{bust} $BUST & +0.5 ☯️ Karma",
+            ppcTesterCheckinHintBoth: "Reward: {bust} $BUST & +0.5 ☯️ Karma",
             ppcTesterCheckinHintKarma: "Reward: Protection Bonus & +0.5 ☯️ Karma",
             appInstalledBtnLabel: "✅ App Installed",
             ppcTopupSuccessToast: "🛡 Reward pool topped up!",

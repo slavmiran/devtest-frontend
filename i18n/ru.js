@@ -626,7 +626,7 @@
             ppcWarningUninstall: "⚠️ Не удаляйте приложение! Держите его установленным для получения ежедневных наград.",
             ppcProtectionBonusAvailable: "Бонус защиты: доступно +{amount} $BUST",
             ppcTitleActive: "Защита активна",
-            ppcTesterCheckinHintBoth: "Награда: ~{bust} $BUST и +0.5 ☯️ Кармы",
+            ppcTesterCheckinHintBoth: "Награда: {bust} $BUST и +0.5 ☯️ Кармы",
             ppcTesterCheckinHintKarma: "Награда: Бонус защиты и +0.5 ☯️ Кармы",
             appInstalledBtnLabel: "✅ Приложение установлено",
             ppcTopupSuccessToast: "🛡 Пул наград пополнен!",
