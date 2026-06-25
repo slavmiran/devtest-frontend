@@ -629,7 +629,7 @@
             ppcBufferTabDesc: "The project is in the release waiting section. Testers cannot make check-ins but must keep the app installed. When the timer expires, the project will automatically complete.",
             ppcRewardPerTesterDay: "Daily fund: ~{amount} $BUST / day",
             ppcRewardPerTesterDayZero: "Daily fund: ~0 $BUST / day (Only +0.5 Karma)",
-            ppcRewardPoolSubtitle: "{days} protection days • shared for holding the app past day 14",
+            ppcRewardPoolSubtitle: "{days} protection days • {remaining} day(s) left",
             ppcWarningUninstall: "⚠️ Do not uninstall the app! Keep it to receive additional daily rewards.",
             ppcProtectionBonusAvailable: "Protection Bonus: +{amount} $BUST available",
             ppcTitleActive: "Protection Active",

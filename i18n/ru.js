@@ -628,7 +628,7 @@
             ppcBufferTabDesc: "Проект находится в разделе ожидания релиза. Тестеры не могут делать чекины, но должны сохранять приложение установленным. По истечении таймера проект будет автоматически завершен.",
             ppcRewardPerTesterDay: "Дневной фонд: ~{amount} $BUST / день",
             ppcRewardPerTesterDayZero: "Дневной фонд: ~0 $BUST / день (Только +0.5 Кармы)",
-            ppcRewardPoolSubtitle: "{days} дн. защиты",
+            ppcRewardPoolSubtitle: "{days} дн. защиты • осталось {remaining} дн.",
             ppcWarningUninstall: "⚠️ Не удаляйте приложение! Держите его установленным для получения ежедневных наград.",
             ppcProtectionBonusAvailable: "Бонус защиты: доступно +{amount} $BUST",
             ppcTitleActive: "Защита активна",

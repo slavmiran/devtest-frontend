@@ -1393,14 +1393,19 @@ function _renderProtectionCenterState2(project, platformDay, googleDay) {
 
     // Reward pool
     const poolAmount = Number(project.protection_bust_pool || 0);
-    // Daily pool: poolAmount / Math.max(1, extraPaid)
-    const dailyPoolAmount = poolAmount / Math.max(1, extraPaid);
+    // Remaining days of protection
+    const remainingDays = platformDay < 15
+        ? extraPaid
+        : Math.max(0, (14 + extraPaid) - platformDay + 1);
+
+    // Daily pool: poolAmount / remainingDays (if remainingDays > 0)
+    const dailyPoolAmount = remainingDays > 0 ? (poolAmount / remainingDays) : 0;
     const dailyPoolAmountFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(dailyPoolAmount, 1) : dailyPoolAmount.toFixed(1);
 
     const rewardText = (poolAmount > 0 && dailyPoolAmount > 0)
         ? T('ppcRewardPerTesterDay', { amount: dailyPoolAmountFormatted })
         : T('ppcRewardPerTesterDayZero');
-    const subtitleText = T('ppcRewardPoolSubtitle', { days: extraPaid });
+    const subtitleText = T('ppcRewardPoolSubtitle', { days: extraPaid, remaining: remainingDays });
 
     // Pending release attention
     const pendingHtml = isPendingCompletion
