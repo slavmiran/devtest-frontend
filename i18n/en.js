@@ -100,7 +100,7 @@
             checkinEarnBust: "✅ Check-in counted! Earned: {amount} 💎$BUST",
             checkinEarnKarma: "✅ Check-in counted! Earned: {amount} ☯️ Karma",
             checkinEarnBustAndKarma: "✅ Check-in counted! Earned: {bust} $BUST + {karma} ☯️",
-            bountyDailyReward: "💎 ~{amount} $BUST per check-in",
+            bountyDailyReward: "💎 {amount} $BUST per check-in",
             retryBtn: "🔄 Retry",
             loadError: "Failed to load data",
             leaveReview: "🌟 Leave Private Review",

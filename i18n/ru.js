@@ -99,7 +99,7 @@
             checkinEarnBust: "✅ Чекин засчитан! Заработано: {amount} 💎$BUST",
             checkinEarnKarma: "✅ Чекин засчитан! Заработано: {amount} ☯️ Кармы",
             checkinEarnBustAndKarma: "✅ Чекин засчитан! Заработано: {bust} $BUST + {karma} ☯️",
-            bountyDailyReward: "💎 ~{amount} $BUST за чекин",
+            bountyDailyReward: "💎 {amount} $BUST за чекин",
             retryBtn: "🔄 Повторить попытку",
             loadError: "Не удалось загрузить данные",
             leaveReview: "🌟 Оставить приватный отзыв",

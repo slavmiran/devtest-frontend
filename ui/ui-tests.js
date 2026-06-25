@@ -1680,12 +1680,7 @@ function renderTests(force) {
         } else if (test.status === 'daily' || test.status === 'opened') {
             const testingDay = userTestingDay || 999;
             if (testingDay >= 15) {
-                const poolAmount = Number(test.protection_bust_pool || 0);
-                const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
-                const remainingDays = Math.max(1, (14 + extraPaid) - testingDay + 1);
-                const eligibleTesters = Math.max(1, test.eligible_testers_count || 1);
-                const rawCalculatedBust = poolAmount > 0 ? (poolAmount / remainingDays / eligibleTesters) : 0;
-                const calculatedBust = Math.round(rawCalculatedBust * 10) / 10;
+                const calculatedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : 0;
                 const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
                 
                 let hintHtml = '';
@@ -1759,7 +1754,9 @@ function renderTests(force) {
 
                 // Bounty daily reward hint
                 if (test.join_type === 'bounty' && test.bounty_per_tester > 0) {
-                    var dailyReward = (test.bounty_per_tester * 0.65 / 14).toFixed(1);
+                    const dailyReward = typeof test.exact_daily_reward !== 'undefined'
+                        ? Number(test.exact_daily_reward).toFixed(1)
+                        : (test.bounty_per_tester * 0.65 / 14).toFixed(1);
                     actionsHtml += '<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">' + window.t('bountyDailyReward', { amount: dailyReward }, lang) + '</div>';
                 }
             }
@@ -2038,11 +2035,7 @@ function openPhaseInfoModal(testId, event) {
         showLeaveLink = true;
         
         // Calculate reward pool share
-        const poolAmount = Number(test.protection_bust_pool || 0);
-        const remainingDays = Math.max(1, (14 + extraPaid) - userTestingDay + 1);
-        const eligibleTesters = Math.max(1, test.eligible_testers_count || 1);
-        const rawEstimatedShare = poolAmount > 0 ? (poolAmount / remainingDays / eligibleTesters) : 0;
-        const estimatedShare = Math.round(rawEstimatedShare * 10) / 10;
+        const estimatedShare = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : 0;
         const shareFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(estimatedShare, 1) : estimatedShare.toFixed(1);
         
         const rewardValue = `${shareFormatted} BUST / ${lang === 'ru' ? 'день' : 'day'}`;
