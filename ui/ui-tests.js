@@ -888,10 +888,10 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             let reviewLabel = window.t('playReviewChip', {}, lang);
             let reviewClass = 'meta-chip accent-yellow';
             if (reviewStatus === 'pending') {
-                reviewLabel = '⏳ ' + window.t('playReviewDetailsPendingChip', {}, lang);
+                reviewLabel = '⭐️ ' + window.t('playReviewDetailsPendingChip', {}, lang);
                 reviewClass = 'meta-chip accent-blue';
             } else if (reviewStatus === 'approved') {
-                reviewLabel = '✅ ' + window.t('playReviewDetailsCompletedChip', {}, lang);
+                reviewLabel = '⭐️ ' + window.t('playReviewDetailsCompletedChip', {}, lang);
                 reviewClass = 'meta-chip accent-green';
             } else if (reviewStatus === 'rejected') {
                 reviewLabel = '⭐️ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
@@ -1963,7 +1963,7 @@ function renderCheckinRewardHint(test, testingDay, lang) {
             const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
             return `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('testerCheckinHintBoth', { bust: calculatedBustFormatted, karma: karmaVal }, lang))}</div>`;
         } else {
-            return `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('testerCheckinHintKarma', { karma: karmaVal }, lang))}</div>`;
+            return '';
         }
     }
 }

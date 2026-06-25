@@ -59,7 +59,7 @@
             playReviewDetailsText: "This app currently needs your Google Play reviews. If you find the app useful, please leave a short honest review: it helps the developer pass testing-period moderation and supports the whole mutual-testing community.",
             playReviewDetailsOpenBtn: "⭐ Leave a Google Play review",
             playReviewDetailsCompletedChip: "Review confirmed",
-            playReviewDetailsPendingChip: "Sent for review",
+            playReviewDetailsPendingChip: "Under review",
             playReviewDetailsNotSubmittedChip: "Not submitted yet",
             playReviewDetailsRejectedChip: "Rejected",
             playReviewDetailsPlatformReward: "Platform reward: +{amount} ☯️",

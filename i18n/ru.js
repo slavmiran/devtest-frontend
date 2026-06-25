@@ -58,7 +58,7 @@
             playReviewDetailsText: "Этому приложению сейчас особенно важны ваши отзывы в Google Play. Если приложение вам подходит, оставьте короткий честный отзыв: это помогает разработчику пройти модерацию тестового периода, а платформа сильнее поддерживает всех участников взаимного тестирования.",
             playReviewDetailsOpenBtn: "⭐ Оставить отзыв в Google Play",
             playReviewDetailsCompletedChip: "Отзыв подтвержден",
-            playReviewDetailsPendingChip: "Отправлено на проверку",
+            playReviewDetailsPendingChip: "На проверке",
             playReviewDetailsNotSubmittedChip: "Еще не отправлял",
             playReviewDetailsRejectedChip: "Отклонено",
             playReviewDetailsPlatformReward: "Награда платформы: +{amount} ☯️",
