@@ -79,6 +79,8 @@
             playReviewScreenshotMissing: "Screenshot is not attached",
             uploadScreenshotBtn: "Upload screenshot",
             submitForReviewBtn: "Submit for review",
+            playReviewAutoCheckinWarning: "⚠️ This action will also complete today's test — it will perform the check-in",
+            playReviewSubmittedToast: "Review submitted for moderation!",
             feedbackRejectBtn: "Reject",
             appRewardsTitle: "Rewards for this app",
             appRewardsCheckinKarma: "Check-in karma",

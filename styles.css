@@ -6497,6 +6497,18 @@ html[dir="rtl"] .guest-filter-select {
     font-weight: 700;
     text-align: center;
 }
+.play-review-autocheckin-note {
+    margin-top: 10px;
+    margin-bottom: 2px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    line-height: 1.4;
+    font-weight: 700;
+    color: var(--warning);
+    background: var(--warning-surface);
+    border: 1px solid var(--warning-border);
+}
 .play-review-store-btn,
 .play-review-upload-btn,
 #play-review-submit-btn {

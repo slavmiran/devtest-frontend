@@ -78,6 +78,8 @@
             playReviewScreenshotMissing: "Скриншот не прикреплен",
             uploadScreenshotBtn: "Загрузить скриншот",
             submitForReviewBtn: "Отправить на проверку",
+            playReviewAutoCheckinWarning: "⚠️ Это действие также завершит сегодняшний тест — выполнит чекин",
+            playReviewSubmittedToast: "Отзыв успешно отправлен на проверку!",
             feedbackRejectBtn: "Отклонить",
             appRewardsTitle: "Награды по этому приложению",
             appRewardsCheckinKarma: "Карма за чекины",

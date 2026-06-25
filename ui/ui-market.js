@@ -2676,6 +2676,15 @@ function renderPlayReviewModal() {
         statusBanner = '<div class="play-review-state play-review-state--rejected">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>';
     }
     var isReadOnly = isPending || isApproved;
+    var todayLocal = (typeof getLocalDate === 'function') ? getLocalDate() : '';
+    var appStatus = String(test.app_status || 'active').toLowerCase();
+    var progressStatus = String(test.progress_status || 'active').toLowerCase();
+    var isPendingCompletion = appStatus === 'pending_completion';
+    var isArchivedOrCompleted = (appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active';
+    var markerShouldShow = (_playReviewModalSource === 'badge') && !isReadOnly && !isPendingCompletion && !isArchivedOrCompleted && !!todayLocal && String(test.last_check_date || '') !== String(todayLocal);
+    var autoCheckinMarkerHtml = markerShouldShow
+        ? '<div class="play-review-autocheckin-note">' + window.escapeHTML(window.t('playReviewAutoCheckinWarning', {}, lang)) + '</div>'
+        : '';
     var uploadBlock = isReadOnly ? '' : '<div class="play-review-upload-row"><input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleReviewScreenshotUpload(this, ' + _playReviewModalAppId + ')"><button type="button" class="btn btn-secondary icon-upload-btn play-review-upload-btn" onclick="document.getElementById(\'play-review-file\').click()">📎 ' + window.escapeHTML(window.t('uploadScreenshotBtn', {}, lang)) + '</button></div>';
     var submitBlock = isReadOnly ? '' : '<button type="button" class="btn btn-primary" id="play-review-submit-btn" onclick="submitPlayReview()"' + (screenshotUrl ? '' : ' disabled') + '>✅ ' + window.escapeHTML(window.t('submitForReviewBtn', {}, lang)) + '</button>';
     body.innerHTML = `
@@ -2684,6 +2693,7 @@ function renderPlayReviewModal() {
             <div class="review-modal-app">${safeAppName}</div>
             <div class="review-modal-text">${window.escapeHTML(window.t('playReviewModalText', {}, lang))}</div>
             <div class="review-modal-note">${window.escapeHTML(window.t('playReviewConfirmPenalty', {}, lang))}</div>
+            ${autoCheckinMarkerHtml}
             ${statusBanner}
             <button type="button" class="btn play-review-store-btn" onclick="openPlayReviewStore()" ${reviewUrl ? '' : 'disabled'}>
                 ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
@@ -2876,10 +2886,8 @@ async function submitPlayReview() {
     var userId = (window.App && window.App.userId) || window.userId || 0;
     var formData = new FormData();
     formData.append('user_id', String(userId));
-    if (_playReviewModalSource === 'checkin') {
-        formData.append('auto_checkin', 'true');
-        if (typeof getLocalDate === 'function') formData.append('local_date', getLocalDate());
-    }
+    formData.append('auto_checkin', 'true');
+    if (typeof getLocalDate === 'function') formData.append('local_date', getLocalDate());
     try {
         var apiBase = (window.App && window.App.API_BASE) || '';
         var resp = await fetch(apiBase + '/projects/' + _playReviewModalAppId + '/play-review/submit', {
@@ -2900,8 +2908,42 @@ async function submitPlayReview() {
                 }
                 persistTestsCacheSnapshot();
             }
+            var checkin = data.checkin || null;
+            var checkinPerformed = !!data.checkin_performed;
+            if (!checkinPerformed && checkin && !checkin.already_checked_today) {
+                checkinPerformed = true;
+            }
             if (typeof showToast === 'function') {
-                showToast(window.t('playReviewDetailsPendingChip', {}, lang));
+                if (checkinPerformed && checkin) {
+                    var earnedBust = Number(checkin.earned_bust || 0);
+                    var earnedKarma = Number(checkin.earned_karma || 0);
+                    var sourceType = String(checkin.source_type || '').toLowerCase();
+                    var rewardBust = Number(checkin.reward_bust || checkin.earned_bust || 0);
+                    if (sourceType === 'overtime_checkin' && rewardBust > 0) {
+                        var karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
+                        var bustVal = formatAmountValue(rewardBust, 1);
+                        if (lang === 'ru') {
+                            showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
+                        } else {
+                            showToast(`Check-in successful! +${karmaVal} ☯️ Karma and +${bustVal}💎$BUST`);
+                        }
+                    } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
+                        showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+                    } else if (earnedBust > 0 && earnedKarma > 0) {
+                        showToast(window.t('checkinEarnBustAndKarma', {
+                            bust: formatAmountValue(earnedBust, 1),
+                            karma: formatAmountValue(earnedKarma, 1)
+                        }, lang));
+                    } else if (earnedBust > 0) {
+                        showToast(window.t('checkinEarnBust', { amount: formatAmountValue(earnedBust, 1) }, lang));
+                    } else if (earnedKarma > 0) {
+                        showToast(window.t('checkinEarnKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+                    } else {
+                        showToast(window.t('successCheckin', {}, lang));
+                    }
+                } else {
+                    showToast(window.t('playReviewSubmittedToast', {}, lang));
+                }
             }
             renderPlayReviewModal();
             if (typeof window.renderTests === 'function') window.renderTests(true);
