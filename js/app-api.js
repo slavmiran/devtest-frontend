@@ -1343,6 +1343,7 @@ function _mapTestsFromApi(data) {
             skips_count: resolvedSkipsCount,
             last_sync_date: app.last_sync_date || null,
             testing_days: testingDays,
+            exact_daily_reward: typeof app.exact_daily_reward !== 'undefined' ? Number(app.exact_daily_reward) : 0,
             grant_claimed: !!app.grant_claimed,
             progress_status: app.progress_status || 'active',
             app_status: app.app_status || 'active',

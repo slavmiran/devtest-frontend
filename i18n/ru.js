@@ -628,6 +628,8 @@
             ppcTitleActive: "Защита активна",
             ppcTesterCheckinHintBoth: "Награда: {bust} $BUST и +0.5 ☯️ Кармы",
             ppcTesterCheckinHintKarma: "Награда: Бонус защиты и +0.5 ☯️ Кармы",
+            testerCheckinHintBoth: "Награда: {bust} $BUST и +{karma} ☯️ Кармы",
+            testerCheckinHintKarma: "Награда: +{karma} ☯️ Кармы",
             appInstalledBtnLabel: "✅ Приложение установлено",
             ppcTopupSuccessToast: "🛡 Пул наград пополнен!",
             ppcStateASafeTitle: "✅ Защита не требуется",

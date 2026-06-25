@@ -629,6 +629,8 @@
             ppcTitleActive: "Protection Active",
             ppcTesterCheckinHintBoth: "Reward: {bust} $BUST & +0.5 ☯️ Karma",
             ppcTesterCheckinHintKarma: "Reward: Protection Bonus & +0.5 ☯️ Karma",
+            testerCheckinHintBoth: "Reward: {bust} $BUST & +{karma} ☯️ Karma",
+            testerCheckinHintKarma: "Reward: +{karma} ☯️ Karma",
             appInstalledBtnLabel: "✅ App Installed",
             ppcTopupSuccessToast: "🛡 Reward pool topped up!",
             ppcStateASafeTitle: "✅ Protection not required",

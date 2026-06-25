@@ -1657,6 +1657,7 @@ function renderTests(force) {
             const groupUrl = test.google_group_url || 'https://groups.google.com/g/google-play-dev-test';
             const safeGroupUrl = escapeInlineJsString(groupUrl);
             const shouldShowScreenshotAction = window.isFirstDayScreenshotVisible ? window.isFirstDayScreenshotVisible(test.id) : false;
+            const hintHtml = renderCheckinRewardHint(test, 1, lang);
             actionsHtml = `
                 <div class="first-day-actions">
                     <div class="first-day-row">
@@ -1676,17 +1677,12 @@ function renderTests(force) {
                     </div>
                 </div>
                 ${issueBtnHtml}
+                ${hintHtml}
             `;
         } else if (test.status === 'daily' || test.status === 'opened') {
             const testingDay = userTestingDay || 999;
             if (testingDay >= 15) {
-                const calculatedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : 0;
-                const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
-                
-                let hintHtml = '';
-                if (calculatedBust > 0) {
-                    hintHtml = `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('ppcTesterCheckinHintBoth', { bust: calculatedBustFormatted }, lang))}</div>`;
-                }
+                const hintHtml = renderCheckinRewardHint(test, testingDay, lang);
                 // Do NOT show the karma-only hint when pool is empty — it promises a "Protection Bonus" that doesn't exist
 
 
@@ -1752,13 +1748,8 @@ function renderTests(force) {
                     `;
                 }
 
-                // Bounty daily reward hint
-                if (test.join_type === 'bounty' && test.bounty_per_tester > 0) {
-                    const dailyReward = typeof test.exact_daily_reward !== 'undefined'
-                        ? Number(test.exact_daily_reward).toFixed(1)
-                        : (test.bounty_per_tester * 0.65 / 14).toFixed(1);
-                    actionsHtml += '<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">' + window.t('bountyDailyReward', { amount: dailyReward }, lang) + '</div>';
-                }
+                const hintHtml = renderCheckinRewardHint(test, testingDay, lang);
+                actionsHtml += hintHtml;
             }
         } else if (test.status === 'done' && !test.isReadyToClaim) {
             // Done without claim opportunity (already claimed or ineligible)
@@ -1952,6 +1943,30 @@ Object.assign(window, {
     isExternalNormalCheckinDay,
     getExternalConfirmButtonClasses,
 });
+
+function renderCheckinRewardHint(test, testingDay, lang) {
+    const isBounty = test.join_type === 'bounty';
+    const isOvertime = testingDay >= 15;
+    const karmaVal = isOvertime ? '0.5' : '0.1';
+    
+    if (isOvertime) {
+        const calculatedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : 0;
+        if (calculatedBust > 0) {
+            const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
+            return `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('testerCheckinHintBoth', { bust: calculatedBustFormatted, karma: karmaVal }, lang))}</div>`;
+        } else {
+            return `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('testerCheckinHintKarma', { karma: karmaVal }, lang))}</div>`;
+        }
+    } else {
+        if (isBounty && test.bounty_per_tester > 0) {
+            const calculatedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : (test.bounty_per_tester * 0.65 / 14);
+            const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
+            return `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('testerCheckinHintBoth', { bust: calculatedBustFormatted, karma: karmaVal }, lang))}</div>`;
+        } else {
+            return `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('testerCheckinHintKarma', { karma: karmaVal }, lang))}</div>`;
+        }
+    }
+}
 
 let _currentInfoModalTest = null;
 
