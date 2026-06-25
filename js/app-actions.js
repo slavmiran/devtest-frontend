@@ -1682,6 +1682,15 @@ function setFeedbackRewardBust(amount) {
 }
 
 function setFeedbackRewardKarma(amount) {
+    var item = getFeedbackRewardItem();
+    var isKarmaAvailable = item ? (item.project_karma_available !== false) : true;
+    var isTesterAlreadyRewarded = item ? !!item.tester_already_rewarded_karma : false;
+    var isKarmaLocked = !isKarmaAvailable || isTesterAlreadyRewarded;
+
+    if (isKarmaLocked) {
+        amount = 0;
+    }
+
     _feedbackRewardKarma = Number(amount || 0);
     var project = getFeedbackRewardProject();
     var likesUsed = (project && project.likes_used) || 0;
@@ -1693,7 +1702,12 @@ function setFeedbackRewardKarma(amount) {
         if (chip) {
             chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
             if (code !== '0') {
-                chip.classList.toggle('is-disabled', remaining <= 0);
+                var disabled = isKarmaLocked || (remaining <= 0);
+                chip.classList.toggle('is-disabled', disabled);
+                chip.disabled = disabled;
+            } else {
+                chip.classList.remove('is-disabled');
+                chip.disabled = false;
             }
         }
     });
@@ -1848,6 +1862,22 @@ function openFeedbackRewardModal(appId, feedbackId) {
         if (fullNameText && usernameText) parts.push(usernameText);
         if (item && item.message_text) parts.push(window.t('feedbackRewardTargetHint', {}, lang));
         targetMetaEl.textContent = parts.join(' • ') || window.t('feedbackRewardTargetHint', {}, lang);
+    }
+
+    // Evaluate limits
+    var isKarmaAvailable = item ? (item.project_karma_available !== false) : true;
+    var isTesterAlreadyRewarded = item ? !!item.tester_already_rewarded_karma : false;
+    var warningEl = document.getElementById('feedback-reward-karma-warning');
+    if (warningEl) {
+        if (!isKarmaAvailable) {
+            warningEl.textContent = window.t('feedbackRewardKarmaLimitReachedWarning', {}, lang);
+            warningEl.style.display = 'block';
+        } else if (isTesterAlreadyRewarded) {
+            warningEl.textContent = window.t('feedbackRewardTesterAlreadyRewardedWarning', {}, lang);
+            warningEl.style.display = 'block';
+        } else {
+            warningEl.style.display = 'none';
+        }
     }
 
     updateFeedbackRewardKarmaStatus(project);

@@ -916,6 +916,8 @@
             feedbackRewardKarmaReadyToast: "Karma reward is already available. You can still send: {count}.",
             feedbackRewardKarmaNextToast: "The next karma reward will unlock in {count} days, around {date}.",
             feedbackRewardKarmaLimitToast: "The karma reward limit for this project has already been reached.",
+            feedbackRewardKarmaLimitReachedWarning: "Project karma limit reached (2/2). You can only reward with Boosts.",
+            feedbackRewardTesterAlreadyRewardedWarning: "This tester has already received karma for this project. Only Boosts available.",
             feedbackRewardReplyLabel: "Message to tester",
             feedbackRewardReplyPlaceholder: "Write a personal thank-you or continue the feedback conversation...",
             feedbackRewardTargetHint: "Author of this feedback",

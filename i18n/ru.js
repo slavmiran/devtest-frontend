@@ -915,6 +915,8 @@
             feedbackRewardKarmaReadyToast: "Награда кармой уже доступна. Можно выдать еще: {count}.",
             feedbackRewardKarmaNextToast: "Следующая выдача кармы станет доступна через {count} дн., ориентировочно {date}.",
             feedbackRewardKarmaLimitToast: "Лимит выдачи кармы для этого проекта уже исчерпан.",
+            feedbackRewardKarmaLimitReachedWarning: "Лимит Кармы для проекта исчерпан (2/2). Вы можете выдать только Бусты.",
+            feedbackRewardTesterAlreadyRewardedWarning: "Этот тестер уже получал Карму за этот проект. Доступны только Бусты.",
             feedbackRewardReplyLabel: "Сообщение тестеру",
             feedbackRewardReplyPlaceholder: "Напишите пару слов благодарности или продолжите коммуникацию по фидбэку...",
             feedbackRewardTargetHint: "Автор этого фидбэка",
