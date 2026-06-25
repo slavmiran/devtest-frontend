@@ -10604,4 +10604,16 @@ details[open] .accordion-arrow {
     border: 1px solid rgba(255, 59, 48, 0.15);
 }
 
+.bounty-warning-box {
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--warning-surface);
+    border: 1px solid var(--warning-border);
+    color: var(--text-color);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 16px;
+}
+
+
 

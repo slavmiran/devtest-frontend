@@ -1153,6 +1153,40 @@
         </div>
     </div>
 
+    <!-- Unified Bounty Info Modal -->
+    <div id="bounty-info-modal" class="modal-overlay" onclick="closeBountyInfoModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="bounty-modal-title" style="display: flex; align-items: center; gap: 8px;">💎 <span id="bounty-modal-title-text">Награда по контракту</span></h3>
+            
+            <div class="bounty-modal-details" style="margin-top: 16px; margin-bottom: 16px;">
+                <div class="bounty-row" style="margin-bottom: 12px; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 500;">
+                        <span id="bounty-modal-checkins-label" data-i18n="bountyModalCheckinsLabel">Ежедневные чекины (65%):</span>
+                        <span id="bounty-modal-checkins-value" class="notranslate" style="color: var(--success-color);">0 $BUST</span>
+                    </div>
+                </div>
+                
+                <div class="bounty-row" style="margin-bottom: 16px; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 500;">
+                        <span id="bounty-modal-hold-label" data-i18n="bountyModalHoldLabel">Hold-бонус (35%):</span>
+                        <span id="bounty-modal-hold-value" class="notranslate" style="color: var(--success-color);">0 $BUST</span>
+                    </div>
+                    <div id="bounty-modal-hold-hint" style="font-size: 11px; color: var(--hint-color); margin-top: 2px;" data-i18n="bountyModalHoldHint">Доступен после 14-го дня тестирования, на 15-й день</div>
+                </div>
+
+                <div class="bounty-warning-box">
+                    <span id="bounty-modal-warning-text" data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
+                </div>
+                
+                <div class="bounty-footnote" style="font-size: 11px; color: var(--hint-color); line-height: 1.4;">
+                    <span id="bounty-modal-footnote-text" data-i18n="bountyModalFootnoteText">🏆 Грант Золотого тестера рассчитывается и начисляется платформой дополнительно.</span>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%;" onclick="closeBountyInfoModal()" data-i18n="ppcModalBufferOk">Понятно</button>
+        </div>
+    </div>
+
     <div id="leave-mutual-modal" class="modal-overlay" onclick="closeLeaveMutualModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 data-i18n="leaveModalTitle">🚪 Покинуть проект</h3>

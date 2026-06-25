@@ -723,7 +723,8 @@ function getScreenshotReminderHtml(test) {
 function getTestSourceChip(test) {
     const joinType = String(test && test.join_type || '').toLowerCase();
     if (joinType === 'bounty') {
-        return `<span class="meta-chip accent-purple">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))}</span>`;
+        const bountyVal = test && test.bounty_per_tester ? Number(test.bounty_per_tester) : 0;
+        return `<span class="meta-chip accent-purple" style="cursor: pointer;" onclick="openBountyInfoModal(${test.id}, event)">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))} +${bountyVal}</span>`;
     }
     if (joinType === 'prelaunch') {
         return `<span class="meta-chip accent-blue">🚀 ${window.escapeHTML(window.t('testSourcePrelaunch', {}, lang))}</span>`;
@@ -1968,6 +1969,51 @@ function renderCheckinRewardHint(test, testingDay, lang) {
     }
 }
 
+function openBountyInfoModal(testId, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const test = myTests.find(item => item.id === testId);
+    if (!test) return;
+    
+    const bounty = Number(test.bounty_per_tester || 0);
+    const checkinsReward = Math.round(bounty * 0.65);
+    const holdReward = Math.round(bounty * 0.35);
+
+    const T = (key, vars) => window.t(key, vars || {}, lang) || key;
+
+    // Update title
+    const titleText = T('bountyModalTitle', { total: bounty });
+    const titleTextEl = document.getElementById('bounty-modal-title-text');
+    if (titleTextEl) titleTextEl.textContent = titleText;
+
+    // Update checkins reward
+    const checkinsValEl = document.getElementById('bounty-modal-checkins-value');
+    if (checkinsValEl) checkinsValEl.textContent = `${checkinsReward} $BUST`;
+
+    // Update hold reward
+    const holdValEl = document.getElementById('bounty-modal-hold-value');
+    if (holdValEl) holdValEl.textContent = `${holdReward} $BUST`;
+
+    // Show modal
+    const modal = document.getElementById('bounty-info-modal');
+    if (modal) {
+        modal.classList.add('active');
+        if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    }
+}
+
+function closeBountyInfoModal(event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    const modal = document.getElementById('bounty-info-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
 let _currentInfoModalTest = null;
 
 function renderTestAvatarWithPhaseBadge(test, lang) {
@@ -2139,3 +2185,5 @@ window.ppcProtectionModalLeave = ppcPhaseModalLeave;
 window.openBufferInfoModal = openPhaseInfoModal;
 window.closeBufferInfoModal = closePhaseInfoModal;
 window.renderTestAvatarWithPhaseBadge = renderTestAvatarWithPhaseBadge;
+window.openBountyInfoModal = openBountyInfoModal;
+window.closeBountyInfoModal = closeBountyInfoModal;
