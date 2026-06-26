@@ -624,6 +624,14 @@ var _feedbackRewardTargetId = null;
 var _feedbackRewardBust = 0;
 var _feedbackRewardKarma = 0;
 var _pendingFeedbackCheckinAppIds = {};
+try {
+    var _savedPendingFeedback = localStorage.getItem('pending_feedback_checkins_v1');
+    if (_savedPendingFeedback) {
+        _pendingFeedbackCheckinAppIds = JSON.parse(_savedPendingFeedback) || {};
+    }
+} catch (e) {
+    console.error('Failed to load pending feedback checkins from localStorage:', e);
+}
 var myProjectsLoadError = false;
 var marketCache = null;
 var MARKET_CACHE_KEY = 'market_cache_v1';

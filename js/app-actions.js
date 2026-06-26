@@ -1519,6 +1519,9 @@ function markTestFeedbackCheckinPending(appId) {
     var normalizedId = Number(appId || 0);
     if (normalizedId <= 0) return;
     _pendingFeedbackCheckinAppIds[normalizedId] = Date.now();
+    try {
+        localStorage.setItem('pending_feedback_checkins_v1', JSON.stringify(_pendingFeedbackCheckinAppIds));
+    } catch (e) {}
     applyTestFeedbackCheckinPendingUi(normalizedId);
 }
 
@@ -1526,6 +1529,9 @@ function clearTestFeedbackCheckinPending(appId) {
     var normalizedId = Number(appId || 0);
     if (normalizedId <= 0) return;
     delete _pendingFeedbackCheckinAppIds[normalizedId];
+    try {
+        localStorage.setItem('pending_feedback_checkins_v1', JSON.stringify(_pendingFeedbackCheckinAppIds));
+    } catch (e) {}
     var confirmBtn = document.getElementById('btn-confirm-' + normalizedId);
     if (confirmBtn) {
         confirmBtn.removeAttribute('data-feedback-pending');
@@ -1600,6 +1606,29 @@ function clearCompletedPendingFeedbackCheckins() {
         var card = document.getElementById('test-card-' + appId);
         if (card) card.classList.add('card-feedback-completing');
         clearTestFeedbackCheckinPending(appId);
+
+        var test = (myTests || []).find(function(item) {
+            return Number(item.id) === appId;
+        });
+        if (test) {
+            var testingDay = Number(test.testing_days || 0);
+            var isOvertime = testingDay >= 15;
+            var earnedKarma = isOvertime ? 0.5 : 0.1;
+            var earnedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : (test.join_type === 'bounty' ? test.bounty_per_tester * 0.65 / 14 : 0);
+            
+            if (earnedBust > 0 && earnedKarma > 0) {
+                showToast(window.t('checkinEarnBustAndKarma', {
+                    bust: formatAmountValue(earnedBust, 1),
+                    karma: formatAmountValue(earnedKarma, 1)
+                }, lang));
+            } else if (earnedBust > 0) {
+                showToast(t.checkinEarnBust.replace('{amount}', formatAmountValue(earnedBust, 1)));
+            } else if (earnedKarma > 0) {
+                showToast(t.checkinEarnKarma.replace('{amount}', formatAmountValue(earnedKarma, 1)));
+            } else {
+                showToast(t.successCheckin);
+            }
+        }
     });
 
     var rerender = function() {
@@ -1617,6 +1646,17 @@ function clearCompletedPendingFeedbackCheckins() {
 
 async function initiateProjectFeedback(appId, options) {
     options = options || {};
+    var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+    var isEligibleForCheckin = test && (test.status === 'new' || test.status === 'daily' || test.status === 'opened');
+    
+    if (!options.checkinContext && isEligibleForCheckin) {
+        var testingDay = typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date) : null;
+        var localDate = typeof getLocalDate === 'function' ? getLocalDate() : '';
+        if (testingDay && localDate) {
+            options.checkinContext = { day: Number(testingDay), local_date: localDate };
+        }
+    }
+
     if (options.checkinContext) {
         markTestFeedbackCheckinPending(appId);
     }
