@@ -10615,5 +10615,9 @@ details[open] .accordion-arrow {
     margin-bottom: 16px;
 }
 
+.bounty-modal-value {
+    color: var(--reward);
+    font-weight: 600;
+}
 
 
