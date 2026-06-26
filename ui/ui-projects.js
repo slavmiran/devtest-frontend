@@ -1163,9 +1163,14 @@ function _renderProtectionCenterState1(project, platformDay) {
             <a href="https://play.google.com/console/" target="_blank" class="ppc-btn-console" onclick="if(window.tg&&window.tg.openLink)window.tg.openLink('https://play.google.com/console/'); return false;">
                 ▶ ${window.escapeHTML(T('ppcOpenConsoleBtn'))}
             </a>
-            <a href="' + (window.App && window.App.publicGroupUrl || 'https://t.me/googleplay_console_12testers') + '/31/953" target="_blank" class="ppc-btn-howworks" onclick="if(window.tg&&window.tg.openLink)window.tg.openLink(\'' + (window.App && window.App.publicGroupUrl || 'https://t.me/googleplay_console_12testers') + '/31/953\'); return false;">
-                ❓ ${window.escapeHTML(T('ppcHowWorksBtn'))}
-            </a>
+            <button type="button" class="ppc-btn-howworks" onclick="toggleTestingDayInstructions()">
+                ${window.escapeHTML(T('ppcHowWorksBtn'))}
+            </button>
+        </div>
+
+        <div id="testing-day-instructions" class="ppc-instructions-accordion">
+            <p>${window.escapeHTML(T('ppcTestingDayInstructionsText'))}</p>
+            <img src="images/Testing_day.png" alt="Testing Day Screenshot">
         </div>
 
         <!-- Slider Card -->
@@ -4597,7 +4602,16 @@ async function triggerResetCooldown(projectId) {
     renderMassInviteModalContent();
 }
 
+function toggleTestingDayInstructions() {
+    const el = document.getElementById('testing-day-instructions');
+    const btn = document.querySelector('.ppc-btn-howworks');
+    if (!el) return;
+    el.classList.toggle('expanded');
+    if (btn) btn.classList.toggle('active');
+}
+
 window.openMassInviteModal = openMassInviteModal;
 window.closeMassInviteModal = closeMassInviteModal;
 window.triggerResetCooldown = triggerResetCooldown;
 window.renderMassInviteModalContent = renderMassInviteModalContent;
+window.toggleTestingDayInstructions = toggleTestingDayInstructions;
