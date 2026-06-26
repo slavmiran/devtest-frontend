@@ -552,7 +552,7 @@
             ppcSubtitleNotSynced: "Синхронизируйте проект с Google Play Console, чтобы рассчитать защиту и ориентировочную дату завершения.",
             ppcSubtitleProtected: "Ваш проект синхронизирован с Google Play Console.",
             ppcOpenConsoleBtn: "Открыть Google Play Console",
-            ppcHowWorksBtn: "❓ Где найти день тестирования?",
+            ppcHowWorksBtn: "Где найти день тестирования❓",
             ppcTestingDayInstructionsText: "Откройте Google Play Console -> Ваше приложение -> Раздел «Закрытое тестирование». Ориентируйтесь на счетчик активных дней, как показано на скриншоте.",
             ppcSliderLabel: "Ваш текущий день тестирования в Google Play",
             ppcPlatformDayLabel: "День платформы: {day}",
