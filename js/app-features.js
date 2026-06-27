@@ -1135,9 +1135,9 @@ function sanitizeSingleEmailInputValue(value) {
     return String(value || '').replace(/[\s,;]+/g, '').trim();
 }
 
-function getEmailValidationErrorCode(value) {
+function getEmailValidationErrorCode(value, required) {
     var raw = String(value || '');
-    if (!raw.trim()) return 'invalid_email_format';
+    if (!raw.trim()) return required ? 'invalid_email_format' : '';
     if (/[\s]/.test(raw)) return 'invalid_email_spaces';
     if (/[,;]/.test(raw)) return 'invalid_email_commas';
     var email = raw.trim();
@@ -1153,7 +1153,7 @@ function getEmailValidationMessage(code) {
 }
 
 function isValidEmail(value) {
-    return !getEmailValidationErrorCode(value);
+    return !getEmailValidationErrorCode(value, true);
 }
 
 if (!window.__singleEmailInputGuardBound) {
@@ -1618,7 +1618,7 @@ async function bootstrapInterfaceLanguage(options) {
 
 async function saveTesterEmail(email) {
     var candidate = sanitizeSingleEmailInputValue(email);
-    var emailValidationCode = getEmailValidationErrorCode(candidate);
+    var emailValidationCode = getEmailValidationErrorCode(candidate, false);
     if (emailValidationCode) {
         return { ok: false, code: emailValidationCode, message: getEmailValidationMessage(emailValidationCode) };
     }
@@ -1676,7 +1676,7 @@ async function saveSettingsEmail() {
     if (!input) return;
     var value = sanitizeSingleEmailInputValue(input.value);
     input.value = value;
-    var validationCode = getEmailValidationErrorCode(value);
+    var validationCode = getEmailValidationErrorCode(value, false);
     if (validationCode) {
         if (typeof window.showToast === 'function') window.showToast(getEmailValidationMessage(validationCode));
         try { input.focus(); } catch (e) {}
