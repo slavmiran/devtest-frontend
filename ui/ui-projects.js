@@ -2546,14 +2546,18 @@ function openModal() {
     setProjectTargetLang('add', 'ALL');
     updateProjectPricing('add');
 
-    // Item 10: if the user already has a saved tester email, pre-enable the opt-in and prefill it.
+    // Item 10: if the user already has a saved tester email, pre-enable the opt-in and prefill it, and hide the selector box.
     const savedEmail = (typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : '') || (window.App && window.App.userEmail) || '';
+    const addEmailBox = document.getElementById('add-email-testers-box');
     if (savedEmail) {
+        if (addEmailBox) addEmailBox.style.display = 'none';
         const acceptsBox = document.getElementById('app-accepts-email-testers');
         const testerEmail = document.getElementById('app-tester-email');
         if (acceptsBox) acceptsBox.checked = true;
         if (testerEmail) testerEmail.value = savedEmail;
         onAcceptsEmailTestersChange();
+    } else {
+        if (addEmailBox) addEmailBox.style.display = '';
     }
 
     evaluateAddStages();
@@ -3061,15 +3065,20 @@ function openEditModal(projectId) {
     document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
     document.getElementById('edit-request-reviews').checked = project.request_reviews !== false;
 
-    // Prefill email opt-in and tester email fields
+    // Prefill email opt-in and tester email fields, and hide the selector box if email already exists
     const acceptsBox = document.getElementById('edit-app-accepts-email-testers');
     const testerEmail = document.getElementById('edit-app-tester-email');
-    if (acceptsBox) {
-        acceptsBox.checked = !!project.accepts_email_testers;
-    }
+    const editEmailBox = document.getElementById('edit-add-email-testers-box');
+    
     const savedEmail = (typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : '') || (window.App && window.App.userEmail) || '';
-    if (testerEmail) {
-        testerEmail.value = savedEmail;
+    if (savedEmail) {
+        if (editEmailBox) editEmailBox.style.display = 'none';
+        if (acceptsBox) acceptsBox.checked = true;
+        if (testerEmail) testerEmail.value = savedEmail;
+    } else {
+        if (editEmailBox) editEmailBox.style.display = '';
+        if (acceptsBox) acceptsBox.checked = !!project.accepts_email_testers;
+        if (testerEmail) testerEmail.value = '';
     }
     onEditAcceptsEmailTestersChange();
 

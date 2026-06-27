@@ -806,7 +806,8 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 
 #email-testing-modal,
 #email-warning-modal,
-#edit-unsaved-modal {
+#edit-unsaved-modal,
+#email-collect-modal {
     z-index: 9999 !important;
 }
 
