@@ -804,6 +804,12 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     z-index: 200;
 }
 
+#email-testing-modal,
+#email-warning-modal,
+#edit-unsaved-modal {
+    z-index: 9999 !important;
+}
+
 .modal-overlay.active {
     opacity: 1;
     pointer-events: all;
