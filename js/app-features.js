@@ -1823,6 +1823,12 @@ var MassInviteProgressOverlay = (function () {
         if (!overlay) return;
         _currentIndex = 0;
 
+        var spinner = document.querySelector('.mi-progress-spinner');
+        if (spinner) spinner.style.display = 'block';
+
+        var closeBtn = document.getElementById('mi-progress-close-btn');
+        if (closeBtn) closeBtn.style.display = 'none';
+
         // Update static localised labels
         var titleEl        = document.getElementById('t-miProgressTitle');
         var subEl          = document.getElementById('t-miProgressSubtitle');
@@ -1877,7 +1883,30 @@ var MassInviteProgressOverlay = (function () {
         el.textContent = text;
     }
 
-    return { show: show, hide: hide, updateProgress: updateProgress };
+    function showFinalState(statusText, lang) {
+        if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
+        if (_longTimer !== null)      { clearTimeout(_longTimer);       _longTimer = null; }
+
+        var spinner = document.querySelector('.mi-progress-spinner');
+        if (spinner) spinner.style.display = 'none';
+
+        var longNotice = document.getElementById('mi-progress-long-notice');
+        if (longNotice) longNotice.classList.remove('mi-progress-long-notice--visible');
+
+        var el = document.getElementById('mi-progress-status');
+        if (el) el.textContent = statusText;
+
+        var subEl = document.getElementById('t-miProgressSubtitle');
+        if (subEl) subEl.textContent = lang === 'ru' ? 'Выполнение завершено' : 'Process completed';
+
+        var closeBtn = document.getElementById('mi-progress-close-btn');
+        if (closeBtn) {
+            closeBtn.style.display = 'block';
+            closeBtn.textContent = lang === 'ru' ? 'Закрыть' : 'Close';
+        }
+    }
+
+    return { show: show, hide: hide, updateProgress: updateProgress, showFinalState: showFinalState };
 }());
 // ──────────────────────────────────────────────────────────────
 
@@ -1896,12 +1925,13 @@ async function startMassInvite(projectId) {
     }
     MassInviteProgressOverlay.show(lang);
 
+    var shouldKeepOverlay = false;
     _apiStart();
     try {
         var planResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/plan`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId })
+            body: JSON.stringify({ owner_id: Number(userId) })
         });
         var planData = await planResponse.json();
         if (!planResponse.ok || planData.status !== 'success') {
@@ -1909,11 +1939,14 @@ async function startMassInvite(projectId) {
             return null;
         }
 
+        shouldKeepOverlay = true;
+
         var candidates = planData.candidates || [];
         var totalCount = candidates.length;
 
         if (totalCount === 0) {
-            showToast(window.t('massInviteNoCandidates', {}, lang));
+            var noCandidatesText = lang === 'ru' ? 'Кандидатов не найдено' : 'No candidates found';
+            MassInviteProgressOverlay.showFinalState(noCandidatesText, lang);
             await loadProjects(true);
             return planData;
         }
@@ -1924,13 +1957,14 @@ async function startMassInvite(projectId) {
         for (var i = 0; i < totalCount; i++) {
             var candidate = candidates[i];
             MassInviteProgressOverlay.updateProgress(i + 1, totalCount, lang);
+            await new Promise(function(resolve) { setTimeout(resolve, 150); });
 
             try {
                 var sendResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/send_one`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        owner_id: userId,
+                        owner_id: Number(userId),
                         target_app_id: Number(candidate.app_id),
                         target_owner_id: Number(candidate.owner_id)
                     })
@@ -1955,8 +1989,8 @@ async function startMassInvite(projectId) {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        owner_id: userId,
-                        sent_count: successCount
+                        owner_id: Number(userId),
+                        sent_count: Number(successCount)
                     })
                 });
                 var finData = await finResponse.json();
@@ -1978,19 +2012,28 @@ async function startMassInvite(projectId) {
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
-        if (successCount > 0) {
-            var successMsg = window.t('massInviteLaunchSuccess', { count: successCount }, lang);
+        var finalStatusText = '';
+        if (lang === 'ru') {
+            finalStatusText = 'Отправлено: ' + successCount;
             if (failedCount > 0) {
-                successMsg += ' (' + (lang === 'ru' ? 'Ошибок: ' : 'Failed: ') + failedCount + ')';
+                finalStatusText += ' • Ошибок: ' + failedCount;
             }
-            showToast(successMsg);
+        } else {
+            finalStatusText = 'Sent: ' + successCount;
+            if (failedCount > 0) {
+                finalStatusText += ' • Failed: ' + failedCount;
+            }
+        }
+
+        MassInviteProgressOverlay.showFinalState(finalStatusText, lang);
+
+        if (successCount > 0) {
             renderProjects(true);
             refreshOpenModals();
             await loadProjects(true);
             refreshMarketAfterMassInvite();
             await Promise.all([loadMutualFeed(), loadBountyFeed()]);
         } else {
-            showToast(window.t('massInviteNoCandidates', {}, lang));
             await loadProjects(true);
         }
 
@@ -2004,7 +2047,9 @@ async function startMassInvite(projectId) {
         handleApiError('network_error');
         return null;
     } finally {
-        MassInviteProgressOverlay.hide();
+        if (!shouldKeepOverlay) {
+            MassInviteProgressOverlay.hide();
+        }
         if (btn) {
             btn.classList.remove('is-loading');
             btn.disabled = false;
