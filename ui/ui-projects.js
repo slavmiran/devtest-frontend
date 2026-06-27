@@ -2886,7 +2886,8 @@ function closeImageZoom(event) {
     if (modal) modal.classList.remove('active');
 }
 
-function openEmailTestingModal() {
+function openEmailTestingModal(target) {
+    window._emailModeTarget = target || 'add';
     document.getElementById('email-testing-modal').classList.add('active');
 }
 
@@ -2897,14 +2898,50 @@ function closeEmailTestingModal(event) {
 
 function confirmEmailTesting() {
     document.getElementById('email-testing-modal').classList.remove('active');
-    if (window.addProjectFlow) window.addProjectFlow.emailMode = true;
-    renderGroupSection();
-    evaluateAddStages();
+    if (window._emailModeTarget === 'edit') {
+        setEditAccessTab('email_list');
+    } else {
+        if (window.addProjectFlow) window.addProjectFlow.emailMode = true;
+        renderGroupSection();
+        evaluateAddStages();
+    }
 }
 
 function exitEmailTestingMode() {
     if (window.addProjectFlow) window.addProjectFlow.emailMode = false;
     switchGroupTab('standard');
+}
+
+function onEditAcceptsEmailTestersChange() {
+    const acceptsBox = document.getElementById('edit-app-accepts-email-testers');
+    const emailBox = document.getElementById('edit-add-email-testers-box');
+    if (emailBox) {
+        emailBox.classList.toggle('is-expanded', !!(acceptsBox && acceptsBox.checked));
+    }
+    if (acceptsBox && acceptsBox.checked) {
+        const testerEmail = document.getElementById('edit-app-tester-email');
+        if (testerEmail && !testerEmail.value) {
+            const prefill = (typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : '') || (window.App && window.App.userEmail) || '';
+            if (prefill) testerEmail.value = prefill;
+        }
+    }
+    _updateEditTesterEmailValidIcon();
+}
+
+function _updateEditTesterEmailValidIcon() {
+    const input = document.getElementById('edit-app-tester-email');
+    const icon = document.getElementById('edit-tester-email-valid-icon');
+    if (!input || !icon) return;
+    if (typeof sanitizeSingleEmailInputValue === 'function') {
+        input.value = sanitizeSingleEmailInputValue(input.value);
+    }
+    const value = (input.value || '').trim();
+    const isValid = isValidEmail(value);
+    icon.classList.toggle('is-visible', isValid);
+}
+
+function onEditTesterEmailInput() {
+    _updateEditTesterEmailValidIcon();
 }
 
 function _clearAddFieldErrors() {
@@ -3023,6 +3060,19 @@ function openEditModal(projectId) {
     document.getElementById('edit-limit-bounty').value = String(project.limit_bounty || 12);
     document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
     document.getElementById('edit-request-reviews').checked = project.request_reviews !== false;
+
+    // Prefill email opt-in and tester email fields
+    const acceptsBox = document.getElementById('edit-app-accepts-email-testers');
+    const testerEmail = document.getElementById('edit-app-tester-email');
+    if (acceptsBox) {
+        acceptsBox.checked = !!project.accepts_email_testers;
+    }
+    const savedEmail = (typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : '') || (window.App && window.App.userEmail) || '';
+    if (testerEmail) {
+        testerEmail.value = savedEmail;
+    }
+    onEditAcceptsEmailTestersChange();
+
     setProjectMode('edit', project.mode || 'mutual');
     setProjectTargetLang('edit', project.target_lang || 'ALL');
     renderEditAccessSetup();
@@ -3181,9 +3231,6 @@ function enterEditAccessMode() {
     if (!window.editAccessFlow) return;
     var flow = window.editAccessFlow;
     flow.uiMode = 'edit';
-    if (flow.initialMode === 'email_list' || flow.mode === 'email_list') {
-        flow.mode = 'standard_group';
-    }
     flow.isEmailCopied = false;
     flow.isConsoleOpened = false;
     flow.isChecklistRevealed = false;
@@ -3191,7 +3238,7 @@ function enterEditAccessMode() {
     flow.checklist = { email: false, countries: false, review: false };
     _clearEditSetupChecklistTimer();
     if (window.editProjectFlow) {
-        window.editProjectFlow.emailMode = false;
+        window.editProjectFlow.emailMode = flow.mode === 'email_list';
     }
     renderEditAccessSetup();
 }
@@ -3314,7 +3361,7 @@ function onEditAccessChecklistChange(item, checked) {
 }
 
 function enableEditEmailTestingMode() {
-    setEditAccessTab('email_list');
+    openEmailTestingModal('edit');
 }
 
 function copyEmail() {

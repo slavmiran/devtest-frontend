@@ -2877,6 +2877,21 @@ async function saveProjectEdit() {
         return;
     }
 
+    const acceptsBox = document.getElementById('edit-app-accepts-email-testers');
+    const acceptsEmailTesters = !!(acceptsBox && acceptsBox.checked);
+    const testerEmailInput = (document.getElementById('edit-app-tester-email').value || '').trim();
+
+    if (acceptsEmailTesters) {
+        if (!testerEmailInput) {
+            _saveProjectAlert(window.t('testerEmailRequired', {}, lang));
+            return;
+        }
+        if (!isValidEmail(testerEmailInput)) {
+            _saveProjectAlert(window.t('invalidEmail', {}, lang));
+            return;
+        }
+    }
+
     if (accessMode === 'custom_group' && !googleGroupUrl) {
         _saveProjectAlert(window.t('customGroupRequired', {}, lang));
         return;
@@ -2892,6 +2907,13 @@ async function saveProjectEdit() {
         : (accessMode === 'custom_group'
             ? googleGroupUrl
             : (window.DEFAULT_GOOGLE_GROUP_URL || googleGroupUrl));
+
+    if (acceptsEmailTesters && testerEmailInput) {
+        try {
+            window.App.userEmail = testerEmailInput;
+            if (window.App && window.App.state) window.App.state._userEmail = testerEmailInput;
+        } catch (e) { /* noop */ }
+    }
 
     const editBtn = document.getElementById('t-editSave');
     const originalText = editBtn.innerText;
@@ -2910,6 +2932,8 @@ async function saveProjectEdit() {
                 test_mode: editEmailMode ? 'email_list' : 'google_group',
                 target_lang: targetLang,
                 request_reviews: requestReviews,
+                accepts_email_testers: acceptsEmailTesters,
+                tester_email: acceptsEmailTesters ? testerEmailInput : null,
                 ...pricingPayload
             })
         });

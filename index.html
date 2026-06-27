@@ -886,6 +886,23 @@
                     </span>
                 </label>
             </div>
+            <div class="project-setting-checkbox add-email-testers-box" id="edit-add-email-testers-box" style="margin-bottom: 12px;">
+                <label class="review-checkbox-row add-email-testers-box__toggle">
+                    <input type="checkbox" id="edit-app-accepts-email-testers" onchange="onEditAcceptsEmailTestersChange()">
+                    <span>
+                        <strong data-i18n="acceptsEmailTestersLabel">Хотите получать ещё больше взаимных тестов?</strong>
+                        <small data-i18n="acceptsEmailTestersHint">Другие разработчики, использующие email-списки, смогут добавить вас в тестеры.</small>
+                    </span>
+                </label>
+                <div id="edit-tester-email-group" class="add-email-testers-expand">
+                    <label class="form-label" id="t-editTesterEmail" data-i18n="testerEmailLabel">Ваш Email тестировщика</label>
+                    <div class="email-input-wrap">
+                        <input type="email" id="edit-app-tester-email" class="form-input" placeholder="" data-i18n-placeholder="testerEmailPlaceholder" oninput="onEditTesterEmailInput()">
+                        <span id="edit-tester-email-valid-icon" class="email-valid-icon" aria-hidden="true">✓</span>
+                    </div>
+                    <div class="form-hint" id="t-editTesterEmailHint" data-i18n="testerEmailHint">Укажите email аккаунта Google Play, с которого вы будете устанавливать чужие приложения для теста.</div>
+                </div>
+            </div>
             <div id="edit-created-at" style="font-size: 12px; color: var(--hint-color); opacity: 0.75; margin: 6px 2px 12px 2px;"></div>
             <button class="btn btn-secondary transfer-trigger-btn" type="button" onclick="openProjectTransferModal(projectToEdit)" data-i18n="transferOwnershipBtn">🔐 Передать права</button>
             <div class="action-row">
