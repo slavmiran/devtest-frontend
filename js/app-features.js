@@ -1864,7 +1864,20 @@ var MassInviteProgressOverlay = (function () {
         _currentIndex = 0;
     }
 
-    return { show: show, hide: hide };
+    function updateProgress(current, total, lang) {
+        if (_rotateInterval !== null) {
+            clearInterval(_rotateInterval);
+            _rotateInterval = null;
+        }
+        var el = document.getElementById('mi-progress-status');
+        if (!el) return;
+        var text = lang === 'ru'
+            ? 'Отправка: ' + current + ' из ' + total + '...'
+            : 'Sending: ' + current + ' of ' + total + '...';
+        el.textContent = text;
+    }
+
+    return { show: show, hide: hide, updateProgress: updateProgress };
 }());
 // ──────────────────────────────────────────────────────────────
 
@@ -1885,29 +1898,92 @@ async function startMassInvite(projectId) {
 
     _apiStart();
     try {
-        var response = await fetch(`${API_BASE}/projects/${projectId}/mass_invite`, {
+        var planResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/plan`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ owner_id: userId })
         });
-        var data = await response.json();
-        if (!response.ok || data.status !== 'success') {
-            handleApiError(getBackendErrorCode(data), data && data.details ? data.details : {});
+        var planData = await planResponse.json();
+        if (!planResponse.ok || planData.status !== 'success') {
+            handleApiError(getBackendErrorCode(planData), planData && planData.details ? planData.details : {});
             return null;
         }
 
-        var sentCount = Number(data.sent_count || 0);
+        var candidates = planData.candidates || [];
+        var totalCount = candidates.length;
+
+        if (totalCount === 0) {
+            showToast(window.t('massInviteNoCandidates', {}, lang));
+            await loadProjects(true);
+            return planData;
+        }
+
+        var successCount = 0;
+        var failedCount = 0;
+
+        for (var i = 0; i < totalCount; i++) {
+            var candidate = candidates[i];
+            MassInviteProgressOverlay.updateProgress(i + 1, totalCount, lang);
+
+            try {
+                var sendResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/send_one`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        owner_id: userId,
+                        target_app_id: Number(candidate.app_id),
+                        target_owner_id: Number(candidate.owner_id)
+                    })
+                });
+                var sendData = await sendResponse.json();
+                if (sendResponse.ok && sendData.status === 'success' && sendData.sent) {
+                    successCount++;
+                } else {
+                    failedCount++;
+                }
+            } catch (err) {
+                console.error('Failed sending single mass invite:', err);
+                failedCount++;
+            }
+        }
+
+        var lastMassInviteAt = null;
+
+        if (successCount > 0) {
+            try {
+                var finResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/finalize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        owner_id: userId,
+                        sent_count: successCount
+                    })
+                });
+                var finData = await finResponse.json();
+                if (finResponse.ok && finData.status === 'success') {
+                    lastMassInviteAt = finData.last_mass_invite_at;
+                }
+            } catch (err) {
+                console.error('Failed finalising mass invite stats:', err);
+            }
+        }
+
         var project = (myProjects || []).find(function(item) {
             return Number(item.id) === Number(projectId);
         });
-        if (project && sentCount > 0) {
-            project.last_mass_invite_at = data.last_mass_invite_at || new Date().toISOString();
-            project.last_mass_invite_sent_count = sentCount;
+        if (project && successCount > 0) {
+            project.last_mass_invite_at = lastMassInviteAt || new Date().toISOString();
+            project.last_mass_invite_sent_count = successCount;
         }
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        if (sentCount > 0) {
-            showToast(window.t('massInviteLaunchSuccess', { count: sentCount }, lang));
+
+        if (successCount > 0) {
+            var successMsg = window.t('massInviteLaunchSuccess', { count: successCount }, lang);
+            if (failedCount > 0) {
+                successMsg += ' (' + (lang === 'ru' ? 'Ошибок: ' : 'Failed: ') + failedCount + ')';
+            }
+            showToast(successMsg);
             renderProjects(true);
             refreshOpenModals();
             await loadProjects(true);
@@ -1917,7 +1993,12 @@ async function startMassInvite(projectId) {
             showToast(window.t('massInviteNoCandidates', {}, lang));
             await loadProjects(true);
         }
-        return data;
+
+        return {
+            status: 'success',
+            sent_count: successCount,
+            failed_count: failedCount
+        };
     } catch (error) {
         console.error('Mass invite launch error:', error);
         handleApiError('network_error');
