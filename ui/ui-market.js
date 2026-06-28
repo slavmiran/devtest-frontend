@@ -3349,15 +3349,8 @@ function getFeedbackTypeChip(item) {
     const feedbackType = String(item.type || 'general').toLowerCase();
     if (feedbackType.indexOf('google_play_review') === 0) {
         return `<span class="fb-type-chip type-google-play">⭐ Google Play review</span>`;
-    } else if (feedbackType === 'bug') {
-        return `<span class="fb-type-chip type-bug">🐞 Bug report</span>`;
-    } else if (feedbackType === 'idea') {
-        return `<span class="fb-type-chip type-idea">💡 Idea</span>`;
-    } else if (feedbackType === 'question') {
-        return `<span class="fb-type-chip type-question">❓ Question</span>`;
     } else {
-        const cap = feedbackType.charAt(0).toUpperCase() + feedbackType.slice(1);
-        return `<span class="fb-type-chip type-general">${cap}</span>`;
+        return `<span class="fb-type-chip type-bug">🐞 Bugs & Ideas</span>`;
     }
 }
 
@@ -3531,6 +3524,7 @@ function feedbackScheduleClampMeasure() {
     });
 }
 
+// Keep clamp measure functional
 function feedbackMeasureClampedText() {
     document.querySelectorAll('.fb-text[data-feedback-clamp="1"]').forEach(function(el) {
         var id = el.getAttribute('data-feedback-id');
@@ -3617,7 +3611,7 @@ function renderProjectFeedbackCards(project, items) {
         // ── Body text ──
         var textBodyHtml = '';
         if (isReviewTicket) {
-            textBodyHtml = `<div class="fb-text"><span class="feedback-review-ticket">⭐ ${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</span></div>`;
+            textBodyHtml = '';
         } else if (item.message_text) {
             const escapedText = escapeHtmlWithBreaks(item.message_text);
             const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
@@ -3698,25 +3692,25 @@ function renderProjectFeedbackCards(project, items) {
 
         const dmButtonHtml = hasDm
             ? `<button class="fb-action-btn fb-action-btn--dm" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">
-                   <span class="btn-icon">💬</span> ${window.escapeHTML(window.t('feedbackDmBtn', {}, lang) || 'DM').replace('👤 ', '')}
+                   💬 ${window.escapeHTML(window.t('feedbackDmBtn', {}, lang) || 'DM').replace('👤 ', '')}
                </button>`
             : '';
 
         const topicButtonHtml = hasTopicLink
             ? `<button class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${item.telegram_message_id})">
-                   <span class="btn-icon">📌</span> ${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}
+                   📌 ${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}
                </button>`
             : '';
 
         const thankCloseButtonHtml = isNew
             ? `<button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">
-                   <span class="btn-icon">🎁</span> ${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang) || 'Thank & close')}
+                   ${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang) || '🎁 Thank & close')}
                </button>`
             : '';
 
         const rejectButtonHtml = (isNew && isReviewTicket)
             ? `<button class="fb-action-btn fb-action-btn--reject" onclick="rejectPlayReview(${item.id}, ${projectId}, this)">
-                   <span class="btn-icon">❌</span> ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
+                   ❌ ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
                </button>`
             : '';
 

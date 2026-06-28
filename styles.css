@@ -10666,7 +10666,7 @@ details[open] .accordion-arrow {
    ══════════════════════════════════════════════════ */
 
 #project-feedback-modal.modal-overlay {
-    background-color: var(--tg-theme-secondary-bg-color, #0f1115);
+    background-color: var(--bg-app, #0e1116);
     display: flex;
     align-items: stretch;
     justify-content: stretch;
@@ -10679,7 +10679,7 @@ details[open] .accordion-arrow {
     pointer-events: all;
 }
 #project-feedback-modal .modal-content {
-    background-color: var(--tg-theme-secondary-bg-color, #0f1115);
+    background-color: var(--bg-app, #0e1116);
     width: 100%;
     height: 100vh;
     max-height: 100vh;
@@ -10707,8 +10707,8 @@ details[open] .accordion-arrow {
 /* Sticky Header */
 .feedback-sticky-header {
     flex-shrink: 0;
-    background-color: var(--tg-theme-bg-color, #171c26);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: var(--bg-surface-1, #161a21);
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
     padding: 14px 16px;
     display: flex;
     flex-direction: column;
@@ -10723,7 +10723,7 @@ details[open] .accordion-arrow {
 .feedback-back-btn {
     border: none;
     background: transparent;
-    color: var(--tg-theme-text-color, #ffffff);
+    color: var(--text-primary, #f4f6f8);
     padding: 4px;
     margin-left: -6px;
     cursor: pointer;
@@ -10759,9 +10759,9 @@ details[open] .accordion-arrow {
 }
 .filter-chip {
     flex-shrink: 0;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background-color: rgba(255, 255, 255, 0.03);
-    color: var(--tg-theme-text-color, #ffffff);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    background-color: var(--bg-surface-2, #1d222b);
+    color: var(--text-secondary, #aeb7c2);
     padding: 6px 14px;
     border-radius: 999px;
     font-size: 13px;
@@ -10773,9 +10773,9 @@ details[open] .accordion-arrow {
     transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 .filter-chip.active {
-    background-color: var(--tg-theme-button-color, #007aff);
-    color: var(--tg-theme-button-text-color, #ffffff);
-    border-color: var(--tg-theme-button-color, #007aff);
+    background-color: var(--accent-primary, #4c8dff);
+    color: var(--text-on-accent, #ffffff);
+    border-color: var(--accent-primary, #4c8dff);
 }
 .filter-count {
     opacity: 0.6;
@@ -10793,8 +10793,8 @@ details[open] .accordion-arrow {
 
 /* Card Styling */
 .fb-card {
-    background: var(--tg-theme-bg-color, #171c26) !important;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    background: var(--bg-surface-1, #161a21) !important;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07)) !important;
     border-radius: 16px !important;
     padding: 16px !important;
     display: flex;
@@ -10836,8 +10836,8 @@ details[open] .accordion-arrow {
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    background-color: var(--tg-theme-destructive-text-color, #ff3b30);
-    border: 1.5px solid var(--tg-theme-bg-color, #171c26);
+    background-color: var(--danger, #ff5a5f);
+    border: 1.5px solid var(--bg-surface-1, #161a21);
 }
 
 /* Header & Metadata */
@@ -10859,12 +10859,12 @@ details[open] .accordion-arrow {
 .fb-name {
     font-weight: 700 !important;
     font-size: 14px !important;
-    color: var(--tg-theme-text-color, #ffffff) !important;
+    color: var(--text-primary, #f4f6f8) !important;
 }
 .fb-name-link {
     font-weight: 700 !important;
     font-size: 14px !important;
-    color: var(--tg-theme-link-color, #3390ec) !important;
+    color: var(--accent-primary, #4c8dff) !important;
     text-decoration: none;
 }
 .fb-username-row {
@@ -10872,11 +10872,11 @@ details[open] .accordion-arrow {
 }
 .fb-username {
     font-size: 12.5px !important;
-    color: var(--tg-theme-link-color, #3390ec) !important;
+    color: var(--accent-primary, #4c8dff) !important;
 }
 .fb-date {
     font-size: 11.5px !important;
-    color: var(--tg-theme-hint-color, #8e8e93) !important;
+    color: var(--text-tertiary, #717c89) !important;
 }
 
 /* Status Badges */
@@ -10953,7 +10953,7 @@ details[open] .accordion-arrow {
 .fb-text {
     font-size: 14px !important;
     line-height: 1.45 !important;
-    color: var(--tg-theme-text-color, #ffffff) !important;
+    color: var(--text-primary, #f4f6f8) !important;
 }
 
 /* Reward Block */
@@ -10998,16 +10998,16 @@ details[open] .accordion-arrow {
 .fb-reply-text {
     font-size: 13px;
     line-height: 1.45;
-    color: var(--tg-theme-text-color, #ffffff);
+    color: var(--text-primary, #f4f6f8);
     flex-grow: 1;
 }
 .fb-reply-label {
     font-weight: 700;
-    color: var(--tg-theme-link-color, #3390ec);
+    color: var(--accent-primary, #4c8dff);
 }
 .fb-reply-date {
     font-size: 11px;
-    color: var(--tg-theme-hint-color, #8e8e93);
+    color: var(--text-secondary, #aeb7c2);
     white-space: nowrap;
     margin-top: 2px;
 }
@@ -11032,16 +11032,18 @@ details[open] .accordion-arrow {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border-radius: 10px;
-    font-size: 13px;
+    gap: 4px;
+    padding: 6px 12px !important;
+    border-radius: 8px !important;
+    font-size: 12.5px !important;
     font-weight: 600;
     cursor: pointer;
     border: none;
     background-color: rgba(255, 255, 255, 0.05);
-    color: var(--tg-theme-link-color, #3390ec);
+    color: var(--accent-primary, #4c8dff);
     transition: background-color 0.2s, opacity 0.2s;
+    height: 32px;
+    line-height: 1;
 }
 .fb-action-btn:hover {
     background-color: rgba(255, 255, 255, 0.08);
@@ -11050,20 +11052,21 @@ details[open] .accordion-arrow {
     opacity: 0.8;
 }
 .fb-action-btn--primary {
-    background-color: var(--tg-theme-button-color, #007aff) !important;
-    color: var(--tg-theme-button-text-color, #ffffff) !important;
+    background-color: var(--accent-primary, #4c8dff) !important;
+    color: var(--text-on-accent, #ffffff) !important;
 }
 .fb-action-btn--primary:hover {
-    background-color: color-mix(in srgb, var(--tg-theme-button-color, #007aff) 90%, #ffffff) !important;
+    background-color: var(--accent-primary-hover, #3B7BEF) !important;
 }
 .fb-action-btn--reject {
-    background-color: rgba(255, 59, 48, 0.1) !important;
-    color: #ff453a !important;
-    border: 1px solid rgba(255, 59, 48, 0.15) !important;
+    background-color: rgba(255, 59, 48, 0.08) !important;
+    color: var(--danger, #ff5a5f) !important;
+    border: 1px solid rgba(255, 59, 48, 0.12) !important;
 }
 .fb-action-btn--reject:hover {
-    background-color: rgba(255, 59, 48, 0.15) !important;
+    background-color: rgba(255, 59, 48, 0.12) !important;
 }
+
 
 
 
