@@ -880,8 +880,8 @@ function getPlayReviewStatus(testOrAppId) {
         : getMyTestById(testOrAppId);
     if (!test) return 'none';
     var status = String(test.play_review_status || '').trim().toLowerCase();
-    if (status === 'pending' || status === 'approved' || status === 'rejected') return status;
-    if (test.rewards_summary && test.rewards_summary.review_rejected) return 'rejected';
+    if (status === 'pending' || status === 'approved') return status;
+    if (status === 'rejected' || status === 'declined' || (test.rewards_summary && test.rewards_summary.review_rejected)) return 'rejected';
     if (test.play_feedback_submitted) return 'pending';
     return 'none';
 }

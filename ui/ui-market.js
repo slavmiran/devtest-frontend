@@ -2655,16 +2655,103 @@ function renderPlayReviewModal() {
     var isApproved = reviewStatus === 'approved';
     var reviewRejected = reviewStatus === 'rejected' || !!(test.rewards_summary && test.rewards_summary.review_rejected);
     var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
-    var screenshotUrl = test.play_review_screenshot_url || '';
+    var screenshotUrl = (reviewStatus === 'rejected') ? '' : (test.play_review_screenshot_url || '');
     var safeAppName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
+
+    if (isApproved) {
+        // Render a beautiful, premium confirmation screen!
+        var rewardsSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
+        var reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 1.0);
+        var reviewOwnerBoostBust = Number(rewardsSummary.review_owner_boost_bust || 0);
+        var reviewOwnerBoostKarma = Number(rewardsSummary.review_owner_boost_karma || 0);
+        var developerReply = rewardsSummary.review_developer_reply || '';
+
+        var rewardsHtml = '';
+        if (reviewPlatformKarma > 0) {
+            rewardsHtml += `<div class="confirmed-reward-item" style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+                <span style="color:var(--text-secondary); font-size:13px;">${window.escapeHTML(lang === 'ru' ? 'Награда платформы' : 'Platform reward')}</span>
+                <span style="font-weight:700; color:var(--success); font-size:14px;">+${reviewPlatformKarma.toFixed(1)} ☯️ Karma</span>
+            </div>`;
+        }
+        if (reviewOwnerBoostBust > 0 || reviewOwnerBoostKarma > 0) {
+            var ownerRewardText = '';
+            if (reviewOwnerBoostBust > 0 && reviewOwnerBoostKarma > 0) {
+                ownerRewardText = `+${reviewOwnerBoostBust.toFixed(1)} $BUST · +${reviewOwnerBoostKarma.toFixed(1)} ☯️`;
+            } else if (reviewOwnerBoostBust > 0) {
+                ownerRewardText = `+${reviewOwnerBoostBust.toFixed(1)} $BUST`;
+            } else if (reviewOwnerBoostKarma > 0) {
+                ownerRewardText = `+${reviewOwnerBoostKarma.toFixed(1)} ☯️ Karma`;
+            }
+            rewardsHtml += `<div class="confirmed-reward-item" style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+                <span style="color:var(--text-secondary); font-size:13px;">${window.escapeHTML(lang === 'ru' ? 'Буст от разработчика' : 'Developer boost')}</span>
+                <span style="font-weight:700; color:#ffcc00; font-size:14px;">${ownerRewardText}</span>
+            </div>`;
+        }
+
+        var developerReplyHtml = '';
+        if (developerReply) {
+            developerReplyHtml = `
+                <div style="margin-top:20px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);">
+                    <div style="font-size:11px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+                        ${window.escapeHTML(lang === 'ru' ? 'Ответ разработчика' : 'Developer reply')}
+                    </div>
+                    <div style="font-size:13px; line-height:1.5; color:var(--text-primary); font-style:italic;">
+                        "${window.escapeHTML(developerReply)}"
+                    </div>
+                </div>
+            `;
+        }
+
+        body.innerHTML = `
+            <div class="review-modal-card">
+                <!-- Success Header -->
+                <div class="review-modal-header" style="text-align:center; padding-bottom:12px;">
+                    <div style="width:52px; height:52px; border-radius:50%; background:rgba(48,209,88,0.15); border:1.5px solid var(--success); display:flex; align-items:center; justify-content:center; margin:0 auto 12px auto; color:var(--success);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <div class="review-modal-title" style="font-size:18px;">
+                        ${window.escapeHTML(lang === 'ru' ? 'Отзыв подтвержден!' : 'Review Confirmed!')}
+                    </div>
+                    <div class="review-modal-desc" style="margin-top:6px; font-size:13px; color:var(--text-secondary);">
+                        ${window.escapeHTML(lang === 'ru' ? 'Спасибо за помощь в тестировании проекта' : 'Thank you for helping test the project')} <b>${safeAppName}</b>. ${window.escapeHTML(lang === 'ru' ? 'Ваш вклад очень важен!' : 'Your contribution is highly valued!')}
+                    </div>
+                </div>
+
+                <!-- Rewards & Reply -->
+                <div class="review-modal-body-content" style="padding-top:0;">
+                    <div style="margin-top:12px;">
+                        ${rewardsHtml}
+                    </div>
+                    ${developerReplyHtml}
+                </div>
+
+                <!-- Close Footer -->
+                <div class="review-modal-footer" style="margin-top:20px;">
+                    <button type="button" class="btn btn-secondary play-review-cancel-link" style="width:100%; height:38px; font-size:14px; border-radius:10px;" onclick="closePlayReviewModal(event)">
+                        ${window.escapeHTML(lang === 'ru' ? 'Закрыть' : 'Close')}
+                    </button>
+                </div>
+            </div>
+        `;
+        return;
+    }
 
     var statusBanner = '';
     if (isPending) {
         statusBanner = '<div class="play-review-state play-review-state--pending" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:rgba(255,204,0,0.08); border:1px solid rgba(255,204,0,0.24); color:var(--text-color); font-size:13px;">⏳ ' + window.escapeHTML(window.t('playReviewDetailsPendingChip', {}, lang)) + '</div>';
-    } else if (isApproved) {
-        statusBanner = '<div class="play-review-state play-review-state--approved" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:rgba(48,209,88,0.12); border:1px solid rgba(48,209,88,0.24); color:var(--success); font-size:13px; font-weight:700;">✅ ' + window.escapeHTML(window.t('playReviewDetailsCompletedChip', {}, lang)) + '</div>';
     } else if (reviewRejected) {
-        statusBanner = '<div class="play-review-state play-review-state--rejected" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:rgba(255,69,58,0.12); border:1px solid rgba(255,69,58,0.24); color:var(--danger); font-size:13px;">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>';
+        var ownerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+        var dmButtonHtml = ownerUsername
+            ? `<button type="button" class="btn" style="padding:4px 8px; font-size:11px; height:24px; border-radius:6px; background:rgba(255,255,255,0.08); color:var(--text-color); border:1px solid rgba(255,255,255,0.12); font-weight:600; display:inline-flex; align-items:center; gap:4px; flex-shrink:0; margin-left:auto;" onclick="openTelegramProfile('${window.escapeHTML(ownerUsername)}', event)">💬 DM</button>`
+            : '';
+        statusBanner = `
+            <div class="play-review-state play-review-state--rejected" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:rgba(255,69,58,0.12); border:1px solid rgba(255,69,58,0.24); color:var(--danger); font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <span style="font-weight:700;">❌ ${window.escapeHTML(lang === 'ru' ? 'Ваш отзыв не принят' : 'Your review was not accepted')}</span>
+                ${dmButtonHtml}
+            </div>
+        `;
     }
 
     var isReadOnly = isPending || isApproved;
@@ -3008,6 +3095,9 @@ async function submitPlayReview() {
                 if (data.play_review_screenshot_url) test.play_review_screenshot_url = data.play_review_screenshot_url;
                 test.play_feedback_submitted = true;
                 test.play_feedback_submitted_pending = true;
+                if (test.rewards_summary) {
+                    test.rewards_summary.review_rejected = false;
+                }
                 if (data.checkin && !data.checkin.already_checked_today) {
                     test.last_check_date = data.checkin.last_check_date || (typeof getLocalDate === 'function' ? getLocalDate() : test.last_check_date);
                     test.checkins_count = Number(data.checkin.checkins_count || test.checkins_count || 0);
@@ -3122,7 +3212,10 @@ function openPlayReviewModal(appId, event, options) {
     _playReviewModalSource = (options && options.source) || 'badge';
     
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
-    window._playReviewStep1Done = !!(test && test.play_review_screenshot_url);
+    var reviewStatus = typeof window.getPlayReviewStatus === 'function'
+        ? window.getPlayReviewStatus(test)
+        : String(test && test.play_review_status || 'none').toLowerCase();
+    window._playReviewStep1Done = !!(test && test.play_review_screenshot_url && reviewStatus !== 'rejected');
 
     renderPlayReviewModal();
     var modal = document.getElementById('play-review-modal');

@@ -60,7 +60,7 @@
             playReviewDetailsCompletedChip: "Отзыв подтвержден",
             playReviewDetailsPendingChip: "На проверке",
             playReviewDetailsNotSubmittedChip: "Еще не отправлял",
-            playReviewDetailsRejectedChip: "Отклонено",
+            playReviewDetailsRejectedChip: "Отзыв не принят",
             playReviewDetailsPlatformReward: "Награда платформы: +{amount} ☯️",
             playReviewDetailsOwnerReward: "Буст от владельца: +{bust} $BUST и +{karma} ☯️",
             playReviewDetailsRejected: "Заявка на отзыв была отклонена владельцем.",

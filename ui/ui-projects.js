@@ -3989,19 +3989,17 @@ function openProjectDetailsModal(appId) {
                 karma: formatAmountValue(reviewOwnerBoostKarma, 1),
             }, lang)));
         }
-        var reviewRejectedHtml = reviewRejected
-            ? '<div style="font-size:13px; line-height:1.55; color:#ff6b6b; margin-top: 8px;">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>'
-            : '';
-        var reviewActionLabel = reviewPending
-            ? ('⏳ ' + window.escapeHTML(window.t('playReviewDetailsPendingChip', {}, lang)))
-            : (reviewConfirmed
-                ? ('✅ ' + window.escapeHTML(window.t('playReviewDetailsCompletedChip', {}, lang)))
+        var reviewActionHtml = '';
+        if (!reviewConfirmed) {
+            var reviewActionLabel = reviewPending
+                ? ('⏳ ' + window.escapeHTML(window.t('playReviewDetailsPendingChip', {}, lang)))
                 : (reviewRejected
-                    ? ('❌ ' + window.escapeHTML(window.t('playReviewDetailsRejectedChip', {}, lang)))
-                    : window.escapeHTML(window.t('playReviewDetailsOpenBtn', {}, lang))));
-        var reviewActionHtml = '<button class="btn btn-secondary" style="width:100%; margin-top:10px; background-color: rgba(255,204,0,0.12); color: var(--text-color); border: 1px solid rgba(255,204,0,0.24);" onclick="openPlayReviewModal(' + Number(test.id) + ', event)">' +
-                reviewActionLabel +
-            '</button>';
+                    ? (window.escapeHTML(lang === 'ru' ? 'Отправить повторно' : 'Resubmit'))
+                    : window.escapeHTML(window.t('playReviewDetailsOpenBtn', {}, lang)));
+            reviewActionHtml = '<button class="btn btn-secondary" style="width:100%; margin-top:10px; background-color: rgba(255,204,0,0.12); color: var(--text-color); border: 1px solid rgba(255,204,0,0.24);" onclick="openPlayReviewModal(' + Number(test.id) + ', event)">' +
+                    reviewActionLabel +
+                '</button>';
+        }
         var reviewRewardHtml = reviewRewardParts.length
             ? '<div style="font-size:13px; line-height:1.55; color: var(--hint-color); margin-top: 8px;">' + reviewRewardParts.join('<br>') + '</div>'
             : '<div style="font-size:13px; line-height:1.55; color: var(--hint-color); margin-top: 8px;">' + window.escapeHTML(window.t(reviewPending || reviewConfirmed ? 'playReviewDetailsNoRewardYet' : 'playReviewDetailsStartHint', {}, lang)) + '</div>';
@@ -4011,7 +4009,6 @@ function openProjectDetailsModal(appId) {
             '<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">' + reviewStatusHtml + '</div>' +
             reviewActionHtml +
             reviewRewardHtml +
-            reviewRejectedHtml +
         '</div>';
     }
 

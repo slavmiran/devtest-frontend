@@ -61,7 +61,7 @@
             playReviewDetailsCompletedChip: "Review confirmed",
             playReviewDetailsPendingChip: "Under review",
             playReviewDetailsNotSubmittedChip: "Not submitted yet",
-            playReviewDetailsRejectedChip: "Rejected",
+            playReviewDetailsRejectedChip: "Review not accepted",
             playReviewDetailsPlatformReward: "Platform reward: +{amount} ☯️",
             playReviewDetailsOwnerReward: "Owner boost: +{bust} $BUST and +{karma} ☯️",
             playReviewDetailsRejected: "The review claim was rejected by the owner.",
