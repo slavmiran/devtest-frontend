@@ -2647,6 +2647,7 @@ function renderPlayReviewModal() {
         body.innerHTML = `<div class="feedback-empty">${window.escapeHTML(window.t('unexpectedError', {}, lang))}</div>`;
         return;
     }
+
     var reviewStatus = typeof window.getPlayReviewStatus === 'function'
         ? window.getPlayReviewStatus(test)
         : String(test.play_review_status || 'none').toLowerCase();
@@ -2656,63 +2657,169 @@ function renderPlayReviewModal() {
     var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
     var screenshotUrl = test.play_review_screenshot_url || '';
     var safeAppName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
-    var rewardSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
-    var rewardHtml = '';
-    if (isApproved) {
-        var rewardParts = [];
-        if (Number(rewardSummary.review_owner_boost_bust || 0) > 0) rewardParts.push('💎 ' + formatBustAmount(Number(rewardSummary.review_owner_boost_bust || 0)));
-        if (Number(rewardSummary.review_owner_boost_karma || 0) > 0) rewardParts.push('☯️ +' + Number(rewardSummary.review_owner_boost_karma || 0).toFixed(1));
-        if (Number(rewardSummary.review_platform_karma || 0) > 0) rewardParts.push('☯️ +' + Number(rewardSummary.review_platform_karma || 0).toFixed(1));
-        rewardHtml = rewardParts.length
-            ? '<div class="play-review-rewards notranslate">' + rewardParts.join(' · ') + '</div>'
-            : '';
-    }
+
     var statusBanner = '';
     if (isPending) {
-        statusBanner = '<div class="play-review-state play-review-state--pending">⏳ ' + window.escapeHTML(window.t('playReviewDetailsPendingChip', {}, lang)) + '</div>';
+        statusBanner = '<div class="play-review-state play-review-state--pending" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:rgba(255,204,0,0.08); border:1px solid rgba(255,204,0,0.24); color:var(--text-color); font-size:13px;">⏳ ' + window.escapeHTML(window.t('playReviewDetailsPendingChip', {}, lang)) + '</div>';
     } else if (isApproved) {
-        statusBanner = '<div class="play-review-state play-review-state--approved">✅ ' + window.escapeHTML(window.t('playReviewDetailsCompletedChip', {}, lang)) + '</div>' + rewardHtml;
+        statusBanner = '<div class="play-review-state play-review-state--approved" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:rgba(48,209,88,0.12); border:1px solid rgba(48,209,88,0.24); color:var(--success); font-size:13px; font-weight:700;">✅ ' + window.escapeHTML(window.t('playReviewDetailsCompletedChip', {}, lang)) + '</div>';
     } else if (reviewRejected) {
-        statusBanner = '<div class="play-review-state play-review-state--rejected">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>';
+        statusBanner = '<div class="play-review-state play-review-state--rejected" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:rgba(255,69,58,0.12); border:1px solid rgba(255,69,58,0.24); color:var(--danger); font-size:13px;">' + window.escapeHTML(window.t('playReviewRejectedWarning', {}, lang)) + '</div>';
     }
+
     var isReadOnly = isPending || isApproved;
     var todayLocal = (typeof getLocalDate === 'function') ? getLocalDate() : '';
     var appStatus = String(test.app_status || 'active').toLowerCase();
     var progressStatus = String(test.progress_status || 'active').toLowerCase();
     var isPendingCompletion = appStatus === 'pending_completion';
     var isArchivedOrCompleted = (appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active';
-    var markerShouldShow = (_playReviewModalSource === 'badge') && !isReadOnly && !isPendingCompletion && !isArchivedOrCompleted && !!todayLocal && String(test.last_check_date || '') !== String(todayLocal);
+    var markerShouldShow = (_playReviewModalSource === 'badge') && !isPending && !isApproved && !isPendingCompletion && !isArchivedOrCompleted && !!todayLocal && String(test.last_check_date || '') !== String(todayLocal);
+
+    // Warning banner
     var autoCheckinMarkerHtml = markerShouldShow
-        ? '<div class="play-review-autocheckin-note">' + window.escapeHTML(window.t('playReviewAutoCheckinWarning', {}, lang)) + '</div>'
+        ? `<div class="play-review-warning-banner">
+               <span class="warning-banner-icon">⚠️</span>
+               <span class="warning-banner-text">${window.escapeHTML(lang === 'ru' ? 'Это действие завершит сегодняшний тест — выполнит чекин. Подтверждайте только после реальной публикации.' : "This action will complete today's test — it will perform the check-in. Confirm only after real publication.")}</span>
+           </div>`
         : '';
-    var uploadBlock = isReadOnly ? '' : '<div class="play-review-upload-row"><input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleReviewScreenshotUpload(this, ' + _playReviewModalAppId + ')"><button type="button" class="btn btn-secondary icon-upload-btn play-review-upload-btn" onclick="document.getElementById(\'play-review-file\').click()">📎 ' + window.escapeHTML(window.t('uploadScreenshotBtn', {}, lang)) + '</button></div>';
-    var submitBlock = isReadOnly ? '' : '<button type="button" class="btn btn-primary" id="play-review-submit-btn" onclick="submitPlayReview()"' + (screenshotUrl ? '' : ' disabled') + '>✅ ' + window.escapeHTML(window.t('submitForReviewBtn', {}, lang)) + '</button>';
+
+    // Step 1 done state
+    var step1Done = isReadOnly || !!window._playReviewStep1Done;
+    
+    // Step 2 done state
+    var step2Done = !!screenshotUrl;
+
+    // Step 1 Number and status
+    var step1StatusClass = step1Done ? 'is-done' : 'is-active';
+    var step1NumHtml = step1Done 
+        ? `<svg class="step-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` 
+        : '1';
+
+    // Step 2 Number and status
+    var step2StatusClass = step2Done ? 'is-done' : (step1Done ? 'is-active' : 'is-locked');
+    var step2NumHtml = step2Done 
+        ? `<svg class="step-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` 
+        : '2';
+
+    // Step 2 Upload area or Compact Preview
+    var uploadOrPreviewHtml = '';
+    if (step2Done) {
+        uploadOrPreviewHtml = `
+            <div class="play-review-screenshot-preview">
+                <div class="preview-success-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="preview-info">
+                    <div class="preview-title">${window.escapeHTML(lang === 'ru' ? 'Скриншот загружен' : 'Screenshot uploaded')}</div>
+                    <div class="preview-subtitle">${window.escapeHTML(lang === 'ru' ? 'Нажмите ✕ чтобы заменить' : 'Tap ✕ to replace')}</div>
+                </div>
+                ${isReadOnly ? '' : `<button type="button" class="preview-remove-btn" onclick="handleRemoveReviewScreenshot(event)">✕</button>`}
+            </div>
+        `;
+    } else {
+        var uploadLockedClass = !step1Done ? ' is-locked' : '';
+        uploadOrPreviewHtml = `
+            <div class="play-review-upload-zone${uploadLockedClass}" id="play-review-upload-zone" onclick="${(step1Done && !isReadOnly) ? "document.getElementById('play-review-file').click()" : ""}">
+                <input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleReviewScreenshotUpload(this, ${test.id})">
+                <div class="upload-zone-content">
+                    <svg class="upload-zone-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span class="upload-zone-text">${window.escapeHTML(window.t('uploadScreenshotBtn', {}, lang))}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // Submit button state
+    var isSubmitEnabled = step1Done && step2Done && !isReadOnly;
+    var submitDisabledAttr = isSubmitEnabled ? '' : ' disabled';
+    var submitButtonClass = isSubmitEnabled ? 'btn-primary' : 'btn-disabled';
+
     body.innerHTML = `
         <div class="review-modal-card">
-            <div class="review-modal-title">⭐ ${window.escapeHTML(window.t('playReviewModalTitle', {}, lang))}</div>
-            <div class="review-modal-app">${safeAppName}</div>
-            <div class="review-modal-text">${window.escapeHTML(window.t('playReviewModalText', {}, lang))}</div>
-            <div class="review-modal-note">${window.escapeHTML(window.t('playReviewConfirmPenalty', {}, lang))}</div>
-            ${autoCheckinMarkerHtml}
-            ${statusBanner}
-            <button type="button" class="btn play-review-store-btn" onclick="openPlayReviewStore()" ${reviewUrl ? '' : 'disabled'}>
-                ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
-            </button>
-            ${uploadBlock}
-            <div id="play-review-preview-container" class="play-review-preview-container" style="display: none;"></div>
-            ${submitBlock}
+            <!-- Header -->
+            <div class="review-modal-header">
+                <div class="review-modal-title">⭐ ${window.escapeHTML(window.t('playReviewModalTitle', {}, lang))}</div>
+                <div class="review-modal-desc">${window.escapeHTML(window.t('playReviewModalText', {}, lang))}</div>
+            </div>
+
+            <!-- Body -->
+            <div class="review-modal-body-content">
+                ${statusBanner}
+                ${autoCheckinMarkerHtml}
+
+                <div class="play-review-steps">
+                    <!-- Step 1 -->
+                    <div class="review-step step-1 ${step1StatusClass}">
+                        <div class="review-step-num-container">
+                            <div class="review-step-line"></div>
+                            <div class="review-step-num">${step1NumHtml}</div>
+                        </div>
+                        <div class="review-step-content">
+                            <div class="review-step-title">${window.escapeHTML(lang === 'ru' ? 'Открыть страницу приложения' : 'Open app page')}</div>
+                            <div class="review-step-desc">${window.escapeHTML(lang === 'ru' ? 'Перейдите в Google Play и опубликуйте отзыв.' : 'Go to Google Play and publish your review.')}</div>
+                            <button type="button" class="btn play-review-store-btn" onclick="handlePlayReviewOpenStoreClick(event)" ${reviewUrl ? '' : 'disabled'}>
+                                <svg class="store-btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="review-step step-2 ${step2StatusClass}">
+                        <div class="review-step-num-container">
+                            <div class="review-step-num">${step2NumHtml}</div>
+                        </div>
+                        <div class="review-step-content">
+                            <div class="review-step-title">${window.escapeHTML(lang === 'ru' ? 'Загрузить скриншот отзыва' : 'Upload review screenshot')}</div>
+                            <div class="review-step-desc">${window.escapeHTML(lang === 'ru' ? 'Подтвердите публикацию скриншотом.' : 'Confirm your publication with a screenshot.')}</div>
+                            ${uploadOrPreviewHtml}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="review-modal-footer">
+                <button type="button" class="btn ${submitButtonClass} play-review-submit-btn" id="play-review-submit-btn" onclick="submitPlayReview()"[TARGET_DISABLED]>
+                    ✓ ${window.escapeHTML(window.t('submitForReviewBtn', {}, lang))}
+                </button>
+                <div class="review-modal-footer-divider"></div>
+                <button type="button" class="play-review-cancel-link" onclick="closePlayReviewModal(event)">
+                    ${window.escapeHTML(window.t('playReviewConfirmModalCancel', {}, lang) || 'Cancel')}
+                </button>
+            </div>
         </div>
     `;
-    // Show existing screenshot preview if available
-    if (screenshotUrl) {
-        var previewContainer = document.getElementById('play-review-preview-container');
-        if (previewContainer && typeof resolveIconUrl === 'function') {
-            var resolvedUrl = resolveIconUrl(screenshotUrl);
-            previewContainer.innerHTML = '<div class="play-review-preview"><img src="' + window.escapeHTML(resolvedUrl) + '" onerror="this.style.display=\'none\'; this.parentNode.classList.add(\'is-broken\');"></div>';
-            previewContainer.style.display = 'block';
-        }
-    }
+    
+    // Replace placeholder with conditional disabled attribute
+    body.innerHTML = body.innerHTML.replace('[TARGET_DISABLED]', submitDisabledAttr);
 }
+
+function handlePlayReviewOpenStoreClick(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    openPlayReviewStore();
+    window._playReviewStep1Done = true;
+    renderPlayReviewModal();
+}
+window.handlePlayReviewOpenStoreClick = handlePlayReviewOpenStoreClick;
+
+function handleRemoveReviewScreenshot(event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_playReviewModalAppId) : null;
+    if (test) {
+        test.play_review_screenshot_url = '';
+        persistTestsCacheSnapshot();
+    }
+    renderPlayReviewModal();
+}
+window.handleRemoveReviewScreenshot = handleRemoveReviewScreenshot;
 
 function openCheckinOptionsModal(appId, ownerUsername) {
     _checkinOptionsAppId = appId;
@@ -3013,6 +3120,10 @@ function openPlayReviewModal(appId, event, options) {
     }
     _playReviewModalAppId = appId;
     _playReviewModalSource = (options && options.source) || 'badge';
+    
+    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
+    window._playReviewStep1Done = !!(test && test.play_review_screenshot_url);
+
     renderPlayReviewModal();
     var modal = document.getElementById('play-review-modal');
     if (modal) modal.classList.add('active');

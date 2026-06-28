@@ -4012,9 +4012,6 @@ function openProjectDetailsModal(appId) {
             reviewActionHtml +
             reviewRewardHtml +
             reviewRejectedHtml +
-            '<button class="btn btn-secondary" style="width:100%; margin-top:10px; background-color: rgba(52,199,89,0.12); color: var(--text-color); border: 1px solid rgba(52,199,89,0.24);" onclick="openPlayReviewStoreByAppId(' + Number(test.id) + ', event)">' +
-                window.escapeHTML(window.t('playReviewDetailsOpenBtn', {}, lang)) +
-            '</button>' +
         '</div>';
     }
 

@@ -2506,6 +2506,16 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
         uploadBtn.innerHTML = '<span class="icon-upload-spinner"></span>';
     }
 
+    var uploadZone = document.getElementById('play-review-upload-zone');
+    if (uploadZone) {
+        uploadZone.classList.add('is-uploading');
+        uploadZone.style.pointerEvents = 'none';
+        var textEl = uploadZone.querySelector('.upload-zone-text');
+        if (textEl) {
+            textEl.innerHTML = '<span class="icon-upload-spinner"></span>';
+        }
+    }
+
     try {
         var userId = (window.App && window.App.userId) || window.userId || 0;
         var tgUser = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user;
@@ -2541,6 +2551,9 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
                 previewContainer.style.display = 'block';
             }
             if (submitBtn) submitBtn.disabled = false;
+            if (typeof renderPlayReviewModal === 'function') {
+                renderPlayReviewModal();
+            }
             console.log('[handleReviewScreenshotUpload] success, url=' + data.url);
         } else {
             alert(data && data.message ? data.message : 'Upload failed');
@@ -2553,6 +2566,13 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
         if (uploadBtn) {
             uploadBtn.disabled = false;
             uploadBtn.innerHTML = btnOrigText;
+        }
+        var uploadZone = document.getElementById('play-review-upload-zone');
+        if (uploadZone) {
+            uploadZone.classList.remove('is-uploading');
+        }
+        if (typeof renderPlayReviewModal === 'function') {
+            renderPlayReviewModal();
         }
     }
 }
