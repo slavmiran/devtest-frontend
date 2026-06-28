@@ -73,6 +73,7 @@
             playReviewConfirmModalSendDm: "💬 Send screenshot to owner",
             playReviewRequiresScreenshotHint: "📸 Requires screenshot DM",
             playReviewRejectedWarning: "❌ The owner rejected the review. Please send a valid screenshot.",
+            playReviewContactOwner: "💬 Contact the Owner",
             playReviewMissingOwnerLink: "Could not open owner DM because username is missing.",
             playReviewDmTemplate: "Hi! Here is the screenshot of the published Google Play review for your app: {app_name} 🚀",
             playReviewMissingLink: "Could not open the app page because the Google Play link is missing.",

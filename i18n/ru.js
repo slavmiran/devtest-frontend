@@ -72,6 +72,7 @@
             playReviewConfirmModalSendDm: "💬 Отправить скрин владельцу",
             playReviewRequiresScreenshotHint: "📸 Нужен скриншот в ЛС владельцу",
             playReviewRejectedWarning: "❌ Владелец отклонил отзыв. Пожалуйста, отправьте корректный скриншот.",
+            playReviewContactOwner: "💬 Связаться с владельцем",
             playReviewMissingOwnerLink: "Не удалось открыть ЛС владельца: username не найден.",
             playReviewDmTemplate: "Привет! Отправляю скриншот опубликованного отзыва Google Play для твоего приложения: {app_name} 🚀",
             playReviewMissingLink: "Не удалось открыть страницу приложения: отсутствует ссылка на Google Play.",

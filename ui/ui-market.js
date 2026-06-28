@@ -2744,10 +2744,10 @@ function renderPlayReviewModal() {
     } else if (reviewRejected) {
         var ownerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
         var dmButtonHtml = ownerUsername
-            ? `<button type="button" class="btn" style="padding:4px 8px; font-size:11px; height:24px; border-radius:6px; background:rgba(255,255,255,0.08); color:var(--text-color); border:1px solid rgba(255,255,255,0.12); font-weight:600; display:inline-flex; align-items:center; gap:4px; flex-shrink:0; margin-left:auto;" onclick="openTelegramProfile('${window.escapeHTML(ownerUsername)}', event)">💬 DM</button>`
+            ? `<button type="button" class="btn" style="width: 100%; height: 32px; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; background: rgba(255, 69, 58, 0.12); color: var(--danger); border: 1px solid rgba(255, 69, 58, 0.2);" onclick="openTelegramProfile('${window.escapeHTML(ownerUsername)}', event)">${window.escapeHTML(window.t('playReviewContactOwner', {}, lang))}</button>`
             : '';
         statusBanner = `
-            <div class="play-review-state play-review-state--rejected" style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:rgba(255,69,58,0.12); border:1px solid rgba(255,69,58,0.24); color:var(--danger); font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <div class="play-review-state play-review-state--rejected" style="margin-bottom:16px; padding:12px; border-radius:12px; background:rgba(255,69,58,0.08); border:1px solid rgba(255,69,58,0.16); color:var(--danger); font-size:13.5px; display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left;">
                 <span style="font-weight:700;">❌ ${window.escapeHTML(lang === 'ru' ? 'Ваш отзыв не принят' : 'Your review was not accepted')}</span>
                 ${dmButtonHtml}
             </div>
@@ -3869,7 +3869,7 @@ function renderProjectFeedbackCards(project, items) {
         if (rewardBust > 0 || rewardKarma > 0) {
             rewardHtml = `
                 <div class="fb-reward-block">
-                    ${rewardBust > 0 ? `<span class="fb-reward-chip reward-bust"><span class="reward-icon">💎</span> ${formatBustAmount(rewardBust)} $BUST</span>` : ''}
+                    ${rewardBust > 0 ? `<span class="fb-reward-chip reward-bust"><span class="reward-icon">💎</span> ${formatBustAmount(rewardBust)}</span>` : ''}
                     ${rewardKarma > 0 ? `<span class="fb-reward-chip reward-karma"><span class="reward-icon">☯️</span> ${rewardKarma.toFixed(1)} Karma</span>` : ''}
                 </div>
             `;
