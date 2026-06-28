@@ -3345,24 +3345,157 @@ function formatFeedbackDate(createdAt) {
     });
 }
 
-function getProjectFeedbackHeader(project) {
+function getFeedbackTypeChip(item) {
+    const feedbackType = String(item.type || 'general').toLowerCase();
+    if (feedbackType.indexOf('google_play_review') === 0) {
+        return `<span class="fb-type-chip type-google-play">⭐ Google Play review</span>`;
+    } else if (feedbackType === 'bug') {
+        return `<span class="fb-type-chip type-bug">🐞 Bug report</span>`;
+    } else if (feedbackType === 'idea') {
+        return `<span class="fb-type-chip type-idea">💡 Idea</span>`;
+    } else if (feedbackType === 'question') {
+        return `<span class="fb-type-chip type-question">❓ Question</span>`;
+    } else {
+        const cap = feedbackType.charAt(0).toUpperCase() + feedbackType.slice(1);
+        return `<span class="fb-type-chip type-general">${cap}</span>`;
+    }
+}
+
+function getProjectFeedbackHeader(project, items) {
     const safeName = window.escapeHTML((project && (project.name || project.package_name)) || window.t('unknownLabel', {}, lang));
     const totalCount = Number(project && project.feedback_total_count || 0);
     const newCount = Number(project && project.feedback_new_count || 0);
+    
+    let googlePlayCount = 0;
+    let bugsIdeasCount = 0;
+    
+    if (items && items.length) {
+        items.forEach(function(item) {
+            const feedbackType = String(item.type || 'general').toLowerCase();
+            const isReviewTicket = feedbackType.indexOf('google_play_review') === 0;
+            if (isReviewTicket) {
+                googlePlayCount++;
+            } else {
+                bugsIdeasCount++;
+            }
+        });
+    }
+
     return `
-        <div class="detail-header" style="margin-bottom: 10px;">
-            ${renderIcon((project && (project.name || project.package_name)) || '', project && project.icon_url)}
-            <div class="card-info">
-                <div class="card-title notranslate">${safeName}</div>
-                <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}</div>
+        <div class="feedback-sticky-header">
+            <div class="feedback-header-top">
+                <button class="feedback-back-btn" onclick="closeProjectFeedbackModal()" aria-label="Back">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15 19L8 12L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                ${renderIcon((project && (project.name || project.package_name)) || '', project && project.icon_url)}
+                <div class="card-info">
+                    <div class="card-title notranslate">${safeName}</div>
+                    <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}</div>
+                </div>
             </div>
-        </div>
-        <div class="feedback-modal-summary">
-            <span class="meta-chip accent-blue">💬 ${window.t('projectFeedbackTotalChip', { count: totalCount }, lang)}</span>
-            <span class="meta-chip accent-green">🆕 ${window.t('projectFeedbackNewChip', { count: newCount }, lang)}</span>
+            <div class="feedback-header-summary">
+                <div class="feedback-counts">
+                    <span class="meta-chip accent-blue">💬 ${window.t('projectFeedbackTotalChip', { count: totalCount }, lang)}</span>
+                    <span class="meta-chip accent-green">🆕 ${window.t('projectFeedbackNewChip', { count: newCount }, lang)}</span>
+                </div>
+            </div>
+            <div class="feedback-filters">
+                <button class="filter-chip active" data-filter="all" onclick="filterFeedback('all')">All</button>
+                <button class="filter-chip" data-filter="google_play" onclick="filterFeedback('google_play')">⭐ Google Play reviews <span class="filter-count">${googlePlayCount}</span></button>
+                <button class="filter-chip" data-filter="bugs_ideas" onclick="filterFeedback('bugs_ideas')">🐞 Bugs & Ideas <span class="filter-count">${bugsIdeasCount}</span></button>
+            </div>
         </div>
     `;
 }
+
+function openFeedbackDm(username, feedbackId, isReviewTicket, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (!isReviewTicket) {
+        let feedbackText = '';
+        if (window.feedbackCaptionRegistry && window.feedbackCaptionRegistry[feedbackId]) {
+            feedbackText = window.feedbackCaptionRegistry[feedbackId];
+        } else {
+            const textEl = document.getElementById('fbt-' + feedbackId);
+            if (textEl) {
+                feedbackText = textEl.innerText || '';
+            }
+        }
+        if (feedbackText) {
+            navigator.clipboard.writeText(feedbackText).then(function() {
+                showToast("Feedback text copied");
+            }).catch(function(err) {
+                console.error('Could not copy text: ', err);
+            });
+        }
+    }
+    openTelegramProfile(username, event);
+}
+window.openFeedbackDm = openFeedbackDm;
+
+function filterFeedback(filterType) {
+    const container = document.querySelector('.feedback-filters');
+    if (container) {
+        container.querySelectorAll('.filter-chip').forEach(function(btn) {
+            if (btn.getAttribute('data-filter') === filterType) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    const cards = document.querySelectorAll('.fb-card');
+    cards.forEach(function(card) {
+        const type = card.getAttribute('data-feedback-type') || '';
+        const isGooglePlay = type.indexOf('google_play_review') === 0;
+
+        if (filterType === 'all') {
+            card.style.display = '';
+        } else if (filterType === 'google_play') {
+            if (isGooglePlay) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        } else if (filterType === 'bugs_ideas') {
+            if (!isGooglePlay) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        }
+    });
+
+    const visibleCards = Array.prototype.slice.call(cards).filter(function(card) {
+        return card.style.display !== 'none';
+    });
+    
+    let emptyEl = document.querySelector('.feedback-filtered-empty');
+    if (visibleCards.length === 0 && cards.length > 0) {
+        if (!emptyEl) {
+            emptyEl = document.createElement('div');
+            emptyEl.className = 'feedback-filtered-empty';
+            emptyEl.style.textAlign = 'center';
+            emptyEl.style.padding = '24px';
+            emptyEl.style.color = 'var(--hint-color)';
+            emptyEl.textContent = 'No matching feedback items found.';
+            const listContainer = document.querySelector('.feedback-list') || document.getElementById('project-feedback-list');
+            if (listContainer) {
+                listContainer.appendChild(emptyEl);
+            }
+        } else {
+            emptyEl.style.display = '';
+        }
+    } else if (emptyEl) {
+        emptyEl.style.display = 'none';
+    }
+}
+window.filterFeedback = filterFeedback;
 
 function feedbackOnImageError(imgEl) {
     imgEl.onerror = null;
@@ -3424,7 +3557,6 @@ function renderProjectFeedbackCards(project, items) {
         const safeUsername = escapeInlineJsString(username);
         const fullName = window.escapeHTML(item.tester_full_name || '');
         const usernameLabel = username ? '@' + window.escapeHTML(username) : '';
-        const displayName = fullName || usernameLabel || window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang));
         const isNew = item.status === 'new';
 
         // ── Avatar initials & image rendering ──
@@ -3432,12 +3564,12 @@ function renderProjectFeedbackCards(project, items) {
             (item.tester_full_name || item.tester_username || '?')
                 .trim().replace('@', '').substring(0, 2).toUpperCase()
         );
-        // Generate a stable pastel hue from tester_id
         const avatarHue = ((Number(item.tester_id || 0) * 73 + 17) % 360);
         const avatarUrl = item.tester_avatar_url || item.avatar_url;
         const avatarHtml = `<div class="fb-avatar" style="--av-hue:${avatarHue}; overflow: hidden; position: relative;">
             ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` : ''}
             <span class="fb-avatar-initials" style="${avatarUrl ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%;'}">${initials}</span>
+            ${isNew ? '<span class="fb-avatar-badge-new"></span>' : ''}
         </div>`;
 
         // ── Header ──
@@ -3446,31 +3578,43 @@ function renderProjectFeedbackCards(project, items) {
         if (fullName) {
             nameHtml = `<span class="fb-name notranslate">${fullName}</span>`;
             if (username) {
-                subHtml = `<a href="javascript:void(0);" class="fb-username notranslate" onclick="return openTelegramProfile('${safeUsername}', event)">@${window.escapeHTML(username)}</a>`;
+                subHtml = `<a href="javascript:void(0);" class="fb-username notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
             }
         } else if (username) {
-            nameHtml = `<a href="javascript:void(0);" class="fb-name-link notranslate" onclick="return openTelegramProfile('${safeUsername}', event)">@${window.escapeHTML(username)}</a>`;
+            nameHtml = `<a href="javascript:void(0);" class="fb-name-link notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
         } else {
             nameHtml = `<span class="fb-name notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
         }
-        const statusBadge = item.status === 'declined'
-            ? window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang))
-            : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang));
-        const newBadge = isNew ? `<span class="fb-status fb-status--new">NEW</span>` : `<span class="fb-status">${statusBadge}</span>`;
+
+        const statusBadgeLabel = item.status === 'declined' || item.status === 'rejected'
+            ? window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected')
+            : (item.status === 'new' ? 'NEW' : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang) || 'Closed'));
+        const statusBadgeClass = item.status === 'declined' || item.status === 'rejected'
+            ? 'fb-status-badge fb-status-badge--declined'
+            : (item.status === 'new' ? 'fb-status-badge fb-status-badge--new' : 'fb-status-badge fb-status-badge--closed');
+        const statusBadge = `<span class="${statusBadgeClass}">${statusBadgeLabel}</span>`;
+
+        const typeChipHtml = getFeedbackTypeChip(item);
+
         const headerHtml = `
             <div class="fb-header">
                 ${avatarHtml}
                 <div class="fb-header-info">
                     <div class="fb-name-row">
                         ${nameHtml}
-                        <span class="fb-date">· ${window.escapeHTML(formatFeedbackDate(item.created_at))}</span>
+                        <span class="fb-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</span>
+                        ${statusBadge}
                     </div>
-                    ${subHtml}
+                    <div class="fb-username-row">
+                        ${subHtml}
+                    </div>
                 </div>
-                ${newBadge}
+                <div class="fb-header-right">
+                    ${typeChipHtml}
+                </div>
             </div>`;
 
-        // ── Body text — only show "show all" when genuinely long ──
+        // ── Body text ──
         var textBodyHtml = '';
         if (isReviewTicket) {
             textBodyHtml = `<div class="fb-text"><span class="feedback-review-ticket">⭐ ${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</span></div>`;
@@ -3482,7 +3626,7 @@ function renderProjectFeedbackCards(project, items) {
             textBodyHtml = `<div class="fb-text fb-text--muted">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</div>`;
         }
 
-        // ── Media thumbnails — with correct URL proxy ──
+        // ── Media thumbnails ──
         var mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
             ? item.media_urls
             : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0
@@ -3523,55 +3667,81 @@ function renderProjectFeedbackCards(project, items) {
         // ── Reward summary chips ──
         const rewardBust = Number(item.reward_bust || 0);
         const rewardKarma = Number(item.reward_karma || 0);
-        const rewardSummary = item.status !== 'new'
-            ? `<div class="fb-reward-summary">
-                    <span class="fb-reward-state">${statusBadge}</span>
-                    ${rewardBust > 0 ? `<span class="meta-chip accent-purple notranslate">💎 ${formatBustAmount(rewardBust)}</span>` : ''}
-                    ${rewardKarma > 0 ? `<span class="meta-chip accent-yellow notranslate">☯️ ${rewardKarma.toFixed(1)}</span>` : ''}
-               </div>`
-            : '';
+        let rewardHtml = '';
+        if (rewardBust > 0 || rewardKarma > 0) {
+            rewardHtml = `
+                <div class="fb-reward-block">
+                    ${rewardBust > 0 ? `<span class="fb-reward-chip reward-bust"><span class="reward-icon">💎</span> ${formatBustAmount(rewardBust)} $BUST</span>` : ''}
+                    ${rewardKarma > 0 ? `<span class="fb-reward-chip reward-karma"><span class="reward-icon">☯️</span> ${rewardKarma.toFixed(1)} Karma</span>` : ''}
+                </div>
+            `;
+        }
 
         // ── Developer reply ──
-        const replyHtml = item.developer_reply
-            ? `<div class="feedback-card-reply">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang))}: ${escapeHtmlWithBreaks(item.developer_reply)}</div>`
-            : '';
+        let replyHtml = '';
+        if (item.developer_reply) {
+            const replyDate = window.escapeHTML(formatFeedbackDate(item.created_at));
+            replyHtml = `
+                <div class="fb-reply-box">
+                    <div class="fb-reply-text">
+                        <span class="fb-reply-label">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang) || 'Developer reply')}:</span> 
+                        ${escapeHtmlWithBreaks(item.developer_reply)}
+                    </div>
+                    <div class="fb-reply-date">${replyDate}</div>
+                </div>
+            `;
+        }
 
         // ── Footer action line ──
         var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
         const hasDm = !!username;
-        var actionChips = '';
-        if (hasDm || hasTopicLink) {
-            const dmChip = hasDm
-                ? `<button class="fb-link-action" onclick="return openTelegramProfile('${safeUsername}', event)">${window.escapeHTML(window.t('feedbackDmBtn', {}, lang)).replace('👤 ', '')}</button>`
-                : '';
-            const topicChip = hasTopicLink
-                ? `<button class="fb-link-action" onclick="openFeedbackTopicLink(${item.telegram_message_id})">${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang))}</button>`
-                : '';
-            actionChips = `<div class="fb-actions-left">${dmChip}${topicChip}</div>`;
+
+        const dmButtonHtml = hasDm
+            ? `<button class="fb-action-btn fb-action-btn--dm" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">
+                   <span class="btn-icon">💬</span> ${window.escapeHTML(window.t('feedbackDmBtn', {}, lang) || 'DM').replace('👤 ', '')}
+               </button>`
+            : '';
+
+        const topicButtonHtml = hasTopicLink
+            ? `<button class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${item.telegram_message_id})">
+                   <span class="btn-icon">📌</span> ${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}
+               </button>`
+            : '';
+
+        const thankCloseButtonHtml = isNew
+            ? `<button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">
+                   <span class="btn-icon">🎁</span> ${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang) || 'Thank & close')}
+               </button>`
+            : '';
+
+        const rejectButtonHtml = (isNew && isReviewTicket)
+            ? `<button class="fb-action-btn fb-action-btn--reject" onclick="rejectPlayReview(${item.id}, ${projectId}, this)">
+                   <span class="btn-icon">❌</span> ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
+               </button>`
+            : '';
+
+        const hasFooter = dmButtonHtml || topicButtonHtml || thankCloseButtonHtml || rejectButtonHtml;
+        const cardMod = (isNew ? ' fb-card--new' : '') + ((item.status === 'declined' || item.status === 'rejected') ? ' fb-card--rejected' : '');
+        let cardTypeClass = 'fb-card--general';
+        if (isReviewTicket) {
+            cardTypeClass = 'fb-card--google-play';
+        } else if (feedbackType === 'bug') {
+            cardTypeClass = 'fb-card--bug';
+        } else if (feedbackType === 'idea') {
+            cardTypeClass = 'fb-card--idea';
+        } else if (feedbackType === 'question') {
+            cardTypeClass = 'fb-card--question';
         }
 
-        // ── Primary CTA — only for new items ──
-        const primaryBtn = isNew
-            ? `<button class="fb-primary-btn" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang))}</button>`
-            : '';
-        const rejectBtn = (isNew && isReviewTicket)
-            ? `<button class="fb-reject-btn" onclick="rejectPlayReview(${item.id}, ${projectId}, this)">❌ ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>`
-            : '';
-        const ownerActions = (primaryBtn || rejectBtn)
-            ? `<div class="fb-owner-actions">${primaryBtn}${rejectBtn}</div>`
-            : '';
-
-        const hasFooter = actionChips || ownerActions;
-        const cardMod = (isNew ? ' fb-card--new' : '') + ((item.status === 'declined' || item.status === 'rejected') ? ' fb-card--rejected' : '');
-        return `<div class="fb-card${cardMod}">
+        return `<div class="fb-card ${cardTypeClass}${cardMod}" data-feedback-type="${feedbackType}">
             ${headerHtml}
-            <div class="fb-message">
+            <div class="fb-body">
                 ${textBodyHtml}
                 ${mediaHtml}
-                ${rewardSummary}
+                ${rewardHtml}
                 ${replyHtml}
             </div>
-            ${hasFooter ? `<div class="fb-footer">${actionChips}${ownerActions}</div>` : ''}
+            ${hasFooter ? `<div class="fb-footer"><div class="fb-actions-group-left">${dmButtonHtml}${topicButtonHtml}</div><div class="fb-actions-group-right">${thankCloseButtonHtml}${rejectButtonHtml}</div></div>` : ''}
         </div>`;
     }).join('')}</div>`;
 }
@@ -3747,7 +3917,7 @@ function showProjectFeedbackModalError(project) {
 function showProjectFeedbackModal(project, items) {
     const body = document.getElementById('project-feedback-body');
     if (!body) return;
-    body.innerHTML = getProjectFeedbackHeader(project) + renderProjectFeedbackCards(project, items);
+    body.innerHTML = getProjectFeedbackHeader(project, items) + renderProjectFeedbackCards(project, items);
     document.getElementById('project-feedback-modal').classList.add('active');
     feedbackScheduleClampMeasure();
 }
