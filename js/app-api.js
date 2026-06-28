@@ -1893,6 +1893,7 @@ function _mapProjectsFromApi(data) {
             last_owner_activity: project.last_owner_activity || null,
             published_to_market_at: project.published_to_market_at || null,
             last_mass_invite_at: project.last_mass_invite_at || null,
+            last_mass_invite_sent_count: Number(project.last_mass_invite_sent_count || 0),
             run_iteration: Number(project.run_iteration || 1),
             feedback_new_count: project.feedback_new_count || 0,
             feedback_total_count: project.feedback_total_count || 0,
