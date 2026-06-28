@@ -54,7 +54,7 @@
             playReviewCheckboxLabel: "I left a review in Google Play",
             playReviewModalTitle: "Leave a Google Play review",
             playReviewModalText: "Leave a review on Google Play. Write it up like a technical report: confirm whether bugs are present or absent, describe how features work, or suggest improvements. Real reviews will help the developer pass the testing moderation process!",
-            playReviewOpenStoreBtn: "Open app page",
+            playReviewOpenStoreBtn: "Open in Google Play",
             playReviewDetailsTitle: "Google Play reviews needed",
             playReviewDetailsText: "This app currently needs your Google Play reviews. If you find the app useful, please leave a short honest review: it helps the developer pass testing-period moderation and supports the whole mutual-testing community.",
             playReviewDetailsOpenBtn: "Leave a Google Play review",

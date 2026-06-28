@@ -3136,7 +3136,7 @@ function openPlayReviewModalFromCheckinOptions(event) {
 }
 
 function closePlayReviewModal(event) {
-    if (event && event.target !== document.getElementById('play-review-modal')) return;
+    if (event && event.target && event.target.id !== 'play-review-modal' && !event.target.classList.contains('play-review-cancel-link')) return;
     var modal = document.getElementById('play-review-modal');
     if (modal) modal.classList.remove('active');
     _playReviewModalSource = 'badge';

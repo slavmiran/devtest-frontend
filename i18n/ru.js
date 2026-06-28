@@ -53,7 +53,7 @@
             playReviewCheckboxLabel: "Я оставил отзыв в Google Play",
             playReviewModalTitle: "Оставить отзыв в Google Play",
             playReviewModalText: "Оставьте отзыв в Google Play. Напишите его как технический отчет: подтвердите отсутствие или наличие багов, опишите работу функционала или предложите улучшения. Живые отзывы помогут разработчику пройти модерацию тестирования!",
-            playReviewOpenStoreBtn: "Открыть страницу приложения",
+            playReviewOpenStoreBtn: "Открыть в Google Play",
             playReviewDetailsTitle: "Нужны отзывы в Google Play",
             playReviewDetailsText: "Этому приложению сейчас особенно важны ваши отзывы в Google Play. Если приложение вам подходит, оставьте короткий честный отзыв: это помогает разработчику пройти модерацию тестового периода, а платформа сильнее поддерживает всех участников взаимного тестирования.",
             playReviewDetailsOpenBtn: "Оставить отзыв в Google Play",
