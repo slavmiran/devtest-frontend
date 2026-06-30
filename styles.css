@@ -2458,6 +2458,12 @@ body.wizard-open .bottom-nav {
     line-height: 1.4;
 }
 
+.form-hint.play-link-tip {
+    margin-top: 8px;
+    margin-bottom: 0;
+    display: block;
+}
+
 .manual-external-day-shell {
     display: flex;
     flex-direction: column;

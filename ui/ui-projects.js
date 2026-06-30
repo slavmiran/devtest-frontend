@@ -2616,6 +2616,64 @@ async function _checkPackageDuplicate(packageName) {
     }
 }
 
+function _getSavedUserTesterEmail() {
+    const fromHelper = (typeof getCurrentUserEmail === 'function') ? getCurrentUserEmail() : '';
+    const fromApp = String((window.App && window.App.userEmail) || '').trim();
+    const fromState = String((window.App && window.App.state && window.App.state._userEmail) || '').trim();
+    return String(fromHelper || fromApp || fromState || '').trim();
+}
+
+function _syncAddEmailTestersBoxVisibility() {
+    const addEmailBox = document.getElementById('add-email-testers-box');
+    if (!addEmailBox) return;
+    const savedEmail = _getSavedUserTesterEmail();
+    if (savedEmail) {
+        addEmailBox.style.display = 'none';
+        const acceptsBox = document.getElementById('app-accepts-email-testers');
+        const testerEmail = document.getElementById('app-tester-email');
+        if (acceptsBox) acceptsBox.checked = true;
+        if (testerEmail) testerEmail.value = savedEmail;
+        return;
+    }
+    addEmailBox.style.removeProperty('display');
+}
+
+function _resolveWizardIconUrl(iconUrl) {
+    if (!iconUrl || typeof iconUrl !== 'string') return '';
+    const trimmed = iconUrl.trim();
+    if (!trimmed) return '';
+    if (trimmed.indexOf('blob:') === 0 || /^https?:\/\//i.test(trimmed)) return trimmed;
+    if (trimmed.indexOf('/telegram-media') === 0) {
+        const base = String((window.App && window.App.API_BASE) || window.API_BASE || '').replace(/\/+$/, '');
+        return base ? base + trimmed : trimmed;
+    }
+    if (typeof resolveIconUrl === 'function') return resolveIconUrl(trimmed);
+    return trimmed;
+}
+
+function _updateAddPlayLinkValidationUi() {
+    const input = document.getElementById('app-package');
+    if (!input) return;
+    const value = (input.value || '').trim();
+
+    if (!value) {
+        input.classList.remove('field-error');
+        if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+        return;
+    }
+
+    if (isAddPlayLinkValid()) {
+        input.classList.remove('field-error');
+        if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+        return;
+    }
+
+    input.classList.add('field-error');
+    if (typeof _showProjectPackageError === 'function') {
+        _showProjectPackageError('invalidPlayLink');
+    }
+}
+
 function _revokeAppIconBlobUrl() {
     const flow = window.addProjectFlow;
     if (flow && flow.iconBlobUrl) {
@@ -2751,15 +2809,15 @@ function syncAppIconPickerUi() {
     const rawUrl = iconInput ? (iconInput.value || '').trim() : '';
     const blobUrl = window.addProjectFlow && window.addProjectFlow.iconBlobUrl;
     let url = blobUrl || rawUrl;
-    if (!blobUrl && url && typeof resolveIconUrl === 'function') url = resolveIconUrl(url);
+    url = _resolveWizardIconUrl(url);
     const hasIcon = !!url;
 
     if (picker) picker.classList.toggle('has-icon', hasIcon);
     if (preview) {
         if (hasIcon) {
+            preview.onerror = function () { onAppIconPreviewError(); };
             preview.src = url;
             preview.style.display = 'block';
-            preview.onerror = function () { onAppIconPreviewError(); };
         } else {
             preview.removeAttribute('src');
             preview.style.display = 'none';
@@ -2771,10 +2829,15 @@ function syncAppIconPickerUi() {
     if (pickerPreviewWrap && pickerPreviewImg) {
         if (hasIcon) {
             pickerPreviewWrap.style.display = 'flex';
+            pickerPreviewImg.onerror = function () {
+                if (window.addProjectFlow && window.addProjectFlow.iconBlobUrl) return;
+                pickerPreviewWrap.style.display = 'none';
+                pickerPreviewImg.removeAttribute('src');
+            };
             pickerPreviewImg.src = url;
         } else {
             pickerPreviewWrap.style.display = 'none';
-            pickerPreviewImg.src = '';
+            pickerPreviewImg.removeAttribute('src');
         }
     }
     if (pickerPreviewName) {
@@ -2784,16 +2847,16 @@ function syncAppIconPickerUi() {
 }
 
 function onAppIconInput() {
-    if (typeof updateIconPreview === 'function') {
-        updateIconPreview('app-icon', 'app-icon-preview');
-    }
     syncAppIconPickerUi();
 }
 
 function onAppIconPreviewError() {
     if (window.addProjectFlow && window.addProjectFlow.iconBlobUrl) return;
     const preview = document.getElementById('app-icon-preview');
-    if (preview) preview.style.display = 'none';
+    if (preview) {
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+    }
     const picker = document.getElementById('app-icon-picker');
     if (picker) picker.classList.remove('has-icon');
 }
@@ -2808,15 +2871,21 @@ async function onAppIconFileSelected(fileInput) {
     window.addProjectFlow.iconBlobUrl = blobUrl;
     syncAppIconPickerUi();
 
+    let uploadOk = false;
     try {
         if (typeof handleIconUpload === 'function') {
             await handleIconUpload(fileInput, 'app-icon');
+            uploadOk = !!(document.getElementById('app-icon') && (document.getElementById('app-icon').value || '').trim());
         }
-    } finally {
-        _revokeAppIconBlobUrl();
-        onAppIconInput();
-        closeIconPickerSheet();
+    } catch (e) {
+        console.error('Icon upload failed:', e);
     }
+
+    if (uploadOk) {
+        _revokeAppIconBlobUrl();
+    }
+    syncAppIconPickerUi();
+    closeIconPickerSheet();
 }
 
 function openIconPickerSheet() {
@@ -2902,20 +2971,7 @@ function openModal() {
     updateProjectPricing('add');
     syncAppIconPickerUi();
     onAddAppNameInput();
-
-    // Item 10: if the user already has a saved tester email, pre-enable the opt-in and prefill it, and hide the selector box.
-    const savedEmail = (typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : '') || (window.App && window.App.userEmail) || '';
-    const addEmailBox = document.getElementById('add-email-testers-box');
-    if (savedEmail) {
-        if (addEmailBox) addEmailBox.style.display = 'none';
-        const acceptsBox = document.getElementById('app-accepts-email-testers');
-        const testerEmail = document.getElementById('app-tester-email');
-        if (acceptsBox) acceptsBox.checked = true;
-        if (testerEmail) testerEmail.value = savedEmail;
-        onAcceptsEmailTestersChange();
-    } else {
-        if (addEmailBox) addEmailBox.style.display = '';
-    }
+    _syncAddEmailTestersBoxVisibility();
 
     evaluateAddStages();
     updateWizardProgress();
@@ -2948,6 +3004,7 @@ function closeModal(event) {
         resetProjectForms();
         syncAppIconPickerUi();
         onAddAppNameInput();
+        _syncAddEmailTestersBoxVisibility();
         evaluateAddStages();
     }, 300);
 }
@@ -3083,7 +3140,7 @@ function isAddStage3Valid() {
 }
 
 function onAddPlayLinkInput() {
-    if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+    _updateAddPlayLinkValidationUi();
     if (window.addWizardState && window.addWizardState.unlockedStep > 1) {
         window.addWizardState.unlockedStep = 1;
         window.addWizardState.focusStep = 1;
@@ -3148,6 +3205,7 @@ function evaluateAddStages() {
     stage3.classList.toggle('wizard-section--locked', unlocked < 3);
 
     syncAppIconPickerUi();
+    _syncAddEmailTestersBoxVisibility();
     updateWizardProgress();
     updateAddSaveButtonState();
 }
