@@ -1663,12 +1663,31 @@ function renderTests(force) {
             const safeGroupUrl = escapeInlineJsString(groupUrl);
             const shouldShowScreenshotAction = window.isFirstDayScreenshotVisible ? window.isFirstDayScreenshotVisible(test.id) : false;
             const hintHtml = renderCheckinRewardHint(test, 1, lang);
-            actionsHtml = `
-                <div class="first-day-actions">
+
+            let groupActionHtml = '';
+            if (test.test_mode === 'email_list') {
+                const badgeTitle = lang === 'ru' ? '📧 Тестирование по Email' : '📧 Testing by Email';
+                const badgeSubtitle = lang === 'ru'
+                    ? 'Разработчик должен был уже добавить ваш email в Play Console. Просто скачайте приложение.'
+                    : 'The developer should have already added your email in the Play Console. Just download the app.';
+                groupActionHtml = `
+                    <div class="email-testing-badge" style="background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.2); border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: center;">
+                        <div style="font-weight: bold; color: var(--accent-color, #007aff); font-size: 14px; margin-bottom: 4px;">${badgeTitle}</div>
+                        <div style="font-size: 12px; color: var(--hint-color, #8e8e93); line-height: 1.3;">${badgeSubtitle}</div>
+                    </div>
+                `;
+            } else {
+                groupActionHtml = `
                     <div class="first-day-row">
-                        <button class="btn first-day-btn" style="flex: 1;" onclick="tg.openLink('${safeGroupUrl}', { try_browser: 'chrome' }); if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged();">${t.joinGroup}</button>
+                        <button class="btn first-day-btn" style="flex: 1;" onclick="try { tg.openLink('${safeGroupUrl}', { try_browser: 'chrome' }); } catch(err) { console.error('Failed to open group link:', err); } if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged();">${t.joinGroup}</button>
                         <button class="btn-icon first-day-copy" style="width: 44px; min-height: 44px; font-size: 18px;" onclick="copyGroupUrl('${safeGroupUrl}')">📋</button>
                     </div>
+                `;
+            }
+
+            actionsHtml = `
+                <div class="first-day-actions">
+                    ${groupActionHtml}
                     <button class="btn first-day-btn" style="width: 100%;" onclick="handleFirstDownload(${test.id}, '${safePackage}')">
                         ${t.downloadPlay}
                     </button>

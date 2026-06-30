@@ -2648,6 +2648,7 @@ async function saveProject() {
             _focusAddError(document.querySelector('#setup-checklist .field-error') || document.getElementById('setup-checklist'));
             return;
         }
+        groupUrl = window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
     } else {
         const customUrl = (document.getElementById('app-group').value || '').trim();
         if (!customUrl) {
