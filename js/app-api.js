@@ -1350,6 +1350,8 @@ function _mapTestsFromApi(data) {
             is_pending_completion: isPendingCompletion,
             join_type: app.join_type || 'invite',
             target_lang: app.target_lang || 'ALL',
+            test_mode: app.test_mode === 'email_list' ? 'email_list' : 'google_group',
+            is_setup_completed: app.is_setup_completed !== false,
             daily_timeline: resolvedDailyTimeline,
             archive_reason: app.archive_reason || null,
             bounty_per_tester: app.bounty_per_tester || 0,
