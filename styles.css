@@ -1098,7 +1098,9 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 }
 
 .app-icon-picker.has-icon .app-icon-picker__img {
-    display: block;
+    display: block !important;
+    visibility: visible;
+    opacity: 1;
 }
 
 .app-icon-picker__plus {

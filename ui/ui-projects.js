@@ -2639,16 +2639,47 @@ function _syncAddEmailTestersBoxVisibility() {
 }
 
 function _resolveWizardIconUrl(iconUrl) {
-    if (!iconUrl || typeof iconUrl !== 'string') return '';
-    const trimmed = iconUrl.trim();
-    if (!trimmed) return '';
-    if (trimmed.indexOf('blob:') === 0 || /^https?:\/\//i.test(trimmed)) return trimmed;
-    if (trimmed.indexOf('/telegram-media') === 0) {
-        const base = String((window.App && window.App.API_BASE) || window.API_BASE || '').replace(/\/+$/, '');
-        return base ? base + trimmed : trimmed;
+    if (typeof resolveIconUrl === 'function') return resolveIconUrl(iconUrl);
+    return iconUrl || '';
+}
+
+function _applyMainIconPreview(url, hasIcon) {
+    const picker = document.getElementById('app-icon-picker');
+    const preview = document.getElementById('app-icon-preview');
+    const placeholder = document.getElementById('app-icon-placeholder');
+    if (!picker || !preview) return;
+
+    picker.classList.toggle('has-icon', hasIcon);
+    if (hasIcon && url) {
+        preview.onerror = function () { onAppIconPreviewError(); };
+        preview.onload = function () {
+            preview.style.display = 'block';
+            preview.style.visibility = 'visible';
+            picker.classList.add('has-icon');
+            if (placeholder) placeholder.style.display = 'none';
+        };
+        preview.src = url;
+        preview.style.display = 'block';
+        preview.style.visibility = 'visible';
+        if (placeholder) placeholder.style.display = 'none';
+    } else {
+        preview.onload = null;
+        preview.onerror = null;
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+        preview.style.visibility = '';
+        if (placeholder) placeholder.style.display = '';
     }
-    if (typeof resolveIconUrl === 'function') return resolveIconUrl(trimmed);
-    return trimmed;
+}
+
+function _preloadIconUrl(url) {
+    return new Promise(function (resolve) {
+        if (!url) { resolve(false); return; }
+        const img = new Image();
+        img.onload = function () { resolve(true); };
+        img.onerror = function () { resolve(false); };
+        img.src = url;
+    });
 }
 
 function _updateAddPlayLinkValidationUi() {
@@ -2808,22 +2839,10 @@ function syncAppIconPickerUi() {
 
     const rawUrl = iconInput ? (iconInput.value || '').trim() : '';
     const blobUrl = window.addProjectFlow && window.addProjectFlow.iconBlobUrl;
-    let url = blobUrl || rawUrl;
-    url = _resolveWizardIconUrl(url);
+    const url = _resolveWizardIconUrl(blobUrl || rawUrl);
     const hasIcon = !!url;
 
-    if (picker) picker.classList.toggle('has-icon', hasIcon);
-    if (preview) {
-        if (hasIcon) {
-            preview.onerror = function () { onAppIconPreviewError(); };
-            preview.src = url;
-            preview.style.display = 'block';
-        } else {
-            preview.removeAttribute('src');
-            preview.style.display = 'none';
-        }
-    }
-    if (placeholder) placeholder.style.display = hasIcon ? 'none' : '';
+    _applyMainIconPreview(url, hasIcon);
     if (removeBtn) removeBtn.style.display = hasIcon ? '' : 'none';
 
     if (pickerPreviewWrap && pickerPreviewImg) {
@@ -2870,6 +2889,7 @@ async function onAppIconFileSelected(fileInput) {
     const blobUrl = URL.createObjectURL(file);
     window.addProjectFlow.iconBlobUrl = blobUrl;
     syncAppIconPickerUi();
+    closeIconPickerSheet();
 
     let uploadOk = false;
     try {
@@ -2882,10 +2902,13 @@ async function onAppIconFileSelected(fileInput) {
     }
 
     if (uploadOk) {
-        _revokeAppIconBlobUrl();
+        const serverUrl = _resolveWizardIconUrl((document.getElementById('app-icon').value || '').trim());
+        const loaded = await _preloadIconUrl(serverUrl);
+        if (loaded) {
+            _revokeAppIconBlobUrl();
+        }
     }
     syncAppIconPickerUi();
-    closeIconPickerSheet();
 }
 
 function openIconPickerSheet() {
@@ -2903,6 +2926,7 @@ function closeIconPickerSheet(event) {
     if (!overlay) return;
     overlay.classList.remove('active');
     iconPickerShowMenu();
+    syncAppIconPickerUi();
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 

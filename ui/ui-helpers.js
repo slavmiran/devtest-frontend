@@ -356,12 +356,20 @@ function getAvatar(name) {
 }
 
 function resolveIconUrl(iconUrl) {
-    if (iconUrl && typeof iconUrl === 'string' && iconUrl.indexOf('/telegram-media') === 0) {
+    if (!iconUrl || typeof iconUrl !== 'string') return '';
+    var trimmed = iconUrl.trim();
+    if (!trimmed) return '';
+    if (trimmed.indexOf('blob:') === 0 || /^https?:\/\//i.test(trimmed)) return trimmed;
+    var path = trimmed;
+    if (path.indexOf('telegram-media') !== -1) {
+        if (path.indexOf('/telegram-media') !== 0) {
+            path = path.indexOf('telegram-media') === 0 ? '/' + path : path;
+        }
         var base = (window.App && window.App.API_BASE) || window.API_BASE || '';
-        base = base.replace(/\/+$/, '');
-        return base + iconUrl;
+        base = String(base).replace(/\/+$/, '');
+        return base ? base + (path.indexOf('/') === 0 ? path : '/' + path) : path;
     }
-    return iconUrl || '';
+    return trimmed;
 }
 window.resolveIconUrl = resolveIconUrl;
 

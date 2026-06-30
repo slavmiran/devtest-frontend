@@ -3712,13 +3712,7 @@ function feedbackOnImageError(imgEl) {
 
 function feedbackResolveMediaUrl(url) {
     if (!url) return '';
-    // If it starts with /telegram-media or telegram-media, resolve absolutely
-    if (url.startsWith('/telegram-media') || url.startsWith('telegram-media')) {
-        var apiBase = String((window.App && window.App.API_BASE) || window.API_BASE || '');
-        apiBase = apiBase.replace(/\/+$/, '');
-        var path = url.startsWith('/') ? url : '/' + url;
-        return apiBase + path;
-    }
+    if (typeof resolveIconUrl === 'function') return resolveIconUrl(url);
     return url;
 }
 
