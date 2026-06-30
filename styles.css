@@ -1168,6 +1168,7 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 
 .play-link-tip {
     margin-top: 8px;
+    display: block;
 }
 
 .form-error {
@@ -1268,9 +1269,34 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
 }
 
 .wizard-optional-card.is-expanded .wizard-optional-card__body {
-    max-height: 1200px;
+    max-height: none;
     opacity: 1;
     padding: 0 16px 16px;
+}
+
+.wizard-section--locked {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.wizard-mode-card .wizard-mode-panel {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(142, 142, 147, 0.18);
+}
+
+.wizard-mode-card .wizard-mode-panel .form-section-title {
+    margin-bottom: 12px;
+}
+
+.wizard-mode-card .calc-card {
+    margin-top: 12px;
+}
+
+.wizard-continue-btn.is-loading,
+.wizard-submit-btn.is-loading {
+    opacity: 0.7;
+    pointer-events: none;
 }
 
 /* Outreach / more testers block */
@@ -1279,16 +1305,8 @@ p { margin: 0 0 12px 0; color: var(--hint-color); font-size: 14px; }
     background: linear-gradient(135deg, rgba(51, 144, 236, 0.08) 0%, rgba(52, 199, 89, 0.06) 100%);
     border: 1px solid rgba(51, 144, 236, 0.22);
     border-radius: 14px;
-    padding: 16px 16px 16px 48px;
+    padding: 16px;
     margin-bottom: 16px;
-}
-
-.wizard-outreach-card__badge {
-    position: absolute;
-    left: 14px;
-    top: 16px;
-    font-size: 20px;
-    line-height: 1;
 }
 
 /* Icon picker bottom sheet */

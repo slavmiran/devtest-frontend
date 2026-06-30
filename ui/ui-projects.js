@@ -2539,7 +2539,7 @@ window.AccessSetupManager = window.AccessSetupManager || {
     }
 };
 
-window.addWizardState = window.addWizardState || { focusStep: 1 };
+window.addWizardState = window.addWizardState || { focusStep: 1, unlockedStep: 1 };
 
 const _WIZARD_STEP_SUBTITLES = {
     1: 'Шаг 1 из 3: Основная информация',
@@ -2547,19 +2547,108 @@ const _WIZARD_STEP_SUBTITLES = {
     3: 'Шаг 3 из 3: Настройка проекта'
 };
 
+function _getWizardUnlockedStep() {
+    return Math.max(1, Math.min(3, Number((window.addWizardState && window.addWizardState.unlockedStep) || 1)));
+}
+
+function _extractPackageNameFromPlayInput() {
+    const raw = (document.getElementById('app-package').value || '').trim();
+    if (!raw) return '';
+    try {
+        if (raw.includes('play.google.com')) {
+            const parsed = new URL(raw).searchParams.get('id');
+            if (parsed) return parsed.trim();
+        }
+    } catch (e) { /* noop */ }
+    return raw;
+}
+
+function _setWizardContinueLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) {
+        if (!btn.dataset.originalText) btn.dataset.originalText = btn.textContent;
+        btn.textContent = '...';
+        btn.disabled = true;
+        btn.classList.add('is-loading');
+    } else {
+        if (btn.dataset.originalText) btn.textContent = btn.dataset.originalText;
+        btn.disabled = false;
+        btn.classList.remove('is-loading');
+    }
+}
+
+async function _checkPackageDuplicate(packageName) {
+    const normalized = String(packageName || '').trim();
+    if (!normalized) return 'invalid_play_link';
+
+    const localProjects = (typeof myProjects !== 'undefined' ? myProjects : []) || [];
+    const hasLocalLive = localProjects.some(function (project) {
+        const pkg = String((project && (project.package || project.package_name)) || '').trim();
+        if (pkg !== normalized) return false;
+        const status = String((project && project.status) || 'active').toLowerCase();
+        return status === 'active' || status === 'pending' || !status;
+    });
+    if (hasLocalLive) return 'ALREADY_ACTIVE';
+
+    const apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
+    const userId = (window.App && window.App.userId) || window.userId || 0;
+    const initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
+
+    try {
+        const response = await fetch(apiBase + '/projects/check-package', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner_id: userId,
+                package_name: normalized,
+                init_data: initData,
+            }),
+        });
+        const result = await response.json();
+        if (result && result.status === 'ok') return null;
+        if (typeof getBackendErrorCode === 'function') {
+            return getBackendErrorCode(result) || 'database_error';
+        }
+        return (result && (result.code || result.error_code)) || 'database_error';
+    } catch (e) {
+        console.error('Package duplicate check failed:', e);
+        return 'network_error';
+    }
+}
+
+function _revokeAppIconBlobUrl() {
+    const flow = window.addProjectFlow;
+    if (flow && flow.iconBlobUrl) {
+        try { URL.revokeObjectURL(flow.iconBlobUrl); } catch (e) { /* noop */ }
+        flow.iconBlobUrl = null;
+    }
+}
+
+function _ensureOptionalSettingsExpanded() {
+    const card = document.getElementById('wizard-optional-card');
+    if (!card) return;
+    card.classList.add('is-expanded');
+    const head = card.querySelector('.wizard-optional-card__head');
+    if (head) head.setAttribute('aria-expanded', 'true');
+}
+
 function _scrollWizardToSection(sectionId) {
-    const body = document.getElementById('wizard-body');
     const section = document.getElementById(sectionId);
-    if (!body || !section) return;
-    const header = document.querySelector('.wizard-header');
-    const headerH = header ? header.offsetHeight : 0;
-    const top = section.offsetTop - headerH - 8;
-    body.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    if (!section) return;
+    const body = document.getElementById('wizard-body');
+    if (body) {
+        const header = document.querySelector('.wizard-header');
+        const headerH = header ? header.offsetHeight : 0;
+        const top = section.offsetTop - headerH - 8;
+        body.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+    if (typeof section.scrollIntoView === 'function') {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 function updateWizardProgress() {
-    const playValid = isAddPlayLinkValid();
-    const stage2Done = playValid && isAddStage2Complete();
+    const unlocked = _getWizardUnlockedStep();
     const focusStep = (window.addWizardState && window.addWizardState.focusStep) || 1;
 
     [1, 2, 3].forEach(function (step) {
@@ -2567,7 +2656,7 @@ function updateWizardProgress() {
         const dot = document.getElementById('wizard-dot-' + step);
         if (!item || !dot) return;
 
-        const isComplete = (step === 1 && playValid) || (step === 2 && stage2Done) || false;
+        const isComplete = step < unlocked;
         const isCurrent = step === focusStep;
 
         item.classList.toggle('is-complete', isComplete && !isCurrent);
@@ -2582,8 +2671,8 @@ function updateWizardProgress() {
 
     const line1 = document.getElementById('wizard-line-1');
     const line2 = document.getElementById('wizard-line-2');
-    if (line1) line1.classList.toggle('is-complete', playValid);
-    if (line2) line2.classList.toggle('is-complete', stage2Done);
+    if (line1) line1.classList.toggle('is-complete', unlocked >= 2);
+    if (line2) line2.classList.toggle('is-complete', unlocked >= 3);
 
     const subtitle = document.getElementById('wizard-step-subtitle');
     if (subtitle) subtitle.textContent = _WIZARD_STEP_SUBTITLES[focusStep] || _WIZARD_STEP_SUBTITLES[1];
@@ -2595,17 +2684,41 @@ function updateWizardProgress() {
     if (currentSection) currentSection.classList.add('wizard-section--current');
 }
 
-function wizardContinue(step) {
+async function wizardContinue(step) {
     if (step === 1) {
         if (!isAddPlayLinkValid()) return;
-        window.addWizardState.focusStep = 2;
-        updateWizardProgress();
-        _scrollWizardToSection('add-stage-2');
+        const btn = document.getElementById('add-continue-1');
+        _setWizardContinueLoading(btn, true);
+        if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+
+        try {
+            const packageName = _extractPackageNameFromPlayInput();
+            const conflictCode = await _checkPackageDuplicate(packageName);
+            if (conflictCode) {
+                if (typeof _handleProjectCreateConflict === 'function') {
+                    _handleProjectCreateConflict(conflictCode);
+                } else if (typeof _showProjectPackageError === 'function') {
+                    _showProjectPackageError(conflictCode);
+                }
+                _markAddFieldError(document.getElementById('app-package'));
+                return;
+            }
+            window.addWizardState.unlockedStep = 2;
+            window.addWizardState.focusStep = 2;
+            evaluateAddStages();
+            updateWizardProgress();
+            _scrollWizardToSection('add-stage-2');
+        } finally {
+            _setWizardContinueLoading(btn, false);
+        }
         return;
     }
     if (step === 2) {
         if (!isAddStage2Complete()) return;
+        window.addWizardState.unlockedStep = 3;
         window.addWizardState.focusStep = 3;
+        _ensureOptionalSettingsExpanded();
+        evaluateAddStages();
         updateWizardProgress();
         _scrollWizardToSection('add-stage-3');
     }
@@ -2636,8 +2749,9 @@ function syncAppIconPickerUi() {
     }
 
     const rawUrl = iconInput ? (iconInput.value || '').trim() : '';
-    let url = rawUrl;
-    if (url && typeof resolveIconUrl === 'function') url = resolveIconUrl(url);
+    const blobUrl = window.addProjectFlow && window.addProjectFlow.iconBlobUrl;
+    let url = blobUrl || rawUrl;
+    if (!blobUrl && url && typeof resolveIconUrl === 'function') url = resolveIconUrl(url);
     const hasIcon = !!url;
 
     if (picker) picker.classList.toggle('has-icon', hasIcon);
@@ -2645,8 +2759,9 @@ function syncAppIconPickerUi() {
         if (hasIcon) {
             preview.src = url;
             preview.style.display = 'block';
+            preview.onerror = function () { onAppIconPreviewError(); };
         } else {
-            preview.src = '';
+            preview.removeAttribute('src');
             preview.style.display = 'none';
         }
     }
@@ -2676,6 +2791,7 @@ function onAppIconInput() {
 }
 
 function onAppIconPreviewError() {
+    if (window.addProjectFlow && window.addProjectFlow.iconBlobUrl) return;
     const preview = document.getElementById('app-icon-preview');
     if (preview) preview.style.display = 'none';
     const picker = document.getElementById('app-icon-picker');
@@ -2683,11 +2799,24 @@ function onAppIconPreviewError() {
 }
 
 async function onAppIconFileSelected(fileInput) {
-    if (typeof handleIconUpload === 'function') {
-        await handleIconUpload(fileInput, 'app-icon');
+    const file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    _revokeAppIconBlobUrl();
+    if (!window.addProjectFlow) window.addProjectFlow = {};
+    const blobUrl = URL.createObjectURL(file);
+    window.addProjectFlow.iconBlobUrl = blobUrl;
+    syncAppIconPickerUi();
+
+    try {
+        if (typeof handleIconUpload === 'function') {
+            await handleIconUpload(fileInput, 'app-icon');
+        }
+    } finally {
+        _revokeAppIconBlobUrl();
+        onAppIconInput();
+        closeIconPickerSheet();
     }
-    onAppIconInput();
-    closeIconPickerSheet();
 }
 
 function openIconPickerSheet() {
@@ -2745,6 +2874,7 @@ function iconPickerUpload() {
 function iconPickerRemove() {
     const iconInput = document.getElementById('app-icon');
     const fileInput = document.getElementById('app-icon-file');
+    _revokeAppIconBlobUrl();
     if (iconInput) iconInput.value = '';
     if (fileInput) fileInput.value = '';
     onAppIconInput();
@@ -2763,6 +2893,7 @@ function onAddAppNameInput() {
 
 function openModal() {
     window.addWizardState.focusStep = 1;
+    window.addWizardState.unlockedStep = 1;
     document.getElementById('add-modal').classList.add('active');
     document.body.classList.add('wizard-open');
     resetAddFlow();
@@ -2810,6 +2941,8 @@ function closeModal(event) {
         document.getElementById('package-error').innerHTML = '';
         document.getElementById('package-error').style.display = 'none';
         window.addWizardState.focusStep = 1;
+        window.addWizardState.unlockedStep = 1;
+        _revokeAppIconBlobUrl();
         resetAddFlow();
         switchGroupTab('standard');
         resetProjectForms();
@@ -2821,6 +2954,7 @@ function closeModal(event) {
 
 function resetAddFlow() {
     _clearAddSetupChecklistTimer();
+    _revokeAppIconBlobUrl();
     window.addProjectFlow = {
         emailCopied: false,
         isEmailCopied: false,
@@ -2949,7 +3083,11 @@ function isAddStage3Valid() {
 }
 
 function onAddPlayLinkInput() {
-    _clearProjectPackageError();
+    if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+    if (window.addWizardState && window.addWizardState.unlockedStep > 1) {
+        window.addWizardState.unlockedStep = 1;
+        window.addWizardState.focusStep = 1;
+    }
     evaluateAddStages();
 }
 
@@ -3002,11 +3140,12 @@ function evaluateAddStages() {
     const stage3 = document.getElementById('add-stage-3');
     if (!stage2 || !stage3) return;
 
-    const playValid = isAddPlayLinkValid();
-    stage2.classList.toggle('active', playValid);
+    const unlocked = _getWizardUnlockedStep();
+    stage2.classList.toggle('active', unlocked >= 2);
+    stage3.classList.toggle('active', unlocked >= 3);
 
-    const stage2Done = playValid && isAddStage2Complete();
-    stage3.classList.toggle('active', stage2Done);
+    stage2.classList.toggle('wizard-section--locked', unlocked < 2);
+    stage3.classList.toggle('wizard-section--locked', unlocked < 3);
 
     syncAppIconPickerUi();
     updateWizardProgress();
@@ -3017,7 +3156,8 @@ function updateAddSaveButtonState() {
     const saveBtn = document.getElementById('t-save');
     const continue1 = document.getElementById('add-continue-1');
     const continue2 = document.getElementById('add-continue-2');
-    const ready = isAddPlayLinkValid() && isAddStage2Complete() && isAddStage3Valid();
+    const unlocked = _getWizardUnlockedStep();
+    const ready = unlocked >= 3 && isAddPlayLinkValid() && isAddStage2Complete() && isAddStage3Valid();
 
     if (saveBtn) saveBtn.classList.toggle('is-locked', !ready);
     if (continue1) continue1.classList.toggle('is-locked', !isAddPlayLinkValid());

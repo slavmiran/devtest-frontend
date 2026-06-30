@@ -435,7 +435,7 @@
                 <button type="button" class="btn btn-primary wizard-continue-btn" id="add-continue-2" onclick="wizardContinue(2)" data-i18n="emailTesterDefaultAction">Продолжить</button>
             </div>
             <div id="add-stage-3" class="stage-panel wizard-section">
-            <div class="wizard-section-card">
+            <div class="wizard-section-card wizard-mode-card">
                 <label class="form-label" id="t-modeLabel" data-i18n="modeLabel">Режим проекта</label>
                 <div class="form-hint" id="t-modeHint" data-i18n="modeHint">Выберите, где хотите набирать тестеров: взаимно, платно или в обоих каналах.</div>
                 <input type="hidden" id="app-mode" value="mutual">
@@ -444,44 +444,40 @@
                     <button type="button" class="seg-btn" id="add-mode-bounty" onclick="setProjectMode('add', 'bounty')" data-i18n="modeBounty">💎 Биржа</button>
                     <button type="button" class="seg-btn" id="add-mode-hybrid" onclick="setProjectMode('add', 'hybrid')" data-i18n="modeHybrid">🔥 Гибрид</button>
                 </div>
-            </div>
-            <div id="add-mutual-settings" class="reveal-panel active">
-                <div class="form-surface">
-                    <div class="form-section-title" id="t-mutualSettingsTitle" data-i18n="mutualSettingsTitle">🤝 Взаимные тестеры</div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label" id="t-limitMutualLabel" data-i18n="limitMutualLabel">Лимит взаимных тестеров</label>
-                        <input type="number" id="app-limit-mutual" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('add')">
-                        <div class="form-hint" id="t-limitMutualHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitMutualHint">Сколько тестеров можно набрать через взаимный обмен.</div>
-                    </div>
+            <div id="add-mutual-settings" class="reveal-panel active wizard-mode-panel">
+                <div class="form-section-title" id="t-mutualSettingsTitle" data-i18n="mutualSettingsTitle">🤝 Взаимные тестеры</div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" id="t-limitMutualLabel" data-i18n="limitMutualLabel">Лимит взаимных тестеров</label>
+                    <input type="number" id="app-limit-mutual" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('add')">
+                    <div class="form-hint" id="t-limitMutualHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitMutualHint">Сколько тестеров можно набрать через взаимный обмен.</div>
                 </div>
             </div>
-            <div id="add-bounty-settings" class="reveal-panel">
-                <div class="form-surface">
-                    <div class="form-section-title" id="t-bountySettingsTitle" data-i18n="bountySettingsTitle">💎 Платные тестеры</div>
-                    <div style="background: rgba(52,199,89,0.12); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 16px; font-weight: 700; color: var(--link-color);" id="add-balance-badge">💎 </span>
-                        <span style="font-size: 15px; font-weight: 600; color: var(--text-color);" id="add-balance-badge-value"></span>
+            <div id="add-bounty-settings" class="reveal-panel wizard-mode-panel">
+                <div class="form-section-title" id="t-bountySettingsTitle" data-i18n="bountySettingsTitle">💎 Платные тестеры</div>
+                <div class="wizard-bounty-balance" style="background: rgba(52,199,89,0.12); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 16px; font-weight: 700; color: var(--link-color);" id="add-balance-badge">💎 </span>
+                    <span style="font-size: 15px; font-weight: 600; color: var(--text-color);" id="add-balance-badge-value"></span>
+                </div>
+                <div class="form-inline">
+                    <div class="form-group">
+                        <label class="form-label" id="t-limitBountyLabel" data-i18n="limitBountyLabel">Сколько тестеров нанять?</label>
+                        <input type="number" id="app-limit-bounty" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('add')">
+                        <div class="form-hint" id="t-limitBountyHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitBountyHint">Сколько слотов откроется в Бирже.</div>
                     </div>
-                    <div class="form-inline">
-                        <div class="form-group">
-                            <label class="form-label" id="t-limitBountyLabel" data-i18n="limitBountyLabel">Сколько тестеров нанять?</label>
-                            <input type="number" id="app-limit-bounty" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('add')">
-                            <div class="form-hint" id="t-limitBountyHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitBountyHint">Сколько слотов откроется в Бирже.</div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" id="t-bountyPerTesterLabel" data-i18n="bountyPerTesterLabel">Награда одному тестеру</label>
-                            <input type="number" id="app-bounty-per-tester" class="form-input" min="100" step="1" value="100" oninput="updateProjectPricing('add')">
-                            <div class="form-hint" id="t-bountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="bountyPerTesterHint">Минимум 100 $BUST за одного тестера.</div>
-                        </div>
-                    </div>
-                    <div class="calc-card">
-                        <div class="calc-title" id="t-calculatorTitle" data-i18n="calculatorTitle">Калькулятор $BUST</div>
-                        <div class="calc-row"><span id="t-calcRewardPerTester" data-i18n="calcRewardPerTester">Награда на 1 тестера</span><span id="add-calc-per-tester">100 $BUST</span></div>
-                        <div class="calc-row"><span id="t-calcDailyShare" data-i18n="calcDailyShare">Ежедневные чекины (65%)</span><span id="add-calc-daily">65 $BUST</span></div>
-                        <div class="calc-row"><span id="t-calcHoldBonus" data-i18n="calcHoldBonus">Hold Bonus (35%)</span><span id="add-calc-hold">35 $BUST</span></div>
-                        <div class="calc-row total"><span id="t-calcTotalCost" data-i18n="calcTotalCost">Всего спишется</span><span id="add-calc-total">1200 $BUST</span></div>
+                    <div class="form-group">
+                        <label class="form-label" id="t-bountyPerTesterLabel" data-i18n="bountyPerTesterLabel">Награда одному тестеру</label>
+                        <input type="number" id="app-bounty-per-tester" class="form-input" min="100" step="1" value="100" oninput="updateProjectPricing('add')">
+                        <div class="form-hint" id="t-bountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="bountyPerTesterHint">Минимум 100 $BUST за одного тестера.</div>
                     </div>
                 </div>
+                <div class="calc-card">
+                    <div class="calc-title" id="t-calculatorTitle" data-i18n="calculatorTitle">Калькулятор $BUST</div>
+                    <div class="calc-row"><span id="t-calcRewardPerTester" data-i18n="calcRewardPerTester">Награда на 1 тестера</span><span id="add-calc-per-tester">100 $BUST</span></div>
+                    <div class="calc-row"><span id="t-calcDailyShare" data-i18n="calcDailyShare">Ежедневные чекины (65%)</span><span id="add-calc-daily">65 $BUST</span></div>
+                    <div class="calc-row"><span id="t-calcHoldBonus" data-i18n="calcHoldBonus">Hold Bonus (35%)</span><span id="add-calc-hold">35 $BUST</span></div>
+                    <div class="calc-row total"><span id="t-calcTotalCost" data-i18n="calcTotalCost">Всего спишется</span><span id="add-calc-total">1200 $BUST</span></div>
+                </div>
+            </div>
             </div>
             <div class="wizard-optional-card is-expanded" id="wizard-optional-card">
                 <button type="button" class="wizard-optional-card__head" onclick="toggleWizardOptionalCard()" aria-expanded="true" aria-controls="wizard-optional-body">
@@ -516,7 +512,6 @@
                 </div>
             </div>
             <div class="wizard-outreach-card project-setting-checkbox add-email-testers-box" id="add-email-testers-box">
-                <div class="wizard-outreach-card__badge">🚀</div>
                 <label class="review-checkbox-row add-email-testers-box__toggle">
                     <input type="checkbox" id="app-accepts-email-testers" onchange="onAcceptsEmailTestersChange()">
                     <span>
