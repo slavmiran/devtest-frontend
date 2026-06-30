@@ -265,26 +265,81 @@
         </div>
     </div>
 
-    <!-- Add Project Modal -->
-    <div id="add-modal" class="modal-overlay" onclick="closeModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-modalTitle" data-i18n="addApp">Добавить приложение</h3>
-            <div class="form-group">
-                <label class="form-label" id="t-appName" data-i18n="appName">Название приложения</label>
-                <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="" data-i18n-placeholder="appNamePlaceholder" oninput="evaluateAddStages()">
-                <div class="form-hint" id="app-name-hint" style="display:none;"></div>
-            </div>
-            <div class="form-group">
-                <label class="form-label" id="t-packageName" data-i18n="packageName">Ссылка на Google Play</label>
-                <input type="text" id="app-package" class="form-input" placeholder="" data-i18n-placeholder="playLinkPlaceholder" oninput="onAddPlayLinkInput()">
-                <div id="package-error" style="color: #ff3b30; font-size: 13px; margin-top: 8px; display: none;"></div>
-            </div>
-            <div id="add-stage-2" class="stage-panel">
-                <div class="form-group">
-                    <label class="form-label" id="t-googleGroup" data-i18n="googleGroup">Ссылка на Google Group</label>
-                    <div class="seg-control" id="group-seg-control">
-                        <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')" data-i18n="groupStandard">Public Group</button>
-                        <button type="button" class="seg-btn" id="seg-custom" onclick="switchGroupTab('custom')" data-i18n="groupCustom">Custom Group</button>
+    <!-- Add Project Wizard (fullscreen) -->
+    <div id="add-modal" class="wizard-overlay modal-overlay" onclick="closeModal(event)">
+        <div class="wizard-page" onclick="event.stopPropagation()">
+            <header class="wizard-header">
+                <div class="wizard-header__top">
+                    <button type="button" class="wizard-back-btn" onclick="closeModal()" aria-label="Back">←</button>
+                    <h2 class="wizard-title" id="t-modalTitle" data-i18n="addApp">Добавление приложения</h2>
+                </div>
+                <div class="wizard-progress" id="wizard-progress" aria-hidden="false">
+                    <div class="wizard-progress__item" data-wizard-step="1">
+                        <span class="wizard-progress__dot" id="wizard-dot-1">1</span>
+                        <span class="wizard-progress__label">Приложение</span>
+                    </div>
+                    <div class="wizard-progress__line" id="wizard-line-1"></div>
+                    <div class="wizard-progress__item" data-wizard-step="2">
+                        <span class="wizard-progress__dot" id="wizard-dot-2">2</span>
+                        <span class="wizard-progress__label">Google Group</span>
+                    </div>
+                    <div class="wizard-progress__line" id="wizard-line-2"></div>
+                    <div class="wizard-progress__item" data-wizard-step="3">
+                        <span class="wizard-progress__dot" id="wizard-dot-3">3</span>
+                        <span class="wizard-progress__label">Параметры</span>
+                    </div>
+                </div>
+                <p class="wizard-step-subtitle" id="wizard-step-subtitle">Шаг 1 из 3: Основная информация</p>
+            </header>
+
+            <div class="wizard-body" id="wizard-body">
+            <section id="add-stage-1" class="wizard-section wizard-section--current">
+                <div class="wizard-section-card">
+                    <div class="app-icon-block">
+                        <button type="button" class="app-icon-picker" id="app-icon-picker" onclick="openIconPickerSheet()" aria-label="App icon">
+                            <img id="app-icon-preview" class="app-icon-picker__img" src="" alt="" onerror="onAppIconPreviewError()">
+                            <span class="app-icon-picker__plus" id="app-icon-placeholder">+</span>
+                        </button>
+                        <div class="app-icon-block__meta">
+                            <div class="app-icon-block__title">Добавить иконку</div>
+                            <div class="app-icon-block__hint">PNG, JPG · до 2MB · 512×512</div>
+                        </div>
+                    </div>
+                    <input type="url" id="app-icon" class="visually-hidden" tabindex="-1" aria-hidden="true" oninput="onAppIconInput()">
+                    <input type="file" id="app-icon-file" accept="image/*" class="visually-hidden" tabindex="-1" onchange="onAppIconFileSelected(this)">
+
+                    <div class="form-group">
+                        <div class="form-label-row">
+                            <label class="form-label" id="t-appName" data-i18n="appName">Название приложения</label>
+                            <span class="form-char-counter" id="app-name-counter">0/30</span>
+                        </div>
+                        <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="" data-i18n-placeholder="appNamePlaceholder" oninput="onAddAppNameInput()">
+                        <div class="form-hint" id="app-name-hint" style="display:none;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" id="t-packageName" data-i18n="packageName">Ссылка на Google Play</label>
+                        <div class="play-link-wrap">
+                            <input type="text" id="app-package" class="form-input" placeholder="" data-i18n-placeholder="playLinkPlaceholder" oninput="onAddPlayLinkInput()">
+                            <span id="play-link-valid-icon" class="play-link-valid-icon" aria-hidden="true">✓</span>
+                        </div>
+                        <div class="form-hint play-link-tip">💡 Вставьте ссылку на страницу приложения в Google Play.</div>
+                        <div id="package-error" class="form-error" style="display: none;"></div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary wizard-continue-btn" id="add-continue-1" onclick="wizardContinue(1)" data-i18n="emailTesterDefaultAction">Продолжить</button>
+                <p class="wizard-security-note">🔒 Ваши данные защищены и не передаются третьим лицам.</p>
+            </section>
+
+            <div id="add-stage-2" class="stage-panel wizard-section">
+                <div class="wizard-section-card">
+                    <div class="wizard-section-head">
+                        <h3 class="wizard-section-title" data-i18n="googleGroup">Настройка доступа</h3>
+                        <p class="wizard-section-desc">Выберите способ тестирования и настройте Play Console.</p>
+                    </div>
+                    <div class="seg-control seg-control--triple" id="group-seg-control">
+                        <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')" data-i18n="groupStandard">DevTestHub</button>
+                        <button type="button" class="seg-btn" id="seg-custom" onclick="switchGroupTab('custom')" data-i18n="groupCustom">Своя группа</button>
+                        <button type="button" class="seg-btn" id="seg-email" onclick="switchGroupTab('email')">E-mail</button>
                     </div>
 
                     <div id="group-standard-block" class="group-setup-card">
@@ -358,16 +413,29 @@
                         <div class="setup-note" data-i18n="customGroupManualHint">Вы сами управляете группой: добавляйте тестеров вручную из дашборда.</div>
                     </div>
 
-                    <div id="email-mode-banner" class="email-mode-banner" style="display: none;">
+                    <div id="group-email-block" style="display: none;" class="group-setup-card email-mode-card">
+                        <div class="email-mode-card__badge" data-i18n="emailModeActive">✉️ Выбрано тестирование по email</div>
+                        <p class="email-mode-card__lead" data-i18n="emailTestingAlertText">Выбирая этот метод, вы получите значительно меньше заявок на взаимное тестирование!</p>
+                        <p class="email-mode-card__text" data-i18n="emailTestingAlertText2">Так как вам придётся вручную добавлять email тестировщиков в консоль перед каждой отправкой запроса на взаимку.</p>
+                        <ul class="email-mode-card__list">
+                            <li>Перед каждой взаимкой вы обязаны вручную добавить email тестера в Play Console.</li>
+                            <li>Массовые рассылки придут вам списком — добавьте все email, затем отправляйте.</li>
+                            <li>Часть автоматических сценариев платформы станет ручной работой.</li>
+                        </ul>
+                        <p class="email-mode-card__accent" data-i18n="emailTestingAlertAccent">Рекомендуется использовать Google Groups.</p>
+                    </div>
+
+                    <div id="email-mode-banner" class="email-mode-banner visually-hidden" style="display: none;" aria-hidden="true">
                         <span data-i18n="emailModeActive">✉️ Выбрано тестирование по email</span>
                         <button type="button" class="email-mode-change" onclick="exitEmailTestingMode()" data-i18n="emailModeChange">Изменить</button>
                     </div>
 
-                    <button type="button" class="setup-email-toggle" id="use-email-testing-btn" onclick="openEmailTestingModal()" data-i18n="useEmailTesting">Использовать тестирование по email</button>
+                    <button type="button" class="setup-email-toggle visually-hidden" id="use-email-testing-btn" onclick="openEmailTestingModal()" data-i18n="useEmailTesting" style="display: none;" tabindex="-1" aria-hidden="true">Использовать тестирование по email</button>
                 </div>
+                <button type="button" class="btn btn-primary wizard-continue-btn" id="add-continue-2" onclick="wizardContinue(2)" data-i18n="emailTesterDefaultAction">Продолжить</button>
             </div>
-            <div id="add-stage-3" class="stage-panel">
-            <div class="form-group">
+            <div id="add-stage-3" class="stage-panel wizard-section">
+            <div class="wizard-section-card">
                 <label class="form-label" id="t-modeLabel" data-i18n="modeLabel">Режим проекта</label>
                 <div class="form-hint" id="t-modeHint" data-i18n="modeHint">Выберите, где хотите набирать тестеров: взаимно, платно или в обоих каналах.</div>
                 <input type="hidden" id="app-mode" value="mutual">
@@ -415,9 +483,13 @@
                     </div>
                 </div>
             </div>
-            <details style="margin-bottom: 16px;">
-                <summary style="font-size: 14px; font-weight: 500; color: var(--link-color); cursor: pointer; outline: none; list-style: none; display: flex; justify-content: space-between; align-items: center;" id="t-optionalSettings"><span id="t-optionalSettingsText" data-i18n="optionalSettings">⚙️ Дополнительные настройки (необязательно)</span><span class="details-arrow">▼</span></summary>
-                <div class="form-group" style="margin-top: 12px;">
+            <div class="wizard-optional-card is-expanded" id="wizard-optional-card">
+                <button type="button" class="wizard-optional-card__head" onclick="toggleWizardOptionalCard()" aria-expanded="true" aria-controls="wizard-optional-body">
+                    <span id="t-optionalSettingsText" data-i18n="optionalSettings">⚙️ Дополнительные настройки (необязательно)</span>
+                    <span class="wizard-optional-card__arrow" aria-hidden="true">▼</span>
+                </button>
+                <div class="wizard-optional-card__body" id="wizard-optional-body">
+                <div class="form-group">
                     <label class="form-label" data-i18n="projectLanguageLabel">Язык коммуникации</label>
                     <div class="form-hint" data-i18n="projectLanguageHint">Укажите, на каком языке вы готовы общаться с тестерами.</div>
                     <input type="hidden" id="app-target-lang" value="ALL">
@@ -427,7 +499,7 @@
                         <button type="button" class="seg-btn active" id="add-target-lang-all" onclick="setProjectTargetLang('add', 'ALL')" data-i18n="projectLanguageAll">🌐 ALL</button>
                     </div>
                 </div>
-                <div class="form-group" style="margin-top: 12px;">
+                <div class="form-group">
                     <label class="review-checkbox-row project-setting-checkbox">
                         <input type="checkbox" id="app-request-reviews">
                         <span>
@@ -436,22 +508,15 @@
                         </span>
                     </label>
                 </div>
-                <div class="form-group" style="margin-top: 12px;">
-                    <label class="form-label" id="t-iconUrl" data-i18n="iconUrl">Ссылка на иконку</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="url" id="app-icon" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder" style="flex: 1;" oninput="updateIconPreview('app-icon', 'app-icon-preview')">
-                        <input type="file" id="app-icon-file" accept="image/*" style="display: none;" onchange="handleIconUpload(this, 'app-icon')">
-                        <button type="button" class="btn btn-secondary icon-upload-btn" style="width: auto; padding: 0 12px; white-space: nowrap;" onclick="document.getElementById('app-icon-file').click()" data-i18n-title="uploadIcon" title="Upload icon from device">📎</button>
-                    </div>
-                    <img id="app-icon-preview" src="" alt="" style="width: 60px; height: 60px; object-fit: cover; border-radius: 12px; margin-top: 8px; display: none; border: 1px solid var(--border-weak);" onerror="this.style.display='none'">
-                </div>
                 <div class="form-group">
                     <label class="form-label" id="t-instructions" data-i18n="instructions">Инструкции</label>
                     <textarea id="app-instructions" class="form-input" rows="3" style="resize: none;" maxlength="1000" placeholder="" data-i18n-placeholder="instPlaceholder"></textarea>
                     <div id="chips-instructions" class="chip-scroll"></div>
                 </div>
-            </details>
-            <div class="project-setting-checkbox add-email-testers-box" id="add-email-testers-box">
+                </div>
+            </div>
+            <div class="wizard-outreach-card project-setting-checkbox add-email-testers-box" id="add-email-testers-box">
+                <div class="wizard-outreach-card__badge">🚀</div>
                 <label class="review-checkbox-row add-email-testers-box__toggle">
                     <input type="checkbox" id="app-accepts-email-testers" onchange="onAcceptsEmailTestersChange()">
                     <span>
@@ -468,8 +533,43 @@
                     <div class="form-hint" id="t-testerEmailHint" data-i18n="testerEmailHint">Укажите email аккаунта Google Play, с которого вы будете устанавливать чужие приложения для теста.</div>
                 </div>
             </div>
+            <button type="button" class="btn btn-primary wizard-submit-btn" onclick="saveProject()" id="t-save" data-i18n="save">Создать проект</button>
             </div>
-            <button class="btn btn-primary" onclick="saveProject()" id="t-save" data-i18n="save">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Icon Picker Bottom Sheet -->
+    <div id="icon-picker-overlay" class="icon-picker-overlay modal-overlay" onclick="closeIconPickerSheet(event)">
+        <div class="icon-picker-sheet" onclick="event.stopPropagation()">
+            <div class="icon-picker-sheet__handle" aria-hidden="true"></div>
+            <div class="icon-picker-preview" id="icon-picker-preview-wrap" style="display:none;">
+                <img id="icon-picker-preview-img" class="icon-picker-preview__img" src="" alt="">
+                <div class="icon-picker-preview__meta">
+                    <div class="icon-picker-preview__name" id="icon-picker-preview-name"></div>
+                    <div class="icon-picker-preview__size">512×512 px</div>
+                </div>
+            </div>
+            <div id="icon-picker-menu">
+                <button type="button" class="icon-picker-action" onclick="iconPickerUpload()">
+                    <span class="icon-picker-action__icon">📤</span>
+                    <span>Загрузить файл</span>
+                </button>
+                <button type="button" class="icon-picker-action" onclick="iconPickerShowLinkInput()">
+                    <span class="icon-picker-action__icon">🔗</span>
+                    <span>Вставить ссылку</span>
+                </button>
+                <button type="button" class="icon-picker-action icon-picker-action--danger" id="icon-picker-remove-btn" onclick="iconPickerRemove()" style="display:none;">
+                    <span class="icon-picker-action__icon">🗑</span>
+                    <span>Удалить иконку</span>
+                </button>
+            </div>
+            <div id="icon-picker-link-panel" class="icon-picker-link-panel" style="display:none;">
+                <label class="form-label" data-i18n="iconUrl">Ссылка на иконку</label>
+                <input type="url" id="icon-picker-link-input" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder">
+                <button type="button" class="btn btn-primary" style="margin-top: 12px;" onclick="iconPickerApplyLink()">Применить</button>
+                <button type="button" class="btn btn-secondary" style="margin-top: 8px;" onclick="iconPickerShowMenu()">Назад</button>
+            </div>
         </div>
     </div>
 

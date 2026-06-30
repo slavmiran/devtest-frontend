@@ -2539,12 +2539,238 @@ window.AccessSetupManager = window.AccessSetupManager || {
     }
 };
 
+window.addWizardState = window.addWizardState || { focusStep: 1 };
+
+const _WIZARD_STEP_SUBTITLES = {
+    1: 'Шаг 1 из 3: Основная информация',
+    2: 'Шаг 2 из 3: Google Group',
+    3: 'Шаг 3 из 3: Настройка проекта'
+};
+
+function _scrollWizardToSection(sectionId) {
+    const body = document.getElementById('wizard-body');
+    const section = document.getElementById(sectionId);
+    if (!body || !section) return;
+    const header = document.querySelector('.wizard-header');
+    const headerH = header ? header.offsetHeight : 0;
+    const top = section.offsetTop - headerH - 8;
+    body.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
+
+function updateWizardProgress() {
+    const playValid = isAddPlayLinkValid();
+    const stage2Done = playValid && isAddStage2Complete();
+    const focusStep = (window.addWizardState && window.addWizardState.focusStep) || 1;
+
+    [1, 2, 3].forEach(function (step) {
+        const item = document.querySelector('.wizard-progress__item[data-wizard-step="' + step + '"]');
+        const dot = document.getElementById('wizard-dot-' + step);
+        if (!item || !dot) return;
+
+        const isComplete = (step === 1 && playValid) || (step === 2 && stage2Done) || false;
+        const isCurrent = step === focusStep;
+
+        item.classList.toggle('is-complete', isComplete && !isCurrent);
+        item.classList.toggle('is-current', isCurrent);
+
+        if (isComplete && !isCurrent) {
+            dot.textContent = '✓';
+        } else {
+            dot.textContent = String(step);
+        }
+    });
+
+    const line1 = document.getElementById('wizard-line-1');
+    const line2 = document.getElementById('wizard-line-2');
+    if (line1) line1.classList.toggle('is-complete', playValid);
+    if (line2) line2.classList.toggle('is-complete', stage2Done);
+
+    const subtitle = document.getElementById('wizard-step-subtitle');
+    if (subtitle) subtitle.textContent = _WIZARD_STEP_SUBTITLES[focusStep] || _WIZARD_STEP_SUBTITLES[1];
+
+    document.querySelectorAll('.wizard-section').forEach(function (el) {
+        el.classList.remove('wizard-section--current');
+    });
+    const currentSection = document.getElementById('add-stage-' + focusStep);
+    if (currentSection) currentSection.classList.add('wizard-section--current');
+}
+
+function wizardContinue(step) {
+    if (step === 1) {
+        if (!isAddPlayLinkValid()) return;
+        window.addWizardState.focusStep = 2;
+        updateWizardProgress();
+        _scrollWizardToSection('add-stage-2');
+        return;
+    }
+    if (step === 2) {
+        if (!isAddStage2Complete()) return;
+        window.addWizardState.focusStep = 3;
+        updateWizardProgress();
+        _scrollWizardToSection('add-stage-3');
+    }
+}
+
+function toggleWizardOptionalCard() {
+    const card = document.getElementById('wizard-optional-card');
+    if (!card) return;
+    const willExpand = !card.classList.contains('is-expanded');
+    card.classList.toggle('is-expanded', willExpand);
+    const head = card.querySelector('.wizard-optional-card__head');
+    if (head) head.setAttribute('aria-expanded', willExpand ? 'true' : 'false');
+}
+
+function syncAppIconPickerUi() {
+    const iconInput = document.getElementById('app-icon');
+    const picker = document.getElementById('app-icon-picker');
+    const preview = document.getElementById('app-icon-preview');
+    const placeholder = document.getElementById('app-icon-placeholder');
+    const removeBtn = document.getElementById('icon-picker-remove-btn');
+    const pickerPreviewWrap = document.getElementById('icon-picker-preview-wrap');
+    const pickerPreviewImg = document.getElementById('icon-picker-preview-img');
+    const pickerPreviewName = document.getElementById('icon-picker-preview-name');
+    const playValidIcon = document.getElementById('play-link-valid-icon');
+
+    if (playValidIcon) {
+        playValidIcon.classList.toggle('is-visible', isAddPlayLinkValid());
+    }
+
+    const rawUrl = iconInput ? (iconInput.value || '').trim() : '';
+    let url = rawUrl;
+    if (url && typeof resolveIconUrl === 'function') url = resolveIconUrl(url);
+    const hasIcon = !!url;
+
+    if (picker) picker.classList.toggle('has-icon', hasIcon);
+    if (preview) {
+        if (hasIcon) {
+            preview.src = url;
+            preview.style.display = 'block';
+        } else {
+            preview.src = '';
+            preview.style.display = 'none';
+        }
+    }
+    if (placeholder) placeholder.style.display = hasIcon ? 'none' : '';
+    if (removeBtn) removeBtn.style.display = hasIcon ? '' : 'none';
+
+    if (pickerPreviewWrap && pickerPreviewImg) {
+        if (hasIcon) {
+            pickerPreviewWrap.style.display = 'flex';
+            pickerPreviewImg.src = url;
+        } else {
+            pickerPreviewWrap.style.display = 'none';
+            pickerPreviewImg.src = '';
+        }
+    }
+    if (pickerPreviewName) {
+        const appName = (document.getElementById('app-name').value || '').trim();
+        pickerPreviewName.textContent = appName || 'App';
+    }
+}
+
+function onAppIconInput() {
+    if (typeof updateIconPreview === 'function') {
+        updateIconPreview('app-icon', 'app-icon-preview');
+    }
+    syncAppIconPickerUi();
+}
+
+function onAppIconPreviewError() {
+    const preview = document.getElementById('app-icon-preview');
+    if (preview) preview.style.display = 'none';
+    const picker = document.getElementById('app-icon-picker');
+    if (picker) picker.classList.remove('has-icon');
+}
+
+async function onAppIconFileSelected(fileInput) {
+    if (typeof handleIconUpload === 'function') {
+        await handleIconUpload(fileInput, 'app-icon');
+    }
+    onAppIconInput();
+    closeIconPickerSheet();
+}
+
+function openIconPickerSheet() {
+    const overlay = document.getElementById('icon-picker-overlay');
+    if (!overlay) return;
+    iconPickerShowMenu();
+    syncAppIconPickerUi();
+    overlay.classList.add('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+}
+
+function closeIconPickerSheet(event) {
+    if (event && event.target !== document.getElementById('icon-picker-overlay')) return;
+    const overlay = document.getElementById('icon-picker-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    iconPickerShowMenu();
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+}
+
+function iconPickerShowMenu() {
+    const menu = document.getElementById('icon-picker-menu');
+    const linkPanel = document.getElementById('icon-picker-link-panel');
+    const linkInput = document.getElementById('icon-picker-link-input');
+    if (menu) menu.style.display = '';
+    if (linkPanel) linkPanel.style.display = 'none';
+    if (linkInput) linkInput.value = '';
+}
+
+function iconPickerShowLinkInput() {
+    const menu = document.getElementById('icon-picker-menu');
+    const linkPanel = document.getElementById('icon-picker-link-panel');
+    const linkInput = document.getElementById('icon-picker-link-input');
+    const iconInput = document.getElementById('app-icon');
+    if (menu) menu.style.display = 'none';
+    if (linkPanel) linkPanel.style.display = 'block';
+    if (linkInput && iconInput) linkInput.value = iconInput.value || '';
+    if (linkInput) linkInput.focus();
+}
+
+function iconPickerApplyLink() {
+    const linkInput = document.getElementById('icon-picker-link-input');
+    const iconInput = document.getElementById('app-icon');
+    if (!linkInput || !iconInput) return;
+    iconInput.value = (linkInput.value || '').trim();
+    onAppIconInput();
+    closeIconPickerSheet();
+}
+
+function iconPickerUpload() {
+    const fileInput = document.getElementById('app-icon-file');
+    if (fileInput) fileInput.click();
+}
+
+function iconPickerRemove() {
+    const iconInput = document.getElementById('app-icon');
+    const fileInput = document.getElementById('app-icon-file');
+    if (iconInput) iconInput.value = '';
+    if (fileInput) fileInput.value = '';
+    onAppIconInput();
+    closeIconPickerSheet();
+}
+
+function onAddAppNameInput() {
+    const input = document.getElementById('app-name');
+    const counter = document.getElementById('app-name-counter');
+    if (input && counter) {
+        counter.textContent = String((input.value || '').length) + '/30';
+    }
+    syncAppIconPickerUi();
+    evaluateAddStages();
+}
+
 function openModal() {
+    window.addWizardState.focusStep = 1;
     document.getElementById('add-modal').classList.add('active');
+    document.body.classList.add('wizard-open');
     resetAddFlow();
     renderGroupSection();
     setProjectTargetLang('add', 'ALL');
     updateProjectPricing('add');
+    syncAppIconPickerUi();
+    onAddAppNameInput();
 
     // Item 10: if the user already has a saved tester email, pre-enable the opt-in and prefill it, and hide the selector box.
     const savedEmail = (typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : '') || (window.App && window.App.userEmail) || '';
@@ -2561,12 +2787,19 @@ function openModal() {
     }
 
     evaluateAddStages();
+    updateWizardProgress();
+    const wizardBody = document.getElementById('wizard-body');
+    if (wizardBody) wizardBody.scrollTop = 0;
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     document.getElementById('app-name').focus();
 }
 
 function closeModal(event) {
     if (event && event.target !== document.getElementById('add-modal')) return;
+    closeIconPickerSheet();
     document.getElementById('add-modal').classList.remove('active');
+    document.body.classList.remove('wizard-open');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 
     setTimeout(() => {
         document.getElementById('app-name').value = '';
@@ -2576,9 +2809,12 @@ function closeModal(event) {
         document.getElementById('app-instructions').value = '';
         document.getElementById('package-error').innerHTML = '';
         document.getElementById('package-error').style.display = 'none';
+        window.addWizardState.focusStep = 1;
         resetAddFlow();
         switchGroupTab('standard');
         resetProjectForms();
+        syncAppIconPickerUi();
+        onAddAppNameInput();
         evaluateAddStages();
     }, 300);
 }
@@ -2629,41 +2865,55 @@ function resetAddFlow() {
 function switchGroupTab(tab) {
     const stdBtn = document.getElementById('seg-standard');
     const custBtn = document.getElementById('seg-custom');
-    if (window.addProjectFlow) window.addProjectFlow.emailMode = false;
-    if (tab === 'custom') {
-        stdBtn.classList.remove('active');
-        custBtn.classList.add('active');
-    } else {
-        stdBtn.classList.add('active');
-        custBtn.classList.remove('active');
+    const emailBtn = document.getElementById('seg-email');
+
+    if (tab === 'email') {
+        openEmailTestingModal();
+        return;
     }
+
+    if (window.addProjectFlow) window.addProjectFlow.emailMode = false;
+    if (stdBtn) stdBtn.classList.toggle('active', tab === 'standard');
+    if (custBtn) custBtn.classList.toggle('active', tab === 'custom');
+    if (emailBtn) emailBtn.classList.remove('active');
     renderGroupSection();
     evaluateAddStages();
 }
 
 function renderGroupSection() {
     const emailMode = !!(window.addProjectFlow && window.addProjectFlow.emailMode);
-    const isStandard = document.getElementById('seg-standard').classList.contains('active');
+    const isStandard = document.getElementById('seg-standard') && document.getElementById('seg-standard').classList.contains('active');
+    const isCustom = document.getElementById('seg-custom') && document.getElementById('seg-custom').classList.contains('active');
     const segControl = document.getElementById('group-seg-control');
     const stdBlock = document.getElementById('group-standard-block');
     const custBlock = document.getElementById('group-custom-block');
+    const emailBlock = document.getElementById('group-email-block');
     const banner = document.getElementById('email-mode-banner');
     const toggleBtn = document.getElementById('use-email-testing-btn');
+    const stdBtn = document.getElementById('seg-standard');
+    const custBtn = document.getElementById('seg-custom');
+    const emailBtn = document.getElementById('seg-email');
+
+    if (toggleBtn) toggleBtn.style.display = 'none';
 
     if (emailMode) {
-        if (segControl) segControl.style.display = 'none';
+        if (segControl) segControl.style.display = '';
+        if (stdBtn) stdBtn.classList.remove('active');
+        if (custBtn) custBtn.classList.remove('active');
+        if (emailBtn) emailBtn.classList.add('active');
         if (stdBlock) stdBlock.style.display = 'none';
         if (custBlock) custBlock.style.display = 'none';
-        if (toggleBtn) toggleBtn.style.display = 'none';
-        if (banner) banner.style.display = 'flex';
+        if (emailBlock) emailBlock.style.display = '';
+        if (banner) banner.style.display = 'none';
         return;
     }
 
     if (segControl) segControl.style.display = '';
-    if (toggleBtn) toggleBtn.style.display = '';
+    if (emailBtn) emailBtn.classList.remove('active');
     if (banner) banner.style.display = 'none';
+    if (emailBlock) emailBlock.style.display = 'none';
     if (stdBlock) stdBlock.style.display = isStandard ? '' : 'none';
-    if (custBlock) custBlock.style.display = isStandard ? 'none' : '';
+    if (custBlock) custBlock.style.display = isCustom ? '' : 'none';
     syncStandardGroupUiState();
 }
 
@@ -2758,15 +3008,20 @@ function evaluateAddStages() {
     const stage2Done = playValid && isAddStage2Complete();
     stage3.classList.toggle('active', stage2Done);
 
+    syncAppIconPickerUi();
+    updateWizardProgress();
     updateAddSaveButtonState();
 }
 
 function updateAddSaveButtonState() {
     const saveBtn = document.getElementById('t-save');
-    if (!saveBtn) return;
-    // Name is now optional (item 6): it falls back to the package name on save.
+    const continue1 = document.getElementById('add-continue-1');
+    const continue2 = document.getElementById('add-continue-2');
     const ready = isAddPlayLinkValid() && isAddStage2Complete() && isAddStage3Valid();
-    saveBtn.classList.toggle('is-locked', !ready);
+
+    if (saveBtn) saveBtn.classList.toggle('is-locked', !ready);
+    if (continue1) continue1.classList.toggle('is-locked', !isAddPlayLinkValid());
+    if (continue2) continue2.classList.toggle('is-locked', !isAddStage2Complete());
 }
 
 function toggleSetupAccordion() {
@@ -2906,6 +3161,12 @@ function confirmEmailTesting() {
         setEditAccessTab('email_list');
     } else {
         if (window.addProjectFlow) window.addProjectFlow.emailMode = true;
+        const stdBtn = document.getElementById('seg-standard');
+        const custBtn = document.getElementById('seg-custom');
+        const emailBtn = document.getElementById('seg-email');
+        if (stdBtn) stdBtn.classList.remove('active');
+        if (custBtn) custBtn.classList.remove('active');
+        if (emailBtn) emailBtn.classList.add('active');
         renderGroupSection();
         evaluateAddStages();
     }
