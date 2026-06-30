@@ -1199,7 +1199,7 @@ async function _handleInitialRoute() {
     // ── Sync route: open Project Protection Center ──
     if (route.openSync && route.appId) {
         try {
-            await loadProjects(true);
+            await loadProjects(true, true);
             if (typeof window.openProtectionCenter === 'function') {
                 window.openProtectionCenter(route.appId);
             } else if (typeof window.openSyncModal === 'function') {
@@ -1215,7 +1215,7 @@ async function _handleInitialRoute() {
     // ── Edit route: open project edit modal ──
     if (route.openEdit && route.appId) {
         try {
-            await loadProjects(true);
+            await loadProjects(true, true);
             openEditModal(route.appId, { focusSetup: true });
         } catch (error) {
             console.error('Initial edit route error:', error);
@@ -1227,7 +1227,7 @@ async function _handleInitialRoute() {
     if (route.expandProjectId) {
         try {
             switchTab('projects');
-            await loadProjects(true);
+            await loadProjects(true, true);
             if (typeof _expandProjectCardWhenReady === 'function') {
                 _expandProjectCardWhenReady(route.expandProjectId);
             }
@@ -1282,7 +1282,7 @@ async function _handleInitialRoute() {
 
     if (route.openInviteLinks) {
         try {
-            await loadProjects(true);
+            await loadProjects(true, true);
             var candidate = Array.isArray(myProjects) && myProjects.length ? myProjects[0] : null;
             var candidateId = Number(candidate && candidate.id || 0);
             if (candidateId > 0 && typeof openInviteModal === 'function') {

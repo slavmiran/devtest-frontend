@@ -1748,7 +1748,7 @@ async function loadEvents(retryCount = 0) {
     }
 }
 
-async function loadProjects(isBackground) {
+async function loadProjects(isBackground, force) {
     if (_projectsInFlight) {
         return _projectsInFlight;
     }
@@ -1766,7 +1766,7 @@ async function loadProjects(isBackground) {
     }
 
     // Throttle background refreshes
-    if (isBackground && _projectsLoadedOnce && (Date.now() - (_lastFetchTimes.projects || 0)) < PROJECTS_FETCH_THROTTLE_MS) {
+    if (isBackground && !force && _projectsLoadedOnce && (Date.now() - (_lastFetchTimes.projects || 0)) < PROJECTS_FETCH_THROTTLE_MS) {
         return;
     }
 
@@ -1888,6 +1888,7 @@ function _mapProjectsFromApi(data) {
             bounty_per_tester: project.bounty_per_tester || 0,
             google_sync_day: project.google_sync_day || 0,
             sync_message: project.sync_message || '',
+            is_setup_completed: project.is_setup_completed !== false,
             last_sync_date: project.last_sync_date || null,
             sync_notification_sent: !!project.sync_notification_sent,
             last_owner_activity: project.last_owner_activity || null,

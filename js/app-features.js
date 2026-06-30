@@ -2030,11 +2030,11 @@ async function startMassInvite(projectId) {
         if (successCount > 0) {
             renderProjects(true);
             refreshOpenModals();
-            await loadProjects(true);
+            await loadProjects(true, true);
             refreshMarketAfterMassInvite();
             await Promise.all([loadMutualFeed(), loadBountyFeed()]);
         } else {
-            await loadProjects(true);
+            await loadProjects(true, true);
         }
 
         return {
@@ -2095,7 +2095,7 @@ async function resetMassInviteCooldown(projectId) {
         showToast(window.t('massInviteResetSuccess', {}, lang));
         renderProjects(true);
         refreshOpenModals();
-        loadProjects(true).catch(function() {});
+        loadProjects(true, true).catch(function() {});
         return data;
     } catch (error) {
         console.error('Mass invite cooldown reset error:', error);
