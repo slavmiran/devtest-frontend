@@ -373,6 +373,76 @@ function resolveIconUrl(iconUrl) {
 }
 window.resolveIconUrl = resolveIconUrl;
 
+var _ngrokTelegramMediaCache = new Map();
+
+function fetchNgrokSafeImageUrl(url) {
+    if (!url || typeof url !== 'string') return Promise.resolve(url);
+    if (!window.API_USES_NGROK || url.indexOf('telegram-media') === -1) {
+        return Promise.resolve(url);
+    }
+    if (_ngrokTelegramMediaCache.has(url)) {
+        return Promise.resolve(_ngrokTelegramMediaCache.get(url));
+    }
+    return fetch(url).then(function (resp) {
+        if (!resp.ok) return url;
+        return resp.blob();
+    }).then(function (blobOrUrl) {
+        if (typeof blobOrUrl === 'string') return blobOrUrl;
+        var blobUrl = URL.createObjectURL(blobOrUrl);
+        _ngrokTelegramMediaCache.set(url, blobUrl);
+        return blobUrl;
+    }).catch(function () {
+        return url;
+    });
+}
+window.fetchNgrokSafeImageUrl = fetchNgrokSafeImageUrl;
+
+function hydrateTelegramMediaImages(root) {
+    if (!window.API_USES_NGROK) return;
+    var scope = root || document;
+    var imgs = scope.querySelectorAll('img[src*="telegram-media"]');
+    imgs.forEach(function (img) {
+        if (!img || img.dataset.ngrokMediaHydrated === '1') return;
+        var src = img.getAttribute('src');
+        if (!src || src.indexOf('telegram-media') === -1) return;
+        img.dataset.ngrokMediaHydrated = '1';
+        fetchNgrokSafeImageUrl(src).then(function (safeUrl) {
+            if (safeUrl && safeUrl !== src) {
+                img.src = safeUrl;
+            }
+        });
+    });
+}
+window.hydrateTelegramMediaImages = hydrateTelegramMediaImages;
+
+function _startTelegramMediaNgrokHydrator() {
+    if (!window.API_USES_NGROK || window.__telegramMediaNgrokHydratorStarted) return;
+    window.__telegramMediaNgrokHydratorStarted = true;
+    hydrateTelegramMediaImages(document);
+    if (!document.body) return;
+    var observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+            mutation.addedNodes.forEach(function (node) {
+                if (!node || node.nodeType !== 1) return;
+                if (node.tagName === 'IMG') {
+                    hydrateTelegramMediaImages(node.parentNode || document);
+                    return;
+                }
+                if (typeof node.querySelectorAll === 'function') {
+                    hydrateTelegramMediaImages(node);
+                }
+            });
+        });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _startTelegramMediaNgrokHydrator);
+} else {
+    _startTelegramMediaNgrokHydrator();
+}
+
 function renderIcon(name, iconUrl) {
     if (iconUrl) {
         var src = resolveIconUrl(iconUrl);

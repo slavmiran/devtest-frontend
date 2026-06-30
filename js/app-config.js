@@ -114,6 +114,7 @@ let API_BASE = API_BASE_OVERRIDE || (window.location.hostname.includes('vercel.a
     ? 'https://usable-epidemic-askew.ngrok-free.dev/api'
     : 'https://devtest-backend.onrender.com/api');
 const API_USES_NGROK = API_BASE.includes('ngrok');
+window.API_USES_NGROK = API_USES_NGROK;
 window.FEEDBACK_PUBLIC_LINK_BASE = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
 const _nativeFetch = window.fetch.bind(window);
 

@@ -2673,6 +2673,17 @@ function _applyMainIconPreview(url, hasIcon) {
 }
 
 function _preloadIconUrl(url) {
+    if (window.API_USES_NGROK && url && url.indexOf('telegram-media') !== -1 && typeof fetchNgrokSafeImageUrl === 'function') {
+        return fetchNgrokSafeImageUrl(url).then(function (safeUrl) {
+            return new Promise(function (resolve) {
+                if (!safeUrl) { resolve(false); return; }
+                const img = new Image();
+                img.onload = function () { resolve(true); };
+                img.onerror = function () { resolve(false); };
+                img.src = safeUrl;
+            });
+        });
+    }
     return new Promise(function (resolve) {
         if (!url) { resolve(false); return; }
         const img = new Image();
