@@ -3543,7 +3543,7 @@ function discardEditAndClose() {
     closeEditModal(null, { force: true });
 }
 
-function openEditModal(projectId) {
+function openEditModal(projectId, options) {
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
     projectToEdit = projectId;
@@ -3584,6 +3584,20 @@ function openEditModal(projectId) {
     _editSaveAndCloseRequested = false;
     markEditModalSavedState();
     document.getElementById('edit-project-modal').classList.add('active');
+
+    if (options && options.focusSetup) {
+        setTimeout(function() {
+            var groupLabel = document.getElementById('t-editGroup');
+            var viewCard = document.getElementById('edit-access-view-card');
+            if (groupLabel) groupLabel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (viewCard) {
+                viewCard.classList.add('highlight-pulse');
+                setTimeout(function() {
+                    viewCard.classList.remove('highlight-pulse');
+                }, 2000);
+            }
+        }, 300);
+    }
 }
 
 function renderEditGroupSection() {
@@ -3695,6 +3709,20 @@ function renderEditAccessSetup() {
     if (quickCopyBtn) quickCopyBtn.style.display = viewMeta.canCopy ? '' : 'none';
 
     if (!inEditMode) {
+        var changeBtn = document.getElementById('edit-access-change-btn');
+        if (changeBtn && typeof projectToEdit !== 'undefined' && projectToEdit) {
+            var project = myProjects.find(function(item) { return item.id === projectToEdit; });
+            var isSetupCompleted = project ? project.is_setup_completed !== false : true;
+            if (!isSetupCompleted) {
+                changeBtn.textContent = window.t ? window.t('btnFinishSetup', {}, lang) : 'Завершить настройку';
+                changeBtn.classList.remove('btn-secondary');
+                changeBtn.classList.add('btn-primary');
+            } else {
+                changeBtn.textContent = window.t ? window.t('editAccessChangeBtn', {}, lang) : 'Изменить';
+                changeBtn.classList.remove('btn-primary');
+                changeBtn.classList.add('btn-secondary');
+            }
+        }
         updateEditSaveButtonState();
         return;
     }
@@ -5030,13 +5058,41 @@ let _massInviteProjectId = null;
 let _massInviteInterval = null;
 
 function openMassInviteModal(projectId) {
-    _massInviteProjectId = projectId;
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
     
     // Close Action Sheet first if open
     closeAttractTestersSheet();
     
+    if (project.is_setup_completed === false) {
+        const title = window.t ? window.t('massInviteSetupIncompleteTitle', {}, lang) : 'Настройка не завершена';
+        const message = window.t ? window.t('massInviteSetupIncompleteAlert', {}, lang) : 'Настройка не завершена. Для запуска массовой рассылки необходимо настроить доступ для тестеров.';
+        const btnSetupText = window.t ? window.t('btnFinishSetup', {}, lang) : 'Завершить настройку';
+        const btnCancelText = lang === 'ru' ? 'Отмена' : 'Cancel';
+        
+        if (tg.showPopup) {
+            tg.showPopup({
+                title: title,
+                message: message,
+                buttons: [
+                    { id: 'setup', type: 'default', text: btnSetupText },
+                    { id: 'cancel', type: 'cancel', text: btnCancelText }
+                ]
+            }, function(buttonId) {
+                if (buttonId === 'setup') {
+                    openEditModal(projectId, { focusSetup: true });
+                }
+            });
+        } else {
+            const confirmed = confirm(message);
+            if (confirmed) {
+                openEditModal(projectId, { focusSetup: true });
+            }
+        }
+        return;
+    }
+    
+    _massInviteProjectId = projectId;
     const modal = document.getElementById('mass-invite-modal');
     if (!modal) return;
     

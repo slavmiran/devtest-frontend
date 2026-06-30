@@ -1216,7 +1216,7 @@ async function _handleInitialRoute() {
     if (route.openEdit && route.appId) {
         try {
             await loadProjects(true);
-            openEditModal(route.appId);
+            openEditModal(route.appId, { focusSetup: true });
         } catch (error) {
             console.error('Initial edit route error:', error);
         }
