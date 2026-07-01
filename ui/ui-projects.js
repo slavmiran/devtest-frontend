@@ -3594,7 +3594,7 @@ function openEditModal(projectId, options) {
                 viewCard.classList.add('highlight-pulse');
                 setTimeout(function() {
                     viewCard.classList.remove('highlight-pulse');
-                }, 2000);
+                }, 4000);
             }
         }, 300);
     }
@@ -5068,7 +5068,7 @@ function openMassInviteModal(projectId) {
         const title = window.t ? window.t('massInviteSetupIncompleteTitle', {}, lang) : 'Настройка не завершена';
         const message = window.t ? window.t('massInviteSetupIncompleteAlert', {}, lang) : 'Настройка не завершена. Для запуска массовой рассылки необходимо настроить доступ для тестеров.';
         const btnSetupText = window.t ? window.t('btnFinishSetup', {}, lang) : 'Завершить настройку';
-        const btnCancelText = lang === 'ru' ? 'Отмена' : 'Cancel';
+        const btnCancelText = window.t ? window.t('btnCancel', {}, lang) : (lang === 'ru' ? 'Отмена' : 'Cancel');
         
         if (tg.showPopup) {
             tg.showPopup({

@@ -232,7 +232,7 @@
             massInviteUnavailableBtn: "Invite unavailable",
             massInviteUnavailableNote: "Mass Invite is available only for active mutual or combo projects with open slots.",
             massInviteUnavailable: "Mass Invite is unavailable for this project right now.",
-            massInviteSetupIncompleteAlert: "Setup is incomplete. To launch a mass invite, you need to configure access for testers.",
+            massInviteSetupIncompleteAlert: "Setup is incomplete. To activate mass invites, you must confirm Google Group setup (check all 3 boxes) or specify a link to your personal group and save the project.",
             massInviteSetupIncompleteTitle: "Setup Incomplete",
             btnFinishSetup: "Complete Setup",
             massInviteCooldownRemaining: "The next mass invite will be available in {time}",

@@ -2717,7 +2717,7 @@ async function saveProject() {
         target_lang: targetLang,
         request_reviews: requestReviews,
         test_mode: emailMode ? 'email_list' : 'google_group',
-        is_setup_completed: true,
+        is_setup_completed: (emailMode || (groupUrl && groupUrl !== 'https://groups.google.com/g/google-play-dev-test')) ? true : false,
         accepts_email_testers: acceptsEmailTesters,
         tester_email: acceptsEmailTesters ? testerEmailInput : null,
         ...pricingPayload
@@ -2925,6 +2925,19 @@ async function saveProjectEdit() {
     editBtn.innerText = '...';
     editBtn.disabled = true;
 
+    const project = (myProjects || []).find(item => Number(item.id) === Number(projectToEdit));
+    let isSetupCompleted = project ? !!project.is_setup_completed : false;
+    if (window.AccessSetupManager) {
+        var flow = window.AccessSetupManager.getEditFlow();
+        if (flow.uiMode === 'edit') {
+            if (flow.mode === 'email_list' || flow.mode === 'custom_group') {
+                isSetupCompleted = true;
+            } else if (flow.mode === 'standard_group') {
+                isSetupCompleted = window.AccessSetupManager.isChecklistComplete();
+            }
+        }
+    }
+
     try {
         const response = await fetch(`${API_BASE}/projects/${projectToEdit}`, {
             method: 'PUT',
@@ -2939,6 +2952,7 @@ async function saveProjectEdit() {
                 request_reviews: requestReviews,
                 accepts_email_testers: acceptsEmailTesters,
                 tester_email: acceptsEmailTesters ? testerEmailInput : null,
+                is_setup_completed: isSetupCompleted,
                 ...pricingPayload
             })
         });

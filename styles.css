@@ -5845,7 +5845,7 @@ details[open] > summary .details-arrow {
 .card.highlight-pulse,
 .access-view-card.highlight-pulse,
 .highlight-pulse {
-    animation: highlightPulse 2s ease-out;
+    animation: highlightPulse 1.2s ease-in-out 3;
 }
 
 .card.test-card-highlight-pulse {
