@@ -919,8 +919,10 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
 
             if (userTestingDay >= 15) {
                 if (!isInSafetyBuffer) {
-                    const protectedText = lang === 'ru' ? '🛡 Защищён' : '🛡 Protected';
-                    parts.push(`<button class="meta-chip accent-protection" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${protectedText}</button>`);
+                    const protectedText = extraPaid > 0
+                        ? window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang)
+                        : window.t('ppcProtectedBadge', {}, lang);
+                    parts.push(`<button class="meta-chip accent-protection" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${window.escapeHTML(protectedText)}</button>`);
                 }
             }
         }
