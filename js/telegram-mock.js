@@ -70,9 +70,11 @@
                 return String(fromStorage).trim().replace(/\/+$/, '');
             }
         } catch (storageErr) { /* ignore */ }
-        // Same-origin /api — запросы идут через dev_server.py proxy, ad-blocker их не режет
-        // (прямой http://127.0.0.1:8000 часто блокируется из-за путей /feed/, /tasks/, /offers/).
-        return '/api';
+        var mockPort = Number(window.__MOCK_API_PORT__ || 8000);
+        if (!mockPort || mockPort <= 0) {
+            mockPort = 8000;
+        }
+        return 'http://127.0.0.1:' + String(mockPort) + '/api';
     }
 
     if (!window.__API_BASE__) {
@@ -141,46 +143,12 @@
     var webApp = window.Telegram.WebApp || {};
 
     // -------------------------------------------------------------------------
-    // ШАГ 11. Инжект мок-данных в WebApp (защита от перезаписи SDK).
-    // Официальный telegram-web-app.js вне Telegram может иметь getter на initDataUnsafe
-    // без user — тогда app-config падает на fallback userId=123456789.
-    // defineProperty фиксирует наши значения поверх SDK.
+    // ШАГ 11. Инжект мок-данных в WebApp.
+    // initDataUnsafe — для чтения профиля на фронте.
+    // initData — для POST/GET с init_data на бэкенд.
     // -------------------------------------------------------------------------
-    try {
-        Object.defineProperty(webApp, 'initDataUnsafe', {
-            get: function () { return mockInitDataUnsafe; },
-            configurable: true,
-        });
-        Object.defineProperty(webApp, 'initData', {
-            get: function () { return mockInitDataRaw; },
-            configurable: true,
-        });
-    } catch (defineErr) {
-        webApp.initDataUnsafe = mockInitDataUnsafe;
-        webApp.initData = mockInitDataRaw;
-    }
-
-    // Версия и UI-заглушки: в браузере SDK 6.0 без showPopup/HapticFeedback.
-    webApp.version = '9.0';
-    webApp.showAlert = function (message, callback) {
-        try { window.alert(String(message || '')); } catch (alertErr) { /* ignore */ }
-        if (typeof callback === 'function') { callback(); }
-    };
-    webApp.showConfirm = function (message, callback) {
-        var ok = false;
-        try { ok = window.confirm(String(message || '')); } catch (confirmErr) { /* ignore */ }
-        if (typeof callback === 'function') { callback(ok); }
-    };
-    webApp.showPopup = function (params, callback) {
-        var msg = (params && params.message) ? params.message : '';
-        try { window.alert(String(msg)); } catch (popupErr) { /* ignore */ }
-        if (typeof callback === 'function') { callback('ok'); }
-    };
-    webApp.HapticFeedback = {
-        impactOccurred: function () {},
-        notificationOccurred: function () {},
-        selectionChanged: function () {},
-    };
+    webApp.initDataUnsafe = mockInitDataUnsafe;
+    webApp.initData = mockInitDataRaw;
 
     // -------------------------------------------------------------------------
     // ШАГ 12. Минимальные no-op заглушки, если SDK не подгрузился (чистый браузер).

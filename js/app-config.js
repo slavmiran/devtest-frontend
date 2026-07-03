@@ -103,8 +103,7 @@ const LEAD_INVITE_START_PARAM_RE = /^lead_(\d+)$/i;
 const GUEST_CLAIM_SESSION_PREFIX = 'guest_claim_handled_v1:';
 const USER_TIMEZONE_STORAGE_KEY = 'user_system_timezone';
 const langCode = initData.user?.language_code;
-const userId = (window.__TELEGRAM_MOCK_ACTIVE__ && window.__TELEGRAM_MOCK_USER__ && Number(window.__TELEGRAM_MOCK_USER__.id))
-    || initData.user?.id || 123456789;
+const userId = initData.user?.id || 123456789;
 // Optional override from js/telegram-mock.js on non-production hosts only.
 const DEBUG_BYPASS_USERNAME_GATE = window.DEBUG_BYPASS_USERNAME_GATE === true;
 const telegramUsername = DEBUG_BYPASS_USERNAME_GATE
