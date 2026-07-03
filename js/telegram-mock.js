@@ -48,6 +48,40 @@
     window.DEBUG_BYPASS_USERNAME_GATE = true;
 
     // -------------------------------------------------------------------------
+    // ШАГ 4b. Локальный API для mock-режима.
+    // app-config.js по умолчанию шлёт запросы на прод Render (devtest-backend.onrender.com).
+    // Локальный uvicorn с ALLOW_MOCK_AUTH=True иначе никогда не получит эти запросы → 401 на проде.
+    // Приоритет: window.__API_BASE__ (уже задан) → ?api_base= → localStorage → 127.0.0.1:8000/api
+    // -------------------------------------------------------------------------
+    function resolveMockApiBase() {
+        if (window.__API_BASE__) {
+            return String(window.__API_BASE__).trim().replace(/\/+$/, '');
+        }
+        try {
+            var params = new URLSearchParams(window.location.search || '');
+            var fromQuery = params.get('api_base') || params.get('apiBase');
+            if (fromQuery) {
+                return String(fromQuery).trim().replace(/\/+$/, '');
+            }
+        } catch (queryErr) { /* ignore */ }
+        try {
+            var fromStorage = localStorage.getItem('devtest_api_base');
+            if (fromStorage) {
+                return String(fromStorage).trim().replace(/\/+$/, '');
+            }
+        } catch (storageErr) { /* ignore */ }
+        var mockPort = Number(window.__MOCK_API_PORT__ || 8000);
+        if (!mockPort || mockPort <= 0) {
+            mockPort = 8000;
+        }
+        return 'http://127.0.0.1:' + String(mockPort) + '/api';
+    }
+
+    if (!window.__API_BASE__) {
+        window.__API_BASE__ = resolveMockApiBase();
+    }
+
+    // -------------------------------------------------------------------------
     // ШАГ 5. Константы мок-пользователя (единый профиль для ИИ-агентов и QA).
     // id: 999999999 — заведомо «тестовый» ID, не пересекается с реальными юзерами.
     // -------------------------------------------------------------------------
@@ -164,10 +198,17 @@
     // -------------------------------------------------------------------------
     if (typeof console !== 'undefined' && typeof console.info === 'function') {
         console.info(
-            '[telegram-mock] Active on host "%s". Mock user: @%s (id=%s). Production domain blocked.',
+            '[telegram-mock] Active on host "%s". Mock user: @%s (id=%s). API_BASE=%s',
             hostname,
             MOCK_USERNAME,
-            MOCK_USER_ID
+            MOCK_USER_ID,
+            window.__API_BASE__ || '(not set)'
+        );
+        console.info(
+            '[telegram-mock] initData preview: %s',
+            (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)
+                ? String(window.Telegram.WebApp.initData).slice(0, 120) + '...'
+                : '(empty)'
         );
     }
 })();
