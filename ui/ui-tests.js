@@ -1633,31 +1633,37 @@ function renderTests(force) {
                 </button>
             `;
         // State C: archived app — Early Finish Bonus card
+        // Only shown if tester qualifies (>= 3 days AND <= 3 skips).
+        // Non-qualifying testers get no card at all (same as fully completed projects).
         } else if (test.isEarlyFinish) {
             const efDays = Number(test.testing_days || 0);
             const efSkips = Number(test.skips_count || 0);
-            const qualifies = efDays >= 5 && efSkips <= 1;
-            const efDaysLabel = window.t('earlyFinishDays', { days: efDays }, lang);
-            const efSkipsLabel = efSkips === 0
-                ? window.t('earlyFinishPerfect', {}, lang)
-                : window.t('earlyFinishSkips', { count: efSkips }, lang);
-            const efBonusNote = qualifies
-                ? `<div class="early-finish-bonus-badge notranslate">+25 $BUST</div>`
-                : '';
-            actionsHtml = `
-                <div class="early-finish-banner">
-                    <div class="early-finish-header">
-                        <span class="early-finish-icon">🏁</span>
-                        <span class="early-finish-title">${window.t('earlyFinishCardTitle', {}, lang)}</span>
-                        ${efBonusNote}
+            const qualifies = efDays >= 3 && efSkips <= 3;
+
+            if (!qualifies) {
+                // Тестер не квалифицируется — карточка не отображается совсем
+                actionsHtml = '';
+            } else {
+                const efDaysLabel = window.t('earlyFinishDays', { days: efDays }, lang);
+                const efSkipsLabel = efSkips === 0
+                    ? window.t('earlyFinishPerfect', {}, lang)
+                    : window.t('earlyFinishSkips', { count: efSkips }, lang);
+                const efBonusNote = `<div class="early-finish-bonus-badge notranslate">🏁 ${lang === 'ru' ? 'Пропорц. грант' : 'Prop. Grant'}</div>`;
+                actionsHtml = `
+                    <div class="early-finish-banner">
+                        <div class="early-finish-header">
+                            <span class="early-finish-icon">🏁</span>
+                            <span class="early-finish-title">${window.t('earlyFinishCardTitle', {}, lang)}</span>
+                            ${efBonusNote}
+                        </div>
+                        <div class="early-finish-desc">${window.t('earlyFinishCardDesc', { days: efDays }, lang)}</div>
+                        <div class="early-finish-meta">${efDaysLabel}&nbsp;&nbsp;·&nbsp;&nbsp;${efSkipsLabel}</div>
+                        <button id="btn-early-finish-${test.id}" class="btn btn-early-finish" onclick="claimEarlyFinishBonus(${test.progress_id}, ${test.id})">
+                            ${window.t('earlyFinishClaimBtn', {}, lang)}
+                        </button>
                     </div>
-                    <div class="early-finish-desc">${window.t('earlyFinishCardDesc', { days: efDays }, lang)}</div>
-                    <div class="early-finish-meta">${efDaysLabel}&nbsp;&nbsp;·&nbsp;&nbsp;${efSkipsLabel}</div>
-                    <button id="btn-early-finish-${test.id}" class="btn btn-early-finish" onclick="claimEarlyFinishBonus(${test.progress_id}, ${test.id})">
-                        ⭐ ${window.t('earlyFinishClaimBtn', {}, lang)}
-                    </button>
-                </div>
-            `;
+                `;
+            }
         }
         // State B: status = 'new' OR status = 'daily'/'opened' without ready to claim
         else if (test.status === 'new') {
