@@ -1309,7 +1309,7 @@ function _mapTestsFromApi(data) {
         var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
         // Early finish: archived app qualifies for bonus (>=5 days tested, <=1 skip).
         // Cards that don't meet these criteria are excluded on the backend and skipped here too.
-        var isEarlyFinish = !!(isArchivedOrCompleted && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays >= 5 && skipsCount <= 1);
+        var isEarlyFinish = !!(isArchivedOrCompleted && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays >= 3 && skipsCount <= 3);
 
         if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow) {
             status = 'done';

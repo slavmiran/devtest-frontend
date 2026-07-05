@@ -870,7 +870,7 @@
             earnGrantDesc: "On day 15 of testing, press \"Claim Grant\" on the test card. Base: 50 $BUST (max 3 skips). Karma bonus: ☯️×5. Perfect test (0 skips): +50. Up to 200 $BUST!",
             earnGrantTestsLabel: "Grants claimed",
             earnEarlyFinishTitle: "Bonus: Early Finish",
-            earnEarlyFinishDesc: "If the developer finishes the project before day 14 and you tested for at least 3 days with no more than 3 skips \u2014 you receive a proportional share of the full Platform Grant (including Karma and no-skip bonuses). Tap Claim on the test card to collect your reward.",
+            earnEarlyFinishDesc: "If the developer finishes the project before day 14 and you tested for at least 3 days with no more than 3 skips \u2014 you receive a proportional share of the full Platform Grant (including Karma and no-skip bonuses).",
             earnEarlyFinishCountChip: "Completed: {count}",
             earnFeedbackTitle: "Bug Reports and Ideas",
             earnFeedbackDesc: "Send helpful feedback to the developers. In return, they may reward you with $BUST and, occasionally, Karma.",

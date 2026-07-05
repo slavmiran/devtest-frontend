@@ -838,7 +838,7 @@ function recomputeLocalTestState(test) {
 
     test.isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
     test.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
-    test.isEarlyFinish = !!(isArchivedOrCompleted && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && testingDays >= 5 && skipsCount <= 1);
+    test.isEarlyFinish = !!(isArchivedOrCompleted && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && testingDays >= 3 && skipsCount <= 3);
     test.is_pending_completion = isPendingCompletion;
     test.external_control_day_due = !!(isExternal && isMandatoryScreenshotDay(testingDays));
 
