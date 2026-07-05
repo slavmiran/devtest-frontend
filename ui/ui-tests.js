@@ -1638,26 +1638,24 @@ function renderTests(force) {
         } else if (test.isEarlyFinish) {
             const efDays = Number(test.testing_days || 0);
             const efSkips = Number(test.skips_count || 0);
-            const qualifies = efDays >= 3 && efSkips <= 3;
+            const actualCheckins = efDays - efSkips;
+            const qualifies = actualCheckins >= 3 && efSkips <= 3;
 
             if (!qualifies) {
                 // Тестер не квалифицируется — карточка не отображается совсем
                 actionsHtml = '';
             } else {
-                const efDaysLabel = window.t('earlyFinishDays', { days: efDays }, lang);
-                const efSkipsLabel = efSkips === 0
-                    ? window.t('earlyFinishPerfect', {}, lang)
-                    : window.t('earlyFinishSkips', { count: efSkips }, lang);
-                const efBonusNote = `<div class="early-finish-bonus-badge notranslate">🏁 ${lang === 'ru' ? 'Пропорц. грант' : 'Prop. Grant'}</div>`;
+                const efMetaLabel = lang === 'ru'
+                    ? `Дней: ${efDays} • Пропусков: ${efSkips}`
+                    : `Days: ${efDays} • Skips: ${efSkips}`;
                 actionsHtml = `
                     <div class="early-finish-banner">
                         <div class="early-finish-header">
                             <span class="early-finish-icon">🏁</span>
                             <span class="early-finish-title">${window.t('earlyFinishCardTitle', {}, lang)}</span>
-                            ${efBonusNote}
                         </div>
-                        <div class="early-finish-desc">${window.t('earlyFinishCardDesc', { days: efDays }, lang)}</div>
-                        <div class="early-finish-meta">${efDaysLabel}&nbsp;&nbsp;·&nbsp;&nbsp;${efSkipsLabel}</div>
+                        <div class="early-finish-desc">${window.t('earlyFinishCardDesc', {}, lang)}</div>
+                        <div class="early-finish-meta">${efMetaLabel}</div>
                         <button id="btn-early-finish-${test.id}" class="btn btn-early-finish" onclick="claimEarlyFinishBonus(${test.progress_id}, ${test.id})">
                             ${window.t('earlyFinishClaimBtn', {}, lang)}
                         </button>

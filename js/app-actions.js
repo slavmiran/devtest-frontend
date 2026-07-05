@@ -836,9 +836,13 @@ function recomputeLocalTestState(test) {
     var skipsCount = countGrantSkips(test);
     var canEverClaim = !isExternal && !test.grant_claimed && skipsCount <= 3 && test.progress_id;
 
+    var isAppClosed = !isExternal && (appStatus !== 'active' && !isPendingCompletion);
+    var isTestClosed = !isExternal && (progressStatus !== 'active');
+    var actualCheckins = testingDays - skipsCount;
+
     test.isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
     test.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
-    test.isEarlyFinish = !!(isArchivedOrCompleted && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && testingDays >= 3 && skipsCount <= 3);
+    test.isEarlyFinish = !!((isAppClosed || isTestClosed) && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && testingDays < 14 && actualCheckins >= 3 && skipsCount <= 3);
     test.is_pending_completion = isPendingCompletion;
     test.external_control_day_due = !!(isExternal && isMandatoryScreenshotDay(testingDays));
 

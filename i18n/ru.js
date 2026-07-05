@@ -884,7 +884,7 @@
             claimGrantOvertimeToast: "🎉 Вы забрали {amount} $BUST! Проект в овертайме — продолжайте тесты за повышенную Карму!",
             claimGrantMissedToast: "Грант упущен: количество пропусков ({count}) превышает допустимый лимит (3).",
             earlyFinishCardTitle: "Ранний финиш",
-            earlyFinishCardDesc: "Владелец завершил проект досрочно на {days}-й день. Заберите вашу пропорциональную награду нажатием кнопки Claim.",
+            earlyFinishCardDesc: "Разработчик досрочно завершил тестирование. Ваша награда рассчитана пропорционально фактическим дням активности.",
             earlyFinishDays: "Дней: {days}",
             earlyFinishPerfect: "✅ Без пропусков",
             earlyFinishSkips: "Пропусков: {count}",

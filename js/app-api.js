@@ -1304,12 +1304,14 @@ function _mapTestsFromApi(data) {
         var resolvedLastCheckDate = shouldPreserveLocalDoneToday
             ? (existingTest.last_check_date || today)
             : (shouldTreatFastTrackFirstDayAsDone ? today : (app.last_check_date || null));
+        var isAppClosed = !isExternal && (appStatus !== 'active' && !isPendingCompletion);
+        var isTestClosed = !isExternal && (progressStatus !== 'active');
+        var actualCheckins = testingDays - skipsCount;
         var canEverClaim = !isExternal && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
+
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
         var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
-        // Early finish: archived app qualifies for bonus (>=5 days tested, <=1 skip).
-        // Cards that don't meet these criteria are excluded on the backend and skipped here too.
-        var isEarlyFinish = !!(isArchivedOrCompleted && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays >= 3 && skipsCount <= 3);
+        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays < 14 && actualCheckins >= 3 && skipsCount <= 3);
 
         if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow) {
             status = 'done';
