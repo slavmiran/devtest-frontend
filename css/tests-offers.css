@@ -1,0 +1,219 @@
+/* Phase 3: Offers/mutual returns/pending release (extracted from styles.css). */
+
+
+.offers-section {
+    margin-bottom: 14px;
+}
+
+.mutual-return-card {
+    background: var(--border-subtle);
+    border: 1px solid var(--border-strong);
+}
+
+.mutual-return-profile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mutual-return-profile-text {
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.mutual-return-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.mutual-return-card-main {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.mutual-return-card-title {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mutual-return-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 48%;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(51, 144, 236, 0.12);
+    color: var(--text-color);
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+}
+
+.offers-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.offers-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.offers-count {
+    font-size: 12px;
+    color: var(--hint-color);
+}
+
+.pending-release-section {
+    margin: 4px 0 18px;
+}
+
+.pending-release-section__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.pending-release-section__header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.pending-release-section__header p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--hint-color);
+}
+
+.pending-release-section__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 149, 0, 0.22);
+    background: rgba(255, 149, 0, 0.12);
+    color: #ffb84d;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.pending-release-scroll-wrap {
+    position: relative;
+}
+
+.pending-release-scroll {
+    padding: 2px 8px 8px 2px;
+}
+
+.pending-release-carousel-card {
+    flex: 0 0 88%;
+    max-width: 430px;
+    margin-bottom: 0;
+    scroll-snap-align: start;
+    border-color: rgba(255, 149, 0, 0.24);
+    background:
+        linear-gradient(180deg, rgba(255, 149, 0, 0.10) 0%, rgba(28, 28, 30, 0.78) 26%, rgba(28, 28, 30, 0.72) 100%),
+        rgba(28, 28, 30, 0.72);
+}
+
+.pending-release-carousel-card .card-header {
+    background: rgba(255, 149, 0, 0.08);
+}
+
+.offers-carousel {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 2px 6px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.offers-carousel::-webkit-scrollbar {
+    display: none;
+}
+
+.offer-card {
+    flex: 0 0 85vw;
+    max-width: 460px;
+    scroll-snap-align: start;
+    background: var(--secondary-bg-color);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 12px;
+}
+
+.offer-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.offer-user {
+    color: var(--link-color);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-size: 14px;
+}
+
+.offer-sub {
+    font-size: 13px;
+    color: var(--hint-color);
+    margin-bottom: 8px;
+}
+
+.offer-expire {
+    font-size: 12px;
+    color: #ff9500;
+    font-weight: 600;
+}
+
+.own-project-chip {
+    background: rgba(100, 149, 237, 0.14);
+    border: 1px solid rgba(100, 149, 237, 0.26);
+    color: #9dbdff;
+}
+.pending-release-carousel-card::before {
+    display: none !important;
+}
+
+.pending-release-chip {
+    background: var(--stage-buffer-surface) !important;
+    color: var(--stage-buffer) !important;
+    border-color: var(--stage-buffer-border) !important;
+}

@@ -1,0 +1,241 @@
+/* Phase 3: Developer dossier modal (extracted from styles.css). */
+
+
+#dossier-modal .dossier-owned-projects-list {
+    display: grid;
+    gap: 10px;
+}
+
+#dossier-modal .dossier-owned-project-card {
+    width: 100%;
+    display: block;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 16px;
+    border: 1px solid var(--border-strong);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), var(--border-subtle));
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+#dossier-modal .dossier-owned-project-card:active {
+    opacity: 0.92;
+    transform: scale(0.995);
+}
+
+#dossier-modal .dossier-owned-project-card.is-archived {
+    opacity: 0.72;
+    border-color: var(--border-subtle);
+}
+
+#dossier-modal .dossier-linked-archived-chip {
+    display: inline-flex;
+    margin-top: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.72);
+    background: var(--border-subtle);
+}
+
+#dossier-modal .dossier-owned-project-card-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+}
+
+#dossier-modal .dossier-owned-project-card .avatar {
+    width: 46px;
+    height: 46px;
+    margin-right: 0;
+    border-radius: 14px;
+    font-size: 20px;
+}
+
+#dossier-modal .dossier-owned-project-body {
+    flex: 1;
+    min-width: 0;
+}
+
+#dossier-modal .dossier-owned-project-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+#dossier-modal .dossier-owned-project-title {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+#dossier-modal .dossier-owned-project-subtitle {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--hint-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#dossier-modal .dossier-owned-project-arrow {
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 20px;
+    line-height: 1;
+    padding-top: 2px;
+}
+
+#dossier-modal .dossier-owned-project-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+#dossier-modal .dossier-owned-project-empty {
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--border-subtle);
+    border: 1px solid var(--border-subtle);
+    font-size: 13px;
+    color: var(--hint-color);
+}
+
+#dossier-modal .dossier-other-projects-carousel {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+}
+
+#dossier-modal .dossier-other-mini-card {
+    min-width: 240px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    display: block;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 14px;
+    border: 1px solid var(--border-strong);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), var(--border-subtle));
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+#dossier-modal .dossier-other-mini-card:active {
+    opacity: 0.92;
+    transform: scale(0.995);
+}
+
+#dossier-modal .dossier-other-mini-card.is-archived {
+    cursor: default;
+    opacity: 0.82;
+}
+
+#dossier-modal .dossier-other-mini-card.is-join-blocked {
+    cursor: not-allowed;
+    opacity: 0.88;
+    border-color: var(--danger-border);
+}
+
+#dossier-modal .dossier-project-meta-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+#dossier-modal .dossier-project-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+#dossier-modal .dossier-project-meta-chip-hidden {
+    background: rgba(255, 149, 0, 0.14);
+    color: #ff9f0a;
+}
+
+#dossier-modal .dossier-project-meta-chip-isolated {
+    background: var(--danger-surface);
+    color: var(--danger);
+}
+
+#dossier-modal .dossier-project-meta-chip-email {
+    background: rgba(10, 132, 255, 0.14);
+    color: #0a84ff;
+}
+
+#dossier-modal .detail-header .dossier-project-meta-chips {
+    margin-top: 8px;
+}
+
+#dossier-modal .dossier-other-mini-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    min-height: 88px;
+}
+
+#dossier-modal .dossier-other-mini-card .avatar {
+    width: 40px;
+    height: 40px;
+    margin-right: 0;
+    border-radius: 12px;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+#dossier-modal .dossier-other-mini-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#dossier-modal .dossier-other-mini-title {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#dossier-modal .dossier-other-mini-subtitle {
+    font-size: 11px;
+    color: var(--hint-color);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
+}
+
+#dossier-modal .dossier-other-mini-days {
+    margin-top: 2px;
+    font-size: 11px;
+    color: rgba(255, 204, 0, 0.92);
+    line-height: 1.3;
+}

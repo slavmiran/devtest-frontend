@@ -1,0 +1,121 @@
+/* Phase 3: Project detail bottom sheet modal (extracted from styles.css). */
+
+/* ── Project Detail Modal (Bottom Sheet) ─────────── */
+#project-details-modal .modal-content {
+    border-radius: 20px 20px 0 0;
+    background: rgba(23, 27, 34, 0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid var(--border-subtle);
+    padding: 20px 16px 28px;
+    max-height: 88vh;
+    overflow-y: auto;
+}
+.detail-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0 auto 16px;
+}
+.detail-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.detail-header .avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    font-size: 22px;
+}
+.detail-header .card-info {
+    flex: 1;
+    min-width: 0;
+}
+.detail-header .card-title {
+    font-size: 17px;
+    font-weight: 700;
+}
+.detail-header .card-subtitle {
+    font-size: 13px;
+    opacity: 0.55;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.detail-section {
+    background: var(--border-subtle);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+.detail-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--hint-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+.detail-owner-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.detail-owner-row .avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 15px;
+}
+.detail-owner-name {
+    font-weight: 600;
+    font-size: 15px;
+}
+.detail-owner-status {
+    font-size: 12px;
+    margin-top: 2px;
+}
+.detail-owner-status.online { color: var(--success); }
+.detail-owner-status.warm { color: #ffd60a; }
+.detail-owner-status.offline { color: var(--danger); }
+.detail-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+}
+.detail-actions .btn {
+    width: 100%;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 14px;
+}
+.detail-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(255, 214, 10, 0.12);
+    color: #ffd60a;
+    margin-bottom: 12px;
+}
+
+.detail-overtime-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 149, 0, 0.12);
+    border: 1px solid rgba(255, 149, 0, 0.28);
+    color: var(--text-color);
+    font-size: 13px;
+    margin-bottom: 12px;
+}

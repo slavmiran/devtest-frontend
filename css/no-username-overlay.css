@@ -1,0 +1,89 @@
+/* Phase 3: No-username blocking overlay (extracted from styles.css). */
+
+
+
+
+
+.no-username-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    display: none;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: max(20px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom));
+    background:
+        radial-gradient(circle at top left, rgba(77, 163, 255, 0.16), transparent 34%),
+        radial-gradient(circle at bottom right, var(--success-surface), transparent 28%),
+        rgba(7, 10, 14, 0.96);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+.no-username-overlay.active {
+    display: flex;
+}
+
+.no-username-overlay__card {
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 16px;
+    padding: 28px 22px;
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(17, 21, 28, 0.94), rgba(10, 13, 18, 0.98));
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.38);
+}
+
+.no-username-overlay__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 204, 0, 0.14);
+    color: #ffd95a;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.no-username-overlay__title {
+    margin: 0;
+    font-size: 30px;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+}
+.no-username-overlay__note {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.no-username-overlay__note {
+    color: var(--hint-color);
+}
+
+.no-username-overlay__steps {
+    display: grid;
+    gap: 10px;
+}
+
+.no-username-overlay__step {
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: var(--border-subtle);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-color);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.no-username-overlay__button {
+    margin-top: 8px;
+}
