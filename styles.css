@@ -655,7 +655,35 @@ iframe.skiptranslate,
     box-shadow: none !important;
 }
 
+
+/* Aggressive Google Translate suppression */
+.goog-te-gadget,
+.goog-te-banner,
+.goog-logo-link,
+.goog-te-balloon-frame,
+.goog-te-menu-frame,
+#goog-gt-votingDiv,
+#goog-gt-votingPane,
+div[id^="goog-gt-"],
+div[class*="goog-te-"],
+iframe.goog-te-banner-frame,
+.VIpgJd-ZVi9od-ORHb-OEVmcd,
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    pointer-events: none !important;
+}
+
+html {
+    top: 0 !important;
+}
+
 body {
+    position: relative !important;
     top: 0 !important;
 }
 
@@ -3533,4 +3561,36 @@ input::placeholder,
 .grant-progress-container.is-overtime .grant-segment.current-pending,
 .grant-progress-container.is-overtime .grant-segment.current-pending-overtime,
 
+/* Market card layout */
+
+
+.market-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.market-owner {
+    color: var(--link-color);
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.lang-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(51, 144, 236, 0.14);
+    font-size: 14px;
+    padding: 0 8px;
+    border: 1px solid rgba(51, 144, 236, 0.22);
+    color: var(--text-color);
+    cursor: pointer;
+}
 

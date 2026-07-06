@@ -205,36 +205,6 @@ details[open] > summary .details-arrow {
     animation: pulse-highlight 0.9s ease-in-out 3;
 }
 
-.market-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-
-.market-owner {
-    color: var(--link-color);
-    text-decoration: none;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.lang-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    height: 24px;
-    border-radius: 999px;
-    background: rgba(51, 144, 236, 0.14);
-    font-size: 14px;
-    padding: 0 8px;
-    border: 1px solid rgba(51, 144, 236, 0.22);
-    color: var(--text-color);
-    cursor: pointer;
-}
-
 .horizontal-scroll {
     display: flex;
     gap: 12px;
