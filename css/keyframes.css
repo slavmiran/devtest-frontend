@@ -196,3 +196,92 @@
         filter: drop-shadow(0 0 8px var(--stage-protection));
     }
 }
+
+
+@keyframes setup-accent-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(51, 144, 236, 0.42);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(51, 144, 236, 0);
+    }
+}
+
+.setup-reveal {
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.background-sync-bar {
+
+@keyframes dot-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+}
+
+@keyframes background-sync-slide {
+
+@keyframes nav-sync-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(52,199,89,0.45);
+    }
+    50% {
+        transform: scale(1.15);
+        box-shadow: 0 0 0 6px rgba(52,199,89,0);
+    }
+}
+
+.retry-container {
+
+@keyframes guestClaimSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.guest-claim-welcome-overlay {
+
+@keyframes mass-invite-spin {
+    to { transform: rotate(360deg); }
+}
+
+.mass-invite-subhint {
+
+@keyframes kebab-fade-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.project-kebab-item {
+@keyframes energy-pulse-glow {
+    0% {
+        box-shadow: 0 0 6px rgba(255, 255, 255, 0.8), 0 0 10px currentColor;
+    }
+    100% {
+        box-shadow: 0 0 14px rgba(255, 255, 255, 1), 0 0 24px currentColor;
+    }
+}
+.energy-bar-shimmer {
+@keyframes energy-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Collapsed view summary */
+.card-collapsed-summary {
+@keyframes miProgressCardIn {
+    from { transform: scale(0.88) translateY(16px); opacity: 0; }
+    to   { transform: scale(1)    translateY(0);    opacity: 1; }
+}
+
+.mi-progress-title {
+@keyframes miProgressSpin {
+    to { transform: rotate(360deg); }
+}
+
+.mi-progress-status {

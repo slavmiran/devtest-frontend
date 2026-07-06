@@ -1,0 +1,283 @@
+/* Phase 4: Global states, overrides, and thin utilities (extracted from styles.css). */
+
+
+
+body.no-username-blocked {
+    overflow: hidden;
+}
+
+@media (max-width: 480px) {
+    .no-username-overlay__card {
+        padding: 24px 18px;
+        border-radius: 24px;
+    }
+
+    .no-username-overlay__title {
+        font-size: 26px;
+    }
+}
+
+
+#edit-guest-project-modal {
+
+#image-zoom-img {
+    width: 100%;
+    height: auto;
+    max-height: 92vh;
+    object-fit: contain;
+    display: block;
+    background: #000;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--hint-color);
+}
+
+
+.helper-quote {
+    border-left: 3px solid var(--link-color);
+    padding-left: 10px;
+    opacity: 0.75;
+}
+.goog-text-highlight {
+    display: none !important;
+}
+
+.goog-text-highlight {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+@media (max-width: 420px) {
+    .setup-action-row {
+        gap: 6px;
+        align-items: stretch;
+    }
+
+    .setup-action-row .btn {
+        min-width: 0;
+        font-size: 12px;
+        padding: 8px 6px;
+    }
+}
+
+.dossier-one-sided-notice {
+
+@media (max-width: 480px) {
+    #email-tester-modal .email-tester-actions-row {
+        flex-direction: column;
+    }
+}
+
+.setup-step {
+
+@media (max-width: 420px) {
+    .form-inline {
+        flex-direction: column;
+        gap: 0;
+    }
+}
+
+
+#current-lang-label {
+textarea::placeholder {
+    color: var(--hint-color);
+    opacity: 0.5;
+}
+
+.details-arrow {
+    transition: transform 0.3s ease;
+    font-size: 12px;
+    color: var(--hint-color);
+}
+
+details[open] > summary .details-arrow {
+    transform: rotate(180deg);
+}
+
+.skeleton {
+    background: linear-gradient(90deg, var(--secondary-bg-color) 25%, var(--border-color) 50%, var(--secondary-bg-color) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 12px;
+}
+
+.skeleton-card {
+    background-color: var(--secondary-bg-color);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.skeleton-line {
+    height: 14px;
+    margin-bottom: 10px;
+    border-radius: 7px;
+}
+
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 65%; }
+.skeleton-line.long { width: 90%; }
+
+.skeleton-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-right: 12px;
+}
+
+.skeleton-btn {
+    height: 44px;
+    border-radius: 12px;
+    margin-top: 8px;
+}
+
+.loading-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--link-color);
+    margin-left: 4px;
+    vertical-align: middle;
+    animation: dot-blink 1s infinite;
+}
+
+.loading-dot.hidden { display: none; }
+
+
+
+.available-title {
+    font-size: 1.5em;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.app-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.app-progress-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-surface-muted);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.app-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.app-progress-label {
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+    .transfer-search-row {
+        flex-direction: column;
+    }
+}
+
+#custom-alert-overlay {
+
+
+/* Image zoom: allow real pinch/pan zoom */
+#image-zoom-img {
+    transform-origin: center center;
+    touch-action: none;
+    will-change: transform;
+    user-select: none;
+}
+
+#contact-text {
+    resize: none;
+}
+
+@media (min-width: 720px) {
+
+    .pending-release-carousel-card {
+        flex-basis: 68%;
+    }
+}
+
+.btn.pending,
+.btn.disabled {
+
+.highlight-target {
+    position: relative;
+    z-index: 1;
+    animation: pulse-highlight 0.9s ease-in-out 3;
+}
+
+.market-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.market-owner {
+    color: var(--link-color);
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.lang-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(51, 144, 236, 0.14);
+    font-size: 14px;
+    padding: 0 8px;
+    border: 1px solid rgba(51, 144, 236, 0.22);
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.horizontal-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+
+.horizontal-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+/* Orange neon archive button */
+.btn-archive-neon {
+    background-color: rgba(255, 149, 0, 0.12) !important;
+    color: #ff9500 !important;
+    border: 1px solid rgba(255, 149, 0, 0.5) !important;
+    box-shadow: 0 0 12px rgba(255, 149, 0, 0.35);
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+.btn-archive-neon:hover {
+    box-shadow: 0 0 18px rgba(255, 149, 0, 0.6);
+    background-color: rgba(255, 149, 0, 0.2) !important;
+}
+
+/* Accordion Arrow Rotation — legacy, kept for any remaining ▼ markers */
+details[open] .accordion-arrow {
+    transform: rotate(180deg);
+}
