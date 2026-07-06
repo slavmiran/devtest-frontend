@@ -46,8 +46,9 @@ body.no-username-blocked {
 
 .project-header-actions {
     margin-left: auto;
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    position: relative;
     gap: 8px;
 }
 
@@ -1294,6 +1295,7 @@ iframe.skiptranslate,
     font-weight: 600;
     color: var(--link-color);
     word-break: break-all;
+    cursor: pointer;
 }
 
 .setup-email-copy {
@@ -2784,50 +2786,6 @@ details[open] > summary .details-arrow {
     cursor: pointer;
 }
 
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 24px;
-    flex-shrink: 0;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    inset: 0;
-    background: var(--bg-surface-muted);
-    border-radius: 24px;
-    transition: background 0.3s;
-}
-
-.toggle-slider::before {
-    content: '';
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    left: 2px;
-    bottom: 2px;
-    background: #fff;
-    border-radius: 50%;
-    transition: transform 0.3s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-.toggle-switch input:checked + .toggle-slider {
-    background: var(--success-color);
-}
-
-.toggle-switch input:checked + .toggle-slider::before {
-    transform: translateX(20px);
-}
-
 .visibility-toggle-row {
     display: flex;
     align-items: center;
@@ -3126,10 +3084,6 @@ details[open] > summary .details-arrow {
 .showcase-active-test-owner:active { opacity: 0.6; }
 
 /* Clickable Google Group email + tester email validity */
-.setup-email-address {
-    cursor: pointer;
-    word-break: break-all;
-}
 .email-input-wrap {
     position: relative;
 }
@@ -5406,13 +5360,6 @@ details[open] > summary .details-arrow {
 }
 
 /* Kebab Dropdown */
-.project-header-actions {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
 .project-kebab-dropdown {
     position: absolute;
     top: calc(100% + 6px);
@@ -5843,6 +5790,7 @@ details[open] > summary .details-arrow {
     display: inline-block;
     width: 44px;
     height: 24px;
+    flex-shrink: 0;
 }
 .toggle-switch input {
     opacity: 0;
