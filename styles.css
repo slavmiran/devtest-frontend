@@ -2798,9 +2798,31 @@ details[open] > summary .details-arrow {
     margin: 16px 0;
 }
 
-/* ── Test Card header layout ─────────────────────── */
+/* Test Card header layout */
 .card-header-link,
+.card-header-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    -webkit-tap-highlight-color: transparent;
+}
 
+.test-card-details-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    border: none;
+    background: transparent;
+    color: var(--hint-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+}
 
 #tab-market .segmented-control {
     margin-top: 8px;
