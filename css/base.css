@@ -55,3 +55,27 @@ body {
 html {
     top: 0 !important;
 }
+.goog-te-gadget-simple { display: none !important; }
+
+/* Aggressive Google Translate suppression */
+.goog-te-gadget,
+.goog-te-banner,
+.goog-te-balloon-frame,
+.goog-te-menu-frame,
+#goog-gt-votingDiv,
+#goog-gt-votingPane,
+div[id^="goog-gt-"],
+div[class*="goog-te-"],
+iframe.goog-te-banner-frame,
+.VIpgJd-ZVi9od-ORHb-OEVmcd,
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    pointer-events: none !important;
+}
+
+.goog-logo-link { display: none !important; }
