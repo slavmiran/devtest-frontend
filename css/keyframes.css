@@ -1,0 +1,198 @@
+/* Phase 1.1: @keyframes extracted from styles.css (copy-first; originals kept in styles.css). */
+
+@keyframes wizard-section-in {
+    from { opacity: 0.6; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes setup-accent-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(51, 144, 236, 0.42);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(51, 144, 236, 0);
+    }
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@keyframes dot-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+}
+
+@keyframes background-sync-slide {
+    0% { background-position: 200% 0; }
+    100% { background-position: -20% 0; }
+}
+
+@keyframes nav-sync-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(52,199,89,0.45);
+    }
+    50% {
+        transform: scale(1.15);
+        box-shadow: 0 0 0 6px rgba(52,199,89,0);
+    }
+}
+
+@keyframes guestClaimSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes highlightPulse {
+    0% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.5); }
+    50% { box-shadow: 0 0 16px 4px rgba(10, 132, 255, 0.3); }
+    100% { box-shadow: none; }
+}
+
+@keyframes pulse-highlight {
+    0% {
+        box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.00), 0 0 0 0 rgba(48, 209, 88, 0.00);
+        transform: translateY(0);
+    }
+    35% {
+        box-shadow: 0 0 0 1px rgba(48, 209, 88, 0.48), 0 0 26px 6px rgba(48, 209, 88, 0.26);
+        transform: translateY(-1px);
+    }
+    70% {
+        box-shadow: 0 0 0 1px rgba(48, 209, 88, 0.28), 0 0 16px 2px rgba(48, 209, 88, 0.14);
+        transform: translateY(0);
+    }
+    100% {
+        box-shadow: none;
+        transform: translateY(0);
+    }
+}
+
+@keyframes testCardHighlightPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.00), 0 0 0 0 rgba(48, 209, 88, 0.00);
+        border-color: rgba(48, 209, 88, 0.18);
+    }
+    25% {
+        box-shadow: 0 0 0 1px rgba(48, 209, 88, 0.42), 0 0 24px 4px rgba(48, 209, 88, 0.30);
+        border-color: rgba(48, 209, 88, 0.52);
+    }
+    60% {
+        box-shadow: 0 0 0 1px var(--success-border), 0 0 16px 2px rgba(48, 209, 88, 0.16);
+        border-color: rgba(48, 209, 88, 0.32);
+    }
+    100% {
+        box-shadow: none;
+        border-color: var(--border-strong);
+    }
+}
+
+@keyframes mass-invite-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes timeline-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.92; }
+    50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes feedback-pulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(255, 69, 58, 0.18), 0 0 18px rgba(255, 69, 58, 0.12); }
+    50% { box-shadow: 0 0 0 1px rgba(255, 69, 58, 0.28), 0 0 30px rgba(255, 69, 58, 0.22); }
+}
+
+@keyframes feedbackFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes feedbackFadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+@keyframes fbSliderImgIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+
+@keyframes claimPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
+    50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.8); }
+}
+
+@keyframes pulse-attention {
+    0%, 100% {
+        box-shadow: 0 0 4px rgba(255, 149, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 16px rgba(255, 149, 0, 0.6);
+    }
+}
+
+@keyframes kebab-fade-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes energy-pulse-glow {
+    0% {
+        box-shadow: 0 0 6px rgba(255, 255, 255, 0.8), 0 0 10px currentColor;
+    }
+    100% {
+        box-shadow: 0 0 14px rgba(255, 255, 255, 1), 0 0 24px currentColor;
+    }
+}
+
+@keyframes energy-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@keyframes miProgressCardIn {
+    from { transform: scale(0.88) translateY(16px); opacity: 0; }
+    to   { transform: scale(1)    translateY(0);    opacity: 1; }
+}
+
+@keyframes miProgressSpin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes ppc-shield-pulse {
+    0%, 100% { filter: drop-shadow(0 0 16px rgba(52, 199, 89, 0.5)); }
+    50% { filter: drop-shadow(0 0 28px rgba(52, 199, 89, 0.85)); }
+}
+
+@keyframes ppc-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes protection-dot-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 4px var(--stage-protection);
+    }
+    50% {
+        transform: scale(1.2);
+        box-shadow: 0 0 12px var(--stage-protection);
+    }
+}
+
+@keyframes timeline-pulse-buffer {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 4px var(--stage-buffer);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 12px var(--stage-buffer);
+    }
+}
+
+@keyframes protection-shield-pulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 2px var(--stage-protection));
+    }
+    50% {
+        transform: scale(1.25);
+        filter: drop-shadow(0 0 8px var(--stage-protection));
+    }
+}
