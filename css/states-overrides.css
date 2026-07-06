@@ -18,8 +18,6 @@ body.no-username-blocked {
 }
 
 
-#edit-guest-project-modal {
-
 #image-zoom-img {
     width: 100%;
     height: auto;
@@ -41,14 +39,6 @@ body.no-username-blocked {
     padding-left: 10px;
     opacity: 0.75;
 }
-.goog-text-highlight {
-    display: none !important;
-}
-
-.goog-text-highlight {
-    background-color: transparent !important;
-    box-shadow: none !important;
-}
 
 @media (max-width: 420px) {
     .setup-action-row {
@@ -63,15 +53,11 @@ body.no-username-blocked {
     }
 }
 
-.dossier-one-sided-notice {
-
 @media (max-width: 480px) {
     #email-tester-modal .email-tester-actions-row {
         flex-direction: column;
     }
 }
-
-.setup-step {
 
 @media (max-width: 420px) {
     .form-inline {
@@ -81,7 +67,6 @@ body.no-username-blocked {
 }
 
 
-#current-lang-label {
 textarea::placeholder {
     color: var(--hint-color);
     opacity: 0.5;
@@ -148,8 +133,6 @@ details[open] > summary .details-arrow {
 
 .loading-dot.hidden { display: none; }
 
-
-
 .available-title {
     font-size: 1.5em;
     font-weight: 700;
@@ -189,9 +172,6 @@ details[open] > summary .details-arrow {
     }
 }
 
-#custom-alert-overlay {
-
-
 /* Image zoom: allow real pinch/pan zoom */
 #image-zoom-img {
     transform-origin: center center;
@@ -213,6 +193,11 @@ details[open] > summary .details-arrow {
 
 .btn.pending,
 .btn.disabled {
+    background-color: var(--bg-surface-muted) !important;
+    color: var(--hint-color) !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
 
 .highlight-target {
     position: relative;

@@ -646,6 +646,18 @@ body {
 iframe.skiptranslate,
 #goog-gt-tt,
 .goog-tooltip,
+.goog-text-highlight {
+    display: none !important;
+}
+
+.goog-text-highlight {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+body {
+    top: 0 !important;
+}
 
 .segmented-control {
     display: flex;
