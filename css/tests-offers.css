@@ -145,6 +145,13 @@
 
 .pending-release-carousel-card .card-header {
     background: rgba(255, 149, 0, 0.08);
+    min-width: 0;
+}
+
+.pending-release-carousel-card .card-info {
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .offers-carousel {
