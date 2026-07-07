@@ -230,8 +230,14 @@
 .guest-tester-status.is-warm {
     color: #ffd36c;
 }
+
+.guest-tester-status.is-late,
 .guest-tester-status.is-waiting {
     color: #ff8d9d;
+}
+
+.tester-contract-prefix {
+    opacity: 0.82;
 }
 
 
