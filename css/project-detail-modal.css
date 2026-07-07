@@ -23,24 +23,34 @@
     align-items: center;
     gap: 12px;
     margin-bottom: 14px;
+    min-width: 0;
 }
 .detail-header .avatar {
     width: 52px;
     height: 52px;
     border-radius: 14px;
     font-size: 22px;
+    flex-shrink: 0;
 }
 .detail-header .card-info {
-    flex: 1;
+    flex: 1 1 0%;
     min-width: 0;
+    overflow: hidden;
 }
 .detail-header .card-title {
     font-size: 17px;
     font-weight: 700;
+    min-width: 0;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .detail-header .card-subtitle {
     font-size: 13px;
     opacity: 0.55;
+    min-width: 0;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

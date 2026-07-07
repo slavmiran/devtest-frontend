@@ -79,6 +79,32 @@
     margin-bottom: 8px;
 }
 
+.testers-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    min-width: 0;
+}
+
+.testers-title-row .testers-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-bottom: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.testers-title-row .meta-chip {
+    flex-shrink: 0;
+    max-width: 48%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .testers-breakdown {
     margin-left: 6px;
     color: var(--hint-color);

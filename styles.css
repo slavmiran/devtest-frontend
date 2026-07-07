@@ -30,6 +30,7 @@
     border-radius: 12px;
     background: var(--bg-surface-muted);
     margin-bottom: 12px;
+    min-width: 0;
 }
 
 .card.card-inactive .card-header .avatar,
@@ -45,6 +46,7 @@
     align-items: center;
     position: relative;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .project-icon-btn {
@@ -90,13 +92,16 @@
 }
 
 .card-info {
-    flex-grow: 1;
+    flex: 1 1 0%;
+    min-width: 0;
     overflow: hidden;
 }
 
 .card-title {
     font-size: 16px;
     font-weight: 600;
+    min-width: 0;
+    max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -105,6 +110,8 @@
 .card-subtitle {
     font-size: 13px;
     color: var(--hint-color);
+    min-width: 0;
+    max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1731,6 +1738,7 @@ input::placeholder,
 
 .archive-card-header {
     margin-bottom: 10px;
+    min-width: 0;
 }
 
 .archive-meta-row {
@@ -2568,6 +2576,8 @@ input::placeholder,
 
 .horizontal-card {
     flex: 0 0 85%;
+    min-width: 0;
+    max-width: 85%;
     scroll-snap-align: center;
     background: var(--card-bg);
     border-radius: 16px;
