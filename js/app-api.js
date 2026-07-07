@@ -2996,7 +2996,8 @@ async function saveProjectEdit() {
  */
 async function apiPipelineRequestLive(appId) {
     try {
-        var response = await fetch(`${API_BASE}/pipeline/request-live`, {
+        var url = `${API_BASE}/api/pipeline/request-live`.replace('/api/api/', '/api/');
+        var response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ app_id: Number(appId), owner_id: Number(userId) })
@@ -3019,7 +3020,8 @@ async function apiPipelineRequestLive(appId) {
  */
 async function apiPipelineRequestRetest(appId) {
     try {
-        var response = await fetch(`${API_BASE}/pipeline/request-retest`, {
+        var url = `${API_BASE}/api/pipeline/request-retest`.replace('/api/api/', '/api/');
+        var response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ app_id: Number(appId), owner_id: Number(userId) })
@@ -3042,7 +3044,8 @@ async function apiPipelineRequestRetest(appId) {
  */
 async function apiPipelineDeleteProject(appId) {
     try {
-        var response = await fetch(`${API_BASE}/pipeline/delete-project`, {
+        var url = `${API_BASE}/api/pipeline/delete-project`.replace('/api/api/', '/api/');
+        var response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ app_id: Number(appId), owner_id: Number(userId) })
