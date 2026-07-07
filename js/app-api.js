@@ -1907,6 +1907,7 @@ function _mapProjectsFromApi(data) {
             protection_bust_pool: Number(project.protection_bust_pool || 0),
             consumed_pending_hours: Number(project.consumed_pending_hours || 0),
             pending_completion_started_at: project.pending_completion_started_at || null,
+            phase: project.phase || 'testing',
         };
     });
 }
@@ -2986,3 +2987,78 @@ async function saveProjectEdit() {
         }
     }
 }
+
+/* ── Pipeline API wrappers (Sprint 2) ─────────────────────────────────────── */
+
+/**
+ * Ask backend to check Google Play and, if published, transition project → 'live'.
+ * Returns { ok: true } on 2xx success, or { ok: false, message: string } on 4xx/error.
+ */
+async function apiPipelineRequestLive(appId) {
+    try {
+        var response = await fetch(`${API_BASE}/pipeline/request-live`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ app_id: Number(appId), owner_id: Number(userId) })
+        });
+        var data = await response.json();
+        if (response.ok && data.status === 'success') {
+            return { ok: true, data: data };
+        }
+        var msg = (data && (data.message || data.error)) || null;
+        return { ok: false, message: msg };
+    } catch (err) {
+        console.error('[apiPipelineRequestLive] network error:', err);
+        return { ok: false, message: null };
+    }
+}
+
+/**
+ * Ask backend to perform a Soft Reset: transition project 'moderation' → 'testing'.
+ * Returns { ok: true } on success, or { ok: false, message: string } on error.
+ */
+async function apiPipelineRequestRetest(appId) {
+    try {
+        var response = await fetch(`${API_BASE}/pipeline/request-retest`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ app_id: Number(appId), owner_id: Number(userId) })
+        });
+        var data = await response.json();
+        if (response.ok && data.status === 'success') {
+            return { ok: true, data: data };
+        }
+        var msg = (data && (data.message || data.error)) || null;
+        return { ok: false, message: msg };
+    } catch (err) {
+        console.error('[apiPipelineRequestRetest] network error:', err);
+        return { ok: false, message: null };
+    }
+}
+
+/**
+ * Ask backend to delete/abandon the project that is currently in moderation.
+ * Returns { ok: true } on success, or { ok: false, message: string } on error.
+ */
+async function apiPipelineDeleteProject(appId) {
+    try {
+        var response = await fetch(`${API_BASE}/pipeline/delete-project`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ app_id: Number(appId), owner_id: Number(userId) })
+        });
+        var data = await response.json();
+        if (response.ok && data.status === 'success') {
+            return { ok: true, data: data };
+        }
+        var msg = (data && (data.message || data.error)) || null;
+        return { ok: false, message: msg };
+    } catch (err) {
+        console.error('[apiPipelineDeleteProject] network error:', err);
+        return { ok: false, message: null };
+    }
+}
+
+window.apiPipelineRequestLive   = apiPipelineRequestLive;
+window.apiPipelineRequestRetest = apiPipelineRequestRetest;
+window.apiPipelineDeleteProject = apiPipelineDeleteProject;

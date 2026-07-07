@@ -1773,7 +1773,29 @@
             // Overtime & Anti-AFK
             overtimeBadge: "🔥 Overtime",
             syncDayProgress: "🔄 Day {day}/14",
-            
+
+            // Pipeline — Moderation section (Sprint 2)
+            activeSectionTitle: "⚡ Active Testing",
+            moderationSectionTitle: "🛂 In Moderation on Google Play",
+            moderationStepTesting: "Testing",
+            moderationStepModeration: "Moderation",
+            moderationStepLive: "Live",
+            moderationInfoTitle: "Phase: Moderation on Google Play",
+            moderationInfoText: "Your 14-day test is complete! Submit your app for review in the Google Play Console. Once Google publishes it, click the main button below to unlock Live mode and further project promotion!",
+            moderationBtnLive: "App is Released",
+            moderationBtnRetest: "Need Retest (Moderation Failed)",
+            moderationBtnDelete: "Delete Project",
+            moderationSupportLink: "My app is definitely released, contact support",
+            moderationCheckingLabel: "Checking Google Play...",
+            moderationLiveSuccess: "🚀 Congratulations! Project has been moved to Live mode.",
+            moderationLiveError: "App not found on Google Play yet. Try again later or contact support.",
+            moderationRetestConfirm: "Are you sure? The project will return to active testing to collect new reviews.",
+            moderationRetestSuccess: "🔄 Project returned to active testing.",
+            moderationRetestError: "Failed to return project to retest. Please try again later.",
+            moderationDeleteConfirm: "Delete the project? This action is irreversible.",
+            moderationDeleteSuccess: "🗑️ Project deleted.",
+            moderationDeleteError: "Failed to delete the project. Please try again later.",
+
 
         
     };

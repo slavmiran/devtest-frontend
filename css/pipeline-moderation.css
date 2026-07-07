@@ -1,0 +1,284 @@
+/* ============================================================
+   css/pipeline-moderation.css
+   Sprint 2 — Pipeline Frontend: Moderation Phase Styles
+   ============================================================ */
+
+/* ── Section header ───────────────────────────────────────── */
+.moderation-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--hint-color, #8e8e93);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin: 20px 0 10px;
+    padding: 0 2px;
+}
+
+.moderation-section-header::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255, 159, 10, 0.35) 0%, transparent 100%);
+}
+
+/* ── Moderation card variant ──────────────────────────────── */
+.card.card-moderation {
+    border: 1.5px solid rgba(255, 159, 10, 0.45);
+    background: linear-gradient(
+        160deg,
+        rgba(255, 159, 10, 0.06) 0%,
+        var(--secondary-bg-color, rgba(28, 28, 30, 0.95)) 60%
+    );
+    position: relative;
+    overflow: hidden;
+}
+
+.card.card-moderation::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ff9f0a 0%, #ffcc02 50%, #ff9f0a 100%);
+    background-size: 200% 100%;
+    animation: moderation-shimmer 3s linear infinite;
+}
+
+@keyframes moderation-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── Step indicator ───────────────────────────────────────── */
+.moderation-steps {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 12px 0 16px;
+    flex-wrap: wrap;
+}
+
+.moderation-step {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.moderation-step.is-done {
+    background: rgba(52, 199, 89, 0.15);
+    color: #34c759;
+    border: 1px solid rgba(52, 199, 89, 0.3);
+}
+
+.moderation-step.is-current {
+    background: rgba(255, 159, 10, 0.18);
+    color: #ff9f0a;
+    border: 1px solid rgba(255, 159, 10, 0.4);
+    box-shadow: 0 0 8px rgba(255, 159, 10, 0.2);
+    animation: moderation-pulse 2.5s ease-in-out infinite;
+}
+
+.moderation-step.is-upcoming {
+    background: rgba(142, 142, 147, 0.1);
+    color: var(--hint-color, #8e8e93);
+    border: 1px solid rgba(142, 142, 147, 0.2);
+}
+
+@keyframes moderation-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(255, 159, 10, 0.2); }
+    50%       { box-shadow: 0 0 16px rgba(255, 159, 10, 0.45); }
+}
+
+.moderation-step-arrow {
+    color: var(--hint-color, #8e8e93);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+/* ── Moderation info block ────────────────────────────────── */
+.moderation-info-block {
+    background: rgba(255, 159, 10, 0.08);
+    border: 1px solid rgba(255, 159, 10, 0.22);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+}
+
+.moderation-info-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ff9f0a;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.moderation-info-text {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-color, #ffffff);
+    opacity: 0.88;
+}
+
+/* ── Action buttons area ──────────────────────────────────── */
+.moderation-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+/* Primary CTA — Go Live */
+.btn-moderation-live {
+    width: 100%;
+    min-height: 50px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #ff9f0a 0%, #ffcc02 100%);
+    color: #1c1c1e;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.18s ease, transform 0.14s ease;
+    box-shadow: 0 4px 16px rgba(255, 159, 10, 0.35);
+    letter-spacing: 0.2px;
+}
+
+.btn-moderation-live:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+}
+
+.btn-moderation-live:active {
+    opacity: 0.82;
+    transform: translateY(0);
+}
+
+.btn-moderation-live:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Secondary — Retest */
+.btn-moderation-retest {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+    background: rgba(10, 132, 255, 0.1);
+    border: 1px solid rgba(10, 132, 255, 0.3);
+    color: #0a84ff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-moderation-retest:hover {
+    background: rgba(10, 132, 255, 0.18);
+}
+
+.btn-moderation-retest:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Danger link — Delete */
+.btn-moderation-delete {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--hint-color, #8e8e93);
+    padding: 8px 4px 2px;
+    transition: color 0.15s ease;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-style: dotted;
+}
+
+.btn-moderation-delete:hover {
+    color: #ff453a;
+}
+
+/* ── Error state after "Go Live" ──────────────────────────── */
+.moderation-error-block {
+    margin-top: 10px;
+    background: rgba(255, 69, 58, 0.08);
+    border: 1px solid rgba(255, 69, 58, 0.3);
+    border-radius: 10px;
+    padding: 11px 14px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.moderation-error-block.is-visible {
+    display: flex;
+    animation: fadeInSlideUp 0.2s ease;
+}
+
+@keyframes fadeInSlideUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.moderation-error-text {
+    font-size: 13px;
+    color: #ff6b63;
+    line-height: 1.5;
+}
+
+.moderation-support-link {
+    font-size: 12px;
+    color: #0a84ff;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: opacity 0.15s;
+}
+
+.moderation-support-link:hover {
+    opacity: 0.75;
+}
+
+/* ── Loader spinner inside button ─────────────────────────── */
+.btn-loader {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(28, 28, 30, 0.35);
+    border-top-color: #1c1c1e;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

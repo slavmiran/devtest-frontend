@@ -147,7 +147,23 @@ function renderProjects(force) {
         return Math.floor(diffTime / (1000 * 60 * 60 * 24));
     }
 
-    myProjects.forEach((project, index) => {
+    // ── Pipeline split: separate 'moderation' projects from active ones ──
+    const activeProjects = myProjects.filter(function(p) {
+        return p.phase !== 'moderation';
+    });
+    const moderationProjects = myProjects.filter(function(p) {
+        return p.phase === 'moderation';
+    });
+
+    // If both sections exist add an "Active tests" header for clarity
+    if (activeProjects.length > 0 && moderationProjects.length > 0) {
+        const activeHeader = document.createElement('div');
+        activeHeader.className = 'moderation-section-header';
+        activeHeader.textContent = window.t('activeSectionTitle', {}, lang);
+        container.appendChild(activeHeader);
+    }
+
+    activeProjects.forEach((project, index) => {
         try {
         const card = document.createElement('div');
         const isInactive = !project.is_visible;
@@ -669,6 +685,11 @@ function renderProjects(force) {
             if (window.reportSystemError) window.reportSystemError('renderProjects: ' + e.message, e.stack);
         }
     });
+
+    // ── Pipeline: render 'moderation' section after active projects ──
+    if (typeof renderModerationSection === 'function') {
+        renderModerationSection(container, moderationProjects);
+    }
 }
 
 function openOvertimeModal(appId, event) {
