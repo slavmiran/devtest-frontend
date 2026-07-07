@@ -1763,7 +1763,7 @@ input::placeholder,
     font-size: 13px;
 }
 
-.archive-transfer-btn,
+#custom-alert-overlay {
     display: none;
     position: fixed;
     inset: 0;
