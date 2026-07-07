@@ -120,7 +120,11 @@ function renderProjects(force) {
         container.insertAdjacentHTML('beforeend', dashHtml);
     }
 
-    if (myProjects.length === 0) {
+    const hasModerationInArchive = typeof archivedProjects !== 'undefined' && Array.isArray(archivedProjects) && archivedProjects.some(function(p) {
+        return p.phase === 'moderation';
+    });
+
+    if (myProjects.length === 0 && !hasModerationInArchive) {
         container.insertAdjacentHTML('beforeend', `
             <div class="empty-state">
                 <div class="empty-icon">📂</div>
@@ -151,9 +155,63 @@ function renderProjects(force) {
     const activeProjects = myProjects.filter(function(p) {
         return p.phase !== 'moderation';
     });
-    const moderationProjects = myProjects.filter(function(p) {
+
+    const moderationFromActive = myProjects.filter(function(p) {
         return p.phase === 'moderation';
     });
+    const moderationFromArchived = (typeof archivedProjects !== 'undefined' ? archivedProjects : [])
+        .filter(function(p) {
+            return p.phase === 'moderation';
+        })
+        .map(function(p) {
+            // Normalize archived projects properties to match myProjects schema
+            return {
+                id: p.app_id || p.id,
+                status: p.status || 'completed',
+                app_status: p.status || 'completed',
+                name: p.name,
+                package: p.package_name || p.package || '',
+                icon_url: p.icon_url,
+                google_group_url: p.google_group_url,
+                instructions: p.instructions || '',
+                testers: p.testers || [],
+                is_visible: p.is_visible !== false,
+                is_accepting_new_testers: p.is_accepting_new_testers !== false,
+                visibility_mode: p.visibility_mode || 'public',
+                created_at: p.created_at || null,
+                likes: p.likes || [],
+                likes_used: p.likes_used || 0,
+                likes_max: p.likes_max || 1,
+                mode: p.mode || 'mutual',
+                test_mode: p.test_mode || 'google_group',
+                accepts_email_testers: !!p.accepts_email_testers,
+                target_lang: p.target_lang || 'ALL',
+                request_reviews: p.request_reviews !== false,
+                limit_mutual: p.limit_mutual || 0,
+                limit_bounty: p.limit_bounty || 0,
+                bounty_per_tester: p.bounty_per_tester || 0,
+                google_sync_day: p.google_sync_day || 0,
+                sync_message: p.sync_message || '',
+                is_setup_completed: p.is_setup_completed !== false,
+                last_sync_date: p.last_sync_date || null,
+                sync_notification_sent: !!p.sync_notification_sent,
+                last_owner_activity: p.last_owner_activity || null,
+                published_to_market_at: p.published_to_market_at || null,
+                last_mass_invite_at: p.last_mass_invite_at || null,
+                last_mass_invite_sent_count: Number(p.last_mass_invite_sent_count || 0),
+                run_iteration: Number(p.run_iteration || 1),
+                feedback_new_count: p.feedback_new_count || 0,
+                feedback_total_count: p.feedback_total_count || 0,
+                guest_testers_count: Number(p.guest_testers_count || 0),
+                paid_protection_days: Number(p.purchased_protection_days || p.paid_protection_days || 0),
+                protection_bust_pool: Number(p.protection_bust_pool || 0),
+                consumed_pending_hours: Number(p.consumed_pending_hours || 0),
+                pending_completion_started_at: p.pending_completion_started_at || null,
+                phase: 'moderation'
+            };
+        });
+
+    const moderationProjects = moderationFromActive.concat(moderationFromArchived);
 
     // If both sections exist add an "Active tests" header for clarity
     if (activeProjects.length > 0 && moderationProjects.length > 0) {
@@ -1855,6 +1913,7 @@ function renderArchivedProjects(force) {
         return String(project.package || '').trim().toLowerCase();
     }).filter(Boolean));
     const visibleArchivedProjects = (archivedProjects || []).filter(function(project) {
+        if (project.phase === 'moderation') return false;
         const packageName = String(project.package_name || '').trim().toLowerCase();
         return !packageName || !activePackages.has(packageName);
     });
