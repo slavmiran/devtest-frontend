@@ -2482,6 +2482,12 @@ async function loadArchivedProjects(options) {
         });
         _lastFetchTimes.archived = Date.now();
         renderArchivedProjects();
+        // Pipeline: archived payload may contain phase === 'moderation' projects that
+        // belong on the main screen's moderation panel, not in the archive list.
+        // renderProjects() reads `archivedProjects` too, so it must re-run whenever
+        // this data changes, otherwise the moderation panel never appears until some
+        // unrelated action happens to trigger a re-render.
+        if (typeof renderProjects === 'function') renderProjects(true);
     } catch (error) {
         console.error('Archive load error:', error);
         if (!silent) {
