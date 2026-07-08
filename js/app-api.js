@@ -2486,12 +2486,9 @@ async function loadArchivedProjects(options) {
                 feedback_new_count: project.feedback_new_count || 0,
                 feedback_total_count: project.feedback_total_count || 0,
                 archive_reason: project.archive_reason || null,
-                status: project.status || 'archived',
             });
             row.phase = normalizeProjectPhase(row);
             return row;
-        }).filter(function(project) {
-            return normalizeProjectPhase(project) !== 'moderation';
         });
         _lastFetchTimes.archived = Date.now();
         renderArchivedProjects();
@@ -2563,29 +2560,27 @@ async function confirmDeleteProject() {
         if (result.status === 'success') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
-            // Pipeline: completion moves the project to moderation on the main screen,
-            // NOT into the archive accordion (legacy optimistic path was wrong here).
-            var completedProject = myProjects.find(function(p) { return Number(p.id) === Number(id); });
-            if (completedProject) {
-                var moderationProject = Object.assign({}, completedProject, {
-                    status: 'completed',
-                    app_status: 'completed',
-                    phase: 'moderation',
+            // Optimistic UI: move project from active to archive immediately
+            var deletedProject = myProjects.find(function(p) { return p.id === id; });
+            if (deletedProject) {
+                myProjects = myProjects.filter(function(p) { return p.id !== id; });
+                archivedProjects.unshift({
+                    app_id: deletedProject.id,
+                    name: deletedProject.name,
+                    package_name: deletedProject.package,
+                    icon_url: deletedProject.icon_url,
+                    target_lang: deletedProject.target_lang || 'ALL',
+                    feedback_new_count: deletedProject.feedback_new_count || 0,
+                    feedback_total_count: deletedProject.feedback_total_count || 0,
+                    archive_reason: null,
                 });
-                myProjects = myProjects.map(function(p) {
-                    return Number(p.id) === Number(id) ? moderationProject : p;
-                });
-                archivedProjects = (archivedProjects || []).filter(function(p) {
-                    return Number(p.app_id) !== Number(id);
-                });
-                setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
-                renderProjects(true);
-                renderArchivedProjects(true);
+                renderProjects();
+                renderArchivedProjects();
             }
 
             closeDeleteModal();
-            // Force-refresh both lists so server truth replaces any stale cache.
-            loadProjects(true, true).catch(function() {});
+            // Background refresh for accurate data
+            loadProjects(true).catch(function() {});
             loadArchivedProjects({ background: true, silent: true }).catch(function() {});
         } else {
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
