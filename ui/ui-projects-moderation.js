@@ -280,11 +280,27 @@ async function handleModerationRequestRetest(projectId, event) {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             showToast(window.t('moderationRetestSuccess', {}, lang));
 
-            // Optimistic: flip phase back to 'testing'
-            var proj = (myProjects || []).find(function(p) { return Number(p.id) === Number(projectId); });
-            if (proj) proj.phase = 'testing';
-
+            // Immediately remove the moderation card so the UI doesn't flicker
+            // while we wait for the server refresh. After Bug #1 fix, moderation
+            // projects live in `archivedProjects`, not `myProjects`.
+            if (Array.isArray(archivedProjects)) {
+                archivedProjects = archivedProjects.filter(function(p) {
+                    return Number(p.app_id) !== Number(projectId);
+                });
+            }
             if (window.renderProjects) window.renderProjects(true);
+            if (window.renderArchivedProjects) window.renderArchivedProjects();
+
+            // Force-refresh active projects from server so the restarted project
+            // (now status='active', phase='testing', created_at=now) appears with
+            // the correct Day 1 counter and reset progress bar.
+            if (typeof loadProjects === 'function') {
+                loadProjects(true).then(function() {
+                    if (window.renderProjects) window.renderProjects(true);
+                }).catch(function(e) {
+                    console.error('[moderation] retest loadProjects refresh failed:', e);
+                });
+            }
         } else {
             var errMsg = (result && result.message) || window.t('moderationRetestError', {}, lang);
             showToast(errMsg);

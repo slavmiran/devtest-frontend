@@ -2550,28 +2550,20 @@ async function confirmDeleteProject() {
         if (result.status === 'success') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
-            // Optimistic UI: move project from active to archive immediately
-            var deletedProject = myProjects.find(function(p) { return p.id === id; });
-            if (deletedProject) {
-                myProjects = myProjects.filter(function(p) { return p.id !== id; });
-                archivedProjects.unshift({
-                    app_id: deletedProject.id,
-                    name: deletedProject.name,
-                    package_name: deletedProject.package,
-                    icon_url: deletedProject.icon_url,
-                    target_lang: deletedProject.target_lang || 'ALL',
-                    feedback_new_count: deletedProject.feedback_new_count || 0,
-                    feedback_total_count: deletedProject.feedback_total_count || 0,
-                    archive_reason: null,
-                });
-                renderProjects();
-                renderArchivedProjects();
-            }
+            // Immediately remove from the active list so the card vanishes right
+            // away without waiting for the server round-trip.
+            myProjects = myProjects.filter(function(p) { return p.id !== id; });
+            renderProjects();
 
             closeDeleteModal();
-            // Background refresh for accurate data
+
+            // Force-reload archived projects so the completed project (which the
+            // backend marks with phase='moderation') appears immediately in the
+            // Moderation section. loadArchivedProjects already calls renderProjects()
+            // internally after updating archivedProjects, so no extra re-render needed.
+            loadArchivedProjects({ background: false, silent: true }).catch(function() {});
+            // Background-refresh active projects to stay in sync.
             loadProjects(true).catch(function() {});
-            loadArchivedProjects({ background: true, silent: true }).catch(function() {});
         } else {
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
         }
