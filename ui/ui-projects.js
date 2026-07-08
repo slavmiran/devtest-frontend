@@ -212,9 +212,16 @@ function renderProjects(force) {
         });
 
     const moderationProjects = moderationFromActive.concat(moderationFromArchived);
+    const seenModerationIds = new Set();
+    const uniqueModerationProjects = moderationProjects.filter(function(project) {
+        var projectId = Number(project.id || project.app_id || 0);
+        if (!projectId || seenModerationIds.has(projectId)) return false;
+        seenModerationIds.add(projectId);
+        return true;
+    });
 
     // If both sections exist add an "Active tests" header for clarity
-    if (activeProjects.length > 0 && moderationProjects.length > 0) {
+    if (activeProjects.length > 0 && uniqueModerationProjects.length > 0) {
         const activeHeader = document.createElement('div');
         activeHeader.className = 'moderation-section-header';
         activeHeader.textContent = window.t('activeSectionTitle', {}, lang);
@@ -746,7 +753,7 @@ function renderProjects(force) {
 
     // ── Pipeline: render 'moderation' section after active projects ──
     if (typeof renderModerationSection === 'function') {
-        renderModerationSection(container, moderationProjects);
+        renderModerationSection(container, uniqueModerationProjects);
     }
 }
 
