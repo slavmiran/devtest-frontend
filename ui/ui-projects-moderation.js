@@ -108,12 +108,19 @@ function buildModerationCard(project) {
                 </button>
 
                 <div class="moderation-error-block" id="moderation-error-${project.id}">
-                    <div class="moderation-error-text" id="moderation-error-text-${project.id}"></div>
-                    <button
-                        type="button"
-                        class="moderation-support-link"
+                    <div class="moderation-error-text" id="moderation-error-text-${project.id}">
+                        ${window.escapeHTML(window.t('moderationLiveError', {}, lang))}
+                    </div>
+                    <a
+                        href="javascript:void(0)"
+                        style="display: inline-block; padding: 8px 16px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; text-decoration: none; color: #fff; margin-top: 12px; margin-bottom: 12px; font-size: 14px; text-align: center;"
                         onclick="handleModerationContactSupport(event)"
-                    >💬 ${window.escapeHTML(supportLabel)}</button>
+                    >${window.escapeHTML(supportLabel)}</a>
+                    <div style="font-size: 11px; opacity: 0.7; line-height: 1.4; margin-top: 4px;">
+                        ${lang === 'ru' 
+                            ? 'Если модерация Google отклонила проект, используйте кнопку «Нужен ретест» ниже для повторного запуска тестирования.' 
+                            : 'If Google moderation rejected the project, use the "Need Retest" button below to restart testing.'}
+                    </div>
                 </div>
 
                 <button
@@ -250,6 +257,39 @@ async function handleModerationRequestLive(projectId, event) {
  * Handler: "🔄 Нужен ретест" button.
  * Confirms, then calls backend → on success moves project back to 'testing'.
  */
+/**
+ * Helper to display custom SweetAlert2 popup when trying to retest an already live app.
+ */
+function showAppAlreadyPublishedModal(projectId) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '🎉 Приложение уже в Google Play!',
+            text: 'Мы проверили маркет и нашли ваш проект. Модерация успешно пройдена, поэтому ретест больше не доступен (для опубликованных приложений существуют другие механики продвижения). Хотите перевести проект в фазу Live прямо сейчас?',
+            icon: 'success',
+            showCancelButton: true,
+            confirmButtonText: '🚀 Перевести в Live',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#0a84ff',
+            cancelButtonColor: '#8e8e93',
+            background: '#1c1c1e',
+            color: '#ffffff'
+        }).then(function(res) {
+            if (res.isConfirmed) {
+                handleModerationRequestLive(projectId, null);
+            }
+        });
+    } else {
+        var confirmMsg = 'Мы проверили маркет и нашли ваш проект. Модерация успешно пройдена, поэтому ретест больше не доступен. Хотите перевести проект в фазу Live прямо сейчас?';
+        if (confirm(confirmMsg)) {
+            handleModerationRequestLive(projectId, null);
+        }
+    }
+}
+
+/**
+ * Handler: "🔄 Нужен ретест" button.
+ * Confirms, then calls backend → on success moves project back to 'testing'.
+ */
 async function handleModerationRequestRetest(projectId, event) {
     if (event) event.stopPropagation();
     if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
@@ -303,13 +343,22 @@ async function handleModerationRequestRetest(projectId, event) {
             }
         } else {
             var errMsg = (result && result.message) || window.t('moderationRetestError', {}, lang);
-            showToast(errMsg);
+            if (errMsg === 'app_already_published') {
+                showAppAlreadyPublishedModal(projectId);
+            } else {
+                showToast(errMsg);
+            }
             if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
             if (liveBtn) liveBtn.disabled = false;
         }
     } catch (err) {
         console.error('[moderation] handleModerationRequestRetest error:', err);
-        showToast(window.t('moderationRetestError', {}, lang));
+        var errMsg = (err && (err.message || err.detail)) || '';
+        if (errMsg === 'app_already_published') {
+            showAppAlreadyPublishedModal(projectId);
+        } else {
+            showToast(window.t('moderationRetestError', {}, lang));
+        }
         if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
         if (liveBtn) liveBtn.disabled = false;
     }
@@ -376,3 +425,4 @@ window.handleModerationRequestLive    = handleModerationRequestLive;
 window.handleModerationRequestRetest  = handleModerationRequestRetest;
 window.handleModerationDeleteProject  = handleModerationDeleteProject;
 window.handleModerationContactSupport = handleModerationContactSupport;
+window.handleModerationLive           = handleModerationRequestLive;
