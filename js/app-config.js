@@ -661,7 +661,7 @@ var myTestsCache = null;
 var _testsInFlight = null;
 var _testsLoadedOnce = false;
 
-var PROJECTS_CACHE_KEY = 'projects_cache_v1';
+var PROJECTS_CACHE_KEY = 'projects_cache_v2';
 var myProjectsCache = null;
 var _projectsInFlight = null;
 var _projectsLoadedOnce = false;

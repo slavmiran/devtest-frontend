@@ -121,7 +121,7 @@ function renderProjects(force) {
     }
 
     const hasModerationInArchive = typeof archivedProjects !== 'undefined' && Array.isArray(archivedProjects) && archivedProjects.some(function(p) {
-        return p.phase === 'moderation';
+        return normalizeProjectPhase(p) === 'moderation';
     });
 
     if (myProjects.length === 0 && !hasModerationInArchive) {
@@ -153,15 +153,15 @@ function renderProjects(force) {
 
     // ── Pipeline split: separate 'moderation' projects from active ones ──
     const activeProjects = myProjects.filter(function(p) {
-        return p.phase !== 'moderation';
+        return normalizeProjectPhase(p) !== 'moderation';
     });
 
     const moderationFromActive = myProjects.filter(function(p) {
-        return p.phase === 'moderation';
+        return normalizeProjectPhase(p) === 'moderation';
     });
     const moderationFromArchived = (typeof archivedProjects !== 'undefined' ? archivedProjects : [])
         .filter(function(p) {
-            return p.phase === 'moderation';
+            return normalizeProjectPhase(p) === 'moderation';
         })
         .map(function(p) {
             // Normalize archived projects properties to match myProjects schema
@@ -1913,7 +1913,7 @@ function renderArchivedProjects(force) {
         return String(project.package || '').trim().toLowerCase();
     }).filter(Boolean));
     const visibleArchivedProjects = (archivedProjects || []).filter(function(project) {
-        if (project.phase === 'moderation') return false;
+        if (normalizeProjectPhase(project) === 'moderation') return false;
         const packageName = String(project.package_name || '').trim().toLowerCase();
         return !packageName || !activePackages.has(packageName);
     });
