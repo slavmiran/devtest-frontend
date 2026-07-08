@@ -1761,11 +1761,7 @@ async function loadProjects(isBackground, force) {
     if (!_projectsLoadedOnce) {
         var cached = getProjectsCache();
         if (cached && Array.isArray(cached.projects)) {
-            myProjects = cached.projects.map(function(project) {
-                var normalizedPhase = normalizeProjectPhase(project);
-                if (project.phase === normalizedPhase) return project;
-                return Object.assign({}, project, { phase: normalizedPhase });
-            });
+            myProjects = cached.projects;
             visibilityStats = cached.visibilityStats || {};
             _projectsLoadedOnce = true;
             myProjectsLoadError = false;
@@ -1911,11 +1907,7 @@ function _mapProjectsFromApi(data) {
             protection_bust_pool: Number(project.protection_bust_pool || 0),
             consumed_pending_hours: Number(project.consumed_pending_hours || 0),
             pending_completion_started_at: project.pending_completion_started_at || null,
-            phase: normalizeProjectPhase({
-                phase: project.phase,
-                status: project.status,
-                app_status: project.status,
-            }),
+            phase: project.phase || 'testing',
         };
     });
 }
@@ -2039,7 +2031,7 @@ async function _loadProjectsImpl(options) {
             myProjects = nextProjects;
             visibilityStats = nextStats;
             myProjectsLoadError = false;
-            renderProjects(true);
+            renderProjects();
             if (typeof window.renderTests === 'function' && Array.isArray(myTests) && myTests.length) {
                 window.renderTests();
             }
@@ -2480,15 +2472,13 @@ async function loadArchivedProjects(options) {
         if (!response.ok) return;
         const data = await response.json();
         archivedProjects = (data.archived || []).map(function(project) {
-            var row = Object.assign({}, project, {
+            return Object.assign({}, project, {
                 target_lang: project.target_lang || 'ALL',
                 run_iteration: Number(project.run_iteration || 1),
                 feedback_new_count: project.feedback_new_count || 0,
                 feedback_total_count: project.feedback_total_count || 0,
                 archive_reason: project.archive_reason || null,
             });
-            row.phase = normalizeProjectPhase(row);
-            return row;
         });
         _lastFetchTimes.archived = Date.now();
         renderArchivedProjects();

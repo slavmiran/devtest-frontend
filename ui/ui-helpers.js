@@ -86,29 +86,6 @@ function showMarketLoading(containerId) {
     if (!container) return;
     container.innerHTML = `<p class="no-testers">${t.pulseLoading}</p>`;
 }
-/**
- * Normalize pipeline phase for dashboard project rows (API, cache, or in-memory).
- * Post-test statuses (`completed`, `pending_completion`) map to moderation unless
- * phase is explicitly `live`. This recovers rows where older mappers defaulted
- * `phase` to `'testing'` even though the project already left active testing.
- */
-function normalizeProjectPhase(project) {
-    if (!project || typeof project !== 'object') return 'testing';
-    var phase = String(project.phase == null ? '' : project.phase).trim().toLowerCase();
-    var status = String(project.app_status || project.status || '').trim().toLowerCase();
-
-    if (phase === 'moderation' || phase === 'live') {
-        return phase;
-    }
-    if (status === 'completed' || status === 'pending_completion') {
-        return 'moderation';
-    }
-    if (phase === 'testing' || phase === '') {
-        return 'testing';
-    }
-    return phase || 'testing';
-}
-
 function formatTimeAgo(dateStr) {
     if (!dateStr) return t.timeJustNow;
     const eventDate = new Date(dateStr);
