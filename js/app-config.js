@@ -50,6 +50,9 @@ function syncTelegramBackButton() {
     } else {
         tg.BackButton.hide();
     }
+    if (typeof window.syncPipelineHeaderVisibility === 'function') {
+        window.syncPipelineHeaderVisibility();
+    }
 }
 
 function initTelegramBackButton() {

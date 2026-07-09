@@ -4969,8 +4969,10 @@ function switchTab(tabId, navElement) {
         if (typeof initPipelineHeader === 'function') initPipelineHeader();
         if (typeof updatePipelineHeader === 'function') updatePipelineHeader();
         if (typeof syncPipelineHeaderScrollState === 'function') syncPipelineHeaderScrollState();
+        if (typeof syncPipelineHeaderVisibility === 'function') syncPipelineHeaderVisibility();
     } else {
         if (typeof resetPipelineHeaderCollapse === 'function') resetPipelineHeaderCollapse();
+        if (typeof syncPipelineHeaderVisibility === 'function') syncPipelineHeaderVisibility();
     }
 
     if (typeof syncSystemDropTabForActiveTab === 'function') {

@@ -1924,6 +1924,7 @@ function openProtectionCenter(projectId) {
     // Slide in
     view.classList.add('active');
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    if (typeof syncPipelineHeaderVisibility === 'function') syncPipelineHeaderVisibility();
 
     // Hide bottom nav while open
     const bottomNav = document.querySelector('.bottom-nav');
@@ -1949,6 +1950,7 @@ function closeProtectionCenter() {
     const body = document.getElementById('protection-center-body');
     if (view) view.classList.remove('active');
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    if (typeof syncPipelineHeaderVisibility === 'function') syncPipelineHeaderVisibility();
 
     // Restore bottom nav
     const bottomNav = document.querySelector('.bottom-nav');

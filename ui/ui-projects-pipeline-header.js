@@ -14,6 +14,9 @@ var PIPELINE_COLLAPSE_AT = 72;
 var PIPELINE_EXPAND_AT = 48;
 var _pipelineCollapsed = false;
 var _pipelineScrollRaf = 0;
+var _pipelineScreenLockObserverBound = false;
+
+var PIPELINE_SCREEN_LOCK_SELECTORS = '.modal-overlay, .protection-center-view, #attract-testers-sheet-overlay, .wizard-overlay';
 
 function resolvePipelineProjectPhase(project) {
     if (!project || typeof project !== 'object') return 'testing';
@@ -24,21 +27,25 @@ function resolvePipelineProjectPhase(project) {
     return 'testing';
 }
 
-function projectNeedsPipelineAttention(project) {
-    if (!project) return false;
+function getProjectPipelineAlertType(project) {
+    if (!project) return null;
+    var pendingIssueTesters = (Array.isArray(project.testers) ? project.testers : []).filter(function(tester) {
+        return !!tester.issue_reported_at && !tester.issue_fixed_at;
+    });
+    if (project.status === 'access_error' && pendingIssueTesters.length > 0) return 'danger';
+    if (Number(project.feedback_new_count || 0) > 0) return 'feedback';
     var projectStatus = String(project.app_status || project.status || 'active').toLowerCase();
     var isPendingCompletion = projectStatus === 'pending_completion';
     var platformDays = typeof getProjectPlatformDay === 'function'
         ? getProjectPlatformDay(project.created_at)
         : 0;
     var syncDay = Number(project.google_sync_day || 0);
-    var needsSyncAttention = isPendingCompletion || (platformDays >= 7 && syncDay < 1);
-    var hasNewFeedback = Number(project.feedback_new_count || 0) > 0;
-    var pendingIssueTesters = (Array.isArray(project.testers) ? project.testers : []).filter(function(tester) {
-        return !!tester.issue_reported_at && !tester.issue_fixed_at;
-    });
-    var hasAccessOverlay = project.status === 'access_error' && pendingIssueTesters.length > 0;
-    return needsSyncAttention || hasNewFeedback || hasAccessOverlay;
+    if (isPendingCompletion || (platformDays >= 7 && syncDay < 1)) return 'sync';
+    return null;
+}
+
+function projectNeedsPipelineAttention(project) {
+    return getProjectPipelineAlertType(project) !== null;
 }
 
 function collectPipelineProjectsByPhase() {
@@ -74,15 +81,28 @@ function collectPipelineProjectsByPhase() {
 }
 
 function buildPipelinePhaseMeta(projects) {
+    var hasFeedbackAlert = false;
+    var hasDangerAlert = false;
     var alertProjectId = null;
+    var alertPriority = -1;
+    var priorityMap = { danger: 3, feedback: 2, sync: 1 };
+
     for (var i = 0; i < projects.length; i++) {
-        if (projectNeedsPipelineAttention(projects[i])) {
+        var alertType = getProjectPipelineAlertType(projects[i]);
+        if (!alertType) continue;
+        if (alertType === 'danger') hasDangerAlert = true;
+        if (alertType === 'feedback') hasFeedbackAlert = true;
+        var priority = priorityMap[alertType] || 0;
+        if (priority > alertPriority) {
+            alertPriority = priority;
             alertProjectId = Number(projects[i].id || projects[i].app_id || 0) || null;
-            break;
         }
     }
+
     return {
         count: projects.length,
+        hasFeedbackAlert: hasFeedbackAlert,
+        hasDangerAlert: hasDangerAlert,
         hasAlert: alertProjectId !== null,
         alertProjectId: alertProjectId,
     };
@@ -131,14 +151,15 @@ function _renderPipelineTrackHtml(trackClass, compact) {
             'pipeline-phase',
             'pipeline-phase--' + phaseKey,
             isEmpty ? 'is-empty' : '',
-            meta.hasAlert ? 'has-alert' : '',
+            meta.hasDangerAlert ? 'has-danger-alert' : '',
         ].filter(Boolean).join(' ');
+        var badgeClass = 'pipeline-phase__badge' + (meta.hasFeedbackAlert ? ' has-feedback-alert' : '');
 
         parts.push(
             '<button type="button" class="' + classes + '" data-phase="' + phaseKey + '" onclick="handlePipelinePhaseNav(\'' + phaseKey + '\', event)">' +
                 '<span class="pipeline-phase__icon" aria-hidden="true">' + _pipelinePhaseIcon(phaseKey) + '</span>' +
                 (compact ? '' : '<span class="pipeline-phase__label">' + window.escapeHTML(_pipelinePhaseLabel(phaseKey)) + '</span>') +
-                '<span class="pipeline-phase__badge">' + window.escapeHTML(String(meta.count)) + '</span>' +
+                '<span class="' + badgeClass + '">' + window.escapeHTML(String(meta.count)) + '</span>' +
             '</button>'
         );
     });
@@ -159,14 +180,56 @@ function updatePipelineHeader() {
     if (compactTrack) compactTrack.innerHTML = _renderPipelineTrackHtml('pipeline-track--compact', true);
 }
 
+function _setSystemMenuInstantTransition(menu, enabled) {
+    if (!menu) return;
+    menu.classList.toggle('system-drop-menu--instant', !!enabled);
+}
+
 function syncSystemDropTabForActiveTab(activeTabId) {
     var menu = document.getElementById('system-drop-menu');
     if (!menu) return;
     var isProjects = activeTabId === 'tab-projects' || activeTabId === 'projects';
+
+    _setSystemMenuInstantTransition(menu, true);
     menu.classList.toggle('system-drop-menu--projects-tab', isProjects);
     if (isProjects) {
         menu.classList.remove('active');
     }
+    void menu.offsetWidth;
+    window.requestAnimationFrame(function() {
+        _setSystemMenuInstantTransition(menu, false);
+    });
+}
+
+function isPipelineFullscreenBlockerOpen() {
+    if (document.querySelector('.modal-overlay.active')) return true;
+    if (document.querySelector('.protection-center-view.active')) return true;
+    if (document.querySelector('.wizard-overlay.active')) return true;
+    var attractSheet = document.getElementById('attract-testers-sheet-overlay');
+    return !!(attractSheet && attractSheet.classList.contains('active'));
+}
+
+function syncPipelineHeaderVisibility() {
+    var header = document.getElementById('pipeline-header');
+    if (!header) return;
+    var projectsTab = document.getElementById('tab-projects');
+    var onProjects = !!(projectsTab && projectsTab.classList.contains('active'));
+    var blocked = onProjects && isPipelineFullscreenBlockerOpen();
+    header.classList.toggle('pipeline-header--screen-locked', blocked);
+}
+
+function initPipelineHeaderScreenLockObserver() {
+    if (_pipelineScreenLockObserverBound || typeof MutationObserver === 'undefined') return;
+    _pipelineScreenLockObserverBound = true;
+
+    document.querySelectorAll(PIPELINE_SCREEN_LOCK_SELECTORS).forEach(function(element) {
+        var observer = new MutationObserver(function() {
+            syncPipelineHeaderVisibility();
+        });
+        observer.observe(element, { attributes: true, attributeFilter: ['class', 'style'] });
+    });
+
+    syncPipelineHeaderVisibility();
 }
 
 function _getPipelineScrollOffset() {
@@ -259,6 +322,7 @@ function initPipelineHeader() {
     if (_pipelineScrollBound) return;
     window.addEventListener('scroll', _onPipelineWindowScroll, { passive: true });
     _pipelineScrollBound = true;
+    initPipelineHeaderScreenLockObserver();
     updatePipelineHeader();
     syncPipelineHeaderScrollState();
     syncSystemDropTabForActiveTab(
@@ -274,13 +338,18 @@ window.handlePipelinePhaseNav = handlePipelinePhaseNav;
 window.syncSystemDropTabForActiveTab = syncSystemDropTabForActiveTab;
 window.resetPipelineHeaderCollapse = resetPipelineHeaderCollapse;
 window.syncPipelineHeaderScrollState = syncPipelineHeaderScrollState;
+window.syncPipelineHeaderVisibility = syncPipelineHeaderVisibility;
 window.resolvePipelineProjectPhase = resolvePipelineProjectPhase;
+window.getProjectPipelineAlertType = getProjectPipelineAlertType;
 window.projectNeedsPipelineAttention = projectNeedsPipelineAttention;
 
 document.addEventListener('DOMContentLoaded', function() {
     var activeTab = document.querySelector('.tab-content.active');
     if (activeTab && typeof syncSystemDropTabForActiveTab === 'function') {
         syncSystemDropTabForActiveTab(activeTab.id);
+    }
+    if (typeof initPipelineHeaderScreenLockObserver === 'function') {
+        initPipelineHeaderScreenLockObserver();
     }
     if (activeTab && activeTab.id === 'tab-projects' && typeof initPipelineHeader === 'function') {
         initPipelineHeader();
