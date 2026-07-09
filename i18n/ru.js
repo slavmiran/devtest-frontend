@@ -1782,6 +1782,10 @@
 
             // Pipeline — Moderation section (Sprint 2)
             activeSectionTitle: "⚡ Активное тестирование",
+            pipelinePhaseTesting: "Тесты",
+            pipelinePhaseModeration: "Модерация",
+            pipelinePhaseLive: "Live",
+            pipelineLiveSectionTitle: "🚀 Live в Google Play",
             moderationSectionTitle: "🛂 На модерации в Google Play",
             moderationStepTesting: "Тестирование",
             moderationStepModeration: "Модерация",

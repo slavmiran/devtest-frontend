@@ -121,7 +121,10 @@ function renderProjects(force) {
     }
 
     const hasModerationInArchive = typeof archivedProjects !== 'undefined' && Array.isArray(archivedProjects) && archivedProjects.some(function(p) {
-        return p.phase === 'moderation';
+        var phase = typeof resolvePipelineProjectPhase === 'function'
+            ? resolvePipelineProjectPhase(p)
+            : String(p.phase || '').toLowerCase();
+        return phase === 'moderation';
     });
 
     if (myProjects.length === 0 && !hasModerationInArchive) {
@@ -131,6 +134,7 @@ function renderProjects(force) {
                 <p>${t.emptyProjects}</p>
             </div>
         `);
+        if (typeof updatePipelineHeader === 'function') updatePipelineHeader();
         return;
     }
 
@@ -151,17 +155,24 @@ function renderProjects(force) {
         return Math.floor(diffTime / (1000 * 60 * 60 * 24));
     }
 
-    // ── Pipeline split: separate 'moderation' projects from active ones ──
+    function resolveProjectPhaseForRender(project) {
+        if (typeof resolvePipelineProjectPhase === 'function') return resolvePipelineProjectPhase(project);
+        var phase = String(project.phase || 'testing').trim().toLowerCase();
+        if (phase === 'moderation' || phase === 'live') return phase;
+        return 'testing';
+    }
+
+    // ── Pipeline split: testing / moderation / live ──
     const activeProjects = myProjects.filter(function(p) {
-        return p.phase !== 'moderation';
+        return resolveProjectPhaseForRender(p) !== 'moderation';
     });
 
     const moderationFromActive = myProjects.filter(function(p) {
-        return p.phase === 'moderation';
+        return resolveProjectPhaseForRender(p) === 'moderation';
     });
     const moderationFromArchived = (typeof archivedProjects !== 'undefined' ? archivedProjects : [])
         .filter(function(p) {
-            return p.phase === 'moderation';
+            return resolveProjectPhaseForRender(p) === 'moderation';
         })
         .map(function(p) {
             // Normalize archived projects properties to match myProjects schema
@@ -211,17 +222,55 @@ function renderProjects(force) {
             };
         });
 
-    const moderationProjects = moderationFromActive.concat(moderationFromArchived);
+    const moderationProjects = moderationFromActive.concat(moderationFromArchived).filter(function(project, index, list) {
+        var projectId = String(project.id || project.app_id || '');
+        if (!projectId) return true;
+        return list.findIndex(function(item) {
+            return String(item.id || item.app_id || '') === projectId;
+        }) === index;
+    });
 
-    // If both sections exist add an "Active tests" header for clarity
-    if (activeProjects.length > 0 && moderationProjects.length > 0) {
-        const activeHeader = document.createElement('div');
-        activeHeader.className = 'moderation-section-header';
-        activeHeader.textContent = window.t('activeSectionTitle', {}, lang);
-        container.appendChild(activeHeader);
+    const testingProjects = activeProjects.filter(function(p) {
+        return resolveProjectPhaseForRender(p) === 'testing';
+    });
+    const liveProjects = activeProjects.filter(function(p) {
+        return resolveProjectPhaseForRender(p) === 'live';
+    });
+
+    var testingSection = null;
+    var liveSection = null;
+
+    if (testingProjects.length > 0) {
+        testingSection = document.createElement('div');
+        testingSection.id = 'pipeline-section-testing';
+        testingSection.className = 'pipeline-section';
+        if (moderationProjects.length > 0 || liveProjects.length > 0) {
+            const activeHeader = document.createElement('div');
+            activeHeader.className = 'moderation-section-header';
+            activeHeader.textContent = window.t('activeSectionTitle', {}, lang);
+            testingSection.appendChild(activeHeader);
+        }
+        container.appendChild(testingSection);
+    } else {
+        const testingAnchor = document.createElement('div');
+        testingAnchor.id = 'pipeline-section-testing';
+        testingAnchor.className = 'pipeline-section pipeline-section--empty';
+        container.appendChild(testingAnchor);
     }
 
-    activeProjects.forEach((project, index) => {
+    if (liveProjects.length > 0) {
+        liveSection = document.createElement('div');
+        liveSection.id = 'pipeline-section-live';
+        liveSection.className = 'pipeline-section';
+        const liveHeader = document.createElement('div');
+        liveHeader.className = 'moderation-section-header';
+        liveHeader.textContent = window.t('pipelineLiveSectionTitle', {}, lang);
+        liveSection.appendChild(liveHeader);
+    }
+
+    activeProjects.forEach(function(project, index) {
+        const phase = resolveProjectPhaseForRender(project);
+        const cardParent = phase === 'live' ? liveSection : testingSection;
         try {
         const card = document.createElement('div');
         const isInactive = !project.is_visible;
@@ -257,6 +306,10 @@ function renderProjects(force) {
         card.className = cardClass + (hasAccessOverlay ? ' card-access-error-locked' : '');
         card.id = `project-card-${project.id}`;
         card.setAttribute('data-project-id', String(project.id));
+        card.setAttribute('data-project-phase', resolveProjectPhaseForRender(project));
+        if (requiresAttention || hasAccessOverlay) {
+            card.setAttribute('data-project-has-alert', 'true');
+        }
         const showUpdateTip = projectStatus === 'active' && platformDays >= 3 && !isProjectUpdateTipDismissed(project.id);
         const updateTipHtml = showUpdateTip
             ? `<div id="update-tip-${project.id}" class="project-update-tip"><div class="project-update-tip__text">${window.escapeHTML(window.t('projectUpdateTipText', {}, lang))}</div><button type="button" class="project-update-tip__close" onclick="dismissProjectUpdateTip(${project.id}, event)" aria-label="${window.escapeHTML(window.t('btnClose', {}, lang))}">✕</button></div>`
@@ -737,17 +790,34 @@ function renderProjects(force) {
             
             ${accessOverlayHtml}
         `;
-        container.appendChild(card);
+        (cardParent || container).appendChild(card);
         } catch (e) {
             console.error('Project card render error:', e);
             if (window.reportSystemError) window.reportSystemError('renderProjects: ' + e.message, e.stack);
         }
     });
 
-    // ── Pipeline: render 'moderation' section after active projects ──
+    // ── Pipeline: moderation section (between testing and live) ──
     if (typeof renderModerationSection === 'function') {
         renderModerationSection(container, moderationProjects);
     }
+    if (!document.getElementById('pipeline-section-moderation')) {
+        const moderationAnchor = document.createElement('div');
+        moderationAnchor.id = 'pipeline-section-moderation';
+        moderationAnchor.className = 'pipeline-section pipeline-section--empty';
+        container.appendChild(moderationAnchor);
+    }
+
+    if (liveSection) {
+        container.appendChild(liveSection);
+    } else {
+        const liveAnchor = document.createElement('div');
+        liveAnchor.id = 'pipeline-section-live';
+        liveAnchor.className = 'pipeline-section pipeline-section--empty';
+        container.appendChild(liveAnchor);
+    }
+
+    if (typeof updatePipelineHeader === 'function') updatePipelineHeader();
 }
 
 function openOvertimeModal(appId, event) {

@@ -1,0 +1,366 @@
+/* ============================================================
+   css/pipeline-header.css
+   Collapsible morphing sticky header — My Projects tab only
+   ============================================================ */
+
+/* Hide global floating system tab while on Projects tab (menu still opens from header ⋮) */
+.system-drop-menu.system-drop-menu--projects-tab .system-drop-tab-container {
+    display: none !important;
+}
+
+#tab-projects {
+    padding-top: 0;
+}
+
+.pipeline-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    margin: 0 -16px 16px;
+    padding: 12px 16px 14px;
+    background: linear-gradient(180deg, rgba(18, 18, 20, 0.96) 0%, rgba(18, 18, 20, 0.88) 72%, rgba(18, 18, 20, 0) 100%);
+    backdrop-filter: blur(18px) saturate(1.2);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    transition: padding 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pipeline-header.is-collapsed {
+    padding: 8px 16px 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.pipeline-header__expanded,
+.pipeline-header__compact {
+    transition: opacity 0.28s ease, max-height 0.32s ease, transform 0.28s ease;
+}
+
+.pipeline-header__expanded {
+    display: block;
+    opacity: 1;
+    max-height: 280px;
+    overflow: hidden;
+}
+
+.pipeline-header__compact {
+    display: none;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+}
+
+.pipeline-header.is-collapsed .pipeline-header__expanded {
+    display: none;
+    opacity: 0;
+    max-height: 0;
+}
+
+.pipeline-header.is-collapsed .pipeline-header__compact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 1;
+    max-height: 56px;
+}
+
+.pipeline-header__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.pipeline-header__title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-color, #fff);
+}
+
+.pipeline-header__menu-btn,
+.pipeline-header__add-compact,
+.pipeline-header__menu-compact {
+    flex-shrink: 0;
+    border: 1px solid rgba(142, 142, 147, 0.28);
+    background: rgba(44, 44, 46, 0.72);
+    color: var(--text-color, #fff);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.pipeline-header__menu-btn,
+.pipeline-header__menu-compact {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pipeline-header__add-compact {
+    width: 42px;
+    height: 42px;
+    font-size: 22px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: linear-gradient(135deg, #0a84ff 0%, #5e5ce6 100%);
+    border: none;
+    box-shadow: 0 4px 14px rgba(10, 132, 255, 0.28);
+}
+
+.pipeline-header__menu-btn:active,
+.pipeline-header__menu-compact:active,
+.pipeline-header__add-compact:active {
+    transform: scale(0.96);
+}
+
+.pipeline-header__add-btn {
+    width: 100%;
+    margin-bottom: 14px;
+    min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.pipeline-header__add-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+/* ── Pipeline track (expanded) ─────────────────────────────── */
+.pipeline-track {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    gap: 0;
+}
+
+.pipeline-track__segment {
+    display: flex;
+    align-items: center;
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.pipeline-track__segment.is-empty {
+    flex: 0 0 10px;
+    min-width: 10px;
+}
+
+.pipeline-phase {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 8px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    background: rgba(44, 44, 46, 0.55);
+    color: var(--text-color, #fff);
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.25s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pipeline-phase:active {
+    transform: scale(0.98);
+}
+
+.pipeline-phase__icon {
+    font-size: 15px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.pipeline-phase__label {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pipeline-phase__badge {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pipeline-phase--testing {
+    border-color: rgba(94, 129, 172, 0.35);
+    background: rgba(94, 129, 172, 0.12);
+}
+
+.pipeline-phase--testing .pipeline-phase__badge {
+    background: rgba(94, 129, 172, 0.28);
+    color: #b8d4f0;
+    box-shadow: 0 0 10px rgba(94, 129, 172, 0.35);
+}
+
+.pipeline-phase--moderation {
+    border-color: rgba(255, 159, 10, 0.38);
+    background: rgba(255, 159, 10, 0.1);
+}
+
+.pipeline-phase--moderation .pipeline-phase__badge {
+    background: rgba(255, 159, 10, 0.28);
+    color: #ffd699;
+    box-shadow: 0 0 10px rgba(255, 159, 10, 0.35);
+}
+
+.pipeline-phase--live {
+    border-color: rgba(52, 199, 89, 0.38);
+    background: rgba(52, 199, 89, 0.1);
+}
+
+.pipeline-phase--live .pipeline-phase__badge {
+    background: rgba(52, 199, 89, 0.28);
+    color: #b8f5c7;
+    box-shadow: 0 0 10px rgba(52, 199, 89, 0.35);
+}
+
+.pipeline-phase.is-empty {
+    flex: 0 0 8px;
+    min-width: 8px;
+    width: 8px;
+    padding: 0;
+    border-radius: 999px;
+    background: rgba(142, 142, 147, 0.25);
+    border: none;
+    cursor: default;
+    pointer-events: none;
+}
+
+.pipeline-phase.is-empty .pipeline-phase__icon,
+.pipeline-phase.is-empty .pipeline-phase__label,
+.pipeline-phase.is-empty .pipeline-phase__badge {
+    display: none;
+}
+
+.pipeline-phase.has-alert::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 16px;
+    border: 1px solid currentColor;
+    opacity: 0.55;
+    animation: pipeline-alert-glow 2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.pipeline-phase--testing.has-alert::before {
+    color: rgba(120, 170, 220, 0.9);
+    box-shadow: 0 0 14px rgba(94, 129, 172, 0.55);
+}
+
+.pipeline-phase--moderation.has-alert::before {
+    color: rgba(255, 179, 64, 0.95);
+    box-shadow: 0 0 14px rgba(255, 159, 10, 0.55);
+}
+
+.pipeline-phase--live.has-alert::before {
+    color: rgba(88, 214, 120, 0.95);
+    box-shadow: 0 0 14px rgba(52, 199, 89, 0.55);
+}
+
+@keyframes pipeline-alert-glow {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.pipeline-connector {
+    flex: 1 1 12px;
+    min-width: 8px;
+    height: 2px;
+    margin: 0 4px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(142, 142, 147, 0.15), rgba(142, 142, 147, 0.45), rgba(142, 142, 147, 0.15));
+}
+
+.pipeline-connector.is-thin {
+    flex: 0 0 6px;
+    min-width: 6px;
+    opacity: 0.35;
+}
+
+/* ── Compact track ─────────────────────────────────────────── */
+.pipeline-track--compact {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.pipeline-track--compact .pipeline-phase {
+    padding: 6px 4px;
+    border-radius: 12px;
+    background: transparent;
+    border-color: transparent;
+    gap: 4px;
+}
+
+.pipeline-track--compact .pipeline-phase__label {
+    display: none;
+}
+
+.pipeline-track--compact .pipeline-phase__icon {
+    font-size: 16px;
+}
+
+.pipeline-track--compact .pipeline-phase__badge {
+    min-width: 20px;
+    height: 20px;
+    font-size: 10px;
+}
+
+.pipeline-track--compact .pipeline-connector {
+    min-width: 4px;
+    margin: 0 2px;
+}
+
+/* ── Section anchors & card pulse ──────────────────────────── */
+.pipeline-section {
+    scroll-margin-top: 118px;
+}
+
+.pipeline-section.is-collapsed-header-target {
+    scroll-margin-top: 72px;
+}
+
+.pipeline-section--empty {
+    height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+}
+
+@keyframes pipeline-card-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0); }
+    35% { box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.45), 0 0 24px rgba(10, 132, 255, 0.25); }
+    70% { box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.2); }
+}
+
+.card.pipeline-card-pulse,
+.card-moderation.pipeline-card-pulse {
+    animation: pipeline-card-pulse 1s ease-out 1;
+}

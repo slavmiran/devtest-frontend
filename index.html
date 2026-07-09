@@ -13,8 +13,9 @@
     <script src="./js/app-state.js?v=20260527-referral-ui"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-projects.js?v=20260707-sprint2-fix2"></script>
-    <script src="./ui/ui-projects-moderation.js?v=20260707-sprint2"></script>
+    <script src="./ui/ui-projects.js?v=20260709-pipeline-header"></script>
+    <script src="./ui/ui-projects-moderation.js?v=20260709-pipeline-header"></script>
+    <script src="./ui/ui-projects-pipeline-header.js?v=20260709-pipeline-header"></script>
     <script src="./ui/ui-market.js?v=20260602-phase44"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260602-phase54"></script>
@@ -42,6 +43,7 @@
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/pipeline-moderation.css?v=20260707-sprint2">
+    <link rel="stylesheet" href="./css/pipeline-header.css?v=20260709-pipeline-header">
     <link rel="stylesheet" href="./styles.css?v=20260527-referral-ui">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
@@ -256,12 +258,23 @@
 
     <!-- TAB 2: Мои проекты -->
     <div id="tab-projects" class="container tab-content">
-        <h2 id="t-projectsTitle" data-i18n="tabProjects">Мои проекты</h2>
-        <p id="t-projectsDesc" data-i18n="projectsDesc">Ваши приложения, которые тестируют другие.</p>
-        
-        <button class="btn btn-primary" style="margin-bottom: 24px;" onclick="openModal()">
-            <span id="t-addApp" data-i18n="addApp">+ Добавить приложение</span>
-        </button>
+        <header id="pipeline-header" class="pipeline-header" aria-label="Projects pipeline">
+            <div class="pipeline-header__expanded">
+                <div class="pipeline-header__top">
+                    <h2 class="pipeline-header__title" id="t-projectsTitle" data-i18n="tabProjects">Мои проекты</h2>
+                    <button type="button" class="pipeline-header__menu-btn" onclick="toggleSystemMenu()" aria-label="Menu">⋮</button>
+                </div>
+                <button type="button" class="pipeline-header__add-btn btn btn-primary" onclick="openModal()">
+                    <span id="t-addApp" data-i18n="addApp">+ Добавить приложение</span>
+                </button>
+                <div id="pipeline-track-expanded"></div>
+            </div>
+            <div class="pipeline-header__compact">
+                <button type="button" class="pipeline-header__add-compact" onclick="openModal()" aria-label="Add app">+</button>
+                <div id="pipeline-track-compact"></div>
+                <button type="button" class="pipeline-header__menu-compact" onclick="toggleSystemMenu()" aria-label="Menu">⋮</button>
+            </div>
+        </header>
 
         <div id="projects-list">
             <!-- Project cards will be injected here -->

@@ -4966,6 +4966,15 @@ function switchTab(tabId, navElement) {
     if (finalTab === 'projects') {
         renderProjects(true);
         renderArchivedProjects(true);
+        if (typeof initPipelineHeader === 'function') initPipelineHeader();
+        if (typeof updatePipelineHeader === 'function') updatePipelineHeader();
+    } else {
+        const pipelineHeader = document.getElementById('pipeline-header');
+        if (pipelineHeader) pipelineHeader.classList.remove('is-collapsed');
+    }
+
+    if (typeof syncSystemDropTabForActiveTab === 'function') {
+        syncSystemDropTabForActiveTab('tab-' + finalTab);
     }
 
     if (finalTab === 'market') {

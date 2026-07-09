@@ -18,16 +18,21 @@
 function renderModerationSection(container, moderationProjects) {
     if (!moderationProjects || moderationProjects.length === 0) return;
 
+    const sectionWrap = document.createElement('div');
+    sectionWrap.id = 'pipeline-section-moderation';
+    sectionWrap.className = 'pipeline-section';
+    container.appendChild(sectionWrap);
+
     // Section header
     const headerEl = document.createElement('div');
     headerEl.className = 'moderation-section-header';
     headerEl.textContent = window.t('moderationSectionTitle', {}, lang);
-    container.appendChild(headerEl);
+    sectionWrap.appendChild(headerEl);
 
     moderationProjects.forEach(function(project) {
         try {
             const card = buildModerationCard(project);
-            container.appendChild(card);
+            sectionWrap.appendChild(card);
         } catch (err) {
             console.error('[ui-projects-moderation] card render error for app', project.id, err);
             if (window.reportSystemError) window.reportSystemError('renderModerationSection: ' + err.message, err.stack);
@@ -45,6 +50,12 @@ function buildModerationCard(project) {
     card.className = 'card card-moderation';
     card.id = 'project-card-' + project.id;
     card.setAttribute('data-project-id', String(project.id));
+    card.setAttribute('data-project-phase', 'moderation');
+    if (typeof projectNeedsPipelineAttention === 'function' && projectNeedsPipelineAttention(project)) {
+        card.setAttribute('data-project-has-alert', 'true');
+    } else if (Number(project.feedback_new_count || 0) > 0) {
+        card.setAttribute('data-project-has-alert', 'true');
+    }
 
     var safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
     var safeProjectPackage = window.escapeHTML(project.package || '');
