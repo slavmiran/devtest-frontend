@@ -10,7 +10,10 @@ var _pipelineHeaderState = {
     live: { count: 0, hasAlert: false, alertProjectId: null },
 };
 
-var PIPELINE_COLLAPSE_SCROLL_Y = 56;
+var PIPELINE_COLLAPSE_AT = 72;
+var PIPELINE_EXPAND_AT = 48;
+var _pipelineCollapsed = false;
+var _pipelineScrollRaf = 0;
 
 function resolvePipelineProjectPhase(project) {
     if (!project || typeof project !== 'object') return 'testing';
@@ -161,6 +164,9 @@ function syncSystemDropTabForActiveTab(activeTabId) {
     if (!menu) return;
     var isProjects = activeTabId === 'tab-projects' || activeTabId === 'projects';
     menu.classList.toggle('system-drop-menu--projects-tab', isProjects);
+    if (isProjects) {
+        menu.classList.remove('active');
+    }
 }
 
 function _getPipelineScrollOffset() {
@@ -212,12 +218,40 @@ function handlePipelinePhaseNav(phaseKey, event) {
     if (projectsList) _scrollToPipelineTarget(projectsList);
 }
 
-function _onPipelineWindowScroll() {
-    var header = document.getElementById('pipeline-header');
-    if (!header || typeof isTabVisible !== 'function' || !isTabVisible('projects')) return;
-    header.classList.toggle('is-collapsed', window.scrollY > PIPELINE_COLLAPSE_SCROLL_Y);
+function _applyPipelineCollapsedState(header, collapsed) {
+    _pipelineCollapsed = collapsed;
+    header.classList.toggle('is-collapsed', collapsed);
     document.querySelectorAll('.pipeline-section').forEach(function(section) {
-        section.classList.toggle('is-collapsed-header-target', window.scrollY > PIPELINE_COLLAPSE_SCROLL_Y);
+        section.classList.toggle('is-collapsed-header-target', collapsed);
+    });
+}
+
+function _onPipelineWindowScroll() {
+    if (_pipelineScrollRaf) return;
+    _pipelineScrollRaf = window.requestAnimationFrame(function() {
+        _pipelineScrollRaf = 0;
+        var header = document.getElementById('pipeline-header');
+        if (!header || typeof isTabVisible !== 'function' || !isTabVisible('projects')) return;
+
+        var scrollY = window.scrollY || window.pageYOffset || 0;
+        if (!_pipelineCollapsed && scrollY > PIPELINE_COLLAPSE_AT) {
+            _applyPipelineCollapsedState(header, true);
+        } else if (_pipelineCollapsed && scrollY < PIPELINE_EXPAND_AT) {
+            _applyPipelineCollapsedState(header, false);
+        }
+    });
+}
+
+function syncPipelineHeaderScrollState() {
+    _onPipelineWindowScroll();
+}
+
+function resetPipelineHeaderCollapse() {
+    _pipelineCollapsed = false;
+    var header = document.getElementById('pipeline-header');
+    if (header) header.classList.remove('is-collapsed');
+    document.querySelectorAll('.pipeline-section').forEach(function(section) {
+        section.classList.remove('is-collapsed-header-target');
     });
 }
 
@@ -226,6 +260,7 @@ function initPipelineHeader() {
     window.addEventListener('scroll', _onPipelineWindowScroll, { passive: true });
     _pipelineScrollBound = true;
     updatePipelineHeader();
+    syncPipelineHeaderScrollState();
     syncSystemDropTabForActiveTab(
         document.getElementById('tab-projects') && document.getElementById('tab-projects').classList.contains('active')
             ? 'tab-projects'
@@ -237,6 +272,8 @@ window.initPipelineHeader = initPipelineHeader;
 window.updatePipelineHeader = updatePipelineHeader;
 window.handlePipelinePhaseNav = handlePipelinePhaseNav;
 window.syncSystemDropTabForActiveTab = syncSystemDropTabForActiveTab;
+window.resetPipelineHeaderCollapse = resetPipelineHeaderCollapse;
+window.syncPipelineHeaderScrollState = syncPipelineHeaderScrollState;
 window.resolvePipelineProjectPhase = resolvePipelineProjectPhase;
 window.projectNeedsPipelineAttention = projectNeedsPipelineAttention;
 

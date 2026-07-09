@@ -4968,9 +4968,9 @@ function switchTab(tabId, navElement) {
         renderArchivedProjects(true);
         if (typeof initPipelineHeader === 'function') initPipelineHeader();
         if (typeof updatePipelineHeader === 'function') updatePipelineHeader();
+        if (typeof syncPipelineHeaderScrollState === 'function') syncPipelineHeaderScrollState();
     } else {
-        const pipelineHeader = document.getElementById('pipeline-header');
-        if (pipelineHeader) pipelineHeader.classList.remove('is-collapsed');
+        if (typeof resetPipelineHeaderCollapse === 'function') resetPipelineHeaderCollapse();
     }
 
     if (typeof syncSystemDropTabForActiveTab === 'function') {

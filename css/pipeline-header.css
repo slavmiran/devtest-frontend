@@ -3,9 +3,18 @@
    Collapsible morphing sticky header — My Projects tab only
    ============================================================ */
 
-/* Hide global floating system tab while on Projects tab (menu still opens from header ⋮) */
+/* Hide global floating system tab while on Projects tab (menu opens from header ⋮) */
 .system-drop-menu.system-drop-menu--projects-tab .system-drop-tab-container {
     display: none !important;
+}
+
+/* Without the tab peeking out, fully hide drawer above viewport until opened via ⋮ */
+.system-drop-menu.system-drop-menu--projects-tab:not(.active) {
+    transform: translateY(-100%) !important;
+}
+
+.system-drop-menu.system-drop-menu--projects-tab.active {
+    transform: translateY(0) !important;
 }
 
 #tab-projects {
@@ -17,49 +26,71 @@
     top: 0;
     z-index: 1000;
     margin: 0 -16px 16px;
-    padding: 12px 16px 14px;
+    padding: 12px 16px 22px;
     background: linear-gradient(180deg, rgba(18, 18, 20, 0.96) 0%, rgba(18, 18, 20, 0.88) 72%, rgba(18, 18, 20, 0) 100%);
     backdrop-filter: blur(18px) saturate(1.2);
     -webkit-backdrop-filter: blur(18px) saturate(1.2);
     transition: padding 0.3s ease, box-shadow 0.3s ease;
+    overflow: visible;
 }
 
 .pipeline-header.is-collapsed {
-    padding: 8px 16px 10px;
+    padding: 8px 16px 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.pipeline-header__morph {
+    position: relative;
+    overflow: visible;
 }
 
 .pipeline-header__expanded,
 .pipeline-header__compact {
-    transition: opacity 0.28s ease, max-height 0.32s ease, transform 0.28s ease;
+    transition: opacity 0.28s ease, transform 0.28s ease, visibility 0.28s ease;
+    overflow: visible;
+    will-change: opacity, transform;
 }
 
 .pipeline-header__expanded {
-    display: block;
     opacity: 1;
-    max-height: 280px;
-    overflow: hidden;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
 }
 
 .pipeline-header__compact {
-    display: none;
-    opacity: 0;
-    max-height: 0;
-    overflow: hidden;
-}
-
-.pipeline-header.is-collapsed .pipeline-header__expanded {
-    display: none;
-    opacity: 0;
-    max-height: 0;
-}
-
-.pipeline-header.is-collapsed .pipeline-header__compact {
+    position: absolute;
+    inset: 0;
     display: flex;
     align-items: center;
     gap: 10px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px) scale(0.98);
+    pointer-events: none;
+}
+
+.pipeline-header.is-collapsed .pipeline-header__expanded {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px) scale(0.98);
+    pointer-events: none;
+}
+
+.pipeline-header.is-collapsed .pipeline-header__compact {
+    position: relative;
+    inset: auto;
     opacity: 1;
-    max-height: 56px;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.pipeline-header.is-collapsed .pipeline-header__morph {
+    min-height: 44px;
 }
 
 .pipeline-header__top {
@@ -144,6 +175,9 @@
     align-items: stretch;
     width: 100%;
     gap: 0;
+    overflow: visible;
+    padding-bottom: 6px;
+    margin-bottom: -2px;
 }
 
 .pipeline-track__segment {
