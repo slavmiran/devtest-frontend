@@ -789,6 +789,77 @@
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
+.fb-action-btn--copy {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--hint-color);
+}
+
+.fb-copy-icon {
+    display: block;
+}
+
+.fb-device-block {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.fb-device-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--hint-color);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.fb-device-public {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-color);
+    margin-bottom: 10px;
+}
+
+.fb-device-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+}
+
+.fb-device-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.fb-device-label {
+    color: var(--hint-color);
+    flex: 0 0 auto;
+}
+
+.fb-device-value {
+    color: var(--text-color);
+    text-align: right;
+    word-break: break-word;
+}
+
+.fb-device-row--missing .fb-device-value {
+    color: rgba(255, 159, 10, 0.95);
+}
+
+.fb-device-row--attention .fb-device-label {
+    color: #ff9f0a;
+}
+
 /* Card Styling */
 .fb-card {
     background: var(--bg-surface-1, #161a21) !important;

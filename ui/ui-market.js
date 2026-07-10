@@ -3926,9 +3926,21 @@ function renderProjectFeedbackCards(project, items) {
             `;
         }
 
+        // ── Device info (bugs only) ──
+        var deviceInfoHtml = '';
+        if (feedbackType === 'bug' && typeof renderFeedbackDeviceInfoBlock === 'function') {
+            deviceInfoHtml = renderFeedbackDeviceInfoBlock(item);
+        }
+
         // ── Footer action line ──
         var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
         const hasDm = !!username;
+
+        const copyButtonHtml = (!isReviewTicket && (item.message_text || deviceInfoHtml))
+            ? `<button type="button" class="fb-action-btn fb-action-btn--copy" onclick="copyFeedbackCardContent(${item.id}, ${projectId})" aria-label="${window.escapeHTML(window.t('feedbackCopyBtn', {}, lang))}">
+                    <svg class="fb-copy-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+               </button>`
+            : '';
 
         const dmButtonHtml = hasDm
             ? `<button class="fb-action-btn fb-action-btn--dm" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">
@@ -3954,7 +3966,7 @@ function renderProjectFeedbackCards(project, items) {
                </button>`
             : '';
 
-        const hasFooter = dmButtonHtml || topicButtonHtml || thankCloseButtonHtml || rejectButtonHtml;
+        const hasFooter = copyButtonHtml || dmButtonHtml || topicButtonHtml || thankCloseButtonHtml || rejectButtonHtml;
         const cardMod = (isNew ? ' fb-card--new' : '') + ((item.status === 'declined' || item.status === 'rejected') ? ' fb-card--rejected' : '');
         let cardTypeClass = 'fb-card--general';
         if (isReviewTicket) {
@@ -3971,11 +3983,12 @@ function renderProjectFeedbackCards(project, items) {
             ${headerHtml}
             <div class="fb-body">
                 ${textBodyHtml}
+                ${deviceInfoHtml}
                 ${mediaHtml}
                 ${rewardHtml}
                 ${replyHtml}
             </div>
-            ${hasFooter ? `<div class="fb-footer"><div class="fb-actions-group-left">${dmButtonHtml}${topicButtonHtml}</div><div class="fb-actions-group-right">${thankCloseButtonHtml}${rejectButtonHtml}</div></div>` : ''}
+            ${hasFooter ? `<div class="fb-footer"><div class="fb-actions-group-left">${copyButtonHtml}${dmButtonHtml}${topicButtonHtml}</div><div class="fb-actions-group-right">${thankCloseButtonHtml}${rejectButtonHtml}</div></div>` : ''}
         </div>`;
     }).join('')}</div>`;
 }

@@ -218,8 +218,37 @@
     margin-bottom: 12px;
 }
 
-.device-info-modal-actions {
-    margin-top: 8px;
+.device-info-preview--model-missing .device-info-preview-text {
+    color: #ff9f0a;
+}
+
+.device-info-fields-root {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 52vh;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+
+.device-info-field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.device-info-field-row--missing .device-info-field-input {
+    border-color: rgba(255, 159, 10, 0.45);
+}
+
+.device-info-field-row--attention .device-info-field-label {
+    color: #ff9f0a;
+}
+
+.device-info-field-hint {
+    font-size: 11px;
+    line-height: 1.35;
+    color: #ff9f0a;
 }
 
 .system-drop-menu:not(.active) .system-drop-content {

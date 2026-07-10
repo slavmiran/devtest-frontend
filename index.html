@@ -17,14 +17,14 @@
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260710-device-info"></script>
     <script src="./js/app-api.js?v=20260710-device-info"></script>
-    <script src="./js/app-device-info.js?v=20260710-device-info-v2"></script>
+    <script src="./js/app-device-info.js?v=20260710-device-info-v3"></script>
     <script src="./js/app-actions.js?v=20260710-device-info"></script>
     <script src="./js/app-features.js?v=20260710-device-info"></script>
     <script src="./app.js?v=20260710-device-info"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260706-phase1-1">
-    <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260710-device-info-v2">
+    <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260710-device-info-v3">
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/wizard.css?v=20260706-phase2">
@@ -637,13 +637,8 @@
     <div id="device-info-modal" class="modal-overlay" onclick="closeDeviceInfoEditorModal(event)">
         <div class="modal-content device-info-modal-content" onclick="event.stopPropagation()">
             <h3 data-i18n="deviceInfoModalTitle">Техническая информация</h3>
-            <p class="device-info-modal-hint" data-i18n="deviceInfoModalHint">Эти данные добавляются к баг-репортам. Нажмите «Обновить», чтобы подставить данные из Telegram.</p>
-            <label class="device-info-field-label" for="device-info-os-input" data-i18n="deviceInfoOsLabel">ОС</label>
-            <input type="text" id="device-info-os-input" class="form-input" maxlength="80" data-i18n-placeholder="deviceInfoOsPlaceholder" placeholder="">
-            <label class="device-info-field-label" for="device-info-model-input" data-i18n="deviceInfoModelLabel">Модель устройства</label>
-            <input type="text" id="device-info-model-input" class="form-input" maxlength="120" data-i18n-placeholder="deviceInfoModelPlaceholder" placeholder="">
-            <label class="device-info-field-label" for="device-info-resolution-input" data-i18n="deviceInfoResolutionLabel">Разрешение экрана</label>
-            <input type="text" id="device-info-resolution-input" class="form-input" maxlength="40" data-i18n-placeholder="deviceInfoResolutionPlaceholder" placeholder="">
+            <p class="device-info-modal-hint" data-i18n="deviceInfoModalHint">Эти данные добавляются к баг-репортам. Нажмите «Обновить», чтобы подставить данные автоматически (могут быть неточными).</p>
+            <div id="device-info-fields-root" class="device-info-fields-root"></div>
             <div class="action-row device-info-modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="refreshDeviceInfoFromBrowser()" data-i18n="deviceInfoRefreshBtn">↻ Обновить</button>
                 <button type="button" class="btn btn-primary" onclick="saveDeviceInfoFromModal()" data-i18n="deviceInfoSaveBtn">Сохранить</button>
