@@ -1650,6 +1650,10 @@ function clearCompletedPendingFeedbackCheckins() {
 
 async function initiateProjectFeedback(appId, options) {
     options = options || {};
+    var feedbackType = String(options.feedbackType || 'bug').toLowerCase();
+    if (feedbackType !== 'bug' && feedbackType !== 'idea') {
+        feedbackType = 'bug';
+    }
     var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
     var isEligibleForCheckin = test && (test.status === 'new' || test.status === 'daily' || test.status === 'opened');
     
@@ -1672,6 +1676,7 @@ async function initiateProjectFeedback(appId, options) {
                 user_id: userId,
                 app_id: appId,
                 checkin_context: options.checkinContext || null,
+                feedback_type: feedbackType,
             })
         });
         const data = await response.json();
@@ -1684,7 +1689,11 @@ async function initiateProjectFeedback(appId, options) {
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(window.t(options.checkinContext ? 'feedbackBotRedirectCheckinToast' : 'feedbackBotRedirectToast', {}, lang));
+        var toastKey = 'feedbackBotRedirect' + (feedbackType === 'idea' ? 'Idea' : 'Bug') + 'Toast';
+        if (options.checkinContext) {
+            toastKey = 'feedbackBotRedirectCheckin' + (feedbackType === 'idea' ? 'Idea' : 'Bug') + 'Toast';
+        }
+        showToast(window.t(toastKey, {}, lang));
         if (window.closeProjectDetailsModal) {
             window.closeProjectDetailsModal();
         }

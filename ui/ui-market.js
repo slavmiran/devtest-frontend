@@ -2246,11 +2246,12 @@ function getExternalProjectOwnerMessageParams(test) {
     };
 }
 
-async function sendExternalBugReportFromUi(testId, event) {
+async function sendExternalBugReportFromUi(testId, event, feedbackType) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
+    var normalizedType = String(feedbackType || 'bug').toLowerCase() === 'idea' ? 'idea' : 'bug';
     var test = getExternalProjectTest(testId);
     if (!test) return;
 
@@ -2263,7 +2264,10 @@ async function sendExternalBugReportFromUi(testId, event) {
     var result = await submitExternalGuestActivityFromUi(testId);
     if (!result) return;
 
-    var messageText = window.t('externalProjectBugReportMessageTemplate', getExternalProjectOwnerMessageParams(test), lang);
+    var templateKey = normalizedType === 'idea'
+        ? 'externalProjectIdeaReportMessageTemplate'
+        : 'externalProjectBugReportMessageTemplate';
+    var messageText = window.t(templateKey, getExternalProjectOwnerMessageParams(test), lang);
     copyTextWithToast(messageText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     openTelegramPrefilledMessage(cleanOwnerUsername, messageText);
@@ -2384,9 +2388,14 @@ function renderExternalProjectDetailsModal(test, body) {
         <div class="details-block">
             ${primaryActionsHtml}
             <div class="action-row" style="margin-top: 0; margin-bottom: 8px;">
-                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="sendExternalBugReportFromUi(${Number(test.id || 0)}, event)" ${cleanOwnerUsername ? '' : 'disabled'}>
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="sendExternalBugReportFromUi(${Number(test.id || 0)}, event, 'bug')" ${cleanOwnerUsername ? '' : 'disabled'}>
                     ${window.escapeHTML(window.t('externalProjectReportBugBtn', {}, lang))}
                 </button>
+                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="sendExternalBugReportFromUi(${Number(test.id || 0)}, event, 'idea')" ${cleanOwnerUsername ? '' : 'disabled'}>
+                    ${window.escapeHTML(window.t('externalProjectReportIdeaBtn', {}, lang))}
+                </button>
+            </div>
+            <div class="action-row" style="margin-top: 0; margin-bottom: 8px;">
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="return openTelegramProfile('${escapeInlineJsString(cleanOwnerUsername)}', event)" ${cleanOwnerUsername ? '' : 'disabled'}>
                     ${window.escapeHTML(window.t('externalProjectContactOwnerBtn', {}, lang))}
                 </button>
@@ -2924,11 +2933,13 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     const titleEl = document.getElementById('t-checkinOptionsTitle');
     const subtitleEl = document.getElementById('t-checkinOptionsSubtitle');
     const screenshotBtn = document.getElementById('t-checkinOptionsSendScreenshot');
+    const bugBtn = document.getElementById('t-checkinOptionsSendBug');
     const ideaBtn = document.getElementById('t-checkinOptionsSendIdea');
     const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
     if (titleEl) titleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinTitle' : 'checkinOptionsTitle', {}, lang);
     if (subtitleEl) subtitleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
     if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
+    if (bugBtn) bugBtn.innerText = window.t('checkinOptionsSendBug', {}, lang);
     if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
@@ -2970,11 +2981,13 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     const titleEl = document.getElementById('t-checkinOptionsTitle');
     const subtitleEl = document.getElementById('t-checkinOptionsSubtitle');
     const screenshotBtn = document.getElementById('t-checkinOptionsSendScreenshot');
+    const bugBtn = document.getElementById('t-checkinOptionsSendBug');
     const ideaBtn = document.getElementById('t-checkinOptionsSendIdea');
     const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
     if (titleEl) titleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinTitle' : 'checkinOptionsTitle', {}, lang);
     if (subtitleEl) subtitleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
     if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
+    if (bugBtn) bugBtn.innerText = window.t('checkinOptionsSendBug', {}, lang);
     if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
@@ -3019,7 +3032,15 @@ function checkinOptionsScreenshot() {
     sendCheckpointScreenshotAndConfirm(appId, owner);
 }
 
+function checkinOptionsBug() {
+    _submitCheckinFeedback('bug');
+}
+
 function checkinOptionsIdea() {
+    _submitCheckinFeedback('idea');
+}
+
+function _submitCheckinFeedback(feedbackType) {
     const appId = _checkinOptionsAppId;
     const flow = _checkinOptionsFlow;
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
@@ -3035,10 +3056,12 @@ function checkinOptionsIdea() {
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
     if (flow === 'external') {
-        sendExternalBugReportFromUi(appId);
+        sendExternalBugReportFromUi(appId, null, feedbackType);
         return;
     }
-    initiateProjectFeedback(appId, checkinContext ? { checkinContext: checkinContext } : null);
+    initiateProjectFeedback(appId, checkinContext
+        ? { checkinContext: checkinContext, feedbackType: feedbackType }
+        : { feedbackType: feedbackType });
 }
 
 function checkinOptionsReview() {
@@ -3550,12 +3573,14 @@ function formatFeedbackDate(createdAt) {
 }
 
 function getFeedbackTypeChip(item) {
-    const feedbackType = String(item.type || 'general').toLowerCase();
+    const feedbackType = String(item.type || 'bug').toLowerCase();
     if (feedbackType.indexOf('google_play_review') === 0) {
         return `<span class="fb-type-chip type-google-play">⭐ Google Play review</span>`;
-    } else {
-        return `<span class="fb-type-chip type-bug">🐞 Bugs & Ideas</span>`;
     }
+    if (feedbackType === 'idea') {
+        return `<span class="fb-type-chip type-idea">${window.escapeHTML(window.t('feedbackChipIdea', {}, lang))}</span>`;
+    }
+    return `<span class="fb-type-chip type-bug">${window.escapeHTML(window.t('feedbackChipBug', {}, lang))}</span>`;
 }
 
 function getProjectFeedbackHeader(project, items) {
@@ -3564,16 +3589,19 @@ function getProjectFeedbackHeader(project, items) {
     const newCount = Number(project && project.feedback_new_count || 0);
     
     let googlePlayCount = 0;
-    let bugsIdeasCount = 0;
+    let bugCount = 0;
+    let ideaCount = 0;
     
     if (items && items.length) {
         items.forEach(function(item) {
-            const feedbackType = String(item.type || 'general').toLowerCase();
+            const feedbackType = String(item.type || 'bug').toLowerCase();
             const isReviewTicket = feedbackType.indexOf('google_play_review') === 0;
             if (isReviewTicket) {
                 googlePlayCount++;
+            } else if (feedbackType === 'idea') {
+                ideaCount++;
             } else {
-                bugsIdeasCount++;
+                bugCount++;
             }
         });
     }
@@ -3599,9 +3627,10 @@ function getProjectFeedbackHeader(project, items) {
                 </div>
             </div>
             <div class="feedback-filters">
-                <button class="filter-chip active" data-filter="all" onclick="filterFeedback('all')">All</button>
-                <button class="filter-chip" data-filter="google_play" onclick="filterFeedback('google_play')">⭐ Google Play reviews <span class="filter-count">${googlePlayCount}</span></button>
-                <button class="filter-chip" data-filter="bugs_ideas" onclick="filterFeedback('bugs_ideas')">🐞 Bugs & Ideas <span class="filter-count">${bugsIdeasCount}</span></button>
+                <button class="filter-chip active" data-filter="all" onclick="filterFeedback('all')">${window.escapeHTML(window.t('feedbackFilterAll', {}, lang))}</button>
+                <button class="filter-chip" data-filter="google_play" onclick="filterFeedback('google_play')">${window.escapeHTML(window.t('feedbackFilterGooglePlay', {}, lang))} <span class="filter-count">${googlePlayCount}</span></button>
+                <button class="filter-chip" data-filter="bug" onclick="filterFeedback('bug')">${window.escapeHTML(window.t('feedbackFilterBugs', {}, lang))} <span class="filter-count">${bugCount}</span></button>
+                <button class="filter-chip" data-filter="idea" onclick="filterFeedback('idea')">${window.escapeHTML(window.t('feedbackFilterIdeas', {}, lang))} <span class="filter-count">${ideaCount}</span></button>
             </div>
         </div>
     `;
@@ -3659,8 +3688,14 @@ function filterFeedback(filterType) {
             } else {
                 card.style.display = 'none';
             }
-        } else if (filterType === 'bugs_ideas') {
-            if (!isGooglePlay) {
+        } else if (filterType === 'bug') {
+            if (!isGooglePlay && (type === 'bug' || type === 'general' || type === 'question')) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        } else if (filterType === 'idea') {
+            if (!isGooglePlay && type === 'idea') {
                 card.style.display = '';
             } else {
                 card.style.display = 'none';
@@ -3680,7 +3715,7 @@ function filterFeedback(filterType) {
             emptyEl.style.textAlign = 'center';
             emptyEl.style.padding = '24px';
             emptyEl.style.color = 'var(--hint-color)';
-            emptyEl.textContent = 'No matching feedback items found.';
+            emptyEl.textContent = window.t('feedbackFilteredEmpty', {}, lang);
             const listContainer = document.querySelector('.feedback-list') || document.getElementById('project-feedback-list');
             if (listContainer) {
                 listContainer.appendChild(emptyEl);
@@ -3743,7 +3778,7 @@ function renderProjectFeedbackCards(project, items) {
     const projectId = Number(project && (project.id || project.app_id) || 0);
 
     return `<div class="feedback-list">${items.map(function(item) {
-        const feedbackType = String(item.type || 'general').toLowerCase();
+        const feedbackType = String(item.type || 'bug').toLowerCase();
         const isReviewTicket = feedbackType.indexOf('google_play_review') === 0;
         const username = (item.tester_username || '').replace('@', '');
         const safeUsername = escapeInlineJsString(username);
@@ -6378,6 +6413,7 @@ Object.assign(window, {
     closeCheckinOptionsModal,
     renderCheckinReviewOptions,
     checkinOptionsScreenshot,
+    checkinOptionsBug,
     checkinOptionsIdea,
     checkinOptionsConfirm,
     checkinOptionsReview,

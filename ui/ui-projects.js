@@ -4676,7 +4676,10 @@ function openProjectDetailsModal(appId) {
         '<div class="detail-actions">' +
             '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openTelegramProfile(\'' + safeOwnerUsername + '\')">' + window.t('detail_contact_btn', {}, lang) + '</button>' +
             mutualOfferButtonHtml +
-            '<button class="btn" style="background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); initiateProjectFeedback(' + test.id + ')">' + window.t('detail_suggest_btn', {}, lang) + '</button>' +
+            '<div style="display:flex;gap:8px;width:100%;">' +
+            '<button class="btn" style="flex:1;background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); initiateProjectFeedback(' + test.id + ', { feedbackType: \'bug\' })">' + window.t('detail_report_bug_btn', {}, lang) + '</button>' +
+            '<button class="btn" style="flex:1;background:rgba(142,142,147,0.18);color:var(--text-color);" onclick="closeProjectDetailsModal(); initiateProjectFeedback(' + test.id + ', { feedbackType: \'idea\' })">' + window.t('detail_suggest_idea_btn', {}, lang) + '</button>' +
+            '</div>' +
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'https://play.google.com/store/apps/details?id=' + window.escapeHTML(test.package || '') + '\')">' + window.t('openGooglePlay', {}, lang) + '</button>' +
             (showIssueActionInDetails
                 ? (isIssueBlocked
