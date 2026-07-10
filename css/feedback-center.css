@@ -743,6 +743,26 @@
     flex-wrap: wrap;
 }
 
+.feedback-status-chip {
+    border: 1px solid transparent;
+    cursor: pointer;
+    font: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.feedback-status-chip:not(.is-active) {
+    opacity: 0.72;
+}
+
+.feedback-status-chip.is-active {
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.fb-card--hidden {
+    display: none !important;
+}
+
 /* Filters */
 .feedback-filters {
     display: flex;
@@ -871,6 +891,8 @@
     gap: 12px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     margin-bottom: 12px;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 220px;
 }
 .feedback-list {
     gap: 12px !important;

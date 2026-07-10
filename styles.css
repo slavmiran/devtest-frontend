@@ -1635,7 +1635,7 @@ input::placeholder,
 }
 
 .pulse-badge {
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--link-color);
     white-space: nowrap;
@@ -1643,7 +1643,6 @@ input::placeholder,
     border-right: 1px solid rgba(120, 120, 128, 0.25);
     display: flex;
     align-items: center;
-    gap: 4px;
     height: 18px;
     user-select: none;
 }
@@ -1680,8 +1679,8 @@ input::placeholder,
 .pulse-ticker-item {
     font-size: 13px;
     color: var(--text-color);
-    display: inline-flex;
-    align-items: center;
+    display: inline-block;
+    vertical-align: middle;
 }
 
 .pulse-ticker-item a {

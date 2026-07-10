@@ -3609,6 +3609,9 @@ function getProjectFeedbackHeader(project, items) {
         });
     }
 
+    const typeFilter = _projectFeedbackTypeFilter || 'all';
+    const statusFilter = _projectFeedbackStatusFilter || 'all';
+
     return `
         <div class="feedback-sticky-header">
             <div class="feedback-header-top">
@@ -3625,15 +3628,15 @@ function getProjectFeedbackHeader(project, items) {
             </div>
             <div class="feedback-header-summary">
                 <div class="feedback-counts">
-                    <span class="meta-chip accent-blue">💬 ${window.t('projectFeedbackTotalChip', { count: totalCount }, lang)}</span>
-                    <span class="meta-chip accent-green">🆕 ${window.t('projectFeedbackNewChip', { count: newCount }, lang)}</span>
+                    <button type="button" class="meta-chip accent-blue feedback-status-chip${statusFilter === 'all' ? ' is-active' : ''}" data-status-filter="all" onclick="filterFeedbackStatus('all')">💬 ${window.t('projectFeedbackTotalChip', { count: totalCount }, lang)}</button>
+                    <button type="button" class="meta-chip accent-green feedback-status-chip${statusFilter === 'new' ? ' is-active' : ''}" data-status-filter="new" onclick="filterFeedbackStatus('new')">🆕 ${window.t('projectFeedbackNewChip', { count: newCount }, lang)}</button>
                 </div>
             </div>
             <div class="feedback-filters">
-                <button class="filter-chip active" data-filter="all" onclick="filterFeedback('all')">${window.escapeHTML(window.t('feedbackFilterAll', {}, lang))}</button>
-                <button class="filter-chip" data-filter="google_play" onclick="filterFeedback('google_play')">${window.escapeHTML(window.t('feedbackFilterGooglePlay', {}, lang))} <span class="filter-count">${googlePlayCount}</span></button>
-                <button class="filter-chip" data-filter="bug" onclick="filterFeedback('bug')">${window.escapeHTML(window.t('feedbackFilterBugs', {}, lang))} <span class="filter-count">${bugCount}</span></button>
-                <button class="filter-chip" data-filter="idea" onclick="filterFeedback('idea')">${window.escapeHTML(window.t('feedbackFilterIdeas', {}, lang))} <span class="filter-count">${ideaCount}</span></button>
+                <button type="button" class="filter-chip${typeFilter === 'all' ? ' active' : ''}" data-filter="all" onclick="filterFeedback('all')">${window.escapeHTML(window.t('feedbackFilterAll', {}, lang))}</button>
+                <button type="button" class="filter-chip${typeFilter === 'google_play' ? ' active' : ''}" data-filter="google_play" onclick="filterFeedback('google_play')">${window.escapeHTML(window.t('feedbackFilterGooglePlay', {}, lang))} <span class="filter-count">${googlePlayCount}</span></button>
+                <button type="button" class="filter-chip${typeFilter === 'bug' ? ' active' : ''}" data-filter="bug" onclick="filterFeedback('bug')">${window.escapeHTML(window.t('feedbackFilterBugs', {}, lang))} <span class="filter-count">${bugCount}</span></button>
+                <button type="button" class="filter-chip${typeFilter === 'idea' ? ' active' : ''}" data-filter="idea" onclick="filterFeedback('idea')">${window.escapeHTML(window.t('feedbackFilterIdeas', {}, lang))} <span class="filter-count">${ideaCount}</span></button>
             </div>
         </div>
     `;
@@ -3666,63 +3669,52 @@ function openFeedbackDm(username, feedbackId, isReviewTicket, event) {
 }
 window.openFeedbackDm = openFeedbackDm;
 
-function filterFeedback(filterType) {
-    const container = document.querySelector('.feedback-filters');
-    if (container) {
-        container.querySelectorAll('.filter-chip').forEach(function(btn) {
-            if (btn.getAttribute('data-filter') === filterType) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-    }
+var _projectFeedbackTypeFilter = 'all';
+var _projectFeedbackStatusFilter = 'all';
+var _projectFeedbackCardNodes = null;
 
-    const cards = document.querySelectorAll('.fb-card');
-    cards.forEach(function(card) {
-        const type = card.getAttribute('data-feedback-type') || '';
-        const isGooglePlay = type.indexOf('google_play_review') === 0;
+function resetProjectFeedbackFilters() {
+    _projectFeedbackTypeFilter = 'all';
+    _projectFeedbackStatusFilter = 'all';
+    _projectFeedbackCardNodes = null;
+}
 
-        if (filterType === 'all') {
-            card.style.display = '';
-        } else if (filterType === 'google_play') {
-            if (isGooglePlay) {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
-            }
-        } else if (filterType === 'bug') {
-            if (!isGooglePlay && (type === 'bug' || type === 'general' || type === 'question')) {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
-            }
-        } else if (filterType === 'idea') {
-            if (!isGooglePlay && type === 'idea') {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
-            }
-        }
-    });
+function feedbackMatchesTypeFilter(cardType, filterType) {
+    cardType = String(cardType || '').toLowerCase();
+    filterType = String(filterType || 'all').toLowerCase();
+    const isGooglePlay = cardType.indexOf('google_play_review') === 0;
+    if (filterType === 'all') return true;
+    if (filterType === 'google_play') return isGooglePlay;
+    if (filterType === 'bug') return !isGooglePlay && (cardType === 'bug' || cardType === 'general' || cardType === 'question');
+    if (filterType === 'idea') return !isGooglePlay && cardType === 'idea';
+    return true;
+}
 
-    const visibleCards = Array.prototype.slice.call(cards).filter(function(card) {
-        return card.style.display !== 'none';
-    });
-    
-    let emptyEl = document.querySelector('.feedback-filtered-empty');
-    if (visibleCards.length === 0 && cards.length > 0) {
+function feedbackMatchesStatusFilter(cardStatus, statusFilter) {
+    cardStatus = String(cardStatus || '').toLowerCase();
+    statusFilter = String(statusFilter || 'all').toLowerCase();
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'new') return cardStatus === 'new';
+    return true;
+}
+
+function cacheProjectFeedbackCards() {
+    if (_projectFeedbackCardNodes && _projectFeedbackCardNodes.length) return _projectFeedbackCardNodes;
+    var list = document.querySelector('#project-feedback-body .feedback-list');
+    if (!list) return [];
+    _projectFeedbackCardNodes = Array.prototype.slice.call(list.querySelectorAll('.fb-card'));
+    return _projectFeedbackCardNodes;
+}
+
+function updateProjectFeedbackFilteredEmptyState(visibleCount, totalCount) {
+    var listContainer = document.querySelector('#project-feedback-body .feedback-list');
+  var emptyEl = document.querySelector('#project-feedback-body .feedback-filtered-empty');
+    if (visibleCount === 0 && totalCount > 0) {
         if (!emptyEl) {
             emptyEl = document.createElement('div');
             emptyEl.className = 'feedback-filtered-empty';
-            emptyEl.style.textAlign = 'center';
-            emptyEl.style.padding = '24px';
-            emptyEl.style.color = 'var(--hint-color)';
             emptyEl.textContent = window.t('feedbackFilteredEmpty', {}, lang);
-            const listContainer = document.querySelector('.feedback-list') || document.getElementById('project-feedback-list');
-            if (listContainer) {
-                listContainer.appendChild(emptyEl);
-            }
+            if (listContainer) listContainer.appendChild(emptyEl);
         } else {
             emptyEl.style.display = '';
         }
@@ -3730,7 +3722,52 @@ function filterFeedback(filterType) {
         emptyEl.style.display = 'none';
     }
 }
+
+function applyProjectFeedbackFilters() {
+    var cards = cacheProjectFeedbackCards();
+    var typeFilter = _projectFeedbackTypeFilter || 'all';
+    var statusFilter = _projectFeedbackStatusFilter || 'all';
+    var visibleCount = 0;
+
+    for (var i = 0; i < cards.length; i++) {
+        var card = cards[i];
+        var cardType = card.getAttribute('data-feedback-type') || '';
+        var cardStatus = card.getAttribute('data-feedback-status') || '';
+        var visible = feedbackMatchesTypeFilter(cardType, typeFilter) && feedbackMatchesStatusFilter(cardStatus, statusFilter);
+        card.classList.toggle('fb-card--hidden', !visible);
+        if (visible) visibleCount++;
+    }
+
+    var typeContainer = document.querySelector('#project-feedback-body .feedback-filters');
+    if (typeContainer) {
+        typeContainer.querySelectorAll('.filter-chip').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-filter') === typeFilter);
+        });
+    }
+    var statusContainer = document.querySelector('#project-feedback-body .feedback-counts');
+    if (statusContainer) {
+        statusContainer.querySelectorAll('.feedback-status-chip').forEach(function(btn) {
+            btn.classList.toggle('is-active', btn.getAttribute('data-status-filter') === statusFilter);
+        });
+    }
+
+    updateProjectFeedbackFilteredEmptyState(visibleCount, cards.length);
+}
+
+function filterFeedback(filterType) {
+    _projectFeedbackTypeFilter = String(filterType || 'all');
+    applyProjectFeedbackFilters();
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+
+function filterFeedbackStatus(statusFilter) {
+    _projectFeedbackStatusFilter = String(statusFilter || 'all');
+    applyProjectFeedbackFilters();
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+
 window.filterFeedback = filterFeedback;
+window.filterFeedbackStatus = filterFeedbackStatus;
 
 function feedbackOnImageError(imgEl) {
     imgEl.onerror = null;
@@ -3975,7 +4012,7 @@ function renderProjectFeedbackCards(project, items) {
             cardTypeClass = 'fb-card--question';
         }
 
-        return `<div class="fb-card ${cardTypeClass}${cardMod}" data-feedback-type="${feedbackType}">
+        return `<div class="fb-card ${cardTypeClass}${cardMod}" data-feedback-type="${feedbackType}" data-feedback-status="${window.escapeHTML(String(item.status || 'new').toLowerCase())}">
             ${headerHtml}
             <div class="fb-body">
                 ${mediaHtml}
@@ -4158,10 +4195,12 @@ function showProjectFeedbackModalError(project) {
 }
 
 function showProjectFeedbackModal(project, items) {
+    resetProjectFeedbackFilters();
     const body = document.getElementById('project-feedback-body');
     if (!body) return;
     body.innerHTML = getProjectFeedbackHeader(project, items) + renderProjectFeedbackCards(project, items);
     document.getElementById('project-feedback-modal').classList.add('active');
+    cacheProjectFeedbackCards();
     feedbackScheduleClampMeasure();
 }
 
