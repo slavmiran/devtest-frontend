@@ -137,12 +137,33 @@
         </div>
 
         <div id="community-pulse-container">
-            <div id="community-pulse" class="pulse-card">
-                <div class="pulse-title" id="t-pulseTitle" data-i18n="pulseTitle">🌐 Пульс сообщества</div>
-                <div id="events-list" class="events-list">
-                    <div class="event-time" data-i18n="pulseLoading">Загрузка...</div>
+            <div id="community-pulse" class="pulse-card ticker-mode">
+                <!-- Collapsed Ticker View -->
+                <div id="pulse-collapsed-view" class="pulse-collapsed-view">
+                    <div class="pulse-badge" id="t-pulseBadge" data-i18n="pulseTitleShort">🌐 Пульс</div>
+                    <div id="pulse-ticker-container" class="pulse-ticker-container">
+                        <div class="pulse-ticker-track">
+                            <div class="pulse-ticker-content" data-i18n="pulseLoading">Загрузка...</div>
+                        </div>
+                    </div>
+                    <button type="button" id="pulse-expand-btn" class="pulse-expand-btn" onclick="toggleEventsExpanded()" aria-label="Expand">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <polyline points="9 21 3 21 3 15"></polyline>
+                            <line x1="21" y1="3" x2="14" y2="10"></line>
+                            <line x1="3" y1="21" x2="10" y2="14"></line>
+                        </svg>
+                    </button>
                 </div>
-                <button id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()" data-i18n="pulseExpand">Развернуть ▼</button>
+
+                <!-- Expanded View -->
+                <div id="pulse-expanded-view" class="pulse-expanded-view" style="display: none;">
+                    <div class="pulse-title" id="t-pulseTitle" data-i18n="pulseTitle">🌐 Пульс сообщества</div>
+                    <div id="events-list" class="events-list">
+                        <div class="event-time" data-i18n="pulseLoading">Загрузка...</div>
+                    </div>
+                    <button type="button" id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()" data-i18n="pulseExpand">Развернуть ▼</button>
+                </div>
             </div>
         </div>
 

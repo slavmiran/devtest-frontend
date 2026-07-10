@@ -140,17 +140,81 @@ function getTesterOvertimeStats(tester) {
 
 function renderEvents() {
     if (!arguments[0] && !isTabVisible('tests')) return;
+    const cardEl = document.getElementById('community-pulse');
+    const collapsedView = document.getElementById('pulse-collapsed-view');
+    const expandedView = document.getElementById('pulse-expanded-view');
+    const tickerContainer = document.getElementById('pulse-ticker-container');
     const listEl = document.getElementById('events-list');
     const toggleEl = document.getElementById('events-toggle');
-    if (!listEl || !toggleEl) return;
 
+    if (!cardEl || !collapsedView || !expandedView || !tickerContainer || !listEl || !toggleEl) return;
+
+    if (eventsExpanded) {
+        cardEl.classList.remove('ticker-mode');
+        collapsedView.style.display = 'none';
+        expandedView.style.display = 'block';
+    } else {
+        cardEl.classList.add('ticker-mode');
+        collapsedView.style.display = 'flex';
+        expandedView.style.display = 'none';
+    }
+
+    // Render Collapsed Ticker View
+    if (communityEvents === null) {
+        tickerContainer.innerHTML = `
+            <div class="pulse-ticker-track">
+                <div class="pulse-ticker-content"><span class="pulse-ticker-item">${t.pulseLoading || 'Loading...'}</span></div>
+            </div>
+        `;
+    } else if (!communityEvents || !communityEvents.length) {
+        const emptyText = t.pulseEmptyToday || (lang === 'ru' ? 'Сегодня событий нет. Пульс сообщества спокоен.' : 'No events today. Community pulse is calm.');
+        tickerContainer.innerHTML = `
+            <div class="pulse-ticker-track">
+                <div class="pulse-ticker-content"><span class="pulse-ticker-item">${emptyText}</span></div>
+            </div>
+        `;
+    } else {
+        // Filter events for today (local calendar date matching getLocalDate())
+        const todayStr = getLocalDate();
+        const todayEvents = communityEvents.filter((eventItem) => {
+            if (!eventItem.created_at) return false;
+            const eventDate = new Date(eventItem.created_at);
+            if (Number.isNaN(eventDate.getTime())) return false;
+            const eventLocalDateStr = eventDate.getFullYear() + '-' + String(eventDate.getMonth() + 1).padStart(2, '0') + '-' + String(eventDate.getDate()).padStart(2, '0');
+            return eventLocalDateStr === todayStr;
+        });
+
+        let tickerHtml = '';
+        if (todayEvents.length === 0) {
+            const emptyTodayText = t.pulseEmptyToday || (lang === 'ru' ? 'Сегодня событий нет. Пульс сообщества спокоен.' : 'No events today. Community pulse is calm.');
+            tickerHtml = `<span class="pulse-ticker-item">${emptyTodayText}</span>`;
+        } else {
+            tickerHtml = todayEvents.map((eventItem) => {
+                const rawText = (lang === 'ru' ? eventItem.text_ru : (eventItem.text_en || eventItem.text_ru)) || '';
+                const text = sanitizePulseEventHtml(rawText);
+                const date = new Date(eventItem.created_at);
+                const timeStr = String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+                return `<span class="pulse-ticker-item"><span class="pulse-ticker-time">${timeStr}</span> ${text}</span>`;
+            }).join('<span class="pulse-ticker-separator">•</span>');
+        }
+
+        // Duplicate for continuous marquee loop
+        tickerContainer.innerHTML = `
+            <div class="pulse-ticker-track">
+                <div class="pulse-ticker-content">${tickerHtml} &nbsp;&bull;&nbsp;&nbsp;</div>
+                <div class="pulse-ticker-content" aria-hidden="true">${tickerHtml} &nbsp;&bull;&nbsp;&nbsp;</div>
+            </div>
+        `;
+    }
+
+    // Render Expanded View
     if (communityEvents === null) {
         listEl.innerHTML = `<div class="event-time">${t.pulseLoading}</div>`;
         toggleEl.style.display = 'none';
         return;
     }
 
-    if (!communityEvents) {
+    if (!communityEvents || !communityEvents.length) {
         listEl.innerHTML = `<div class="event-time">${t.pulseEmpty}</div>`;
         toggleEl.style.display = 'none';
         return;
@@ -158,12 +222,6 @@ function renderEvents() {
 
     const visibleEvents = eventsExpanded ? communityEvents : communityEvents.slice(0, 2);
     listEl.className = eventsExpanded ? 'events-list expanded' : 'events-list';
-
-    if (!communityEvents.length) {
-        listEl.innerHTML = `<div class="event-time">${t.pulseEmpty}</div>`;
-        toggleEl.style.display = 'none';
-        return;
-    }
 
     listEl.innerHTML = visibleEvents.map((eventItem) => {
         const rawText = (lang === 'ru' ? eventItem.text_ru : (eventItem.text_en || eventItem.text_ru)) || '';

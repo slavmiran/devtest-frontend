@@ -1491,7 +1491,7 @@ function renderEarnBustDynamic() {
             deviceProfileStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${window.escapeHTML(window.t('earnDeviceProfileClaimedChip', { amount: 30 }, lang))}</span>`;
         } else {
             deviceProfileStatus.innerHTML = `
-                <button type="button" class="btn btn-primary" style="width:100%; margin-bottom:8px;" onclick="openDeviceProfileFromPrompt()">🛠 ${window.escapeHTML(window.t('deviceProfilePrepareBtn', {}, lang))}</button>
+                <button type="button" class="btn btn-primary" style="width:100%; margin-bottom:8px;" onclick="openDeviceProfileFromPrompt()"> ${window.escapeHTML(window.t('deviceProfilePrepareBtn', {}, lang))}</button>
                 <div style="font-size:13px; color:var(--hint-color); text-align:center;">${window.escapeHTML(window.t('earnDeviceProfileRewardHint', { amount: 30 }, lang))}</div>
             `;
         }

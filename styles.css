@@ -1614,6 +1614,125 @@ input::placeholder,
     padding: 12px;
     margin-top: 12px;
     margin-bottom: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pulse-card.ticker-mode {
+    padding: 0 10px 0 12px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.pulse-collapsed-view {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.pulse-badge {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--link-color);
+    white-space: nowrap;
+    padding-right: 8px;
+    border-right: 1px solid rgba(120, 120, 128, 0.25);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 18px;
+    user-select: none;
+}
+
+.pulse-ticker-container {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    /* Premium visual fade out edges */
+    mask-image: linear-gradient(to right, transparent, white 12px, white calc(100% - 12px), transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, white 12px, white calc(100% - 12px), transparent);
+}
+
+.pulse-ticker-track {
+    display: flex;
+    white-space: nowrap;
+    align-items: center;
+    animation: pulse-marquee 30s linear infinite;
+}
+
+.pulse-ticker-track:hover {
+    animation-play-state: paused;
+}
+
+.pulse-ticker-content {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.pulse-ticker-item {
+    font-size: 13px;
+    color: var(--text-color);
+    display: inline-flex;
+    align-items: center;
+}
+
+.pulse-ticker-item a {
+    color: var(--link-color);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.pulse-ticker-time {
+    font-size: 11px;
+    color: var(--hint-color);
+    background: rgba(120, 120, 128, 0.12);
+    padding: 2px 5px;
+    border-radius: 6px;
+    margin-right: 6px;
+    font-weight: 500;
+}
+
+.pulse-ticker-separator {
+    margin: 0 16px;
+    color: rgba(120, 120, 128, 0.35);
+    font-size: 14px;
+    user-select: none;
+}
+
+.pulse-expand-btn {
+    background: none;
+    border: none;
+    padding: 6px;
+    color: var(--hint-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s, color 0.2s, transform 0.1s;
+    flex-shrink: 0;
+}
+
+.pulse-expand-btn:hover {
+    background-color: rgba(120, 120, 128, 0.15);
+    color: var(--link-color);
+}
+
+.pulse-expand-btn:active {
+    transform: scale(0.92);
+}
+
+@keyframes pulse-marquee {
+    0% { transform: translate3d(0, 0, 0); }
+    100% { transform: translate3d(-50%, 0, 0); }
 }
 
 .pulse-title {
