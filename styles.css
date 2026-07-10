@@ -1663,7 +1663,13 @@ input::placeholder,
     display: flex;
     white-space: nowrap;
     align-items: center;
-    animation: pulse-marquee 30s linear infinite;
+    animation: pulse-marquee 55s linear infinite;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+    -webkit-backface-visibility: hidden;
+    -webkit-perspective: 1000px;
 }
 
 .pulse-ticker-track:hover {
@@ -1786,7 +1792,6 @@ input::placeholder,
 }
 
 .events-toggle {
-    margin-top: 10px;
     background: none;
     border: none;
     padding: 0;
@@ -1794,6 +1799,44 @@ input::placeholder,
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
+}
+
+.pulse-expanded-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+    border-top: 1px solid rgba(120, 120, 128, 0.15);
+    padding-top: 8px;
+}
+
+.pulse-chat-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--link-color);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.2s;
+    margin-left: auto;
+}
+
+.pulse-chat-link:hover {
+    opacity: 0.85;
+}
+
+.pulse-chat-link:active {
+    opacity: 0.7;
+}
+
+.pulse-chat-icon {
+    transform: rotate(-15deg);
+    transition: transform 0.2s;
+}
+
+.pulse-chat-link:hover .pulse-chat-icon {
+    transform: rotate(-15deg) translate(2px, -2px);
 }
 
 .archive-shell {

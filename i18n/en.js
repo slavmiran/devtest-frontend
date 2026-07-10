@@ -393,6 +393,7 @@
             progressComplete: "🎉 Test complete!",
             pulseTitle: "🌐 Community Pulse",
             pulseEmptyToday: "No events today. Community pulse is calm.",
+            pulseChat: "Community Chat",
             pulseLoading: "Loading...",
             pulseEmpty: "No events yet",
             pulseExpand: "Expand ▼",

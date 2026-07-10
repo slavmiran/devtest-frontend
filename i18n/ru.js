@@ -392,6 +392,7 @@
             progressComplete: "🎉 Тест завершён!",
             pulseTitle: "🌐 Пульс сообщества",
             pulseEmptyToday: "Сегодня событий нет. Пульс сообщества спокоен.",
+            pulseChat: "Чат сообщества",
             pulseLoading: "Загрузка...",
             pulseEmpty: "Пока событий нет",
             pulseExpand: "Развернуть ▼",

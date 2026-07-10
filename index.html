@@ -162,7 +162,16 @@
                     <div id="events-list" class="events-list">
                         <div class="event-time" data-i18n="pulseLoading">Загрузка...</div>
                     </div>
-                    <button type="button" id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()" data-i18n="pulseExpand">Развернуть ▼</button>
+                    <div id="pulse-expanded-footer" class="pulse-expanded-footer">
+                        <button type="button" id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()" data-i18n="pulseExpand">Развернуть ▼</button>
+                        <a href="https://t.me/googleplay_console_12testers" target="_blank" class="pulse-chat-link">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="pulse-chat-icon">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                            <span id="t-pulseChat" data-i18n="pulseChat">Чат сообщества</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
