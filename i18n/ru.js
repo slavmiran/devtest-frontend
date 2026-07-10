@@ -1695,6 +1695,7 @@
             deviceProfileModalHint: "Укажите версию Android, бренд и модель устройства. Эти данные будут прикрепляться к баг-репортам.",
             deviceProfileIncompleteError: "Заполните все три поля: версия Android, бренд и модель.",
             deviceProfileRewardToast: "Профиль сохранён. Начислено +{amount} 💎 $BUST",
+            deviceProfileRewardPendingToast: "Профиль сохранён. Награда будет начислена после обновления сервера.",
             deviceProfileBannerTitle: "⚡️ Подготовьте тестовый профиль",
             deviceProfileBannerReward: "Получите +30 BUST",
             deviceProfileBannerText: "Необходимо заполнить профиль устройства, чтобы разработчики получали качественные баг-репорты.",

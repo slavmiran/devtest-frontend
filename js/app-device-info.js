@@ -292,6 +292,8 @@ async function saveDeviceInfoFromModal() {
     closeDeviceInfoEditorModal();
     if (Number(result.bust_rewarded || 0) > 0) {
         showToast(window.t('deviceProfileRewardToast', { amount: DEVICE_PROFILE_REWARD_AMOUNT }, lang));
+    } else if (result.reward_error) {
+        showToast(window.t('deviceProfileRewardPendingToast', {}, lang));
     } else {
         showToast(window.t('deviceInfoSavedToast', {}, lang));
     }

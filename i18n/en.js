@@ -1689,6 +1689,7 @@
             deviceProfileModalHint: "Enter Android version, brand and model. This data will be attached to bug reports.",
             deviceProfileIncompleteError: "Fill in all three fields: Android version, brand and model.",
             deviceProfileRewardToast: "Profile saved. +{amount} 💎 $BUST awarded",
+            deviceProfileRewardPendingToast: "Profile saved. Reward will be credited after a server update.",
             deviceProfileBannerTitle: "⚡️ Prepare your test profile",
             deviceProfileBannerReward: "Get +30 BUST",
             deviceProfileBannerText: "Complete your device profile so developers receive higher-quality bug reports.",
