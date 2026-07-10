@@ -1451,6 +1451,9 @@ function refreshLanguageUi() {
     }
 
     syncAutoAcceptToggleUi();
+    if (typeof syncDeviceInfoUi === 'function') {
+        syncDeviceInfoUi();
+    }
 }
 
 async function loadUserProfilePreferences() {
@@ -1461,6 +1464,9 @@ async function loadUserProfilePreferences() {
         _autoAcceptMutualEnabled = !!profile.auto_accept_mutual;
         syncAutoAcceptToggleUi();
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
+        if (typeof applyDeviceInfoFromProfile === 'function') {
+            applyDeviceInfoFromProfile(profile);
+        }
     } catch (error) {
         console.error('Profile preferences load error:', error);
         syncAutoAcceptToggleUi();

@@ -17,6 +17,7 @@
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260602-phase54"></script>
     <script src="./js/app-api.js?v=20260602-phase54"></script>
+    <script src="./js/app-device-info.js?v=20260710-device-info"></script>
     <script src="./js/app-actions.js?v=20260602-phase54"></script>
     <script src="./js/app-features.js?v=20260602-phase54"></script>
     <script src="./app.js?v=20260602-phase54"></script>
@@ -86,6 +87,19 @@
                 </div>
                 <label class="toggle-switch" aria-label="Auto-accept mutual offers">
                     <input type="checkbox" id="auto-accept-mutual-toggle" onchange="handleAutoAcceptMutualToggle(this)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="system-setting-row system-setting-row--device">
+                <div class="system-setting-copy-wrap system-setting-copy-wrap--device">
+                    <button type="button" class="system-setting-copy" onclick="showAttachDeviceInfoInfo()" data-i18n="attachDeviceInfoLabel">Прикреплять техническую информацию к баг-репортам</button>
+                    <div class="device-info-editor">
+                        <input type="text" id="device-info-input" class="form-input device-info-input" maxlength="256" oninput="onDeviceInfoInput()" data-i18n-placeholder="deviceInfoPlaceholder" placeholder="">
+                        <button type="button" id="device-info-refresh-btn" class="device-info-refresh-btn" onclick="refreshDeviceInfoFromBrowser()" aria-label="Refresh device info">↻</button>
+                    </div>
+                </div>
+                <label class="toggle-switch" aria-label="Attach device info to bug reports">
+                    <input type="checkbox" id="attach-device-info-toggle" onchange="handleAttachDeviceInfoToggle(this)" checked>
                     <span class="toggle-slider"></span>
                 </label>
             </div>

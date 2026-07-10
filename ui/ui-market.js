@@ -3059,9 +3059,16 @@ function _submitCheckinFeedback(feedbackType) {
         sendExternalBugReportFromUi(appId, null, feedbackType);
         return;
     }
-    initiateProjectFeedback(appId, checkinContext
-        ? { checkinContext: checkinContext, feedbackType: feedbackType }
-        : { feedbackType: feedbackType });
+    var launchFeedback = function() {
+        initiateProjectFeedback(appId, checkinContext
+            ? { checkinContext: checkinContext, feedbackType: feedbackType }
+            : { feedbackType: feedbackType });
+    };
+    if (feedbackType === 'bug' && typeof window.ensureDeviceInfoSynced === 'function') {
+        window.ensureDeviceInfoSynced(false).then(launchFeedback).catch(launchFeedback);
+        return;
+    }
+    launchFeedback();
 }
 
 function checkinOptionsReview() {

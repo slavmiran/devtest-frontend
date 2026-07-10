@@ -278,6 +278,12 @@ function toggleSystemMenu() {
         if (willOpen && typeof window.populateSettingsEmail === 'function') {
             window.populateSettingsEmail();
         }
+        if (willOpen && typeof window.populateDeviceInfoSettings === 'function') {
+            window.populateDeviceInfoSettings();
+            if (typeof window.ensureDeviceInfoSynced === 'function') {
+                window.ensureDeviceInfoSynced(false);
+            }
+        }
         if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     }
 }
@@ -289,6 +295,9 @@ function sendFeedback(type) {
         question: 'feedbackTypeQuestion'
     };
     _feedbackType = (type === 'idea' || type === 'question') ? type : 'bug';
+    if (_feedbackType === 'bug' && typeof window.ensureDeviceInfoSynced === 'function') {
+        window.ensureDeviceInfoSynced(false);
+    }
     const menu = document.getElementById('system-drop-menu');
     if (menu) {
         menu.classList.remove('active');
@@ -1667,6 +1676,9 @@ async function initiateProjectFeedback(appId, options) {
 
     if (options.checkinContext) {
         markTestFeedbackCheckinPending(appId);
+    }
+    if (feedbackType === 'bug' && typeof window.ensureDeviceInfoSynced === 'function') {
+        await window.ensureDeviceInfoSynced(false);
     }
     try {
         const response = await fetch(`${API_BASE}/feedback/initiate`, {

@@ -151,6 +151,47 @@
     gap: 8px;
 }
 
+.system-setting-row--device {
+    align-items: flex-start;
+}
+
+.system-setting-copy-wrap--device {
+    gap: 8px;
+}
+
+.device-info-editor {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.device-info-input {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.device-info-refresh-btn {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--hint-color);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.device-info-refresh-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 .system-setting-row {
     display: flex;
     align-items: center;
