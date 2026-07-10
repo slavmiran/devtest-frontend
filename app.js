@@ -132,6 +132,7 @@ Object.assign(window, {
     applyDeviceInfoFromProfile,
     syncDeviceInfoUi,
     renderFeedbackDeviceInfoBlock,
+    toggleFeedbackDeviceDetails,
     copyFeedbackCardContent,
     formatDeviceInfoForCopy,
     buildPublicDeviceLine,

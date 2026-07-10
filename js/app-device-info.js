@@ -6,12 +6,8 @@ var DEVICE_INFO_VERSION = 2;
 
 var DEVICE_FIELD_DEFS = [
     { key: 'os_version', i18n: 'deviceInfoOsLabel', placeholder: 'deviceInfoOsPlaceholder', required: true },
-    { key: 'device_model', i18n: 'deviceInfoModelLabel', placeholder: 'deviceInfoModelPlaceholder', required: true, highlightIfMissing: true },
-    { key: 'model_code', i18n: 'deviceInfoModelCodeLabel', placeholder: 'deviceInfoModelCodePlaceholder' },
-    { key: 'brand', i18n: 'deviceInfoBrandLabel', placeholder: 'deviceInfoBrandPlaceholder' },
-    { key: 'manufacturer', i18n: 'deviceInfoManufacturerLabel', placeholder: 'deviceInfoManufacturerPlaceholder' },
+    { key: 'brand_model', i18n: 'deviceInfoBrandModelLabel', placeholder: 'deviceInfoBrandModelPlaceholder', required: true, highlightIfMissing: true, computed: true },
     { key: 'gpu', i18n: 'deviceInfoGpuLabel', placeholder: 'deviceInfoGpuPlaceholder' },
-    { key: 'gpu_renderer', i18n: 'deviceInfoGpuRendererLabel', placeholder: 'deviceInfoGpuRendererPlaceholder' },
     { key: 'ram', i18n: 'deviceInfoRamLabel', placeholder: 'deviceInfoRamPlaceholder', required: true },
     { key: 'cpu_architecture', i18n: 'deviceInfoCpuArchLabel', placeholder: 'deviceInfoCpuArchPlaceholder' },
     { key: 'screen_resolution', i18n: 'deviceInfoResolutionLabel', placeholder: 'deviceInfoResolutionPlaceholder', required: true },
@@ -20,8 +16,6 @@ var DEVICE_FIELD_DEFS = [
     { key: 'region', i18n: 'deviceInfoRegionLabel', placeholder: 'deviceInfoRegionPlaceholder' },
     { key: 'device_type', i18n: 'deviceInfoTypeLabel', placeholder: 'deviceInfoTypePlaceholder' },
     { key: 'hardware_cores', i18n: 'deviceInfoCoresLabel', placeholder: 'deviceInfoCoresPlaceholder' },
-    { key: 'storage_total', i18n: 'deviceInfoStorageTotalLabel', placeholder: 'deviceInfoStorageTotalPlaceholder' },
-    { key: 'storage_free', i18n: 'deviceInfoStorageFreeLabel', placeholder: 'deviceInfoStorageFreePlaceholder' },
 ];
 
 function invalidateBrowserDeviceInfoCache() {
@@ -189,9 +183,10 @@ function parseDeviceInfoData(rawValue) {
 function serializeDeviceInfoData(data) {
     data = data || {};
     var payload = { v: DEVICE_INFO_VERSION };
-    DEVICE_FIELD_DEFS.forEach(function(def) {
-        var value = String(data[def.key] || '').trim();
-        if (value) payload[def.key] = value.slice(0, 256);
+    var persistKeys = ['os_version', 'device_model', 'model_code', 'brand', 'gpu', 'gpu_renderer', 'ram', 'cpu_architecture', 'screen_resolution', 'screen_density', 'language', 'region', 'device_type', 'hardware_cores'];
+    persistKeys.forEach(function(key) {
+        var value = String(data[key] || '').trim();
+        if (value) payload[key] = value.slice(0, 256);
     });
     return JSON.stringify(payload);
 }
@@ -213,6 +208,53 @@ function buildPublicDeviceLine(data) {
     if (isKnownDeviceValue(data.ram)) parts.push(String(data.ram).trim());
     if (isKnownDeviceValue(data.screen_resolution)) parts.push(String(data.screen_resolution).trim());
     return parts.join(' • ');
+}
+
+function formatBrandModelDisplay(data) {
+    data = data || {};
+    var brand = String(data.brand || '').trim();
+    var modelCode = String(data.model_code || '').trim();
+    var deviceModel = String(data.device_model || '').trim();
+    if (brand && modelCode) return brand + ' (' + modelCode + ')';
+    if (deviceModel) return deviceModel;
+    if (brand) return brand;
+    if (modelCode) return modelCode;
+    return '';
+}
+
+function getDeviceFieldDisplayValue(data, def) {
+    data = data || {};
+    if (def.key === 'brand_model') return formatBrandModelDisplay(data);
+    return String(data[def.key] || '').trim();
+}
+
+function applyBrandModelInput(data, rawValue) {
+    rawValue = String(rawValue || '').trim();
+    var match = rawValue.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+    if (match) {
+        data.brand = String(match[1] || '').trim();
+        data.model_code = String(match[2] || '').trim();
+        data.device_model = polishDeviceModel(data.brand + ' (' + data.model_code + ')');
+    } else if (rawValue) {
+        data.device_model = polishDeviceModel(rawValue);
+        if (!data.brand) data.brand = inferBrandFromModel(data.device_model, rawValue);
+        if (!data.model_code && /^SM-/i.test(rawValue)) data.model_code = rawValue;
+    } else {
+        data.brand = '';
+        data.model_code = '';
+        data.device_model = '';
+    }
+    return data;
+}
+
+function getPublicDeviceMetrics(data) {
+    data = data || {};
+    return [
+        { key: 'os_version', label: window.t('deviceInfoOsShort', {}, lang), value: data.os_version },
+        { key: 'model_or_gpu', label: window.t('deviceInfoModelGpuShort', {}, lang), value: getPublicModelOrGpu(data) },
+        { key: 'ram', label: window.t('deviceInfoRamShort', {}, lang), value: data.ram },
+        { key: 'screen_resolution', label: window.t('deviceInfoResolutionShort', {}, lang), value: data.screen_resolution },
+    ];
 }
 
 function deviceModelIsMissing(data) {
@@ -281,7 +323,6 @@ function _parseDeviceInfoFromBrowserSync() {
         device_model: deviceModel,
         model_code: modelCode,
         brand: brand,
-        manufacturer: brand,
         gpu: webgl.gpu,
         gpu_renderer: webgl.gpu_renderer,
         ram: getRamLabel(),
@@ -292,8 +333,6 @@ function _parseDeviceInfoFromBrowserSync() {
         region: localeParts.region,
         device_type: getDeviceTypeLabel(ua, tgPlatform),
         hardware_cores: navigator.hardwareConcurrency ? String(navigator.hardwareConcurrency) : '',
-        storage_total: navigator.storage && navigator.storage.estimate ? '' : '',
-        storage_free: '',
     };
 }
 
@@ -309,7 +348,6 @@ async function enrichDeviceInfoFromClientHints(parsed) {
             next.model_code = String(hints.model || '').trim();
             next.device_model = polishDeviceModel(next.model_code);
             if (!next.brand) next.brand = inferBrandFromModel(next.device_model, next.model_code);
-            if (!next.manufacturer) next.manufacturer = next.brand;
         }
         if (hints.platformVersion && /^Android\b/i.test(String(next.os_version || ''))) {
             next.os_version = 'Android ' + String(hints.platformVersion || '').replace(/\.0$/, '');
@@ -326,15 +364,6 @@ async function enrichDeviceInfoFromClientHints(parsed) {
 async function getBestDeviceInfoFromBrowser() {
     invalidateBrowserDeviceInfoCache();
     var parsed = _parseDeviceInfoFromBrowserSync();
-    if (navigator.storage && typeof navigator.storage.estimate === 'function') {
-        try {
-            var estimate = await navigator.storage.estimate();
-            var quotaGb = estimate.quota ? (estimate.quota / (1024 * 1024 * 1024)) : 0;
-            var usageGb = estimate.usage ? (estimate.usage / (1024 * 1024 * 1024)) : 0;
-            if (quotaGb > 0) parsed.storage_total = quotaGb.toFixed(1) + ' GB';
-            if (usageGb >= 0 && quotaGb > 0) parsed.storage_free = Math.max(0, quotaGb - usageGb).toFixed(1) + ' GB free';
-        } catch (error) {}
-    }
     var enriched = await enrichDeviceInfoFromClientHints(parsed);
     _browserDeviceInfoCache = enriched;
     return enriched;
@@ -371,7 +400,7 @@ function renderDeviceInfoModalFields() {
     var data = getActiveDeviceInfoData();
     var modelMissing = deviceModelIsMissing(data);
     root.innerHTML = DEVICE_FIELD_DEFS.map(function(def) {
-        var value = String(data[def.key] || '');
+        var value = getDeviceFieldDisplayValue(data, def);
         var isMissing = !isKnownDeviceValue(value);
         var rowClass = 'device-info-field-row';
         if (isMissing) rowClass += ' device-info-field-row--missing';
@@ -396,7 +425,12 @@ function readDeviceInfoFromModal() {
     var data = { v: DEVICE_INFO_VERSION };
     DEVICE_FIELD_DEFS.forEach(function(def) {
         var input = document.getElementById('device-info-field-' + def.key);
-        data[def.key] = input ? String(input.value || '').trim() : '';
+        var value = input ? String(input.value || '').trim() : '';
+        if (def.key === 'brand_model') {
+            applyBrandModelInput(data, value);
+        } else {
+            data[def.key] = value;
+        }
     });
     return data;
 }
@@ -562,7 +596,7 @@ function formatDeviceInfoForCopy(item, project) {
     lines.push('');
     lines.push(window.t('feedbackCopyDeviceHeader', {}, lang));
     DEVICE_FIELD_DEFS.forEach(function(def) {
-        var value = String(data[def.key] || '').trim();
+        var value = getDeviceFieldDisplayValue(data, def);
         if (isKnownDeviceValue(value)) {
             lines.push(window.t(def.i18n, {}, lang) + ': ' + value);
         }
@@ -604,28 +638,50 @@ function copyFeedbackCardContent(itemId, projectId) {
     return done;
 }
 
+function toggleFeedbackDeviceDetails(itemId) {
+    var details = document.getElementById('fb-device-details-' + itemId);
+    var btn = document.getElementById('fb-device-expand-' + itemId);
+    if (!details) return;
+    var willOpen = details.classList.contains('is-collapsed');
+    details.classList.toggle('is-collapsed', !willOpen);
+    if (btn) btn.classList.toggle('is-open', willOpen);
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
 function renderFeedbackDeviceInfoBlock(item) {
     if (!item || String(item.type || '').toLowerCase() !== 'bug') return '';
     var data = item.device_info && typeof item.device_info === 'object'
         ? item.device_info
         : parseDeviceInfoData(item.device_info_public_line || '');
-    var rows = DEVICE_FIELD_DEFS.map(function(def) {
-        var value = String(data[def.key] || '').trim();
+    var metrics = getPublicDeviceMetrics(data);
+    var metricsHtml = metrics.map(function(metric) {
+        var value = isKnownDeviceValue(metric.value) ? String(metric.value).trim() : '—';
+        var metricClass = 'fb-device-metric';
+        if (!isKnownDeviceValue(metric.value)) metricClass += ' fb-device-metric--missing';
+        return '<div class="' + metricClass + '">' +
+            '<span class="fb-device-metric-label">' + window.escapeHTML(metric.label) + '</span>' +
+            '<span class="fb-device-metric-value">' + window.escapeHTML(value) + '</span>' +
+        '</div>';
+    }).join('');
+    var detailsRows = DEVICE_FIELD_DEFS.map(function(def) {
+        var value = getDeviceFieldDisplayValue(data, def);
         var rowClass = 'fb-device-row';
         if (!isKnownDeviceValue(value)) rowClass += ' fb-device-row--missing';
-        if (def.key === 'device_model' && deviceModelIsMissing(data)) rowClass += ' fb-device-row--attention';
+        if (def.key === 'brand_model' && deviceModelIsMissing(data)) rowClass += ' fb-device-row--attention';
         return '<div class="' + rowClass + '">' +
             '<span class="fb-device-label">' + window.escapeHTML(window.t(def.i18n, {}, lang)) + '</span>' +
             '<span class="fb-device-value">' + window.escapeHTML(isKnownDeviceValue(value) ? value : window.t('deviceInfoUnknownValue', {}, lang)) + '</span>' +
         '</div>';
     }).join('');
-    var publicLine = buildPublicDeviceLine(data);
-    var header = publicLine
-        ? '<div class="fb-device-public">' + window.escapeHTML(publicLine) + '</div>'
-        : '';
     return '<div class="fb-device-block">' +
-        '<div class="fb-device-title">' + window.escapeHTML(window.t('feedbackDeviceInfoTitle', {}, lang)) + '</div>' +
-        header +
-        '<div class="fb-device-grid">' + rows + '</div>' +
+        '<div class="fb-device-summary">' +
+            '<div class="fb-device-metrics">' + metricsHtml + '</div>' +
+            '<button type="button" id="fb-device-expand-' + item.id + '" class="fb-device-expand-btn" onclick="toggleFeedbackDeviceDetails(' + item.id + ')" aria-label="' + window.escapeHTML(window.t('deviceInfoExpandBtn', {}, lang)) + '">' +
+                '<svg class="fb-device-expand-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>' +
+            '</button>' +
+        '</div>' +
+        '<div id="fb-device-details-' + item.id + '" class="fb-device-details is-collapsed">' +
+            '<div class="fb-device-grid">' + detailsRows + '</div>' +
+        '</div>' +
     '</div>';
 }

@@ -3982,9 +3982,9 @@ function renderProjectFeedbackCards(project, items) {
         return `<div class="fb-card ${cardTypeClass}${cardMod}" data-feedback-type="${feedbackType}">
             ${headerHtml}
             <div class="fb-body">
+                ${mediaHtml}
                 ${textBodyHtml}
                 ${deviceInfoHtml}
-                ${mediaHtml}
                 ${rewardHtml}
                 ${replyHtml}
             </div>
