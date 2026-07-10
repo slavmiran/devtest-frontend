@@ -721,25 +721,26 @@ function getScreenshotReminderHtml(test) {
 }
 
 function getTestSourceChip(test) {
+    const chips = [];
+
     if (test && (test.accepts_email_testers || String(test.test_mode || '').toLowerCase() === 'email_list')) {
         const label = window.t('emailTestBadge', {}, lang);
-        return `<span class="meta-chip accent-orange" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('emailTestModeChipToast', {}, lang))}')">✉️ ${window.escapeHTML(label)}</span>`;
+        chips.push(`<span class="meta-chip accent-orange" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('emailTestModeChipToast', {}, lang))}')">✉️ ${window.escapeHTML(label)}</span>`);
     }
+
     const joinType = String(test && test.join_type || '').toLowerCase();
     if (joinType === 'bounty') {
         const bountyVal = test && test.bounty_per_tester ? Number(test.bounty_per_tester) : 0;
-        return `<span class="meta-chip accent-purple" style="cursor: pointer;" onclick="openBountyInfoModal(${test.id}, event)">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))} +${bountyVal}</span>`;
+        chips.push(`<span class="meta-chip accent-purple" style="cursor: pointer;" onclick="openBountyInfoModal(${test.id}, event)">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))} +${bountyVal}</span>`);
+    } else if (joinType === 'prelaunch') {
+        chips.push(`<span class="meta-chip accent-blue">🚀 ${window.escapeHTML(window.t('testSourcePrelaunch', {}, lang))}</span>`);
+    } else if (joinType === 'mutual') {
+        chips.push(`<span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('testSourceMutual', {}, lang))}</span>`);
+    } else if (joinType === 'direct' || joinType === 'invite') {
+        chips.push(`<span class="meta-chip">🔗 ${window.escapeHTML(window.t('testSourceInvite', {}, lang))}</span>`);
     }
-    if (joinType === 'prelaunch') {
-        return `<span class="meta-chip accent-blue">🚀 ${window.escapeHTML(window.t('testSourcePrelaunch', {}, lang))}</span>`;
-    }
-    if (joinType === 'mutual') {
-        return `<span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('testSourceMutual', {}, lang))}</span>`;
-    }
-    if (joinType === 'direct' || joinType === 'invite') {
-        return `<span class="meta-chip">🔗 ${window.escapeHTML(window.t('testSourceInvite', {}, lang))}</span>`;
-    }
-    return '';
+
+    return chips.join('');
 }
 
 function getTesterSourceMeta(joinType) {
