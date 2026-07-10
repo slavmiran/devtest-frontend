@@ -1674,11 +1674,12 @@ async function initiateProjectFeedback(appId, options) {
         }
     }
 
-    if (options.checkinContext) {
-        markTestFeedbackCheckinPending(appId);
-    }
     if (feedbackType === 'bug' && typeof window.ensureDeviceInfoSynced === 'function') {
-        await window.ensureDeviceInfoSynced(false);
+        try {
+            await window.ensureDeviceInfoSynced(false);
+        } catch (syncError) {
+            console.warn('Device info sync skipped:', syncError);
+        }
     }
     try {
         const response = await fetch(`${API_BASE}/feedback/initiate`, {
@@ -1699,6 +1700,9 @@ async function initiateProjectFeedback(appId, options) {
             }
             showToast(getApiErrorMessage(data, 'genericError'));
             return;
+        }
+        if (options.checkinContext) {
+            markTestFeedbackCheckinPending(appId);
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         var toastKey = 'feedbackBotRedirect' + (feedbackType === 'idea' ? 'Idea' : 'Bug') + 'Toast';

@@ -15,7 +15,7 @@
     align-items: flex-end;
     width: min(320px, calc(100vw - 32px));
     max-width: 320px;
-    transform: translateY(calc(-100% + var(--system-tab-height)));
+    transform: translateY(calc(-100% + var(--system-tab-height) - 2px));
     transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
@@ -159,37 +159,63 @@
     gap: 8px;
 }
 
-.device-info-editor {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.device-info-input {
-    flex: 1;
-    min-width: 0;
+.device-info-preview {
+    width: 100%;
     margin: 0;
-    padding: 8px 10px;
-    font-size: 12px;
-    line-height: 1.35;
-}
-
-.device-info-refresh-btn {
-    flex: 0 0 auto;
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    border: 1px solid var(--border-strong);
-    background: transparent;
-    color: var(--hint-color);
-    font-size: 16px;
-    line-height: 1;
+    padding: 0;
+    border: none;
+    background: none;
+    text-align: left;
     cursor: pointer;
 }
 
-.device-info-refresh-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
+.device-info-preview:disabled,
+.device-info-preview.is-disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.device-info-preview-text {
+    display: block;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--hint-color);
+    word-break: break-word;
+}
+
+.device-info-preview:not(:disabled):not(.is-disabled) .device-info-preview-text {
+    color: var(--link-color);
+}
+
+.device-info-modal-content {
+    max-width: 360px;
+}
+
+.device-info-modal-hint {
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--hint-color);
+}
+
+.device-info-field-label {
+    display: block;
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hint-color);
+}
+
+.device-info-modal-content .form-input {
+    margin-bottom: 12px;
+}
+
+.device-info-modal-actions {
+    margin-top: 8px;
+}
+
+.system-drop-menu:not(.active) .system-drop-content {
+    pointer-events: none;
 }
 
 .system-setting-row {

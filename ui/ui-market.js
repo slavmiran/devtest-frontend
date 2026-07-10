@@ -5019,6 +5019,9 @@ function switchTab(tabId, navElement) {
         if (window.loadTasks) {
             window.loadTasks(true).catch(function() {});
         }
+        if (window.loadEvents) {
+            window.loadEvents().catch(function() {});
+        }
         if (window.loadIncomingOffers) {
             window.loadIncomingOffers({ background: true }).catch(function() {});
         }

@@ -16,6 +16,21 @@ function polishDeviceModel(modelLabel) {
     return model;
 }
 
+function getTelegramPlatformLabel() {
+    var tgPlatform = (window.tg && tg.platform) ? String(tg.platform).toLowerCase() : '';
+    var labels = {
+        android: 'Android',
+        ios: 'iOS',
+        macos: 'macOS',
+        windows: 'Windows',
+        linux: 'Linux',
+        web: 'Telegram Web',
+        weba: 'Telegram Web',
+        tdesktop: 'Telegram Desktop',
+    };
+    return labels[tgPlatform] || '';
+}
+
 function parseDeviceInfoFromBrowser() {
     if (_browserDeviceInfoCache) {
         return _browserDeviceInfoCache;
@@ -41,24 +56,31 @@ function parseDeviceInfoFromBrowser() {
         if (iosMatch) {
             osLabel = 'iOS ' + String(iosMatch[1] || '').replace(/_/g, '.');
             modelLabel = /iPad/i.test(ua) ? 'iPad' : 'iPhone';
+        } else if (/Windows NT/i.test(ua)) {
+            var winMatch = ua.match(/Windows NT\s+([\d.]+)/i);
+            osLabel = winMatch ? ('Windows ' + String(winMatch[1] || '').replace(/\.0$/, '')) : 'Windows';
+            modelLabel = getTelegramPlatformLabel() || 'PC';
+        } else if (/Mac OS X/i.test(ua)) {
+            var macMatch = ua.match(/Mac OS X\s+([\d_]+)/i);
+            osLabel = macMatch ? ('macOS ' + String(macMatch[1] || '').replace(/_/g, '.')) : 'macOS';
+            modelLabel = getTelegramPlatformLabel() || 'Mac';
+        } else if (/Linux/i.test(ua)) {
+            osLabel = 'Linux';
+            modelLabel = getTelegramPlatformLabel() || 'PC';
         } else if (tgPlatform === 'android') {
             osLabel = 'Android';
         } else if (tgPlatform === 'ios') {
             osLabel = 'iOS';
             modelLabel = 'iPhone';
-        } else if (tgPlatform) {
-            osLabel = tgPlatform.charAt(0).toUpperCase() + tgPlatform.slice(1);
+        } else {
+            osLabel = getTelegramPlatformLabel();
+            modelLabel = osLabel ? '' : 'Unknown device';
         }
     }
 
     modelLabel = polishDeviceModel(modelLabel);
-    var parts = [];
-    if (osLabel) parts.push(osLabel);
-    if (modelLabel) parts.push(modelLabel);
-    if (resolution) parts.push(resolution);
-
     _browserDeviceInfoCache = {
-        line: parts.join(' • '),
+        line: buildDeviceInfoLine(osLabel, modelLabel, resolution),
         os: osLabel,
         model: modelLabel,
         resolution: resolution,
@@ -66,21 +88,84 @@ function parseDeviceInfoFromBrowser() {
     return _browserDeviceInfoCache;
 }
 
+function buildDeviceInfoLine(osLabel, modelLabel, resolution) {
+    var parts = [];
+    if (String(osLabel || '').trim()) parts.push(String(osLabel).trim());
+    if (String(modelLabel || '').trim()) parts.push(String(modelLabel).trim());
+    if (String(resolution || '').trim()) parts.push(String(resolution).trim());
+    return parts.join(' • ');
+}
+
+function parseDeviceInfoParts(line) {
+    var raw = String(line || '').trim();
+    if (!raw) {
+        return { os: '', model: '', resolution: '' };
+    }
+    var parts = raw.split('•').map(function(part) { return String(part || '').trim(); }).filter(Boolean);
+    if (parts.length >= 3) {
+        return {
+            os: parts[0],
+            model: parts.slice(1, -1).join(' • '),
+            resolution: parts[parts.length - 1],
+        };
+    }
+    if (parts.length === 2) {
+        var second = parts[1];
+        if (/\d+\s*x\s*\d+/i.test(second)) {
+            return { os: parts[0], model: '', resolution: second };
+        }
+        return { os: parts[0], model: second, resolution: '' };
+    }
+    return { os: parts[0], model: '', resolution: '' };
+}
+
+function getDeviceInfoPreviewText() {
+    if (!_attachDeviceInfoToBugs) {
+        return window.t('deviceInfoDisabledHint', {}, lang);
+    }
+    if (String(_deviceInfo || '').trim()) {
+        return String(_deviceInfo).trim();
+    }
+    var parsed = parseDeviceInfoFromBrowser();
+    if (parsed.line) {
+        return parsed.line;
+    }
+    return window.t('deviceInfoNotDetected', {}, lang);
+}
+
 function syncDeviceInfoUi() {
     var toggle = document.getElementById('attach-device-info-toggle');
-    var input = document.getElementById('device-info-input');
-    var refreshBtn = document.getElementById('device-info-refresh-btn');
+    var previewBtn = document.getElementById('device-info-preview-btn');
+    var previewText = document.getElementById('device-info-preview-text');
     if (toggle) {
         toggle.checked = !!_attachDeviceInfoToBugs;
         toggle.disabled = !!_deviceInfoToggleInFlight;
     }
-    if (input) {
-        input.value = String(_deviceInfo || '');
-        input.disabled = !_attachDeviceInfoToBugs;
+    if (previewBtn) {
+        previewBtn.disabled = !_attachDeviceInfoToBugs || !!_deviceInfoToggleInFlight;
+        previewBtn.classList.toggle('is-disabled', !_attachDeviceInfoToBugs);
     }
-    if (refreshBtn) {
-        refreshBtn.disabled = !_attachDeviceInfoToBugs || !!_deviceInfoToggleInFlight;
+    if (previewText) {
+        previewText.textContent = getDeviceInfoPreviewText();
     }
+}
+
+function syncDeviceInfoModalFields() {
+    var parts = parseDeviceInfoParts(_deviceInfo);
+    if (!parts.os && !parts.model && !parts.resolution && _attachDeviceInfoToBugs && !_deviceInfoIsManual) {
+        var parsed = parseDeviceInfoFromBrowser();
+        parts = {
+            os: parsed.os || '',
+            model: parsed.model || '',
+            resolution: parsed.resolution || '',
+        };
+    }
+    var osInput = document.getElementById('device-info-os-input');
+    var modelInput = document.getElementById('device-info-model-input');
+    var resolutionInput = document.getElementById('device-info-resolution-input');
+    if (osInput) osInput.value = parts.os || '';
+    if (modelInput) modelInput.value = parts.model || '';
+    if (resolutionInput) resolutionInput.value = parts.resolution || '';
 }
 
 async function saveDeviceInfoSettings(patch) {
@@ -104,33 +189,13 @@ async function saveDeviceInfoSettings(patch) {
         window.App.attachDeviceInfoToBugs = _attachDeviceInfoToBugs;
         window.App.deviceInfo = _deviceInfo;
         syncDeviceInfoUi();
+        syncDeviceInfoModalFields();
         return true;
     } catch (error) {
         console.error('Device info settings save error:', error);
         handleApiError('network_error');
         return false;
     }
-}
-
-function scheduleManualDeviceInfoSave() {
-    if (_deviceInfoSaveTimer) {
-        clearTimeout(_deviceInfoSaveTimer);
-    }
-    _deviceInfoSaveTimer = setTimeout(function() {
-        _deviceInfoSaveTimer = null;
-        var input = document.getElementById('device-info-input');
-        var nextValue = input ? String(input.value || '').trim().slice(0, 256) : '';
-        if (nextValue === String(_deviceInfo || '')) return;
-        _deviceInfo = nextValue;
-        saveDeviceInfoSettings({
-            device_info: nextValue,
-            device_info_is_manual: true,
-        });
-    }, 500);
-}
-
-function onDeviceInfoInput() {
-    scheduleManualDeviceInfoSave();
 }
 
 async function handleAttachDeviceInfoToggle(input) {
@@ -169,8 +234,62 @@ async function refreshDeviceInfoFromBrowser() {
     });
     _deviceInfoToggleInFlight = false;
     syncDeviceInfoUi();
+    syncDeviceInfoModalFields();
     if (ok) {
         showToast(window.t('deviceInfoRefreshedToast', {}, lang));
+    }
+}
+
+function openDeviceInfoEditorModal() {
+    if (!_attachDeviceInfoToBugs || _deviceInfoToggleInFlight) return;
+    var modal = document.getElementById('device-info-modal');
+    if (!modal) return;
+    syncDeviceInfoModalFields();
+    modal.classList.add('active');
+    if (typeof syncTelegramBackButton === 'function') {
+        syncTelegramBackButton();
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function closeDeviceInfoEditorModal(event) {
+    if (event && event.target && event.currentTarget && event.target !== event.currentTarget) {
+        return;
+    }
+    var modal = document.getElementById('device-info-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    if (typeof syncTelegramBackButton === 'function') {
+        syncTelegramBackButton();
+    }
+}
+
+async function saveDeviceInfoFromModal() {
+    if (_deviceInfoToggleInFlight) return;
+    var osInput = document.getElementById('device-info-os-input');
+    var modelInput = document.getElementById('device-info-model-input');
+    var resolutionInput = document.getElementById('device-info-resolution-input');
+    var nextLine = buildDeviceInfoLine(
+        osInput ? osInput.value : '',
+        modelInput ? modelInput.value : '',
+        resolutionInput ? resolutionInput.value : ''
+    ).slice(0, 256);
+    if (!nextLine) {
+        showToast(window.t('deviceInfoEmptyError', {}, lang));
+        return;
+    }
+    _deviceInfoToggleInFlight = true;
+    syncDeviceInfoUi();
+    var ok = await saveDeviceInfoSettings({
+        device_info: nextLine,
+        device_info_is_manual: true,
+    });
+    _deviceInfoToggleInFlight = false;
+    syncDeviceInfoUi();
+    if (ok) {
+        closeDeviceInfoEditorModal();
+        showToast(window.t('deviceInfoSavedToast', {}, lang));
     }
 }
 
@@ -178,12 +297,16 @@ async function ensureDeviceInfoSynced(force) {
     if (!_attachDeviceInfoToBugs) return;
     if (_deviceInfoIsManual && _deviceInfo && !force) return;
     if (_deviceInfo && !force) return;
-    var parsed = parseDeviceInfoFromBrowser();
-    if (!parsed.line) return;
-    await saveDeviceInfoSettings({
-        device_info: parsed.line,
-        device_info_is_manual: false,
-    });
+    try {
+        var parsed = parseDeviceInfoFromBrowser();
+        if (!parsed.line) return;
+        await saveDeviceInfoSettings({
+            device_info: parsed.line,
+            device_info_is_manual: false,
+        });
+    } catch (error) {
+        console.warn('Device info sync skipped:', error);
+    }
 }
 
 function applyDeviceInfoFromProfile(profile) {
@@ -208,8 +331,8 @@ function populateDeviceInfoSettings() {
     if (!_deviceInfo && _attachDeviceInfoToBugs && !_deviceInfoIsManual) {
         var parsed = parseDeviceInfoFromBrowser();
         if (parsed.line) {
-            var input = document.getElementById('device-info-input');
-            if (input) input.value = parsed.line;
+            _deviceInfo = parsed.line;
+            syncDeviceInfoUi();
         }
     }
 }
