@@ -1,0 +1,82 @@
+/* My Projects: scroll performance (match market-card paint model) */
+
+#tab-projects.tab-content {
+    animation: projectsTabFadeIn 0.2s ease;
+}
+
+@keyframes projectsTabFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+#tab-projects .card,
+#tab-projects .archive-card {
+    background: var(--secondary-bg-color);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid var(--border-strong);
+    box-shadow: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#tab-projects .developer-widget {
+    background: var(--secondary-bg-color);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid var(--border-strong);
+    box-shadow: none;
+    border-radius: 16px;
+}
+
+#tab-projects .card.card-overtime,
+#tab-projects .card.card-pending-release,
+#tab-projects .card.card-stage-protection-glow {
+    box-shadow: none;
+}
+
+#tab-projects .energy-bar-fill,
+#tab-projects .energy-bar-container.overachieved .energy-bar-fill {
+    box-shadow: none;
+}
+
+#tab-projects .card.card-inactive .card-header .avatar,
+#tab-projects .card.card-inactive .card-header .card-info,
+#tab-projects .card.card-inactive .card-header .project-header-actions {
+    filter: none;
+    opacity: 0.55;
+}
+
+#tab-projects .access-error-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+#tab-projects .project-phase-badge-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+#tab-projects .card.card-collapsed .card-expanded-zone {
+    content-visibility: hidden;
+    contain-intrinsic-size: 0 120px;
+}
+
+#tab-projects .card:not(.card-collapsed) .card-expanded-zone {
+    content-visibility: visible;
+}
+
+#tab-projects .card.card-collapsed .energy-bar-fill::after,
+#tab-projects .card.card-collapsed .energy-bar-shimmer,
+#tab-projects .card.card-collapsed .grant-segment.current-pending {
+    animation: none !important;
+}
+
+html.projects-scrolling #tab-projects .energy-bar-fill::after,
+html.projects-scrolling #tab-projects .energy-bar-shimmer,
+html.projects-scrolling #tab-projects .grant-segment.current-pending {
+    animation-play-state: paused !important;
+}
+
+html.projects-scrolling #tab-projects .card-expanded-zone {
+    transition: none !important;
+}

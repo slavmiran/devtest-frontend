@@ -5218,3 +5218,18 @@ window.closeMassInviteModal = closeMassInviteModal;
 window.triggerResetCooldown = triggerResetCooldown;
 window.renderMassInviteModalContent = renderMassInviteModalContent;
 window.toggleTestingDayInstructions = toggleTestingDayInstructions;
+
+(function initProjectsScrollPerf() {
+    var scrollEndTimer = null;
+    function markProjectsScrolling() {
+        var tab = document.getElementById('tab-projects');
+        if (!tab || !tab.classList.contains('active')) return;
+        document.documentElement.classList.add('projects-scrolling');
+        clearTimeout(scrollEndTimer);
+        scrollEndTimer = setTimeout(function() {
+            document.documentElement.classList.remove('projects-scrolling');
+        }, 140);
+    }
+    window.addEventListener('scroll', markProjectsScrolling, { passive: true });
+    window.addEventListener('touchmove', markProjectsScrolling, { passive: true });
+})();

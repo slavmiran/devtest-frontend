@@ -234,8 +234,7 @@ function renderEvents() {
         `;
     }).join('');
 
-    toggleEl.style.display = communityEvents.length > 2 ? '' : 'none';
-    toggleEl.innerText = eventsExpanded ? t.pulseCollapse : t.pulseExpand;
+    toggleEl.style.display = eventsExpanded ? '' : 'none';
 }
 
 function toggleEventsExpanded() {

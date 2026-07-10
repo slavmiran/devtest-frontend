@@ -5056,8 +5056,12 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'projects') {
-        renderProjects(true);
-        renderArchivedProjects(true);
+        var projectsList = document.getElementById('projects-list');
+        var hasRenderedProjects = projectsList && projectsList.querySelector('.card, .developer-widget, .empty-state');
+        if (!hasRenderedProjects) {
+            renderProjects(true);
+            renderArchivedProjects(true);
+        }
     }
 
     if (finalTab === 'market') {
