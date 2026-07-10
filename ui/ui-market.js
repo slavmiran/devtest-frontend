@@ -3064,10 +3064,6 @@ function _submitCheckinFeedback(feedbackType) {
             ? { checkinContext: checkinContext, feedbackType: feedbackType }
             : { feedbackType: feedbackType });
     };
-    if (feedbackType === 'bug' && typeof window.ensureDeviceInfoSynced === 'function') {
-        window.ensureDeviceInfoSynced(false).then(launchFeedback).catch(launchFeedback);
-        return;
-    }
     launchFeedback();
 }
 

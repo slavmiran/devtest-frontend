@@ -280,9 +280,6 @@ function toggleSystemMenu() {
         }
         if (willOpen && typeof window.populateDeviceInfoSettings === 'function') {
             window.populateDeviceInfoSettings();
-            if (typeof window.ensureDeviceInfoSynced === 'function') {
-                window.ensureDeviceInfoSynced(false);
-            }
         }
         if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     }
@@ -295,9 +292,6 @@ function sendFeedback(type) {
         question: 'feedbackTypeQuestion'
     };
     _feedbackType = (type === 'idea' || type === 'question') ? type : 'bug';
-    if (_feedbackType === 'bug' && typeof window.ensureDeviceInfoSynced === 'function') {
-        window.ensureDeviceInfoSynced(false);
-    }
     const menu = document.getElementById('system-drop-menu');
     if (menu) {
         menu.classList.remove('active');
@@ -1491,6 +1485,17 @@ function renderEarnBustDynamic() {
     } else {
         socialStatus.innerHTML = `<button class="btn btn-primary" style="width:100%;" onclick="openSocialModal()">🎁 ${t.earnSocialBtn}</button>`;
     }
+    const deviceProfileStatus = document.getElementById('earn-device-profile-status');
+    if (deviceProfileStatus) {
+        if (_deviceProfileRewardClaimed || Number(_deviceProfileBustEarned || 0) > 0) {
+            deviceProfileStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${window.escapeHTML(window.t('earnDeviceProfileClaimedChip', { amount: 30 }, lang))}</span>`;
+        } else {
+            deviceProfileStatus.innerHTML = `
+                <button type="button" class="btn btn-primary" style="width:100%; margin-bottom:8px;" onclick="openDeviceProfileFromPrompt()">🛠 ${window.escapeHTML(window.t('deviceProfilePrepareBtn', {}, lang))}</button>
+                <div style="font-size:13px; color:var(--hint-color); text-align:center;">${window.escapeHTML(window.t('earnDeviceProfileRewardHint', { amount: 30 }, lang))}</div>
+            `;
+        }
+    }
 }
 
 async function openEarnBustModal() {
@@ -1514,6 +1519,11 @@ async function openEarnBustModal() {
         _earnPlayReviewCount = Number(data.play_review_count || 0);
         _earnPlayReviewBust = Number(data.play_review_bust_earned || 0);
         _socialBonusStatus = data.social_bonus_status || 'none';
+        _deviceProfileRewardClaimed = !!data.device_profile_reward_claimed;
+        _deviceProfileBustEarned = Number(data.device_profile_bust_earned || 0);
+        if (typeof syncDeviceProfileUi === 'function') {
+            syncDeviceProfileUi();
+        }
         renderEarnBustDynamic();
     } catch (error) {
         console.error('Failed to load referral stats:', error);
@@ -1674,13 +1684,6 @@ async function initiateProjectFeedback(appId, options) {
         }
     }
 
-    if (feedbackType === 'bug' && typeof window.ensureDeviceInfoSynced === 'function') {
-        try {
-            await window.ensureDeviceInfoSynced(false);
-        } catch (syncError) {
-            console.warn('Device info sync skipped:', syncError);
-        }
-    }
     try {
         const response = await fetch(`${API_BASE}/feedback/initiate`, {
             method: 'POST',

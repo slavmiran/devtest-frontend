@@ -1451,8 +1451,8 @@ function refreshLanguageUi() {
     }
 
     syncAutoAcceptToggleUi();
-    if (typeof syncDeviceInfoUi === 'function') {
-        syncDeviceInfoUi();
+    if (typeof syncDeviceProfileUi === 'function') {
+        syncDeviceProfileUi();
     }
 }
 

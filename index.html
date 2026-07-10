@@ -17,7 +17,7 @@
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260710-device-info"></script>
     <script src="./js/app-api.js?v=20260710-device-info"></script>
-    <script src="./js/app-device-info.js?v=20260710-device-info-v4"></script>
+    <script src="./js/app-device-info.js?v=20260710-device-profile-v1"></script>
     <script src="./js/app-actions.js?v=20260710-device-info"></script>
     <script src="./js/app-features.js?v=20260710-device-info"></script>
     <script src="./app.js?v=20260710-device-info"></script>
@@ -29,7 +29,7 @@
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/wizard.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/feedback-center.css?v=20260710-device-info-v4">
+    <link rel="stylesheet" href="./css/feedback-center.css?v=20260710-device-profile-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
@@ -92,15 +92,11 @@
             </div>
             <div class="system-setting-row system-setting-row--device">
                 <div class="system-setting-copy-wrap system-setting-copy-wrap--device">
-                    <button type="button" class="system-setting-copy" onclick="showAttachDeviceInfoInfo()" data-i18n="attachDeviceInfoLabel">Прикреплять техническую информацию к баг-репортам</button>
+                    <button type="button" class="system-setting-copy" onclick="showDeviceProfileInfo()" data-i18n="deviceProfileMenuTitle">Профиль тестового устройства</button>
                     <button type="button" id="device-info-preview-btn" class="device-info-preview" onclick="openDeviceInfoEditorModal()">
-                        <span id="device-info-preview-text" class="device-info-preview-text" data-i18n="deviceInfoNotDetected">Определяется автоматически…</span>
+                        <span id="device-info-preview-text" class="device-info-preview-text" data-i18n="deviceProfilePreviewEmpty">Версия Android • Бренд • Модель</span>
                     </button>
                 </div>
-                <label class="toggle-switch" aria-label="Attach device info to bug reports">
-                    <input type="checkbox" id="attach-device-info-toggle" onchange="handleAttachDeviceInfoToggle(this)" checked>
-                    <span class="toggle-slider"></span>
-                </label>
             </div>
             <div class="system-email-card">
                 <div class="system-language-card-title" data-i18n="settingsEmailTitle">✉️ Тестовый email</div>
@@ -126,6 +122,14 @@
 
     <!-- TAB 1: Мои тесты -->
     <div id="tab-tests" class="container tab-content active">
+        <div class="banner device-profile-banner" id="device-profile-banner" style="display:none; background-color: var(--secondary-bg-color); padding: 16px; border-radius: 16px; margin-bottom: 16px; position: relative;">
+            <button type="button" onclick="closeDeviceProfileBanner()" style="position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 16px; color: var(--hint-color); cursor: pointer; padding: 4px;" aria-label="Close">✖</button>
+            <div class="device-profile-banner-title" data-i18n="deviceProfileBannerTitle">🎁 Подготовьте тестовое устройство</div>
+            <div class="device-profile-banner-reward" data-i18n="deviceProfileBannerReward">Получите +30 BUST</div>
+            <p class="device-profile-banner-text" data-i18n="deviceProfileBannerText">Необходимо заполнить профиль устройства, чтобы разработчики получали качественные баг-репорты.</p>
+            <button type="button" class="btn btn-primary device-profile-banner-btn" onclick="openDeviceProfileFromPrompt()" data-i18n="deviceProfilePrepareBtn">Подготовить</button>
+        </div>
+
         <div class="banner" id="main-banner" style="background-color: var(--secondary-bg-color); padding: 16px; border-radius: 16px; margin-bottom: 16px; position: relative;">
             <button onclick="closeBanner()" style="position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 16px; color: var(--hint-color); cursor: pointer; padding: 4px;">✖</button>
             <p id="t-bannerText" data-i18n="bannerText" style="margin: 0; color: var(--text-color); font-size: 14px; line-height: 1.4; padding-right: 20px;">Избавьтесь от хаоса в чатах! Контролируйте ежедневные запуски для 12 тестеров в одном месте и находите новые приложения для взаимного теста.</p>
@@ -636,11 +640,10 @@
     <!-- Device Info Editor Modal -->
     <div id="device-info-modal" class="modal-overlay" onclick="closeDeviceInfoEditorModal(event)">
         <div class="modal-content device-info-modal-content" onclick="event.stopPropagation()">
-            <h3 data-i18n="deviceInfoModalTitle">Техническая информация</h3>
-            <p class="device-info-modal-hint" data-i18n="deviceInfoModalHint">Эти данные добавляются к баг-репортам. Нажмите «Обновить», чтобы подставить данные автоматически (могут быть неточными).</p>
+            <h3 data-i18n="deviceProfileModalTitle">Профиль тестового устройства</h3>
+            <p class="device-info-modal-hint" data-i18n="deviceProfileModalHint">Укажите версию Android, бренд и модель устройства. Эти данные будут прикрепляться к баг-репортам.</p>
             <div id="device-info-fields-root" class="device-info-fields-root"></div>
             <div class="action-row device-info-modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="refreshDeviceInfoFromBrowser()" data-i18n="deviceInfoRefreshBtn">↻ Обновить</button>
                 <button type="button" class="btn btn-primary" onclick="saveDeviceInfoFromModal()" data-i18n="deviceInfoSaveBtn">Сохранить</button>
             </div>
         </div>
@@ -1416,6 +1419,16 @@
                     <span class="meta-chip accent-green" id="earn-referrals-count">👥 0</span>
                     <span class="meta-chip accent-purple" id="earn-referral-bust">💎 0.0 $BUST</span>
                 </div>
+            </div>
+
+            <!-- Device Profile Section -->
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">🛠</span>
+                    <span style="font-weight: 700; font-size: 15px;" data-i18n="earnDeviceProfileTitle">Подготовить тестовое устройство</span>
+                </div>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnDeviceProfileDesc">Заполните профиль устройства, чтобы разработчики получали качественные баг-репорты.</p>
+                <div id="earn-device-profile-status"></div>
             </div>
 
             <!-- Golden Tester Grant Section -->
