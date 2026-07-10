@@ -688,6 +688,7 @@ var _deviceInfoLoaded = false;
 var _deviceProfileComplete = false;
 var _deviceProfileRewardClaimed = false;
 var _deviceProfileBustEarned = 0;
+var _deviceProfileBannerReady = false;
 var _pendingInitialHighlightTestId = null;
 var _highlightTestTimerId = null;
 var _backgroundSyncState = { tests: 0, projects: 0, market: 0 };

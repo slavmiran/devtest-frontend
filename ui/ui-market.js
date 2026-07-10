@@ -3799,7 +3799,9 @@ function feedbackScheduleClampMeasure() {
 
 // Keep clamp measure functional
 function feedbackMeasureClampedText() {
-    document.querySelectorAll('.fb-text[data-feedback-clamp="1"]').forEach(function(el) {
+    var list = document.querySelector('#project-feedback-body .feedback-list');
+    if (!list) return;
+    list.querySelectorAll('.fb-card:not(.fb-card--hidden) .fb-text[data-feedback-clamp="1"]').forEach(function(el) {
         var id = el.getAttribute('data-feedback-id');
         var link = id ? document.getElementById('fbtl-' + id) : null;
         if (!link) return;

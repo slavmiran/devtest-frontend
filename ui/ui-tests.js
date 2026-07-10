@@ -244,6 +244,17 @@ function toggleEventsExpanded() {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
+function toggleTickerPause(event) {
+    if (event && event.target && event.target.closest('a')) return;
+    const track = document.querySelector('.pulse-ticker-track');
+    if (track) {
+        track.classList.toggle('paused');
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+        }
+    }
+}
+
 function getProjectLanguageToast(targetLang) {
     const langCode = String(targetLang || 'ALL').toUpperCase();
     if (langCode === 'RU') return window.t('projectLanguageToastRu', {}, lang);

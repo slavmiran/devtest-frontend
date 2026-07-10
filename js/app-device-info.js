@@ -145,11 +145,15 @@ function syncDeviceProfileUi() {
 function syncDeviceProfileBanner() {
     var banner = document.getElementById('device-profile-banner');
     if (!banner) return;
-    if (isDeviceProfileComplete() || localStorage.getItem('hideDeviceProfileBanner') === 'true') {
-        banner.style.display = 'none';
+    if (!_deviceProfileBannerReady) {
+        banner.classList.remove('is-visible');
         return;
     }
-    banner.style.display = 'block';
+    if (isDeviceProfileComplete() || localStorage.getItem('hideDeviceProfileBanner') === 'true') {
+        banner.classList.remove('is-visible');
+        return;
+    }
+    banner.classList.add('is-visible');
 }
 
 function closeDeviceProfileBanner() {
@@ -309,6 +313,7 @@ function applyDeviceInfoFromProfile(profile) {
     _deviceProfileRewardClaimed = !!profile.device_profile_reward_claimed;
     _attachDeviceInfoToBugs = _deviceProfileComplete;
     _deviceInfoLoaded = true;
+    _deviceProfileBannerReady = true;
     window.App.deviceInfo = _deviceInfo;
     window.App.deviceProfileComplete = _deviceProfileComplete;
     window.App.deviceProfileRewardClaimed = _deviceProfileRewardClaimed;

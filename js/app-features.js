@@ -1466,10 +1466,15 @@ async function loadUserProfilePreferences() {
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
         if (typeof applyDeviceInfoFromProfile === 'function') {
             applyDeviceInfoFromProfile(profile);
+        } else {
+            _deviceProfileBannerReady = true;
+            if (typeof syncDeviceProfileBanner === 'function') syncDeviceProfileBanner();
         }
     } catch (error) {
         console.error('Profile preferences load error:', error);
         syncAutoAcceptToggleUi();
+        _deviceProfileBannerReady = true;
+        if (typeof syncDeviceProfileBanner === 'function') syncDeviceProfileBanner();
     }
 }
 

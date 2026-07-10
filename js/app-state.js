@@ -122,6 +122,7 @@
         _deviceProfileComplete: false,
         _deviceProfileRewardClaimed: false,
         _deviceProfileBustEarned: 0,
+        _deviceProfileBannerReady: false,
         _pendingInitialHighlightTestId: null,
         _highlightTestTimerId: null,
         _backgroundSyncState: { tests: 0, projects: 0, market: 0 },

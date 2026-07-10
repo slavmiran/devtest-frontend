@@ -801,10 +801,27 @@
 }
 
 /* Scroll list */
-#project-feedback-list, .feedback-list, .feedback-empty {
-    flex-grow: 1;
+#project-feedback-body .feedback-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0;
+    gap: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    padding: 16px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+#project-feedback-list, .feedback-empty {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     padding: 16px;
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
@@ -828,6 +845,19 @@
     font-size: 12px;
     line-height: 1.45;
     color: var(--hint-color);
+}
+
+.device-profile-banner {
+    display: none;
+    background-color: var(--secondary-bg-color);
+    padding: 16px;
+    border-radius: 16px;
+    margin-bottom: 16px;
+    position: relative;
+}
+
+.device-profile-banner.is-visible {
+    display: block;
 }
 
 .device-profile-banner-title {
@@ -891,8 +921,6 @@
     gap: 12px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     margin-bottom: 12px;
-    content-visibility: auto;
-    contain-intrinsic-size: auto 220px;
 }
 .feedback-list {
     gap: 12px !important;

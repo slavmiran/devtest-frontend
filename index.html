@@ -9,17 +9,17 @@
     <script src="./i18n/ru.js?v=20260527-referral-ui"></script>
     <script src="./i18n/en.js?v=20260527-referral-ui"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
-    <script src="./js/app-state.js?v=20260527-referral-ui"></script>
+    <script src="./js/app-state.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260602-phase44"></script>
     <script src="./ui/ui-projects.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-market.js?v=20260710-feedback-filters-v1"></script>
+    <script src="./ui/ui-market.js?v=20260710-feedback-scroll-v1"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
-    <script src="./js/app-config.js?v=20260710-device-info"></script>
+    <script src="./js/app-config.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./js/app-api.js?v=20260710-device-info"></script>
-    <script src="./js/app-device-info.js?v=20260710-device-profile-v2"></script>
+    <script src="./js/app-device-info.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./js/app-actions.js?v=20260710-device-info"></script>
-    <script src="./js/app-features.js?v=20260710-device-info"></script>
+    <script src="./js/app-features.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./app.js?v=20260710-device-info"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260706-phase1">
@@ -29,7 +29,7 @@
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/wizard.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/feedback-center.css?v=20260710-feedback-filters-v1">
+    <link rel="stylesheet" href="./css/feedback-center.css?v=20260710-feedback-scroll-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
@@ -122,7 +122,7 @@
 
     <!-- TAB 1: Мои тесты -->
     <div id="tab-tests" class="container tab-content active">
-        <div class="banner device-profile-banner" id="device-profile-banner" style="display:none; background-color: var(--secondary-bg-color); padding: 16px; border-radius: 16px; margin-bottom: 16px; position: relative;">
+        <div class="banner device-profile-banner" id="device-profile-banner">
             <button type="button" onclick="closeDeviceProfileBanner()" style="position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 16px; color: var(--hint-color); cursor: pointer; padding: 4px;" aria-label="Close">✖</button>
             <div class="device-profile-banner-title" data-i18n="deviceProfileBannerTitle">🎁 Подготовьте тестовое устройство</div>
             <div class="device-profile-banner-reward" data-i18n="deviceProfileBannerReward">Получите +30 BUST</div>
@@ -140,8 +140,12 @@
             <div id="community-pulse" class="pulse-card ticker-mode">
                 <!-- Collapsed Ticker View -->
                 <div id="pulse-collapsed-view" class="pulse-collapsed-view">
-                    <div class="pulse-badge">🌐</div>
-                    <div id="pulse-ticker-container" class="pulse-ticker-container">
+                    <a href="https://t.me/googleplay_console_12testers" target="_blank" class="pulse-badge-link" aria-label="Community Chat">
+                        <svg class="pulse-badge-tg-icon" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.18s-.21-.01-.3.01c-.13.03-2.22 1.41-6.27 4.13-.59.41-1.13.61-1.61.6-.53-.01-1.56-.3-2.32-.55-.93-.3-1.68-.46-1.61-.98.04-.27.41-.55 1.11-.83 4.37-1.9 7.28-3.16 8.74-3.77 4.18-1.74 5.05-2.04 5.62-2.05.12 0 .4.03.58.18.15.12.19.29.21.41.02.08.03.24.01.35z" fill="currentColor"/>
+                        </svg>
+                    </a>
+                    <div id="pulse-ticker-container" class="pulse-ticker-container" onclick="toggleTickerPause(event)">
                         <div class="pulse-ticker-track">
                             <div class="pulse-ticker-content" data-i18n="pulseLoading">Загрузка...</div>
                         </div>
