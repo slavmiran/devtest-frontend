@@ -452,12 +452,12 @@ function renderReliabilityAlphaModal() {
                 <div class="rules-column">
                   <div class="rules-sub-title">${window.escapeHTML(window.t('rulesPanelStatusTitle', {}, lang))}</div>
                   <div class="rules-list">
-                    <div class="rules-item"><span class="status-icon">⭐</span><span><strong>Эксперт (85% - 100%):</strong> Самый высокий приоритет на Витрине и в массовых рассылках.</span></div>
-                    <div class="rules-item"><span class="status-icon">✓✓</span><span><strong>Активный (65% - 84.9%):</strong> Повышенный приоритет во всех списках.</span></div>
-                    <div class="rules-item"><span class="status-icon">✓</span><span><strong>Базовый (50% - 64.9%):</strong> Базовое участие и стандартный приоритет.</span></div>
-                    <div class="rules-item"><span class="status-icon">⚠️</span><span><strong>Минимум (40% - 49.9%):</strong> Пониженная видимость, приоритет не начисляется.</span></div>
-                    <div class="rules-item"><span class="status-icon">❌</span><span><strong>Провал (&lt;40%):</strong> Заброшенные проекты, минимальный приоритет.</span></div>
-                    <div class="rules-item"><span class="status-icon">⚪</span><span><strong>Новичок:</strong> Менее 5 пройденных тестов, сбор статистики чекинов.</span></div>
+                    <div class="rules-item"><span class="status-dot-wrapper"><span class="status-dot dot-expert"></span></span><span><strong>Эксперт (85% - 100%):</strong> Самый высокий приоритет на Витрине и в массовых рассылках.</span></div>
+                    <div class="rules-item"><span class="status-dot-wrapper"><span class="status-dot dot-active"></span></span><span><strong>Активный (65% - 84.9%):</strong> Повышенный приоритет во всех списках.</span></div>
+                    <div class="rules-item"><span class="status-dot-wrapper"><span class="status-dot dot-basic"></span></span><span><strong>Базовый (50% - 64.9%):</strong> Базовое участие и стандартный приоритет.</span></div>
+                    <div class="rules-item"><span class="status-dot-wrapper"><span class="status-dot dot-minimal"></span></span><span><strong>Минимум (40% - 49.9%):</strong> Пониженная видимость, приоритет не начисляется.</span></div>
+                    <div class="rules-item"><span class="status-dot-wrapper"><span class="status-dot dot-bad"></span></span><span><strong>Провал (&lt;40%):</strong> Заброшенные проекты, минимальный приоритет.</span></div>
+                    <div class="rules-item"><span class="status-dot-wrapper"><span class="status-dot dot-newbie"></span></span><span><strong>Новичок:</strong> Менее 5 пройденных тестов, сбор статистики чекинов.</span></div>
                   </div>
                 </div>
                 
@@ -478,7 +478,9 @@ function renderReliabilityAlphaModal() {
     var influenceSectionHtml = `
         <div class="influence-grid">
           <div class="influence-card">
-            <div class="influence-icon">🌍</div>
+            <div class="influence-icon-wrapper showcase-tint">
+              <span class="influence-icon">🌍</span>
+            </div>
             <div class="influence-content">
               <div class="influence-title">${window.escapeHTML(window.t('influenceShowcaseTitle', {}, lang))}</div>
               <div class="influence-text">${window.escapeHTML(window.t('influenceShowcaseText', {}, lang))}</div>
@@ -486,7 +488,9 @@ function renderReliabilityAlphaModal() {
           </div>
           
           <div class="influence-card">
-            <div class="influence-icon">📨</div>
+            <div class="influence-icon-wrapper matchmaking-tint">
+              <span class="influence-icon">📨</span>
+            </div>
             <div class="influence-content">
               <div class="influence-title">${window.escapeHTML(window.t('influenceMatchmakingTitle', {}, lang))}</div>
               <div class="influence-text">${window.escapeHTML(window.t('influenceMatchmakingText', {}, lang))}</div>
@@ -575,19 +579,27 @@ function renderReliabilityAlphaModal() {
         <div class="page reliability-alpha-page">
           <section class="card reliability-alpha-card">
             <!-- Main Index Indicator -->
-            <div class="summary-item reliability-highlight" style="padding: 16px; border-radius: 20px;">
-              <div class="summary-label" style="font-size: 12px; margin-bottom: 4px;">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityLabel', {}, lang))}</div>
-              <div class="summary-value" style="font-size: 26px; font-weight: 800; color: #52f4b5; display: flex; align-items: center; gap: 8px;">
-                ${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityValue', { value: formatReliabilityIndex(summary.reliability_overall), status: overallStatus.label }, lang))}
-              </div>
-              <div class="summary-extra" style="color: #cbd3f5; font-size: 12px; margin-top: 6px; line-height: 1.45;">
-                ${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')}
+            <div class="reliability-score-card status-${overallStatus.badgeClass}">
+              <div class="score-card-bg-glow"></div>
+              <div class="score-card-content">
+                <div class="score-label">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityLabel', {}, lang))}</div>
+                <div class="score-value-wrap">
+                  <span class="score-number">${formatReliabilityIndex(summary.reliability_overall)}%</span>
+                  <span class="score-status-badge">${overallStatus.label}</span>
+                </div>
+                <div class="score-comment">
+                  ${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')}
+                </div>
               </div>
             </div>
 
             <!-- Clickable rules trigger button -->
-            <button type="button" class="rules-disclosure-btn" onclick="toggleReliabilityRules(event)">
-              ${window.escapeHTML(window.t('rulesDisclosureBtn', {}, lang))}
+            <button type="button" class="rules-disclosure-banner ${_showReliabilityRules ? 'active' : ''}" onclick="toggleReliabilityRules(event)">
+              <div class="banner-left">
+                <span class="banner-icon">ℹ️</span>
+                <span class="banner-title">${window.escapeHTML(window.t('rulesDisclosureBtn', {}, lang))}</span>
+              </div>
+              <span class="banner-chevron">${_showReliabilityRules ? '▲' : '▼'}</span>
             </button>
 
             <!-- Collapsible rules panel -->
