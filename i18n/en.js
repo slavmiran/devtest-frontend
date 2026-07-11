@@ -441,7 +441,7 @@
             karmaInfoWhyTitle: "Why karma matters",
             karmaInfoWhyText: "Karma is your reputation. First, it affects your project position in the Showcase ranking. Second, it directly increases your $BUST payouts: the Golden Tester grant bonus is calculated from your karma.",
             karmaInfoHowTitle: "How to gain and lose",
-            karmaInfoHowText: "🟢 From Platform:\n• Daily check-in: +0.1 ☯️\n• Overtime check-in: +0.5 ☯️\n• Manual owner completion: +3.0 ☯️\n• Support feedback: up to +3.0 ☯️\n\n🤝 From Developers:\n• Good test / bug: from +1.5 to +3.0 ☯️\n• Best overtime tester (only one!): +2.0 ☯️",
+            karmaInfoHowText: "🟢 From Platform:\n• Daily check-in: +0.1 ☯️\n• Overtime check-in: +0.5 ☯️\n• Confirmed Google Play review: +1.0 ☯️\n• Project completion (for owner): +3.0 ☯️\n• Support / Platform feedback: up to +3.0 ☯️\n• Admin reward: custom amount ☯️\n\n🤝 From Developers:\n• Good test: +1.5 ☯️\n• Valuable bug report: +3.0 ☯️\n• Overtime reward (to one tester): +2.0 ☯️\n• Google Play review boost: custom amount ☯️\n\n🔴 How to lose:\n• Leaving project early: all check-in karma accumulated in this project is burned (up to -1.4 ☯️)",
             karmaInfoNetworkFallbackToast: "Showing saved balance. Breakdown is temporarily unavailable.",
             karmaInfoCloseBtn: "Close",
             karmaSrc_checkin: "Daily check-ins",
