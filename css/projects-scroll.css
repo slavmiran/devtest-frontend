@@ -56,15 +56,6 @@
     -webkit-backdrop-filter: none;
 }
 
-#tab-projects .card.card-collapsed .card-expanded-zone {
-    content-visibility: hidden;
-    contain-intrinsic-size: 0 120px;
-}
-
-#tab-projects .card:not(.card-collapsed) .card-expanded-zone {
-    content-visibility: visible;
-}
-
 #tab-projects .card.card-collapsed .energy-bar-fill::after,
 #tab-projects .card.card-collapsed .energy-bar-shimmer,
 #tab-projects .card.card-collapsed .grant-segment.current-pending {

@@ -317,6 +317,21 @@ function buildReliabilityAlphaSkeleton() {
     `;
 }
 
+window.toggleProjectCardDetails = function(element, event) {
+    if (event) event.stopPropagation();
+    const details = element.querySelector('.proj-body-details');
+    const arrow = element.querySelector('.proj-collapse-arrow');
+    if (details.style.display === 'none') {
+        details.style.display = 'block';
+        arrow.textContent = '▲';
+        element.classList.add('expanded');
+    } else {
+        details.style.display = 'none';
+        arrow.textContent = '▼';
+        element.classList.remove('expanded');
+    }
+};
+
 function buildReliabilityAlphaProjectCard(project) {
     var statusMeta = getReliabilityAlphaStatusMeta(project.project_status);
     var title = window.escapeHTML(project.title || window.t('unknownLabel', {}, lang));
@@ -324,39 +339,54 @@ function buildReliabilityAlphaProjectCard(project) {
     var skips = String(project.skips_count || 0);
     var overtimeDays = Number(project.overtime_checkin_days || 0);
     var overtimeBonus = formatReliabilityIndex(project.overtime_bonus_index || 0);
-    var participationKey = 'reliabilityDashParticipationType_' + (project.participation_type || 'short_run');
     var exitKey = 'reliabilityDashExitType_' + (project.leave_status || project.status || 'active');
-        var sourceMeta = getReliabilityAlphaProjectSourceMeta(project);
-        var note = window.escapeHTML(window.t(sourceMeta.noteKey, {
-        value: formatReliabilityIndex(project.weighted_contribution || project.effective_project_index || 0),
-        karma: formatReliabilityIndex(overtimeDays > 0 ? overtimeDays * 0.5 : 0)
-    }, lang));
+    var sourceMeta = getReliabilityAlphaProjectSourceMeta(project);
 
     return `
-        <div class="project-card">
-          <div class="proj-header">
-            <div class="proj-title">${title} · ${typeLabel}</div>
-            <span class="badge-status ${statusMeta.badgeClass}">${window.escapeHTML(statusMeta.label)}</span>
+        <div class="project-card collapsible-project-card ${project.is_used_in_formula ? 'in-formula' : ''}" onclick="toggleProjectCardDetails(this, event)">
+          <div class="proj-header-compact">
+            <div class="proj-header-left">
+              <span class="proj-app-icon">📱</span>
+              <div class="proj-title-wrap">
+                <span class="proj-title">${title}</span>
+                <span class="proj-subtitle">
+                  ${typeLabel} · ${project.is_used_in_formula ? '<span class="formula-pill">в расчете</span>' : '<span class="history-pill">история</span>'} · индекс ${formatReliabilityIndex(project.effective_project_index || 0)}%
+                </span>
+              </div>
+            </div>
+            <div class="proj-header-right">
+              <span class="badge-status ${statusMeta.badgeClass}">${window.escapeHTML(statusMeta.label)}</span>
+              <span class="proj-collapse-arrow">▼</span>
+            </div>
           </div>
-                    <div class="project-chips"><span class="project-chip ${sourceMeta.chipClass}">${window.escapeHTML(sourceMeta.chipLabel)}</span></div>
-          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryPeriod', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryValue', { actual: project.actual_checkins || 0, total: project.mandatory_days || 14, skips: skips }, lang))}</span></div>
-          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectIndexLabel', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectIndexValue', { value: formatReliabilityIndex(project.effective_project_index || 0), status: statusMeta.label }, lang))}</span></div>
-          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeLabel', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeValue', { days: overtimeDays, bonus: overtimeBonus }, lang))}</span></div>
-          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectParticipationLabel', {}, lang))}</span><span>${window.escapeHTML(window.t(participationKey, {}, lang))}</span></div>
-          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectExitLabel', {}, lang))}</span><span>${window.escapeHTML(window.t(exitKey, { fairness: window.t('reliabilityDashFairness_' + (project.leave_fairness || 'neutral'), {}, lang) }, lang))}</span></div>
-          <div class="proj-note">${note}</div>
-          <div class="link-more">${window.escapeHTML(window.t('reliabilityDashProjectDetailsLink', {}, lang))}</div>
+          
+          <div class="proj-body-details" style="display: none;" onclick="event.stopPropagation()">
+            <div class="project-chips">
+              <span class="project-chip ${sourceMeta.chipClass}">${window.escapeHTML(sourceMeta.chipLabel)}</span>
+            </div>
+            <div class="proj-row">
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryPeriod', {}, lang))}</span>
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryValue', { actual: project.actual_checkins || 0, total: project.mandatory_days || 14, skips: skips }, lang))}</span>
+            </div>
+            <div class="proj-row">
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectIndexLabel', {}, lang))}</span>
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectIndexValue', { value: formatReliabilityIndex(project.effective_project_index || 0), status: statusMeta.label }, lang))}</span>
+            </div>
+            <div class="proj-row">
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeLabel', {}, lang))}</span>
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeValue', { days: overtimeDays, bonus: overtimeBonus }, lang))}</span>
+            </div>
+            <div class="proj-row">
+              <span>Выход / кик</span>
+              <span>${window.escapeHTML(window.t(exitKey, { fairness: window.t('reliabilityDashFairness_' + (project.leave_fairness || 'neutral'), {}, lang) }, lang))}</span>
+            </div>
+            <div class="proj-row">
+              <span>Вклад в общую надёжность</span>
+              <span>${project.is_used_in_formula ? `+${project.weighted_contribution || 0}%` : '—'}</span>
+            </div>
+          </div>
         </div>
     `;
-}
-
-var _showReliabilityRules = false;
-
-function toggleReliabilityRules(event) {
-    if (event) event.stopPropagation();
-    _showReliabilityRules = !_showReliabilityRules;
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    renderReliabilityAlphaModal();
 }
 
 function renderReliabilityAlphaModal() {
@@ -386,21 +416,7 @@ function renderReliabilityAlphaModal() {
     var projectsHtml = visibleProjects.length
         ? visibleProjects.map(buildReliabilityAlphaProjectCard).join('')
         : `<div class="project-card"><div class="proj-note">${window.escapeHTML(window.t('reliabilityDashProjectsEmpty', {}, lang))}</div></div>`;
-    var grant = summary.last_grant || {};
-    var grantText = grant.has_grant
-        ? window.t('reliabilityDashSummaryGrantValue', {
-            amount: formatReliabilityIndex(grant.amount_bust || 0),
-            base: formatReliabilityIndex(grant.base_bonus || 0),
-            perfect: formatReliabilityIndex(grant.perfect_bonus || 0),
-            karma: formatKarmaValue(grant.karma_at_moment || 0),
-            karma_bonus: formatReliabilityIndex(grant.karma_component || 0)
-        }, lang)
-        : window.t('reliabilityDashSummaryGrantEmptyLong', {}, lang);
-    var fullLabel = window.t('reliabilityDashSummaryParticipationValue', {
-        full: String(summary.completed_full_tests || 0),
-        early: String(summary.completed_early_tests || 0)
-    }, lang);
-    var activeProjectsPill = window.t('reliabilityDashActiveProjectsPill', { count: String(summary.active_projects_count || 0) }, lang);
+
     var tabs = [
         { key: 'formula', label: getReliabilityAlphaProjectTabLabel('formula') },
         { key: 'all', label: getReliabilityAlphaProjectTabLabel('all') },
@@ -413,30 +429,30 @@ function renderReliabilityAlphaModal() {
         rulesPanelHtml = `
             <div class="rules-panel-card card">
               <div class="rules-panel-header">
-                <div class="rules-panel-title">ℹ️ Как рассчитывается надежность и овертайм</div>
+                <div class="rules-panel-title">ℹ️ ${window.escapeHTML(window.t('reliabilityDashGuideRulesTitle', {}, lang))}</div>
                 <button type="button" class="rules-panel-close-btn" onclick="toggleReliabilityRules(event)">✕</button>
               </div>
               
               <div class="rules-grid">
                 <div class="rules-column">
-                  <div class="rules-sub-title">📊 Статусы надежности</div>
+                  <div class="rules-sub-title">${window.escapeHTML(window.t('rulesPanelStatusTitle', {}, lang))}</div>
                   <div class="rules-list">
-                    <div class="rules-item"><span class="status-icon">⭐</span><span><strong>Эксперт (85% - 100%):</strong> Самый высокий приоритет на Витрине (+50 очков) и полное доверие.</span></div>
-                    <div class="rules-item"><span class="status-icon">✓✓</span><span><strong>Активный (65% - 84.9%):</strong> Стабильный тестер, повышенный приоритет (+30 очков).</span></div>
-                    <div class="rules-item"><span class="status-icon">✓</span><span><strong>Базовый (50% - 64.9%):</strong> Стандартное участие, базовый приоритет (+15 очков).</span></div>
-                    <div class="rules-item"><span class="status-icon">⚠️</span><span><strong>Минимум (40% - 49.9%):</strong> Пониженная активность, приоритет не начисляется.</span></div>
-                    <div class="rules-item"><span class="status-icon">❌</span><span><strong>Провал (&lt;40%):</strong> Критическое количество пропусков или забросов.</span></div>
-                    <div class="rules-item"><span class="status-icon">⚪</span><span><strong>Новичок:</strong> Начальный период (менее 1 завершенного теста), сбор статистики чекинов.</span></div>
+                    <div class="rules-item"><span class="status-icon">⭐</span><span><strong>Эксперт (85% - 100%):</strong> Самый высокий приоритет на Витрине и в массовых рассылках.</span></div>
+                    <div class="rules-item"><span class="status-icon">✓✓</span><span><strong>Активный (65% - 84.9%):</strong> Повышенный приоритет во всех списках.</span></div>
+                    <div class="rules-item"><span class="status-icon">✓</span><span><strong>Базовый (50% - 64.9%):</strong> Базовое участие и стандартный приоритет.</span></div>
+                    <div class="rules-item"><span class="status-icon">⚠️</span><span><strong>Минимум (40% - 49.9%):</strong> Пониженная видимость, приоритет не начисляется.</span></div>
+                    <div class="rules-item"><span class="status-icon">❌</span><span><strong>Провал (&lt;40%):</strong> Заброшенные проекты, минимальный приоритет.</span></div>
+                    <div class="rules-item"><span class="status-icon">⚪</span><span><strong>Новичок:</strong> Менее 5 пройденных тестов, сбор статистики чекинов.</span></div>
                   </div>
                 </div>
                 
                 <div class="rules-column">
-                  <div class="rules-sub-title">⚙️ Правила расчета</div>
+                  <div class="rules-sub-title">${window.escapeHTML(window.t('rulesPanelCalcTitle', {}, lang))}</div>
                   <div class="rules-list">
-                    <div class="rules-item"><span><strong>Динамическая история:</strong> Ветераны (15+ тестов) оцениваются по 10 проектам, обычные пользователи — по 5, начинающие — по всей истории. Это снижает влияние случайных ошибок.</span></div>
+                    <div class="rules-item"><span><strong>${window.escapeHTML(window.t('rulesRuleHistoryTitle', {}, lang))}</strong> ${window.escapeHTML(window.t('rulesRuleHistoryText', {}, lang))}</span></div>
                     <div class="rules-item"><span><strong>Свежесть:</strong> Новые проекты имеют больший вес, чем старые благодаря линейному распределению весов. Активность сейчас важнее всего!</span></div>
                     <div class="rules-item"><span><strong>Овертайм:</strong> Участие свыше обязательных 14 дней начисляет дополнительный бонус к индексу проекта.</span></div>
-                    <div class="rules-item"><span><strong>Штрафы:</strong> Штраф -8 за один слабый период и -15 за два и более снижает общую надежность.</span></div>
+                    <div class="rules-item"><span><strong>${window.escapeHTML(window.t('rulesRulePenaltiesTitle', {}, lang))}</strong> ${window.escapeHTML(window.t('rulesRulePenaltiesText', {}, lang))}</span></div>
                   </div>
                 </div>
               </div>
@@ -447,35 +463,93 @@ function renderReliabilityAlphaModal() {
     var influenceSectionHtml = `
         <div class="influence-grid">
           <div class="influence-card">
-            <div class="influence-icon">🏪</div>
+            <div class="influence-icon">🌍</div>
             <div class="influence-content">
-              <div class="influence-title">Приоритет на Витрине</div>
-              <div class="influence-text">Продвигает ваши приложения вверх в ленте взаимного тестирования (до +50 очков к рейтингу), привлекая тестировщиков быстрее.</div>
+              <div class="influence-title">${window.escapeHTML(window.t('influenceShowcaseTitle', {}, lang))}</div>
+              <div class="influence-text">${window.escapeHTML(window.t('influenceShowcaseText', {}, lang))}</div>
             </div>
           </div>
           
           <div class="influence-card">
-            <div class="influence-icon">🤖</div>
+            <div class="influence-icon">📨</div>
             <div class="influence-content">
-              <div class="influence-title">Автоподбор кандидатов</div>
-              <div class="influence-text">Дает приоритетное право на получение автоматических заявок на взаимный обмен от других надежных разработчиков.</div>
-            </div>
-          </div>
-          
-          <div class="influence-card">
-            <div class="influence-icon">🏆</div>
-            <div class="influence-content">
-              <div class="influence-title">Получение выплат и грантов</div>
-              <div class="influence-text">Индекс надежности выше 85% и отсутствие пропусков в обязательные 14 дней — необходимое условие выплаты гранта «Золотой Тестер».</div>
+              <div class="influence-title">${window.escapeHTML(window.t('influenceMatchmakingTitle', {}, lang))}</div>
+              <div class="influence-text">${window.escapeHTML(window.t('influenceMatchmakingText', {}, lang))}</div>
             </div>
           </div>
         </div>
     `;
 
+    var grants = summary.grants_history || [];
+    if (window._activeGrantIndex >= grants.length) {
+        window._activeGrantIndex = 0;
+    }
+
+    var grantsSectionHtml = '';
+    if (grants.length > 0) {
+        var activeGrant = grants[window._activeGrantIndex];
+        var isGolden = activeGrant.is_golden;
+        
+        var badgeText = isGolden
+            ? window.t('reliabilityDashSummaryGrantBadgeGolden', {}, lang)
+            : window.t('reliabilityDashSummaryGrantBadgeRegular', { skips: activeGrant.skips_count || 0 }, lang);
+        
+        var detailsText = window.t('reliabilityDashSummaryGrantValue', {
+            amount: formatReliabilityIndex(activeGrant.amount_bust || 0),
+            base: formatReliabilityIndex(activeGrant.base_bonus || 0),
+            perfect: formatReliabilityIndex(activeGrant.perfect_bonus || 0),
+            karma: formatKarmaValue(activeGrant.karma_at_moment || 0),
+            karma_bonus: formatReliabilityIndex(activeGrant.karma_component || 0)
+        }, lang);
+
+        grantsSectionHtml = `
+            <section class="card reliability-alpha-card">
+              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</div>
+              <div class="grants-tiles">
+                ${grants.map(function(g, idx) {
+                  var icon = g.is_golden ? '💎' : '🪙';
+                  var activeClass = idx === window._activeGrantIndex ? 'active' : '';
+                  return `
+                    <button type="button" class="grant-tile ${activeClass}" onclick="selectActiveGrant(${idx}, event)">
+                      <span>${icon}</span>
+                      <span>${formatReliabilityIndex(g.amount_bust)} $BUST</span>
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+
+              <div class="grant-detail-container">
+                <div class="proj-row" style="margin-bottom: 6px;">
+                  <span style="font-weight: 700; color: #9ea6c7;">${window.escapeHTML(window.t('reliabilityDashSummaryGrantLabel', {}, lang))}</span>
+                  <span style="font-weight: 800; color: #f5f7ff;">${window.escapeHTML(activeGrant.app_name || '')}</span>
+                </div>
+                <div class="summary-extra" style="font-size: 12px; color: #cbd3f5; line-height: 1.4; margin-bottom: 8px;">
+                  ${window.escapeHTML(detailsText)}
+                </div>
+                <div class="grant-badge" style="display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 11px; background: ${isGolden ? 'rgba(79, 156, 255, 0.15)' : 'rgba(255, 216, 107, 0.14)'}; color: ${isGolden ? '#63a1ff' : '#ffd86b'};">
+                  ${window.escapeHTML(badgeText)}
+                </div>
+              </div>
+            </section>
+        `;
+    } else {
+        grantsSectionHtml = `
+            <section class="card reliability-alpha-card">
+              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</div>
+              <div class="summary-extra" style="color: #9ea6c7; font-size: 12px;">
+                ${window.escapeHTML(window.t('reliabilityDashGrantsNoHistory', {}, lang))}
+              </div>
+            </section>
+        `;
+    }
+
     var mainSectionHtml = `
-        <section class="card reliability-alpha-card">
-          <div class="section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</div>
-          <div class="section-copy">${window.escapeHTML(window.t('reliabilityDashProjectsHistoryHint', {}, lang))}</div>
+        <section class="card reliability-alpha-card" style="margin-top: 14px; padding: 14px;">
+          <div class="tabs" style="margin-top: 0; margin-bottom: 12px;">
+            ${tabs.map(function(tab) {
+              return `<button type="button" class="tab ${_reliabilityDashboardFilter === tab.key ? 'active' : ''}" onclick="setReliabilityDashboardFilter('${tab.key}')">${window.escapeHTML(tab.label)}</button>`;
+            }).join('')}
+          </div>
           <div class="projects-grid">
             ${projectsHtml}
           </div>
@@ -485,41 +559,52 @@ function renderReliabilityAlphaModal() {
     body.innerHTML = `
         <div class="page reliability-alpha-page">
           <section class="card reliability-alpha-card">
-            <div class="summary-grid">
-              <div class="summary-item reliability-highlight clickable-index-card" onclick="toggleReliabilityRules(event)">
-                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityLabel', {}, lang))} ℹ️</div>
-                <div class="summary-value">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityValue', { value: formatReliabilityIndex(summary.reliability_overall), status: overallStatus.label }, lang))}</div>
-                <div class="summary-extra" style="color: #4f9cff; font-weight: 500; text-decoration: underline;">
-                  ${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')} (нажмите для правил)
-                </div>
+            <!-- Main Index Indicator -->
+            <div class="summary-item reliability-highlight" style="padding: 16px; border-radius: 20px;">
+              <div class="summary-label" style="font-size: 12px; margin-bottom: 4px;">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityLabel', {}, lang))}</div>
+              <div class="summary-value" style="font-size: 26px; font-weight: 800; color: #52f4b5; display: flex; align-items: center; gap: 8px;">
+                ${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityValue', { value: formatReliabilityIndex(summary.reliability_overall), status: overallStatus.label }, lang))}
               </div>
-
-              <div class="summary-item">
-                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryGrantLabel', {}, lang))}</div>
-                <div class="summary-value">
-                  ${window.escapeHTML(grant.has_grant ? formatReliabilityIndex(grant.amount_bust || 0) + ' $BUST' : window.t('reliabilityDashGrantEmptyShort', {}, lang))}
-                  ${grant.has_grant ? `<span class="grant-diamond" style="margin-left:4px;">💎</span>` : ''}
-                </div>
-                <div class="summary-extra">${window.escapeHTML(grantText)}</div>
-                ${grant.has_grant ? `<div class="grant-badge">${window.escapeHTML(window.t('reliabilityDashSummaryGrantBadge', {}, lang))}</div>` : ''}
-              </div>
-              <div class="summary-item">
-                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryParticipationLabel', {}, lang))}</div>
-                <div class="summary-value">${window.escapeHTML(fullLabel)}</div>
-                <div class="summary-extra">${window.escapeHTML(window.t('reliabilityDashSummaryParticipationExtra', {}, lang))}</div>
+              <div class="summary-extra" style="color: #cbd3f5; font-size: 12px; margin-top: 6px; line-height: 1.45;">
+                ${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')}
               </div>
             </div>
 
+            <!-- Clickable rules trigger button -->
+            <button type="button" class="rules-disclosure-btn" onclick="toggleReliabilityRules(event)">
+              ${window.escapeHTML(window.t('rulesDisclosureBtn', {}, lang))}
+            </button>
+
+            <!-- Collapsible rules panel -->
             ${rulesPanelHtml}
+            
+            <!-- Showcase & Mass Mailing Influence Grid -->
             ${influenceSectionHtml}
 
-            <div class="tabs" style="margin-top: 18px;">
-              ${tabs.map(function(tab) {
-                return `<button type="button" class="tab ${_reliabilityDashboardFilter === tab.key ? 'active' : ''}" onclick="setReliabilityDashboardFilter('${tab.key}')">${window.escapeHTML(tab.label)}</button>`;
-              }).join('')}
+            <!-- Compact statistics sub-grid -->
+            <div class="stats-sub-grid">
+               <div class="stats-card">
+                  <div class="stats-card-val">${summary.completed_tests || 0}</div>
+                  <div class="stats-card-lbl">Пройдено тестов</div>
+                  <div class="stats-card-sub">Полных: ${summary.completed_full_tests || 0} · Досрочных: ${summary.completed_early_tests || 0}</div>
+               </div>
+               <div class="stats-card">
+                  <div class="stats-card-val">${summary.grant_tests_count || 0}</div>
+                  <div class="stats-card-lbl">Получено грантов</div>
+                  <div class="stats-card-sub">Золотых: ${summary.golden_count || 0} 💎</div>
+               </div>
+               <div class="stats-card">
+                  <div class="stats-card-val">${breakdown.projects_used ? breakdown.projects_used.length : 0}</div>
+                  <div class="stats-card-lbl">В расчете индекса</div>
+                  <div class="stats-card-sub">История K=${breakdown.projects_used ? breakdown.projects_used.length : 5} проектов</div>
+               </div>
             </div>
           </section>
 
+          <!-- Grants & Payouts history layout -->
+          ${grantsSectionHtml}
+
+          <!-- Tabs for filtering project history -->
           ${mainSectionHtml}
         </div>
     `;

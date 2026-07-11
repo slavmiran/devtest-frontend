@@ -53,10 +53,10 @@
 
 #reliability-alpha-modal .card {
     border-radius: 24px;
-    background: linear-gradient(135deg, var(--border-subtle), rgba(5,7,20,0.98));
-    border: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-    padding: 18px 16px 18px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    padding: 18px 16px;
     backdrop-filter: blur(22px) saturate(140%);
     -webkit-backdrop-filter: blur(22px) saturate(140%);
     margin-bottom: 0;
@@ -137,9 +137,9 @@
 }
 
 #reliability-alpha-modal .summary-item.reliability-highlight {
-    background: linear-gradient(135deg, rgba(79, 156, 255, 0.12), rgba(7, 10, 28, 0.95));
-    border-color: rgba(79, 156, 255, 0.4);
-    box-shadow: 0 4px 20px rgba(79, 156, 255, 0.08);
+    background: rgba(79, 156, 255, 0.06);
+    border-color: rgba(79, 156, 255, 0.25);
+    box-shadow: none;
 }
 
 #reliability-alpha-modal .summary-label {
@@ -688,3 +688,159 @@
         transform: translateY(0);
     }
 }
+
+/* Collapsible Project Card Styles */
+.collapsible-project-card {
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    user-select: none;
+}
+.collapsible-project-card:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+.proj-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+.proj-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.proj-app-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+.proj-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.proj-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #f5f7ff;
+}
+.proj-subtitle {
+    font-size: 11px;
+    color: #9ea6c7;
+}
+.proj-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.proj-collapse-arrow {
+    font-size: 10px;
+    color: #9ea6c7;
+    transition: transform 0.2s ease;
+}
+.collapsible-project-card.expanded .proj-collapse-arrow {
+    transform: rotate(0deg);
+}
+.proj-body-details {
+    margin-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 10px;
+    animation: fadeInSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.formula-pill {
+    background: rgba(79, 156, 255, 0.15);
+    color: #63a1ff;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.history-pill {
+    background: rgba(255, 255, 255, 0.05);
+    color: #9ea6c7;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Stats Sub Grid Styles */
+.stats-sub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+}
+.stats-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 12px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.stats-card-val {
+    font-size: 20px;
+    font-weight: 800;
+    color: #f5f7ff;
+}
+.stats-card-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    color: #9ea6c7;
+}
+.stats-card-sub {
+    font-size: 9.5px;
+    color: #cbd3f5;
+    opacity: 0.8;
+}
+
+/* Grants grid tiles styling */
+.grants-tiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.grant-tile {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #f5f7ff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+.grant-tile:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(79, 156, 255, 0.3);
+}
+.grant-tile.active {
+    background: rgba(79, 156, 255, 0.1);
+    border-color: rgba(79, 156, 255, 0.6);
+    color: #ffd86b;
+    box-shadow: 0 4px 12px rgba(79, 156, 255, 0.1);
+}
+.grant-detail-container {
+    background: rgba(7, 10, 28, 0.95);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: 12px 14px;
+    animation: fadeInSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.grant-detail-container .grant-badge {
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
