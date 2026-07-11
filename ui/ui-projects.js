@@ -64,17 +64,28 @@ function renderProjects(force) {
         let reliabilityValue = '';
         let isNewbie = true;
         let statusText = '';
+        let metricClass = 'metric-card-success';
         if (typeof visibilityStats.reliability_index !== 'undefined' && visibilityStats.reliability_index !== null) {
             const score = Number(visibilityStats.reliability_index);
             const status = visibilityStats.reliability_status || 'newbie';
             isNewbie = (status === 'newbie');
             reliabilityValue = isNewbie ? window.t('reliabilityDashStatus_newbie', {}, lang) : String(Math.round(score));
             statusText = isNewbie ? '' : window.t('reliabilityDashStatus_' + status, {}, lang);
+            if (isNewbie) metricClass = 'metric-card-neutral';
+            else if (status === 'bad') metricClass = 'metric-card-danger';
+            else if (status === 'minimal') metricClass = 'metric-card-warning';
+            else if (status === 'basic') metricClass = 'metric-card-success';
+            else if (status === 'active') metricClass = 'metric-card-success';
+            else if (status === 'expert') metricClass = 'metric-card-success';
         } else {
             const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
             isNewbie = (reliability.percent === null);
             reliabilityValue = isNewbie ? reliability.text : String(reliability.percent);
             statusText = isNewbie ? '' : reliability.text;
+            if (isNewbie) metricClass = 'metric-card-neutral';
+            else if (reliability.percent >= 80) metricClass = 'metric-card-success';
+            else if (reliability.percent >= 65) metricClass = 'metric-card-warning';
+            else metricClass = 'metric-card-danger';
         }
         const goldenCount = Number(visibilityStats.golden_count || 0);
         const totalGrants = Number(visibilityStats.grant_tests_count || 0);
@@ -100,7 +111,7 @@ function renderProjects(force) {
                     </div>
                 </div>
                 <div class="metrics-grid">
-                    <button type="button" class="metric-card metric-card-clickable metric-card-success" onclick="showReliabilityInfo()">
+                    <button type="button" class="metric-card metric-card-clickable ${metricClass}" onclick="showReliabilityInfo()">
                         <div class="metric-card-top">
                             <span class="metric-label">${window.t('metricReliabilityV2', {}, lang)}</span>
                             <span class="metric-chevron">›</span>

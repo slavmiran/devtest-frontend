@@ -1925,6 +1925,8 @@ function _mapStatsFromApi(data) {
         total_actual_checkins: data.total_actual_checkins || 0,
         golden_count: data.golden_count || 0,
         grant_tests_count: data.grant_tests_count || 0,
+        reliability_index: typeof data.reliability_index !== 'undefined' ? data.reliability_index : null,
+        reliability_status: data.reliability_status || 'newbie',
     };
 }
 

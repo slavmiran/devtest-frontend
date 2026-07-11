@@ -348,6 +348,13 @@ function buildReliabilityAlphaProjectCard(project) {
           <div class="link-more">${window.escapeHTML(window.t('reliabilityDashProjectDetailsLink', {}, lang))}</div>
         </div>
     `;
+var _showReliabilityRules = false;
+
+function toggleReliabilityRules(event) {
+    if (event) event.stopPropagation();
+    _showReliabilityRules = !_showReliabilityRules;
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    renderReliabilityAlphaModal();
 }
 
 function renderReliabilityAlphaModal() {
@@ -396,130 +403,93 @@ function renderReliabilityAlphaModal() {
         { key: 'formula', label: getReliabilityAlphaProjectTabLabel('formula') },
         { key: 'all', label: getReliabilityAlphaProjectTabLabel('all') },
         { key: 'current', label: getReliabilityAlphaProjectTabLabel('current') },
-        { key: 'completed', label: getReliabilityAlphaProjectTabLabel('completed') },
-        { key: 'guide', label: getReliabilityAlphaProjectTabLabel('guide') }
+        { key: 'completed', label: getReliabilityAlphaProjectTabLabel('completed') }
     ];
-    var guideCardsHtml = [
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock1Title', {}, lang),
-            'accent-blue',
-            `
-                <div class="guide-rows">
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row1Label', {}, lang))}</span><span class="guide-value danger">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row1Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row2Label', {}, lang))}</span><span class="guide-value warning">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row2Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row3Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row3Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row4Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row4Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row5Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row5Value', {}, lang))}</span></div>
-                </div>
-            `,
-            window.t('reliabilityDashGuideBlock1Mini', {}, lang)
-        ),
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock2Title', {}, lang),
-            'accent-cyan',
-            `
-                <div class="guide-rows">
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row1Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row1Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row2Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row2Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row3Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row3Value', {}, lang))}</span></div>
-                </div>
-            `,
-            window.t('reliabilityDashGuideBlock2Mini', {}, lang)
-        ),
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock3Title', {}, lang),
-            'accent-indigo',
-            `
-                <div class="guide-rows">
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row1Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row1Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row2Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row2Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row3Label', {}, lang))}</span><span class="guide-value danger">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row3Value', {}, lang))}</span></div>
-                </div>
-            `,
-            window.t('reliabilityDashGuideBlock3Mini', {}, lang)
-        ),
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock4Title', {}, lang),
-            'accent-red',
-            `
-                <ol class="guide guide-list">
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item1', {}, lang))}</li>
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item2', {}, lang))}</li>
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item3', {}, lang))}</li>
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item4', {}, lang))}</li>
-                </ol>
-            `,
-            window.t('reliabilityDashGuideBlock4Mini', {}, lang)
-        ),
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock5Title', {}, lang),
-            'accent-gold',
-            `
-                <div class="guide-rows">
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row1Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row1Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row2Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row2Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row3Label', {}, lang))}</span><span class="guide-value gold">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row3Value', {}, lang))}</span></div>
-                </div>
-            `,
-            window.t('reliabilityDashGuideBlock5Mini', {}, lang)
-        ),
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock6Title', {}, lang),
-            'accent-green',
-            `
-                <div class="guide-tags">
-                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag1', {}, lang))}</span>
-                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag2', {}, lang))}</span>
-                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag3', {}, lang))}</span>
-                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag4', {}, lang))}</span>
-                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag5', {}, lang))}</span>
-                </div>
-            `,
-            window.t('reliabilityDashGuideBlock6Mini', {}, lang)
-        )
-    ].join('');
 
-    var mainSectionHtml = '';
-    if (_reliabilityDashboardFilter === 'guide') {
-        mainSectionHtml = `
-            <section class="card reliability-alpha-card">
-              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashGuideSectionTitle', {}, lang))}</div>
-              <div class="guide-cards">
-                ${guideCardsHtml}
+    var rulesPanelHtml = '';
+    if (_showReliabilityRules) {
+        rulesPanelHtml = `
+            <div class="rules-panel-card card">
+              <div class="rules-panel-header">
+                <div class="rules-panel-title">ℹ️ Как рассчитывается надежность и овертайм</div>
+                <button type="button" class="rules-panel-close-btn" onclick="toggleReliabilityRules(event)">✕</button>
               </div>
-            </section>
-        `;
-    } else {
-        mainSectionHtml = `
-            <section class="card reliability-alpha-card">
-              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</div>
-              <div class="section-copy">${window.escapeHTML(window.t('reliabilityDashProjectsHistoryHint', {}, lang))}</div>
-              <div class="projects-grid">
-                ${projectsHtml}
+              
+              <div class="rules-grid">
+                <div class="rules-column">
+                  <div class="rules-sub-title">📊 Статусы надежности</div>
+                  <div class="rules-list">
+                    <div class="rules-item"><span class="status-icon">⭐</span><span><strong>Эксперт (85% - 100%):</strong> Самый высокий приоритет на Витрине (+50 очков) и полное доверие.</span></div>
+                    <div class="rules-item"><span class="status-icon">✓✓</span><span><strong>Активный (65% - 84.9%):</strong> Стабильный тестер, повышенный приоритет (+30 очков).</span></div>
+                    <div class="rules-item"><span class="status-icon">✓</span><span><strong>Базовый (50% - 64.9%):</strong> Стандартное участие, базовый приоритет (+15 очков).</span></div>
+                    <div class="rules-item"><span class="status-icon">⚠️</span><span><strong>Минимум (40% - 49.9%):</strong> Пониженная активность, приоритет не начисляется.</span></div>
+                    <div class="rules-item"><span class="status-icon">❌</span><span><strong>Провал (&lt;40%):</strong> Критическое количество пропусков или забросов.</span></div>
+                    <div class="rules-item"><span class="status-icon">⚪</span><span><strong>Новичок:</strong> Начальный период (менее 1 завершенного теста), сбор статистики чекинов.</span></div>
+                  </div>
+                </div>
+                
+                <div class="rules-column">
+                  <div class="rules-sub-title">⚙️ Правила расчета</div>
+                  <div class="rules-list">
+                    <div class="rules-item"><span><strong>Динамическая история:</strong> Ветераны (15+ тестов) оцениваются по 10 проектам, обычные пользователи — по 5, начинающие — по всей истории. Это снижает влияние случайных ошибок.</span></div>
+                    <div class="rules-item"><span><strong>Свежесть:</strong> Новые проекты имеют больший вес, чем старые благодаря линейному распределению весов. Активность сейчас важнее всего!</span></div>
+                    <div class="rules-item"><span><strong>Овертайм:</strong> Участие свыше обязательных 14 дней начисляет дополнительный бонус к индексу проекта.</span></div>
+                    <div class="rules-item"><span><strong>Штрафы:</strong> Штраф -8 за один слабый период и -15 за два и более снижает общую надежность.</span></div>
+                  </div>
+                </div>
               </div>
-            </section>
+            </div>
         `;
     }
+
+    var influenceSectionHtml = `
+        <div class="influence-grid">
+          <div class="influence-card">
+            <div class="influence-icon">🏪</div>
+            <div class="influence-content">
+              <div class="influence-title">Приоритет на Витрине</div>
+              <div class="influence-text">Продвигает ваши приложения вверх в ленте взаимного тестирования (до +50 очков к рейтингу), привлекая тестировщиков быстрее.</div>
+            </div>
+          </div>
+          
+          <div class="influence-card">
+            <div class="influence-icon">🤖</div>
+            <div class="influence-content">
+              <div class="influence-title">Автоподбор кандидатов</div>
+              <div class="influence-text">Дает приоритетное право на получение автоматических заявок на взаимный обмен от других надежных разработчиков.</div>
+            </div>
+          </div>
+          
+          <div class="influence-card">
+            <div class="influence-icon">🏆</div>
+            <div class="influence-content">
+              <div class="influence-title">Получение выплат и грантов</div>
+              <div class="influence-text">Индекс надежности выше 85% и отсутствие пропусков в обязательные 14 дней — необходимое условие выплаты гранта «Золотой Тестер».</div>
+            </div>
+          </div>
+        </div>
+    `;
+
+    var mainSectionHtml = `
+        <section class="card reliability-alpha-card">
+          <div class="section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</div>
+          <div class="section-copy">${window.escapeHTML(window.t('reliabilityDashProjectsHistoryHint', {}, lang))}</div>
+          <div class="projects-grid">
+            ${projectsHtml}
+          </div>
+        </section>
+    `;
 
     body.innerHTML = `
         <div class="page reliability-alpha-page">
           <section class="card reliability-alpha-card">
-            <div class="header">
-              <div class="user-main">
-                <div class="avatar">${getReliabilityAlphaAvatar(summary.display_name)}</div>
-                <div class="user-info">
-                  <div class="user-name">${window.escapeHTML(summary.display_name || window.t('reliabilityDashSummaryDefaultName', {}, lang))}</div>
-                  <div class="user-label">${window.escapeHTML(window.t('reliabilityDashSummaryUserLabel', { total: String(summary.completed_tests || 0), full: String(summary.completed_full_tests || 0), early: String(summary.completed_early_tests || 0) }, lang))}</div>
-                </div>
-              </div>
-              <div class="pill">${window.escapeHTML(activeProjectsPill)}</div>
-            </div>
-
             <div class="summary-grid">
-              <div class="summary-item reliability-highlight">
-                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityLabel', {}, lang))}</div>
+              <div class="summary-item reliability-highlight clickable-index-card" onclick="toggleReliabilityRules(event)">
+                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityLabel', {}, lang))} ℹ️</div>
                 <div class="summary-value">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityValue', { value: formatReliabilityIndex(summary.reliability_overall), status: overallStatus.label }, lang))}</div>
-                <div class="summary-extra">${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')}</div>
+                <div class="summary-extra" style="color: #4f9cff; font-weight: 500; text-decoration: underline;">
+                  ${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')} (нажмите для правил)
+                </div>
               </div>
 
               <div class="summary-item">
@@ -538,7 +508,10 @@ function renderReliabilityAlphaModal() {
               </div>
             </div>
 
-            <div class="tabs">
+            ${rulesPanelHtml}
+            ${influenceSectionHtml}
+
+            <div class="tabs" style="margin-top: 18px;">
               ${tabs.map(function(tab) {
                 return `<button type="button" class="tab ${_reliabilityDashboardFilter === tab.key ? 'active' : ''}" onclick="setReliabilityDashboardFilter('${tab.key}')">${window.escapeHTML(tab.label)}</button>`;
               }).join('')}
