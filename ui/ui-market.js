@@ -223,9 +223,10 @@ function getReliabilityAlphaStatusMeta(status) {
 }
 
 function getReliabilityAlphaProjectTabLabel(filterKey) {
+    if (filterKey === 'formula') return window.t('reliabilityDashTabFormula', {}, lang);
     if (filterKey === 'current') return window.t('reliabilityDashTabCurrent', {}, lang);
     if (filterKey === 'completed') return window.t('reliabilityDashTabCompleted', {}, lang);
-    if (filterKey === 'archive') return window.t('reliabilityDashTabArchive', {}, lang);
+    if (filterKey === 'guide') return window.t('reliabilityDashTabGuide', {}, lang);
     return window.t('reliabilityDashTabAll', {}, lang);
 }
 
@@ -236,6 +237,11 @@ function getReliabilityAlphaAvatar(name) {
 
 function getReliabilityAlphaProjects(filterKey, projects) {
     var list = Array.isArray(projects) ? projects.slice() : [];
+    if (filterKey === 'formula') {
+        return list.filter(function(project) {
+            return project.is_used_in_formula === true;
+        });
+    }
     if (filterKey === 'current') {
         return list.filter(function(project) {
             return String(project.leave_status || project.status || '').toLowerCase() === 'active';
@@ -244,15 +250,7 @@ function getReliabilityAlphaProjects(filterKey, projects) {
     if (filterKey === 'completed') {
         return list.filter(function(project) {
             var leaveStatus = String(project.leave_status || project.status || '').toLowerCase();
-            var participation = String(project.participation_type || '').toLowerCase();
-            return leaveStatus !== 'active' && participation !== 'abandoned' && participation !== 'unfair_kick';
-        });
-    }
-    if (filterKey === 'archive') {
-        return list.filter(function(project) {
-            var leaveStatus = String(project.leave_status || project.status || '').toLowerCase();
-            var participation = String(project.participation_type || '').toLowerCase();
-            return participation === 'abandoned' || participation === 'unfair_kick' || leaveStatus === 'kicked_by_owner' || leaveStatus === 'abandoned';
+            return leaveStatus !== 'active';
         });
     }
     return list;
@@ -395,10 +393,11 @@ function renderReliabilityAlphaModal() {
     }, lang);
     var activeProjectsPill = window.t('reliabilityDashActiveProjectsPill', { count: String(summary.active_projects_count || 0) }, lang);
     var tabs = [
+        { key: 'formula', label: getReliabilityAlphaProjectTabLabel('formula') },
         { key: 'all', label: getReliabilityAlphaProjectTabLabel('all') },
         { key: 'current', label: getReliabilityAlphaProjectTabLabel('current') },
         { key: 'completed', label: getReliabilityAlphaProjectTabLabel('completed') },
-        { key: 'archive', label: getReliabilityAlphaProjectTabLabel('archive') }
+        { key: 'guide', label: getReliabilityAlphaProjectTabLabel('guide') }
     ];
     var guideCardsHtml = [
         buildReliabilityAlphaGuideCard(
@@ -480,6 +479,28 @@ function renderReliabilityAlphaModal() {
         )
     ].join('');
 
+    var mainSectionHtml = '';
+    if (_reliabilityDashboardFilter === 'guide') {
+        mainSectionHtml = `
+            <section class="card reliability-alpha-card">
+              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashGuideSectionTitle', {}, lang))}</div>
+              <div class="guide-cards">
+                ${guideCardsHtml}
+              </div>
+            </section>
+        `;
+    } else {
+        mainSectionHtml = `
+            <section class="card reliability-alpha-card">
+              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</div>
+              <div class="section-copy">${window.escapeHTML(window.t('reliabilityDashProjectsHistoryHint', {}, lang))}</div>
+              <div class="projects-grid">
+                ${projectsHtml}
+              </div>
+            </section>
+        `;
+    }
+
     body.innerHTML = `
         <div class="page reliability-alpha-page">
           <section class="card reliability-alpha-card">
@@ -495,19 +516,18 @@ function renderReliabilityAlphaModal() {
             </div>
 
             <div class="summary-grid">
-              <div class="summary-item">
+              <div class="summary-item reliability-highlight">
                 <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityLabel', {}, lang))}</div>
                 <div class="summary-value">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityValue', { value: formatReliabilityIndex(summary.reliability_overall), status: overallStatus.label }, lang))}</div>
                 <div class="summary-extra">${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')}</div>
               </div>
-              <div class="summary-item">
-                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryKarmaLabel', {}, lang))}</div>
-                <div class="summary-value">${window.escapeHTML(formatKarmaValue(summary.karma))}</div>
-                <div class="summary-extra">${window.escapeHTML(window.t('reliabilityDashSummaryKarmaExtra', {}, lang))}</div>
-              </div>
+
               <div class="summary-item">
                 <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryGrantLabel', {}, lang))}</div>
-                <div class="summary-value">${window.escapeHTML(grant.has_grant ? formatReliabilityIndex(grant.amount_bust || 0) + ' $BUST' : window.t('reliabilityDashGrantEmptyShort', {}, lang))}</div>
+                <div class="summary-value">
+                  ${window.escapeHTML(grant.has_grant ? formatReliabilityIndex(grant.amount_bust || 0) + ' $BUST' : window.t('reliabilityDashGrantEmptyShort', {}, lang))}
+                  ${grant.has_grant ? `<span class="grant-diamond" style="margin-left:4px;">💎</span>` : ''}
+                </div>
                 <div class="summary-extra">${window.escapeHTML(grantText)}</div>
                 ${grant.has_grant ? `<div class="grant-badge">${window.escapeHTML(window.t('reliabilityDashSummaryGrantBadge', {}, lang))}</div>` : ''}
               </div>
@@ -518,8 +538,6 @@ function renderReliabilityAlphaModal() {
               </div>
             </div>
 
-            <div class="link-main" onclick="document.getElementById('reliability-alpha-guide').scrollIntoView({ behavior: 'smooth', block: 'start' })">${window.escapeHTML(window.t('reliabilityDashLinkMain', {}, lang))}</div>
-
             <div class="tabs">
               ${tabs.map(function(tab) {
                 return `<button type="button" class="tab ${_reliabilityDashboardFilter === tab.key ? 'active' : ''}" onclick="setReliabilityDashboardFilter('${tab.key}')">${window.escapeHTML(tab.label)}</button>`;
@@ -527,22 +545,7 @@ function renderReliabilityAlphaModal() {
             </div>
           </section>
 
-          <div class="layout-2">
-            <section class="card reliability-alpha-card" id="reliability-alpha-guide">
-              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</div>
-                            <div class="section-copy">${window.escapeHTML(window.t('reliabilityDashProjectsHistoryHint', {}, lang))}</div>
-              <div class="projects-grid">
-                ${projectsHtml}
-              </div>
-            </section>
-
-            <section class="card reliability-alpha-card">
-              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashGuideSectionTitle', {}, lang))}</div>
-                            <div class="guide-cards">
-                                ${guideCardsHtml}
-                            </div>
-            </section>
-          </div>
+          ${mainSectionHtml}
         </div>
     `;
 }
@@ -557,7 +560,7 @@ function openReliabilityAlphaModal() {
     var body = document.getElementById('reliability-alpha-body');
     if (!modal || !body) return;
 
-    _reliabilityDashboardFilter = 'all';
+    _reliabilityDashboardFilter = 'formula';
     body.innerHTML = buildReliabilityAlphaSkeleton();
     modal.classList.add('active');
 
@@ -586,7 +589,7 @@ function closeReliabilityDashboard(event) {
 }
 
 function setReliabilityDashboardFilter(filterKey) {
-    _reliabilityDashboardFilter = ['all', 'current', 'completed', 'archive'].indexOf(filterKey) >= 0 ? filterKey : 'all';
+    _reliabilityDashboardFilter = ['formula', 'all', 'current', 'completed', 'guide'].indexOf(filterKey) >= 0 ? filterKey : 'formula';
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     renderReliabilityAlphaModal();
 }
@@ -4312,12 +4315,7 @@ async function showKarmaInfo() {
 }
 
 function showReliabilityInfo() {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    document.getElementById('t-reliabilityInfoTitle').innerHTML = t.reliabilityInfoTitle;
-    document.getElementById('t-reliabilityInfoText').innerHTML = t.reliabilityInfoText;
-    document.getElementById('t-reliabilityAlphaBtn').innerText = t.reliabilityAlphaBtn;
-    document.getElementById('t-btnClose').innerText = t.btnClose;
-    document.getElementById('reliability-info-modal').classList.add('active');
+    openReliabilityAlphaModal();
 }
 
 function closeReliabilityInfo(event) {

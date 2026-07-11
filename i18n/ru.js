@@ -1407,6 +1407,7 @@
             reliabilityDashGrantKarmaMoment: "Карма в момент гранта",
             reliabilityDashGrantDate: "Дата: {value}",
             reliabilityDashTabProjects: "Проекты",
+            reliabilityDashTabFormula: "В расчете",
             reliabilityDashTabGuide: "Правила",
             reliabilityDashGuideRulesTitle: "Как считается индекс",
             reliabilityDashGuideRule1: "Берутся максимум 3 последних валидных проекта с минимум 7 днями участия и 3 чекинами.",

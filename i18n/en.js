@@ -1401,6 +1401,7 @@
             reliabilityDashGrantKarmaMoment: "Karma at grant time",
             reliabilityDashGrantDate: "Date: {value}",
             reliabilityDashTabProjects: "Projects",
+            reliabilityDashTabFormula: "In formula",
             reliabilityDashTabGuide: "Rules",
             reliabilityDashGuideRulesTitle: "How the index is calculated",
             reliabilityDashGuideRule1: "Up to 3 latest valid projects are used, each requiring at least 7 days of participation and 3 check-ins.",

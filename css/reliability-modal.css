@@ -129,11 +129,18 @@
 }
 
 #reliability-alpha-modal .summary-item {
-    padding: 10px 10px;
+    padding: 12px 14px;
     border-radius: 16px;
     background: rgba(7,10,28,0.95);
     border: 1px solid var(--border-strong);
     font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+#reliability-alpha-modal .summary-item.reliability-highlight {
+    background: linear-gradient(135deg, rgba(79, 156, 255, 0.12), rgba(7, 10, 28, 0.95));
+    border-color: rgba(79, 156, 255, 0.4);
+    box-shadow: 0 4px 20px rgba(79, 156, 255, 0.08);
 }
 
 #reliability-alpha-modal .summary-label {
@@ -193,12 +200,20 @@
 }
 
 #reliability-alpha-modal .tab {
-    padding: 6px 10px;
+    padding: 6px 14px;
     border-radius: 999px;
     border: 1px solid rgba(255,255,255,0.18);
     background: rgba(6,8,22,0.9);
     color: #9ea6c7;
     cursor: pointer;
+    font-weight: 500;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#reliability-alpha-modal .tab:hover {
+    color: #f5f7ff;
+    border-color: rgba(255,255,255,0.35);
+    background: rgba(12,16,36,0.95);
 }
 
 #reliability-alpha-modal .tab.active {
