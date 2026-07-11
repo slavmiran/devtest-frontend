@@ -1440,10 +1440,7 @@ function refreshLanguageUi() {
     renderChips('chips-instructions', 'app-instructions');
     renderChips('chips-edit-instructions', 'edit-description');
 
-    const toggleBtn = document.getElementById('events-toggle');
-    if (toggleBtn) {
-        toggleBtn.innerText = eventsExpanded ? window.t('pulseCollapse', {}, lang) : window.t('pulseExpand', {}, lang);
-    }
+
 
     const select = document.getElementById('attach-project-select');
     if (select && select.options.length > 0 && !select.value) {

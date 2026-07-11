@@ -1859,12 +1859,15 @@ input::placeholder,
     transform: scale(0.98);
 }
 
-.pulse-chat-tg-img {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    object-fit: cover;
+.pulse-chat-icon {
+    transform: rotate(-15deg);
+    transition: transform 0.2s;
+    color: var(--link-color);
     display: block;
+}
+
+.pulse-chat-link:hover .pulse-chat-icon {
+    transform: rotate(-15deg) translate(2px, -2px);
 }
 
 .archive-shell {
