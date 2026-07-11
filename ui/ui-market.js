@@ -348,6 +348,8 @@ function buildReliabilityAlphaProjectCard(project) {
           <div class="link-more">${window.escapeHTML(window.t('reliabilityDashProjectDetailsLink', {}, lang))}</div>
         </div>
     `;
+}
+
 var _showReliabilityRules = false;
 
 function toggleReliabilityRules(event) {
