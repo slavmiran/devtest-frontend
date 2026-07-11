@@ -5118,6 +5118,19 @@ var _dossierProjectsCache = {};
 var _dossierProfilesCache = {};
 
 function getDossierReliabilityState(profile) {
+    if (profile && typeof profile.reliability_index !== 'undefined' && profile.reliability_index !== null) {
+        var score = Number(profile.reliability_index);
+        var status = profile.reliability_status || 'newbie';
+        var isNewbie = (status === 'newbie');
+        return {
+            expected: Number(profile.total_expected_checkins || 0),
+            actual: Number(profile.total_actual_checkins || 0),
+            reliabilityPct: isNewbie ? 0 : Math.round(score),
+            reliabilityText: isNewbie ? window.t('dossierNewbie', {}, lang) : window.t('reliabilityDashStatus_' + status, {}, lang),
+            isNewbie: isNewbie
+        };
+    }
+
     var expected = Number(profile && profile.total_expected_checkins || 0);
     var actual = Number(profile && profile.total_actual_checkins || 0);
     var reliabilityPct = 0;
@@ -5136,6 +5149,7 @@ function getDossierReliabilityState(profile) {
         actual: actual,
         reliabilityPct: reliabilityPct,
         reliabilityText: reliabilityText,
+        isNewbie: expected < 42
     };
 }
 
@@ -5748,12 +5762,9 @@ async function openDossierModal(username, testerId, appId) {
     _dossierProfilesCache[String(testerId)] = Object.assign({}, profile, dossierOwnerProfile);
 
     const reliabilityState = getDossierReliabilityState(profile);
-    const expected = reliabilityState.expected;
-    const actual = reliabilityState.actual;
-    const reliabilityPct = reliabilityState.reliabilityPct;
-    const reliabilityText = reliabilityState.reliabilityText;
-    // Reliability row hidden in dossier global profile until calculation is fixed:
-    // expected >= 42 ? t.dossierReliability.replace('{pct}', reliabilityPct) + ' ' + reliabilityText : t.disciplineLabel + ' ' + t.dossierNewbie
+    const reliabilityLine = reliabilityState.isNewbie
+        ? `${t.disciplineLabel} ${reliabilityState.reliabilityText}`
+        : `${t.dossierReliability.replace('{pct}', String(reliabilityState.reliabilityPct))} (${reliabilityState.reliabilityText})`;
 
     const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
     const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
@@ -5773,6 +5784,7 @@ async function openDossierModal(username, testerId, appId) {
         <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
             ${t.dossierExperience.replace('{count}', profile.completed_tests)}
             <br>${t.dossierKarma.replace('{karma}', profile.karma)}
+            <br>${window.escapeHTML(reliabilityLine)}
             ${goldenCountText ? '<br><span class="golden-badge">' + window.escapeHTML(goldenCountText) + '</span>' : ''}
         </div>
     </div>`;

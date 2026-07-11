@@ -61,8 +61,21 @@ function renderProjects(force) {
     container.innerHTML = '';
 
     if (visibilityStats) {
-        const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
-        const reliabilityValue = reliability.percent !== null ? String(reliability.percent) : reliability.text;
+        let reliabilityValue = '';
+        let isNewbie = true;
+        let statusText = '';
+        if (typeof visibilityStats.reliability_index !== 'undefined' && visibilityStats.reliability_index !== null) {
+            const score = Number(visibilityStats.reliability_index);
+            const status = visibilityStats.reliability_status || 'newbie';
+            isNewbie = (status === 'newbie');
+            reliabilityValue = isNewbie ? window.t('reliabilityDashStatus_newbie', {}, lang) : String(Math.round(score));
+            statusText = isNewbie ? '' : window.t('reliabilityDashStatus_' + status, {}, lang);
+        } else {
+            const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
+            isNewbie = (reliability.percent === null);
+            reliabilityValue = isNewbie ? reliability.text : String(reliability.percent);
+            statusText = isNewbie ? '' : reliability.text;
+        }
         const goldenCount = Number(visibilityStats.golden_count || 0);
         const totalGrants = Number(visibilityStats.grant_tests_count || 0);
         const completedTests = Number(visibilityStats.completed_tests || 0);
@@ -92,7 +105,10 @@ function renderProjects(force) {
                             <span class="metric-label">${window.t('metricReliabilityV2', {}, lang)}</span>
                             <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${window.escapeHTML(reliabilityValue)}${reliability.percent !== null ? ' %' : ''} ${reliability.percent !== null ? '<span class="metric-value-mark">✓✓</span>' : ''}</div>
+                        <div class="metric-value">
+                            ${window.escapeHTML(reliabilityValue)}${!isNewbie ? ' %' : ''}
+                            ${statusText ? `<span class="metric-value-status" style="font-size: 11px; opacity: 0.85; font-weight: normal; margin-left: 4px;">(${window.escapeHTML(statusText)})</span>` : ''}
+                        </div>
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-gold" onclick="showKarmaInfo()">
                         <div class="metric-card-top">
