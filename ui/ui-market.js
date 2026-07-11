@@ -5,6 +5,9 @@ window.feedbackMediaRegistry = window.feedbackMediaRegistry || {};
 window.feedbackCaptionRegistry = window.feedbackCaptionRegistry || {};
 
 /* === Reliability / dossier / guest helpers (moved from ui-tests.js) === */
+var _showReliabilityRules = false;
+var _reliabilityDashboardFilter = 'formula';
+window._activeGrantIndex = 0;
 function getGuestProjectFreshness(createdAt) {
     const createdDate = parseLocalDateOnly(createdAt);
     const today = parseLocalDateOnly(getLocalDate());
@@ -389,6 +392,18 @@ function buildReliabilityAlphaProjectCard(project) {
     `;
 }
 
+window.toggleReliabilityRules = function(event) {
+    if (event) event.stopPropagation();
+    _showReliabilityRules = !_showReliabilityRules;
+    renderReliabilityAlphaModal();
+};
+
+window.selectActiveGrant = function(idx, event) {
+    if (event) event.stopPropagation();
+    window._activeGrantIndex = idx;
+    renderReliabilityAlphaModal();
+};
+
 function renderReliabilityAlphaModal() {
     var modal = document.getElementById('reliability-alpha-modal');
     var body = document.getElementById('reliability-alpha-body');
@@ -648,11 +663,11 @@ function closeReliabilityDashboard(event) {
     closeReliabilityAlphaModal(event);
 }
 
-function setReliabilityDashboardFilter(filterKey) {
+window.setReliabilityDashboardFilter = function(filterKey) {
     _reliabilityDashboardFilter = ['formula', 'all', 'current', 'completed', 'guide'].indexOf(filterKey) >= 0 ? filterKey : 'formula';
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     renderReliabilityAlphaModal();
-}
+};
 
 
 /* === Market / guest / external / modals (moved from ui.js) === */
