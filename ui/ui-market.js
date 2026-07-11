@@ -498,7 +498,7 @@ function renderReliabilityAlphaModal() {
             amount: formatReliabilityIndex(activeGrant.amount_bust || 0),
             base: formatReliabilityIndex(activeGrant.base_bonus || 0),
             perfect: formatReliabilityIndex(activeGrant.perfect_bonus || 0),
-            karma: formatKarmaValue(activeGrant.karma_at_moment || 0),
+            karma: formatReliabilityIndex(activeGrant.karma_at_moment || 0),
             karma_bonus: formatReliabilityIndex(activeGrant.karma_component || 0)
         }, lang);
 
