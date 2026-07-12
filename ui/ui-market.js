@@ -3792,7 +3792,14 @@ function getFeedbackAvgResponseMs(items) {
     (items || []).forEach(function(item) {
         if (isOpenFeedbackStatus(item && item.status)) return;
         const created = new Date(item.created_at);
-        const updated = new Date(item.replied_at || item.updated_at || '');
+        const updated = new Date(
+            item.processed_at ||
+            item.accepted_at ||
+            item.rejected_at ||
+            item.replied_at ||
+            item.updated_at ||
+            ''
+        );
         if (Number.isNaN(created.getTime()) || Number.isNaN(updated.getTime())) return;
         const diff = updated - created;
         if (diff <= 0 || Number.isNaN(diff)) return;
@@ -3827,10 +3834,13 @@ function buildFeedbackMicroSummaryHtml(item, isRejected) {
     const bust = Number((item && item.reward_bust) || 0);
     const karma = Number((item && item.reward_karma) || 0);
     const rewardParts = [];
-    if (bust > 0) rewardParts.push('+' + window.escapeHTML(String(bust)) + ' BUST');
-    if (karma > 0) rewardParts.push('+' + window.escapeHTML(karma.toFixed(1)) + ' ☯️');
+    if (bust > 0) rewardParts.push(window.escapeHTML(String(bust)) + ' BUST');
+    if (karma > 0) {
+        const karmaLabel = lang === 'ru' ? 'карма' : 'karma';
+        rewardParts.push(window.escapeHTML(karma.toFixed(1)) + ' ' + karmaLabel);
+    }
     const rewardHtml = rewardParts.length
-        ? (' <span class="fb-micro-sep">·</span> <span class="fb-micro-bust">' + rewardParts.join(' ') + '</span>')
+        ? (' <span class="fb-micro-sep">·</span> <span class="fb-micro-bust">' + rewardParts.join(' <span class="fb-micro-sep">·</span> ') + '</span>')
         : '';
     return '<span class="fb-micro-ok">✔ ' + window.escapeHTML(window.t('feedbackAcceptedLabel', {}, lang) || 'Accepted') + '</span>' +
         ' <span class="fb-micro-sep">·</span> ' + when + rewardHtml;
@@ -3946,7 +3956,6 @@ function getProjectFeedbackHeader(project, items) {
     const donePct = totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
     const avgResponseMs = getFeedbackAvgResponseMs(items);
     const avgResponseText = formatFeedbackAvgResponseHours(avgResponseMs);
-    const hasSpeed = avgResponseMs > 0;
     const typeFilter = _projectFeedbackTypeFilter || 'all';
     const statusFilter = _projectFeedbackStatusFilter || 'all';
     const onlyUnprocessed = statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open';
@@ -3967,7 +3976,7 @@ function getProjectFeedbackHeader(project, items) {
                 ${renderIcon((project && (project.name || project.package_name)) || '', project && project.icon_url)}
                 <div class="card-info">
                     <div class="card-title notranslate">${safeName}</div>
-                    <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}</div>
+                    <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}${openCount > 0 ? ' · ' + openCount : ''}</div>
                 </div>
             </div>
 
@@ -3980,18 +3989,17 @@ function getProjectFeedbackHeader(project, items) {
                     <span class="feedback-stat-value">${processedCount}</span>
                     <span class="feedback-stat-label">${doneLabel}</span>
                 </div>
-                ${hasSpeed ? `
-                <div class="feedback-stat feedback-stat--muted">
+                <div class="feedback-stat feedback-stat--muted" title="${window.escapeHTML(speedLabel)}">
                     <span class="feedback-stat-value">${window.escapeHTML(avgResponseText)}</span>
                     <span class="feedback-stat-label">${speedLabel}</span>
-                </div>` : ''}
+                </div>
                 <div class="feedback-progress" role="progressbar" aria-valuenow="${donePct}" aria-valuemin="0" aria-valuemax="100">
                     <div class="feedback-progress-fill" style="width:${donePct}%"></div>
                 </div>
             </div>
 
             <div class="feedback-inbox-bar">
-                <span class="feedback-inbox-hint">${openCount === 0 ? allClearLabel : ''}</span>
+                <span class="feedback-inbox-hint">${openCount === 0 ? allClearLabel : (lang === 'ru' ? 'Входящие' : 'Inbox')}</span>
                 <label class="feedback-unprocessed-toggle">
                     <input type="checkbox" ${onlyUnprocessed ? 'checked' : ''} onchange="toggleFeedbackUnprocessedOnly(this.checked)">
                     <span>${window.escapeHTML(unprocessedLabel)}</span>
@@ -4117,7 +4125,7 @@ function updateProjectFeedbackFilteredEmptyState(visibleCount, totalCount) {
 function applyProjectFeedbackFilters() {
     var cards = cacheProjectFeedbackCards();
     var typeFilter = _projectFeedbackTypeFilter || 'all';
-    var statusFilter = _projectFeedbackStatusFilter || 'new';
+    var statusFilter = _projectFeedbackStatusFilter || 'all';
     var visibleCount = 0;
 
     for (var i = 0; i < cards.length; i++) {
@@ -4374,8 +4382,8 @@ function renderProjectFeedbackCards(project, items) {
                 : '';
 
             const discussButtonHtml = hasTopicLink
-                ? `<button type="button" class="fb-icon-btn" onclick="openFeedbackTopicLink(${item.telegram_message_id}, '${safeUsername}')" aria-label="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}">
-                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
+                ? `<button type="button" class="fb-icon-btn fb-icon-btn--topic" onclick="openFeedbackTopicLink(${item.telegram_message_id}, '${safeUsername}')" aria-label="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}" title="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2C6.48 2 2 6.04 2 11c0 2.53 1.2 4.81 3.11 6.4L4 22l5.09-2.02C10.01 20.32 10.98 20.5 12 20.5c5.52 0 10-4.04 10-9.5S17.52 2 12 2zm0 15.5c-.8 0-1.56-.14-2.27-.39l-.52-.19-1.72.68.48-1.63-.34-.36C6.24 14.53 5.5 12.84 5.5 11c0-3.58 2.91-6.5 6.5-6.5s6.5 2.92 6.5 6.5-2.91 6.5-6.5 6.5z"/></svg>
                    </button>`
                 : '';
 
@@ -4426,8 +4434,10 @@ function renderProjectFeedbackCards(project, items) {
             else if (feedbackType === 'idea') cardTypeClass = 'fb-card--idea';
             else if (feedbackType === 'question') cardTypeClass = 'fb-card--question';
 
-            const stateClass = isOpen ? ' fb-card--collapsed' : ' fb-card--processed';
-            const cardMod = (isOpen ? ' fb-card--new' : '') + (isRejected ? ' fb-card--rejected' : '');
+            const stateClass = isOpen
+                ? ' fb-card--collapsed fb-card--new'
+                : ' fb-card--collapsed fb-card--processed';
+            const cardMod = isRejected ? ' fb-card--rejected' : '';
 
             return `<div class="fb-card ${cardTypeClass}${cardMod}${stateClass}" data-feedback-id="${item.id}" data-feedback-type="${feedbackType}" data-feedback-status="${window.escapeHTML(feedbackStatus)}" onclick="toggleFeedbackCardCollapse(this, event)">
                 <div class="fb-inbox-row">
@@ -4802,14 +4812,15 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
     if (!safeId) return;
 
     var card = document.querySelector('.fb-card[data-feedback-id="' + String(safeId) + '"]');
-    var statusFilter = _projectFeedbackStatusFilter || 'new';
+    var statusFilter = _projectFeedbackStatusFilter || 'all';
     var rewardBust = Number((extra && extra.reward_bust) || 0);
+    var rewardKarma = Number((extra && extra.reward_karma) || 0);
     var rejectionReason = String((extra && extra.rejection_reason) || '').trim();
 
     if (card) {
         if (statusFilter === 'all') {
-            card.classList.remove('fb-card--collapsed', 'fb-card--expanded', 'fb-card--new');
-            card.classList.add('fb-card--processed', 'fb-card--optimistic-flash');
+            card.classList.remove('fb-card--expanded', 'fb-card--new');
+            card.classList.add('fb-card--processed', 'fb-card--collapsed', 'fb-card--optimistic-flash');
             if (nextStatus === 'rejected') {
                 card.classList.add('fb-card--rejected');
             } else {
@@ -4821,14 +4832,17 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
             if (micro) {
                 var synthetic = {
                     replied_at: new Date().toISOString(),
+                    processed_at: new Date().toISOString(),
                     reward_bust: rewardBust,
+                    reward_karma: rewardKarma,
                     rejection_reason: rejectionReason
                 };
                 micro.innerHTML = buildFeedbackMicroSummaryHtml(synthetic, nextStatus === 'rejected');
             }
 
-            var chevron = card.querySelector('.fb-chevron');
-            if (chevron) chevron.remove();
+            // Processed cards must not keep Accept/Reject controls.
+            var decide = card.querySelector('.fb-toolbar-decide');
+            if (decide) decide.remove();
         } else {
             card.classList.add('fb-card--optimistic-out');
             card.style.maxHeight = card.scrollHeight + 'px';
@@ -4856,6 +4870,9 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
                         item.rejection_reason = rejectionReason;
                     }
                     if (rewardBust > 0) item.reward_bust = rewardBust;
+                    if (rewardKarma > 0) item.reward_karma = rewardKarma;
+                    item.processed_at = new Date().toISOString();
+                    item.replied_at = item.processed_at;
                 }
                 return item;
             });

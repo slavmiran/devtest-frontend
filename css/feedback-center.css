@@ -1019,6 +1019,12 @@
 .fb-card.fb-card--processed .fb-footer {
     display: none !important;
 }
+.fb-card.fb-card--processed.fb-card--expanded .fb-body {
+    display: flex !important;
+}
+.fb-card.fb-card--processed.fb-card--expanded .fb-footer {
+    display: flex !important;
+}
 .fb-card.fb-card--processed .fb-header {
     gap: 8px;
 }
@@ -1040,10 +1046,12 @@
     margin-left: auto;
     padding-left: 8px;
 }
+/* Collapsed / default = chevron points down (ready to expand). */
+.fb-chevron,
 .fb-card--collapsed .fb-chevron {
     transform: rotate(0deg);
 }
-.fb-card:not(.fb-card--collapsed) .fb-chevron {
+.fb-card--expanded .fb-chevron {
     transform: rotate(180deg);
 }
 
@@ -1679,6 +1687,10 @@
 
 #project-feedback-body .fb-card--collapsed .fb-chevron { transform: rotate(0deg); }
 #project-feedback-body .fb-card--expanded .fb-chevron { transform: rotate(180deg); }
+/* Override legacy rule that flipped chevrons on any non-collapsed card. */
+#project-feedback-body .fb-card:not(.fb-card--collapsed):not(.fb-card--expanded) .fb-chevron {
+    transform: rotate(0deg);
+}
 
 /* Detail accordion */
 #project-feedback-body .fb-detail {
@@ -1748,8 +1760,11 @@
 #project-feedback-body .fb-card--processed.fb-card--expanded .fb-micro-line {
     color: var(--text-primary, #f4f6f8);
 }
-#project-feedback-body .fb-card--processed.fb-card--expanded {
-    opacity: 1;
+#project-feedback-body .fb-card--processed.fb-card--expanded .fb-body {
+    display: flex !important;
+}
+#project-feedback-body .fb-card--processed.fb-card--expanded .fb-toolbar-decide {
+    display: none !important;
 }
 
 #project-feedback-body .fb-card--processed.fb-card--rejected {
@@ -2059,4 +2074,20 @@
 .feedback-image-overlay .fb-slider-image.is-zoomed {
     cursor: grab;
     transition: none;
+}
+
+/* Topic discuss button accent */
+#project-feedback-body .fb-icon-btn--topic {
+    color: var(--accent-primary, #4c8dff);
+    border-color: rgba(76, 141, 255, 0.28);
+    background: rgba(76, 141, 255, 0.1);
+}
+#project-feedback-body .fb-card--processed.fb-card--expanded {
+    opacity: 1;
+}
+#project-feedback-body .feedback-inbox-hint {
+    min-width: 0;
+}
+#project-feedback-body .feedback-inbox-bar {
+    justify-content: space-between;
 }
