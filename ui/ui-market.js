@@ -4050,12 +4050,14 @@ function renderProjectFeedbackCards(project, items) {
         let nameHtml = '';
         let subHtml = '';
         if (fullName) {
-            nameHtml = `<span class="fb-name notranslate">${fullName}</span>`;
             if (username) {
-                subHtml = `<a href="javascript:void(0);" class="fb-username notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
+                nameHtml = `<a href="javascript:void(0);" class="fb-name-link notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">${fullName}</a>`;
+                subHtml = `<a href="javascript:void(0);" class="fb-username notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">💬 @${window.escapeHTML(username)}</a>`;
+            } else {
+                nameHtml = `<span class="fb-name notranslate">${fullName}</span>`;
             }
         } else if (username) {
-            nameHtml = `<a href="javascript:void(0);" class="fb-name-link notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
+            nameHtml = `<a href="javascript:void(0);" class="fb-name-link notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">💬 @${window.escapeHTML(username)}</a>`;
         } else {
             nameHtml = `<span class="fb-name notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
         }
@@ -4176,7 +4178,6 @@ function renderProjectFeedbackCards(project, items) {
 
         // ── Footer action line ──
         var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
-        const hasDm = !!username;
 
         const copyButtonHtml = (!isReviewTicket && (item.message_text || deviceInfoHtml))
             ? `<button type="button" class="fb-action-btn fb-action-btn--copy" onclick="copyFeedbackCardContent(${item.id}, ${projectId})" aria-label="${window.escapeHTML(window.t('feedbackCopyBtn', {}, lang))}">
@@ -4184,31 +4185,37 @@ function renderProjectFeedbackCards(project, items) {
                </button>`
             : '';
 
-        const dmButtonHtml = hasDm
-            ? `<button class="fb-action-btn fb-action-btn--dm" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">
-                   💬 ${window.escapeHTML(window.t('feedbackDmBtn', {}, lang) || 'DM').replace('👤 ', '')}
-               </button>`
-            : '';
-
         const topicButtonHtml = hasTopicLink
-            ? `<button class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${item.telegram_message_id})">
+            ? `<button class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${item.telegram_message_id}, '${safeUsername}')">
                    📌 ${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}
                </button>`
             : '';
 
-        const thankCloseButtonHtml = isOpen
-            ? `<button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">
-                   ${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang) || '🎁 Thank & close')}
-               </button>`
-            : '';
+        // Bug/Idea: Accept + Reject. Play review: Thank & close + Reject review.
+        let decideButtonsHtml = '';
+        if (isOpen && isReviewTicket) {
+            decideButtonsHtml = `
+                <div class="fb-actions-decide">
+                    <button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">
+                        ${window.escapeHTML(window.t('projectFeedbackThankCloseBtn', {}, lang) || window.t('projectFeedbackRewardBtn', {}, lang) || 'Accept')}
+                    </button>
+                    <button class="fb-action-btn fb-action-btn--reject" onclick="openPlayReviewRejectModal(${item.id}, ${projectId}, this)">
+                        ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
+                    </button>
+                </div>`;
+        } else if (isOpen) {
+            decideButtonsHtml = `
+                <div class="fb-actions-decide">
+                    <button class="fb-action-btn fb-action-btn--primary fb-action-btn--accept" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">
+                        ${window.escapeHTML(window.t('feedbackAcceptBtn', {}, lang) || 'Accept')}
+                    </button>
+                    <button class="fb-action-btn fb-action-btn--reject" onclick="openFeedbackRejectModal(${item.id}, ${projectId}, this)">
+                        ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
+                    </button>
+                </div>`;
+        }
 
-        const rejectButtonHtml = (isOpen && isReviewTicket)
-            ? `<button class="fb-action-btn fb-action-btn--reject" onclick="openPlayReviewRejectModal(${item.id}, ${projectId}, this)">
-                   ❌ ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
-               </button>`
-            : '';
-
-        const hasFooter = copyButtonHtml || dmButtonHtml || topicButtonHtml || thankCloseButtonHtml || rejectButtonHtml;
+        const hasFooter = copyButtonHtml || topicButtonHtml || decideButtonsHtml;
         const cardMod = (isOpen ? ' fb-card--new' : '') + (isRejected ? ' fb-card--rejected' : '');
         let cardTypeClass = 'fb-card--general';
         if (isReviewTicket) {
@@ -4221,7 +4228,7 @@ function renderProjectFeedbackCards(project, items) {
             cardTypeClass = 'fb-card--question';
         }
 
-        return `<div class="fb-card ${cardTypeClass}${cardMod}" data-feedback-type="${feedbackType}" data-feedback-status="${window.escapeHTML(feedbackStatus)}">
+        return `<div class="fb-card ${cardTypeClass}${cardMod}" data-feedback-id="${item.id}" data-feedback-type="${feedbackType}" data-feedback-status="${window.escapeHTML(feedbackStatus)}">
             ${headerHtml}
             <div class="fb-body">
                 ${mediaHtml}
@@ -4230,7 +4237,7 @@ function renderProjectFeedbackCards(project, items) {
                 ${rewardHtml}
                 ${replyHtml}
             </div>
-            ${hasFooter ? `<div class="fb-footer"><div class="fb-actions-group-left">${copyButtonHtml}${dmButtonHtml}${topicButtonHtml}</div><div class="fb-actions-group-right">${thankCloseButtonHtml}${rejectButtonHtml}</div></div>` : ''}
+            ${hasFooter ? `<div class="fb-footer"><div class="fb-actions-group-left">${copyButtonHtml}${topicButtonHtml}</div><div class="fb-actions-group-right">${decideButtonsHtml}</div></div>` : ''}
         </div>`;
     }).join('')}</div>`;
 }
@@ -4368,22 +4375,178 @@ function renderFeedbackImageSlider() {
     document.addEventListener('keydown', _feedbackSliderKeyHandler);
 }
 
-function openFeedbackTopicLink(telegramMessageId) {
+function openFeedbackTopicLink(telegramMessageId, username) {
     if (!telegramMessageId) return;
-    var groupId = (window.App && window.App.frontendGroupId) || '';
-    var url;
-    if (groupId) {
-        url = 'https://t.me/c/' + groupId + '/' + telegramMessageId;
+    var cleanUsername = String(username || '').replace(/^@+/, '').trim();
+    var mentionText = window.t('feedbackTopicMentionTemplate', {
+        username: cleanUsername || 'user',
+    }, lang);
+    var openLink = function() {
+        var groupId = (window.App && window.App.frontendGroupId) || '';
+        var url;
+        if (groupId) {
+            url = 'https://t.me/c/' + groupId + '/' + telegramMessageId;
+        } else {
+            var base = (window.FEEDBACK_PUBLIC_LINK_BASE || (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
+            url = base + '/' + telegramMessageId;
+        }
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
+            window.Telegram.WebApp.openTelegramLink(url);
+        } else {
+            window.open(url, '_blank');
+        }
+    };
+
+    var afterCopy = function() {
+        if (typeof showToast === 'function') {
+            showToast(window.t('feedbackTopicMentionCopiedToast', {}, lang));
+        }
+        setTimeout(openLink, 250);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(mentionText).then(afterCopy).catch(function() {
+            afterCopy();
+        });
     } else {
-        var base = (window.FEEDBACK_PUBLIC_LINK_BASE || (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
-        url = base + '/' + telegramMessageId;
-    }
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
-        window.Telegram.WebApp.openTelegramLink(url);
-    } else {
-        window.open(url, '_blank');
+        afterCopy();
     }
 }
+
+var _feedbackRejectState = {
+    feedbackId: 0,
+    projectId: 0,
+    btnEl: null,
+    reason: '',
+};
+
+function openFeedbackRejectModal(feedbackId, projectId, btnEl) {
+    _feedbackRejectState = {
+        feedbackId: Number(feedbackId || 0),
+        projectId: Number(projectId || 0),
+        btnEl: btnEl || null,
+        reason: '',
+    };
+    var modal = document.getElementById('feedback-reject-modal');
+    if (!modal) return;
+    document.querySelectorAll('.feedback-reject-chip').forEach(function(chip) {
+        chip.classList.remove('is-active');
+    });
+    var submitBtn = document.getElementById('feedback-reject-submit-btn');
+    if (submitBtn) submitBtn.disabled = true;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    modal.classList.add('active');
+}
+
+function closeFeedbackRejectModal(event) {
+    if (event && event.target && event.target.id !== 'feedback-reject-modal') return;
+    var modal = document.getElementById('feedback-reject-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function selectFeedbackRejectReason(reason) {
+    _feedbackRejectState.reason = String(reason || '').trim().toLowerCase();
+    document.querySelectorAll('.feedback-reject-chip').forEach(function(chip) {
+        var chipReason = String(chip.getAttribute('data-reason') || '');
+        chip.classList.toggle('is-active', chipReason === _feedbackRejectState.reason);
+    });
+    var submitBtn = document.getElementById('feedback-reject-submit-btn');
+    if (submitBtn) submitBtn.disabled = !_feedbackRejectState.reason;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+
+function _markFeedbackCardRejected(feedbackId) {
+    var card = document.querySelector('.fb-card[data-feedback-id="' + String(feedbackId) + '"]');
+    if (!card) return;
+    card.classList.remove('fb-card--new');
+    card.classList.add('fb-card--rejected');
+    card.setAttribute('data-feedback-status', 'rejected');
+    var statusEl = card.querySelector('.fb-status-badge, .fb-status');
+    if (statusEl) {
+        statusEl.textContent = window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected';
+        statusEl.classList.remove('fb-status--new', 'fb-status-badge--new', 'fb-status-badge--closed');
+        statusEl.classList.add('fb-status-badge--declined');
+    }
+    var decideRow = card.querySelector('.fb-actions-decide');
+    if (decideRow) decideRow.remove();
+    var badgeNew = card.querySelector('.fb-avatar-badge-new');
+    if (badgeNew) badgeNew.remove();
+    // Hide from "New/pending" filter if active
+    if (typeof applyProjectFeedbackFilters === 'function') {
+        applyProjectFeedbackFilters();
+    }
+}
+
+async function confirmFeedbackReject() {
+    var reason = _feedbackRejectState.reason;
+    if (!reason) {
+        if (typeof showToast === 'function') {
+            showToast(window.t('feedbackRejectNeedReasonToast', {}, lang));
+        }
+        return;
+    }
+    var feedbackId = Number(_feedbackRejectState.feedbackId || 0);
+    var projectId = Number(_feedbackRejectState.projectId || 0);
+    if (!feedbackId) return;
+
+    var submitBtn = document.getElementById('feedback-reject-submit-btn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.6';
+    }
+
+    var userIdLocal = (window.App && window.App.userId) || window.userId || 0;
+    try {
+        var apiBase = (window.App && window.App.API_BASE) || API_BASE || '';
+        var resp = await fetch(apiBase + '/feedback/' + feedbackId + '/reject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner_id: Number(userIdLocal),
+                reason: reason,
+            }),
+        });
+        var data = await resp.json();
+        if (data && data.status === 'success') {
+            closeFeedbackRejectModal();
+            _markFeedbackCardRejected(feedbackId);
+            if (typeof showToast === 'function') {
+                showToast(window.t('feedbackRejectSuccessToast', {}, lang));
+            }
+            if (typeof loadProjects === 'function') {
+                try { await loadProjects(true); } catch (_) { /* ignore */ }
+            }
+            if (Array.isArray(window._activeProjectFeedbackItems)) {
+                window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.map(function(item) {
+                    if (Number(item.id) !== feedbackId) return item;
+                    return Object.assign({}, item, { status: 'rejected', rejection_reason: reason });
+                });
+            }
+            if (projectId && typeof openProjectFeedback === 'function') {
+                // Keep modal open; card already updated locally.
+            }
+        } else {
+            var msg = (data && (data.message || data.code)) ? (data.message || data.code) : 'Reject failed';
+            if (typeof showToast === 'function') showToast(String(msg));
+            else if (window.tg && window.tg.showAlert) window.tg.showAlert(String(msg));
+            else alert(msg);
+        }
+    } catch (e) {
+        console.error('confirmFeedbackReject error:', e);
+        if (typeof showToast === 'function') showToast(window.t('networkError', {}, lang) || 'Network error');
+        else alert('Network error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = !_feedbackRejectState.reason;
+            submitBtn.style.opacity = '1';
+        }
+    }
+}
+
+window.openFeedbackRejectModal = openFeedbackRejectModal;
+window.closeFeedbackRejectModal = closeFeedbackRejectModal;
+window.selectFeedbackRejectReason = selectFeedbackRejectReason;
+window.confirmFeedbackReject = confirmFeedbackReject;
 
 function showProjectFeedbackModalLoading(project) {
     const body = document.getElementById('project-feedback-body');
@@ -7352,6 +7515,10 @@ Object.assign(window, {
     feedbackSliderStep,
     feedbackSliderGoTo,
     openFeedbackTopicLink,
+    openFeedbackRejectModal,
+    closeFeedbackRejectModal,
+    selectFeedbackRejectReason,
+    confirmFeedbackReject,
     feedbackExpandText,
     feedbackOnImageError,
     submitPlayReview,

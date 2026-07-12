@@ -1147,6 +1147,29 @@
     gap: 8px;
     flex-wrap: wrap;
 }
+.fb-actions-group-right {
+    flex: 1 1 100%;
+    width: 100%;
+}
+.fb-actions-decide {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    align-items: stretch;
+}
+.fb-actions-decide .fb-action-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 36px;
+}
+.fb-action-btn--accept {
+    background-color: rgba(52, 199, 89, 0.18) !important;
+    color: var(--success, #30d158) !important;
+    border: 1px solid rgba(52, 199, 89, 0.28) !important;
+}
+.fb-action-btn--accept:hover {
+    background-color: rgba(52, 199, 89, 0.26) !important;
+}
 .fb-action-btn {
     display: inline-flex;
     align-items: center;
