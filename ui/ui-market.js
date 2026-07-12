@@ -669,6 +669,23 @@ function getLangBadge(targetLang) {
     return '';
 }
 
+function formatAvgHandleHoursLabel(hours) {
+    const n = Number(hours);
+    if (!Number.isFinite(n) || n < 0) return null;
+    if (Math.abs(n - Math.round(n)) < 0.05) return String(Math.round(n));
+    return n.toFixed(1).replace(/\.0$/, '');
+}
+
+function renderOwnerSlaChip(hours) {
+    const label = formatAvgHandleHoursLabel(hours);
+    if (label == null) return '';
+    const n = Number(hours);
+    if (n > 72) {
+        return `<span class="meta-chip accent-orange" title="${window.escapeHTML(window.t('marketOwnerSlaChip', { hours: label }, lang))}">${window.escapeHTML(window.t('marketOwnerSlaRareChip', {}, lang))}</span>`;
+    }
+    return `<span class="meta-chip">${window.escapeHTML(window.t('marketOwnerSlaChip', { hours: label }, lang))}</span>`;
+}
+
 function renderFeedCard(item, kind) {
     const ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(item.owner_full_name, item.owner_username, item.owner_id));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
@@ -685,6 +702,7 @@ function renderFeedCard(item, kind) {
     const kindChip = kind === 'mutual-prelaunch'
         ? `<span class="meta-chip accent-blue">${window.t('tabPreLaunch', {}, lang)}</span>`
         : '';
+    const ownerSlaChip = renderOwnerSlaChip(item.owner_avg_handle_hours);
     const testerChipCount = kind === 'bounty'
         ? Number(item.bounty_testers_count || 0)
         : Number(item.mutual_testers_count || 0);
@@ -771,9 +789,10 @@ function renderFeedCard(item, kind) {
                     <div class="card-title notranslate">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
                     <div class="market-owner notranslate" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center;">
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
                     ${langBadge}
                     <span class="meta-chip accent-yellow">☯️ ${item.owner_karma || 0}</span>
+                    ${ownerSlaChip}
                 </div>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
@@ -6382,12 +6401,34 @@ async function openDossierModal(username, testerId, appId) {
     const goldenCountText = (profile.golden_count || 0) > 0
         ? window.t('dossierGoldenCount', { count: profile.golden_count })
         : '';
+    const acceptanceRateRaw = profile.acceptance_rate_pct;
+    const acceptanceRateNum = acceptanceRateRaw == null || acceptanceRateRaw === ''
+        ? null
+        : Number(acceptanceRateRaw);
+    const qualityLine = (acceptanceRateNum != null && Number.isFinite(acceptanceRateNum))
+        ? window.t('dossierReportQuality', {
+            pct: Number.isInteger(acceptanceRateNum)
+                ? String(acceptanceRateNum)
+                : acceptanceRateNum.toFixed(1).replace(/\.0$/, ''),
+        }, lang)
+        : '';
+    const hasOwnedApps = !!profile.has_owned_apps;
+    const slaHoursLabel = formatAvgHandleHoursLabel(profile.avg_handle_hours);
+    let ownerSlaLine = '';
+    if (hasOwnedApps && slaHoursLabel != null) {
+        ownerSlaLine = window.t('dossierOwnerSla', { hours: slaHoursLabel }, lang);
+        if (Number(profile.avg_handle_hours) > 72) {
+            ownerSlaLine += ' · ' + window.t('dossierOwnerSlaRare', {}, lang);
+        }
+    }
     html += `<div style="margin-bottom: 16px;">
         <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierGlobalTitle}</div>
         <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
             ${t.dossierExperience.replace('{count}', profile.completed_tests)}
             <br>${t.dossierKarma.replace('{karma}', profile.karma)}
             <br>${window.escapeHTML(reliabilityLine)}
+            ${qualityLine ? '<br>' + window.escapeHTML(qualityLine) : ''}
+            ${ownerSlaLine ? '<br>' + window.escapeHTML(ownerSlaLine) : ''}
             ${goldenCountText ? '<br><span class="golden-badge">' + window.escapeHTML(goldenCountText) + '</span>' : ''}
         </div>
     </div>`;
