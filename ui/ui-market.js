@@ -4415,9 +4415,6 @@ function _renderContributionModal(data) {
     const bugsEl = document.getElementById('contribution-bugs-count');
     const ideasEl = document.getElementById('contribution-ideas-count');
     const reviewsEl = document.getElementById('contribution-reviews-count');
-    const summaryBugsEl = document.getElementById('contribution-summary-bugs');
-    const summaryIdeasEl = document.getElementById('contribution-summary-ideas');
-    const summaryReviewsEl = document.getElementById('contribution-summary-reviews');
 
     const score = Math.round(Number((data && data.contribution_score) || 0));
     const bugs = Math.round(Number((data && data.bugs_count) || 0));
@@ -4428,15 +4425,6 @@ function _renderContributionModal(data) {
     if (bugsEl) bugsEl.textContent = String(bugs);
     if (ideasEl) ideasEl.textContent = String(ideas);
     if (reviewsEl) reviewsEl.textContent = String(reviews);
-    if (summaryBugsEl) {
-        summaryBugsEl.textContent = window.t('contributionSummaryBugs', { count: bugs }, lang);
-    }
-    if (summaryIdeasEl) {
-        summaryIdeasEl.textContent = window.t('contributionSummaryIdeas', { count: ideas }, lang);
-    }
-    if (summaryReviewsEl) {
-        summaryReviewsEl.textContent = window.t('contributionSummaryReviews', { count: reviews }, lang);
-    }
 }
 
 async function showContributionInfo() {
