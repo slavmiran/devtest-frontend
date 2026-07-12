@@ -2046,9 +2046,11 @@ async function submitFeedbackReward() {
         showToast(window.t('feedbackRewardSuccessToast', {}, lang));
         var processedFeedbackId = Number(_feedbackRewardTargetId || 0);
         closeFeedbackRewardModal();
-        // Optimistic UI: drop the card immediately; refresh badges in background.
         if (typeof window.removeFeedbackCardOptimistic === 'function') {
             window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted');
+        }
+        if (typeof window.triggerFeedbackAutoAdvance === 'function') {
+            window.triggerFeedbackAutoAdvance(processedFeedbackId);
         } else if (typeof loadProjects === 'function') {
             Promise.resolve()
                 .then(function() { return loadProjects(true); })
@@ -2788,6 +2790,169 @@ function updateIconPreview(inputId, previewId) {
     preview.src = url;
     preview.style.display = 'block';
 }
+
+let _feedbackAcceptLongPressTimeout = null;
+let _feedbackAcceptLongPressActive = false;
+let _feedbackAcceptLongPressStart = 0;
+
+function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
+    if (event.type === 'touchstart') {
+        // do not scroll/zoom
+    }
+    if (_feedbackAcceptLongPressActive) return;
+    
+    _feedbackAcceptLongPressActive = true;
+    _feedbackAcceptLongPressStart = Date.now();
+    
+    const progressEl = btnEl.querySelector('.fb-btn-accept-progress');
+    if (progressEl) {
+        progressEl.style.transition = 'width 0.8s linear';
+        progressEl.getBoundingClientRect(); // force reflow
+        progressEl.style.width = '100%';
+    }
+    
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+
+    _feedbackAcceptLongPressTimeout = setTimeout(async function() {
+        _feedbackAcceptLongPressActive = false;
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        } else if (navigator.vibrate) {
+            navigator.vibrate([20, 50, 20]);
+        }
+        
+        await submitQuickFeedbackAccept(feedbackId, projectId, btnEl);
+        
+        if (progressEl) {
+            progressEl.style.transition = 'none';
+            progressEl.style.width = '0';
+        }
+    }, 800);
+}
+
+function cancelFeedbackAcceptLongPress(btnEl, event) {
+    if (!_feedbackAcceptLongPressActive) return;
+    _feedbackAcceptLongPressActive = false;
+    
+    clearTimeout(_feedbackAcceptLongPressTimeout);
+    
+    const progressEl = btnEl.querySelector('.fb-btn-accept-progress');
+    if (progressEl) {
+        progressEl.style.transition = 'width 0.15s ease-out';
+        progressEl.style.width = '0';
+    }
+}
+
+function handleFeedbackAcceptClick(projectId, feedbackId, btnEl, event) {
+    const duration = Date.now() - _feedbackAcceptLongPressStart;
+    if (duration >= 800) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        return;
+    }
+    
+    cancelFeedbackAcceptLongPress(btnEl, event);
+    openFeedbackRewardModal(projectId, feedbackId);
+}
+
+async function submitQuickFeedbackAccept(feedbackId, projectId, btnEl) {
+    const activeProject = myProjects.find(function(p) { return Number(p.id) === Number(projectId); }) || 
+                       archivedProjects.find(function(p) { return Number(p.app_id) === Number(projectId); }) || null;
+    const itemsList = window._activeProjectFeedbackItems || [];
+    const item = itemsList.find(function(i) { return Number(i.id) === Number(feedbackId); }) || null;
+    
+    var isKarmaAvailable = item ? (item.project_karma_available !== false) : true;
+    var isTesterAlreadyRewarded = item ? !!item.tester_already_rewarded_karma : false;
+    var likesUsed = (activeProject && activeProject.likes_used) || 0;
+    var likesMax = (activeProject && activeProject.likes_max) || 1;
+    var remaining = Math.max(0, likesMax - likesUsed);
+    
+    var targetKarma = 1.5;
+    if (!isKarmaAvailable || isTesterAlreadyRewarded || remaining <= 0) {
+        targetKarma = 0;
+    }
+    
+    const defaultBust = 10;
+    var balance = (visibilityStats && visibilityStats.balance_bust) || 0;
+    const targetBust = balance >= defaultBust ? defaultBust : 0;
+    
+    if (typeof window.removeFeedbackCardOptimistic === 'function') {
+        window.removeFeedbackCardOptimistic(feedbackId, 'accepted');
+    }
+    
+    if (typeof window.triggerFeedbackAutoAdvance === 'function') {
+        window.triggerFeedbackAutoAdvance(feedbackId);
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/feedback/${feedbackId}/reward`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner_id: userId,
+                bust_amount: targetBust,
+                karma_amount: targetKarma,
+                reply_text: "",
+            })
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'genericError'));
+            return;
+        }
+        showToast(window.t('feedbackRewardSuccessToast', {}, lang));
+    } catch (error) {
+        console.error('Quick accept error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
+function triggerFeedbackAutoAdvance(currentFeedbackId) {
+    setTimeout(function() {
+        const list = document.querySelector('#project-feedback-body .feedback-list');
+        if (!list) return;
+        const cards = Array.from(list.querySelectorAll('.fb-card'));
+        
+        const currentIndex = cards.findIndex(function(card) {
+            return Number(card.getAttribute('data-feedback-id')) === Number(currentFeedbackId);
+        });
+        
+        let nextCard = null;
+        for (let i = currentIndex + 1; i < cards.length; i++) {
+            const card = cards[i];
+            if (card.classList.contains('fb-card--collapsed') && !card.classList.contains('fb-card--processed')) {
+                nextCard = card;
+                break;
+            }
+        }
+        if (!nextCard) {
+            for (let i = 0; i < currentIndex; i++) {
+                const card = cards[i];
+                if (card.classList.contains('fb-card--collapsed') && !card.classList.contains('fb-card--processed')) {
+                    nextCard = card;
+                    break;
+                }
+            }
+        }
+        
+        if (nextCard) {
+            nextCard.classList.remove('fb-card--collapsed');
+            nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (typeof feedbackScheduleClampMeasure === 'function') {
+                feedbackScheduleClampMeasure();
+            }
+            if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+        }
+    }, 300);
+}
+window.triggerFeedbackAutoAdvance = triggerFeedbackAutoAdvance;
+
+window.startFeedbackAcceptLongPress = startFeedbackAcceptLongPress;
+window.cancelFeedbackAcceptLongPress = cancelFeedbackAcceptLongPress;
+window.handleFeedbackAcceptClick = handleFeedbackAcceptClick;
+window.submitQuickFeedbackAccept = submitQuickFeedbackAccept;
 
 window.updateIconPreview = updateIconPreview;
 

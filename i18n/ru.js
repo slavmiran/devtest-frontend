@@ -1190,8 +1190,6 @@
             dossierReportQuality: "🎯 Качество репортов: {pct}%",
             dossierOwnerSla: "⏱ Скорость ответа: {hours} ч.",
             dossierOwnerSlaRare: "⚠️ Редко отвечает",
-            marketOwnerSlaChip: "⏱ ~{hours} ч.",
-            marketOwnerSlaRareChip: "⚠️ Редко отвечает",
             dossierTestingDay: "🧪 День тестирования: {day} из 14",
             dossierStartDate: "📅 Начало: {date}",
             dossierExpectedFinish: "🏁 Ожидаемое завершение: {date}",

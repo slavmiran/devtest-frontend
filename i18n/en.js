@@ -1191,8 +1191,6 @@
             dossierReportQuality: "🎯 Report quality: {pct}%",
             dossierOwnerSla: "⏱ Response speed: {hours} h",
             dossierOwnerSlaRare: "⚠️ Rarely responds",
-            marketOwnerSlaChip: "⏱ ~{hours} h",
-            marketOwnerSlaRareChip: "⚠️ Rarely responds",
             dossierTestingDay: "🧪 Testing day: {day} of 14",
             dossierStartDate: "📅 Started: {date}",
             dossierExpectedFinish: "🏁 Expected finish: {date}",
