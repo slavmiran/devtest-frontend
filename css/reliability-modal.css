@@ -337,9 +337,7 @@
 }
 
 .ri-influence-card {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
+    display: flow-root;
     padding: 12px;
     background: var(--bg-surface-1);
     border: 1px solid var(--border-subtle);
@@ -347,6 +345,9 @@
 }
 
 .ri-influence-icon {
+    float: left;
+    margin-right: 10px;
+    margin-bottom: 6px;
     width: 34px;
     height: 34px;
     border-radius: 10px;
@@ -368,22 +369,20 @@
 }
 
 .ri-influence-body {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
+    display: contents;
 }
 
 .ri-influence-title {
-    font-size: 12.5px;
+    font-size: 13.5px;
     font-weight: 800;
     color: var(--text-primary);
+    margin-bottom: 4px;
 }
 
 .ri-influence-text {
     font-size: 11.5px;
     color: var(--text-secondary);
-    line-height: 1.4;
+    line-height: 1.45;
 }
 
 /* ==========================================================================
@@ -853,6 +852,10 @@
     flex-direction: column;
     gap: 8px;
     animation: riSlide 0.2s ease;
+}
+
+.ri-project-body[hidden] {
+    display: none !important;
 }
 
 .ri-project-chips {

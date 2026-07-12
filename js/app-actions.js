@@ -2043,11 +2043,11 @@ async function submitFeedbackReward() {
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(window.t('feedbackRewardSuccessToast', {}, lang));
         var processedFeedbackId = Number(_feedbackRewardTargetId || 0);
+        var rewardedBust = Number(bustAmount || 0);
         closeFeedbackRewardModal();
         if (typeof window.removeFeedbackCardOptimistic === 'function') {
-            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted');
+            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted', { reward_bust: rewardedBust });
         }
         if (typeof window.triggerFeedbackAutoAdvance === 'function') {
             window.triggerFeedbackAutoAdvance(processedFeedbackId);
@@ -2056,6 +2056,11 @@ async function submitFeedbackReward() {
                 .then(function() { return loadProjects(true); })
                 .catch(function() { /* ignore */ });
         }
+        const avgText = typeof formatFeedbackAvgResponseHours === 'function'
+            ? formatFeedbackAvgResponseHours(getFeedbackAvgResponseMs(window._activeProjectFeedbackItems || []))
+            : '—';
+        const toastTpl = window.t('feedbackTicketClosedSpeedToast', { speed: avgText }, lang);
+        showToast(toastTpl || ((lang === 'ru' ? '✅ Тикет закрыт. Скорость ответа: ' : '✅ Ticket closed. Response speed: ') + avgText));
     } catch (error) {
         console.error('Feedback reward error:', error);
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
@@ -2794,35 +2799,51 @@ function updateIconPreview(inputId, previewId) {
 let _feedbackAcceptLongPressTimeout = null;
 let _feedbackAcceptLongPressActive = false;
 let _feedbackAcceptLongPressStart = 0;
+let _feedbackAcceptLongPressPulse = null;
 
 function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
-    if (event.type === 'touchstart') {
-        // do not scroll/zoom
-    }
     if (_feedbackAcceptLongPressActive) return;
-    
+    if (event && event.type === 'touchstart') {
+        // Keep scroll possible until hold engages; do not preventDefault here.
+    }
+
     _feedbackAcceptLongPressActive = true;
     _feedbackAcceptLongPressStart = Date.now();
-    
-    const progressEl = btnEl.querySelector('.fb-btn-accept-progress');
+    if (btnEl) btnEl.classList.add('fb-action-btn--holding');
+
+    const progressEl = btnEl && btnEl.querySelector('.fb-btn-accept-progress');
     if (progressEl) {
         progressEl.style.transition = 'width 0.8s linear';
-        progressEl.getBoundingClientRect(); // force reflow
+        progressEl.getBoundingClientRect();
         progressEl.style.width = '100%';
     }
-    
-    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+
+    if (window.tg && window.tg.HapticFeedback) {
+        window.tg.HapticFeedback.impactOccurred('medium');
+    } else if (navigator.vibrate) {
+        navigator.vibrate(30);
+    }
+
+    if (_feedbackAcceptLongPressPulse) clearInterval(_feedbackAcceptLongPressPulse);
+    _feedbackAcceptLongPressPulse = setInterval(function() {
+        if (navigator.vibrate) navigator.vibrate(12);
+    }, 220);
 
     _feedbackAcceptLongPressTimeout = setTimeout(async function() {
         _feedbackAcceptLongPressActive = false;
+        if (_feedbackAcceptLongPressPulse) {
+            clearInterval(_feedbackAcceptLongPressPulse);
+            _feedbackAcceptLongPressPulse = null;
+        }
+        if (btnEl) btnEl.classList.remove('fb-action-btn--holding');
         if (window.tg && window.tg.HapticFeedback) {
             window.tg.HapticFeedback.notificationOccurred('success');
         } else if (navigator.vibrate) {
-            navigator.vibrate([20, 50, 20]);
+            navigator.vibrate([20, 40, 20]);
         }
-        
+
         await submitQuickFeedbackAccept(feedbackId, projectId, btnEl);
-        
+
         if (progressEl) {
             progressEl.style.transition = 'none';
             progressEl.style.width = '0';
@@ -2833,10 +2854,15 @@ function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
 function cancelFeedbackAcceptLongPress(btnEl, event) {
     if (!_feedbackAcceptLongPressActive) return;
     _feedbackAcceptLongPressActive = false;
-    
+
     clearTimeout(_feedbackAcceptLongPressTimeout);
-    
-    const progressEl = btnEl.querySelector('.fb-btn-accept-progress');
+    if (_feedbackAcceptLongPressPulse) {
+        clearInterval(_feedbackAcceptLongPressPulse);
+        _feedbackAcceptLongPressPulse = null;
+    }
+    if (btnEl) btnEl.classList.remove('fb-action-btn--holding');
+
+    const progressEl = btnEl && btnEl.querySelector('.fb-btn-accept-progress');
     if (progressEl) {
         progressEl.style.transition = 'width 0.15s ease-out';
         progressEl.style.width = '0';
@@ -2852,36 +2878,20 @@ function handleFeedbackAcceptClick(projectId, feedbackId, btnEl, event) {
         }
         return;
     }
-    
+
     cancelFeedbackAcceptLongPress(btnEl, event);
     openFeedbackRewardModal(projectId, feedbackId);
 }
 
 async function submitQuickFeedbackAccept(feedbackId, projectId, btnEl) {
-    const activeProject = myProjects.find(function(p) { return Number(p.id) === Number(projectId); }) || 
-                       archivedProjects.find(function(p) { return Number(p.app_id) === Number(projectId); }) || null;
-    const itemsList = window._activeProjectFeedbackItems || [];
-    const item = itemsList.find(function(i) { return Number(i.id) === Number(feedbackId); }) || null;
-    
-    var isKarmaAvailable = item ? (item.project_karma_available !== false) : true;
-    var isTesterAlreadyRewarded = item ? !!item.tester_already_rewarded_karma : false;
-    var likesUsed = (activeProject && activeProject.likes_used) || 0;
-    var likesMax = (activeProject && activeProject.likes_max) || 1;
-    var remaining = Math.max(0, likesMax - likesUsed);
-    
-    var targetKarma = 1.5;
-    if (!isKarmaAvailable || isTesterAlreadyRewarded || remaining <= 0) {
-        targetKarma = 0;
-    }
-    
-    const defaultBust = 10;
-    var balance = (visibilityStats && visibilityStats.balance_bust) || 0;
-    const targetBust = balance >= defaultBust ? defaultBust : 0;
-    
+    // Long-press = instant accept with 0 $BUST (and no karma).
+    const targetBust = 0;
+    const targetKarma = 0;
+
     if (typeof window.removeFeedbackCardOptimistic === 'function') {
-        window.removeFeedbackCardOptimistic(feedbackId, 'accepted');
+        window.removeFeedbackCardOptimistic(feedbackId, 'accepted', { reward_bust: targetBust });
     }
-    
+
     if (typeof window.triggerFeedbackAutoAdvance === 'function') {
         window.triggerFeedbackAutoAdvance(feedbackId);
     }
@@ -2902,7 +2912,11 @@ async function submitQuickFeedbackAccept(feedbackId, projectId, btnEl) {
             showToast(getApiErrorMessage(data, 'genericError'));
             return;
         }
-        showToast(window.t('feedbackRewardSuccessToast', {}, lang));
+        const avgText = typeof formatFeedbackAvgResponseHours === 'function'
+            ? formatFeedbackAvgResponseHours(getFeedbackAvgResponseMs(window._activeProjectFeedbackItems || []))
+            : '—';
+        const toastTpl = window.t('feedbackTicketClosedSpeedToast', { speed: avgText }, lang);
+        showToast(toastTpl || ((lang === 'ru' ? '✅ Тикет закрыт. Скорость ответа: ' : '✅ Ticket closed. Response speed: ') + avgText));
     } catch (error) {
         console.error('Quick accept error:', error);
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
@@ -2913,39 +2927,41 @@ function triggerFeedbackAutoAdvance(currentFeedbackId) {
     setTimeout(function() {
         const list = document.querySelector('#project-feedback-body .feedback-list');
         if (!list) return;
-        const cards = Array.from(list.querySelectorAll('.fb-card'));
-        
+        const cards = Array.from(list.querySelectorAll('.fb-card:not(.fb-card--hidden):not(.fb-card--processed)'));
+
         const currentIndex = cards.findIndex(function(card) {
             return Number(card.getAttribute('data-feedback-id')) === Number(currentFeedbackId);
         });
-        
+
         let nextCard = null;
-        for (let i = currentIndex + 1; i < cards.length; i++) {
+        for (let i = Math.max(currentIndex, 0) + 1; i < cards.length; i++) {
             const card = cards[i];
-            if (card.classList.contains('fb-card--collapsed') && !card.classList.contains('fb-card--processed')) {
+            if (card.classList.contains('fb-card--collapsed')) {
                 nextCard = card;
                 break;
             }
         }
         if (!nextCard) {
-            for (let i = 0; i < currentIndex; i++) {
+            for (let i = 0; i < cards.length; i++) {
                 const card = cards[i];
-                if (card.classList.contains('fb-card--collapsed') && !card.classList.contains('fb-card--processed')) {
+                if (Number(card.getAttribute('data-feedback-id')) === Number(currentFeedbackId)) continue;
+                if (card.classList.contains('fb-card--collapsed')) {
                     nextCard = card;
                     break;
                 }
             }
         }
-        
+
         if (nextCard) {
             nextCard.classList.remove('fb-card--collapsed');
+            nextCard.classList.add('fb-card--expanded');
             nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
             if (typeof feedbackScheduleClampMeasure === 'function') {
                 feedbackScheduleClampMeasure();
             }
             if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
         }
-    }, 300);
+    }, 320);
 }
 window.triggerFeedbackAutoAdvance = triggerFeedbackAutoAdvance;
 

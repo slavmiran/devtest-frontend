@@ -3750,6 +3750,95 @@ function formatFeedbackDate(createdAt) {
     });
 }
 
+function formatFeedbackRelativeTime(createdAt) {
+    if (!createdAt) return '—';
+    const value = new Date(createdAt);
+    if (Number.isNaN(value.getTime())) return '—';
+    const diffMs = Date.now() - value.getTime();
+    if (diffMs < 0) return formatFeedbackDate(createdAt);
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return lang === 'ru' ? 'только что' : 'just now';
+    if (mins < 60) return lang === 'ru' ? (mins + ' мин назад') : (mins + 'm ago');
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return lang === 'ru' ? (hours + ' ч назад') : (hours + 'h ago');
+    const days = Math.floor(hours / 24);
+    if (days < 7) return lang === 'ru' ? (days + ' дн назад') : (days + 'd ago');
+    return formatFeedbackDate(createdAt);
+}
+
+function formatFeedbackAvgResponseHours(avgMs) {
+    if (!avgMs || avgMs <= 0 || Number.isNaN(avgMs)) return '—';
+    const hours = avgMs / (60 * 60 * 1000);
+    if (hours < 1) {
+        const mins = Math.max(1, Math.round(avgMs / 60000));
+        return lang === 'ru' ? (mins + ' мин') : (mins + 'm');
+    }
+    const rounded = hours >= 10 ? Math.round(hours) : Math.round(hours * 10) / 10;
+    return lang === 'ru' ? (rounded + ' ч') : (rounded + 'h');
+}
+
+function getFeedbackAvgResponseMs(items) {
+    let processedCount = 0;
+    let totalResponseTimeMs = 0;
+    (items || []).forEach(function(item) {
+        if (isOpenFeedbackStatus(item && item.status)) return;
+        const created = new Date(item.created_at);
+        const updated = new Date(item.replied_at || item.updated_at || '');
+        if (Number.isNaN(created.getTime()) || Number.isNaN(updated.getTime())) return;
+        const diff = updated - created;
+        if (diff <= 0 || Number.isNaN(diff)) return;
+        processedCount += 1;
+        totalResponseTimeMs += diff;
+    });
+    if (!processedCount) return 0;
+    return Math.round(totalResponseTimeMs / processedCount);
+}
+
+function resolveFeedbackRejectReasonLabel(reasonRaw) {
+    const reason = String(reasonRaw || '').trim().toLowerCase();
+    if (!reason) return '';
+    const key = 'feedbackRejectReason_' + reason;
+    const labeled = window.t(key, {}, lang);
+    if (labeled && labeled !== key) return labeled;
+    const playKey = 'playReviewRejectReason_' + reason;
+    const playLabeled = window.t(playKey, {}, lang);
+    if (playLabeled && playLabeled !== playKey) return playLabeled;
+    return reasonRaw;
+}
+
+function buildFeedbackMicroSummaryHtml(item, isRejected) {
+    const when = window.escapeHTML(formatFeedbackRelativeTime((item && (item.replied_at || item.updated_at || item.created_at)) || ''));
+    if (isRejected) {
+        const reasonRaw = String((item && (item.rejection_reason || item.reject_reason || item.decline_reason)) || '').trim();
+        const reasonLabel = reasonRaw ? window.escapeHTML(resolveFeedbackRejectReasonLabel(reasonRaw)) : '';
+        return '<span class="fb-micro-no">❌ ' + window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected') + '</span>' +
+            (reasonLabel ? (' <span class="fb-micro-sep">·</span> ' + reasonLabel) : '') +
+            ' <span class="fb-micro-sep">·</span> ' + when;
+    }
+    const bust = Number((item && item.reward_bust) || 0);
+    const bustHtml = bust > 0
+        ? (' <span class="fb-micro-sep">·</span> <span class="fb-micro-bust">+' + window.escapeHTML(String(bust)) + ' BUST</span>')
+        : '';
+    return '<span class="fb-micro-ok">✔ ' + window.escapeHTML(window.t('feedbackAcceptedLabel', {}, lang) || 'Accepted') + '</span>' +
+        ' <span class="fb-micro-sep">·</span> ' + when + bustHtml;
+}
+
+function getFeedbackPreviewText(item, isReviewTicket) {
+    if (isReviewTicket) {
+        return window.t('projectFeedbackReviewTicketText', {}, lang) || 'Google Play review';
+    }
+    const text = String((item && item.message_text) || '').replace(/\s+/g, ' ').trim();
+    if (text) return text;
+    return window.t('projectFeedbackNoText', {}, lang) || 'No text';
+}
+
+function getFeedbackTypePillLabel(item) {
+    const feedbackType = String((item && item.type) || 'bug').toLowerCase();
+    if (feedbackType.indexOf('google_play_review') === 0) return 'Review';
+    if (feedbackType === 'idea') return window.t('feedbackChipIdea', {}, lang) || 'Idea';
+    return window.t('feedbackChipBug', {}, lang) || 'Bug';
+}
+
 function groupFeedbackByDate(items) {
     const groups = {
         today: [],
@@ -3783,16 +3872,24 @@ function groupFeedbackByDate(items) {
 window.groupFeedbackByDate = groupFeedbackByDate;
 
 function toggleFeedbackCardCollapse(cardEl, event) {
+    if (!cardEl || !event) return;
     const target = event.target;
-    if (target.closest('a') || target.closest('button') || target.closest('.fb-media-thumb') || target.closest('input') || target.closest('textarea')) {
+    if (target.closest('a') || target.closest('button') || target.closest('.fb-media-thumb') || target.closest('input') || target.closest('textarea') || target.closest('.fb-device-line')) {
         return;
     }
     if (cardEl.classList.contains('fb-card--processed')) {
         return;
     }
-    cardEl.classList.toggle('fb-card--collapsed');
-    if (!cardEl.classList.contains('fb-card--collapsed')) {
+    const willExpand = cardEl.classList.contains('fb-card--collapsed');
+    cardEl.classList.toggle('fb-card--collapsed', !willExpand);
+    cardEl.classList.toggle('fb-card--expanded', willExpand);
+    if (willExpand) {
         feedbackScheduleClampMeasure();
+        window.requestAnimationFrame(function() {
+            try {
+                cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch (_) { /* ignore */ }
+        });
     }
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
 }
@@ -3811,18 +3908,12 @@ function getFeedbackTypeChip(item) {
 
 function getProjectFeedbackHeader(project, items) {
     const safeName = window.escapeHTML((project && (project.name || project.package_name)) || window.t('unknownLabel', {}, lang));
-    const totalCount = Number(project && project.feedback_total_count || 0);
     const newCount = Number(project && project.feedback_new_count || 0);
-    
+
     let googlePlayCount = 0;
     let bugCount = 0;
     let ideaCount = 0;
-    
-    // SLA Calculations
-    let processedCount = 0;
-    let totalResponseTimeMs = 0;
-    let inTimeCount = 0;
-    
+
     if (items && items.length) {
         items.forEach(function(item) {
             const feedbackType = String(item.type || 'bug').toLowerCase();
@@ -3834,40 +3925,16 @@ function getProjectFeedbackHeader(project, items) {
             } else {
                 bugCount++;
             }
-            
-            // SLA time calculation
-            const status = String(item.status || '').trim().toLowerCase();
-            const isOpen = status === 'pending' || status === 'new' || status === 'processing' || status === '';
-            if (!isOpen) {
-                processedCount++;
-                const created = new Date(item.created_at);
-                const updated = new Date(item.replied_at || item.updated_at || item.created_at);
-                let diff = updated - created;
-                if (diff <= 0 || isNaN(diff)) {
-                    diff = (30 + (Number(item.id || 0) % 150)) * 60 * 1000; // fallback
-                }
-                totalResponseTimeMs += diff;
-                if (diff <= 24 * 60 * 60 * 1000) { // SLA 24h limit
-                    inTimeCount++;
-                }
-            }
         });
     }
 
-    const avgResponseMs = processedCount > 0 ? Math.round(totalResponseTimeMs / processedCount) : 0;
-    let avgResponseText = '—';
-    if (avgResponseMs > 0) {
-        const hrs = Math.floor(avgResponseMs / (60 * 60 * 1000));
-        const mins = Math.round((avgResponseMs % (60 * 60 * 1000)) / (60 * 1000));
-        avgResponseText = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-    }
-    const slaPercent = processedCount > 0 ? Math.round((inTimeCount / processedCount) * 100) : 100;
-
+    const avgResponseMs = getFeedbackAvgResponseMs(items);
+    const avgResponseText = formatFeedbackAvgResponseHours(avgResponseMs);
     const typeFilter = _projectFeedbackTypeFilter || 'all';
-    const statusFilter = _projectFeedbackStatusFilter || 'all';
-
-    const slaLabel = lang === 'ru' ? 'Среднее время ответа' : 'Avg response time';
-    const responseRateLabel = lang === 'ru' ? 'В SLA (24ч)' : 'SLA (24h)';
+    const statusFilter = _projectFeedbackStatusFilter || 'new';
+    const onlyUnprocessed = statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open';
+    const responseLabel = window.t('feedbackResponseSpeedLabel', {}, lang) || (lang === 'ru' ? 'Скорость ответа' : 'Response speed');
+    const unprocessedLabel = window.t('feedbackOnlyUnprocessedLabel', {}, lang) || (lang === 'ru' ? 'Только необработанные' : 'Unprocessed only');
 
     return `
         <div class="feedback-sticky-header">
@@ -3880,27 +3947,21 @@ function getProjectFeedbackHeader(project, items) {
                 ${renderIcon((project && (project.name || project.package_name)) || '', project && project.icon_url)}
                 <div class="card-info">
                     <div class="card-title notranslate">${safeName}</div>
-                    <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}</div>
-                </div>
-            </div>
-            
-            <div class="feedback-sla-panel">
-                <div class="feedback-sla-item">
-                    <span class="feedback-sla-val">${avgResponseText}</span>
-                    <span class="feedback-sla-label">${slaLabel}</span>
-                </div>
-                <div class="feedback-sla-item">
-                    <span class="feedback-sla-val" style="color: ${slaPercent >= 80 ? 'var(--success)' : 'var(--warning)'}">${slaPercent}%</span>
-                    <span class="feedback-sla-label">${responseRateLabel}</span>
+                    <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}${newCount > 0 ? ' · ' + newCount : ''}</div>
                 </div>
             </div>
 
-            <div class="feedback-header-summary">
-                <div class="feedback-counts">
-                    <button type="button" class="meta-chip accent-blue feedback-status-chip${statusFilter === 'all' ? ' is-active' : ''}" data-status-filter="all" onclick="filterFeedbackStatus('all')">💬 ${window.t('projectFeedbackTotalChip', { count: totalCount }, lang)}</button>
-                    <button type="button" class="meta-chip accent-green feedback-status-chip${statusFilter === 'new' ? ' is-active' : ''}" data-status-filter="new" onclick="filterFeedbackStatus('new')">🆕 ${window.t('projectFeedbackNewChip', { count: newCount }, lang)}</button>
+            <div class="feedback-inbox-bar">
+                <div class="feedback-response-metric" title="${window.escapeHTML(responseLabel)}">
+                    <span aria-hidden="true">⏱</span>
+                    <span>${window.escapeHTML(responseLabel)}: <strong>${window.escapeHTML(avgResponseText)}</strong></span>
                 </div>
+                <label class="feedback-unprocessed-toggle">
+                    <input type="checkbox" ${onlyUnprocessed ? 'checked' : ''} onchange="toggleFeedbackUnprocessedOnly(this.checked)">
+                    <span>${window.escapeHTML(unprocessedLabel)}</span>
+                </label>
             </div>
+
             <div class="feedback-filters">
                 <button type="button" class="filter-chip${typeFilter === 'all' ? ' active' : ''}" data-filter="all" onclick="filterFeedback('all')">${window.escapeHTML(window.t('feedbackFilterAll', {}, lang))}</button>
                 <button type="button" class="filter-chip${typeFilter === 'google_play' ? ' active' : ''}" data-filter="google_play" onclick="filterFeedback('google_play')">${window.escapeHTML(window.t('feedbackFilterGooglePlay', {}, lang))} <span class="filter-count">${googlePlayCount}</span></button>
@@ -3939,14 +4000,21 @@ function openFeedbackDm(username, feedbackId, isReviewTicket, event) {
 window.openFeedbackDm = openFeedbackDm;
 
 var _projectFeedbackTypeFilter = 'all';
-var _projectFeedbackStatusFilter = 'all';
+var _projectFeedbackStatusFilter = 'new';
 var _projectFeedbackCardNodes = null;
 
 function resetProjectFeedbackFilters() {
     _projectFeedbackTypeFilter = 'all';
-    _projectFeedbackStatusFilter = 'all';
+    _projectFeedbackStatusFilter = 'new';
     _projectFeedbackCardNodes = null;
 }
+
+function toggleFeedbackUnprocessedOnly(checked) {
+    _projectFeedbackStatusFilter = checked ? 'new' : 'all';
+    applyProjectFeedbackFilters();
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+window.toggleFeedbackUnprocessedOnly = toggleFeedbackUnprocessedOnly;
 
 function normalizeFeedbackStatus(status) {
     return String(status || '').trim().toLowerCase();
@@ -4013,7 +4081,7 @@ function updateProjectFeedbackFilteredEmptyState(visibleCount, totalCount) {
 function applyProjectFeedbackFilters() {
     var cards = cacheProjectFeedbackCards();
     var typeFilter = _projectFeedbackTypeFilter || 'all';
-    var statusFilter = _projectFeedbackStatusFilter || 'all';
+    var statusFilter = _projectFeedbackStatusFilter || 'new';
     var visibleCount = 0;
 
     for (var i = 0; i < cards.length; i++) {
@@ -4025,17 +4093,42 @@ function applyProjectFeedbackFilters() {
         if (visible) visibleCount++;
     }
 
+    var list = document.querySelector('#project-feedback-body .feedback-list');
+    if (list) {
+        var headers = list.querySelectorAll('.feedback-section-header');
+        headers.forEach(function(header) {
+            var next = header.nextElementSibling;
+            var hasVisible = false;
+            while (next && !next.classList.contains('feedback-section-header')) {
+                if (next.classList.contains('fb-card') && !next.classList.contains('fb-card--hidden')) {
+                    hasVisible = true;
+                    break;
+                }
+                next = next.nextElementSibling;
+            }
+            header.style.display = hasVisible ? '' : 'none';
+            var countEl = header.querySelector('.feedback-section-count');
+            if (countEl && hasVisible) {
+                var count = 0;
+                next = header.nextElementSibling;
+                while (next && !next.classList.contains('feedback-section-header')) {
+                    if (next.classList.contains('fb-card') && !next.classList.contains('fb-card--hidden')) count++;
+                    next = next.nextElementSibling;
+                }
+                countEl.textContent = String(count);
+            }
+        });
+    }
+
     var typeContainer = document.querySelector('#project-feedback-body .feedback-filters');
     if (typeContainer) {
         typeContainer.querySelectorAll('.filter-chip').forEach(function(btn) {
             btn.classList.toggle('active', btn.getAttribute('data-filter') === typeFilter);
         });
     }
-    var statusContainer = document.querySelector('#project-feedback-body .feedback-counts');
-    if (statusContainer) {
-        statusContainer.querySelectorAll('.feedback-status-chip').forEach(function(btn) {
-            btn.classList.toggle('is-active', btn.getAttribute('data-status-filter') === statusFilter);
-        });
+    var unprocessedToggle = document.querySelector('#project-feedback-body .feedback-unprocessed-toggle input');
+    if (unprocessedToggle) {
+        unprocessedToggle.checked = statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open';
     }
 
     updateProjectFeedbackFilteredEmptyState(visibleCount, cards.length);
@@ -4118,241 +4211,208 @@ function renderProjectFeedbackCards(project, items) {
 
     ['today', 'yesterday', 'thisWeek', 'earlier'].forEach(function(groupKey) {
         const groupItems = groups[groupKey];
-        if (groupItems && groupItems.length > 0) {
-            html += `<div class="feedback-section-header">${groupTitles[groupKey]} <span class="feedback-section-count">${groupItems.length}</span></div>`;
-            
-            html += groupItems.map(function(item) {
-                const feedbackType = String(item.type || 'bug').toLowerCase();
-                const isReviewTicket = feedbackType.indexOf('google_play_review') === 0;
-                const username = (item.tester_username || '').replace('@', '');
-                const safeUsername = escapeInlineJsString(username);
-                const fullName = window.escapeHTML(item.tester_full_name || '');
-                const usernameLabel = username ? '@' + window.escapeHTML(username) : '';
-                const feedbackStatus = normalizeFeedbackStatus(item.status) || 'pending';
-                const isOpen = isOpenFeedbackStatus(feedbackStatus);
-                const isRejected = isRejectedFeedbackStatus(feedbackStatus);
+        if (!groupItems || !groupItems.length) return;
 
-                // ── Avatar initials & image rendering ──
-                const initials = window.escapeHTML(
-                    (item.tester_full_name || item.tester_username || '?')
-                        .trim().replace('@', '').substring(0, 2).toUpperCase()
-                );
-                const avatarHue = ((Number(item.tester_id || 0) * 73 + 17) % 360);
-                const avatarUrl = item.tester_avatar_url || item.avatar_url;
-                const avatarHtml = `<div class="fb-avatar" style="--av-hue:${avatarHue}; overflow: hidden; position: relative;">
-                    ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` : ''}
-                    <span class="fb-avatar-initials" style="${avatarUrl ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%;'}">${initials}</span>
-                    ${isOpen ? '<span class="fb-avatar-badge-new"></span>' : ''}
-                </div>`;
+        html += `<div class="feedback-section-header">${groupTitles[groupKey]} <span class="feedback-section-count">${groupItems.length}</span></div>`;
 
-                // ── Header ──
-                let nameHtml = '';
-                let subHtml = '';
-                if (fullName) {
-                    if (username) {
-                        nameHtml = `<a href="javascript:void(0);" class="fb-name-link notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">${fullName}</a>`;
-                        subHtml = `<a href="javascript:void(0);" class="fb-username notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">💬 @${window.escapeHTML(username)}</a>`;
-                    } else {
-                        nameHtml = `<span class="fb-name notranslate">${fullName}</span>`;
-                    }
-                } else if (username) {
-                    nameHtml = `<a href="javascript:void(0);" class="fb-name-link notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">💬 @${window.escapeHTML(username)}</a>`;
-                } else {
-                    nameHtml = `<span class="fb-name notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
-                }
+        html += groupItems.map(function(item) {
+            const feedbackType = String(item.type || 'bug').toLowerCase();
+            const isReviewTicket = feedbackType.indexOf('google_play_review') === 0;
+            const username = (item.tester_username || '').replace('@', '');
+            const safeUsername = escapeInlineJsString(username);
+            const fullName = window.escapeHTML(item.tester_full_name || '');
+            const feedbackStatus = normalizeFeedbackStatus(item.status) || 'pending';
+            const isOpen = isOpenFeedbackStatus(feedbackStatus);
+            const isRejected = isRejectedFeedbackStatus(feedbackStatus);
 
-                const statusBadgeLabel = isRejected
-                    ? window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected')
-                    : (isOpen
-                        ? window.escapeHTML(window.t('projectFeedbackNewBadge', {}, lang) || 'NEW')
-                        : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang) || 'Closed'));
-                const statusBadgeClass = isRejected
-                    ? 'fb-status-badge fb-status-badge--declined'
-                    : (isOpen ? 'fb-status-badge fb-status-badge--new' : 'fb-status-badge fb-status-badge--closed');
-                const statusBadge = `<span class="${statusBadgeClass}">${statusBadgeLabel}</span>`;
+            const initials = window.escapeHTML(
+                (item.tester_full_name || item.tester_username || '?')
+                    .trim().replace('@', '').substring(0, 2).toUpperCase()
+            );
+            const avatarHue = ((Number(item.tester_id || 0) * 73 + 17) % 360);
+            const avatarUrl = item.tester_avatar_url || item.avatar_url;
+            const avatarHtml = `<div class="fb-avatar" style="--av-hue:${avatarHue}; overflow:hidden; position:relative;">
+                ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;">` : ''}
+                <span class="fb-avatar-initials" style="${avatarUrl ? 'display:none;' : 'display:flex;justify-content:center;align-items:center;width:100%;height:100%;'}">${initials}</span>
+                ${isOpen ? '<span class="fb-avatar-badge-new"></span>' : ''}
+            </div>`;
 
-                const typeChipHtml = getFeedbackTypeChip(item);
-                const chevronHtml = isOpen ? `
-                    <div class="fb-chevron">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>` : '';
+            let nameHtml = '';
+            if (fullName) {
+                nameHtml = username
+                    ? `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">${fullName}</a>`
+                    : `<span class="notranslate">${fullName}</span>`;
+            } else if (username) {
+                nameHtml = `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
+            } else {
+                nameHtml = `<span class="notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
+            }
 
-                const headerHtml = `
-                    <div class="fb-header">
-                        ${avatarHtml}
-                        <div class="fb-header-info">
-                            <div class="fb-name-row">
-                                ${nameHtml}
-                                <span class="fb-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</span>
-                                ${statusBadge}
-                            </div>
-                            <div class="fb-username-row">
-                                ${subHtml}
-                            </div>
-                        </div>
-                        <div class="fb-header-right">
-                            ${typeChipHtml}
-                        </div>
-                        ${chevronHtml}
+            const typePill = window.escapeHTML(getFeedbackTypePillLabel(item));
+            const previewText = window.escapeHTML(getFeedbackPreviewText(item, isReviewTicket));
+            const relativeDate = window.escapeHTML(formatFeedbackRelativeTime(item.created_at));
+            const microHtml = buildFeedbackMicroSummaryHtml(item, isRejected);
+            const chevronHtml = isOpen ? `
+                <div class="fb-chevron" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>` : '';
+
+            var textBodyHtml = '';
+            if (isReviewTicket) {
+                textBodyHtml = `<div class="fb-text">${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</div>`;
+            } else if (item.message_text) {
+                const escapedText = escapeHtmlWithBreaks(item.message_text);
+                const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
+                textBodyHtml = `<div class="fb-text fb-text--clamped" id="fbt-${item.id}" data-feedback-clamp="1" data-feedback-id="${item.id}">${escapedText}</div><a href="javascript:void(0);" class="fb-show-all" id="fbtl-${item.id}" style="display:none;" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`;
+            } else {
+                textBodyHtml = `<div class="fb-text fb-text--muted">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</div>`;
+            }
+
+            var mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
+                ? item.media_urls
+                : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0
+                    ? item.tg_file_ids
+                    : (item.tg_file_id ? [item.tg_file_id] : []));
+            const resolvedMediaUrls = (mediaUrls || []).map(feedbackResolveMediaUrl).filter(Boolean);
+            window.feedbackMediaRegistry[item.id] = resolvedMediaUrls;
+            window.feedbackCaptionRegistry[item.id] = item.message_text || '';
+
+            var mediaHtml = '';
+            if (resolvedMediaUrls.length > 0) {
+                const total = resolvedMediaUrls.length;
+                const MAX_THUMB = 3;
+                const shown = Math.min(total, MAX_THUMB);
+                var thumbsHtml = '';
+                for (var ti = 0; ti < shown; ti++) {
+                    var url = resolvedMediaUrls[ti];
+                    if (!url) continue;
+                    const resolvedSrc = window.escapeHTML(url);
+                    const isOverflow = ti === MAX_THUMB - 1 && total > MAX_THUMB;
+                    const extra = total - MAX_THUMB + 1;
+                    const overlay = isOverflow ? `<div class="fb-media-overlay">+${extra}</div>` : '';
+                    thumbsHtml += `<div class="fb-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
+                        <img src="${resolvedSrc}" loading="lazy" onerror="feedbackOnImageError(this)">${overlay}
                     </div>`;
-
-                // ── Body text ──
-                var textBodyHtml = '';
-                if (isReviewTicket) {
-                    textBodyHtml = '';
-                } else if (item.message_text) {
-                    const escapedText = escapeHtmlWithBreaks(item.message_text);
-                    const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
-                    textBodyHtml = `<div class="fb-text fb-text--clamped" id="fbt-${item.id}" data-feedback-clamp="1" data-feedback-id="${item.id}">${escapedText}</div><a href="javascript:void(0);" class="fb-show-all" id="fbtl-${item.id}" style="display:none;" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`;
-                } else {
-                    textBodyHtml = `<div class="fb-text fb-text--muted">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</div>`;
                 }
-
-                // ── Media thumbnails ──
-                var mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
-                    ? item.media_urls
-                    : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0
-                        ? item.tg_file_ids
-                        : (item.tg_file_id ? [item.tg_file_id] : []));
-                const resolvedMediaUrls = (mediaUrls || []).map(feedbackResolveMediaUrl).filter(Boolean);
-                window.feedbackMediaRegistry[item.id] = resolvedMediaUrls;
-                window.feedbackCaptionRegistry[item.id] = item.message_text || '';
-
-                var mediaHtml = '';
-                if (resolvedMediaUrls.length > 0) {
-                    const total = resolvedMediaUrls.length;
-                    const MAX_THUMB = 3;
-                    const shown = Math.min(total, MAX_THUMB);
-                    var thumbsHtml = '';
-                    for (var ti = 0; ti < shown; ti++) {
-                        var url = resolvedMediaUrls[ti];
-                        if (url) {
-                            const resolvedSrc = window.escapeHTML(url);
-                            const isOverflow = ti === MAX_THUMB - 1 && total > MAX_THUMB;
-                            const extra = total - MAX_THUMB + 1;
-                            const overlay = isOverflow
-                                ? `<div class="fb-media-overlay">+${extra}</div>`
-                                : '';
-                            thumbsHtml += `<div class="fb-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
-                                <img src="${resolvedSrc}" loading="lazy" onerror="feedbackOnImageError(this)">
-                                ${overlay}
-                            </div>`;
-                        }
-                    }
-                    if (thumbsHtml) {
-                        mediaHtml = `<div class="fb-media-grid${total === 1 ? ' fb-media-grid--single' : ''}">${thumbsHtml}</div>`;
-                    }
-                } else if (isReviewTicket) {
-                    mediaHtml = `<div class="fb-media-missing">📎 ${window.escapeHTML(window.t('playReviewScreenshotMissing', {}, lang))}</div>`;
+                if (thumbsHtml) {
+                    mediaHtml = `<div class="fb-media-grid${total === 1 ? ' fb-media-grid--single' : ''}">${thumbsHtml}</div>`;
                 }
+            } else if (isReviewTicket) {
+                mediaHtml = `<div class="fb-media-missing">📎 ${window.escapeHTML(window.t('playReviewScreenshotMissing', {}, lang))}</div>`;
+            }
 
-                // ── Reward summary chips ──
-                const rewardBust = Number(item.reward_bust || 0);
-                const rewardKarma = Number(item.reward_karma || 0);
-                let rewardHtml = '';
-                if (rewardBust > 0 || rewardKarma > 0) {
-                    rewardHtml = `
-                        <div class="fb-reward-block">
-                            ${rewardBust > 0 ? `<span class="fb-reward-chip reward-bust"><span class="reward-icon">💎</span> ${formatBustAmount(rewardBust)}</span>` : ''}
-                            ${rewardKarma > 0 ? `<span class="fb-reward-chip reward-karma"><span class="reward-icon">☯️</span> ${rewardKarma.toFixed(1)} Karma</span>` : ''}
+            const rewardBust = Number(item.reward_bust || 0);
+            const rewardKarma = Number(item.reward_karma || 0);
+            let rewardHtml = '';
+            if (rewardBust > 0 || rewardKarma > 0) {
+                rewardHtml = `
+                    <div class="fb-reward-block">
+                        ${rewardBust > 0 ? `<span class="fb-reward-chip reward-bust"><span class="reward-icon">💎</span> ${formatBustAmount(rewardBust)}</span>` : ''}
+                        ${rewardKarma > 0 ? `<span class="fb-reward-chip reward-karma"><span class="reward-icon">☯️</span> ${rewardKarma.toFixed(1)} Karma</span>` : ''}
+                    </div>`;
+            }
+
+            let replyHtml = '';
+            if (item.developer_reply) {
+                replyHtml = `
+                    <div class="fb-reply-box">
+                        <div class="fb-reply-text">
+                            <span class="fb-reply-label">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang) || 'Developer reply')}:</span>
+                            ${escapeHtmlWithBreaks(item.developer_reply)}
                         </div>
-                    `;
-                }
+                    </div>`;
+            }
 
-                // ── Developer reply ──
-                let replyHtml = '';
-                if (item.developer_reply) {
-                    const replyDate = window.escapeHTML(formatFeedbackDate(item.created_at));
-                    replyHtml = `
-                        <div class="fb-reply-box">
-                            <div class="fb-reply-text">
-                                <span class="fb-reply-label">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang) || 'Developer reply')}:</span> 
-                                ${escapeHtmlWithBreaks(item.developer_reply)}
-                            </div>
-                            <div class="fb-reply-date">${replyDate}</div>
+            var deviceInfoHtml = '';
+            if (feedbackType === 'bug' && typeof renderFeedbackDeviceInfoBlock === 'function') {
+                deviceInfoHtml = renderFeedbackDeviceInfoBlock(item);
+            }
+
+            var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
+            const copyButtonHtml = (!isReviewTicket && (item.message_text || deviceInfoHtml))
+                ? `<button type="button" class="fb-icon-btn" onclick="copyFeedbackCardContent(${item.id}, ${projectId})" aria-label="${window.escapeHTML(window.t('feedbackCopyBtn', {}, lang) || 'Copy')}">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                   </button>`
+                : '';
+
+            const discussButtonHtml = username
+                ? `<button type="button" class="fb-icon-btn" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)" aria-label="${window.escapeHTML(window.t('feedbackDmBtn', {}, lang) || 'DM')}">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
+                   </button>`
+                : (hasTopicLink
+                    ? `<button type="button" class="fb-icon-btn" onclick="openFeedbackTopicLink(${item.telegram_message_id}, '${safeUsername}')" aria-label="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}">
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
+                       </button>`
+                    : '');
+
+            let decideButtonsHtml = '';
+            if (isOpen && isReviewTicket) {
+                decideButtonsHtml = `
+                    <button class="fb-action-btn fb-action-btn--reject" onclick="openPlayReviewRejectModal(${item.id}, ${projectId}, this)">${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>
+                    <button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward fb-btn-accept-wrapper"
+                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)"
+                            onmousedown="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
+                            onmouseup="cancelFeedbackAcceptLongPress(this, event)"
+                            onmouseleave="cancelFeedbackAcceptLongPress(this, event)"
+                            ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
+                            ontouchend="cancelFeedbackAcceptLongPress(this, event)"
+                            ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
+                        <span class="fb-btn-accept-progress"></span>
+                        <span class="fb-btn-accept-text">${window.escapeHTML(window.t('projectFeedbackThankCloseBtn', {}, lang) || window.t('projectFeedbackRewardBtn', {}, lang) || 'Accept')}</span>
+                    </button>`;
+            } else if (isOpen) {
+                decideButtonsHtml = `
+                    <button class="fb-action-btn fb-action-btn--reject" onclick="openFeedbackRejectModal(${item.id}, ${projectId}, this)">${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>
+                    <button class="fb-action-btn fb-action-btn--primary fb-action-btn--accept fb-btn-accept-wrapper"
+                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)"
+                            onmousedown="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
+                            onmouseup="cancelFeedbackAcceptLongPress(this, event)"
+                            onmouseleave="cancelFeedbackAcceptLongPress(this, event)"
+                            ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
+                            ontouchend="cancelFeedbackAcceptLongPress(this, event)"
+                            ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
+                        <span class="fb-btn-accept-progress"></span>
+                        <span class="fb-btn-accept-text">${window.escapeHTML(window.t('feedbackAcceptBtn', {}, lang) || 'Accept')}</span>
+                    </button>`;
+            }
+
+            const utilsHtml = (copyButtonHtml || discussButtonHtml)
+                ? `<div class="fb-toolbar-utils">${copyButtonHtml}${discussButtonHtml}</div>`
+                : '';
+            const decideHtml = decideButtonsHtml
+                ? `<div class="fb-toolbar-decide">${decideButtonsHtml}</div>`
+                : '';
+            const toolbarHtml = (utilsHtml || decideHtml)
+                ? `<div class="fb-toolbar">${utilsHtml}${decideHtml}</div>`
+                : '';
+
+            let cardTypeClass = 'fb-card--general';
+            if (isReviewTicket) cardTypeClass = 'fb-card--google-play';
+            else if (feedbackType === 'bug') cardTypeClass = 'fb-card--bug';
+            else if (feedbackType === 'idea') cardTypeClass = 'fb-card--idea';
+            else if (feedbackType === 'question') cardTypeClass = 'fb-card--question';
+
+            const stateClass = isOpen ? ' fb-card--collapsed' : ' fb-card--processed';
+            const cardMod = (isOpen ? ' fb-card--new' : '') + (isRejected ? ' fb-card--rejected' : '');
+
+            return `<div class="fb-card ${cardTypeClass}${cardMod}${stateClass}" data-feedback-id="${item.id}" data-feedback-type="${feedbackType}" data-feedback-status="${window.escapeHTML(feedbackStatus)}" onclick="toggleFeedbackCardCollapse(this, event)">
+                <div class="fb-inbox-row">
+                    <span class="fb-type-rail" aria-hidden="true"></span>
+                    ${avatarHtml}
+                    <div class="fb-inbox-main">
+                        <div class="fb-inbox-topline">
+                            <span class="fb-inbox-name">${nameHtml}</span>
+                            <span class="fb-type-pill">${typePill}</span>
+                            <span class="fb-inbox-date">${relativeDate}</span>
                         </div>
-                    `;
-                }
-
-                // ── Device info (bugs only) ──
-                var deviceInfoHtml = '';
-                if (feedbackType === 'bug' && typeof renderFeedbackDeviceInfoBlock === 'function') {
-                    deviceInfoHtml = renderFeedbackDeviceInfoBlock(item);
-                }
-
-                // ── Footer action line ──
-                var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
-
-                const copyButtonHtml = (!isReviewTicket && (item.message_text || deviceInfoHtml))
-                    ? `<button type="button" class="fb-action-btn fb-action-btn--copy" onclick="copyFeedbackCardContent(${item.id}, ${projectId})" aria-label="${window.escapeHTML(window.t('feedbackCopyBtn', {}, lang))}">
-                            <svg class="fb-copy-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                       </button>`
-                    : '';
-
-                const topicButtonHtml = hasTopicLink
-                    ? `<button class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${item.telegram_message_id}, '${safeUsername}')">
-                           📌 ${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}
-                       </button>`
-                    : '';
-
-                // Bug/Idea: Accept + Reject. Play review: Thank & close + Reject review.
-                let decideButtonsHtml = '';
-                if (isOpen && isReviewTicket) {
-                    decideButtonsHtml = `
-                        <div class="fb-actions-decide">
-                            <button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward fb-btn-accept-wrapper" 
-                                    onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)"
-                                    onmousedown="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)" 
-                                    onmouseup="cancelFeedbackAcceptLongPress(this, event)" 
-                                    onmouseleave="cancelFeedbackAcceptLongPress(this, event)" 
-                                    ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)" 
-                                    ontouchend="cancelFeedbackAcceptLongPress(this, event)">
-                                <span class="fb-btn-accept-progress"></span>
-                                <span class="fb-btn-accept-text">${window.escapeHTML(window.t('projectFeedbackThankCloseBtn', {}, lang) || window.t('projectFeedbackRewardBtn', {}, lang) || 'Accept')}</span>
-                            </button>
-                            <button class="fb-action-btn fb-action-btn--reject" onclick="openPlayReviewRejectModal(${item.id}, ${projectId}, this)">
-                                ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
-                            </button>
-                        </div>`;
-                } else if (isOpen) {
-                    decideButtonsHtml = `
-                        <div class="fb-actions-decide">
-                            <button class="fb-action-btn fb-action-btn--primary fb-action-btn--accept fb-btn-accept-wrapper" 
-                                    onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)"
-                                    onmousedown="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)" 
-                                    onmouseup="cancelFeedbackAcceptLongPress(this, event)" 
-                                    onmouseleave="cancelFeedbackAcceptLongPress(this, event)" 
-                                    ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)" 
-                                    ontouchend="cancelFeedbackAcceptLongPress(this, event)">
-                                <span class="fb-btn-accept-progress"></span>
-                                <span class="fb-btn-accept-text">${window.escapeHTML(window.t('feedbackAcceptBtn', {}, lang) || 'Accept')}</span>
-                            </button>
-                            <button class="fb-action-btn fb-action-btn--reject" onclick="openFeedbackRejectModal(${item.id}, ${projectId}, this)">
-                                ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
-                            </button>
-                        </div>`;
-                }
-
-                const hasFooter = copyButtonHtml || topicButtonHtml || decideButtonsHtml;
-                const cardMod = (isOpen ? ' fb-card--new' : '') + (isRejected ? ' fb-card--rejected' : '');
-                let cardTypeClass = 'fb-card--general';
-                if (isReviewTicket) {
-                    cardTypeClass = 'fb-card--google-play';
-                } else if (feedbackType === 'bug') {
-                    cardTypeClass = 'fb-card--bug';
-                } else if (feedbackType === 'idea') {
-                    cardTypeClass = 'fb-card--idea';
-                } else if (feedbackType === 'question') {
-                    cardTypeClass = 'fb-card--question';
-                }
-
-                // Collapsed by default for open feedback; processed for closed/rejected
-                const stateClass = isOpen ? ' fb-card--collapsed' : ' fb-card--processed';
-
-                return `<div class="fb-card ${cardTypeClass}${cardMod}${stateClass}" data-feedback-id="${item.id}" data-feedback-type="${feedbackType}" data-feedback-status="${window.escapeHTML(feedbackStatus)}" onclick="toggleFeedbackCardCollapse(this, event)">
-                    ${headerHtml}
+                        <div class="fb-preview">${previewText}</div>
+                        <div class="fb-micro-line">${microHtml}</div>
+                    </div>
+                    ${chevronHtml}
+                </div>
+                <div class="fb-detail"><div class="fb-detail-inner">
                     <div class="fb-body">
                         ${mediaHtml}
                         ${textBodyHtml}
@@ -4360,10 +4420,10 @@ function renderProjectFeedbackCards(project, items) {
                         ${rewardHtml}
                         ${replyHtml}
                     </div>
-                    ${hasFooter ? `<div class="fb-footer"><div class="fb-actions-group-left">${copyButtonHtml}${topicButtonHtml}</div><div class="fb-actions-group-right">${decideButtonsHtml}</div></div>` : ''}
-                </div>`;
-            }).join('');
-        }
+                    ${toolbarHtml}
+                </div></div>
+            </div>`;
+        }).join('');
     });
 
     html += '</div>';
@@ -4605,48 +4665,48 @@ function _markFeedbackCardRejected(feedbackId) {
     }
 }
 
-/** Optimistic UI: drop processed card from pending list without waiting for refetch. */
-function removeFeedbackCardOptimistic(feedbackId, nextStatus) {
+/** Optimistic UI: collapse to micro-state or remove from unprocessed queue. */
+function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
     var safeId = Number(feedbackId || 0);
     if (!safeId) return;
 
     var card = document.querySelector('.fb-card[data-feedback-id="' + String(safeId) + '"]');
-    var statusFilter = _projectFeedbackStatusFilter || 'all';
+    var statusFilter = _projectFeedbackStatusFilter || 'new';
+    var rewardBust = Number((extra && extra.reward_bust) || 0);
+    var rejectionReason = String((extra && extra.rejection_reason) || '').trim();
 
     if (card) {
         if (statusFilter === 'all') {
-            card.classList.remove('fb-card--collapsed', 'fb-card--new');
-            card.classList.add('fb-card--processed');
+            card.classList.remove('fb-card--collapsed', 'fb-card--expanded', 'fb-card--new');
+            card.classList.add('fb-card--processed', 'fb-card--optimistic-flash');
             if (nextStatus === 'rejected') {
                 card.classList.add('fb-card--rejected');
+            } else {
+                card.classList.remove('fb-card--rejected');
             }
             card.setAttribute('data-feedback-status', nextStatus === 'rejected' ? 'rejected' : 'closed');
-            
-            const badge = card.querySelector('.fb-status-badge');
-            if (badge) {
-                if (nextStatus === 'rejected') {
-                    badge.className = 'fb-status-badge fb-status-badge--declined';
-                    badge.textContent = window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected');
-                } else {
-                    badge.className = 'fb-status-badge fb-status-badge--closed';
-                    badge.textContent = window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang) || 'Closed');
-                }
+
+            var micro = card.querySelector('.fb-micro-line');
+            if (micro) {
+                var synthetic = {
+                    replied_at: new Date().toISOString(),
+                    reward_bust: rewardBust,
+                    rejection_reason: rejectionReason
+                };
+                micro.innerHTML = buildFeedbackMicroSummaryHtml(synthetic, nextStatus === 'rejected');
             }
-            
-            const chevron = card.querySelector('.fb-chevron');
-            if (chevron) {
-                chevron.remove();
-            }
+
+            var chevron = card.querySelector('.fb-chevron');
+            if (chevron) chevron.remove();
         } else {
             card.classList.add('fb-card--optimistic-out');
             card.style.maxHeight = card.scrollHeight + 'px';
-            card.style.transition = 'all 0.3s ease-out';
-            card.getBoundingClientRect(); // force reflow
+            card.style.transition = 'max-height 0.28s ease, opacity 0.28s ease, padding 0.28s ease, margin 0.28s ease';
+            card.getBoundingClientRect();
             card.style.maxHeight = '0';
-            card.style.padding = '0';
-            card.style.margin = '0';
+            card.style.paddingTop = '0';
+            card.style.paddingBottom = '0';
             card.style.opacity = '0';
-            card.style.border = 'none';
             setTimeout(function() {
                 try { card.remove(); } catch (_) {
                     if (card.parentNode) card.parentNode.removeChild(card);
@@ -4661,6 +4721,10 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus) {
                 if (Number(item && item.id) === safeId) {
                     item.status = nextStatus === 'rejected' ? 'rejected' : 'closed';
                     item.replied_at = new Date().toISOString();
+                    if (nextStatus === 'rejected' && rejectionReason) {
+                        item.rejection_reason = rejectionReason;
+                    }
+                    if (rewardBust > 0) item.reward_bust = rewardBust;
                 }
                 return item;
             });
@@ -4671,22 +4735,16 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus) {
         }
     }
 
-    if (Array.isArray(window._projectFeedbackCardNodes)) {
-        if (statusFilter === 'all') {
-            // keep the node
-        } else {
-            window._projectFeedbackCardNodes = window._projectFeedbackCardNodes.filter(function(node) {
-                return !(node && Number(node.getAttribute && node.getAttribute('data-feedback-id')) === safeId);
-            });
-        }
+    if (Array.isArray(window._projectFeedbackCardNodes) && statusFilter !== 'all') {
+        window._projectFeedbackCardNodes = window._projectFeedbackCardNodes.filter(function(node) {
+            return !(node && Number(node.getAttribute && node.getAttribute('data-feedback-id')) === safeId);
+        });
     }
 
-    // Keep header counters / empty-state in sync with remaining visible cards.
     if (typeof applyProjectFeedbackFilters === 'function') {
         try { applyProjectFeedbackFilters(); } catch (_) { /* ignore */ }
     }
-    
-    // Refresh SLA in sticky header
+
     const activeProject = typeof getFeedbackRewardProject === 'function' ? getFeedbackRewardProject() : null;
     if (activeProject && window.getProjectFeedbackHeader) {
         const headerContainer = document.querySelector('.feedback-sticky-header');
@@ -4710,7 +4768,6 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus) {
         }
     }
 
-    // Soft background refresh of project badges — never block UI.
     if (typeof loadProjects === 'function') {
         Promise.resolve()
             .then(function() { return loadProjects(true); })
@@ -4756,7 +4813,7 @@ async function confirmFeedbackReject() {
                 showToast(window.t('feedbackRejectSuccessToast', {}, lang));
             }
             if (typeof removeFeedbackCardOptimistic === 'function') {
-                removeFeedbackCardOptimistic(feedbackId, 'rejected');
+                removeFeedbackCardOptimistic(feedbackId, 'rejected', { rejection_reason: reason });
             } else {
                 _markFeedbackCardRejected(feedbackId);
             }

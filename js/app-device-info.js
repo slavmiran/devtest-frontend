@@ -392,5 +392,23 @@ function renderFeedbackDeviceInfoBlock(item) {
         publicLine = buildPublicDeviceLine(data);
     }
     if (!publicLine) return '';
-    return '<div class="fb-device-line">' + window.escapeHTML(publicLine) + '</div>';
+    var safeLine = window.escapeHTML(publicLine);
+    var safeAttr = safeLine.replace(/"/g, '&quot;');
+    return '<button type="button" class="fb-device-line" title="' + (window.t('feedbackCopyDeviceHint', {}, lang) || 'Copy device info') + '" onclick="copyFeedbackDeviceLine(this)">' + safeLine + '</button>';
 }
+
+function copyFeedbackDeviceLine(btnEl) {
+    var text = (btnEl && (btnEl.textContent || btnEl.innerText) || '').trim();
+    if (!text) return false;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+            showToast(window.t('feedbackCopySuccessToast', {}, lang) || 'Copied');
+        }).catch(function() {
+            showToast(window.t('feedbackCopyErrorToast', {}, lang) || 'Copy failed');
+        });
+        return true;
+    }
+    showToast(window.t('feedbackCopyErrorToast', {}, lang) || 'Copy failed');
+    return false;
+}
+window.copyFeedbackDeviceLine = copyFeedbackDeviceLine;
