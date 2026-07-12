@@ -1411,6 +1411,8 @@
             contributionClaimError_invalid_init_data: "Telegram session unavailable. Reopen the Mini App.",
             contributionNetworkFallbackToast: "Showing cached data. Detailed stats are temporarily unavailable.",
             contributionInfoCloseBtn: "Close",
+            deeplinkLoaderTitle: "Loading data…",
+            deeplinkLoaderSubtitle: "This may take a few seconds",
             countPointsWord_one: "point",
             countPointsWord_few: "points",
             countPointsWord_many: "points",

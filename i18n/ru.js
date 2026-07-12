@@ -1417,6 +1417,8 @@
             contributionClaimError_invalid_init_data: "Сессия Telegram недоступна. Переоткройте Mini App.",
             contributionNetworkFallbackToast: "Показываем сохранённые данные. Детализация временно недоступна.",
             contributionInfoCloseBtn: "Закрыть",
+            deeplinkLoaderTitle: "Загружаем данные…",
+            deeplinkLoaderSubtitle: "Это может занять несколько секунд",
             countPointsWord_one: "балл",
             countPointsWord_few: "балла",
             countPointsWord_many: "баллов",

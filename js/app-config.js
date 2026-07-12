@@ -899,6 +899,36 @@ function _getStartappParam() {
     return String(params.get('startapp') || initData.start_param || '').trim();
 }
 
+function showTgDeeplinkLoader(kind) {
+    try {
+        if (kind) window.__tgDeeplinkLoaderKind = String(kind);
+        document.documentElement.classList.add('tg-deeplink-loading');
+        var el = document.getElementById('tg-deeplink-loader');
+        if (el) {
+            el.style.display = 'flex';
+            el.setAttribute('aria-hidden', 'false');
+        }
+    } catch (error) {}
+}
+
+function hideTgDeeplinkLoader(kind) {
+    try {
+        var activeKind = window.__tgDeeplinkLoaderKind || '';
+        if (kind && activeKind && activeKind !== kind) return;
+        document.documentElement.classList.remove('tg-deeplink-loading');
+        var el = document.getElementById('tg-deeplink-loader');
+        if (el) {
+            el.style.display = 'none';
+            el.setAttribute('aria-hidden', 'true');
+        }
+        window.__tgDeeplinkLoaderKind = null;
+    } catch (error) {}
+}
+
+
+window.showTgDeeplinkLoader = showTgDeeplinkLoader;
+window.hideTgDeeplinkLoader = hideTgDeeplinkLoader;
+
 function _parseGuestClaimIntent() {
     var rawStartParam = _getStartappParam();
     if (!rawStartParam) return null;
@@ -1065,6 +1095,10 @@ function _parseInitialRouteTarget() {
         if (normalized === 'invite_links' || normalized === 'invitelinks') {
             routeKind = 'invite_links';
         }
+        if (normalized === 'contribution' || normalized === 'sprint' || normalized === 'contribution_pool') {
+            routeKind = 'contribution';
+            break;
+        }
     }
 
     if (routeKind === 'feedback' || params.get('feedback') === '1') {
@@ -1132,6 +1166,14 @@ function _parseInitialRouteTarget() {
             tab: 'projects',
             openFeedback: false,
             openInviteLinks: true,
+            appId: null,
+        };
+    }
+    if (routeKind === 'contribution') {
+        return {
+            tab: 'projects',
+            openFeedback: false,
+            openContribution: true,
             appId: null,
         };
     }
@@ -1305,11 +1347,30 @@ async function _handleInitialRoute() {
         return;
     }
 
+    if (route.openContribution) {
+        try {
+            showTgDeeplinkLoader('contribution');
+            switchTab('projects');
+            if (typeof window.showContributionInfo === 'function') {
+                await window.showContributionInfo();
+            }
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial contribution route error:', error);
+            hideTgDeeplinkLoader('contribution');
+        }
+        return;
+    }
+
     if (!route.openFeedback || !route.appId) {
+        if (window.__tgDeeplinkLoaderKind === 'feedback') {
+            hideTgDeeplinkLoader('feedback');
+        }
         return;
     }
 
     try {
+        showTgDeeplinkLoader('feedback');
         await Promise.allSettled([
             loadProjects(true),
             loadArchivedProjects({ silent: true })
@@ -1324,5 +1385,6 @@ async function _handleInitialRoute() {
         await openProjectFeedback(route.appId, isArchived);
     } catch (error) {
         console.error('Initial feedback route error:', error);
+        hideTgDeeplinkLoader('feedback');
     }
 }

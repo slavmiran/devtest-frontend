@@ -6,16 +6,45 @@
     <meta name="color-scheme" content="dark">
     <title>DevTest Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="./i18n/ru.js?v=20260712-feedback-accept-reject"></script>
-    <script src="./i18n/en.js?v=20260712-feedback-accept-reject"></script>
+    <script>
+    (function () {
+        try {
+            var params = new URLSearchParams(window.location.search || '');
+            var tg = window.Telegram && window.Telegram.WebApp;
+            var startParam = String(
+                params.get('startapp') ||
+                (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+                ''
+            ).trim().toLowerCase();
+            var isContribution = startParam === 'contribution' || startParam.indexOf('contribution') === 0;
+            var isFeedback = /(?:^|[_\-=.])(?:project_feedback|feedback|owner_feedback|feedback_project)(?:$|[_\-=.:]|\d)/.test(startParam)
+                || startParam === 'feedback'
+                || params.get('feedback') === '1';
+            if (!isContribution && !isFeedback) return;
+            window.__tgDeeplinkLoaderKind = isContribution ? 'contribution' : 'feedback';
+            document.documentElement.classList.add('tg-deeplink-loading');
+            function reveal() {
+                var el = document.getElementById('tg-deeplink-loader');
+                if (el) el.style.display = 'flex';
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', reveal);
+            } else {
+                reveal();
+            }
+        } catch (e) {}
+    })();
+    </script>
+    <script src="./i18n/ru.js?v=20260712-sprint-deeplink"></script>
+    <script src="./i18n/en.js?v=20260712-sprint-deeplink"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260602-phase44"></script>
     <script src="./ui/ui-projects.js?v=20260712-contribution-season"></script>
-    <script src="./ui/ui-market.js?v=20260712-feedback-accept-reject"></script>
+    <script src="./ui/ui-market.js?v=20260712-sprint-deeplink"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
-    <script src="./js/app-config.js?v=20260710-device-profile-banner-v1"></script>
+    <script src="./js/app-config.js?v=20260712-sprint-deeplink"></script>
     <script src="./js/app-api.js?v=20260712-contribution"></script>
     <script src="./js/app-device-info.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./js/app-actions.js?v=20260712-contribution-season"></script>
@@ -40,11 +69,24 @@
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./styles.css?v=20260712-contribution-sprint">
+    <link rel="stylesheet" href="./styles.css?v=20260712-sprint-deeplink">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260711-collapsed-fix">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
 <body>
+
+    <div id="tg-deeplink-loader" class="tg-deeplink-loader" style="display: none;" aria-hidden="true" role="status">
+        <div class="tg-deeplink-loader__glass">
+            <div class="tg-deeplink-loader__spinner" aria-hidden="true"></div>
+            <div class="tg-deeplink-loader__title" data-i18n="deeplinkLoaderTitle">Загружаем данные…</div>
+            <div class="tg-deeplink-loader__subtitle" data-i18n="deeplinkLoaderSubtitle">Это может занять несколько секунд</div>
+            <div class="tg-deeplink-loader__skeleton" aria-hidden="true">
+                <div class="tg-deeplink-loader__skel-line tg-deeplink-loader__skel-line--lg"></div>
+                <div class="tg-deeplink-loader__skel-line"></div>
+                <div class="tg-deeplink-loader__skel-line tg-deeplink-loader__skel-line--sm"></div>
+            </div>
+        </div>
+    </div>
 
     <div id="background-sync-bar" class="background-sync-bar hidden" aria-hidden="true"></div>
 

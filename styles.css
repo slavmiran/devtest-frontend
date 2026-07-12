@@ -4061,3 +4061,84 @@ input::placeholder,
 .contribution-close-btn {
     margin-top: 14px;
 }
+
+/* ── Telegram deeplink fullscreen loader (contribution / feedback) ── */
+.tg-deeplink-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(8, 12, 20, 0.42);
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    pointer-events: all;
+}
+
+html.tg-deeplink-loading .tg-deeplink-loader {
+    display: flex;
+}
+
+.tg-deeplink-loader__glass {
+    width: min(100%, 320px);
+    padding: 28px 22px 24px;
+    border-radius: 20px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+    text-align: center;
+}
+
+.tg-deeplink-loader__spinner {
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.18);
+    border-top-color: var(--link-color, #6cb6ff);
+    animation: tg-deeplink-spin 0.85s linear infinite;
+}
+
+.tg-deeplink-loader__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color, #fff);
+    margin-bottom: 6px;
+}
+
+.tg-deeplink-loader__subtitle {
+    font-size: 13px;
+    color: var(--hint-color, rgba(255,255,255,0.65));
+    margin-bottom: 18px;
+}
+
+.tg-deeplink-loader__skeleton {
+    display: grid;
+    gap: 8px;
+}
+
+.tg-deeplink-loader__skel-line {
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.22), rgba(255,255,255,0.08));
+    background-size: 200% 100%;
+    animation: tg-deeplink-shimmer 1.4s ease-in-out infinite;
+}
+
+.tg-deeplink-loader__skel-line--lg { width: 88%; margin: 0 auto; height: 14px; }
+.tg-deeplink-loader__skel-line--sm { width: 54%; margin: 0 auto; }
+.tg-deeplink-loader__skel-line:not(.tg-deeplink-loader__skel-line--lg):not(.tg-deeplink-loader__skel-line--sm) {
+    width: 72%;
+    margin: 0 auto;
+}
+
+@keyframes tg-deeplink-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes tg-deeplink-shimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
