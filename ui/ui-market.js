@@ -2606,30 +2606,19 @@ function pluralizeGrantWord(count) {
     return window.t('countGrantWord_many', {}, lang);
 }
 
-function formatDeveloperAchievements(completedTests, goldenCount, totalGrants) {
-    const testsWord = pluralizeTestWord(completedTests);
-    if (totalGrants > 0 && goldenCount > 0) {
-        return window.t('developerAchievementsWithGrantFull', {
-            tests_count: completedTests,
-            tests_word: testsWord,
-            grants_count: totalGrants,
-            grants_word: pluralizeGrantWord(totalGrants),
-            golden_count: goldenCount,
-            golden_word: pluralizeGrantWord(goldenCount),
-            grant_tag: window.t('developerGrantTag', {}, lang)
-        }, lang);
-    }
-    if (totalGrants > 0) {
-        return window.t('developerAchievementsWithGrant', {
-            tests_count: completedTests,
-            tests_word: testsWord,
-            grants_count: totalGrants,
-            grants_word: pluralizeGrantWord(totalGrants)
-        }, lang);
-    }
-    return window.t('developerAchievementsNoGrant', {
-        tests_count: completedTests,
-        tests_word: testsWord
+function formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests) {
+    const safeCompleted = Number(completedTests || 0);
+    const safeGolden = Number(goldenCount || 0);
+    const safeGrants = Number(totalGrants || 0);
+    const safeActive = Number(activeTests || 0);
+    return window.t('developerAchievementsLine', {
+        tests_count: safeCompleted,
+        tests_word: pluralizeTestWord(safeCompleted),
+        grants_count: safeGrants,
+        grants_word: pluralizeGrantWord(safeGrants),
+        golden_count: safeGolden,
+        active_label: window.t('developerActiveLabel', {}, lang),
+        active_count: safeActive
     }, lang);
 }
 
@@ -4396,6 +4385,106 @@ async function showKarmaInfo() {
 
     if (!result || result.status !== 'success') {
         showToast(window.t('karmaInfoNetworkFallbackToast', {}, lang));
+    }
+
+    modal.classList.add('active');
+}
+
+function closeContributionInfoModal(event) {
+    if (event && event.target && event.target.id !== 'contribution-info-modal') return;
+    const modal = document.getElementById('contribution-info-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function _getCachedContributionFallback() {
+    const cached = (visibilityStats && visibilityStats.contribution) || {};
+    return {
+        contribution_score: Number(
+            cached.contribution_score != null
+                ? cached.contribution_score
+                : (visibilityStats && visibilityStats.contribution_score) || 0
+        ),
+        bugs_count: Number(cached.bugs_count || 0),
+        ideas_count: Number(cached.ideas_count || 0),
+        play_reviews_count: Number(cached.play_reviews_count || 0),
+    };
+}
+
+function _renderContributionModal(data) {
+    const scoreEl = document.getElementById('contribution-score-value');
+    const bugsEl = document.getElementById('contribution-bugs-count');
+    const ideasEl = document.getElementById('contribution-ideas-count');
+    const reviewsEl = document.getElementById('contribution-reviews-count');
+    const summaryBugsEl = document.getElementById('contribution-summary-bugs');
+    const summaryIdeasEl = document.getElementById('contribution-summary-ideas');
+    const summaryReviewsEl = document.getElementById('contribution-summary-reviews');
+
+    const score = Math.round(Number((data && data.contribution_score) || 0));
+    const bugs = Math.round(Number((data && data.bugs_count) || 0));
+    const ideas = Math.round(Number((data && data.ideas_count) || 0));
+    const reviews = Math.round(Number((data && data.play_reviews_count) || 0));
+
+    if (scoreEl) scoreEl.textContent = String(score);
+    if (bugsEl) bugsEl.textContent = String(bugs);
+    if (ideasEl) ideasEl.textContent = String(ideas);
+    if (reviewsEl) reviewsEl.textContent = String(reviews);
+    if (summaryBugsEl) {
+        summaryBugsEl.textContent = window.t('contributionSummaryBugs', { count: bugs }, lang);
+    }
+    if (summaryIdeasEl) {
+        summaryIdeasEl.textContent = window.t('contributionSummaryIdeas', { count: ideas }, lang);
+    }
+    if (summaryReviewsEl) {
+        summaryReviewsEl.textContent = window.t('contributionSummaryReviews', { count: reviews }, lang);
+    }
+}
+
+async function showContributionInfo() {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+    const modal = document.getElementById('contribution-info-modal');
+    if (!modal) return;
+
+    const fallback = _getCachedContributionFallback();
+    _renderContributionModal(fallback);
+
+    let result = { status: 'error', ...fallback };
+    if (window.fetchContributionStats) {
+        result = await window.fetchContributionStats(userId);
+    }
+
+    const payload = {
+        contribution_score: Number(
+            (result && result.contribution_score) != null
+                ? result.contribution_score
+                : fallback.contribution_score
+        ),
+        bugs_count: Number(
+            (result && result.bugs_count) != null ? result.bugs_count : fallback.bugs_count
+        ),
+        ideas_count: Number(
+            (result && result.ideas_count) != null ? result.ideas_count : fallback.ideas_count
+        ),
+        play_reviews_count: Number(
+            (result && result.play_reviews_count) != null
+                ? result.play_reviews_count
+                : fallback.play_reviews_count
+        ),
+    };
+    _renderContributionModal(payload);
+
+    if (visibilityStats) {
+        visibilityStats.contribution = {
+            contribution_score: payload.contribution_score,
+            bugs_count: payload.bugs_count,
+            ideas_count: payload.ideas_count,
+            play_reviews_count: payload.play_reviews_count,
+        };
+        visibilityStats.contribution_score = payload.contribution_score;
+    }
+
+    if (!result || result.status !== 'success') {
+        showToast(window.t('contributionNetworkFallbackToast', {}, lang));
     }
 
     modal.classList.add('active');
@@ -6605,6 +6694,8 @@ Object.assign(window, {
     closeFeedbackRewardModalUi,
     showKarmaInfo,
     closeKarmaInfoModal,
+    showContributionInfo,
+    closeContributionInfoModal,
     showReliabilityInfo,
     closeReliabilityInfo,
     showRankPopup,

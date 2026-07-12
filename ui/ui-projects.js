@@ -91,7 +91,14 @@ function renderProjects(force) {
         const totalGrants = Number(visibilityStats.grant_tests_count || 0);
         const completedTests = Number(visibilityStats.completed_tests || 0);
         const activeTests = Number(visibilityStats.my_active_tests || 0);
-        const achievementsLine = window.escapeHTML(formatDeveloperAchievements(completedTests, goldenCount, totalGrants));
+        const contributionScore = Number(
+            (visibilityStats.contribution && visibilityStats.contribution.contribution_score) ||
+            visibilityStats.contribution_score ||
+            0
+        );
+        const achievementsLine = window.escapeHTML(
+            formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
+        );
         const initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) || {};
         const tgUser = initData.user || {};
         const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ').trim();
@@ -135,12 +142,13 @@ function renderProjects(force) {
                         </div>
                         <div class="metric-value">${formatBustAmount(visibilityStats.balance_bust || 0)} <span class="metric-value-mark">💎</span></div>
                     </button>
-                    <div class="metric-card metric-card-neutral">
+                    <button type="button" class="metric-card metric-card-clickable metric-card-neutral" onclick="showContributionInfo()">
                         <div class="metric-card-top">
-                            <span class="metric-label">${window.t('metricActiveTests', {}, lang)}</span>
+                            <span class="metric-label">${window.t('metricContribution', {}, lang)}</span>
+                            <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${window.escapeHTML(activeTests + ' ' + pluralizeTestWord(activeTests))} <span class="metric-value-mark">⚡</span></div>
-                    </div>
+                        <div class="metric-value">${window.escapeHTML(String(Math.round(contributionScore)))} <span class="metric-value-mark">⭐</span></div>
+                    </button>
                 </div>
             </div>
         `;

@@ -6,21 +6,21 @@
     <meta name="color-scheme" content="dark">
     <title>DevTest Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="./i18n/ru.js?v=20260527-referral-ui"></script>
-    <script src="./i18n/en.js?v=20260527-referral-ui"></script>
+    <script src="./i18n/ru.js?v=20260712-contribution"></script>
+    <script src="./i18n/en.js?v=20260712-contribution"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-projects.js?v=20260710-sync-pulse-restore"></script>
-    <script src="./ui/ui-market.js?v=20260710-projects-scroll-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260712-contribution"></script>
+    <script src="./ui/ui-market.js?v=20260712-contribution"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260710-device-profile-banner-v1"></script>
-    <script src="./js/app-api.js?v=20260710-device-info"></script>
+    <script src="./js/app-api.js?v=20260712-contribution"></script>
     <script src="./js/app-device-info.js?v=20260710-device-profile-banner-v1"></script>
-    <script src="./js/app-actions.js?v=20260710-device-info"></script>
+    <script src="./js/app-actions.js?v=20260712-contribution"></script>
     <script src="./js/app-features.js?v=20260710-device-profile-banner-v1"></script>
-    <script src="./app.js?v=20260710-device-info"></script>
+    <script src="./app.js?v=20260712-contribution"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260706-phase1-1">
@@ -1287,6 +1287,43 @@
             </div>
 
             <button class="btn btn-secondary" style="width: 100%;" onclick="closeKarmaInfoModal()" data-i18n="karmaInfoCloseBtn">Закрыть</button>
+        </div>
+    </div>
+
+    <div id="contribution-info-modal" class="modal-overlay" onclick="closeContributionInfoModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div style="text-align:center; margin-bottom: 12px;">
+                <div class="dashboard-title" data-i18n="contributionInfoModalTitle">CONTRIBUTION</div>
+                <div id="contribution-score-value" style="font-size: 36px; font-weight: 800; margin-top: 8px; letter-spacing: 0.5px;">0</div>
+            </div>
+
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div class="dashboard-row">
+                        <span class="dashboard-label" data-i18n="contributionBugsLabel">🐞 Найдено багов</span>
+                        <span id="contribution-bugs-count" class="dashboard-label" style="font-weight:700;">0</span>
+                    </div>
+                    <div class="dashboard-row">
+                        <span class="dashboard-label" data-i18n="contributionIdeasLabel">💡 Предложено идей</span>
+                        <span id="contribution-ideas-count" class="dashboard-label" style="font-weight:700;">0</span>
+                    </div>
+                    <div class="dashboard-row">
+                        <span class="dashboard-label" data-i18n="contributionReviewsLabel">⭐ Подтверждено Google Play отзывов</span>
+                        <span id="contribution-reviews-count" class="dashboard-label" style="font-weight:700;">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="font-weight: 700; font-size: 15px; margin-bottom: 8px;" data-i18n="contributionBreakdownTitle">Расшифровка</div>
+                <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--hint-color);">
+                    <div id="contribution-summary-bugs">Багов: 0</div>
+                    <div id="contribution-summary-ideas">Идей: 0</div>
+                    <div id="contribution-summary-reviews">Отзывов: 0</div>
+                </div>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%;" onclick="closeContributionInfoModal()" data-i18n="contributionInfoCloseBtn">Закрыть</button>
         </div>
     </div>
 

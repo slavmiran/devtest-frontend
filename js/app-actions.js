@@ -729,6 +729,10 @@ function refreshOpenModals() {
     if (reliabilityInfoModal && reliabilityInfoModal.classList.contains('active') && window.showReliabilityInfo) {
         window.showReliabilityInfo();
     }
+    const contributionInfoModal = document.getElementById('contribution-info-modal');
+    if (contributionInfoModal && contributionInfoModal.classList.contains('active') && window.showContributionInfo) {
+        window.showContributionInfo();
+    }
     const checkinOptionsModal = document.getElementById('checkin-options-modal');
     if (checkinOptionsModal && checkinOptionsModal.classList.contains('active') && window.renderCheckinReviewOptions) {
         window.renderCheckinReviewOptions();
@@ -2152,6 +2156,44 @@ async function fetchKarmaBreakdown(targetUserId) {
             total: Number((visibilityStats && visibilityStats.ownerKarma) || 0),
             breakdown: []
         };
+    }
+}
+
+async function fetchContributionStats(targetUserId) {
+    const resolvedUserId = Number(targetUserId || userId || 0);
+    const cached = (visibilityStats && visibilityStats.contribution) || {};
+    const fallback = {
+        contribution_score: Number(
+            (cached.contribution_score != null
+                ? cached.contribution_score
+                : (visibilityStats && visibilityStats.contribution_score)) || 0
+        ),
+        bugs_count: Number(cached.bugs_count || 0),
+        ideas_count: Number(cached.ideas_count || 0),
+        play_reviews_count: Number(cached.play_reviews_count || 0),
+    };
+    if (!resolvedUserId) {
+        return { status: 'error', code: 'invalid_user_id', ...fallback };
+    }
+
+    try {
+        const response = await fetchWithRetry(`${API_BASE}/users/${resolvedUserId}/contribution`, {
+            timeoutMs: 10000
+        }, 1);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        return {
+            status: 'success',
+            code: null,
+            contribution_score: Number(payload && payload.contribution_score) || 0,
+            bugs_count: Number(payload && payload.bugs_count) || 0,
+            ideas_count: Number(payload && payload.ideas_count) || 0,
+            play_reviews_count: Number(payload && payload.play_reviews_count) || 0,
+            weights: (payload && payload.weights) || null,
+        };
+    } catch (error) {
+        console.error('Contribution stats load error:', error);
+        return { status: 'error', code: 'network_error', ...fallback };
     }
 }
 

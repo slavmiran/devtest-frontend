@@ -1912,6 +1912,7 @@ function _mapProjectsFromApi(data) {
 }
 
 function _mapStatsFromApi(data) {
+    var contribution = (data && data.contribution) || {};
     return {
         ownerKarma: data.karma || 0,
         rank: data.rank || 0,
@@ -1927,6 +1928,13 @@ function _mapStatsFromApi(data) {
         grant_tests_count: data.grant_tests_count || 0,
         reliability_index: typeof data.reliability_index !== 'undefined' ? data.reliability_index : null,
         reliability_status: data.reliability_status || 'newbie',
+        contribution: {
+            contribution_score: Number(contribution.contribution_score || data.contribution_score || 0),
+            bugs_count: Number(contribution.bugs_count || 0),
+            ideas_count: Number(contribution.ideas_count || 0),
+            play_reviews_count: Number(contribution.play_reviews_count || 0),
+        },
+        contribution_score: Number(contribution.contribution_score || data.contribution_score || 0),
     };
 }
 

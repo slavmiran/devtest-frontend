@@ -228,6 +228,7 @@ Object.assign(window, {
     loadReliabilityBreakdown,
     confirmHardDelete,
     fetchKarmaBreakdown,
+    fetchContributionStats,
     sendKarmaReward,
     confirmStart,
     handleClaimGrantClick,
