@@ -3813,17 +3813,23 @@ function getFeedbackAvgResponseMs(items) {
 function resolveFeedbackRejectReasonLabel(reasonRaw) {
     const reason = String(reasonRaw || '').trim().toLowerCase();
     if (!reason) return '';
+    // Internal migration placeholders — never show raw codes in UI.
+    if (reason === 'legacy_unknown' || reason === 'unknown' || reason === 'none') return '';
     const key = 'feedbackRejectReason_' + reason;
     const labeled = window.t(key, {}, lang);
     if (labeled && labeled !== key) return labeled;
     const playKey = 'playReviewRejectReason_' + reason;
     const playLabeled = window.t(playKey, {}, lang);
     if (playLabeled && playLabeled !== playKey) return playLabeled;
+    // Hide untranslated machine codes like snake_case leftovers.
+    if (/^[a-z0-9_]+$/.test(reason) && reason.indexOf('_') !== -1) return '';
     return reasonRaw;
 }
 
 function buildFeedbackMicroSummaryHtml(item, isRejected) {
-    const when = window.escapeHTML(formatFeedbackRelativeTime((item && (item.replied_at || item.updated_at || item.created_at)) || ''));
+    const when = window.escapeHTML(formatFeedbackRelativeTime(
+        (item && (item.processed_at || item.accepted_at || item.rejected_at || item.replied_at || item.updated_at || item.created_at)) || ''
+    ));
     if (isRejected) {
         const reasonRaw = String((item && (item.rejection_reason || item.reject_reason || item.decline_reason)) || '').trim();
         const reasonLabel = reasonRaw ? window.escapeHTML(resolveFeedbackRejectReasonLabel(reasonRaw)) : '';
@@ -4284,7 +4290,7 @@ function renderProjectFeedbackCards(project, items) {
             let nameHtml = '';
             if (fullName) {
                 nameHtml = username
-                    ? `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">${fullName}</a>`
+                    ? `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">${fullName}</a><a href="javascript:void(0);" class="fb-inbox-nick notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`
                     : `<span class="notranslate">${fullName}</span>`;
             } else if (username) {
                 nameHtml = `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
@@ -4381,9 +4387,10 @@ function renderProjectFeedbackCards(project, items) {
                    </button>`
                 : '';
 
+            // Topic link for BOTH open and processed cards (same style as Copy).
             const discussButtonHtml = hasTopicLink
-                ? `<button type="button" class="fb-icon-btn fb-icon-btn--topic" onclick="openFeedbackTopicLink(${item.telegram_message_id}, '${safeUsername}')" aria-label="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}" title="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}">
-                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2C6.48 2 2 6.04 2 11c0 2.53 1.2 4.81 3.11 6.4L4 22l5.09-2.02C10.01 20.32 10.98 20.5 12 20.5c5.52 0 10-4.04 10-9.5S17.52 2 12 2zm0 15.5c-.8 0-1.56-.14-2.27-.39l-.52-.19-1.72.68.48-1.63-.34-.36C6.24 14.53 5.5 12.84 5.5 11c0-3.58 2.91-6.5 6.5-6.5s6.5 2.92 6.5 6.5-2.91 6.5-6.5 6.5z"/></svg>
+                ? `<button type="button" class="fb-icon-btn" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')" aria-label="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}" title="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
                    </button>`
                 : '';
 
@@ -4418,8 +4425,8 @@ function renderProjectFeedbackCards(project, items) {
                     </button>`;
             }
 
-            const utilsHtml = (copyButtonHtml || discussButtonHtml)
-                ? `<div class="fb-toolbar-utils">${copyButtonHtml}${discussButtonHtml}</div>`
+            const utilsHtml = (discussButtonHtml || copyButtonHtml)
+                ? `<div class="fb-toolbar-utils">${discussButtonHtml}${copyButtonHtml}</div>`
                 : '';
             const decideHtml = decideButtonsHtml
                 ? `<div class="fb-toolbar-decide">${decideButtonsHtml}</div>`
