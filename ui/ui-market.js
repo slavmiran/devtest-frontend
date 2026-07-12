@@ -3271,7 +3271,8 @@ async function submitPlayReview() {
                     showToast(window.t('playReviewSubmittedToast', {}, lang));
                 }
             }
-            renderPlayReviewModal();
+            // Close immediately after success toast — do not leave the modal hanging open.
+            closePlayReviewModal();
             if (typeof window.renderTests === 'function') window.renderTests(true);
             if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
         } else {
@@ -3444,6 +3445,7 @@ function closePlayReviewModal(event) {
     var modal = document.getElementById('play-review-modal');
     if (modal) modal.classList.remove('active');
     _playReviewModalSource = 'badge';
+    _playReviewModalAppId = null;
 }
 
 function openPlayReviewStore() {
@@ -4477,6 +4479,56 @@ function _markFeedbackCardRejected(feedbackId) {
     }
 }
 
+/** Optimistic UI: drop processed card from pending list without waiting for refetch. */
+function removeFeedbackCardOptimistic(feedbackId, nextStatus) {
+    var safeId = Number(feedbackId || 0);
+    if (!safeId) return;
+
+    var card = document.querySelector('.fb-card[data-feedback-id="' + String(safeId) + '"]');
+    if (card) {
+        card.classList.add('fb-card--optimistic-out');
+        // Prefer instant removal for pending filter responsiveness.
+        try { card.remove(); } catch (_) {
+            if (card.parentNode) card.parentNode.removeChild(card);
+        }
+    }
+
+    if (Array.isArray(window._activeProjectFeedbackItems)) {
+        window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.filter(function(item) {
+            return Number(item && item.id) !== safeId;
+        });
+    }
+    if (Array.isArray(window._projectFeedbackCardNodes)) {
+        window._projectFeedbackCardNodes = window._projectFeedbackCardNodes.filter(function(node) {
+            return !(node && Number(node.getAttribute && node.getAttribute('data-feedback-id')) === safeId);
+        });
+    }
+
+    // Keep header counters / empty-state in sync with remaining visible cards.
+    if (typeof applyProjectFeedbackFilters === 'function') {
+        try { applyProjectFeedbackFilters(); } catch (_) { /* ignore */ }
+    }
+    var list = document.getElementById('project-feedback-list');
+    if (list && !list.querySelector('.fb-card')) {
+        var emptyHtml = '<div class="fb-empty">' +
+            (window.t('projectFeedbackEmptyFiltered', {}, lang) || window.t('projectFeedbackEmpty', {}, lang) || '') +
+            '</div>';
+        // Only inject empty stub if list has no cards left after filter.
+        if (!list.querySelector('.fb-empty')) {
+            list.insertAdjacentHTML('beforeend', emptyHtml);
+        }
+    }
+
+    // Soft background refresh of project badges — never block UI.
+    if (typeof loadProjects === 'function') {
+        Promise.resolve()
+            .then(function() { return loadProjects(true); })
+            .catch(function() { /* ignore */ });
+    }
+}
+
+window.removeFeedbackCardOptimistic = removeFeedbackCardOptimistic;
+
 async function confirmFeedbackReject() {
     var reason = _feedbackRejectState.reason;
     if (!reason) {
@@ -4509,21 +4561,13 @@ async function confirmFeedbackReject() {
         var data = await resp.json();
         if (data && data.status === 'success') {
             closeFeedbackRejectModal();
-            _markFeedbackCardRejected(feedbackId);
             if (typeof showToast === 'function') {
                 showToast(window.t('feedbackRejectSuccessToast', {}, lang));
             }
-            if (typeof loadProjects === 'function') {
-                try { await loadProjects(true); } catch (_) { /* ignore */ }
-            }
-            if (Array.isArray(window._activeProjectFeedbackItems)) {
-                window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.map(function(item) {
-                    if (Number(item.id) !== feedbackId) return item;
-                    return Object.assign({}, item, { status: 'rejected', rejection_reason: reason });
-                });
-            }
-            if (projectId && typeof openProjectFeedback === 'function') {
-                // Keep modal open; card already updated locally.
+            if (typeof removeFeedbackCardOptimistic === 'function') {
+                removeFeedbackCardOptimistic(feedbackId, 'rejected');
+            } else {
+                _markFeedbackCardRejected(feedbackId);
             }
         } else {
             var msg = (data && (data.message || data.code)) ? (data.message || data.code) : 'Reject failed';
@@ -4864,7 +4908,11 @@ function _renderContributionCurrentTab(payload) {
     const gapText = document.getElementById('contribution-gap-text');
     const gapHint = document.getElementById('contribution-gap-hint');
     if (gapCard && gapText) {
-        if (rank && rank > 0 && rank <= 5) {
+        if (rank && rank === 1) {
+            gapCard.style.display = '';
+            gapText.textContent = window.t('contributionSprintLeader', {}, lang);
+            if (gapHint) gapHint.textContent = '';
+        } else if (rank && rank > 0 && rank <= 5) {
             gapCard.style.display = '';
             gapText.textContent = window.t('contributionInTop5', {}, lang);
             if (gapHint) gapHint.textContent = '';
@@ -4892,11 +4940,28 @@ function _renderContributionCurrentTab(payload) {
             boardCard.style.display = '';
             boardList.innerHTML = rows.map((row) => {
                 const isMe = Number(row.user_id) === Number(userId);
+                const scoreValue = Math.round(Number(row.contribution_score || 0));
+                const displayName = String(
+                    row.first_name ||
+                    row.full_name ||
+                    (row.username ? String(row.username).replace(/^@+/, '') : '') ||
+                    ('User ' + (row.user_id || ''))
+                ).trim();
+                const username = String(row.username || '').replace(/^@+/, '').trim();
+                const profileUserId = Number(row.user_id || 0);
+                let nameHtml = `<span class="contribution-lb-name">${_escContribution(displayName)}</span>`;
+                if (username) {
+                    nameHtml = `<a class="contribution-lb-name" href="https://t.me/${_escContribution(username)}" target="_blank" rel="noopener">${_escContribution(displayName)}</a>`;
+                } else if (profileUserId > 0) {
+                    nameHtml = `<a class="contribution-lb-name" href="tg://user?id=${profileUserId}">${_escContribution(displayName)}</a>`;
+                }
                 return `
                     <div class="contribution-leaderboard-row${isMe ? ' is-me' : ''}">
-                        <span class="contribution-lb-rank">#${_escContribution(row.rank || '—')}</span>
-                        <span class="contribution-lb-score">${_escContribution(Math.round(Number(row.contribution_score || 0)))} ⭐</span>
-                        <span class="contribution-lb-counters">🐞${_escContribution(row.bugs_count || 0)} · 💡${_escContribution(row.ideas_count || 0)} · ⭐${_escContribution(row.play_reviews_count || 0)}</span>
+                        <div class="contribution-lb-left">
+                            <span class="contribution-lb-rank">${_escContribution(row.rank || '—')}.</span>
+                            ${nameHtml}
+                        </div>
+                        <span class="contribution-lb-score">${_escContribution(scoreValue)} ${_escContribution(pluralizePointsWord(scoreValue))}</span>
                     </div>
                 `;
             }).join('');

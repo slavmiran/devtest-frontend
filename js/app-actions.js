@@ -2044,9 +2044,16 @@ async function submitFeedbackReward() {
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t('feedbackRewardSuccessToast', {}, lang));
+        var processedFeedbackId = Number(_feedbackRewardTargetId || 0);
         closeFeedbackRewardModal();
-        await Promise.all([loadProjects(true), loadArchivedProjects()]);
-        await openProjectFeedback(_activeProjectFeedbackAppId, _activeProjectFeedbackArchived);
+        // Optimistic UI: drop the card immediately; refresh badges in background.
+        if (typeof window.removeFeedbackCardOptimistic === 'function') {
+            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted');
+        } else if (typeof loadProjects === 'function') {
+            Promise.resolve()
+                .then(function() { return loadProjects(true); })
+                .catch(function() { /* ignore */ });
+        }
     } catch (error) {
         console.error('Feedback reward error:', error);
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
