@@ -3238,19 +3238,25 @@ async function submitPlayReview() {
     }
 }
 
-async function rejectPlayReview(feedbackId, projectId, btnEl) {
-    if (!confirm('Reject this review? The tester can upload a new screenshot.')) return;
+async function rejectPlayReview(feedbackId, projectId, btnEl, reason) {
+    var selectedReason = String(reason || '').trim().toLowerCase();
+    if (!selectedReason) {
+        openPlayReviewRejectModal(feedbackId, projectId, btnEl);
+        return;
+    }
     var userId = (window.App && window.App.userId) || window.userId || 0;
-    var formData = new FormData();
-    formData.append('owner_id', String(userId));
     try {
         var apiBase = (window.App && window.App.API_BASE) || '';
         var resp = await fetch(apiBase + '/feedback/' + feedbackId + '/reject-play-review', {
-            method: 'POST', body: formData
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner_id: Number(userId),
+                reason: selectedReason,
+            }),
         });
         var data = await resp.json();
         if (data && data.status === 'success') {
-            // In-place DOM update — hide reject button, change status badge
             if (btnEl) {
                 btnEl.style.display = 'none';
                 var card = btnEl.closest('.fb-card');
@@ -3266,13 +3272,87 @@ async function rejectPlayReview(feedbackId, projectId, btnEl) {
                     if (primaryBtn) primaryBtn.style.display = 'none';
                 }
             }
+            if (typeof showToast === 'function') {
+                showToast(window.t('playReviewRejectSuccessToast', {}, lang));
+            }
         } else {
-            alert(data && data.message ? data.message : 'Reject failed');
+            var msg = (data && (data.message || data.code)) ? (data.message || data.code) : 'Reject failed';
+            if (window.tg && window.tg.showAlert) window.tg.showAlert(String(msg));
+            else alert(msg);
         }
     } catch (e) {
         console.error('rejectPlayReview error:', e);
-        alert('Network error');
+        if (window.tg && window.tg.showAlert) window.tg.showAlert('Network error');
+        else alert('Network error');
     }
+}
+
+var _playReviewRejectState = {
+    feedbackId: 0,
+    projectId: 0,
+    btnEl: null,
+    reason: '',
+};
+
+function openPlayReviewRejectModal(feedbackId, projectId, btnEl) {
+    _playReviewRejectState = {
+        feedbackId: Number(feedbackId || 0),
+        projectId: Number(projectId || 0),
+        btnEl: btnEl || null,
+        reason: '',
+    };
+    var modal = document.getElementById('play-review-reject-modal');
+    if (!modal) return;
+    document.querySelectorAll('.play-review-reject-chip').forEach(function (chip) {
+        chip.classList.remove('is-active');
+    });
+    var submitBtn = document.getElementById('play-review-reject-submit-btn');
+    if (submitBtn) submitBtn.disabled = true;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    modal.classList.add('active');
+}
+
+function closePlayReviewRejectModal(event) {
+    if (event && event.target && event.target.id !== 'play-review-reject-modal') return;
+    var modal = document.getElementById('play-review-reject-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function selectPlayReviewRejectReason(reason) {
+    _playReviewRejectState.reason = String(reason || '').trim().toLowerCase();
+    document.querySelectorAll('.play-review-reject-chip').forEach(function (chip) {
+        var chipReason = String(chip.getAttribute('data-reason') || '');
+        chip.classList.toggle('is-active', chipReason === _playReviewRejectState.reason);
+    });
+    var submitBtn = document.getElementById('play-review-reject-submit-btn');
+    if (submitBtn) submitBtn.disabled = !_playReviewRejectState.reason;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+
+async function confirmPlayReviewReject() {
+    var reason = _playReviewRejectState.reason;
+    if (!reason) {
+        if (typeof showToast === 'function') {
+            showToast(window.t('playReviewRejectNeedReasonToast', {}, lang));
+        }
+        return;
+    }
+    var submitBtn = document.getElementById('play-review-reject-submit-btn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.6';
+    }
+    await rejectPlayReview(
+        _playReviewRejectState.feedbackId,
+        _playReviewRejectState.projectId,
+        _playReviewRejectState.btnEl,
+        reason
+    );
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+    }
+    closePlayReviewRejectModal();
 }
 
 async function togglePlayReviewModalCheckbox(input) {
@@ -4054,7 +4134,7 @@ function renderProjectFeedbackCards(project, items) {
             : '';
 
         const rejectButtonHtml = (isNew && isReviewTicket)
-            ? `<button class="fb-action-btn fb-action-btn--reject" onclick="rejectPlayReview(${item.id}, ${projectId}, this)">
+            ? `<button class="fb-action-btn fb-action-btn--reject" onclick="openPlayReviewRejectModal(${item.id}, ${projectId}, this)">
                    ❌ ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
                </button>`
             : '';
@@ -7159,6 +7239,10 @@ Object.assign(window, {
     feedbackOnImageError,
     submitPlayReview,
     rejectPlayReview,
+    openPlayReviewRejectModal,
+    closePlayReviewRejectModal,
+    selectPlayReviewRejectReason,
+    confirmPlayReviewReject,
 });
 
 console.log('[DEBUG] ui-market.js END — switchTab=', typeof switchTab, 'showLoading=', typeof showLoading);

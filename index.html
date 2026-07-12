@@ -6,14 +6,14 @@
     <meta name="color-scheme" content="dark">
     <title>DevTest Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="./i18n/ru.js?v=20260712-contribution-season"></script>
-    <script src="./i18n/en.js?v=20260712-contribution-season"></script>
+    <script src="./i18n/ru.js?v=20260712-play-review-reject"></script>
+    <script src="./i18n/en.js?v=20260712-play-review-reject"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260602-phase44"></script>
     <script src="./ui/ui-projects.js?v=20260712-contribution-season"></script>
-    <script src="./ui/ui-market.js?v=20260712-contribution-season"></script>
+    <script src="./ui/ui-market.js?v=20260712-play-review-reject"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./js/app-api.js?v=20260712-contribution"></script>
@@ -1726,6 +1726,24 @@
 
             <button class="btn btn-primary" id="feedback-reward-submit-btn" style="width: 100%; margin-top: 14px;" onclick="submitFeedbackReward()" data-i18n="feedbackRewardSubmitBtn">Выдать награду и закрыть тикет</button>
             <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeFeedbackRewardModal()" data-i18n="feedbackRewardCancelBtn">Отмена</button>
+        </div>
+    </div>
+
+    <div id="play-review-reject-modal" class="modal-overlay" onclick="closePlayReviewRejectModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="playReviewRejectModalTitle">Отклонить отзыв</h3>
+            <p class="feedback-reward-subtitle" data-i18n="playReviewRejectModalDesc">Выберите причину отклонения. Тестер сможет отправить новый скриншот.</p>
+            <div class="feedback-reward-block">
+                <div class="feedback-reward-label" data-i18n="playReviewRejectReasonLabel">Причина</div>
+                <div class="chip-scroll feedback-reward-chips" id="play-review-reject-reason-chips">
+                    <button type="button" class="chip feedback-reward-chip play-review-reject-chip" data-reason="not_found" onclick="selectPlayReviewRejectReason('not_found')">🔍 <span data-i18n="playReviewRejectReason_not_found">Отзыв не найден</span></button>
+                    <button type="button" class="chip feedback-reward-chip play-review-reject-chip" data-reason="too_short" onclick="selectPlayReviewRejectReason('too_short')">📏 <span data-i18n="playReviewRejectReason_too_short">Слишком короткий</span></button>
+                    <button type="button" class="chip feedback-reward-chip play-review-reject-chip" data-reason="deleted" onclick="selectPlayReviewRejectReason('deleted')">🗑 <span data-i18n="playReviewRejectReason_deleted">Отзыв удалён</span></button>
+                    <button type="button" class="chip feedback-reward-chip play-review-reject-chip" data-reason="spam" onclick="selectPlayReviewRejectReason('spam')">🚫 <span data-i18n="playReviewRejectReason_spam">Спам</span></button>
+                </div>
+            </div>
+            <button class="btn btn-warning" id="play-review-reject-submit-btn" style="width: 100%; margin-top: 14px;" onclick="confirmPlayReviewReject()" data-i18n="playReviewRejectConfirmBtn" disabled>Отклонить</button>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closePlayReviewRejectModal()" data-i18n="playReviewRejectCancelBtn">Отмена</button>
         </div>
     </div>
     <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)"><div class="modal-content" onclick="event.stopPropagation()" id="project-details-body"></div></div>
