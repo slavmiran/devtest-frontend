@@ -4373,10 +4373,67 @@ function closeContributionInfoModal(event) {
     if (event && event.target && event.target.id !== 'contribution-info-modal') return;
     const modal = document.getElementById('contribution-info-modal');
     if (modal) modal.classList.remove('active');
+    _stopContributionCountdown();
+}
+
+let _contributionModalTab = 'current';
+let _contributionCurrentCache = null;
+let _contributionHistoryCache = null;
+let _contributionCountdownTimer = null;
+let _contributionClaimInFlight = false;
+
+function _escContribution(value) {
+    if (typeof window.escapeHTML === 'function') {
+        return window.escapeHTML(String(value == null ? '' : value));
+    }
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function _stopContributionCountdown() {
+    if (_contributionCountdownTimer) {
+        clearInterval(_contributionCountdownTimer);
+        _contributionCountdownTimer = null;
+    }
+}
+
+function _formatContributionCountdown(endsAt) {
+    const endMs = Date.parse(String(endsAt || ''));
+    if (!Number.isFinite(endMs)) return '';
+    const diff = Math.max(0, endMs - Date.now());
+    const totalSec = Math.floor(diff / 1000);
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.floor((totalSec % 86400) / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    if (diff <= 0) {
+        return window.t('contributionSeasonEnded', {}, lang);
+    }
+    if (days > 0) {
+        return window.t('contributionCountdownDays', { days: days, hours: hours }, lang);
+    }
+    if (hours > 0) {
+        return window.t('contributionCountdownHours', { hours: hours, minutes: minutes }, lang);
+    }
+    return window.t('contributionCountdownMinutes', { minutes: Math.max(1, minutes) }, lang);
+}
+
+function _startContributionCountdown(endsAt) {
+    _stopContributionCountdown();
+    const el = document.getElementById('contribution-countdown');
+    if (!el || !endsAt) return;
+    const tick = () => {
+        el.textContent = _formatContributionCountdown(endsAt);
+    };
+    tick();
+    _contributionCountdownTimer = setInterval(tick, 30000);
 }
 
 function _getCachedContributionFallback() {
     const cached = (visibilityStats && visibilityStats.contribution) || {};
+    const seasonCached = (visibilityStats && visibilityStats.contribution_season) || {};
     return {
         contribution_score: Number(
             cached.contribution_score != null
@@ -4386,24 +4443,305 @@ function _getCachedContributionFallback() {
         bugs_count: Number(cached.bugs_count || 0),
         ideas_count: Number(cached.ideas_count || 0),
         play_reviews_count: Number(cached.play_reviews_count || 0),
+        season_rank: seasonCached.rank != null ? Number(seasonCached.rank) : null,
+        season_number: seasonCached.season_number != null ? Number(seasonCached.season_number) : null,
     };
 }
 
-function _renderContributionModal(data) {
+function _cacheContributionSeasonSnapshot(currentPayload) {
+    if (!visibilityStats) return;
+    const me = (currentPayload && currentPayload.me) || {};
+    const season = (currentPayload && currentPayload.season) || {};
+    visibilityStats.contribution_season = {
+        rank: me.rank != null ? Number(me.rank) : null,
+        score: Number(me.contribution_score || 0),
+        season_number: season.season_number != null ? Number(season.season_number) : null,
+        ends_at: season.ends_at || null,
+        gap_to_top5: Number((currentPayload && currentPayload.gap_to_top5) || 0),
+    };
+    visibilityStats.contribution = {
+        contribution_score: Number(me.contribution_score || 0),
+        bugs_count: Number(me.bugs_count || 0),
+        ideas_count: Number(me.ideas_count || 0),
+        play_reviews_count: Number(me.play_reviews_count || 0),
+    };
+    visibilityStats.contribution_score = Number(me.contribution_score || 0);
+}
+
+function switchContributionTab(tabName) {
+    const next = tabName === 'history' ? 'history' : 'current';
+    _contributionModalTab = next;
+
+    const currentPanel = document.getElementById('contribution-tab-current');
+    const historyPanel = document.getElementById('contribution-tab-history');
+    const currentBtn = document.getElementById('contribution-tab-btn-current');
+    const historyBtn = document.getElementById('contribution-tab-btn-history');
+
+    if (currentPanel) currentPanel.style.display = next === 'current' ? '' : 'none';
+    if (historyPanel) historyPanel.style.display = next === 'history' ? '' : 'none';
+    if (currentBtn) currentBtn.classList.toggle('active', next === 'current');
+    if (historyBtn) historyBtn.classList.toggle('active', next === 'history');
+
+    if (next === 'history' && !_contributionHistoryCache) {
+        _loadContributionHistoryTab();
+    }
+}
+
+function _renderContributionCurrentTab(payload) {
+    const loadingEl = document.getElementById('contribution-current-loading');
+    const emptyEl = document.getElementById('contribution-current-empty');
+    const bodyEl = document.getElementById('contribution-current-body');
+    const subtitleEl = document.getElementById('contribution-modal-subtitle');
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    const season = payload && payload.season;
+    const me = (payload && payload.me) || {};
+    if (!season) {
+        if (emptyEl) emptyEl.style.display = '';
+        if (bodyEl) bodyEl.style.display = 'none';
+        if (subtitleEl) subtitleEl.textContent = '';
+        _stopContributionCountdown();
+        return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (bodyEl) bodyEl.style.display = '';
+
+    const seasonNumber = Number(season.season_number || 0);
+    if (subtitleEl) {
+        subtitleEl.textContent = window.t('contributionSeasonSubtitle', { number: seasonNumber }, lang);
+    }
+
+    const rankEl = document.getElementById('contribution-rank-value');
+    const rank = me.rank != null ? Number(me.rank) : null;
+    if (rankEl) {
+        rankEl.textContent = rank && rank > 0
+            ? window.t('contributionRankValue', { rank: rank }, lang)
+            : window.t('contributionRankUnranked', {}, lang);
+    }
+
+    const metaEl = document.getElementById('contribution-season-meta');
+    if (metaEl) {
+        metaEl.textContent = window.t('contributionSeasonPoolMeta', {
+            pool: (typeof formatBustAmount === 'function'
+                ? formatBustAmount(season.prize_pool_total || 0)
+                : String(Number(season.prize_pool_total || 0).toFixed(1))),
+        }, lang);
+    }
+
+    _startContributionCountdown(season.ends_at);
+
     const scoreEl = document.getElementById('contribution-score-value');
     const bugsEl = document.getElementById('contribution-bugs-count');
     const ideasEl = document.getElementById('contribution-ideas-count');
     const reviewsEl = document.getElementById('contribution-reviews-count');
+    if (scoreEl) scoreEl.textContent = String(Math.round(Number(me.contribution_score || 0)));
+    if (bugsEl) bugsEl.textContent = String(Math.round(Number(me.bugs_count || 0)));
+    if (ideasEl) ideasEl.textContent = String(Math.round(Number(me.ideas_count || 0)));
+    if (reviewsEl) reviewsEl.textContent = String(Math.round(Number(me.play_reviews_count || 0)));
 
-    const score = Math.round(Number((data && data.contribution_score) || 0));
-    const bugs = Math.round(Number((data && data.bugs_count) || 0));
-    const ideas = Math.round(Number((data && data.ideas_count) || 0));
-    const reviews = Math.round(Number((data && data.play_reviews_count) || 0));
+    const gap = Number((payload && payload.gap_to_top5) || 0);
+    const gapCard = document.getElementById('contribution-gap-card');
+    const gapText = document.getElementById('contribution-gap-text');
+    const gapHint = document.getElementById('contribution-gap-hint');
+    if (gapCard && gapText) {
+        if (rank && rank > 0 && rank <= 5) {
+            gapCard.style.display = '';
+            gapText.textContent = window.t('contributionInTop5', {}, lang);
+            if (gapHint) gapHint.textContent = '';
+        } else if (gap > 0) {
+            gapCard.style.display = '';
+            gapText.textContent = window.t('contributionGapToTop5', { points: gap }, lang);
+            if (gapHint) gapHint.textContent = window.t('contributionGapHint', {}, lang);
+        } else {
+            gapCard.style.display = 'none';
+        }
+    }
 
-    if (scoreEl) scoreEl.textContent = String(score);
-    if (bugsEl) bugsEl.textContent = String(bugs);
-    if (ideasEl) ideasEl.textContent = String(ideas);
-    if (reviewsEl) reviewsEl.textContent = String(reviews);
+    const boardCard = document.getElementById('contribution-leaderboard-card');
+    const boardList = document.getElementById('contribution-leaderboard-list');
+    const rows = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
+    if (boardCard && boardList) {
+        if (!rows.length) {
+            boardCard.style.display = 'none';
+            boardList.innerHTML = '';
+        } else {
+            boardCard.style.display = '';
+            boardList.innerHTML = rows.map((row) => {
+                const isMe = Number(row.user_id) === Number(userId);
+                return `
+                    <div class="contribution-leaderboard-row${isMe ? ' is-me' : ''}">
+                        <span class="contribution-lb-rank">#${_escContribution(row.rank || '—')}</span>
+                        <span class="contribution-lb-score">${_escContribution(Math.round(Number(row.contribution_score || 0)))} ⭐</span>
+                        <span class="contribution-lb-counters">🐞${_escContribution(row.bugs_count || 0)} · 💡${_escContribution(row.ideas_count || 0)} · ⭐${_escContribution(row.play_reviews_count || 0)}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+}
+
+function _renderContributionHistoryTab(payload) {
+    const loadingEl = document.getElementById('contribution-history-loading');
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    const lifetime = (payload && payload.lifetime) || {};
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(value);
+    };
+    setText('contribution-lifetime-score', Math.round(Number(lifetime.contribution_lifetime_score || 0)));
+    setText('contribution-wins-count', Math.round(Number(lifetime.contribution_wins_count || 0)));
+    setText('contribution-top5-count', Math.round(Number(lifetime.contribution_top5_count || 0)));
+    setText('contribution-top10-count', Math.round(Number(lifetime.contribution_top10_count || 0)));
+    const bestRank = lifetime.contribution_best_rank != null ? Number(lifetime.contribution_best_rank) : null;
+    setText('contribution-best-rank', bestRank && bestRank > 0 ? `#${bestRank}` : '—');
+
+    const claimable = Array.isArray(payload && payload.claimable) ? payload.claimable : [];
+    const banner = document.getElementById('contribution-claimable-banner');
+    if (banner) {
+        if (claimable.length) {
+            const total = claimable.reduce((sum, item) => sum + Number(item.prize_amount || 0), 0);
+            banner.style.display = '';
+            banner.innerHTML = window.t('contributionClaimableBanner', {
+                count: claimable.length,
+                amount: (typeof formatBustAmount === 'function'
+                    ? formatBustAmount(total)
+                    : Number(total).toFixed(1)),
+            }, lang);
+        } else {
+            banner.style.display = 'none';
+            banner.innerHTML = '';
+        }
+    }
+
+    const listEl = document.getElementById('contribution-history-list');
+    const emptyEl = document.getElementById('contribution-history-empty');
+    const seasons = Array.isArray(payload && payload.seasons) ? payload.seasons : [];
+    if (!listEl) return;
+
+    if (!seasons.length) {
+        listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = '';
+        return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    listEl.innerHTML = seasons.map((season) => {
+        const seasonId = Number(season.season_id || 0);
+        const seasonNumber = Number(season.season_number || 0) || '—';
+        const finalRank = season.final_rank != null ? Number(season.final_rank) : null;
+        const score = Math.round(Number(season.contribution_score || 0));
+        const prize = Number(season.prize_amount || 0);
+        const claimStatus = String(season.claim_status || 'none');
+        const prizeLabel = typeof formatBustAmount === 'function'
+            ? formatBustAmount(prize)
+            : prize.toFixed(1);
+
+        let actionHtml = '';
+        if (claimStatus === 'available' && prize > 0) {
+            actionHtml = `
+                <button type="button"
+                        class="btn btn-success contribution-claim-btn"
+                        data-season-id="${_escContribution(seasonId)}"
+                        onclick="claimContributionPrizeFromUi(${seasonId}, this)">
+                    ${window.t('contributionClaimBtn', { amount: prizeLabel }, lang)}
+                </button>
+            `;
+        } else if (claimStatus === 'claimed') {
+            actionHtml = `<div class="contribution-claimed-badge">${window.t('contributionClaimedBadge', {}, lang)}</div>`;
+        } else if (prize > 0) {
+            actionHtml = `<div class="contribution-prize-muted">${window.t('contributionPrizeAmount', { amount: prizeLabel }, lang)}</div>`;
+        }
+
+        return `
+            <div class="card contribution-history-item" data-season-id="${_escContribution(seasonId)}">
+                <div class="contribution-history-item-top">
+                    <div class="contribution-history-season">
+                        ${window.t('contributionHistorySeasonTitle', { number: seasonNumber }, lang)}
+                    </div>
+                    <div class="contribution-history-rank">
+                        ${finalRank && finalRank > 0
+                            ? window.t('contributionRankValue', { rank: finalRank }, lang)
+                            : window.t('contributionRankUnranked', {}, lang)}
+                    </div>
+                </div>
+                <div class="contribution-history-meta">
+                    ${window.t('contributionHistoryScoreLine', { score: score }, lang)}
+                    · 🐞${_escContribution(season.bugs_count || 0)}
+                    · 💡${_escContribution(season.ideas_count || 0)}
+                    · ⭐${_escContribution(season.play_reviews_count || 0)}
+                </div>
+                ${actionHtml}
+            </div>
+        `;
+    }).join('');
+}
+
+async function _loadContributionCurrentTab() {
+    const loadingEl = document.getElementById('contribution-current-loading');
+    if (loadingEl) loadingEl.style.display = '';
+
+    let result = { status: 'error' };
+    if (window.fetchContributionCurrent) {
+        result = await window.fetchContributionCurrent();
+    }
+
+    if (result && result.status === 'success') {
+        _contributionCurrentCache = result;
+        _cacheContributionSeasonSnapshot(result);
+        _renderContributionCurrentTab(result);
+        if (typeof window.renderProjects === 'function') {
+            try { window.renderProjects(true); } catch (_) { /* ignore */ }
+        }
+        return true;
+    }
+
+    const fallback = _getCachedContributionFallback();
+    _renderContributionCurrentTab({
+        season: fallback.season_number ? {
+            season_number: fallback.season_number,
+            prize_pool_total: 0,
+            ends_at: (visibilityStats && visibilityStats.contribution_season && visibilityStats.contribution_season.ends_at) || null,
+        } : null,
+        me: {
+            rank: fallback.season_rank,
+            contribution_score: fallback.contribution_score,
+            bugs_count: fallback.bugs_count,
+            ideas_count: fallback.ideas_count,
+            play_reviews_count: fallback.play_reviews_count,
+        },
+        gap_to_top5: (visibilityStats && visibilityStats.contribution_season && visibilityStats.contribution_season.gap_to_top5) || 0,
+        leaderboard: [],
+    });
+    if (loadingEl) loadingEl.style.display = 'none';
+    showToast(window.t('contributionNetworkFallbackToast', {}, lang));
+    return false;
+}
+
+async function _loadContributionHistoryTab() {
+    const loadingEl = document.getElementById('contribution-history-loading');
+    if (loadingEl) loadingEl.style.display = '';
+
+    let result = { status: 'error' };
+    if (window.fetchContributionHistory) {
+        result = await window.fetchContributionHistory();
+    }
+
+    if (result && result.status === 'success') {
+        _contributionHistoryCache = result;
+        _renderContributionHistoryTab(result);
+        return true;
+    }
+
+    if (loadingEl) loadingEl.style.display = 'none';
+    const emptyEl = document.getElementById('contribution-history-empty');
+    if (emptyEl) {
+        emptyEl.style.display = '';
+        emptyEl.textContent = window.t('contributionHistoryLoadError', {}, lang);
+    }
+    showToast(window.t('contributionNetworkFallbackToast', {}, lang));
+    return false;
 }
 
 async function showContributionInfo() {
@@ -4412,49 +4750,93 @@ async function showContributionInfo() {
     const modal = document.getElementById('contribution-info-modal');
     if (!modal) return;
 
-    const fallback = _getCachedContributionFallback();
-    _renderContributionModal(fallback);
+    _contributionHistoryCache = null;
+    switchContributionTab('current');
+    modal.classList.add('active');
 
-    let result = { status: 'error', ...fallback };
-    if (window.fetchContributionStats) {
-        result = await window.fetchContributionStats(userId);
+    await _loadContributionCurrentTab();
+}
+
+async function claimContributionPrizeFromUi(seasonId, buttonEl) {
+    if (_contributionClaimInFlight) return;
+    const safeSeasonId = Number(seasonId || 0);
+    if (!safeSeasonId) return;
+
+    _contributionClaimInFlight = true;
+    if (buttonEl) {
+        buttonEl.disabled = true;
+        buttonEl.style.opacity = '0.6';
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+
+    let result = { status: 'error', code: 'network_error' };
+    try {
+        if (window.claimContributionPrize) {
+            result = await window.claimContributionPrize(safeSeasonId);
+        }
+    } catch (error) {
+        console.error('claimContributionPrizeFromUi error:', error);
+        result = { status: 'error', code: 'network_error' };
     }
 
-    const payload = {
-        contribution_score: Number(
-            (result && result.contribution_score) != null
-                ? result.contribution_score
-                : fallback.contribution_score
-        ),
-        bugs_count: Number(
-            (result && result.bugs_count) != null ? result.bugs_count : fallback.bugs_count
-        ),
-        ideas_count: Number(
-            (result && result.ideas_count) != null ? result.ideas_count : fallback.ideas_count
-        ),
-        play_reviews_count: Number(
-            (result && result.play_reviews_count) != null
-                ? result.play_reviews_count
-                : fallback.play_reviews_count
-        ),
-    };
-    _renderContributionModal(payload);
-
-    if (visibilityStats) {
-        visibilityStats.contribution = {
-            contribution_score: payload.contribution_score,
-            bugs_count: payload.bugs_count,
-            ideas_count: payload.ideas_count,
-            play_reviews_count: payload.play_reviews_count,
-        };
-        visibilityStats.contribution_score = payload.contribution_score;
-    }
+    _contributionClaimInFlight = false;
 
     if (!result || result.status !== 'success') {
-        showToast(window.t('contributionNetworkFallbackToast', {}, lang));
+        if (buttonEl) {
+            buttonEl.disabled = false;
+            buttonEl.style.opacity = '1';
+        }
+        const code = (result && result.code) || 'network_error';
+        const specificKey = `contributionClaimError_${code}`;
+        const specificMsg = window.t(specificKey, {}, lang);
+        const message = (specificMsg && specificMsg !== specificKey)
+            ? specificMsg
+            : window.t('contributionClaimErrorGeneric', {}, lang);
+        if (tg && tg.showAlert) {
+            tg.showAlert(message);
+        } else {
+            showToast(message);
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        return;
     }
 
-    modal.classList.add('active');
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+    if (result.new_balance != null && visibilityStats) {
+        visibilityStats.balance_bust = Number(result.new_balance);
+    }
+
+    const amountLabel = typeof formatBustAmount === 'function'
+        ? formatBustAmount(result.prize_amount || 0)
+        : Number(result.prize_amount || 0).toFixed(1);
+    showToast(window.t('contributionClaimSuccessToast', { amount: amountLabel }, lang));
+
+    if (_contributionHistoryCache && Array.isArray(_contributionHistoryCache.seasons)) {
+        _contributionHistoryCache.seasons = _contributionHistoryCache.seasons.map((row) => {
+            if (Number(row.season_id) !== safeSeasonId) return row;
+            return {
+                ...row,
+                claim_status: 'claimed',
+                claimed_at: result.claimed_at || row.claimed_at,
+            };
+        });
+        _contributionHistoryCache.claimable = (_contributionHistoryCache.claimable || [])
+            .filter((item) => Number(item.season_id) !== safeSeasonId);
+        _contributionHistoryCache.has_claimable_prize = Boolean(
+            (_contributionHistoryCache.claimable || []).length
+        );
+        _renderContributionHistoryTab(_contributionHistoryCache);
+    } else if (buttonEl) {
+        buttonEl.outerHTML = `<div class="contribution-claimed-badge">${window.t('contributionClaimedBadge', {}, lang)}</div>`;
+    }
+
+    if (typeof window.renderProjects === 'function') {
+        try { window.renderProjects(true); } catch (_) { /* ignore */ }
+    }
+    if (typeof window.loadProjects === 'function') {
+        try { await window.loadProjects(true); } catch (_) { /* ignore */ }
+    }
 }
 
 function showReliabilityInfo() {
@@ -6663,6 +7045,8 @@ Object.assign(window, {
     closeKarmaInfoModal,
     showContributionInfo,
     closeContributionInfoModal,
+    switchContributionTab,
+    claimContributionPrizeFromUi,
     showReliabilityInfo,
     closeReliabilityInfo,
     showRankPopup,

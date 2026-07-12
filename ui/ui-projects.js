@@ -96,6 +96,12 @@ function renderProjects(force) {
             visibilityStats.contribution_score ||
             0
         );
+        const seasonRankRaw = visibilityStats.contribution_season && visibilityStats.contribution_season.rank;
+        const seasonRank = seasonRankRaw != null ? Number(seasonRankRaw) : null;
+        const contributionMetricValue = (seasonRank && seasonRank > 0)
+            ? `#${Math.round(seasonRank)}`
+            : String(Math.round(contributionScore));
+        const contributionMetricMark = (seasonRank && seasonRank > 0) ? '🏆' : '⭐';
         const achievementsLine = window.escapeHTML(
             formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
         );
@@ -147,7 +153,7 @@ function renderProjects(force) {
                             <span class="metric-label">${window.t('metricContribution', {}, lang)}</span>
                             <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${window.escapeHTML(String(Math.round(contributionScore)))} <span class="metric-value-mark">⭐</span></div>
+                        <div class="metric-value">${window.escapeHTML(contributionMetricValue)} <span class="metric-value-mark">${contributionMetricMark}</span></div>
                     </button>
                 </div>
             </div>

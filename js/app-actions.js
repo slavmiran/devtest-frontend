@@ -2197,6 +2197,124 @@ async function fetchContributionStats(targetUserId) {
     }
 }
 
+function _getTelegramInitDataRaw() {
+    try {
+        return String((tg && tg.initData) || '').trim();
+    } catch (_) {
+        return '';
+    }
+}
+
+async function fetchContributionCurrent() {
+    const initData = _getTelegramInitDataRaw();
+    if (!initData) {
+        return { status: 'error', code: 'invalid_init_data', season: null, me: null, gap_to_top5: 0, leaderboard: [] };
+    }
+    try {
+        const url = `${API_BASE}/contribution/current?init_data=${encodeURIComponent(initData)}`;
+        const response = await fetchWithRetry(url, { timeoutMs: 12000 }, 1);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || (payload && payload.status === 'error')) {
+            return {
+                status: 'error',
+                code: (payload && (payload.code || payload.detail)) || `http_${response.status}`,
+                details: (payload && payload.details) || null,
+            };
+        }
+        return {
+            status: 'success',
+            season: payload.season || null,
+            me: payload.me || null,
+            gap_to_top5: Number(payload.gap_to_top5 || 0),
+            leaderboard: Array.isArray(payload.leaderboard) ? payload.leaderboard : [],
+            leaderboard_total: Number(payload.leaderboard_total || 0),
+        };
+    } catch (error) {
+        console.error('Contribution current load error:', error);
+        return { status: 'error', code: 'network_error' };
+    }
+}
+
+async function fetchContributionHistory() {
+    const initData = _getTelegramInitDataRaw();
+    if (!initData) {
+        return {
+            status: 'error',
+            code: 'invalid_init_data',
+            lifetime: null,
+            seasons: [],
+            claimable: [],
+            has_claimable_prize: false,
+        };
+    }
+    try {
+        const url = `${API_BASE}/contribution/history?init_data=${encodeURIComponent(initData)}`;
+        const response = await fetchWithRetry(url, { timeoutMs: 12000 }, 1);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || (payload && payload.status === 'error')) {
+            return {
+                status: 'error',
+                code: (payload && (payload.code || payload.detail)) || `http_${response.status}`,
+                details: (payload && payload.details) || null,
+            };
+        }
+        return {
+            status: 'success',
+            lifetime: payload.lifetime || null,
+            seasons: Array.isArray(payload.seasons) ? payload.seasons : [],
+            claimable: Array.isArray(payload.claimable) ? payload.claimable : [],
+            has_claimable_prize: Boolean(payload.has_claimable_prize),
+        };
+    } catch (error) {
+        console.error('Contribution history load error:', error);
+        return { status: 'error', code: 'network_error' };
+    }
+}
+
+async function claimContributionPrize(seasonId) {
+    const initData = _getTelegramInitDataRaw();
+    const safeSeasonId = Number(seasonId || 0);
+    if (!initData) {
+        return { status: 'error', code: 'invalid_init_data' };
+    }
+    if (!safeSeasonId) {
+        return { status: 'error', code: 'season_not_found' };
+    }
+    try {
+        const response = await fetchWithRetry(`${API_BASE}/contribution/claim`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                init_data: initData,
+                season_id: safeSeasonId,
+            }),
+            timeoutMs: 15000,
+        }, 1);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || (payload && payload.status === 'error')) {
+            const code = (payload && (payload.code || payload.detail)) || `http_${response.status}`;
+            return {
+                status: 'error',
+                code: typeof code === 'string' ? code : 'claim_failed',
+                details: (payload && payload.details) || null,
+            };
+        }
+        return {
+            status: 'success',
+            season_id: Number(payload.season_id || safeSeasonId),
+            prize_amount: Number(payload.prize_amount || 0),
+            claim_status: payload.claim_status || 'claimed',
+            claimed_at: payload.claimed_at || null,
+            claim_transaction_id: payload.claim_transaction_id || null,
+            new_balance: payload.new_balance != null ? Number(payload.new_balance) : null,
+            final_rank: payload.final_rank != null ? Number(payload.final_rank) : null,
+        };
+    } catch (error) {
+        console.error('Contribution claim error:', error);
+        return { status: 'error', code: 'network_error' };
+    }
+}
+
 async function sendKarmaReward(appId, testerId, rewardType) {
     try {
         const response = await fetch(`${API_BASE}/projects/${appId}/like`, {
