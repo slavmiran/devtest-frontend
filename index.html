@@ -6,14 +6,14 @@
     <meta name="color-scheme" content="dark">
     <title>DevTest Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="./i18n/ru.js?v=20260712-sla-quality"></script>
-    <script src="./i18n/en.js?v=20260712-sla-quality"></script>
+    <script src="./i18n/ru.js?v=20260712-contribution-sprint"></script>
+    <script src="./i18n/en.js?v=20260712-contribution-sprint"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260602-phase44"></script>
     <script src="./ui/ui-projects.js?v=20260712-contribution-season"></script>
-    <script src="./ui/ui-market.js?v=20260712-sla-quality"></script>
+    <script src="./ui/ui-market.js?v=20260712-contribution-sprint"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./js/app-api.js?v=20260712-contribution"></script>
@@ -40,7 +40,7 @@
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./styles.css?v=20260712-contribution-season">
+    <link rel="stylesheet" href="./styles.css?v=20260712-contribution-sprint">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260711-collapsed-fix">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
@@ -1300,7 +1300,7 @@
             <div class="segmented-control contribution-tabs" role="tablist">
                 <button type="button" class="seg-btn active" id="contribution-tab-btn-current"
                         data-contribution-tab="current" onclick="switchContributionTab('current')">
-                    <span data-i18n="contributionTabCurrent">Текущий сезон</span>
+                    <span data-i18n="contributionTabCurrent">Текущий спринт</span>
                 </button>
                 <button type="button" class="seg-btn" id="contribution-tab-btn-history"
                         data-contribution-tab="history" onclick="switchContributionTab('history')">
@@ -1312,7 +1312,7 @@
                 <div id="contribution-current-loading" class="contribution-loading" style="display:none;"
                      data-i18n="contributionLoading">Загрузка…</div>
                 <div id="contribution-current-empty" class="contribution-empty" style="display:none;"
-                     data-i18n="contributionNoActiveSeason">Сейчас нет активного сезона.</div>
+                     data-i18n="contributionNoActiveSeason">Сейчас нет активного спринта.</div>
                 <div id="contribution-current-body" style="display:none;">
                     <div class="contribution-hero card">
                         <div class="contribution-hero-label" data-i18n="contributionCurrentPlaceLabel">Текущее место</div>
@@ -1323,7 +1323,7 @@
 
                     <div class="card contribution-score-card">
                         <div class="dashboard-row">
-                            <span class="dashboard-label" data-i18n="contributionScoreLabel">Очки сезона</span>
+                            <span class="dashboard-label" data-i18n="contributionScoreLabel">Баллы спринта</span>
                             <span id="contribution-score-value" class="dashboard-label contribution-stat-value">0</span>
                         </div>
                         <div class="dashboard-row">
@@ -1346,7 +1346,7 @@
                     </div>
 
                     <div id="contribution-leaderboard-card" class="card" style="display:none;">
-                        <div class="contribution-section-title" data-i18n="contributionLeaderboardTitle">Топ сезона</div>
+                        <div class="contribution-section-title" data-i18n="contributionLeaderboardTitle">Топ спринта</div>
                         <div id="contribution-leaderboard-list" class="contribution-leaderboard-list"></div>
                     </div>
                 </div>
@@ -1357,35 +1357,35 @@
                      data-i18n="contributionLoading">Загрузка…</div>
                 <div id="contribution-history-body">
                     <div class="card contribution-lifetime-card">
-                        <div class="contribution-section-title" data-i18n="contributionLifetimeTitle">За всё время</div>
-                        <div class="dashboard-row">
-                            <span class="dashboard-label" data-i18n="contributionLifetimeScoreLabel">Очки</span>
-                            <span id="contribution-lifetime-score" class="dashboard-label contribution-stat-value">0</span>
-                        </div>
-                        <div class="dashboard-row">
-                            <span class="dashboard-label" data-i18n="contributionWinsLabel">Победы</span>
-                            <span id="contribution-wins-count" class="dashboard-label contribution-stat-value">0</span>
-                        </div>
-                        <div class="dashboard-row">
-                            <span class="dashboard-label" data-i18n="contributionTop5Label">Топ-5</span>
-                            <span id="contribution-top5-count" class="dashboard-label contribution-stat-value">0</span>
-                        </div>
-                        <div class="dashboard-row">
-                            <span class="dashboard-label" data-i18n="contributionTop10Label">Топ-10</span>
-                            <span id="contribution-top10-count" class="dashboard-label contribution-stat-value">0</span>
-                        </div>
-                        <div class="dashboard-row">
-                            <span class="dashboard-label" data-i18n="contributionBestRankLabel">Лучшее место</span>
-                            <span id="contribution-best-rank" class="dashboard-label contribution-stat-value">—</span>
+                        <div class="contribution-section-title" data-i18n="contributionLifetimeTitle">Достижения</div>
+                        <div class="contribution-achievements" id="contribution-achievements">
+                            <div class="contribution-achievement-badge">
+                                <div class="contribution-achievement-label" data-i18n="contributionWinsLabel">🥇 1-е место</div>
+                                <div id="contribution-wins-count" class="contribution-achievement-value">0</div>
+                            </div>
+                            <div class="contribution-achievement-badge">
+                                <div class="contribution-achievement-label" data-i18n="contributionTop5Label">🏅 В Топ-5</div>
+                                <div id="contribution-top5-count" class="contribution-achievement-value">0</div>
+                            </div>
+                            <div class="contribution-achievement-badge">
+                                <div class="contribution-achievement-label" data-i18n="contributionTop10Label">🎖 В Топ-10</div>
+                                <div id="contribution-top10-count" class="contribution-achievement-value">0</div>
+                            </div>
+                            <div class="contribution-achievement-badge contribution-achievement-badge--wide">
+                                <div class="contribution-achievement-label" data-i18n="contributionBestRankLabel">⭐ Лучший результат</div>
+                                <div id="contribution-best-rank" class="contribution-achievement-value">—</div>
+                            </div>
                         </div>
                     </div>
 
                     <div id="contribution-claimable-banner" class="contribution-claimable-banner" style="display:none;"></div>
 
-                    <div class="contribution-section-title" style="margin-top:12px;" data-i18n="contributionPastSeasonsTitle">Прошлые сезоны</div>
+                    <div class="contribution-section-title" style="margin-top:12px;" data-i18n="contributionPastSeasonsTitle">Прошлые спринты</div>
                     <div id="contribution-history-list" class="contribution-history-list"></div>
                     <div id="contribution-history-empty" class="contribution-empty" style="display:none;"
-                         data-i18n="contributionNoHistory">Пока нет завершённых сезонов.</div>
+                         data-i18n="contributionNoHistory">Пока нет завершённых спринтов.</div>
+
+                    <div id="contribution-lifetime-actions" class="card contribution-lifetime-actions" style="display:none;"></div>
                 </div>
             </div>
 

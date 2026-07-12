@@ -3872,6 +3872,50 @@ input::placeholder,
     margin-bottom: 12px;
 }
 
+.contribution-achievements {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.contribution-achievement-badge {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+}
+
+.contribution-achievement-badge--wide {
+    grid-column: 1 / -1;
+}
+
+.contribution-achievement-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hint-color);
+    line-height: 1.3;
+}
+
+.contribution-achievement-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1.2;
+}
+
+.contribution-lifetime-actions {
+    margin-top: 12px;
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
 .contribution-score-card .dashboard-row,
 .contribution-lifetime-card .dashboard-row,
 .contribution-history-item .dashboard-row {

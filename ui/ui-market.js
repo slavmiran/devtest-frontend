@@ -2604,6 +2604,32 @@ function pluralizeGrantWord(count) {
     return window.t('countGrantWord_many', {}, lang);
 }
 
+/** Russian: 1 балл, 2 балла, 5 баллов. English: point/points. */
+function pluralizePointsWord(count) {
+    const value = Math.abs(Number(count) || 0);
+    if (lang !== 'ru') return window.t(value === 1 ? 'countPointsWord_one' : 'countPointsWord_many', {}, lang);
+    const mod10 = value % 10;
+    const mod100 = value % 100;
+    if (mod10 === 1 && mod100 !== 11) return window.t('countPointsWord_one', {}, lang);
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return window.t('countPointsWord_few', {}, lang);
+    return window.t('countPointsWord_many', {}, lang);
+}
+
+function formatContributionPointsLabel(count) {
+    const value = Math.round(Number(count) || 0);
+    return window.t('contributionHistoryScoreLine', {
+        score: value,
+        points_word: pluralizePointsWord(value),
+    }, lang);
+}
+
+/** Numeric $BUST amount without currency suffix (i18n already appends $BUST). */
+function formatContributionBustNumber(value) {
+    if (typeof formatAmountValue === 'function') return formatAmountValue(value, 1);
+    const n = Number(value || 0);
+    return Number.isFinite(n) ? n.toFixed(1) : '0.0';
+}
+
 function formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests) {
     const safeCompleted = Number(completedTests || 0);
     const safeGolden = Number(goldenCount || 0);
@@ -3282,10 +3308,12 @@ async function rejectPlayReview(feedbackId, projectId, btnEl, reason) {
                 if (card) {
                     card.classList.remove('fb-card--new');
                     card.classList.add('fb-card--rejected');
-                    var statusEl = card.querySelector('.fb-status');
+                    card.setAttribute('data-feedback-status', 'rejected');
+                    var statusEl = card.querySelector('.fb-status-badge, .fb-status');
                     if (statusEl) {
                         statusEl.textContent = window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected';
-                        statusEl.classList.remove('fb-status--new');
+                        statusEl.classList.remove('fb-status--new', 'fb-status-badge--new', 'fb-status-badge--closed');
+                        statusEl.classList.add('fb-status-badge--declined');
                     }
                     var primaryBtn = card.querySelector('.fb-primary-btn');
                     if (primaryBtn) primaryBtn.style.display = 'none';
@@ -3836,6 +3864,21 @@ function resetProjectFeedbackFilters() {
     _projectFeedbackCardNodes = null;
 }
 
+function normalizeFeedbackStatus(status) {
+    return String(status || '').trim().toLowerCase();
+}
+
+/** Open/active ticket: DB default is pending; legacy rows may still be new/processing. */
+function isOpenFeedbackStatus(status) {
+    const s = normalizeFeedbackStatus(status);
+    return s === 'pending' || s === 'new' || s === 'processing';
+}
+
+function isRejectedFeedbackStatus(status) {
+    const s = normalizeFeedbackStatus(status);
+    return s === 'rejected' || s === 'declined';
+}
+
 function feedbackMatchesTypeFilter(cardType, filterType) {
     cardType = String(cardType || '').toLowerCase();
     filterType = String(filterType || 'all').toLowerCase();
@@ -3848,10 +3891,13 @@ function feedbackMatchesTypeFilter(cardType, filterType) {
 }
 
 function feedbackMatchesStatusFilter(cardStatus, statusFilter) {
-    cardStatus = String(cardStatus || '').toLowerCase();
+    cardStatus = normalizeFeedbackStatus(cardStatus);
     statusFilter = String(statusFilter || 'all').toLowerCase();
     if (statusFilter === 'all') return true;
-    if (statusFilter === 'new') return cardStatus === 'new';
+    // "New" chip = open tickets (pending + legacy new/processing)
+    if (statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open') {
+        return isOpenFeedbackStatus(cardStatus);
+    }
     return true;
 }
 
@@ -3983,7 +4029,9 @@ function renderProjectFeedbackCards(project, items) {
         const safeUsername = escapeInlineJsString(username);
         const fullName = window.escapeHTML(item.tester_full_name || '');
         const usernameLabel = username ? '@' + window.escapeHTML(username) : '';
-        const isNew = item.status === 'new';
+        const feedbackStatus = normalizeFeedbackStatus(item.status) || 'pending';
+        const isOpen = isOpenFeedbackStatus(feedbackStatus);
+        const isRejected = isRejectedFeedbackStatus(feedbackStatus);
 
         // ── Avatar initials & image rendering ──
         const initials = window.escapeHTML(
@@ -3995,7 +4043,7 @@ function renderProjectFeedbackCards(project, items) {
         const avatarHtml = `<div class="fb-avatar" style="--av-hue:${avatarHue}; overflow: hidden; position: relative;">
             ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` : ''}
             <span class="fb-avatar-initials" style="${avatarUrl ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%;'}">${initials}</span>
-            ${isNew ? '<span class="fb-avatar-badge-new"></span>' : ''}
+            ${isOpen ? '<span class="fb-avatar-badge-new"></span>' : ''}
         </div>`;
 
         // ── Header ──
@@ -4012,12 +4060,14 @@ function renderProjectFeedbackCards(project, items) {
             nameHtml = `<span class="fb-name notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
         }
 
-        const statusBadgeLabel = item.status === 'declined' || item.status === 'rejected'
+        const statusBadgeLabel = isRejected
             ? window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected')
-            : (item.status === 'new' ? 'NEW' : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang) || 'Closed'));
-        const statusBadgeClass = item.status === 'declined' || item.status === 'rejected'
+            : (isOpen
+                ? window.escapeHTML(window.t('projectFeedbackNewBadge', {}, lang) || 'NEW')
+                : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang) || 'Closed'));
+        const statusBadgeClass = isRejected
             ? 'fb-status-badge fb-status-badge--declined'
-            : (item.status === 'new' ? 'fb-status-badge fb-status-badge--new' : 'fb-status-badge fb-status-badge--closed');
+            : (isOpen ? 'fb-status-badge fb-status-badge--new' : 'fb-status-badge fb-status-badge--closed');
         const statusBadge = `<span class="${statusBadgeClass}">${statusBadgeLabel}</span>`;
 
         const typeChipHtml = getFeedbackTypeChip(item);
@@ -4146,20 +4196,20 @@ function renderProjectFeedbackCards(project, items) {
                </button>`
             : '';
 
-        const thankCloseButtonHtml = isNew
+        const thankCloseButtonHtml = isOpen
             ? `<button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">
                    ${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang) || '🎁 Thank & close')}
                </button>`
             : '';
 
-        const rejectButtonHtml = (isNew && isReviewTicket)
+        const rejectButtonHtml = (isOpen && isReviewTicket)
             ? `<button class="fb-action-btn fb-action-btn--reject" onclick="openPlayReviewRejectModal(${item.id}, ${projectId}, this)">
                    ❌ ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
                </button>`
             : '';
 
         const hasFooter = copyButtonHtml || dmButtonHtml || topicButtonHtml || thankCloseButtonHtml || rejectButtonHtml;
-        const cardMod = (isNew ? ' fb-card--new' : '') + ((item.status === 'declined' || item.status === 'rejected') ? ' fb-card--rejected' : '');
+        const cardMod = (isOpen ? ' fb-card--new' : '') + (isRejected ? ' fb-card--rejected' : '');
         let cardTypeClass = 'fb-card--general';
         if (isReviewTicket) {
             cardTypeClass = 'fb-card--google-play';
@@ -4171,7 +4221,7 @@ function renderProjectFeedbackCards(project, items) {
             cardTypeClass = 'fb-card--question';
         }
 
-        return `<div class="fb-card ${cardTypeClass}${cardMod}" data-feedback-type="${feedbackType}" data-feedback-status="${window.escapeHTML(String(item.status || 'new').toLowerCase())}">
+        return `<div class="fb-card ${cardTypeClass}${cardMod}" data-feedback-type="${feedbackType}" data-feedback-status="${window.escapeHTML(feedbackStatus)}">
             ${headerHtml}
             <div class="fb-body">
                 ${mediaHtml}
@@ -4622,9 +4672,7 @@ function _renderContributionCurrentTab(payload) {
     const metaEl = document.getElementById('contribution-season-meta');
     if (metaEl) {
         metaEl.textContent = window.t('contributionSeasonPoolMeta', {
-            pool: (typeof formatBustAmount === 'function'
-                ? formatBustAmount(season.prize_pool_total || 0)
-                : String(Number(season.prize_pool_total || 0).toFixed(1))),
+            pool: formatContributionBustNumber(season.prize_pool_total || 0),
         }, lang);
     }
 
@@ -4649,8 +4697,12 @@ function _renderContributionCurrentTab(payload) {
             gapText.textContent = window.t('contributionInTop5', {}, lang);
             if (gapHint) gapHint.textContent = '';
         } else if (gap > 0) {
+            const gapPoints = Math.round(gap);
             gapCard.style.display = '';
-            gapText.textContent = window.t('contributionGapToTop5', { points: gap }, lang);
+            gapText.textContent = window.t('contributionGapToTop5', {
+                points: gapPoints,
+                points_word: pluralizePointsWord(gapPoints),
+            }, lang);
             if (gapHint) gapHint.textContent = window.t('contributionGapHint', {}, lang);
         } else {
             gapCard.style.display = 'none';
@@ -4685,16 +4737,21 @@ function _renderContributionHistoryTab(payload) {
     if (loadingEl) loadingEl.style.display = 'none';
 
     const lifetime = (payload && payload.lifetime) || {};
+    const seasons = Array.isArray(payload && payload.seasons) ? payload.seasons : [];
     const setText = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.textContent = String(value);
     };
-    setText('contribution-lifetime-score', Math.round(Number(lifetime.contribution_lifetime_score || 0)));
     setText('contribution-wins-count', Math.round(Number(lifetime.contribution_wins_count || 0)));
     setText('contribution-top5-count', Math.round(Number(lifetime.contribution_top5_count || 0)));
     setText('contribution-top10-count', Math.round(Number(lifetime.contribution_top10_count || 0)));
     const bestRank = lifetime.contribution_best_rank != null ? Number(lifetime.contribution_best_rank) : null;
-    setText('contribution-best-rank', bestRank && bestRank > 0 ? `#${bestRank}` : '—');
+    setText(
+        'contribution-best-rank',
+        bestRank && bestRank > 0
+            ? window.t('contributionBestRankValue', { rank: bestRank }, lang)
+            : window.t('contributionRankUnranked', {}, lang)
+    );
 
     const claimable = Array.isArray(payload && payload.claimable) ? payload.claimable : [];
     const banner = document.getElementById('contribution-claimable-banner');
@@ -4704,9 +4761,7 @@ function _renderContributionHistoryTab(payload) {
             banner.style.display = '';
             banner.innerHTML = window.t('contributionClaimableBanner', {
                 count: claimable.length,
-                amount: (typeof formatBustAmount === 'function'
-                    ? formatBustAmount(total)
-                    : Number(total).toFixed(1)),
+                amount: formatContributionBustNumber(total),
             }, lang);
         } else {
             banner.style.display = 'none';
@@ -4716,65 +4771,86 @@ function _renderContributionHistoryTab(payload) {
 
     const listEl = document.getElementById('contribution-history-list');
     const emptyEl = document.getElementById('contribution-history-empty');
-    const seasons = Array.isArray(payload && payload.seasons) ? payload.seasons : [];
     if (!listEl) return;
 
     if (!seasons.length) {
         listEl.innerHTML = '';
         if (emptyEl) emptyEl.style.display = '';
-        return;
-    }
-    if (emptyEl) emptyEl.style.display = 'none';
+    } else {
+        if (emptyEl) emptyEl.style.display = 'none';
 
-    listEl.innerHTML = seasons.map((season) => {
-        const seasonId = Number(season.season_id || 0);
-        const seasonNumber = Number(season.season_number || 0) || '—';
-        const finalRank = season.final_rank != null ? Number(season.final_rank) : null;
-        const score = Math.round(Number(season.contribution_score || 0));
-        const prize = Number(season.prize_amount || 0);
-        const claimStatus = String(season.claim_status || 'none');
-        const prizeLabel = typeof formatBustAmount === 'function'
-            ? formatBustAmount(prize)
-            : prize.toFixed(1);
+        listEl.innerHTML = seasons.map((season) => {
+            const seasonId = Number(season.season_id || 0);
+            const seasonNumber = Number(season.season_number || 0) || '—';
+            const finalRank = season.final_rank != null ? Number(season.final_rank) : null;
+            const score = Math.round(Number(season.contribution_score || 0));
+            const prize = Number(season.prize_amount || 0);
+            const claimStatus = String(season.claim_status || 'none');
+            const prizeLabel = formatContributionBustNumber(prize);
 
-        let actionHtml = '';
-        if (claimStatus === 'available' && prize > 0) {
-            actionHtml = `
-                <button type="button"
-                        class="btn btn-success contribution-claim-btn"
-                        data-season-id="${_escContribution(seasonId)}"
-                        onclick="claimContributionPrizeFromUi(${seasonId}, this)">
-                    ${window.t('contributionClaimBtn', { amount: prizeLabel }, lang)}
-                </button>
+            let actionHtml = '';
+            if (claimStatus === 'available' && prize > 0) {
+                actionHtml = `
+                    <button type="button"
+                            class="btn btn-success contribution-claim-btn"
+                            data-season-id="${_escContribution(seasonId)}"
+                            onclick="claimContributionPrizeFromUi(${seasonId}, this)">
+                        ${window.t('contributionClaimBtn', { amount: prizeLabel }, lang)}
+                    </button>
+                `;
+            } else if (claimStatus === 'claimed') {
+                actionHtml = `<div class="contribution-claimed-badge">${window.t('contributionClaimedBadge', {}, lang)}</div>`;
+            } else if (prize > 0) {
+                actionHtml = `<div class="contribution-prize-muted">${window.t('contributionPrizeAmount', { amount: prizeLabel }, lang)}</div>`;
+            }
+
+            return `
+                <div class="card contribution-history-item" data-season-id="${_escContribution(seasonId)}">
+                    <div class="contribution-history-item-top">
+                        <div class="contribution-history-season">
+                            ${window.t('contributionHistorySeasonTitle', { number: seasonNumber }, lang)}
+                        </div>
+                        <div class="contribution-history-rank">
+                            ${finalRank && finalRank > 0
+                                ? window.t('contributionRankValue', { rank: finalRank }, lang)
+                                : window.t('contributionRankUnranked', {}, lang)}
+                        </div>
+                    </div>
+                    <div class="contribution-history-meta">
+                        ${formatContributionPointsLabel(score)}
+                        · 🐞${_escContribution(season.bugs_count || 0)}
+                        · 💡${_escContribution(season.ideas_count || 0)}
+                        · ⭐${_escContribution(season.play_reviews_count || 0)}
+                    </div>
+                    ${actionHtml}
+                </div>
             `;
-        } else if (claimStatus === 'claimed') {
-            actionHtml = `<div class="contribution-claimed-badge">${window.t('contributionClaimedBadge', {}, lang)}</div>`;
-        } else if (prize > 0) {
-            actionHtml = `<div class="contribution-prize-muted">${window.t('contributionPrizeAmount', { amount: prizeLabel }, lang)}</div>`;
-        }
+        }).join('');
+    }
 
-        return `
-            <div class="card contribution-history-item" data-season-id="${_escContribution(seasonId)}">
-                <div class="contribution-history-item-top">
-                    <div class="contribution-history-season">
-                        ${window.t('contributionHistorySeasonTitle', { number: seasonNumber }, lang)}
-                    </div>
-                    <div class="contribution-history-rank">
-                        ${finalRank && finalRank > 0
-                            ? window.t('contributionRankValue', { rank: finalRank }, lang)
-                            : window.t('contributionRankUnranked', {}, lang)}
-                    </div>
-                </div>
-                <div class="contribution-history-meta">
-                    ${window.t('contributionHistoryScoreLine', { score: score }, lang)}
-                    · 🐞${_escContribution(season.bugs_count || 0)}
-                    · 💡${_escContribution(season.ideas_count || 0)}
-                    · ⭐${_escContribution(season.play_reviews_count || 0)}
-                </div>
-                ${actionHtml}
-            </div>
-        `;
-    }).join('');
+    const actionsEl = document.getElementById('contribution-lifetime-actions');
+    if (actionsEl) {
+        let bugsTotal = 0;
+        let ideasTotal = 0;
+        let reviewsTotal = 0;
+        seasons.forEach((season) => {
+            bugsTotal += Math.round(Number(season.bugs_count || 0));
+            ideasTotal += Math.round(Number(season.ideas_count || 0));
+            reviewsTotal += Math.round(Number(season.play_reviews_count || 0));
+        });
+        // Include active sprint counters from current cache when available.
+        const currentMe = (_contributionCurrentCache && _contributionCurrentCache.me) || {};
+        bugsTotal += Math.round(Number(currentMe.bugs_count || 0));
+        ideasTotal += Math.round(Number(currentMe.ideas_count || 0));
+        reviewsTotal += Math.round(Number(currentMe.play_reviews_count || 0));
+
+        actionsEl.style.display = '';
+        actionsEl.textContent = window.t('contributionLifetimeActions', {
+            bugs: bugsTotal,
+            ideas: ideasTotal,
+            reviews: reviewsTotal,
+        }, lang);
+    }
 }
 
 async function _loadContributionCurrentTab() {
@@ -4906,9 +4982,7 @@ async function claimContributionPrizeFromUi(seasonId, buttonEl) {
         visibilityStats.balance_bust = Number(result.new_balance);
     }
 
-    const amountLabel = typeof formatBustAmount === 'function'
-        ? formatBustAmount(result.prize_amount || 0)
-        : Number(result.prize_amount || 0).toFixed(1);
+    const amountLabel = formatContributionBustNumber(result.prize_amount || 0);
     showToast(window.t('contributionClaimSuccessToast', { amount: amountLabel }, lang));
 
     if (_contributionHistoryCache && Array.isArray(_contributionHistoryCache.seasons)) {
@@ -7168,6 +7242,8 @@ Object.assign(window, {
     closeContributionInfoModal,
     switchContributionTab,
     claimContributionPrizeFromUi,
+    pluralizePointsWord,
+    formatContributionPointsLabel,
     showReliabilityInfo,
     closeReliabilityInfo,
     showRankPopup,
