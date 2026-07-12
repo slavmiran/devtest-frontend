@@ -3750,12 +3750,21 @@ function formatFeedbackDate(createdAt) {
     });
 }
 
+function formatFeedbackShortDate(createdAt) {
+    const value = new Date(createdAt);
+    if (Number.isNaN(value.getTime())) return '—';
+    const d = value.getDate();
+    const m = value.getMonth() + 1;
+    const yy = String(value.getFullYear()).slice(-2);
+    return d + '.' + m + '.' + yy;
+}
+
 function formatFeedbackRelativeTime(createdAt) {
     if (!createdAt) return '—';
     const value = new Date(createdAt);
     if (Number.isNaN(value.getTime())) return '—';
     const diffMs = Date.now() - value.getTime();
-    if (diffMs < 0) return formatFeedbackDate(createdAt);
+    if (diffMs < 0) return formatFeedbackShortDate(createdAt);
     const mins = Math.floor(diffMs / 60000);
     if (mins < 1) return lang === 'ru' ? 'только что' : 'just now';
     if (mins < 60) return lang === 'ru' ? (mins + ' мин назад') : (mins + 'm ago');
@@ -3763,7 +3772,7 @@ function formatFeedbackRelativeTime(createdAt) {
     if (hours < 24) return lang === 'ru' ? (hours + ' ч назад') : (hours + 'h ago');
     const days = Math.floor(hours / 24);
     if (days < 7) return lang === 'ru' ? (days + ' дн назад') : (days + 'd ago');
-    return formatFeedbackDate(createdAt);
+    return formatFeedbackShortDate(createdAt);
 }
 
 function formatFeedbackAvgResponseHours(avgMs) {
@@ -3816,11 +3825,15 @@ function buildFeedbackMicroSummaryHtml(item, isRejected) {
             ' <span class="fb-micro-sep">·</span> ' + when;
     }
     const bust = Number((item && item.reward_bust) || 0);
-    const bustHtml = bust > 0
-        ? (' <span class="fb-micro-sep">·</span> <span class="fb-micro-bust">+' + window.escapeHTML(String(bust)) + ' BUST</span>')
+    const karma = Number((item && item.reward_karma) || 0);
+    const rewardParts = [];
+    if (bust > 0) rewardParts.push('+' + window.escapeHTML(String(bust)) + ' BUST');
+    if (karma > 0) rewardParts.push('+' + window.escapeHTML(karma.toFixed(1)) + ' ☯️');
+    const rewardHtml = rewardParts.length
+        ? (' <span class="fb-micro-sep">·</span> <span class="fb-micro-bust">' + rewardParts.join(' ') + '</span>')
         : '';
     return '<span class="fb-micro-ok">✔ ' + window.escapeHTML(window.t('feedbackAcceptedLabel', {}, lang) || 'Accepted') + '</span>' +
-        ' <span class="fb-micro-sep">·</span> ' + when + bustHtml;
+        ' <span class="fb-micro-sep">·</span> ' + when + rewardHtml;
 }
 
 function getFeedbackPreviewText(item, isReviewTicket) {
@@ -3877,10 +3890,7 @@ function toggleFeedbackCardCollapse(cardEl, event) {
     if (target.closest('a') || target.closest('button') || target.closest('.fb-media-thumb') || target.closest('input') || target.closest('textarea') || target.closest('.fb-device-line')) {
         return;
     }
-    if (cardEl.classList.contains('fb-card--processed')) {
-        return;
-    }
-    const willExpand = cardEl.classList.contains('fb-card--collapsed');
+    const willExpand = !cardEl.classList.contains('fb-card--expanded');
     cardEl.classList.toggle('fb-card--collapsed', !willExpand);
     cardEl.classList.toggle('fb-card--expanded', willExpand);
     if (willExpand) {
@@ -3913,6 +3923,8 @@ function getProjectFeedbackHeader(project, items) {
     let googlePlayCount = 0;
     let bugCount = 0;
     let ideaCount = 0;
+    let openCount = 0;
+    let processedCount = 0;
 
     if (items && items.length) {
         items.forEach(function(item) {
@@ -3925,16 +3937,24 @@ function getProjectFeedbackHeader(project, items) {
             } else {
                 bugCount++;
             }
+            if (isOpenFeedbackStatus(item.status)) openCount++;
+            else processedCount++;
         });
     }
 
+    const totalCount = openCount + processedCount;
+    const donePct = totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
     const avgResponseMs = getFeedbackAvgResponseMs(items);
     const avgResponseText = formatFeedbackAvgResponseHours(avgResponseMs);
+    const hasSpeed = avgResponseMs > 0;
     const typeFilter = _projectFeedbackTypeFilter || 'all';
-    const statusFilter = _projectFeedbackStatusFilter || 'new';
+    const statusFilter = _projectFeedbackStatusFilter || 'all';
     const onlyUnprocessed = statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open';
-    const responseLabel = window.t('feedbackResponseSpeedLabel', {}, lang) || (lang === 'ru' ? 'Скорость ответа' : 'Response speed');
+    const queueLabel = lang === 'ru' ? 'в очереди' : 'in queue';
+    const doneLabel = lang === 'ru' ? 'обработано' : 'done';
+    const speedLabel = lang === 'ru' ? 'скорость' : 'speed';
     const unprocessedLabel = window.t('feedbackOnlyUnprocessedLabel', {}, lang) || (lang === 'ru' ? 'Только необработанные' : 'Unprocessed only');
+    const allClearLabel = lang === 'ru' ? 'Очередь пуста 🎉' : 'Inbox zero 🎉';
 
     return `
         <div class="feedback-sticky-header">
@@ -3947,15 +3967,31 @@ function getProjectFeedbackHeader(project, items) {
                 ${renderIcon((project && (project.name || project.package_name)) || '', project && project.icon_url)}
                 <div class="card-info">
                     <div class="card-title notranslate">${safeName}</div>
-                    <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}${newCount > 0 ? ' · ' + newCount : ''}</div>
+                    <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}</div>
+                </div>
+            </div>
+
+            <div class="feedback-dashboard">
+                <div class="feedback-stat feedback-stat--queue${openCount === 0 ? ' is-clear' : ''}">
+                    <span class="feedback-stat-value">${openCount}</span>
+                    <span class="feedback-stat-label">${queueLabel}</span>
+                </div>
+                <div class="feedback-stat">
+                    <span class="feedback-stat-value">${processedCount}</span>
+                    <span class="feedback-stat-label">${doneLabel}</span>
+                </div>
+                ${hasSpeed ? `
+                <div class="feedback-stat feedback-stat--muted">
+                    <span class="feedback-stat-value">${window.escapeHTML(avgResponseText)}</span>
+                    <span class="feedback-stat-label">${speedLabel}</span>
+                </div>` : ''}
+                <div class="feedback-progress" role="progressbar" aria-valuenow="${donePct}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="feedback-progress-fill" style="width:${donePct}%"></div>
                 </div>
             </div>
 
             <div class="feedback-inbox-bar">
-                <div class="feedback-response-metric" title="${window.escapeHTML(responseLabel)}">
-                    <span aria-hidden="true">⏱</span>
-                    <span>${window.escapeHTML(responseLabel)}: <strong>${window.escapeHTML(avgResponseText)}</strong></span>
-                </div>
+                <span class="feedback-inbox-hint">${openCount === 0 ? allClearLabel : ''}</span>
                 <label class="feedback-unprocessed-toggle">
                     <input type="checkbox" ${onlyUnprocessed ? 'checked' : ''} onchange="toggleFeedbackUnprocessedOnly(this.checked)">
                     <span>${window.escapeHTML(unprocessedLabel)}</span>
@@ -4000,12 +4036,12 @@ function openFeedbackDm(username, feedbackId, isReviewTicket, event) {
 window.openFeedbackDm = openFeedbackDm;
 
 var _projectFeedbackTypeFilter = 'all';
-var _projectFeedbackStatusFilter = 'new';
+var _projectFeedbackStatusFilter = 'all';
 var _projectFeedbackCardNodes = null;
 
 function resetProjectFeedbackFilters() {
     _projectFeedbackTypeFilter = 'all';
-    _projectFeedbackStatusFilter = 'new';
+    _projectFeedbackStatusFilter = 'all';
     _projectFeedbackCardNodes = null;
 }
 
@@ -4252,12 +4288,12 @@ function renderProjectFeedbackCards(project, items) {
             const previewText = window.escapeHTML(getFeedbackPreviewText(item, isReviewTicket));
             const relativeDate = window.escapeHTML(formatFeedbackRelativeTime(item.created_at));
             const microHtml = buildFeedbackMicroSummaryHtml(item, isRejected);
-            const chevronHtml = isOpen ? `
+            const chevronHtml = `
                 <div class="fb-chevron" aria-hidden="true">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                </div>` : '';
+                </div>`;
 
             var textBodyHtml = '';
             if (isReviewTicket) {
@@ -4337,15 +4373,11 @@ function renderProjectFeedbackCards(project, items) {
                    </button>`
                 : '';
 
-            const discussButtonHtml = username
-                ? `<button type="button" class="fb-icon-btn" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)" aria-label="${window.escapeHTML(window.t('feedbackDmBtn', {}, lang) || 'DM')}">
+            const discussButtonHtml = hasTopicLink
+                ? `<button type="button" class="fb-icon-btn" onclick="openFeedbackTopicLink(${item.telegram_message_id}, '${safeUsername}')" aria-label="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}">
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
                    </button>`
-                : (hasTopicLink
-                    ? `<button type="button" class="fb-icon-btn" onclick="openFeedbackTopicLink(${item.telegram_message_id}, '${safeUsername}')" aria-label="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}">
-                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
-                       </button>`
-                    : '');
+                : '';
 
             let decideButtonsHtml = '';
             if (isOpen && isReviewTicket) {
@@ -4540,27 +4572,126 @@ function renderFeedbackImageSlider() {
 
     document.body.appendChild(overlay);
 
-    // Touch swipe navigation
     var stage = overlay.querySelector('.fb-slider-stage');
-    if (stage && total > 1) {
-        var startX = 0, startY = 0, tracking = false;
-        stage.addEventListener('touchstart', function(e) {
-            if (e.touches.length !== 1) return;
-            startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = true;
-        }, { passive: true });
-        stage.addEventListener('touchend', function(e) {
-            if (!tracking) return;
-            tracking = false;
-            var dx = e.changedTouches[0].clientX - startX;
-            var dy = e.changedTouches[0].clientY - startY;
-            if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
-                feedbackSliderStep(dx < 0 ? 1 : -1);
-            }
-        }, { passive: true });
+    var img = overlay.querySelector('.fb-slider-image');
+    if (stage && img) {
+        attachFeedbackImageZoom(stage, img, total);
     }
 
     document.removeEventListener('keydown', _feedbackSliderKeyHandler);
     document.addEventListener('keydown', _feedbackSliderKeyHandler);
+}
+
+/**
+ * Pinch-to-zoom + double-tap zoom + pan for the fullscreen image viewer.
+ * When the image is at scale 1, horizontal drags/swipes navigate the slider.
+ * When zoomed in, drags pan the image instead.
+ */
+function attachFeedbackImageZoom(stage, img, total) {
+    var scale = 1, tx = 0, ty = 0;
+    var minScale = 1, maxScale = 4;
+    var pointers = {};
+    var startDist = 0, startScale = 1;
+    var panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
+    var isPanning = false;
+    var swipeStartX = 0, swipeStartY = 0, swipeTracking = false;
+    var lastTapTime = 0;
+
+    function apply() {
+        img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+        img.classList.toggle('is-zoomed', scale > 1.01);
+    }
+    function clampPan() {
+        var rect = img.getBoundingClientRect();
+        var stageRect = stage.getBoundingClientRect();
+        var maxX = Math.max(0, (rect.width - stageRect.width) / 2);
+        var maxY = Math.max(0, (rect.height - stageRect.height) / 2);
+        tx = Math.max(-maxX, Math.min(maxX, tx));
+        ty = Math.max(-maxY, Math.min(maxY, ty));
+    }
+    function reset() {
+        scale = 1; tx = 0; ty = 0; apply();
+    }
+    function dist(a, b) {
+        var dx = a.x - b.x, dy = a.y - b.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    function ids() { return Object.keys(pointers); }
+
+    stage.addEventListener('pointerdown', function(e) {
+        pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+        var k = ids();
+        if (k.length === 2) {
+            startDist = dist(pointers[k[0]], pointers[k[1]]);
+            startScale = scale;
+            isPanning = false;
+            swipeTracking = false;
+        } else if (k.length === 1) {
+            if (scale > 1.01) {
+                isPanning = true;
+                panStartX = e.clientX; panStartY = e.clientY;
+                panStartTx = tx; panStartTy = ty;
+            } else {
+                swipeTracking = true;
+                swipeStartX = e.clientX; swipeStartY = e.clientY;
+            }
+        }
+        try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    stage.addEventListener('pointermove', function(e) {
+        if (!pointers[e.pointerId]) return;
+        pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+        var k = ids();
+        if (k.length === 2 && startDist > 0) {
+            var d = dist(pointers[k[0]], pointers[k[1]]);
+            scale = Math.max(minScale, Math.min(maxScale, startScale * (d / startDist)));
+            if (scale <= 1.01) { tx = 0; ty = 0; }
+            clampPan();
+            apply();
+            e.preventDefault();
+        } else if (k.length === 1 && isPanning) {
+            tx = panStartTx + (e.clientX - panStartX);
+            ty = panStartTy + (e.clientY - panStartY);
+            clampPan();
+            apply();
+            e.preventDefault();
+        }
+    });
+
+    function endPointer(e) {
+        var wasSwipe = swipeTracking;
+        var sx = swipeStartX, sy = swipeStartY;
+        delete pointers[e.pointerId];
+        try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+        var remaining = ids().length;
+        if (remaining < 2) { startDist = 0; }
+        if (remaining === 0) { isPanning = false; }
+
+        // Double-tap to toggle zoom
+        if (wasSwipe && scale <= 1.01) {
+            var now = Date.now();
+            var movedX = Math.abs(e.clientX - sx);
+            var movedY = Math.abs(e.clientY - sy);
+            if (movedX < 10 && movedY < 10) {
+                if (now - lastTapTime < 300) {
+                    scale = 2.2; clampPan(); apply();
+                    lastTapTime = 0;
+                    swipeTracking = false;
+                    return;
+                }
+                lastTapTime = now;
+            }
+            // Horizontal swipe navigation (only when not zoomed)
+            if (total > 1 && movedX > 45 && movedX > movedY) {
+                reset();
+                feedbackSliderStep(e.clientX < sx ? 1 : -1);
+            }
+        }
+        swipeTracking = false;
+    }
+    stage.addEventListener('pointerup', endPointer);
+    stage.addEventListener('pointercancel', endPointer);
 }
 
 function openFeedbackTopicLink(telegramMessageId, username) {

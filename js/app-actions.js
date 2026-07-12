@@ -2006,7 +2006,29 @@ function _updateFeedbackRewardSubmitState() {
     btn.style.opacity = enabled ? '1' : '0.4';
 }
 
+var _feedbackRewardSubmitting = false;
+
+function _setFeedbackRewardSubmitLoading(isLoading) {
+    var btn = document.getElementById('feedback-reward-submit-btn');
+    if (!btn) return;
+    if (isLoading) {
+        if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add('btn-loading');
+        btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span> ' +
+            (window.t('feedbackRewardSubmitting', {}, lang) || (lang === 'ru' ? 'Отправляем…' : 'Submitting…'));
+    } else {
+        btn.disabled = false;
+        btn.classList.remove('btn-loading');
+        if (btn.dataset.originalHtml) {
+            btn.innerHTML = btn.dataset.originalHtml;
+            delete btn.dataset.originalHtml;
+        }
+    }
+}
+
 async function submitFeedbackReward() {
+    if (_feedbackRewardSubmitting) return;
     if (!_feedbackRewardTargetId || !_activeProjectFeedbackAppId) return;
 
     const bustInput = document.getElementById('feedback-reward-bust-input');
@@ -2026,6 +2048,9 @@ async function submitFeedbackReward() {
         return;
     }
 
+    _feedbackRewardSubmitting = true;
+    _setFeedbackRewardSubmitLoading(true);
+
     try {
         const response = await fetch(`${API_BASE}/feedback/${_feedbackRewardTargetId}/reward`, {
             method: 'POST',
@@ -2039,15 +2064,18 @@ async function submitFeedbackReward() {
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
+            _setFeedbackRewardSubmitLoading(false);
             handleApiError(getBackendErrorCode(data), data.details || {});
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         var processedFeedbackId = Number(_feedbackRewardTargetId || 0);
         var rewardedBust = Number(bustAmount || 0);
+        var rewardedKarma = Number(_feedbackRewardKarma || 0);
+        _setFeedbackRewardSubmitLoading(false);
         closeFeedbackRewardModal();
         if (typeof window.removeFeedbackCardOptimistic === 'function') {
-            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted', { reward_bust: rewardedBust });
+            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted', { reward_bust: rewardedBust, reward_karma: rewardedKarma });
         }
         if (typeof window.triggerFeedbackAutoAdvance === 'function') {
             window.triggerFeedbackAutoAdvance(processedFeedbackId);
@@ -2056,14 +2084,13 @@ async function submitFeedbackReward() {
                 .then(function() { return loadProjects(true); })
                 .catch(function() { /* ignore */ });
         }
-        const avgText = typeof formatFeedbackAvgResponseHours === 'function'
-            ? formatFeedbackAvgResponseHours(getFeedbackAvgResponseMs(window._activeProjectFeedbackItems || []))
-            : '—';
-        const toastTpl = window.t('feedbackTicketClosedSpeedToast', { speed: avgText }, lang);
-        showToast(toastTpl || ((lang === 'ru' ? '✅ Тикет закрыт. Скорость ответа: ' : '✅ Ticket closed. Response speed: ') + avgText));
+        showToast(window.t('feedbackRewardSuccessToast', {}, lang));
     } catch (error) {
         console.error('Feedback reward error:', error);
+        _setFeedbackRewardSubmitLoading(false);
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    } finally {
+        _feedbackRewardSubmitting = false;
     }
 }
 
@@ -2912,11 +2939,7 @@ async function submitQuickFeedbackAccept(feedbackId, projectId, btnEl) {
             showToast(getApiErrorMessage(data, 'genericError'));
             return;
         }
-        const avgText = typeof formatFeedbackAvgResponseHours === 'function'
-            ? formatFeedbackAvgResponseHours(getFeedbackAvgResponseMs(window._activeProjectFeedbackItems || []))
-            : '—';
-        const toastTpl = window.t('feedbackTicketClosedSpeedToast', { speed: avgText }, lang);
-        showToast(toastTpl || ((lang === 'ru' ? '✅ Тикет закрыт. Скорость ответа: ' : '✅ Ticket closed. Response speed: ') + avgText));
+        showToast(window.t('feedbackQuickAcceptToast', {}, lang) || (lang === 'ru' ? '✅ Принято' : '✅ Accepted'));
     } catch (error) {
         console.error('Quick accept error:', error);
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
