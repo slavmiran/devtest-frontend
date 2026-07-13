@@ -5464,7 +5464,10 @@ function _renderContributionCurrentTab(payload) {
 
     const moderationEl = document.getElementById('contribution-moderation-summary');
     if (moderationEl) {
-        const accepted = Math.round(Number(me.accepted_count || 0));
+        // Confirmed = awarded sprint items (same as bugs+ideas+reviews above).
+        const accepted = Math.round(
+            Number(me.bugs_count || 0) + Number(me.ideas_count || 0) + Number(me.play_reviews_count || 0)
+        );
         const pending = Math.round(Number(me.pending_count || 0));
         const rejected = Math.round(Number(me.rejected_count || 0));
         const hasModeration = accepted > 0 || pending > 0 || rejected > 0;

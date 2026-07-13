@@ -385,6 +385,7 @@
     margin: 0 auto;
     padding: 12px 14px;
     box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 #done-section .card.card-done.done-today-card .card-header {

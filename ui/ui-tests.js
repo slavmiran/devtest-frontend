@@ -1638,7 +1638,7 @@ function renderTests(force) {
         if (shouldShowInPendingList) {
             card.className = 'card card-pending-release pending-release-carousel-card horizontal-card';
         } else {
-            card.className = shouldShowInDoneList ? 'card card-done' : 'card';
+            card.className = shouldShowInDoneList ? 'card card-done done-today-card' : 'card';
             if (isExternal) {
                 card.className += ' card-external-tracking';
             }
@@ -1994,7 +1994,7 @@ function renderCompletedTests(completedTests) {
 
     completedTests.forEach((test) => {
         const card = document.createElement('div');
-        card.className = 'card card-done';
+        card.className = 'card card-done done-today-card';
         card.id = `test-card-${test.id}`;
         const userTestingDay = getResolvedTestingDay(test);
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
