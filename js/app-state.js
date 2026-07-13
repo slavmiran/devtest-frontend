@@ -61,6 +61,8 @@
         _earnFeedbackBust: 0,
         _earnPlayReviewCount: 0,
         _earnPlayReviewBust: 0,
+        _earnSprintJoined: 0,
+        _earnSprintBust: 0,
         _feedbackType: 'bug',
         _inviteProjectId: null,
         archivedProjects: [],

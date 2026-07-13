@@ -96,12 +96,26 @@ function renderProjects(force) {
             visibilityStats.contribution_score ||
             0
         );
-        const seasonRankRaw = visibilityStats.contribution_season && visibilityStats.contribution_season.rank;
+        const seasonCached = (visibilityStats && visibilityStats.contribution_season) || {};
+        const seasonRankRaw = seasonCached.rank;
         const seasonRank = seasonRankRaw != null ? Number(seasonRankRaw) : null;
-        const contributionMetricValue = (seasonRank && seasonRank > 0)
-            ? `#${Math.round(seasonRank)}`
-            : String(Math.round(contributionScore));
-        const contributionMetricMark = (seasonRank && seasonRank > 0) ? '🏆' : '⭐';
+        const hasSeasonRank = !!(seasonRank && seasonRank > 0);
+        const hasAnyScore = contributionScore > 0 || hasSeasonRank;
+        let contributionPrimary = window.t('metricSprintAddFirst', {}, lang) || (lang === 'ru' ? 'Добавьте первый вклад!' : 'Add your first entry!');
+        if (hasSeasonRank) {
+            contributionPrimary = window.t('metricSprintPosition', { rank: Math.round(seasonRank) }, lang) || ('Позиция #' + Math.round(seasonRank));
+        } else if (hasAnyScore) {
+            contributionPrimary = window.t('metricSprintUnranked', {}, lang) || (lang === 'ru' ? 'Вне топа' : 'Unranked');
+        }
+        let contributionTimer = '';
+        const endsAtMs = Date.parse(String(seasonCached.ends_at || ''));
+        if (Number.isFinite(endsAtMs)) {
+            const daysLeft = Math.max(0, Math.ceil((endsAtMs - Date.now()) / 86400000));
+            contributionTimer = window.t('metricSprintDaysLeft', { days: daysLeft }, lang) || ('Осталось ' + daysLeft + ' дн.');
+        }
+        const balanceAmount = (typeof formatUiAmount === 'function')
+            ? formatUiAmount(visibilityStats.balance_bust || 0, 1)
+            : String(Math.round(Number(visibilityStats.balance_bust || 0) * 10) / 10);
         const achievementsLine = window.escapeHTML(
             formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
         );
@@ -143,22 +157,57 @@ function renderProjects(force) {
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-primary" onclick="openEarnBustModal()">
                         <div class="metric-card-top">
-                            <span class="metric-label">${window.t('metricBalanceBust', {}, lang)}</span>
+                            <span class="metric-label">${window.t('metricBalanceBust', {}, lang) || 'Баланс'} $BUST</span>
                             <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${formatBustAmount(visibilityStats.balance_bust || 0)} <span class="metric-value-mark">💎</span></div>
+                        <div class="metric-value">${window.escapeHTML(balanceAmount)} <span class="metric-value-mark">💎</span></div>
                     </button>
-                    <button type="button" class="metric-card metric-card-clickable metric-card-neutral" onclick="showContributionInfo()">
+                    <button type="button" class="metric-card metric-card-clickable metric-card-neutral metric-card-sprint" onclick="showContributionInfo()">
                         <div class="metric-card-top">
-                            <span class="metric-label">${window.t('metricContribution', {}, lang)}</span>
+                            <span class="metric-label">🎯 ${window.t('metricSprintLeague', {}, lang) || (lang === 'ru' ? 'Спринт Лиги' : 'League Sprint')}</span>
                             <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${window.escapeHTML(contributionMetricValue)} <span class="metric-value-mark">${contributionMetricMark}</span></div>
+                        <div class="metric-sprint-body">
+                            <div class="metric-value metric-value--sprint">${window.escapeHTML(contributionPrimary)}</div>
+                            ${contributionTimer ? `<div class="metric-sprint-timer">${window.escapeHTML(contributionTimer)}</div>` : ''}
+                        </div>
                     </button>
                 </div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', dashHtml);
+
+        // Soft-prefetch current sprint so the widget can show rank/timer without opening the modal.
+        if (!window.__contribSeasonPrefetch && typeof window.fetchContributionCurrent === 'function') {
+            const needsPrefetch = !(seasonCached && seasonCached.ends_at);
+            if (needsPrefetch) {
+                window.__contribSeasonPrefetch = true;
+                window.fetchContributionCurrent().then(function(result) {
+                    if (!result || result.status !== 'success' || !result.season) return;
+                    if (typeof window._cacheContributionSeasonSnapshot === 'function') {
+                        window._cacheContributionSeasonSnapshot(result);
+                    } else if (visibilityStats) {
+                        const me = result.me || {};
+                        const season = result.season || {};
+                        visibilityStats.contribution_season = {
+                            rank: me.rank != null ? Number(me.rank) : null,
+                            score: Number(me.contribution_score || 0),
+                            season_number: season.season_number != null ? Number(season.season_number) : null,
+                            ends_at: season.ends_at || null,
+                            gap_to_top5: Number(result.gap_to_top5 || 0),
+                        };
+                        visibilityStats.contribution = {
+                            contribution_score: Number(me.contribution_score || 0),
+                            bugs_count: Number(me.bugs_count || 0),
+                            ideas_count: Number(me.ideas_count || 0),
+                            play_reviews_count: Number(me.play_reviews_count || 0),
+                        };
+                        visibilityStats.contribution_score = Number(me.contribution_score || 0);
+                    }
+                    try { renderProjects(true); } catch (_) { /* ignore */ }
+                }).catch(function() { /* ignore */ });
+            }
+        }
     }
 
     if (myProjects.length === 0) {

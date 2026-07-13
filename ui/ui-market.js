@@ -5196,6 +5196,81 @@ function _formatContributionCountdown(endsAt) {
     return window.t('contributionCountdownMinutes', { minutes: Math.max(1, minutes) }, lang);
 }
 
+var CONTRIBUTION_PRIZE_BY_RANK = {
+    1: 500, 2: 350, 3: 250, 4: 180, 5: 150,
+    6: 100, 7: 100, 8: 100, 9: 100, 10: 100
+};
+var CONTRIBUTION_POOL_DISPLAY = 2000;
+
+function _contributionPrizeForRank(rank) {
+    const r = Number(rank || 0);
+    if (!r || r < 1 || r > 10) return 0;
+    return CONTRIBUTION_PRIZE_BY_RANK[r] || 0;
+}
+
+function _formatContributionShortDate(value) {
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return '';
+    const d = dt.getDate();
+    const m = dt.getMonth() + 1;
+    const yy = String(dt.getFullYear()).slice(-2);
+    return d + '.' + m + '.' + yy;
+}
+
+function _formatContributionDate(value) {
+    const short = _formatContributionShortDate(value);
+    if (short) return short;
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return String(value || '');
+    try {
+        return dt.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch (_) {
+        return String(value || '');
+    }
+}
+
+function _estimateActionsToPrizeZone(me, leaderboard) {
+    const myScore = Number((me && me.contribution_score) || 0);
+    const rows = Array.isArray(leaderboard) ? leaderboard : [];
+    let tenth = null;
+    for (let i = 0; i < rows.length; i++) {
+        if (Number(rows[i].rank) === 10) {
+            tenth = rows[i];
+            break;
+        }
+    }
+    if (!tenth && rows.length >= 10) tenth = rows[9];
+    if (!tenth) {
+        // Empty / small board: treat as easy entry.
+        return myScore > 0 ? 0 : 1;
+    }
+    const tenthScore = Number(tenth.contribution_score || 0);
+    const gapPoints = Math.max(0, (tenthScore - myScore) + 0.1);
+    return Math.max(1, Math.ceil(gapPoints / 5));
+}
+
+function _renderContributionPrizeTable() {
+    const el = document.getElementById('contribution-prize-table');
+    if (!el) return;
+    const rows = [
+        [1, 500], [2, 350], [3, 250], [4, 180], [5, 150],
+        ['6–10', 100]
+    ];
+    el.innerHTML = rows.map(function(pair) {
+        const place = pair[0];
+        const amount = pair[1];
+        const placeLabel = typeof place === 'number'
+            ? window.t('contributionPrizePlace', { place: place }, lang) || (place + ' место')
+            : window.t('contributionPrizePlaceRange', { range: place }, lang) || (place + ' места');
+        return '<div class="contribution-prize-row"><span>' + _escContribution(placeLabel) + '</span><span class="contribution-prize-amount">+' + amount + ' $BUST</span></div>';
+    }).join('');
+}
+
 function _startContributionCountdown(endsAt) {
     _stopContributionCountdown();
     const el = document.getElementById('contribution-countdown');
@@ -5272,6 +5347,7 @@ function _renderContributionCurrentTab(payload) {
 
     const season = payload && payload.season;
     const me = (payload && payload.me) || {};
+    const leaderboard = Array.isArray(payload && payload.leaderboard) ? payload.leaderboard : [];
     if (!season) {
         if (emptyEl) emptyEl.style.display = '';
         if (bodyEl) bodyEl.style.display = 'none';
@@ -5293,20 +5369,57 @@ function _renderContributionCurrentTab(payload) {
 
     const rankEl = document.getElementById('contribution-rank-value');
     const rank = me.rank != null ? Number(me.rank) : null;
+    const hasRank = !!(rank && rank > 0);
     if (rankEl) {
-        rankEl.textContent = rank && rank > 0
+        rankEl.textContent = hasRank
             ? window.t('contributionRankValue', { rank: rank }, lang)
             : window.t('contributionRankUnranked', {}, lang);
     }
 
+    const placePrizeEl = document.getElementById('contribution-place-prize');
+    if (placePrizeEl) {
+        const prize = _contributionPrizeForRank(rank);
+        if (prize > 0) {
+            placePrizeEl.textContent = window.t('contributionPlacePrize', { amount: prize }, lang);
+            placePrizeEl.hidden = false;
+        } else if (hasRank) {
+            placePrizeEl.textContent = window.t('contributionPlacePrizeOutside', {}, lang);
+            placePrizeEl.hidden = false;
+        } else {
+            placePrizeEl.textContent = window.t('contributionPlacePrizeHint', {}, lang);
+            placePrizeEl.hidden = false;
+        }
+    }
+
     const metaEl = document.getElementById('contribution-season-meta');
     if (metaEl) {
-        metaEl.textContent = window.t('contributionSeasonPoolMeta', {
-            pool: formatContributionBustNumber(season.prize_pool_total || 0),
-        }, lang);
+        // Visual round pool; backend prize_pool_total may keep reserved remainder.
+        metaEl.textContent = String(CONTRIBUTION_POOL_DISPLAY) + ' $BUST';
+    }
+
+    const datesEl = document.getElementById('contribution-season-dates');
+    if (datesEl) {
+        const startShort = _formatContributionShortDate(season.starts_at);
+        const endShort = _formatContributionShortDate(season.ends_at);
+        if (startShort && endShort) {
+            datesEl.textContent = window.t('contributionSeasonSchedule', {
+                start: startShort,
+                end: endShort,
+            }, lang);
+            datesEl.hidden = false;
+        } else if (season.ends_at) {
+            datesEl.textContent = window.t('contributionEndsAt', {
+                date: _formatContributionDate(season.ends_at),
+            }, lang);
+            datesEl.hidden = false;
+        } else {
+            datesEl.textContent = '';
+            datesEl.hidden = true;
+        }
     }
 
     _startContributionCountdown(season.ends_at);
+    _renderContributionPrizeTable();
 
     const scoreEl = document.getElementById('contribution-score-value');
     const bugsEl = document.getElementById('contribution-bugs-count');
@@ -5317,42 +5430,32 @@ function _renderContributionCurrentTab(payload) {
     if (ideasEl) ideasEl.textContent = String(Math.round(Number(me.ideas_count || 0)));
     if (reviewsEl) reviewsEl.textContent = String(Math.round(Number(me.play_reviews_count || 0)));
 
-    const gap = Number((payload && payload.gap_to_top5) || 0);
     const gapCard = document.getElementById('contribution-gap-card');
     const gapText = document.getElementById('contribution-gap-text');
     const gapHint = document.getElementById('contribution-gap-hint');
     if (gapCard && gapText) {
-        if (rank && rank === 1) {
-            gapCard.style.display = '';
+        gapCard.style.display = '';
+        if (rank === 1) {
             gapText.textContent = window.t('contributionSprintLeader', {}, lang);
-            if (gapHint) gapHint.textContent = '';
-        } else if (rank && rank > 0 && rank <= 5) {
-            gapCard.style.display = '';
-            gapText.textContent = window.t('contributionInTop5', {}, lang);
-            if (gapHint) gapHint.textContent = '';
-        } else if (gap > 0) {
-            const gapPoints = Math.round(gap);
-            gapCard.style.display = '';
-            gapText.textContent = window.t('contributionGapToTop5', {
-                points: gapPoints,
-                points_word: pluralizePointsWord(gapPoints),
-            }, lang);
-            if (gapHint) gapHint.textContent = window.t('contributionGapHint', {}, lang);
+        } else if (hasRank && rank <= 10) {
+            const prize = _contributionPrizeForRank(rank);
+            gapText.textContent = window.t('contributionGapInPrize', { amount: prize }, lang);
         } else {
-            gapCard.style.display = 'none';
+            const actions = _estimateActionsToPrizeZone(me, leaderboard);
+            gapText.textContent = window.t('contributionGapToPrize', { actions: actions }, lang);
         }
+        if (gapHint) gapHint.textContent = '';
     }
 
     const boardCard = document.getElementById('contribution-leaderboard-card');
     const boardList = document.getElementById('contribution-leaderboard-list');
-    const rows = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
     if (boardCard && boardList) {
-        if (!rows.length) {
+        if (!leaderboard.length) {
             boardCard.style.display = 'none';
             boardList.innerHTML = '';
         } else {
             boardCard.style.display = '';
-            boardList.innerHTML = rows.map((row) => {
+            boardList.innerHTML = leaderboard.map((row) => {
                 const isMe = Number(row.user_id) === Number(userId);
                 const scoreValue = Math.round(Number(row.contribution_score || 0));
                 const displayName = String(
@@ -5438,46 +5541,47 @@ function _renderContributionHistoryTab(payload) {
             const seasonId = Number(season.season_id || 0);
             const seasonNumber = Number(season.season_number || 0) || '—';
             const finalRank = season.final_rank != null ? Number(season.final_rank) : null;
-            const score = Math.round(Number(season.contribution_score || 0));
             const prize = Number(season.prize_amount || 0);
             const claimStatus = String(season.claim_status || 'none');
             const prizeLabel = formatContributionBustNumber(prize);
+            const startShort = _formatContributionShortDate(season.starts_at);
+            const endShort = _formatContributionShortDate(season.ends_at);
+            let dateLine = '';
+            if (startShort && endShort) dateLine = startShort + ' — ' + endShort;
+            else if (endShort) dateLine = endShort;
+            else if (startShort) dateLine = startShort;
 
-            let actionHtml = '';
+            const placeText = finalRank && finalRank > 0
+                ? window.t('contributionHistoryPlace', { rank: finalRank }, lang)
+                : window.t('contributionRankUnranked', {}, lang);
+
+            let rightHtml = '';
             if (claimStatus === 'available' && prize > 0) {
-                actionHtml = `
+                rightHtml = `
                     <button type="button"
-                            class="btn btn-success contribution-claim-btn"
+                            class="btn btn-success contribution-claim-btn contribution-claim-btn--compact"
                             data-season-id="${_escContribution(seasonId)}"
                             onclick="claimContributionPrizeFromUi(${seasonId}, this)">
-                        ${window.t('contributionClaimBtn', { amount: prizeLabel }, lang)}
+                        ${window.t('contributionClaimBtnShort', { amount: prizeLabel }, lang)}
                     </button>
                 `;
-            } else if (claimStatus === 'claimed') {
-                actionHtml = `<div class="contribution-claimed-badge">${window.t('contributionClaimedBadge', {}, lang)}</div>`;
             } else if (prize > 0) {
-                actionHtml = `<div class="contribution-prize-muted">${window.t('contributionPrizeAmount', { amount: prizeLabel }, lang)}</div>`;
+                const prizeClass = claimStatus === 'claimed'
+                    ? 'contribution-ledger-prize is-claimed'
+                    : 'contribution-ledger-prize';
+                rightHtml = `<span class="${prizeClass}">+${_escContribution(prizeLabel)} BUST</span>`;
+            } else {
+                rightHtml = `<span class="contribution-ledger-prize is-muted">${_escContribution(formatContributionPointsLabel(Math.round(Number(season.contribution_score || 0))))}</span>`;
             }
 
             return `
-                <div class="card contribution-history-item" data-season-id="${_escContribution(seasonId)}">
-                    <div class="contribution-history-item-top">
-                        <div class="contribution-history-season">
-                            ${window.t('contributionHistorySeasonTitle', { number: seasonNumber }, lang)}
-                        </div>
-                        <div class="contribution-history-rank">
-                            ${finalRank && finalRank > 0
-                                ? window.t('contributionRankValue', { rank: finalRank }, lang)
-                                : window.t('contributionRankUnranked', {}, lang)}
-                        </div>
+                <div class="contribution-ledger-row" data-season-id="${_escContribution(seasonId)}">
+                    <div class="contribution-ledger-left">
+                        <div class="contribution-ledger-title">${window.t('contributionHistorySeasonTitle', { number: seasonNumber }, lang)}</div>
+                        ${dateLine ? `<div class="contribution-ledger-date">${_escContribution(dateLine)}</div>` : ''}
                     </div>
-                    <div class="contribution-history-meta">
-                        ${formatContributionPointsLabel(score)}
-                        · 🐞${_escContribution(season.bugs_count || 0)}
-                        · 💡${_escContribution(season.ideas_count || 0)}
-                        · ⭐${_escContribution(season.play_reviews_count || 0)}
-                    </div>
-                    ${actionHtml}
+                    <div class="contribution-ledger-place">${_escContribution(placeText)}</div>
+                    <div class="contribution-ledger-right">${rightHtml}</div>
                 </div>
             `;
         }).join('');
@@ -7902,6 +8006,7 @@ Object.assign(window, {
     closeContributionInfoModal,
     switchContributionTab,
     claimContributionPrizeFromUi,
+    _cacheContributionSeasonSnapshot,
     pluralizePointsWord,
     formatContributionPointsLabel,
     showReliabilityInfo,

@@ -614,6 +614,8 @@ var _earnFeedbackCount = 0;
 var _earnFeedbackBust = 0;
 var _earnPlayReviewCount = 0;
 var _earnPlayReviewBust = 0;
+var _earnSprintJoined = 0;
+var _earnSprintBust = 0;
 var _feedbackType = 'bug';
 var _inviteProjectId = null;
 var archivedProjects = [];
@@ -778,6 +780,8 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_earnFeedbackBust', function () { return _earnFeedbackBust; }, function (value) { _earnFeedbackBust = value; });
     window.App.bindStateProperty('_earnPlayReviewCount', function () { return _earnPlayReviewCount; }, function (value) { _earnPlayReviewCount = value; });
     window.App.bindStateProperty('_earnPlayReviewBust', function () { return _earnPlayReviewBust; }, function (value) { _earnPlayReviewBust = value; });
+    window.App.bindStateProperty('_earnSprintJoined', function () { return _earnSprintJoined; }, function (value) { _earnSprintJoined = value; });
+    window.App.bindStateProperty('_earnSprintBust', function () { return _earnSprintBust; }, function (value) { _earnSprintBust = value; });
     window.App.bindStateProperty('_feedbackType', function () { return _feedbackType; }, function (value) { _feedbackType = value; });
     window.App.bindStateProperty('_inviteProjectId', function () { return _inviteProjectId; }, function (value) { _inviteProjectId = value; });
     window.App.bindStateProperty('archivedProjects', function () { return archivedProjects; }, function (value) { archivedProjects = value; });

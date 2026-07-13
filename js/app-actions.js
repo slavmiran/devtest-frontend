@@ -1481,6 +1481,14 @@ function renderEarnBustDynamic() {
     }
     document.getElementById('earn-exchange-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnExchangeBust)}</span>`;
     document.getElementById('earn-retention-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnRetentionBust)}</span>`;
+    const sprintJoinedEl = document.getElementById('earn-sprint-joined');
+    const sprintBustEl = document.getElementById('earn-sprint-bust');
+    if (sprintJoinedEl) {
+        sprintJoinedEl.innerText = `🏁 ${window.t('earnSprintJoinedChip', { count: Number(_earnSprintJoined || 0) }, lang)}`;
+    }
+    if (sprintBustEl) {
+        sprintBustEl.innerText = `💎 ${window.t('earnSprintBustChip', { amount: formatBustAmount(_earnSprintBust) }, lang)}`;
+    }
     const socialStatus = document.getElementById('earn-social-status');
     if (_socialBonusStatus === 'approved') {
         socialStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnSocialApproved}</span>`;
@@ -1531,6 +1539,31 @@ async function openEarnBustModal() {
         renderEarnBustDynamic();
     } catch (error) {
         console.error('Failed to load referral stats:', error);
+    }
+
+    // Sprint chips: reuse history endpoint (no backend changes).
+    try {
+        if (typeof fetchContributionHistory === 'function') {
+            const history = await fetchContributionHistory();
+            if (history && history.status === 'success') {
+                const seasons = Array.isArray(history.seasons) ? history.seasons : [];
+                let joined = 0;
+                let bustEarned = 0;
+                seasons.forEach(function(season) {
+                    const score = Number(season && season.contribution_score || 0);
+                    const prize = Number(season && season.prize_amount || 0);
+                    if (score > 0 || prize > 0 || (season && season.final_rank != null)) {
+                        joined += 1;
+                    }
+                    if (prize > 0) bustEarned += prize;
+                });
+                _earnSprintJoined = joined;
+                _earnSprintBust = bustEarned;
+                renderEarnBustDynamic();
+            }
+        }
+    } catch (sprintErr) {
+        console.error('Failed to load sprint earn stats:', sprintErr);
     }
 }
 

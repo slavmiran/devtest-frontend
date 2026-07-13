@@ -3833,9 +3833,78 @@ input::placeholder,
 }
 
 .contribution-hero {
-    text-align: center;
+    text-align: left;
     margin-bottom: 12px;
-    padding: 16px 14px;
+    padding: 14px;
+}
+
+.contribution-hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 12px 14px;
+    align-items: stretch;
+}
+
+.contribution-hero-place {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.contribution-hero-side {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.contribution-hero-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.contribution-hero-meta-label {
+    font-size: 11px;
+    color: var(--hint-color);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.contribution-hero-meta-value,
+.contribution-countdown {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1.25;
+    word-break: break-word;
+}
+
+.contribution-countdown {
+    color: var(--link-color);
+    margin-top: 0;
+}
+
+.contribution-place-prize {
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #2e7d32;
+    line-height: 1.3;
+}
+
+.contribution-season-dates {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+    font-size: 12px;
+    color: var(--hint-color);
+    font-weight: 600;
+    text-align: center;
 }
 
 .contribution-hero-label {
@@ -3847,29 +3916,249 @@ input::placeholder,
 }
 
 .contribution-rank-value {
-    font-size: 42px;
+    font-size: 40px;
     font-weight: 800;
-    line-height: 1.1;
-    margin-top: 6px;
+    line-height: 1.05;
+    margin-top: 4px;
     letter-spacing: 0.5px;
 }
 
 .contribution-season-meta,
 .contribution-countdown {
-    margin-top: 6px;
-    font-size: 13px;
-    color: var(--hint-color);
-}
-
-.contribution-countdown {
-    font-weight: 700;
-    color: var(--link-color);
+    margin-top: 0;
 }
 
 .contribution-score-card,
 .contribution-lifetime-card,
 .contribution-gap-card {
     margin-bottom: 12px;
+}
+
+.contribution-score-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    margin-bottom: 10px;
+}
+
+.contribution-score-hero-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hint-color);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.contribution-score-hero-value {
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1.05;
+    color: var(--text-color);
+    letter-spacing: 0.3px;
+}
+
+.contribution-score-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.contribution-score-chip {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--hint-color);
+    background: var(--bg-surface-muted, rgba(255,255,255,0.04));
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+    border-radius: 999px;
+    padding: 4px 9px;
+    line-height: 1.2;
+}
+
+.contribution-info-card {
+    margin-bottom: 4px;
+    padding: 10px 12px;
+}
+
+.contribution-info-summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.contribution-info-summary::-webkit-details-marker {
+    display: none;
+}
+
+.contribution-info-body {
+    margin-top: 10px;
+}
+
+.contribution-info-text {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--hint-color);
+}
+
+.contribution-prize-table {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.contribution-prize-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--hint-color);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+.contribution-prize-row:last-child {
+    border-bottom: none;
+}
+
+.contribution-prize-amount {
+    font-weight: 700;
+    color: #2e7d32;
+    white-space: nowrap;
+}
+
+.contribution-weights-footnote {
+    margin-top: 10px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--hint-color);
+    opacity: 0.9;
+}
+
+.contribution-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+}
+
+.contribution-ledger-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 10px;
+    flex-wrap: wrap;
+    padding: 10px 2px;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+}
+
+.contribution-ledger-left {
+    flex: 1 1 96px;
+    min-width: 0;
+}
+
+.contribution-ledger-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1.25;
+}
+
+.contribution-ledger-date {
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--hint-color);
+    line-height: 1.3;
+}
+
+.contribution-ledger-place {
+    flex: 0 1 auto;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.contribution-ledger-right {
+    flex: 0 0 auto;
+    margin-left: auto;
+    text-align: right;
+    max-width: 100%;
+}
+
+.contribution-ledger-prize {
+    font-size: 13px;
+    font-weight: 800;
+    color: #2e7d32;
+    white-space: nowrap;
+}
+
+.contribution-ledger-prize.is-claimed {
+    color: #2e7d32;
+    opacity: 0.85;
+}
+
+.contribution-ledger-prize.is-muted {
+    color: var(--hint-color);
+    font-weight: 600;
+}
+
+.contribution-claim-btn--compact {
+    width: auto;
+    min-width: 0;
+    margin-top: 0;
+    padding: 6px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.metric-card-sprint .metric-value--sprint {
+    margin-top: 0;
+    font-size: 14px;
+    line-height: 1.25;
+}
+
+.metric-sprint-body {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.metric-sprint-timer {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--hint-color);
+    line-height: 1.25;
+}
+
+@media (max-width: 360px) {
+    .contribution-hero-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .contribution-rank-value {
+        font-size: 34px;
+    }
+
+    .contribution-score-hero-value {
+        font-size: 30px;
+    }
+
+    .contribution-ledger-place {
+        order: 3;
+        width: 100%;
+    }
+
+    .contribution-ledger-right {
+        margin-left: 0;
+    }
 }
 
 .contribution-achievements {
@@ -4026,42 +4315,6 @@ a.contribution-lb-name:active {
     font-size: 13px;
     font-weight: 700;
     text-align: center;
-}
-
-.contribution-history-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.contribution-history-item {
-    margin: 0;
-    padding: 12px;
-}
-
-.contribution-history-item-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 6px;
-}
-
-.contribution-history-season {
-    font-weight: 700;
-    font-size: 14px;
-}
-
-.contribution-history-rank {
-    font-weight: 800;
-    font-size: 16px;
-    color: var(--link-color);
-}
-
-.contribution-history-meta {
-    font-size: 12px;
-    color: var(--hint-color);
-    margin-bottom: 10px;
 }
 
 .contribution-claim-btn {
