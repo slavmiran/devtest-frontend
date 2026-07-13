@@ -1429,7 +1429,7 @@
             contributionHistorySeasonTitle: "Спринт №{number}",
             contributionHistoryPlace: "🏅 Место #{rank}",
             contributionHistoryScoreLine: "{score} {points_word}",
-            contributionLifetimeActions: "Вклад за всё время: 🐞 {bugs} багов | 💡 {ideas} идей | 📝 {reviews} отзывов",
+            contributionLifetimeActions: "Вклад за всё время: {score} {points_word} · 🐞 {bugs} багов | 💡 {ideas} идей | 📝 {reviews} отзывов",
             contributionClaimableBanner: "Доступно наград: {count} · {amount} $BUST",
             contributionClaimBtn: "🎁 Получить награду {amount} $BUST",
             contributionClaimBtnShort: "🎁 +{amount}",

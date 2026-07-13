@@ -5590,22 +5590,29 @@ function _renderContributionHistoryTab(payload) {
 
     const actionsEl = document.getElementById('contribution-lifetime-actions');
     if (actionsEl) {
-        let bugsTotal = 0;
-        let ideasTotal = 0;
-        let reviewsTotal = 0;
-        seasons.forEach((season) => {
-            bugsTotal += Math.round(Number(season.bugs_count || 0));
-            ideasTotal += Math.round(Number(season.ideas_count || 0));
-            reviewsTotal += Math.round(Number(season.play_reviews_count || 0));
-        });
-        // Include active sprint counters from current cache when available.
-        const currentMe = (_contributionCurrentCache && _contributionCurrentCache.me) || {};
-        bugsTotal += Math.round(Number(currentMe.bugs_count || 0));
-        ideasTotal += Math.round(Number(currentMe.ideas_count || 0));
-        reviewsTotal += Math.round(Number(currentMe.play_reviews_count || 0));
+        // Prefer explicit lifetime counters from API (includes active season + ledger).
+        let bugsTotal = Math.round(Number(lifetime.bugs_count || 0));
+        let ideasTotal = Math.round(Number(lifetime.ideas_count || 0));
+        let reviewsTotal = Math.round(Number(lifetime.play_reviews_count || 0));
+        const lifetimeScore = Math.round(Number(lifetime.contribution_lifetime_score || 0));
+
+        // Backward-compatible fallback if an older backend omits action counters.
+        if (!bugsTotal && !ideasTotal && !reviewsTotal) {
+            seasons.forEach((season) => {
+                bugsTotal += Math.round(Number(season.bugs_count || 0));
+                ideasTotal += Math.round(Number(season.ideas_count || 0));
+                reviewsTotal += Math.round(Number(season.play_reviews_count || 0));
+            });
+            const currentMe = (_contributionCurrentCache && _contributionCurrentCache.me) || {};
+            bugsTotal += Math.round(Number(currentMe.bugs_count || 0));
+            ideasTotal += Math.round(Number(currentMe.ideas_count || 0));
+            reviewsTotal += Math.round(Number(currentMe.play_reviews_count || 0));
+        }
 
         actionsEl.style.display = '';
         actionsEl.textContent = window.t('contributionLifetimeActions', {
+            score: lifetimeScore,
+            points_word: pluralizePointsWord(lifetimeScore),
             bugs: bugsTotal,
             ideas: ideasTotal,
             reviews: reviewsTotal,

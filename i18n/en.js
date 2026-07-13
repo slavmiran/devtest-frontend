@@ -1423,7 +1423,7 @@
             contributionHistorySeasonTitle: "Sprint #{number}",
             contributionHistoryPlace: "🏅 Place #{rank}",
             contributionHistoryScoreLine: "{score} {points_word}",
-            contributionLifetimeActions: "All-time contribution: 🐞 {bugs} bugs | 💡 {ideas} ideas | 📝 {reviews} reviews",
+            contributionLifetimeActions: "All-time contribution: {score} {points_word} · 🐞 {bugs} bugs | 💡 {ideas} ideas | 📝 {reviews} reviews",
             contributionClaimableBanner: "Prizes available: {count} · {amount} $BUST",
             contributionClaimBtn: "🎁 Claim {amount} $BUST",
             contributionClaimBtnShort: "🎁 +{amount}",
