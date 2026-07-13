@@ -1410,7 +1410,7 @@
             contributionAboutFullHtml: "<div class=\"contribution-info-block\"><strong>🏆 Что такое Спринты?</strong><p>Это регулярные раунды активности на платформе. Каждый спринт длится ровно 10 дней. По окончанию текущего начинается следующий. Призовой фонд в 2000 $BUST 💎 распределяется между Топ-10 самыми активными участниками.</p></div><div class=\"contribution-info-block\"><strong>👥 Кто участвует?</strong><p>Все пользователи платформы участвуют автоматически! Как только разработчик принимает ваш полезный фидбэк, вы мгновенно попадаете в live-лидерборд спринта.</p></div><div class=\"contribution-info-block\"><strong>🚀 Как зарабатывать баллы спринта?</strong><p>Баллы начисляются только за полезные фидбэки, после того, как владелец одобрил тикет:</p><ul><li>Принятый Баг-репорт: +5 баллов 🐞</li><li>Принятая Идея/Улучшение: +4 балла 💡</li><li>Подтвержденный отзыв в Google Play: +3 балла 📝</li></ul></div><div class=\"contribution-info-block\"><strong>⚠️ Важно:</strong><p>Бесполезная отправка фидбэка баллов не дает. Разработчики ценят качество: если ваш репорт отклонят со статусом «Спам» и подобными, баллы начислены не будут.</p></div>",
             contributionPrizeSummaryTitle: "🎯 Награды Топ-10",
             contributionPrizeSummary: "🎯 Награды Топ-10",
-            contributionPrizeEach: "по {amount} $BUST",
+            contributionPrizeEach: "{amount} $BUST",
             contributionPrizeTableTitle: "Таблица призов",
             contributionPrizePlace: "{place} место",
             contributionPrizePlaceRange: "{range} места",

@@ -1404,7 +1404,7 @@
             contributionAboutFullHtml: "<div class=\"contribution-info-block\"><strong>🏆 What are Sprints?</strong><p>These are regular activity rounds on the platform. Each sprint lasts exactly 10 days. When the current one ends, the next one starts. The 2000 $BUST 💎 prize pool is shared by the Top-10 most active participants.</p></div><div class=\"contribution-info-block\"><strong>👥 Who participates?</strong><p>Everyone on the platform joins automatically! As soon as a developer accepts your useful feedback, you instantly appear on the live sprint leaderboard.</p></div><div class=\"contribution-info-block\"><strong>🚀 How do sprint points work?</strong><p>Points are awarded only for useful feedback after the owner approves the ticket:</p><ul><li>Accepted bug report: +5 points 🐞</li><li>Accepted idea/improvement: +4 points 💡</li><li>Confirmed Google Play review: +3 points 📝</li></ul></div><div class=\"contribution-info-block\"><strong>⚠️ Important:</strong><p>Low-quality spam feedback gives no points. Developers value quality: if your report is rejected as Spam or similar, no points are awarded.</p></div>",
             contributionPrizeSummaryTitle: "🎯 Top-10 rewards",
             contributionPrizeSummary: "🎯 Top-10 rewards",
-            contributionPrizeEach: "{amount} $BUST each",
+            contributionPrizeEach: "{amount} $BUST",
             contributionPrizeTableTitle: "Prize table",
             contributionPrizePlace: "Place {place}",
             contributionPrizePlaceRange: "Places {range}",
