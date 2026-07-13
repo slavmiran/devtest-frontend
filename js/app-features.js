@@ -937,56 +937,6 @@ async function cancelExternalTracking(progressId, testId) {
     return result;
 }
 
-async function unlinkMutualRelationship(progressId, options) {
-    options = options || {};
-    var safeProgressId = Number(progressId || 0);
-    if (safeProgressId <= 0) {
-        return null;
-    }
-
-    var requestBody = {
-        user_id: userId,
-        remove_from_my_tests: options.removeFromMyTests !== false,
-        remove_from_my_testers: options.removeFromMyTesters !== false,
-    };
-
-    const response = await fetchWithRetry(`${API_BASE}/tests/${safeProgressId}/unlink_mutual`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-    }, 1);
-    const result = await response.json();
-    if (!response.ok || !result || result.status !== 'success') {
-        handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
-        return null;
-    }
-
-    if (requestBody.remove_from_my_tests) {
-        myTests = (Array.isArray(myTests) ? myTests : []).filter(function(item) {
-            return Number(item.progress_id || 0) !== safeProgressId;
-        });
-        persistTestsCacheSnapshot();
-    }
-    
-    const refreshPromises = [];
-    if (typeof loadTasks === 'function') {
-        refreshPromises.push(loadTasks(true));
-    }
-    if (typeof loadProjects === 'function') {
-        refreshPromises.push(loadProjects(true));
-    }
-    if (refreshPromises.length) {
-        await Promise.allSettled(refreshPromises);
-    }
-    if (typeof refreshOpenModals === 'function') {
-        refreshOpenModals();
-    }
-    if (window.renderTests) {
-        window.renderTests(true);
-    }
-    return result;
-}
-
 async function unlinkGuestRelationship(progressId, options) {
     options = options || {};
     var safeProgressId = Number(progressId || 0);
@@ -2401,9 +2351,6 @@ async function confirmLeaveMutual(isJustified) {
     var reasonPayload = _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
     var appId = _leaveMutualAppId;
     var previousTests = Array.isArray(myTests) ? myTests.slice() : [];
-    
-    var unlinkCheckbox = document.getElementById('leave-mutual-unlink-checkbox');
-    var shouldUnlink = unlinkCheckbox ? unlinkCheckbox.checked : false;
 
     try {
         _removeLocalTest(appId);
@@ -2447,18 +2394,7 @@ async function confirmLeaveMutual(isJustified) {
         }
 
         closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
-        
-        var originalTest = previousTests.find(function(t) { return Number(t.id) === Number(appId); });
-        var progressId = originalTest ? Number(originalTest.progress_id) : 0;
-        
-        if (shouldUnlink && progressId > 0) {
-            window.unlinkMutualRelationship(progressId, {
-                removeFromMyTests: true,
-                removeFromMyTesters: false
-            }).catch(console.error);
-        } else {
-            await Promise.all([loadTasks(true), loadProjects(true)]);
-        }
+        await Promise.all([loadTasks(true), loadProjects(true)]);
     } catch (error) {
         console.error('Leave mutual error:', error);
         myTests = previousTests;
