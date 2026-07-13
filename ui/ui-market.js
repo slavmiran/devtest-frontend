@@ -342,9 +342,14 @@ function buildReliabilityAlphaProjectCard(project) {
     var pillHtml = project.is_used_in_formula
         ? '<span class="ri-pill formula">' + window.escapeHTML(window.t('reliabilityDashProjectPillFormula', {}, lang)) + '</span>'
         : '<span class="ri-pill history">' + window.escapeHTML(window.t('reliabilityDashProjectPillHistory', {}, lang)) + '</span>';
-    var contributionValue = project.is_used_in_formula
-        ? ('+' + formatReliabilityIndex(project.weighted_contribution || 0) + '%')
-        : '—';
+    var contributionValue = '—';
+    if (project.is_used_in_formula) {
+        if (project.is_bad_period_for_reliability) {
+            contributionValue = '0.0% (' + (lang === 'ru' ? 'Слабый период: штраф' : 'Bad period penalty') + ')';
+        } else {
+            contributionValue = '+' + formatReliabilityIndex(project.weighted_contribution || 0) + '%';
+        }
+    }
 
     return `
         <div class="ri-project ${project.is_used_in_formula ? 'in-formula' : ''}" onclick="toggleProjectCardDetails(this, event)">
@@ -367,9 +372,11 @@ function buildReliabilityAlphaProjectCard(project) {
           </div>
 
           <div class="ri-project-body" hidden onclick="event.stopPropagation()">
+            ${project.is_used_in_formula ? '' : `
             <div class="ri-project-chips">
               <span class="ri-chip ${chipTone}">${window.escapeHTML(sourceMeta.chipLabel)}</span>
             </div>
+            `}
             <div class="ri-row">
               <span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryPeriod', {}, lang))}</span>
               <span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryValue', { actual: project.actual_checkins || 0, total: project.mandatory_days || 14, skips: skips }, lang))}</span>
@@ -487,9 +494,19 @@ function renderReliabilityAlphaModal() {
     if (grants.length > 0) {
         var activeGrant = grants[window._activeGrantIndex];
         var isGolden = activeGrant.is_golden;
-        var badgeText = isGolden
-            ? window.t('reliabilityDashSummaryGrantBadgeGolden', {}, lang)
-            : window.t('reliabilityDashSummaryGrantBadgeRegular', { skips: activeGrant.skips_count || 0 }, lang);
+        
+        var badgeText = '';
+        if (activeGrant.is_early) {
+            badgeText = lang === 'ru' ? 'Досрочный финиш' : 'Early Finish';
+            if (activeGrant.is_golden) {
+                badgeText += lang === 'ru' ? ' (Идеальный)' : ' (Perfect)';
+            }
+        } else {
+            badgeText = isGolden
+                ? window.t('reliabilityDashSummaryGrantBadgeGolden', {}, lang)
+                : window.t('reliabilityDashSummaryGrantBadgeRegular', { skips: activeGrant.skips_count || 0 }, lang);
+        }
+
         var detailsText = window.t('reliabilityDashSummaryGrantValue', {
             amount: formatReliabilityIndex(activeGrant.amount_bust || 0),
             base: formatReliabilityIndex(activeGrant.base_bonus || 0),
@@ -498,12 +515,26 @@ function renderReliabilityAlphaModal() {
             karma_bonus: formatReliabilityIndex(activeGrant.karma_component || 0)
         }, lang);
 
+        function formatIsoDate(isoStr) {
+            if (!isoStr) return '—';
+            try {
+                var d = new Date(isoStr);
+                if (isNaN(d.getTime())) return '—';
+                var day = String(d.getDate()).padStart(2, '0');
+                var month = String(d.getMonth() + 1).padStart(2, '0');
+                var year = d.getFullYear();
+                return day + '.' + month + '.' + year;
+            } catch(e) {
+                return '—';
+            }
+        }
+
         grantsSectionHtml = `
             <section class="ri-surface">
               <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
               <div class="ri-grants-tiles">
                 ${grants.map(function(g, idx) {
-                  var icon = g.is_golden ? '💎' : '🪙';
+                  var icon = g.is_golden ? '🏆' : '💎';
                   var activeClass = idx === window._activeGrantIndex ? 'active' : '';
                   var goldenClass = g.is_golden ? 'is-golden' : '';
                   return `
@@ -518,6 +549,10 @@ function renderReliabilityAlphaModal() {
                 <div class="ri-grant-detail-row">
                   <span>${window.escapeHTML(window.t('reliabilityDashSummaryGrantLabel', {}, lang))}</span>
                   <span>${window.escapeHTML(activeGrant.app_name || '')}</span>
+                </div>
+                <div class="ri-grant-detail-row">
+                  <span>${lang === 'ru' ? 'Дата получения' : 'Date received'}</span>
+                  <span>${window.escapeHTML(formatIsoDate(activeGrant.granted_at))}</span>
                 </div>
                 <div class="ri-grant-formula">${window.escapeHTML(detailsText)}</div>
                 <span class="ri-grant-badge ${isGolden ? 'is-golden' : 'is-regular'}">${window.escapeHTML(badgeText)}</span>
@@ -578,18 +613,18 @@ function renderReliabilityAlphaModal() {
 
           <div class="ri-influence">
             <div class="ri-influence-card">
-              <div class="ri-influence-icon is-showcase">🌍</div>
-              <div class="ri-influence-body">
+              <div class="ri-influence-header">
+                <div class="ri-influence-icon is-showcase">🌍</div>
                 <div class="ri-influence-title">${window.escapeHTML(window.t('influenceShowcaseTitle', {}, lang))}</div>
-                <div class="ri-influence-text">${window.escapeHTML(window.t('influenceShowcaseText', {}, lang))}</div>
               </div>
+              <div class="ri-influence-text">${window.escapeHTML(window.t('influenceShowcaseText', {}, lang))}</div>
             </div>
             <div class="ri-influence-card">
-              <div class="ri-influence-icon is-mail">📨</div>
-              <div class="ri-influence-body">
+              <div class="ri-influence-header">
+                <div class="ri-influence-icon is-mail">📨</div>
                 <div class="ri-influence-title">${window.escapeHTML(window.t('influenceMatchmakingTitle', {}, lang))}</div>
-                <div class="ri-influence-text">${window.escapeHTML(window.t('influenceMatchmakingText', {}, lang))}</div>
               </div>
+              <div class="ri-influence-text">${window.escapeHTML(window.t('influenceMatchmakingText', {}, lang))}</div>
             </div>
           </div>
 

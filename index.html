@@ -389,7 +389,11 @@
         <div class="wizard-page" onclick="event.stopPropagation()">
             <header class="wizard-header">
                 <div class="wizard-header__top">
-                    <button type="button" class="wizard-back-btn" onclick="closeModal()" aria-label="Back">←</button>
+                    <button type="button" class="wizard-back-btn" onclick="closeModal()" aria-label="Back">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15 19L8 12L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                     <h2 class="wizard-title" id="t-modalTitle" data-i18n="addApp">Добавление приложения</h2>
                 </div>
                 <div class="wizard-progress" id="wizard-progress" aria-hidden="false">
@@ -1471,10 +1475,14 @@
     <div id="reliability-alpha-modal" class="modal-overlay reliability-alpha-modal" onclick="closeReliabilityAlphaModal(event)">
         <div class="modal-content reliability-alpha-modal-content" onclick="event.stopPropagation()">
             <div class="reliability-alpha-topbar">
+                <button type="button" class="reliability-alpha-back-btn" onclick="closeReliabilityAlphaModal()" aria-label="Back">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15 19L8 12L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
                 <div class="reliability-alpha-topbar-text">
                     <h3 data-i18n="reliabilityAlphaTitle">Индекс надежности</h3>
                 </div>
-                <button type="button" class="btn-icon reliability-alpha-close" onclick="closeReliabilityAlphaModal()">✕</button>
             </div>
             <div id="reliability-alpha-body"></div>
         </div>
@@ -1614,6 +1622,11 @@
     <!-- Project Protection Center — Full-Screen View -->
     <div id="protection-center" class="protection-center-view">
         <div class="ppc-header">
+            <button type="button" class="ppc-back-btn" onclick="closeProtectionCenter()" aria-label="Back">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 19L8 12L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
             <div class="ppc-header-title" id="ppc-header-title">Project Protection Center</div>
         </div>
         <div class="ppc-body" id="protection-center-body"></div>

@@ -33,6 +33,29 @@
     border-bottom: 1px solid var(--border-subtle);
     position: relative;
     min-height: 56px;
+    gap: 10px;
+}
+
+.ppc-back-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary, #8e8e93);
+    padding: 4px;
+    margin-left: -6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.ppc-back-btn:hover {
+    color: var(--text-color, #f4f6f8);
+}
+
+.ppc-back-btn:active {
+    opacity: 0.6;
 }
 
 .ppc-header-title {

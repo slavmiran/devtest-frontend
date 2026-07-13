@@ -44,14 +44,36 @@
     z-index: 10;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    justify-content: flex-start;
+    gap: 10px;
     padding: 14px 16px;
     background: color-mix(in srgb, var(--bg-app) 88%, transparent);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--border-subtle);
     flex-shrink: 0;
+}
+
+.reliability-alpha-back-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 4px;
+    margin-left: -6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.reliability-alpha-back-btn:hover {
+    color: var(--text-primary);
+}
+
+.reliability-alpha-back-btn:active {
+    opacity: 0.6;
 }
 
 .reliability-alpha-topbar-text h3 {
@@ -337,17 +359,22 @@
 }
 
 .ri-influence-card {
-    display: flow-root;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     padding: 12px;
     background: var(--bg-surface-1);
     border: 1px solid var(--border-subtle);
     border-radius: 14px;
 }
 
+.ri-influence-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .ri-influence-icon {
-    float: left;
-    margin-right: 10px;
-    margin-bottom: 6px;
     width: 34px;
     height: 34px;
     border-radius: 10px;
@@ -368,15 +395,11 @@
     border: 1px solid var(--reward-border);
 }
 
-.ri-influence-body {
-    display: contents;
-}
-
 .ri-influence-title {
     font-size: 13.5px;
     font-weight: 800;
     color: var(--text-primary);
-    margin-bottom: 4px;
+    line-height: 1.2;
 }
 
 .ri-influence-text {
@@ -519,6 +542,22 @@
     flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 12px;
+    max-height: 125px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.ri-grants-tiles::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ri-grants-tiles::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ri-grants-tiles::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: 2px;
 }
 
 .ri-grant-tile {
