@@ -35,14 +35,14 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260713-sprint-ux-polish2"></script>
-    <script src="./i18n/en.js?v=20260713-sprint-ux-polish2"></script>
+    <script src="./i18n/ru.js?v=20260713-sprint-ux-polish3"></script>
+    <script src="./i18n/en.js?v=20260713-sprint-ux-polish3"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260713-sprint-ux-polish"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260602-phase44"></script>
     <script src="./ui/ui-projects.js?v=20260713-sprint-ux-polish2"></script>
-    <script src="./ui/ui-market.js?v=20260713-sprint-ux-polish2"></script>
+    <script src="./ui/ui-market.js?v=20260713-sprint-ux-polish3"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260713-sprint-ux-polish"></script>
     <script src="./js/app-api.js?v=20260713-sprint-ux-polish2"></script>
@@ -69,7 +69,7 @@
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./styles.css?v=20260713-sprint-ux-polish2">
+    <link rel="stylesheet" href="./styles.css?v=20260713-sprint-ux-polish3">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260711-collapsed-fix">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
@@ -1407,11 +1407,15 @@
                     </div>
 
                     <details class="card contribution-info-card">
-                        <summary class="contribution-info-summary">ℹ️ <span data-i18n="contributionAboutTitle">О Спринтах</span></summary>
+                        <summary class="contribution-info-summary">
+                            <span class="contribution-info-summary-text">ℹ️ <span data-i18n="contributionAboutTitle">О Спринтах</span></span>
+                            <span class="details-arrow" aria-hidden="true">▼</span>
+                        </summary>
                         <div class="contribution-info-body">
                             <div id="contribution-about-text" class="contribution-info-text" data-i18n-html="contributionAboutFullHtml"></div>
-                            <div id="contribution-prize-summary" class="contribution-prize-summary" data-i18n="contributionPrizeSummary">
-                                🎯 Награды Топ-10: 1 место — 500 $BUST | 2 место — 350 $BUST | 3 место — 250 $BUST | 4 место — 180 $BUST | 5 место — 150 $BUST | 6-10 места — по 100 $BUST.
+                            <div class="contribution-prize-summary">
+                                <div class="contribution-prize-summary-title" data-i18n="contributionPrizeSummaryTitle">🎯 Награды Топ-10</div>
+                                <div id="contribution-prize-table" class="contribution-prize-lines"></div>
                             </div>
                         </div>
                     </details>

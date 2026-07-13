@@ -5267,8 +5267,30 @@ function _renderContributionPrizeTable() {
         const placeLabel = typeof place === 'number'
             ? window.t('contributionPrizePlace', { place: place }, lang) || (place + ' место')
             : window.t('contributionPrizePlaceRange', { range: place }, lang) || (place + ' места');
-        return '<div class="contribution-prize-row"><span>' + _escContribution(placeLabel) + '</span><span class="contribution-prize-amount">+' + amount + ' $BUST</span></div>';
+        const amountLabel = typeof place === 'number'
+            ? (amount + ' $BUST')
+            : (window.t('contributionPrizeEach', { amount: amount }, lang) || ('по ' + amount + ' $BUST'));
+        return ''
+            + '<div class="contribution-prize-line">'
+            +   '<span class="contribution-prize-line-place">' + _escContribution(placeLabel) + '</span>'
+            +   '<span class="contribution-prize-line-amount contribution-bust-amount">' + _escContribution(amountLabel) + '</span>'
+            + '</div>';
     }).join('');
+}
+
+function _fillContributionAboutCopy() {
+    const aboutEl = document.getElementById('contribution-about-text');
+    if (aboutEl) {
+        const html = window.t('contributionAboutFullHtml', {}, lang);
+        if (html && html !== 'contributionAboutFullHtml') {
+            aboutEl.innerHTML = html;
+        }
+    }
+    const prizeTitleEl = document.querySelector('.contribution-prize-summary-title');
+    if (prizeTitleEl) {
+        prizeTitleEl.textContent = window.t('contributionPrizeSummaryTitle', {}, lang);
+    }
+    _renderContributionPrizeTable();
 }
 
 function _startContributionCountdown(endsAt) {
@@ -5285,20 +5307,6 @@ function _startContributionCountdown(endsAt) {
     };
     tick();
     _contributionCountdownTimer = setInterval(tick, 30000);
-}
-
-function _fillContributionAboutCopy() {
-    const aboutEl = document.getElementById('contribution-about-text');
-    if (aboutEl) {
-        const html = window.t('contributionAboutFullHtml', {}, lang);
-        if (html && html !== 'contributionAboutFullHtml') {
-            aboutEl.innerHTML = html;
-        }
-    }
-    const prizeEl = document.getElementById('contribution-prize-summary');
-    if (prizeEl) {
-        prizeEl.textContent = window.t('contributionPrizeSummary', {}, lang);
-    }
 }
 
 function _getCachedContributionFallback() {

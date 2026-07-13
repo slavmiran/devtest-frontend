@@ -3842,24 +3842,25 @@ input::placeholder,
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
     gap: 12px 14px;
-    align-items: stretch;
+    align-items: start;
 }
 
 .contribution-hero-place {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     min-width: 0;
 }
 
 .contribution-hero-side {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: flex-end;
     gap: 10px;
     min-width: 0;
     text-align: right;
+    align-self: stretch;
 }
 
 .contribution-hero-meta-item {
@@ -3870,12 +3871,15 @@ input::placeholder,
     align-items: flex-end;
 }
 
-.contribution-hero-meta-label {
+.contribution-hero-meta-label,
+.contribution-hero-label {
     font-size: 11px;
     color: var(--hint-color);
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    min-height: 14px;
 }
 
 .contribution-hero-meta-value {
@@ -3889,7 +3893,7 @@ input::placeholder,
 .contribution-bust-amount,
 .contribution-prize-amount,
 .contribution-ledger-prize,
-.contribution-prize-summary {
+.contribution-prize-line-amount {
     color: #63a1ff;
 }
 
@@ -3923,14 +3927,6 @@ input::placeholder,
     white-space: nowrap;
 }
 
-.contribution-hero-label {
-    font-size: 12px;
-    color: var(--hint-color);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
 .contribution-rank-value {
     font-size: 40px;
     font-weight: 800;
@@ -3947,9 +3943,10 @@ input::placeholder,
 
 .contribution-score-hero {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     margin-bottom: 10px;
 }
 
@@ -3959,14 +3956,16 @@ input::placeholder,
     color: var(--hint-color);
     text-transform: uppercase;
     letter-spacing: 0.03em;
+    min-width: 0;
 }
 
 .contribution-score-hero-value {
-    font-size: 36px;
+    font-size: 28px;
     font-weight: 800;
-    line-height: 1.05;
+    line-height: 1;
     color: var(--text-color);
     letter-spacing: 0.3px;
+    flex: 0 0 auto;
 }
 
 .contribution-score-breakdown {
@@ -4006,13 +4005,33 @@ input::placeholder,
 .contribution-info-summary {
     cursor: pointer;
     list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     font-size: 13px;
     font-weight: 700;
     color: var(--text-color);
+    user-select: none;
+}
+
+.contribution-info-summary-text {
+    min-width: 0;
 }
 
 .contribution-info-summary::-webkit-details-marker {
     display: none;
+}
+
+.contribution-info-summary .details-arrow {
+    flex: 0 0 auto;
+    transition: transform 0.3s ease;
+    font-size: 12px;
+    color: var(--hint-color);
+}
+
+.contribution-info-card[open] > .contribution-info-summary .details-arrow {
+    transform: rotate(180deg);
 }
 
 .contribution-info-body {
@@ -4024,32 +4043,85 @@ input::placeholder,
     font-size: 12px;
     line-height: 1.5;
     color: var(--hint-color);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.contribution-info-text p {
-    margin: 0 0 10px;
+.contribution-info-block {
+    margin: 0;
+    padding: 10px 11px;
+    border-radius: 12px;
+    background: var(--bg-surface-muted, rgba(255,255,255,0.04));
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
 }
 
-.contribution-info-text p:last-child {
-    margin-bottom: 0;
+.contribution-info-block strong {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-color);
+    font-weight: 700;
 }
 
-.contribution-info-text ul {
-    margin: 6px 0 10px;
+.contribution-info-block p,
+.contribution-info-block ul {
+    margin: 0;
+}
+
+.contribution-info-block ul {
+    margin-top: 6px;
     padding-left: 18px;
 }
 
-.contribution-info-text li {
+.contribution-info-block li {
     margin-bottom: 4px;
 }
 
+.contribution-info-block li:last-child {
+    margin-bottom: 0;
+}
+
 .contribution-prize-summary {
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+    margin-top: 10px;
+    padding: 10px 11px;
+    border-radius: 12px;
+    background: var(--bg-surface-muted, rgba(255,255,255,0.04));
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+}
+
+.contribution-prize-summary-title {
+    margin-bottom: 8px;
     font-size: 12px;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1.35;
+}
+
+.contribution-prize-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.contribution-prize-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.contribution-prize-line-place {
+    color: var(--hint-color);
     font-weight: 600;
-    line-height: 1.45;
+    min-width: 0;
+}
+
+.contribution-prize-line-amount {
+    font-weight: 800;
+    white-space: nowrap;
+    flex: 0 0 auto;
 }
 
 .contribution-history-list {
@@ -4174,7 +4246,7 @@ input::placeholder,
     }
 
     .contribution-score-hero-value {
-        font-size: 30px;
+        font-size: 24px;
     }
 
     .contribution-ledger-place {
