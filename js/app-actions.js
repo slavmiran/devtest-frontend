@@ -2811,10 +2811,34 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
                 if (nextStatus === 'pending' || nextStatus === 'approved') {
                     test.play_review_status = nextStatus;
                 }
-                persistTestsCacheSnapshot();
+                try { persistTestsCacheSnapshot(); } catch (persistErr) {}
             }
-            if (typeof renderPlayReviewModal === 'function') {
+            // Persist across Telegram openLink suspend + myTests refresh.
+            window._playReviewStep1Done = true;
+            try {
+                var key = 'playReviewRetry:' + String(Number(appId) || 0);
+                var prev = {};
+                try { prev = JSON.parse(sessionStorage.getItem(key) || '{}') || {}; } catch (e) { prev = {}; }
+                sessionStorage.setItem(key, JSON.stringify({
+                    step1Done: true,
+                    screenshotUrl: String(data.url || ''),
+                }));
+            } catch (e) {}
+            if (typeof window._savePlayReviewSession === 'function') {
+                window._savePlayReviewSession(appId, { step1Done: true, screenshotUrl: data.url });
+            }
+            if (typeof window.renderPlayReviewModal === 'function') {
+                window.renderPlayReviewModal();
+            } else if (typeof renderPlayReviewModal === 'function') {
                 renderPlayReviewModal();
+            }
+            // Hard-enable submit immediately even if a later re-render races.
+            var submitBtn = document.getElementById('play-review-submit-btn');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.removeAttribute('disabled');
+                submitBtn.classList.remove('btn-disabled');
+                submitBtn.classList.add('btn-primary');
             }
             console.log('[handleReviewScreenshotUpload] success, url=' + data.url);
         } else {

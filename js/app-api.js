@@ -1376,7 +1376,18 @@ function _mapTestsFromApi(data) {
             request_reviews: app.request_reviews !== false,
             play_feedback_submitted: !!app.play_feedback_submitted,
             play_review_status: String(app.play_review_status || (app.play_feedback_submitted ? 'pending' : 'none')).toLowerCase(),
-            play_review_screenshot_url: app.play_review_screenshot_url || '',
+            play_review_screenshot_url: (function() {
+                var apiUrl = String(app.play_review_screenshot_url || '').trim();
+                var localUrl = existingTest ? String(existingTest.play_review_screenshot_url || '').trim() : '';
+                try {
+                    var sessionRaw = sessionStorage.getItem('playReviewRetry:' + String(Number(mappedId) || 0));
+                    var session = sessionRaw ? JSON.parse(sessionRaw) : null;
+                    var sessionUrl = session && session.screenshotUrl ? String(session.screenshotUrl).trim() : '';
+                    if (sessionUrl) return sessionUrl;
+                } catch (e) {}
+                // Keep a freshly uploaded local URL if API snapshot is still stale/empty.
+                return apiUrl || localUrl || '';
+            })(),
             rewards_summary: (app && typeof app.rewards_summary === 'object' && app.rewards_summary)
                 ? {
                     checkin_karma: Number(app.rewards_summary.checkin_karma || 0),

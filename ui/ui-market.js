@@ -328,6 +328,12 @@ window.toggleProjectCardDetails = function(element, event) {
 };
 
 function buildReliabilityAlphaProjectCard(project) {
+    var state = getReliabilityUiState();
+    var breakdown = state ? state.breakdown : null;
+    var totalPenalty = breakdown ? Math.abs(Number(breakdown.penalty || 0)) : 0;
+    var badPeriodsCount = breakdown ? Number(breakdown.bad_periods_count || 0) : 0;
+    var weightedBeforePenalty = breakdown ? Number(breakdown.weighted_before_penalty || 0) : 0;
+
     var statusMeta = getReliabilityAlphaStatusMeta(project.project_status);
     var title = window.escapeHTML(project.title || window.t('unknownLabel', {}, lang));
     var typeLabel = window.escapeHTML(window.t('reliabilityDashProjectType_' + (project.join_type || project.type || 'invite'), {}, lang));
@@ -339,20 +345,26 @@ function buildReliabilityAlphaProjectCard(project) {
     var indexValue = Number(project.effective_project_index || 0);
     var indexPct = Math.max(0, Math.min(100, indexValue));
     var chipTone = sourceMeta.chipClass === 'chip-used' ? 'used' : (sourceMeta.chipClass === 'chip-history' ? 'history' : 'skipped');
+    
     var pillHtml = project.is_used_in_formula
         ? '<span class="ri-pill formula">' + window.escapeHTML(window.t('reliabilityDashProjectPillFormula', {}, lang)) + '</span>'
         : '<span class="ri-pill history">' + window.escapeHTML(window.t('reliabilityDashProjectPillHistory', {}, lang)) + '</span>';
+    
+    if (project.is_bad_period_for_reliability) {
+        pillHtml += '<span class="ri-pill penalty">' + (lang === 'ru' ? 'Штраф' : 'Penalty') + '</span>';
+    }
+
     var contributionValue = '—';
     if (project.is_used_in_formula) {
         if (project.is_bad_period_for_reliability) {
-            contributionValue = '0.0% (' + (lang === 'ru' ? 'Слабый период: штраф' : 'Bad period penalty') + ')';
+            contributionValue = '0.0% (' + (lang === 'ru' ? 'Штраф к итогу: -' + totalPenalty + '%' : 'Total penalty: -' + totalPenalty + '%') + ')';
         } else {
             contributionValue = '+' + formatReliabilityIndex(project.weighted_contribution || 0) + '%';
         }
     }
 
     return `
-        <div class="ri-project ${project.is_used_in_formula ? 'in-formula' : ''}" onclick="toggleProjectCardDetails(this, event)">
+        <div class="ri-project ${project.is_used_in_formula ? 'in-formula' : ''} ${project.is_bad_period_for_reliability ? 'has-penalty' : ''}" onclick="toggleProjectCardDetails(this, event)">
           <div class="ri-project-head">
             <div class="ri-project-left">
               <span class="ri-project-icon">📱</span>
@@ -372,6 +384,15 @@ function buildReliabilityAlphaProjectCard(project) {
           </div>
 
           <div class="ri-project-body" hidden onclick="event.stopPropagation()">
+            ${project.is_bad_period_for_reliability ? `
+            <div class="ri-penalty-notice" style="background: rgba(255, 59, 48, 0.08); border: 1px solid rgba(255, 59, 48, 0.2); border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 13px; color: #ff453a; line-height: 1.4;">
+                ⚠️ <strong>${lang === 'ru' ? 'Слабый период (Штрафной)' : 'Bad Period (Penalty)'}</strong><br>
+                ${lang === 'ru' 
+                  ? `Этот проект завершен неудачно (отмена или пропуски). Он вносит 0.0% в среднее и накладывает фиксированный штраф <strong>-${totalPenalty}%</strong> на ваш общий индекс надежности (вычитается из общего взвешенного среднего <strong>${formatReliabilityIndex(weightedBeforePenalty)}%</strong>).`
+                  : `This project was a bad period (cancelled or excessive skips). It contributes 0.0% to the weighted average and applies a flat penalty of <strong>-${totalPenalty}%</strong> to your overall reliability index (subtracted from the weighted average of all projects <strong>${formatReliabilityIndex(weightedBeforePenalty)}%</strong>).`}
+            </div>
+            ` : ''}
+
             ${project.is_used_in_formula ? '' : `
             <div class="ri-project-chips">
               <span class="ri-chip ${chipTone}">${window.escapeHTML(sourceMeta.chipLabel)}</span>
@@ -2767,6 +2788,52 @@ var _checkinOptionsFlow = 'regular';
 var _playReviewModalAppId = null;
 var _playReviewModalSource = 'badge';
 
+/** Survives Telegram openLink suspend/reload better than in-memory flags alone. */
+function _playReviewSessionKey(appId) {
+    return 'playReviewRetry:' + String(Number(appId) || 0);
+}
+
+function _loadPlayReviewSession(appId) {
+    var empty = { step1Done: false, screenshotUrl: '' };
+    try {
+        var raw = sessionStorage.getItem(_playReviewSessionKey(appId));
+        if (!raw) return empty;
+        var parsed = JSON.parse(raw);
+        return {
+            step1Done: !!(parsed && parsed.step1Done),
+            screenshotUrl: String((parsed && parsed.screenshotUrl) || ''),
+        };
+    } catch (e) {
+        return empty;
+    }
+}
+
+function _savePlayReviewSession(appId, patch) {
+    var current = _loadPlayReviewSession(appId);
+    var next = {
+        step1Done: patch && Object.prototype.hasOwnProperty.call(patch, 'step1Done')
+            ? !!patch.step1Done
+            : !!current.step1Done,
+        screenshotUrl: patch && Object.prototype.hasOwnProperty.call(patch, 'screenshotUrl')
+            ? String(patch.screenshotUrl || '')
+            : String(current.screenshotUrl || ''),
+    };
+    try {
+        sessionStorage.setItem(_playReviewSessionKey(appId), JSON.stringify(next));
+    } catch (e) {}
+    window._playReviewStep1Done = !!next.step1Done;
+    return next;
+}
+
+function _clearPlayReviewSession(appId) {
+    try {
+        sessionStorage.removeItem(_playReviewSessionKey(appId));
+    } catch (e) {}
+    if (Number(appId) === Number(_playReviewModalAppId)) {
+        window._playReviewStep1Done = false;
+    }
+}
+
 function renderCheckinReviewOptions() {
     var mount = document.getElementById('checkin-review-options');
     if (!mount) return;
@@ -2790,8 +2857,9 @@ function renderPlayReviewModal() {
     var isApproved = reviewStatus === 'approved';
     var reviewRejected = reviewStatus === 'rejected' || !!(test.rewards_summary && test.rewards_summary.review_rejected);
     var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
-    // After reject we clear the old screenshot on open; a freshly uploaded one must count.
-    var screenshotUrl = test.play_review_screenshot_url || '';
+    var session = _loadPlayReviewSession(_playReviewModalAppId);
+    // Session screenshot wins: myTests refresh after openLink must not wipe a fresh upload.
+    var screenshotUrl = session.screenshotUrl || test.play_review_screenshot_url || '';
     var safeAppName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
 
     if (isApproved) {
@@ -2906,8 +2974,12 @@ function renderPlayReviewModal() {
            </div>`
         : '';
 
-    // Step 1 done state
-    var step1Done = isReadOnly || !!window._playReviewStep1Done;
+    // Step 1 done state.
+    // Screenshot upload also counts as step1: openLink often kills WebApp before in-memory flag is set.
+    var step1Done = isReadOnly
+        || !!window._playReviewStep1Done
+        || !!session.step1Done
+        || !!screenshotUrl;
     
     // Step 2 done state
     var step2Done = !!screenshotUrl;
@@ -3025,9 +3097,13 @@ function handlePlayReviewOpenStoreClick(event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    openPlayReviewStore();
+    // IMPORTANT: mark step1 BEFORE openLink — Telegram may suspend/kill the WebApp immediately.
     window._playReviewStep1Done = true;
+    if (_playReviewModalAppId != null) {
+        _savePlayReviewSession(_playReviewModalAppId, { step1Done: true });
+    }
     renderPlayReviewModal();
+    openPlayReviewStore();
 }
 window.handlePlayReviewOpenStoreClick = handlePlayReviewOpenStoreClick;
 
@@ -3039,6 +3115,9 @@ function handleRemoveReviewScreenshot(event) {
     if (test) {
         test.play_review_screenshot_url = '';
         persistTestsCacheSnapshot();
+    }
+    if (_playReviewModalAppId != null) {
+        _savePlayReviewSession(_playReviewModalAppId, { screenshotUrl: '' });
     }
     renderPlayReviewModal();
 }
@@ -3258,6 +3337,12 @@ async function submitPlayReview() {
                 }
                 persistTestsCacheSnapshot();
             }
+            if (typeof _clearPlayReviewSession === 'function') {
+                _clearPlayReviewSession(_playReviewModalAppId);
+            } else {
+                try { sessionStorage.removeItem('playReviewRetry:' + String(Number(_playReviewModalAppId) || 0)); } catch (e) {}
+            }
+            window._playReviewStep1Done = false;
             var checkin = data.checkin || null;
             var checkinPerformed = !!data.checkin_performed;
             if (!checkinPerformed && checkin && !checkin.already_checked_today) {
@@ -3451,17 +3536,25 @@ function openPlayReviewModal(appId, event, options) {
     var reviewStatus = typeof window.getPlayReviewStatus === 'function'
         ? window.getPlayReviewStatus(test)
         : String(test && test.play_review_status || 'none').toLowerCase();
+    var session = _loadPlayReviewSession(appId);
 
-    // Rejected retry: drop the old screenshot so the user must upload a new one,
-    // but do not keep forcing screenshotUrl='' on every re-render (that blocked Submit).
     if (reviewStatus === 'rejected' && test) {
-        if (test.play_review_screenshot_url) {
+        // Drop stale rejected screenshot from the test row, but keep a fresh
+        // session upload if the user already attached one in this retry.
+        if (!session.screenshotUrl && test.play_review_screenshot_url) {
             test.play_review_screenshot_url = '';
             if (typeof persistTestsCacheSnapshot === 'function') persistTestsCacheSnapshot();
         }
-        window._playReviewStep1Done = false;
+        window._playReviewStep1Done = !!session.step1Done || !!session.screenshotUrl;
     } else {
-        window._playReviewStep1Done = !!(test && test.play_review_screenshot_url);
+        window._playReviewStep1Done = !!session.step1Done
+            || !!(test && test.play_review_screenshot_url);
+        if (test && test.play_review_screenshot_url && !session.screenshotUrl) {
+            _savePlayReviewSession(appId, {
+                step1Done: true,
+                screenshotUrl: test.play_review_screenshot_url,
+            });
+        }
     }
 
     renderPlayReviewModal();
@@ -8075,6 +8168,8 @@ Object.assign(window, {
     checkinOptionsOpenReviewStore,
     toggleCheckinReviewCheckbox,
     renderPlayReviewModal,
+    _savePlayReviewSession,
+    _clearPlayReviewSession,
     togglePlayReviewModalCheckbox,
     toggleProjectDetailsReviewCheckbox,
     openPlayReviewModal,

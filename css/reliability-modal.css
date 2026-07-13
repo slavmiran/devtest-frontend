@@ -799,6 +799,12 @@
     border: 1px solid var(--border-strong);
 }
 
+.ri-pill.penalty {
+    background: rgba(255, 59, 48, 0.08);
+    color: #ff3b30;
+    border: 1px solid rgba(255, 59, 48, 0.2);
+}
+
 .ri-project-right {
     display: flex;
     align-items: center;
