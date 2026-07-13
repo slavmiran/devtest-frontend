@@ -960,6 +960,7 @@
             projectFeedbackReviewTicketText: "Tester marked that they left a Google Play review",
             projectFeedbackViewScreenshotBtn: "View screenshot",
             projectFeedbackOpenTopicBtn: "Discussion",
+            feedbackDiscussInChatBtn: "Discuss in chat",
             projectFeedbackImageUnavailable: "Image not available",
             projectFeedbackRewardBtn: "Accept",
             projectFeedbackThankCloseBtn: "🎁 Thank and close",

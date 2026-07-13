@@ -2121,3 +2121,36 @@
 #project-feedback-body .fb-toolbar-utils {
     flex-shrink: 0;
 }
+
+/* Processed discuss button: icon + label */
+#project-feedback-body .fb-action-btn--topic {
+    flex: 0 1 auto;
+    gap: 6px;
+    padding: 0 12px !important;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: var(--text-secondary, #aeb7c2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    white-space: nowrap;
+}
+#project-feedback-body .fb-action-btn--topic:active {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-primary, #f4f6f8) !important;
+}
+#project-feedback-body .fb-card--new .fb-toolbar,
+#project-feedback-body .fb-card--expanded:not(.fb-card--processed) .fb-toolbar {
+    flex-wrap: nowrap;
+}
+#project-feedback-body .fb-card--new .fb-toolbar-utils,
+#project-feedback-body .fb-card--expanded:not(.fb-card--processed) .fb-toolbar-utils {
+    flex-shrink: 0;
+}
+#project-feedback-body .fb-card--processed .fb-toolbar-utils {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+#project-feedback-body .fb-card--processed .fb-action-btn--topic {
+    flex: 1 1 auto;
+    min-width: 0;
+}

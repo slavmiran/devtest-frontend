@@ -3842,8 +3842,7 @@ function buildFeedbackMicroSummaryHtml(item, isRejected) {
     const rewardParts = [];
     if (bust > 0) rewardParts.push(window.escapeHTML(String(bust)) + ' BUST');
     if (karma > 0) {
-        const karmaLabel = lang === 'ru' ? 'карма' : 'karma';
-        rewardParts.push(window.escapeHTML(karma.toFixed(1)) + ' ' + karmaLabel);
+        rewardParts.push(window.escapeHTML(karma.toFixed(1)) + ' к.');
     }
     const rewardHtml = rewardParts.length
         ? (' <span class="fb-micro-sep">·</span> <span class="fb-micro-bust">' + rewardParts.join(' <span class="fb-micro-sep">·</span> ') + '</span>')
@@ -4381,18 +4380,23 @@ function renderProjectFeedbackCards(project, items) {
             }
 
             var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
+            const chatIconSvg = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>';
+            const discussLabel = window.escapeHTML(window.t('feedbackDiscussInChatBtn', {}, lang) || (lang === 'ru' ? 'Обсудить в чате' : 'Discuss in chat'));
             const copyButtonHtml = (!isReviewTicket && (item.message_text || deviceInfoHtml))
                 ? `<button type="button" class="fb-icon-btn" onclick="copyFeedbackCardContent(${item.id}, ${projectId})" aria-label="${window.escapeHTML(window.t('feedbackCopyBtn', {}, lang) || 'Copy')}">
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                    </button>`
                 : '';
 
-            // Topic link for BOTH open and processed cards (same style as Copy).
-            const discussButtonHtml = hasTopicLink
-                ? `<button type="button" class="fb-icon-btn" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')" aria-label="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}" title="${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}">
-                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
-                   </button>`
-                : '';
+            // Active = compact chat icon left of Accept/Reject. Processed = "Discuss in chat" + icon.
+            let discussButtonHtml = '';
+            if (hasTopicLink) {
+                if (isOpen) {
+                    discussButtonHtml = `<button type="button" class="fb-icon-btn" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')" aria-label="${discussLabel}" title="${discussLabel}">${chatIconSvg}</button>`;
+                } else {
+                    discussButtonHtml = `<button type="button" class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')">${chatIconSvg}<span>${discussLabel}</span></button>`;
+                }
+            }
 
             let decideButtonsHtml = '';
             if (isOpen && isReviewTicket) {
@@ -4425,8 +4429,12 @@ function renderProjectFeedbackCards(project, items) {
                     </button>`;
             }
 
-            const utilsHtml = (discussButtonHtml || copyButtonHtml)
-                ? `<div class="fb-toolbar-utils">${discussButtonHtml}${copyButtonHtml}</div>`
+            // Active: chat icon left of Accept/Reject. Processed: Copy, then Discuss in chat.
+            const utilsInner = isOpen
+                ? (discussButtonHtml + copyButtonHtml)
+                : (copyButtonHtml + discussButtonHtml);
+            const utilsHtml = utilsInner
+                ? `<div class="fb-toolbar-utils">${utilsInner}</div>`
                 : '';
             const decideHtml = decideButtonsHtml
                 ? `<div class="fb-toolbar-decide">${decideButtonsHtml}</div>`

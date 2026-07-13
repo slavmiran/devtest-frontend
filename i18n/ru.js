@@ -959,6 +959,7 @@
             projectFeedbackReviewTicketText: "Тестер отметил, что оставил отзыв в Google Play",
             projectFeedbackViewScreenshotBtn: "Посмотреть скриншот",
             projectFeedbackOpenTopicBtn: "Обсуждение",
+            feedbackDiscussInChatBtn: "Обсудить в чате",
             projectFeedbackImageUnavailable: "Изображение недоступно",
             projectFeedbackRewardBtn: "Принять",
             projectFeedbackThankCloseBtn: "🎁 Поблагодарить и закрыть",
