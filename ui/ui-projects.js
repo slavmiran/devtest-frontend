@@ -91,26 +91,31 @@ function renderProjects(force) {
         const totalGrants = Number(visibilityStats.grant_tests_count || 0);
         const completedTests = Number(visibilityStats.completed_tests || 0);
         const activeTests = Number(visibilityStats.my_active_tests || 0);
-        const contributionScore = Number(
-            (visibilityStats.contribution && visibilityStats.contribution.contribution_score) ||
-            visibilityStats.contribution_score ||
-            0
-        );
         const seasonCached = (visibilityStats && visibilityStats.contribution_season) || {};
+        const seasonReady = !!(seasonCached && (seasonCached.ends_at || seasonCached.season_number != null || seasonCached._loaded));
         const seasonRankRaw = seasonCached.rank;
         const seasonRank = seasonRankRaw != null ? Number(seasonRankRaw) : null;
         const hasSeasonRank = !!(seasonRank && seasonRank > 0);
-        const hasAnyScore = contributionScore > 0 || hasSeasonRank;
-        let contributionPrimary = window.t('metricSprintAddFirst', {}, lang) || (lang === 'ru' ? 'Добавьте первый вклад!' : 'Add your first entry!');
-        if (hasSeasonRank) {
-            contributionPrimary = window.t('metricSprintPosition', { rank: Math.round(seasonRank) }, lang) || ('Позиция #' + Math.round(seasonRank));
-        } else if (hasAnyScore) {
-            contributionPrimary = window.t('metricSprintUnranked', {}, lang) || (lang === 'ru' ? 'Вне топа' : 'Unranked');
+        const seasonScore = Number(
+            seasonCached.score != null
+                ? seasonCached.score
+                : (seasonCached.contribution_score != null ? seasonCached.contribution_score : NaN)
+        );
+        let contributionPrimary = '—';
+        if (seasonReady) {
+            if (hasSeasonRank) {
+                contributionPrimary = '#' + Math.round(seasonRank);
+            } else if (Number.isFinite(seasonScore) && seasonScore > 0) {
+                contributionPrimary = window.t('metricSprintUnranked', {}, lang) || (lang === 'ru' ? 'Вне топа' : 'Unranked');
+            } else {
+                contributionPrimary = window.t('metricSprintAddFirst', {}, lang) || (lang === 'ru' ? 'Добавьте первый вклад!' : 'Add your first entry!');
+            }
         }
         let contributionTimer = '';
         const endsAtMs = Date.parse(String(seasonCached.ends_at || ''));
         if (Number.isFinite(endsAtMs)) {
-            const daysLeft = Math.max(0, Math.ceil((endsAtMs - Date.now()) / 86400000));
+            // Match modal countdown: full days remaining via floor (not ceil).
+            const daysLeft = Math.max(0, Math.floor((endsAtMs - Date.now()) / 86400000));
             contributionTimer = window.t('metricSprintDaysLeft', { days: daysLeft }, lang) || ('Осталось ' + daysLeft + ' дн.');
         }
         const balanceAmount = (typeof formatUiAmount === 'function')
@@ -164,7 +169,7 @@ function renderProjects(force) {
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-neutral metric-card-sprint" onclick="showContributionInfo()">
                         <div class="metric-card-top">
-                            <span class="metric-label">🎯 ${window.t('metricSprintLeague', {}, lang) || (lang === 'ru' ? 'Спринт Лиги' : 'League Sprint')}</span>
+                            <span class="metric-label">${window.t('metricSprintPositionLabel', {}, lang) || (lang === 'ru' ? 'Позиция в Спринте' : 'Sprint position')}</span>
                             <span class="metric-chevron">›</span>
                         </div>
                         <div class="metric-sprint-body">
@@ -177,36 +182,41 @@ function renderProjects(force) {
         `;
         container.insertAdjacentHTML('beforeend', dashHtml);
 
-        // Soft-prefetch current sprint so the widget can show rank/timer without opening the modal.
+        // Soft-prefetch current sprint once per session so the widget is stable (no text jump).
         if (!window.__contribSeasonPrefetch && typeof window.fetchContributionCurrent === 'function') {
-            const needsPrefetch = !(seasonCached && seasonCached.ends_at);
-            if (needsPrefetch) {
-                window.__contribSeasonPrefetch = true;
-                window.fetchContributionCurrent().then(function(result) {
-                    if (!result || result.status !== 'success' || !result.season) return;
-                    if (typeof window._cacheContributionSeasonSnapshot === 'function') {
-                        window._cacheContributionSeasonSnapshot(result);
-                    } else if (visibilityStats) {
-                        const me = result.me || {};
-                        const season = result.season || {};
-                        visibilityStats.contribution_season = {
-                            rank: me.rank != null ? Number(me.rank) : null,
-                            score: Number(me.contribution_score || 0),
-                            season_number: season.season_number != null ? Number(season.season_number) : null,
-                            ends_at: season.ends_at || null,
-                            gap_to_top5: Number(result.gap_to_top5 || 0),
-                        };
-                        visibilityStats.contribution = {
-                            contribution_score: Number(me.contribution_score || 0),
-                            bugs_count: Number(me.bugs_count || 0),
-                            ideas_count: Number(me.ideas_count || 0),
-                            play_reviews_count: Number(me.play_reviews_count || 0),
-                        };
-                        visibilityStats.contribution_score = Number(me.contribution_score || 0);
+            window.__contribSeasonPrefetch = true;
+            window.fetchContributionCurrent().then(function(result) {
+                if (!result || result.status !== 'success' || !result.season) {
+                    if (visibilityStats) {
+                        visibilityStats.contribution_season = Object.assign({}, visibilityStats.contribution_season || {}, {
+                            _loaded: true,
+                        });
                     }
-                    try { renderProjects(true); } catch (_) { /* ignore */ }
-                }).catch(function() { /* ignore */ });
-            }
+                    return;
+                }
+                if (typeof window._cacheContributionSeasonSnapshot === 'function') {
+                    window._cacheContributionSeasonSnapshot(result);
+                } else if (visibilityStats) {
+                    const me = result.me || {};
+                    const season = result.season || {};
+                    visibilityStats.contribution_season = {
+                        rank: me.rank != null ? Number(me.rank) : null,
+                        score: Number(me.contribution_score || 0),
+                        season_number: season.season_number != null ? Number(season.season_number) : null,
+                        ends_at: season.ends_at || null,
+                        gap_to_top5: Number(result.gap_to_top5 || 0),
+                        _loaded: true,
+                    };
+                    visibilityStats.contribution = {
+                        contribution_score: Number(me.contribution_score || 0),
+                        bugs_count: Number(me.bugs_count || 0),
+                        ideas_count: Number(me.ideas_count || 0),
+                        play_reviews_count: Number(me.play_reviews_count || 0),
+                    };
+                    visibilityStats.contribution_score = Number(me.contribution_score || 0);
+                }
+                try { renderProjects(true); } catch (_) { /* ignore */ }
+            }).catch(function() { /* ignore */ });
         }
     }
 

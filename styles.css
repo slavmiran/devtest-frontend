@@ -3855,9 +3855,11 @@ input::placeholder,
 .contribution-hero-side {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
+    align-items: flex-end;
     gap: 10px;
     min-width: 0;
+    text-align: right;
 }
 
 .contribution-hero-meta-item {
@@ -3865,6 +3867,7 @@ input::placeholder,
     flex-direction: column;
     gap: 2px;
     min-width: 0;
+    align-items: flex-end;
 }
 
 .contribution-hero-meta-label {
@@ -3875,8 +3878,7 @@ input::placeholder,
     letter-spacing: 0.03em;
 }
 
-.contribution-hero-meta-value,
-.contribution-countdown {
+.contribution-hero-meta-value {
     font-size: 14px;
     font-weight: 800;
     color: var(--text-color);
@@ -3884,27 +3886,41 @@ input::placeholder,
     word-break: break-word;
 }
 
-.contribution-countdown {
-    color: var(--link-color);
-    margin-top: 0;
+.contribution-bust-amount,
+.contribution-prize-amount,
+.contribution-ledger-prize,
+.contribution-prize-summary {
+    color: #63a1ff;
 }
 
-.contribution-place-prize {
-    margin-top: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #2e7d32;
-    line-height: 1.3;
+.contribution-countdown-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: auto;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: var(--bg-surface-muted, rgba(255,255,255,0.06));
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.12));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    max-width: 100%;
 }
 
-.contribution-season-dates {
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
-    font-size: 12px;
-    color: var(--hint-color);
+.contribution-countdown-chip-label {
+    font-size: 11px;
     font-weight: 600;
-    text-align: center;
+    color: var(--hint-color);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.contribution-countdown {
+    margin-top: 0;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .contribution-hero-label {
@@ -3921,11 +3937,6 @@ input::placeholder,
     line-height: 1.05;
     margin-top: 4px;
     letter-spacing: 0.5px;
-}
-
-.contribution-season-meta,
-.contribution-countdown {
-    margin-top: 0;
 }
 
 .contribution-score-card,
@@ -3960,19 +3971,31 @@ input::placeholder,
 
 .contribution-score-breakdown {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.contribution-score-chip {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--hint-color);
-    background: var(--bg-surface-muted, rgba(255,255,255,0.04));
-    border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
-    border-radius: 999px;
-    padding: 4px 9px;
-    line-height: 1.2;
+.contribution-score-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.contribution-score-row-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color);
+    line-height: 1.35;
+    min-width: 0;
+}
+
+.contribution-score-row-value {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-color);
+    flex: 0 0 auto;
+    line-height: 1.35;
 }
 
 .contribution-info-card {
@@ -3999,44 +4022,34 @@ input::placeholder,
 .contribution-info-text {
     margin: 0;
     font-size: 12px;
-    line-height: 1.45;
+    line-height: 1.5;
     color: var(--hint-color);
 }
 
-.contribution-prize-table {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-top: 6px;
+.contribution-info-text p {
+    margin: 0 0 10px;
 }
 
-.contribution-prize-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
+.contribution-info-text p:last-child {
+    margin-bottom: 0;
+}
+
+.contribution-info-text ul {
+    margin: 6px 0 10px;
+    padding-left: 18px;
+}
+
+.contribution-info-text li {
+    margin-bottom: 4px;
+}
+
+.contribution-prize-summary {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
     font-size: 12px;
-    color: var(--hint-color);
-    padding: 4px 0;
-    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
-}
-
-.contribution-prize-row:last-child {
-    border-bottom: none;
-}
-
-.contribution-prize-amount {
-    font-weight: 700;
-    color: #2e7d32;
-    white-space: nowrap;
-}
-
-.contribution-weights-footnote {
-    margin-top: 10px;
-    font-size: 11px;
-    line-height: 1.4;
-    color: var(--hint-color);
-    opacity: 0.9;
+    font-weight: 600;
+    line-height: 1.45;
 }
 
 .contribution-history-list {
@@ -4093,12 +4106,10 @@ input::placeholder,
 .contribution-ledger-prize {
     font-size: 13px;
     font-weight: 800;
-    color: #2e7d32;
     white-space: nowrap;
 }
 
 .contribution-ledger-prize.is-claimed {
-    color: #2e7d32;
     opacity: 0.85;
 }
 
@@ -4118,29 +4129,44 @@ input::placeholder,
 
 .metric-card-sprint .metric-value--sprint {
     margin-top: 0;
-    font-size: 14px;
-    line-height: 1.25;
+    font-size: 18px;
+    line-height: 1.2;
+    font-weight: 800;
 }
 
 .metric-sprint-body {
     margin-top: 8px;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
     min-width: 0;
 }
 
 .metric-sprint-timer {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 500;
     color: var(--hint-color);
     line-height: 1.25;
+    opacity: 0.85;
 }
 
 @media (max-width: 360px) {
     .contribution-hero-grid {
         grid-template-columns: 1fr;
         gap: 12px;
+    }
+
+    .contribution-hero-side {
+        align-items: stretch;
+        text-align: left;
+    }
+
+    .contribution-hero-meta-item {
+        align-items: flex-start;
+    }
+
+    .contribution-countdown-chip {
+        align-self: flex-end;
     }
 
     .contribution-rank-value {

@@ -5274,12 +5274,31 @@ function _renderContributionPrizeTable() {
 function _startContributionCountdown(endsAt) {
     _stopContributionCountdown();
     const el = document.getElementById('contribution-countdown');
-    if (!el || !endsAt) return;
+    const chip = document.getElementById('contribution-countdown-chip');
+    if (!el || !endsAt) {
+        if (chip) chip.hidden = true;
+        return;
+    }
+    if (chip) chip.hidden = false;
     const tick = () => {
         el.textContent = _formatContributionCountdown(endsAt);
     };
     tick();
     _contributionCountdownTimer = setInterval(tick, 30000);
+}
+
+function _fillContributionAboutCopy() {
+    const aboutEl = document.getElementById('contribution-about-text');
+    if (aboutEl) {
+        const html = window.t('contributionAboutFullHtml', {}, lang);
+        if (html && html !== 'contributionAboutFullHtml') {
+            aboutEl.innerHTML = html;
+        }
+    }
+    const prizeEl = document.getElementById('contribution-prize-summary');
+    if (prizeEl) {
+        prizeEl.textContent = window.t('contributionPrizeSummary', {}, lang);
+    }
 }
 
 function _getCachedContributionFallback() {
@@ -5309,6 +5328,7 @@ function _cacheContributionSeasonSnapshot(currentPayload) {
         season_number: season.season_number != null ? Number(season.season_number) : null,
         ends_at: season.ends_at || null,
         gap_to_top5: Number((currentPayload && currentPayload.gap_to_top5) || 0),
+        _loaded: true,
     };
     visibilityStats.contribution = {
         contribution_score: Number(me.contribution_score || 0),
@@ -5317,6 +5337,11 @@ function _cacheContributionSeasonSnapshot(currentPayload) {
         play_reviews_count: Number(me.play_reviews_count || 0),
     };
     visibilityStats.contribution_score = Number(me.contribution_score || 0);
+    try {
+        if (typeof setProjectsCache === 'function' && typeof myProjects !== 'undefined') {
+            setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+        }
+    } catch (_) { /* ignore */ }
 }
 
 function switchContributionTab(tabName) {
@@ -5376,50 +5401,14 @@ function _renderContributionCurrentTab(payload) {
             : window.t('contributionRankUnranked', {}, lang);
     }
 
-    const placePrizeEl = document.getElementById('contribution-place-prize');
-    if (placePrizeEl) {
-        const prize = _contributionPrizeForRank(rank);
-        if (prize > 0) {
-            placePrizeEl.textContent = window.t('contributionPlacePrize', { amount: prize }, lang);
-            placePrizeEl.hidden = false;
-        } else if (hasRank) {
-            placePrizeEl.textContent = window.t('contributionPlacePrizeOutside', {}, lang);
-            placePrizeEl.hidden = false;
-        } else {
-            placePrizeEl.textContent = window.t('contributionPlacePrizeHint', {}, lang);
-            placePrizeEl.hidden = false;
-        }
-    }
-
     const metaEl = document.getElementById('contribution-season-meta');
     if (metaEl) {
         // Visual round pool; backend prize_pool_total may keep reserved remainder.
         metaEl.textContent = String(CONTRIBUTION_POOL_DISPLAY) + ' $BUST';
     }
 
-    const datesEl = document.getElementById('contribution-season-dates');
-    if (datesEl) {
-        const startShort = _formatContributionShortDate(season.starts_at);
-        const endShort = _formatContributionShortDate(season.ends_at);
-        if (startShort && endShort) {
-            datesEl.textContent = window.t('contributionSeasonSchedule', {
-                start: startShort,
-                end: endShort,
-            }, lang);
-            datesEl.hidden = false;
-        } else if (season.ends_at) {
-            datesEl.textContent = window.t('contributionEndsAt', {
-                date: _formatContributionDate(season.ends_at),
-            }, lang);
-            datesEl.hidden = false;
-        } else {
-            datesEl.textContent = '';
-            datesEl.hidden = true;
-        }
-    }
-
     _startContributionCountdown(season.ends_at);
-    _renderContributionPrizeTable();
+    _fillContributionAboutCopy();
 
     const scoreEl = document.getElementById('contribution-score-value');
     const bugsEl = document.getElementById('contribution-bugs-count');
@@ -5439,7 +5428,11 @@ function _renderContributionCurrentTab(payload) {
             gapText.textContent = window.t('contributionSprintLeader', {}, lang);
         } else if (hasRank && rank <= 10) {
             const prize = _contributionPrizeForRank(rank);
-            gapText.textContent = window.t('contributionGapInPrize', { amount: prize }, lang);
+            const raw = window.t('contributionGapInPrize', { amount: prize }, lang);
+            gapText.innerHTML = _escContribution(raw).replace(
+                String(prize) + ' $BUST',
+                '<span class="contribution-bust-amount">' + _escContribution(String(prize)) + ' $BUST</span>'
+            );
         } else {
             const actions = _estimateActionsToPrizeZone(me, leaderboard);
             gapText.textContent = window.t('contributionGapToPrize', { actions: actions }, lang);

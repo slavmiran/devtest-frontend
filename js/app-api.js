@@ -1913,6 +1913,7 @@ function _mapProjectsFromApi(data) {
 
 function _mapStatsFromApi(data) {
     var contribution = (data && data.contribution) || {};
+    var previousSeason = (visibilityStats && visibilityStats.contribution_season) || null;
     return {
         ownerKarma: data.karma || 0,
         rank: data.rank || 0,
@@ -1935,6 +1936,8 @@ function _mapStatsFromApi(data) {
             play_reviews_count: Number(contribution.play_reviews_count || 0),
         },
         contribution_score: Number(contribution.contribution_score || data.contribution_score || 0),
+        // Keep client-cached season snapshot across projects refresh (avoids widget text jump).
+        contribution_season: previousSeason || null,
     };
 }
 

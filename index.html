@@ -35,17 +35,17 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260713-sprint-ux-polish"></script>
-    <script src="./i18n/en.js?v=20260713-sprint-ux-polish"></script>
+    <script src="./i18n/ru.js?v=20260713-sprint-ux-polish2"></script>
+    <script src="./i18n/en.js?v=20260713-sprint-ux-polish2"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260713-sprint-ux-polish"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-projects.js?v=20260713-sprint-ux-polish"></script>
-    <script src="./ui/ui-market.js?v=20260713-sprint-ux-polish"></script>
+    <script src="./ui/ui-projects.js?v=20260713-sprint-ux-polish2"></script>
+    <script src="./ui/ui-market.js?v=20260713-sprint-ux-polish2"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260713-sprint-ux-polish"></script>
-    <script src="./js/app-api.js?v=20260712-contribution"></script>
+    <script src="./js/app-api.js?v=20260713-sprint-ux-polish2"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-actions.js?v=20260713-sprint-ux-polish"></script>
     <script src="./js/app-features.js?v=20260710-device-profile-banner-v1"></script>
@@ -69,7 +69,7 @@
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./styles.css?v=20260713-sprint-ux-polish">
+    <link rel="stylesheet" href="./styles.css?v=20260713-sprint-ux-polish2">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260711-collapsed-fix">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
@@ -1361,20 +1361,18 @@
                             <div class="contribution-hero-place">
                                 <div class="contribution-hero-label" data-i18n="contributionCurrentPlaceLabel">Текущее место</div>
                                 <div id="contribution-rank-value" class="contribution-rank-value">—</div>
-                                <div id="contribution-place-prize" class="contribution-place-prize"></div>
                             </div>
                             <div class="contribution-hero-side">
                                 <div class="contribution-hero-meta-item">
                                     <span class="contribution-hero-meta-label" data-i18n="contributionPoolLabel">Призовой фонд</span>
-                                    <span id="contribution-season-meta" class="contribution-hero-meta-value">2000 $BUST</span>
+                                    <span id="contribution-season-meta" class="contribution-hero-meta-value contribution-bust-amount">2000 $BUST</span>
                                 </div>
-                                <div class="contribution-hero-meta-item">
-                                    <span class="contribution-hero-meta-label" data-i18n="contributionTimeLeftLabel">До конца</span>
+                                <div class="contribution-countdown-chip" id="contribution-countdown-chip" hidden>
+                                    <span class="contribution-countdown-chip-label" data-i18n="contributionTimeLeftLabel">До конца</span>
                                     <span id="contribution-countdown" class="contribution-countdown">—</span>
                                 </div>
                             </div>
                         </div>
-                        <div id="contribution-season-dates" class="contribution-season-dates"></div>
                     </div>
 
                     <div class="card contribution-score-card">
@@ -1383,9 +1381,18 @@
                             <span id="contribution-score-value" class="contribution-score-hero-value">0</span>
                         </div>
                         <div class="contribution-score-breakdown">
-                            <div class="contribution-score-chip">🐞 <span id="contribution-bugs-count">0</span></div>
-                            <div class="contribution-score-chip">💡 <span id="contribution-ideas-count">0</span></div>
-                            <div class="contribution-score-chip">📝 <span id="contribution-reviews-count">0</span></div>
+                            <div class="contribution-score-row">
+                                <span class="contribution-score-row-label" data-i18n="contributionBugsLabel">🐞 Найдено багов</span>
+                                <span id="contribution-bugs-count" class="contribution-score-row-value">0</span>
+                            </div>
+                            <div class="contribution-score-row">
+                                <span class="contribution-score-row-label" data-i18n="contributionIdeasLabel">💡 Предложено идей</span>
+                                <span id="contribution-ideas-count" class="contribution-score-row-value">0</span>
+                            </div>
+                            <div class="contribution-score-row">
+                                <span class="contribution-score-row-label" data-i18n="contributionReviewsLabel">📝 Подтверждено Google Play отзывов</span>
+                                <span id="contribution-reviews-count" class="contribution-score-row-value">0</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1402,13 +1409,9 @@
                     <details class="card contribution-info-card">
                         <summary class="contribution-info-summary">ℹ️ <span data-i18n="contributionAboutTitle">О Спринтах</span></summary>
                         <div class="contribution-info-body">
-                            <p id="contribution-about-text" class="contribution-info-text" data-i18n="contributionAboutText">
-                                Спринт длится 10 дней. Призовой пул 2000 $BUST делится между Топ-10 участниками. Баллы: Баг (+5) • Идея (+4) • Play-отзыв (+3).
-                            </p>
-                            <div class="contribution-section-title" style="margin-top:10px;" data-i18n="contributionPrizeTableTitle">Таблица призов</div>
-                            <div id="contribution-prize-table" class="contribution-prize-table"></div>
-                            <div class="contribution-weights-footnote" data-i18n="contributionWeightsFootnote">
-                                💡 Как считаются баллы: Баг (+5) • Идея (+4) • Play-отзыв (+3)
+                            <div id="contribution-about-text" class="contribution-info-text" data-i18n-html="contributionAboutFullHtml"></div>
+                            <div id="contribution-prize-summary" class="contribution-prize-summary" data-i18n="contributionPrizeSummary">
+                                🎯 Награды Топ-10: 1 место — 500 $BUST | 2 место — 350 $BUST | 3 место — 250 $BUST | 4 место — 180 $BUST | 5 место — 150 $BUST | 6-10 места — по 100 $BUST.
                             </div>
                         </div>
                     </details>
