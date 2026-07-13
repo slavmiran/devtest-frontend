@@ -5427,6 +5427,25 @@ function _renderContributionCurrentTab(payload) {
     if (ideasEl) ideasEl.textContent = String(Math.round(Number(me.ideas_count || 0)));
     if (reviewsEl) reviewsEl.textContent = String(Math.round(Number(me.play_reviews_count || 0)));
 
+    const moderationEl = document.getElementById('contribution-moderation-summary');
+    if (moderationEl) {
+        const accepted = Math.round(Number(me.accepted_count || 0));
+        const pending = Math.round(Number(me.pending_count || 0));
+        const rejected = Math.round(Number(me.rejected_count || 0));
+        const hasModeration = accepted > 0 || pending > 0 || rejected > 0;
+        if (hasModeration) {
+            moderationEl.hidden = false;
+            moderationEl.textContent = window.t('contributionModerationSummary', {
+                accepted: accepted,
+                pending: pending,
+                rejected: rejected,
+            }, lang);
+        } else {
+            moderationEl.hidden = true;
+            moderationEl.textContent = '';
+        }
+    }
+
     const gapCard = document.getElementById('contribution-gap-card');
     const gapText = document.getElementById('contribution-gap-text');
     const gapHint = document.getElementById('contribution-gap-hint');
@@ -5590,10 +5609,18 @@ function _renderContributionHistoryTab(payload) {
 
     const actionsEl = document.getElementById('contribution-lifetime-actions');
     if (actionsEl) {
-        // Prefer explicit lifetime counters from API (includes active season + ledger).
-        let bugsTotal = Math.round(Number(lifetime.bugs_count || 0));
-        let ideasTotal = Math.round(Number(lifetime.ideas_count || 0));
-        let reviewsTotal = Math.round(Number(lifetime.play_reviews_count || 0));
+        // Prefer explicit lifetime counters from API (ledger-backed).
+        let bugsTotal = Math.round(Number(
+            lifetime.bugs_count != null ? lifetime.bugs_count : lifetime.total_bugs || 0
+        ));
+        let ideasTotal = Math.round(Number(
+            lifetime.ideas_count != null ? lifetime.ideas_count : lifetime.total_ideas || 0
+        ));
+        let reviewsTotal = Math.round(Number(
+            lifetime.play_reviews_count != null
+                ? lifetime.play_reviews_count
+                : (lifetime.total_reviews || 0)
+        ));
         const lifetimeScore = Math.round(Number(lifetime.contribution_lifetime_score || 0));
 
         // Backward-compatible fallback if an older backend omits action counters.
@@ -5610,13 +5637,25 @@ function _renderContributionHistoryTab(payload) {
         }
 
         actionsEl.style.display = '';
-        actionsEl.textContent = window.t('contributionLifetimeActions', {
+        const scoreLine = document.getElementById('contribution-lifetime-score-line');
+        const breakdownLine = document.getElementById('contribution-lifetime-breakdown-line');
+        const scoreText = window.t('contributionLifetimeScoreLine', {
             score: lifetimeScore,
             points_word: pluralizePointsWord(lifetimeScore),
+        }, lang);
+        const breakdownText = window.t('contributionLifetimeBreakdownLine', {
             bugs: bugsTotal,
             ideas: ideasTotal,
             reviews: reviewsTotal,
         }, lang);
+        if (scoreLine && breakdownLine) {
+            scoreLine.textContent = scoreText;
+            breakdownLine.textContent = breakdownText;
+        } else {
+            actionsEl.innerHTML = ''
+                + '<div class="contribution-lifetime-score-line">' + _escContribution(scoreText) + '</div>'
+                + '<div class="contribution-lifetime-breakdown-line">' + _escContribution(breakdownText) + '</div>';
+        }
     }
 }
 

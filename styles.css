@@ -1684,7 +1684,8 @@ input::placeholder,
     display: flex;
     white-space: nowrap;
     align-items: center;
-    animation: pulse-marquee 55s linear infinite;
+    /* Duration is set in JS from content width to keep constant px/s speed. */
+    animation: pulse-marquee 40s linear infinite;
     will-change: transform;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
@@ -4301,6 +4302,32 @@ input::placeholder,
     line-height: 1.45;
     color: var(--text-color);
     font-weight: 600;
+}
+
+.contribution-lifetime-score-line {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1.35;
+}
+
+.contribution-lifetime-breakdown-line {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--hint-color);
+    line-height: 1.4;
+}
+
+.contribution-moderation-summary {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--hint-color);
+    line-height: 1.4;
+    text-align: left;
 }
 
 .contribution-score-card .dashboard-row,

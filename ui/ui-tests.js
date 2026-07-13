@@ -138,6 +138,59 @@ function getTesterOvertimeStats(tester) {
     };
 }
 
+function syncPulseTickerSpeed(track) {
+    if (!track) return;
+    const firstContent = track.querySelector('.pulse-ticker-content');
+    if (!firstContent) return;
+    const width = Math.max(
+        firstContent.offsetWidth || 0,
+        firstContent.scrollWidth || 0
+    );
+    if (!width) return;
+    // Constant linear speed (px/s). Duration must scale with content width,
+    // otherwise longer ticker runs feel faster with a fixed 55s animation.
+    const PX_PER_SEC = 42;
+    const durationSec = Math.max(14, Math.round((width / PX_PER_SEC) * 10) / 10);
+    track.style.animationDuration = durationSec + 's';
+}
+
+function mountPulseTicker(tickerContainer, tickerHtml, options) {
+    const opts = options || {};
+    const animate = opts.animate !== false;
+    const signature = String(tickerHtml || '') + (animate ? '|loop' : '|static');
+    const existingTrack = tickerContainer.querySelector('.pulse-ticker-track');
+
+    // Keep the same DOM node when content is unchanged so CSS animation
+    // does not restart and "jump" in perceived speed on cache refreshes.
+    if (tickerContainer.dataset.tickerSig === signature && existingTrack) {
+        if (animate) syncPulseTickerSpeed(existingTrack);
+        return;
+    }
+
+    tickerContainer.dataset.tickerSig = signature;
+    if (!animate) {
+        tickerContainer.innerHTML = `
+            <div class="pulse-ticker-track" style="animation: none;">
+                <div class="pulse-ticker-content">${tickerHtml}</div>
+            </div>
+        `;
+        return;
+    }
+
+    tickerContainer.innerHTML = `
+        <div class="pulse-ticker-track">
+            <div class="pulse-ticker-content">${tickerHtml} &nbsp;&bull;&nbsp;&nbsp;</div>
+            <div class="pulse-ticker-content" aria-hidden="true">${tickerHtml} &nbsp;&bull;&nbsp;&nbsp;</div>
+        </div>
+    `;
+    const track = tickerContainer.querySelector('.pulse-ticker-track');
+    requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+            syncPulseTickerSpeed(track);
+        });
+    });
+}
+
 function renderEvents() {
     if (!arguments[0] && !isTabVisible('tests')) return;
     const cardEl = document.getElementById('community-pulse');
@@ -161,18 +214,18 @@ function renderEvents() {
 
     // Render Collapsed Ticker View
     if (communityEvents === null) {
-        tickerContainer.innerHTML = `
-            <div class="pulse-ticker-track">
-                <div class="pulse-ticker-content"><span class="pulse-ticker-item">${t.pulseLoading || 'Loading...'}</span></div>
-            </div>
-        `;
+        mountPulseTicker(
+            tickerContainer,
+            `<span class="pulse-ticker-item">${t.pulseLoading || 'Loading...'}</span>`,
+            { animate: false }
+        );
     } else if (!communityEvents || !communityEvents.length) {
         const emptyText = t.pulseEmptyToday || (lang === 'ru' ? 'Сегодня событий нет. Пульс сообщества спокоен.' : 'No events today. Community pulse is calm.');
-        tickerContainer.innerHTML = `
-            <div class="pulse-ticker-track">
-                <div class="pulse-ticker-content"><span class="pulse-ticker-item">${emptyText}</span></div>
-            </div>
-        `;
+        mountPulseTicker(
+            tickerContainer,
+            `<span class="pulse-ticker-item">${emptyText}</span>`,
+            { animate: false }
+        );
     } else {
         // Filter events for today (local calendar date matching getLocalDate())
         const todayStr = getLocalDate();
@@ -188,6 +241,7 @@ function renderEvents() {
         if (todayEvents.length === 0) {
             const emptyTodayText = t.pulseEmptyToday || (lang === 'ru' ? 'Сегодня событий нет. Пульс сообщества спокоен.' : 'No events today. Community pulse is calm.');
             tickerHtml = `<span class="pulse-ticker-item">${emptyTodayText}</span>`;
+            mountPulseTicker(tickerContainer, tickerHtml, { animate: false });
         } else {
             tickerHtml = todayEvents.map((eventItem) => {
                 const rawText = (lang === 'ru' ? eventItem.text_ru : (eventItem.text_en || eventItem.text_ru)) || '';
@@ -196,15 +250,8 @@ function renderEvents() {
                 const timeStr = String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
                 return `<span class="pulse-ticker-item"><span class="pulse-ticker-time">${timeStr}</span> ${text}</span>`;
             }).join('<span class="pulse-ticker-separator">•</span>');
+            mountPulseTicker(tickerContainer, tickerHtml, { animate: true });
         }
-
-        // Duplicate for continuous marquee loop
-        tickerContainer.innerHTML = `
-            <div class="pulse-ticker-track">
-                <div class="pulse-ticker-content">${tickerHtml} &nbsp;&bull;&nbsp;&nbsp;</div>
-                <div class="pulse-ticker-content" aria-hidden="true">${tickerHtml} &nbsp;&bull;&nbsp;&nbsp;</div>
-            </div>
-        `;
     }
 
     // Render Expanded View
