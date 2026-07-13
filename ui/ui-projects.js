@@ -96,20 +96,9 @@ function renderProjects(force) {
         const seasonRankRaw = seasonCached.rank;
         const seasonRank = seasonRankRaw != null ? Number(seasonRankRaw) : null;
         const hasSeasonRank = !!(seasonRank && seasonRank > 0);
-        const seasonScore = Number(
-            seasonCached.score != null
-                ? seasonCached.score
-                : (seasonCached.contribution_score != null ? seasonCached.contribution_score : NaN)
-        );
         let contributionPrimary = '—';
-        if (seasonReady) {
-            if (hasSeasonRank) {
-                contributionPrimary = '#' + Math.round(seasonRank);
-            } else if (Number.isFinite(seasonScore) && seasonScore > 0) {
-                contributionPrimary = window.t('metricSprintUnranked', {}, lang) || (lang === 'ru' ? 'Вне топа' : 'Unranked');
-            } else {
-                contributionPrimary = window.t('metricSprintAddFirst', {}, lang) || (lang === 'ru' ? 'Добавьте первый вклад!' : 'Add your first entry!');
-            }
+        if (seasonReady && hasSeasonRank) {
+            contributionPrimary = '#' + Math.round(seasonRank);
         }
         let contributionTimer = '';
         const endsAtMs = Date.parse(String(seasonCached.ends_at || ''));
