@@ -2790,7 +2790,8 @@ function renderPlayReviewModal() {
     var isApproved = reviewStatus === 'approved';
     var reviewRejected = reviewStatus === 'rejected' || !!(test.rewards_summary && test.rewards_summary.review_rejected);
     var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
-    var screenshotUrl = (reviewStatus === 'rejected') ? '' : (test.play_review_screenshot_url || '');
+    // After reject we clear the old screenshot on open; a freshly uploaded one must count.
+    var screenshotUrl = test.play_review_screenshot_url || '';
     var safeAppName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
 
     if (isApproved) {
@@ -3450,7 +3451,18 @@ function openPlayReviewModal(appId, event, options) {
     var reviewStatus = typeof window.getPlayReviewStatus === 'function'
         ? window.getPlayReviewStatus(test)
         : String(test && test.play_review_status || 'none').toLowerCase();
-    window._playReviewStep1Done = !!(test && test.play_review_screenshot_url && reviewStatus !== 'rejected');
+
+    // Rejected retry: drop the old screenshot so the user must upload a new one,
+    // but do not keep forcing screenshotUrl='' on every re-render (that blocked Submit).
+    if (reviewStatus === 'rejected' && test) {
+        if (test.play_review_screenshot_url) {
+            test.play_review_screenshot_url = '';
+            if (typeof persistTestsCacheSnapshot === 'function') persistTestsCacheSnapshot();
+        }
+        window._playReviewStep1Done = false;
+    } else {
+        window._playReviewStep1Done = !!(test && test.play_review_screenshot_url);
+    }
 
     renderPlayReviewModal();
     var modal = document.getElementById('play-review-modal');

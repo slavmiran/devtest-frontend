@@ -2806,17 +2806,13 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
             var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
             if (test) {
                 test.play_review_screenshot_url = data.url;
-                if (data.play_review_status) test.play_review_status = String(data.play_review_status || 'none').toLowerCase();
+                // Keep rejected/none status until explicit Submit; only refresh if API returns pending/approved.
+                var nextStatus = String(data.play_review_status || '').trim().toLowerCase();
+                if (nextStatus === 'pending' || nextStatus === 'approved') {
+                    test.play_review_status = nextStatus;
+                }
                 persistTestsCacheSnapshot();
             }
-            var previewContainer = document.getElementById('play-review-preview-container');
-            var submitBtn = document.getElementById('play-review-submit-btn');
-            if (previewContainer) {
-                var resolvedUrl = (typeof resolveIconUrl === 'function') ? resolveIconUrl(data.url) : data.url;
-                previewContainer.innerHTML = '<div class="play-review-preview"><img src="' + window.escapeHTML(resolvedUrl) + '" onerror="this.style.display=\'none\'; this.parentNode.classList.add(\'is-broken\');"></div>';
-                previewContainer.style.display = 'block';
-            }
-            if (submitBtn) submitBtn.disabled = false;
             if (typeof renderPlayReviewModal === 'function') {
                 renderPlayReviewModal();
             }
@@ -2833,12 +2829,10 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
             uploadBtn.disabled = false;
             uploadBtn.innerHTML = btnOrigText;
         }
-        var uploadZone = document.getElementById('play-review-upload-zone');
-        if (uploadZone) {
-            uploadZone.classList.remove('is-uploading');
-        }
-        if (typeof renderPlayReviewModal === 'function') {
-            renderPlayReviewModal();
+        var uploadZoneFinally = document.getElementById('play-review-upload-zone');
+        if (uploadZoneFinally) {
+            uploadZoneFinally.classList.remove('is-uploading');
+            uploadZoneFinally.style.pointerEvents = '';
         }
     }
 }
