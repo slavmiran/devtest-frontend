@@ -1590,6 +1590,15 @@
                 </select>
             </div>
             <textarea id="leave-reason-other" class="form-input" rows="3" style="display:none; resize:none; margin-bottom: 14px;" data-i18n-placeholder="leaveReasonPlaceholder" placeholder="Опишите причину (необязательно)..."></textarea>
+            
+            <label class="guest-link-remove-option" style="margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="leave-mutual-unlink-checkbox" checked style="margin-top: 4px;">
+                <span class="guest-link-remove-copy" style="display: flex; flex-direction: column;">
+                    <span class="guest-link-remove-option-title" style="font-size: 14px; font-weight: 500; color: var(--text-color);" data-i18n="guestLinkRemoveMyTestsLabel">Не показывать в моих проектах</span>
+                    <span class="guest-link-remove-option-hint" style="font-size: 12px; color: var(--hint-color); margin-top: 2px;" data-i18n="guestLinkRemoveMyTestsHint">Проект будет скрыт из списка ваших тестов</span>
+                </span>
+            </label>
+
             <div class="action-row" style="margin-top: 0;">
                 <button class="btn btn-secondary" style="flex: 1;" onclick="closeLeaveMutualModal()" data-i18n="btnCancel">Отмена</button>
                 <button id="leave-justified-btn" class="btn btn-primary" style="flex: 1; display:none;" onclick="confirmLeaveMutual(true)" data-i18n="leaveJustifiedBtn">Выйти без штрафа</button>
