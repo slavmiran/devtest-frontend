@@ -61,13 +61,58 @@ function renderProjects(force) {
     container.innerHTML = '';
 
     if (visibilityStats) {
-        const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
-        const reliabilityValue = reliability.percent !== null ? String(reliability.percent) : reliability.text;
+        let reliabilityValue = '';
+        let isNewbie = true;
+        let statusText = '';
+        let metricClass = 'metric-card-success';
+        if (typeof visibilityStats.reliability_index !== 'undefined' && visibilityStats.reliability_index !== null) {
+            const score = Number(visibilityStats.reliability_index);
+            const status = visibilityStats.reliability_status || 'newbie';
+            isNewbie = (status === 'newbie');
+            reliabilityValue = isNewbie ? window.t('reliabilityDashStatus_newbie', {}, lang) : String(Math.round(score));
+            statusText = isNewbie ? '' : window.t('reliabilityDashStatus_' + status, {}, lang);
+            if (isNewbie) metricClass = 'metric-card-neutral';
+            else if (status === 'bad') metricClass = 'metric-card-danger';
+            else if (status === 'minimal') metricClass = 'metric-card-warning';
+            else if (status === 'basic') metricClass = 'metric-card-success';
+            else if (status === 'active') metricClass = 'metric-card-success';
+            else if (status === 'expert') metricClass = 'metric-card-success';
+        } else {
+            const reliability = calculateReliability(visibilityStats.total_expected_checkins, visibilityStats.total_actual_checkins);
+            isNewbie = (reliability.percent === null);
+            reliabilityValue = isNewbie ? reliability.text : String(reliability.percent);
+            statusText = isNewbie ? '' : reliability.text;
+            if (isNewbie) metricClass = 'metric-card-neutral';
+            else if (reliability.percent >= 80) metricClass = 'metric-card-success';
+            else if (reliability.percent >= 65) metricClass = 'metric-card-warning';
+            else metricClass = 'metric-card-danger';
+        }
         const goldenCount = Number(visibilityStats.golden_count || 0);
         const totalGrants = Number(visibilityStats.grant_tests_count || 0);
         const completedTests = Number(visibilityStats.completed_tests || 0);
         const activeTests = Number(visibilityStats.my_active_tests || 0);
-        const achievementsLine = window.escapeHTML(formatDeveloperAchievements(completedTests, goldenCount, totalGrants));
+        const seasonCached = (visibilityStats && visibilityStats.contribution_season) || {};
+        const seasonReady = !!(seasonCached && (seasonCached.ends_at || seasonCached.season_number != null || seasonCached._loaded));
+        const seasonRankRaw = seasonCached.rank;
+        const seasonRank = seasonRankRaw != null ? Number(seasonRankRaw) : null;
+        const hasSeasonRank = !!(seasonRank && seasonRank > 0);
+        let contributionPrimary = '—';
+        if (seasonReady && hasSeasonRank) {
+            contributionPrimary = '#' + Math.round(seasonRank);
+        }
+        let contributionTimer = '';
+        const endsAtMs = Date.parse(String(seasonCached.ends_at || ''));
+        if (Number.isFinite(endsAtMs)) {
+            // Match modal countdown: full days remaining via floor (not ceil).
+            const daysLeft = Math.max(0, Math.floor((endsAtMs - Date.now()) / 86400000));
+            contributionTimer = window.t('metricSprintDaysLeft', { days: daysLeft }, lang) || ('Осталось ' + daysLeft + ' дн.');
+        }
+        const balanceAmount = (typeof formatUiAmount === 'function')
+            ? formatUiAmount(visibilityStats.balance_bust || 0, 1)
+            : String(Math.round(Number(visibilityStats.balance_bust || 0) * 10) / 10);
+        const achievementsLine = window.escapeHTML(
+            formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
+        );
         const initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) || {};
         const tgUser = initData.user || {};
         const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ').trim();
@@ -87,12 +132,15 @@ function renderProjects(force) {
                     </div>
                 </div>
                 <div class="metrics-grid">
-                    <button type="button" class="metric-card metric-card-clickable metric-card-success" onclick="showReliabilityInfo()">
+                    <button type="button" class="metric-card metric-card-clickable ${metricClass}" onclick="showReliabilityInfo()">
                         <div class="metric-card-top">
                             <span class="metric-label">${window.t('metricReliabilityV2', {}, lang)}</span>
                             <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${window.escapeHTML(reliabilityValue)}${reliability.percent !== null ? ' %' : ''} ${reliability.percent !== null ? '<span class="metric-value-mark">✓✓</span>' : ''}</div>
+                        <div class="metric-value">
+                            ${window.escapeHTML(reliabilityValue)}${!isNewbie ? ' %' : ''}
+                            ${statusText ? `<span class="metric-value-status" style="font-size: 11px; opacity: 0.85; font-weight: normal; margin-left: 4px;">(${window.escapeHTML(statusText)})</span>` : ''}
+                        </div>
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-gold" onclick="showKarmaInfo()">
                         <div class="metric-card-top">
@@ -103,21 +151,62 @@ function renderProjects(force) {
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-primary" onclick="openEarnBustModal()">
                         <div class="metric-card-top">
-                            <span class="metric-label">${window.t('metricBalanceBust', {}, lang)}</span>
+                            <span class="metric-label">${window.t('metricBalanceBust', {}, lang) || 'Баланс'} $BUST</span>
                             <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${formatBustAmount(visibilityStats.balance_bust || 0)} <span class="metric-value-mark">💎</span></div>
+                        <div class="metric-value">${window.escapeHTML(balanceAmount)} <span class="metric-value-mark">💎</span></div>
                     </button>
-                    <div class="metric-card metric-card-neutral">
+                    <button type="button" class="metric-card metric-card-clickable metric-card-neutral metric-card-sprint" onclick="showContributionInfo()">
                         <div class="metric-card-top">
-                            <span class="metric-label">${window.t('metricActiveTests', {}, lang)}</span>
+                            <span class="metric-label">${window.t('metricSprintPositionLabel', {}, lang) || (lang === 'ru' ? 'Позиция в Спринте' : 'Sprint position')}</span>
+                            <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${window.escapeHTML(activeTests + ' ' + pluralizeTestWord(activeTests))} <span class="metric-value-mark">⚡</span></div>
-                    </div>
+                        <div class="metric-sprint-body">
+                            <div class="metric-value metric-value--sprint">${window.escapeHTML(contributionPrimary)}</div>
+                            ${contributionTimer ? `<div class="metric-sprint-timer">${window.escapeHTML(contributionTimer)}</div>` : ''}
+                        </div>
+                    </button>
                 </div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', dashHtml);
+
+        // Soft-prefetch current sprint once per session so the widget is stable (no text jump).
+        if (!window.__contribSeasonPrefetch && typeof window.fetchContributionCurrent === 'function') {
+            window.__contribSeasonPrefetch = true;
+            window.fetchContributionCurrent().then(function(result) {
+                if (!result || result.status !== 'success' || !result.season) {
+                    if (visibilityStats) {
+                        visibilityStats.contribution_season = Object.assign({}, visibilityStats.contribution_season || {}, {
+                            _loaded: true,
+                        });
+                    }
+                    return;
+                }
+                if (typeof window._cacheContributionSeasonSnapshot === 'function') {
+                    window._cacheContributionSeasonSnapshot(result);
+                } else if (visibilityStats) {
+                    const me = result.me || {};
+                    const season = result.season || {};
+                    visibilityStats.contribution_season = {
+                        rank: me.rank != null ? Number(me.rank) : null,
+                        score: Number(me.contribution_score || 0),
+                        season_number: season.season_number != null ? Number(season.season_number) : null,
+                        ends_at: season.ends_at || null,
+                        gap_to_top5: Number(result.gap_to_top5 || 0),
+                        _loaded: true,
+                    };
+                    visibilityStats.contribution = {
+                        contribution_score: Number(me.contribution_score || 0),
+                        bugs_count: Number(me.bugs_count || 0),
+                        ideas_count: Number(me.ideas_count || 0),
+                        play_reviews_count: Number(me.play_reviews_count || 0),
+                    };
+                    visibilityStats.contribution_score = Number(me.contribution_score || 0);
+                }
+                try { renderProjects(true); } catch (_) { /* ignore */ }
+            }).catch(function() { /* ignore */ });
+        }
     }
 
     const hasModerationInArchive = typeof archivedProjects !== 'undefined' && Array.isArray(archivedProjects) && archivedProjects.some(function(p) {
@@ -5370,3 +5459,18 @@ window.closeMassInviteModal = closeMassInviteModal;
 window.triggerResetCooldown = triggerResetCooldown;
 window.renderMassInviteModalContent = renderMassInviteModalContent;
 window.toggleTestingDayInstructions = toggleTestingDayInstructions;
+
+(function initProjectsScrollPerf() {
+    var scrollEndTimer = null;
+    function markProjectsScrolling() {
+        var tab = document.getElementById('tab-projects');
+        if (!tab || !tab.classList.contains('active')) return;
+        document.documentElement.classList.add('projects-scrolling');
+        clearTimeout(scrollEndTimer);
+        scrollEndTimer = setTimeout(function() {
+            document.documentElement.classList.remove('projects-scrolling');
+        }, 140);
+    }
+    window.addEventListener('scroll', markProjectsScrolling, { passive: true });
+    window.addEventListener('touchmove', markProjectsScrolling, { passive: true });
+})();

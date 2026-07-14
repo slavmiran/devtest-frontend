@@ -7,31 +7,61 @@
     <title>DevTest Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="./i18n/ru.js?v=20260527-referral-ui"></script>
-    <script src="./i18n/en.js?v=20260527-referral-ui"></script>
+    <script>
+    (function () {
+        try {
+            var params = new URLSearchParams(window.location.search || '');
+            var tg = window.Telegram && window.Telegram.WebApp;
+            var startParam = String(
+                params.get('startapp') ||
+                (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+                ''
+            ).trim().toLowerCase();
+            var isContribution = startParam === 'contribution' || startParam.indexOf('contribution') === 0;
+            var isFeedback = /(?:^|[_\-=.])(?:project_feedback|feedback|owner_feedback|feedback_project)(?:$|[_\-=.:]|\d)/.test(startParam)
+                || startParam === 'feedback'
+                || params.get('feedback') === '1';
+            if (!isContribution && !isFeedback) return;
+            window.__tgDeeplinkLoaderKind = isContribution ? 'contribution' : 'feedback';
+            document.documentElement.classList.add('tg-deeplink-loading');
+            function reveal() {
+                var el = document.getElementById('tg-deeplink-loader');
+                if (el) el.style.display = 'flex';
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', reveal);
+            } else {
+                reveal();
+            }
+        } catch (e) {}
+    })();
+    </script>
+    <script src="./i18n/ru.js?v=20260713-sprint-history-fix2"></script>
+    <script src="./i18n/en.js?v=20260713-sprint-history-fix2"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
-    <script src="./js/app-state.js?v=20260527-referral-ui"></script>
+    <script src="./js/app-state.js?v=20260713-sprint-ux-polish"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-tests.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-projects.js?v=20260709-pipeline-header"></script>
+    <script src="./ui/ui-tests.js?v=20260713-ticker-speed-fix"></script>
+    <script src="./ui/ui-projects.js?v=20260713-sprint-ux-polish3"></script>
     <script src="./ui/ui-projects-moderation.js?v=20260709-pipeline-header"></script>
     <script src="./ui/ui-projects-pipeline-header.js?v=20260709-pipeline-alerts"></script>
-    <script src="./ui/ui-market.js?v=20260602-phase44"></script>
+    <script src="./ui/ui-market.js?v=20260713-play-review-retry-submit2"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
-    <script src="./js/app-config.js?v=20260602-phase54"></script>
-    <script src="./js/app-api.js?v=20260707-sprint2-fix2"></script>
-    <script src="./js/app-actions.js?v=20260602-phase54"></script>
-    <script src="./js/app-features.js?v=20260602-phase54"></script>
-    <script src="./app.js?v=20260602-phase54"></script>
+    <script src="./js/app-config.js?v=20260713-sprint-ux-polish"></script>
+    <script src="./js/app-api.js?v=20260713-play-review-retry-submit2"></script>
+    <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
+    <script src="./js/app-actions.js?v=20260713-play-review-retry-submit2"></script>
+    <script src="./js/app-features.js?v=20260710-device-profile-banner-v1"></script>
+    <script src="./app.js?v=20260712-contribution-season"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260706-phase1-1">
-    <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/reliability-modal.css?v=20260706-phase2">
+    <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260710-device-info-v3">
+    <link rel="stylesheet" href="./css/reliability-modal.css?v=20260712-ui">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/wizard.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/feedback-center.css?v=20260706-phase2">
+    <link rel="stylesheet" href="./css/feedback-center.css?v=20260713-feedback-inbox-ux5">
     <link rel="stylesheet" href="./css/ppc.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
@@ -44,10 +74,24 @@
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/pipeline-moderation.css?v=20260707-sprint2">
     <link rel="stylesheet" href="./css/pipeline-header.css?v=20260709-pipeline-alerts">
-    <link rel="stylesheet" href="./styles.css?v=20260527-referral-ui">
+    <link rel="stylesheet" href="./styles.css?v=20260713-ticker-speed-fix">
+    <link rel="stylesheet" href="./css/projects-scroll.css?v=20260711-collapsed-fix">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
 <body>
+
+    <div id="tg-deeplink-loader" class="tg-deeplink-loader" style="display: none;" aria-hidden="true" role="status">
+        <div class="tg-deeplink-loader__glass">
+            <div class="tg-deeplink-loader__spinner" aria-hidden="true"></div>
+            <div class="tg-deeplink-loader__title" data-i18n="deeplinkLoaderTitle">Загружаем данные…</div>
+            <div class="tg-deeplink-loader__subtitle" data-i18n="deeplinkLoaderSubtitle">Это может занять несколько секунд</div>
+            <div class="tg-deeplink-loader__skeleton" aria-hidden="true">
+                <div class="tg-deeplink-loader__skel-line tg-deeplink-loader__skel-line--lg"></div>
+                <div class="tg-deeplink-loader__skel-line"></div>
+                <div class="tg-deeplink-loader__skel-line tg-deeplink-loader__skel-line--sm"></div>
+            </div>
+        </div>
+    </div>
 
     <div id="background-sync-bar" class="background-sync-bar hidden" aria-hidden="true"></div>
 
@@ -94,6 +138,14 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
+            <div class="system-setting-row system-setting-row--device">
+                <div class="system-setting-copy-wrap system-setting-copy-wrap--device">
+                    <button type="button" class="system-setting-copy" onclick="showDeviceProfileInfo()" data-i18n="deviceProfileMenuTitle">Профиль тестового устройства</button>
+                    <button type="button" id="device-info-preview-btn" class="device-info-preview" onclick="openDeviceInfoEditorModal()">
+                        <span id="device-info-preview-text" class="device-info-preview-text" data-i18n="deviceProfilePreviewEmpty">Версия Android • Бренд • Модель</span>
+                    </button>
+                </div>
+            </div>
             <div class="system-email-card">
                 <div class="system-language-card-title" data-i18n="settingsEmailTitle">✉️ Тестовый email</div>
                 <div class="system-language-card-subtitle" data-i18n="settingsEmailHint">Укажите email Google Play — это даёт больше взаимных тестов от разработчиков с ручным режимом.</div>
@@ -118,6 +170,14 @@
 
     <!-- TAB 1: Мои тесты -->
     <div id="tab-tests" class="container tab-content active">
+        <div class="banner device-profile-banner" id="device-profile-banner">
+            <button type="button" onclick="closeDeviceProfileBanner()" style="position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 16px; color: var(--hint-color); cursor: pointer; padding: 4px;" aria-label="Close">✖</button>
+            <div class="device-profile-banner-title" data-i18n="deviceProfileBannerTitle">🎁 Подготовьте тестовое устройство</div>
+            <div class="device-profile-banner-reward" data-i18n="deviceProfileBannerReward">Получите +30 BUST</div>
+            <p class="device-profile-banner-text" data-i18n="deviceProfileBannerText">Необходимо заполнить профиль устройства, чтобы разработчики получали качественные баг-репорты.</p>
+            <button type="button" class="btn btn-primary device-profile-banner-btn" onclick="openDeviceProfileFromPrompt()" data-i18n="deviceProfilePrepareBtn">Подготовить</button>
+        </div>
+
         <div class="banner" id="main-banner" style="background-color: var(--secondary-bg-color); padding: 16px; border-radius: 16px; margin-bottom: 16px; position: relative;">
             <button onclick="closeBanner()" style="position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 16px; color: var(--hint-color); cursor: pointer; padding: 4px;">✖</button>
             <p id="t-bannerText" data-i18n="bannerText" style="margin: 0; color: var(--text-color); font-size: 14px; line-height: 1.4; padding-right: 20px;">Избавьтесь от хаоса в чатах! Контролируйте ежедневные запуски для 12 тестеров в одном месте и находите новые приложения для взаимного теста.</p>
@@ -125,12 +185,51 @@
         </div>
 
         <div id="community-pulse-container">
-            <div id="community-pulse" class="pulse-card">
-                <div class="pulse-title" id="t-pulseTitle" data-i18n="pulseTitle">🌐 Пульс сообщества</div>
-                <div id="events-list" class="events-list">
-                    <div class="event-time" data-i18n="pulseLoading">Загрузка...</div>
+            <div id="community-pulse" class="pulse-card ticker-mode">
+                <!-- Collapsed Ticker View -->
+                <div id="pulse-collapsed-view" class="pulse-collapsed-view">
+                    <a href="https://t.me/googleplay_console_12testers" target="_blank" class="pulse-badge-link" aria-label="Community Chat">
+                        <img src="images/tg.jpg" class="pulse-badge-tg-img" alt="Telegram">
+                    </a>
+                    <div id="pulse-ticker-container" class="pulse-ticker-container" onclick="toggleTickerPause(event)">
+                        <div class="pulse-ticker-track">
+                            <div class="pulse-ticker-content" data-i18n="pulseLoading">Загрузка...</div>
+                        </div>
+                    </div>
+                    <button type="button" id="pulse-expand-btn" class="pulse-expand-btn" onclick="toggleEventsExpanded()" aria-label="Expand">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <polyline points="9 21 3 21 3 15"></polyline>
+                            <line x1="21" y1="3" x2="14" y2="10"></line>
+                            <line x1="3" y1="21" x2="10" y2="14"></line>
+                        </svg>
+                    </button>
                 </div>
-                <button id="events-toggle" class="events-toggle" style="display: none;" onclick="toggleEventsExpanded()" data-i18n="pulseExpand">Развернуть ▼</button>
+
+                <!-- Expanded View -->
+                <div id="pulse-expanded-view" class="pulse-expanded-view" style="display: none;">
+                    <div class="pulse-title" id="t-pulseTitle" data-i18n="pulseTitle">🌐 Пульс сообщества</div>
+                    <div id="events-list" class="events-list">
+                        <div class="event-time" data-i18n="pulseLoading">Загрузка...</div>
+                    </div>
+                    <div id="pulse-expanded-footer" class="pulse-expanded-footer">
+                        <a href="https://t.me/googleplay_console_12testers" target="_blank" class="pulse-chat-link">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="pulse-chat-icon">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                            <span id="t-pulseChat" data-i18n="pulseChat">Чат сообщества</span>
+                        </a>
+                        <button type="button" id="events-toggle" class="pulse-collapse-btn" onclick="toggleEventsExpanded()" aria-label="Collapse">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="4 14 10 14 10 20"></polyline>
+                                <polyline points="20 10 14 10 14 4"></polyline>
+                                <line x1="14" y1="10" x2="21" y2="3"></line>
+                                <line x1="10" y1="14" x2="3" y2="21"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -308,7 +407,11 @@
         <div class="wizard-page" onclick="event.stopPropagation()">
             <header class="wizard-header">
                 <div class="wizard-header__top">
-                    <button type="button" class="wizard-back-btn" onclick="closeModal()" aria-label="Back">←</button>
+                    <button type="button" class="wizard-back-btn" onclick="closeModal()" aria-label="Back">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15 19L8 12L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                     <h2 class="wizard-title" id="t-modalTitle" data-i18n="addApp">Добавление приложения</h2>
                 </div>
                 <div class="wizard-progress" id="wizard-progress" aria-hidden="false">
@@ -634,6 +737,18 @@
             <div class="action-row">
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEmailWarningModal()" id="t-emailWarningCancel" data-i18n="emailWarningCancel">❌ Отмена</button>
                 <button class="btn btn-success" style="flex: 1;" onclick="confirmEmailWarning()" id="t-emailWarningYes" data-i18n="emailWarningYes">✅ Да, добавил (Создать)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Info Editor Modal -->
+    <div id="device-info-modal" class="modal-overlay" onclick="closeDeviceInfoEditorModal(event)">
+        <div class="modal-content device-info-modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="deviceProfileModalTitle">Профиль тестового устройства</h3>
+            <p class="device-info-modal-hint" data-i18n="deviceProfileModalHint">Укажите версию Android, бренд и модель устройства. Эти данные будут прикрепляться к баг-репортам.</p>
+            <div id="device-info-fields-root" class="device-info-fields-root"></div>
+            <div class="action-row device-info-modal-actions">
+                <button type="button" class="btn btn-primary" onclick="saveDeviceInfoFromModal()" data-i18n="deviceInfoSaveBtn">Сохранить</button>
             </div>
         </div>
     </div>
@@ -1239,14 +1354,153 @@
         </div>
     </div>
 
+    <div id="contribution-info-modal" class="modal-overlay" onclick="closeContributionInfoModal(event)">
+        <div class="modal-content contribution-modal-content" onclick="event.stopPropagation()">
+            <div class="contribution-modal-header">
+                <div class="dashboard-title" data-i18n="contributionInfoModalTitle">СПРИНТЫ</div>
+                <div id="contribution-modal-subtitle" class="contribution-modal-subtitle"></div>
+            </div>
+
+            <div class="segmented-control contribution-tabs" role="tablist">
+                <button type="button" class="seg-btn active" id="contribution-tab-btn-current"
+                        data-contribution-tab="current" onclick="switchContributionTab('current')">
+                    <span data-i18n="contributionTabCurrent">Текущий спринт</span>
+                </button>
+                <button type="button" class="seg-btn" id="contribution-tab-btn-history"
+                        data-contribution-tab="history" onclick="switchContributionTab('history')">
+                    <span data-i18n="contributionTabHistory">История</span>
+                </button>
+            </div>
+
+            <div id="contribution-tab-current" class="contribution-tab-panel" role="tabpanel">
+                <div id="contribution-current-loading" class="contribution-loading" style="display:none;"
+                     data-i18n="contributionLoading">Загрузка…</div>
+                <div id="contribution-current-empty" class="contribution-empty" style="display:none;"
+                     data-i18n="contributionNoActiveSeason">Сейчас нет активного спринта.</div>
+                <div id="contribution-current-body" style="display:none;">
+                    <div class="contribution-hero card">
+                        <div class="contribution-hero-grid">
+                            <div class="contribution-hero-place">
+                                <div class="contribution-hero-label" data-i18n="contributionCurrentPlaceLabel">Текущее место</div>
+                                <div id="contribution-rank-value" class="contribution-rank-value">—</div>
+                            </div>
+                            <div class="contribution-hero-side">
+                                <div class="contribution-hero-meta-item">
+                                    <span class="contribution-hero-meta-label" data-i18n="contributionPoolLabel">Призовой фонд</span>
+                                    <span id="contribution-season-meta" class="contribution-hero-meta-value contribution-bust-amount">2000 $BUST</span>
+                                </div>
+                                <div class="contribution-countdown-chip" id="contribution-countdown-chip" hidden>
+                                    <span class="contribution-countdown-chip-label" data-i18n="contributionTimeLeftLabel">До конца</span>
+                                    <span id="contribution-countdown" class="contribution-countdown">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card contribution-score-card">
+                        <div class="contribution-score-hero">
+                            <span class="contribution-score-hero-label" data-i18n="contributionScoreLabel">Баллы спринта</span>
+                            <span id="contribution-score-value" class="contribution-score-hero-value">0</span>
+                        </div>
+                        <div class="contribution-score-breakdown">
+                            <div class="contribution-score-row">
+                                <span class="contribution-score-row-label" data-i18n="contributionBugsLabel">🐞 Найдено багов</span>
+                                <span id="contribution-bugs-count" class="contribution-score-row-value">0</span>
+                            </div>
+                            <div class="contribution-score-row">
+                                <span class="contribution-score-row-label" data-i18n="contributionIdeasLabel">💡 Предложено идей</span>
+                                <span id="contribution-ideas-count" class="contribution-score-row-value">0</span>
+                            </div>
+                            <div class="contribution-score-row">
+                                <span class="contribution-score-row-label" data-i18n="contributionReviewsLabel">📝 Подтверждено Google Play отзывов</span>
+                                <span id="contribution-reviews-count" class="contribution-score-row-value">0</span>
+                            </div>
+                        </div>
+                        <div id="contribution-moderation-summary" class="contribution-moderation-summary" hidden></div>
+                    </div>
+
+                    <div id="contribution-gap-card" class="card contribution-gap-card" style="display:none;">
+                        <div id="contribution-gap-text" class="contribution-gap-text"></div>
+                        <div id="contribution-gap-hint" class="contribution-gap-hint"></div>
+                    </div>
+
+                    <div id="contribution-leaderboard-card" class="card" style="display:none;">
+                        <div class="contribution-section-title" data-i18n="contributionLeaderboardTitle">Топ спринта</div>
+                        <div id="contribution-leaderboard-list" class="contribution-leaderboard-list"></div>
+                    </div>
+
+                    <details class="card contribution-info-card">
+                        <summary class="contribution-info-summary">
+                            <span class="contribution-info-summary-text">ℹ️ <span data-i18n="contributionAboutTitle">О Спринтах</span></span>
+                            <span class="details-arrow" aria-hidden="true">▼</span>
+                        </summary>
+                        <div class="contribution-info-body">
+                            <div id="contribution-about-text" class="contribution-info-text" data-i18n-html="contributionAboutFullHtml"></div>
+                            <div class="contribution-prize-summary">
+                                <div class="contribution-prize-summary-title" data-i18n="contributionPrizeSummaryTitle">🎯 Награды Топ-10</div>
+                                <div id="contribution-prize-table" class="contribution-prize-lines"></div>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <div id="contribution-tab-history" class="contribution-tab-panel" role="tabpanel" style="display:none;">
+                <div id="contribution-history-loading" class="contribution-loading" style="display:none;"
+                     data-i18n="contributionLoading">Загрузка…</div>
+                <div id="contribution-history-body">
+                    <div class="card contribution-lifetime-card">
+                        <div class="contribution-section-title" data-i18n="contributionLifetimeTitle">Достижения</div>
+                        <div class="contribution-achievements" id="contribution-achievements">
+                            <div class="contribution-achievement-badge">
+                                <div class="contribution-achievement-label" data-i18n="contributionWinsLabel">🥇 1-е место</div>
+                                <div id="contribution-wins-count" class="contribution-achievement-value">0</div>
+                            </div>
+                            <div class="contribution-achievement-badge">
+                                <div class="contribution-achievement-label" data-i18n="contributionTop5Label">🏅 В Топ-5</div>
+                                <div id="contribution-top5-count" class="contribution-achievement-value">0</div>
+                            </div>
+                            <div class="contribution-achievement-badge">
+                                <div class="contribution-achievement-label" data-i18n="contributionTop10Label">🎖 В Топ-10</div>
+                                <div id="contribution-top10-count" class="contribution-achievement-value">0</div>
+                            </div>
+                            <div class="contribution-achievement-badge">
+                                <div class="contribution-achievement-label" data-i18n="contributionBestRankLabel">⭐ Лучший результат</div>
+                                <div id="contribution-best-rank" class="contribution-achievement-value">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="contribution-claimable-banner" class="contribution-claimable-banner" style="display:none;"></div>
+
+                    <div class="contribution-section-title" style="margin-top:12px;" data-i18n="contributionPastSeasonsTitle">Прошлые спринты</div>
+                    <div id="contribution-history-list" class="contribution-history-list"></div>
+                    <div id="contribution-history-empty" class="contribution-empty" style="display:none;"
+                         data-i18n="contributionNoHistory">Пока нет завершённых спринтов.</div>
+
+                    <div id="contribution-lifetime-actions" class="card contribution-lifetime-actions" style="display:none;">
+                        <div id="contribution-lifetime-score-line" class="contribution-lifetime-score-line"></div>
+                        <div id="contribution-lifetime-breakdown-line" class="contribution-lifetime-breakdown-line"></div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-secondary contribution-close-btn" style="width: 100%; margin-top: 14px;"
+                    onclick="closeContributionInfoModal()" data-i18n="contributionInfoCloseBtn">Закрыть</button>
+        </div>
+    </div>
+
     <div id="reliability-alpha-modal" class="modal-overlay reliability-alpha-modal" onclick="closeReliabilityAlphaModal(event)">
         <div class="modal-content reliability-alpha-modal-content" onclick="event.stopPropagation()">
             <div class="reliability-alpha-topbar">
+                <button type="button" class="reliability-alpha-back-btn" onclick="closeReliabilityAlphaModal()" aria-label="Back">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15 19L8 12L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
                 <div class="reliability-alpha-topbar-text">
-                    <div class="reliability-alpha-topbar-kicker" data-i18n="reliabilityAlphaKicker">Альфа-режим</div>
-                    <h3 data-i18n="reliabilityAlphaTitle">Новый индекс надежности</h3>
+                    <h3 data-i18n="reliabilityAlphaTitle">Индекс надежности</h3>
                 </div>
-                <button type="button" class="btn-icon reliability-alpha-close" onclick="closeReliabilityAlphaModal()">✕</button>
             </div>
             <div id="reliability-alpha-body"></div>
         </div>
@@ -1386,6 +1640,11 @@
     <!-- Project Protection Center — Full-Screen View -->
     <div id="protection-center" class="protection-center-view">
         <div class="ppc-header">
+            <button type="button" class="ppc-back-btn" onclick="closeProtectionCenter()" aria-label="Back">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 19L8 12L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
             <div class="ppc-header-title" id="ppc-header-title">Project Protection Center</div>
         </div>
         <div class="ppc-body" id="protection-center-body"></div>
@@ -1408,6 +1667,16 @@
                     <span class="meta-chip accent-green" id="earn-referrals-count">👥 0</span>
                     <span class="meta-chip accent-purple" id="earn-referral-bust">💎 0.0 $BUST</span>
                 </div>
+            </div>
+
+            <!-- Device Profile Section -->
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">🛠</span>
+                    <span style="font-weight: 700; font-size: 15px;" data-i18n="earnDeviceProfileTitle">Подготовить тестовое устройство</span>
+                </div>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnDeviceProfileDesc">Заполните профиль устройства, чтобы разработчики получали качественные баг-репорты.</p>
+                <div id="earn-device-profile-status"></div>
             </div>
 
             <!-- Golden Tester Grant Section -->
@@ -1466,6 +1735,19 @@
                 </div>
                 <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnRetentionDesc">Не удаляйте приложения после 14-го дня тестирования, если разработчик активировал Расширенную защиту. За каждый дополнительный день удержания вы получаете долю из ежедневного пула $BUST.</p>
                 <div id="earn-retention-status" class="earn-chip-row"></div>
+            </div>
+
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">🎯</span>
+                    <span style="font-weight: 700; font-size: 15px;" data-i18n="earnSprintTitle">Призовой Спринт</span>
+                </div>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnSprintDesc">Участвуйте в 10-дневных спринтах: баги, идеи и Play-отзывы дают баллы. Топ-10 делят призовой пул ~2000 $BUST.</p>
+                <div id="earn-sprint-status" class="earn-chip-row">
+                    <span class="meta-chip accent-blue" id="earn-sprint-joined">🏁 Участий: 0</span>
+                    <span class="meta-chip accent-green" id="earn-sprint-bust">💎 Заработано: 0.0 $BUST</span>
+                </div>
+                <button type="button" class="btn btn-secondary" style="width:100%; margin-top:10px;" onclick="closeEarnBustModal(); showContributionInfo();" data-i18n="earnSprintOpenBtn">Открыть спринт</button>
             </div>
 
             <!-- Bounty Earnings Section -->
@@ -1562,6 +1844,44 @@
 
             <button class="btn btn-primary" id="feedback-reward-submit-btn" style="width: 100%; margin-top: 14px;" onclick="submitFeedbackReward()" data-i18n="feedbackRewardSubmitBtn">Выдать награду и закрыть тикет</button>
             <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeFeedbackRewardModal()" data-i18n="feedbackRewardCancelBtn">Отмена</button>
+        </div>
+    </div>
+
+    <div id="play-review-reject-modal" class="modal-overlay" onclick="closePlayReviewRejectModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="playReviewRejectModalTitle">Отклонить отзыв</h3>
+            <p class="feedback-reward-subtitle" data-i18n="playReviewRejectModalDesc">Выберите причину отклонения. Тестер сможет отправить новый скриншот.</p>
+            <div class="feedback-reward-block">
+                <div class="feedback-reward-label" data-i18n="playReviewRejectReasonLabel">Причина</div>
+                <div class="feedback-reject-reason-list" id="play-review-reject-reason-chips" role="listbox" aria-label="Reject reason">
+                    <button type="button" class="feedback-reject-option play-review-reject-chip" data-reason="not_found" onclick="selectPlayReviewRejectReason('not_found')" role="option"><span data-i18n="playReviewRejectReason_not_found">Отзыв не найден</span></button>
+                    <button type="button" class="feedback-reject-option play-review-reject-chip" data-reason="too_short" onclick="selectPlayReviewRejectReason('too_short')" role="option"><span data-i18n="playReviewRejectReason_too_short">Слишком короткий</span></button>
+                    <button type="button" class="feedback-reject-option play-review-reject-chip" data-reason="deleted" onclick="selectPlayReviewRejectReason('deleted')" role="option"><span data-i18n="playReviewRejectReason_deleted">Отзыв удалён</span></button>
+                    <button type="button" class="feedback-reject-option play-review-reject-chip" data-reason="spam" onclick="selectPlayReviewRejectReason('spam')" role="option"><span data-i18n="playReviewRejectReason_spam">Спам</span></button>
+                </div>
+            </div>
+            <button class="btn btn-warning" id="play-review-reject-submit-btn" style="width: 100%; margin-top: 14px;" onclick="confirmPlayReviewReject()" data-i18n="playReviewRejectConfirmBtn" disabled>Отклонить</button>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closePlayReviewRejectModal()" data-i18n="playReviewRejectCancelBtn">Отмена</button>
+        </div>
+    </div>
+
+    <div id="feedback-reject-modal" class="modal-overlay" onclick="closeFeedbackRejectModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="feedbackRejectModalTitle">Отклонить фидбэк</h3>
+            <p class="feedback-reward-subtitle" data-i18n="feedbackRejectModalDesc">Выберите причину отклонения. Вклад тестеру за этот тикет не начисляется.</p>
+            <div class="feedback-reward-block">
+                <div class="feedback-reward-label" data-i18n="feedbackRejectReasonLabel">Причина</div>
+                <div class="feedback-reject-reason-list" id="feedback-reject-reason-chips" role="listbox" aria-label="Reject reason">
+                    <button type="button" class="feedback-reject-option feedback-reject-chip" data-reason="not_reproducible" onclick="selectFeedbackRejectReason('not_reproducible')" role="option"><span data-i18n="feedbackRejectReason_not_reproducible">Не воспроизводится</span></button>
+                    <button type="button" class="feedback-reject-option feedback-reject-chip" data-reason="not_related" onclick="selectFeedbackRejectReason('not_related')" role="option"><span data-i18n="feedbackRejectReason_not_related">Не относится к приложению</span></button>
+                    <button type="button" class="feedback-reject-option feedback-reject-chip" data-reason="spam" onclick="selectFeedbackRejectReason('spam')" role="option"><span data-i18n="feedbackRejectReason_spam">Спам / бессмысленный текст</span></button>
+                    <button type="button" class="feedback-reject-option feedback-reject-chip" data-reason="user_error" onclick="selectFeedbackRejectReason('user_error')" role="option"><span data-i18n="feedbackRejectReason_user_error">Ошибка пользователя</span></button>
+                    <button type="button" class="feedback-reject-option feedback-reject-chip" data-reason="duplicate" onclick="selectFeedbackRejectReason('duplicate')" role="option"><span data-i18n="feedbackRejectReason_duplicate">Дубликат</span></button>
+                    <button type="button" class="feedback-reject-option feedback-reject-chip" data-reason="insufficient_info" onclick="selectFeedbackRejectReason('insufficient_info')" role="option"><span data-i18n="feedbackRejectReason_insufficient_info">Недостаточно информации</span></button>
+                </div>
+            </div>
+            <button class="btn btn-warning" id="feedback-reject-submit-btn" style="width: 100%; margin-top: 14px;" onclick="confirmFeedbackReject()" data-i18n="feedbackRejectConfirmBtn" disabled>Подтвердить отклонение</button>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeFeedbackRejectModal()" data-i18n="feedbackRejectCancelBtn">Отмена</button>
         </div>
     </div>
     <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)"><div class="modal-content" onclick="event.stopPropagation()" id="project-details-body"></div></div>

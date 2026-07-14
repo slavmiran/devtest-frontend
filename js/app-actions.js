@@ -278,6 +278,9 @@ function toggleSystemMenu() {
         if (willOpen && typeof window.populateSettingsEmail === 'function') {
             window.populateSettingsEmail();
         }
+        if (willOpen && typeof window.populateDeviceInfoSettings === 'function') {
+            window.populateDeviceInfoSettings();
+        }
         if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     }
 }
@@ -725,6 +728,10 @@ function refreshOpenModals() {
     const reliabilityInfoModal = document.getElementById('reliability-info-modal');
     if (reliabilityInfoModal && reliabilityInfoModal.classList.contains('active') && window.showReliabilityInfo) {
         window.showReliabilityInfo();
+    }
+    const contributionInfoModal = document.getElementById('contribution-info-modal');
+    if (contributionInfoModal && contributionInfoModal.classList.contains('active') && window.showContributionInfo) {
+        window.showContributionInfo();
     }
     const checkinOptionsModal = document.getElementById('checkin-options-modal');
     if (checkinOptionsModal && checkinOptionsModal.classList.contains('active') && window.renderCheckinReviewOptions) {
@@ -1474,6 +1481,14 @@ function renderEarnBustDynamic() {
     }
     document.getElementById('earn-exchange-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnExchangeBust)}</span>`;
     document.getElementById('earn-retention-status').innerHTML = `<span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnRetentionBust)}</span>`;
+    const sprintJoinedEl = document.getElementById('earn-sprint-joined');
+    const sprintBustEl = document.getElementById('earn-sprint-bust');
+    if (sprintJoinedEl) {
+        sprintJoinedEl.innerText = `🏁 ${window.t('earnSprintJoinedChip', { count: Number(_earnSprintJoined || 0) }, lang)}`;
+    }
+    if (sprintBustEl) {
+        sprintBustEl.innerText = `💎 ${window.t('earnSprintBustChip', { amount: formatBustAmount(_earnSprintBust) }, lang)}`;
+    }
     const socialStatus = document.getElementById('earn-social-status');
     if (_socialBonusStatus === 'approved') {
         socialStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnSocialApproved}</span>`;
@@ -1481,6 +1496,17 @@ function renderEarnBustDynamic() {
         socialStatus.innerHTML = `<button class="btn btn-secondary" style="width:100%; opacity:0.6;" disabled>⏳ ${t.earnSocialPending}</button>`;
     } else {
         socialStatus.innerHTML = `<button class="btn btn-primary" style="width:100%;" onclick="openSocialModal()">🎁 ${t.earnSocialBtn}</button>`;
+    }
+    const deviceProfileStatus = document.getElementById('earn-device-profile-status');
+    if (deviceProfileStatus) {
+        if (_deviceProfileRewardClaimed || Number(_deviceProfileBustEarned || 0) > 0) {
+            deviceProfileStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${window.escapeHTML(window.t('earnDeviceProfileClaimedChip', { amount: 30 }, lang))}</span>`;
+        } else {
+            deviceProfileStatus.innerHTML = `
+                <button type="button" class="btn btn-primary" style="width:100%; margin-bottom:8px;" onclick="openDeviceProfileFromPrompt()"> ${window.escapeHTML(window.t('deviceProfilePrepareBtn', {}, lang))}</button>
+                <div style="font-size:13px; color:var(--hint-color); text-align:center;">${window.escapeHTML(window.t('earnDeviceProfileRewardHint', { amount: 30 }, lang))}</div>
+            `;
+        }
     }
 }
 
@@ -1505,9 +1531,39 @@ async function openEarnBustModal() {
         _earnPlayReviewCount = Number(data.play_review_count || 0);
         _earnPlayReviewBust = Number(data.play_review_bust_earned || 0);
         _socialBonusStatus = data.social_bonus_status || 'none';
+        _deviceProfileRewardClaimed = !!data.device_profile_reward_claimed;
+        _deviceProfileBustEarned = Number(data.device_profile_bust_earned || 0);
+        if (typeof syncDeviceProfileUi === 'function') {
+            syncDeviceProfileUi();
+        }
         renderEarnBustDynamic();
     } catch (error) {
         console.error('Failed to load referral stats:', error);
+    }
+
+    // Sprint chips: reuse history endpoint (no backend changes).
+    try {
+        if (typeof fetchContributionHistory === 'function') {
+            const history = await fetchContributionHistory();
+            if (history && history.status === 'success') {
+                const seasons = Array.isArray(history.seasons) ? history.seasons : [];
+                let joined = 0;
+                let bustEarned = 0;
+                seasons.forEach(function(season) {
+                    const score = Number(season && season.contribution_score || 0);
+                    const prize = Number(season && season.prize_amount || 0);
+                    if (score > 0 || prize > 0 || (season && season.final_rank != null)) {
+                        joined += 1;
+                    }
+                    if (prize > 0) bustEarned += prize;
+                });
+                _earnSprintJoined = joined;
+                _earnSprintBust = bustEarned;
+                renderEarnBustDynamic();
+            }
+        }
+    } catch (sprintErr) {
+        console.error('Failed to load sprint earn stats:', sprintErr);
     }
 }
 
@@ -1665,9 +1721,6 @@ async function initiateProjectFeedback(appId, options) {
         }
     }
 
-    if (options.checkinContext) {
-        markTestFeedbackCheckinPending(appId);
-    }
     try {
         const response = await fetch(`${API_BASE}/feedback/initiate`, {
             method: 'POST',
@@ -1687,6 +1740,9 @@ async function initiateProjectFeedback(appId, options) {
             }
             showToast(getApiErrorMessage(data, 'genericError'));
             return;
+        }
+        if (options.checkinContext) {
+            markTestFeedbackCheckinPending(appId);
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         var toastKey = 'feedbackBotRedirect' + (feedbackType === 'idea' ? 'Idea' : 'Bug') + 'Toast';
@@ -1983,7 +2039,29 @@ function _updateFeedbackRewardSubmitState() {
     btn.style.opacity = enabled ? '1' : '0.4';
 }
 
+var _feedbackRewardSubmitting = false;
+
+function _setFeedbackRewardSubmitLoading(isLoading) {
+    var btn = document.getElementById('feedback-reward-submit-btn');
+    if (!btn) return;
+    if (isLoading) {
+        if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add('btn-loading');
+        btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span> ' +
+            (window.t('feedbackRewardSubmitting', {}, lang) || (lang === 'ru' ? 'Отправляем…' : 'Submitting…'));
+    } else {
+        btn.disabled = false;
+        btn.classList.remove('btn-loading');
+        if (btn.dataset.originalHtml) {
+            btn.innerHTML = btn.dataset.originalHtml;
+            delete btn.dataset.originalHtml;
+        }
+    }
+}
+
 async function submitFeedbackReward() {
+    if (_feedbackRewardSubmitting) return;
     if (!_feedbackRewardTargetId || !_activeProjectFeedbackAppId) return;
 
     const bustInput = document.getElementById('feedback-reward-bust-input');
@@ -2003,6 +2081,9 @@ async function submitFeedbackReward() {
         return;
     }
 
+    _feedbackRewardSubmitting = true;
+    _setFeedbackRewardSubmitLoading(true);
+
     try {
         const response = await fetch(`${API_BASE}/feedback/${_feedbackRewardTargetId}/reward`, {
             method: 'POST',
@@ -2016,17 +2097,33 @@ async function submitFeedbackReward() {
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
+            _setFeedbackRewardSubmitLoading(false);
             handleApiError(getBackendErrorCode(data), data.details || {});
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(window.t('feedbackRewardSuccessToast', {}, lang));
+        var processedFeedbackId = Number(_feedbackRewardTargetId || 0);
+        var rewardedBust = Number(bustAmount || 0);
+        var rewardedKarma = Number(_feedbackRewardKarma || 0);
+        _setFeedbackRewardSubmitLoading(false);
         closeFeedbackRewardModal();
-        await Promise.all([loadProjects(true), loadArchivedProjects()]);
-        await openProjectFeedback(_activeProjectFeedbackAppId, _activeProjectFeedbackArchived);
+        if (typeof window.removeFeedbackCardOptimistic === 'function') {
+            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted', { reward_bust: rewardedBust, reward_karma: rewardedKarma });
+        }
+        if (typeof window.triggerFeedbackAutoAdvance === 'function') {
+            window.triggerFeedbackAutoAdvance(processedFeedbackId);
+        } else if (typeof loadProjects === 'function') {
+            Promise.resolve()
+                .then(function() { return loadProjects(true); })
+                .catch(function() { /* ignore */ });
+        }
+        showToast(window.t('feedbackRewardSuccessToast', {}, lang));
     } catch (error) {
         console.error('Feedback reward error:', error);
+        _setFeedbackRewardSubmitLoading(false);
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    } finally {
+        _feedbackRewardSubmitting = false;
     }
 }
 
@@ -2133,6 +2230,162 @@ async function fetchKarmaBreakdown(targetUserId) {
             total: Number((visibilityStats && visibilityStats.ownerKarma) || 0),
             breakdown: []
         };
+    }
+}
+
+async function fetchContributionStats(targetUserId) {
+    const resolvedUserId = Number(targetUserId || userId || 0);
+    const cached = (visibilityStats && visibilityStats.contribution) || {};
+    const fallback = {
+        contribution_score: Number(
+            (cached.contribution_score != null
+                ? cached.contribution_score
+                : (visibilityStats && visibilityStats.contribution_score)) || 0
+        ),
+        bugs_count: Number(cached.bugs_count || 0),
+        ideas_count: Number(cached.ideas_count || 0),
+        play_reviews_count: Number(cached.play_reviews_count || 0),
+    };
+    if (!resolvedUserId) {
+        return { status: 'error', code: 'invalid_user_id', ...fallback };
+    }
+
+    try {
+        const response = await fetchWithRetry(`${API_BASE}/users/${resolvedUserId}/contribution`, {
+            timeoutMs: 10000
+        }, 1);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        return {
+            status: 'success',
+            code: null,
+            contribution_score: Number(payload && payload.contribution_score) || 0,
+            bugs_count: Number(payload && payload.bugs_count) || 0,
+            ideas_count: Number(payload && payload.ideas_count) || 0,
+            play_reviews_count: Number(payload && payload.play_reviews_count) || 0,
+            weights: (payload && payload.weights) || null,
+        };
+    } catch (error) {
+        console.error('Contribution stats load error:', error);
+        return { status: 'error', code: 'network_error', ...fallback };
+    }
+}
+
+function _getTelegramInitDataRaw() {
+    try {
+        return String((tg && tg.initData) || '').trim();
+    } catch (_) {
+        return '';
+    }
+}
+
+async function fetchContributionCurrent() {
+    const initData = _getTelegramInitDataRaw();
+    if (!initData) {
+        return { status: 'error', code: 'invalid_init_data', season: null, me: null, gap_to_top5: 0, leaderboard: [] };
+    }
+    try {
+        const url = `${API_BASE}/contribution/current?init_data=${encodeURIComponent(initData)}`;
+        const response = await fetchWithRetry(url, { timeoutMs: 12000 }, 1);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || (payload && payload.status === 'error')) {
+            return {
+                status: 'error',
+                code: (payload && (payload.code || payload.detail)) || `http_${response.status}`,
+                details: (payload && payload.details) || null,
+            };
+        }
+        return {
+            status: 'success',
+            season: payload.season || null,
+            me: payload.me || null,
+            gap_to_top5: Number(payload.gap_to_top5 || 0),
+            leaderboard: Array.isArray(payload.leaderboard) ? payload.leaderboard : [],
+            leaderboard_total: Number(payload.leaderboard_total || 0),
+        };
+    } catch (error) {
+        console.error('Contribution current load error:', error);
+        return { status: 'error', code: 'network_error' };
+    }
+}
+
+async function fetchContributionHistory() {
+    const initData = _getTelegramInitDataRaw();
+    if (!initData) {
+        return {
+            status: 'error',
+            code: 'invalid_init_data',
+            lifetime: null,
+            seasons: [],
+            claimable: [],
+            has_claimable_prize: false,
+        };
+    }
+    try {
+        const url = `${API_BASE}/contribution/history?init_data=${encodeURIComponent(initData)}`;
+        const response = await fetchWithRetry(url, { timeoutMs: 12000 }, 1);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || (payload && payload.status === 'error')) {
+            return {
+                status: 'error',
+                code: (payload && (payload.code || payload.detail)) || `http_${response.status}`,
+                details: (payload && payload.details) || null,
+            };
+        }
+        return {
+            status: 'success',
+            lifetime: payload.lifetime || null,
+            seasons: Array.isArray(payload.seasons) ? payload.seasons : [],
+            claimable: Array.isArray(payload.claimable) ? payload.claimable : [],
+            has_claimable_prize: Boolean(payload.has_claimable_prize),
+        };
+    } catch (error) {
+        console.error('Contribution history load error:', error);
+        return { status: 'error', code: 'network_error' };
+    }
+}
+
+async function claimContributionPrize(seasonId) {
+    const initData = _getTelegramInitDataRaw();
+    const safeSeasonId = Number(seasonId || 0);
+    if (!initData) {
+        return { status: 'error', code: 'invalid_init_data' };
+    }
+    if (!safeSeasonId) {
+        return { status: 'error', code: 'season_not_found' };
+    }
+    try {
+        const response = await fetchWithRetry(`${API_BASE}/contribution/claim`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                init_data: initData,
+                season_id: safeSeasonId,
+            }),
+            timeoutMs: 15000,
+        }, 1);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || (payload && payload.status === 'error')) {
+            const code = (payload && (payload.code || payload.detail)) || `http_${response.status}`;
+            return {
+                status: 'error',
+                code: typeof code === 'string' ? code : 'claim_failed',
+                details: (payload && payload.details) || null,
+            };
+        }
+        return {
+            status: 'success',
+            season_id: Number(payload.season_id || safeSeasonId),
+            prize_amount: Number(payload.prize_amount || 0),
+            claim_status: payload.claim_status || 'claimed',
+            claimed_at: payload.claimed_at || null,
+            claim_transaction_id: payload.claim_transaction_id || null,
+            new_balance: payload.new_balance != null ? Number(payload.new_balance) : null,
+            final_rank: payload.final_rank != null ? Number(payload.final_rank) : null,
+        };
+    } catch (error) {
+        console.error('Contribution claim error:', error);
+        return { status: 'error', code: 'network_error' };
     }
 }
 
@@ -2553,19 +2806,39 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
             var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
             if (test) {
                 test.play_review_screenshot_url = data.url;
-                if (data.play_review_status) test.play_review_status = String(data.play_review_status || 'none').toLowerCase();
-                persistTestsCacheSnapshot();
+                // Keep rejected/none status until explicit Submit; only refresh if API returns pending/approved.
+                var nextStatus = String(data.play_review_status || '').trim().toLowerCase();
+                if (nextStatus === 'pending' || nextStatus === 'approved') {
+                    test.play_review_status = nextStatus;
+                }
+                try { persistTestsCacheSnapshot(); } catch (persistErr) {}
             }
-            var previewContainer = document.getElementById('play-review-preview-container');
-            var submitBtn = document.getElementById('play-review-submit-btn');
-            if (previewContainer) {
-                var resolvedUrl = (typeof resolveIconUrl === 'function') ? resolveIconUrl(data.url) : data.url;
-                previewContainer.innerHTML = '<div class="play-review-preview"><img src="' + window.escapeHTML(resolvedUrl) + '" onerror="this.style.display=\'none\'; this.parentNode.classList.add(\'is-broken\');"></div>';
-                previewContainer.style.display = 'block';
+            // Persist across Telegram openLink suspend + myTests refresh.
+            window._playReviewStep1Done = true;
+            try {
+                var key = 'playReviewRetry:' + String(Number(appId) || 0);
+                var prev = {};
+                try { prev = JSON.parse(sessionStorage.getItem(key) || '{}') || {}; } catch (e) { prev = {}; }
+                sessionStorage.setItem(key, JSON.stringify({
+                    step1Done: true,
+                    screenshotUrl: String(data.url || ''),
+                }));
+            } catch (e) {}
+            if (typeof window._savePlayReviewSession === 'function') {
+                window._savePlayReviewSession(appId, { step1Done: true, screenshotUrl: data.url });
             }
-            if (submitBtn) submitBtn.disabled = false;
-            if (typeof renderPlayReviewModal === 'function') {
+            if (typeof window.renderPlayReviewModal === 'function') {
+                window.renderPlayReviewModal();
+            } else if (typeof renderPlayReviewModal === 'function') {
                 renderPlayReviewModal();
+            }
+            // Hard-enable submit immediately even if a later re-render races.
+            var submitBtn = document.getElementById('play-review-submit-btn');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.removeAttribute('disabled');
+                submitBtn.classList.remove('btn-disabled');
+                submitBtn.classList.add('btn-primary');
             }
             console.log('[handleReviewScreenshotUpload] success, url=' + data.url);
         } else {
@@ -2580,12 +2853,10 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
             uploadBtn.disabled = false;
             uploadBtn.innerHTML = btnOrigText;
         }
-        var uploadZone = document.getElementById('play-review-upload-zone');
-        if (uploadZone) {
-            uploadZone.classList.remove('is-uploading');
-        }
-        if (typeof renderPlayReviewModal === 'function') {
-            renderPlayReviewModal();
+        var uploadZoneFinally = document.getElementById('play-review-upload-zone');
+        if (uploadZoneFinally) {
+            uploadZoneFinally.classList.remove('is-uploading');
+            uploadZoneFinally.style.pointerEvents = '';
         }
     }
 }
@@ -2602,6 +2873,176 @@ function updateIconPreview(inputId, previewId) {
     preview.src = url;
     preview.style.display = 'block';
 }
+
+let _feedbackAcceptLongPressTimeout = null;
+let _feedbackAcceptLongPressActive = false;
+let _feedbackAcceptLongPressStart = 0;
+let _feedbackAcceptLongPressPulse = null;
+
+function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
+    if (_feedbackAcceptLongPressActive) return;
+    if (event && event.type === 'touchstart') {
+        // Keep scroll possible until hold engages; do not preventDefault here.
+    }
+
+    _feedbackAcceptLongPressActive = true;
+    _feedbackAcceptLongPressStart = Date.now();
+    if (btnEl) btnEl.classList.add('fb-action-btn--holding');
+
+    const progressEl = btnEl && btnEl.querySelector('.fb-btn-accept-progress');
+    if (progressEl) {
+        progressEl.style.transition = 'width 0.8s linear';
+        progressEl.getBoundingClientRect();
+        progressEl.style.width = '100%';
+    }
+
+    if (window.tg && window.tg.HapticFeedback) {
+        window.tg.HapticFeedback.impactOccurred('medium');
+    } else if (navigator.vibrate) {
+        navigator.vibrate(30);
+    }
+
+    if (_feedbackAcceptLongPressPulse) clearInterval(_feedbackAcceptLongPressPulse);
+    _feedbackAcceptLongPressPulse = setInterval(function() {
+        if (navigator.vibrate) navigator.vibrate(12);
+    }, 220);
+
+    _feedbackAcceptLongPressTimeout = setTimeout(async function() {
+        _feedbackAcceptLongPressActive = false;
+        if (_feedbackAcceptLongPressPulse) {
+            clearInterval(_feedbackAcceptLongPressPulse);
+            _feedbackAcceptLongPressPulse = null;
+        }
+        if (btnEl) btnEl.classList.remove('fb-action-btn--holding');
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        } else if (navigator.vibrate) {
+            navigator.vibrate([20, 40, 20]);
+        }
+
+        await submitQuickFeedbackAccept(feedbackId, projectId, btnEl);
+
+        if (progressEl) {
+            progressEl.style.transition = 'none';
+            progressEl.style.width = '0';
+        }
+    }, 800);
+}
+
+function cancelFeedbackAcceptLongPress(btnEl, event) {
+    if (!_feedbackAcceptLongPressActive) return;
+    _feedbackAcceptLongPressActive = false;
+
+    clearTimeout(_feedbackAcceptLongPressTimeout);
+    if (_feedbackAcceptLongPressPulse) {
+        clearInterval(_feedbackAcceptLongPressPulse);
+        _feedbackAcceptLongPressPulse = null;
+    }
+    if (btnEl) btnEl.classList.remove('fb-action-btn--holding');
+
+    const progressEl = btnEl && btnEl.querySelector('.fb-btn-accept-progress');
+    if (progressEl) {
+        progressEl.style.transition = 'width 0.15s ease-out';
+        progressEl.style.width = '0';
+    }
+}
+
+function handleFeedbackAcceptClick(projectId, feedbackId, btnEl, event) {
+    const duration = Date.now() - _feedbackAcceptLongPressStart;
+    if (duration >= 800) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        return;
+    }
+
+    cancelFeedbackAcceptLongPress(btnEl, event);
+    openFeedbackRewardModal(projectId, feedbackId);
+}
+
+async function submitQuickFeedbackAccept(feedbackId, projectId, btnEl) {
+    // Long-press = instant accept with 0 $BUST (and no karma).
+    const targetBust = 0;
+    const targetKarma = 0;
+
+    if (typeof window.removeFeedbackCardOptimistic === 'function') {
+        window.removeFeedbackCardOptimistic(feedbackId, 'accepted', { reward_bust: targetBust });
+    }
+
+    if (typeof window.triggerFeedbackAutoAdvance === 'function') {
+        window.triggerFeedbackAutoAdvance(feedbackId);
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/feedback/${feedbackId}/reward`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner_id: userId,
+                bust_amount: targetBust,
+                karma_amount: targetKarma,
+                reply_text: "",
+            })
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'genericError'));
+            return;
+        }
+        showToast(window.t('feedbackQuickAcceptToast', {}, lang) || (lang === 'ru' ? '✅ Принято' : '✅ Accepted'));
+    } catch (error) {
+        console.error('Quick accept error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
+function triggerFeedbackAutoAdvance(currentFeedbackId) {
+    setTimeout(function() {
+        const list = document.querySelector('#project-feedback-body .feedback-list');
+        if (!list) return;
+        const cards = Array.from(list.querySelectorAll('.fb-card:not(.fb-card--hidden):not(.fb-card--processed)'));
+
+        const currentIndex = cards.findIndex(function(card) {
+            return Number(card.getAttribute('data-feedback-id')) === Number(currentFeedbackId);
+        });
+
+        let nextCard = null;
+        for (let i = Math.max(currentIndex, 0) + 1; i < cards.length; i++) {
+            const card = cards[i];
+            if (card.classList.contains('fb-card--collapsed')) {
+                nextCard = card;
+                break;
+            }
+        }
+        if (!nextCard) {
+            for (let i = 0; i < cards.length; i++) {
+                const card = cards[i];
+                if (Number(card.getAttribute('data-feedback-id')) === Number(currentFeedbackId)) continue;
+                if (card.classList.contains('fb-card--collapsed')) {
+                    nextCard = card;
+                    break;
+                }
+            }
+        }
+
+        if (nextCard) {
+            nextCard.classList.remove('fb-card--collapsed');
+            nextCard.classList.add('fb-card--expanded');
+            nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (typeof feedbackScheduleClampMeasure === 'function') {
+                feedbackScheduleClampMeasure();
+            }
+            if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+        }
+    }, 320);
+}
+window.triggerFeedbackAutoAdvance = triggerFeedbackAutoAdvance;
+
+window.startFeedbackAcceptLongPress = startFeedbackAcceptLongPress;
+window.cancelFeedbackAcceptLongPress = cancelFeedbackAcceptLongPress;
+window.handleFeedbackAcceptClick = handleFeedbackAcceptClick;
+window.submitQuickFeedbackAccept = submitQuickFeedbackAccept;
 
 window.updateIconPreview = updateIconPreview;
 

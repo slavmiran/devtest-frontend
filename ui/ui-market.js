@@ -5,6 +5,9 @@ window.feedbackMediaRegistry = window.feedbackMediaRegistry || {};
 window.feedbackCaptionRegistry = window.feedbackCaptionRegistry || {};
 
 /* === Reliability / dossier / guest helpers (moved from ui-tests.js) === */
+var _showReliabilityRules = false;
+var _reliabilityDashboardFilter = 'formula';
+window._activeGrantIndex = 0;
 function getGuestProjectFreshness(createdAt) {
     const createdDate = parseLocalDateOnly(createdAt);
     const today = parseLocalDateOnly(getLocalDate());
@@ -214,18 +217,19 @@ function renderReliabilitySummaryWidget(force) {
 
 function getReliabilityAlphaStatusMeta(status) {
     var normalized = String(status || 'newbie').toLowerCase();
-    if (normalized === 'expert') return { label: window.t('reliabilityDashStatusExpertFull', {}, lang), badgeClass: 'badge-good' };
-    if (normalized === 'active') return { label: window.t('reliabilityDashStatusActiveFull', {}, lang), badgeClass: 'badge-good' };
-    if (normalized === 'basic') return { label: window.t('reliabilityDashStatusBasicFull', {}, lang), badgeClass: 'badge-mid' };
-    if (normalized === 'minimal') return { label: window.t('reliabilityDashStatusMinimalFull', {}, lang), badgeClass: 'badge-bad' };
-    if (normalized === 'bad') return { label: window.t('reliabilityDashStatusBadFull', {}, lang), badgeClass: 'badge-bad' };
-    return { label: window.t('reliabilityDashStatusNewbieFull', {}, lang), badgeClass: 'badge-neutral' };
+    if (normalized === 'expert') return { label: window.t('reliabilityDashStatusExpertFull', {}, lang), badgeClass: 'badge-good', tone: 'good' };
+    if (normalized === 'active') return { label: window.t('reliabilityDashStatusActiveFull', {}, lang), badgeClass: 'badge-good', tone: 'good' };
+    if (normalized === 'basic') return { label: window.t('reliabilityDashStatusBasicFull', {}, lang), badgeClass: 'badge-mid', tone: 'mid' };
+    if (normalized === 'minimal') return { label: window.t('reliabilityDashStatusMinimalFull', {}, lang), badgeClass: 'badge-bad', tone: 'bad' };
+    if (normalized === 'bad') return { label: window.t('reliabilityDashStatusBadFull', {}, lang), badgeClass: 'badge-bad', tone: 'bad' };
+    return { label: window.t('reliabilityDashStatusNewbieFull', {}, lang), badgeClass: 'badge-neutral', tone: 'neutral' };
 }
 
 function getReliabilityAlphaProjectTabLabel(filterKey) {
+    if (filterKey === 'formula') return window.t('reliabilityDashTabFormula', {}, lang);
     if (filterKey === 'current') return window.t('reliabilityDashTabCurrent', {}, lang);
     if (filterKey === 'completed') return window.t('reliabilityDashTabCompleted', {}, lang);
-    if (filterKey === 'archive') return window.t('reliabilityDashTabArchive', {}, lang);
+    if (filterKey === 'guide') return window.t('reliabilityDashTabGuide', {}, lang);
     return window.t('reliabilityDashTabAll', {}, lang);
 }
 
@@ -236,6 +240,11 @@ function getReliabilityAlphaAvatar(name) {
 
 function getReliabilityAlphaProjects(filterKey, projects) {
     var list = Array.isArray(projects) ? projects.slice() : [];
+    if (filterKey === 'formula') {
+        return list.filter(function(project) {
+            return project.is_used_in_formula === true;
+        });
+    }
     if (filterKey === 'current') {
         return list.filter(function(project) {
             return String(project.leave_status || project.status || '').toLowerCase() === 'active';
@@ -244,15 +253,7 @@ function getReliabilityAlphaProjects(filterKey, projects) {
     if (filterKey === 'completed') {
         return list.filter(function(project) {
             var leaveStatus = String(project.leave_status || project.status || '').toLowerCase();
-            var participation = String(project.participation_type || '').toLowerCase();
-            return leaveStatus !== 'active' && participation !== 'abandoned' && participation !== 'unfair_kick';
-        });
-    }
-    if (filterKey === 'archive') {
-        return list.filter(function(project) {
-            var leaveStatus = String(project.leave_status || project.status || '').toLowerCase();
-            var participation = String(project.participation_type || '').toLowerCase();
-            return participation === 'abandoned' || participation === 'unfair_kick' || leaveStatus === 'kicked_by_owner' || leaveStatus === 'abandoned';
+            return leaveStatus !== 'active';
         });
     }
     return list;
@@ -293,64 +294,146 @@ function buildReliabilityAlphaGuideCard(title, accentClass, contentHtml, footnot
 function buildReliabilityAlphaSkeleton() {
     return `
         <div class="page reliability-alpha-page">
-            <section class="card reliability-alpha-card">
-                <div class="header">
-                    <div class="user-main">
-                        <div class="avatar skeleton"></div>
-                        <div class="user-info" style="flex: 1;">
-                            <div class="skeleton skeleton-line medium"></div>
-                            <div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div>
-                        </div>
+            <section class="ri-hero status-neutral">
+                <div class="ri-hero-row">
+                    <div class="ri-ring"><div class="skeleton" style="width:88px;height:88px;border-radius:50%;"></div></div>
+                    <div class="ri-hero-meta" style="flex:1;">
+                        <div class="skeleton skeleton-line short"></div>
+                        <div class="skeleton skeleton-line medium"></div>
+                        <div class="skeleton skeleton-line long" style="margin-bottom:0;"></div>
                     </div>
-                    <div class="skeleton skeleton-line short" style="width: 140px; margin-bottom: 0;"></div>
-                </div>
-                <div class="summary-grid">
-                    <div class="summary-item"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></div>
-                    <div class="summary-item"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></div>
-                    <div class="summary-item"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></div>
-                    <div class="summary-item"><div class="skeleton skeleton-line short"></div><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></div>
                 </div>
             </section>
-            <div class="layout-2">
-                <section class="card reliability-alpha-card"><div class="skeleton skeleton-line long"></div><div class="skeleton skeleton-line long"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></section>
-                <section class="card reliability-alpha-card"><div class="skeleton skeleton-line long"></div><div class="skeleton skeleton-line long"></div><div class="skeleton skeleton-line long" style="margin-bottom: 0;"></div></section>
+            <div class="ri-stats">
+                <div class="ri-stat"><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line short" style="margin:0 auto;"></div></div>
+                <div class="ri-stat"><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line short" style="margin:0 auto;"></div></div>
+                <div class="ri-stat"><div class="skeleton skeleton-line medium"></div><div class="skeleton skeleton-line short" style="margin:0 auto;"></div></div>
             </div>
+            <section class="ri-surface"><div class="skeleton skeleton-line long"></div><div class="skeleton skeleton-line long" style="margin-bottom:0;"></div></section>
         </div>
     `;
 }
 
+window.toggleProjectCardDetails = function(element, event) {
+    if (event) event.stopPropagation();
+    const details = element.querySelector('.ri-project-body');
+    if (!details) return;
+    if (details.hidden) {
+        details.hidden = false;
+        element.classList.add('expanded');
+    } else {
+        details.hidden = true;
+        element.classList.remove('expanded');
+    }
+};
+
 function buildReliabilityAlphaProjectCard(project) {
+    var state = getReliabilityUiState();
+    var breakdown = state ? state.breakdown : null;
+    var totalPenalty = breakdown ? Math.abs(Number(breakdown.penalty || 0)) : 0;
+    var badPeriodsCount = breakdown ? Number(breakdown.bad_periods_count || 0) : 0;
+    var weightedBeforePenalty = breakdown ? Number(breakdown.weighted_before_penalty || 0) : 0;
+
     var statusMeta = getReliabilityAlphaStatusMeta(project.project_status);
     var title = window.escapeHTML(project.title || window.t('unknownLabel', {}, lang));
     var typeLabel = window.escapeHTML(window.t('reliabilityDashProjectType_' + (project.join_type || project.type || 'invite'), {}, lang));
     var skips = String(project.skips_count || 0);
     var overtimeDays = Number(project.overtime_checkin_days || 0);
     var overtimeBonus = formatReliabilityIndex(project.overtime_bonus_index || 0);
-    var participationKey = 'reliabilityDashParticipationType_' + (project.participation_type || 'short_run');
     var exitKey = 'reliabilityDashExitType_' + (project.leave_status || project.status || 'active');
-        var sourceMeta = getReliabilityAlphaProjectSourceMeta(project);
-        var note = window.escapeHTML(window.t(sourceMeta.noteKey, {
-        value: formatReliabilityIndex(project.weighted_contribution || project.effective_project_index || 0),
-        karma: formatReliabilityIndex(overtimeDays > 0 ? overtimeDays * 0.5 : 0)
-    }, lang));
+    var sourceMeta = getReliabilityAlphaProjectSourceMeta(project);
+    var indexValue = Number(project.effective_project_index || 0);
+    var indexPct = Math.max(0, Math.min(100, indexValue));
+    var chipTone = sourceMeta.chipClass === 'chip-used' ? 'used' : (sourceMeta.chipClass === 'chip-history' ? 'history' : 'skipped');
+    
+    var pillHtml = project.is_used_in_formula
+        ? '<span class="ri-pill formula">' + window.escapeHTML(window.t('reliabilityDashProjectPillFormula', {}, lang)) + '</span>'
+        : '<span class="ri-pill history">' + window.escapeHTML(window.t('reliabilityDashProjectPillHistory', {}, lang)) + '</span>';
+    
+    if (project.is_bad_period_for_reliability) {
+        pillHtml += '<span class="ri-pill penalty">' + (lang === 'ru' ? 'Штраф' : 'Penalty') + '</span>';
+    }
+
+    var contributionValue = '—';
+    if (project.is_used_in_formula) {
+        if (project.is_bad_period_for_reliability) {
+            contributionValue = '0.0% (' + (lang === 'ru' ? 'Штраф к итогу: -' + totalPenalty + '%' : 'Total penalty: -' + totalPenalty + '%') + ')';
+        } else {
+            contributionValue = '+' + formatReliabilityIndex(project.weighted_contribution || 0) + '%';
+        }
+    }
 
     return `
-        <div class="project-card">
-          <div class="proj-header">
-            <div class="proj-title">${title} · ${typeLabel}</div>
-            <span class="badge-status ${statusMeta.badgeClass}">${window.escapeHTML(statusMeta.label)}</span>
+        <div class="ri-project ${project.is_used_in_formula ? 'in-formula' : ''} ${project.is_bad_period_for_reliability ? 'has-penalty' : ''}" onclick="toggleProjectCardDetails(this, event)">
+          <div class="ri-project-head">
+            <div class="ri-project-left">
+              <span class="ri-project-icon">📱</span>
+              <div class="ri-project-titles">
+                <span class="ri-project-name">${title}</span>
+                <span class="ri-project-meta">${typeLabel} · ${pillHtml}</span>
+              </div>
+            </div>
+            <div class="ri-project-right">
+              <div class="ri-project-score">
+                <span class="ri-project-score-val">${formatReliabilityIndex(indexValue)}%</span>
+                <div class="ri-project-bar is-${statusMeta.tone}"><span style="width:${indexPct}%;"></span></div>
+              </div>
+              <span class="ri-badge ${statusMeta.tone}">${window.escapeHTML(statusMeta.label)}</span>
+              <span class="ri-project-arrow">▼</span>
+            </div>
           </div>
-                    <div class="project-chips"><span class="project-chip ${sourceMeta.chipClass}">${window.escapeHTML(sourceMeta.chipLabel)}</span></div>
-          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryPeriod', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryValue', { actual: project.actual_checkins || 0, total: project.mandatory_days || 14, skips: skips }, lang))}</span></div>
-          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectIndexLabel', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectIndexValue', { value: formatReliabilityIndex(project.effective_project_index || 0), status: statusMeta.label }, lang))}</span></div>
-          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeLabel', {}, lang))}</span><span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeValue', { days: overtimeDays, bonus: overtimeBonus }, lang))}</span></div>
-          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectParticipationLabel', {}, lang))}</span><span>${window.escapeHTML(window.t(participationKey, {}, lang))}</span></div>
-          <div class="proj-row"><span>${window.escapeHTML(window.t('reliabilityDashProjectExitLabel', {}, lang))}</span><span>${window.escapeHTML(window.t(exitKey, { fairness: window.t('reliabilityDashFairness_' + (project.leave_fairness || 'neutral'), {}, lang) }, lang))}</span></div>
-          <div class="proj-note">${note}</div>
-          <div class="link-more">${window.escapeHTML(window.t('reliabilityDashProjectDetailsLink', {}, lang))}</div>
+
+          <div class="ri-project-body" hidden onclick="event.stopPropagation()">
+            ${project.is_bad_period_for_reliability ? `
+            <div class="ri-penalty-notice" style="background: rgba(255, 59, 48, 0.08); border: 1px solid rgba(255, 59, 48, 0.2); border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 13px; color: #ff453a; line-height: 1.4;">
+                ⚠️ <strong>${lang === 'ru' ? 'Слабый период (Штрафной)' : 'Bad Period (Penalty)'}</strong><br>
+                ${lang === 'ru' 
+                  ? `Этот проект завершен неудачно (отмена или пропуски). Он вносит 0.0% в среднее и накладывает фиксированный штраф <strong>-${totalPenalty}%</strong> на ваш общий индекс надежности (вычитается из общего взвешенного среднего <strong>${formatReliabilityIndex(weightedBeforePenalty)}%</strong>).`
+                  : `This project was a bad period (cancelled or excessive skips). It contributes 0.0% to the weighted average and applies a flat penalty of <strong>-${totalPenalty}%</strong> to your overall reliability index (subtracted from the weighted average of all projects <strong>${formatReliabilityIndex(weightedBeforePenalty)}%</strong>).`}
+            </div>
+            ` : ''}
+
+            ${project.is_used_in_formula ? '' : `
+            <div class="ri-project-chips">
+              <span class="ri-chip ${chipTone}">${window.escapeHTML(sourceMeta.chipLabel)}</span>
+            </div>
+            `}
+            <div class="ri-row">
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryPeriod', {}, lang))}</span>
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectMandatoryValue', { actual: project.actual_checkins || 0, total: project.mandatory_days || 14, skips: skips }, lang))}</span>
+            </div>
+            <div class="ri-row">
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectIndexLabel', {}, lang))}</span>
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectIndexValue', { value: formatReliabilityIndex(indexValue), status: statusMeta.label }, lang))}</span>
+            </div>
+            <div class="ri-row">
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeLabel', {}, lang))}</span>
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectOvertimeValue', { days: overtimeDays, bonus: overtimeBonus }, lang))}</span>
+            </div>
+            <div class="ri-row">
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectExitLabel', {}, lang))}</span>
+              <span>${window.escapeHTML(window.t(exitKey, { fairness: window.t('reliabilityDashFairness_' + (project.leave_fairness || 'neutral'), {}, lang) }, lang))}</span>
+            </div>
+            <div class="ri-row">
+              <span>${window.escapeHTML(window.t('reliabilityDashProjectContributionLabel', {}, lang))}</span>
+              <span>${window.escapeHTML(contributionValue)}</span>
+            </div>
+          </div>
         </div>
     `;
 }
+
+window.toggleReliabilityRules = function(event) {
+    if (event) event.stopPropagation();
+    _showReliabilityRules = !_showReliabilityRules;
+    renderReliabilityAlphaModal();
+};
+
+window.selectActiveGrant = function(idx, event) {
+    if (event) event.stopPropagation();
+    window._activeGrantIndex = idx;
+    renderReliabilityAlphaModal();
+};
 
 function renderReliabilityAlphaModal() {
     var modal = document.getElementById('reliability-alpha-modal');
@@ -367,7 +450,7 @@ function renderReliabilityAlphaModal() {
     }
 
     if (!summary || !breakdown) {
-        body.innerHTML = `<div class="page reliability-alpha-page"><section class="card reliability-alpha-card"><div class="reliability-dashboard-empty">${window.escapeHTML(window.t('reliabilityDashModalError', {}, lang))}</div></section></div>`;
+        body.innerHTML = `<div class="page reliability-alpha-page"><section class="ri-surface"><div class="ri-empty-hint">${window.escapeHTML(window.t('reliabilityDashModalError', {}, lang))}</div></section></div>`;
         return;
     }
 
@@ -378,171 +461,213 @@ function renderReliabilityAlphaModal() {
     var visibleProjects = getReliabilityAlphaProjects(_reliabilityDashboardFilter, projects);
     var projectsHtml = visibleProjects.length
         ? visibleProjects.map(buildReliabilityAlphaProjectCard).join('')
-        : `<div class="project-card"><div class="proj-note">${window.escapeHTML(window.t('reliabilityDashProjectsEmpty', {}, lang))}</div></div>`;
-    var grant = summary.last_grant || {};
-    var grantText = grant.has_grant
-        ? window.t('reliabilityDashSummaryGrantValue', {
-            amount: formatReliabilityIndex(grant.amount_bust || 0),
-            base: formatReliabilityIndex(grant.base_bonus || 0),
-            perfect: formatReliabilityIndex(grant.perfect_bonus || 0),
-            karma: formatKarmaValue(grant.karma_at_moment || 0),
-            karma_bonus: formatReliabilityIndex(grant.karma_component || 0)
-        }, lang)
-        : window.t('reliabilityDashSummaryGrantEmptyLong', {}, lang);
-    var fullLabel = window.t('reliabilityDashSummaryParticipationValue', {
-        full: String(summary.completed_full_tests || 0),
-        early: String(summary.completed_early_tests || 0)
-    }, lang);
-    var activeProjectsPill = window.t('reliabilityDashActiveProjectsPill', { count: String(summary.active_projects_count || 0) }, lang);
+        : `<div class="ri-projects-empty">${window.escapeHTML(window.t('reliabilityDashProjectsEmpty', {}, lang))}</div>`;
+
     var tabs = [
+        { key: 'formula', label: getReliabilityAlphaProjectTabLabel('formula') },
         { key: 'all', label: getReliabilityAlphaProjectTabLabel('all') },
         { key: 'current', label: getReliabilityAlphaProjectTabLabel('current') },
-        { key: 'completed', label: getReliabilityAlphaProjectTabLabel('completed') },
-        { key: 'archive', label: getReliabilityAlphaProjectTabLabel('archive') }
+        { key: 'completed', label: getReliabilityAlphaProjectTabLabel('completed') }
     ];
-    var guideCardsHtml = [
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock1Title', {}, lang),
-            'accent-blue',
-            `
-                <div class="guide-rows">
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row1Label', {}, lang))}</span><span class="guide-value danger">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row1Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row2Label', {}, lang))}</span><span class="guide-value warning">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row2Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row3Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row3Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row4Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row4Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row5Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock1Row5Value', {}, lang))}</span></div>
+
+    var overallValue = Number(summary.reliability_overall || 0);
+    var ringPct = Math.max(0, Math.min(100, overallValue));
+    var ringCircumference = 2 * Math.PI * 40;
+    var ringOffset = ringCircumference * (1 - ringPct / 100);
+    var formulaCount = breakdown.projects_used ? breakdown.projects_used.length : 0;
+
+    var rulesPanelHtml = '';
+    if (_showReliabilityRules) {
+        rulesPanelHtml = `
+            <div class="ri-rules-panel">
+              <div class="ri-rules-grid">
+                <div class="ri-rules-col">
+                  <div class="ri-rules-subtitle">${window.escapeHTML(window.t('rulesPanelStatusTitle', {}, lang))}</div>
+                  <div class="ri-rules-list">
+                    <div class="ri-rules-item"><span class="ri-dot expert"></span><span>${window.escapeHTML(window.t('rulesStatusExpert', {}, lang))}</span></div>
+                    <div class="ri-rules-item"><span class="ri-dot active"></span><span>${window.escapeHTML(window.t('rulesStatusActive', {}, lang))}</span></div>
+                    <div class="ri-rules-item"><span class="ri-dot basic"></span><span>${window.escapeHTML(window.t('rulesStatusBasic', {}, lang))}</span></div>
+                    <div class="ri-rules-item"><span class="ri-dot minimal"></span><span>${window.escapeHTML(window.t('rulesStatusMinimal', {}, lang))}</span></div>
+                    <div class="ri-rules-item"><span class="ri-dot bad"></span><span>${window.escapeHTML(window.t('rulesStatusBad', {}, lang))}</span></div>
+                    <div class="ri-rules-item"><span class="ri-dot newbie"></span><span>${window.escapeHTML(window.t('rulesStatusNewbie', {}, lang))}</span></div>
+                  </div>
                 </div>
-            `,
-            window.t('reliabilityDashGuideBlock1Mini', {}, lang)
-        ),
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock2Title', {}, lang),
-            'accent-cyan',
-            `
-                <div class="guide-rows">
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row1Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row1Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row2Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row2Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row3Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock2Row3Value', {}, lang))}</span></div>
+                <div class="ri-rules-col">
+                  <div class="ri-rules-subtitle">${window.escapeHTML(window.t('rulesPanelCalcTitle', {}, lang))}</div>
+                  <div class="ri-rules-list">
+                    <div class="ri-rules-item"><span><strong>${window.escapeHTML(window.t('rulesRuleHistoryTitle', {}, lang))}</strong> ${window.escapeHTML(window.t('rulesRuleHistoryText', {}, lang))}</span></div>
+                    <div class="ri-rules-item"><span><strong>${window.escapeHTML(window.t('rulesRuleFreshnessTitle', {}, lang))}</strong> ${window.escapeHTML(window.t('rulesRuleFreshnessText', {}, lang))}</span></div>
+                    <div class="ri-rules-item"><span><strong>${window.escapeHTML(window.t('rulesRuleOvertimeTitle', {}, lang))}</strong> ${window.escapeHTML(window.t('rulesRuleOvertimeText', {}, lang))}</span></div>
+                    <div class="ri-rules-item"><span><strong>${window.escapeHTML(window.t('rulesRulePenaltiesTitle', {}, lang))}</strong> ${window.escapeHTML(window.t('rulesRulePenaltiesText', {}, lang))}</span></div>
+                  </div>
                 </div>
-            `,
-            window.t('reliabilityDashGuideBlock2Mini', {}, lang)
-        ),
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock3Title', {}, lang),
-            'accent-indigo',
-            `
-                <div class="guide-rows">
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row1Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row1Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row2Label', {}, lang))}</span><span class="guide-value neutral">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row2Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row3Label', {}, lang))}</span><span class="guide-value danger">${window.escapeHTML(window.t('reliabilityDashGuideBlock3Row3Value', {}, lang))}</span></div>
+              </div>
+            </div>
+        `;
+    }
+
+    var grants = summary.grants_history || [];
+    if (window._activeGrantIndex >= grants.length) {
+        window._activeGrantIndex = 0;
+    }
+
+    var grantsSectionHtml = '';
+    if (grants.length > 0) {
+        var activeGrant = grants[window._activeGrantIndex];
+        var isGolden = activeGrant.is_golden;
+        
+        var badgeText = '';
+        if (activeGrant.is_early) {
+            badgeText = lang === 'ru' ? 'Досрочный финиш' : 'Early Finish';
+            if (activeGrant.is_golden) {
+                badgeText += lang === 'ru' ? ' (Идеальный)' : ' (Perfect)';
+            }
+        } else {
+            badgeText = isGolden
+                ? window.t('reliabilityDashSummaryGrantBadgeGolden', {}, lang)
+                : window.t('reliabilityDashSummaryGrantBadgeRegular', { skips: activeGrant.skips_count || 0 }, lang);
+        }
+
+        var detailsText = window.t('reliabilityDashSummaryGrantValue', {
+            amount: formatReliabilityIndex(activeGrant.amount_bust || 0),
+            base: formatReliabilityIndex(activeGrant.base_bonus || 0),
+            perfect: formatReliabilityIndex(activeGrant.perfect_bonus || 0),
+            karma: formatReliabilityIndex(activeGrant.karma_at_moment || 0),
+            karma_bonus: formatReliabilityIndex(activeGrant.karma_component || 0)
+        }, lang);
+
+        function formatIsoDate(isoStr) {
+            if (!isoStr) return '—';
+            try {
+                var d = new Date(isoStr);
+                if (isNaN(d.getTime())) return '—';
+                var day = String(d.getDate()).padStart(2, '0');
+                var month = String(d.getMonth() + 1).padStart(2, '0');
+                var year = d.getFullYear();
+                return day + '.' + month + '.' + year;
+            } catch(e) {
+                return '—';
+            }
+        }
+
+        grantsSectionHtml = `
+            <section class="ri-surface">
+              <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
+              <div class="ri-grants-tiles">
+                ${grants.map(function(g, idx) {
+                  var icon = g.is_golden ? '🏆' : '💎';
+                  var activeClass = idx === window._activeGrantIndex ? 'active' : '';
+                  var goldenClass = g.is_golden ? 'is-golden' : '';
+                  return `
+                    <button type="button" class="ri-grant-tile ${activeClass} ${goldenClass}" onclick="selectActiveGrant(${idx}, event)">
+                      <span>${icon}</span>
+                      <span>${formatReliabilityIndex(g.amount_bust)} $BUST</span>
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+              <div class="ri-grant-detail">
+                <div class="ri-grant-detail-row">
+                  <span>${window.escapeHTML(window.t('reliabilityDashSummaryGrantLabel', {}, lang))}</span>
+                  <span>${window.escapeHTML(activeGrant.app_name || '')}</span>
                 </div>
-            `,
-            window.t('reliabilityDashGuideBlock3Mini', {}, lang)
-        ),
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock4Title', {}, lang),
-            'accent-red',
-            `
-                <ol class="guide guide-list">
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item1', {}, lang))}</li>
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item2', {}, lang))}</li>
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item3', {}, lang))}</li>
-                  <li>${window.escapeHTML(window.t('reliabilityDashGuideBlock4Item4', {}, lang))}</li>
-                </ol>
-            `,
-            window.t('reliabilityDashGuideBlock4Mini', {}, lang)
-        ),
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock5Title', {}, lang),
-            'accent-gold',
-            `
-                <div class="guide-rows">
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row1Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row1Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row2Label', {}, lang))}</span><span class="guide-value good">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row2Value', {}, lang))}</span></div>
-                  <div class="guide-row"><span>${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row3Label', {}, lang))}</span><span class="guide-value gold">${window.escapeHTML(window.t('reliabilityDashGuideBlock5Row3Value', {}, lang))}</span></div>
+                <div class="ri-grant-detail-row">
+                  <span>${lang === 'ru' ? 'Дата получения' : 'Date received'}</span>
+                  <span>${window.escapeHTML(formatIsoDate(activeGrant.granted_at))}</span>
                 </div>
-            `,
-            window.t('reliabilityDashGuideBlock5Mini', {}, lang)
-        ),
-        buildReliabilityAlphaGuideCard(
-            window.t('reliabilityDashGuideBlock6Title', {}, lang),
-            'accent-green',
-            `
-                <div class="guide-tags">
-                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag1', {}, lang))}</span>
-                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag2', {}, lang))}</span>
-                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag3', {}, lang))}</span>
-                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag4', {}, lang))}</span>
-                  <span class="guide-tag">${window.escapeHTML(window.t('reliabilityDashGuideBlock6Tag5', {}, lang))}</span>
-                </div>
-            `,
-            window.t('reliabilityDashGuideBlock6Mini', {}, lang)
-        )
-    ].join('');
+                <div class="ri-grant-formula">${window.escapeHTML(detailsText)}</div>
+                <span class="ri-grant-badge ${isGolden ? 'is-golden' : 'is-regular'}">${window.escapeHTML(badgeText)}</span>
+              </div>
+            </section>
+        `;
+    } else {
+        grantsSectionHtml = `
+            <section class="ri-surface">
+              <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
+              <div class="ri-empty-hint">${window.escapeHTML(window.t('reliabilityDashGrantsNoHistory', {}, lang))}</div>
+            </section>
+        `;
+    }
 
     body.innerHTML = `
         <div class="page reliability-alpha-page">
-          <section class="card reliability-alpha-card">
-            <div class="header">
-              <div class="user-main">
-                <div class="avatar">${getReliabilityAlphaAvatar(summary.display_name)}</div>
-                <div class="user-info">
-                  <div class="user-name">${window.escapeHTML(summary.display_name || window.t('reliabilityDashSummaryDefaultName', {}, lang))}</div>
-                  <div class="user-label">${window.escapeHTML(window.t('reliabilityDashSummaryUserLabel', { total: String(summary.completed_tests || 0), full: String(summary.completed_full_tests || 0), early: String(summary.completed_early_tests || 0) }, lang))}</div>
+          <section class="ri-hero status-${overallStatus.tone}">
+            <div class="ri-hero-glow"></div>
+            <div class="ri-hero-row">
+              <div class="ri-ring" aria-hidden="true">
+                <svg viewBox="0 0 100 100">
+                  <circle class="ri-ring-track" cx="50" cy="50" r="40"></circle>
+                  <circle class="ri-ring-value" cx="50" cy="50" r="40"
+                    stroke-dasharray="${ringCircumference.toFixed(2)}"
+                    stroke-dashoffset="${ringOffset.toFixed(2)}"></circle>
+                </svg>
+                <div class="ri-ring-center">
+                  <span class="ri-ring-number">${formatReliabilityIndex(overallValue)}</span>
+                  <span class="ri-ring-unit">%</span>
                 </div>
               </div>
-              <div class="pill">${window.escapeHTML(activeProjectsPill)}</div>
-            </div>
-
-            <div class="summary-grid">
-              <div class="summary-item">
-                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityLabel', {}, lang))}</div>
-                <div class="summary-value">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityValue', { value: formatReliabilityIndex(summary.reliability_overall), status: overallStatus.label }, lang))}</div>
-                <div class="summary-extra">${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')}</div>
-              </div>
-              <div class="summary-item">
-                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryKarmaLabel', {}, lang))}</div>
-                <div class="summary-value">${window.escapeHTML(formatKarmaValue(summary.karma))}</div>
-                <div class="summary-extra">${window.escapeHTML(window.t('reliabilityDashSummaryKarmaExtra', {}, lang))}</div>
-              </div>
-              <div class="summary-item">
-                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryGrantLabel', {}, lang))}</div>
-                <div class="summary-value">${window.escapeHTML(grant.has_grant ? formatReliabilityIndex(grant.amount_bust || 0) + ' $BUST' : window.t('reliabilityDashGrantEmptyShort', {}, lang))}</div>
-                <div class="summary-extra">${window.escapeHTML(grantText)}</div>
-                ${grant.has_grant ? `<div class="grant-badge">${window.escapeHTML(window.t('reliabilityDashSummaryGrantBadge', {}, lang))}</div>` : ''}
-              </div>
-              <div class="summary-item">
-                <div class="summary-label">${window.escapeHTML(window.t('reliabilityDashSummaryParticipationLabel', {}, lang))}</div>
-                <div class="summary-value">${window.escapeHTML(fullLabel)}</div>
-                <div class="summary-extra">${window.escapeHTML(window.t('reliabilityDashSummaryParticipationExtra', {}, lang))}</div>
+              <div class="ri-hero-meta">
+                <div class="ri-hero-label">${window.escapeHTML(window.t('reliabilityDashSummaryReliabilityLabel', {}, lang))}</div>
+                <span class="ri-hero-status">${window.escapeHTML(overallStatus.label)}</span>
+                <div class="ri-hero-comment">${window.escapeHTML(summary.reliability_comment || breakdown.formula_comment || '')}</div>
               </div>
             </div>
+          </section>
 
-            <div class="link-main" onclick="document.getElementById('reliability-alpha-guide').scrollIntoView({ behavior: 'smooth', block: 'start' })">${window.escapeHTML(window.t('reliabilityDashLinkMain', {}, lang))}</div>
+          <div class="ri-stats">
+            <div class="ri-stat">
+              <div class="ri-stat-val">${summary.completed_tests || 0}</div>
+              <div class="ri-stat-lbl">${window.escapeHTML(window.t('reliabilityStatsTestsLabel', {}, lang))}</div>
+              <div class="ri-stat-sub">${window.escapeHTML(window.t('reliabilityStatsTestsSub', { full: summary.completed_full_tests || 0, early: summary.completed_early_tests || 0 }, lang))}</div>
+            </div>
+            <div class="ri-stat">
+              <div class="ri-stat-val">${summary.grant_tests_count || 0}</div>
+              <div class="ri-stat-lbl">${window.escapeHTML(window.t('reliabilityStatsGrantsLabel', {}, lang))}</div>
+              <div class="ri-stat-sub">${window.escapeHTML(window.t('reliabilityStatsGrantsSub', { golden: summary.golden_count || 0 }, lang))}</div>
+            </div>
+            <div class="ri-stat">
+              <div class="ri-stat-val">${formulaCount}</div>
+              <div class="ri-stat-lbl">${window.escapeHTML(window.t('reliabilityStatsFormulaLabel', {}, lang))}</div>
+              <div class="ri-stat-sub">${window.escapeHTML(window.t('reliabilityStatsFormulaSub', { k: formulaCount || 5 }, lang))}</div>
+            </div>
+          </div>
 
+          <div class="ri-influence">
+            <div class="ri-influence-card">
+              <div class="ri-influence-header">
+                <div class="ri-influence-icon is-showcase">🌍</div>
+                <div class="ri-influence-title">${window.escapeHTML(window.t('influenceShowcaseTitle', {}, lang))}</div>
+              </div>
+              <div class="ri-influence-text">${window.escapeHTML(window.t('influenceShowcaseText', {}, lang))}</div>
+            </div>
+            <div class="ri-influence-card">
+              <div class="ri-influence-header">
+                <div class="ri-influence-icon is-mail">📨</div>
+                <div class="ri-influence-title">${window.escapeHTML(window.t('influenceMatchmakingTitle', {}, lang))}</div>
+              </div>
+              <div class="ri-influence-text">${window.escapeHTML(window.t('influenceMatchmakingText', {}, lang))}</div>
+            </div>
+          </div>
+
+          <div>
+            <button type="button" class="ri-rules-btn ${_showReliabilityRules ? 'active' : ''}" onclick="toggleReliabilityRules(event)">
+              <span class="ri-rules-btn-left">${window.escapeHTML(window.t('rulesDisclosureBtn', {}, lang))}</span>
+              <span class="ri-rules-chevron">▼</span>
+            </button>
+            ${rulesPanelHtml}
+          </div>
+
+          ${grantsSectionHtml}
+
+          <section class="ri-surface">
+            <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</h4>
             <div class="tabs">
               ${tabs.map(function(tab) {
                 return `<button type="button" class="tab ${_reliabilityDashboardFilter === tab.key ? 'active' : ''}" onclick="setReliabilityDashboardFilter('${tab.key}')">${window.escapeHTML(tab.label)}</button>`;
               }).join('')}
             </div>
+            <div class="ri-projects">${projectsHtml}</div>
           </section>
-
-          <div class="layout-2">
-            <section class="card reliability-alpha-card" id="reliability-alpha-guide">
-              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</div>
-                            <div class="section-copy">${window.escapeHTML(window.t('reliabilityDashProjectsHistoryHint', {}, lang))}</div>
-              <div class="projects-grid">
-                ${projectsHtml}
-              </div>
-            </section>
-
-            <section class="card reliability-alpha-card">
-              <div class="section-title">${window.escapeHTML(window.t('reliabilityDashGuideSectionTitle', {}, lang))}</div>
-                            <div class="guide-cards">
-                                ${guideCardsHtml}
-                            </div>
-            </section>
-          </div>
         </div>
     `;
 }
@@ -557,7 +682,7 @@ function openReliabilityAlphaModal() {
     var body = document.getElementById('reliability-alpha-body');
     if (!modal || !body) return;
 
-    _reliabilityDashboardFilter = 'all';
+    _reliabilityDashboardFilter = 'formula';
     body.innerHTML = buildReliabilityAlphaSkeleton();
     modal.classList.add('active');
 
@@ -585,11 +710,11 @@ function closeReliabilityDashboard(event) {
     closeReliabilityAlphaModal(event);
 }
 
-function setReliabilityDashboardFilter(filterKey) {
-    _reliabilityDashboardFilter = ['all', 'current', 'completed', 'archive'].indexOf(filterKey) >= 0 ? filterKey : 'all';
+window.setReliabilityDashboardFilter = function(filterKey) {
+    _reliabilityDashboardFilter = ['formula', 'all', 'current', 'completed', 'guide'].indexOf(filterKey) >= 0 ? filterKey : 'formula';
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     renderReliabilityAlphaModal();
-}
+};
 
 
 /* === Market / guest / external / modals (moved from ui.js) === */
@@ -598,6 +723,13 @@ function getLangBadge(targetLang) {
     if (langCode === 'RU') return `<button type="button" class="lang-badge notranslate" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(getProjectLanguageToast('RU'))}')">🇷🇺</button>`;
     if (langCode === 'EN') return `<button type="button" class="lang-badge notranslate" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(getProjectLanguageToast('EN'))}')">🇬🇧</button>`;
     return '';
+}
+
+function formatAvgHandleHoursLabel(hours) {
+    const n = Number(hours);
+    if (!Number.isFinite(n) || n < 0) return null;
+    if (Math.abs(n - Math.round(n)) < 0.05) return String(Math.round(n));
+    return n.toFixed(1).replace(/\.0$/, '');
 }
 
 function renderFeedCard(item, kind) {
@@ -702,7 +834,7 @@ function renderFeedCard(item, kind) {
                     <div class="card-title notranslate">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
                     <div class="market-owner notranslate" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center;">
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
                     ${langBadge}
                     <span class="meta-chip accent-yellow">☯️ ${item.owner_karma || 0}</span>
                 </div>
@@ -2516,30 +2648,45 @@ function pluralizeGrantWord(count) {
     return window.t('countGrantWord_many', {}, lang);
 }
 
-function formatDeveloperAchievements(completedTests, goldenCount, totalGrants) {
-    const testsWord = pluralizeTestWord(completedTests);
-    if (totalGrants > 0 && goldenCount > 0) {
-        return window.t('developerAchievementsWithGrantFull', {
-            tests_count: completedTests,
-            tests_word: testsWord,
-            grants_count: totalGrants,
-            grants_word: pluralizeGrantWord(totalGrants),
-            golden_count: goldenCount,
-            golden_word: pluralizeGrantWord(goldenCount),
-            grant_tag: window.t('developerGrantTag', {}, lang)
-        }, lang);
-    }
-    if (totalGrants > 0) {
-        return window.t('developerAchievementsWithGrant', {
-            tests_count: completedTests,
-            tests_word: testsWord,
-            grants_count: totalGrants,
-            grants_word: pluralizeGrantWord(totalGrants)
-        }, lang);
-    }
-    return window.t('developerAchievementsNoGrant', {
-        tests_count: completedTests,
-        tests_word: testsWord
+/** Russian: 1 балл, 2 балла, 5 баллов. English: point/points. */
+function pluralizePointsWord(count) {
+    const value = Math.abs(Number(count) || 0);
+    if (lang !== 'ru') return window.t(value === 1 ? 'countPointsWord_one' : 'countPointsWord_many', {}, lang);
+    const mod10 = value % 10;
+    const mod100 = value % 100;
+    if (mod10 === 1 && mod100 !== 11) return window.t('countPointsWord_one', {}, lang);
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return window.t('countPointsWord_few', {}, lang);
+    return window.t('countPointsWord_many', {}, lang);
+}
+
+function formatContributionPointsLabel(count) {
+    const value = Math.round(Number(count) || 0);
+    return window.t('contributionHistoryScoreLine', {
+        score: value,
+        points_word: pluralizePointsWord(value),
+    }, lang);
+}
+
+/** Numeric $BUST amount without currency suffix (i18n already appends $BUST). */
+function formatContributionBustNumber(value) {
+    if (typeof formatAmountValue === 'function') return formatAmountValue(value, 1);
+    const n = Number(value || 0);
+    return Number.isFinite(n) ? n.toFixed(1) : '0.0';
+}
+
+function formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests) {
+    const safeCompleted = Number(completedTests || 0);
+    const safeGolden = Number(goldenCount || 0);
+    const safeGrants = Number(totalGrants || 0);
+    const safeActive = Number(activeTests || 0);
+    return window.t('developerAchievementsLine', {
+        tests_count: safeCompleted,
+        tests_word: pluralizeTestWord(safeCompleted),
+        grants_count: safeGrants,
+        grants_word: pluralizeGrantWord(safeGrants),
+        golden_count: safeGolden,
+        active_label: window.t('developerActiveLabel', {}, lang),
+        active_count: safeActive
     }, lang);
 }
 
@@ -2641,6 +2788,52 @@ var _checkinOptionsFlow = 'regular';
 var _playReviewModalAppId = null;
 var _playReviewModalSource = 'badge';
 
+/** Survives Telegram openLink suspend/reload better than in-memory flags alone. */
+function _playReviewSessionKey(appId) {
+    return 'playReviewRetry:' + String(Number(appId) || 0);
+}
+
+function _loadPlayReviewSession(appId) {
+    var empty = { step1Done: false, screenshotUrl: '' };
+    try {
+        var raw = sessionStorage.getItem(_playReviewSessionKey(appId));
+        if (!raw) return empty;
+        var parsed = JSON.parse(raw);
+        return {
+            step1Done: !!(parsed && parsed.step1Done),
+            screenshotUrl: String((parsed && parsed.screenshotUrl) || ''),
+        };
+    } catch (e) {
+        return empty;
+    }
+}
+
+function _savePlayReviewSession(appId, patch) {
+    var current = _loadPlayReviewSession(appId);
+    var next = {
+        step1Done: patch && Object.prototype.hasOwnProperty.call(patch, 'step1Done')
+            ? !!patch.step1Done
+            : !!current.step1Done,
+        screenshotUrl: patch && Object.prototype.hasOwnProperty.call(patch, 'screenshotUrl')
+            ? String(patch.screenshotUrl || '')
+            : String(current.screenshotUrl || ''),
+    };
+    try {
+        sessionStorage.setItem(_playReviewSessionKey(appId), JSON.stringify(next));
+    } catch (e) {}
+    window._playReviewStep1Done = !!next.step1Done;
+    return next;
+}
+
+function _clearPlayReviewSession(appId) {
+    try {
+        sessionStorage.removeItem(_playReviewSessionKey(appId));
+    } catch (e) {}
+    if (Number(appId) === Number(_playReviewModalAppId)) {
+        window._playReviewStep1Done = false;
+    }
+}
+
 function renderCheckinReviewOptions() {
     var mount = document.getElementById('checkin-review-options');
     if (!mount) return;
@@ -2664,7 +2857,9 @@ function renderPlayReviewModal() {
     var isApproved = reviewStatus === 'approved';
     var reviewRejected = reviewStatus === 'rejected' || !!(test.rewards_summary && test.rewards_summary.review_rejected);
     var reviewUrl = typeof window.getPlayReviewUrl === 'function' ? window.getPlayReviewUrl(test.id) : '';
-    var screenshotUrl = (reviewStatus === 'rejected') ? '' : (test.play_review_screenshot_url || '');
+    var session = _loadPlayReviewSession(_playReviewModalAppId);
+    // Session screenshot wins: myTests refresh after openLink must not wipe a fresh upload.
+    var screenshotUrl = session.screenshotUrl || test.play_review_screenshot_url || '';
     var safeAppName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
 
     if (isApproved) {
@@ -2779,8 +2974,12 @@ function renderPlayReviewModal() {
            </div>`
         : '';
 
-    // Step 1 done state
-    var step1Done = isReadOnly || !!window._playReviewStep1Done;
+    // Step 1 done state.
+    // Screenshot upload also counts as step1: openLink often kills WebApp before in-memory flag is set.
+    var step1Done = isReadOnly
+        || !!window._playReviewStep1Done
+        || !!session.step1Done
+        || !!screenshotUrl;
     
     // Step 2 done state
     var step2Done = !!screenshotUrl;
@@ -2898,9 +3097,13 @@ function handlePlayReviewOpenStoreClick(event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    openPlayReviewStore();
+    // IMPORTANT: mark step1 BEFORE openLink — Telegram may suspend/kill the WebApp immediately.
     window._playReviewStep1Done = true;
+    if (_playReviewModalAppId != null) {
+        _savePlayReviewSession(_playReviewModalAppId, { step1Done: true });
+    }
     renderPlayReviewModal();
+    openPlayReviewStore();
 }
 window.handlePlayReviewOpenStoreClick = handlePlayReviewOpenStoreClick;
 
@@ -2912,6 +3115,9 @@ function handleRemoveReviewScreenshot(event) {
     if (test) {
         test.play_review_screenshot_url = '';
         persistTestsCacheSnapshot();
+    }
+    if (_playReviewModalAppId != null) {
+        _savePlayReviewSession(_playReviewModalAppId, { screenshotUrl: '' });
     }
     renderPlayReviewModal();
 }
@@ -3059,9 +3265,12 @@ function _submitCheckinFeedback(feedbackType) {
         sendExternalBugReportFromUi(appId, null, feedbackType);
         return;
     }
-    initiateProjectFeedback(appId, checkinContext
-        ? { checkinContext: checkinContext, feedbackType: feedbackType }
-        : { feedbackType: feedbackType });
+    var launchFeedback = function() {
+        initiateProjectFeedback(appId, checkinContext
+            ? { checkinContext: checkinContext, feedbackType: feedbackType }
+            : { feedbackType: feedbackType });
+    };
+    launchFeedback();
 }
 
 function checkinOptionsReview() {
@@ -3128,6 +3337,12 @@ async function submitPlayReview() {
                 }
                 persistTestsCacheSnapshot();
             }
+            if (typeof _clearPlayReviewSession === 'function') {
+                _clearPlayReviewSession(_playReviewModalAppId);
+            } else {
+                try { sessionStorage.removeItem('playReviewRetry:' + String(Number(_playReviewModalAppId) || 0)); } catch (e) {}
+            }
+            window._playReviewStep1Done = false;
             var checkin = data.checkin || null;
             var checkinPerformed = !!data.checkin_performed;
             if (!checkinPerformed && checkin && !checkin.already_checked_today) {
@@ -3165,7 +3380,8 @@ async function submitPlayReview() {
                     showToast(window.t('playReviewSubmittedToast', {}, lang));
                 }
             }
-            renderPlayReviewModal();
+            // Close immediately after success toast — do not leave the modal hanging open.
+            closePlayReviewModal();
             if (typeof window.renderTests === 'function') window.renderTests(true);
             if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
         } else {
@@ -3177,41 +3393,123 @@ async function submitPlayReview() {
     }
 }
 
-async function rejectPlayReview(feedbackId, projectId, btnEl) {
-    if (!confirm('Reject this review? The tester can upload a new screenshot.')) return;
+async function rejectPlayReview(feedbackId, projectId, btnEl, reason) {
+    var selectedReason = String(reason || '').trim().toLowerCase();
+    if (!selectedReason) {
+        openPlayReviewRejectModal(feedbackId, projectId, btnEl);
+        return;
+    }
     var userId = (window.App && window.App.userId) || window.userId || 0;
-    var formData = new FormData();
-    formData.append('owner_id', String(userId));
     try {
         var apiBase = (window.App && window.App.API_BASE) || '';
         var resp = await fetch(apiBase + '/feedback/' + feedbackId + '/reject-play-review', {
-            method: 'POST', body: formData
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner_id: Number(userId),
+                reason: selectedReason,
+            }),
         });
         var data = await resp.json();
         if (data && data.status === 'success') {
-            // In-place DOM update — hide reject button, change status badge
             if (btnEl) {
                 btnEl.style.display = 'none';
                 var card = btnEl.closest('.fb-card');
                 if (card) {
                     card.classList.remove('fb-card--new');
                     card.classList.add('fb-card--rejected');
-                    var statusEl = card.querySelector('.fb-status');
+                    card.setAttribute('data-feedback-status', 'rejected');
+                    var statusEl = card.querySelector('.fb-status-badge, .fb-status');
                     if (statusEl) {
                         statusEl.textContent = window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected';
-                        statusEl.classList.remove('fb-status--new');
+                        statusEl.classList.remove('fb-status--new', 'fb-status-badge--new', 'fb-status-badge--closed');
+                        statusEl.classList.add('fb-status-badge--declined');
                     }
                     var primaryBtn = card.querySelector('.fb-primary-btn');
                     if (primaryBtn) primaryBtn.style.display = 'none';
                 }
             }
+            if (typeof showToast === 'function') {
+                showToast(window.t('playReviewRejectSuccessToast', {}, lang));
+            }
         } else {
-            alert(data && data.message ? data.message : 'Reject failed');
+            var msg = (data && (data.message || data.code)) ? (data.message || data.code) : 'Reject failed';
+            if (window.tg && window.tg.showAlert) window.tg.showAlert(String(msg));
+            else alert(msg);
         }
     } catch (e) {
         console.error('rejectPlayReview error:', e);
-        alert('Network error');
+        if (window.tg && window.tg.showAlert) window.tg.showAlert('Network error');
+        else alert('Network error');
     }
+}
+
+var _playReviewRejectState = {
+    feedbackId: 0,
+    projectId: 0,
+    btnEl: null,
+    reason: '',
+};
+
+function openPlayReviewRejectModal(feedbackId, projectId, btnEl) {
+    _playReviewRejectState = {
+        feedbackId: Number(feedbackId || 0),
+        projectId: Number(projectId || 0),
+        btnEl: btnEl || null,
+        reason: '',
+    };
+    var modal = document.getElementById('play-review-reject-modal');
+    if (!modal) return;
+    document.querySelectorAll('.play-review-reject-chip').forEach(function (chip) {
+        chip.classList.remove('is-active');
+    });
+    var submitBtn = document.getElementById('play-review-reject-submit-btn');
+    if (submitBtn) submitBtn.disabled = true;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    modal.classList.add('active');
+}
+
+function closePlayReviewRejectModal(event) {
+    if (event && event.target && event.target.id !== 'play-review-reject-modal') return;
+    var modal = document.getElementById('play-review-reject-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function selectPlayReviewRejectReason(reason) {
+    _playReviewRejectState.reason = String(reason || '').trim().toLowerCase();
+    document.querySelectorAll('.play-review-reject-chip').forEach(function (chip) {
+        var chipReason = String(chip.getAttribute('data-reason') || '');
+        chip.classList.toggle('is-active', chipReason === _playReviewRejectState.reason);
+    });
+    var submitBtn = document.getElementById('play-review-reject-submit-btn');
+    if (submitBtn) submitBtn.disabled = !_playReviewRejectState.reason;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+
+async function confirmPlayReviewReject() {
+    var reason = _playReviewRejectState.reason;
+    if (!reason) {
+        if (typeof showToast === 'function') {
+            showToast(window.t('playReviewRejectNeedReasonToast', {}, lang));
+        }
+        return;
+    }
+    var submitBtn = document.getElementById('play-review-reject-submit-btn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.6';
+    }
+    await rejectPlayReview(
+        _playReviewRejectState.feedbackId,
+        _playReviewRejectState.projectId,
+        _playReviewRejectState.btnEl,
+        reason
+    );
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+    }
+    closePlayReviewRejectModal();
 }
 
 async function togglePlayReviewModalCheckbox(input) {
@@ -3238,7 +3536,26 @@ function openPlayReviewModal(appId, event, options) {
     var reviewStatus = typeof window.getPlayReviewStatus === 'function'
         ? window.getPlayReviewStatus(test)
         : String(test && test.play_review_status || 'none').toLowerCase();
-    window._playReviewStep1Done = !!(test && test.play_review_screenshot_url && reviewStatus !== 'rejected');
+    var session = _loadPlayReviewSession(appId);
+
+    if (reviewStatus === 'rejected' && test) {
+        // Drop stale rejected screenshot from the test row, but keep a fresh
+        // session upload if the user already attached one in this retry.
+        if (!session.screenshotUrl && test.play_review_screenshot_url) {
+            test.play_review_screenshot_url = '';
+            if (typeof persistTestsCacheSnapshot === 'function') persistTestsCacheSnapshot();
+        }
+        window._playReviewStep1Done = !!session.step1Done || !!session.screenshotUrl;
+    } else {
+        window._playReviewStep1Done = !!session.step1Done
+            || !!(test && test.play_review_screenshot_url);
+        if (test && test.play_review_screenshot_url && !session.screenshotUrl) {
+            _savePlayReviewSession(appId, {
+                step1Done: true,
+                screenshotUrl: test.play_review_screenshot_url,
+            });
+        }
+    }
 
     renderPlayReviewModal();
     var modal = document.getElementById('play-review-modal');
@@ -3256,6 +3573,7 @@ function closePlayReviewModal(event) {
     var modal = document.getElementById('play-review-modal');
     if (modal) modal.classList.remove('active');
     _playReviewModalSource = 'badge';
+    _playReviewModalAppId = null;
 }
 
 function openPlayReviewStore() {
@@ -3572,6 +3890,176 @@ function formatFeedbackDate(createdAt) {
     });
 }
 
+function formatFeedbackShortDate(createdAt) {
+    const value = new Date(createdAt);
+    if (Number.isNaN(value.getTime())) return '—';
+    const d = value.getDate();
+    const m = value.getMonth() + 1;
+    const yy = String(value.getFullYear()).slice(-2);
+    return d + '.' + m + '.' + yy;
+}
+
+function formatFeedbackRelativeTime(createdAt) {
+    if (!createdAt) return '—';
+    const value = new Date(createdAt);
+    if (Number.isNaN(value.getTime())) return '—';
+    const diffMs = Date.now() - value.getTime();
+    if (diffMs < 0) return formatFeedbackShortDate(createdAt);
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return lang === 'ru' ? 'только что' : 'just now';
+    if (mins < 60) return lang === 'ru' ? (mins + ' мин назад') : (mins + 'm ago');
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return lang === 'ru' ? (hours + ' ч назад') : (hours + 'h ago');
+    const days = Math.floor(hours / 24);
+    if (days < 7) return lang === 'ru' ? (days + ' дн назад') : (days + 'd ago');
+    return formatFeedbackShortDate(createdAt);
+}
+
+function formatFeedbackAvgResponseHours(avgMs) {
+    if (!avgMs || avgMs <= 0 || Number.isNaN(avgMs)) return '—';
+    const hours = avgMs / (60 * 60 * 1000);
+    if (hours < 1) {
+        const mins = Math.max(1, Math.round(avgMs / 60000));
+        return lang === 'ru' ? (mins + ' мин') : (mins + 'm');
+    }
+    const rounded = hours >= 10 ? Math.round(hours) : Math.round(hours * 10) / 10;
+    return lang === 'ru' ? (rounded + ' ч') : (rounded + 'h');
+}
+
+function getFeedbackAvgResponseMs(items) {
+    let processedCount = 0;
+    let totalResponseTimeMs = 0;
+    (items || []).forEach(function(item) {
+        if (isOpenFeedbackStatus(item && item.status)) return;
+        const created = new Date(item.created_at);
+        const updated = new Date(
+            item.processed_at ||
+            item.accepted_at ||
+            item.rejected_at ||
+            item.replied_at ||
+            item.updated_at ||
+            ''
+        );
+        if (Number.isNaN(created.getTime()) || Number.isNaN(updated.getTime())) return;
+        const diff = updated - created;
+        if (diff <= 0 || Number.isNaN(diff)) return;
+        processedCount += 1;
+        totalResponseTimeMs += diff;
+    });
+    if (!processedCount) return 0;
+    return Math.round(totalResponseTimeMs / processedCount);
+}
+
+function resolveFeedbackRejectReasonLabel(reasonRaw) {
+    const reason = String(reasonRaw || '').trim().toLowerCase();
+    if (!reason) return '';
+    // Internal migration placeholders — never show raw codes in UI.
+    if (reason === 'legacy_unknown' || reason === 'unknown' || reason === 'none') return '';
+    const key = 'feedbackRejectReason_' + reason;
+    const labeled = window.t(key, {}, lang);
+    if (labeled && labeled !== key) return labeled;
+    const playKey = 'playReviewRejectReason_' + reason;
+    const playLabeled = window.t(playKey, {}, lang);
+    if (playLabeled && playLabeled !== playKey) return playLabeled;
+    // Hide untranslated machine codes like snake_case leftovers.
+    if (/^[a-z0-9_]+$/.test(reason) && reason.indexOf('_') !== -1) return '';
+    return reasonRaw;
+}
+
+function buildFeedbackMicroSummaryHtml(item, isRejected) {
+    const when = window.escapeHTML(formatFeedbackRelativeTime(
+        (item && (item.processed_at || item.accepted_at || item.rejected_at || item.replied_at || item.updated_at || item.created_at)) || ''
+    ));
+    if (isRejected) {
+        const reasonRaw = String((item && (item.rejection_reason || item.reject_reason || item.decline_reason)) || '').trim();
+        const reasonLabel = reasonRaw ? window.escapeHTML(resolveFeedbackRejectReasonLabel(reasonRaw)) : '';
+        return '<span class="fb-micro-no">❌ ' + window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected') + '</span>' +
+            (reasonLabel ? (' <span class="fb-micro-sep">·</span> ' + reasonLabel) : '') +
+            ' <span class="fb-micro-sep">·</span> ' + when;
+    }
+    const bust = Number((item && item.reward_bust) || 0);
+    const karma = Number((item && item.reward_karma) || 0);
+    const rewardParts = [];
+    if (bust > 0) rewardParts.push(window.escapeHTML(String(bust)) + ' BUST');
+    if (karma > 0) {
+        rewardParts.push(window.escapeHTML(karma.toFixed(1)) + ' к.');
+    }
+    const rewardHtml = rewardParts.length
+        ? (' <span class="fb-micro-sep">·</span> <span class="fb-micro-bust">' + rewardParts.join(' <span class="fb-micro-sep">·</span> ') + '</span>')
+        : '';
+    return '<span class="fb-micro-ok">✔ ' + window.escapeHTML(window.t('feedbackAcceptedLabel', {}, lang) || 'Accepted') + '</span>' +
+        ' <span class="fb-micro-sep">·</span> ' + when + rewardHtml;
+}
+
+function getFeedbackPreviewText(item, isReviewTicket) {
+    if (isReviewTicket) {
+        return window.t('projectFeedbackReviewTicketText', {}, lang) || 'Google Play review';
+    }
+    const text = String((item && item.message_text) || '').replace(/\s+/g, ' ').trim();
+    if (text) return text;
+    return window.t('projectFeedbackNoText', {}, lang) || 'No text';
+}
+
+function getFeedbackTypePillLabel(item) {
+    const feedbackType = String((item && item.type) || 'bug').toLowerCase();
+    if (feedbackType.indexOf('google_play_review') === 0) return 'Review';
+    if (feedbackType === 'idea') return window.t('feedbackChipIdea', {}, lang) || 'Idea';
+    return window.t('feedbackChipBug', {}, lang) || 'Bug';
+}
+
+function groupFeedbackByDate(items) {
+    const groups = {
+        today: [],
+        yesterday: [],
+        thisWeek: [],
+        earlier: []
+    };
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+    const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    (items || []).forEach(function(item) {
+        if (!item.created_at) {
+            groups.earlier.push(item);
+            return;
+        }
+        const date = new Date(item.created_at);
+        if (date >= startOfToday) {
+            groups.today.push(item);
+        } else if (date >= startOfYesterday) {
+            groups.yesterday.push(item);
+        } else if (date >= startOfWeek) {
+            groups.thisWeek.push(item);
+        } else {
+            groups.earlier.push(item);
+        }
+    });
+    return groups;
+}
+window.groupFeedbackByDate = groupFeedbackByDate;
+
+function toggleFeedbackCardCollapse(cardEl, event) {
+    if (!cardEl || !event) return;
+    const target = event.target;
+    if (target.closest('a') || target.closest('button') || target.closest('.fb-media-thumb') || target.closest('input') || target.closest('textarea') || target.closest('.fb-device-line')) {
+        return;
+    }
+    const willExpand = !cardEl.classList.contains('fb-card--expanded');
+    cardEl.classList.toggle('fb-card--collapsed', !willExpand);
+    cardEl.classList.toggle('fb-card--expanded', willExpand);
+    if (willExpand) {
+        feedbackScheduleClampMeasure();
+        window.requestAnimationFrame(function() {
+            try {
+                cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch (_) { /* ignore */ }
+        });
+    }
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+window.toggleFeedbackCardCollapse = toggleFeedbackCardCollapse;
+
 function getFeedbackTypeChip(item) {
     const feedbackType = String(item.type || 'bug').toLowerCase();
     if (feedbackType.indexOf('google_play_review') === 0) {
@@ -3585,13 +4073,14 @@ function getFeedbackTypeChip(item) {
 
 function getProjectFeedbackHeader(project, items) {
     const safeName = window.escapeHTML((project && (project.name || project.package_name)) || window.t('unknownLabel', {}, lang));
-    const totalCount = Number(project && project.feedback_total_count || 0);
     const newCount = Number(project && project.feedback_new_count || 0);
-    
+
     let googlePlayCount = 0;
     let bugCount = 0;
     let ideaCount = 0;
-    
+    let openCount = 0;
+    let processedCount = 0;
+
     if (items && items.length) {
         items.forEach(function(item) {
             const feedbackType = String(item.type || 'bug').toLowerCase();
@@ -3603,8 +4092,23 @@ function getProjectFeedbackHeader(project, items) {
             } else {
                 bugCount++;
             }
+            if (isOpenFeedbackStatus(item.status)) openCount++;
+            else processedCount++;
         });
     }
+
+    const totalCount = openCount + processedCount;
+    const donePct = totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
+    const avgResponseMs = getFeedbackAvgResponseMs(items);
+    const avgResponseText = formatFeedbackAvgResponseHours(avgResponseMs);
+    const typeFilter = _projectFeedbackTypeFilter || 'all';
+    const statusFilter = _projectFeedbackStatusFilter || 'all';
+    const onlyUnprocessed = statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open';
+    const queueLabel = lang === 'ru' ? 'в очереди' : 'in queue';
+    const doneLabel = lang === 'ru' ? 'обработано' : 'done';
+    const speedLabel = lang === 'ru' ? 'скорость' : 'speed';
+    const unprocessedLabel = window.t('feedbackOnlyUnprocessedLabel', {}, lang) || (lang === 'ru' ? 'Только необработанные' : 'Unprocessed only');
+    const allClearLabel = lang === 'ru' ? 'Очередь пуста 🎉' : 'Inbox zero 🎉';
 
     return `
         <div class="feedback-sticky-header">
@@ -3617,20 +4121,41 @@ function getProjectFeedbackHeader(project, items) {
                 ${renderIcon((project && (project.name || project.package_name)) || '', project && project.icon_url)}
                 <div class="card-info">
                     <div class="card-title notranslate">${safeName}</div>
-                    <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}</div>
+                    <div class="card-subtitle">${window.escapeHTML(window.t('projectFeedbackTitle', {}, lang))}${openCount > 0 ? ' · ' + openCount : ''}</div>
                 </div>
             </div>
-            <div class="feedback-header-summary">
-                <div class="feedback-counts">
-                    <span class="meta-chip accent-blue">💬 ${window.t('projectFeedbackTotalChip', { count: totalCount }, lang)}</span>
-                    <span class="meta-chip accent-green">🆕 ${window.t('projectFeedbackNewChip', { count: newCount }, lang)}</span>
+
+            <div class="feedback-dashboard">
+                <div class="feedback-stat feedback-stat--queue${openCount === 0 ? ' is-clear' : ''}">
+                    <span class="feedback-stat-value">${openCount}</span>
+                    <span class="feedback-stat-label">${queueLabel}</span>
+                </div>
+                <div class="feedback-stat">
+                    <span class="feedback-stat-value">${processedCount}</span>
+                    <span class="feedback-stat-label">${doneLabel}</span>
+                </div>
+                <div class="feedback-stat feedback-stat--muted" title="${window.escapeHTML(speedLabel)}">
+                    <span class="feedback-stat-value">${window.escapeHTML(avgResponseText)}</span>
+                    <span class="feedback-stat-label">${speedLabel}</span>
+                </div>
+                <div class="feedback-progress" role="progressbar" aria-valuenow="${donePct}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="feedback-progress-fill" style="width:${donePct}%"></div>
                 </div>
             </div>
+
+            <div class="feedback-inbox-bar">
+                <span class="feedback-inbox-hint">${openCount === 0 ? allClearLabel : (lang === 'ru' ? 'Входящие' : 'Inbox')}</span>
+                <label class="feedback-unprocessed-toggle">
+                    <input type="checkbox" ${onlyUnprocessed ? 'checked' : ''} onchange="toggleFeedbackUnprocessedOnly(this.checked)">
+                    <span>${window.escapeHTML(unprocessedLabel)}</span>
+                </label>
+            </div>
+
             <div class="feedback-filters">
-                <button class="filter-chip active" data-filter="all" onclick="filterFeedback('all')">${window.escapeHTML(window.t('feedbackFilterAll', {}, lang))}</button>
-                <button class="filter-chip" data-filter="google_play" onclick="filterFeedback('google_play')">${window.escapeHTML(window.t('feedbackFilterGooglePlay', {}, lang))} <span class="filter-count">${googlePlayCount}</span></button>
-                <button class="filter-chip" data-filter="bug" onclick="filterFeedback('bug')">${window.escapeHTML(window.t('feedbackFilterBugs', {}, lang))} <span class="filter-count">${bugCount}</span></button>
-                <button class="filter-chip" data-filter="idea" onclick="filterFeedback('idea')">${window.escapeHTML(window.t('feedbackFilterIdeas', {}, lang))} <span class="filter-count">${ideaCount}</span></button>
+                <button type="button" class="filter-chip${typeFilter === 'all' ? ' active' : ''}" data-filter="all" onclick="filterFeedback('all')">${window.escapeHTML(window.t('feedbackFilterAll', {}, lang))}</button>
+                <button type="button" class="filter-chip${typeFilter === 'google_play' ? ' active' : ''}" data-filter="google_play" onclick="filterFeedback('google_play')">${window.escapeHTML(window.t('feedbackFilterGooglePlay', {}, lang))} <span class="filter-count">${googlePlayCount}</span></button>
+                <button type="button" class="filter-chip${typeFilter === 'bug' ? ' active' : ''}" data-filter="bug" onclick="filterFeedback('bug')">${window.escapeHTML(window.t('feedbackFilterBugs', {}, lang))} <span class="filter-count">${bugCount}</span></button>
+                <button type="button" class="filter-chip${typeFilter === 'idea' ? ' active' : ''}" data-filter="idea" onclick="filterFeedback('idea')">${window.escapeHTML(window.t('feedbackFilterIdeas', {}, lang))} <span class="filter-count">${ideaCount}</span></button>
             </div>
         </div>
     `;
@@ -3663,63 +4188,77 @@ function openFeedbackDm(username, feedbackId, isReviewTicket, event) {
 }
 window.openFeedbackDm = openFeedbackDm;
 
-function filterFeedback(filterType) {
-    const container = document.querySelector('.feedback-filters');
-    if (container) {
-        container.querySelectorAll('.filter-chip').forEach(function(btn) {
-            if (btn.getAttribute('data-filter') === filterType) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
+var _projectFeedbackTypeFilter = 'all';
+var _projectFeedbackStatusFilter = 'all';
+var _projectFeedbackCardNodes = null;
+
+function resetProjectFeedbackFilters() {
+    _projectFeedbackTypeFilter = 'all';
+    _projectFeedbackStatusFilter = 'all';
+    _projectFeedbackCardNodes = null;
+}
+
+function toggleFeedbackUnprocessedOnly(checked) {
+    _projectFeedbackStatusFilter = checked ? 'new' : 'all';
+    applyProjectFeedbackFilters();
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+window.toggleFeedbackUnprocessedOnly = toggleFeedbackUnprocessedOnly;
+
+function normalizeFeedbackStatus(status) {
+    return String(status || '').trim().toLowerCase();
+}
+
+/** Open/active ticket: DB default is pending; legacy rows may still be new/processing. */
+function isOpenFeedbackStatus(status) {
+    const s = normalizeFeedbackStatus(status);
+    return s === 'pending' || s === 'new' || s === 'processing';
+}
+
+function isRejectedFeedbackStatus(status) {
+    const s = normalizeFeedbackStatus(status);
+    return s === 'rejected' || s === 'declined';
+}
+
+function feedbackMatchesTypeFilter(cardType, filterType) {
+    cardType = String(cardType || '').toLowerCase();
+    filterType = String(filterType || 'all').toLowerCase();
+    const isGooglePlay = cardType.indexOf('google_play_review') === 0;
+    if (filterType === 'all') return true;
+    if (filterType === 'google_play') return isGooglePlay;
+    if (filterType === 'bug') return !isGooglePlay && (cardType === 'bug' || cardType === 'general' || cardType === 'question');
+    if (filterType === 'idea') return !isGooglePlay && cardType === 'idea';
+    return true;
+}
+
+function feedbackMatchesStatusFilter(cardStatus, statusFilter) {
+    cardStatus = normalizeFeedbackStatus(cardStatus);
+    statusFilter = String(statusFilter || 'all').toLowerCase();
+    if (statusFilter === 'all') return true;
+    // "New" chip = open tickets (pending + legacy new/processing)
+    if (statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open') {
+        return isOpenFeedbackStatus(cardStatus);
     }
+    return true;
+}
 
-    const cards = document.querySelectorAll('.fb-card');
-    cards.forEach(function(card) {
-        const type = card.getAttribute('data-feedback-type') || '';
-        const isGooglePlay = type.indexOf('google_play_review') === 0;
+function cacheProjectFeedbackCards() {
+    if (_projectFeedbackCardNodes && _projectFeedbackCardNodes.length) return _projectFeedbackCardNodes;
+    var list = document.querySelector('#project-feedback-body .feedback-list');
+    if (!list) return [];
+    _projectFeedbackCardNodes = Array.prototype.slice.call(list.querySelectorAll('.fb-card'));
+    return _projectFeedbackCardNodes;
+}
 
-        if (filterType === 'all') {
-            card.style.display = '';
-        } else if (filterType === 'google_play') {
-            if (isGooglePlay) {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
-            }
-        } else if (filterType === 'bug') {
-            if (!isGooglePlay && (type === 'bug' || type === 'general' || type === 'question')) {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
-            }
-        } else if (filterType === 'idea') {
-            if (!isGooglePlay && type === 'idea') {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
-            }
-        }
-    });
-
-    const visibleCards = Array.prototype.slice.call(cards).filter(function(card) {
-        return card.style.display !== 'none';
-    });
-    
-    let emptyEl = document.querySelector('.feedback-filtered-empty');
-    if (visibleCards.length === 0 && cards.length > 0) {
+function updateProjectFeedbackFilteredEmptyState(visibleCount, totalCount) {
+    var listContainer = document.querySelector('#project-feedback-body .feedback-list');
+  var emptyEl = document.querySelector('#project-feedback-body .feedback-filtered-empty');
+    if (visibleCount === 0 && totalCount > 0) {
         if (!emptyEl) {
             emptyEl = document.createElement('div');
             emptyEl.className = 'feedback-filtered-empty';
-            emptyEl.style.textAlign = 'center';
-            emptyEl.style.padding = '24px';
-            emptyEl.style.color = 'var(--hint-color)';
             emptyEl.textContent = window.t('feedbackFilteredEmpty', {}, lang);
-            const listContainer = document.querySelector('.feedback-list') || document.getElementById('project-feedback-list');
-            if (listContainer) {
-                listContainer.appendChild(emptyEl);
-            }
+            if (listContainer) listContainer.appendChild(emptyEl);
         } else {
             emptyEl.style.display = '';
         }
@@ -3727,7 +4266,77 @@ function filterFeedback(filterType) {
         emptyEl.style.display = 'none';
     }
 }
+
+function applyProjectFeedbackFilters() {
+    var cards = cacheProjectFeedbackCards();
+    var typeFilter = _projectFeedbackTypeFilter || 'all';
+    var statusFilter = _projectFeedbackStatusFilter || 'all';
+    var visibleCount = 0;
+
+    for (var i = 0; i < cards.length; i++) {
+        var card = cards[i];
+        var cardType = card.getAttribute('data-feedback-type') || '';
+        var cardStatus = card.getAttribute('data-feedback-status') || '';
+        var visible = feedbackMatchesTypeFilter(cardType, typeFilter) && feedbackMatchesStatusFilter(cardStatus, statusFilter);
+        card.classList.toggle('fb-card--hidden', !visible);
+        if (visible) visibleCount++;
+    }
+
+    var list = document.querySelector('#project-feedback-body .feedback-list');
+    if (list) {
+        var headers = list.querySelectorAll('.feedback-section-header');
+        headers.forEach(function(header) {
+            var next = header.nextElementSibling;
+            var hasVisible = false;
+            while (next && !next.classList.contains('feedback-section-header')) {
+                if (next.classList.contains('fb-card') && !next.classList.contains('fb-card--hidden')) {
+                    hasVisible = true;
+                    break;
+                }
+                next = next.nextElementSibling;
+            }
+            header.style.display = hasVisible ? '' : 'none';
+            var countEl = header.querySelector('.feedback-section-count');
+            if (countEl && hasVisible) {
+                var count = 0;
+                next = header.nextElementSibling;
+                while (next && !next.classList.contains('feedback-section-header')) {
+                    if (next.classList.contains('fb-card') && !next.classList.contains('fb-card--hidden')) count++;
+                    next = next.nextElementSibling;
+                }
+                countEl.textContent = String(count);
+            }
+        });
+    }
+
+    var typeContainer = document.querySelector('#project-feedback-body .feedback-filters');
+    if (typeContainer) {
+        typeContainer.querySelectorAll('.filter-chip').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-filter') === typeFilter);
+        });
+    }
+    var unprocessedToggle = document.querySelector('#project-feedback-body .feedback-unprocessed-toggle input');
+    if (unprocessedToggle) {
+        unprocessedToggle.checked = statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open';
+    }
+
+    updateProjectFeedbackFilteredEmptyState(visibleCount, cards.length);
+}
+
+function filterFeedback(filterType) {
+    _projectFeedbackTypeFilter = String(filterType || 'all');
+    applyProjectFeedbackFilters();
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+
+function filterFeedbackStatus(statusFilter) {
+    _projectFeedbackStatusFilter = String(statusFilter || 'all');
+    applyProjectFeedbackFilters();
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+
 window.filterFeedback = filterFeedback;
+window.filterFeedbackStatus = filterFeedbackStatus;
 
 function feedbackOnImageError(imgEl) {
     imgEl.onerror = null;
@@ -3759,7 +4368,9 @@ function feedbackScheduleClampMeasure() {
 
 // Keep clamp measure functional
 function feedbackMeasureClampedText() {
-    document.querySelectorAll('.fb-text[data-feedback-clamp="1"]').forEach(function(el) {
+    var list = document.querySelector('#project-feedback-body .feedback-list');
+    if (!list) return;
+    list.querySelectorAll('.fb-card:not(.fb-card--hidden) .fb-text[data-feedback-clamp="1"]').forEach(function(el) {
         var id = el.getAttribute('data-feedback-id');
         var link = id ? document.getElementById('fbtl-' + id) : null;
         if (!link) return;
@@ -3777,200 +4388,243 @@ function renderProjectFeedbackCards(project, items) {
     }
     const projectId = Number(project && (project.id || project.app_id) || 0);
 
-    return `<div class="feedback-list">${items.map(function(item) {
-        const feedbackType = String(item.type || 'bug').toLowerCase();
-        const isReviewTicket = feedbackType.indexOf('google_play_review') === 0;
-        const username = (item.tester_username || '').replace('@', '');
-        const safeUsername = escapeInlineJsString(username);
-        const fullName = window.escapeHTML(item.tester_full_name || '');
-        const usernameLabel = username ? '@' + window.escapeHTML(username) : '';
-        const isNew = item.status === 'new';
+    const groups = groupFeedbackByDate(items);
+    const groupTitles = {
+        today: lang === 'ru' ? 'Сегодня' : 'Today',
+        yesterday: lang === 'ru' ? 'Вчера' : 'Yesterday',
+        thisWeek: lang === 'ru' ? 'На этой неделе' : 'This week',
+        earlier: lang === 'ru' ? 'Ранее' : 'Earlier'
+    };
 
-        // ── Avatar initials & image rendering ──
-        const initials = window.escapeHTML(
-            (item.tester_full_name || item.tester_username || '?')
-                .trim().replace('@', '').substring(0, 2).toUpperCase()
-        );
-        const avatarHue = ((Number(item.tester_id || 0) * 73 + 17) % 360);
-        const avatarUrl = item.tester_avatar_url || item.avatar_url;
-        const avatarHtml = `<div class="fb-avatar" style="--av-hue:${avatarHue}; overflow: hidden; position: relative;">
-            ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` : ''}
-            <span class="fb-avatar-initials" style="${avatarUrl ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%;'}">${initials}</span>
-            ${isNew ? '<span class="fb-avatar-badge-new"></span>' : ''}
-        </div>`;
+    let html = '<div class="feedback-list">';
 
-        // ── Header ──
-        let nameHtml = '';
-        let subHtml = '';
-        if (fullName) {
-            nameHtml = `<span class="fb-name notranslate">${fullName}</span>`;
-            if (username) {
-                subHtml = `<a href="javascript:void(0);" class="fb-username notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
-            }
-        } else if (username) {
-            nameHtml = `<a href="javascript:void(0);" class="fb-name-link notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
-        } else {
-            nameHtml = `<span class="fb-name notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
-        }
+    ['today', 'yesterday', 'thisWeek', 'earlier'].forEach(function(groupKey) {
+        const groupItems = groups[groupKey];
+        if (!groupItems || !groupItems.length) return;
 
-        const statusBadgeLabel = item.status === 'declined' || item.status === 'rejected'
-            ? window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected')
-            : (item.status === 'new' ? 'NEW' : window.escapeHTML(window.t('projectFeedbackProcessedBadge', {}, lang) || 'Closed'));
-        const statusBadgeClass = item.status === 'declined' || item.status === 'rejected'
-            ? 'fb-status-badge fb-status-badge--declined'
-            : (item.status === 'new' ? 'fb-status-badge fb-status-badge--new' : 'fb-status-badge fb-status-badge--closed');
-        const statusBadge = `<span class="${statusBadgeClass}">${statusBadgeLabel}</span>`;
+        html += `<div class="feedback-section-header">${groupTitles[groupKey]} <span class="feedback-section-count">${groupItems.length}</span></div>`;
 
-        const typeChipHtml = getFeedbackTypeChip(item);
+        html += groupItems.map(function(item) {
+            const feedbackType = String(item.type || 'bug').toLowerCase();
+            const isReviewTicket = feedbackType.indexOf('google_play_review') === 0;
+            const username = (item.tester_username || '').replace('@', '');
+            const safeUsername = escapeInlineJsString(username);
+            const fullName = window.escapeHTML(item.tester_full_name || '');
+            const feedbackStatus = normalizeFeedbackStatus(item.status) || 'pending';
+            const isOpen = isOpenFeedbackStatus(feedbackStatus);
+            const isRejected = isRejectedFeedbackStatus(feedbackStatus);
 
-        const headerHtml = `
-            <div class="fb-header">
-                ${avatarHtml}
-                <div class="fb-header-info">
-                    <div class="fb-name-row">
-                        ${nameHtml}
-                        <span class="fb-date">${window.escapeHTML(formatFeedbackDate(item.created_at))}</span>
-                        ${statusBadge}
-                    </div>
-                    <div class="fb-username-row">
-                        ${subHtml}
-                    </div>
-                </div>
-                <div class="fb-header-right">
-                    ${typeChipHtml}
-                </div>
+            const initials = window.escapeHTML(
+                (item.tester_full_name || item.tester_username || '?')
+                    .trim().replace('@', '').substring(0, 2).toUpperCase()
+            );
+            const avatarHue = ((Number(item.tester_id || 0) * 73 + 17) % 360);
+            const avatarUrl = item.tester_avatar_url || item.avatar_url;
+            const avatarHtml = `<div class="fb-avatar" style="--av-hue:${avatarHue}; overflow:hidden; position:relative;">
+                ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;">` : ''}
+                <span class="fb-avatar-initials" style="${avatarUrl ? 'display:none;' : 'display:flex;justify-content:center;align-items:center;width:100%;height:100%;'}">${initials}</span>
+                ${isOpen ? '<span class="fb-avatar-badge-new"></span>' : ''}
             </div>`;
 
-        // ── Body text ──
-        var textBodyHtml = '';
-        if (isReviewTicket) {
-            textBodyHtml = '';
-        } else if (item.message_text) {
-            const escapedText = escapeHtmlWithBreaks(item.message_text);
-            const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
-            textBodyHtml = `<div class="fb-text fb-text--clamped" id="fbt-${item.id}" data-feedback-clamp="1" data-feedback-id="${item.id}">${escapedText}</div><a href="javascript:void(0);" class="fb-show-all" id="fbtl-${item.id}" style="display:none;" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`;
-        } else {
-            textBodyHtml = `<div class="fb-text fb-text--muted">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</div>`;
-        }
+            let nameHtml = '';
+            if (fullName) {
+                nameHtml = username
+                    ? `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">${fullName}</a><a href="javascript:void(0);" class="fb-inbox-nick notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`
+                    : `<span class="notranslate">${fullName}</span>`;
+            } else if (username) {
+                nameHtml = `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
+            } else {
+                nameHtml = `<span class="notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
+            }
 
-        // ── Media thumbnails ──
-        var mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
-            ? item.media_urls
-            : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0
-                ? item.tg_file_ids
-                : (item.tg_file_id ? [item.tg_file_id] : []));
-        const resolvedMediaUrls = (mediaUrls || []).map(feedbackResolveMediaUrl).filter(Boolean);
-        window.feedbackMediaRegistry[item.id] = resolvedMediaUrls;
-        window.feedbackCaptionRegistry[item.id] = item.message_text || '';
+            const typePill = window.escapeHTML(getFeedbackTypePillLabel(item));
+            const previewText = window.escapeHTML(getFeedbackPreviewText(item, isReviewTicket));
+            const relativeDate = window.escapeHTML(formatFeedbackRelativeTime(item.created_at));
+            const microHtml = buildFeedbackMicroSummaryHtml(item, isRejected);
+            const chevronHtml = `
+                <div class="fb-chevron" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>`;
 
-        var mediaHtml = '';
-        if (resolvedMediaUrls.length > 0) {
-            const total = resolvedMediaUrls.length;
-            const MAX_THUMB = 3;
-            const shown = Math.min(total, MAX_THUMB);
-            var thumbsHtml = '';
-            for (var ti = 0; ti < shown; ti++) {
-                var url = resolvedMediaUrls[ti];
-                if (url) {
+            var textBodyHtml = '';
+            if (isReviewTicket) {
+                textBodyHtml = `<div class="fb-text">${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</div>`;
+            } else if (item.message_text) {
+                const escapedText = escapeHtmlWithBreaks(item.message_text);
+                const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
+                textBodyHtml = `<div class="fb-text fb-text--clamped" id="fbt-${item.id}" data-feedback-clamp="1" data-feedback-id="${item.id}">${escapedText}</div><a href="javascript:void(0);" class="fb-show-all" id="fbtl-${item.id}" style="display:none;" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`;
+            } else {
+                textBodyHtml = `<div class="fb-text fb-text--muted">${window.escapeHTML(window.t('projectFeedbackNoText', {}, lang))}</div>`;
+            }
+
+            var mediaUrls = (Array.isArray(item.media_urls) && item.media_urls.length > 0)
+                ? item.media_urls
+                : (Array.isArray(item.tg_file_ids) && item.tg_file_ids.length > 0
+                    ? item.tg_file_ids
+                    : (item.tg_file_id ? [item.tg_file_id] : []));
+            const resolvedMediaUrls = (mediaUrls || []).map(feedbackResolveMediaUrl).filter(Boolean);
+            window.feedbackMediaRegistry[item.id] = resolvedMediaUrls;
+            window.feedbackCaptionRegistry[item.id] = item.message_text || '';
+
+            var mediaHtml = '';
+            if (resolvedMediaUrls.length > 0) {
+                const total = resolvedMediaUrls.length;
+                const MAX_THUMB = 3;
+                const shown = Math.min(total, MAX_THUMB);
+                var thumbsHtml = '';
+                for (var ti = 0; ti < shown; ti++) {
+                    var url = resolvedMediaUrls[ti];
+                    if (!url) continue;
                     const resolvedSrc = window.escapeHTML(url);
                     const isOverflow = ti === MAX_THUMB - 1 && total > MAX_THUMB;
                     const extra = total - MAX_THUMB + 1;
-                    const overlay = isOverflow
-                        ? `<div class="fb-media-overlay">+${extra}</div>`
-                        : '';
+                    const overlay = isOverflow ? `<div class="fb-media-overlay">+${extra}</div>` : '';
                     thumbsHtml += `<div class="fb-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
-                        <img src="${resolvedSrc}" loading="lazy" onerror="feedbackOnImageError(this)">
-                        ${overlay}
+                        <img src="${resolvedSrc}" loading="lazy" onerror="feedbackOnImageError(this)">${overlay}
                     </div>`;
                 }
+                if (thumbsHtml) {
+                    mediaHtml = `<div class="fb-media-grid${total === 1 ? ' fb-media-grid--single' : ''}">${thumbsHtml}</div>`;
+                }
+            } else if (isReviewTicket) {
+                mediaHtml = `<div class="fb-media-missing">📎 ${window.escapeHTML(window.t('playReviewScreenshotMissing', {}, lang))}</div>`;
             }
-            if (thumbsHtml) {
-                mediaHtml = `<div class="fb-media-grid${total === 1 ? ' fb-media-grid--single' : ''}">${thumbsHtml}</div>`;
+
+            const rewardBust = Number(item.reward_bust || 0);
+            const rewardKarma = Number(item.reward_karma || 0);
+            let rewardHtml = '';
+            if (rewardBust > 0 || rewardKarma > 0) {
+                rewardHtml = `
+                    <div class="fb-reward-block">
+                        ${rewardBust > 0 ? `<span class="fb-reward-chip reward-bust"><span class="reward-icon">💎</span> ${formatBustAmount(rewardBust)}</span>` : ''}
+                        ${rewardKarma > 0 ? `<span class="fb-reward-chip reward-karma"><span class="reward-icon">☯️</span> ${rewardKarma.toFixed(1)} Karma</span>` : ''}
+                    </div>`;
             }
-        } else if (isReviewTicket) {
-            mediaHtml = `<div class="fb-media-missing">📎 ${window.escapeHTML(window.t('playReviewScreenshotMissing', {}, lang))}</div>`;
-        }
 
-        // ── Reward summary chips ──
-        const rewardBust = Number(item.reward_bust || 0);
-        const rewardKarma = Number(item.reward_karma || 0);
-        let rewardHtml = '';
-        if (rewardBust > 0 || rewardKarma > 0) {
-            rewardHtml = `
-                <div class="fb-reward-block">
-                    ${rewardBust > 0 ? `<span class="fb-reward-chip reward-bust"><span class="reward-icon">💎</span> ${formatBustAmount(rewardBust)}</span>` : ''}
-                    ${rewardKarma > 0 ? `<span class="fb-reward-chip reward-karma"><span class="reward-icon">☯️</span> ${rewardKarma.toFixed(1)} Karma</span>` : ''}
-                </div>
-            `;
-        }
+            let replyHtml = '';
+            if (item.developer_reply) {
+                replyHtml = `
+                    <div class="fb-reply-box">
+                        <div class="fb-reply-text">
+                            <span class="fb-reply-label">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang) || 'Developer reply')}:</span>
+                            ${escapeHtmlWithBreaks(item.developer_reply)}
+                        </div>
+                    </div>`;
+            }
 
-        // ── Developer reply ──
-        let replyHtml = '';
-        if (item.developer_reply) {
-            const replyDate = window.escapeHTML(formatFeedbackDate(item.created_at));
-            replyHtml = `
-                <div class="fb-reply-box">
-                    <div class="fb-reply-text">
-                        <span class="fb-reply-label">${window.escapeHTML(window.t('feedbackRewardReplyCard', {}, lang) || 'Developer reply')}:</span> 
-                        ${escapeHtmlWithBreaks(item.developer_reply)}
+            var deviceInfoHtml = '';
+            if (feedbackType === 'bug' && typeof renderFeedbackDeviceInfoBlock === 'function') {
+                deviceInfoHtml = renderFeedbackDeviceInfoBlock(item);
+            }
+
+            var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
+            const chatIconSvg = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>';
+            const discussLabel = window.escapeHTML(window.t('feedbackDiscussInChatBtn', {}, lang) || (lang === 'ru' ? 'Обсудить в чате' : 'Discuss in chat'));
+            const copyButtonHtml = (!isReviewTicket && (item.message_text || deviceInfoHtml))
+                ? `<button type="button" class="fb-icon-btn" onclick="copyFeedbackCardContent(${item.id}, ${projectId})" aria-label="${window.escapeHTML(window.t('feedbackCopyBtn', {}, lang) || 'Copy')}">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                   </button>`
+                : '';
+
+            // Active = compact chat icon left of Accept/Reject. Processed = "Discuss in chat" + icon.
+            let discussButtonHtml = '';
+            if (hasTopicLink) {
+                if (isOpen) {
+                    discussButtonHtml = `<button type="button" class="fb-icon-btn" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')" aria-label="${discussLabel}" title="${discussLabel}">${chatIconSvg}</button>`;
+                } else {
+                    discussButtonHtml = `<button type="button" class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')">${chatIconSvg}<span>${discussLabel}</span></button>`;
+                }
+            }
+
+            let decideButtonsHtml = '';
+            if (isOpen && isReviewTicket) {
+                decideButtonsHtml = `
+                    <button class="fb-action-btn fb-action-btn--reject" onclick="openPlayReviewRejectModal(${item.id}, ${projectId}, this)">${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>
+                    <button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward fb-btn-accept-wrapper"
+                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)"
+                            onmousedown="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
+                            onmouseup="cancelFeedbackAcceptLongPress(this, event)"
+                            onmouseleave="cancelFeedbackAcceptLongPress(this, event)"
+                            ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
+                            ontouchend="cancelFeedbackAcceptLongPress(this, event)"
+                            ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
+                        <span class="fb-btn-accept-progress"></span>
+                        <span class="fb-btn-accept-text">${window.escapeHTML(window.t('projectFeedbackThankCloseBtn', {}, lang) || window.t('projectFeedbackRewardBtn', {}, lang) || 'Accept')}</span>
+                    </button>`;
+            } else if (isOpen) {
+                decideButtonsHtml = `
+                    <button class="fb-action-btn fb-action-btn--reject" onclick="openFeedbackRejectModal(${item.id}, ${projectId}, this)">${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>
+                    <button class="fb-action-btn fb-action-btn--primary fb-action-btn--accept fb-btn-accept-wrapper"
+                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)"
+                            onmousedown="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
+                            onmouseup="cancelFeedbackAcceptLongPress(this, event)"
+                            onmouseleave="cancelFeedbackAcceptLongPress(this, event)"
+                            ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
+                            ontouchend="cancelFeedbackAcceptLongPress(this, event)"
+                            ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
+                        <span class="fb-btn-accept-progress"></span>
+                        <span class="fb-btn-accept-text">${window.escapeHTML(window.t('feedbackAcceptBtn', {}, lang) || 'Accept')}</span>
+                    </button>`;
+            }
+
+            // Active: chat icon left of Accept/Reject. Processed: Copy, then Discuss in chat.
+            const utilsInner = isOpen
+                ? (discussButtonHtml + copyButtonHtml)
+                : (copyButtonHtml + discussButtonHtml);
+            const utilsHtml = utilsInner
+                ? `<div class="fb-toolbar-utils">${utilsInner}</div>`
+                : '';
+            const decideHtml = decideButtonsHtml
+                ? `<div class="fb-toolbar-decide">${decideButtonsHtml}</div>`
+                : '';
+            const toolbarHtml = (utilsHtml || decideHtml)
+                ? `<div class="fb-toolbar">${utilsHtml}${decideHtml}</div>`
+                : '';
+
+            let cardTypeClass = 'fb-card--general';
+            if (isReviewTicket) cardTypeClass = 'fb-card--google-play';
+            else if (feedbackType === 'bug') cardTypeClass = 'fb-card--bug';
+            else if (feedbackType === 'idea') cardTypeClass = 'fb-card--idea';
+            else if (feedbackType === 'question') cardTypeClass = 'fb-card--question';
+
+            const stateClass = isOpen
+                ? ' fb-card--collapsed fb-card--new'
+                : ' fb-card--collapsed fb-card--processed';
+            const cardMod = isRejected ? ' fb-card--rejected' : '';
+
+            return `<div class="fb-card ${cardTypeClass}${cardMod}${stateClass}" data-feedback-id="${item.id}" data-feedback-type="${feedbackType}" data-feedback-status="${window.escapeHTML(feedbackStatus)}" onclick="toggleFeedbackCardCollapse(this, event)">
+                <div class="fb-inbox-row">
+                    <span class="fb-type-rail" aria-hidden="true"></span>
+                    ${avatarHtml}
+                    <div class="fb-inbox-main">
+                        <div class="fb-inbox-topline">
+                            <span class="fb-inbox-name">${nameHtml}</span>
+                            <span class="fb-type-pill">${typePill}</span>
+                            <span class="fb-inbox-date">${relativeDate}</span>
+                        </div>
+                        <div class="fb-preview">${previewText}</div>
+                        <div class="fb-micro-line">${microHtml}</div>
                     </div>
-                    <div class="fb-reply-date">${replyDate}</div>
+                    ${chevronHtml}
                 </div>
-            `;
-        }
+                <div class="fb-detail"><div class="fb-detail-inner">
+                    <div class="fb-body">
+                        ${mediaHtml}
+                        ${textBodyHtml}
+                        ${deviceInfoHtml}
+                        ${rewardHtml}
+                        ${replyHtml}
+                    </div>
+                    ${toolbarHtml}
+                </div></div>
+            </div>`;
+        }).join('');
+    });
 
-        // ── Footer action line ──
-        var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
-        const hasDm = !!username;
-
-        const dmButtonHtml = hasDm
-            ? `<button class="fb-action-btn fb-action-btn--dm" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">
-                   💬 ${window.escapeHTML(window.t('feedbackDmBtn', {}, lang) || 'DM').replace('👤 ', '')}
-               </button>`
-            : '';
-
-        const topicButtonHtml = hasTopicLink
-            ? `<button class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${item.telegram_message_id})">
-                   📌 ${window.escapeHTML(window.t('projectFeedbackOpenTopicBtn', {}, lang) || 'Discussion')}
-               </button>`
-            : '';
-
-        const thankCloseButtonHtml = isNew
-            ? `<button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward" onclick="openFeedbackRewardModal(${projectId}, ${item.id})">
-                   ${window.escapeHTML(window.t('projectFeedbackRewardBtn', {}, lang) || '🎁 Thank & close')}
-               </button>`
-            : '';
-
-        const rejectButtonHtml = (isNew && isReviewTicket)
-            ? `<button class="fb-action-btn fb-action-btn--reject" onclick="rejectPlayReview(${item.id}, ${projectId}, this)">
-                   ❌ ${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}
-               </button>`
-            : '';
-
-        const hasFooter = dmButtonHtml || topicButtonHtml || thankCloseButtonHtml || rejectButtonHtml;
-        const cardMod = (isNew ? ' fb-card--new' : '') + ((item.status === 'declined' || item.status === 'rejected') ? ' fb-card--rejected' : '');
-        let cardTypeClass = 'fb-card--general';
-        if (isReviewTicket) {
-            cardTypeClass = 'fb-card--google-play';
-        } else if (feedbackType === 'bug') {
-            cardTypeClass = 'fb-card--bug';
-        } else if (feedbackType === 'idea') {
-            cardTypeClass = 'fb-card--idea';
-        } else if (feedbackType === 'question') {
-            cardTypeClass = 'fb-card--question';
-        }
-
-        return `<div class="fb-card ${cardTypeClass}${cardMod}" data-feedback-type="${feedbackType}">
-            ${headerHtml}
-            <div class="fb-body">
-                ${textBodyHtml}
-                ${mediaHtml}
-                ${rewardHtml}
-                ${replyHtml}
-            </div>
-            ${hasFooter ? `<div class="fb-footer"><div class="fb-actions-group-left">${dmButtonHtml}${topicButtonHtml}</div><div class="fb-actions-group-right">${thankCloseButtonHtml}${rejectButtonHtml}</div></div>` : ''}
-        </div>`;
-    }).join('')}</div>`;
+    html += '</div>';
+    return html;
 }
 
 var _feedbackSliderImages = [];
@@ -4083,45 +4737,414 @@ function renderFeedbackImageSlider() {
 
     document.body.appendChild(overlay);
 
-    // Touch swipe navigation
     var stage = overlay.querySelector('.fb-slider-stage');
-    if (stage && total > 1) {
-        var startX = 0, startY = 0, tracking = false;
-        stage.addEventListener('touchstart', function(e) {
-            if (e.touches.length !== 1) return;
-            startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = true;
-        }, { passive: true });
-        stage.addEventListener('touchend', function(e) {
-            if (!tracking) return;
-            tracking = false;
-            var dx = e.changedTouches[0].clientX - startX;
-            var dy = e.changedTouches[0].clientY - startY;
-            if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
-                feedbackSliderStep(dx < 0 ? 1 : -1);
-            }
-        }, { passive: true });
+    var img = overlay.querySelector('.fb-slider-image');
+    if (stage && img) {
+        attachFeedbackImageZoom(stage, img, total);
     }
 
     document.removeEventListener('keydown', _feedbackSliderKeyHandler);
     document.addEventListener('keydown', _feedbackSliderKeyHandler);
 }
 
-function openFeedbackTopicLink(telegramMessageId) {
-    if (!telegramMessageId) return;
-    var groupId = (window.App && window.App.frontendGroupId) || '';
-    var url;
-    if (groupId) {
-        url = 'https://t.me/c/' + groupId + '/' + telegramMessageId;
-    } else {
-        var base = (window.FEEDBACK_PUBLIC_LINK_BASE || (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
-        url = base + '/' + telegramMessageId;
+/**
+ * Pinch-to-zoom + double-tap zoom + pan for the fullscreen image viewer.
+ * When the image is at scale 1, horizontal drags/swipes navigate the slider.
+ * When zoomed in, drags pan the image instead.
+ */
+function attachFeedbackImageZoom(stage, img, total) {
+    var scale = 1, tx = 0, ty = 0;
+    var minScale = 1, maxScale = 4;
+    var pointers = {};
+    var startDist = 0, startScale = 1;
+    var panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
+    var isPanning = false;
+    var swipeStartX = 0, swipeStartY = 0, swipeTracking = false;
+    var lastTapTime = 0;
+
+    function apply() {
+        img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+        img.classList.toggle('is-zoomed', scale > 1.01);
     }
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
-        window.Telegram.WebApp.openTelegramLink(url);
+    function clampPan() {
+        var rect = img.getBoundingClientRect();
+        var stageRect = stage.getBoundingClientRect();
+        var maxX = Math.max(0, (rect.width - stageRect.width) / 2);
+        var maxY = Math.max(0, (rect.height - stageRect.height) / 2);
+        tx = Math.max(-maxX, Math.min(maxX, tx));
+        ty = Math.max(-maxY, Math.min(maxY, ty));
+    }
+    function reset() {
+        scale = 1; tx = 0; ty = 0; apply();
+    }
+    function dist(a, b) {
+        var dx = a.x - b.x, dy = a.y - b.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    function ids() { return Object.keys(pointers); }
+
+    stage.addEventListener('pointerdown', function(e) {
+        pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+        var k = ids();
+        if (k.length === 2) {
+            startDist = dist(pointers[k[0]], pointers[k[1]]);
+            startScale = scale;
+            isPanning = false;
+            swipeTracking = false;
+        } else if (k.length === 1) {
+            if (scale > 1.01) {
+                isPanning = true;
+                panStartX = e.clientX; panStartY = e.clientY;
+                panStartTx = tx; panStartTy = ty;
+            } else {
+                swipeTracking = true;
+                swipeStartX = e.clientX; swipeStartY = e.clientY;
+            }
+        }
+        try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    stage.addEventListener('pointermove', function(e) {
+        if (!pointers[e.pointerId]) return;
+        pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+        var k = ids();
+        if (k.length === 2 && startDist > 0) {
+            var d = dist(pointers[k[0]], pointers[k[1]]);
+            scale = Math.max(minScale, Math.min(maxScale, startScale * (d / startDist)));
+            if (scale <= 1.01) { tx = 0; ty = 0; }
+            clampPan();
+            apply();
+            e.preventDefault();
+        } else if (k.length === 1 && isPanning) {
+            tx = panStartTx + (e.clientX - panStartX);
+            ty = panStartTy + (e.clientY - panStartY);
+            clampPan();
+            apply();
+            e.preventDefault();
+        }
+    });
+
+    function endPointer(e) {
+        var wasSwipe = swipeTracking;
+        var sx = swipeStartX, sy = swipeStartY;
+        delete pointers[e.pointerId];
+        try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+        var remaining = ids().length;
+        if (remaining < 2) { startDist = 0; }
+        if (remaining === 0) { isPanning = false; }
+
+        // Double-tap to toggle zoom
+        if (wasSwipe && scale <= 1.01) {
+            var now = Date.now();
+            var movedX = Math.abs(e.clientX - sx);
+            var movedY = Math.abs(e.clientY - sy);
+            if (movedX < 10 && movedY < 10) {
+                if (now - lastTapTime < 300) {
+                    scale = 2.2; clampPan(); apply();
+                    lastTapTime = 0;
+                    swipeTracking = false;
+                    return;
+                }
+                lastTapTime = now;
+            }
+            // Horizontal swipe navigation (only when not zoomed)
+            if (total > 1 && movedX > 45 && movedX > movedY) {
+                reset();
+                feedbackSliderStep(e.clientX < sx ? 1 : -1);
+            }
+        }
+        swipeTracking = false;
+    }
+    stage.addEventListener('pointerup', endPointer);
+    stage.addEventListener('pointercancel', endPointer);
+}
+
+function openFeedbackTopicLink(telegramMessageId, username) {
+    if (!telegramMessageId) return;
+    var cleanUsername = String(username || '').replace(/^@+/, '').trim();
+    var mentionText = window.t('feedbackTopicMentionTemplate', {
+        username: cleanUsername || 'user',
+    }, lang);
+    var openLink = function() {
+        var groupId = (window.App && window.App.frontendGroupId) || '';
+        var url;
+        if (groupId) {
+            url = 'https://t.me/c/' + groupId + '/' + telegramMessageId;
+        } else {
+            var base = (window.FEEDBACK_PUBLIC_LINK_BASE || (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
+            url = base + '/' + telegramMessageId;
+        }
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
+            window.Telegram.WebApp.openTelegramLink(url);
+        } else {
+            window.open(url, '_blank');
+        }
+    };
+
+    var afterCopy = function() {
+        if (typeof showToast === 'function') {
+            showToast(window.t('feedbackTopicMentionCopiedToast', {}, lang));
+        }
+        setTimeout(openLink, 250);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(mentionText).then(afterCopy).catch(function() {
+            afterCopy();
+        });
     } else {
-        window.open(url, '_blank');
+        afterCopy();
     }
 }
+
+var _feedbackRejectState = {
+    feedbackId: 0,
+    projectId: 0,
+    btnEl: null,
+    reason: '',
+};
+
+function openFeedbackRejectModal(feedbackId, projectId, btnEl) {
+    _feedbackRejectState = {
+        feedbackId: Number(feedbackId || 0),
+        projectId: Number(projectId || 0),
+        btnEl: btnEl || null,
+        reason: '',
+    };
+    var modal = document.getElementById('feedback-reject-modal');
+    if (!modal) return;
+    document.querySelectorAll('.feedback-reject-chip').forEach(function(chip) {
+        chip.classList.remove('is-active');
+    });
+    var submitBtn = document.getElementById('feedback-reject-submit-btn');
+    if (submitBtn) submitBtn.disabled = true;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    modal.classList.add('active');
+}
+
+function closeFeedbackRejectModal(event) {
+    if (event && event.target && event.target.id !== 'feedback-reject-modal') return;
+    var modal = document.getElementById('feedback-reject-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function selectFeedbackRejectReason(reason) {
+    _feedbackRejectState.reason = String(reason || '').trim().toLowerCase();
+    document.querySelectorAll('.feedback-reject-chip').forEach(function(chip) {
+        var chipReason = String(chip.getAttribute('data-reason') || '');
+        chip.classList.toggle('is-active', chipReason === _feedbackRejectState.reason);
+    });
+    var submitBtn = document.getElementById('feedback-reject-submit-btn');
+    if (submitBtn) submitBtn.disabled = !_feedbackRejectState.reason;
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+
+function _markFeedbackCardRejected(feedbackId) {
+    var card = document.querySelector('.fb-card[data-feedback-id="' + String(feedbackId) + '"]');
+    if (!card) return;
+    card.classList.remove('fb-card--new');
+    card.classList.add('fb-card--rejected');
+    card.setAttribute('data-feedback-status', 'rejected');
+    var statusEl = card.querySelector('.fb-status-badge, .fb-status');
+    if (statusEl) {
+        statusEl.textContent = window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected';
+        statusEl.classList.remove('fb-status--new', 'fb-status-badge--new', 'fb-status-badge--closed');
+        statusEl.classList.add('fb-status-badge--declined');
+    }
+    var decideRow = card.querySelector('.fb-actions-decide');
+    if (decideRow) decideRow.remove();
+    var badgeNew = card.querySelector('.fb-avatar-badge-new');
+    if (badgeNew) badgeNew.remove();
+    // Hide from "New/pending" filter if active
+    if (typeof applyProjectFeedbackFilters === 'function') {
+        applyProjectFeedbackFilters();
+    }
+}
+
+/** Optimistic UI: collapse to micro-state or remove from unprocessed queue. */
+function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
+    var safeId = Number(feedbackId || 0);
+    if (!safeId) return;
+
+    var card = document.querySelector('.fb-card[data-feedback-id="' + String(safeId) + '"]');
+    var statusFilter = _projectFeedbackStatusFilter || 'all';
+    var rewardBust = Number((extra && extra.reward_bust) || 0);
+    var rewardKarma = Number((extra && extra.reward_karma) || 0);
+    var rejectionReason = String((extra && extra.rejection_reason) || '').trim();
+
+    if (card) {
+        if (statusFilter === 'all') {
+            card.classList.remove('fb-card--expanded', 'fb-card--new');
+            card.classList.add('fb-card--processed', 'fb-card--collapsed', 'fb-card--optimistic-flash');
+            if (nextStatus === 'rejected') {
+                card.classList.add('fb-card--rejected');
+            } else {
+                card.classList.remove('fb-card--rejected');
+            }
+            card.setAttribute('data-feedback-status', nextStatus === 'rejected' ? 'rejected' : 'closed');
+
+            var micro = card.querySelector('.fb-micro-line');
+            if (micro) {
+                var synthetic = {
+                    replied_at: new Date().toISOString(),
+                    processed_at: new Date().toISOString(),
+                    reward_bust: rewardBust,
+                    reward_karma: rewardKarma,
+                    rejection_reason: rejectionReason
+                };
+                micro.innerHTML = buildFeedbackMicroSummaryHtml(synthetic, nextStatus === 'rejected');
+            }
+
+            // Processed cards must not keep Accept/Reject controls.
+            var decide = card.querySelector('.fb-toolbar-decide');
+            if (decide) decide.remove();
+        } else {
+            card.classList.add('fb-card--optimistic-out');
+            card.style.maxHeight = card.scrollHeight + 'px';
+            card.style.transition = 'max-height 0.28s ease, opacity 0.28s ease, padding 0.28s ease, margin 0.28s ease';
+            card.getBoundingClientRect();
+            card.style.maxHeight = '0';
+            card.style.paddingTop = '0';
+            card.style.paddingBottom = '0';
+            card.style.opacity = '0';
+            setTimeout(function() {
+                try { card.remove(); } catch (_) {
+                    if (card.parentNode) card.parentNode.removeChild(card);
+                }
+            }, 300);
+        }
+    }
+
+    if (Array.isArray(window._activeProjectFeedbackItems)) {
+        if (statusFilter === 'all') {
+            window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.map(function(item) {
+                if (Number(item && item.id) === safeId) {
+                    item.status = nextStatus === 'rejected' ? 'rejected' : 'closed';
+                    item.replied_at = new Date().toISOString();
+                    if (nextStatus === 'rejected' && rejectionReason) {
+                        item.rejection_reason = rejectionReason;
+                    }
+                    if (rewardBust > 0) item.reward_bust = rewardBust;
+                    if (rewardKarma > 0) item.reward_karma = rewardKarma;
+                    item.processed_at = new Date().toISOString();
+                    item.replied_at = item.processed_at;
+                }
+                return item;
+            });
+        } else {
+            window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.filter(function(item) {
+                return Number(item && item.id) !== safeId;
+            });
+        }
+    }
+
+    if (Array.isArray(window._projectFeedbackCardNodes) && statusFilter !== 'all') {
+        window._projectFeedbackCardNodes = window._projectFeedbackCardNodes.filter(function(node) {
+            return !(node && Number(node.getAttribute && node.getAttribute('data-feedback-id')) === safeId);
+        });
+    }
+
+    if (typeof applyProjectFeedbackFilters === 'function') {
+        try { applyProjectFeedbackFilters(); } catch (_) { /* ignore */ }
+    }
+
+    const activeProject = typeof getFeedbackRewardProject === 'function' ? getFeedbackRewardProject() : null;
+    if (activeProject && window.getProjectFeedbackHeader) {
+        const headerContainer = document.querySelector('.feedback-sticky-header');
+        if (headerContainer && headerContainer.parentNode) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = window.getProjectFeedbackHeader(activeProject, window._activeProjectFeedbackItems);
+            const newHeader = tempDiv.querySelector('.feedback-sticky-header');
+            if (newHeader) {
+                headerContainer.replaceWith(newHeader);
+            }
+        }
+    }
+
+    var list = document.getElementById('project-feedback-list') || document.querySelector('.feedback-list');
+    if (list && !list.querySelector('.fb-card:not(.fb-card--hidden)')) {
+        var emptyHtml = '<div class="fb-empty">' +
+            (window.t('projectFeedbackEmptyFiltered', {}, lang) || window.t('projectFeedbackEmpty', {}, lang) || '') +
+            '</div>';
+        if (!list.querySelector('.fb-empty')) {
+            list.insertAdjacentHTML('beforeend', emptyHtml);
+        }
+    }
+
+    if (typeof loadProjects === 'function') {
+        Promise.resolve()
+            .then(function() { return loadProjects(true); })
+            .catch(function() { /* ignore */ });
+    }
+}
+
+window.removeFeedbackCardOptimistic = removeFeedbackCardOptimistic;
+
+async function confirmFeedbackReject() {
+    var reason = _feedbackRejectState.reason;
+    if (!reason) {
+        if (typeof showToast === 'function') {
+            showToast(window.t('feedbackRejectNeedReasonToast', {}, lang));
+        }
+        return;
+    }
+    var feedbackId = Number(_feedbackRejectState.feedbackId || 0);
+    var projectId = Number(_feedbackRejectState.projectId || 0);
+    if (!feedbackId) return;
+
+    var submitBtn = document.getElementById('feedback-reject-submit-btn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.6';
+    }
+
+    var userIdLocal = (window.App && window.App.userId) || window.userId || 0;
+    try {
+        var apiBase = (window.App && window.App.API_BASE) || API_BASE || '';
+        var resp = await fetch(apiBase + '/feedback/' + feedbackId + '/reject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                owner_id: Number(userIdLocal),
+                reason: reason,
+            }),
+        });
+        var data = await resp.json();
+        if (data && data.status === 'success') {
+            closeFeedbackRejectModal();
+            if (typeof showToast === 'function') {
+                showToast(window.t('feedbackRejectSuccessToast', {}, lang));
+            }
+            if (typeof removeFeedbackCardOptimistic === 'function') {
+                removeFeedbackCardOptimistic(feedbackId, 'rejected', { rejection_reason: reason });
+            } else {
+                _markFeedbackCardRejected(feedbackId);
+            }
+            if (typeof window.triggerFeedbackAutoAdvance === 'function') {
+                window.triggerFeedbackAutoAdvance(feedbackId);
+            }
+        } else {
+            var msg = (data && (data.message || data.code)) ? (data.message || data.code) : 'Reject failed';
+            if (typeof showToast === 'function') showToast(String(msg));
+            else if (window.tg && window.tg.showAlert) window.tg.showAlert(String(msg));
+            else alert(msg);
+        }
+    } catch (e) {
+        console.error('confirmFeedbackReject error:', e);
+        if (typeof showToast === 'function') showToast(window.t('networkError', {}, lang) || 'Network error');
+        else alert('Network error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = !_feedbackRejectState.reason;
+            submitBtn.style.opacity = '1';
+        }
+    }
+}
+
+window.openFeedbackRejectModal = openFeedbackRejectModal;
+window.closeFeedbackRejectModal = closeFeedbackRejectModal;
+window.selectFeedbackRejectReason = selectFeedbackRejectReason;
+window.confirmFeedbackReject = confirmFeedbackReject;
 
 function showProjectFeedbackModalLoading(project) {
     const body = document.getElementById('project-feedback-body');
@@ -4139,14 +5162,22 @@ function showProjectFeedbackModalError(project) {
     body.innerHTML = getProjectFeedbackHeader(project) + '<div id="project-feedback-list"></div>';
     showRetry('project-feedback-list', `openProjectFeedback(${projectId}, ${archivedFlag})`);
     document.getElementById('project-feedback-modal').classList.add('active');
+    if (typeof window.hideTgDeeplinkLoader === 'function') {
+        window.hideTgDeeplinkLoader('feedback');
+    }
 }
 
 function showProjectFeedbackModal(project, items) {
+    resetProjectFeedbackFilters();
     const body = document.getElementById('project-feedback-body');
     if (!body) return;
     body.innerHTML = getProjectFeedbackHeader(project, items) + renderProjectFeedbackCards(project, items);
     document.getElementById('project-feedback-modal').classList.add('active');
+    cacheProjectFeedbackCards();
     feedbackScheduleClampMeasure();
+    if (typeof window.hideTgDeeplinkLoader === 'function') {
+        window.hideTgDeeplinkLoader('feedback');
+    }
 }
 
 function closeProjectFeedbackModal(event) {
@@ -4254,13 +5285,689 @@ async function showKarmaInfo() {
     modal.classList.add('active');
 }
 
+function closeContributionInfoModal(event) {
+    if (event && event.target && event.target.id !== 'contribution-info-modal') return;
+    const modal = document.getElementById('contribution-info-modal');
+    if (modal) modal.classList.remove('active');
+    _stopContributionCountdown();
+}
+
+let _contributionModalTab = 'current';
+let _contributionCurrentCache = null;
+let _contributionHistoryCache = null;
+let _contributionCountdownTimer = null;
+let _contributionClaimInFlight = false;
+
+function _escContribution(value) {
+    if (typeof window.escapeHTML === 'function') {
+        return window.escapeHTML(String(value == null ? '' : value));
+    }
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function _stopContributionCountdown() {
+    if (_contributionCountdownTimer) {
+        clearInterval(_contributionCountdownTimer);
+        _contributionCountdownTimer = null;
+    }
+}
+
+function _formatContributionCountdown(endsAt) {
+    const endMs = Date.parse(String(endsAt || ''));
+    if (!Number.isFinite(endMs)) return '';
+    const diff = Math.max(0, endMs - Date.now());
+    const totalSec = Math.floor(diff / 1000);
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.floor((totalSec % 86400) / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    if (diff <= 0) {
+        return window.t('contributionSeasonEnded', {}, lang);
+    }
+    if (days > 0) {
+        return window.t('contributionCountdownDays', { days: days, hours: hours }, lang);
+    }
+    if (hours > 0) {
+        return window.t('contributionCountdownHours', { hours: hours, minutes: minutes }, lang);
+    }
+    return window.t('contributionCountdownMinutes', { minutes: Math.max(1, minutes) }, lang);
+}
+
+var CONTRIBUTION_PRIZE_BY_RANK = {
+    1: 500, 2: 350, 3: 250, 4: 180, 5: 150,
+    6: 100, 7: 100, 8: 100, 9: 100, 10: 100
+};
+var CONTRIBUTION_POOL_DISPLAY = 2000;
+
+function _contributionPrizeForRank(rank) {
+    const r = Number(rank || 0);
+    if (!r || r < 1 || r > 10) return 0;
+    return CONTRIBUTION_PRIZE_BY_RANK[r] || 0;
+}
+
+function _formatContributionShortDate(value) {
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return '';
+    const d = dt.getDate();
+    const m = dt.getMonth() + 1;
+    const yy = String(dt.getFullYear()).slice(-2);
+    return d + '.' + m + '.' + yy;
+}
+
+function _formatContributionDate(value) {
+    const short = _formatContributionShortDate(value);
+    if (short) return short;
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return String(value || '');
+    try {
+        return dt.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch (_) {
+        return String(value || '');
+    }
+}
+
+function _estimateActionsToPrizeZone(me, leaderboard) {
+    const myScore = Number((me && me.contribution_score) || 0);
+    const rows = Array.isArray(leaderboard) ? leaderboard : [];
+    let tenth = null;
+    for (let i = 0; i < rows.length; i++) {
+        if (Number(rows[i].rank) === 10) {
+            tenth = rows[i];
+            break;
+        }
+    }
+    if (!tenth && rows.length >= 10) tenth = rows[9];
+    if (!tenth) {
+        // Empty / small board: treat as easy entry.
+        return myScore > 0 ? 0 : 1;
+    }
+    const tenthScore = Number(tenth.contribution_score || 0);
+    const gapPoints = Math.max(0, (tenthScore - myScore) + 0.1);
+    return Math.max(1, Math.ceil(gapPoints / 5));
+}
+
+function _renderContributionPrizeTable() {
+    const el = document.getElementById('contribution-prize-table');
+    if (!el) return;
+    const rows = [
+        [1, 500], [2, 350], [3, 250], [4, 180], [5, 150],
+        ['6–10', 100]
+    ];
+    el.innerHTML = rows.map(function(pair) {
+        const place = pair[0];
+        const amount = pair[1];
+        const placeLabel = typeof place === 'number'
+            ? window.t('contributionPrizePlace', { place: place }, lang) || (place + ' место')
+            : window.t('contributionPrizePlaceRange', { range: place }, lang) || (place + ' места');
+        const amountLabel = typeof place === 'number'
+            ? (amount + ' $BUST')
+            : (window.t('contributionPrizeEach', { amount: amount }, lang) || ('по ' + amount + ' $BUST'));
+        return ''
+            + '<div class="contribution-prize-line">'
+            +   '<span class="contribution-prize-line-place">' + _escContribution(placeLabel) + '</span>'
+            +   '<span class="contribution-prize-line-amount contribution-bust-amount">' + _escContribution(amountLabel) + '</span>'
+            + '</div>';
+    }).join('');
+}
+
+function _fillContributionAboutCopy() {
+    const aboutEl = document.getElementById('contribution-about-text');
+    if (aboutEl) {
+        const html = window.t('contributionAboutFullHtml', {}, lang);
+        if (html && html !== 'contributionAboutFullHtml') {
+            aboutEl.innerHTML = html;
+        }
+    }
+    const prizeTitleEl = document.querySelector('.contribution-prize-summary-title');
+    if (prizeTitleEl) {
+        prizeTitleEl.textContent = window.t('contributionPrizeSummaryTitle', {}, lang);
+    }
+    _renderContributionPrizeTable();
+}
+
+function _startContributionCountdown(endsAt) {
+    _stopContributionCountdown();
+    const el = document.getElementById('contribution-countdown');
+    const chip = document.getElementById('contribution-countdown-chip');
+    if (!el || !endsAt) {
+        if (chip) chip.hidden = true;
+        return;
+    }
+    if (chip) chip.hidden = false;
+    const tick = () => {
+        el.textContent = _formatContributionCountdown(endsAt);
+    };
+    tick();
+    _contributionCountdownTimer = setInterval(tick, 30000);
+}
+
+function _getCachedContributionFallback() {
+    const cached = (visibilityStats && visibilityStats.contribution) || {};
+    const seasonCached = (visibilityStats && visibilityStats.contribution_season) || {};
+    return {
+        contribution_score: Number(
+            cached.contribution_score != null
+                ? cached.contribution_score
+                : (visibilityStats && visibilityStats.contribution_score) || 0
+        ),
+        bugs_count: Number(cached.bugs_count || 0),
+        ideas_count: Number(cached.ideas_count || 0),
+        play_reviews_count: Number(cached.play_reviews_count || 0),
+        season_rank: seasonCached.rank != null ? Number(seasonCached.rank) : null,
+        season_number: seasonCached.season_number != null ? Number(seasonCached.season_number) : null,
+    };
+}
+
+function _cacheContributionSeasonSnapshot(currentPayload) {
+    if (!visibilityStats) return;
+    const me = (currentPayload && currentPayload.me) || {};
+    const season = (currentPayload && currentPayload.season) || {};
+    visibilityStats.contribution_season = {
+        rank: me.rank != null ? Number(me.rank) : null,
+        score: Number(me.contribution_score || 0),
+        season_number: season.season_number != null ? Number(season.season_number) : null,
+        ends_at: season.ends_at || null,
+        gap_to_top5: Number((currentPayload && currentPayload.gap_to_top5) || 0),
+        _loaded: true,
+    };
+    visibilityStats.contribution = {
+        contribution_score: Number(me.contribution_score || 0),
+        bugs_count: Number(me.bugs_count || 0),
+        ideas_count: Number(me.ideas_count || 0),
+        play_reviews_count: Number(me.play_reviews_count || 0),
+    };
+    visibilityStats.contribution_score = Number(me.contribution_score || 0);
+    try {
+        if (typeof setProjectsCache === 'function' && typeof myProjects !== 'undefined') {
+            setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+        }
+    } catch (_) { /* ignore */ }
+}
+
+function switchContributionTab(tabName) {
+    const next = tabName === 'history' ? 'history' : 'current';
+    _contributionModalTab = next;
+
+    const currentPanel = document.getElementById('contribution-tab-current');
+    const historyPanel = document.getElementById('contribution-tab-history');
+    const currentBtn = document.getElementById('contribution-tab-btn-current');
+    const historyBtn = document.getElementById('contribution-tab-btn-history');
+
+    if (currentPanel) currentPanel.style.display = next === 'current' ? '' : 'none';
+    if (historyPanel) historyPanel.style.display = next === 'history' ? '' : 'none';
+    if (currentBtn) currentBtn.classList.toggle('active', next === 'current');
+    if (historyBtn) historyBtn.classList.toggle('active', next === 'history');
+
+    if (next === 'history' && !_contributionHistoryCache) {
+        _loadContributionHistoryTab();
+    }
+}
+
+function _renderContributionCurrentTab(payload) {
+    const loadingEl = document.getElementById('contribution-current-loading');
+    const emptyEl = document.getElementById('contribution-current-empty');
+    const bodyEl = document.getElementById('contribution-current-body');
+    const subtitleEl = document.getElementById('contribution-modal-subtitle');
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    const season = payload && payload.season;
+    const me = (payload && payload.me) || {};
+    const leaderboard = Array.isArray(payload && payload.leaderboard) ? payload.leaderboard : [];
+    if (!season) {
+        if (emptyEl) emptyEl.style.display = '';
+        if (bodyEl) bodyEl.style.display = 'none';
+        if (subtitleEl) subtitleEl.textContent = '';
+        _stopContributionCountdown();
+        if (typeof window.hideTgDeeplinkLoader === 'function') {
+            window.hideTgDeeplinkLoader('contribution');
+        }
+        return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (bodyEl) bodyEl.style.display = '';
+
+    const seasonNumber = Number(season.season_number || 0);
+    if (subtitleEl) {
+        subtitleEl.textContent = window.t('contributionSeasonSubtitle', { number: seasonNumber }, lang);
+    }
+
+    const rankEl = document.getElementById('contribution-rank-value');
+    const rank = me.rank != null ? Number(me.rank) : null;
+    const hasRank = !!(rank && rank > 0);
+    if (rankEl) {
+        rankEl.textContent = hasRank
+            ? window.t('contributionRankValue', { rank: rank }, lang)
+            : window.t('contributionRankUnranked', {}, lang);
+    }
+
+    const metaEl = document.getElementById('contribution-season-meta');
+    if (metaEl) {
+        // Visual round pool; backend prize_pool_total may keep reserved remainder.
+        metaEl.textContent = String(CONTRIBUTION_POOL_DISPLAY) + ' $BUST';
+    }
+
+    _startContributionCountdown(season.ends_at);
+    _fillContributionAboutCopy();
+
+    const scoreEl = document.getElementById('contribution-score-value');
+    const bugsEl = document.getElementById('contribution-bugs-count');
+    const ideasEl = document.getElementById('contribution-ideas-count');
+    const reviewsEl = document.getElementById('contribution-reviews-count');
+    if (scoreEl) scoreEl.textContent = String(Math.round(Number(me.contribution_score || 0)));
+    if (bugsEl) bugsEl.textContent = String(Math.round(Number(me.bugs_count || 0)));
+    if (ideasEl) ideasEl.textContent = String(Math.round(Number(me.ideas_count || 0)));
+    if (reviewsEl) reviewsEl.textContent = String(Math.round(Number(me.play_reviews_count || 0)));
+
+    const moderationEl = document.getElementById('contribution-moderation-summary');
+    if (moderationEl) {
+        // Confirmed = awarded sprint items (same as bugs+ideas+reviews above).
+        const accepted = Math.round(
+            Number(me.bugs_count || 0) + Number(me.ideas_count || 0) + Number(me.play_reviews_count || 0)
+        );
+        const pending = Math.round(Number(me.pending_count || 0));
+        const rejected = Math.round(Number(me.rejected_count || 0));
+        const hasModeration = accepted > 0 || pending > 0 || rejected > 0;
+        if (hasModeration) {
+            moderationEl.hidden = false;
+            moderationEl.textContent = window.t('contributionModerationSummary', {
+                accepted: accepted,
+                pending: pending,
+                rejected: rejected,
+            }, lang);
+        } else {
+            moderationEl.hidden = true;
+            moderationEl.textContent = '';
+        }
+    }
+
+    const gapCard = document.getElementById('contribution-gap-card');
+    const gapText = document.getElementById('contribution-gap-text');
+    const gapHint = document.getElementById('contribution-gap-hint');
+    if (gapCard && gapText) {
+        gapCard.style.display = '';
+        if (rank === 1) {
+            gapText.textContent = window.t('contributionSprintLeader', {}, lang);
+        } else if (hasRank && rank <= 10) {
+            const prize = _contributionPrizeForRank(rank);
+            const raw = window.t('contributionGapInPrize', { amount: prize }, lang);
+            gapText.innerHTML = _escContribution(raw).replace(
+                String(prize) + ' $BUST',
+                '<span class="contribution-bust-amount">' + _escContribution(String(prize)) + ' $BUST</span>'
+            );
+        } else {
+            const actions = _estimateActionsToPrizeZone(me, leaderboard);
+            gapText.textContent = window.t('contributionGapToPrize', { actions: actions }, lang);
+        }
+        if (gapHint) gapHint.textContent = '';
+    }
+
+    const boardCard = document.getElementById('contribution-leaderboard-card');
+    const boardList = document.getElementById('contribution-leaderboard-list');
+    if (boardCard && boardList) {
+        if (!leaderboard.length) {
+            boardCard.style.display = 'none';
+            boardList.innerHTML = '';
+        } else {
+            boardCard.style.display = '';
+            boardList.innerHTML = leaderboard.map((row) => {
+                const isMe = Number(row.user_id) === Number(userId);
+                const scoreValue = Math.round(Number(row.contribution_score || 0));
+                const displayName = String(
+                    row.first_name ||
+                    row.full_name ||
+                    (row.username ? String(row.username).replace(/^@+/, '') : '') ||
+                    ('User ' + (row.user_id || ''))
+                ).trim();
+                const username = String(row.username || '').replace(/^@+/, '').trim();
+                const profileUserId = Number(row.user_id || 0);
+                let nameHtml = `<span class="contribution-lb-name">${_escContribution(displayName)}</span>`;
+                if (username) {
+                    nameHtml = `<a class="contribution-lb-name" href="https://t.me/${_escContribution(username)}" target="_blank" rel="noopener">${_escContribution(displayName)}</a>`;
+                } else if (profileUserId > 0) {
+                    nameHtml = `<a class="contribution-lb-name" href="tg://user?id=${profileUserId}">${_escContribution(displayName)}</a>`;
+                }
+                return `
+                    <div class="contribution-leaderboard-row${isMe ? ' is-me' : ''}">
+                        <div class="contribution-lb-left">
+                            <span class="contribution-lb-rank">${_escContribution(row.rank || '—')}.</span>
+                            ${nameHtml}
+                        </div>
+                        <span class="contribution-lb-score">${_escContribution(scoreValue)} ${_escContribution(pluralizePointsWord(scoreValue))}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    if (typeof window.hideTgDeeplinkLoader === 'function') {
+        window.hideTgDeeplinkLoader('contribution');
+    }
+}
+
+function _renderContributionHistoryTab(payload) {
+    const loadingEl = document.getElementById('contribution-history-loading');
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    const lifetime = (payload && payload.lifetime) || {};
+    const seasons = Array.isArray(payload && payload.seasons) ? payload.seasons : [];
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(value);
+    };
+    setText('contribution-wins-count', Math.round(Number(lifetime.contribution_wins_count || 0)));
+    setText('contribution-top5-count', Math.round(Number(lifetime.contribution_top5_count || 0)));
+    setText('contribution-top10-count', Math.round(Number(lifetime.contribution_top10_count || 0)));
+    const bestRank = lifetime.contribution_best_rank != null ? Number(lifetime.contribution_best_rank) : null;
+    setText(
+        'contribution-best-rank',
+        bestRank && bestRank > 0
+            ? window.t('contributionBestRankValue', { rank: bestRank }, lang)
+            : window.t('contributionRankUnranked', {}, lang)
+    );
+
+    const claimable = Array.isArray(payload && payload.claimable) ? payload.claimable : [];
+    const banner = document.getElementById('contribution-claimable-banner');
+    if (banner) {
+        if (claimable.length) {
+            const total = claimable.reduce((sum, item) => sum + Number(item.prize_amount || 0), 0);
+            banner.style.display = '';
+            banner.innerHTML = window.t('contributionClaimableBanner', {
+                count: claimable.length,
+                amount: formatContributionBustNumber(total),
+            }, lang);
+        } else {
+            banner.style.display = 'none';
+            banner.innerHTML = '';
+        }
+    }
+
+    const listEl = document.getElementById('contribution-history-list');
+    const emptyEl = document.getElementById('contribution-history-empty');
+    if (!listEl) return;
+
+    if (!seasons.length) {
+        listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = '';
+    } else {
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        listEl.innerHTML = seasons.map((season) => {
+            const seasonId = Number(season.season_id || 0);
+            const seasonNumber = Number(season.season_number || 0) || '—';
+            const finalRank = season.final_rank != null ? Number(season.final_rank) : null;
+            const prize = Number(season.prize_amount || 0);
+            const claimStatus = String(season.claim_status || 'none');
+            const prizeLabel = formatContributionBustNumber(prize);
+            const startShort = _formatContributionShortDate(season.starts_at);
+            const endShort = _formatContributionShortDate(season.ends_at);
+            let dateLine = '';
+            if (startShort && endShort) dateLine = startShort + ' — ' + endShort;
+            else if (endShort) dateLine = endShort;
+            else if (startShort) dateLine = startShort;
+
+            const placeText = finalRank && finalRank > 0
+                ? window.t('contributionHistoryPlace', { rank: finalRank }, lang)
+                : window.t('contributionRankUnranked', {}, lang);
+
+            let rightHtml = '';
+            if (claimStatus === 'available' && prize > 0) {
+                rightHtml = `
+                    <button type="button"
+                            class="btn btn-success contribution-claim-btn contribution-claim-btn--compact"
+                            data-season-id="${_escContribution(seasonId)}"
+                            onclick="claimContributionPrizeFromUi(${seasonId}, this)">
+                        ${window.t('contributionClaimBtnShort', { amount: prizeLabel }, lang)}
+                    </button>
+                `;
+            } else if (prize > 0) {
+                const prizeClass = claimStatus === 'claimed'
+                    ? 'contribution-ledger-prize is-claimed'
+                    : 'contribution-ledger-prize';
+                rightHtml = `<span class="${prizeClass}">+${_escContribution(prizeLabel)} BUST</span>`;
+            } else {
+                rightHtml = `<span class="contribution-ledger-prize is-muted">${_escContribution(formatContributionPointsLabel(Math.round(Number(season.contribution_score || 0))))}</span>`;
+            }
+
+            return `
+                <div class="contribution-ledger-row" data-season-id="${_escContribution(seasonId)}">
+                    <div class="contribution-ledger-left">
+                        <div class="contribution-ledger-title">${window.t('contributionHistorySeasonTitle', { number: seasonNumber }, lang)}</div>
+                        ${dateLine ? `<div class="contribution-ledger-date">${_escContribution(dateLine)}</div>` : ''}
+                    </div>
+                    <div class="contribution-ledger-place">${_escContribution(placeText)}</div>
+                    <div class="contribution-ledger-right">${rightHtml}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    const actionsEl = document.getElementById('contribution-lifetime-actions');
+    if (actionsEl) {
+        // Prefer explicit lifetime counters from API (ledger-backed).
+        let bugsTotal = Math.round(Number(
+            lifetime.bugs_count != null ? lifetime.bugs_count : lifetime.total_bugs || 0
+        ));
+        let ideasTotal = Math.round(Number(
+            lifetime.ideas_count != null ? lifetime.ideas_count : lifetime.total_ideas || 0
+        ));
+        let reviewsTotal = Math.round(Number(
+            lifetime.play_reviews_count != null
+                ? lifetime.play_reviews_count
+                : (lifetime.total_reviews || 0)
+        ));
+        const lifetimeScore = Math.round(Number(lifetime.contribution_lifetime_score || 0));
+
+        // Backward-compatible fallback if an older backend omits action counters.
+        if (!bugsTotal && !ideasTotal && !reviewsTotal) {
+            seasons.forEach((season) => {
+                bugsTotal += Math.round(Number(season.bugs_count || 0));
+                ideasTotal += Math.round(Number(season.ideas_count || 0));
+                reviewsTotal += Math.round(Number(season.play_reviews_count || 0));
+            });
+            const currentMe = (_contributionCurrentCache && _contributionCurrentCache.me) || {};
+            bugsTotal += Math.round(Number(currentMe.bugs_count || 0));
+            ideasTotal += Math.round(Number(currentMe.ideas_count || 0));
+            reviewsTotal += Math.round(Number(currentMe.play_reviews_count || 0));
+        }
+
+        actionsEl.style.display = '';
+        const scoreLine = document.getElementById('contribution-lifetime-score-line');
+        const breakdownLine = document.getElementById('contribution-lifetime-breakdown-line');
+        const scoreText = window.t('contributionLifetimeScoreLine', {
+            score: lifetimeScore,
+            points_word: pluralizePointsWord(lifetimeScore),
+        }, lang);
+        const breakdownText = window.t('contributionLifetimeBreakdownLine', {
+            bugs: bugsTotal,
+            ideas: ideasTotal,
+            reviews: reviewsTotal,
+        }, lang);
+        if (scoreLine && breakdownLine) {
+            scoreLine.textContent = scoreText;
+            breakdownLine.textContent = breakdownText;
+        } else {
+            actionsEl.innerHTML = ''
+                + '<div class="contribution-lifetime-score-line">' + _escContribution(scoreText) + '</div>'
+                + '<div class="contribution-lifetime-breakdown-line">' + _escContribution(breakdownText) + '</div>';
+        }
+    }
+}
+
+async function _loadContributionCurrentTab() {
+    const loadingEl = document.getElementById('contribution-current-loading');
+    if (loadingEl) loadingEl.style.display = '';
+
+    let result = { status: 'error' };
+    if (window.fetchContributionCurrent) {
+        result = await window.fetchContributionCurrent();
+    }
+
+    if (result && result.status === 'success') {
+        _contributionCurrentCache = result;
+        _cacheContributionSeasonSnapshot(result);
+        _renderContributionCurrentTab(result);
+        if (typeof window.renderProjects === 'function') {
+            try { window.renderProjects(true); } catch (_) { /* ignore */ }
+        }
+        return true;
+    }
+
+    const fallback = _getCachedContributionFallback();
+    _renderContributionCurrentTab({
+        season: fallback.season_number ? {
+            season_number: fallback.season_number,
+            prize_pool_total: 0,
+            ends_at: (visibilityStats && visibilityStats.contribution_season && visibilityStats.contribution_season.ends_at) || null,
+        } : null,
+        me: {
+            rank: fallback.season_rank,
+            contribution_score: fallback.contribution_score,
+            bugs_count: fallback.bugs_count,
+            ideas_count: fallback.ideas_count,
+            play_reviews_count: fallback.play_reviews_count,
+        },
+        gap_to_top5: (visibilityStats && visibilityStats.contribution_season && visibilityStats.contribution_season.gap_to_top5) || 0,
+        leaderboard: [],
+    });
+    if (loadingEl) loadingEl.style.display = 'none';
+    showToast(window.t('contributionNetworkFallbackToast', {}, lang));
+    return false;
+}
+
+async function _loadContributionHistoryTab() {
+    const loadingEl = document.getElementById('contribution-history-loading');
+    if (loadingEl) loadingEl.style.display = '';
+
+    let result = { status: 'error' };
+    if (window.fetchContributionHistory) {
+        result = await window.fetchContributionHistory();
+    }
+
+    if (result && result.status === 'success') {
+        _contributionHistoryCache = result;
+        _renderContributionHistoryTab(result);
+        return true;
+    }
+
+    if (loadingEl) loadingEl.style.display = 'none';
+    const emptyEl = document.getElementById('contribution-history-empty');
+    if (emptyEl) {
+        emptyEl.style.display = '';
+        emptyEl.textContent = window.t('contributionHistoryLoadError', {}, lang);
+    }
+    showToast(window.t('contributionNetworkFallbackToast', {}, lang));
+    return false;
+}
+
+async function showContributionInfo() {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+    const modal = document.getElementById('contribution-info-modal');
+    if (!modal) {
+        if (typeof window.hideTgDeeplinkLoader === 'function') {
+            window.hideTgDeeplinkLoader('contribution');
+        }
+        return;
+    }
+
+    _contributionHistoryCache = null;
+    switchContributionTab('current');
+    modal.classList.add('active');
+
+    await _loadContributionCurrentTab();
+}
+
+async function claimContributionPrizeFromUi(seasonId, buttonEl) {
+    if (_contributionClaimInFlight) return;
+    const safeSeasonId = Number(seasonId || 0);
+    if (!safeSeasonId) return;
+
+    _contributionClaimInFlight = true;
+    if (buttonEl) {
+        buttonEl.disabled = true;
+        buttonEl.style.opacity = '0.6';
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+
+    let result = { status: 'error', code: 'network_error' };
+    try {
+        if (window.claimContributionPrize) {
+            result = await window.claimContributionPrize(safeSeasonId);
+        }
+    } catch (error) {
+        console.error('claimContributionPrizeFromUi error:', error);
+        result = { status: 'error', code: 'network_error' };
+    }
+
+    _contributionClaimInFlight = false;
+
+    if (!result || result.status !== 'success') {
+        if (buttonEl) {
+            buttonEl.disabled = false;
+            buttonEl.style.opacity = '1';
+        }
+        const code = (result && result.code) || 'network_error';
+        const specificKey = `contributionClaimError_${code}`;
+        const specificMsg = window.t(specificKey, {}, lang);
+        const message = (specificMsg && specificMsg !== specificKey)
+            ? specificMsg
+            : window.t('contributionClaimErrorGeneric', {}, lang);
+        if (tg && tg.showAlert) {
+            tg.showAlert(message);
+        } else {
+            showToast(message);
+        }
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        return;
+    }
+
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+    if (result.new_balance != null && visibilityStats) {
+        visibilityStats.balance_bust = Number(result.new_balance);
+    }
+
+    const amountLabel = formatContributionBustNumber(result.prize_amount || 0);
+    showToast(window.t('contributionClaimSuccessToast', { amount: amountLabel }, lang));
+
+    if (_contributionHistoryCache && Array.isArray(_contributionHistoryCache.seasons)) {
+        _contributionHistoryCache.seasons = _contributionHistoryCache.seasons.map((row) => {
+            if (Number(row.season_id) !== safeSeasonId) return row;
+            return {
+                ...row,
+                claim_status: 'claimed',
+                claimed_at: result.claimed_at || row.claimed_at,
+            };
+        });
+        _contributionHistoryCache.claimable = (_contributionHistoryCache.claimable || [])
+            .filter((item) => Number(item.season_id) !== safeSeasonId);
+        _contributionHistoryCache.has_claimable_prize = Boolean(
+            (_contributionHistoryCache.claimable || []).length
+        );
+        _renderContributionHistoryTab(_contributionHistoryCache);
+    } else if (buttonEl) {
+        buttonEl.outerHTML = `<div class="contribution-claimed-badge">${window.t('contributionClaimedBadge', {}, lang)}</div>`;
+    }
+
+    if (typeof window.renderProjects === 'function') {
+        try { window.renderProjects(true); } catch (_) { /* ignore */ }
+    }
+    if (typeof window.loadProjects === 'function') {
+        try { await window.loadProjects(true); } catch (_) { /* ignore */ }
+    }
+}
+
 function showReliabilityInfo() {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    document.getElementById('t-reliabilityInfoTitle').innerHTML = t.reliabilityInfoTitle;
-    document.getElementById('t-reliabilityInfoText').innerHTML = t.reliabilityInfoText;
-    document.getElementById('t-reliabilityAlphaBtn').innerText = t.reliabilityAlphaBtn;
-    document.getElementById('t-btnClose').innerText = t.btnClose;
-    document.getElementById('reliability-info-modal').classList.add('active');
+    openReliabilityAlphaModal();
 }
 
 function closeReliabilityInfo(event) {
@@ -4999,8 +6706,12 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'projects') {
-        renderProjects(true);
-        renderArchivedProjects(true);
+        var projectsList = document.getElementById('projects-list');
+        var hasRenderedProjects = projectsList && projectsList.querySelector('.card, .developer-widget, .empty-state');
+        if (!hasRenderedProjects) {
+            renderProjects(true);
+            renderArchivedProjects(true);
+        }
         if (typeof initPipelineHeader === 'function') initPipelineHeader();
         if (typeof updatePipelineHeader === 'function') updatePipelineHeader();
         if (typeof syncPipelineHeaderScrollState === 'function') syncPipelineHeaderScrollState();
@@ -5022,6 +6733,9 @@ function switchTab(tabId, navElement) {
     if (finalTab === 'tests') {
         if (window.loadTasks) {
             window.loadTasks(true).catch(function() {});
+        }
+        if (window.loadEvents) {
+            window.loadEvents().catch(function() {});
         }
         if (window.loadIncomingOffers) {
             window.loadIncomingOffers({ background: true }).catch(function() {});
@@ -5065,6 +6779,19 @@ var _dossierProjectsCache = {};
 var _dossierProfilesCache = {};
 
 function getDossierReliabilityState(profile) {
+    if (profile && typeof profile.reliability_index !== 'undefined' && profile.reliability_index !== null) {
+        var score = Number(profile.reliability_index);
+        var status = profile.reliability_status || 'newbie';
+        var isNewbie = (status === 'newbie');
+        return {
+            expected: Number(profile.total_expected_checkins || 0),
+            actual: Number(profile.total_actual_checkins || 0),
+            reliabilityPct: isNewbie ? 0 : Math.round(score),
+            reliabilityText: isNewbie ? window.t('dossierNewbie', {}, lang) : window.t('reliabilityDashStatus_' + status, {}, lang),
+            isNewbie: isNewbie
+        };
+    }
+
     var expected = Number(profile && profile.total_expected_checkins || 0);
     var actual = Number(profile && profile.total_actual_checkins || 0);
     var reliabilityPct = 0;
@@ -5083,6 +6810,7 @@ function getDossierReliabilityState(profile) {
         actual: actual,
         reliabilityPct: reliabilityPct,
         reliabilityText: reliabilityText,
+        isNewbie: expected < 42
     };
 }
 
@@ -5695,12 +7423,9 @@ async function openDossierModal(username, testerId, appId) {
     _dossierProfilesCache[String(testerId)] = Object.assign({}, profile, dossierOwnerProfile);
 
     const reliabilityState = getDossierReliabilityState(profile);
-    const expected = reliabilityState.expected;
-    const actual = reliabilityState.actual;
-    const reliabilityPct = reliabilityState.reliabilityPct;
-    const reliabilityText = reliabilityState.reliabilityText;
-    // Reliability row hidden in dossier global profile until calculation is fixed:
-    // expected >= 42 ? t.dossierReliability.replace('{pct}', reliabilityPct) + ' ' + reliabilityText : t.disciplineLabel + ' ' + t.dossierNewbie
+    const reliabilityLine = reliabilityState.isNewbie
+        ? `${t.disciplineLabel} ${reliabilityState.reliabilityText}`
+        : `${t.dossierReliability.replace('{pct}', String(reliabilityState.reliabilityPct))} (${reliabilityState.reliabilityText})`;
 
     const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
     const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
@@ -5715,11 +7440,34 @@ async function openDossierModal(username, testerId, appId) {
     const goldenCountText = (profile.golden_count || 0) > 0
         ? window.t('dossierGoldenCount', { count: profile.golden_count })
         : '';
+    const acceptanceRateRaw = profile.acceptance_rate_pct;
+    const acceptanceRateNum = acceptanceRateRaw == null || acceptanceRateRaw === ''
+        ? null
+        : Number(acceptanceRateRaw);
+    const qualityLine = (acceptanceRateNum != null && Number.isFinite(acceptanceRateNum))
+        ? window.t('dossierReportQuality', {
+            pct: Number.isInteger(acceptanceRateNum)
+                ? String(acceptanceRateNum)
+                : acceptanceRateNum.toFixed(1).replace(/\.0$/, ''),
+        }, lang)
+        : '';
+    const hasOwnedApps = !!profile.has_owned_apps;
+    const slaHoursLabel = formatAvgHandleHoursLabel(profile.avg_handle_hours);
+    let ownerSlaLine = '';
+    if (hasOwnedApps && slaHoursLabel != null) {
+        ownerSlaLine = window.t('dossierOwnerSla', { hours: slaHoursLabel }, lang);
+        if (Number(profile.avg_handle_hours) > 72) {
+            ownerSlaLine += ' · ' + window.t('dossierOwnerSlaRare', {}, lang);
+        }
+    }
     html += `<div style="margin-bottom: 16px;">
         <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierGlobalTitle}</div>
         <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
             ${t.dossierExperience.replace('{count}', profile.completed_tests)}
             <br>${t.dossierKarma.replace('{karma}', profile.karma)}
+            <br>${window.escapeHTML(reliabilityLine)}
+            ${qualityLine ? '<br>' + window.escapeHTML(qualityLine) : ''}
+            ${ownerSlaLine ? '<br>' + window.escapeHTML(ownerSlaLine) : ''}
             ${goldenCountText ? '<br><span class="golden-badge">' + window.escapeHTML(goldenCountText) + '</span>' : ''}
         </div>
     </div>`;
@@ -6431,6 +8179,8 @@ Object.assign(window, {
     checkinOptionsOpenReviewStore,
     toggleCheckinReviewCheckbox,
     renderPlayReviewModal,
+    _savePlayReviewSession,
+    _clearPlayReviewSession,
     togglePlayReviewModalCheckbox,
     toggleProjectDetailsReviewCheckbox,
     openPlayReviewModal,
@@ -6455,6 +8205,13 @@ Object.assign(window, {
     closeFeedbackRewardModalUi,
     showKarmaInfo,
     closeKarmaInfoModal,
+    showContributionInfo,
+    closeContributionInfoModal,
+    switchContributionTab,
+    claimContributionPrizeFromUi,
+    _cacheContributionSeasonSnapshot,
+    pluralizePointsWord,
+    formatContributionPointsLabel,
     showReliabilityInfo,
     closeReliabilityInfo,
     showRankPopup,
@@ -6563,10 +8320,19 @@ Object.assign(window, {
     feedbackSliderStep,
     feedbackSliderGoTo,
     openFeedbackTopicLink,
+    openFeedbackRejectModal,
+    closeFeedbackRejectModal,
+    selectFeedbackRejectReason,
+    confirmFeedbackReject,
     feedbackExpandText,
     feedbackOnImageError,
     submitPlayReview,
     rejectPlayReview,
+    openPlayReviewRejectModal,
+    closePlayReviewRejectModal,
+    selectPlayReviewRejectReason,
+    confirmPlayReviewReject,
+    toggleFeedbackCardCollapse,
 });
 
 console.log('[DEBUG] ui-market.js END — switchTab=', typeof switchTab, 'showLoading=', typeof showLoading);

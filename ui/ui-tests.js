@@ -138,19 +138,130 @@ function getTesterOvertimeStats(tester) {
     };
 }
 
+function syncPulseTickerSpeed(track) {
+    if (!track) return;
+    const firstContent = track.querySelector('.pulse-ticker-content');
+    if (!firstContent) return;
+    const width = Math.max(
+        firstContent.offsetWidth || 0,
+        firstContent.scrollWidth || 0
+    );
+    if (!width) return;
+    // Constant linear speed (px/s). Duration must scale with content width,
+    // otherwise longer ticker runs feel faster with a fixed 55s animation.
+    const PX_PER_SEC = 42;
+    const durationSec = Math.max(14, Math.round((width / PX_PER_SEC) * 10) / 10);
+    track.style.animationDuration = durationSec + 's';
+}
+
+function mountPulseTicker(tickerContainer, tickerHtml, options) {
+    const opts = options || {};
+    const animate = opts.animate !== false;
+    const signature = String(tickerHtml || '') + (animate ? '|loop' : '|static');
+    const existingTrack = tickerContainer.querySelector('.pulse-ticker-track');
+
+    // Keep the same DOM node when content is unchanged so CSS animation
+    // does not restart and "jump" in perceived speed on cache refreshes.
+    if (tickerContainer.dataset.tickerSig === signature && existingTrack) {
+        if (animate) syncPulseTickerSpeed(existingTrack);
+        return;
+    }
+
+    tickerContainer.dataset.tickerSig = signature;
+    if (!animate) {
+        tickerContainer.innerHTML = `
+            <div class="pulse-ticker-track" style="animation: none;">
+                <div class="pulse-ticker-content">${tickerHtml}</div>
+            </div>
+        `;
+        return;
+    }
+
+    tickerContainer.innerHTML = `
+        <div class="pulse-ticker-track">
+            <div class="pulse-ticker-content">${tickerHtml} &nbsp;&bull;&nbsp;&nbsp;</div>
+            <div class="pulse-ticker-content" aria-hidden="true">${tickerHtml} &nbsp;&bull;&nbsp;&nbsp;</div>
+        </div>
+    `;
+    const track = tickerContainer.querySelector('.pulse-ticker-track');
+    requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+            syncPulseTickerSpeed(track);
+        });
+    });
+}
+
 function renderEvents() {
     if (!arguments[0] && !isTabVisible('tests')) return;
+    const cardEl = document.getElementById('community-pulse');
+    const collapsedView = document.getElementById('pulse-collapsed-view');
+    const expandedView = document.getElementById('pulse-expanded-view');
+    const tickerContainer = document.getElementById('pulse-ticker-container');
     const listEl = document.getElementById('events-list');
     const toggleEl = document.getElementById('events-toggle');
-    if (!listEl || !toggleEl) return;
 
+    if (!cardEl || !collapsedView || !expandedView || !tickerContainer || !listEl || !toggleEl) return;
+
+    if (eventsExpanded) {
+        cardEl.classList.remove('ticker-mode');
+        collapsedView.style.display = 'none';
+        expandedView.style.display = 'block';
+    } else {
+        cardEl.classList.add('ticker-mode');
+        collapsedView.style.display = 'flex';
+        expandedView.style.display = 'none';
+    }
+
+    // Render Collapsed Ticker View
+    if (communityEvents === null) {
+        mountPulseTicker(
+            tickerContainer,
+            `<span class="pulse-ticker-item">${t.pulseLoading || 'Loading...'}</span>`,
+            { animate: false }
+        );
+    } else if (!communityEvents || !communityEvents.length) {
+        const emptyText = t.pulseEmptyToday || (lang === 'ru' ? 'Сегодня событий нет. Пульс сообщества спокоен.' : 'No events today. Community pulse is calm.');
+        mountPulseTicker(
+            tickerContainer,
+            `<span class="pulse-ticker-item">${emptyText}</span>`,
+            { animate: false }
+        );
+    } else {
+        // Filter events for today (local calendar date matching getLocalDate())
+        const todayStr = getLocalDate();
+        const todayEvents = communityEvents.filter((eventItem) => {
+            if (!eventItem.created_at) return false;
+            const eventDate = new Date(eventItem.created_at);
+            if (Number.isNaN(eventDate.getTime())) return false;
+            const eventLocalDateStr = eventDate.getFullYear() + '-' + String(eventDate.getMonth() + 1).padStart(2, '0') + '-' + String(eventDate.getDate()).padStart(2, '0');
+            return eventLocalDateStr === todayStr;
+        });
+
+        let tickerHtml = '';
+        if (todayEvents.length === 0) {
+            const emptyTodayText = t.pulseEmptyToday || (lang === 'ru' ? 'Сегодня событий нет. Пульс сообщества спокоен.' : 'No events today. Community pulse is calm.');
+            tickerHtml = `<span class="pulse-ticker-item">${emptyTodayText}</span>`;
+            mountPulseTicker(tickerContainer, tickerHtml, { animate: false });
+        } else {
+            tickerHtml = todayEvents.map((eventItem) => {
+                const rawText = (lang === 'ru' ? eventItem.text_ru : (eventItem.text_en || eventItem.text_ru)) || '';
+                const text = sanitizePulseEventHtml(rawText);
+                const date = new Date(eventItem.created_at);
+                const timeStr = String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+                return `<span class="pulse-ticker-item"><span class="pulse-ticker-time">${timeStr}</span> ${text}</span>`;
+            }).join('<span class="pulse-ticker-separator">•</span>');
+            mountPulseTicker(tickerContainer, tickerHtml, { animate: true });
+        }
+    }
+
+    // Render Expanded View
     if (communityEvents === null) {
         listEl.innerHTML = `<div class="event-time">${t.pulseLoading}</div>`;
         toggleEl.style.display = 'none';
         return;
     }
 
-    if (!communityEvents) {
+    if (!communityEvents || !communityEvents.length) {
         listEl.innerHTML = `<div class="event-time">${t.pulseEmpty}</div>`;
         toggleEl.style.display = 'none';
         return;
@@ -158,12 +269,6 @@ function renderEvents() {
 
     const visibleEvents = eventsExpanded ? communityEvents : communityEvents.slice(0, 2);
     listEl.className = eventsExpanded ? 'events-list expanded' : 'events-list';
-
-    if (!communityEvents.length) {
-        listEl.innerHTML = `<div class="event-time">${t.pulseEmpty}</div>`;
-        toggleEl.style.display = 'none';
-        return;
-    }
 
     listEl.innerHTML = visibleEvents.map((eventItem) => {
         const rawText = (lang === 'ru' ? eventItem.text_ru : (eventItem.text_en || eventItem.text_ru)) || '';
@@ -176,14 +281,24 @@ function renderEvents() {
         `;
     }).join('');
 
-    toggleEl.style.display = communityEvents.length > 2 ? '' : 'none';
-    toggleEl.innerText = eventsExpanded ? t.pulseCollapse : t.pulseExpand;
+    toggleEl.style.display = eventsExpanded ? '' : 'none';
 }
 
 function toggleEventsExpanded() {
     eventsExpanded = !eventsExpanded;
     renderEvents();
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function toggleTickerPause(event) {
+    if (event && event.target && event.target.closest('a')) return;
+    const track = document.querySelector('.pulse-ticker-track');
+    if (track) {
+        track.classList.toggle('paused');
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+        }
+    }
 }
 
 function getProjectLanguageToast(targetLang) {
@@ -1523,7 +1638,7 @@ function renderTests(force) {
         if (shouldShowInPendingList) {
             card.className = 'card card-pending-release pending-release-carousel-card horizontal-card';
         } else {
-            card.className = shouldShowInDoneList ? 'card card-done' : 'card';
+            card.className = shouldShowInDoneList ? 'card card-done done-today-card' : 'card';
             if (isExternal) {
                 card.className += ' card-external-tracking';
             }
@@ -1879,7 +1994,7 @@ function renderCompletedTests(completedTests) {
 
     completedTests.forEach((test) => {
         const card = document.createElement('div');
-        card.className = 'card card-done';
+        card.className = 'card card-done done-today-card';
         card.id = `test-card-${test.id}`;
         const userTestingDay = getResolvedTestingDay(test);
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');

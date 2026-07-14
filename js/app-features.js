@@ -1440,10 +1440,7 @@ function refreshLanguageUi() {
     renderChips('chips-instructions', 'app-instructions');
     renderChips('chips-edit-instructions', 'edit-description');
 
-    const toggleBtn = document.getElementById('events-toggle');
-    if (toggleBtn) {
-        toggleBtn.innerText = eventsExpanded ? window.t('pulseCollapse', {}, lang) : window.t('pulseExpand', {}, lang);
-    }
+
 
     const select = document.getElementById('attach-project-select');
     if (select && select.options.length > 0 && !select.value) {
@@ -1451,6 +1448,9 @@ function refreshLanguageUi() {
     }
 
     syncAutoAcceptToggleUi();
+    if (typeof syncDeviceProfileUi === 'function') {
+        syncDeviceProfileUi();
+    }
 }
 
 async function loadUserProfilePreferences() {
@@ -1461,9 +1461,17 @@ async function loadUserProfilePreferences() {
         _autoAcceptMutualEnabled = !!profile.auto_accept_mutual;
         syncAutoAcceptToggleUi();
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
+        if (typeof applyDeviceInfoFromProfile === 'function') {
+            applyDeviceInfoFromProfile(profile);
+        } else {
+            _deviceProfileBannerReady = true;
+            if (typeof syncDeviceProfileBanner === 'function') syncDeviceProfileBanner();
+        }
     } catch (error) {
         console.error('Profile preferences load error:', error);
         syncAutoAcceptToggleUi();
+        _deviceProfileBannerReady = true;
+        if (typeof syncDeviceProfileBanner === 'function') syncDeviceProfileBanner();
     }
 }
 

@@ -617,6 +617,8 @@ var _earnFeedbackCount = 0;
 var _earnFeedbackBust = 0;
 var _earnPlayReviewCount = 0;
 var _earnPlayReviewBust = 0;
+var _earnSprintJoined = 0;
+var _earnSprintBust = 0;
 var _feedbackType = 'bug';
 var _inviteProjectId = null;
 var archivedProjects = [];
@@ -684,6 +686,14 @@ var _reliabilityBreakdownLoadError = false;
 var _pendingActions = new Set();
 var _autoAcceptMutualEnabled = false;
 var _autoAcceptToggleInFlight = false;
+var _attachDeviceInfoToBugs = false;
+var _deviceInfo = '';
+var _deviceInfoIsManual = false;
+var _deviceInfoLoaded = false;
+var _deviceProfileComplete = false;
+var _deviceProfileRewardClaimed = false;
+var _deviceProfileBustEarned = 0;
+var _deviceProfileBannerReady = false;
 var _pendingInitialHighlightTestId = null;
 var _highlightTestTimerId = null;
 var _backgroundSyncState = { tests: 0, projects: 0, market: 0 };
@@ -773,6 +783,8 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_earnFeedbackBust', function () { return _earnFeedbackBust; }, function (value) { _earnFeedbackBust = value; });
     window.App.bindStateProperty('_earnPlayReviewCount', function () { return _earnPlayReviewCount; }, function (value) { _earnPlayReviewCount = value; });
     window.App.bindStateProperty('_earnPlayReviewBust', function () { return _earnPlayReviewBust; }, function (value) { _earnPlayReviewBust = value; });
+    window.App.bindStateProperty('_earnSprintJoined', function () { return _earnSprintJoined; }, function (value) { _earnSprintJoined = value; });
+    window.App.bindStateProperty('_earnSprintBust', function () { return _earnSprintBust; }, function (value) { _earnSprintBust = value; });
     window.App.bindStateProperty('_feedbackType', function () { return _feedbackType; }, function (value) { _feedbackType = value; });
     window.App.bindStateProperty('_inviteProjectId', function () { return _inviteProjectId; }, function (value) { _inviteProjectId = value; });
     window.App.bindStateProperty('archivedProjects', function () { return archivedProjects; }, function (value) { archivedProjects = value; });
@@ -893,6 +905,36 @@ function _getStartappParam() {
     // Prefer explicit URL startapp over Telegram initData.start_param to avoid stale routing.
     return String(params.get('startapp') || initData.start_param || '').trim();
 }
+
+function showTgDeeplinkLoader(kind) {
+    try {
+        if (kind) window.__tgDeeplinkLoaderKind = String(kind);
+        document.documentElement.classList.add('tg-deeplink-loading');
+        var el = document.getElementById('tg-deeplink-loader');
+        if (el) {
+            el.style.display = 'flex';
+            el.setAttribute('aria-hidden', 'false');
+        }
+    } catch (error) {}
+}
+
+function hideTgDeeplinkLoader(kind) {
+    try {
+        var activeKind = window.__tgDeeplinkLoaderKind || '';
+        if (kind && activeKind && activeKind !== kind) return;
+        document.documentElement.classList.remove('tg-deeplink-loading');
+        var el = document.getElementById('tg-deeplink-loader');
+        if (el) {
+            el.style.display = 'none';
+            el.setAttribute('aria-hidden', 'true');
+        }
+        window.__tgDeeplinkLoaderKind = null;
+    } catch (error) {}
+}
+
+
+window.showTgDeeplinkLoader = showTgDeeplinkLoader;
+window.hideTgDeeplinkLoader = hideTgDeeplinkLoader;
 
 function _parseGuestClaimIntent() {
     var rawStartParam = _getStartappParam();
@@ -1060,6 +1102,10 @@ function _parseInitialRouteTarget() {
         if (normalized === 'invite_links' || normalized === 'invitelinks') {
             routeKind = 'invite_links';
         }
+        if (normalized === 'contribution' || normalized === 'sprint' || normalized === 'contribution_pool') {
+            routeKind = 'contribution';
+            break;
+        }
     }
 
     if (routeKind === 'feedback' || params.get('feedback') === '1') {
@@ -1127,6 +1173,14 @@ function _parseInitialRouteTarget() {
             tab: 'projects',
             openFeedback: false,
             openInviteLinks: true,
+            appId: null,
+        };
+    }
+    if (routeKind === 'contribution') {
+        return {
+            tab: 'projects',
+            openFeedback: false,
+            openContribution: true,
             appId: null,
         };
     }
@@ -1300,11 +1354,30 @@ async function _handleInitialRoute() {
         return;
     }
 
+    if (route.openContribution) {
+        try {
+            showTgDeeplinkLoader('contribution');
+            switchTab('projects');
+            if (typeof window.showContributionInfo === 'function') {
+                await window.showContributionInfo();
+            }
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial contribution route error:', error);
+            hideTgDeeplinkLoader('contribution');
+        }
+        return;
+    }
+
     if (!route.openFeedback || !route.appId) {
+        if (window.__tgDeeplinkLoaderKind === 'feedback') {
+            hideTgDeeplinkLoader('feedback');
+        }
         return;
     }
 
     try {
+        showTgDeeplinkLoader('feedback');
         await Promise.allSettled([
             loadProjects(true),
             loadArchivedProjects({ silent: true })
@@ -1319,5 +1392,6 @@ async function _handleInitialRoute() {
         await openProjectFeedback(route.appId, isArchived);
     } catch (error) {
         console.error('Initial feedback route error:', error);
+        hideTgDeeplinkLoader('feedback');
     }
 }

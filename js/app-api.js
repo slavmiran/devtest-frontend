@@ -1376,7 +1376,18 @@ function _mapTestsFromApi(data) {
             request_reviews: app.request_reviews !== false,
             play_feedback_submitted: !!app.play_feedback_submitted,
             play_review_status: String(app.play_review_status || (app.play_feedback_submitted ? 'pending' : 'none')).toLowerCase(),
-            play_review_screenshot_url: app.play_review_screenshot_url || '',
+            play_review_screenshot_url: (function() {
+                var apiUrl = String(app.play_review_screenshot_url || '').trim();
+                var localUrl = existingTest ? String(existingTest.play_review_screenshot_url || '').trim() : '';
+                try {
+                    var sessionRaw = sessionStorage.getItem('playReviewRetry:' + String(Number(mappedId) || 0));
+                    var session = sessionRaw ? JSON.parse(sessionRaw) : null;
+                    var sessionUrl = session && session.screenshotUrl ? String(session.screenshotUrl).trim() : '';
+                    if (sessionUrl) return sessionUrl;
+                } catch (e) {}
+                // Keep a freshly uploaded local URL if API snapshot is still stale/empty.
+                return apiUrl || localUrl || '';
+            })(),
             rewards_summary: (app && typeof app.rewards_summary === 'object' && app.rewards_summary)
                 ? {
                     checkin_karma: Number(app.rewards_summary.checkin_karma || 0),
@@ -1913,6 +1924,8 @@ function _mapProjectsFromApi(data) {
 }
 
 function _mapStatsFromApi(data) {
+    var contribution = (data && data.contribution) || {};
+    var previousSeason = (visibilityStats && visibilityStats.contribution_season) || null;
     return {
         ownerKarma: data.karma || 0,
         rank: data.rank || 0,
@@ -1926,6 +1939,17 @@ function _mapStatsFromApi(data) {
         total_actual_checkins: data.total_actual_checkins || 0,
         golden_count: data.golden_count || 0,
         grant_tests_count: data.grant_tests_count || 0,
+        reliability_index: typeof data.reliability_index !== 'undefined' ? data.reliability_index : null,
+        reliability_status: data.reliability_status || 'newbie',
+        contribution: {
+            contribution_score: Number(contribution.contribution_score || data.contribution_score || 0),
+            bugs_count: Number(contribution.bugs_count || 0),
+            ideas_count: Number(contribution.ideas_count || 0),
+            play_reviews_count: Number(contribution.play_reviews_count || 0),
+        },
+        contribution_score: Number(contribution.contribution_score || data.contribution_score || 0),
+        // Keep client-cached season snapshot across projects refresh (avoids widget text jump).
+        contribution_season: previousSeason || null,
     };
 }
 
