@@ -940,6 +940,7 @@
             feedbackQuickAcceptToast: "✅ Принято",
             feedbackRewardSubmitting: "Отправляем…",
             feedbackResponseSpeedLabel: "Скорость обработки",
+            feedbackSlaChipToast: "Скорость обработки отзывов/фидбэков",
             feedbackSlaChipDash: "—",
             feedbackSlaChipHours: "~{hours} ч.",
             feedbackSlaChipMinutes: "~{minutes} мин",

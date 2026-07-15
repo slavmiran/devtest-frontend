@@ -941,6 +941,7 @@
             feedbackQuickAcceptToast: "✅ Accepted",
             feedbackRewardSubmitting: "Submitting…",
             feedbackResponseSpeedLabel: "Processing speed",
+            feedbackSlaChipToast: "Review/feedback processing speed",
             feedbackSlaChipDash: "—",
             feedbackSlaChipHours: "~{hours} h",
             feedbackSlaChipMinutes: "~{minutes} m",

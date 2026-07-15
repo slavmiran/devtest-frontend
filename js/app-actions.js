@@ -2302,6 +2302,7 @@ async function fetchContributionCurrent() {
             gap_to_top5: Number(payload.gap_to_top5 || 0),
             leaderboard: Array.isArray(payload.leaderboard) ? payload.leaderboard : [],
             leaderboard_total: Number(payload.leaderboard_total || 0),
+            pending_details: Array.isArray(payload.pending_details) ? payload.pending_details : [],
         };
     } catch (error) {
         console.error('Contribution current load error:', error);

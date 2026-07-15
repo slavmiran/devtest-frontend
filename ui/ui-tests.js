@@ -956,17 +956,20 @@ function buildOwnerSlaMetaChip(test) {
     const hoursRaw = test && (test.owner_avg_handle_hours != null
         ? test.owner_avg_handle_hours
         : test.avg_handle_hours);
-    const hasValue = hoursRaw != null && hoursRaw !== '' && Number.isFinite(Number(hoursRaw)) && Number(hoursRaw) >= 0;
-    const icon = (typeof getMaterialAcuteIconSvg === 'function')
-        ? getMaterialAcuteIconSvg('sla-acute-icon')
-        : '<span aria-hidden="true">⏱</span>';
+    const hoursNum = Number(hoursRaw);
+    const hasValue = hoursRaw != null && hoursRaw !== '' && Number.isFinite(hoursNum) && hoursNum >= 0;
+    const icon = (typeof window.getMaterialAcuteIconSvg === 'function')
+        ? window.getMaterialAcuteIconSvg('sla-acute-icon')
+        : ((typeof getMaterialAcuteIconSvg === 'function')
+            ? getMaterialAcuteIconSvg('sla-acute-icon')
+            : '<span aria-hidden="true">⏱</span>');
 
     let label = window.t('feedbackSlaChipDash', {}, lang) || '—';
     let toneClass = '';
     if (hasValue) {
-        const hours = Number(hoursRaw);
+        const hours = hoursNum;
         if (hours < 1) {
-            const minutes = Math.max(1, Math.round(hours * 60));
+            const minutes = Math.max(1, Math.round(hours * 60) || 1);
             label = window.t('feedbackSlaChipMinutes', { minutes: minutes }, lang) || ('~' + minutes + (lang === 'ru' ? ' мин' : ' m'));
         } else {
             const rounded = hours >= 10 ? Math.round(hours) : (Math.round(hours * 10) / 10);
@@ -979,7 +982,8 @@ function buildOwnerSlaMetaChip(test) {
         else if (hours < 24) toneClass = ' meta-chip--sla-fast';
     }
 
-    const toast = window.t('feedbackResponseSpeedLabel', {}, lang) || (lang === 'ru' ? 'Скорость обработки' : 'Processing speed');
+    const toast = window.t('feedbackSlaChipToast', {}, lang)
+        || (lang === 'ru' ? 'Скорость обработки отзывов/фидбэков' : 'Review/feedback processing speed');
     return '<button type="button" class="meta-chip meta-chip--sla' + toneClass + '" onclick="event.stopPropagation(); showToast(\'' +
         String(toast).replace(/'/g, "\\'") + '\')">' + icon + '<span>' + window.escapeHTML(label) + '</span></button>';
 }
@@ -1025,6 +1029,13 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip accent-blue';
         parts.push(`<button class="${chipClass}" onclick="event.stopPropagation(); showTestDayPopup(${userTestingDay})">${dayText}${screenshotIcon}</button>`);
     }
+    // SLA chip directly after the testing-day chip.
+    if (test) {
+        const slaChip = buildOwnerSlaMetaChip(test);
+        if (slaChip) {
+            parts.push(slaChip);
+        }
+    }
     if (isNew) {
         parts.unshift(`<button class="meta-chip accent-green">${t.newBadge}</button>`);
     }
@@ -1057,10 +1068,6 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         if (rewardChipLabel) {
             const rewardLabel = window.escapeHTML(rewardChipLabel);
             parts.push(`<button class="meta-chip accent-green notranslate" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
-        }
-        const slaChip = buildOwnerSlaMetaChip(test);
-        if (slaChip) {
-            parts.push(slaChip);
         }
         if (isProjectSynced(test)) {
             const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);

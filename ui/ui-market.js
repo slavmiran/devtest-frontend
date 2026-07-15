@@ -3940,10 +3940,10 @@ function getFeedbackSlaToneClass(avgMs) {
 }
 
 function getMaterialAcuteIconSvg(extraClass) {
-    // Material Symbols "timer" used as Acute/SLA chronometer mark.
+    // Material Symbols Outlined "acute" (official chronometer glyph).
     const cls = extraClass ? (' class="' + extraClass + '"') : '';
-    return '<svg' + cls + ' viewBox="0 -960 960 960" width="16" height="16" aria-hidden="true" focusable="false">' +
-        '<path fill="currentColor" d="M360-840v-80h240v80H360Zm80 440h80v-240h-80v240Zm40 360q-74 0-139.5-28.5T226-186q-49-49-77.5-114.5T120-440q0-74 28.5-139.5T226-694q49-49 114.5-77.5T480-800q62 0 119 20t105 58l42-42 56 56-42 42q38 48 58 105t20 119q0 74-28.5 139.5T734-186q-49 49-114.5 77.5T480-80Zm0-80q116 0 198-82t82-198q0-116-82-198t-198-82q-116 0-198 82t-82 198q0 116 82 198t198 82Z"/>' +
+    return '<svg' + cls + ' xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="16" height="16" aria-hidden="true" focusable="false">' +
+        '<path fill="currentColor" d="M600-160q-134 0-227-93t-93-227q0-134 93-227t227-93q134 0 227 93t93 227q0 134-93 227t-227 93Zm-.24-60Q708-220 784-295.76q76-75.77 76-184Q860-588 784.24-664q-75.77-76-184-76Q492-740 416-664.24q-76 75.77-76 184Q340-372 415.76-296q75.77 76 184 76ZM702-337l42-42-114-114v-147h-60v172l132 131ZM80-610v-60h160v60H80ZM40-450v-60h200v60H40Zm40 160v-60h160v60H80Zm520-190Z"/>' +
         '</svg>';
 }
 window.getMaterialAcuteIconSvg = getMaterialAcuteIconSvg;
@@ -3992,12 +3992,16 @@ function buildFeedbackMicroSummaryHtml(item, isRejected) {
     const when = window.escapeHTML(formatFeedbackRelativeTime(
         (item && (item.processed_at || item.accepted_at || item.rejected_at || item.replied_at || item.updated_at || item.created_at)) || ''
     ));
+    // Date + reward stay only in collapsed micro-line; expanded view uses header date + reward chip.
+    const metaSuffix = when
+        ? ('<span class="fb-micro-meta"> <span class="fb-micro-sep">·</span> ' + when + '</span>')
+        : '';
     if (isRejected) {
         const reasonRaw = String((item && (item.rejection_reason || item.reject_reason || item.decline_reason)) || '').trim();
         const reasonLabel = reasonRaw ? window.escapeHTML(resolveFeedbackRejectReasonLabel(reasonRaw)) : '';
         return '<span class="fb-micro-no">❌ ' + window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected') + '</span>' +
             (reasonLabel ? (' <span class="fb-micro-sep">·</span> ' + reasonLabel) : '') +
-            ' <span class="fb-micro-sep">·</span> ' + when;
+            metaSuffix;
     }
     const bust = Number((item && item.reward_bust) || 0);
     const karma = Number((item && item.reward_karma) || 0);
@@ -4010,7 +4014,7 @@ function buildFeedbackMicroSummaryHtml(item, isRejected) {
         ? (' <span class="fb-micro-sep">·</span> <span class="fb-micro-bust">' + rewardParts.join(' <span class="fb-micro-sep">·</span> ') + '</span>')
         : '';
     return '<span class="fb-micro-ok">✔ ' + window.escapeHTML(window.t('feedbackAcceptedLabel', {}, lang) || 'Accepted') + '</span>' +
-        ' <span class="fb-micro-sep">·</span> ' + when + rewardHtml;
+        '<span class="fb-micro-meta"> <span class="fb-micro-sep">·</span> ' + when + rewardHtml + '</span>';
 }
 
 function getFeedbackPreviewText(item, isReviewTicket) {
@@ -4453,12 +4457,12 @@ function renderProjectFeedbackCards(project, items) {
             let nameHtml = '';
             if (fullName) {
                 nameHtml = username
-                    ? `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">${fullName}</a><a href="javascript:void(0);" class="fb-inbox-nick notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`
-                    : `<span class="notranslate">${fullName}</span>`;
+                    ? `<a href="javascript:void(0);" class="fb-inbox-fullname notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">${fullName}</a><a href="javascript:void(0);" class="fb-inbox-nick notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`
+                    : `<span class="fb-inbox-fullname notranslate">${fullName}</span>`;
             } else if (username) {
-                nameHtml = `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
+                nameHtml = `<a href="javascript:void(0);" class="fb-inbox-fullname notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
             } else {
-                nameHtml = `<span class="notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
+                nameHtml = `<span class="fb-inbox-fullname notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
             }
 
             const typePill = window.escapeHTML(getFeedbackTypePillLabel(item));
@@ -5594,10 +5598,36 @@ function toggleContributionPendingAccordion(forceOpen) {
 }
 window.toggleContributionPendingAccordion = toggleContributionPendingAccordion;
 
-function _renderContributionPendingAccordion(pendingDetails) {
+function _renderContributionPendingAccordion(pendingDetails, pendingCountHint) {
     const root = document.getElementById('contribution-pending-accordion');
     if (!root) return;
     const items = Array.isArray(pendingDetails) ? pendingDetails.slice() : [];
+    const pendingCount = Math.round(Number(
+        pendingCountHint != null ? pendingCountHint : items.length
+    ));
+
+    // Soft fallback: if API gave pending_count but no details yet, still show shell.
+    if (!items.length && pendingCount > 0) {
+        root.hidden = false;
+        root.classList.remove('is-open');
+        const title = window.escapeHTML(
+            window.t('contributionPendingAccordionTitle', {}, lang) ||
+            (lang === 'ru' ? 'Ожидают проверки разработчиками' : 'Awaiting developer review')
+        );
+        root.innerHTML =
+            '<button type="button" class="contribution-pending-toggle" aria-expanded="false" onclick="toggleContributionPendingAccordion()">' +
+                '<span class="contribution-pending-toggle-main">' +
+                    '<span class="contribution-pending-title">⏳ ' + title + ' (' + pendingCount + ')</span>' +
+                    '<span class="contribution-pending-preview">' +
+                        window.escapeHTML(lang === 'ru' ? 'Список обновляется…' : 'Refreshing list…') +
+                    '</span>' +
+                '</span>' +
+                '<span class="contribution-pending-chevron" aria-hidden="true">▼</span>' +
+            '</button>' +
+            '<div class="contribution-pending-panel" role="region"></div>';
+        return;
+    }
+
     if (!items.length) {
         root.hidden = true;
         root.classList.remove('is-open');
@@ -5716,7 +5746,10 @@ function _renderContributionCurrentTab(payload) {
         }
     }
 
-    _renderContributionPendingAccordion(payload && payload.pending_details);
+    _renderContributionPendingAccordion(
+        payload && payload.pending_details,
+        payload && payload.me && payload.me.pending_count
+    );
 
     const gapCard = document.getElementById('contribution-gap-card');
     const gapText = document.getElementById('contribution-gap-text');

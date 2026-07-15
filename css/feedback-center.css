@@ -1611,18 +1611,16 @@
 }
 
 #project-feedback-body .fb-inbox-name,
-#project-feedback-body .fb-inbox-name a {
+#project-feedback-body .fb-inbox-name a,
+#project-feedback-body .fb-inbox-fullname {
     font-size: 13.5px;
     font-weight: 650;
     color: var(--text-primary, #f4f6f8);
     text-decoration: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 42%;
 }
 
-#project-feedback-body .fb-inbox-name a {
+#project-feedback-body .fb-inbox-name a,
+#project-feedback-body a.fb-inbox-fullname {
     color: var(--accent-primary, #4c8dff);
 }
 
@@ -1777,6 +1775,10 @@
 }
 #project-feedback-body .fb-card--processed.fb-card--expanded .fb-micro-line {
     color: var(--text-primary, #f4f6f8);
+}
+/* Expanded: date lives in topline, reward in chip — hide duplicates from micro summary. */
+#project-feedback-body .fb-card--expanded .fb-micro-meta {
+    display: none;
 }
 #project-feedback-body .fb-card--processed.fb-card--expanded .fb-body {
     display: flex !important;
@@ -2125,6 +2127,16 @@
     align-items: baseline;
     gap: 6px;
     max-width: 58%;
+    min-width: 0;
+}
+#project-feedback-body .fb-inbox-fullname {
+    font: inherit;
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 #project-feedback-body .fb-inbox-nick {
     font-size: 12px;
@@ -2132,6 +2144,23 @@
     color: var(--text-tertiary, #717c89);
     text-decoration: none;
     white-space: nowrap;
+}
+/* Expanded: @nickname under display name */
+#project-feedback-body .fb-card--expanded .fb-inbox-name {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    max-width: min(70%, 220px);
+}
+#project-feedback-body .fb-card--expanded .fb-inbox-name a,
+#project-feedback-body .fb-card--expanded .fb-inbox-name .fb-inbox-fullname {
+    max-width: 100%;
+}
+#project-feedback-body .fb-card--expanded .fb-inbox-nick {
+    font-size: 11.5px;
+    line-height: 1.2;
+    color: var(--accent-primary, #4c8dff);
 }
 #project-feedback-body .fb-toolbar-utils {
     flex-shrink: 0;
