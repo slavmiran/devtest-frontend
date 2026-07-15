@@ -4515,7 +4515,7 @@ function renderProjectFeedbackCards(project, items) {
             }
 
             var deviceInfoHtml = '';
-            if (feedbackType === 'bug' && typeof renderFeedbackDeviceInfoBlock === 'function') {
+            if ((feedbackType === 'bug' || feedbackType === 'idea') && typeof renderFeedbackDeviceInfoBlock === 'function') {
                 deviceInfoHtml = renderFeedbackDeviceInfoBlock(item);
             }
 

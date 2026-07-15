@@ -1,4 +1,4 @@
-/* Test device profile for bug reports — 3 manual fields + optional Android auto-detect. */
+/* Test device profile for bug reports and ideas — 3 manual fields + optional Android auto-detect. */
 
 var _deviceInfoSaveInFlight = false;
 var DEVICE_INFO_VERSION = 3;
@@ -383,7 +383,8 @@ function copyFeedbackCardContent(itemId, projectId) {
 }
 
 function renderFeedbackDeviceInfoBlock(item) {
-    if (!item || String(item.type || '').toLowerCase() !== 'bug') return '';
+    var feedbackType = String((item && item.type) || '').toLowerCase();
+    if (!item || (feedbackType !== 'bug' && feedbackType !== 'idea')) return '';
     var publicLine = String(item.device_info_public_line || '').trim();
     if (!publicLine) {
         var data = item.device_info && typeof item.device_info === 'object'
