@@ -1605,8 +1605,8 @@
 
 #project-feedback-body .fb-inbox-topline {
     display: flex;
-    align-items: center;
-    gap: 6px;
+    align-items: flex-start;
+    gap: 8px;
     min-width: 0;
 }
 
@@ -1624,6 +1624,16 @@
     color: var(--accent-primary, #4c8dff);
 }
 
+#project-feedback-body .fb-inbox-meta {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    max-width: 46%;
+}
+
 #project-feedback-body .fb-type-pill {
     flex-shrink: 0;
     font-size: 10px;
@@ -1634,6 +1644,13 @@
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-secondary, #aeb7c2);
     line-height: 1.3;
+    white-space: nowrap;
+}
+
+#project-feedback-body .fb-card--expanded .fb-type-pill {
+    font-size: 13px;
+    padding: 3px 10px;
+    letter-spacing: 0.01em;
 }
 
 #project-feedback-body .fb-card--bug .fb-type-pill { color: #d9a8ff; background: rgba(175, 82, 222, 0.16); }
@@ -1641,11 +1658,13 @@
 #project-feedback-body .fb-card--google-play .fb-type-pill { color: #ffe28a; background: rgba(255, 204, 0, 0.14); }
 
 #project-feedback-body .fb-inbox-date {
-    margin-left: auto;
+    margin-left: 0;
     flex-shrink: 0;
     font-size: 11px;
     color: var(--text-tertiary, #717c89);
     font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    text-align: right;
 }
 
 #project-feedback-body .fb-preview {
@@ -2126,7 +2145,7 @@
     display: inline-flex;
     align-items: baseline;
     gap: 6px;
-    max-width: 58%;
+    max-width: 52%;
     min-width: 0;
 }
 #project-feedback-body .fb-inbox-fullname {
@@ -2166,7 +2185,7 @@
     flex-shrink: 0;
 }
 
-/* Processed discuss button: icon + label */
+/* Processed / open row-2: Copy + Discuss in chat */
 #project-feedback-body .fb-action-btn--topic {
     flex: 0 1 auto;
     gap: 6px;
@@ -2181,19 +2200,26 @@
     background: rgba(255, 255, 255, 0.08) !important;
     color: var(--text-primary, #f4f6f8) !important;
 }
-#project-feedback-body .fb-card--new .fb-toolbar,
-#project-feedback-body .fb-card--expanded:not(.fb-card--processed) .fb-toolbar {
+
+#project-feedback-body .fb-toolbar--open {
+    flex-direction: column;
+    align-items: stretch;
     flex-wrap: nowrap;
 }
-#project-feedback-body .fb-card--new .fb-toolbar-utils,
-#project-feedback-body .fb-card--expanded:not(.fb-card--processed) .fb-toolbar-utils {
-    flex-shrink: 0;
+#project-feedback-body .fb-toolbar--open .fb-toolbar-decide {
+    flex: 0 0 auto;
+    width: 100%;
 }
+#project-feedback-body .fb-toolbar--open .fb-toolbar-utils,
 #project-feedback-body .fb-card--processed .fb-toolbar-utils {
+    display: flex;
     flex: 1 1 auto;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
     gap: 8px;
+    width: 100%;
 }
+#project-feedback-body .fb-toolbar--open .fb-action-btn--topic,
 #project-feedback-body .fb-card--processed .fb-action-btn--topic {
     flex: 1 1 auto;
     min-width: 0;

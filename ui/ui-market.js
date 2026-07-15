@@ -4028,7 +4028,9 @@ function getFeedbackPreviewText(item, isReviewTicket) {
 
 function getFeedbackTypePillLabel(item) {
     const feedbackType = String((item && item.type) || 'bug').toLowerCase();
-    if (feedbackType.indexOf('google_play_review') === 0) return 'Review';
+    if (feedbackType.indexOf('google_play_review') === 0) {
+        return window.t('feedbackChipReview', {}, lang) || '⭐️ Review';
+    }
     if (feedbackType === 'idea') return window.t('feedbackChipIdea', {}, lang) || 'Idea';
     return window.t('feedbackChipBug', {}, lang) || 'Bug';
 }
@@ -4089,7 +4091,7 @@ window.toggleFeedbackCardCollapse = toggleFeedbackCardCollapse;
 function getFeedbackTypeChip(item) {
     const feedbackType = String(item.type || 'bug').toLowerCase();
     if (feedbackType.indexOf('google_play_review') === 0) {
-        return `<span class="fb-type-chip type-google-play">⭐ Google Play review</span>`;
+        return `<span class="fb-type-chip type-google-play">${window.escapeHTML(window.t('feedbackChipReview', {}, lang) || '⭐️ Review')}</span>`;
     }
     if (feedbackType === 'idea') {
         return `<span class="fb-type-chip type-idea">${window.escapeHTML(window.t('feedbackChipIdea', {}, lang))}</span>`;
@@ -4550,20 +4552,16 @@ function renderProjectFeedbackCards(project, items) {
             var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
             const chatIconSvg = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>';
             const discussLabel = window.escapeHTML(window.t('feedbackDiscussInChatBtn', {}, lang) || (lang === 'ru' ? 'Обсудить в чате' : 'Discuss in chat'));
+            const completeLabel = window.escapeHTML(window.t('feedbackAcceptBtn', {}, lang) || '🎁 Complete');
             const copyButtonHtml = (!isReviewTicket && (item.message_text || deviceInfoHtml))
                 ? `<button type="button" class="fb-icon-btn" onclick="copyFeedbackCardContent(${item.id}, ${projectId})" aria-label="${window.escapeHTML(window.t('feedbackCopyBtn', {}, lang) || 'Copy')}">
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                    </button>`
                 : '';
 
-            // Active = compact chat icon left of Accept/Reject. Processed = "Discuss in chat" + icon.
             let discussButtonHtml = '';
             if (hasTopicLink) {
-                if (isOpen) {
-                    discussButtonHtml = `<button type="button" class="fb-icon-btn" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')" aria-label="${discussLabel}" title="${discussLabel}">${chatIconSvg}</button>`;
-                } else {
-                    discussButtonHtml = `<button type="button" class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')">${chatIconSvg}<span>${discussLabel}</span></button>`;
-                }
+                discussButtonHtml = `<button type="button" class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')">${chatIconSvg}<span>${discussLabel}</span></button>`;
             }
 
             let decideButtonsHtml = '';
@@ -4579,7 +4577,7 @@ function renderProjectFeedbackCards(project, items) {
                             ontouchend="cancelFeedbackAcceptLongPress(this, event)"
                             ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
                         <span class="fb-btn-accept-progress"></span>
-                        <span class="fb-btn-accept-text">${window.escapeHTML(window.t('projectFeedbackThankCloseBtn', {}, lang) || window.t('projectFeedbackRewardBtn', {}, lang) || 'Accept')}</span>
+                        <span class="fb-btn-accept-text">${completeLabel}</span>
                     </button>`;
             } else if (isOpen) {
                 decideButtonsHtml = `
@@ -4593,14 +4591,12 @@ function renderProjectFeedbackCards(project, items) {
                             ontouchend="cancelFeedbackAcceptLongPress(this, event)"
                             ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
                         <span class="fb-btn-accept-progress"></span>
-                        <span class="fb-btn-accept-text">${window.escapeHTML(window.t('feedbackAcceptBtn', {}, lang) || 'Accept')}</span>
+                        <span class="fb-btn-accept-text">${completeLabel}</span>
                     </button>`;
             }
 
-            // Active: chat icon left of Accept/Reject. Processed: Copy, then Discuss in chat.
-            const utilsInner = isOpen
-                ? (discussButtonHtml + copyButtonHtml)
-                : (copyButtonHtml + discussButtonHtml);
+            // Row 1 (open): Reject + Complete. Row 2 / processed: Copy + Discuss in chat.
+            const utilsInner = copyButtonHtml + discussButtonHtml;
             const utilsHtml = utilsInner
                 ? `<div class="fb-toolbar-utils">${utilsInner}</div>`
                 : '';
@@ -4608,7 +4604,7 @@ function renderProjectFeedbackCards(project, items) {
                 ? `<div class="fb-toolbar-decide">${decideButtonsHtml}</div>`
                 : '';
             const toolbarHtml = (utilsHtml || decideHtml)
-                ? `<div class="fb-toolbar">${utilsHtml}${decideHtml}</div>`
+                ? `<div class="fb-toolbar${isOpen ? ' fb-toolbar--open' : ''}">${decideHtml}${utilsHtml}</div>`
                 : '';
 
             let cardTypeClass = 'fb-card--general';
@@ -4629,8 +4625,10 @@ function renderProjectFeedbackCards(project, items) {
                     <div class="fb-inbox-main">
                         <div class="fb-inbox-topline">
                             <span class="fb-inbox-name">${nameHtml}</span>
-                            <span class="fb-type-pill">${typePill}</span>
-                            <span class="fb-inbox-date">${relativeDate}</span>
+                            <div class="fb-inbox-meta">
+                                <span class="fb-type-pill">${typePill}</span>
+                                <span class="fb-inbox-date">${relativeDate}</span>
+                            </div>
                         </div>
                         <div class="fb-preview">${previewText}</div>
                         <div class="fb-micro-line">${microHtml}</div>
