@@ -2023,12 +2023,27 @@
 #project-feedback-body .feedback-stat--muted {
     margin-left: auto;
     align-items: flex-end;
-    opacity: 0.65;
+    opacity: 0.8;
 }
 #project-feedback-body .feedback-stat--muted .feedback-stat-value {
     font-size: 15px;
     font-weight: 700;
     color: var(--text-secondary, #aeb7c2);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+#project-feedback-body .feedback-stat--sla-fast .feedback-stat-value {
+    color: var(--success, #30D158);
+}
+#project-feedback-body .feedback-stat--sla-slow .feedback-stat-value {
+    color: var(--danger, #FF5A5F);
+}
+#project-feedback-body .feedback-sla-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    opacity: 0.9;
 }
 #project-feedback-body .feedback-stat--muted + .feedback-stat {
     border-left: none;

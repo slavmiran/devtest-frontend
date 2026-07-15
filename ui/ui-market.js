@@ -3917,14 +3917,36 @@ function formatFeedbackRelativeTime(createdAt) {
 
 function formatFeedbackAvgResponseHours(avgMs) {
     if (!avgMs || avgMs <= 0 || Number.isNaN(avgMs)) return '—';
-    const hours = avgMs / (60 * 60 * 1000);
-    if (hours < 1) {
-        const mins = Math.max(1, Math.round(avgMs / 60000));
-        return lang === 'ru' ? (mins + ' мин') : (mins + 'm');
+    const totalMins = Math.max(1, Math.round(avgMs / 60000));
+    if (totalMins < 60) {
+        return lang === 'ru' ? (totalMins + ' мин') : (totalMins + 'm');
     }
-    const rounded = hours >= 10 ? Math.round(hours) : Math.round(hours * 10) / 10;
-    return lang === 'ru' ? (rounded + ' ч') : (rounded + 'h');
+    const hours = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    if (mins === 0) {
+        return lang === 'ru' ? (hours + ' ч') : (hours + 'h');
+    }
+    return lang === 'ru'
+        ? (hours + ' ч ' + mins + ' мин')
+        : (hours + 'h ' + mins + 'm');
 }
+
+function getFeedbackSlaToneClass(avgMs) {
+    if (!avgMs || avgMs <= 0 || Number.isNaN(avgMs)) return '';
+    const hours = avgMs / (60 * 60 * 1000);
+    if (hours > 72) return ' feedback-stat--sla-slow';
+    if (hours < 24) return ' feedback-stat--sla-fast';
+    return '';
+}
+
+function getMaterialAcuteIconSvg(extraClass) {
+    // Material Symbols "timer" used as Acute/SLA chronometer mark.
+    const cls = extraClass ? (' class="' + extraClass + '"') : '';
+    return '<svg' + cls + ' viewBox="0 -960 960 960" width="16" height="16" aria-hidden="true" focusable="false">' +
+        '<path fill="currentColor" d="M360-840v-80h240v80H360Zm80 440h80v-240h-80v240Zm40 360q-74 0-139.5-28.5T226-186q-49-49-77.5-114.5T120-440q0-74 28.5-139.5T226-694q49-49 114.5-77.5T480-800q62 0 119 20t105 58l42-42 56 56-42 42q38 48 58 105t20 119q0 74-28.5 139.5T734-186q-49 49-114.5 77.5T480-80Zm0-80q116 0 198-82t82-198q0-116-82-198t-198-82q-116 0-198 82t-82 198q0 116 82 198t198 82Z"/>' +
+        '</svg>';
+}
+window.getMaterialAcuteIconSvg = getMaterialAcuteIconSvg;
 
 function getFeedbackAvgResponseMs(items) {
     let processedCount = 0;
@@ -4106,9 +4128,11 @@ function getProjectFeedbackHeader(project, items) {
     const onlyUnprocessed = statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open';
     const queueLabel = lang === 'ru' ? 'в очереди' : 'in queue';
     const doneLabel = lang === 'ru' ? 'обработано' : 'done';
-    const speedLabel = lang === 'ru' ? 'скорость' : 'speed';
+    const speedLabel = window.t('feedbackResponseSpeedLabel', {}, lang) || (lang === 'ru' ? 'Скорость обработки' : 'Processing speed');
     const unprocessedLabel = window.t('feedbackOnlyUnprocessedLabel', {}, lang) || (lang === 'ru' ? 'Только необработанные' : 'Unprocessed only');
     const allClearLabel = lang === 'ru' ? 'Очередь пуста 🎉' : 'Inbox zero 🎉';
+    const slaToneClass = getFeedbackSlaToneClass(avgResponseMs);
+    const slaIconHtml = getMaterialAcuteIconSvg('feedback-sla-icon');
 
     return `
         <div class="feedback-sticky-header">
@@ -4134,9 +4158,9 @@ function getProjectFeedbackHeader(project, items) {
                     <span class="feedback-stat-value">${processedCount}</span>
                     <span class="feedback-stat-label">${doneLabel}</span>
                 </div>
-                <div class="feedback-stat feedback-stat--muted" title="${window.escapeHTML(speedLabel)}">
-                    <span class="feedback-stat-value">${window.escapeHTML(avgResponseText)}</span>
-                    <span class="feedback-stat-label">${speedLabel}</span>
+                <div class="feedback-stat feedback-stat--muted${slaToneClass}" title="${window.escapeHTML(speedLabel)}">
+                    <span class="feedback-stat-value">${slaIconHtml}${window.escapeHTML(avgResponseText)}</span>
+                    <span class="feedback-stat-label">${window.escapeHTML(speedLabel)}</span>
                 </div>
                 <div class="feedback-progress" role="progressbar" aria-valuenow="${donePct}" aria-valuemin="0" aria-valuemax="100">
                     <div class="feedback-progress-fill" style="width:${donePct}%"></div>
@@ -5511,6 +5535,108 @@ function switchContributionTab(tabName) {
     }
 }
 
+function _contributionPendingTypeIcon(type) {
+    const value = String(type || '').toLowerCase();
+    if (value === 'idea') return '💡';
+    if (value === 'play_review') return '⭐️';
+    return '🐞';
+}
+
+function _contributionPendingAgeLabel(createdAt) {
+    if (!createdAt) return '';
+    const value = new Date(createdAt);
+    if (Number.isNaN(value.getTime())) return '';
+    const diffMs = Date.now() - value.getTime();
+    const days = Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
+    if (days <= 0) {
+        return window.t('contributionPendingSentToday', {}, lang) || (lang === 'ru' ? 'Отправлено сегодня' : 'Sent today');
+    }
+    return window.t('contributionPendingSentDays', { days: days }, lang) || (
+        lang === 'ru' ? ('Отправлено ' + days + ' дн. назад') : ('Sent ' + days + ' d ago')
+    );
+}
+
+function _buildContributionPendingRowHtml(item) {
+    const appName = window.escapeHTML(String((item && item.app_name) || '').trim() || '—');
+    const age = window.escapeHTML(_contributionPendingAgeLabel(item && item.created_at));
+    const typeIcon = _contributionPendingTypeIcon(item && item.type);
+    const discussLabel = window.escapeHTML(
+        window.t('contributionPendingDiscussBtn', {}, lang) || (lang === 'ru' ? 'Обсудить' : 'Discuss')
+    );
+    const href = String((item && item.telegram_message_link) || '').trim();
+    const safeHref = window.escapeHTML(href);
+    const discussHtml = href
+        ? ('<a class="contribution-pending-discuss" href="' + safeHref + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">' +
+            '💬 ' + discussLabel + '</a>')
+        : '';
+    return '' +
+        '<div class="contribution-pending-row">' +
+            '<div class="contribution-pending-row-main">' +
+                '<span class="contribution-pending-type" aria-hidden="true">' + typeIcon + '</span>' +
+                '<div class="contribution-pending-copy">' +
+                    '<span class="contribution-pending-app notranslate">' + appName + '</span>' +
+                    (age ? ('<span class="contribution-pending-age">' + age + '</span>') : '') +
+                '</div>' +
+            '</div>' +
+            discussHtml +
+        '</div>';
+}
+
+function toggleContributionPendingAccordion(forceOpen) {
+    const root = document.getElementById('contribution-pending-accordion');
+    if (!root || root.hidden) return;
+    const shouldOpen = typeof forceOpen === 'boolean'
+        ? forceOpen
+        : !root.classList.contains('is-open');
+    root.classList.toggle('is-open', shouldOpen);
+    const btn = root.querySelector('.contribution-pending-toggle');
+    if (btn) btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+}
+window.toggleContributionPendingAccordion = toggleContributionPendingAccordion;
+
+function _renderContributionPendingAccordion(pendingDetails) {
+    const root = document.getElementById('contribution-pending-accordion');
+    if (!root) return;
+    const items = Array.isArray(pendingDetails) ? pendingDetails.slice() : [];
+    if (!items.length) {
+        root.hidden = true;
+        root.classList.remove('is-open');
+        root.innerHTML = '';
+        return;
+    }
+
+    // API already returns oldest-first; keep defensive sort.
+    items.sort(function(a, b) {
+        const aTs = Date.parse(a && a.created_at) || 0;
+        const bTs = Date.parse(b && b.created_at) || 0;
+        return aTs - bTs;
+    });
+
+    const title = window.escapeHTML(
+        window.t('contributionPendingAccordionTitle', {}, lang) ||
+        (lang === 'ru' ? 'Ожидают проверки разработчиками' : 'Awaiting developer review')
+    );
+    const first = items[0] || {};
+    const previewApp = window.escapeHTML(String(first.app_name || '').trim() || '—');
+    const previewAge = window.escapeHTML(_contributionPendingAgeLabel(first.created_at));
+    const previewType = _contributionPendingTypeIcon(first.type);
+    const rowsHtml = items.map(_buildContributionPendingRowHtml).join('');
+
+    root.hidden = false;
+    root.classList.remove('is-open');
+    root.innerHTML =
+        '<button type="button" class="contribution-pending-toggle" aria-expanded="false" onclick="toggleContributionPendingAccordion()">' +
+            '<span class="contribution-pending-toggle-main">' +
+                '<span class="contribution-pending-title">⏳ ' + title + '</span>' +
+                '<span class="contribution-pending-preview">' + previewType + ' ' + previewApp +
+                    (previewAge ? (' · ' + previewAge) : '') +
+                '</span>' +
+            '</span>' +
+            '<span class="contribution-pending-chevron" aria-hidden="true">▼</span>' +
+        '</button>' +
+        '<div class="contribution-pending-panel" role="region">' + rowsHtml + '</div>';
+}
+
 function _renderContributionCurrentTab(payload) {
     const loadingEl = document.getElementById('contribution-current-loading');
     const emptyEl = document.getElementById('contribution-current-empty');
@@ -5529,6 +5655,7 @@ function _renderContributionCurrentTab(payload) {
         if (typeof window.hideTgDeeplinkLoader === 'function') {
             window.hideTgDeeplinkLoader('contribution');
         }
+        _renderContributionPendingAccordion([]);
         return;
     }
 
@@ -5588,6 +5715,8 @@ function _renderContributionCurrentTab(payload) {
             moderationEl.textContent = '';
         }
     }
+
+    _renderContributionPendingAccordion(payload && payload.pending_details);
 
     const gapCard = document.getElementById('contribution-gap-card');
     const gapText = document.getElementById('contribution-gap-text');

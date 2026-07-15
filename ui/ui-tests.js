@@ -952,6 +952,38 @@ function buildProposeMutualChip(test) {
     return `<button class="meta-chip accent-blue" onclick="createMutualOffer(${Number(test.id || 0)}, ${Number(test.owner_id || 0)}, event)">${window.escapeHTML(window.t('proposeMutualBtn', {}, lang))}</button>`;
 }
 
+function buildOwnerSlaMetaChip(test) {
+    const hoursRaw = test && (test.owner_avg_handle_hours != null
+        ? test.owner_avg_handle_hours
+        : test.avg_handle_hours);
+    const hasValue = hoursRaw != null && hoursRaw !== '' && Number.isFinite(Number(hoursRaw)) && Number(hoursRaw) >= 0;
+    const icon = (typeof getMaterialAcuteIconSvg === 'function')
+        ? getMaterialAcuteIconSvg('sla-acute-icon')
+        : '<span aria-hidden="true">⏱</span>';
+
+    let label = window.t('feedbackSlaChipDash', {}, lang) || '—';
+    let toneClass = '';
+    if (hasValue) {
+        const hours = Number(hoursRaw);
+        if (hours < 1) {
+            const minutes = Math.max(1, Math.round(hours * 60));
+            label = window.t('feedbackSlaChipMinutes', { minutes: minutes }, lang) || ('~' + minutes + (lang === 'ru' ? ' мин' : ' m'));
+        } else {
+            const rounded = hours >= 10 ? Math.round(hours) : (Math.round(hours * 10) / 10);
+            const hoursLabel = (Math.abs(rounded - Math.round(rounded)) < 0.05)
+                ? String(Math.round(rounded))
+                : String(rounded).replace(/\.0$/, '');
+            label = window.t('feedbackSlaChipHours', { hours: hoursLabel }, lang) || ('~' + hoursLabel + (lang === 'ru' ? ' ч.' : ' h'));
+        }
+        if (hours > 72) toneClass = ' meta-chip--sla-slow';
+        else if (hours < 24) toneClass = ' meta-chip--sla-fast';
+    }
+
+    const toast = window.t('feedbackResponseSpeedLabel', {}, lang) || (lang === 'ru' ? 'Скорость обработки' : 'Processing speed');
+    return '<button type="button" class="meta-chip meta-chip--sla' + toneClass + '" onclick="event.stopPropagation(); showToast(\'' +
+        String(toast).replace(/'/g, "\\'") + '\')">' + icon + '<span>' + window.escapeHTML(label) + '</span></button>';
+}
+
 function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test, options) {
     options = options || {};
     var showTestersCount = options.showTestersCount !== false;
@@ -1025,6 +1057,10 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         if (rewardChipLabel) {
             const rewardLabel = window.escapeHTML(rewardChipLabel);
             parts.push(`<button class="meta-chip accent-green notranslate" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
+        }
+        const slaChip = buildOwnerSlaMetaChip(test);
+        if (slaChip) {
+            parts.push(slaChip);
         }
         if (isProjectSynced(test)) {
             const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
