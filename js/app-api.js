@@ -1333,6 +1333,7 @@ function _mapTestsFromApi(data) {
             owner_full_name: app.owner_full_name || '',
             owner_avatar_url: app.owner_avatar_url || null,
             owner_karma: Number(app.owner_karma || 0),
+            owner_reliability_index: app.owner_reliability_index !== undefined && app.owner_reliability_index !== null ? Number(app.owner_reliability_index) : null,
             owner_avg_handle_hours: (app.owner_avg_handle_hours == null || app.owner_avg_handle_hours === '')
                 ? null
                 : Number(app.owner_avg_handle_hours),
