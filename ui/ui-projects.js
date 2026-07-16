@@ -4184,6 +4184,132 @@ document.addEventListener('click', (event) => {
 });
 
 /* ── Project Details Modal ────────────────────────── */
+var _ownerDetailProfileCache = {};
+var _ownerDetailProfileInflight = {};
+var OWNER_DETAIL_PROFILE_TTL_MS = 5 * 60 * 1000;
+
+function getOwnerDetailProfileCached(ownerId) {
+    const key = String(Number(ownerId || 0) || '');
+    if (!key || key === '0') return null;
+    const entry = _ownerDetailProfileCache[key];
+    if (entry && entry.profile && typeof entry.profile === 'object') {
+        return entry.profile;
+    }
+    if (typeof _dossierProfilesCache !== 'undefined' && _dossierProfilesCache[key]) {
+        return _dossierProfilesCache[key];
+    }
+    return null;
+}
+
+function isOwnerDetailProfileFresh(ownerId) {
+    const key = String(Number(ownerId || 0) || '');
+    const entry = _ownerDetailProfileCache[key];
+    if (!entry || !entry.profile) return false;
+    return (Date.now() - Number(entry.fetchedAt || 0)) < OWNER_DETAIL_PROFILE_TTL_MS;
+}
+
+function setOwnerDetailProfileCache(ownerId, profile) {
+    const key = String(Number(ownerId || 0) || '');
+    if (!key || key === '0' || !profile || typeof profile !== 'object') return;
+    _ownerDetailProfileCache[key] = { profile: profile, fetchedAt: Date.now() };
+    if (typeof _dossierProfilesCache !== 'undefined') {
+        _dossierProfilesCache[key] = Object.assign({}, _dossierProfilesCache[key] || {}, profile);
+    }
+}
+
+function applyOwnerProfileIdentityToTest(test, profileData) {
+    if (!test || !profileData) return;
+    if (profileData.full_name) test.owner_full_name = profileData.full_name;
+    if (profileData.username) test.owner_username = profileData.username;
+    if (profileData.avatar_url) test.owner_avatar_url = profileData.avatar_url;
+    if (typeof profileData.karma !== 'undefined') test.owner_karma = profileData.karma;
+    if (typeof profileData.avg_handle_hours !== 'undefined') {
+        test.owner_avg_handle_hours = profileData.avg_handle_hours;
+    }
+}
+
+function applyOwnerProfileToOpenDetailsModal(profileData, test, ownerId) {
+    if (!profileData || !test) return;
+    applyOwnerProfileIdentityToTest(test, profileData);
+
+    const currentModal = document.getElementById('project-details-modal');
+    if (!currentModal || !currentModal.classList.contains('active') || String(currentModal.dataset.appId) !== String(test.id)) {
+        return;
+    }
+
+    const updatedDispName = test.owner_full_name || (test.owner_username ? '@' + String(test.owner_username).replace(/^@+/, '') : '');
+    const updatedMainName = updatedDispName || window.t('idLabel', { id: ownerId }, lang);
+    const updatedSubName = (test.owner_full_name && test.owner_username) ? '@' + String(test.owner_username).replace(/^@+/, '') : '';
+
+    const avatarEl = document.getElementById('detail-owner-avatar');
+    if (avatarEl) {
+        const updatedLetter = updatedMainName.replace(/^@+/, '').charAt(0).toUpperCase();
+        let newInner = '';
+        if (test.owner_avatar_url) {
+            newInner += '<img src="' + window.escapeHTML(test.owner_avatar_url) + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">';
+        }
+        newInner += '<span style="' + (test.owner_avatar_url ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%; color:#fff; font-weight:700;') + '">' + window.escapeHTML(updatedLetter) + '</span>';
+        avatarEl.innerHTML = newInner;
+    }
+
+    const nameEl = document.getElementById('detail-owner-name');
+    if (nameEl) nameEl.textContent = updatedMainName;
+
+    const rowTextContainer = nameEl ? nameEl.parentElement : null;
+    if (rowTextContainer) {
+        let usernameEl = document.getElementById('detail-owner-username');
+        if (updatedSubName) {
+            if (!usernameEl) {
+                usernameEl = document.createElement('div');
+                usernameEl.id = 'detail-owner-username';
+                usernameEl.className = 'detail-owner-username notranslate';
+                usernameEl.style.fontSize = '13px';
+                usernameEl.style.color = 'var(--tg-theme-link-color, var(--link-color, #3390ec))';
+                usernameEl.style.fontWeight = '500';
+                rowTextContainer.insertBefore(usernameEl, document.getElementById('detail-owner-status'));
+            }
+            usernameEl.textContent = updatedSubName;
+        } else if (usernameEl) {
+            usernameEl.remove();
+        }
+    }
+
+    updateOwnerDetailMetricsFromProfile(profileData, test);
+}
+
+function fetchOwnerDetailProfile(ownerId, options) {
+    options = options || {};
+    const force = !!options.force;
+    const key = String(Number(ownerId || 0) || '');
+    if (!key || key === '0') return Promise.resolve(null);
+
+    if (!force && isOwnerDetailProfileFresh(ownerId)) {
+        return Promise.resolve(getOwnerDetailProfileCached(ownerId));
+    }
+    if (_ownerDetailProfileInflight[key]) {
+        return _ownerDetailProfileInflight[key];
+    }
+
+    _ownerDetailProfileInflight[key] = fetch(API_BASE + '/users/' + ownerId + '/profile')
+        .then(function(resp) {
+            if (!resp.ok) throw new Error('profile_http_' + resp.status);
+            return resp.json();
+        })
+        .then(function(profileData) {
+            setOwnerDetailProfileCache(ownerId, profileData);
+            return profileData;
+        })
+        .catch(function(err) {
+            console.error('Failed to fetch developer profile in details modal:', err);
+            return getOwnerDetailProfileCached(ownerId);
+        })
+        .finally(function() {
+            delete _ownerDetailProfileInflight[key];
+        });
+
+    return _ownerDetailProfileInflight[key];
+}
+
 function _ownerDetailReliabilityMetric(profile) {
     const state = (typeof getDossierReliabilityState === 'function')
         ? getDossierReliabilityState(profile || {})
@@ -4375,6 +4501,11 @@ function openProjectDetailsModal(appId) {
 
     const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
     const safePackage = window.escapeHTML(test.package || '');
+    const ownerIdForProfile = Number(test.owner_id || 0);
+    const cachedOwnerProfile = getOwnerDetailProfileCached(ownerIdForProfile) || null;
+    if (cachedOwnerProfile) {
+        applyOwnerProfileIdentityToTest(test, cachedOwnerProfile);
+    }
     const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
     const ownerAvatarUrl = String(test.owner_avatar_url || '').trim();
     const nameForHash = test.owner_username || test.owner_full_name || '?';
@@ -4402,7 +4533,9 @@ function openProjectDetailsModal(appId) {
         : Math.max(0, 14 - daysSinceCreated);
     const potential = totalCheckins + left;
     const ownerActivity = getOwnerActivityMeta(test.last_owner_activity);
-    const ownerKarmaRaw = test && typeof test.owner_karma !== 'undefined' ? test.owner_karma : test.ownerKarma;
+    const ownerKarmaRaw = (cachedOwnerProfile && typeof cachedOwnerProfile.karma !== 'undefined')
+        ? cachedOwnerProfile.karma
+        : (test && typeof test.owner_karma !== 'undefined' ? test.owner_karma : test.ownerKarma);
     const ownerKarma = Number.isFinite(Number(ownerKarmaRaw)) ? Number(ownerKarmaRaw) : 0;
     const hasPlayReviewRequest = !!test.request_reviews;
     const rewardsSummary = (test && test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
@@ -4738,7 +4871,10 @@ function openProjectDetailsModal(appId) {
         '</div>';
     }
     var economicsHtml = '';
-    if (Number(test.bounty_per_tester || 0) > 0) {
+    // Show contract economics only for testers on this project via bounty/contract,
+    // not for mutual/barter seats on hybrid (Combo) apps.
+    var isContractTester = String(test.join_type || '').toLowerCase() === 'bounty';
+    if (isContractTester && Number(test.bounty_per_tester || 0) > 0) {
         var perTester = Number(test.bounty_per_tester || 0);
         var dailyReward = perTester * 0.65 / 14;
         var holdBonus = perTester * 0.35;
@@ -4919,7 +5055,7 @@ function openProjectDetailsModal(appId) {
                     '</div>' +
                 '</div>' +
             '</div>' +
-            buildOwnerDetailMetricsHtml({
+            buildOwnerDetailMetricsHtml(cachedOwnerProfile || {
                 karma: ownerKarma,
                 avg_handle_hours: (test.owner_avg_handle_hours != null ? test.owner_avg_handle_hours : test.avg_handle_hours),
             }, test) +
@@ -4960,77 +5096,13 @@ function openProjectDetailsModal(appId) {
         modal.dataset.appId = String(Number(test.id) || '');
         modal.classList.add('active');
 
-        // Asynchronously fetch fresh owner profile details to avoid expired Telegram avatar URLs
+        // Owner dossier: use session cache immediately; refresh network only when stale.
         const ownerId = Number(test.owner_id || 0);
-        if (ownerId > 0) {
-            setTimeout(async () => {
-                try {
-                    const resp = await fetch(`${API_BASE}/users/${ownerId}/profile`);
-                    if (resp.ok) {
-                        const profileData = await resp.json();
-                        
-                        // Update cache/test object so it persists during this session
-                        test.owner_full_name = profileData.full_name || test.owner_full_name;
-                        test.owner_username = profileData.username || test.owner_username;
-                        test.owner_avatar_url = profileData.avatar_url || test.owner_avatar_url;
-                        test.owner_karma = typeof profileData.karma !== 'undefined' ? profileData.karma : test.owner_karma;
-                        if (typeof profileData.avg_handle_hours !== 'undefined') {
-                            test.owner_avg_handle_hours = profileData.avg_handle_hours;
-                        }
-                        
-                        // Check if modal is still open and displays this project
-                        const currentModal = document.getElementById('project-details-modal');
-                        if (currentModal && currentModal.classList.contains('active') && String(currentModal.dataset.appId) === String(test.id)) {
-                            // Re-calculate values
-                            const updatedDispName = test.owner_full_name || (test.owner_username ? '@' + test.owner_username.replace(/^@+/, '') : '');
-                            const updatedMainName = updatedDispName || window.t('idLabel', { id: ownerId }, lang);
-                            const updatedSubName = (test.owner_full_name && test.owner_username) ? '@' + test.owner_username.replace(/^@+/, '') : '';
-                            
-                            // Update Avatar
-                            const avatarEl = document.getElementById('detail-owner-avatar');
-                            if (avatarEl) {
-                                const updatedLetter = updatedMainName.replace(/^@+/, '').charAt(0).toUpperCase();
-                                let newInner = '';
-                                if (test.owner_avatar_url) {
-                                    newInner += '<img src="' + window.escapeHTML(test.owner_avatar_url) + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">';
-                                }
-                                newInner += '<span style="' + (test.owner_avatar_url ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%; color:#fff; font-weight:700;') + '">' + window.escapeHTML(updatedLetter) + '</span>';
-                                avatarEl.innerHTML = newInner;
-                            }
-                            
-                            // Update Name
-                            const nameEl = document.getElementById('detail-owner-name');
-                            if (nameEl) {
-                                nameEl.textContent = updatedMainName;
-                            }
-                            
-                            // Update Subtitle Username
-                            const rowTextContainer = nameEl ? nameEl.parentElement : null;
-                            if (rowTextContainer) {
-                                let usernameEl = document.getElementById('detail-owner-username');
-                                if (updatedSubName) {
-                                    if (!usernameEl) {
-                                        usernameEl = document.createElement('div');
-                                        usernameEl.id = 'detail-owner-username';
-                                        usernameEl.className = 'detail-owner-username notranslate';
-                                        usernameEl.style.fontSize = '13px';
-                                        usernameEl.style.color = 'var(--tg-theme-link-color, var(--link-color, #3390ec))';
-                                        usernameEl.style.fontWeight = '500';
-                                        rowTextContainer.insertBefore(usernameEl, document.getElementById('detail-owner-status'));
-                                    }
-                                    usernameEl.textContent = updatedSubName;
-                                } else if (usernameEl) {
-                                    usernameEl.remove();
-                                }
-                            }
-
-                            updateOwnerDetailMetricsFromProfile(profileData, test);
-                        }
-                    }
-                } catch (err) {
-                    console.error('Failed to fetch developer profile in details modal:', err);
-                }
-            }, 50);
+        if (ownerId > 0 && !isOwnerDetailProfileFresh(ownerId)) {
+            fetchOwnerDetailProfile(ownerId).then(function(profileData) {
+                if (!profileData) return;
+                applyOwnerProfileToOpenDetailsModal(profileData, test, ownerId);
+            });
         }
 
         // Accordion & Overtime row synchronizer for days 1-14
