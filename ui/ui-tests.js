@@ -952,20 +952,11 @@ function buildProposeMutualChip(test) {
     return `<button class="meta-chip accent-blue" onclick="createMutualOffer(${Number(test.id || 0)}, ${Number(test.owner_id || 0)}, event)">${window.escapeHTML(window.t('proposeMutualBtn', {}, lang))}</button>`;
 }
 
-function buildOwnerSlaMetaChip(test) {
-    const hoursRaw = test && (test.owner_avg_handle_hours != null
-        ? test.owner_avg_handle_hours
-        : test.avg_handle_hours);
+function formatOwnerSlaDisplay(hoursRaw) {
     const hoursNum = Number(hoursRaw);
     const hasValue = hoursRaw != null && hoursRaw !== '' && Number.isFinite(hoursNum) && hoursNum >= 0;
-    const icon = (typeof window.getMaterialAcuteIconSvg === 'function')
-        ? window.getMaterialAcuteIconSvg('sla-acute-icon')
-        : ((typeof getMaterialAcuteIconSvg === 'function')
-            ? getMaterialAcuteIconSvg('sla-acute-icon')
-            : '<span aria-hidden="true">⏱</span>');
-
     let label = window.t('feedbackSlaChipDash', {}, lang) || '—';
-    let toneClass = '';
+    let tone = '';
     if (hasValue) {
         const hours = hoursNum;
         if (hours < 1) {
@@ -978,15 +969,12 @@ function buildOwnerSlaMetaChip(test) {
                 : String(rounded).replace(/\.0$/, '');
             label = window.t('feedbackSlaChipHours', { hours: hoursLabel }, lang) || ('~' + hoursLabel + (lang === 'ru' ? ' ч.' : ' h'));
         }
-        if (hours > 72) toneClass = ' meta-chip--sla-slow';
-        else if (hours < 24) toneClass = ' meta-chip--sla-fast';
+        if (hours > 72) tone = 'slow';
+        else if (hours < 24) tone = 'fast';
     }
-
-    const toast = window.t('feedbackSlaChipToast', {}, lang)
-        || (lang === 'ru' ? 'Скорость обработки отзывов/фидбэков' : 'Review/feedback processing speed');
-    return '<button type="button" class="meta-chip meta-chip--sla' + toneClass + '" onclick="event.stopPropagation(); showToast(\'' +
-        String(toast).replace(/'/g, "\\'") + '\')">' + icon + '<span>' + window.escapeHTML(label) + '</span></button>';
+    return { label: label, tone: tone, hasValue: hasValue, hours: hasValue ? hoursNum : null };
 }
+window.formatOwnerSlaDisplay = formatOwnerSlaDisplay;
 
 function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test, options) {
     options = options || {};
@@ -1028,13 +1016,6 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         const screenshotIcon = isScreenshot ? ' 📸' : '';
         const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip accent-blue';
         parts.push(`<button class="${chipClass}" onclick="event.stopPropagation(); showTestDayPopup(${userTestingDay})">${dayText}${screenshotIcon}</button>`);
-    }
-    // SLA chip directly after the testing-day chip.
-    if (test) {
-        const slaChip = buildOwnerSlaMetaChip(test);
-        if (slaChip) {
-            parts.push(slaChip);
-        }
     }
     if (isNew) {
         parts.unshift(`<button class="meta-chip accent-green">${t.newBadge}</button>`);
