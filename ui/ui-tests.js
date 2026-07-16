@@ -1798,32 +1798,28 @@ function renderTests(force) {
                 }
 
                 actionsHtml = `
-                    <div class="early-finish-banner" style="gap: 8px;">
-                        <div class="early-finish-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 12px; border-bottom: 1px solid rgba(255, 149, 0, 0.15); padding-bottom: 8px;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="early-finish-icon" style="font-size: 20px;">🏁</span>
-                                <span class="early-finish-title" style="font-size: 15px; font-weight: 700; color: #ff9500;">${window.t('earlyFinishCardTitle', {}, lang)}</span>
+                    <div class="early-finish-banner" style="gap: 10px;">
+                        <!-- HEADER: big icon | title+subtitle | reliability number -->
+                        <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255, 149, 0, 0.15); padding-bottom: 10px;">
+                            <span style="font-size: 36px; line-height: 1; flex-shrink: 0;">🏁</span>
+                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;">
+                                <span style="font-size: 15px; font-weight: 700; color: #ff9500; line-height: 1.2;">${window.t('earlyFinishCardTitle', {}, lang)}</span>
+                                <span style="font-size: 11px; color: var(--hint-color); font-weight: 500; line-height: 1.3;">${lang === 'ru' ? 'Индекс надёжности разработчика' : 'Developer Reliability Index'}</span>
                             </div>
-                            <div class="developer-reliability-badge" style="text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end;">
-                                <span style="font-size: 8px; text-transform: uppercase; color: var(--hint-color); font-weight: 600; letter-spacing: 0.05em; line-height: 1.2;">
-                                    ${lang === 'ru' ? 'Надёжность разработчика' : 'Developer Reliability'}
-                                </span>
-                                <span style="font-size: 20px; font-weight: 800; color: ${devReliabilityColor}; line-height: 1.1; margin-top: 2px;">
-                                    ${devReliability}
-                                </span>
-                            </div>
+                            <span style="font-size: 26px; font-weight: 800; color: ${devReliabilityColor}; flex-shrink: 0; line-height: 1;">${devReliability}</span>
                         </div>
-                        <div class="early-finish-desc" style="font-size: 13px; color: var(--text-color); line-height: 1.5; margin-top: 4px;">
+                        <!-- DESCRIPTION -->
+                        <div class="early-finish-desc" style="font-size: 13px; color: var(--text-color); line-height: 1.5;">
                             ${window.t('earlyFinishCardDesc', {}, lang)}
                         </div>
-                        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #34c759; font-weight: 600; margin-top: 2px; margin-bottom: 6px;">
-                            <span>${window.t('earlyFinishProtected', {}, lang)}</span>
-                        </div>
-                        <button id="btn-early-finish-${test.id}" class="btn btn-early-finish" onclick="claimEarlyFinishBonus(${test.progress_id}, ${test.id})">
-                            ${window.t('earlyFinishClaimBtn', {}, lang)}
-                        </button>
-                        <div class="early-finish-meta" style="text-align: center; margin-top: 4px; font-size: 12px; font-weight: 500; color: var(--hint-color); display: flex; align-items: center; justify-content: center; gap: 4px;">
-                            <span></span> <span>${efMetaLabel}</span>
+                        <!-- BUTTON + stats as subtitle -->
+                        <div style="display: flex; flex-direction: column; align-items: stretch; gap: 4px;">
+                            <button id="btn-early-finish-${test.id}" class="btn btn-early-finish" onclick="claimEarlyFinishBonus(${test.progress_id}, ${test.id})">
+                                ${window.t('earlyFinishClaimBtn', {}, lang)}
+                            </button>
+                            <div style="text-align: center; font-size: 11px; font-weight: 400; color: var(--hint-color); line-height: 1.4;">
+                                ${efMetaLabel}
+                            </div>
                         </div>
                     </div>
                 `;

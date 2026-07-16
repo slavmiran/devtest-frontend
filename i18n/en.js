@@ -917,7 +917,7 @@
             claimGrantOvertimeToast: "🎉 You claimed {amount} $BUST! Project is in overtime — keep testing for extra Karma!",
             claimGrantMissedToast: "Grant missed: skipped days ({count}) exceed the allowed limit (3).",
             earlyFinishCardTitle: "Early Finish",
-            earlyFinishCardDesc: "The developer will continue to test your app until the end of the period.",
+            earlyFinishCardDesc: "By <strong>platform rules</strong> the developer will continue to test your app until the end of the period.",
             earlyFinishProtected: "✓ Protected by platform rules",
             earlyFinishDays: "Days: {days}",
             earlyFinishPerfect: "✅ No skips",
