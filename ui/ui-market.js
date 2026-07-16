@@ -555,13 +555,24 @@ function renderReliabilityAlphaModal() {
               <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
               <div class="ri-grants-tiles">
                 ${grants.map(function(g, idx) {
-                  var icon = g.is_golden ? '🏆' : '💎';
                   var activeClass = idx === window._activeGrantIndex ? 'active' : '';
                   var goldenClass = g.is_golden ? 'is-golden' : '';
+                  var appIconHtml = typeof renderIcon === 'function'
+                    ? renderIcon(g.app_name || '', g.icon_url || '')
+                    : '';
+                  var ownerIconHtml = typeof renderIcon === 'function'
+                    ? renderIcon(g.owner_name || g.app_name || '?', g.owner_avatar_url || '')
+                    : '';
                   return `
                     <button type="button" class="ri-grant-tile ${activeClass} ${goldenClass}" onclick="selectActiveGrant(${idx}, event)">
-                      <span>${icon}</span>
-                      <span>${formatReliabilityIndex(g.amount_bust)} $BUST</span>
+                      <span class="ri-grant-pair" aria-hidden="true">
+                        <span class="ri-grant-app">${appIconHtml}</span>
+                        <span class="ri-grant-owner">${ownerIconHtml}</span>
+                      </span>
+                      <span class="ri-grant-amount">
+                        <span class="ri-grant-amount-val">${formatReliabilityIndex(g.amount_bust)}</span>
+                        <span class="ri-grant-bust-ico">💎</span>
+                      </span>
                     </button>
                   `;
                 }).join('')}
@@ -3917,14 +3928,36 @@ function formatFeedbackRelativeTime(createdAt) {
 
 function formatFeedbackAvgResponseHours(avgMs) {
     if (!avgMs || avgMs <= 0 || Number.isNaN(avgMs)) return '—';
-    const hours = avgMs / (60 * 60 * 1000);
-    if (hours < 1) {
-        const mins = Math.max(1, Math.round(avgMs / 60000));
-        return lang === 'ru' ? (mins + ' мин') : (mins + 'm');
+    const totalMins = Math.max(1, Math.round(avgMs / 60000));
+    if (totalMins < 60) {
+        return lang === 'ru' ? (totalMins + ' мин') : (totalMins + 'm');
     }
-    const rounded = hours >= 10 ? Math.round(hours) : Math.round(hours * 10) / 10;
-    return lang === 'ru' ? (rounded + ' ч') : (rounded + 'h');
+    const hours = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    if (mins === 0) {
+        return lang === 'ru' ? (hours + ' ч') : (hours + 'h');
+    }
+    return lang === 'ru'
+        ? (hours + ' ч ' + mins + ' мин')
+        : (hours + 'h ' + mins + 'm');
 }
+
+function getFeedbackSlaToneClass(avgMs) {
+    if (!avgMs || avgMs <= 0 || Number.isNaN(avgMs)) return '';
+    const hours = avgMs / (60 * 60 * 1000);
+    if (hours > 72) return ' feedback-stat--sla-slow';
+    if (hours < 24) return ' feedback-stat--sla-fast';
+    return '';
+}
+
+function getMaterialAcuteIconSvg(extraClass) {
+    // Material Symbols Outlined "acute" (official chronometer glyph).
+    const cls = extraClass ? (' class="' + extraClass + '"') : '';
+    return '<svg' + cls + ' xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="16" height="16" aria-hidden="true" focusable="false">' +
+        '<path fill="currentColor" d="M600-160q-134 0-227-93t-93-227q0-134 93-227t227-93q134 0 227 93t93 227q0 134-93 227t-227 93Zm-.24-60Q708-220 784-295.76q76-75.77 76-184Q860-588 784.24-664q-75.77-76-184-76Q492-740 416-664.24q-76 75.77-76 184Q340-372 415.76-296q75.77 76 184 76ZM702-337l42-42-114-114v-147h-60v172l132 131ZM80-610v-60h160v60H80ZM40-450v-60h200v60H40Zm40 160v-60h160v60H80Zm520-190Z"/>' +
+        '</svg>';
+}
+window.getMaterialAcuteIconSvg = getMaterialAcuteIconSvg;
 
 function getFeedbackAvgResponseMs(items) {
     let processedCount = 0;
@@ -3970,12 +4003,16 @@ function buildFeedbackMicroSummaryHtml(item, isRejected) {
     const when = window.escapeHTML(formatFeedbackRelativeTime(
         (item && (item.processed_at || item.accepted_at || item.rejected_at || item.replied_at || item.updated_at || item.created_at)) || ''
     ));
+    // Date + reward stay only in collapsed micro-line; expanded view uses header date + reward chip.
+    const metaSuffix = when
+        ? ('<span class="fb-micro-meta"> <span class="fb-micro-sep">·</span> ' + when + '</span>')
+        : '';
     if (isRejected) {
         const reasonRaw = String((item && (item.rejection_reason || item.reject_reason || item.decline_reason)) || '').trim();
         const reasonLabel = reasonRaw ? window.escapeHTML(resolveFeedbackRejectReasonLabel(reasonRaw)) : '';
         return '<span class="fb-micro-no">❌ ' + window.escapeHTML(window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected') + '</span>' +
             (reasonLabel ? (' <span class="fb-micro-sep">·</span> ' + reasonLabel) : '') +
-            ' <span class="fb-micro-sep">·</span> ' + when;
+            metaSuffix;
     }
     const bust = Number((item && item.reward_bust) || 0);
     const karma = Number((item && item.reward_karma) || 0);
@@ -3988,7 +4025,7 @@ function buildFeedbackMicroSummaryHtml(item, isRejected) {
         ? (' <span class="fb-micro-sep">·</span> <span class="fb-micro-bust">' + rewardParts.join(' <span class="fb-micro-sep">·</span> ') + '</span>')
         : '';
     return '<span class="fb-micro-ok">✔ ' + window.escapeHTML(window.t('feedbackAcceptedLabel', {}, lang) || 'Accepted') + '</span>' +
-        ' <span class="fb-micro-sep">·</span> ' + when + rewardHtml;
+        '<span class="fb-micro-meta"> <span class="fb-micro-sep">·</span> ' + when + rewardHtml + '</span>';
 }
 
 function getFeedbackPreviewText(item, isReviewTicket) {
@@ -4002,7 +4039,9 @@ function getFeedbackPreviewText(item, isReviewTicket) {
 
 function getFeedbackTypePillLabel(item) {
     const feedbackType = String((item && item.type) || 'bug').toLowerCase();
-    if (feedbackType.indexOf('google_play_review') === 0) return 'Review';
+    if (feedbackType.indexOf('google_play_review') === 0) {
+        return window.t('feedbackChipReview', {}, lang) || '⭐️ Review';
+    }
     if (feedbackType === 'idea') return window.t('feedbackChipIdea', {}, lang) || 'Idea';
     return window.t('feedbackChipBug', {}, lang) || 'Bug';
 }
@@ -4063,7 +4102,7 @@ window.toggleFeedbackCardCollapse = toggleFeedbackCardCollapse;
 function getFeedbackTypeChip(item) {
     const feedbackType = String(item.type || 'bug').toLowerCase();
     if (feedbackType.indexOf('google_play_review') === 0) {
-        return `<span class="fb-type-chip type-google-play">⭐ Google Play review</span>`;
+        return `<span class="fb-type-chip type-google-play">${window.escapeHTML(window.t('feedbackChipReview', {}, lang) || '⭐️ Review')}</span>`;
     }
     if (feedbackType === 'idea') {
         return `<span class="fb-type-chip type-idea">${window.escapeHTML(window.t('feedbackChipIdea', {}, lang))}</span>`;
@@ -4106,9 +4145,11 @@ function getProjectFeedbackHeader(project, items) {
     const onlyUnprocessed = statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open';
     const queueLabel = lang === 'ru' ? 'в очереди' : 'in queue';
     const doneLabel = lang === 'ru' ? 'обработано' : 'done';
-    const speedLabel = lang === 'ru' ? 'скорость' : 'speed';
+    const speedLabel = window.t('feedbackResponseSpeedLabel', {}, lang) || (lang === 'ru' ? 'Скорость обработки' : 'Processing speed');
     const unprocessedLabel = window.t('feedbackOnlyUnprocessedLabel', {}, lang) || (lang === 'ru' ? 'Только необработанные' : 'Unprocessed only');
     const allClearLabel = lang === 'ru' ? 'Очередь пуста 🎉' : 'Inbox zero 🎉';
+    const slaToneClass = getFeedbackSlaToneClass(avgResponseMs);
+    const slaIconHtml = getMaterialAcuteIconSvg('feedback-sla-icon');
 
     return `
         <div class="feedback-sticky-header">
@@ -4134,9 +4175,9 @@ function getProjectFeedbackHeader(project, items) {
                     <span class="feedback-stat-value">${processedCount}</span>
                     <span class="feedback-stat-label">${doneLabel}</span>
                 </div>
-                <div class="feedback-stat feedback-stat--muted" title="${window.escapeHTML(speedLabel)}">
-                    <span class="feedback-stat-value">${window.escapeHTML(avgResponseText)}</span>
-                    <span class="feedback-stat-label">${speedLabel}</span>
+                <div class="feedback-stat feedback-stat--muted${slaToneClass}" title="${window.escapeHTML(speedLabel)}">
+                    <span class="feedback-stat-value">${slaIconHtml}${window.escapeHTML(avgResponseText)}</span>
+                    <span class="feedback-stat-label">${window.escapeHTML(speedLabel)}</span>
                 </div>
                 <div class="feedback-progress" role="progressbar" aria-valuenow="${donePct}" aria-valuemin="0" aria-valuemax="100">
                     <div class="feedback-progress-fill" style="width:${donePct}%"></div>
@@ -4429,12 +4470,12 @@ function renderProjectFeedbackCards(project, items) {
             let nameHtml = '';
             if (fullName) {
                 nameHtml = username
-                    ? `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">${fullName}</a><a href="javascript:void(0);" class="fb-inbox-nick notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`
-                    : `<span class="notranslate">${fullName}</span>`;
+                    ? `<a href="javascript:void(0);" class="fb-inbox-fullname notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">${fullName}</a><a href="javascript:void(0);" class="fb-inbox-nick notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`
+                    : `<span class="fb-inbox-fullname notranslate">${fullName}</span>`;
             } else if (username) {
-                nameHtml = `<a href="javascript:void(0);" class="notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
+                nameHtml = `<a href="javascript:void(0);" class="fb-inbox-fullname notranslate" onclick="return openFeedbackDm('${safeUsername}', ${item.id}, ${isReviewTicket}, event)">@${window.escapeHTML(username)}</a>`;
             } else {
-                nameHtml = `<span class="notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
+                nameHtml = `<span class="fb-inbox-fullname notranslate">${window.escapeHTML(window.t('idLabel', { id: item.tester_id }, lang))}</span>`;
             }
 
             const typePill = window.escapeHTML(getFeedbackTypePillLabel(item));
@@ -4522,20 +4563,16 @@ function renderProjectFeedbackCards(project, items) {
             var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
             const chatIconSvg = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>';
             const discussLabel = window.escapeHTML(window.t('feedbackDiscussInChatBtn', {}, lang) || (lang === 'ru' ? 'Обсудить в чате' : 'Discuss in chat'));
+            const completeLabel = window.escapeHTML(window.t('feedbackAcceptBtn', {}, lang) || '🎁 Complete');
             const copyButtonHtml = (!isReviewTicket && (item.message_text || deviceInfoHtml))
                 ? `<button type="button" class="fb-icon-btn" onclick="copyFeedbackCardContent(${item.id}, ${projectId})" aria-label="${window.escapeHTML(window.t('feedbackCopyBtn', {}, lang) || 'Copy')}">
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                    </button>`
                 : '';
 
-            // Active = compact chat icon left of Accept/Reject. Processed = "Discuss in chat" + icon.
             let discussButtonHtml = '';
             if (hasTopicLink) {
-                if (isOpen) {
-                    discussButtonHtml = `<button type="button" class="fb-icon-btn" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')" aria-label="${discussLabel}" title="${discussLabel}">${chatIconSvg}</button>`;
-                } else {
-                    discussButtonHtml = `<button type="button" class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')">${chatIconSvg}<span>${discussLabel}</span></button>`;
-                }
+                discussButtonHtml = `<button type="button" class="fb-action-btn fb-action-btn--topic" onclick="openFeedbackTopicLink(${Number(item.telegram_message_id)}, '${safeUsername}')">${chatIconSvg}<span>${discussLabel}</span></button>`;
             }
 
             let decideButtonsHtml = '';
@@ -4551,7 +4588,7 @@ function renderProjectFeedbackCards(project, items) {
                             ontouchend="cancelFeedbackAcceptLongPress(this, event)"
                             ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
                         <span class="fb-btn-accept-progress"></span>
-                        <span class="fb-btn-accept-text">${window.escapeHTML(window.t('projectFeedbackThankCloseBtn', {}, lang) || window.t('projectFeedbackRewardBtn', {}, lang) || 'Accept')}</span>
+                        <span class="fb-btn-accept-text">${completeLabel}</span>
                     </button>`;
             } else if (isOpen) {
                 decideButtonsHtml = `
@@ -4565,14 +4602,12 @@ function renderProjectFeedbackCards(project, items) {
                             ontouchend="cancelFeedbackAcceptLongPress(this, event)"
                             ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
                         <span class="fb-btn-accept-progress"></span>
-                        <span class="fb-btn-accept-text">${window.escapeHTML(window.t('feedbackAcceptBtn', {}, lang) || 'Accept')}</span>
+                        <span class="fb-btn-accept-text">${completeLabel}</span>
                     </button>`;
             }
 
-            // Active: chat icon left of Accept/Reject. Processed: Copy, then Discuss in chat.
-            const utilsInner = isOpen
-                ? (discussButtonHtml + copyButtonHtml)
-                : (copyButtonHtml + discussButtonHtml);
+            // Row 1 (open): Reject + Complete. Row 2 / processed: Copy + Discuss in chat.
+            const utilsInner = copyButtonHtml + discussButtonHtml;
             const utilsHtml = utilsInner
                 ? `<div class="fb-toolbar-utils">${utilsInner}</div>`
                 : '';
@@ -4580,7 +4615,7 @@ function renderProjectFeedbackCards(project, items) {
                 ? `<div class="fb-toolbar-decide">${decideButtonsHtml}</div>`
                 : '';
             const toolbarHtml = (utilsHtml || decideHtml)
-                ? `<div class="fb-toolbar">${utilsHtml}${decideHtml}</div>`
+                ? `<div class="fb-toolbar${isOpen ? ' fb-toolbar--open' : ''}">${decideHtml}${utilsHtml}</div>`
                 : '';
 
             let cardTypeClass = 'fb-card--general';
@@ -4601,8 +4636,10 @@ function renderProjectFeedbackCards(project, items) {
                     <div class="fb-inbox-main">
                         <div class="fb-inbox-topline">
                             <span class="fb-inbox-name">${nameHtml}</span>
-                            <span class="fb-type-pill">${typePill}</span>
-                            <span class="fb-inbox-date">${relativeDate}</span>
+                            <div class="fb-inbox-meta">
+                                <span class="fb-type-pill">${typePill}</span>
+                                <span class="fb-inbox-date">${relativeDate}</span>
+                            </div>
                         </div>
                         <div class="fb-preview">${previewText}</div>
                         <div class="fb-micro-line">${microHtml}</div>
@@ -5511,6 +5548,289 @@ function switchContributionTab(tabName) {
     }
 }
 
+function _contributionPendingTypeIcon(type) {
+    const value = String(type || '').toLowerCase();
+    if (value === 'idea') return '💡';
+    if (value === 'play_review') return '⭐️';
+    return '🐞';
+}
+
+function _contributionPendingAgeLabel(createdAt) {
+    if (!createdAt) return '';
+    const value = new Date(createdAt);
+    if (Number.isNaN(value.getTime())) return '';
+    const diffMs = Date.now() - value.getTime();
+    const days = Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
+    if (days <= 0) {
+        return window.t('contributionPendingSentToday', {}, lang) || (lang === 'ru' ? 'Отправлено сегодня' : 'Sent today');
+    }
+    return window.t('contributionPendingSentDays', { days: days }, lang) || (
+        lang === 'ru' ? ('Отправлено ' + days + ' дн. назад') : ('Sent ' + days + ' d ago')
+    );
+}
+
+function _buildContributionPendingRowHtml(item) {
+    const appName = window.escapeHTML(String((item && item.app_name) || '').trim() || '—');
+    const age = window.escapeHTML(_contributionPendingAgeLabel(item && item.created_at));
+    const typeIcon = _contributionPendingTypeIcon(item && item.type);
+    const discussLabel = window.escapeHTML(
+        window.t('contributionPendingDiscussBtn', {}, lang) || (lang === 'ru' ? 'Обсудить' : 'Discuss')
+    );
+    const href = String((item && item.telegram_message_link) || '').trim();
+    const safeHref = window.escapeHTML(href);
+    const discussHtml = href
+        ? ('<a class="contribution-pending-discuss" href="' + safeHref + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">' +
+            '💬 ' + discussLabel + '</a>')
+        : '';
+    return '' +
+        '<div class="contribution-pending-row">' +
+            '<div class="contribution-pending-row-main">' +
+                '<span class="contribution-pending-type" aria-hidden="true">' + typeIcon + '</span>' +
+                '<div class="contribution-pending-copy">' +
+                    '<span class="contribution-pending-app notranslate">' + appName + '</span>' +
+                    (age ? ('<span class="contribution-pending-age">' + age + '</span>') : '') +
+                '</div>' +
+            '</div>' +
+            discussHtml +
+        '</div>';
+}
+
+var _contributionModerationFilters = { pending: true, rejected: false, accepted: false };
+var _contributionModerationState = null;
+
+function _normalizeContributionModerationItems(payload) {
+    var items = [];
+    if (payload && Array.isArray(payload.moderation_details) && payload.moderation_details.length) {
+        items = payload.moderation_details.slice();
+    } else {
+        (Array.isArray(payload && payload.pending_details) ? payload.pending_details : []).forEach(function(item) {
+            items.push(Object.assign({}, item, { bucket: 'pending' }));
+        });
+        (Array.isArray(payload && payload.rejected_details) ? payload.rejected_details : []).forEach(function(item) {
+            items.push(Object.assign({}, item, { bucket: 'rejected' }));
+        });
+        (Array.isArray(payload && payload.accepted_details) ? payload.accepted_details : []).forEach(function(item) {
+            items.push(Object.assign({}, item, { bucket: 'accepted' }));
+        });
+    }
+    items.sort(function(a, b) {
+        const aTs = Date.parse(a && a.created_at) || 0;
+        const bTs = Date.parse(b && b.created_at) || 0;
+        return aTs - bTs;
+    });
+    return items;
+}
+
+function _contributionModerationSummaryText(counts) {
+    return window.t('contributionModerationSummary', {
+        accepted: counts.accepted,
+        pending: counts.pending,
+        rejected: counts.rejected,
+    }, lang);
+}
+
+function _buildContributionModerationSectionHtml(bucket, items) {
+    if (!items || !items.length) return '';
+    var titleKey = bucket === 'rejected'
+        ? 'contributionModerationSectionRejected'
+        : (bucket === 'accepted' ? 'contributionModerationSectionAccepted' : 'contributionModerationSectionPending');
+    var fallback = bucket === 'rejected'
+        ? (lang === 'ru' ? 'Отклонены' : 'Rejected')
+        : (bucket === 'accepted'
+            ? (lang === 'ru' ? 'Подтверждены' : 'Accepted')
+            : (lang === 'ru' ? 'Ожидают проверки' : 'Awaiting review'));
+    var title = window.escapeHTML(window.t(titleKey, {}, lang) || fallback);
+    return '' +
+        '<div class="contribution-moderation-section" data-bucket="' + bucket + '">' +
+            '<div class="contribution-moderation-section-title">' + title + '</div>' +
+            items.map(_buildContributionPendingRowHtml).join('') +
+        '</div>';
+}
+
+function _renderContributionModerationPanelBody() {
+    var state = _contributionModerationState;
+    if (!state) return '';
+    var filters = _contributionModerationFilters || { pending: true, rejected: false, accepted: false };
+    var sections = [];
+    // Fixed order: pending -> rejected -> accepted
+    [['pending', state.itemsByBucket.pending], ['rejected', state.itemsByBucket.rejected], ['accepted', state.itemsByBucket.accepted]]
+        .forEach(function(entry) {
+            var bucket = entry[0];
+            var rows = entry[1] || [];
+            if (!filters[bucket]) return;
+            var html = _buildContributionModerationSectionHtml(bucket, rows);
+            if (html) sections.push(html);
+        });
+    if (!sections.length) {
+        return '<div class="contribution-moderation-empty">' +
+            window.escapeHTML(window.t('contributionModerationEmptyFilter', {}, lang) ||
+                (lang === 'ru' ? 'Нет тикетов по выбранным фильтрам' : 'No tickets for selected filters')) +
+            '</div>';
+    }
+    return sections.join('');
+}
+
+function _syncContributionModerationAccordionHeader() {
+    var root = document.getElementById('contribution-pending-accordion');
+    var state = _contributionModerationState;
+    if (!root || !state) return;
+    var isOpen = root.classList.contains('is-open');
+    var headerMain = root.querySelector('.contribution-pending-toggle-main');
+    if (!headerMain) return;
+    var counts = state.counts;
+    if (!isOpen) {
+        headerMain.innerHTML =
+            '<span class="contribution-pending-title contribution-moderation-summary-text">' +
+                window.escapeHTML(_contributionModerationSummaryText(counts)) +
+            '</span>';
+        return;
+    }
+    var chip = function(bucket, labelKey, fallback, count) {
+        var active = !!(_contributionModerationFilters && _contributionModerationFilters[bucket]);
+        var label = window.t(labelKey, { count: count }, lang) || fallback.replace('{count}', String(count));
+        return '<button type="button" class="contribution-moderation-chip' + (active ? ' is-active' : '') +
+            '" data-bucket="' + bucket + '" onclick="toggleContributionModerationFilter(\'' + bucket + '\', event)">' +
+            window.escapeHTML(label) +
+            '</button>';
+    };
+    headerMain.innerHTML =
+        '<div class="contribution-moderation-chips" role="group">' +
+            chip('accepted', 'contributionModerationChipAccepted', lang === 'ru' ? 'Подтверждено {count}' : 'Accepted {count}', counts.accepted) +
+            chip('pending', 'contributionModerationChipPending', lang === 'ru' ? 'В ожидании {count}' : 'Pending {count}', counts.pending) +
+            chip('rejected', 'contributionModerationChipRejected', lang === 'ru' ? 'Отклонено {count}' : 'Rejected {count}', counts.rejected) +
+        '</div>';
+}
+
+function _refreshContributionModerationPanel() {
+    var root = document.getElementById('contribution-pending-accordion');
+    if (!root) return;
+    var panel = root.querySelector('.contribution-pending-panel');
+    if (panel) panel.innerHTML = _renderContributionModerationPanelBody();
+    _syncContributionModerationAccordionHeader();
+}
+
+function toggleContributionModerationFilter(bucket, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var key = String(bucket || '');
+    if (key !== 'pending' && key !== 'rejected' && key !== 'accepted') return;
+    if (!_contributionModerationFilters) {
+        _contributionModerationFilters = { pending: true, rejected: false, accepted: false };
+    }
+    _contributionModerationFilters[key] = !_contributionModerationFilters[key];
+    // Keep at least one filter active for clearer UX.
+    if (!_contributionModerationFilters.pending && !_contributionModerationFilters.rejected && !_contributionModerationFilters.accepted) {
+        _contributionModerationFilters[key] = true;
+    }
+    _refreshContributionModerationPanel();
+}
+window.toggleContributionModerationFilter = toggleContributionModerationFilter;
+
+function toggleContributionPendingAccordion(forceOpen) {
+    const root = document.getElementById('contribution-pending-accordion');
+    if (!root || root.hidden) return;
+    const shouldOpen = typeof forceOpen === 'boolean'
+        ? forceOpen
+        : !root.classList.contains('is-open');
+    root.classList.toggle('is-open', shouldOpen);
+    const btn = root.querySelector('.contribution-pending-chevron-btn');
+    if (btn) btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    _syncContributionModerationAccordionHeader();
+}
+window.toggleContributionPendingAccordion = toggleContributionPendingAccordion;
+
+function onContributionModerationHeaderClick(event) {
+    if (event && event.target && event.target.closest && event.target.closest('.contribution-moderation-chip')) {
+        return;
+    }
+    const root = document.getElementById('contribution-pending-accordion');
+    // When open, only the chevron closes; chips stay interactive.
+    if (root && root.classList.contains('is-open')) return;
+    toggleContributionPendingAccordion(true);
+}
+window.onContributionModerationHeaderClick = onContributionModerationHeaderClick;
+
+function _renderContributionPendingAccordion(payloadOrItems, countsHint) {
+    const root = document.getElementById('contribution-pending-accordion');
+    if (!root) return;
+
+    var payload = payloadOrItems;
+    var items;
+    if (Array.isArray(payloadOrItems)) {
+        // Legacy call sites may pass only pending array.
+        items = payloadOrItems.map(function(item) {
+            return Object.assign({}, item, { bucket: item.bucket || 'pending' });
+        });
+        payload = null;
+    } else {
+        items = _normalizeContributionModerationItems(payloadOrItems || {});
+    }
+
+    var me = (payload && payload.me) || {};
+    var counts = {
+        accepted: Math.round(Number(
+            (countsHint && countsHint.accepted != null)
+                ? countsHint.accepted
+                : (me.accepted_count != null
+                    ? me.accepted_count
+                    : (Number(me.bugs_count || 0) + Number(me.ideas_count || 0) + Number(me.play_reviews_count || 0)))
+        )),
+        pending: Math.round(Number(
+            (countsHint && countsHint.pending != null) ? countsHint.pending : (me.pending_count || 0)
+        )),
+        rejected: Math.round(Number(
+            (countsHint && countsHint.rejected != null) ? countsHint.rejected : (me.rejected_count || 0)
+        )),
+    };
+
+    var itemsByBucket = { pending: [], rejected: [], accepted: [] };
+    items.forEach(function(item) {
+        var bucket = String((item && item.bucket) || 'pending');
+        if (!itemsByBucket[bucket]) bucket = 'pending';
+        itemsByBucket[bucket].push(item);
+    });
+    // Prefer list lengths when counters are zero but tickets exist.
+    if (!counts.pending && itemsByBucket.pending.length) counts.pending = itemsByBucket.pending.length;
+    if (!counts.rejected && itemsByBucket.rejected.length) counts.rejected = itemsByBucket.rejected.length;
+    if (!counts.accepted && itemsByBucket.accepted.length) counts.accepted = itemsByBucket.accepted.length;
+
+    var hasAny = counts.accepted > 0 || counts.pending > 0 || counts.rejected > 0 || items.length > 0;
+    if (!hasAny) {
+        _contributionModerationState = null;
+        root.hidden = true;
+        root.classList.remove('is-open');
+        root.innerHTML = '';
+        return;
+    }
+
+    _contributionModerationState = {
+        counts: counts,
+        itemsByBucket: itemsByBucket,
+        items: items,
+    };
+    // Reset filters to default each fresh render of a new payload.
+    _contributionModerationFilters = { pending: true, rejected: false, accepted: false };
+
+    root.hidden = false;
+    root.classList.remove('is-open');
+    root.innerHTML =
+        '<div class="contribution-pending-header" onclick="onContributionModerationHeaderClick(event)">' +
+            '<div class="contribution-pending-toggle-main">' +
+                '<span class="contribution-pending-title contribution-moderation-summary-text">' +
+                    window.escapeHTML(_contributionModerationSummaryText(counts)) +
+                '</span>' +
+            '</div>' +
+            '<button type="button" class="contribution-pending-chevron-btn" aria-expanded="false" aria-label="Toggle" onclick="event.stopPropagation(); toggleContributionPendingAccordion()">' +
+                '<span class="contribution-pending-chevron" aria-hidden="true">▼</span>' +
+            '</button>' +
+        '</div>' +
+        '<div class="contribution-pending-panel" role="region">' +
+            _renderContributionModerationPanelBody() +
+        '</div>';
+}
+
 function _renderContributionCurrentTab(payload) {
     const loadingEl = document.getElementById('contribution-current-loading');
     const emptyEl = document.getElementById('contribution-current-empty');
@@ -5529,6 +5849,7 @@ function _renderContributionCurrentTab(payload) {
         if (typeof window.hideTgDeeplinkLoader === 'function') {
             window.hideTgDeeplinkLoader('contribution');
         }
+        _renderContributionPendingAccordion(null);
         return;
     }
 
@@ -5569,25 +5890,23 @@ function _renderContributionCurrentTab(payload) {
 
     const moderationEl = document.getElementById('contribution-moderation-summary');
     if (moderationEl) {
-        // Confirmed = awarded sprint items (same as bugs+ideas+reviews above).
-        const accepted = Math.round(
-            Number(me.bugs_count || 0) + Number(me.ideas_count || 0) + Number(me.play_reviews_count || 0)
-        );
-        const pending = Math.round(Number(me.pending_count || 0));
-        const rejected = Math.round(Number(me.rejected_count || 0));
-        const hasModeration = accepted > 0 || pending > 0 || rejected > 0;
-        if (hasModeration) {
-            moderationEl.hidden = false;
-            moderationEl.textContent = window.t('contributionModerationSummary', {
-                accepted: accepted,
-                pending: pending,
-                rejected: rejected,
-            }, lang);
-        } else {
-            moderationEl.hidden = true;
-            moderationEl.textContent = '';
-        }
+        // Summary line now lives inside the moderation accordion header.
+        moderationEl.hidden = true;
+        moderationEl.textContent = '';
     }
+
+    const acceptedCount = Math.round(
+        Number(me.accepted_count != null
+            ? me.accepted_count
+            : (Number(me.bugs_count || 0) + Number(me.ideas_count || 0) + Number(me.play_reviews_count || 0)))
+    );
+    const pendingCount = Math.round(Number(me.pending_count || 0));
+    const rejectedCount = Math.round(Number(me.rejected_count || 0));
+    _renderContributionPendingAccordion(payload, {
+        accepted: acceptedCount,
+        pending: pendingCount,
+        rejected: rejectedCount,
+    });
 
     const gapCard = document.getElementById('contribution-gap-card');
     const gapText = document.getElementById('contribution-gap-text');

@@ -952,6 +952,30 @@ function buildProposeMutualChip(test) {
     return `<button class="meta-chip accent-blue" onclick="createMutualOffer(${Number(test.id || 0)}, ${Number(test.owner_id || 0)}, event)">${window.escapeHTML(window.t('proposeMutualBtn', {}, lang))}</button>`;
 }
 
+function formatOwnerSlaDisplay(hoursRaw) {
+    const hoursNum = Number(hoursRaw);
+    const hasValue = hoursRaw != null && hoursRaw !== '' && Number.isFinite(hoursNum) && hoursNum >= 0;
+    let label = window.t('feedbackSlaChipDash', {}, lang) || '—';
+    let tone = '';
+    if (hasValue) {
+        const hours = hoursNum;
+        if (hours < 1) {
+            const minutes = Math.max(1, Math.round(hours * 60) || 1);
+            label = window.t('feedbackSlaChipMinutes', { minutes: minutes }, lang) || ('~' + minutes + (lang === 'ru' ? ' мин' : ' m'));
+        } else {
+            const rounded = hours >= 10 ? Math.round(hours) : (Math.round(hours * 10) / 10);
+            const hoursLabel = (Math.abs(rounded - Math.round(rounded)) < 0.05)
+                ? String(Math.round(rounded))
+                : String(rounded).replace(/\.0$/, '');
+            label = window.t('feedbackSlaChipHours', { hours: hoursLabel }, lang) || ('~' + hoursLabel + (lang === 'ru' ? ' ч.' : ' h'));
+        }
+        if (hours > 72) tone = 'slow';
+        else if (hours < 24) tone = 'fast';
+    }
+    return { label: label, tone: tone, hasValue: hasValue, hours: hasValue ? hoursNum : null };
+}
+window.formatOwnerSlaDisplay = formatOwnerSlaDisplay;
+
 function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test, options) {
     options = options || {};
     var showTestersCount = options.showTestersCount !== false;
@@ -1764,17 +1788,39 @@ function renderTests(force) {
                 const efMetaLabel = lang === 'ru'
                     ? `Дней: ${efDays} • Пропусков: ${efSkips}`
                     : `Days: ${efDays} • Skips: ${efSkips}`;
+                const rawReliability = test.owner_reliability_index !== undefined && test.owner_reliability_index !== null ? Number(test.owner_reliability_index) : 100;
+                const devReliability = Math.round(rawReliability) + '%';
+                let devReliabilityColor = '#34c759'; // green
+                if (rawReliability < 70) {
+                    devReliabilityColor = '#ff3b30'; // red
+                } else if (rawReliability < 85) {
+                    devReliabilityColor = '#ff9500'; // orange
+                }
+
                 actionsHtml = `
-                    <div class="early-finish-banner">
-                        <div class="early-finish-header">
-                            <span class="early-finish-icon">🏁</span>
-                            <span class="early-finish-title">${window.t('earlyFinishCardTitle', {}, lang)}</span>
+                    <div class="early-finish-banner" style="gap: 10px;">
+                        <!-- HEADER: big icon | title+subtitle | reliability number -->
+                        <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255, 149, 0, 0.15); padding-bottom: 10px;">
+                            <span style="font-size: 36px; line-height: 1; flex-shrink: 0;">🏁</span>
+                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;">
+                                <span style="font-size: 15px; font-weight: 700; color: #ff9500; line-height: 1.2;">${window.t('earlyFinishCardTitle', {}, lang)}</span>
+                                <span style="font-size: 11px; color: var(--hint-color); font-weight: 500; line-height: 1.3;">${lang === 'ru' ? 'Индекс надёжности разработчика' : 'Developer Reliability Index'}</span>
+                            </div>
+                            <span style="font-size: 26px; font-weight: 800; color: ${devReliabilityColor}; flex-shrink: 0; line-height: 1;">${devReliability}</span>
                         </div>
-                        <div class="early-finish-desc">${window.t('earlyFinishCardDesc', {}, lang)}</div>
-                        <div class="early-finish-meta">${efMetaLabel}</div>
-                        <button id="btn-early-finish-${test.id}" class="btn btn-early-finish" onclick="claimEarlyFinishBonus(${test.progress_id}, ${test.id})">
-                            ${window.t('earlyFinishClaimBtn', {}, lang)}
-                        </button>
+                        <!-- DESCRIPTION -->
+                        <div class="early-finish-desc" style="font-size: 13px; color: var(--text-color); line-height: 1.5;">
+                            ${window.t('earlyFinishCardDesc', {}, lang)}
+                        </div>
+                        <!-- BUTTON + stats as subtitle -->
+                        <div style="display: flex; flex-direction: column; align-items: stretch; gap: 4px;">
+                            <button id="btn-early-finish-${test.id}" class="btn btn-early-finish" onclick="claimEarlyFinishBonus(${test.progress_id}, ${test.id})">
+                                ${window.t('earlyFinishClaimBtn', {}, lang)}
+                            </button>
+                            <div style="text-align: center; font-size: 11px; font-weight: 400; color: var(--hint-color); line-height: 1.4;">
+                                ${efMetaLabel}
+                            </div>
+                        </div>
                     </div>
                 `;
             }

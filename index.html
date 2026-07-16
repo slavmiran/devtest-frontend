@@ -36,45 +36,45 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260713-sprint-history-fix2"></script>
-    <script src="./i18n/en.js?v=20260713-sprint-history-fix2"></script>
+    <script src="./i18n/ru.js?v=20260716-owner-dossier"></script>
+    <script src="./i18n/en.js?v=20260716-owner-dossier"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260713-sprint-ux-polish"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-tests.js?v=20260713-ticker-speed-fix"></script>
-    <script src="./ui/ui-projects.js?v=20260713-sprint-ux-polish3"></script>
+    <script src="./ui/ui-tests.js?v=20260716-owner-sla-move"></script>
+    <script src="./ui/ui-projects.js?v=20260716-owner-profile-cache"></script>
     <script src="./ui/ui-projects-moderation.js?v=20260709-pipeline-header"></script>
     <script src="./ui/ui-projects-pipeline-header.js?v=20260709-pipeline-alerts"></script>
-    <script src="./ui/ui-market.js?v=20260713-play-review-retry-submit2"></script>
+    <script src="./ui/ui-market.js?v=20260716-grant-chips"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260713-sprint-ux-polish"></script>
-    <script src="./js/app-api.js?v=20260713-play-review-retry-submit2"></script>
+    <script src="./js/app-api.js?v=20260716-sla-chip-map"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
-    <script src="./js/app-actions.js?v=20260713-play-review-retry-submit2"></script>
+    <script src="./js/app-actions.js?v=20260716-moderation-chips"></script>
     <script src="./js/app-features.js?v=20260710-device-profile-banner-v1"></script>
     <script src="./app.js?v=20260712-contribution-season"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260706-phase1-1">
     <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260710-device-info-v3">
-    <link rel="stylesheet" href="./css/reliability-modal.css?v=20260712-ui">
+    <link rel="stylesheet" href="./css/reliability-modal.css?v=20260716-grant-chips">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/wizard.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/feedback-center.css?v=20260713-feedback-inbox-ux5">
+    <link rel="stylesheet" href="./css/feedback-center.css?v=20260716-feedback-toolbar-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/dossier-modal.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260706-phase3">
+    <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/pipeline-moderation.css?v=20260707-sprint2">
     <link rel="stylesheet" href="./css/pipeline-header.css?v=20260709-pipeline-alerts">
-    <link rel="stylesheet" href="./styles.css?v=20260713-ticker-speed-fix">
+    <link rel="stylesheet" href="./styles.css?v=20260716-moderation-chips">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260711-collapsed-fix">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
@@ -1417,6 +1417,7 @@
                             </div>
                         </div>
                         <div id="contribution-moderation-summary" class="contribution-moderation-summary" hidden></div>
+                        <div id="contribution-pending-accordion" class="contribution-pending-accordion" hidden></div>
                     </div>
 
                     <div id="contribution-gap-card" class="card contribution-gap-card" style="display:none;">

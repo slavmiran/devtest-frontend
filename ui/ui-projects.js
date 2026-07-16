@@ -4336,6 +4336,303 @@ document.addEventListener('click', (event) => {
 });
 
 /* ── Project Details Modal ────────────────────────── */
+var _ownerDetailProfileCache = {};
+var _ownerDetailProfileInflight = {};
+var OWNER_DETAIL_PROFILE_TTL_MS = 5 * 60 * 1000;
+
+function getOwnerDetailProfileCached(ownerId) {
+    const key = String(Number(ownerId || 0) || '');
+    if (!key || key === '0') return null;
+    const entry = _ownerDetailProfileCache[key];
+    if (entry && entry.profile && typeof entry.profile === 'object') {
+        return entry.profile;
+    }
+    if (typeof _dossierProfilesCache !== 'undefined' && _dossierProfilesCache[key]) {
+        return _dossierProfilesCache[key];
+    }
+    return null;
+}
+
+function isOwnerDetailProfileFresh(ownerId) {
+    const key = String(Number(ownerId || 0) || '');
+    const entry = _ownerDetailProfileCache[key];
+    if (!entry || !entry.profile) return false;
+    return (Date.now() - Number(entry.fetchedAt || 0)) < OWNER_DETAIL_PROFILE_TTL_MS;
+}
+
+function setOwnerDetailProfileCache(ownerId, profile) {
+    const key = String(Number(ownerId || 0) || '');
+    if (!key || key === '0' || !profile || typeof profile !== 'object') return;
+    _ownerDetailProfileCache[key] = { profile: profile, fetchedAt: Date.now() };
+    if (typeof _dossierProfilesCache !== 'undefined') {
+        _dossierProfilesCache[key] = Object.assign({}, _dossierProfilesCache[key] || {}, profile);
+    }
+}
+
+function applyOwnerProfileIdentityToTest(test, profileData) {
+    if (!test || !profileData) return;
+    if (profileData.full_name) test.owner_full_name = profileData.full_name;
+    if (profileData.username) test.owner_username = profileData.username;
+    if (profileData.avatar_url) test.owner_avatar_url = profileData.avatar_url;
+    if (typeof profileData.karma !== 'undefined') test.owner_karma = profileData.karma;
+    if (typeof profileData.avg_handle_hours !== 'undefined') {
+        test.owner_avg_handle_hours = profileData.avg_handle_hours;
+    }
+}
+
+function applyOwnerProfileToOpenDetailsModal(profileData, test, ownerId) {
+    if (!profileData || !test) return;
+    applyOwnerProfileIdentityToTest(test, profileData);
+
+    const currentModal = document.getElementById('project-details-modal');
+    if (!currentModal || !currentModal.classList.contains('active') || String(currentModal.dataset.appId) !== String(test.id)) {
+        return;
+    }
+
+    const updatedDispName = test.owner_full_name || (test.owner_username ? '@' + String(test.owner_username).replace(/^@+/, '') : '');
+    const updatedMainName = updatedDispName || window.t('idLabel', { id: ownerId }, lang);
+    const updatedSubName = (test.owner_full_name && test.owner_username) ? '@' + String(test.owner_username).replace(/^@+/, '') : '';
+
+    const avatarEl = document.getElementById('detail-owner-avatar');
+    if (avatarEl) {
+        const updatedLetter = updatedMainName.replace(/^@+/, '').charAt(0).toUpperCase();
+        let newInner = '';
+        if (test.owner_avatar_url) {
+            newInner += '<img src="' + window.escapeHTML(test.owner_avatar_url) + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">';
+        }
+        newInner += '<span style="' + (test.owner_avatar_url ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%; color:#fff; font-weight:700;') + '">' + window.escapeHTML(updatedLetter) + '</span>';
+        avatarEl.innerHTML = newInner;
+    }
+
+    const nameEl = document.getElementById('detail-owner-name');
+    if (nameEl) nameEl.textContent = updatedMainName;
+
+    const rowTextContainer = nameEl ? nameEl.parentElement : null;
+    if (rowTextContainer) {
+        let usernameEl = document.getElementById('detail-owner-username');
+        if (updatedSubName) {
+            if (!usernameEl) {
+                usernameEl = document.createElement('div');
+                usernameEl.id = 'detail-owner-username';
+                usernameEl.className = 'detail-owner-username notranslate';
+                usernameEl.style.fontSize = '13px';
+                usernameEl.style.color = 'var(--tg-theme-link-color, var(--link-color, #3390ec))';
+                usernameEl.style.fontWeight = '500';
+                rowTextContainer.insertBefore(usernameEl, document.getElementById('detail-owner-status'));
+            }
+            usernameEl.textContent = updatedSubName;
+        } else if (usernameEl) {
+            usernameEl.remove();
+        }
+    }
+
+    updateOwnerDetailMetricsFromProfile(profileData, test);
+}
+
+function fetchOwnerDetailProfile(ownerId, options) {
+    options = options || {};
+    const force = !!options.force;
+    const key = String(Number(ownerId || 0) || '');
+    if (!key || key === '0') return Promise.resolve(null);
+
+    if (!force && isOwnerDetailProfileFresh(ownerId)) {
+        return Promise.resolve(getOwnerDetailProfileCached(ownerId));
+    }
+    if (_ownerDetailProfileInflight[key]) {
+        return _ownerDetailProfileInflight[key];
+    }
+
+    _ownerDetailProfileInflight[key] = fetch(API_BASE + '/users/' + ownerId + '/profile')
+        .then(function(resp) {
+            if (!resp.ok) throw new Error('profile_http_' + resp.status);
+            return resp.json();
+        })
+        .then(function(profileData) {
+            setOwnerDetailProfileCache(ownerId, profileData);
+            return profileData;
+        })
+        .catch(function(err) {
+            console.error('Failed to fetch developer profile in details modal:', err);
+            return getOwnerDetailProfileCached(ownerId);
+        })
+        .finally(function() {
+            delete _ownerDetailProfileInflight[key];
+        });
+
+    return _ownerDetailProfileInflight[key];
+}
+
+function _ownerDetailReliabilityMetric(profile) {
+    const state = (typeof getDossierReliabilityState === 'function')
+        ? getDossierReliabilityState(profile || {})
+        : { isNewbie: true, reliabilityPct: 0, reliabilityText: window.t('dossierNewbie', {}, lang) || '—' };
+    const status = String((profile && profile.reliability_status) || (state.isNewbie ? 'newbie' : '') || '').toLowerCase();
+    let metricClass = 'metric-card-neutral';
+    if (!state.isNewbie) {
+        if (status === 'bad' || state.reliabilityPct < 65) metricClass = 'metric-card-danger';
+        else if (status === 'minimal' || state.reliabilityPct < 80) metricClass = 'metric-card-warning';
+        else metricClass = 'metric-card-success';
+    }
+    const value = state.isNewbie
+        ? (window.t('reliabilityDashStatus_newbie', {}, lang) || state.reliabilityText || '—')
+        : (String(state.reliabilityPct) + ' %');
+    const statusText = state.isNewbie ? '' : (window.t('reliabilityDashStatus_' + status, {}, lang) || state.reliabilityText || '');
+    return { value: value, statusText: statusText, metricClass: metricClass };
+}
+
+function _ownerDetailSprintValue(profile) {
+    const rankRaw = profile && profile.season_rank;
+    const rank = rankRaw != null ? Number(rankRaw) : null;
+    if (rank && rank > 0) {
+        return window.t('metricSprintPosition', { rank: Math.round(rank) }, lang) || ('#' + Math.round(rank));
+    }
+    return '—';
+}
+
+function _ownerDetailSlaCell(hoursRaw) {
+    const sla = (typeof window.formatOwnerSlaDisplay === 'function')
+        ? window.formatOwnerSlaDisplay(hoursRaw)
+        : { label: '—', tone: '', hasValue: false };
+    const icon = (typeof window.getMaterialAcuteIconSvg === 'function')
+        ? window.getMaterialAcuteIconSvg('detail-owner-sla-icon')
+        : '<span aria-hidden="true">⏱</span>';
+    const toneClass = sla.tone === 'slow'
+        ? ' detail-owner-sla--slow'
+        : (sla.tone === 'fast' ? ' detail-owner-sla--fast' : '');
+    const toast = window.t('feedbackSlaChipToast', {}, lang)
+        || (lang === 'ru' ? 'Скорость обработки отзывов/фидбэков' : 'Review/feedback processing speed');
+    return {
+        html: '<button type="button" class="metric-card metric-card-clickable metric-card-neutral detail-owner-sla-card' + toneClass + '" onclick="event.stopPropagation(); showToast(\'' +
+            String(toast).replace(/'/g, "\\'") + '\')">' +
+            '<div class="metric-card-top"><span class="metric-label">' + window.escapeHTML(window.t('detailOwnerProcessingSpeed', {}, lang) || (lang === 'ru' ? 'Скорость обработки' : 'Processing speed')) + '</span></div>' +
+            '<div class="metric-value detail-owner-sla-value">' + icon + '<span>' + window.escapeHTML(sla.label) + '</span></div>' +
+        '</button>',
+    };
+}
+
+function buildOwnerDetailMetricsHtml(profile, test) {
+    profile = profile || {};
+    test = test || {};
+    const reliability = _ownerDetailReliabilityMetric(profile);
+    const karmaRaw = typeof profile.karma !== 'undefined' ? profile.karma
+        : (typeof test.owner_karma !== 'undefined' ? test.owner_karma : test.ownerKarma);
+    const karma = Number.isFinite(Number(karmaRaw)) ? Number(karmaRaw) : 0;
+    const karmaText = (typeof formatUiAmount === 'function') ? formatUiAmount(karma, 1) : String(karma);
+    const sprintValue = _ownerDetailSprintValue(profile);
+    const hoursRaw = (profile.avg_handle_hours != null && profile.avg_handle_hours !== '')
+        ? profile.avg_handle_hours
+        : (test.owner_avg_handle_hours != null ? test.owner_avg_handle_hours : test.avg_handle_hours);
+    const slaCell = _ownerDetailSlaCell(hoursRaw);
+
+    const bugs = Number(profile.bugs_count || 0);
+    const ideas = Number(profile.ideas_count || 0);
+    const reviews = Number(profile.play_reviews_count || 0);
+    const completedTests = profile.completed_tests;
+    const completedLabel = (completedTests == null || completedTests === '')
+        ? '—'
+        : String(Number(completedTests) || 0);
+    const activeTesters = Number(test.active_testers_count || 0);
+
+    const statusTextHtml = reliability.statusText
+        ? '<span class="metric-value-status" style="font-size: 11px; opacity: 0.85; font-weight: normal; margin-left: 4px;">(' + window.escapeHTML(reliability.statusText) + ')</span>'
+        : '';
+
+    return '' +
+        '<div class="detail-owner-meta-line" id="detail-owner-meta-line">' +
+            window.escapeHTML(window.t('detailOwnerTestsLabel', { count: completedLabel }, lang) || ((lang === 'ru' ? 'Тестирует: ' : 'Tests: ') + completedLabel)) +
+            ' · ' +
+            window.escapeHTML(window.t('detail_testers_label', { count: activeTesters }, lang)) +
+        '</div>' +
+        '<div class="metrics-grid detail-owner-metrics-grid" id="detail-owner-metrics-grid">' +
+            '<div class="metric-card ' + reliability.metricClass + '" id="detail-owner-metric-reliability">' +
+                '<div class="metric-card-top"><span class="metric-label">' + window.escapeHTML(window.t('metricReliabilityV2', {}, lang) || window.t('metricReliability', {}, lang)) + '</span></div>' +
+                '<div class="metric-value" id="detail-owner-reliability-value">' + window.escapeHTML(reliability.value) + statusTextHtml + '</div>' +
+            '</div>' +
+            '<div class="metric-card metric-card-gold" id="detail-owner-metric-karma">' +
+                '<div class="metric-card-top"><span class="metric-label">' + window.escapeHTML(window.t('metricKarma', {}, lang)) + '</span></div>' +
+                '<div class="metric-value" id="detail-owner-karma-value">' + window.escapeHTML(karmaText) + ' <span class="metric-value-mark">☯️</span></div>' +
+            '</div>' +
+            '<div class="metric-card metric-card-neutral metric-card-sprint" id="detail-owner-metric-sprint">' +
+                '<div class="metric-card-top"><span class="metric-label">' + window.escapeHTML(window.t('metricSprintPositionLabel', {}, lang) || (lang === 'ru' ? 'Место в спринте' : 'Sprint place')) + '</span></div>' +
+                '<div class="metric-value metric-value--sprint" id="detail-owner-sprint-value">' + window.escapeHTML(sprintValue) + '</div>' +
+            '</div>' +
+            slaCell.html +
+        '</div>' +
+        '<div class="detail-owner-contrib" id="detail-owner-contrib">' +
+            '<div class="detail-owner-contrib-title">' + window.escapeHTML(window.t('detailOwnerCommunityTitle', {}, lang) || (lang === 'ru' ? 'Вклад в сообщество за все время' : 'Community contribution (all time)')) + '</div>' +
+            '<div class="detail-owner-contrib-row">' +
+                '<span class="detail-owner-contrib-item" id="detail-owner-bugs">' + window.escapeHTML(window.t('detailOwnerBugsShort', { count: bugs }, lang) || ('🐞 ' + (lang === 'ru' ? 'Баги' : 'Bugs') + ' ' + bugs)) + '</span>' +
+                '<span class="detail-owner-contrib-item" id="detail-owner-ideas">' + window.escapeHTML(window.t('detailOwnerIdeasShort', { count: ideas }, lang) || ('💡 ' + (lang === 'ru' ? 'Идей' : 'Ideas') + ' ' + ideas)) + '</span>' +
+                '<span class="detail-owner-contrib-item" id="detail-owner-reviews">' + window.escapeHTML(window.t('detailOwnerReviewsShort', { count: reviews }, lang) || ('⭐️ ' + (lang === 'ru' ? 'Отзывы' : 'Reviews') + ' ' + reviews)) + '</span>' +
+            '</div>' +
+        '</div>';
+}
+
+function updateOwnerDetailMetricsFromProfile(profile, test) {
+    profile = profile || {};
+    test = test || {};
+    const grid = document.getElementById('detail-owner-metrics-grid');
+    const contrib = document.getElementById('detail-owner-contrib');
+    const meta = document.getElementById('detail-owner-meta-line');
+    if (!grid && !contrib && !meta) return;
+
+    const reliability = _ownerDetailReliabilityMetric(profile);
+    const reliabilityCard = document.getElementById('detail-owner-metric-reliability');
+    const reliabilityValueEl = document.getElementById('detail-owner-reliability-value');
+    if (reliabilityCard) {
+        reliabilityCard.className = 'metric-card ' + reliability.metricClass;
+    }
+    if (reliabilityValueEl) {
+        const statusTextHtml = reliability.statusText
+            ? ' <span class="metric-value-status" style="font-size: 11px; opacity: 0.85; font-weight: normal; margin-left: 4px;">(' + window.escapeHTML(reliability.statusText) + ')</span>'
+            : '';
+        reliabilityValueEl.innerHTML = window.escapeHTML(reliability.value) + statusTextHtml;
+    }
+
+    const karmaRaw = typeof profile.karma !== 'undefined' ? profile.karma : test.owner_karma;
+    const karma = Number.isFinite(Number(karmaRaw)) ? Number(karmaRaw) : 0;
+    const karmaEl = document.getElementById('detail-owner-karma-value');
+    if (karmaEl) {
+        const karmaText = (typeof formatUiAmount === 'function') ? formatUiAmount(karma, 1) : String(karma);
+        karmaEl.innerHTML = window.escapeHTML(karmaText) + ' <span class="metric-value-mark">☯️</span>';
+    }
+
+    const sprintEl = document.getElementById('detail-owner-sprint-value');
+    if (sprintEl) {
+        sprintEl.textContent = _ownerDetailSprintValue(profile);
+    }
+
+    const hoursRaw = (profile.avg_handle_hours != null && profile.avg_handle_hours !== '')
+        ? profile.avg_handle_hours
+        : (test.owner_avg_handle_hours != null ? test.owner_avg_handle_hours : test.avg_handle_hours);
+    const slaWrap = grid ? grid.querySelector('.detail-owner-sla-card') : null;
+    if (slaWrap && grid) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = _ownerDetailSlaCell(hoursRaw).html;
+        const next = tmp.firstElementChild;
+        if (next) slaWrap.replaceWith(next);
+    }
+
+    const bugs = Number(profile.bugs_count || 0);
+    const ideas = Number(profile.ideas_count || 0);
+    const reviews = Number(profile.play_reviews_count || 0);
+    const bugsEl = document.getElementById('detail-owner-bugs');
+    const ideasEl = document.getElementById('detail-owner-ideas');
+    const reviewsEl = document.getElementById('detail-owner-reviews');
+    if (bugsEl) bugsEl.textContent = window.t('detailOwnerBugsShort', { count: bugs }, lang) || ('🐞 Баги ' + bugs);
+    if (ideasEl) ideasEl.textContent = window.t('detailOwnerIdeasShort', { count: ideas }, lang) || ('💡 Идей ' + ideas);
+    if (reviewsEl) reviewsEl.textContent = window.t('detailOwnerReviewsShort', { count: reviews }, lang) || ('⭐️ Отзывы ' + reviews);
+
+    if (meta) {
+        const completedLabel = String(Number(profile.completed_tests || 0) || 0);
+        const activeTesters = Number(test.active_testers_count || 0);
+        meta.textContent =
+            (window.t('detailOwnerTestsLabel', { count: completedLabel }, lang) || ((lang === 'ru' ? 'Тестирует: ' : 'Tests: ') + completedLabel)) +
+            ' · ' +
+            (window.t('detail_testers_label', { count: activeTesters }, lang));
+    }
+}
+
 function openProjectDetailsModal(appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     const test = myTests.find(function (t) { return t.id === appId; });
@@ -4356,6 +4653,11 @@ function openProjectDetailsModal(appId) {
 
     const safeName = window.escapeHTML(test.name || window.t('unknownLabel', {}, lang));
     const safePackage = window.escapeHTML(test.package || '');
+    const ownerIdForProfile = Number(test.owner_id || 0);
+    const cachedOwnerProfile = getOwnerDetailProfileCached(ownerIdForProfile) || null;
+    if (cachedOwnerProfile) {
+        applyOwnerProfileIdentityToTest(test, cachedOwnerProfile);
+    }
     const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
     const ownerAvatarUrl = String(test.owner_avatar_url || '').trim();
     const nameForHash = test.owner_username || test.owner_full_name || '?';
@@ -4383,7 +4685,9 @@ function openProjectDetailsModal(appId) {
         : Math.max(0, 14 - daysSinceCreated);
     const potential = totalCheckins + left;
     const ownerActivity = getOwnerActivityMeta(test.last_owner_activity);
-    const ownerKarmaRaw = test && typeof test.owner_karma !== 'undefined' ? test.owner_karma : test.ownerKarma;
+    const ownerKarmaRaw = (cachedOwnerProfile && typeof cachedOwnerProfile.karma !== 'undefined')
+        ? cachedOwnerProfile.karma
+        : (test && typeof test.owner_karma !== 'undefined' ? test.owner_karma : test.ownerKarma);
     const ownerKarma = Number.isFinite(Number(ownerKarmaRaw)) ? Number(ownerKarmaRaw) : 0;
     const hasPlayReviewRequest = !!test.request_reviews;
     const rewardsSummary = (test && test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
@@ -4719,7 +5023,10 @@ function openProjectDetailsModal(appId) {
         '</div>';
     }
     var economicsHtml = '';
-    if (Number(test.bounty_per_tester || 0) > 0) {
+    // Show contract economics only for testers on this project via bounty/contract,
+    // not for mutual/barter seats on hybrid (Combo) apps.
+    var isContractTester = String(test.join_type || '').toLowerCase() === 'bounty';
+    if (isContractTester && Number(test.bounty_per_tester || 0) > 0) {
         var perTester = Number(test.bounty_per_tester || 0);
         var dailyReward = perTester * 0.65 / 14;
         var holdBonus = perTester * 0.35;
@@ -4888,7 +5195,7 @@ function openProjectDetailsModal(appId) {
 
         syncHtml +
 
-        '<div class="details-block">' +
+        '<div class="details-block detail-owner-block">' +
             '<div class="detail-section-title">' + window.t('detail_owner_label', {}, lang) + '</div>' +
             '<div class="detail-owner-row" style="display: flex; align-items: center; gap: 12px;">' +
                 ownerAvatarHtml +
@@ -4900,8 +5207,10 @@ function openProjectDetailsModal(appId) {
                     '</div>' +
                 '</div>' +
             '</div>' +
-            '<div id="detail-owner-karma" style="font-size:13px;color:var(--hint-color);margin-top:8px;">' + window.t('ownerKarmaText', { karma: ownerKarma }, lang) + '</div>' +
-            '<div style="font-size:13px;color:var(--hint-color);margin-top:4px;">' + window.t('detail_testers_label', { count: test.active_testers_count || 0 }, lang) + '</div>' +
+            buildOwnerDetailMetricsHtml(cachedOwnerProfile || {
+                karma: ownerKarma,
+                avg_handle_hours: (test.owner_avg_handle_hours != null ? test.owner_avg_handle_hours : test.avg_handle_hours),
+            }, test) +
         '</div>' +
 
         googleGroupHtml +
@@ -4939,79 +5248,13 @@ function openProjectDetailsModal(appId) {
         modal.dataset.appId = String(Number(test.id) || '');
         modal.classList.add('active');
 
-        // Asynchronously fetch fresh owner profile details to avoid expired Telegram avatar URLs
+        // Owner dossier: use session cache immediately; refresh network only when stale.
         const ownerId = Number(test.owner_id || 0);
-        if (ownerId > 0) {
-            setTimeout(async () => {
-                try {
-                    const resp = await fetch(`${API_BASE}/users/${ownerId}/profile`);
-                    if (resp.ok) {
-                        const profileData = await resp.json();
-                        
-                        // Update cache/test object so it persists during this session
-                        test.owner_full_name = profileData.full_name || test.owner_full_name;
-                        test.owner_username = profileData.username || test.owner_username;
-                        test.owner_avatar_url = profileData.avatar_url || test.owner_avatar_url;
-                        test.owner_karma = typeof profileData.karma !== 'undefined' ? profileData.karma : test.owner_karma;
-                        
-                        // Check if modal is still open and displays this project
-                        const currentModal = document.getElementById('project-details-modal');
-                        if (currentModal && currentModal.classList.contains('active') && String(currentModal.dataset.appId) === String(test.id)) {
-                            // Re-calculate values
-                            const updatedDispName = test.owner_full_name || (test.owner_username ? '@' + test.owner_username.replace(/^@+/, '') : '');
-                            const updatedMainName = updatedDispName || window.t('idLabel', { id: ownerId }, lang);
-                            const updatedSubName = (test.owner_full_name && test.owner_username) ? '@' + test.owner_username.replace(/^@+/, '') : '';
-                            
-                            // Update Avatar
-                            const avatarEl = document.getElementById('detail-owner-avatar');
-                            if (avatarEl) {
-                                const updatedLetter = updatedMainName.replace(/^@+/, '').charAt(0).toUpperCase();
-                                let newInner = '';
-                                if (test.owner_avatar_url) {
-                                    newInner += '<img src="' + window.escapeHTML(test.owner_avatar_url) + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">';
-                                }
-                                newInner += '<span style="' + (test.owner_avatar_url ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%; color:#fff; font-weight:700;') + '">' + window.escapeHTML(updatedLetter) + '</span>';
-                                avatarEl.innerHTML = newInner;
-                            }
-                            
-                            // Update Name
-                            const nameEl = document.getElementById('detail-owner-name');
-                            if (nameEl) {
-                                nameEl.textContent = updatedMainName;
-                            }
-                            
-                            // Update Subtitle Username
-                            const rowTextContainer = nameEl ? nameEl.parentElement : null;
-                            if (rowTextContainer) {
-                                let usernameEl = document.getElementById('detail-owner-username');
-                                if (updatedSubName) {
-                                    if (!usernameEl) {
-                                        usernameEl = document.createElement('div');
-                                        usernameEl.id = 'detail-owner-username';
-                                        usernameEl.className = 'detail-owner-username notranslate';
-                                        usernameEl.style.fontSize = '13px';
-                                        usernameEl.style.color = 'var(--tg-theme-link-color, var(--link-color, #3390ec))';
-                                        usernameEl.style.fontWeight = '500';
-                                        rowTextContainer.insertBefore(usernameEl, document.getElementById('detail-owner-status'));
-                                    }
-                                    usernameEl.textContent = updatedSubName;
-                                } else if (usernameEl) {
-                                    usernameEl.remove();
-                                }
-                            }
-                            
-                            // Update Karma
-                            const karmaEl = document.getElementById('detail-owner-karma');
-                            if (karmaEl) {
-                                const updatedKarma = Number.isFinite(Number(test.owner_karma)) ? Number(test.owner_karma) : 0;
-                                karmaEl.textContent = window.t('ownerKarmaText', { karma: updatedKarma }, lang);
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.error('Failed to fetch developer profile in details modal:', err);
-                }
-            }, 50);
+        if (ownerId > 0 && !isOwnerDetailProfileFresh(ownerId)) {
+            fetchOwnerDetailProfile(ownerId).then(function(profileData) {
+                if (!profileData) return;
+                applyOwnerProfileToOpenDetailsModal(profileData, test, ownerId);
+            });
         }
 
         // Accordion & Overtime row synchronizer for days 1-14

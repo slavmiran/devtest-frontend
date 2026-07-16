@@ -91,6 +91,80 @@
 .detail-owner-status.online { color: var(--success); }
 .detail-owner-status.warm { color: #ffd60a; }
 .detail-owner-status.offline { color: var(--danger); }
+
+.detail-owner-block .detail-owner-meta-line {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--hint-color);
+}
+
+.detail-owner-metrics-grid {
+    margin-top: 12px;
+}
+
+.detail-owner-metrics-grid .metric-card {
+    padding: 12px;
+    border-radius: 14px;
+}
+
+.detail-owner-metrics-grid .metric-value {
+    margin-top: 6px;
+    font-size: 15px;
+}
+
+.detail-owner-sla-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.detail-owner-sla-value .detail-owner-sla-icon,
+.detail-owner-sla-value svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.detail-owner-sla-card.detail-owner-sla--fast .metric-value {
+    color: #52f4b5;
+}
+
+.detail-owner-sla-card.detail-owner-sla--slow .metric-value {
+    color: #ff6b6b;
+}
+
+.detail-owner-contrib {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+}
+
+.detail-owner-contrib-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hint-color);
+    margin-bottom: 8px;
+}
+
+.detail-owner-contrib-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.detail-owner-contrib-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: var(--border-subtle, rgba(255, 255, 255, 0.06));
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-color);
+    line-height: 1.2;
+}
+
 .detail-actions {
     display: flex;
     flex-direction: column;
