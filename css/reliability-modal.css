@@ -563,8 +563,8 @@
 .ri-grant-tile {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
+    gap: 8px;
+    padding: 6px 10px 6px 6px;
     background: var(--bg-surface-2);
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
@@ -590,6 +590,81 @@
 .ri-grant-tile.is-golden.active {
     background: var(--reward-surface);
     border-color: var(--reward-border);
+}
+
+.ri-grant-pair {
+    position: relative;
+    width: 34px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.ri-grant-app,
+.ri-grant-owner {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    overflow: hidden;
+    border: 1.5px solid var(--bg-surface-2);
+    box-sizing: border-box;
+    background: var(--bg-surface-3);
+}
+
+.ri-grant-tile.active .ri-grant-app,
+.ri-grant-tile.active .ri-grant-owner {
+    border-color: var(--bg-surface-1);
+}
+
+.ri-grant-app {
+    left: 0;
+    top: 0;
+    z-index: 1;
+}
+
+.ri-grant-owner {
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    border-radius: 50%;
+}
+
+.ri-grant-app .avatar,
+.ri-grant-owner .avatar {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border-radius: inherit !important;
+    font-size: 9px !important;
+    line-height: 19px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.ri-grant-app img.avatar,
+.ri-grant-owner img.avatar {
+    object-fit: cover;
+}
+
+.ri-grant-amount {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.ri-grant-amount-val {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+.ri-grant-bust-ico {
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0.95;
 }
 
 .ri-grant-detail {

@@ -555,13 +555,24 @@ function renderReliabilityAlphaModal() {
               <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
               <div class="ri-grants-tiles">
                 ${grants.map(function(g, idx) {
-                  var icon = g.is_golden ? '🏆' : '💎';
                   var activeClass = idx === window._activeGrantIndex ? 'active' : '';
                   var goldenClass = g.is_golden ? 'is-golden' : '';
+                  var appIconHtml = typeof renderIcon === 'function'
+                    ? renderIcon(g.app_name || '', g.icon_url || '')
+                    : '';
+                  var ownerIconHtml = typeof renderIcon === 'function'
+                    ? renderIcon(g.owner_name || g.app_name || '?', g.owner_avatar_url || '')
+                    : '';
                   return `
                     <button type="button" class="ri-grant-tile ${activeClass} ${goldenClass}" onclick="selectActiveGrant(${idx}, event)">
-                      <span>${icon}</span>
-                      <span>${formatReliabilityIndex(g.amount_bust)} $BUST</span>
+                      <span class="ri-grant-pair" aria-hidden="true">
+                        <span class="ri-grant-app">${appIconHtml}</span>
+                        <span class="ri-grant-owner">${ownerIconHtml}</span>
+                      </span>
+                      <span class="ri-grant-amount">
+                        <span class="ri-grant-amount-val">${formatReliabilityIndex(g.amount_bust)}</span>
+                        <span class="ri-grant-bust-ico">💎</span>
+                      </span>
                     </button>
                   `;
                 }).join('')}
