@@ -5584,6 +5584,139 @@ function _buildContributionPendingRowHtml(item) {
         '</div>';
 }
 
+var _contributionModerationFilters = { pending: true, rejected: false, accepted: false };
+var _contributionModerationState = null;
+
+function _normalizeContributionModerationItems(payload) {
+    var items = [];
+    if (payload && Array.isArray(payload.moderation_details) && payload.moderation_details.length) {
+        items = payload.moderation_details.slice();
+    } else {
+        (Array.isArray(payload && payload.pending_details) ? payload.pending_details : []).forEach(function(item) {
+            items.push(Object.assign({}, item, { bucket: 'pending' }));
+        });
+        (Array.isArray(payload && payload.rejected_details) ? payload.rejected_details : []).forEach(function(item) {
+            items.push(Object.assign({}, item, { bucket: 'rejected' }));
+        });
+        (Array.isArray(payload && payload.accepted_details) ? payload.accepted_details : []).forEach(function(item) {
+            items.push(Object.assign({}, item, { bucket: 'accepted' }));
+        });
+    }
+    items.sort(function(a, b) {
+        const aTs = Date.parse(a && a.created_at) || 0;
+        const bTs = Date.parse(b && b.created_at) || 0;
+        return aTs - bTs;
+    });
+    return items;
+}
+
+function _contributionModerationSummaryText(counts) {
+    return window.t('contributionModerationSummary', {
+        accepted: counts.accepted,
+        pending: counts.pending,
+        rejected: counts.rejected,
+    }, lang);
+}
+
+function _buildContributionModerationSectionHtml(bucket, items) {
+    if (!items || !items.length) return '';
+    var titleKey = bucket === 'rejected'
+        ? 'contributionModerationSectionRejected'
+        : (bucket === 'accepted' ? 'contributionModerationSectionAccepted' : 'contributionModerationSectionPending');
+    var fallback = bucket === 'rejected'
+        ? (lang === 'ru' ? 'Отклонены' : 'Rejected')
+        : (bucket === 'accepted'
+            ? (lang === 'ru' ? 'Подтверждены' : 'Accepted')
+            : (lang === 'ru' ? 'Ожидают проверки' : 'Awaiting review'));
+    var title = window.escapeHTML(window.t(titleKey, {}, lang) || fallback);
+    return '' +
+        '<div class="contribution-moderation-section" data-bucket="' + bucket + '">' +
+            '<div class="contribution-moderation-section-title">' + title + '</div>' +
+            items.map(_buildContributionPendingRowHtml).join('') +
+        '</div>';
+}
+
+function _renderContributionModerationPanelBody() {
+    var state = _contributionModerationState;
+    if (!state) return '';
+    var filters = _contributionModerationFilters || { pending: true, rejected: false, accepted: false };
+    var sections = [];
+    // Fixed order: pending -> rejected -> accepted
+    [['pending', state.itemsByBucket.pending], ['rejected', state.itemsByBucket.rejected], ['accepted', state.itemsByBucket.accepted]]
+        .forEach(function(entry) {
+            var bucket = entry[0];
+            var rows = entry[1] || [];
+            if (!filters[bucket]) return;
+            var html = _buildContributionModerationSectionHtml(bucket, rows);
+            if (html) sections.push(html);
+        });
+    if (!sections.length) {
+        return '<div class="contribution-moderation-empty">' +
+            window.escapeHTML(window.t('contributionModerationEmptyFilter', {}, lang) ||
+                (lang === 'ru' ? 'Нет тикетов по выбранным фильтрам' : 'No tickets for selected filters')) +
+            '</div>';
+    }
+    return sections.join('');
+}
+
+function _syncContributionModerationAccordionHeader() {
+    var root = document.getElementById('contribution-pending-accordion');
+    var state = _contributionModerationState;
+    if (!root || !state) return;
+    var isOpen = root.classList.contains('is-open');
+    var headerMain = root.querySelector('.contribution-pending-toggle-main');
+    if (!headerMain) return;
+    var counts = state.counts;
+    if (!isOpen) {
+        headerMain.innerHTML =
+            '<span class="contribution-pending-title contribution-moderation-summary-text">' +
+                window.escapeHTML(_contributionModerationSummaryText(counts)) +
+            '</span>';
+        return;
+    }
+    var chip = function(bucket, labelKey, fallback, count) {
+        var active = !!(_contributionModerationFilters && _contributionModerationFilters[bucket]);
+        var label = window.t(labelKey, { count: count }, lang) || fallback.replace('{count}', String(count));
+        return '<button type="button" class="contribution-moderation-chip' + (active ? ' is-active' : '') +
+            '" data-bucket="' + bucket + '" onclick="toggleContributionModerationFilter(\'' + bucket + '\', event)">' +
+            window.escapeHTML(label) +
+            '</button>';
+    };
+    headerMain.innerHTML =
+        '<div class="contribution-moderation-chips" role="group">' +
+            chip('accepted', 'contributionModerationChipAccepted', lang === 'ru' ? 'Подтверждено {count}' : 'Accepted {count}', counts.accepted) +
+            chip('pending', 'contributionModerationChipPending', lang === 'ru' ? 'В ожидании {count}' : 'Pending {count}', counts.pending) +
+            chip('rejected', 'contributionModerationChipRejected', lang === 'ru' ? 'Отклонено {count}' : 'Rejected {count}', counts.rejected) +
+        '</div>';
+}
+
+function _refreshContributionModerationPanel() {
+    var root = document.getElementById('contribution-pending-accordion');
+    if (!root) return;
+    var panel = root.querySelector('.contribution-pending-panel');
+    if (panel) panel.innerHTML = _renderContributionModerationPanelBody();
+    _syncContributionModerationAccordionHeader();
+}
+
+function toggleContributionModerationFilter(bucket, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var key = String(bucket || '');
+    if (key !== 'pending' && key !== 'rejected' && key !== 'accepted') return;
+    if (!_contributionModerationFilters) {
+        _contributionModerationFilters = { pending: true, rejected: false, accepted: false };
+    }
+    _contributionModerationFilters[key] = !_contributionModerationFilters[key];
+    // Keep at least one filter active for clearer UX.
+    if (!_contributionModerationFilters.pending && !_contributionModerationFilters.rejected && !_contributionModerationFilters.accepted) {
+        _contributionModerationFilters[key] = true;
+    }
+    _refreshContributionModerationPanel();
+}
+window.toggleContributionModerationFilter = toggleContributionModerationFilter;
+
 function toggleContributionPendingAccordion(forceOpen) {
     const root = document.getElementById('contribution-pending-accordion');
     if (!root || root.hidden) return;
@@ -5591,78 +5724,100 @@ function toggleContributionPendingAccordion(forceOpen) {
         ? forceOpen
         : !root.classList.contains('is-open');
     root.classList.toggle('is-open', shouldOpen);
-    const btn = root.querySelector('.contribution-pending-toggle');
+    const btn = root.querySelector('.contribution-pending-chevron-btn');
     if (btn) btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    _syncContributionModerationAccordionHeader();
 }
 window.toggleContributionPendingAccordion = toggleContributionPendingAccordion;
 
-function _renderContributionPendingAccordion(pendingDetails, pendingCountHint) {
-    const root = document.getElementById('contribution-pending-accordion');
-    if (!root) return;
-    const items = Array.isArray(pendingDetails) ? pendingDetails.slice() : [];
-    const pendingCount = Math.round(Number(
-        pendingCountHint != null ? pendingCountHint : items.length
-    ));
-
-    // Soft fallback: if API gave pending_count but no details yet, still show shell.
-    if (!items.length && pendingCount > 0) {
-        root.hidden = false;
-        root.classList.remove('is-open');
-        const title = window.escapeHTML(
-            window.t('contributionPendingAccordionTitle', {}, lang) ||
-            (lang === 'ru' ? 'Ожидают проверки разработчиками' : 'Awaiting developer review')
-        );
-        root.innerHTML =
-            '<button type="button" class="contribution-pending-toggle" aria-expanded="false" onclick="toggleContributionPendingAccordion()">' +
-                '<span class="contribution-pending-toggle-main">' +
-                    '<span class="contribution-pending-title">⏳ ' + title + ' (' + pendingCount + ')</span>' +
-                    '<span class="contribution-pending-preview">' +
-                        window.escapeHTML(lang === 'ru' ? 'Список обновляется…' : 'Refreshing list…') +
-                    '</span>' +
-                '</span>' +
-                '<span class="contribution-pending-chevron" aria-hidden="true">▼</span>' +
-            '</button>' +
-            '<div class="contribution-pending-panel" role="region"></div>';
+function onContributionModerationHeaderClick(event) {
+    if (event && event.target && event.target.closest && event.target.closest('.contribution-moderation-chip')) {
         return;
     }
+    const root = document.getElementById('contribution-pending-accordion');
+    // When open, only the chevron closes; chips stay interactive.
+    if (root && root.classList.contains('is-open')) return;
+    toggleContributionPendingAccordion(true);
+}
+window.onContributionModerationHeaderClick = onContributionModerationHeaderClick;
 
-    if (!items.length) {
+function _renderContributionPendingAccordion(payloadOrItems, countsHint) {
+    const root = document.getElementById('contribution-pending-accordion');
+    if (!root) return;
+
+    var payload = payloadOrItems;
+    var items;
+    if (Array.isArray(payloadOrItems)) {
+        // Legacy call sites may pass only pending array.
+        items = payloadOrItems.map(function(item) {
+            return Object.assign({}, item, { bucket: item.bucket || 'pending' });
+        });
+        payload = null;
+    } else {
+        items = _normalizeContributionModerationItems(payloadOrItems || {});
+    }
+
+    var me = (payload && payload.me) || {};
+    var counts = {
+        accepted: Math.round(Number(
+            (countsHint && countsHint.accepted != null)
+                ? countsHint.accepted
+                : (me.accepted_count != null
+                    ? me.accepted_count
+                    : (Number(me.bugs_count || 0) + Number(me.ideas_count || 0) + Number(me.play_reviews_count || 0)))
+        )),
+        pending: Math.round(Number(
+            (countsHint && countsHint.pending != null) ? countsHint.pending : (me.pending_count || 0)
+        )),
+        rejected: Math.round(Number(
+            (countsHint && countsHint.rejected != null) ? countsHint.rejected : (me.rejected_count || 0)
+        )),
+    };
+
+    var itemsByBucket = { pending: [], rejected: [], accepted: [] };
+    items.forEach(function(item) {
+        var bucket = String((item && item.bucket) || 'pending');
+        if (!itemsByBucket[bucket]) bucket = 'pending';
+        itemsByBucket[bucket].push(item);
+    });
+    // Prefer list lengths when counters are zero but tickets exist.
+    if (!counts.pending && itemsByBucket.pending.length) counts.pending = itemsByBucket.pending.length;
+    if (!counts.rejected && itemsByBucket.rejected.length) counts.rejected = itemsByBucket.rejected.length;
+    if (!counts.accepted && itemsByBucket.accepted.length) counts.accepted = itemsByBucket.accepted.length;
+
+    var hasAny = counts.accepted > 0 || counts.pending > 0 || counts.rejected > 0 || items.length > 0;
+    if (!hasAny) {
+        _contributionModerationState = null;
         root.hidden = true;
         root.classList.remove('is-open');
         root.innerHTML = '';
         return;
     }
 
-    // API already returns oldest-first; keep defensive sort.
-    items.sort(function(a, b) {
-        const aTs = Date.parse(a && a.created_at) || 0;
-        const bTs = Date.parse(b && b.created_at) || 0;
-        return aTs - bTs;
-    });
-
-    const title = window.escapeHTML(
-        window.t('contributionPendingAccordionTitle', {}, lang) ||
-        (lang === 'ru' ? 'Ожидают проверки разработчиками' : 'Awaiting developer review')
-    );
-    const first = items[0] || {};
-    const previewApp = window.escapeHTML(String(first.app_name || '').trim() || '—');
-    const previewAge = window.escapeHTML(_contributionPendingAgeLabel(first.created_at));
-    const previewType = _contributionPendingTypeIcon(first.type);
-    const rowsHtml = items.map(_buildContributionPendingRowHtml).join('');
+    _contributionModerationState = {
+        counts: counts,
+        itemsByBucket: itemsByBucket,
+        items: items,
+    };
+    // Reset filters to default each fresh render of a new payload.
+    _contributionModerationFilters = { pending: true, rejected: false, accepted: false };
 
     root.hidden = false;
     root.classList.remove('is-open');
     root.innerHTML =
-        '<button type="button" class="contribution-pending-toggle" aria-expanded="false" onclick="toggleContributionPendingAccordion()">' +
-            '<span class="contribution-pending-toggle-main">' +
-                '<span class="contribution-pending-title">⏳ ' + title + '</span>' +
-                '<span class="contribution-pending-preview">' + previewType + ' ' + previewApp +
-                    (previewAge ? (' · ' + previewAge) : '') +
+        '<div class="contribution-pending-header" onclick="onContributionModerationHeaderClick(event)">' +
+            '<div class="contribution-pending-toggle-main">' +
+                '<span class="contribution-pending-title contribution-moderation-summary-text">' +
+                    window.escapeHTML(_contributionModerationSummaryText(counts)) +
                 '</span>' +
-            '</span>' +
-            '<span class="contribution-pending-chevron" aria-hidden="true">▼</span>' +
-        '</button>' +
-        '<div class="contribution-pending-panel" role="region">' + rowsHtml + '</div>';
+            '</div>' +
+            '<button type="button" class="contribution-pending-chevron-btn" aria-expanded="false" aria-label="Toggle" onclick="event.stopPropagation(); toggleContributionPendingAccordion()">' +
+                '<span class="contribution-pending-chevron" aria-hidden="true">▼</span>' +
+            '</button>' +
+        '</div>' +
+        '<div class="contribution-pending-panel" role="region">' +
+            _renderContributionModerationPanelBody() +
+        '</div>';
 }
 
 function _renderContributionCurrentTab(payload) {
@@ -5683,7 +5838,7 @@ function _renderContributionCurrentTab(payload) {
         if (typeof window.hideTgDeeplinkLoader === 'function') {
             window.hideTgDeeplinkLoader('contribution');
         }
-        _renderContributionPendingAccordion([]);
+        _renderContributionPendingAccordion(null);
         return;
     }
 
@@ -5724,30 +5879,23 @@ function _renderContributionCurrentTab(payload) {
 
     const moderationEl = document.getElementById('contribution-moderation-summary');
     if (moderationEl) {
-        // Confirmed = awarded sprint items (same as bugs+ideas+reviews above).
-        const accepted = Math.round(
-            Number(me.bugs_count || 0) + Number(me.ideas_count || 0) + Number(me.play_reviews_count || 0)
-        );
-        const pending = Math.round(Number(me.pending_count || 0));
-        const rejected = Math.round(Number(me.rejected_count || 0));
-        const hasModeration = accepted > 0 || pending > 0 || rejected > 0;
-        if (hasModeration) {
-            moderationEl.hidden = false;
-            moderationEl.textContent = window.t('contributionModerationSummary', {
-                accepted: accepted,
-                pending: pending,
-                rejected: rejected,
-            }, lang);
-        } else {
-            moderationEl.hidden = true;
-            moderationEl.textContent = '';
-        }
+        // Summary line now lives inside the moderation accordion header.
+        moderationEl.hidden = true;
+        moderationEl.textContent = '';
     }
 
-    _renderContributionPendingAccordion(
-        payload && payload.pending_details,
-        payload && payload.me && payload.me.pending_count
+    const acceptedCount = Math.round(
+        Number(me.accepted_count != null
+            ? me.accepted_count
+            : (Number(me.bugs_count || 0) + Number(me.ideas_count || 0) + Number(me.play_reviews_count || 0)))
     );
+    const pendingCount = Math.round(Number(me.pending_count || 0));
+    const rejectedCount = Math.round(Number(me.rejected_count || 0));
+    _renderContributionPendingAccordion(payload, {
+        accepted: acceptedCount,
+        pending: pendingCount,
+        rejected: rejectedCount,
+    });
 
     const gapCard = document.getElementById('contribution-gap-card');
     const gapText = document.getElementById('contribution-gap-text');
