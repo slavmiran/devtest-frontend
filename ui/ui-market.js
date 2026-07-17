@@ -3631,6 +3631,7 @@ function openPlayReviewStoreByAppId(appId, event) {
 }
 
 const ISSUE_CHECKLIST_PLAY_STORE_HOME = 'https://play.google.com/store';
+let _issueReportStep = 1;
 
 function _getIssueReportTest(appId) {
     const tests = (typeof myTests !== 'undefined' && Array.isArray(myTests))
@@ -3655,12 +3656,50 @@ function isIssueReportChecklistComplete() {
 
 function syncIssueReportPauseState() {
     const sendBtn = document.getElementById('t-issueReportSend');
+    const nextBtn = document.getElementById('t-issueReportNext');
     const emailInput = document.getElementById('issue-report-email');
     const email = emailInput ? String(emailInput.value || '').trim() : '';
     const emailOk = !!(email && typeof isValidEmail === 'function' ? isValidEmail(email) : email.includes('@'));
+    const groupChecked = !!(document.getElementById('issue-check-group') || {}).checked;
+    const playChecked = !!(document.getElementById('issue-check-play') || {}).checked;
     const ready = emailOk && isIssueReportChecklistComplete();
     if (sendBtn) sendBtn.disabled = !ready;
+    if (nextBtn) {
+        nextBtn.disabled = _issueReportStep === 1
+            ? !emailOk
+            : (_issueReportStep === 2 ? !(groupChecked && playChecked) : true);
+    }
     return ready;
+}
+
+function _renderIssueReportStep() {
+    document.querySelectorAll('[data-issue-step]').forEach(function(section) {
+        section.classList.toggle('is-active', Number(section.getAttribute('data-issue-step')) === _issueReportStep);
+    });
+    document.querySelectorAll('[data-issue-step-dot]').forEach(function(dot) {
+        dot.classList.toggle('is-active', Number(dot.getAttribute('data-issue-step-dot')) <= _issueReportStep);
+    });
+
+    const backBtn = document.getElementById('t-issueReportBack');
+    const nextBtn = document.getElementById('t-issueReportNext');
+    const sendBtn = document.getElementById('t-issueReportSend');
+    if (backBtn) backBtn.style.display = _issueReportStep > 1 ? '' : 'none';
+    if (nextBtn) nextBtn.style.display = _issueReportStep < 3 ? '' : 'none';
+    if (sendBtn) sendBtn.style.display = _issueReportStep === 3 ? '' : 'none';
+    syncIssueReportPauseState();
+}
+
+function nextIssueReportStep() {
+    syncIssueReportPauseState();
+    const nextBtn = document.getElementById('t-issueReportNext');
+    if (nextBtn && nextBtn.disabled) return;
+    _issueReportStep = Math.min(3, _issueReportStep + 1);
+    _renderIssueReportStep();
+}
+
+function previousIssueReportStep() {
+    _issueReportStep = Math.max(1, _issueReportStep - 1);
+    _renderIssueReportStep();
 }
 
 function _openIssueChecklistLink(url) {
@@ -3698,11 +3737,30 @@ function openIssueReportModal(appId) {
     const cancelBtn = document.getElementById('t-issueReportCancel');
     const emailLabel = document.getElementById('t-issueReportEmailLabel');
     const emailInput = document.getElementById('issue-report-email');
+    const setText = function(id, key) {
+        const node = document.getElementById(id);
+        if (node) node.innerText = window.t(key, {}, lang);
+    };
     if (title) title.innerText = window.t('reportIssueModalTitle', {}, lang);
     if (hint) hint.innerText = window.t('reportIssueModalInfo', {}, lang);
     if (emailLabel) emailLabel.innerText = window.t('reportIssueEmailLabel', {}, lang);
     if (sendBtn) sendBtn.innerText = window.t('reportIssueSendBtn', {}, lang);
     if (cancelBtn) cancelBtn.innerText = window.t('reportIssueCancelBtn', {}, lang);
+    setText('t-issueReportEyebrow', 'reportIssueEyebrow');
+    setText('t-issueReportStepEmailTitle', 'reportIssueStepEmailTitle');
+    setText('t-issueReportStepEmailText', 'reportIssueStepEmailText');
+    setText('issue-report-email-note', 'reportIssueEmailNote');
+    setText('t-issueReportStepAccountsTitle', 'reportIssueStepAccountsTitle');
+    setText('t-issueReportStepAccountsText', 'reportIssueStepAccountsText');
+    setText('t-issueCheckGroupHint', 'reportIssueCheckGroupHint');
+    setText('t-issueCheckPlayHint', 'reportIssueCheckPlayHint');
+    setText('t-issueReportStepConfirmTitle', 'reportIssueStepConfirmTitle');
+    setText('t-issueReportStepConfirmText', 'reportIssueStepConfirmText');
+    setText('t-issueReportCommentLabel', 'reportIssueCommentLabel');
+    setText('t-issueReportCommentNote', 'reportIssueCommentNote');
+    setText('t-issueReportPauseEffect', 'reportIssuePauseEffect');
+    setText('t-issueReportBack', 'reportIssueBackBtn');
+    setText('t-issueReportNext', 'reportIssueNextBtn');
 
     const openGroupBtn = document.getElementById('t-issueOpenGroup');
     const openPlayBtn = document.getElementById('t-issueOpenPlay');
@@ -3728,7 +3786,8 @@ function openIssueReportModal(appId) {
         textarea.value = '';
         textarea.placeholder = window.t('reportIssueCommentPlaceholder', {}, lang);
     }
-    syncIssueReportPauseState();
+    _issueReportStep = 1;
+    _renderIssueReportStep();
     modal.classList.add('active');
 }
 
@@ -3738,6 +3797,7 @@ function closeIssueReportModal(event) {
     if (event && event.target !== modal) return;
     modal.classList.remove('active');
     _issueReportAppId = null;
+    _issueReportStep = 1;
     _setIssueChecklistChecked(false);
 }
 
@@ -8565,6 +8625,8 @@ Object.assign(window, {
     submitIssueReportFromModal,
     syncIssueReportPauseState,
     isIssueReportChecklistComplete,
+    nextIssueReportStep,
+    previousIssueReportStep,
     openIssueChecklistGoogleGroup,
     openIssueChecklistGooglePlay,
     insertReportChip,

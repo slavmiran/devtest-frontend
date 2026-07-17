@@ -1011,6 +1011,7 @@ function handleApiError(code, details = {}) {
         invalid_email_format: 'invalidEmail',
         owner_has_access_issue: 'ownerAccessIssueBlockToast',
         email_required: 'reportIssueEmailRequired',
+        access_checklist_required: 'reportIssueChecklistIncomplete',
     };
 
     var normalizedCode = String(code || '').trim();

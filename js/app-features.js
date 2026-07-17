@@ -1451,6 +1451,9 @@ function refreshLanguageUi() {
     if (typeof syncDeviceProfileUi === 'function') {
         syncDeviceProfileUi();
     }
+    if (typeof updateOwnerAccessIssueBanner === 'function') {
+        updateOwnerAccessIssueBanner();
+    }
 }
 
 async function loadUserProfilePreferences() {
@@ -2229,6 +2232,9 @@ async function joinMutual(appId, allowOverLimit = false) {
 }
 
 async function joinBounty(appId) {
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
     var actionKey = 'joinBounty_' + appId;
     if (_pendingActions.has(actionKey)) return;
     _pendingActions.add(actionKey);
@@ -2253,7 +2259,7 @@ async function joinBounty(appId) {
             bountyContracts = rollback;
             renderBountyFeed();
             if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
-            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
         if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
@@ -3056,9 +3062,11 @@ function assertOwnerCanTakeForeignTests() {
 function toggleOwnerAccessIssueBanner() {
     var banner = document.getElementById('owner-access-issue-banner');
     var full = document.getElementById('owner-access-issue-banner-full');
+    var toggle = document.getElementById('owner-access-issue-banner-toggle');
     if (!banner || !full) return;
     var expanded = banner.classList.toggle('is-expanded');
     full.style.display = expanded ? 'block' : 'none';
+    if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
 }
 
 function openOwnerAccessIssueProject(projectId) {
@@ -3079,24 +3087,41 @@ function openOwnerAccessIssueProject(projectId) {
 
 function updateOwnerAccessIssueBanner() {
     var banner = document.getElementById('owner-access-issue-banner');
+    var titleEl = document.getElementById('owner-access-issue-banner-title');
     var shortEl = document.getElementById('owner-access-issue-banner-short');
     var detailsEl = document.getElementById('owner-access-issue-banner-details');
     var actionsEl = document.getElementById('owner-access-issue-banner-actions');
-    if (!banner || !shortEl || !detailsEl || !actionsEl) return;
+    if (!banner || !titleEl || !shortEl || !detailsEl || !actionsEl) return;
 
     var pending = getOwnerPendingAccessIssueProjects();
     if (!pending.length) {
         banner.style.display = 'none';
         banner.classList.remove('is-expanded');
+        var toggleHidden = document.getElementById('owner-access-issue-banner-toggle');
+        if (toggleHidden) toggleHidden.setAttribute('aria-expanded', 'false');
         var fullHidden = document.getElementById('owner-access-issue-banner-full');
         if (fullHidden) fullHidden.style.display = 'none';
         return;
     }
 
     banner.style.display = 'block';
-    var count = pending.length;
+    var count = pending.reduce(function(total, project) {
+        var testers = Array.isArray(project.testers) ? project.testers : [];
+        var affected = testers.filter(function(tester) {
+            return !!tester.issue_reported_at && !tester.issue_fixed_at;
+        }).length;
+        return total + Math.max(affected, 1);
+    }, 0);
+    titleEl.textContent = window.t('ownerAccessIssueBannerTitle', {}, lang);
     shortEl.textContent = window.t('ownerAccessIssueBannerShort', { count: count }, lang);
-    detailsEl.textContent = window.t('ownerAccessIssueBannerDetails', {}, lang);
+    detailsEl.innerHTML =
+        '<p>' + window.escapeHTML(window.t('ownerAccessIssueBannerLead', {}, lang)) + '</p>' +
+        '<p><strong>' + window.escapeHTML(window.t('ownerAccessIssueBannerRestrictionsTitle', {}, lang)) + '</strong></p>' +
+        '<ul>' +
+            '<li>' + window.escapeHTML(window.t('ownerAccessIssueBannerRestrictionTake', {}, lang)) + '</li>' +
+            '<li>' + window.escapeHTML(window.t('ownerAccessIssueBannerRestrictionInvite', {}, lang)) + '</li>' +
+            '<li>' + window.escapeHTML(window.t('ownerAccessIssueBannerRestrictionOffers', {}, lang)) + '</li>' +
+        '</ul>';
     actionsEl.innerHTML = pending.map(function(project) {
         var name = String(project.name || ('#' + project.id));
         var label = window.escapeHTML(window.t('ownerAccessIssueBannerOpenProject', { name: name }, lang));

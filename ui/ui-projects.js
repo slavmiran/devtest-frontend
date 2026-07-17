@@ -269,7 +269,7 @@ function renderProjects(force) {
         const isCollapsed = collapsedVal !== null ? (collapsedVal === 'true') : (index !== 0);
         if (isCollapsed) cardClass += ' card-collapsed';
 
-        card.className = cardClass + (hasAccessOverlay ? ' card-access-error-locked' : '');
+        card.className = cardClass + (hasAccessOverlay ? ' card-has-access-issue' : '');
         card.id = `project-card-${project.id}`;
         card.setAttribute('data-project-id', String(project.id));
         const showUpdateTip = projectStatus === 'active' && platformDays >= 3 && !isProjectUpdateTipDismissed(project.id);
@@ -465,12 +465,41 @@ function renderProjects(force) {
         const accessOverlayHtml = hasAccessOverlay ? `
             <div class="access-error-overlay" onclick="event.stopPropagation();">
                 <div class="access-error-panel" onclick="event.stopPropagation();">
-                    <div class="access-error-title">🚨 <b>${window.escapeHTML(window.t('accessOverlayTitle', {}, lang))}</b></div>
-                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayIntro', {}, lang))}</div>
-                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayAffectedCount', { count: pendingIssueTesters.length }, lang))}</div>
-                    <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">${window.escapeHTML(window.t('accessOverlayGuideLink', {}, lang))}</a>
-                    <div class="access-error-tester-list">${accessIssueRowsHtml}</div>
-                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayResolveHint', {}, lang))}</div>
+                    <div class="access-error-head">
+                        <span class="access-error-head__icon">!</span>
+                        <div>
+                            <div class="access-error-title">${window.escapeHTML(window.t('accessOverlayTitle', {}, lang))}</div>
+                            <div class="access-error-subtitle">${window.escapeHTML(window.t('accessOverlayAffectedCount', { count: pendingIssueTesters.length }, lang))}</div>
+                        </div>
+                    </div>
+                    <div class="access-error-continuity">${window.escapeHTML(window.t('accessOverlayIntro', {}, lang))}</div>
+                    <div class="access-error-deadline">
+                        <span>⏳</span>
+                        <strong>${window.escapeHTML(window.t('accessOverlayTesterCountdown', {
+                            time_left: getIssueRemovalCountdownText(pendingIssueTesters[0].issue_reported_at) || window.t('issueCountdownExpired', {}, lang)
+                        }, lang))}</strong>
+                    </div>
+                    <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">
+                        <span class="access-error-link__icon">📖</span>
+                        <span>
+                            <strong>${window.escapeHTML(window.t('accessOverlayGuideLink', {}, lang))}</strong>
+                            <small>${window.escapeHTML(window.t('accessOverlayGuideHint', {}, lang))}</small>
+                        </span>
+                        <span class="access-error-link__arrow">›</span>
+                    </a>
+                    <details class="access-error-details">
+                        <summary>${window.escapeHTML(window.t('accessOverlayDetailsSummary', {}, lang))}</summary>
+                        <div class="access-error-details__body">
+                            <p>${window.escapeHTML(window.t('accessOverlayRestrictionsIntro', {}, lang))}</p>
+                            <ul>
+                                <li>${window.escapeHTML(window.t('accessOverlayRestrictionTake', {}, lang))}</li>
+                                <li>${window.escapeHTML(window.t('accessOverlayRestrictionInvite', {}, lang))}</li>
+                                <li>${window.escapeHTML(window.t('accessOverlayRestrictionOffers', {}, lang))}</li>
+                            </ul>
+                            <div class="access-error-tester-list">${accessIssueRowsHtml}</div>
+                        </div>
+                    </details>
+                    <div class="access-error-resolve-copy">${window.escapeHTML(window.t('accessOverlayResolveHint', {}, lang))}</div>
                     <div class="access-error-actions">
                         <button type="button" class="btn btn-primary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); resolveAllAccessErrors(${project.id}, ${JSON.stringify(pendingIssueProgressIds)}); event.stopPropagation();">${window.escapeHTML(resolveAllLabel)}</button>
                     </div>
@@ -691,6 +720,8 @@ function renderProjects(force) {
                     <span class="drawer-chevron">›</span>
                 </div>
             </div>
+
+            ${accessOverlayHtml}
             
             <!-- COLLAPSED ZONE (Always visible) -->
             <div class="card-collapsed-zone">
@@ -749,8 +780,6 @@ function renderProjects(force) {
                     ${requiresAttention ? `<div class="footer-notification-dot"></div>` : ''}
                 </div>
             </div>
-            
-            ${accessOverlayHtml}
         `;
         container.appendChild(card);
         } catch (e) {

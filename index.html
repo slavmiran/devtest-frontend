@@ -35,21 +35,21 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260716-owner-dossier"></script>
-    <script src="./i18n/en.js?v=20260716-owner-dossier"></script>
+    <script src="./i18n/ru.js?v=20260717-access-ux-v2"></script>
+    <script src="./i18n/en.js?v=20260717-access-ux-v2"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260713-sprint-ux-polish"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-tests.js?v=20260716-owner-sla-move"></script>
-    <script src="./ui/ui-projects.js?v=20260716-owner-profile-cache"></script>
-    <script src="./ui/ui-market.js?v=20260716-grant-chips"></script>
+    <script src="./ui/ui-tests.js?v=20260717-access-ux-v2"></script>
+    <script src="./ui/ui-projects.js?v=20260717-access-ux-v2"></script>
+    <script src="./ui/ui-market.js?v=20260717-access-ux-v2"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260713-sprint-ux-polish"></script>
-    <script src="./js/app-api.js?v=20260716-sla-chip-map"></script>
+    <script src="./js/app-api.js?v=20260717-access-ux-v2"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
-    <script src="./js/app-actions.js?v=20260716-moderation-chips"></script>
-    <script src="./js/app-features.js?v=20260710-device-profile-banner-v1"></script>
-    <script src="./app.js?v=20260712-contribution-season"></script>
+    <script src="./js/app-actions.js?v=20260717-access-ux-v2"></script>
+    <script src="./js/app-features.js?v=20260717-access-ux-v2"></script>
+    <script src="./app.js?v=20260717-access-ux-v2"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260706-phase1-1">
@@ -60,7 +60,7 @@
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20260716-feedback-toolbar-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/tests-timeline.css?v=20260706-phase3">
+    <link rel="stylesheet" href="./css/tests-timeline.css?v=20260717-access-ux-v2">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
@@ -69,7 +69,7 @@
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./css/access-issue.css?v=20260717-access-checklist">
+    <link rel="stylesheet" href="./css/access-issue.css?v=20260717-access-ux-v2">
     <link rel="stylesheet" href="./styles.css?v=20260716-moderation-chips">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260711-collapsed-fix">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
@@ -166,6 +166,21 @@
 
     <!-- TAB 1: Мои тесты -->
     <div id="tab-tests" class="container tab-content active">
+        <div id="owner-access-issue-banner" class="owner-access-issue-banner" style="display:none;" aria-live="polite">
+            <button type="button" class="owner-access-issue-banner__summary" id="owner-access-issue-banner-toggle" onclick="toggleOwnerAccessIssueBanner()" aria-expanded="false">
+                <span class="owner-access-issue-banner__icon" aria-hidden="true">!</span>
+                <span class="owner-access-issue-banner__summary-copy">
+                    <strong id="owner-access-issue-banner-title"></strong>
+                    <span id="owner-access-issue-banner-short"></span>
+                </span>
+                <span id="owner-access-issue-banner-chevron" class="owner-access-issue-banner__chevron">⌄</span>
+            </button>
+            <div id="owner-access-issue-banner-full" class="owner-access-issue-banner__full" style="display:none;">
+                <div id="owner-access-issue-banner-details" class="owner-access-issue-banner__details"></div>
+                <div id="owner-access-issue-banner-actions" class="owner-access-issue-banner__actions"></div>
+            </div>
+        </div>
+
         <div class="banner device-profile-banner" id="device-profile-banner">
             <button type="button" onclick="closeDeviceProfileBanner()" style="position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 16px; color: var(--hint-color); cursor: pointer; padding: 4px;" aria-label="Close">✖</button>
             <div class="device-profile-banner-title" data-i18n="deviceProfileBannerTitle">🎁 Подготовьте тестовое устройство</div>
@@ -236,18 +251,6 @@
                     <span id="offers-count" class="offers-count">0</span>
                 </div>
                 <div id="offers-carousel" class="offers-carousel"></div>
-            </div>
-        </div>
-
-        <div id="owner-access-issue-banner" class="owner-access-issue-banner" style="display:none;" aria-live="polite">
-            <button type="button" class="owner-access-issue-banner__summary" id="owner-access-issue-banner-toggle" onclick="toggleOwnerAccessIssueBanner()">
-                <span class="owner-access-issue-banner__icon" aria-hidden="true">⚠️</span>
-                <span id="owner-access-issue-banner-short" class="owner-access-issue-banner__short"></span>
-                <span id="owner-access-issue-banner-chevron" class="owner-access-issue-banner__chevron">▾</span>
-            </button>
-            <div id="owner-access-issue-banner-full" class="owner-access-issue-banner__full" style="display:none;">
-                <p id="owner-access-issue-banner-details" class="owner-access-issue-banner__details"></p>
-                <div id="owner-access-issue-banner-actions" class="owner-access-issue-banner__actions"></div>
             </div>
         </div>
 
@@ -1277,42 +1280,95 @@
     <!-- Issue Report Modal (pre-freeze checklist) -->
     <div id="issue-report-modal" class="modal-overlay" onclick="closeIssueReportModal(event)">
         <div class="modal-content issue-report-modal" onclick="event.stopPropagation()">
-            <h3 id="t-issueReportTitle" data-i18n="reportIssueModalTitle">Перед заморозкой тестирования</h3>
-            <p id="t-issueReportHint" class="issue-report-intro" data-i18n="reportIssueModalInfo"></p>
-            <div class="form-group">
-                <label id="t-issueReportEmailLabel" class="issue-report-label" for="issue-report-email" data-i18n="reportIssueEmailLabel">Ваш Google Email</label>
-                <input id="issue-report-email" type="email" class="form-input" data-i18n-placeholder="reportIssueEmailPlaceholder" autocomplete="email" required oninput="syncIssueReportPauseState()">
+            <div class="issue-report-head">
+                <div class="issue-report-eyebrow" id="t-issueReportEyebrow"></div>
+                <h3 id="t-issueReportTitle" data-i18n="reportIssueModalTitle">Проверим доступ перед паузой</h3>
+                <p id="t-issueReportHint" class="issue-report-intro" data-i18n="reportIssueModalInfo"></p>
             </div>
-            <div class="issue-checklist" id="issue-report-checklist">
-                <label class="issue-check-item">
-                    <input type="checkbox" id="issue-check-group" onchange="syncIssueReportPauseState()">
-                    <span id="t-issueCheckGroup" data-i18n="reportIssueCheckGroup">Я сверил профиль (email) для вступления в Google Group проекта</span>
-                </label>
-                <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenGroup" onclick="openIssueChecklistGoogleGroup()" data-i18n="reportIssueOpenGroupBtn">Открыть Google Group</button>
 
-                <label class="issue-check-item">
-                    <input type="checkbox" id="issue-check-play" onchange="syncIssueReportPauseState()">
-                    <span id="t-issueCheckPlay" data-i18n="reportIssueCheckPlay">Я сверил профиль (email) в Google Play</span>
-                </label>
-                <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenPlay" onclick="openIssueChecklistGooglePlay()" data-i18n="reportIssueOpenPlayBtn">Открыть Google Play</button>
+            <div class="issue-report-progress" aria-hidden="true">
+                <span class="issue-report-progress__bar is-active" data-issue-step-dot="1"></span>
+                <span class="issue-report-progress__bar" data-issue-step-dot="2"></span>
+                <span class="issue-report-progress__bar" data-issue-step-dot="3"></span>
+            </div>
 
-                <label class="issue-check-item">
-                    <input type="checkbox" id="issue-check-match" onchange="syncIssueReportPauseState()">
-                    <span id="t-issueCheckMatch" data-i18n="reportIssueCheckMatch">Я убедился, что Gmail для Google Play совпадает с Gmail для вступления в Google Group</span>
-                </label>
+            <section class="issue-report-step is-active" data-issue-step="1">
+                <div class="issue-report-step__number">1</div>
+                <div class="issue-report-step__body">
+                    <h4 id="t-issueReportStepEmailTitle"></h4>
+                    <p id="t-issueReportStepEmailText"></p>
+                    <label id="t-issueReportEmailLabel" class="issue-report-label" for="issue-report-email" data-i18n="reportIssueEmailLabel">Google Email для проверки</label>
+                    <input id="issue-report-email" type="email" class="form-input" data-i18n-placeholder="reportIssueEmailPlaceholder" autocomplete="email" required oninput="syncIssueReportPauseState()">
+                    <div id="issue-report-email-note" class="issue-report-field-note"></div>
+                </div>
+            </section>
 
-                <label class="issue-check-item">
-                    <input type="checkbox" id="issue-check-still" onchange="syncIssueReportPauseState()">
-                    <span id="t-issueCheckStill" data-i18n="reportIssueCheckStill">Я по-прежнему не могу установить приложение</span>
-                </label>
+            <section class="issue-report-step" data-issue-step="2">
+                <div class="issue-report-step__number">2</div>
+                <div class="issue-report-step__body">
+                    <h4 id="t-issueReportStepAccountsTitle"></h4>
+                    <p id="t-issueReportStepAccountsText"></p>
+                    <div class="issue-account-check">
+                        <div class="issue-account-check__head">
+                            <span class="issue-account-check__icon">G</span>
+                            <div>
+                                <strong>Google Group</strong>
+                                <span id="t-issueCheckGroupHint"></span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenGroup" onclick="openIssueChecklistGoogleGroup()" data-i18n="reportIssueOpenGroupBtn">Открыть Google Group</button>
+                        <label class="issue-check-item">
+                            <input type="checkbox" id="issue-check-group" onchange="syncIssueReportPauseState()">
+                            <span id="t-issueCheckGroup" data-i18n="reportIssueCheckGroup">Email совпадает</span>
+                        </label>
+                    </div>
+                    <div class="issue-account-check">
+                        <div class="issue-account-check__head">
+                            <span class="issue-account-check__icon is-play">▶</span>
+                            <div>
+                                <strong>Google Play</strong>
+                                <span id="t-issueCheckPlayHint"></span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenPlay" onclick="openIssueChecklistGooglePlay()" data-i18n="reportIssueOpenPlayBtn">Открыть Google Play</button>
+                        <label class="issue-check-item">
+                            <input type="checkbox" id="issue-check-play" onchange="syncIssueReportPauseState()">
+                            <span id="t-issueCheckPlay" data-i18n="reportIssueCheckPlay">Email совпадает</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <section class="issue-report-step" data-issue-step="3">
+                <div class="issue-report-step__number">3</div>
+                <div class="issue-report-step__body">
+                    <h4 id="t-issueReportStepConfirmTitle"></h4>
+                    <p id="t-issueReportStepConfirmText"></p>
+                    <div class="issue-checklist" id="issue-report-checklist">
+                        <label class="issue-check-item issue-check-item--strong">
+                            <input type="checkbox" id="issue-check-match" onchange="syncIssueReportPauseState()">
+                            <span id="t-issueCheckMatch" data-i18n="reportIssueCheckMatch">Один аккаунт используется в Group и Play</span>
+                        </label>
+                        <label class="issue-check-item issue-check-item--strong">
+                            <input type="checkbox" id="issue-check-still" onchange="syncIssueReportPauseState()">
+                            <span id="t-issueCheckStill" data-i18n="reportIssueCheckStill">Приложение всё ещё недоступно</span>
+                        </label>
+                    </div>
+                    <div class="issue-report-comment">
+                        <label id="t-issueReportCommentLabel" class="issue-report-label" for="issue-report-text"></label>
+                        <textarea id="issue-report-text" class="form-input" rows="3" data-i18n-placeholder="reportIssueCommentPlaceholder" style="resize: none;"></textarea>
+                        <div id="t-issueReportCommentNote" class="issue-report-field-note"></div>
+                    </div>
+                    <div id="t-issueReportPauseEffect" class="issue-report-effect"></div>
+                </div>
+            </section>
+
+            <div class="issue-report-footer">
+                <button class="btn btn-secondary issue-report-back" id="t-issueReportBack" onclick="previousIssueReportStep()" style="display:none;"></button>
+                <button class="btn btn-primary issue-report-next" id="t-issueReportNext" onclick="nextIssueReportStep()" disabled></button>
+                <button class="btn btn-primary issue-report-submit" id="t-issueReportSend" onclick="submitIssueReportFromModal()" data-i18n="reportIssueSendBtn" disabled style="display:none;">Поставить на паузу</button>
             </div>
-            <div class="form-group" style="margin-top: 12px;">
-                <textarea id="issue-report-text" class="form-input" rows="3" data-i18n-placeholder="reportIssueCommentPlaceholder" style="resize: none;"></textarea>
-            </div>
-            <div class="action-row">
-                <button class="btn btn-primary" id="t-issueReportSend" onclick="submitIssueReportFromModal()" data-i18n="reportIssueSendBtn" disabled>Поставить на паузу</button>
-                <button class="btn btn-secondary" id="t-issueReportCancel" onclick="closeIssueReportModal()" data-i18n="reportIssueCancelBtn">Отмена</button>
-            </div>
+            <button class="issue-report-cancel" id="t-issueReportCancel" onclick="closeIssueReportModal()" data-i18n="reportIssueCancelBtn">Отмена</button>
         </div>
     </div>
 

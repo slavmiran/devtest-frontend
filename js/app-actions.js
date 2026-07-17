@@ -1419,7 +1419,7 @@ async function submitIssueReport(appId) {
         var response = await fetch(`${API_BASE}/projects/${appId}/report_issue`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId, issue_reason: reason, email: email })
+            body: JSON.stringify({ tester_id: userId, issue_reason: reason, email: email, account_match_confirmed: true })
         });
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {

@@ -753,75 +753,156 @@
     }
 }
 
-.card-access-error-locked {
-    position: relative;
-    overflow: hidden;
-}
-
-.card-access-error-locked > :not(.access-error-overlay) {
-    pointer-events: none;
-}
-.card-access-error-locked .no-testers {
-    pointer-events: none;
-}
-
 .access-error-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 8;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 14px;
-    background: rgba(8, 10, 16, 0.78);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    position: static;
+    padding: 0 12px 12px;
 }
 
 .access-error-panel {
     width: 100%;
-    max-height: 100%;
-    overflow-y: auto;
     border-radius: 16px;
-    border: 1px solid var(--border-strong);
-    background: rgba(22, 26, 34, 0.92);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 184, 77, 0.25);
+    background: linear-gradient(145deg, rgba(255, 184, 77, 0.10), rgba(255, 255, 255, 0.025));
     padding: 14px;
 }
 
-.access-error-title {
-    font-size: 14px;
-    color: #ff7b72;
-    margin-bottom: 8px;
+.access-error-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
 }
 
-.access-error-text {
-    font-size: 12px;
-    line-height: 1.45;
+.access-error-head__icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: #20170a;
+    background: #ffb84d;
+    font-weight: 900;
+}
+
+.access-error-title {
     color: var(--text-color);
-    margin-bottom: 6px;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.access-error-subtitle {
+    margin-top: 2px;
+    color: var(--hint-color);
+    font-size: 11px;
+}
+
+.access-error-continuity {
+    padding: 10px 11px;
+    border-radius: 11px;
+    color: #c9ead1;
+    background: rgba(52, 199, 89, 0.09);
+    border: 1px solid rgba(52, 199, 89, 0.16);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.access-error-deadline {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 10px 0;
+    color: #ffd08a;
+    font-size: 12px;
 }
 
 .access-error-link {
-    display: inline-block;
-    margin-top: 4px;
-    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    color: #fff;
+    background: #397be8;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(57, 123, 232, 0.22);
+}
+
+.access-error-link__icon {
+    font-size: 19px;
+}
+
+.access-error-link > span:nth-child(2) {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.access-error-link strong {
+    font-size: 13px;
+}
+
+.access-error-link small {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 10px;
+    line-height: 1.3;
+}
+
+.access-error-link__arrow {
+    font-size: 22px;
+}
+
+.access-error-details {
+    margin: 0 0 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.access-error-details summary {
+    padding: 11px 12px;
+    color: var(--text-color);
     font-size: 12px;
-    color: #8ab4ff;
-    text-decoration: underline;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.access-error-details__body {
+    padding: 0 12px 12px;
+    color: var(--hint-color);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.access-error-details__body p {
+    margin: 0 0 7px;
+}
+
+.access-error-details__body ul {
+    margin: 0 0 12px;
+    padding-left: 17px;
+}
+
+.access-error-details__body li + li {
+    margin-top: 4px;
 }
 
 .access-error-tester-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 12px;
+    margin-top: 10px;
 }
 
 .access-error-tester-row {
     border-radius: 14px;
     border: 1px solid var(--border-subtle);
-    background: var(--border-subtle);
+    background: rgba(0, 0, 0, 0.14);
     padding: 10px;
 }
 
@@ -859,6 +940,13 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+.access-error-resolve-copy {
+    margin: 0 0 8px;
+    color: var(--hint-color);
+    font-size: 11px;
+    line-height: 1.4;
 }
 
 .access-error-actions .btn {
