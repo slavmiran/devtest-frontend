@@ -57,22 +57,24 @@
 
 .issue-report-step {
     display: none;
+    position: relative;
     margin: 0 14px;
     padding: 16px;
-    gap: 12px;
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.035);
     border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .issue-report-step.is-active {
-    display: flex;
+    display: block;
 }
 
 .issue-report-step__number {
     display: grid;
     place-items: center;
-    flex: 0 0 28px;
+    position: absolute;
+    top: 16px;
+    left: 16px;
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -88,7 +90,11 @@
 }
 
 .issue-report-step__body h4 {
-    margin: 2px 0 6px;
+    display: flex;
+    align-items: center;
+    min-height: 28px;
+    margin: 0 0 8px;
+    padding-left: 40px;
     color: var(--text-color);
     font-size: 16px;
     line-height: 1.3;
@@ -114,6 +120,24 @@
     color: var(--hint-color);
     font-size: 11px;
     line-height: 1.45;
+}
+
+.issue-report-verification-timer {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 11px;
+    border-radius: 11px;
+    color: #d8bf92;
+    background: rgba(255, 184, 77, 0.06);
+    border: 1px solid rgba(255, 184, 77, 0.14);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.issue-report-verification-timer[hidden] {
+    display: none;
 }
 
 .issue-checklist {
@@ -185,6 +209,17 @@
     line-height: 1.35;
 }
 
+.issue-account-check__image {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 190px;
+    object-fit: contain;
+    margin: 0 0 10px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.16);
+}
+
 .issue-account-check__icon {
     display: grid;
     place-items: center;
@@ -215,6 +250,18 @@
     margin-top: 14px;
 }
 
+.issue-report-optional {
+    margin-left: 4px;
+    color: var(--hint-color);
+    font-weight: 400;
+}
+
+.issue-email-accent {
+    color: #77a9ff;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
 .issue-report-effect {
     margin-top: 12px;
     padding: 10px 12px;
@@ -237,6 +284,13 @@
     margin: 0;
 }
 
+.issue-report-footer .btn:disabled {
+    opacity: 0.42;
+    filter: saturate(0.35);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
 .issue-report-back {
     flex: 0 0 96px;
 }
@@ -256,11 +310,6 @@
     background: transparent;
     font-size: 13px;
     cursor: pointer;
-}
-
-#t-issueReportSend:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
 }
 
 .owner-access-issue-banner {

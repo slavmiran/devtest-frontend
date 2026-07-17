@@ -35,21 +35,21 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260717-access-ux-v3"></script>
-    <script src="./i18n/en.js?v=20260717-access-ux-v3"></script>
+    <script src="./i18n/ru.js?v=20260717-access-ux-v4"></script>
+    <script src="./i18n/en.js?v=20260717-access-ux-v4"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260713-sprint-ux-polish"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-tests.js?v=20260717-access-ux-v3"></script>
-    <script src="./ui/ui-projects.js?v=20260717-access-ux-v3"></script>
-    <script src="./ui/ui-market.js?v=20260717-access-ux-v3"></script>
+    <script src="./ui/ui-tests.js?v=20260717-access-ux-v4"></script>
+    <script src="./ui/ui-projects.js?v=20260717-access-ux-v4"></script>
+    <script src="./ui/ui-market.js?v=20260717-access-ux-v4"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260713-sprint-ux-polish"></script>
-    <script src="./js/app-api.js?v=20260717-access-ux-v3"></script>
+    <script src="./js/app-api.js?v=20260717-access-ux-v4"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
-    <script src="./js/app-actions.js?v=20260717-access-ux-v3"></script>
-    <script src="./js/app-features.js?v=20260717-access-ux-v3"></script>
-    <script src="./app.js?v=20260717-access-ux-v3"></script>
+    <script src="./js/app-actions.js?v=20260717-access-ux-v4"></script>
+    <script src="./js/app-features.js?v=20260717-access-ux-v4"></script>
+    <script src="./app.js?v=20260717-access-ux-v4"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260706-phase1-1">
@@ -60,7 +60,7 @@
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20260716-feedback-toolbar-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/tests-timeline.css?v=20260717-access-ux-v3">
+    <link rel="stylesheet" href="./css/tests-timeline.css?v=20260717-access-ux-v4">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
@@ -69,7 +69,7 @@
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./css/access-issue.css?v=20260717-access-ux-v3">
+    <link rel="stylesheet" href="./css/access-issue.css?v=20260717-access-ux-v4">
     <link rel="stylesheet" href="./styles.css?v=20260716-moderation-chips">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260711-collapsed-fix">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
@@ -1293,6 +1293,10 @@
                     <label id="t-issueReportEmailLabel" class="issue-report-label" for="issue-report-email" data-i18n="reportIssueEmailLabel">Google Email для проверки</label>
                     <input id="issue-report-email" type="email" class="form-input" data-i18n-placeholder="reportIssueEmailPlaceholder" autocomplete="email" required oninput="syncIssueReportPauseState()">
                     <div id="issue-report-email-note" class="issue-report-field-note"></div>
+                    <div id="issue-report-verification-timer" class="issue-report-verification-timer" hidden>
+                        <span aria-hidden="true">⏳</span>
+                        <span id="issue-report-verification-timer-text"></span>
+                    </div>
                 </div>
             </section>
 
@@ -1309,6 +1313,7 @@
                                 <span id="t-issueCheckGroupHint"></span>
                             </div>
                         </div>
+                        <img class="issue-account-check__image" src="./images/googlegroup.png" alt="Google Group account selector">
                         <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenGroup" onclick="openIssueChecklistGoogleGroup()" data-i18n="reportIssueOpenGroupBtn">Открыть Google Group</button>
                         <label class="issue-check-item">
                             <input type="checkbox" id="issue-check-group" onchange="syncIssueReportPauseState()">
@@ -1323,6 +1328,7 @@
                                 <span id="t-issueCheckPlayHint"></span>
                             </div>
                         </div>
+                        <img class="issue-account-check__image" src="./images/googleplay.png" alt="Google Play account selector">
                         <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenPlay" onclick="openIssueChecklistGooglePlay()" data-i18n="reportIssueOpenPlayBtn">Открыть Google Play</button>
                         <label class="issue-check-item">
                             <input type="checkbox" id="issue-check-play" onchange="syncIssueReportPauseState()">
@@ -1348,9 +1354,11 @@
                         </label>
                     </div>
                     <div class="issue-report-comment">
-                        <label id="t-issueReportCommentLabel" class="issue-report-label" for="issue-report-text"></label>
+                        <label class="issue-report-label" for="issue-report-text">
+                            <span id="t-issueReportCommentLabel"></span>
+                            <span id="t-issueReportCommentOptional" class="issue-report-optional"></span>
+                        </label>
                         <textarea id="issue-report-text" class="form-input" rows="3" data-i18n-placeholder="reportIssueCommentPlaceholder" style="resize: none;"></textarea>
-                        <div id="t-issueReportCommentNote" class="issue-report-field-note"></div>
                     </div>
                     <div id="t-issueReportPauseEffect" class="issue-report-effect"></div>
                 </div>
@@ -1359,7 +1367,7 @@
             <div class="issue-report-footer">
                 <button class="btn btn-secondary issue-report-back" id="t-issueReportBack" onclick="previousIssueReportStep()" style="display:none;"></button>
                 <button class="btn btn-primary issue-report-next" id="t-issueReportNext" onclick="nextIssueReportStep()" disabled></button>
-                <button class="btn btn-primary issue-report-submit" id="t-issueReportSend" onclick="submitIssueReportFromModal()" data-i18n="reportIssueSendBtn" disabled style="display:none;">Поставить на паузу</button>
+                <button class="btn btn-primary issue-report-submit" id="t-issueReportSend" onclick="submitIssueReportFromModal()" data-i18n="reportIssueSendBtn" disabled style="display:none;">Отправить уведомление</button>
             </div>
             <button class="issue-report-cancel" id="t-issueReportCancel" onclick="closeIssueReportModal()" data-i18n="reportIssueCancelBtn">Отмена</button>
         </div>

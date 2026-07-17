@@ -3631,13 +3631,88 @@ function openPlayReviewStoreByAppId(appId, event) {
 }
 
 const ISSUE_CHECKLIST_PLAY_STORE_HOME = 'https://play.google.com/store';
+const ISSUE_PROJECT_VERIFICATION_WINDOW_MS = 30 * 60 * 1000;
 let _issueReportStep = 1;
+let _issueReportVerificationTimerId = null;
 
 function _getIssueReportTest(appId) {
     const tests = (typeof myTests !== 'undefined' && Array.isArray(myTests))
         ? myTests
         : ((window.App && Array.isArray(window.App.myTests)) ? window.App.myTests : []);
     return tests.find(function(item) { return Number(item.id) === Number(appId); }) || null;
+}
+
+function _clearIssueReportVerificationTimer() {
+    if (_issueReportVerificationTimerId) {
+        clearInterval(_issueReportVerificationTimerId);
+        _issueReportVerificationTimerId = null;
+    }
+}
+
+function _renderIssueReportVerificationTimer() {
+    const timer = document.getElementById('issue-report-verification-timer');
+    const timerText = document.getElementById('issue-report-verification-timer-text');
+    if (!timer || !timerText) return false;
+
+    const test = _getIssueReportTest(_issueReportAppId);
+    const createdAt = test && test.created_at ? new Date(test.created_at).getTime() : NaN;
+    const remainingMs = Number.isFinite(createdAt)
+        ? ISSUE_PROJECT_VERIFICATION_WINDOW_MS - Math.max(0, Date.now() - createdAt)
+        : 0;
+
+    if (remainingMs <= 0) {
+        timer.hidden = true;
+        timerText.textContent = '';
+        return false;
+    }
+
+    const minutes = Math.max(1, Math.ceil(remainingMs / 60000));
+    timerText.textContent = window.t('reportIssueVerificationTimer', { minutes: minutes }, lang);
+    timer.hidden = false;
+    return true;
+}
+
+function _startIssueReportVerificationTimer() {
+    _clearIssueReportVerificationTimer();
+    if (!_renderIssueReportVerificationTimer()) return;
+    _issueReportVerificationTimerId = setInterval(function() {
+        if (!_renderIssueReportVerificationTimer()) {
+            _clearIssueReportVerificationTimer();
+        }
+    }, 1000);
+}
+
+function _renderIssueEmailTemplate(node, key, email) {
+    if (!node) return;
+    const marker = '__ISSUE_EMAIL__';
+    const text = window.escapeHTML(window.t(key, { email: marker }, lang));
+    const emailHtml = '<strong class="issue-email-accent notranslate">' +
+        window.escapeHTML(email) +
+        '</strong>';
+    node.innerHTML = text.replace(marker, emailHtml);
+}
+
+function _renderIssueReportAccountCopy() {
+    const emailInput = document.getElementById('issue-report-email');
+    const email = String(emailInput && emailInput.value || '').trim() ||
+        window.t('reportIssueEmailPlaceholder', {}, lang);
+    const groupInput = document.getElementById('issue-check-group');
+    const playInput = document.getElementById('issue-check-play');
+    const accountsText = document.getElementById('t-issueReportStepAccountsText');
+    const groupLabel = document.getElementById('t-issueCheckGroup');
+    const playLabel = document.getElementById('t-issueCheckPlay');
+
+    _renderIssueEmailTemplate(accountsText, 'reportIssueStepAccountsText', email);
+    if (groupInput && groupInput.checked) {
+        _renderIssueEmailTemplate(groupLabel, 'reportIssueCheckGroupSelected', email);
+    } else if (groupLabel) {
+        groupLabel.textContent = window.t('reportIssueCheckGroup', {}, lang);
+    }
+    if (playInput && playInput.checked) {
+        _renderIssueEmailTemplate(playLabel, 'reportIssueCheckPlaySelected', email);
+    } else if (playLabel) {
+        playLabel.textContent = window.t('reportIssueCheckPlay', {}, lang);
+    }
 }
 
 function _setIssueChecklistChecked(checked) {
@@ -3669,6 +3744,7 @@ function syncIssueReportPauseState() {
             ? !emailOk
             : (_issueReportStep === 2 ? !(groupChecked && playChecked) : true);
     }
+    _renderIssueReportAccountCopy();
     return ready;
 }
 
@@ -3751,13 +3827,12 @@ function openIssueReportModal(appId) {
     setText('t-issueReportStepEmailText', 'reportIssueStepEmailText');
     setText('issue-report-email-note', 'reportIssueEmailNote');
     setText('t-issueReportStepAccountsTitle', 'reportIssueStepAccountsTitle');
-    setText('t-issueReportStepAccountsText', 'reportIssueStepAccountsText');
     setText('t-issueCheckGroupHint', 'reportIssueCheckGroupHint');
     setText('t-issueCheckPlayHint', 'reportIssueCheckPlayHint');
     setText('t-issueReportStepConfirmTitle', 'reportIssueStepConfirmTitle');
     setText('t-issueReportStepConfirmText', 'reportIssueStepConfirmText');
     setText('t-issueReportCommentLabel', 'reportIssueCommentLabel');
-    setText('t-issueReportCommentNote', 'reportIssueCommentNote');
+    setText('t-issueReportCommentOptional', 'reportIssueCommentOptional');
     setText('t-issueReportPauseEffect', 'reportIssuePauseEffect');
     setText('t-issueReportBack', 'reportIssueBackBtn');
     setText('t-issueReportNext', 'reportIssueNextBtn');
@@ -3788,6 +3863,7 @@ function openIssueReportModal(appId) {
     }
     _issueReportStep = 1;
     _renderIssueReportStep();
+    _startIssueReportVerificationTimer();
     modal.classList.add('active');
 }
 
@@ -3796,6 +3872,7 @@ function closeIssueReportModal(event) {
     if (!modal) return;
     if (event && event.target !== modal) return;
     modal.classList.remove('active');
+    _clearIssueReportVerificationTimer();
     _issueReportAppId = null;
     _issueReportStep = 1;
     _setIssueChecklistChecked(false);
