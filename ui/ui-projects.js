@@ -2665,11 +2665,14 @@ window.AccessSetupManager = window.AccessSetupManager || {
 
 window.addWizardState = window.addWizardState || { focusStep: 1, unlockedStep: 1 };
 
-const _WIZARD_STEP_SUBTITLES = {
-    1: 'Шаг 1 из 3: Основная информация',
-    2: 'Шаг 2 из 3: Google Group',
-    3: 'Шаг 3 из 3: Настройка проекта'
-};
+function _syncWizardStepSubtitle(step) {
+    const subtitle = document.getElementById('wizard-step-subtitle');
+    if (!subtitle) return;
+    const key = 'wizardStepSubtitle' + (step === 2 || step === 3 ? step : 1);
+    // Keep data-i18n in sync so a language switch re-renders the right step.
+    subtitle.dataset.i18n = key;
+    if (window.t) subtitle.textContent = window.t(key, {}, window.currentLang);
+}
 
 function _getWizardUnlockedStep() {
     return Math.max(1, Math.min(3, Number((window.addWizardState && window.addWizardState.unlockedStep) || 1)));
@@ -2898,8 +2901,7 @@ function updateWizardProgress() {
     if (line1) line1.classList.toggle('is-complete', unlocked >= 2);
     if (line2) line2.classList.toggle('is-complete', unlocked >= 3);
 
-    const subtitle = document.getElementById('wizard-step-subtitle');
-    if (subtitle) subtitle.textContent = _WIZARD_STEP_SUBTITLES[focusStep] || _WIZARD_STEP_SUBTITLES[1];
+    _syncWizardStepSubtitle(focusStep);
 
     document.querySelectorAll('.wizard-section').forEach(function (el) {
         el.classList.remove('wizard-section--current');

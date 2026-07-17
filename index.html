@@ -408,20 +408,20 @@
                 <div class="wizard-progress" id="wizard-progress" aria-hidden="false">
                     <div class="wizard-progress__item" data-wizard-step="1">
                         <span class="wizard-progress__dot" id="wizard-dot-1">1</span>
-                        <span class="wizard-progress__label">Приложение</span>
+                        <span class="wizard-progress__label" data-i18n="wizardProgressStep1">Приложение</span>
                     </div>
                     <div class="wizard-progress__line" id="wizard-line-1"></div>
                     <div class="wizard-progress__item" data-wizard-step="2">
                         <span class="wizard-progress__dot" id="wizard-dot-2">2</span>
-                        <span class="wizard-progress__label">Google Group</span>
+                        <span class="wizard-progress__label" data-i18n="wizardProgressStep2">Google Group</span>
                     </div>
                     <div class="wizard-progress__line" id="wizard-line-2"></div>
                     <div class="wizard-progress__item" data-wizard-step="3">
                         <span class="wizard-progress__dot" id="wizard-dot-3">3</span>
-                        <span class="wizard-progress__label">Параметры</span>
+                        <span class="wizard-progress__label" data-i18n="wizardProgressStep3">Параметры</span>
                     </div>
                 </div>
-                <p class="wizard-step-subtitle" id="wizard-step-subtitle">Шаг 1 из 3: Основная информация</p>
+                <p class="wizard-step-subtitle" id="wizard-step-subtitle" data-i18n="wizardStepSubtitle1">Шаг 1 из 3: Основная информация</p>
             </header>
 
             <div class="wizard-body" id="wizard-body">
@@ -433,8 +433,8 @@
                             <span class="app-icon-picker__plus" id="app-icon-placeholder">+</span>
                         </button>
                         <div class="app-icon-block__meta">
-                            <div class="app-icon-block__title">Добавить иконку</div>
-                            <div class="app-icon-block__hint">PNG, JPG · до 2MB · 512×512</div>
+                            <div class="app-icon-block__title" data-i18n="wizardAddIconTitle">Добавить иконку</div>
+                            <div class="app-icon-block__hint" data-i18n="wizardAddIconHint">PNG, JPG · до 2MB · 512×512</div>
                         </div>
                     </div>
                     <input type="url" id="app-icon" class="visually-hidden" tabindex="-1" aria-hidden="true" oninput="onAppIconInput()">
@@ -454,19 +454,19 @@
                             <input type="text" id="app-package" class="form-input" placeholder="" data-i18n-placeholder="playLinkPlaceholder" oninput="onAddPlayLinkInput()">
                             <span id="play-link-valid-icon" class="play-link-valid-icon" aria-hidden="true">✓</span>
                         </div>
-                        <div class="form-hint play-link-tip">💡 Вставьте ссылку на страницу приложения в Google Play.</div>
+                        <div class="form-hint play-link-tip" data-i18n="wizardPlayLinkTip">💡 Вставьте ссылку на страницу приложения в Google Play.</div>
                         <div id="package-error" class="form-error" style="display: none;"></div>
                     </div>
                 </div>
                 <button type="button" class="btn btn-primary wizard-continue-btn" id="add-continue-1" onclick="wizardContinue(1)" data-i18n="emailTesterDefaultAction">Продолжить</button>
-                <p class="wizard-security-note">🔒 Ваши данные защищены и не передаются третьим лицам.</p>
+                <p class="wizard-security-note" data-i18n="wizardSecurityNote">🔒 Ваши данные защищены и не передаются третьим лицам.</p>
             </section>
 
             <div id="add-stage-2" class="stage-panel wizard-section">
                 <div class="wizard-section-card">
                     <div class="wizard-section-head">
                         <h3 class="wizard-section-title" data-i18n="googleGroup">Настройка доступа</h3>
-                        <p class="wizard-section-desc">Выберите способ тестирования и настройте Play Console.</p>
+                        <p class="wizard-section-desc" data-i18n="wizardAccessDesc">Выберите способ тестирования и настройте Play Console.</p>
                     </div>
                     <div class="seg-control seg-control--triple" id="group-seg-control">
                         <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')" data-i18n="groupStandard">DevTestHub</button>
@@ -550,9 +550,9 @@
                         <p class="email-mode-card__lead" data-i18n="emailTestingAlertText">Выбирая этот метод, вы получите значительно меньше заявок на взаимное тестирование!</p>
                         <p class="email-mode-card__text" data-i18n="emailTestingAlertText2">Так как вам придётся вручную добавлять email тестировщиков в консоль перед каждой отправкой запроса на взаимку.</p>
                         <ul class="email-mode-card__list">
-                            <li>Перед каждой взаимкой вы обязаны вручную добавить email тестера в Play Console.</li>
-                            <li>Массовые рассылки придут вам списком — добавьте все email, затем отправляйте.</li>
-                            <li>Часть автоматических сценариев платформы станет ручной работой.</li>
+                            <li data-i18n="emailModeListManual">Перед каждой взаимкой вы обязаны вручную добавить email тестера в Play Console.</li>
+                            <li data-i18n="emailModeListMass">Массовые рассылки придут вам списком — добавьте все email, затем отправляйте.</li>
+                            <li data-i18n="emailModeListAutomation">Часть автоматических сценариев платформы станет ручной работой.</li>
                         </ul>
                         <p class="email-mode-card__accent" data-i18n="emailTestingAlertAccent">Рекомендуется использовать Google Groups.</p>
                     </div>
@@ -680,22 +680,22 @@
             <div id="icon-picker-menu">
                 <button type="button" class="icon-picker-action" onclick="iconPickerUpload()">
                     <span class="icon-picker-action__icon">📤</span>
-                    <span>Загрузить файл</span>
+                    <span data-i18n="iconPickerUploadBtn">Загрузить файл</span>
                 </button>
                 <button type="button" class="icon-picker-action" onclick="iconPickerShowLinkInput()">
                     <span class="icon-picker-action__icon">🔗</span>
-                    <span>Вставить ссылку</span>
+                    <span data-i18n="iconPickerLinkBtn">Вставить ссылку</span>
                 </button>
                 <button type="button" class="icon-picker-action icon-picker-action--danger" id="icon-picker-remove-btn" onclick="iconPickerRemove()" style="display:none;">
                     <span class="icon-picker-action__icon">🗑</span>
-                    <span>Удалить иконку</span>
+                    <span data-i18n="iconPickerRemoveBtn">Удалить иконку</span>
                 </button>
             </div>
             <div id="icon-picker-link-panel" class="icon-picker-link-panel" style="display:none;">
                 <label class="form-label" data-i18n="iconUrl">Ссылка на иконку</label>
                 <input type="url" id="icon-picker-link-input" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder">
-                <button type="button" class="btn btn-primary" style="margin-top: 12px;" onclick="iconPickerApplyLink()">Применить</button>
-                <button type="button" class="btn btn-secondary" style="margin-top: 8px;" onclick="iconPickerShowMenu()">Назад</button>
+                <button type="button" class="btn btn-primary" style="margin-top: 12px;" onclick="iconPickerApplyLink()" data-i18n="iconPickerApplyBtn">Применить</button>
+                <button type="button" class="btn btn-secondary" style="margin-top: 8px;" onclick="iconPickerShowMenu()" data-i18n="iconPickerBackBtn">Назад</button>
             </div>
         </div>
     </div>
