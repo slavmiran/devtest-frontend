@@ -3059,16 +3059,6 @@ function assertOwnerCanTakeForeignTests() {
     return false;
 }
 
-function toggleOwnerAccessIssueBanner() {
-    var banner = document.getElementById('owner-access-issue-banner');
-    var full = document.getElementById('owner-access-issue-banner-full');
-    var toggle = document.getElementById('owner-access-issue-banner-toggle');
-    if (!banner || !full) return;
-    var expanded = banner.classList.toggle('is-expanded');
-    full.style.display = expanded ? 'block' : 'none';
-    if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-}
-
 function openOwnerAccessIssueProject(projectId) {
     var normalizedId = Number(projectId || 0);
     if (normalizedId <= 0) return;
@@ -3088,44 +3078,52 @@ function openOwnerAccessIssueProject(projectId) {
 function updateOwnerAccessIssueBanner() {
     var banner = document.getElementById('owner-access-issue-banner');
     var titleEl = document.getElementById('owner-access-issue-banner-title');
-    var shortEl = document.getElementById('owner-access-issue-banner-short');
-    var detailsEl = document.getElementById('owner-access-issue-banner-details');
-    var actionsEl = document.getElementById('owner-access-issue-banner-actions');
-    if (!banner || !titleEl || !shortEl || !detailsEl || !actionsEl) return;
+    var itemsEl = document.getElementById('owner-access-issue-banner-items');
+    if (!banner || !titleEl || !itemsEl) return;
 
     var pending = getOwnerPendingAccessIssueProjects();
     if (!pending.length) {
         banner.style.display = 'none';
-        banner.classList.remove('is-expanded');
-        var toggleHidden = document.getElementById('owner-access-issue-banner-toggle');
-        if (toggleHidden) toggleHidden.setAttribute('aria-expanded', 'false');
-        var fullHidden = document.getElementById('owner-access-issue-banner-full');
-        if (fullHidden) fullHidden.style.display = 'none';
         return;
     }
 
-    banner.style.display = 'block';
-    var count = pending.reduce(function(total, project) {
-        var testers = Array.isArray(project.testers) ? project.testers : [];
-        var affected = testers.filter(function(tester) {
-            return !!tester.issue_reported_at && !tester.issue_fixed_at;
-        }).length;
-        return total + Math.max(affected, 1);
-    }, 0);
+    banner.style.display = 'flex';
     titleEl.textContent = window.t('ownerAccessIssueBannerTitle', {}, lang);
-    shortEl.textContent = window.t('ownerAccessIssueBannerShort', { count: count }, lang);
-    detailsEl.innerHTML =
-        '<p>' + window.escapeHTML(window.t('ownerAccessIssueBannerLead', {}, lang)) + '</p>' +
-        '<p><strong>' + window.escapeHTML(window.t('ownerAccessIssueBannerRestrictionsTitle', {}, lang)) + '</strong></p>' +
-        '<ul>' +
-            '<li>' + window.escapeHTML(window.t('ownerAccessIssueBannerRestrictionTake', {}, lang)) + '</li>' +
-            '<li>' + window.escapeHTML(window.t('ownerAccessIssueBannerRestrictionInvite', {}, lang)) + '</li>' +
-            '<li>' + window.escapeHTML(window.t('ownerAccessIssueBannerRestrictionOffers', {}, lang)) + '</li>' +
-        '</ul>';
-    actionsEl.innerHTML = pending.map(function(project) {
-        var name = String(project.name || ('#' + project.id));
-        var label = window.escapeHTML(window.t('ownerAccessIssueBannerOpenProject', { name: name }, lang));
-        return '<button type="button" class="btn btn-secondary" onclick="openOwnerAccessIssueProject(' + Number(project.id) + ')">' + label + '</button>';
+    itemsEl.innerHTML = pending.map(function(project) {
+        var projectName = String(project.name || ('#' + project.id));
+        var testers = Array.isArray(project.testers) ? project.testers : [];
+        var affectedTesters = testers.filter(function(tester) {
+            return !!tester.issue_reported_at && !tester.issue_fixed_at;
+        });
+        if (!affectedTesters.length) affectedTesters = [null];
+
+        var messages = affectedTesters.map(function(tester) {
+            var username = String(tester && tester.username || '').trim().replace(/^@+/, '');
+            var marker = '__ACCESS_TESTER__';
+            var message = window.escapeHTML(window.t('ownerAccessIssueBannerMessage', {
+                tester: marker,
+                name: projectName
+            }, lang));
+            var testerHtml = window.escapeHTML(window.t('ownerAccessIssueBannerUnknownTester', {}, lang));
+            if (username) {
+                testerHtml = '<button type="button" class="owner-access-issue-banner__tester notranslate" ' +
+                    'onclick="event.stopPropagation(); contactAccessTester(\'' + escapeInlineJsString(username) + '\')">@' +
+                    window.escapeHTML(username) + '</button>';
+            }
+            return '<p>' + message.replace(marker, testerHtml) + '</p>';
+        }).join('');
+
+        return '<div class="owner-access-issue-banner__item">' +
+            messages +
+            '<span class="owner-access-issue-banner__continuity">' +
+                window.escapeHTML(window.t('ownerAccessIssueBannerContinuity', {}, lang)) +
+            '</span>' +
+            '<button type="button" class="owner-access-issue-banner__project-link" ' +
+                'onclick="openOwnerAccessIssueProject(' + Number(project.id) + ')">' +
+                window.escapeHTML(window.t('ownerAccessIssueBannerOpenProject', {}, lang)) +
+                '<span aria-hidden="true">→</span>' +
+            '</button>' +
+        '</div>';
     }).join('');
 }
 

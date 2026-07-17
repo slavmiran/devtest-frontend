@@ -243,7 +243,6 @@ Object.assign(window, {
     assertOwnerCanTakeForeignTests,
     ownerHasPendingAccessIssue,
     updateOwnerAccessIssueBanner,
-    toggleOwnerAccessIssueBanner,
     openOwnerAccessIssueProject,
     confirmDeleteProject,
     formatAmountValue,

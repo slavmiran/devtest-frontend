@@ -437,6 +437,10 @@ function renderProjects(force) {
             .filter(function(progressId) {
                 return progressId > 0;
             });
+        const affectedCount = pendingIssueTesters.length;
+        const affectedCountKey = affectedCount === 1
+            ? 'accessOverlayAffectedOne'
+            : (affectedCount >= 2 && affectedCount <= 4 ? 'accessOverlayAffectedFew' : 'accessOverlayAffectedMany');
         const resolveAllLabel = pendingIssueProgressIds.length > 1
             ? window.t('accessOverlayResolveAllBtn', {}, lang)
             : window.t('accessOverlayResolveBtn', {}, lang);
@@ -447,12 +451,11 @@ function renderProjects(force) {
                 : window.t('idLabel', { id: Number(tester.tester_id || 0) }, lang);
             const safeTesterUsernameInline = escapeInlineJsString(testerUsernameRaw);
             const safeDeleteNameInline = escapeInlineJsString(testerLabel);
-            const countdownText = getIssueRemovalCountdownText(tester.issue_reported_at) || window.t('issueCountdownExpired', {}, lang);
             return `
                 <div class="access-error-tester-row">
                     <div class="access-error-tester-main">
                         <div class="access-error-tester-name notranslate">${window.escapeHTML(testerLabel)}</div>
-                        <div class="access-error-tester-meta">${window.escapeHTML(window.t('accessOverlayTesterCountdown', { time_left: countdownText }, lang))}</div>
+                        <div class="access-error-tester-meta">${window.escapeHTML(window.t('accessOverlayTesterReported', {}, lang))}</div>
                     </div>
                     <div class="access-error-tester-actions">
                         <button type="button" class="btn btn-secondary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); contactAccessTester('${safeTesterUsernameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayWriteBtn', {}, lang))}</button>
@@ -461,7 +464,7 @@ function renderProjects(force) {
                 </div>
             `;
         }).join('');
-        const accessGuideUrl = (window.App && window.App.publicGroupUrl || 'https://t.me/googleplay_console_12testers') + '/1/527';
+        const accessGuideUrl = 'https://telegra.ph/Action-Required-Add-Testing-Group-to-Start-Closed-Testing-06-04';
         const accessOverlayHtml = hasAccessOverlay ? `
             <div class="access-error-overlay" onclick="event.stopPropagation();">
                 <div class="access-error-panel" onclick="event.stopPropagation();">
@@ -469,7 +472,7 @@ function renderProjects(force) {
                         <span class="access-error-head__icon">!</span>
                         <div>
                             <div class="access-error-title">${window.escapeHTML(window.t('accessOverlayTitle', {}, lang))}</div>
-                            <div class="access-error-subtitle">${window.escapeHTML(window.t('accessOverlayAffectedCount', { count: pendingIssueTesters.length }, lang))}</div>
+                            <div class="access-error-subtitle">${window.escapeHTML(window.t(affectedCountKey, { count: affectedCount }, lang))}</div>
                         </div>
                     </div>
                     <div class="access-error-continuity">${window.escapeHTML(window.t('accessOverlayIntro', {}, lang))}</div>

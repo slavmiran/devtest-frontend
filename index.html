@@ -35,21 +35,21 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260717-access-ux-v2"></script>
-    <script src="./i18n/en.js?v=20260717-access-ux-v2"></script>
+    <script src="./i18n/ru.js?v=20260717-access-ux-v3"></script>
+    <script src="./i18n/en.js?v=20260717-access-ux-v3"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260713-sprint-ux-polish"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-tests.js?v=20260717-access-ux-v2"></script>
-    <script src="./ui/ui-projects.js?v=20260717-access-ux-v2"></script>
-    <script src="./ui/ui-market.js?v=20260717-access-ux-v2"></script>
+    <script src="./ui/ui-tests.js?v=20260717-access-ux-v3"></script>
+    <script src="./ui/ui-projects.js?v=20260717-access-ux-v3"></script>
+    <script src="./ui/ui-market.js?v=20260717-access-ux-v3"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260713-sprint-ux-polish"></script>
-    <script src="./js/app-api.js?v=20260717-access-ux-v2"></script>
+    <script src="./js/app-api.js?v=20260717-access-ux-v3"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
-    <script src="./js/app-actions.js?v=20260717-access-ux-v2"></script>
-    <script src="./js/app-features.js?v=20260717-access-ux-v2"></script>
-    <script src="./app.js?v=20260717-access-ux-v2"></script>
+    <script src="./js/app-actions.js?v=20260717-access-ux-v3"></script>
+    <script src="./js/app-features.js?v=20260717-access-ux-v3"></script>
+    <script src="./app.js?v=20260717-access-ux-v3"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260706-phase1-1">
@@ -60,7 +60,7 @@
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20260716-feedback-toolbar-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/tests-timeline.css?v=20260717-access-ux-v2">
+    <link rel="stylesheet" href="./css/tests-timeline.css?v=20260717-access-ux-v3">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
@@ -69,7 +69,7 @@
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./css/access-issue.css?v=20260717-access-ux-v2">
+    <link rel="stylesheet" href="./css/access-issue.css?v=20260717-access-ux-v3">
     <link rel="stylesheet" href="./styles.css?v=20260716-moderation-chips">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260711-collapsed-fix">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
@@ -167,17 +167,10 @@
     <!-- TAB 1: Мои тесты -->
     <div id="tab-tests" class="container tab-content active">
         <div id="owner-access-issue-banner" class="owner-access-issue-banner" style="display:none;" aria-live="polite">
-            <button type="button" class="owner-access-issue-banner__summary" id="owner-access-issue-banner-toggle" onclick="toggleOwnerAccessIssueBanner()" aria-expanded="false">
-                <span class="owner-access-issue-banner__icon" aria-hidden="true">!</span>
-                <span class="owner-access-issue-banner__summary-copy">
-                    <strong id="owner-access-issue-banner-title"></strong>
-                    <span id="owner-access-issue-banner-short"></span>
-                </span>
-                <span id="owner-access-issue-banner-chevron" class="owner-access-issue-banner__chevron">⌄</span>
-            </button>
-            <div id="owner-access-issue-banner-full" class="owner-access-issue-banner__full" style="display:none;">
-                <div id="owner-access-issue-banner-details" class="owner-access-issue-banner__details"></div>
-                <div id="owner-access-issue-banner-actions" class="owner-access-issue-banner__actions"></div>
+            <span class="owner-access-issue-banner__icon" aria-hidden="true">!</span>
+            <div class="owner-access-issue-banner__content">
+                <strong id="owner-access-issue-banner-title"></strong>
+                <div id="owner-access-issue-banner-items" class="owner-access-issue-banner__items"></div>
             </div>
         </div>
 
