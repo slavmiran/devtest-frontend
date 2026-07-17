@@ -3630,6 +3630,64 @@ function openPlayReviewStoreByAppId(appId, event) {
     return true;
 }
 
+const ISSUE_CHECKLIST_PLAY_STORE_HOME = 'https://play.google.com/store';
+
+function _getIssueReportTest(appId) {
+    const tests = (typeof myTests !== 'undefined' && Array.isArray(myTests))
+        ? myTests
+        : ((window.App && Array.isArray(window.App.myTests)) ? window.App.myTests : []);
+    return tests.find(function(item) { return Number(item.id) === Number(appId); }) || null;
+}
+
+function _setIssueChecklistChecked(checked) {
+    ['issue-check-group', 'issue-check-play', 'issue-check-match', 'issue-check-still'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) el.checked = !!checked;
+    });
+}
+
+function isIssueReportChecklistComplete() {
+    return ['issue-check-group', 'issue-check-play', 'issue-check-match', 'issue-check-still'].every(function(id) {
+        const el = document.getElementById(id);
+        return !!(el && el.checked);
+    });
+}
+
+function syncIssueReportPauseState() {
+    const sendBtn = document.getElementById('t-issueReportSend');
+    const emailInput = document.getElementById('issue-report-email');
+    const email = emailInput ? String(emailInput.value || '').trim() : '';
+    const emailOk = !!(email && typeof isValidEmail === 'function' ? isValidEmail(email) : email.includes('@'));
+    const ready = emailOk && isIssueReportChecklistComplete();
+    if (sendBtn) sendBtn.disabled = !ready;
+    return ready;
+}
+
+function _openIssueChecklistLink(url) {
+    const safeUrl = String(url || '').trim();
+    if (!safeUrl) return;
+    if (typeof openExternalAppLink === 'function') {
+        openExternalAppLink(safeUrl);
+        return;
+    }
+    if (window.tg && typeof window.tg.openLink === 'function') {
+        window.tg.openLink(safeUrl);
+        return;
+    }
+    window.open(safeUrl, '_blank', 'noopener');
+}
+
+function openIssueChecklistGoogleGroup() {
+    const test = _getIssueReportTest(_issueReportAppId);
+    const groupUrl = String((test && (test.google_group_url || test.group_url)) || '').trim()
+        || 'https://groups.google.com/g/google-play-dev-test';
+    _openIssueChecklistLink(groupUrl);
+}
+
+function openIssueChecklistGooglePlay() {
+    _openIssueChecklistLink(ISSUE_CHECKLIST_PLAY_STORE_HOME);
+}
+
 function openIssueReportModal(appId) {
     _issueReportAppId = appId;
     const modal = document.getElementById('issue-report-modal');
@@ -3638,11 +3696,28 @@ function openIssueReportModal(appId) {
     const hint = document.getElementById('t-issueReportHint');
     const sendBtn = document.getElementById('t-issueReportSend');
     const cancelBtn = document.getElementById('t-issueReportCancel');
+    const emailLabel = document.getElementById('t-issueReportEmailLabel');
     const emailInput = document.getElementById('issue-report-email');
     if (title) title.innerText = window.t('reportIssueModalTitle', {}, lang);
     if (hint) hint.innerText = window.t('reportIssueModalInfo', {}, lang);
+    if (emailLabel) emailLabel.innerText = window.t('reportIssueEmailLabel', {}, lang);
     if (sendBtn) sendBtn.innerText = window.t('reportIssueSendBtn', {}, lang);
     if (cancelBtn) cancelBtn.innerText = window.t('reportIssueCancelBtn', {}, lang);
+
+    const openGroupBtn = document.getElementById('t-issueOpenGroup');
+    const openPlayBtn = document.getElementById('t-issueOpenPlay');
+    const checkGroup = document.getElementById('t-issueCheckGroup');
+    const checkPlay = document.getElementById('t-issueCheckPlay');
+    const checkMatch = document.getElementById('t-issueCheckMatch');
+    const checkStill = document.getElementById('t-issueCheckStill');
+    if (openGroupBtn) openGroupBtn.innerText = window.t('reportIssueOpenGroupBtn', {}, lang);
+    if (openPlayBtn) openPlayBtn.innerText = window.t('reportIssueOpenPlayBtn', {}, lang);
+    if (checkGroup) checkGroup.innerText = window.t('reportIssueCheckGroup', {}, lang);
+    if (checkPlay) checkPlay.innerText = window.t('reportIssueCheckPlay', {}, lang);
+    if (checkMatch) checkMatch.innerText = window.t('reportIssueCheckMatch', {}, lang);
+    if (checkStill) checkStill.innerText = window.t('reportIssueCheckStill', {}, lang);
+
+    _setIssueChecklistChecked(false);
     if (emailInput) {
         const appState = window.App && typeof window.App.getState === 'function' ? window.App.getState() : {};
         emailInput.value = String(appState && appState.userEmail || window.App.userEmail || '').trim();
@@ -3653,6 +3728,7 @@ function openIssueReportModal(appId) {
         textarea.value = '';
         textarea.placeholder = window.t('reportIssueCommentPlaceholder', {}, lang);
     }
+    syncIssueReportPauseState();
     modal.classList.add('active');
 }
 
@@ -3662,10 +3738,22 @@ function closeIssueReportModal(event) {
     if (event && event.target !== modal) return;
     modal.classList.remove('active');
     _issueReportAppId = null;
+    _setIssueChecklistChecked(false);
 }
 
 function submitIssueReportFromModal() {
     if (!_issueReportAppId) return;
+    if (!syncIssueReportPauseState()) {
+        const emailInput = document.getElementById('issue-report-email');
+        const email = emailInput ? String(emailInput.value || '').trim() : '';
+        if (!email || (typeof isValidEmail === 'function' && !isValidEmail(email))) {
+            showToast(window.t('reportIssueEmailRequired', {}, lang));
+            if (emailInput && typeof emailInput.focus === 'function') emailInput.focus();
+            return;
+        }
+        showToast(window.t('reportIssueChecklistIncomplete', {}, lang));
+        return;
+    }
     submitIssueReport(_issueReportAppId);
 }
 
@@ -8475,6 +8563,10 @@ Object.assign(window, {
     openIssueReportModal,
     closeIssueReportModal,
     submitIssueReportFromModal,
+    syncIssueReportPauseState,
+    isIssueReportChecklistComplete,
+    openIssueChecklistGoogleGroup,
+    openIssueChecklistGooglePlay,
     insertReportChip,
     openCheckinOptionsModal,
     closeCheckinOptionsModal,

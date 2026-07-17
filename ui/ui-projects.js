@@ -2180,6 +2180,9 @@ async function handleMassInviteAction(projectId) {
         return Number(item.id) === Number(projectId);
     });
     if (!project) return;
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
 
     var meta = getProjectMassInviteMeta(project);
     if (!meta.isAvailable && !meta.isCooldownActive) {
@@ -5393,6 +5396,9 @@ let _massInviteProjectId = null;
 let _massInviteInterval = null;
 
 function openMassInviteModal(projectId) {
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
     

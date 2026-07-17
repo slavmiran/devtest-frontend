@@ -69,6 +69,7 @@
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
+    <link rel="stylesheet" href="./css/access-issue.css?v=20260717-access-checklist">
     <link rel="stylesheet" href="./styles.css?v=20260716-moderation-chips">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260711-collapsed-fix">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
@@ -235,6 +236,18 @@
                     <span id="offers-count" class="offers-count">0</span>
                 </div>
                 <div id="offers-carousel" class="offers-carousel"></div>
+            </div>
+        </div>
+
+        <div id="owner-access-issue-banner" class="owner-access-issue-banner" style="display:none;" aria-live="polite">
+            <button type="button" class="owner-access-issue-banner__summary" id="owner-access-issue-banner-toggle" onclick="toggleOwnerAccessIssueBanner()">
+                <span class="owner-access-issue-banner__icon" aria-hidden="true">⚠️</span>
+                <span id="owner-access-issue-banner-short" class="owner-access-issue-banner__short"></span>
+                <span id="owner-access-issue-banner-chevron" class="owner-access-issue-banner__chevron">▾</span>
+            </button>
+            <div id="owner-access-issue-banner-full" class="owner-access-issue-banner__full" style="display:none;">
+                <p id="owner-access-issue-banner-details" class="owner-access-issue-banner__details"></p>
+                <div id="owner-access-issue-banner-actions" class="owner-access-issue-banner__actions"></div>
             </div>
         </div>
 
@@ -1261,17 +1274,43 @@
         </div>
     </div>
 
-    <!-- Issue Report Modal -->
+    <!-- Issue Report Modal (pre-freeze checklist) -->
     <div id="issue-report-modal" class="modal-overlay" onclick="closeIssueReportModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-issueReportTitle" data-i18n="reportIssueModalTitle">Сообщить об ошибке доступа</h3>
-            <p id="t-issueReportHint" data-i18n="reportIssueModalInfo" style="color: var(--hint-color); font-size: 13px; line-height: 1.5;"></p>
+        <div class="modal-content issue-report-modal" onclick="event.stopPropagation()">
+            <h3 id="t-issueReportTitle" data-i18n="reportIssueModalTitle">Перед заморозкой тестирования</h3>
+            <p id="t-issueReportHint" class="issue-report-intro" data-i18n="reportIssueModalInfo"></p>
             <div class="form-group">
-                <input id="issue-report-email" type="email" class="form-input" data-i18n-placeholder="reportIssueEmailPlaceholder" style="margin-bottom: 10px;">
-                <textarea id="issue-report-text" class="form-input" rows="4" data-i18n-placeholder="reportIssueCommentPlaceholder" style="resize: none;"></textarea>
+                <label id="t-issueReportEmailLabel" class="issue-report-label" for="issue-report-email" data-i18n="reportIssueEmailLabel">Ваш Google Email</label>
+                <input id="issue-report-email" type="email" class="form-input" data-i18n-placeholder="reportIssueEmailPlaceholder" autocomplete="email" required oninput="syncIssueReportPauseState()">
+            </div>
+            <div class="issue-checklist" id="issue-report-checklist">
+                <label class="issue-check-item">
+                    <input type="checkbox" id="issue-check-group" onchange="syncIssueReportPauseState()">
+                    <span id="t-issueCheckGroup" data-i18n="reportIssueCheckGroup">Я сверил профиль (email) для вступления в Google Group проекта</span>
+                </label>
+                <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenGroup" onclick="openIssueChecklistGoogleGroup()" data-i18n="reportIssueOpenGroupBtn">Открыть Google Group</button>
+
+                <label class="issue-check-item">
+                    <input type="checkbox" id="issue-check-play" onchange="syncIssueReportPauseState()">
+                    <span id="t-issueCheckPlay" data-i18n="reportIssueCheckPlay">Я сверил профиль (email) в Google Play</span>
+                </label>
+                <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenPlay" onclick="openIssueChecklistGooglePlay()" data-i18n="reportIssueOpenPlayBtn">Открыть Google Play</button>
+
+                <label class="issue-check-item">
+                    <input type="checkbox" id="issue-check-match" onchange="syncIssueReportPauseState()">
+                    <span id="t-issueCheckMatch" data-i18n="reportIssueCheckMatch">Я убедился, что Gmail для Google Play совпадает с Gmail для вступления в Google Group</span>
+                </label>
+
+                <label class="issue-check-item">
+                    <input type="checkbox" id="issue-check-still" onchange="syncIssueReportPauseState()">
+                    <span id="t-issueCheckStill" data-i18n="reportIssueCheckStill">Я по-прежнему не могу установить приложение</span>
+                </label>
+            </div>
+            <div class="form-group" style="margin-top: 12px;">
+                <textarea id="issue-report-text" class="form-input" rows="3" data-i18n-placeholder="reportIssueCommentPlaceholder" style="resize: none;"></textarea>
             </div>
             <div class="action-row">
-                <button class="btn btn-primary" id="t-issueReportSend" onclick="submitIssueReportFromModal()" data-i18n="reportIssueSendBtn">Отправить</button>
+                <button class="btn btn-primary" id="t-issueReportSend" onclick="submitIssueReportFromModal()" data-i18n="reportIssueSendBtn" disabled>Поставить на паузу</button>
                 <button class="btn btn-secondary" id="t-issueReportCancel" onclick="closeIssueReportModal()" data-i18n="reportIssueCancelBtn">Отмена</button>
             </div>
         </div>

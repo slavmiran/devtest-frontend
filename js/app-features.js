@@ -1920,6 +1920,9 @@ var MassInviteProgressOverlay = (function () {
 
 async function startMassInvite(projectId) {
     if (!projectId) return null;
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return null;
+    }
 
     var actionKey = 'mass_invite_start_' + projectId;
     if (_pendingActions.has(actionKey)) return null;
@@ -2116,6 +2119,9 @@ async function resetMassInviteCooldown(projectId) {
 }
 
 async function joinDirect(appId) {
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
     var actionKey = 'joinDirect_' + appId;
     if (_pendingActions.has(actionKey)) return;
     _pendingActions.add(actionKey);
@@ -2141,7 +2147,7 @@ async function joinDirect(appId) {
             mutualSeeking = rollback;
             renderMutualFeed();
             if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
-            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
         if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
@@ -2160,6 +2166,9 @@ async function joinDirect(appId) {
 }
 
 async function joinMutual(appId, allowOverLimit = false) {
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
     var actionKey = 'joinMutual_' + appId;
     if (_pendingActions.has(actionKey)) return;
     _pendingActions.add(actionKey);
@@ -2196,7 +2205,7 @@ async function joinMutual(appId, allowOverLimit = false) {
                 window.renderMutualReturns(mutualReturns, true);
             }
             if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
-            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
         if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
@@ -3001,6 +3010,9 @@ function contactAccessTester(username) {
 function _syncProjectsUiAfterOptimisticChange() {
     setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
     if (window.renderProjects) window.renderProjects(true);
+    if (typeof window.updateOwnerAccessIssueBanner === 'function') {
+        window.updateOwnerAccessIssueBanner();
+    }
     refreshOpenModals();
 }
 
@@ -3015,6 +3027,81 @@ function _recomputeProjectAccessErrorState(project) {
     } else if (String(project.status || '').toLowerCase() === 'access_error') {
         project.status = 'active';
     }
+}
+
+function projectHasPendingAccessIssue(project) {
+    if (!project) return false;
+    if (String(project.status || '').toLowerCase() === 'access_error') return true;
+    var testers = Array.isArray(project.testers) ? project.testers : [];
+    return testers.some(function(tester) {
+        return !!tester.issue_reported_at && !tester.issue_fixed_at;
+    });
+}
+
+function getOwnerPendingAccessIssueProjects() {
+    return (myProjects || []).filter(projectHasPendingAccessIssue);
+}
+
+function ownerHasPendingAccessIssue() {
+    return getOwnerPendingAccessIssueProjects().length > 0;
+}
+
+function assertOwnerCanTakeForeignTests() {
+    if (!ownerHasPendingAccessIssue()) return true;
+    showToast(window.t('ownerAccessIssueBlockToast', {}, lang));
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+    return false;
+}
+
+function toggleOwnerAccessIssueBanner() {
+    var banner = document.getElementById('owner-access-issue-banner');
+    var full = document.getElementById('owner-access-issue-banner-full');
+    if (!banner || !full) return;
+    var expanded = banner.classList.toggle('is-expanded');
+    full.style.display = expanded ? 'block' : 'none';
+}
+
+function openOwnerAccessIssueProject(projectId) {
+    var normalizedId = Number(projectId || 0);
+    if (normalizedId <= 0) return;
+    if (typeof switchTab === 'function') switchTab('projects');
+    var expand = function() {
+        if (typeof _expandProjectCardWhenReady === 'function') {
+            _expandProjectCardWhenReady(normalizedId);
+        }
+    };
+    if (typeof loadProjects === 'function') {
+        loadProjects(true, true).then(expand).catch(expand);
+    } else {
+        expand();
+    }
+}
+
+function updateOwnerAccessIssueBanner() {
+    var banner = document.getElementById('owner-access-issue-banner');
+    var shortEl = document.getElementById('owner-access-issue-banner-short');
+    var detailsEl = document.getElementById('owner-access-issue-banner-details');
+    var actionsEl = document.getElementById('owner-access-issue-banner-actions');
+    if (!banner || !shortEl || !detailsEl || !actionsEl) return;
+
+    var pending = getOwnerPendingAccessIssueProjects();
+    if (!pending.length) {
+        banner.style.display = 'none';
+        banner.classList.remove('is-expanded');
+        var fullHidden = document.getElementById('owner-access-issue-banner-full');
+        if (fullHidden) fullHidden.style.display = 'none';
+        return;
+    }
+
+    banner.style.display = 'block';
+    var count = pending.length;
+    shortEl.textContent = window.t('ownerAccessIssueBannerShort', { count: count }, lang);
+    detailsEl.textContent = window.t('ownerAccessIssueBannerDetails', {}, lang);
+    actionsEl.innerHTML = pending.map(function(project) {
+        var name = String(project.name || ('#' + project.id));
+        var label = window.escapeHTML(window.t('ownerAccessIssueBannerOpenProject', { name: name }, lang));
+        return '<button type="button" class="btn btn-secondary" onclick="openOwnerAccessIssueProject(' + Number(project.id) + ')">' + label + '</button>';
+    }).join('');
 }
 
 function _markProjectAccessIssueResolved(projectId, progressId) {

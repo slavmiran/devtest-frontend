@@ -1,0 +1,129 @@
+/* Access-issue checklist modal + owner freeze banner on My Tests */
+
+.issue-report-modal {
+    max-height: min(88vh, 720px);
+    overflow-y: auto;
+}
+
+.issue-report-intro {
+    color: var(--hint-color);
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0 0 12px;
+    white-space: pre-line;
+}
+
+.issue-report-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hint-color);
+    margin-bottom: 6px;
+}
+
+.issue-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.issue-check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(142, 142, 147, 0.12);
+    border: 1px solid rgba(142, 142, 147, 0.18);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.issue-check-item input[type="checkbox"] {
+    margin-top: 2px;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+.issue-check-link {
+    width: 100%;
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#t-issueReportSend:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.owner-access-issue-banner {
+    margin: 0 0 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 159, 10, 0.45);
+    background: rgba(255, 159, 10, 0.12);
+    overflow: hidden;
+}
+
+.owner-access-issue-banner__summary {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+}
+
+.owner-access-issue-banner__icon {
+    flex-shrink: 0;
+}
+
+.owner-access-issue-banner__short {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.owner-access-issue-banner__chevron {
+    flex-shrink: 0;
+    color: var(--hint-color);
+    font-size: 14px;
+    transition: transform 0.15s ease;
+}
+
+.owner-access-issue-banner.is-expanded .owner-access-issue-banner__chevron {
+    transform: rotate(180deg);
+}
+
+.owner-access-issue-banner__full {
+    padding: 0 14px 14px;
+    border-top: 1px solid rgba(255, 159, 10, 0.25);
+}
+
+.owner-access-issue-banner__details {
+    margin: 10px 0 12px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--hint-color);
+    white-space: pre-line;
+}
+
+.owner-access-issue-banner__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.owner-access-issue-banner__actions .btn {
+    width: 100%;
+    font-size: 13px;
+}

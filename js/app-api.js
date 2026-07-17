@@ -1009,6 +1009,8 @@ function handleApiError(code, details = {}) {
         invalid_email_commas: 'invalidEmailCommas',
         invalid_email_spaces: 'invalidEmailSpaces',
         invalid_email_format: 'invalidEmail',
+        owner_has_access_issue: 'ownerAccessIssueBlockToast',
+        email_required: 'reportIssueEmailRequired',
     };
 
     var normalizedCode = String(code || '').trim();
@@ -1781,6 +1783,9 @@ async function loadProjects(isBackground, force) {
             _projectsLoadedOnce = true;
             myProjectsLoadError = false;
             renderProjects();
+            if (typeof window.updateOwnerAccessIssueBanner === 'function') {
+                window.updateOwnerAccessIssueBanner();
+            }
         }
     }
 
@@ -2062,6 +2067,9 @@ async function _loadProjectsImpl(options) {
             if (typeof window.renderTests === 'function' && Array.isArray(myTests) && myTests.length) {
                 window.renderTests();
             }
+        }
+        if (typeof window.updateOwnerAccessIssueBanner === 'function') {
+            window.updateOwnerAccessIssueBanner();
         }
 
         // Update cache
