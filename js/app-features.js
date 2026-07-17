@@ -2913,18 +2913,24 @@ async function _postResolveAccessError(projectId, progressId) {
 }
 
 async function resolveAccessError(projectId, progressId) {
-    if (!projectId || !progressId) return;
-    var actionKey = 'resolve_access_error_' + projectId + '_' + progressId;
+    if (!projectId) return;
+    var safeProgressId = Number(progressId || 0);
+    var actionKey = 'resolve_access_error_' + projectId + '_' + safeProgressId;
     if (_pendingActions.has(actionKey)) return;
     _pendingActions.add(actionKey);
     try {
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-        var request = await _postResolveAccessError(projectId, progressId);
+        var request = await _postResolveAccessError(projectId, safeProgressId);
         if (!request.ok) {
             handleApiError(getBackendErrorCode(request.result), request.result && request.result.details ? request.result.details : {});
+            loadProjects(true).catch(function() {});
             return;
         }
-        _markProjectAccessIssueResolved(projectId, progressId);
+        if (safeProgressId > 0) {
+            _markProjectAccessIssueResolved(projectId, safeProgressId);
+        } else {
+            _markAllProjectAccessIssuesResolved(projectId);
+        }
         _syncProjectsUiAfterOptimisticChange();
         showToast(window.t('accessOverlayResolveDone', {}, lang));
         loadProjects(true).catch(function() {});
@@ -2937,13 +2943,12 @@ async function resolveAccessError(projectId, progressId) {
 }
 
 async function resolveAllAccessErrors(projectId, progressIds) {
-    if (!projectId || !Array.isArray(progressIds)) return;
-    var normalizedIds = Array.from(new Set(progressIds.map(function(id) {
+    if (!projectId) return;
+    var normalizedIds = Array.from(new Set((Array.isArray(progressIds) ? progressIds : []).map(function(id) {
         return Number(id || 0);
     }).filter(function(id) {
         return id > 0;
     })));
-    if (!normalizedIds.length) return;
 
     var actionKey = 'resolve_access_error_all_' + projectId;
     if (_pendingActions.has(actionKey)) return;
@@ -2952,15 +2957,20 @@ async function resolveAllAccessErrors(projectId, progressIds) {
     try {
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
-        var request = await _postResolveAccessError(projectId, normalizedIds[0]);
+        // Backend resolves by app_id; progress_id is optional context only.
+        var request = await _postResolveAccessError(projectId, normalizedIds[0] || 0);
         if (!request.ok) {
             handleApiError(getBackendErrorCode(request.result), request.result && request.result.details ? request.result.details : {});
             loadProjects(true).catch(function() {});
             return;
         }
 
-        for (var index = 0; index < normalizedIds.length; index++) {
-            _markProjectAccessIssueResolved(projectId, normalizedIds[index]);
+        if (normalizedIds.length) {
+            for (var index = 0; index < normalizedIds.length; index++) {
+                _markProjectAccessIssueResolved(projectId, normalizedIds[index]);
+            }
+        } else {
+            _markAllProjectAccessIssuesResolved(projectId);
         }
 
         _syncProjectsUiAfterOptimisticChange();
@@ -3027,6 +3037,27 @@ function _markProjectAccessIssueResolved(projectId, progressId) {
     return updated;
 }
 
+function _markAllProjectAccessIssuesResolved(projectId) {
+    var project = (myProjects || []).find(function(item) {
+        return Number(item.id) === Number(projectId);
+    });
+    if (!project || !Array.isArray(project.testers)) return false;
+
+    var updated = false;
+    var nowIso = new Date().toISOString();
+    project.testers = project.testers.map(function(tester) {
+        if (!(tester && tester.issue_reported_at) || tester.issue_fixed_at) {
+            return tester;
+        }
+        updated = true;
+        return Object.assign({}, tester, {
+            issue_fixed_at: nowIso,
+        });
+    });
+    _recomputeProjectAccessErrorState(project);
+    return updated;
+}
+
 function _removeProjectAccessTester(projectId, progressId) {
     var project = (myProjects || []).find(function(item) {
         return Number(item.id) === Number(projectId);
@@ -3043,8 +3074,9 @@ function _removeProjectAccessTester(projectId, progressId) {
 }
 
 async function deleteAccessTester(projectId, progressId, testerLabel) {
-    if (!projectId || !progressId) return;
-    var actionKey = 'delete_access_tester_' + projectId + '_' + progressId;
+    if (!projectId) return;
+    var safeProgressId = Number(progressId || 0);
+    var actionKey = 'delete_access_tester_' + projectId + '_' + safeProgressId;
     if (_pendingActions.has(actionKey)) return;
     var confirmMessage = window.t('accessOverlayDeleteConfirm', {
         name: testerLabel || window.t('unknownLabel', {}, lang)
@@ -3061,17 +3093,29 @@ async function deleteAccessTester(projectId, progressId, testerLabel) {
     _pendingActions.add(actionKey);
     try {
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+        if (safeProgressId <= 0) {
+            // Stale UI without progress_id: refresh and clear local freeze markers.
+            _markAllProjectAccessIssuesResolved(projectId);
+            _syncProjectsUiAfterOptimisticChange();
+            loadProjects(true).catch(function() {});
+            showToast(window.t('accessOverlayDeleteDone', {}, lang));
+            return;
+        }
         var response = await fetch(`${API_BASE}/projects/${projectId}/delete_access_tester`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId, progress_id: progressId })
+            body: JSON.stringify({ owner_id: userId, progress_id: safeProgressId })
         });
         var result = await response.json();
         if (!response.ok || result.status !== 'success') {
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            loadProjects(true).catch(function() {});
             return;
         }
-        _removeProjectAccessTester(projectId, progressId);
+        _removeProjectAccessTester(projectId, safeProgressId);
+        _recomputeProjectAccessErrorState((myProjects || []).find(function(item) {
+            return Number(item.id) === Number(projectId);
+        }));
         _syncProjectsUiAfterOptimisticChange();
         showToast(window.t('accessOverlayDeleteDone', {}, lang));
         loadProjects(true).catch(function() {});
