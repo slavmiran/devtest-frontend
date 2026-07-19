@@ -68,6 +68,12 @@ html.projects-scrolling #tab-projects .grant-segment.current-pending {
     animation-play-state: paused !important;
 }
 
+/* Keep access-issue alert pulsing even while projects list scrolls */
+html.projects-scrolling #tab-projects .access-error-panel,
+html.projects-scrolling #tab-projects .access-error-head__icon {
+    animation-play-state: running !important;
+}
+
 html.projects-scrolling #tab-projects .card-expanded-zone {
     transition: none !important;
 }

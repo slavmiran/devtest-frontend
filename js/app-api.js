@@ -954,6 +954,7 @@ function handleApiError(code, details = {}) {
         grant_not_ready: 'err_grant_not_ready',
         grant_too_many_skips: 'err_grant_too_many_skips',
         grant_already_claimed: 'err_grant_already_claimed',
+        app_not_archived: 'err_app_not_archived_early_finish',
         invalid_start_date: 'err_grant_unavailable',
         invalid_google_group_url: 'invalid_google_group_url',
         manual_external_owner_missing: 'manualExternalInvalidOwnerUsername',

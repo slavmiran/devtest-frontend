@@ -1100,6 +1100,7 @@
             err_grant_not_ready: "Grant is not ready yet: it becomes claimable only from day 15 of testing.",
             err_grant_too_many_skips: "Grant is lost: you have more than 3 skips.",
             err_grant_already_claimed: "This grant has already been claimed.",
+            err_app_not_archived_early_finish: "Early Finish is unavailable while the project is still active. If the button remains, refresh My Tests.",
             err_grant_unavailable: "Grant payout could not be prepared. Refresh the WebApp and try again.",
             err_app_archived: "This project is archived and unavailable for joining.",
             err_offer_already_pending: "An offer for this app pair is already pending.",

@@ -753,6 +753,36 @@
     }
 }
 
+@keyframes access-error-panel-pulse {
+    0%, 100% {
+        border-color: rgba(255, 59, 48, 0.55);
+        box-shadow:
+            0 0 0 1px rgba(255, 59, 48, 0.28),
+            0 0 12px rgba(255, 59, 48, 0.22),
+            inset 0 0 0 1px rgba(255, 59, 48, 0.08);
+        background: rgba(255, 59, 48, 0.07);
+    }
+    50% {
+        border-color: rgba(255, 69, 58, 1);
+        box-shadow:
+            0 0 0 2px rgba(255, 59, 48, 0.72),
+            0 0 26px rgba(255, 59, 48, 0.48),
+            inset 0 0 0 1px rgba(255, 59, 48, 0.18);
+        background: rgba(255, 59, 48, 0.14);
+    }
+}
+
+@keyframes access-error-icon-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.35);
+    }
+    50% {
+        transform: scale(1.06);
+        box-shadow: 0 0 0 6px rgba(255, 59, 48, 0);
+    }
+}
+
 .access-error-overlay {
     position: static;
     padding: 0 0 12px;
@@ -762,9 +792,11 @@
     width: 100%;
     box-sizing: border-box;
     border-radius: 12px;
-    border: 1px solid var(--border-subtle);
-    background: rgba(255, 255, 255, 0.025);
+    border: 1.5px solid rgba(255, 59, 48, 0.75);
+    background: rgba(255, 59, 48, 0.08);
     padding: 14px;
+    animation: access-error-panel-pulse 1.55s ease-in-out infinite;
+    will-change: box-shadow, border-color, background-color;
 }
 
 .access-error-head {
@@ -781,17 +813,33 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    color: #ffbd59;
-    background: rgba(255, 184, 77, 0.10);
-    border: 1px solid rgba(255, 184, 77, 0.24);
+    color: #ff6b63;
+    background: rgba(255, 59, 48, 0.16);
+    border: 1px solid rgba(255, 59, 48, 0.45);
     font-weight: 900;
+    animation: access-error-icon-pulse 1.55s ease-in-out infinite;
 }
 
 .access-error-title {
-    color: var(--text-color);
+    color: #ff8a84;
     font-size: 15px;
     font-weight: 800;
     line-height: 1.25;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .access-error-panel,
+    .access-error-head__icon {
+        animation: none;
+    }
+
+    .access-error-panel {
+        border-color: rgba(255, 59, 48, 0.9);
+        box-shadow:
+            0 0 0 2px rgba(255, 59, 48, 0.55),
+            0 0 18px rgba(255, 59, 48, 0.35);
+        background: rgba(255, 59, 48, 0.12);
+    }
 }
 
 .access-error-subtitle {
