@@ -392,7 +392,7 @@ function renderProjects(force) {
         const isCollapsed = collapsedVal !== null ? (collapsedVal === 'true') : (index !== 0);
         if (isCollapsed) cardClass += ' card-collapsed';
 
-        card.className = cardClass + (hasAccessOverlay ? ' card-access-error-locked' : '');
+        card.className = cardClass + (hasAccessOverlay ? ' card-has-access-issue' : '');
         card.id = `project-card-${project.id}`;
         card.setAttribute('data-project-id', String(project.id));
         card.setAttribute('data-project-phase', resolveProjectPhaseForRender(project));
@@ -564,6 +564,10 @@ function renderProjects(force) {
             .filter(function(progressId) {
                 return progressId > 0;
             });
+        const affectedCount = pendingIssueTesters.length;
+        const affectedCountKey = affectedCount === 1
+            ? 'accessOverlayAffectedOne'
+            : (affectedCount >= 2 && affectedCount <= 4 ? 'accessOverlayAffectedFew' : 'accessOverlayAffectedMany');
         const resolveAllLabel = pendingIssueProgressIds.length > 1
             ? window.t('accessOverlayResolveAllBtn', {}, lang)
             : window.t('accessOverlayResolveBtn', {}, lang);
@@ -574,30 +578,61 @@ function renderProjects(force) {
                 : window.t('idLabel', { id: Number(tester.tester_id || 0) }, lang);
             const safeTesterUsernameInline = escapeInlineJsString(testerUsernameRaw);
             const safeDeleteNameInline = escapeInlineJsString(testerLabel);
-            const countdownText = getIssueRemovalCountdownText(tester.issue_reported_at) || window.t('issueCountdownExpired', {}, lang);
             return `
                 <div class="access-error-tester-row">
                     <div class="access-error-tester-main">
                         <div class="access-error-tester-name notranslate">${window.escapeHTML(testerLabel)}</div>
-                        <div class="access-error-tester-meta">${window.escapeHTML(window.t('accessOverlayTesterCountdown', { time_left: countdownText }, lang))}</div>
+                        <div class="access-error-tester-meta">${window.escapeHTML(window.t('accessOverlayTesterReported', {}, lang))}</div>
                     </div>
                     <div class="access-error-tester-actions">
                         <button type="button" class="btn btn-secondary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); contactAccessTester('${safeTesterUsernameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayWriteBtn', {}, lang))}</button>
                         <button type="button" class="btn" style="background: rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('medium'); deleteAccessTester(${project.id}, ${Number(tester.progress_id || 0)}, '${safeDeleteNameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayDeleteBtn', {}, lang))}</button>
                     </div>
+                    <div class="access-error-tester-hint">${window.escapeHTML(window.t('accessOverlayDeleteHint', {}, lang))}</div>
                 </div>
             `;
         }).join('');
-        const accessGuideUrl = (window.App && window.App.publicGroupUrl || 'https://t.me/googleplay_console_12testers') + '/1/527';
+        const accessGuideUrl = 'https://telegra.ph/Action-Required-Add-Testing-Group-to-Start-Closed-Testing-06-04';
         const accessOverlayHtml = hasAccessOverlay ? `
             <div class="access-error-overlay" onclick="event.stopPropagation();">
                 <div class="access-error-panel" onclick="event.stopPropagation();">
-                    <div class="access-error-title">🚨 <b>${window.escapeHTML(window.t('accessOverlayTitle', {}, lang))}</b></div>
-                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayIntro', {}, lang))}</div>
-                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayAffectedCount', { count: pendingIssueTesters.length }, lang))}</div>
-                    <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">${window.escapeHTML(window.t('accessOverlayGuideLink', {}, lang))}</a>
-                    <div class="access-error-tester-list">${accessIssueRowsHtml}</div>
-                    <div class="access-error-text">${window.escapeHTML(window.t('accessOverlayResolveHint', {}, lang))}</div>
+                    <div class="access-error-head">
+                        <span class="access-error-head__icon">!</span>
+                        <div>
+                            <div class="access-error-title">${window.escapeHTML(window.t('accessOverlayTitle', {}, lang))}</div>
+                            <div class="access-error-subtitle">${window.escapeHTML(window.t(affectedCountKey, { count: affectedCount }, lang))}</div>
+                        </div>
+                    </div>
+                    <div class="access-error-continuity">${window.escapeHTML(window.t('accessOverlayIntro', {}, lang))}</div>
+                    <div class="access-error-deadline">
+                        <span>⏳</span>
+                        <strong>${window.escapeHTML(window.t('accessOverlayTesterCountdown', {
+                            time_left: getIssueRemovalCountdownText((pendingIssueTesters.slice().sort(function(a, b) {
+                                return String(a.issue_reported_at || '').localeCompare(String(b.issue_reported_at || ''));
+                            })[0] || {}).issue_reported_at) || window.t('issueCountdownExpired', {}, lang)
+                        }, lang))}</strong>
+                    </div>
+                    <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">
+                        <span class="access-error-link__icon">📖</span>
+                        <span>
+                            <strong>${window.escapeHTML(window.t('accessOverlayGuideLink', {}, lang))}</strong>
+                            <small>${window.escapeHTML(window.t('accessOverlayGuideHint', {}, lang))}</small>
+                        </span>
+                        <span class="access-error-link__arrow">›</span>
+                    </a>
+                    <details class="access-error-details">
+                        <summary>${window.escapeHTML(window.t('accessOverlayDetailsSummary', {}, lang))}</summary>
+                        <div class="access-error-details__body">
+                            <p>${window.escapeHTML(window.t('accessOverlayRestrictionsIntro', {}, lang))}</p>
+                            <ul>
+                                <li>${window.escapeHTML(window.t('accessOverlayRestrictionTake', {}, lang))}</li>
+                                <li>${window.escapeHTML(window.t('accessOverlayRestrictionInvite', {}, lang))}</li>
+                                <li>${window.escapeHTML(window.t('accessOverlayRestrictionOffers', {}, lang))}</li>
+                            </ul>
+                            <div class="access-error-tester-list">${accessIssueRowsHtml}</div>
+                        </div>
+                    </details>
+                    <div class="access-error-resolve-copy">${window.escapeHTML(window.t('accessOverlayResolveHint', {}, lang))}</div>
                     <div class="access-error-actions">
                         <button type="button" class="btn btn-primary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); resolveAllAccessErrors(${project.id}, ${JSON.stringify(pendingIssueProgressIds)}); event.stopPropagation();">${window.escapeHTML(resolveAllLabel)}</button>
                     </div>
@@ -818,6 +853,8 @@ function renderProjects(force) {
                     <span class="drawer-chevron">›</span>
                 </div>
             </div>
+
+            ${accessOverlayHtml}
             
             <!-- COLLAPSED ZONE (Always visible) -->
             <div class="card-collapsed-zone">
@@ -876,8 +913,6 @@ function renderProjects(force) {
                     ${requiresAttention ? `<div class="footer-notification-dot"></div>` : ''}
                 </div>
             </div>
-            
-            ${accessOverlayHtml}
         `;
         (cardParent || container).appendChild(card);
         } catch (e) {
@@ -2332,6 +2367,9 @@ async function handleMassInviteAction(projectId) {
         return Number(item.id) === Number(projectId);
     });
     if (!project) return;
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
 
     var meta = getProjectMassInviteMeta(project);
     if (!meta.isAvailable && !meta.isCooldownActive) {
@@ -2782,11 +2820,14 @@ window.AccessSetupManager = window.AccessSetupManager || {
 
 window.addWizardState = window.addWizardState || { focusStep: 1, unlockedStep: 1 };
 
-const _WIZARD_STEP_SUBTITLES = {
-    1: 'Шаг 1 из 3: Основная информация',
-    2: 'Шаг 2 из 3: Google Group',
-    3: 'Шаг 3 из 3: Настройка проекта'
-};
+function _syncWizardStepSubtitle(step) {
+    const subtitle = document.getElementById('wizard-step-subtitle');
+    if (!subtitle) return;
+    const key = 'wizardStepSubtitle' + (step === 2 || step === 3 ? step : 1);
+    // Keep data-i18n in sync so a language switch re-renders the right step.
+    subtitle.dataset.i18n = key;
+    if (window.t) subtitle.textContent = window.t(key, {}, window.currentLang);
+}
 
 function _getWizardUnlockedStep() {
     return Math.max(1, Math.min(3, Number((window.addWizardState && window.addWizardState.unlockedStep) || 1)));
@@ -3015,8 +3056,7 @@ function updateWizardProgress() {
     if (line1) line1.classList.toggle('is-complete', unlocked >= 2);
     if (line2) line2.classList.toggle('is-complete', unlocked >= 3);
 
-    const subtitle = document.getElementById('wizard-step-subtitle');
-    if (subtitle) subtitle.textContent = _WIZARD_STEP_SUBTITLES[focusStep] || _WIZARD_STEP_SUBTITLES[1];
+    _syncWizardStepSubtitle(focusStep);
 
     document.querySelectorAll('.wizard-section').forEach(function (el) {
         el.classList.remove('wizard-section--current');
@@ -5545,6 +5585,9 @@ let _massInviteProjectId = null;
 let _massInviteInterval = null;
 
 function openMassInviteModal(projectId) {
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
     const project = myProjects.find((item) => item.id === projectId);
     if (!project) return;
     

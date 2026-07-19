@@ -1609,6 +1609,9 @@ function renderExternalGuestTestsSection() {
 function renderTests(force) {
     if (!force && !isTabVisible('tests')) return;
     syncExternalContinueModeState();
+    if (typeof window.updateOwnerAccessIssueBanner === 'function') {
+        window.updateOwnerAccessIssueBanner();
+    }
     const activeList = document.getElementById('tests-list');
     const doneList = document.getElementById('done-list');
     const pendingSection = document.getElementById('pending-release-section');

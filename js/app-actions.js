@@ -1114,6 +1114,9 @@ async function createMutualOffer(targetAppId, targetOwnerId, event) {
         event.stopPropagation();
     }
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
     var sourceButton = event && event.currentTarget ? event.currentTarget : null;
     if (myProjectsLoadError) {
         if (tg.showAlert) tg.showAlert(window.t('projectsLoadingAlert'));
@@ -1145,6 +1148,9 @@ async function openPrelaunchJoinModal(targetAppId, targetOwnerId, event) {
         event.stopPropagation();
     }
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
 
     var target = (typeof window.getMarketCandidateByAppId === 'function') ? window.getMarketCandidateByAppId(targetAppId) : null;
     var targetIsEmailList = !!(target && target.test_mode === 'email_list');
@@ -1388,7 +1394,20 @@ async function submitIssueReport(appId) {
     var reason = reasonEl ? String(reasonEl.value || '').trim() : '';
     var email = emailEl ? String(emailEl.value || '').trim() : '';
 
-    if (email && !isValidEmail(email)) {
+    if (typeof isIssueReportChecklistComplete === 'function' && !isIssueReportChecklistComplete()) {
+        showToast(window.t('reportIssueChecklistIncomplete', {}, lang));
+        return;
+    }
+
+    if (!email) {
+        showToast(window.t('reportIssueEmailRequired', {}, lang));
+        if (emailEl && typeof emailEl.focus === 'function') {
+            emailEl.focus();
+        }
+        return;
+    }
+
+    if (!isValidEmail(email)) {
         showToast(window.t('reportIssueInvalidEmail', {}, lang));
         if (emailEl && typeof emailEl.focus === 'function') {
             emailEl.focus();
@@ -1400,7 +1419,7 @@ async function submitIssueReport(appId) {
         var response = await fetch(`${API_BASE}/projects/${appId}/report_issue`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId, issue_reason: reason, email: email })
+            body: JSON.stringify({ tester_id: userId, issue_reason: reason, email: email, account_match_confirmed: true })
         });
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {

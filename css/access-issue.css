@@ -1,0 +1,412 @@
+/* Access-issue checklist modal + owner freeze banner on My Tests */
+
+.issue-report-modal {
+    width: min(calc(100vw - 24px), 520px);
+    max-height: min(92vh, 780px);
+    overflow-y: auto;
+    padding: 0;
+    border-radius: 22px;
+    background: #171a20;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.issue-report-head {
+    padding: 22px 20px 12px;
+}
+
+.issue-report-eyebrow {
+    color: #ffb84d;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+}
+
+.issue-report-head h3 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.2;
+}
+
+.issue-report-intro {
+    color: var(--hint-color);
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 9px 0 0;
+    white-space: pre-line;
+}
+
+.issue-report-progress {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 0 20px 18px;
+}
+
+.issue-report-progress__bar {
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.10);
+    transition: background 0.2s ease;
+}
+
+.issue-report-progress__bar.is-active {
+    background: #4d8dff;
+}
+
+.issue-report-step {
+    display: none;
+    position: relative;
+    margin: 0 14px;
+    padding: 16px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.issue-report-step.is-active {
+    display: block;
+}
+
+.issue-report-step__number {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: #fff;
+    background: #4d8dff;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.issue-report-step__body {
+    min-width: 0;
+    flex: 1;
+}
+
+.issue-report-step__body h4 {
+    display: flex;
+    align-items: center;
+    min-height: 28px;
+    margin: 0 0 8px;
+    padding-left: 40px;
+    color: var(--text-color);
+    font-size: 16px;
+    line-height: 1.3;
+}
+
+.issue-report-step__body > p {
+    margin: 0 0 14px;
+    color: var(--hint-color);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.issue-report-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 6px;
+}
+
+.issue-report-field-note {
+    margin-top: 7px;
+    color: var(--hint-color);
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.issue-report-verification-timer {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 11px;
+    border-radius: 11px;
+    color: #d8bf92;
+    background: rgba(255, 184, 77, 0.06);
+    border: 1px solid rgba(255, 184, 77, 0.14);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.issue-report-verification-timer[hidden] {
+    display: none;
+}
+
+.issue-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.issue-check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    background: transparent;
+    border: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.issue-check-item input[type="checkbox"] {
+    margin-top: 2px;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    accent-color: #4d8dff;
+}
+
+.issue-check-item--strong {
+    background: rgba(77, 141, 255, 0.08);
+    border: 1px solid rgba(77, 141, 255, 0.16);
+}
+
+.issue-account-check {
+    padding: 12px;
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.issue-account-check + .issue-account-check {
+    margin-top: 10px;
+}
+
+.issue-account-check__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.issue-account-check__head > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.issue-account-check__head strong {
+    font-size: 13px;
+    color: var(--text-color);
+}
+
+.issue-account-check__head span:not(.issue-account-check__icon) {
+    color: var(--hint-color);
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.issue-account-check__image {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 190px;
+    object-fit: contain;
+    margin: 0 0 10px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.16);
+}
+
+.issue-account-check__icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    color: #4285f4;
+    background: rgba(66, 133, 244, 0.12);
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.issue-account-check__icon.is-play {
+    color: #34c759;
+    background: rgba(52, 199, 89, 0.12);
+}
+
+.issue-check-link {
+    width: 100%;
+    min-height: 40px;
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.issue-report-comment {
+    margin-top: 14px;
+}
+
+.issue-report-optional {
+    margin-left: 4px;
+    color: var(--hint-color);
+    font-weight: 400;
+}
+
+.issue-email-accent {
+    color: #77a9ff;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.issue-report-effect {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    color: #f3c36a;
+    background: rgba(255, 184, 77, 0.08);
+    border: 1px solid rgba(255, 184, 77, 0.18);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.issue-report-footer {
+    display: flex;
+    gap: 8px;
+    padding: 16px 14px 0;
+}
+
+.issue-report-footer .btn {
+    min-height: 48px;
+    margin: 0;
+}
+
+.issue-report-footer .btn:disabled {
+    opacity: 0.42;
+    filter: saturate(0.35);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.issue-report-back {
+    flex: 0 0 96px;
+}
+
+.issue-report-next,
+.issue-report-submit {
+    flex: 1;
+}
+
+.issue-report-cancel {
+    display: block;
+    width: calc(100% - 28px);
+    margin: 8px 14px 14px;
+    padding: 10px;
+    border: 0;
+    color: var(--hint-color);
+    background: transparent;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.owner-access-issue-banner {
+    position: sticky;
+    top: 8px;
+    z-index: 12;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 16px;
+    padding: 13px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 184, 77, 0.22);
+    background: rgba(30, 28, 25, 0.97);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(16px);
+}
+
+.owner-access-issue-banner__icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #ffbd59;
+    background: rgba(255, 184, 77, 0.12);
+    border: 1px solid rgba(255, 184, 77, 0.28);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.owner-access-issue-banner__content {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.owner-access-issue-banner__content > strong {
+    color: var(--text-color);
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.owner-access-issue-banner__items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.owner-access-issue-banner__item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.owner-access-issue-banner__item + .owner-access-issue-banner__item {
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.owner-access-issue-banner__item p {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.owner-access-issue-banner__tester {
+    display: inline;
+    padding: 0;
+    border: 0;
+    color: #77a9ff;
+    background: transparent;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.owner-access-issue-banner__continuity {
+    color: var(--hint-color);
+    font-size: 11px;
+}
+
+.owner-access-issue-banner__project-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+    padding: 0;
+    border: 0;
+    color: #77a9ff;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}

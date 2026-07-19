@@ -954,6 +954,7 @@ function handleApiError(code, details = {}) {
         grant_not_ready: 'err_grant_not_ready',
         grant_too_many_skips: 'err_grant_too_many_skips',
         grant_already_claimed: 'err_grant_already_claimed',
+        app_not_archived: 'err_app_not_archived_early_finish',
         invalid_start_date: 'err_grant_unavailable',
         invalid_google_group_url: 'invalid_google_group_url',
         manual_external_owner_missing: 'manualExternalInvalidOwnerUsername',
@@ -1009,6 +1010,9 @@ function handleApiError(code, details = {}) {
         invalid_email_commas: 'invalidEmailCommas',
         invalid_email_spaces: 'invalidEmailSpaces',
         invalid_email_format: 'invalidEmail',
+        owner_has_access_issue: 'ownerAccessIssueBlockToast',
+        email_required: 'reportIssueEmailRequired',
+        access_checklist_required: 'reportIssueChecklistIncomplete',
     };
 
     var normalizedCode = String(code || '').trim();
@@ -1781,6 +1785,9 @@ async function loadProjects(isBackground, force) {
             _projectsLoadedOnce = true;
             myProjectsLoadError = false;
             renderProjects();
+            if (typeof window.updateOwnerAccessIssueBanner === 'function') {
+                window.updateOwnerAccessIssueBanner();
+            }
         }
     }
 
@@ -2063,6 +2070,9 @@ async function _loadProjectsImpl(options) {
             if (typeof window.renderTests === 'function' && Array.isArray(myTests) && myTests.length) {
                 window.renderTests();
             }
+        }
+        if (typeof window.updateOwnerAccessIssueBanner === 'function') {
+            window.updateOwnerAccessIssueBanner();
         }
 
         // Update cache

@@ -1451,6 +1451,9 @@ function refreshLanguageUi() {
     if (typeof syncDeviceProfileUi === 'function') {
         syncDeviceProfileUi();
     }
+    if (typeof updateOwnerAccessIssueBanner === 'function') {
+        updateOwnerAccessIssueBanner();
+    }
 }
 
 async function loadUserProfilePreferences() {
@@ -1920,6 +1923,9 @@ var MassInviteProgressOverlay = (function () {
 
 async function startMassInvite(projectId) {
     if (!projectId) return null;
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return null;
+    }
 
     var actionKey = 'mass_invite_start_' + projectId;
     if (_pendingActions.has(actionKey)) return null;
@@ -2116,6 +2122,9 @@ async function resetMassInviteCooldown(projectId) {
 }
 
 async function joinDirect(appId) {
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
     var actionKey = 'joinDirect_' + appId;
     if (_pendingActions.has(actionKey)) return;
     _pendingActions.add(actionKey);
@@ -2141,7 +2150,7 @@ async function joinDirect(appId) {
             mutualSeeking = rollback;
             renderMutualFeed();
             if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
-            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
         if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
@@ -2160,6 +2169,9 @@ async function joinDirect(appId) {
 }
 
 async function joinMutual(appId, allowOverLimit = false) {
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
     var actionKey = 'joinMutual_' + appId;
     if (_pendingActions.has(actionKey)) return;
     _pendingActions.add(actionKey);
@@ -2196,7 +2208,7 @@ async function joinMutual(appId, allowOverLimit = false) {
                 window.renderMutualReturns(mutualReturns, true);
             }
             if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
-            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
         if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
@@ -2220,6 +2232,9 @@ async function joinMutual(appId, allowOverLimit = false) {
 }
 
 async function joinBounty(appId) {
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
     var actionKey = 'joinBounty_' + appId;
     if (_pendingActions.has(actionKey)) return;
     _pendingActions.add(actionKey);
@@ -2244,7 +2259,7 @@ async function joinBounty(appId) {
             bountyContracts = rollback;
             renderBountyFeed();
             if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
-            if (tg.showAlert) tg.showAlert(getApiErrorMessage(result, 'networkError'));
+            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
         if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
@@ -3001,6 +3016,9 @@ function contactAccessTester(username) {
 function _syncProjectsUiAfterOptimisticChange() {
     setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
     if (window.renderProjects) window.renderProjects(true);
+    if (typeof window.updateOwnerAccessIssueBanner === 'function') {
+        window.updateOwnerAccessIssueBanner();
+    }
     refreshOpenModals();
 }
 
@@ -3015,6 +3033,98 @@ function _recomputeProjectAccessErrorState(project) {
     } else if (String(project.status || '').toLowerCase() === 'access_error') {
         project.status = 'active';
     }
+}
+
+function projectHasPendingAccessIssue(project) {
+    if (!project) return false;
+    if (String(project.status || '').toLowerCase() === 'access_error') return true;
+    var testers = Array.isArray(project.testers) ? project.testers : [];
+    return testers.some(function(tester) {
+        return !!tester.issue_reported_at && !tester.issue_fixed_at;
+    });
+}
+
+function getOwnerPendingAccessIssueProjects() {
+    return (myProjects || []).filter(projectHasPendingAccessIssue);
+}
+
+function ownerHasPendingAccessIssue() {
+    return getOwnerPendingAccessIssueProjects().length > 0;
+}
+
+function assertOwnerCanTakeForeignTests() {
+    if (!ownerHasPendingAccessIssue()) return true;
+    showToast(window.t('ownerAccessIssueBlockToast', {}, lang));
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+    return false;
+}
+
+function openOwnerAccessIssueProject(projectId) {
+    var normalizedId = Number(projectId || 0);
+    if (normalizedId <= 0) return;
+    if (typeof switchTab === 'function') switchTab('projects');
+    var expand = function() {
+        if (typeof _expandProjectCardWhenReady === 'function') {
+            _expandProjectCardWhenReady(normalizedId);
+        }
+    };
+    if (typeof loadProjects === 'function') {
+        loadProjects(true, true).then(expand).catch(expand);
+    } else {
+        expand();
+    }
+}
+
+function updateOwnerAccessIssueBanner() {
+    var banner = document.getElementById('owner-access-issue-banner');
+    var titleEl = document.getElementById('owner-access-issue-banner-title');
+    var itemsEl = document.getElementById('owner-access-issue-banner-items');
+    if (!banner || !titleEl || !itemsEl) return;
+
+    var pending = getOwnerPendingAccessIssueProjects();
+    if (!pending.length) {
+        banner.style.display = 'none';
+        return;
+    }
+
+    banner.style.display = 'flex';
+    titleEl.textContent = window.t('ownerAccessIssueBannerTitle', {}, lang);
+    itemsEl.innerHTML = pending.map(function(project) {
+        var projectName = String(project.name || ('#' + project.id));
+        var testers = Array.isArray(project.testers) ? project.testers : [];
+        var affectedTesters = testers.filter(function(tester) {
+            return !!tester.issue_reported_at && !tester.issue_fixed_at;
+        });
+        if (!affectedTesters.length) affectedTesters = [null];
+
+        var messages = affectedTesters.map(function(tester) {
+            var username = String(tester && tester.username || '').trim().replace(/^@+/, '');
+            var marker = '__ACCESS_TESTER__';
+            var message = window.escapeHTML(window.t('ownerAccessIssueBannerMessage', {
+                tester: marker,
+                name: projectName
+            }, lang));
+            var testerHtml = window.escapeHTML(window.t('ownerAccessIssueBannerUnknownTester', {}, lang));
+            if (username) {
+                testerHtml = '<button type="button" class="owner-access-issue-banner__tester notranslate" ' +
+                    'onclick="event.stopPropagation(); contactAccessTester(\'' + escapeInlineJsString(username) + '\')">@' +
+                    window.escapeHTML(username) + '</button>';
+            }
+            return '<p>' + message.replace(marker, testerHtml) + '</p>';
+        }).join('');
+
+        return '<div class="owner-access-issue-banner__item">' +
+            messages +
+            '<span class="owner-access-issue-banner__continuity">' +
+                window.escapeHTML(window.t('ownerAccessIssueBannerContinuity', {}, lang)) +
+            '</span>' +
+            '<button type="button" class="owner-access-issue-banner__project-link" ' +
+                'onclick="openOwnerAccessIssueProject(' + Number(project.id) + ')">' +
+                window.escapeHTML(window.t('ownerAccessIssueBannerOpenProject', {}, lang)) +
+                '<span aria-hidden="true">→</span>' +
+            '</button>' +
+        '</div>';
+    }).join('');
 }
 
 function _markProjectAccessIssueResolved(projectId, progressId) {
@@ -3113,11 +3223,18 @@ async function deleteAccessTester(projectId, progressId, testerLabel) {
             return;
         }
         _removeProjectAccessTester(projectId, safeProgressId);
-        _recomputeProjectAccessErrorState((myProjects || []).find(function(item) {
+        var projectAfterDelete = (myProjects || []).find(function(item) {
             return Number(item.id) === Number(projectId);
-        }));
+        });
+        _recomputeProjectAccessErrorState(projectAfterDelete);
         _syncProjectsUiAfterOptimisticChange();
-        showToast(window.t('accessOverlayDeleteDone', {}, lang));
+        showToast(window.t(
+            projectHasPendingAccessIssue(projectAfterDelete)
+                ? 'accessOverlayDeleteDoneRemaining'
+                : 'accessOverlayDeleteDoneUnfrozen',
+            {},
+            lang
+        ));
         loadProjects(true).catch(function() {});
     } catch (error) {
         console.error('Delete access tester failed:', error);
