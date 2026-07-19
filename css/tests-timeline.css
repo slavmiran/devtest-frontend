@@ -938,6 +938,13 @@
     border-radius: 12px;
 }
 
+.access-error-tester-hint {
+    margin-top: 8px;
+    color: var(--hint-color);
+    font-size: 11px;
+    line-height: 1.4;
+}
+
 .access-error-actions {
     display: flex;
     flex-direction: column;

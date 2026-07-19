@@ -3223,11 +3223,18 @@ async function deleteAccessTester(projectId, progressId, testerLabel) {
             return;
         }
         _removeProjectAccessTester(projectId, safeProgressId);
-        _recomputeProjectAccessErrorState((myProjects || []).find(function(item) {
+        var projectAfterDelete = (myProjects || []).find(function(item) {
             return Number(item.id) === Number(projectId);
-        }));
+        });
+        _recomputeProjectAccessErrorState(projectAfterDelete);
         _syncProjectsUiAfterOptimisticChange();
-        showToast(window.t('accessOverlayDeleteDone', {}, lang));
+        showToast(window.t(
+            projectHasPendingAccessIssue(projectAfterDelete)
+                ? 'accessOverlayDeleteDoneRemaining'
+                : 'accessOverlayDeleteDoneUnfrozen',
+            {},
+            lang
+        ));
         loadProjects(true).catch(function() {});
     } catch (error) {
         console.error('Delete access tester failed:', error);

@@ -461,6 +461,7 @@ function renderProjects(force) {
                         <button type="button" class="btn btn-secondary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); contactAccessTester('${safeTesterUsernameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayWriteBtn', {}, lang))}</button>
                         <button type="button" class="btn" style="background: rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('medium'); deleteAccessTester(${project.id}, ${Number(tester.progress_id || 0)}, '${safeDeleteNameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayDeleteBtn', {}, lang))}</button>
                     </div>
+                    <div class="access-error-tester-hint">${window.escapeHTML(window.t('accessOverlayDeleteHint', {}, lang))}</div>
                 </div>
             `;
         }).join('');
@@ -479,7 +480,9 @@ function renderProjects(force) {
                     <div class="access-error-deadline">
                         <span>⏳</span>
                         <strong>${window.escapeHTML(window.t('accessOverlayTesterCountdown', {
-                            time_left: getIssueRemovalCountdownText(pendingIssueTesters[0].issue_reported_at) || window.t('issueCountdownExpired', {}, lang)
+                            time_left: getIssueRemovalCountdownText((pendingIssueTesters.slice().sort(function(a, b) {
+                                return String(a.issue_reported_at || '').localeCompare(String(b.issue_reported_at || ''));
+                            })[0] || {}).issue_reported_at) || window.t('issueCountdownExpired', {}, lang)
                         }, lang))}</strong>
                     </div>
                     <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">
