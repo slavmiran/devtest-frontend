@@ -35,20 +35,22 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260719-early-finish-claim-fix"></script>
-    <script src="./i18n/en.js?v=20260719-early-finish-claim-fix"></script>
+    <script src="./i18n/ru.js?v=20260722-mi-wow-p5"></script>
+    <script src="./i18n/en.js?v=20260722-mi-wow-p5"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260713-sprint-ux-polish"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260719-access-unfreeze-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260719-access-delete-hint"></script>
+    <script src="./ui/ui-projects.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui/ui-market.js?v=20260719-access-unfreeze-v1"></script>
+    <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260713-sprint-ux-polish"></script>
     <script src="./js/app-api.js?v=20260719-early-finish-claim-fix"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-actions.js?v=20260719-access-unfreeze-v1"></script>
-    <script src="./js/app-features.js?v=20260719-access-unfreeze-v1"></script>
+    <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
+    <script src="./js/app-features.js?v=20260722-mi-wow-p5"></script>
     <script src="./app.js?v=20260719-access-unfreeze-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
@@ -67,6 +69,7 @@
     <link rel="stylesheet" href="./css/dossier-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
+    <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/access-issue.css?v=20260717-access-ux-v4">
@@ -777,81 +780,33 @@
     </div>
 
     <!-- Mass Invite Processing Overlay -->
-    <div id="mass-invite-progress-overlay" class="mi-progress-overlay" aria-live="polite" aria-busy="true">
+    <div id="mass-invite-progress-overlay" class="mi-progress-overlay" aria-live="polite" aria-busy="true" data-phase="collecting">
         <div class="mi-progress-card">
-            <div class="mi-progress-title">📨 <span id="t-miProgressTitle" data-i18n="massInviteProgressTitle">Отправка приглашений</span></div>
-            <p class="mi-progress-subtitle" id="t-miProgressSubtitle" data-i18n="massInviteProgressSubtitle">Пожалуйста, подождите...</p>
+            <div class="mi-phase-dots" aria-hidden="true">
+                <span class="mi-phase-dot" data-phase-dot="collecting"></span>
+                <span class="mi-phase-dot" data-phase-dot="sending"></span>
+                <span class="mi-phase-dot" data-phase-dot="result"></span>
+            </div>
+            <div class="mi-progress-title"><span id="t-miProgressTitle" data-i18n="massInviteProgressTitle">Sending Invitations</span></div>
+            <p class="mi-progress-subtitle" id="t-miProgressSubtitle" data-i18n="massInviteProgressSubtitle">Please wait...</p>
+
             <div class="mi-progress-spinner" role="status"></div>
+
+            <div id="mi-result-hero" class="mi-result-hero" hidden>
+                <div class="mi-result-count" id="mi-result-count">0</div>
+                <div class="mi-result-label" id="mi-result-label"></div>
+                <div class="mi-result-meta" id="mi-result-meta"></div>
+            </div>
+
+            <div id="mi-candidates-strip" class="mi-candidates-strip" hidden></div>
             <div class="mi-progress-status" id="mi-progress-status"></div>
             <div class="mi-progress-long-notice" id="mi-progress-long-notice">
-                <span id="t-miProgressLongNotice" data-i18n="massInviteProgressLongNotice">⏳ Обработка занимает больше времени, чем обычно.</span><br>
-                <span id="t-miProgressLongNoticeDetail" data-i18n="massInviteProgressLongNoticeDetail">Для крупных рассылок может потребоваться дополнительное время.</span>
+                <span id="t-miProgressLongNotice" data-i18n="massInviteProgressLongNotice">This is taking longer than usual.</span><br>
+                <span id="t-miProgressLongNoticeDetail" data-i18n="massInviteProgressLongNoticeDetail">Large invitation batches may require additional processing time.</span>
             </div>
-            <button id="mi-progress-close-btn" class="btn btn-secondary" style="margin-top: 12px; display: none;" onclick="MassInviteProgressOverlay.hide()">Закрыть</button>
+            <button id="mi-progress-close-btn" class="btn btn-secondary mi-progress-close-btn" type="button" style="display: none;" onclick="MassInviteProgressOverlay.finishAndReturn()">Close</button>
         </div>
     </div>
-
-    <div id="visibility-mode-modal" class="modal-overlay" onclick="closeVisibilityModeModal(event)">
-        <div class="modal-content visibility-mode-modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-visibilityModalTitle" data-i18n="visibilityModalTitle">Режим набора тестеров</h3>
-            <p id="visibility-mode-modal-hint" class="visibility-modal-hint"></p>
-            <div id="visibility-mode-modal-body"></div>
-            <button class="btn btn-secondary" style="margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeVisibilityModeModal()" id="t-visibilityModalClose" data-i18n="inviteClose">Закрыть</button>
-        </div>
-    </div>
-
-    <div id="guest-invite-modal" class="modal-overlay" onclick="closeGuestInviteModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
-            <h3 id="t-guestInviteModalTitle" data-i18n="guestInviteModalTitle">Пригласить гостевой проект</h3>
-            <div id="guest-invite-modal-body"></div>
-            <button class="btn btn-secondary" style="margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeGuestInviteModal()" id="t-guestInviteClose" data-i18n="inviteClose">Закрыть</button>
-        </div>
-    </div>
-
-    <div id="external-track-modal" class="modal-overlay" onclick="closeExternalTrackModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
-            <h3 id="t-externalTrackModalTitle" data-i18n="externalTrackModalTitle"></h3>
-            <div id="external-track-modal-body"></div>
-            <button class="btn btn-secondary" style="margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeExternalTrackModal()" data-i18n="inviteClose">Закрыть</button>
-        </div>
-    </div>
-
-    <div id="manual-external-add-modal" class="modal-overlay" onclick="closeManualExternalAddModal(event)">
-        <div class="modal-content manual-external-modal" onclick="event.stopPropagation()" style="max-height: 85vh; overflow-y: auto;">
-            <h3 id="t-manualExternalModalTitle" data-i18n="manualExternalModalTitle">➕ Добавить внешний проект</h3>
-            <form id="manual-external-add-form" onsubmit="submitManualExternalTrack(event)">
-                <input type="hidden" id="manual-external-source-project-id" value="">
-
-                <div class="form-group">
-                    <label class="form-label" for="manual-external-app-name" data-i18n="manualExternalAppNameLabel">Название приложения (необязательно)</label>
-                    <input type="text" id="manual-external-app-name" class="form-input" data-i18n-placeholder="manualExternalAppNamePlaceholder" placeholder="Например, My Awesome App">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="manual-external-play-url" data-i18n="manualExternalPlayUrlLabel">Google Play URL</label>
-                    <input type="url" id="manual-external-play-url" class="form-input" required data-i18n-placeholder="playLinkPlaceholder" placeholder="https://play.google.com/store/apps/details?id=com.example.app">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="manual-external-owner-username" data-i18n="manualExternalOwnerUsernameLabel">Telegram @nickname владельца</label>
-                    <input type="text" id="manual-external-owner-username" class="form-input" required data-i18n-placeholder="manualExternalOwnerUsernamePlaceholder" placeholder="@owner_nickname" oninput="normalizeManualExternalOwnerNicknameInput(event)" onblur="normalizeManualExternalOwnerNicknameInput(event)">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="manual-external-group-url" data-i18n="manualExternalGroupUrlLabel">Google Group URL (optional)</label>
-                    <input type="url" id="manual-external-group-url" class="form-input" placeholder="https://groups.google.com/g/your-group">
-                    <div class="form-hint manual-external-group-hint" data-i18n="manualExternalGroupHint">Пожалуйста, добавьте ссылку на Google Группу, если она есть. Это поможет владельцу получить больше тестеров с нашей платформы!</div>
-                </div>
-
-                <div class="form-group">
-                    <div class="manual-external-mutual-block">
-                        <label class="manual-external-check" for="manual-external-is-mutual">
-                            <input type="checkbox" id="manual-external-is-mutual" checked onchange="toggleManualExternalMutualFields(event)">
-                            <span class="manual-external-check-text" data-i18n="manualExternalMutualLabel">🤝 Это Взаимный Тест</span>
-                        </label>
-                        <div class="form-hint manual-external-mutual-note" data-i18n="manualExternalMutualHint">Добавит тестера к вашему проекту, а его проект — к вам в тесты. Если владелец присоединится к платформе, ваши проекты будут связаны автоматически.</div>
-                    </div>
-                </div>
 
                 <div class="form-group">
                     <label class="form-label" for="manual-external-testing-day" data-i18n="manualExternalDayLabel">Текущий день тестирования</label>

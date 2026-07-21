@@ -5476,10 +5476,15 @@ function openMassInviteModal(projectId) {
     
     renderMassInviteModalContent();
     modal.classList.add('active');
-    
-    // Start interval to update cooldown timer live
+
+    // Refresh offer statuses from server, then re-render once.
+    refreshMassInviteSessionQuietly(projectId).then(function() {
+        if (_massInviteProjectId === projectId) renderMassInviteModalContent();
+    }).catch(function() {});
+
+    // Tick only timers — do not remount candidate cards every second.
     if (_massInviteInterval) clearInterval(_massInviteInterval);
-    _massInviteInterval = setInterval(renderMassInviteModalContent, 1000);
+    _massInviteInterval = setInterval(updateMassInviteModalTimers, 1000);
 }
 
 function closeMassInviteModal(event) {
@@ -5493,20 +5498,78 @@ function closeMassInviteModal(event) {
     _massInviteProjectId = null;
 }
 
+function _getMassInviteSessionForProject(projectId, project) {
+    var session = null;
+    if (typeof MassInviteSession !== 'undefined' && MassInviteSession.load) {
+        session = MassInviteSession.load(projectId);
+    }
+    if (session && Array.isArray(session.candidates) && session.candidates.length) {
+        return session;
+    }
+    // Soft fallback: project may know sent_count but not candidate list (pre-WOW blasts).
+    var fallbackCount = Math.max(0, Number(project && project.last_mass_invite_sent_count || 0));
+    if (!session && fallbackCount > 0 && project && project.last_mass_invite_at) {
+        return {
+            app_id: Number(projectId),
+            sent_at: project.last_mass_invite_at,
+            sent_count: fallbackCount,
+            candidates: [],
+            stats: { sent: fallbackCount, accepted: 0, rejected: 0, pending: 0, expired: 0, failed: 0 },
+        };
+    }
+    return session;
+}
+
+function updateMassInviteModalTimers() {
+    if (!_massInviteProjectId) return;
+    var project = myProjects.find(function(p) { return p.id === _massInviteProjectId; });
+    if (!project) return;
+    var meta = getProjectMassInviteMeta(project);
+
+    var cooldownEl = document.getElementById('mi-cooldown-timer');
+    if (cooldownEl && meta.isCooldownActive) {
+        cooldownEl.textContent = window.t('massInviteCooldownRemaining', {
+            time: formatMassInviteRemaining(meta.remainingMs),
+        }, lang);
+    }
+
+    var session = _getMassInviteSessionForProject(_massInviteProjectId, project);
+    var responseEl = document.getElementById('mi-session-response-timer');
+    if (responseEl && typeof MassInviteCards !== 'undefined' && MassInviteCards.formatResponseTimerText) {
+        var text = MassInviteCards.formatResponseTimerText(session, lang);
+        responseEl.textContent = text;
+        var closed = window.t && text === window.t('massInviteSessionWindowClosed', {}, lang);
+        responseEl.classList.toggle('is-done', !!closed || !text);
+    }
+}
+
+async function refreshMassInviteSessionQuietly(projectId) {
+    if (!projectId) return null;
+    if (typeof MassInviteSession === 'undefined' || !MassInviteSession.refreshFromServer) return null;
+    if (typeof API_BASE === 'undefined' || typeof userId === 'undefined') return null;
+    try {
+        return await MassInviteSession.refreshFromServer(projectId, userId, API_BASE);
+    } catch (e) {
+        console.warn('Mass invite session refresh failed', e);
+        return null;
+    }
+}
+
 function renderMassInviteModalContent() {
     const modalBody = document.getElementById('mass-invite-modal-body');
     if (!modalBody || !_massInviteProjectId) return;
-    
+
     const project = myProjects.find((p) => p.id === _massInviteProjectId);
     if (!project) return;
-    
+
     const isIsolated = getProjectVisibilityMeta(project).mode === 'isolated';
     const massInviteMeta = getProjectMassInviteMeta(project);
-    
+    const session = _getMassInviteSessionForProject(project.id, project);
+
     let launchBtnLabel = window.t('massInviteLaunchBtn', {}, lang);
     let launchBtnClass = 'btn btn-primary mass-invite-btn';
     let launchBtnAttrs = `onclick="handleMassInviteAction(${project.id})"`;
-    
+
     if (isIsolated) {
         launchBtnLabel = window.t('inviteIsolationDisabledBtn', {}, lang);
         launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
@@ -5519,47 +5582,51 @@ function renderMassInviteModalContent() {
         launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
         launchBtnAttrs = 'disabled';
     }
-    
+
+    let sessionBlockHtml = '';
+    if (!isIsolated && typeof MassInviteCards !== 'undefined' && MassInviteCards.renderSessionBlock) {
+        sessionBlockHtml = MassInviteCards.renderSessionBlock(session, {
+            sourceAppId: project.id,
+            lang: lang,
+            fallbackSentCount: massInviteMeta.lastSentCount,
+        });
+    }
+
     let cooldownBlockHtml = '';
     if (!isIsolated && massInviteMeta.isCooldownActive) {
         const remainingTime = formatMassInviteRemaining(massInviteMeta.remainingMs);
-        const sentSummaryHtml = massInviteMeta.lastSentCount > 0
-            ? `<div class="mass-invite-sent-summary" style="font-size: 22px; font-weight: 800; color: #34c759; margin-bottom: 14px; padding: 14px 12px; background: rgba(52,199,89,0.14); border-radius: 12px; border: 1px solid rgba(52,199,89,0.35); line-height: 1.3;">
-                    ✅ ${window.escapeHTML(window.t('massInviteLastSentSummary', { count: massInviteMeta.lastSentCount }, lang))}
-                </div>`
-            : '';
         cooldownBlockHtml = `
-            <div class="mass-invite-cooldown-container" style="margin-top: 14px; text-align: center;">
-                ${sentSummaryHtml}
-                <div class="mass-invite-timer" style="font-size: 16px; font-weight: 700; color: #ff9500; margin-bottom: 8px;">
-                    ⏳ ${window.t('massInviteCooldownRemaining', { time: remainingTime }, lang)}
+            <div class="mass-invite-cooldown-container">
+                <div class="mass-invite-timer" id="mi-cooldown-timer">
+                    ${window.escapeHTML(window.t('massInviteCooldownRemaining', { time: remainingTime }, lang))}
                 </div>
                 <div class="mass-invite-hint" style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">
-                    ${window.t('massInviteCooldownManualHint', {}, lang)}
+                    ${window.escapeHTML(window.t('massInviteCooldownManualHint', {}, lang))}
                 </div>
                 <button type="button" class="btn mass-invite-btn is-locked" style="width: 100%;" onclick="triggerResetCooldown(${project.id})">
-                    🔄 ${window.t('massInviteResetCostHint', {}, lang)}
+                    ${window.escapeHTML(window.t('massInviteResetCostHint', {}, lang))}
                 </button>
             </div>
         `;
     }
-    
+
     const limitHintHtml = !isIsolated && massInviteMeta.isAvailable
         ? `<div class="mass-invite-hint" style="text-align:center; margin-top: 8px; font-size: 12px; color: var(--hint-color);">${window.escapeHTML(window.t('massInviteLimitHint', { count: massInviteMeta.maxRecipients }, lang))}</div>`
         : '';
-        
+
     const infoDesc = !isIsolated && !massInviteMeta.isAvailable
         ? window.t('massInviteUnavailableNote', {}, lang)
         : window.t('massInviteBlockDesc', {}, lang);
-        
+
     modalBody.innerHTML = `
         <div class="mass-invite-card" style="background: var(--secondary-bg-color); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
             <div class="mass-invite-title" style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">${window.escapeHTML(window.t('massInviteBlockTitle', {}, lang))}</div>
             <div class="mass-invite-desc" style="font-size: 13px; color: var(--hint-color); margin-bottom: 16px; line-height: 1.4;">${window.escapeHTML(infoDesc)}</div>
-            
+
             <button id="mass-invite-btn" class="${launchBtnClass}" style="width: 100%;" ${launchBtnAttrs}>${window.escapeHTML(launchBtnLabel)}</button>
             ${limitHintHtml}
-            
+
+            ${sessionBlockHtml}
             ${cooldownBlockHtml}
         </div>
     `;
@@ -5592,6 +5659,7 @@ window.openMassInviteModal = openMassInviteModal;
 window.closeMassInviteModal = closeMassInviteModal;
 window.triggerResetCooldown = triggerResetCooldown;
 window.renderMassInviteModalContent = renderMassInviteModalContent;
+window.updateMassInviteModalTimers = updateMassInviteModalTimers;
 window.toggleTestingDayInstructions = toggleTestingDayInstructions;
 
 (function initProjectsScrollPerf() {

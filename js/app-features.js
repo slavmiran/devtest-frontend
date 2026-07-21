@@ -1810,116 +1810,296 @@ function refreshMarketAfterMassInvite() {
 var MassInviteProgressOverlay = (function () {
     var _rotateInterval = null;
     var _longTimer = null;
+    var _returnTimer = null;
     var _currentIndex = 0;
-    var STATUS_KEYS = [
+    var _phase = 'collecting';
+    var _sourceAppId = 0;
+    var COLLECT_STATUS_KEYS = [
         'massInviteProgressStatus1',
         'massInviteProgressStatus2',
         'massInviteProgressStatus3',
-        'massInviteProgressStatus4',
-        'massInviteProgressStatus5',
     ];
 
-    function _setStatus(text) {
+    function _t(key, params, currentLang) {
+        if (window.t) return window.t(key, params || {}, currentLang || lang);
+        return key;
+    }
+
+    function _clearTimers() {
+        if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
+        if (_longTimer !== null) { clearTimeout(_longTimer); _longTimer = null; }
+        if (_returnTimer !== null) { clearTimeout(_returnTimer); _returnTimer = null; }
+    }
+
+    function _setStatus(text, fade) {
         var el = document.getElementById('mi-progress-status');
         if (!el) return;
+        if (fade === false) {
+            el.textContent = text;
+            el.classList.remove('mi-progress-status--fade');
+            return;
+        }
         el.classList.add('mi-progress-status--fade');
         setTimeout(function () {
             el.textContent = text;
             el.classList.remove('mi-progress-status--fade');
-        }, 300);
+        }, 220);
     }
 
-    function show(lang) {
+    function _setResultHero(visible, payload) {
+        var hero = document.getElementById('mi-result-hero');
+        if (!hero) return;
+        if (!visible) {
+            hero.hidden = true;
+            hero.classList.remove('is-visible', 'is-empty');
+            return;
+        }
+        var data = payload || {};
+        var countEl = document.getElementById('mi-result-count');
+        var labelEl = document.getElementById('mi-result-label');
+        var metaEl = document.getElementById('mi-result-meta');
+        var isEmpty = !!data.empty;
+        hero.hidden = false;
+        hero.classList.add('is-visible');
+        hero.classList.toggle('is-empty', isEmpty);
+        if (countEl) countEl.textContent = isEmpty ? '—' : String(data.sentCount != null ? data.sentCount : 0);
+        if (labelEl) {
+            labelEl.textContent = isEmpty
+                ? _t('massInviteResultEmpty', {}, data.lang)
+                : _t('massInviteResultSentLabel', {}, data.lang);
+        }
+        if (metaEl) {
+            if (!isEmpty && Number(data.failedCount || 0) > 0) {
+                metaEl.textContent = _t('massInviteResultFailedMeta', { count: data.failedCount }, data.lang);
+            } else if (!isEmpty) {
+                metaEl.textContent = _t('massInvitePhaseResultSubtitle', {}, data.lang);
+            } else {
+                metaEl.textContent = '';
+            }
+        }
+    }
+
+    function setPhase(phase, currentLang) {
+        var next = String(phase || 'collecting');
+        _phase = next;
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (overlay) overlay.setAttribute('data-phase', next);
+
+        var titleEl = document.getElementById('t-miProgressTitle');
+        var subEl = document.getElementById('t-miProgressSubtitle');
+        var spinner = document.querySelector('#mass-invite-progress-overlay .mi-progress-spinner');
+        var closeBtn = document.getElementById('mi-progress-close-btn');
+
+        if (next === 'collecting') {
+            if (titleEl) titleEl.textContent = _t('massInvitePhaseCollectTitle', {}, currentLang);
+            if (subEl) subEl.textContent = _t('massInvitePhaseCollectSubtitle', {}, currentLang);
+            if (spinner) spinner.style.display = 'block';
+            _setResultHero(false);
+            if (closeBtn) closeBtn.style.display = 'none';
+            enableCandidateInteraction(false);
+        } else if (next === 'sending') {
+            if (titleEl) titleEl.textContent = _t('massInvitePhaseSendTitle', {}, currentLang);
+            if (subEl) subEl.textContent = _t('massInvitePhaseSendSubtitle', {}, currentLang);
+            if (spinner) spinner.style.display = 'none';
+            _setResultHero(false);
+            if (closeBtn) closeBtn.style.display = 'none';
+            enableCandidateInteraction(false);
+            if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
+            if (_longTimer !== null) { clearTimeout(_longTimer); _longTimer = null; }
+            var longNotice = document.getElementById('mi-progress-long-notice');
+            if (longNotice) longNotice.classList.remove('mi-progress-long-notice--visible');
+        } else if (next === 'result') {
+            if (titleEl) titleEl.textContent = _t('massInvitePhaseResultTitle', {}, currentLang);
+            if (subEl) subEl.textContent = _t('massInvitePhaseResultSubtitle', {}, currentLang);
+            if (spinner) spinner.style.display = 'none';
+            if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
+            if (_longTimer !== null) { clearTimeout(_longTimer); _longTimer = null; }
+            var longNotice2 = document.getElementById('mi-progress-long-notice');
+            if (longNotice2) longNotice2.classList.remove('mi-progress-long-notice--visible');
+        }
+    }
+
+    function show(currentLang) {
         var overlay = document.getElementById('mass-invite-progress-overlay');
         if (!overlay) return;
+        _clearTimers();
         _currentIndex = 0;
+        _sourceAppId = 0;
 
-        var spinner = document.querySelector('.mi-progress-spinner');
-        if (spinner) spinner.style.display = 'block';
-
-        var closeBtn = document.getElementById('mi-progress-close-btn');
-        if (closeBtn) closeBtn.style.display = 'none';
-
-        // Update static localised labels
-        var titleEl        = document.getElementById('t-miProgressTitle');
-        var subEl          = document.getElementById('t-miProgressSubtitle');
-        var noticeEl       = document.getElementById('t-miProgressLongNotice');
+        var noticeEl = document.getElementById('t-miProgressLongNotice');
         var noticeDetailEl = document.getElementById('t-miProgressLongNoticeDetail');
-        if (titleEl)        titleEl.textContent        = window.t('massInviteProgressTitle', {}, lang);
-        if (subEl)          subEl.textContent          = window.t('massInviteProgressSubtitle', {}, lang);
-        if (noticeEl)       noticeEl.textContent       = window.t('massInviteProgressLongNotice', {}, lang);
-        if (noticeDetailEl) noticeDetailEl.textContent = window.t('massInviteProgressLongNoticeDetail', {}, lang);
+        if (noticeEl) noticeEl.textContent = _t('massInviteProgressLongNotice', {}, currentLang);
+        if (noticeDetailEl) noticeDetailEl.textContent = _t('massInviteProgressLongNoticeDetail', {}, currentLang);
 
-        // Reset long-running notice
         var longNotice = document.getElementById('mi-progress-long-notice');
         if (longNotice) longNotice.classList.remove('mi-progress-long-notice--visible');
 
-        // Show first status immediately
-        var statusEl = document.getElementById('mi-progress-status');
-        if (statusEl) statusEl.textContent = window.t(STATUS_KEYS[0], {}, lang);
+        clearCandidates();
+        setPhase('collecting', currentLang);
+        _setStatus(_t(COLLECT_STATUS_KEYS[0], {}, currentLang), false);
 
-        // Activate overlay
         overlay.classList.add('active');
+        overlay.setAttribute('aria-busy', 'true');
 
-        // Rotate status messages every 2 s
         _rotateInterval = setInterval(function () {
-            _currentIndex = (_currentIndex + 1) % STATUS_KEYS.length;
-            _setStatus(window.t(STATUS_KEYS[_currentIndex], {}, lang));
-        }, 2000);
+            if (_phase !== 'collecting') return;
+            _currentIndex = (_currentIndex + 1) % COLLECT_STATUS_KEYS.length;
+            _setStatus(_t(COLLECT_STATUS_KEYS[_currentIndex], {}, currentLang));
+        }, 1800);
 
-        // Show long-running notice after 10 s
         _longTimer = setTimeout(function () {
+            if (_phase !== 'collecting') return;
             if (longNotice) longNotice.classList.add('mi-progress-long-notice--visible');
         }, 10000);
     }
 
     function hide() {
-        if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
-        if (_longTimer !== null)      { clearTimeout(_longTimer);       _longTimer = null; }
+        _clearTimers();
         var overlay = document.getElementById('mass-invite-progress-overlay');
-        if (overlay) overlay.classList.remove('active');
-        _currentIndex = 0;
-    }
-
-    function updateProgress(current, total, lang) {
-        if (_rotateInterval !== null) {
-            clearInterval(_rotateInterval);
-            _rotateInterval = null;
+        if (overlay) {
+            overlay.classList.remove('active');
+            overlay.setAttribute('aria-busy', 'true');
+            overlay.setAttribute('data-phase', 'collecting');
         }
-        var el = document.getElementById('mi-progress-status');
-        if (!el) return;
-        var text = lang === 'ru'
-            ? 'Отправка: ' + current + ' из ' + total + '...'
-            : 'Sending: ' + current + ' of ' + total + '...';
-        el.textContent = text;
+        clearCandidates();
+        _setResultHero(false);
+        var closeBtn = document.getElementById('mi-progress-close-btn');
+        if (closeBtn) closeBtn.style.display = 'none';
+        _currentIndex = 0;
+        _phase = 'collecting';
+        _sourceAppId = 0;
     }
 
-    function showFinalState(statusText, lang) {
-        if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
-        if (_longTimer !== null)      { clearTimeout(_longTimer);       _longTimer = null; }
+    function scrollToOwner(ownerId) {
+        var strip = document.getElementById('mi-candidates-strip');
+        if (!strip) return;
+        strip.querySelectorAll('.mi-candidate-card.is-active-send').forEach(function (el) {
+            el.classList.remove('is-active-send');
+        });
+        var card = strip.querySelector('.mi-candidate-card[data-owner-id="' + String(ownerId) + '"]');
+        if (!card) return;
+        card.classList.add('is-active-send');
+        try {
+            card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        } catch (e) {
+            card.scrollIntoView();
+        }
+    }
 
-        var spinner = document.querySelector('.mi-progress-spinner');
-        if (spinner) spinner.style.display = 'none';
+    function updateProgress(current, total, currentLang) {
+        if (_phase !== 'sending') setPhase('sending', currentLang);
+        var text = _t('massInviteProgressSending', {
+            current: current,
+            total: total,
+        }, currentLang);
+        _setStatus(text, false);
+    }
 
-        var longNotice = document.getElementById('mi-progress-long-notice');
-        if (longNotice) longNotice.classList.remove('mi-progress-long-notice--visible');
-
-        var el = document.getElementById('mi-progress-status');
-        if (el) el.textContent = statusText;
-
-        var subEl = document.getElementById('t-miProgressSubtitle');
-        if (subEl) subEl.textContent = lang === 'ru' ? 'Выполнение завершено' : 'Process completed';
+    function showFinalState(statusText, currentLang, details) {
+        var info = details || {};
+        if (info.sourceAppId) _sourceAppId = Number(info.sourceAppId) || _sourceAppId;
+        setPhase('result', currentLang);
+        _setResultHero(true, {
+            sentCount: info.sentCount != null ? info.sentCount : 0,
+            failedCount: info.failedCount || 0,
+            empty: !!info.empty,
+            lang: currentLang,
+        });
+        _setStatus(statusText || _t('massInviteReturnHint', {}, currentLang), false);
+        enableCandidateInteraction(true);
 
         var closeBtn = document.getElementById('mi-progress-close-btn');
         if (closeBtn) {
             closeBtn.style.display = 'block';
-            closeBtn.textContent = lang === 'ru' ? 'Закрыть' : 'Close';
+            closeBtn.textContent = _t('inviteClose', {}, currentLang);
+        }
+
+        // Soft auto-return to BottomSheet / modal after a short WOW beat.
+        if (info.autoReturn !== false) {
+            if (_returnTimer !== null) clearTimeout(_returnTimer);
+            _returnTimer = setTimeout(function () {
+                finishAndReturn();
+            }, info.empty ? 1600 : 2200);
         }
     }
 
-    return { show: show, hide: hide, updateProgress: updateProgress, showFinalState: showFinalState };
+    function finishAndReturn() {
+        if (_returnTimer !== null) {
+            clearTimeout(_returnTimer);
+            _returnTimer = null;
+        }
+        var projectId = _sourceAppId;
+        hide();
+        // Prefer refreshing the mass-invite modal if it is still open.
+        var modal = document.getElementById('mass-invite-modal');
+        if (modal && modal.classList.contains('active') && typeof renderMassInviteModalContent === 'function') {
+            renderMassInviteModalContent();
+            return;
+        }
+        if (projectId && typeof openMassInviteModal === 'function') {
+            openMassInviteModal(projectId);
+        }
+    }
+
+    function clearCandidates() {
+        var strip = document.getElementById('mi-candidates-strip');
+        if (typeof MassInviteCards !== 'undefined' && MassInviteCards.mountStrip) {
+            MassInviteCards.mountStrip(strip, [], {});
+        } else if (strip) {
+            strip.innerHTML = '';
+            strip.hidden = true;
+            strip.classList.remove('is-visible');
+        }
+        var card = document.querySelector('#mass-invite-progress-overlay .mi-progress-card');
+        if (card) card.classList.remove('has-candidates');
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (overlay) overlay.setAttribute('aria-busy', 'true');
+    }
+
+    function setCandidates(candidates, sourceAppId, options) {
+        var opts = options || {};
+        _sourceAppId = Number(sourceAppId || 0);
+        var strip = document.getElementById('mi-candidates-strip');
+        if (!strip || typeof MassInviteCards === 'undefined') return;
+        var list = candidates || [];
+        if (list.length && _phase === 'collecting') setPhase('sending', opts.lang || lang);
+        MassInviteCards.mountStrip(strip, list, {
+            sourceAppId: sourceAppId,
+            interactive: !!opts.interactive,
+            lang: opts.lang || lang,
+        });
+    }
+
+    function setCandidateStatus(ownerId, status) {
+        var strip = document.getElementById('mi-candidates-strip');
+        if (!strip || typeof MassInviteCards === 'undefined') return false;
+        var ok = MassInviteCards.updateCardStatus(strip, ownerId, status);
+        if (String(status) === 'sending') scrollToOwner(ownerId);
+        return ok;
+    }
+
+    function enableCandidateInteraction(enabled) {
+        var strip = document.getElementById('mi-candidates-strip');
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (overlay) overlay.setAttribute('aria-busy', enabled ? 'false' : 'true');
+        if (!strip || typeof MassInviteCards === 'undefined') return;
+        MassInviteCards.setInteractive(strip, !!enabled);
+    }
+
+    return {
+        show: show,
+        hide: hide,
+        setPhase: setPhase,
+        updateProgress: updateProgress,
+        showFinalState: showFinalState,
+        setCandidates: setCandidates,
+        setCandidateStatus: setCandidateStatus,
+        clearCandidates: clearCandidates,
+        enableCandidateInteraction: enableCandidateInteraction,
+        finishAndReturn: finishAndReturn,
+        scrollToOwner: scrollToOwner,
+    };
 }());
-// ──────────────────────────────────────────────────────────────
 
 async function startMassInvite(projectId) {
     if (!projectId) return null;
@@ -1958,11 +2138,22 @@ async function startMassInvite(projectId) {
         var candidates = planData.candidates || [];
         var totalCount = candidates.length;
 
+        if (typeof MassInviteSession !== 'undefined') {
+            MassInviteSession.createFromPlan(projectId, candidates);
+        }
+
         if (totalCount === 0) {
-            var noCandidatesText = lang === 'ru' ? 'Кандидатов не найдено' : 'No candidates found';
-            MassInviteProgressOverlay.showFinalState(noCandidatesText, lang);
+            var noCandidatesText = (window.t ? window.t('massInviteNoCandidates', {}, lang) : 'No candidates found');
+            MassInviteProgressOverlay.showFinalState(noCandidatesText, lang, { empty: true, sentCount: 0, failedCount: 0, sourceAppId: projectId });
             await loadProjects(true);
             return planData;
+        }
+
+        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidates) {
+            MassInviteProgressOverlay.setCandidates(candidates, projectId, { interactive: false, lang: lang });
+        }
+        if (typeof MassInviteProgressOverlay.setPhase === 'function') {
+            MassInviteProgressOverlay.setPhase('sending', lang);
         }
 
         var successCount = 0;
@@ -1971,6 +2162,12 @@ async function startMassInvite(projectId) {
         for (var i = 0; i < totalCount; i++) {
             var candidate = candidates[i];
             MassInviteProgressOverlay.updateProgress(i + 1, totalCount, lang);
+            if (typeof MassInviteSession !== 'undefined') {
+                MassInviteSession.markSending(projectId, candidate.owner_id);
+            }
+            if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'sending');
+            }
             await new Promise(function(resolve) { setTimeout(resolve, 150); });
 
             try {
@@ -1986,12 +2183,34 @@ async function startMassInvite(projectId) {
                 var sendData = await sendResponse.json();
                 if (sendResponse.ok && sendData.status === 'success' && sendData.sent) {
                     successCount++;
+                    if (typeof MassInviteSession !== 'undefined') {
+                        MassInviteSession.markSent(projectId, candidate.owner_id, {
+                            offer_id: sendData.offer_id,
+                            outcome: sendData.outcome || 'pending'
+                        });
+                    }
+                    if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                        var cardStatus = (sendData.outcome === 'auto_accepted') ? 'accepted' : 'sent';
+                        MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, cardStatus);
+                    }
                 } else {
                     failedCount++;
+                    if (typeof MassInviteSession !== 'undefined') {
+                        MassInviteSession.markFailed(projectId, candidate.owner_id, sendData && sendData.code);
+                    }
+                    if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                        MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
+                    }
                 }
             } catch (err) {
                 console.error('Failed sending single mass invite:', err);
                 failedCount++;
+                if (typeof MassInviteSession !== 'undefined') {
+                    MassInviteSession.markFailed(projectId, candidate.owner_id, 'network_error');
+                }
+                if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                    MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
+                }
             }
         }
 
@@ -2014,6 +2233,12 @@ async function startMassInvite(projectId) {
             } catch (err) {
                 console.error('Failed finalising mass invite stats:', err);
             }
+            if (typeof MassInviteSession !== 'undefined') {
+                MassInviteSession.finalize(projectId, {
+                    sent_at: lastMassInviteAt || new Date().toISOString(),
+                    sent_count: successCount
+                });
+            }
         }
 
         var project = (myProjects || []).find(function(item) {
@@ -2026,20 +2251,19 @@ async function startMassInvite(projectId) {
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
-        var finalStatusText = '';
-        if (lang === 'ru') {
-            finalStatusText = 'Отправлено: ' + successCount;
-            if (failedCount > 0) {
-                finalStatusText += ' • Ошибок: ' + failedCount;
-            }
-        } else {
-            finalStatusText = 'Sent: ' + successCount;
-            if (failedCount > 0) {
-                finalStatusText += ' • Failed: ' + failedCount;
-            }
+        var finalStatusText = window.t
+            ? window.t('massInviteLaunchSuccess', { count: successCount }, lang)
+            : ('Sent: ' + successCount);
+        if (failedCount > 0 && window.t) {
+            finalStatusText += ' · ' + window.t('massInviteResultFailedMeta', { count: failedCount }, lang);
         }
-
-        MassInviteProgressOverlay.showFinalState(finalStatusText, lang);
+        MassInviteProgressOverlay.showFinalState(finalStatusText, lang, {
+            sentCount: successCount,
+            failedCount: failedCount,
+            empty: successCount <= 0,
+            autoReturn: true,
+            sourceAppId: projectId
+        });
 
         if (successCount > 0) {
             renderProjects(true);

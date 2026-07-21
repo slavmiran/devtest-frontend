@@ -1,0 +1,461 @@
+/* Mass Invite WOW — candidate cards, status rings, session strip
+   Uses semantic tokens from css/tokens.css. Do not use --security here. */
+
+/* --- Candidate card --- */
+.mi-candidate-card {
+    --mi-ring: var(--border-strong);
+    --mi-ring-glow: transparent;
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 64px;
+    padding: 2px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: default;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+}
+
+.mi-candidate-card.is-interactive {
+    cursor: pointer;
+}
+
+.mi-candidate-card.is-interactive:active {
+    transform: scale(0.96);
+}
+
+.mi-candidate-pair {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.mi-candidate-avatar-wrap {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    padding: 2px;
+    background:
+        linear-gradient(var(--bg-surface-2), var(--bg-surface-2)) padding-box,
+        conic-gradient(from 210deg, var(--mi-ring), var(--mi-ring)) border-box;
+    border: 2px solid transparent;
+    box-shadow: 0 0 0 0 var(--mi-ring-glow);
+    overflow: hidden;
+    box-sizing: border-box;
+    transition: box-shadow 0.25s ease, background 0.25s ease, transform 0.2s ease;
+}
+
+.mi-candidate-avatar-wrap .avatar,
+.mi-candidate-avatar-wrap img.avatar {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border-radius: 50% !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    object-fit: cover;
+}
+
+.mi-candidate-app {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 7px;
+    overflow: hidden;
+    border: 1.5px solid var(--bg-surface-2);
+    background: var(--bg-surface-3);
+    box-sizing: border-box;
+    z-index: 2;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.mi-candidate-app .avatar,
+.mi-candidate-app img.avatar {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border-radius: inherit !important;
+    margin: 0 !important;
+    font-size: 8px !important;
+    line-height: 17px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    object-fit: cover;
+}
+
+.mi-candidate-label {
+    max-width: 64px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text-tertiary);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mi-candidate-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-on-accent);
+    background: var(--bg-surface-3);
+    border: 1.5px solid var(--bg-surface-2);
+    z-index: 3;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* Status semantics */
+.mi-candidate-card[data-status="selected"] {
+    --mi-ring: var(--text-tertiary);
+}
+
+.mi-candidate-card[data-status="sending"] {
+    --mi-ring: var(--accent-primary);
+    --mi-ring-glow: rgba(76, 141, 255, 0.35);
+}
+
+.mi-candidate-card[data-status="sending"] .mi-candidate-avatar-wrap {
+    animation: miCandidatePulse 1s ease-in-out infinite;
+}
+
+.mi-candidate-card[data-status="sent"] {
+    --mi-ring: var(--success);
+}
+
+.mi-candidate-card[data-status="sent"] .mi-candidate-badge {
+    background: var(--success);
+    color: var(--text-on-accent);
+}
+
+.mi-candidate-card[data-status="accepted"] {
+    --mi-ring: var(--success);
+    --mi-ring-glow: rgba(48, 209, 88, 0.28);
+}
+
+.mi-candidate-card[data-status="accepted"] .mi-candidate-badge {
+    background: var(--success);
+}
+
+.mi-candidate-card[data-status="accepted"] .mi-candidate-label {
+    color: var(--success);
+}
+
+.mi-candidate-card[data-status="rejected"] {
+    --mi-ring: var(--danger);
+}
+
+.mi-candidate-card[data-status="rejected"] .mi-candidate-badge {
+    background: var(--danger);
+}
+
+.mi-candidate-card[data-status="rejected"] .mi-candidate-pair {
+    opacity: 0.72;
+}
+
+.mi-candidate-card[data-status="expired"] {
+    --mi-ring: var(--warning);
+}
+
+.mi-candidate-card[data-status="expired"] .mi-candidate-badge {
+    background: var(--warning);
+    color: var(--text-on-warning);
+}
+
+.mi-candidate-card[data-status="expired"] .mi-candidate-pair {
+    opacity: 0.7;
+}
+
+.mi-candidate-card[data-status="error"],
+.mi-candidate-card[data-status="failed"],
+.mi-candidate-card[data-status="skipped"] {
+    --mi-ring: var(--danger);
+}
+
+.mi-candidate-card[data-status="error"] .mi-candidate-badge,
+.mi-candidate-card[data-status="failed"] .mi-candidate-badge,
+.mi-candidate-card[data-status="skipped"] .mi-candidate-badge {
+    background: var(--danger);
+}
+
+@keyframes miCandidatePulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(76, 141, 255, 0.0);
+    }
+    50% {
+        transform: scale(1.04);
+        box-shadow: 0 0 0 6px rgba(76, 141, 255, 0.12);
+    }
+}
+
+/* --- Horizontal strip --- */
+.mi-candidates-strip {
+    display: none;
+    width: 100%;
+    margin-top: 4px;
+    padding: 8px 2px 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 10px;
+}
+
+.mi-candidates-strip::-webkit-scrollbar {
+    display: none;
+}
+
+.mi-candidates-strip.is-visible {
+    display: flex;
+}
+
+.mi-candidates-strip-inner {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: min-content;
+    padding: 4px 4px 2px;
+}
+
+/* Compact grid variant for many candidates (used later in BottomSheet) */
+.mi-candidates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 10px 8px;
+    width: 100%;
+}
+
+/* Overlay card can grow a bit when strip is shown */
+.mi-progress-card.has-candidates {
+    width: min(94vw, 360px);
+}
+
+.mi-progress-card.has-candidates .mi-progress-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 4px auto 0;
+}
+
+/* --- Phase chrome --- */
+.mi-phase-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.mi-phase-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border-strong);
+    transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.mi-progress-overlay[data-phase="collecting"] .mi-phase-dot[data-phase-dot="collecting"],
+.mi-progress-overlay[data-phase="sending"] .mi-phase-dot[data-phase-dot="sending"],
+.mi-progress-overlay[data-phase="result"] .mi-phase-dot[data-phase-dot="result"] {
+    background: var(--accent-primary);
+    transform: scale(1.25);
+    box-shadow: 0 0 0 4px var(--accent-primary-surface);
+}
+
+.mi-progress-overlay[data-phase="result"] .mi-phase-dot[data-phase-dot="result"] {
+    background: var(--success);
+    box-shadow: 0 0 0 4px var(--success-surface);
+}
+
+.mi-progress-overlay[data-phase="sending"] .mi-progress-spinner {
+    display: none !important;
+}
+
+.mi-progress-overlay[data-phase="result"] .mi-progress-spinner {
+    display: none !important;
+}
+
+.mi-progress-overlay[data-phase="result"] .mi-progress-long-notice {
+    display: none !important;
+}
+
+/* --- Result hero --- */
+.mi-result-hero {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    padding: 8px 0 4px;
+    animation: miResultIn 0.35s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.mi-result-hero.is-visible {
+    display: flex;
+}
+
+.mi-result-count {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--success);
+    text-shadow: 0 0 24px rgba(48, 209, 88, 0.25);
+}
+
+.mi-result-hero.is-empty .mi-result-count {
+    color: var(--text-tertiary);
+    text-shadow: none;
+    font-size: 28px;
+}
+
+.mi-result-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.mi-result-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    min-height: 16px;
+}
+
+.mi-progress-close-btn {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.mi-candidate-card.is-active-send .mi-candidate-avatar-wrap {
+    transform: scale(1.08);
+}
+
+@keyframes miResultIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.mi-progress-card.has-candidates {
+    max-height: min(78vh, 560px);
+}
+
+.mi-progress-overlay[data-phase="sending"] .mi-candidates-strip,
+.mi-progress-overlay[data-phase="result"] .mi-candidates-strip {
+    margin-top: 2px;
+}
+
+
+/* --- Last session block in mass-invite modal --- */
+.mi-session-block {
+    margin-top: 14px;
+    padding: 14px 12px 12px;
+    border-radius: 14px;
+    background: var(--success-surface);
+    border: 1px solid var(--success-border);
+    text-align: left;
+}
+
+.mi-session-block.is-empty {
+    background: var(--bg-surface-muted);
+    border-color: var(--border-subtle);
+}
+
+.mi-session-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.mi-session-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.mi-session-sent {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--success);
+    line-height: 1.1;
+}
+
+.mi-session-stats {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    line-height: 1.35;
+}
+
+.mi-session-timer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--warning);
+    margin-bottom: 10px;
+}
+
+.mi-session-timer.is-done {
+    color: var(--text-tertiary);
+    font-weight: 600;
+}
+
+.mi-session-empty {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    line-height: 1.4;
+}
+
+.mi-session-block .mi-candidates-strip {
+    display: flex;
+    margin-top: 2px;
+    padding: 4px 0 0;
+}
+
+.mass-invite-cooldown-container {
+    margin-top: 14px;
+    text-align: center;
+}
+
+.mass-invite-timer {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--warning);
+    margin-bottom: 8px;
+}
