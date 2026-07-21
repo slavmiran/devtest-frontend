@@ -5603,11 +5603,9 @@ function updateMassInviteModalTimers() {
     if (!project) return;
     var meta = getProjectMassInviteMeta(project);
 
-    var cooldownEl = document.getElementById('mi-cooldown-timer');
-    if (cooldownEl && meta.isCooldownActive) {
-        cooldownEl.textContent = window.t('massInviteCooldownRemaining', {
-            time: formatMassInviteRemaining(meta.remainingMs),
-        }, lang);
+    var cooldownTimeEl = document.getElementById('mi-cooldown-time');
+    if (cooldownTimeEl && meta.isCooldownActive) {
+        cooldownTimeEl.textContent = formatMassInviteRemaining(meta.remainingMs);
     }
 
     var session = _getMassInviteSessionForProject(_massInviteProjectId, project);
@@ -5675,7 +5673,8 @@ function renderMassInviteModalContent() {
         cooldownBlockHtml = `
             <div class="mass-invite-cooldown-container">
                 <div class="mass-invite-timer" id="mi-cooldown-timer">
-                    ${window.escapeHTML(window.t('massInviteCooldownRemaining', { time: remainingTime }, lang))}
+                    <span class="mass-invite-cooldown-label">${window.escapeHTML(window.t('massInviteCooldownRemainingLabel', {}, lang))}</span>
+                    <span class="mass-invite-cooldown-time" id="mi-cooldown-time">${window.escapeHTML(remainingTime)}</span>
                 </div>
                 <div class="mass-invite-hint" style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">
                     ${window.escapeHTML(window.t('massInviteCooldownManualHint', {}, lang))}

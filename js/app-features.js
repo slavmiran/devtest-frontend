@@ -1811,9 +1811,12 @@ var MassInviteProgressOverlay = (function () {
     var _rotateInterval = null;
     var _longTimer = null;
     var _returnTimer = null;
+    var _autoCloseInterval = null;
+    var _autoCloseEndsAt = 0;
     var _currentIndex = 0;
     var _phase = 'collecting';
     var _sourceAppId = 0;
+    var RESULT_AUTO_CLOSE_MS = 120000;
     var COLLECT_STATUS_KEYS = [
         'massInviteProgressStatus1',
         'massInviteProgressStatus2',
@@ -1825,10 +1828,56 @@ var MassInviteProgressOverlay = (function () {
         return key;
     }
 
+    function _formatAutoClose(ms) {
+        var totalSec = Math.max(0, Math.ceil(ms / 1000));
+        var mins = Math.floor(totalSec / 60);
+        var secs = totalSec % 60;
+        return mins + ':' + (secs < 10 ? '0' : '') + secs;
+    }
+
+    function _setAutoCloseVisible(visible, currentLang) {
+        var box = document.getElementById('mi-auto-close');
+        var labelEl = document.getElementById('mi-auto-close-label');
+        var timeEl = document.getElementById('mi-auto-close-time');
+        if (!box) return;
+        if (!visible) {
+            box.hidden = true;
+            if (timeEl) timeEl.textContent = '';
+            return;
+        }
+        box.hidden = false;
+        if (labelEl) labelEl.textContent = _t('massInviteAutoCloseHint', {}, currentLang);
+        if (timeEl) timeEl.textContent = _formatAutoClose(_autoCloseEndsAt - Date.now());
+    }
+
+    function _clearAutoClose() {
+        if (_autoCloseInterval !== null) {
+            clearInterval(_autoCloseInterval);
+            _autoCloseInterval = null;
+        }
+        _autoCloseEndsAt = 0;
+        _setAutoCloseVisible(false);
+    }
+
+    function _startAutoClose(currentLang) {
+        _clearAutoClose();
+        _autoCloseEndsAt = Date.now() + RESULT_AUTO_CLOSE_MS;
+        _setAutoCloseVisible(true, currentLang);
+        _autoCloseInterval = setInterval(function () {
+            var remaining = _autoCloseEndsAt - Date.now();
+            var timeEl = document.getElementById('mi-auto-close-time');
+            if (timeEl) timeEl.textContent = _formatAutoClose(remaining);
+            if (remaining <= 0) {
+                finishAndReturn();
+            }
+        }, 250);
+    }
+
     function _clearTimers() {
         if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
         if (_longTimer !== null) { clearTimeout(_longTimer); _longTimer = null; }
         if (_returnTimer !== null) { clearTimeout(_returnTimer); _returnTimer = null; }
+        _clearAutoClose();
     }
 
     function _setStatus(text, fade) {
@@ -2014,12 +2063,10 @@ var MassInviteProgressOverlay = (function () {
             closeBtn.textContent = _t('inviteClose', {}, currentLang);
         }
 
-        // Soft auto-return to BottomSheet / modal after a short WOW beat.
+        // Keep result phase open with a clear 2-minute auto-close countdown.
+        // Waiting is optional — blast is already finished.
         if (info.autoReturn !== false) {
-            if (_returnTimer !== null) clearTimeout(_returnTimer);
-            _returnTimer = setTimeout(function () {
-                finishAndReturn();
-            }, info.empty ? 1600 : 2200);
+            _startAutoClose(currentLang);
         }
     }
 
@@ -2028,6 +2075,7 @@ var MassInviteProgressOverlay = (function () {
             clearTimeout(_returnTimer);
             _returnTimer = null;
         }
+        _clearAutoClose();
         var projectId = _sourceAppId;
         hide();
         // Prefer refreshing the mass-invite modal if it is still open.
@@ -2190,8 +2238,17 @@ async function startMassInvite(projectId) {
                         });
                     }
                     if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                        var cardStatus = (sendData.outcome === 'auto_accepted') ? 'accepted' : 'sent';
-                        MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, cardStatus);
+                        if (sendData.outcome === 'auto_accepted') {
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'accepted');
+                        } else {
+                            // Brief green "delivered" flash, then yellow waiting ring.
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'delivered');
+                            (function (ownerId) {
+                                setTimeout(function () {
+                                    MassInviteProgressOverlay.setCandidateStatus(ownerId, 'sent');
+                                }, 700);
+                            })(candidate.owner_id);
+                        }
                     }
                 } else {
                     failedCount++;

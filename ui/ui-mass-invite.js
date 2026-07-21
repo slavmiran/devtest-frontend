@@ -7,7 +7,8 @@
     var STATUS_I18N = {
         selected: 'massInviteStatusSelected',
         sending: 'massInviteStatusSending',
-        sent: 'massInviteStatusSent',
+        delivered: 'massInviteStatusSent',
+        sent: 'massInviteStatusWaiting',
         accepted: 'massInviteStatusAccepted',
         rejected: 'massInviteStatusRejected',
         expired: 'massInviteStatusExpired',
@@ -19,7 +20,8 @@
     var STATUS_BADGE = {
         selected: '',
         sending: '…',
-        sent: '✓',
+        delivered: '✓',
+        sent: '…',
         accepted: '✓',
         rejected: '✕',
         expired: '⏱',

@@ -143,13 +143,30 @@
     animation: miCandidatePulse 1s ease-in-out infinite;
 }
 
-.mi-candidate-card[data-status="sent"] {
+/* Brief "message delivered" flash during live send */
+.mi-candidate-card[data-status="delivered"] {
     --mi-ring: var(--success);
+    --mi-ring-glow: rgba(48, 209, 88, 0.28);
+}
+
+.mi-candidate-card[data-status="delivered"] .mi-candidate-badge {
+    background: var(--success);
+    color: var(--text-on-accent);
+}
+
+/* Waiting for reply — warning/neutral, not the same as accepted */
+.mi-candidate-card[data-status="sent"] {
+    --mi-ring: var(--warning);
+    --mi-ring-glow: rgba(255, 159, 10, 0.22);
 }
 
 .mi-candidate-card[data-status="sent"] .mi-candidate-badge {
-    background: var(--success);
+    background: var(--warning);
     color: var(--text-on-accent);
+}
+
+.mi-candidate-card[data-status="sent"] .mi-candidate-label {
+    color: var(--warning);
 }
 
 .mi-candidate-card[data-status="accepted"] {
@@ -381,8 +398,8 @@
     margin-top: 14px;
     padding: 14px 12px 12px;
     border-radius: 14px;
-    background: var(--success-surface);
-    border: 1px solid var(--success-border);
+    background: var(--bg-surface-muted);
+    border: 1px solid var(--border-subtle);
     text-align: left;
 }
 
@@ -409,7 +426,7 @@
     font-size: 22px;
     font-weight: 800;
     letter-spacing: -0.02em;
-    color: var(--success);
+    color: var(--text-primary);
     line-height: 1.1;
 }
 
@@ -454,8 +471,45 @@
 }
 
 .mass-invite-timer {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.mass-invite-cooldown-time {
     font-size: 16px;
     font-weight: 700;
     color: var(--warning);
-    margin-bottom: 8px;
+    white-space: nowrap;
+}
+
+.mi-auto-close {
+    margin-top: 14px;
+    padding: 12px 12px 10px;
+    border-radius: 12px;
+    background: var(--bg-surface-muted);
+    border: 1px solid var(--border-subtle);
+    text-align: center;
+}
+
+.mi-auto-close[hidden] {
+    display: none !important;
+}
+
+.mi-auto-close-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 6px;
+}
+
+.mi-auto-close-time {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
 }
