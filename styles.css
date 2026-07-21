@@ -241,11 +241,18 @@
     padding: 0 0 8px 0;
 }
 
+/* Done-today can have many tall cards; 5000px was clipping ~17–18th item. */
+#done-section.accordion.active {
+    overflow: visible;
+}
+
 #done-section.accordion.active .accordion-content.done-today-scroll {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 12px;
+    padding: 12px 12px calc(24px + env(safe-area-inset-bottom, 0px));
+    max-height: none;
+    overflow: visible;
 }
 
 .accordion-icon {
