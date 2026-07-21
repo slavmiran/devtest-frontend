@@ -259,6 +259,8 @@ Object.assign(window, {
     saveProject,
     confirmEmailWarning,
     saveProjectEdit,
+    confirmRestartFromSettings,
+    restartArchivedProject,
     openProjectTransferModal,
     closeProjectTransferModal,
     resetProjectTransferRecipient,

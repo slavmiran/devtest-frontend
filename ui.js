@@ -72,6 +72,8 @@ Object.assign(window, {
     closeEmailWarningModal,
     showReadonlyAlert,
     openEditModal,
+    openRestartArchivedModal,
+    isEditModalRestartMode,
     closeEditModal,
     openImageZoom,
     closeImageZoom,

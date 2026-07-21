@@ -3066,7 +3066,7 @@ async function generateProjectTransferLink() {
     }
 }
 
-async function restartArchivedProject(appId) {
+async function restartArchivedProject(appId, settingsPayload) {
     var normalizedAppId = Number(appId || 0);
     if (!normalizedAppId || !userId) return null;
 
@@ -3074,12 +3074,14 @@ async function restartArchivedProject(appId) {
     if (_pendingActions.has(actionKey)) return null;
     _pendingActions.add(actionKey);
 
+    var requestBody = Object.assign({ owner_id: userId }, settingsPayload || {});
+
     _apiStart();
     try {
         const response = await fetch(`${API_BASE}/apps/${normalizedAppId}/restart`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId })
+            body: JSON.stringify(requestBody)
         });
         const result = await response.json();
         if (!response.ok || result.status !== 'success') {

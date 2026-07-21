@@ -2890,6 +2890,9 @@ async function doSaveProject(projectData) {
 
 async function saveProjectEdit() {
     if (!projectToEdit) return;
+    if (typeof window.isEditModalRestartMode === 'function' && window.isEditModalRestartMode()) {
+        return confirmRestartFromSettings();
+    }
     const name = document.getElementById('edit-name').value.trim();
     const instructions = document.getElementById('edit-description').value.trim();
     const iconUrl = document.getElementById('edit-icon').value.trim();
@@ -3021,6 +3024,122 @@ async function saveProjectEdit() {
         editBtn.disabled = false;
         if (typeof window.updateEditSaveButtonState === 'function') {
             window.updateEditSaveButtonState();
+        }
+    }
+}
+
+function _buildRestartSettingsPayload() {
+    const name = document.getElementById('edit-name').value.trim();
+    const instructions = document.getElementById('edit-description').value.trim();
+    const iconUrl = document.getElementById('edit-icon').value.trim();
+    const accessPayload = (window.AccessSetupManager && typeof window.AccessSetupManager.getEditPayload === 'function')
+        ? window.AccessSetupManager.getEditPayload()
+        : null;
+    const accessMode = accessPayload ? String(accessPayload.mode || '') : '';
+    const fallbackEditEmailMode = !!(window.editProjectFlow && window.editProjectFlow.emailMode);
+    const fallbackGroupUrl = fallbackEditEmailMode ? '' : document.getElementById('edit-group').value.trim();
+    const editEmailMode = accessPayload ? (String(accessPayload.test_mode || '') === 'email_list') : fallbackEditEmailMode;
+    const googleGroupUrl = accessPayload
+        ? String(accessPayload.google_group_url || '').trim()
+        : fallbackGroupUrl;
+    const targetLang = (document.getElementById('edit-target-lang').value || 'ALL').toUpperCase();
+    const requestReviews = !!(document.getElementById('edit-request-reviews') && document.getElementById('edit-request-reviews').checked);
+    const pricingPayload = buildProjectPricingPayload('edit');
+    if (!pricingPayload) return null;
+
+    if (!name) {
+        if (tg.showAlert) tg.showAlert(t.fillFields);
+        else alert(t.fillFields);
+        return null;
+    }
+
+    if (accessPayload && !accessPayload.canSave) {
+        _saveProjectAlert(window.t('completeChecklistError', {}, lang));
+        if (typeof window.updateEditSaveButtonState === 'function') {
+            window.updateEditSaveButtonState();
+        }
+        return null;
+    }
+
+    if (accessMode === 'custom_group' && !googleGroupUrl) {
+        _saveProjectAlert(window.t('customGroupRequired', {}, lang));
+        return null;
+    }
+
+    if (!editEmailMode && googleGroupUrl && !isValidGoogleGroupUrl(googleGroupUrl)) {
+        handleApiError('invalid_google_group_url');
+        return null;
+    }
+
+    const resolvedGoogleGroupUrl = editEmailMode
+        ? null
+        : (accessMode === 'custom_group'
+            ? googleGroupUrl
+            : (window.DEFAULT_GOOGLE_GROUP_URL || googleGroupUrl));
+
+    const pricingState = getProjectPricingState('edit');
+    const totalCost = (pricingState.mode === 'bounty' || pricingState.mode === 'hybrid')
+        ? (pricingState.limitBounty * pricingState.bountyPerTester)
+        : 0;
+    const currentBalance = visibilityStats && typeof visibilityStats.balance_bust !== 'undefined'
+        ? Number(visibilityStats.balance_bust || 0)
+        : 0;
+    if (totalCost > 0 && currentBalance < totalCost) {
+        handleApiError('insufficient_bust_balance', {
+            balance: currentBalance,
+            balance_bust: currentBalance,
+            required: totalCost,
+            missing: Math.max(0, totalCost - currentBalance),
+        });
+        return null;
+    }
+
+    return {
+        name,
+        instructions: instructions || null,
+        icon_url: iconUrl || null,
+        google_group_url: resolvedGoogleGroupUrl,
+        test_mode: editEmailMode ? 'email_list' : 'google_group',
+        target_lang: targetLang,
+        request_reviews: requestReviews,
+        ...pricingPayload,
+    };
+}
+
+async function confirmRestartFromSettings() {
+    if (!projectToEdit) return null;
+    const settingsPayload = _buildRestartSettingsPayload();
+    if (!settingsPayload) return null;
+
+    const editBtn = document.getElementById('t-editSave');
+    const originalText = editBtn ? editBtn.innerText : '';
+    if (editBtn) {
+        editBtn.innerText = '...';
+        editBtn.disabled = true;
+    }
+
+    try {
+        const result = await restartArchivedProject(projectToEdit, settingsPayload);
+        if (result && result.status === 'success') {
+            if (typeof window.markEditModalSavedState === 'function') {
+                window.markEditModalSavedState();
+            }
+            if (typeof window.closeEditUnsavedModal === 'function') {
+                window.closeEditUnsavedModal();
+            }
+            if (typeof window.consumeEditSaveAndCloseRequest === 'function') {
+                window.consumeEditSaveAndCloseRequest();
+            }
+            closeEditModal(null, { force: true });
+        }
+        return result;
+    } finally {
+        if (editBtn) {
+            editBtn.innerText = originalText || window.t('archiveRestartConfirmBtn', {}, lang);
+            editBtn.disabled = false;
+            if (typeof window.updateEditSaveButtonState === 'function') {
+                window.updateEditSaveButtonState();
+            }
         }
     }
 }

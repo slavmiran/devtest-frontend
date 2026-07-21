@@ -2007,7 +2007,7 @@ function renderArchivedProjects(force) {
                     <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
                 </div>
                 <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="restartArchivedProject(${project.app_id})">
+                    <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="openRestartArchivedModal(${project.app_id})">
                         ${window.escapeHTML(t.archiveRestartBtn)}
                     </button>
                     <button class="btn btn-secondary archive-transfer-btn" style="width: 100%;" onclick="openProjectTransferModal(${project.app_id})">
@@ -3610,6 +3610,76 @@ function showReadonlyAlert() {
 
 var _editModalSnapshot = null;
 var _editSaveAndCloseRequested = false;
+var _editModalRestartMode = false;
+
+function isEditModalRestartMode() {
+    return !!_editModalRestartMode;
+}
+
+function _mapArchivedProjectForEdit(archived) {
+    if (!archived) return null;
+    return {
+        id: Number(archived.app_id || 0),
+        name: archived.name || '',
+        package: archived.package_name || '',
+        instructions: archived.instructions || '',
+        icon_url: archived.icon_url || '',
+        google_group_url: archived.google_group_url || '',
+        mode: archived.mode || 'mutual',
+        target_lang: archived.target_lang || 'ALL',
+        limit_mutual: archived.limit_mutual || 12,
+        limit_bounty: archived.limit_bounty || 12,
+        bounty_per_tester: archived.bounty_per_tester || 100,
+        request_reviews: archived.request_reviews !== false,
+        test_mode: archived.test_mode || 'google_group',
+        accepts_email_testers: !!archived.accepts_email_testers,
+        is_setup_completed: true,
+    };
+}
+
+function _applyEditModalRestartChrome(isRestart) {
+    var titleEl = document.getElementById('t-editProjectTitle');
+    var hintEl = document.getElementById('t-editModeHint');
+    var saveBtn = document.getElementById('t-editSave');
+    var transferBtn = document.querySelector('#edit-project-modal .transfer-trigger-btn');
+    var createdAtEl = document.getElementById('edit-created-at');
+
+    if (titleEl) {
+        titleEl.textContent = isRestart
+            ? window.t('archiveRestartSettingsTitle', {}, lang)
+            : window.t('editProjectTitle', {}, lang);
+    }
+    if (hintEl) {
+        hintEl.textContent = isRestart
+            ? window.t('archiveRestartModeHint', {}, lang)
+            : window.t('editModeHint', {}, lang);
+    }
+    if (saveBtn) {
+        saveBtn.textContent = isRestart
+            ? window.t('archiveRestartConfirmBtn', {}, lang)
+            : window.t('save', {}, lang);
+    }
+    if (transferBtn) {
+        transferBtn.style.display = isRestart ? 'none' : '';
+    }
+    if (createdAtEl && isRestart) {
+        createdAtEl.textContent = window.t('archiveRestartSettingsIntro', {}, lang);
+        createdAtEl.style.opacity = '1';
+    }
+}
+
+function openRestartArchivedModal(appId) {
+    var archived = (archivedProjects || []).find(function(item) {
+        return Number(item.app_id) === Number(appId);
+    });
+    if (!archived) {
+        showToast(window.t('app_not_found', {}, lang));
+        return;
+    }
+    var project = _mapArchivedProjectForEdit(archived);
+    if (!project || !project.id) return;
+    openEditModal(project.id, { restartMode: true, project: project });
+}
 
 function _captureEditModalSnapshot() {
     return {
@@ -3673,8 +3743,10 @@ function discardEditAndClose() {
 }
 
 function openEditModal(projectId, options) {
-    const project = myProjects.find((item) => item.id === projectId);
+    options = options || {};
+    const project = options.project || myProjects.find((item) => item.id === projectId);
     if (!project) return;
+    _editModalRestartMode = !!options.restartMode;
     projectToEdit = projectId;
     document.getElementById('edit-name').value = project.name || '';
     document.getElementById('edit-description').value = project.instructions || '';
@@ -3709,7 +3781,10 @@ function openEditModal(projectId, options) {
     setProjectTargetLang('edit', project.target_lang || 'ALL');
     renderEditAccessSetup();
     updateProjectPricing('edit');
-    renderEditCreatedAtMeta();
+    if (!_editModalRestartMode) {
+        renderEditCreatedAtMeta();
+    }
+    _applyEditModalRestartChrome(_editModalRestartMode);
     _editSaveAndCloseRequested = false;
     markEditModalSavedState();
     document.getElementById('edit-project-modal').classList.add('active');
@@ -3761,6 +3836,8 @@ function closeEditModal(event) {
         projectToEdit = null;
         _editModalSnapshot = null;
         _editSaveAndCloseRequested = false;
+        _editModalRestartMode = false;
+        _applyEditModalRestartChrome(false);
         if (window.editProjectFlow) window.editProjectFlow.emailMode = false;
         renderEditAccessSetup();
         resetProjectForms();
