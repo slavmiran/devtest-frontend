@@ -3651,8 +3651,10 @@ function _clearIssueReportVerificationTimer() {
 
 function _renderIssueReportVerificationTimer() {
     const timer = document.getElementById('issue-report-verification-timer');
+    const countdownEl = document.getElementById('issue-report-verification-countdown');
+    const titleEl = document.getElementById('issue-report-verification-timer-title');
     const timerText = document.getElementById('issue-report-verification-timer-text');
-    if (!timer || !timerText) return false;
+    if (!timer || !countdownEl || !timerText) return false;
 
     const test = _getIssueReportTest(_issueReportAppId);
     const createdAt = test && test.created_at ? new Date(test.created_at).getTime() : NaN;
@@ -3662,12 +3664,21 @@ function _renderIssueReportVerificationTimer() {
 
     if (remainingMs <= 0) {
         timer.hidden = true;
+        countdownEl.textContent = '';
+        if (titleEl) titleEl.textContent = '';
         timerText.textContent = '';
         return false;
     }
 
-    const minutes = Math.max(1, Math.ceil(remainingMs / 60000));
-    timerText.textContent = window.t('reportIssueVerificationTimer', { minutes: minutes }, lang);
+    const totalSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const timeLabel = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+    countdownEl.textContent = timeLabel;
+    if (titleEl) {
+        titleEl.textContent = window.t('reportIssueVerificationTitle', {}, lang);
+    }
+    timerText.textContent = window.t('reportIssueVerificationTimer', { time: timeLabel }, lang);
     timer.hidden = false;
     return true;
 }

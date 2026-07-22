@@ -124,20 +124,80 @@
 
 .issue-report-verification-timer {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-top: 12px;
-    padding: 10px 11px;
-    border-radius: 11px;
-    color: #d8bf92;
-    background: rgba(255, 184, 77, 0.06);
-    border: 1px solid rgba(255, 184, 77, 0.14);
-    font-size: 12px;
-    line-height: 1.45;
+    align-items: center;
+    gap: 12px;
+    margin: 0 14px 14px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    color: #ffe0a3;
+    background:
+        linear-gradient(135deg, rgba(255, 149, 0, 0.16), rgba(255, 59, 48, 0.10));
+    border: 1px solid rgba(255, 149, 0, 0.42);
+    box-shadow:
+        0 0 0 1px rgba(255, 149, 0, 0.12),
+        0 0 18px rgba(255, 149, 0, 0.18);
+    animation: issue-report-timer-glow 1.8s ease-in-out infinite;
 }
 
 .issue-report-verification-timer[hidden] {
     display: none;
+}
+
+.issue-report-verification-timer__clock {
+    flex: 0 0 auto;
+    min-width: 72px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    color: #fff4d6;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 184, 77, 0.55);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.issue-report-verification-timer__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.issue-report-verification-timer__copy strong {
+    color: #ffd27a;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.issue-report-verification-timer__copy span {
+    color: rgba(255, 236, 198, 0.88);
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+@keyframes issue-report-timer-glow {
+    0%, 100% {
+        box-shadow:
+            0 0 0 1px rgba(255, 149, 0, 0.14),
+            0 0 12px rgba(255, 149, 0, 0.16);
+        border-color: rgba(255, 149, 0, 0.38);
+    }
+    50% {
+        box-shadow:
+            0 0 0 1px rgba(255, 149, 0, 0.28),
+            0 0 22px rgba(255, 149, 0, 0.34);
+        border-color: rgba(255, 184, 77, 0.7);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .issue-report-verification-timer {
+        animation: none;
+    }
 }
 
 .issue-checklist {
