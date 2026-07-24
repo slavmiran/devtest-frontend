@@ -4644,17 +4644,26 @@ a.contribution-lb-name:active {
     margin: 0 0 12px;
     padding: 10px 12px;
     border-radius: 12px;
-    background: rgba(76, 175, 80, 0.16);
-    border: 1px solid rgba(76, 175, 80, 0.35);
-    color: var(--text-color);
+    background: rgba(99, 161, 255, 0.16);
+    border: 1px solid rgba(99, 161, 255, 0.35);
+    color: #63a1ff;
     font-size: 13px;
     font-weight: 700;
     text-align: center;
 }
 
+.btn-bust,
 .contribution-claim-btn {
     width: 100%;
     margin-top: 2px;
+    background: rgba(99, 161, 255, 0.22);
+    color: #63a1ff;
+    border: 1px solid rgba(99, 161, 255, 0.45);
+}
+
+.btn-bust:active,
+.contribution-claim-btn:active {
+    opacity: 0.85;
 }
 
 .contribution-claimed-badge,

@@ -1013,6 +1013,7 @@ function handleApiError(code, details = {}) {
         owner_has_access_issue: 'ownerAccessIssueBlockToast',
         email_required: 'reportIssueEmailRequired',
         access_checklist_required: 'reportIssueChecklistIncomplete',
+        auto_accept_reliability_required: 'auto_accept_reliability_required',
     };
 
     var normalizedCode = String(code || '').trim();

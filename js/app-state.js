@@ -116,6 +116,7 @@
         _reliabilityBreakdownLoadError: false,
         _pendingActions: new Set(),
         _autoAcceptMutualEnabled: false,
+        _autoAcceptMutualAvailable: false,
         _autoAcceptToggleInFlight: false,
         _attachDeviceInfoToBugs: true,
         _deviceInfo: '',

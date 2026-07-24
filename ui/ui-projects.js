@@ -849,7 +849,15 @@ function openKickTesterModal(appId, testerId, event) {
     if (!project || !tester) return;
 
     const testingDays = tester.start_date ? getUserTestingDay(tester.start_date) : 0;
-    const skipsCount = Math.max(0, Number(tester.skips_count || 0));
+    const checkinCount = Number(tester.checkins_count || 0);
+    // Live skips (same formula as dossier) — never trust stale tester.skips_count alone.
+    const lastCheck = String(tester.last_check_date || '').trim();
+    const todayIso = (typeof getLocalDateIso === 'function')
+        ? getLocalDateIso()
+        : new Date().toISOString().slice(0, 10);
+    const checkedToday = !!lastCheck && lastCheck === todayIso;
+    const realizedDays = checkedToday ? testingDays : Math.max(0, testingDays - 1);
+    const skipsCount = Math.max(0, Math.min(14, realizedDays) - Math.min(14, checkinCount));
     const joinType = String(tester.join_type || 'invite').toLowerCase();
     if (testingDays > 7) {
         if (tg.showAlert) tg.showAlert(window.t('kickBlockedDesc', {}, lang));
@@ -861,7 +869,7 @@ function openKickTesterModal(appId, testerId, event) {
     const holdBonus = bountyPerTester > 0 ? bountyPerTester * 0.35 : 0;
     const dailyPool = bountyPerTester > 0 ? bountyPerTester * 0.65 : 0;
     const rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
-    const dailyBurn = Math.max(0, dailyPool - (Number(tester.checkins_count || 0) * rewardPerCheckin));
+    const dailyBurn = Math.max(0, dailyPool - (checkinCount * rewardPerCheckin));
     const isDisciplinaryKick = skipsCount >= 3;
     const isBountyJoin = joinType === 'bounty' && bountyPerTester > 0;
     const joinTypeLabelKey = joinType === 'bounty'
@@ -871,7 +879,6 @@ function openKickTesterModal(appId, testerId, event) {
             : 'kickJoinTypeInvite';
 
     // Grace period: 24h from join date, 0 checkins
-    const checkinCount = Number(tester.checkins_count || 0);
     let graceTimerHtml = '';
     let _kickGraceEnd = 0;
     if (checkinCount === 0 && tester.start_date) {

@@ -4022,7 +4022,7 @@ async function openLeaveMutualModal(appId, event) {
 
         _leaveMutualStats = data;
         const justifiedAllowed = !!data.partner_left || Number(data.partner_skips || 0) >= 3;
-        const karmaBurn = Math.min(14, Number(data.my_testing_days || 0)) * 0.1;
+        const karmaBurn = Math.min(14, Number(data.my_checkins != null ? data.my_checkins : data.my_testing_days || 0)) * 0.1;
         const partnerLabel = data.partner_username
             ? window.t('leavePartnerUsername', { username: (data.partner_username || '').replace('@', '') }, lang)
             : window.t('idLabel', { id: data.partner_id || 0 }, lang);
@@ -6277,7 +6277,7 @@ function _renderContributionHistoryTab(payload) {
             if (claimStatus === 'available' && prize > 0) {
                 rightHtml = `
                     <button type="button"
-                            class="btn btn-success contribution-claim-btn contribution-claim-btn--compact"
+                            class="btn btn-bust contribution-claim-btn contribution-claim-btn--compact"
                             data-season-id="${_escContribution(seasonId)}"
                             onclick="claimContributionPrizeFromUi(${seasonId}, this)">
                         ${window.t('contributionClaimBtnShort', { amount: prizeLabel }, lang)}
@@ -6423,7 +6423,7 @@ async function _loadContributionHistoryTab() {
     return false;
 }
 
-async function showContributionInfo() {
+async function showContributionInfo(options) {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
     const modal = document.getElementById('contribution-info-modal');
@@ -6434,11 +6434,18 @@ async function showContributionInfo() {
         return;
     }
 
+    const opts = options || {};
+    const initialTab = opts.tab === 'history' ? 'history' : 'current';
+
     _contributionHistoryCache = null;
-    switchContributionTab('current');
+    switchContributionTab(initialTab);
     modal.classList.add('active');
 
-    await _loadContributionCurrentTab();
+    if (initialTab === 'history') {
+        await _loadContributionHistoryTab();
+    } else {
+        await _loadContributionCurrentTab();
+    }
 }
 
 async function claimContributionPrizeFromUi(seasonId, buttonEl) {

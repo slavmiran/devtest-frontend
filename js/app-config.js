@@ -682,6 +682,7 @@ var _reliabilityBreakdownLoadError = false;
 
 var _pendingActions = new Set();
 var _autoAcceptMutualEnabled = false;
+var _autoAcceptMutualAvailable = false;
 var _autoAcceptToggleInFlight = false;
 var _attachDeviceInfoToBugs = false;
 var _deviceInfo = '';
@@ -835,6 +836,7 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_reliabilityBreakdownLoadError', function () { return _reliabilityBreakdownLoadError; }, function (value) { _reliabilityBreakdownLoadError = value; });
     window.App.bindStateProperty('_pendingActions', function () { return _pendingActions; }, function (value) { _pendingActions = value; });
     window.App.bindStateProperty('_autoAcceptMutualEnabled', function () { return _autoAcceptMutualEnabled; }, function (value) { _autoAcceptMutualEnabled = value; });
+    window.App.bindStateProperty('_autoAcceptMutualAvailable', function () { return _autoAcceptMutualAvailable; }, function (value) { _autoAcceptMutualAvailable = value; });
     window.App.bindStateProperty('_autoAcceptToggleInFlight', function () { return _autoAcceptToggleInFlight; }, function (value) { _autoAcceptToggleInFlight = value; });
     window.App.bindStateProperty('_pendingInitialHighlightTestId', function () { return _pendingInitialHighlightTestId; }, function (value) { _pendingInitialHighlightTestId = value; });
     window.App.bindStateProperty('_highlightTestTimerId', function () { return _highlightTestTimerId; }, function (value) { _highlightTestTimerId = value; });
@@ -1099,6 +1101,10 @@ function _parseInitialRouteTarget() {
         if (normalized === 'invite_links' || normalized === 'invitelinks') {
             routeKind = 'invite_links';
         }
+        if (normalized === 'contribution_history' || normalized === 'contribution-history' || normalized === 'contribution_claim' || normalized === 'contribution-claim') {
+            routeKind = 'contribution_history';
+            break;
+        }
         if (normalized === 'contribution' || normalized === 'sprint' || normalized === 'contribution_pool') {
             routeKind = 'contribution';
             break;
@@ -1178,6 +1184,16 @@ function _parseInitialRouteTarget() {
             tab: 'projects',
             openFeedback: false,
             openContribution: true,
+            contributionTab: 'current',
+            appId: null,
+        };
+    }
+    if (routeKind === 'contribution_history') {
+        return {
+            tab: 'projects',
+            openFeedback: false,
+            openContribution: true,
+            contributionTab: 'history',
             appId: null,
         };
     }
@@ -1356,7 +1372,9 @@ async function _handleInitialRoute() {
             showTgDeeplinkLoader('contribution');
             switchTab('projects');
             if (typeof window.showContributionInfo === 'function') {
-                await window.showContributionInfo();
+                await window.showContributionInfo({
+                    tab: route.contributionTab === 'history' ? 'history' : 'current',
+                });
             }
             _clearStartappQueryParam();
         } catch (error) {

@@ -1462,6 +1462,12 @@ async function loadUserProfilePreferences() {
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var profile = await response.json();
         _autoAcceptMutualEnabled = !!profile.auto_accept_mutual;
+        _autoAcceptMutualAvailable = (typeof profile.auto_accept_available === 'undefined')
+            ? true
+            : !!profile.auto_accept_available;
+        if (!_autoAcceptMutualAvailable) {
+            _autoAcceptMutualEnabled = false;
+        }
         syncAutoAcceptToggleUi();
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
         if (typeof applyDeviceInfoFromProfile === 'function') {

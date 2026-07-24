@@ -144,18 +144,40 @@ function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
 function syncAutoAcceptToggleUi() {
     var toggle = document.getElementById('auto-accept-mutual-toggle');
     if (!toggle) return;
-    toggle.checked = !!_autoAcceptMutualEnabled;
-    toggle.disabled = !!_autoAcceptToggleInFlight;
+    var available = (typeof _autoAcceptMutualAvailable === 'undefined')
+        ? true
+        : !!_autoAcceptMutualAvailable;
+    toggle.checked = !!_autoAcceptMutualEnabled && available;
+    toggle.disabled = !!_autoAcceptToggleInFlight || !available;
+    var meta = document.querySelector('[data-i18n="autoAcceptMutualMeta"]');
+    if (meta && !available) {
+        meta.textContent = window.t('autoAcceptMutualLockedMeta', {}, lang);
+    } else if (meta && available) {
+        meta.textContent = window.t('autoAcceptMutualMeta', {}, lang);
+    }
 }
 
 function showAutoAcceptMutualInfo() {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    showToast(window.t('autoAcceptMutualInfoToast', {}, lang));
+    var available = (typeof _autoAcceptMutualAvailable === 'undefined')
+        ? true
+        : !!_autoAcceptMutualAvailable;
+    showToast(window.t(available ? 'autoAcceptMutualInfoToast' : 'autoAcceptMutualLockedToast', {}, lang));
 }
 
 async function handleAutoAcceptMutualToggle(input) {
     if (!input || _autoAcceptToggleInFlight) {
         syncAutoAcceptToggleUi();
+        return;
+    }
+
+    var available = (typeof _autoAcceptMutualAvailable === 'undefined')
+        ? true
+        : !!_autoAcceptMutualAvailable;
+    if (!!input.checked && !available) {
+        input.checked = false;
+        syncAutoAcceptToggleUi();
+        showToast(window.t('autoAcceptMutualLockedToast', {}, lang));
         return;
     }
 
@@ -180,12 +202,18 @@ async function handleAutoAcceptMutualToggle(input) {
         var result = await response.json();
         if (!response.ok || result.status !== 'success') {
             _autoAcceptMutualEnabled = previousValue;
+            if (typeof result.auto_accept_available !== 'undefined') {
+                _autoAcceptMutualAvailable = !!result.auto_accept_available;
+            }
             syncAutoAcceptToggleUi();
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
 
         _autoAcceptMutualEnabled = !!result.auto_accept_mutual;
+        if (typeof result.auto_accept_available !== 'undefined') {
+            _autoAcceptMutualAvailable = !!result.auto_accept_available;
+        }
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
         syncAutoAcceptToggleUi();
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
