@@ -1102,35 +1102,96 @@ function _calcProtectionCost(gapDays, alreadyPaidDays) {
 }
 
 /**
- * Paints the free Safety Buffer band on the PPC slider track.
- * Band starts at the thumb and grows/shrinks to the right as the gap changes —
- * never a fixed “platform-day − 2” strip that stays behind when dragging left.
+ * Geometry of the free Safety Buffer on the PPC slider.
+ * Home slot = [platformDay − remainingDays … platformDay].
+ * While the thumb is inside/right of home: band stays home (muted under green,
+ * solid after the thumb). Past home to the left: band attaches to the thumb
+ * as a +remainingDays tail.
  */
-function _ppcUpdateBufferBand(slider, track, googleDay, platformDay, remainingBufferHours) {
-    if (!slider || !track) return;
-    const band = track.querySelector('.ppc-buffer-band');
-    if (!band) return;
-
-    const sliderMin = Number(slider.min);
-    const sliderMax = Number(slider.max);
+function _ppcBufferGeometry(googleDay, platformDay, remainingBufferHours, sliderMin, sliderMax) {
     const sliderRange = sliderMax - sliderMin;
     const dayToFraction = (day) => sliderRange > 0
         ? Math.max(0, Math.min(1, (day - sliderMin) / sliderRange))
         : 1;
 
-    const gapDays = Math.max(0, platformDay - googleDay);
     const remainingDays = Math.max(0, remainingBufferHours / 24);
-    // Only the free part of the current gap, starting from the thumb
-    const coveredDays = Math.min(gapDays, remainingDays);
-    const startF = dayToFraction(googleDay);
-    const endF = dayToFraction(googleDay + coveredDays);
-    const visible = coveredDays > 0.001 && (endF - startF) > 0.001;
+    if (remainingDays < 0.001 || sliderRange <= 0) {
+        return { visible: false, attached: false, startF: 0, endF: 0, revealPct: 100 };
+    }
 
-    band.style.setProperty('--ppc-buffer-start', startF.toFixed(4));
-    band.style.setProperty('--ppc-buffer-end', endF.toFixed(4));
-    band.classList.toggle('is-visible', visible);
-    band.setAttribute('aria-hidden', visible ? 'false' : 'true');
-    track.classList.toggle('has-buffer', visible);
+    const homeStart = platformDay - remainingDays;
+    const homeEnd = platformDay;
+    let bandStart;
+    let bandEnd;
+    let revealPct;
+    let attached = false;
+
+    if (googleDay + 1e-9 >= homeStart) {
+        bandStart = homeStart;
+        bandEnd = homeEnd;
+        const span = bandEnd - bandStart;
+        const covered = Math.max(0, Math.min(span, googleDay - bandStart));
+        revealPct = span > 0 ? (covered / span) * 100 : 100;
+    } else {
+        attached = true;
+        bandStart = googleDay;
+        bandEnd = googleDay + remainingDays;
+        revealPct = 0;
+    }
+
+    const startF = dayToFraction(bandStart);
+    const endF = dayToFraction(bandEnd);
+    return {
+        visible: (endF - startF) > 0.001,
+        attached,
+        startF,
+        endF,
+        revealPct: Math.max(0, Math.min(100, revealPct))
+    };
+}
+
+/** Paints the Safety Buffer band from current slider geometry. */
+function _ppcUpdateBufferBand(slider, track, googleDay, platformDay, remainingBufferHours) {
+    if (!slider || !track) return;
+    const band = track.querySelector('.ppc-buffer-band');
+    if (!band) return;
+
+    const geo = _ppcBufferGeometry(
+        googleDay,
+        platformDay,
+        remainingBufferHours,
+        Number(slider.min),
+        Number(slider.max)
+    );
+
+    band.style.setProperty('--ppc-buffer-start', geo.startF.toFixed(4));
+    band.style.setProperty('--ppc-buffer-end', geo.endF.toFixed(4));
+    track.style.setProperty('--ppc-buffer-reveal', geo.revealPct.toFixed(2) + '%');
+    band.classList.toggle('is-visible', geo.visible);
+    band.classList.toggle('is-attached', geo.visible && geo.attached);
+    band.setAttribute('aria-hidden', geo.visible ? 'false' : 'true');
+}
+
+/**
+ * Preview copy for the buffer legend — models the gap, does not spend buffer.
+ * @returns {{ main: string, hint: string, modeledHours: number, attached: boolean }}
+ */
+function _ppcBufferPreviewCopy(T, gapDays, remainingBufferHours) {
+    const remainingDays = remainingBufferHours / 24;
+    const usedHours = Math.min(gapDays * 24, remainingBufferHours);
+    const modeledHours = Math.max(0, Math.round(remainingBufferHours - usedHours));
+    const attached = gapDays > remainingDays + 1e-9;
+    const hint = T('ppcBufferPreviewHint');
+
+    let main;
+    if (gapDays <= 0) {
+        main = T('ppcBufferPreviewFull', { hours: remainingBufferHours });
+    } else if (!attached) {
+        main = T('ppcBufferPreviewInside', { hours: modeledHours, total: remainingBufferHours });
+    } else {
+        main = T('ppcBufferPreviewAttached', { hours: remainingBufferHours });
+    }
+    return { main, hint, modeledHours, attached };
 }
 
 /** Updates all live-calculation UI elements in State #1 after slider/tip changes. */
@@ -1171,6 +1232,14 @@ function _ppcUpdateCalculations() {
     const remainingBuffer = Math.max(0, 48 - consumedPendingHours);
     _ppcUpdateBufferBand(slider, sliderTrack, googleDay, platformDay, remainingBuffer);
     const requiredBuffer = gap * 24;
+    const T = (key, vars) => window.t(key, vars || {}, lang) || key;
+    const preview = _ppcBufferPreviewCopy(T, gap, remainingBuffer);
+
+    // Live buffer legend (preview — does not spend buffer)
+    const legendMain = document.getElementById('ppc-buffer-legend-main');
+    const legendHint = document.getElementById('ppc-buffer-legend-hint');
+    if (legendMain) legendMain.textContent = preview.main;
+    if (legendHint) legendHint.textContent = preview.hint;
 
     let state = 'A';
     if (gap > 2) {
@@ -1181,17 +1250,16 @@ function _ppcUpdateCalculations() {
 
     // Update Smart Status Block
     const statusBlock = document.getElementById('ppc-status-block');
-    const T = (key, vars) => window.t(key, vars || {}, lang) || key;
     if (statusBlock) {
         let html = '';
         if (state === 'A') {
             statusBlock.className = 'ppc-status-block state-safe';
-            const fillPct = Math.round((remainingBuffer / 48) * 100);
+            const fillPct = Math.round((preview.modeledHours / 48) * 100);
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateASafeTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateASafeText'))}</div>
                 <div class="ppc-status-buffer">
-                    <div class="ppc-status-buffer-text">${window.escapeHTML(T('ppcStateASafeBuffer', { hours: remainingBuffer }))}</div>
+                    <div class="ppc-status-buffer-text">${window.escapeHTML(T('ppcStateASafeBuffer', { hours: preview.modeledHours }))}</div>
                     <div class="ppc-status-progress-bar">
                         <div class="ppc-status-progress-fill" style="width: ${fillPct}%;"></div>
                     </div>
@@ -1199,12 +1267,12 @@ function _ppcUpdateCalculations() {
             `;
         } else if (state === 'B') {
             statusBlock.className = 'ppc-status-block state-warning';
-            const fillPct = Math.round((remainingBuffer / 48) * 100);
+            const fillPct = Math.round((preview.modeledHours / 48) * 100);
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateBWarningTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateBWarningText'))}</div>
                 <div class="ppc-status-buffer">
-                    <div class="ppc-status-buffer-text">${window.escapeHTML(T('ppcStateBWarningBuffer', { hours: remainingBuffer }))}</div>
+                    <div class="ppc-status-buffer-text">${window.escapeHTML(T('ppcStateBWarningBuffer', { hours: preview.modeledHours }))}</div>
                     <div class="ppc-status-progress-bar">
                         <div class="ppc-status-progress-fill" style="width: ${fillPct}%;"></div>
                     </div>
@@ -1213,9 +1281,21 @@ function _ppcUpdateCalculations() {
         } else {
             statusBlock.className = 'ppc-status-block state-required';
             const extraDays = Math.max(0, gap - 2);
+            const bufferDays = remainingBuffer / 24;
+            const totalLife = Math.round((14 + bufferDays + extraDays) * 10) / 10;
+            const lifeDetailHtml = [
+                window.escapeHTML(T('ppcStateCLifeBase', { days: 14 })),
+                `<span class="ppc-life-buffer">${window.escapeHTML(T('ppcStateCLifeBuffer', { hours: remainingBuffer }))}</span>`,
+                `<span class="ppc-life-paid">${window.escapeHTML(T('ppcStateCLifePaid', { days: extraDays }))}</span>`
+            ].join(' + ');
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateCRequiredTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateCRequiredText'))}</div>
+                <div class="ppc-status-life">
+                    <div class="ppc-status-life-label">${window.escapeHTML(T('ppcStateCLifeLabel'))}</div>
+                    <div class="ppc-status-life-total"><em>${window.escapeHTML(String(totalLife))}</em> ${window.escapeHTML(T('ppcStateCLifeTotalUnit'))}</div>
+                    <div class="ppc-status-life-detail">${lifeDetailHtml}</div>
+                </div>
                 <div class="ppc-status-cost-block">
                     <div class="ppc-status-cost-days">${window.escapeHTML(T('ppcGapCostLabel', { days: extraDays }))}</div>
                     <div class="ppc-status-cost-amount">${totalCost} $BUST</div>
@@ -1322,18 +1402,18 @@ function _renderProtectionCenterState1(project, platformDay) {
     const initPct = sliderRange > 0 ? ((sliderDefault - sliderMin) / sliderRange) * 100 : 100;
     const initFraction = sliderRange > 0 ? (sliderDefault - sliderMin) / sliderRange : 1;
 
-    // Initial Safety Buffer band: from thumb → right, by remaining free hours of the current gap
+    // Initial Safety Buffer band (home slot under green, revealed as thumb moves left)
     const consumedBufferHours = Math.max(0, Number(project.consumed_pending_hours || 0));
     const remainingBufferHours = Math.max(0, Math.min(48, 48 - consumedBufferHours));
     const initGap = Math.max(0, platformDay - sliderDefault);
-    const initCoveredDays = Math.min(initGap, remainingBufferHours / 24);
-    const dayToFraction = (day) => sliderRange > 0
-        ? Math.max(0, Math.min(1, (day - sliderMin) / sliderRange))
-        : 1;
-    const bufferStartF = dayToFraction(sliderDefault);
-    const bufferEndF = dayToFraction(sliderDefault + initCoveredDays);
-    const showBufferBand = initCoveredDays > 0.001 && (bufferEndF - bufferStartF) > 0.001;
-    const bufferBandLabel = T('ppcBufferHoursLeft', { hours: remainingBufferHours });
+    const initBufferGeo = _ppcBufferGeometry(
+        sliderDefault,
+        platformDay,
+        remainingBufferHours,
+        sliderMin,
+        sliderMax
+    );
+    const initPreview = _ppcBufferPreviewCopy(T, initGap, remainingBufferHours);
 
     const initCost = _calcProtectionCost(initGap, alreadyPaid);
     const initIsFree = initCost === 0;
@@ -1367,17 +1447,16 @@ function _renderProtectionCenterState1(project, platformDay) {
                     <div class="ppc-platform-badge">${window.escapeHTML(T('ppcPlatformDayLabel', { day: platformDay }))}</div>
                 </div>
                 <div
-                    class="ppc-slider-track${showBufferBand ? ' has-buffer' : ''}"
+                    class="ppc-slider-track"
                     id="ppc-slider-track"
-                    style="--ppc-slider-pct: ${initPct.toFixed(1)}%; --ppc-slider-f: ${initFraction.toFixed(4)};"
+                    style="--ppc-slider-pct: ${initPct.toFixed(1)}%; --ppc-slider-f: ${initFraction.toFixed(4)}; --ppc-buffer-reveal: ${initBufferGeo.revealPct.toFixed(2)}%;"
                 >
                     <div class="ppc-slider-track-base"></div>
                     <div class="ppc-slider-track-fill"></div>
                     <div
-                        class="ppc-buffer-band${showBufferBand ? ' is-visible' : ''}"
-                        style="--ppc-buffer-start: ${bufferStartF.toFixed(4)}; --ppc-buffer-end: ${bufferEndF.toFixed(4)};"
-                        title="${window.escapeHTML(bufferBandLabel)}"
-                        aria-hidden="${showBufferBand ? 'false' : 'true'}"
+                        class="ppc-buffer-band${initBufferGeo.visible ? ' is-visible' : ''}${initBufferGeo.attached ? ' is-attached' : ''}"
+                        style="--ppc-buffer-start: ${initBufferGeo.startF.toFixed(4)}; --ppc-buffer-end: ${initBufferGeo.endF.toFixed(4)};"
+                        aria-hidden="${initBufferGeo.visible ? 'false' : 'true'}"
                     ></div>
                     <input
                         type="range"
@@ -1398,8 +1477,11 @@ function _renderProtectionCenterState1(project, platformDay) {
                     ${tickLabels.join('')}
                 </div>
                 <div class="ppc-slider-buffer-legend">
-                    <span class="ppc-slider-buffer-swatch"></span>
-                    <span>${window.escapeHTML(bufferBandLabel)}</span>
+                    <div class="ppc-slider-buffer-legend-row">
+                        <span class="ppc-slider-buffer-swatch"></span>
+                        <span id="ppc-buffer-legend-main">${window.escapeHTML(initPreview.main)}</span>
+                    </div>
+                    <div class="ppc-slider-buffer-legend-hint" id="ppc-buffer-legend-hint">${window.escapeHTML(initPreview.hint)}</div>
                 </div>
             </div>
 
