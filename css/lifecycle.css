@@ -298,33 +298,89 @@
     word-break: break-all;
 }
 
+.jb-total {
+    background:
+        linear-gradient(180deg, rgba(10, 132, 255, 0.16), rgba(10, 132, 255, 0.05)),
+        var(--border-subtle);
+    border: 1px solid rgba(10, 132, 255, 0.35);
+    border-radius: 18px;
+    padding: 16px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.jb-total-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hint-color);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.jb-total-value {
+    margin-top: 6px;
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.05;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.jb-total-breakdown {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--hint-color);
+}
+
+.jb-total-breakdown .jb-total-part {
+    color: var(--text-color);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.jb-section {
+    margin-bottom: 16px;
+}
+
+.jb-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.jb-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.jb-section-tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--hint-color);
+    white-space: nowrap;
+}
+
 .join-bounty-reward-card {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border-subtle);
     border-radius: 16px;
     padding: 14px;
-    margin-bottom: 12px;
 }
 
 .join-bounty-reward-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     gap: 12px;
     margin-bottom: 12px;
 }
 
-.join-bounty-reward-kicker {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    color: var(--reward);
-    text-transform: uppercase;
-}
-
 .join-bounty-reward-title {
-    margin-top: 2px;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text-color);
 }

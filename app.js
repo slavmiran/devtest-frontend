@@ -161,6 +161,7 @@ Object.assign(window, {
     openJoinBountyConfirmModal,
     closeJoinBountyConfirmModal,
     confirmJoinBounty,
+    registerJoinBountyContext,
     startTimer,
     openPlay,
     handleFirstDownload,

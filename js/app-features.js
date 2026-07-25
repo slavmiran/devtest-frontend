@@ -2526,26 +2526,54 @@ async function joinMutual(appId, allowOverLimit = false) {
 }
 
 var _pendingJoinBountyAppId = null;
+var _joinBountyContextByApp = {};
+
+function registerJoinBountyContext(item) {
+    if (!item) return;
+    var appId = Number(item.app_id != null ? item.app_id : item.id) || 0;
+    if (appId <= 0) return;
+    _joinBountyContextByApp[appId] = {
+        app_id: appId,
+        name: item.name || '',
+        package_name: item.package_name || item.package || '',
+        icon_url: item.icon_url || '',
+        bounty_per_tester: Number(item.bounty_per_tester || 0),
+    };
+}
 
 function _findJoinBountyContract(appId) {
     var normalizedId = Number(appId || 0);
     if (normalizedId <= 0) return null;
+    var candidate = null;
     if (typeof _findFeedItemForOptimisticJoin === 'function') {
-        var fromFeed = _findFeedItemForOptimisticJoin(normalizedId);
-        if (fromFeed) return fromFeed;
+        candidate = _findFeedItemForOptimisticJoin(normalizedId);
     }
-    if (Array.isArray(bountyContracts)) {
-        return bountyContracts.find(function(item) {
+    if ((!candidate || !Number(candidate.bounty_per_tester)) && Array.isArray(bountyContracts)) {
+        var fromPool = bountyContracts.find(function(item) {
             return Number(item && item.app_id) === normalizedId;
-        }) || null;
+        });
+        if (fromPool) candidate = fromPool;
     }
-    return null;
+    var ctx = _joinBountyContextByApp[normalizedId];
+    if (ctx) {
+        if (!candidate) {
+            candidate = ctx;
+        } else if (!Number(candidate.bounty_per_tester) && Number(ctx.bounty_per_tester)) {
+            candidate = Object.assign({}, candidate, {
+                bounty_per_tester: ctx.bounty_per_tester,
+                name: candidate.name || ctx.name,
+                package_name: candidate.package_name || ctx.package_name,
+                icon_url: candidate.icon_url || ctx.icon_url,
+            });
+        }
+    }
+    return candidate;
 }
 
-function _buildJoinBountyGrantPreviewHtml() {
-    var grant = typeof getGrantEstimateData === 'function'
+function _buildJoinBountyGrantPreviewHtml(grant) {
+    grant = grant || (typeof getGrantEstimateData === 'function'
         ? getGrantEstimateData({ skips_count: 0, daily_timeline: '' })
-        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, total: 100 };
+        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, total: 100 });
     var formatAmount = typeof formatBustAmount === 'function'
         ? formatBustAmount
         : function(value) { return String(value) + ' $BUST'; };
@@ -2637,27 +2665,43 @@ function openJoinBountyConfirmModal(appId) {
     var holdEl = document.getElementById('join-bounty-confirm-hold');
     if (holdEl) holdEl.textContent = formatAmount(holdReward);
 
-    var grantEl = document.getElementById('join-bounty-confirm-grant');
-    if (grantEl) grantEl.innerHTML = _buildJoinBountyGrantPreviewHtml();
+    var grant = typeof getGrantEstimateData === 'function'
+        ? getGrantEstimateData({ skips_count: 0, daily_timeline: '' })
+        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, total: 100 };
+    var grantTotal = Number(grant.total || 0);
+    var grandTotal = bounty + grantTotal;
 
-    var titleEl = document.getElementById('join-bounty-confirm-title');
-    if (titleEl) titleEl.textContent = T('joinBountyConfirmTitle');
-    var introEl = document.getElementById('join-bounty-confirm-intro');
-    if (introEl) introEl.textContent = T('joinBountyConfirmIntro');
-    var rewardTitleEl = document.querySelector('#join-bounty-confirm-modal .join-bounty-reward-title');
-    if (rewardTitleEl) rewardTitleEl.textContent = T('joinBountyRewardLabel');
-    var checkinsLabelEl = document.querySelector('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyCheckinsLabel"]');
-    if (checkinsLabelEl) checkinsLabelEl.textContent = T('joinBountyCheckinsLabel');
-    var holdLabelEl = document.querySelector('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyHoldLabel"]');
-    if (holdLabelEl) holdLabelEl.textContent = T('joinBountyHoldLabel');
-    var holdHintEl = document.querySelector('#join-bounty-confirm-modal .join-bounty-reward-hint');
-    if (holdHintEl) holdHintEl.textContent = T('bountyModalHoldHint');
-    var warningEl = document.querySelector('#join-bounty-confirm-modal .join-bounty-confirm-warning span');
-    if (warningEl) warningEl.textContent = T('bountyModalWarningText');
-    var confirmBtn = document.getElementById('join-bounty-confirm-btn');
-    if (confirmBtn) confirmBtn.textContent = T('joinBountyConfirmBtn');
-    var cancelEl = document.getElementById('join-bounty-confirm-cancel');
-    if (cancelEl) cancelEl.textContent = T('btnCancel');
+    var grantEl = document.getElementById('join-bounty-confirm-grant');
+    if (grantEl) grantEl.innerHTML = _buildJoinBountyGrantPreviewHtml(grant);
+
+    var grandTotalEl = document.getElementById('join-bounty-confirm-grand-total');
+    if (grandTotalEl) grandTotalEl.textContent = '~' + formatAmount(grandTotal);
+    var breakdownEl = document.getElementById('join-bounty-confirm-total-breakdown');
+    if (breakdownEl) {
+        breakdownEl.innerHTML =
+            T('joinBountyContractPart') + ' <span class="jb-total-part notranslate">' + formatAmount(bounty) + '</span>' +
+            ' + ' +
+            T('joinBountyGrantPart') + ' <span class="jb-total-part notranslate">~' + formatAmount(grantTotal) + '</span>';
+    }
+
+    var setText = function(selector, key) {
+        var el = document.querySelector(selector);
+        if (el) el.textContent = T(key);
+    };
+    setText('#join-bounty-confirm-title', 'joinBountyConfirmTitle');
+    setText('#join-bounty-confirm-intro', 'joinBountyConfirmIntro');
+    setText('#join-bounty-confirm-modal .jb-total-label', 'joinBountyTotalLabel');
+    setText('#join-bounty-confirm-modal .jb-section-title[data-i18n="joinBountyOwnerBlockTitle"]', 'joinBountyOwnerBlockTitle');
+    setText('#join-bounty-confirm-modal .jb-section-tag[data-i18n="joinBountyOwnerBlockTag"]', 'joinBountyOwnerBlockTag');
+    setText('#join-bounty-confirm-modal .jb-section-title[data-i18n="joinBountyGrantBlockTitle"]', 'joinBountyGrantBlockTitle');
+    setText('#join-bounty-confirm-modal .jb-section-tag[data-i18n="joinBountyGrantBlockTag"]', 'joinBountyGrantBlockTag');
+    setText('#join-bounty-confirm-modal .join-bounty-reward-title', 'joinBountyRewardLabel');
+    setText('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyCheckinsLabel"]', 'joinBountyCheckinsLabel');
+    setText('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyHoldLabel"]', 'joinBountyHoldLabel');
+    setText('#join-bounty-confirm-modal .join-bounty-reward-hint', 'joinBountyHoldAutoHint');
+    setText('#join-bounty-confirm-modal .join-bounty-confirm-warning span', 'bountyModalWarningText');
+    setText('#join-bounty-confirm-btn', 'joinBountyConfirmBtn');
+    setText('#join-bounty-confirm-cancel', 'btnCancel');
 
     var modal = document.getElementById('join-bounty-confirm-modal');
     if (modal) {

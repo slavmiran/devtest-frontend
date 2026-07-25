@@ -1702,35 +1702,50 @@
     <div id="join-bounty-confirm-modal" class="modal-overlay" onclick="closeJoinBountyConfirmModal(event)">
         <div class="modal-content join-bounty-confirm-content" onclick="event.stopPropagation()">
             <h3 id="join-bounty-confirm-title" data-i18n="joinBountyConfirmTitle">Подтвердите контракт</h3>
-            <p id="join-bounty-confirm-intro" class="join-bounty-confirm-intro" data-i18n="joinBountyConfirmIntro">Перед стартом посмотрите, как устроена награда и что нужно для гранта платформы.</p>
+            <p id="join-bounty-confirm-intro" class="join-bounty-confirm-intro" data-i18n="joinBountyConfirmIntro">Как устроена награда $BUST по контрактному проекту</p>
 
             <div id="join-bounty-confirm-project" class="join-bounty-confirm-project"></div>
 
-            <div class="join-bounty-reward-card">
-                <div class="join-bounty-reward-header">
-                    <div class="join-bounty-reward-heading">
-                        <div class="join-bounty-reward-kicker">$BUST</div>
+            <div class="jb-total">
+                <div class="jb-total-label" data-i18n="joinBountyTotalLabel">Итого возможная награда</div>
+                <div id="join-bounty-confirm-grand-total" class="jb-total-value notranslate">0 $BUST</div>
+                <div id="join-bounty-confirm-total-breakdown" class="jb-total-breakdown"></div>
+            </div>
+
+            <div class="jb-section">
+                <div class="jb-section-head">
+                    <div class="jb-section-title" data-i18n="joinBountyOwnerBlockTitle">💼 Оплата от владельца</div>
+                    <div class="jb-section-tag" data-i18n="joinBountyOwnerBlockTag">Контрактный проект</div>
+                </div>
+                <div class="join-bounty-reward-card">
+                    <div class="join-bounty-reward-header">
                         <div class="join-bounty-reward-title" data-i18n="joinBountyRewardLabel">Награда</div>
+                        <div id="join-bounty-confirm-total" class="join-bounty-reward-total notranslate">0 $BUST</div>
                     </div>
-                    <div id="join-bounty-confirm-total" class="join-bounty-reward-total notranslate">0 $BUST</div>
-                </div>
-                <div class="join-bounty-reward-rows">
-                    <div class="join-bounty-reward-row">
-                        <span data-i18n="joinBountyCheckinsLabel">Ежедневные чекины (65%)</span>
-                        <span id="join-bounty-confirm-checkins" class="notranslate">0 $BUST</span>
+                    <div class="join-bounty-reward-rows">
+                        <div class="join-bounty-reward-row">
+                            <span data-i18n="joinBountyCheckinsLabel">Ежедневные чекины (65%)</span>
+                            <span id="join-bounty-confirm-checkins" class="notranslate">0 $BUST</span>
+                        </div>
+                        <div class="join-bounty-reward-row">
+                            <span data-i18n="joinBountyHoldLabel">Hold Bonus (35%)</span>
+                            <span id="join-bounty-confirm-hold" class="notranslate">0 $BUST</span>
+                        </div>
                     </div>
-                    <div class="join-bounty-reward-row">
-                        <span data-i18n="joinBountyHoldLabel">Hold Bonus (35%)</span>
-                        <span id="join-bounty-confirm-hold" class="notranslate">0 $BUST</span>
+                    <div class="join-bounty-reward-hint" data-i18n="joinBountyHoldAutoHint">Hold Bonus начисляется автоматически на 15-й день, если пропусков не больше 3.</div>
+                    <div class="bounty-warning-box join-bounty-confirm-warning">
+                        <span data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
                     </div>
-                </div>
-                <div class="join-bounty-reward-hint" data-i18n="bountyModalHoldHint">Доступен после 14-го дня тестирования, на 15-й день</div>
-                <div class="bounty-warning-box join-bounty-confirm-warning">
-                    <span data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
                 </div>
             </div>
 
-            <div id="join-bounty-confirm-grant" class="join-bounty-confirm-grant"></div>
+            <div class="jb-section">
+                <div class="jb-section-head">
+                    <div class="jb-section-title" data-i18n="joinBountyGrantBlockTitle">🏆 Награда от платформы</div>
+                    <div class="jb-section-tag" data-i18n="joinBountyGrantBlockTag">Стандартный грант</div>
+                </div>
+                <div id="join-bounty-confirm-grant" class="join-bounty-confirm-grant"></div>
+            </div>
 
             <button id="join-bounty-confirm-btn" class="btn btn-primary" style="width: 100%;" onclick="confirmJoinBounty()" data-i18n="joinBountyConfirmBtn">💎 Взять контракт</button>
             <div class="join-bounty-confirm-cancel-wrap">

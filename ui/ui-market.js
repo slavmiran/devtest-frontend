@@ -829,6 +829,9 @@ function renderFeedCard(item, kind) {
         buttonText = window.t('bountyTakeBtn', {}, lang);
         clickAction = `joinBounty(${item.app_id})`;
         buttonExtraAttrs = '';
+        if (typeof window.registerJoinBountyContext === 'function') {
+            window.registerJoinBountyContext(item);
+        }
     }
     if (isOwnProject) {
         buttonText = window.t('ownProjectCta', {}, lang);
@@ -7452,7 +7455,11 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         ? window.t('dossierOwnerReliability', { pct: reliabilityState.reliabilityPct, status: reliabilityState.reliabilityText }, lang)
         : window.t('dossierOwnerReliabilityNewbie', {}, lang);
     var joinBlocked = _isDossierProjectJoinBlocked(project);
-    var takeAction = String(project.mode || 'mutual').toLowerCase() === 'bounty'
+    var isBountyProject = String(project.mode || 'mutual').toLowerCase() === 'bounty';
+    if (isBountyProject && typeof window.registerJoinBountyContext === 'function') {
+        window.registerJoinBountyContext(project);
+    }
+    var takeAction = isBountyProject
         ? 'closeProjectDetailsModal(); joinBounty(' + Number(project.app_id) + ')'
         : 'closeProjectDetailsModal(); joinMutual(' + Number(project.app_id) + ', false)';
     var dossierMetaChipsHtml = _buildDossierProjectMetaChips(project);
