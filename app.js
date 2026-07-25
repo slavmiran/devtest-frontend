@@ -241,6 +241,7 @@ Object.assign(window, {
     claimContributionPrize,
     sendKarmaReward,
     confirmStart,
+    showCheckinRewardToasts,
     handleClaimGrantClick,
     claimEarlyFinishBonus,
     deleteTester,

@@ -41,7 +41,7 @@
     <script src="./js/app-state.js?v=20260713-sprint-ux-polish"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260719-access-unfreeze-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260722-mi-wow-p5"></script>
+    <script src="./ui/ui-projects.js?v=20260725-ppc-buffer-band"></script>
     <script src="./ui/ui-market.js?v=20260723-claim-history-bust"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
@@ -54,14 +54,14 @@
     <script src="./app.js?v=20260719-access-unfreeze-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
-    <link rel="stylesheet" href="./css/keyframes.css?v=20260706-phase1-1">
+    <link rel="stylesheet" href="./css/keyframes.css?v=20260725-ppc-buffer-band">
     <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260710-device-info-v3">
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20260716-grant-chips">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/wizard.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20260716-feedback-toolbar-v1">
-    <link rel="stylesheet" href="./css/ppc.css?v=20260706-phase2">
+    <link rel="stylesheet" href="./css/ppc.css?v=20260725-ppc-buffer-band">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260706-phase3">
@@ -71,7 +71,7 @@
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./css/lifecycle.css?v=20260725-join-bounty-confirm">
+    <link rel="stylesheet" href="./css/lifecycle.css?v=20260725-hold-bonus-toast">
     <link rel="stylesheet" href="./css/access-issue.css?v=20260722-access-timer-v1">
     <link rel="stylesheet" href="./styles.css?v=20260723-claim-history-bust">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
@@ -1682,7 +1682,7 @@
                         <span id="bounty-modal-hold-label" data-i18n="bountyModalHoldLabel">Hold-бонус (35%):</span>
                         <span id="bounty-modal-hold-value" class="notranslate bounty-modal-value">0 $BUST</span>
                     </div>
-                    <div id="bounty-modal-hold-hint" style="font-size: 11px; color: var(--hint-color); margin-top: 2px;" data-i18n="bountyModalHoldHint">Доступен после 14-го дня тестирования, на 15-й день</div>
+                    <div id="bounty-modal-hold-hint" style="font-size: 11px; color: var(--hint-color); margin-top: 2px;" data-i18n="bountyModalHoldHint">Начисляется автоматически при чекине на 14-й день</div>
                 </div>
 
                 <div class="bounty-warning-box">
@@ -1732,7 +1732,7 @@
                             <span id="join-bounty-confirm-hold" class="notranslate">0 $BUST</span>
                         </div>
                     </div>
-                    <div class="join-bounty-reward-hint" data-i18n="joinBountyHoldAutoHint">Hold Bonus начисляется автоматически на 15-й день, если пропусков не больше 3.</div>
+                    <div class="join-bounty-reward-hint" data-i18n="joinBountyHoldAutoHint">Hold Bonus начисляется автоматически при чекине на 14-й день, если пропусков не больше 3.</div>
                     <div class="bounty-warning-box join-bounty-confirm-warning">
                         <span data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
                     </div>

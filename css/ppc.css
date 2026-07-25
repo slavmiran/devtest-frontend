@@ -283,6 +283,133 @@
     cursor: grab;
 }
 
+/* ── Track layers: base / progress / safety-buffer band / day ticks ──
+   The native track goes transparent so the layers can be painted beneath the
+   thumb. Horizontal geometry follows the thumb travel range (inset by half a
+   thumb on each side), so day positions line up with the thumb centre. */
+.ppc-slider-track {
+    --ppc-thumb-size: 26px;
+    --ppc-track-origin: calc(var(--ppc-thumb-size) / 2);
+    --ppc-track-span: calc(100% - var(--ppc-thumb-size));
+    position: relative;
+    height: 6px;
+    margin: 18px 0 12px;
+}
+
+.ppc-slider-track > .ppc-slider {
+    display: block;
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    margin: 0;
+    background: transparent;
+}
+
+.ppc-slider-track-base,
+.ppc-slider-track-fill,
+.ppc-buffer-band,
+.ppc-slider-day-ticks {
+    position: absolute;
+    top: 0;
+    height: 6px;
+    pointer-events: none;
+}
+
+.ppc-slider-track-base {
+    left: 0;
+    right: 0;
+    z-index: 1;
+    border-radius: 3px;
+    background: var(--border-strong);
+}
+
+.ppc-slider-track-fill {
+    left: 0;
+    z-index: 2;
+    width: calc(var(--ppc-track-origin) + var(--ppc-slider-f, 0.5) * var(--ppc-track-span));
+    border-radius: 3px;
+    background: var(--success);
+    transition: width 0.08s linear;
+}
+
+/* Amber zone = the gap that the free 48h Safety Buffer still covers */
+.ppc-buffer-band {
+    left: calc(var(--ppc-track-origin) + var(--ppc-buffer-start, 0) * var(--ppc-track-span));
+    width: calc((var(--ppc-buffer-end, 0) - var(--ppc-buffer-start, 0)) * var(--ppc-track-span));
+    z-index: 4;
+    display: flex;
+    overflow: hidden;
+    border-radius: 3px;
+    box-shadow: 0 0 8px rgba(255, 176, 32, 0.22);
+    animation: ppc-buffer-band-glow 3.4s ease-in-out infinite;
+}
+
+/* When the band reaches the first/last day it runs out to the track edge,
+   instead of stopping at the thumb-centre position */
+.ppc-buffer-band.is-edge-left {
+    --ppc-band-inset: var(--ppc-track-origin);
+    left: 0;
+    width: calc(var(--ppc-track-origin) + (var(--ppc-buffer-end, 0) - var(--ppc-buffer-start, 0)) * var(--ppc-track-span));
+}
+
+.ppc-buffer-band.is-edge-right {
+    right: 0;
+    width: auto;
+}
+
+/* Day divider inside the band — only drawn when both edges sit on a day mark */
+.ppc-buffer-band.has-day-split::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: calc(var(--ppc-band-inset, 0px) + var(--ppc-day-frac, 0.5) * var(--ppc-track-span));
+    width: 1px;
+    height: 100%;
+    background: rgba(14, 17, 22, 0.28);
+    z-index: 1;
+}
+
+/* Right cap marks the platform day the buffer counts back from */
+.ppc-buffer-band::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 2px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.5);
+    z-index: 2;
+}
+
+.ppc-buffer-band-used {
+    flex: 0 0 auto;
+    background: repeating-linear-gradient(
+        135deg,
+        rgba(255, 176, 32, 0.32) 0px,
+        rgba(255, 176, 32, 0.32) 2px,
+        rgba(255, 176, 32, 0.07) 2px,
+        rgba(255, 176, 32, 0.07) 5px
+    );
+}
+
+.ppc-buffer-band-remaining {
+    flex: 1 1 auto;
+    background: linear-gradient(180deg, var(--stage-buffer), rgba(255, 176, 32, 0.78));
+}
+
+.ppc-slider-day-ticks {
+    left: var(--ppc-track-origin);
+    right: var(--ppc-track-origin);
+    z-index: 3;
+    background-image: repeating-linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0.24) 0px,
+        rgba(255, 255, 255, 0.24) 1px,
+        rgba(255, 255, 255, 0) 1px,
+        rgba(255, 255, 255, 0) var(--ppc-day-step, 10%)
+    );
+}
+
 .ppc-slider-tick-row {
     display: flex;
     justify-content: space-between;
@@ -291,6 +418,36 @@
     margin-top: 4px;
     padding: 0 1px;
     user-select: none;
+}
+
+.ppc-slider-buffer-legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 9px;
+    font-size: 10px;
+    line-height: 1.2;
+    color: var(--stage-buffer);
+    opacity: 0.85;
+    user-select: none;
+}
+
+.ppc-slider-buffer-swatch {
+    flex-shrink: 0;
+    width: 14px;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--stage-buffer), rgba(255, 176, 32, 0.78));
+    box-shadow: 0 0 6px rgba(255, 176, 32, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ppc-buffer-band {
+        animation: none;
+    }
+    .ppc-slider-track-fill {
+        transition: none;
+    }
 }
 
 /* ── Gap / Cost Block ── */

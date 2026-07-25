@@ -2506,6 +2506,66 @@ async function sendKarmaReward(appId, testerId, rewardType) {
     }
 }
 
+function showCheckinRewardToasts(result) {
+    result = result || {};
+    if (result.already_checked_today) {
+        showToast(window.t('checkinAlreadyDone', {}, lang));
+        return;
+    }
+
+    var earnedBust = Number(result.earned_bust != null ? result.earned_bust : result.bust_earned || 0);
+    var earnedKarma = Number(result.earned_karma != null ? result.earned_karma : result.karma_earned || 0);
+    var sourceType = String(result.source_type || '').toLowerCase();
+    var rewardBust = Number(result.reward_bust != null ? result.reward_bust : earnedBust);
+    var holdBonusEarned = Number(result.hold_bonus_earned || 0);
+    var holdBonusForfeited = !!result.hold_bonus_forfeited;
+    var dailyOnlyBust = Math.max(0, earnedBust - (holdBonusEarned > 0 ? holdBonusEarned : 0));
+
+    if (sourceType === 'overtime_checkin' && rewardBust > 0) {
+        var karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
+        var bustVal = formatAmountValue(rewardBust, 1);
+        showToast(lang === 'ru'
+            ? ('Чекин успешен! +' + karmaVal + ' ☯️ Кармы и +' + bustVal + '💎$BUST')
+            : ('Check-in successful! +' + karmaVal + ' ☯️ Karma and +' + bustVal + '💎$BUST'));
+    } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
+        showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+    } else if (dailyOnlyBust > 0 && earnedKarma > 0) {
+        showToast(window.t('checkinEarnBustAndKarma', {
+            bust: formatAmountValue(dailyOnlyBust, 1),
+            karma: formatAmountValue(earnedKarma, 1)
+        }, lang));
+    } else if (earnedBust > 0 && earnedKarma > 0 && holdBonusEarned <= 0) {
+        showToast(window.t('checkinEarnBustAndKarma', {
+            bust: formatAmountValue(earnedBust, 1),
+            karma: formatAmountValue(earnedKarma, 1)
+        }, lang));
+    } else if (dailyOnlyBust > 0) {
+        showToast(window.t('checkinEarnBust', { amount: formatAmountValue(dailyOnlyBust, 1) }, lang));
+    } else if (earnedBust > 0 && holdBonusEarned <= 0) {
+        showToast(window.t('checkinEarnBust', { amount: formatAmountValue(earnedBust, 1) }, lang));
+    } else if (earnedKarma > 0) {
+        showToast(window.t('checkinEarnKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+    } else if (holdBonusEarned <= 0 && !holdBonusForfeited) {
+        showToast(window.t('successCheckin', {}, lang));
+    }
+
+    if (holdBonusEarned > 0) {
+        setTimeout(function() {
+            showToast(window.t('holdBonusCreditedToast', {
+                amount: formatAmountValue(holdBonusEarned, 1)
+            }, lang));
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }, 700);
+    } else if (holdBonusForfeited) {
+        setTimeout(function() {
+            showToast(window.t('holdBonusForfeitedToast', {
+                count: Number(result.missed_days || result.skips_count || 0)
+            }, lang));
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        }, 700);
+    }
+}
+
 async function confirmStart(id) {
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
@@ -2598,27 +2658,31 @@ async function confirmStart(id) {
         const rewardBust = Number(result.reward_bust || result.earned_bust || 0);
         if (result.already_checked_today) {
             showToast(t.checkinAlreadyDone);
-        } else if (sourceType === 'overtime_checkin' && rewardBust > 0) {
-            const karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
-            const bustVal = formatAmountValue(rewardBust, 1);
-            if (lang === 'ru') {
-                showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
-            } else {
-                showToast(`Check-in successful! +${karmaVal} ☯️ Karma and +${bustVal}💎$BUST`);
-            }
-        } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
-            showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
-        } else if (earnedBust > 0 && earnedKarma > 0) {
-            showToast(window.t('checkinEarnBustAndKarma', {
-                bust: formatAmountValue(earnedBust, 1),
-                karma: formatAmountValue(earnedKarma, 1)
-            }, lang));
-        } else if (earnedBust > 0) {
-            showToast(t.checkinEarnBust.replace('{amount}', formatAmountValue(earnedBust, 1)));
-        } else if (earnedKarma > 0) {
-            showToast(t.checkinEarnKarma.replace('{amount}', formatAmountValue(earnedKarma, 1)));
         } else {
-            showToast(t.successCheckin);
+            if (typeof showCheckinRewardToasts === 'function') {
+                showCheckinRewardToasts(result);
+            } else if (sourceType === 'overtime_checkin' && rewardBust > 0) {
+                const karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
+                const bustVal = formatAmountValue(rewardBust, 1);
+                if (lang === 'ru') {
+                    showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
+                } else {
+                    showToast(`Check-in successful! +${karmaVal} ☯️ Karma and +${bustVal}💎$BUST`);
+                }
+            } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
+                showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+            } else if (earnedBust > 0 && earnedKarma > 0) {
+                showToast(window.t('checkinEarnBustAndKarma', {
+                    bust: formatAmountValue(earnedBust, 1),
+                    karma: formatAmountValue(earnedKarma, 1)
+                }, lang));
+            } else if (earnedBust > 0) {
+                showToast(t.checkinEarnBust.replace('{amount}', formatAmountValue(earnedBust, 1)));
+            } else if (earnedKarma > 0) {
+                showToast(t.checkinEarnKarma.replace('{amount}', formatAmountValue(earnedKarma, 1)));
+            } else {
+                showToast(t.successCheckin);
+            }
         }
 
         var updatedTest = myTests.find(function(test) {

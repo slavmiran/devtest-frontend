@@ -651,7 +651,7 @@ function renderProjects(force) {
             const commonBarHtml = (className) => `
                 <div class="energy-bar-wrapper ${className}">
                     <div class="energy-bar-label">
-                        <span>${window.escapeHTML(window.t('dailyProgressLabel', {}, lang))}</span>
+                        <span>${window.escapeHTML(window.t('dailyProgressLabel', {}, lang))}<span class="energy-bar-fraction">(${count_done}/${targetCheckins})</span></span>
                         <span class="energy-bar-value ${isOverachieved ? 'is-overcharged' : ''}">${window.escapeHTML(percentText)}</span>
                     </div>
                     <div class="energy-bar-container ${isOverachieved ? 'overachieved' : ''}">
@@ -1125,6 +1125,11 @@ function _ppcUpdateCalculations() {
     const sliderRange = sliderMax - sliderMin;
     const sliderPct = sliderRange > 0 ? ((googleDay - sliderMin) / sliderRange) * 100 : 0;
     slider.style.setProperty('--ppc-slider-pct', sliderPct.toFixed(1) + '%');
+    const sliderTrack = slider.closest('.ppc-slider-track');
+    if (sliderTrack) {
+        sliderTrack.style.setProperty('--ppc-slider-pct', sliderPct.toFixed(1) + '%');
+        sliderTrack.style.setProperty('--ppc-slider-f', (sliderPct / 100).toFixed(4));
+    }
 
     // Update big day display
     const dayDisplay = document.getElementById('ppc-slider-day-value');
@@ -1282,6 +1287,32 @@ function _renderProtectionCenterState1(project, platformDay) {
     // Compute pct for initial render
     const sliderRange = sliderMax - sliderMin;
     const initPct = sliderRange > 0 ? ((sliderDefault - sliderMin) / sliderRange) * 100 : 100;
+    const initFraction = sliderRange > 0 ? (sliderDefault - sliderMin) / sliderRange : 1;
+
+    // Safety-buffer band on the slider track (visual only — mirrors the 48h free buffer).
+    // Coverage stretches leftwards from the platform day by the hours still left in the buffer.
+    const consumedBufferHours = Math.max(0, Number(project.consumed_pending_hours || 0));
+    const remainingBufferHours = Math.max(0, Math.min(48, 48 - consumedBufferHours));
+    const dayToFraction = (day) => sliderRange > 0
+        ? Math.max(0, Math.min(1, (day - sliderMin) / sliderRange))
+        : 1;
+    const bufferEndF = dayToFraction(platformDay);
+    const bufferCapacityStartF = dayToFraction(platformDay - 2);
+    const bufferRemainingStartF = dayToFraction(platformDay - remainingBufferHours / 24);
+    const bufferSpanF = bufferEndF - bufferCapacityStartF;
+    const showBufferBand = bufferSpanF > 0.001;
+    const bufferUsedPct = showBufferBand
+        ? Math.max(0, Math.min(100, ((bufferRemainingStartF - bufferCapacityStartF) / bufferSpanF) * 100))
+        : 0;
+    const bufferBandLabel = T('ppcBufferHoursLeft', { hours: remainingBufferHours });
+    // The mid divider is a real day mark only while neither band edge is clipped by the track
+    const bufferBandSplit = showBufferBand && (platformDay <= sliderMax) && (platformDay - 2 >= sliderMin);
+    const bufferBandClasses = [
+        'ppc-buffer-band',
+        bufferBandSplit ? 'has-day-split' : '',
+        bufferCapacityStartF <= 0.0001 ? 'is-edge-left' : '',
+        bufferEndF >= 0.9999 ? 'is-edge-right' : ''
+    ].filter(Boolean).join(' ');
 
     const initGap = Math.max(0, platformDay - sliderDefault);
     const initCost = _calcProtectionCost(initGap, alreadyPaid);
@@ -1315,24 +1346,46 @@ function _renderProtectionCenterState1(project, platformDay) {
                     </div>
                     <div class="ppc-platform-badge">${window.escapeHTML(T('ppcPlatformDayLabel', { day: platformDay }))}</div>
                 </div>
-                <input
-                    type="range"
-                    id="ppc-slider"
-                    class="ppc-slider"
-                    min="${sliderMin}"
-                    max="${sliderMax}"
-                    step="1"
-                    value="${sliderDefault}"
-                    data-platform-day="${platformDay}"
-                    data-already-paid="${alreadyPaid}"
-                    data-balance="${balance}"
-                    data-consumed-pending-hours="${project.consumed_pending_hours || 0}"
-                    style="--ppc-slider-pct: ${initPct.toFixed(1)}%;"
-                    oninput="_ppcUpdateCalculations()"
-                />
+                <div
+                    class="ppc-slider-track"
+                    id="ppc-slider-track"
+                    style="--ppc-slider-pct: ${initPct.toFixed(1)}%; --ppc-slider-f: ${initFraction.toFixed(4)}; --ppc-day-step: calc(100% / ${sliderRange || 1}); --ppc-day-frac: ${(1 / (sliderRange || 1)).toFixed(5)};"
+                >
+                    <div class="ppc-slider-track-base"></div>
+                    <div class="ppc-slider-track-fill"></div>
+                    ${showBufferBand ? `
+                    <div
+                        class="${bufferBandClasses}"
+                        style="--ppc-buffer-start: ${bufferCapacityStartF.toFixed(4)}; --ppc-buffer-end: ${bufferEndF.toFixed(4)};"
+                        title="${window.escapeHTML(bufferBandLabel)}"
+                    >
+                        <div class="ppc-buffer-band-used" style="width: ${bufferUsedPct.toFixed(2)}%;"></div>
+                        <div class="ppc-buffer-band-remaining"></div>
+                    </div>` : ''}
+                    ${sliderRange > 0 ? '<div class="ppc-slider-day-ticks"></div>' : ''}
+                    <input
+                        type="range"
+                        id="ppc-slider"
+                        class="ppc-slider"
+                        min="${sliderMin}"
+                        max="${sliderMax}"
+                        step="1"
+                        value="${sliderDefault}"
+                        data-platform-day="${platformDay}"
+                        data-already-paid="${alreadyPaid}"
+                        data-balance="${balance}"
+                        data-consumed-pending-hours="${project.consumed_pending_hours || 0}"
+                        oninput="_ppcUpdateCalculations()"
+                    />
+                </div>
                 <div class="ppc-slider-tick-row">
                     ${tickLabels.join('')}
                 </div>
+                ${showBufferBand ? `
+                <div class="ppc-slider-buffer-legend">
+                    <span class="ppc-slider-buffer-swatch"></span>
+                    <span>${window.escapeHTML(bufferBandLabel)}</span>
+                </div>` : ''}
             </div>
 
             <!-- Smart Status Block -->

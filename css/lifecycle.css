@@ -262,6 +262,20 @@
     font-weight: 600;
 }
 
+.hold-bonus-day-banner {
+    margin: 8px 0 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #ffda70;
+    background:
+        linear-gradient(180deg, rgba(255, 216, 104, 0.14), rgba(255, 216, 104, 0.05));
+    border: 1px solid rgba(255, 215, 0, 0.35);
+}
+
 .join-bounty-confirm-content h3 {
     margin: 0 0 8px;
 }

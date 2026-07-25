@@ -3365,31 +3365,35 @@ async function submitPlayReview() {
             }
             if (typeof showToast === 'function') {
                 if (checkinPerformed && checkin) {
-                    var earnedBust = Number(checkin.earned_bust ?? checkin.bust_earned ?? 0);
-                    var earnedKarma = Number(checkin.earned_karma ?? checkin.karma_earned ?? 0);
-                    var sourceType = String(checkin.source_type || '').toLowerCase();
-                    var rewardBust = Number(checkin.reward_bust ?? checkin.earned_bust ?? checkin.bust_earned ?? 0);
-                    if (sourceType === 'overtime_checkin' && rewardBust > 0) {
-                        var karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
-                        var bustVal = formatAmountValue(rewardBust, 1);
-                        if (lang === 'ru') {
-                            showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
-                        } else {
-                            showToast(`Check-in successful! +${karmaVal} ☯️ Karma and +${bustVal}💎$BUST`);
-                        }
-                    } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
-                        showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
-                    } else if (earnedBust > 0 && earnedKarma > 0) {
-                        showToast(window.t('checkinEarnBustAndKarma', {
-                            bust: formatAmountValue(earnedBust, 1),
-                            karma: formatAmountValue(earnedKarma, 1)
-                        }, lang));
-                    } else if (earnedBust > 0) {
-                        showToast(window.t('checkinEarnBust', { amount: formatAmountValue(earnedBust, 1) }, lang));
-                    } else if (earnedKarma > 0) {
-                        showToast(window.t('checkinEarnKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+                    if (typeof showCheckinRewardToasts === 'function') {
+                        showCheckinRewardToasts(checkin);
                     } else {
-                        showToast(window.t('successCheckin', {}, lang));
+                        var earnedBust = Number(checkin.earned_bust ?? checkin.bust_earned ?? 0);
+                        var earnedKarma = Number(checkin.earned_karma ?? checkin.karma_earned ?? 0);
+                        var sourceType = String(checkin.source_type || '').toLowerCase();
+                        var rewardBust = Number(checkin.reward_bust ?? checkin.earned_bust ?? checkin.bust_earned ?? 0);
+                        if (sourceType === 'overtime_checkin' && rewardBust > 0) {
+                            var karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
+                            var bustVal = formatAmountValue(rewardBust, 1);
+                            if (lang === 'ru') {
+                                showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
+                            } else {
+                                showToast(`Check-in successful! +${karmaVal} ☯️ Karma and +${bustVal}💎$BUST`);
+                            }
+                        } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
+                            showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+                        } else if (earnedBust > 0 && earnedKarma > 0) {
+                            showToast(window.t('checkinEarnBustAndKarma', {
+                                bust: formatAmountValue(earnedBust, 1),
+                                karma: formatAmountValue(earnedKarma, 1)
+                            }, lang));
+                        } else if (earnedBust > 0) {
+                            showToast(window.t('checkinEarnBust', { amount: formatAmountValue(earnedBust, 1) }, lang));
+                        } else if (earnedKarma > 0) {
+                            showToast(window.t('checkinEarnKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+                        } else {
+                            showToast(window.t('successCheckin', {}, lang));
+                        }
                     }
                 } else {
                     showToast(window.t('playReviewSubmittedToast', {}, lang));

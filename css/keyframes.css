@@ -186,6 +186,15 @@
     }
 }
 
+@keyframes ppc-buffer-band-glow {
+    0%, 100% {
+        box-shadow: 0 0 6px rgba(255, 176, 32, 0.18);
+    }
+    50% {
+        box-shadow: 0 0 12px rgba(255, 176, 32, 0.34);
+    }
+}
+
 @keyframes protection-shield-pulse {
     0%, 100% {
         transform: scale(1);
