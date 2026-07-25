@@ -267,6 +267,24 @@
     border: 1px solid var(--border-strong);
 }
 
+.system-setting-row--locked {
+    border-color: rgba(255, 159, 10, 0.35);
+    background: rgba(255, 159, 10, 0.08);
+}
+
+.system-setting-row--locked .system-setting-meta {
+    color: #ff9f0a;
+}
+
+.system-setting-row--locked .toggle-slider {
+    background-color: rgba(255, 159, 10, 0.35);
+    opacity: 0.72;
+}
+
+.system-setting-row--locked .toggle-switch {
+    cursor: pointer;
+}
+
 .system-setting-copy-wrap {
     display: flex;
     flex-direction: column;

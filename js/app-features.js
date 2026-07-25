@@ -1403,6 +1403,10 @@ function refreshLanguageUi() {
         window.updateTranslations(lang);
     }
 
+    if (typeof syncAutoAcceptToggleUi === 'function') {
+        syncAutoAcceptToggleUi();
+    }
+
     renderAutoTranslateLanguageOptions();
 
     updateProjectPricing('add');

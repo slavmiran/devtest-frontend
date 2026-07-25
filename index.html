@@ -127,12 +127,12 @@
                 </label>
                 <div class="system-language-warning" data-i18n="appLanguageAutoTranslateWarning">Auto-translated by Google. May contain inaccuracies.</div>
             </div>
-            <div class="system-setting-row">
+            <div class="system-setting-row" id="auto-accept-mutual-row">
                 <div class="system-setting-copy-wrap">
-                    <button type="button" class="system-setting-copy" onclick="showAutoAcceptMutualInfo()" data-i18n="autoAcceptMutualLabel">Авто-принятие взаимок</button>
-                    <div class="system-setting-meta" data-i18n="autoAcceptMutualMeta">Новые заявки подтверждаются без ожидания</div>
+                    <button type="button" class="system-setting-copy" id="auto-accept-mutual-label" onclick="showAutoAcceptMutualInfo()" data-i18n="autoAcceptMutualLabel">Авто-принятие взаимок</button>
+                    <div class="system-setting-meta" id="auto-accept-mutual-meta" data-i18n="autoAcceptMutualMeta">Новые заявки подтверждаются без ожидания</div>
                 </div>
-                <label class="toggle-switch" aria-label="Auto-accept mutual offers">
+                <label class="toggle-switch" id="auto-accept-mutual-switch" aria-label="Auto-accept mutual offers">
                     <input type="checkbox" id="auto-accept-mutual-toggle" onchange="handleAutoAcceptMutualToggle(this)">
                     <span class="toggle-slider"></span>
                 </label>

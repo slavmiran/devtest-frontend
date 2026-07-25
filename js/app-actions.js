@@ -141,28 +141,54 @@ function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
     openOwnerCheckpointChat(resolvedOwnerUsername, buildCheckpointReportPrefill(appId));
 }
 
+function _isAutoAcceptMutualAvailable() {
+    if (typeof _autoAcceptMutualAvailable === 'undefined') return true;
+    return !!_autoAcceptMutualAvailable;
+}
+
+function _showAutoAcceptLockedFeedback() {
+    var message = window.t('autoAcceptMutualLockedToast', {}, lang);
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+    if (tg.showAlert) {
+        tg.showAlert(message);
+    } else if (typeof showToast === 'function') {
+        showToast(message);
+    }
+}
+
 function syncAutoAcceptToggleUi() {
     var toggle = document.getElementById('auto-accept-mutual-toggle');
     if (!toggle) return;
-    var available = (typeof _autoAcceptMutualAvailable === 'undefined')
-        ? true
-        : !!_autoAcceptMutualAvailable;
+    var available = _isAutoAcceptMutualAvailable();
+    var row = document.getElementById('auto-accept-mutual-row');
+    var meta = document.getElementById('auto-accept-mutual-meta')
+        || document.querySelector('#auto-accept-mutual-row [data-i18n="autoAcceptMutualMeta"]');
+    var label = document.getElementById('auto-accept-mutual-label');
+
+    // Keep input clickable when locked — disabled checkboxes swallow taps and show no feedback.
+    toggle.disabled = !!_autoAcceptToggleInFlight;
     toggle.checked = !!_autoAcceptMutualEnabled && available;
-    toggle.disabled = !!_autoAcceptToggleInFlight || !available;
-    var meta = document.querySelector('[data-i18n="autoAcceptMutualMeta"]');
-    if (meta && !available) {
-        meta.textContent = window.t('autoAcceptMutualLockedMeta', {}, lang);
-    } else if (meta && available) {
-        meta.textContent = window.t('autoAcceptMutualMeta', {}, lang);
+    toggle.setAttribute('aria-disabled', available ? 'false' : 'true');
+
+    if (row) {
+        row.classList.toggle('system-setting-row--locked', !available);
+    }
+    if (meta) {
+        meta.textContent = window.t(available ? 'autoAcceptMutualMeta' : 'autoAcceptMutualLockedMeta', {}, lang);
+    }
+    if (label) {
+        var baseLabel = window.t('autoAcceptMutualLabel', {}, lang);
+        label.textContent = available ? baseLabel : ('🔒 ' + baseLabel);
     }
 }
 
 function showAutoAcceptMutualInfo() {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    var available = (typeof _autoAcceptMutualAvailable === 'undefined')
-        ? true
-        : !!_autoAcceptMutualAvailable;
-    showToast(window.t(available ? 'autoAcceptMutualInfoToast' : 'autoAcceptMutualLockedToast', {}, lang));
+    if (!_isAutoAcceptMutualAvailable()) {
+        _showAutoAcceptLockedFeedback();
+        return;
+    }
+    showToast(window.t('autoAcceptMutualInfoToast', {}, lang));
 }
 
 async function handleAutoAcceptMutualToggle(input) {
@@ -171,13 +197,10 @@ async function handleAutoAcceptMutualToggle(input) {
         return;
     }
 
-    var available = (typeof _autoAcceptMutualAvailable === 'undefined')
-        ? true
-        : !!_autoAcceptMutualAvailable;
-    if (!!input.checked && !available) {
+    if (!_isAutoAcceptMutualAvailable()) {
         input.checked = false;
         syncAutoAcceptToggleUi();
-        showToast(window.t('autoAcceptMutualLockedToast', {}, lang));
+        _showAutoAcceptLockedFeedback();
         return;
     }
 
@@ -206,7 +229,12 @@ async function handleAutoAcceptMutualToggle(input) {
                 _autoAcceptMutualAvailable = !!result.auto_accept_available;
             }
             syncAutoAcceptToggleUi();
-            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            var errorCode = getBackendErrorCode(result);
+            if (errorCode === 'auto_accept_reliability_required' || !_isAutoAcceptMutualAvailable()) {
+                _showAutoAcceptLockedFeedback();
+                return;
+            }
+            handleApiError(errorCode, result && result.details ? result.details : {});
             return;
         }
 
