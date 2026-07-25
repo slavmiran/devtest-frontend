@@ -2561,6 +2561,10 @@ function openDeleteModal(id) {
     projectToDelete = id;
     const project = myProjects.find(p => p.id === id);
     const infoEl = document.getElementById('delete-dynamic-info');
+    const titleEl = document.getElementById('t-deleteModalTitle');
+    const labelEl = document.getElementById('t-deleteMessageLabel');
+    const messageEl = document.getElementById('delete-message');
+    const confirmBtnEl = document.getElementById('t-confirmDeleteBtn');
     let infoHtml = '';
 
     if (project) {
@@ -2568,16 +2572,39 @@ function openDeleteModal(id) {
         const daysOnPlatform = project.created_at
             ? Math.floor((todayDate.getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60 * 24))
             : 0;
+        const platformDays = typeof getProjectPlatformDay === 'function'
+            ? getProjectPlatformDay(project.created_at)
+            : Math.max(1, daysOnPlatform + 1);
+        const rawGoogleDay = (typeof isProjectSynced === 'function' && isProjectSynced(project)
+            && typeof getProjectCurrentGoogleDay === 'function')
+            ? getProjectCurrentGoogleDay(project, platformDays)
+            : platformDays;
+        const currentProjectDay = Math.max(1, Number.isFinite(Number(rawGoogleDay)) ? Number(rawGoogleDay) : 1);
+        const isEarlyStop = currentProjectDay < 14;
         const testers = project.testers || [];
         const uniqueTestersCount = new Set(testers.map((tr) => tr.tester_id)).size;
         const projectLikes = project.likes || [];
         const canGetOwnerBonus = daysOnPlatform >= 14 && uniqueTestersCount >= 5;
 
+        if (titleEl) {
+            titleEl.textContent = window.t(isEarlyStop ? 'deleteModalTitleEarly' : 'deleteModalTitleFinal', {}, lang);
+        }
+        if (labelEl) {
+            labelEl.textContent = window.t(isEarlyStop ? 'deleteMessageLabelEarly' : 'deleteMessageLabelFinal', {}, lang);
+        }
+        if (messageEl) {
+            // Field hint lives in the label; clear placeholder to avoid duplicate text.
+            messageEl.placeholder = '';
+        }
+        if (confirmBtnEl) {
+            confirmBtnEl.textContent = window.t(isEarlyStop ? 'confirmDeleteBtnEarly' : 'confirmDeleteBtnFinal', {}, lang);
+        }
+
+        infoHtml += '<div class="delete-info-block">' + window.escapeHTML(
+            window.t(isEarlyStop ? 'deleteModalDescEarly' : 'deleteModalDescFinal', {}, lang)
+        ) + '</div>';
         if (canGetOwnerBonus) {
-            infoHtml += '<div class="delete-info-block bonus">' + window.escapeHTML(t.deleteCongratsTitle) + '</div>';
             infoHtml += '<div class="delete-chip-row"><span class="meta-chip accent-green">' + window.escapeHTML(t.deleteBonusChip) + '</span></div>';
-        } else {
-            infoHtml += '<div class="delete-info-block">' + window.escapeHTML(t.deleteThanksOnly) + '</div>';
         }
 
         const overtimeTesters = testers.map((tr) => {

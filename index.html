@@ -35,8 +35,8 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260725-ppc-buffer-polish"></script>
-    <script src="./i18n/en.js?v=20260725-ppc-buffer-polish"></script>
+    <script src="./i18n/ru.js?v=20260725-ppc-footer-tone"></script>
+    <script src="./i18n/en.js?v=20260725-ppc-footer-tone"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260713-sprint-ux-polish"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
@@ -61,7 +61,7 @@
     <link rel="stylesheet" href="./css/wizard.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20260716-feedback-toolbar-v1">
-    <link rel="stylesheet" href="./css/ppc.css?v=20260725-ppc-buffer-polish">
+    <link rel="stylesheet" href="./css/ppc.css?v=20260725-ppc-footer-tone">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260706-phase3">
@@ -706,15 +706,15 @@
     <!-- Delete Project Modal -->
     <div id="delete-modal" class="modal-overlay" onclick="closeDeleteModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-deleteModalTitle" data-i18n="deleteModalTitle">Завершить проект?</h3>
+            <h3 id="t-deleteModalTitle" data-i18n="deleteModalTitle">Завершить тестирование?</h3>
             <div id="delete-dynamic-info"></div>
             <div class="form-group">
-                <label class="form-label" id="t-deleteMessageLabel" data-i18n="deleteMessageLabel">Напишите пару слов благодарности тестерам (необязательно)...</label>
+                <label class="form-label" id="t-deleteMessageLabel" data-i18n="deleteMessageLabel">Пару слов благодарности тестерам (необязательно)...</label>
                 <textarea id="delete-message" class="form-input" rows="3" placeholder="" data-i18n-placeholder="deleteMessagePlaceholder"></textarea>
             </div>
             <div class="action-row">
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeDeleteModal()" id="t-cancelDelete" data-i18n="cancelDelete">Отмена</button>
-                <button class="btn" style="flex: 1; background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;" onclick="confirmDeleteProject()" id="t-confirmDeleteBtn" data-i18n="confirmDeleteBtn">Завершить и удалить</button>
+                <button class="btn btn-confirm-archive" onclick="confirmDeleteProject()" id="t-confirmDeleteBtn" data-i18n="confirmDeleteBtn">Завершить и перенести в архив</button>
             </div>
         </div>
     </div>

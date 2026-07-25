@@ -1984,6 +1984,21 @@ input::placeholder,
     font-size: 13px;
 }
 
+/* Soft archive/stop confirm button (delete modal) */
+.btn.btn-confirm-archive {
+    flex: 1;
+    background: rgba(90, 28, 28, 0.38);
+    color: #e2a8a3;
+    border: 1px solid rgba(200, 110, 105, 0.42);
+    box-shadow: none;
+}
+.btn.btn-confirm-archive:active {
+    opacity: 0.88;
+}
+.btn.btn-confirm-archive:disabled {
+    opacity: 0.55;
+}
+
 #custom-alert-overlay {
     display: none;
     position: fixed;

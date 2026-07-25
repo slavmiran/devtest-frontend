@@ -2585,14 +2585,57 @@ async function confirmHardDelete(appId, appName) {
 async function confirmDeleteProject() {
     if (!projectToDelete) return;
 
-    const message = document.getElementById('delete-message').value.trim();
     const id = projectToDelete;
+    if (!window._projectDeleteInFlight) window._projectDeleteInFlight = {};
+    if (window._projectDeleteInFlight[id]) return;
+
+    const messageEl = document.getElementById('delete-message');
+    const message = messageEl ? messageEl.value.trim() : '';
     const overtimeSelectedInput = document.querySelector('input[name="delete-overtime-tester"]:checked');
     const selectedOvertimeTester = overtimeSelectedInput ? overtimeSelectedInput.value : '';
-    const btn = document.getElementById('t-confirmDeleteBtn');
-    const originalText = btn.innerText;
-    btn.innerText = '...';
-    btn.disabled = true;
+    const deletedProject = myProjects.find(function(p) { return p.id === id; });
+    const card = document.getElementById('project-card-' + id);
+
+    window._projectDeleteInFlight[id] = true;
+
+    // Instant UX: close modal and fade the card out before the server responds
+    closeDeleteModal();
+    if (card) {
+        card.classList.add('removing');
+    }
+
+    if (deletedProject) {
+        myProjects = myProjects.filter(function(p) { return p.id !== id; });
+        archivedProjects.unshift({
+            app_id: deletedProject.id,
+            name: deletedProject.name,
+            package_name: deletedProject.package,
+            icon_url: deletedProject.icon_url,
+            target_lang: deletedProject.target_lang || 'ALL',
+            feedback_new_count: deletedProject.feedback_new_count || 0,
+            feedback_total_count: deletedProject.feedback_total_count || 0,
+            archive_reason: null,
+        });
+    }
+
+    const applyOptimisticRender = function() {
+        if (typeof renderProjects === 'function') renderProjects();
+        if (typeof renderArchivedProjects === 'function') renderArchivedProjects();
+    };
+    if (card) {
+        setTimeout(applyOptimisticRender, 400);
+    } else {
+        applyOptimisticRender();
+    }
+
+    const refreshListsAfterError = function() {
+        if (typeof loadProjects === 'function') {
+            loadProjects(true).catch(function() {});
+        }
+        if (typeof loadArchivedProjects === 'function') {
+            loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+        }
+    };
 
     try {
         const response = await fetch(`${API_BASE}/projects/${id}/delete`, {
@@ -2606,41 +2649,27 @@ async function confirmDeleteProject() {
         });
         const result = await response.json();
         if (result.status === 'success') {
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-
-            // Optimistic UI: move project from active to archive immediately
-            var deletedProject = myProjects.find(function(p) { return p.id === id; });
-            if (deletedProject) {
-                myProjects = myProjects.filter(function(p) { return p.id !== id; });
-                archivedProjects.unshift({
-                    app_id: deletedProject.id,
-                    name: deletedProject.name,
-                    package_name: deletedProject.package,
-                    icon_url: deletedProject.icon_url,
-                    target_lang: deletedProject.target_lang || 'ALL',
-                    feedback_new_count: deletedProject.feedback_new_count || 0,
-                    feedback_total_count: deletedProject.feedback_total_count || 0,
-                    archive_reason: null,
-                });
-                renderProjects();
-                renderArchivedProjects();
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            // Quiet background refresh for accurate archive metadata
+            if (typeof loadProjects === 'function') {
+                loadProjects(true).catch(function() {});
             }
-
-            closeDeleteModal();
-            // Background refresh for accurate data
-            loadProjects(true).catch(function() {});
-            loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+            if (typeof loadArchivedProjects === 'function') {
+                loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+            }
         } else {
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            refreshListsAfterError();
         }
     } catch (error) {
         console.error('Delete project error:', error);
-        const errorMessage = getApiErrorMessage(error && error.message, 'networkError');
-        if (tg.showAlert) tg.showAlert(errorMessage);
+        const errorMessage = getApiErrorMessage(error && error.message, 'deleteProjectError');
+        if (typeof showToast === 'function') showToast(errorMessage);
+        else if (tg && tg.showAlert) tg.showAlert(errorMessage);
         else alert(errorMessage);
+        refreshListsAfterError();
     } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
+        delete window._projectDeleteInFlight[id];
     }
 }
 
