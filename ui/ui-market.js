@@ -7281,6 +7281,11 @@ function switchTab(tabId, navElement) {
     if (finalTab === 'market') {
         loadMutualFeed();
         loadBountyFeed();
+        if (typeof loadGuestApps === 'function' && _guestProjectsExpanded) {
+            loadGuestApps().catch(function(error) {
+                console.error('Market tab loadGuestApps error:', error);
+            });
+        }
     }
 
     if (finalTab === 'tests') {

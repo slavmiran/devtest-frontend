@@ -94,6 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try { startMarketPolling(); } catch (e) { console.error('Bootstrap startMarketPolling error:', e); }
         loadEvents().catch(function(e) { console.error('Bootstrap loadEvents error:', e); });
         loadExternalCounts().catch(function(e) { console.error('Bootstrap loadExternalCounts error:', e); });
+        if (typeof loadGuestApps === 'function') {
+            loadGuestApps().catch(function(e) { console.error('Bootstrap loadGuestApps error:', e); });
+        }
         try { scheduleDeferredBootstrap(); } catch (e) { console.error('Bootstrap deferred error:', e); }
         console.log('[DEBUG] bootstrap: all fire-and-forget launched, calling _handleInitialRoute');
         await _handleInitialRoute();

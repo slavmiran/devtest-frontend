@@ -410,6 +410,9 @@ function scheduleDeferredBootstrap() {
                 loadMutualFeed().catch(function() {});
                 loadBountyFeed().catch(function() {});
             }
+            if (typeof loadGuestApps === 'function' && _guestProjectsExpanded && !_guestProjectsLoadedOnce) {
+                loadGuestApps().catch(function() {});
+            }
         }, 1600);
     }, 700);
 }

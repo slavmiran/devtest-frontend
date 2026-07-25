@@ -1743,7 +1743,11 @@ async function forceRefreshMarket() {
         showSkeleton('bounty-list');
     }
     try {
-        await Promise.all([loadMutualFeed(), loadBountyFeed()]);
+        var refreshJobs = [loadMutualFeed(), loadBountyFeed()];
+        if (typeof loadGuestApps === 'function' && _guestProjectsExpanded) {
+            refreshJobs.push(loadGuestApps({ force: true }));
+        }
+        await Promise.all(refreshJobs);
     } catch (error) {
         console.error('Force refresh market error:', error);
     } finally {
