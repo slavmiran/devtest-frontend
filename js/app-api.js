@@ -1468,7 +1468,8 @@ async function _loadTasksImpl(options) {
     }
     _apiStart();
     try {
-        var response = await fetchWithRetry(API_BASE + '/tasks/' + userId);
+        var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        var response = await fetchWithRetry(API_BASE + '/tasks/' + userId + '?' + initQ);
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var data = await response.json();
         _userEmail = String(data.user_email || '').trim();
@@ -1824,7 +1825,10 @@ async function publishProjectToMarket(projectId) {
         var response = await fetch(`${API_BASE}/projects/${projectId}/publish_to_market`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId })
+            body: JSON.stringify({
+                owner_id: userId,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+            })
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2000,7 +2004,8 @@ async function _confirmProjectSyncPersistence(appId, expectedDay, expectedMessag
     });
 
     try {
-        var response = await fetchWithRetry(API_BASE + '/projects/' + userId, { timeoutMs: 12000 }, 1);
+        var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        var response = await fetchWithRetry(API_BASE + '/projects/' + userId + '?' + initQ, { timeoutMs: 12000 }, 1);
         if (!response.ok) {
             throw new Error('HTTP ' + response.status);
         }
@@ -2052,7 +2057,8 @@ async function _loadProjectsImpl(options) {
     }
     _apiStart();
     try {
-        var response = await fetchWithRetry(API_BASE + '/projects/' + userId);
+        var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        var response = await fetchWithRetry(API_BASE + '/projects/' + userId + '?' + initQ);
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var data = await response.json();
         var nextProjects = _mapProjectsFromApi(data);
@@ -2162,6 +2168,7 @@ async function setProjectVisibilityMode(appId, nextMode) {
             body: JSON.stringify({
                 owner_id: userId,
                 visibility_mode: normalizedMode,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
             })
         });
         const result = await _readJsonResponseSafely(response, 'Project visibility update');
@@ -2258,6 +2265,7 @@ async function saveProjectSync() {
                     body: JSON.stringify({
                         owner_id: Number(userId),
                         tip_amount: tipAmount,
+                        init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
                     })
                 });
             } else {
@@ -2265,10 +2273,12 @@ async function saveProjectSync() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        owner_id: Number(userId),
                         google_sync_day: day,
                         sync_message: message,
                         protection_cost: protectionCost,
                         tip_amount: tipAmount,
+                        init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
                     })
                 });
             }
@@ -2438,7 +2448,11 @@ async function savePpcTopUp() {
         var response = await fetch(API_BASE + '/projects/' + syncProjectId + '/topup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: Number(userId), tip_amount: tipAmount })
+            body: JSON.stringify({
+                owner_id: Number(userId),
+                tip_amount: tipAmount,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+            })
         });
 
         var data = null;
@@ -2506,7 +2520,8 @@ async function loadArchivedProjects(options) {
         if (shouldMarkBackgroundSync) {
             beginBackgroundSync('projects');
         }
-        const response = await fetch(`${API_BASE}/projects/${userId}/archived`);
+        const initDataRaw = (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || '');
+        const response = await fetch(`${API_BASE}/projects/${userId}/archived?init_data=${encodeURIComponent(initDataRaw)}`);
         if (!response.ok) return;
         const data = await response.json();
         archivedProjects = (data.archived || []).map(function(project) {
@@ -2543,7 +2558,13 @@ async function confirmHardDelete(appId, appName) {
     });
     if (!confirmed) return;
     try {
-        const response = await fetch(`${API_BASE}/projects/${appId}/permanent`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/projects/${appId}/permanent`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+            }),
+        });
         const data = await response.json();
         if (data.status === 'success') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -2576,6 +2597,7 @@ async function confirmDeleteProject() {
             body: JSON.stringify({
                 message,
                 overtime_reward_user_id: selectedOvertimeTester ? Number(selectedOvertimeTester) : null,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
             })
         });
         const result = await response.json();
@@ -2788,7 +2810,8 @@ async function _confirmProjectCreationPersistence(projectData) {
     if (!userId || !normalizedPackage) return null;
 
     try {
-        var response = await fetchWithRetry(`${API_BASE}/projects/${userId}`, {
+        var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        var response = await fetchWithRetry(`${API_BASE}/projects/${userId}?${initQ}`, {
             timeoutMs: 10000
         }, 1);
         if (!response.ok) return null;
@@ -2997,6 +3020,7 @@ async function saveProjectEdit() {
                 accepts_email_testers: acceptsEmailTesters,
                 tester_email: acceptsEmailTesters ? testerEmailInput : null,
                 is_setup_completed: isSetupCompleted,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
                 ...pricingPayload
             })
         });

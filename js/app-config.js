@@ -116,6 +116,27 @@ let API_BASE = API_BASE_OVERRIDE || (window.location.hostname.includes('vercel.a
 const API_USES_NGROK = API_BASE.includes('ngrok');
 window.API_USES_NGROK = API_USES_NGROK;
 window.FEEDBACK_PUBLIC_LINK_BASE = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
+
+/** Signed Telegram WebApp initData for backend auth. Prefer over initDataUnsafe. */
+function getTelegramInitDataRaw() {
+    try {
+        var raw = (typeof tg !== 'undefined' && tg && tg.initData)
+            || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)
+            || '';
+        return String(raw || '').trim();
+    } catch (_) {
+        return '';
+    }
+}
+window.getTelegramInitDataRaw = getTelegramInitDataRaw;
+
+function withInitData(payload) {
+    var body = Object.assign({}, payload || {});
+    body.init_data = getTelegramInitDataRaw();
+    return body;
+}
+window.withInitData = withInitData;
+
 const _nativeFetch = window.fetch.bind(window);
 
 function _resolveFetchRequestUrl(input) {
@@ -511,7 +532,7 @@ function sendLanguagePreferenceToServer(targetLanguage) {
     return fetch(request, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: safeLanguage })
+        body: JSON.stringify(withInitData({ language: safeLanguage }))
     }).catch(() => {});
 }
 

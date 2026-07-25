@@ -608,7 +608,7 @@ async function submitManualExternalTrack(event) {
         var response = await fetchWithRetry(`${API_BASE}/external-tracks/manual`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 tester_id: userId,
                 source_app_id: sourceProjectId,
                 app_name: appName || null,
@@ -618,7 +618,7 @@ async function submitManualExternalTrack(event) {
                 google_group_url: groupUrl || null,
                 testing_day: testingDay,
                 is_mutual: isMutual,
-            })
+            }))
         }, 1);
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {
@@ -776,13 +776,13 @@ async function submitEditGuestProject(event) {
         var response = await fetchWithRetry(`${API_BASE}/guest-apps/${encodeURIComponent(packageName)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 tester_id: userId,
                 app_name: appName || null,
                 owner_username: ownerUsername,
                 google_group_url: groupUrl || null,
                 play_store_url: playUrl,
-            })
+            }))
         }, 1);
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {
@@ -818,7 +818,7 @@ async function startExternalTrackingSession(payload) {
     const response = await fetchWithRetry(`${API_BASE}/external-tests/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(withInitData(payload))
     }, 1);
     const result = await response.json();
     if (!response.ok || !result || result.status !== 'success') {
@@ -849,7 +849,7 @@ async function submitExternalTrackingProof(progressId, testId) {
     const response = await fetchWithRetry(`${API_BASE}/external-tests/${progressId}/proof`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tester_id: userId, local_date: getLocalDate() })
+        body: JSON.stringify(withInitData({ tester_id: userId, local_date: getLocalDate() }))
     }, 1);
     const result = await response.json();
     if (!response.ok || !result || result.status !== 'success') {
@@ -876,7 +876,7 @@ async function submitExternalDailyCheckin(progressId, testId) {
     const response = await fetchWithRetry(`${API_BASE}/external-tests/${progressId}/checkin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tester_id: userId, local_date: getLocalDate() })
+        body: JSON.stringify(withInitData({ tester_id: userId, local_date: getLocalDate() }))
     }, 1);
     const result = await response.json();
     if (!response.ok || !result || result.status !== 'success') {
@@ -901,7 +901,7 @@ async function cancelExternalTracking(progressId, testId) {
     const response = await fetchWithRetry(`${API_BASE}/external-tests/${progressId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tester_id: userId })
+        body: JSON.stringify(withInitData({ tester_id: userId }))
     }, 1);
     const result = await response.json();
     if (!response.ok || !result || result.status !== 'success') {
@@ -944,12 +944,12 @@ async function unlinkGuestRelationship(progressId, options) {
         return null;
     }
 
-    var requestBody = {
+    var requestBody = withInitData({
         user_id: userId,
         remove_from_my_tests: options.removeFromMyTests !== false,
         remove_from_my_testers: options.removeFromMyTesters !== false,
         source_app_id: Number(options.sourceAppId || 0) || null,
-    };
+    });
 
     const response = await fetchWithRetry(`${API_BASE}/guest-links/${safeProgressId}/unlink`, {
         method: 'POST',
@@ -1553,7 +1553,7 @@ async function syncUserTimezone(force) {
         const response = await fetch(`${API_BASE}/users/${userId}/timezone`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ timezone: detectedTimezone })
+            body: JSON.stringify(withInitData({ timezone: detectedTimezone }))
         });
         if (!response.ok) {
             return;
@@ -2183,7 +2183,7 @@ async function startMassInvite(projectId) {
         var planResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/plan`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: Number(userId) })
+            body: JSON.stringify(withInitData({ owner_id: Number(userId) }))
         });
         var planData = await planResponse.json();
         if (!planResponse.ok || planData.status !== 'success') {
@@ -2232,11 +2232,11 @@ async function startMassInvite(projectId) {
                 var sendResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/send_one`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: JSON.stringify(withInitData({
                         owner_id: Number(userId),
                         target_app_id: Number(candidate.app_id),
                         target_owner_id: Number(candidate.owner_id)
-                    })
+                    }))
                 });
                 var sendData = await sendResponse.json();
                 if (sendResponse.ok && sendData.status === 'success' && sendData.sent) {
@@ -2288,10 +2288,10 @@ async function startMassInvite(projectId) {
                 var finResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/finalize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: JSON.stringify(withInitData({
                         owner_id: Number(userId),
                         sent_count: Number(successCount)
-                    })
+                    }))
                 });
                 var finData = await finResponse.json();
                 if (finResponse.ok && finData.status === 'success') {
@@ -2377,7 +2377,7 @@ async function resetMassInviteCooldown(projectId) {
         var response = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/reset_cooldown`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId })
+            body: JSON.stringify(withInitData({ owner_id: userId }))
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2434,7 +2434,7 @@ async function joinDirect(appId) {
         const response = await fetch(`${API_BASE}/feed/mutual/${appId}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId, allow_over_limit: false, join_type: 'direct' })
+            body: JSON.stringify(withInitData({ tester_id: userId, allow_over_limit: false, join_type: 'direct' }))
         });
         const result = await response.json();
         if (result.status !== 'success') {
@@ -2487,7 +2487,7 @@ async function joinMutual(appId, allowOverLimit = false) {
         const response = await fetch(`${API_BASE}/feed/mutual/${appId}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId, allow_over_limit: allowOverLimit })
+            body: JSON.stringify(withInitData({ tester_id: userId, allow_over_limit: allowOverLimit }))
         });
         const result = await response.json();
         if (result.status !== 'success') {
@@ -2543,7 +2543,7 @@ async function joinBounty(appId) {
         const response = await fetch(`${API_BASE}/feed/bounty/${appId}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId })
+            body: JSON.stringify(withInitData({ tester_id: userId }))
         });
         const result = await response.json();
         if (result.status !== 'success') {
@@ -2574,7 +2574,7 @@ async function confirmDropTest() {
         const response = await fetch(`${API_BASE}/tests/${_dropTestAppId}/drop`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId })
+            body: JSON.stringify(withInitData({ tester_id: userId }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2667,11 +2667,11 @@ async function confirmLeaveMutual(isJustified) {
         var response = await fetch(`${API_BASE}/tests/${appId}/leave_mutual`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 tester_id: userId,
                 leave_reason: reasonPayload,
                 is_justified: !!isJustified,
-            })
+            }))
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2736,10 +2736,10 @@ async function confirmKickTester() {
         var response = await fetch(`${API_BASE}/projects/${target.appId}/kick/${target.testerId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 owner_id: userId,
                 leave_reason: reasonPayload,
-            })
+            }))
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2776,7 +2776,7 @@ async function confirmOvertimeLeave() {
         const response = await fetch(`${API_BASE}/tests/${_overtimeTest.id}/leave`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId })
+            body: JSON.stringify(withInitData({ tester_id: userId }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2799,7 +2799,7 @@ async function submitSocialLink() {
         const response = await fetch(`${API_BASE}/social-bonus/submit`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, url })
+            body: JSON.stringify(withInitData({ user_id: userId, url }))
         });
         const data = await response.json();
         if (response.ok) {
@@ -3141,7 +3141,10 @@ async function restartArchivedProject(appId, settingsPayload) {
     if (_pendingActions.has(actionKey)) return null;
     _pendingActions.add(actionKey);
 
-    var requestBody = Object.assign({ owner_id: userId }, settingsPayload || {});
+    var requestBody = Object.assign({
+        owner_id: userId,
+        init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+    }, settingsPayload || {});
 
     _apiStart();
     try {
@@ -3191,7 +3194,13 @@ async function deleteTester(appId, testerId, testerName) {
     });
     if (!confirmed) return;
     try {
-        const response = await fetch(`${API_BASE}/projects/${appId}/testers/${testerId}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/projects/${appId}/testers/${testerId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+            }),
+        });
         const result = await response.json();
         if (result.status === 'ok') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -3211,7 +3220,7 @@ async function _postResolveAccessError(projectId, progressId) {
     var response = await fetch(`${API_BASE}/projects/${projectId}/resolve_access_issue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ owner_id: userId, progress_id: progressId })
+        body: JSON.stringify(withInitData({ owner_id: userId, progress_id: progressId }))
     });
     var result = await response.json();
     return {
@@ -3507,7 +3516,7 @@ async function deleteAccessTester(projectId, progressId, testerLabel) {
         var response = await fetch(`${API_BASE}/projects/${projectId}/delete_access_tester`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId, progress_id: safeProgressId })
+            body: JSON.stringify(withInitData({ owner_id: userId, progress_id: safeProgressId }))
         });
         var result = await response.json();
         if (!response.ok || result.status !== 'success') {

@@ -1228,7 +1228,7 @@ async function sendGuestProjectInvite() {
         const response = await fetch(`${API_BASE}/guest-apps/${encodeURIComponent(String(guest.id || ''))}/invite`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ inviter_id: userId })
+            body: JSON.stringify(withInitData({ inviter_id: userId }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -3325,6 +3325,7 @@ async function submitPlayReview() {
     formData.append('user_id', String(userId));
     formData.append('auto_checkin', 'true');
     if (typeof getLocalDate === 'function') formData.append('local_date', getLocalDate());
+    formData.append('init_data', (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : '');
     try {
         var apiBase = (window.App && window.App.API_BASE) || '';
         var resp = await fetch(apiBase + '/projects/' + _playReviewModalAppId + '/play-review/submit', {
@@ -3416,10 +3417,10 @@ async function rejectPlayReview(feedbackId, projectId, btnEl, reason) {
         var resp = await fetch(apiBase + '/feedback/' + feedbackId + '/reject-play-review', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 owner_id: Number(userId),
                 reason: selectedReason,
-            }),
+            })),
         });
         var data = await resp.json();
         if (data && data.status === 'success') {
@@ -5377,10 +5378,10 @@ async function confirmFeedbackReject() {
         var resp = await fetch(apiBase + '/feedback/' + feedbackId + '/reject', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 owner_id: Number(userIdLocal),
                 reason: reason,
-            }),
+            })),
         });
         var data = await resp.json();
         if (data && data.status === 'success') {
@@ -6673,7 +6674,8 @@ async function openKarmaDistribution(projectId) {
     renderKarmaDistributionModal(project, {});
 
     try {
-        const response = await fetch(`${API_BASE}/projects/${projectId}/feedback?owner_id=${userId}`);
+        const initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        const response = await fetch(`${API_BASE}/projects/${projectId}/feedback?owner_id=${userId}&${initQ}`);
         const data = await response.json();
         if (response.ok && data.status === 'success' && Array.isArray(data.feedback)) {
             const feedbackCountByTester = {};
@@ -7930,6 +7932,7 @@ async function openDossierModal(username, testerId, appId) {
         if (Number(appId || 0) > 0) {
             projectsParams.set('context_app_id', String(appId));
         }
+        projectsParams.set('init_data', getTelegramInitDataRaw());
         const projectsQuery = projectsParams.toString();
         const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (projectsQuery ? `?${projectsQuery}` : '');
         const resp = await fetch(projectsUrl);

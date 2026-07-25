@@ -1130,7 +1130,7 @@ async function decideOffer(offerId, action, event) {
         const response = await fetch(`${API_BASE}/offers/${offerId}/${action}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId })
+            body: JSON.stringify(withInitData({ user_id: userId }))
         });
         const result = await response.json();
         if (result.status !== 'success') {
@@ -1265,12 +1265,12 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
         const response = await fetchWithRetry(`${API_BASE}/offers`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 owner_id: targetOwnerId,
                 target_app_id: targetAppId,
                 proposer_id: userId,
                 proposer_app_id: proposerAppId
-            }),
+            })),
             timeoutMs: 20000,
         });
 
@@ -1475,7 +1475,7 @@ async function submitIssueReport(appId) {
         var response = await fetch(`${API_BASE}/projects/${appId}/report_issue`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId, issue_reason: reason, email: email, account_match_confirmed: true })
+            body: JSON.stringify(withInitData({ tester_id: userId, issue_reason: reason, email: email, account_match_confirmed: true }))
         });
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {
@@ -1588,7 +1588,8 @@ function renderEarnBustDynamic() {
 async function openEarnBustModal() {
     document.getElementById('earn-bust-modal').classList.add('active');
     try {
-        const response = await fetch(`${API_BASE}/referral-stats/${userId}`);
+        const initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        const response = await fetch(`${API_BASE}/referral-stats/${userId}?${initQ}`);
         if (!response.ok) return;
         const data = await response.json();
         const referralsCount = Number(data.referrals_count || 0);
@@ -1800,12 +1801,12 @@ async function initiateProjectFeedback(appId, options) {
         const response = await fetch(`${API_BASE}/feedback/initiate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 user_id: userId,
                 app_id: appId,
                 checkin_context: options.checkinContext || null,
                 feedback_type: feedbackType,
-            })
+            }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -1976,7 +1977,8 @@ async function openProjectFeedback(appId, isArchived) {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/projects/${appId}/feedback?owner_id=${userId}`);
+        const initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        const response = await fetch(`${API_BASE}/projects/${appId}/feedback?owner_id=${userId}&${initQ}`);
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
             if (window.showProjectFeedbackModalError) {
@@ -2003,7 +2005,7 @@ async function sendProjectFeedbackMedia(feedbackId) {
         const response = await fetch(`${API_BASE}/feedback/${feedbackId}/send_media`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId })
+            body: JSON.stringify(withInitData({ owner_id: userId }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2163,12 +2165,12 @@ async function submitFeedbackReward() {
         const response = await fetch(`${API_BASE}/feedback/${_feedbackRewardTargetId}/reward`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 owner_id: userId,
                 bust_amount: bustAmount,
                 karma_amount: _feedbackRewardKarma,
                 reply_text: replyText,
-            })
+            }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2215,11 +2217,11 @@ async function submitFeedback() {
         const response = await fetch(`${API_BASE}/send_to_topic`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 user_id: userId,
                 type: _feedbackType,
                 text
-            })
+            }))
         });
         const result = await response.json();
         if (!response.ok || result.status !== 'success') {
@@ -2473,7 +2475,11 @@ async function sendKarmaReward(appId, testerId, rewardType) {
         const response = await fetch(`${API_BASE}/projects/${appId}/like`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: testerId, type: rewardType })
+            body: JSON.stringify({
+                tester_id: testerId,
+                type: rewardType,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+            })
         });
         const result = await response.json();
         if (result.status === 'success') {
@@ -2545,12 +2551,12 @@ async function confirmStart(id) {
         const response = await fetch(`${API_BASE}/checkin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 tester_id: userId,
                 app_id: id,
                 local_date: getLocalDate(),
                 play_feedback_submitted: shouldSubmitPlayFeedback,
-            })
+            }))
         });
 
         let result = null;
@@ -2687,7 +2693,7 @@ async function claimGrant(progressId, appId) {
         const response = await fetch(`${API_BASE}/testing/${progressId}/claim_grant`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId })
+            body: JSON.stringify(withInitData({ tester_id: userId }))
         });
         const result = await response.json();
         if (!response.ok || result.status !== 'success') {
@@ -2732,7 +2738,7 @@ async function claimEarlyFinishBonus(progressId, appId) {
         const response = await fetch(`${API_BASE}/testing/${progressId}/claim_early_finish`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId })
+            body: JSON.stringify(withInitData({ tester_id: userId }))
         });
         const result = await response.json();
         if (!response.ok || result.status !== 'success') {
@@ -2808,6 +2814,7 @@ async function handleIconUpload(fileInput, targetFieldId) {
         var formData = new FormData();
         formData.append('file', file);
         formData.append('user_id', String(userId));
+        formData.append('init_data', getTelegramInitDataRaw());
 
         var apiBase = (window.App && window.App.API_BASE) || '';
         var resp = await fetch(apiBase + '/upload-icon', { method: 'POST', body: formData });
@@ -2874,6 +2881,7 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
         var formData = new FormData();
         formData.append('file', file);
         formData.append('user_id', String(userId));
+        formData.append('init_data', getTelegramInitDataRaw());
 
         var resp = await fetch(apiBase + '/projects/' + appId + '/play-review/upload', {
             method: 'PUT',
@@ -3057,12 +3065,12 @@ async function submitQuickFeedbackAccept(feedbackId, projectId, btnEl) {
         const response = await fetch(`${API_BASE}/feedback/${feedbackId}/reward`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 owner_id: userId,
                 bust_amount: targetBust,
                 karma_amount: targetKarma,
                 reply_text: "",
-            })
+            }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {

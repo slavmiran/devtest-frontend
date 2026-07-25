@@ -268,7 +268,7 @@
             var response = await fetch(apiBase + '/projects/' + appId + '/mass_invite/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ owner_id: Number(ownerId) }),
+                body: JSON.stringify(withInitData({ owner_id: Number(ownerId) })),
             });
             var data = await response.json();
             if (!response.ok || data.status !== 'success') {
