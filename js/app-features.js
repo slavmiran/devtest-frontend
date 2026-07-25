@@ -2525,13 +2525,175 @@ async function joinMutual(appId, allowOverLimit = false) {
     }
 }
 
-async function joinBounty(appId) {
+var _pendingJoinBountyAppId = null;
+
+function _findJoinBountyContract(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return null;
+    if (typeof _findFeedItemForOptimisticJoin === 'function') {
+        var fromFeed = _findFeedItemForOptimisticJoin(normalizedId);
+        if (fromFeed) return fromFeed;
+    }
+    if (Array.isArray(bountyContracts)) {
+        return bountyContracts.find(function(item) {
+            return Number(item && item.app_id) === normalizedId;
+        }) || null;
+    }
+    return null;
+}
+
+function _buildJoinBountyGrantPreviewHtml() {
+    var grant = typeof getGrantEstimateData === 'function'
+        ? getGrantEstimateData({ skips_count: 0, daily_timeline: '' })
+        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, total: 100 };
+    var formatAmount = typeof formatBustAmount === 'function'
+        ? formatBustAmount
+        : function(value) { return String(value) + ' $BUST'; };
+    var skipIndicator = Array.from({ length: 3 }, function() {
+        return '<span class="skip-dot available"></span>';
+    }).join('');
+    var T = function(key, vars) {
+        return window.t(key, vars || {}, lang) || key;
+    };
+    var esc = function(value) {
+        return typeof window.escapeHTML === 'function' ? window.escapeHTML(value) : String(value || '');
+    };
+
+    return '<div class="grant-dashboard-block">' +
+        '<div class="grant-dashboard-header">' +
+            '<div class="grant-dashboard-heading">' +
+                '<div class="grant-dashboard-title">' + esc(T('grantGoldTesterTitle')) + '</div>' +
+                '<div class="grant-dashboard-subtitle">' + esc(T('joinBountyGrantSubtitle')) + '</div>' +
+            '</div>' +
+            '<div class="grant-dashboard-total notranslate">' + esc(T('grantTotalEstimateValue', { amount: formatAmount(grant.total) })) + '</div>' +
+        '</div>' +
+        '<div class="grant-dashboard-skips-row">' +
+            '<span class="grant-skip-text">' + esc(T('grantSkipsLabel', { used: 0, max: 3 })) + '</span>' +
+            '<span class="grant-dashboard-skips">' + skipIndicator + '</span>' +
+        '</div>' +
+        '<div class="grant-reward-grid">' +
+            '<div class="grant-reward-card">' +
+                '<div class="grant-reward-label">' + esc(T('grantBaseLabel')) + '</div>' +
+                '<div class="grant-reward-value notranslate">' + esc(T('grantBaseValue', { amount: formatAmount(grant.base || 50) })) + '</div>' +
+                '<div class="grant-reward-status is-active">' + esc(T('grantCardActive')) + '</div>' +
+            '</div>' +
+            '<div class="grant-reward-card">' +
+                '<div class="grant-reward-label">' + esc(T('grantPerfectLabel')) + '</div>' +
+                '<div class="grant-reward-value notranslate">' + esc(T('grantPerfectValue', { amount: formatAmount(50) })) + '</div>' +
+                '<div class="grant-reward-status is-active">' + esc(T('grantCardActive')) + '</div>' +
+            '</div>' +
+            '<div class="grant-reward-card">' +
+                '<div class="grant-reward-label">' + esc(T('grantKarmaBonusLabel')) + '</div>' +
+                '<div class="grant-reward-value notranslate">' + esc(T('grantKarmaValue', { amount: formatAmount(grant.karmaBonus || 0) })) + '</div>' +
+                '<div class="grant-reward-status is-active">' + esc(T('grantCardActive')) + '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="join-bounty-confirm-grant-note">' + esc(T('joinBountyGrantNote')) + '</div>' +
+    '</div>';
+}
+
+function openJoinBountyConfirmModal(appId) {
     if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
         return;
     }
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return;
+
+    var contract = _findJoinBountyContract(normalizedId) || { app_id: normalizedId };
+    var bounty = Number(contract.bounty_per_tester || 0);
+    var checkinsReward = Math.round(bounty * 0.65);
+    var holdReward = Math.round(bounty * 0.35);
+    var formatAmount = typeof formatBustAmount === 'function'
+        ? formatBustAmount
+        : function(value) { return String(value) + ' $BUST'; };
+    var T = function(key, vars) {
+        return window.t(key, vars || {}, lang) || key;
+    };
+
+    _pendingJoinBountyAppId = normalizedId;
+
+    var projectEl = document.getElementById('join-bounty-confirm-project');
+    if (projectEl) {
+        var safeName = (typeof window.escapeHTML === 'function'
+            ? window.escapeHTML(contract.name || T('unknownLabel'))
+            : String(contract.name || ''));
+        var safePackage = (typeof window.escapeHTML === 'function'
+            ? window.escapeHTML(contract.package_name || '')
+            : String(contract.package_name || ''));
+        var iconHtml = typeof renderIcon === 'function'
+            ? renderIcon(contract.name || '', contract.icon_url)
+            : '';
+        projectEl.innerHTML = iconHtml +
+            '<div class="card-info">' +
+                '<div class="card-title notranslate">' + safeName + '</div>' +
+                (safePackage ? '<div class="card-subtitle notranslate">' + safePackage + '</div>' : '') +
+            '</div>';
+    }
+
+    var totalEl = document.getElementById('join-bounty-confirm-total');
+    if (totalEl) totalEl.textContent = formatAmount(bounty);
+    var checkinsEl = document.getElementById('join-bounty-confirm-checkins');
+    if (checkinsEl) checkinsEl.textContent = formatAmount(checkinsReward);
+    var holdEl = document.getElementById('join-bounty-confirm-hold');
+    if (holdEl) holdEl.textContent = formatAmount(holdReward);
+
+    var grantEl = document.getElementById('join-bounty-confirm-grant');
+    if (grantEl) grantEl.innerHTML = _buildJoinBountyGrantPreviewHtml();
+
+    var titleEl = document.getElementById('join-bounty-confirm-title');
+    if (titleEl) titleEl.textContent = T('joinBountyConfirmTitle');
+    var introEl = document.getElementById('join-bounty-confirm-intro');
+    if (introEl) introEl.textContent = T('joinBountyConfirmIntro');
+    var rewardTitleEl = document.querySelector('#join-bounty-confirm-modal .join-bounty-reward-title');
+    if (rewardTitleEl) rewardTitleEl.textContent = T('joinBountyRewardLabel');
+    var checkinsLabelEl = document.querySelector('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyCheckinsLabel"]');
+    if (checkinsLabelEl) checkinsLabelEl.textContent = T('joinBountyCheckinsLabel');
+    var holdLabelEl = document.querySelector('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyHoldLabel"]');
+    if (holdLabelEl) holdLabelEl.textContent = T('joinBountyHoldLabel');
+    var holdHintEl = document.querySelector('#join-bounty-confirm-modal .join-bounty-reward-hint');
+    if (holdHintEl) holdHintEl.textContent = T('bountyModalHoldHint');
+    var warningEl = document.querySelector('#join-bounty-confirm-modal .join-bounty-confirm-warning span');
+    if (warningEl) warningEl.textContent = T('bountyModalWarningText');
+    var confirmBtn = document.getElementById('join-bounty-confirm-btn');
+    if (confirmBtn) confirmBtn.textContent = T('joinBountyConfirmBtn');
+    var cancelEl = document.getElementById('join-bounty-confirm-cancel');
+    if (cancelEl) cancelEl.textContent = T('btnCancel');
+
+    var modal = document.getElementById('join-bounty-confirm-modal');
+    if (modal) {
+        modal.classList.add('active');
+        if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    }
+}
+
+function closeJoinBountyConfirmModal(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    _pendingJoinBountyAppId = null;
+    var modal = document.getElementById('join-bounty-confirm-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function joinBounty(appId) {
+    openJoinBountyConfirmModal(appId);
+}
+
+async function confirmJoinBounty() {
+    var appId = Number(_pendingJoinBountyAppId || 0);
+    if (appId <= 0) return;
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        closeJoinBountyConfirmModal();
+        return;
+    }
+
     var actionKey = 'joinBounty_' + appId;
     if (_pendingActions.has(actionKey)) return;
     _pendingActions.add(actionKey);
+
+    closeJoinBountyConfirmModal();
+
     // Optimistic UI: remove card immediately, rollback on error
     const rollback = [...bountyContracts];
     bountyContracts = bountyContracts.filter(c => c.app_id !== appId);

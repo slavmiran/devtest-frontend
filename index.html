@@ -71,7 +71,7 @@
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./css/lifecycle.css?v=20260706-phase3">
+    <link rel="stylesheet" href="./css/lifecycle.css?v=20260725-join-bounty-confirm">
     <link rel="stylesheet" href="./css/access-issue.css?v=20260722-access-timer-v1">
     <link rel="stylesheet" href="./styles.css?v=20260723-claim-history-bust">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
@@ -1695,6 +1695,47 @@
             </div>
 
             <button class="btn btn-primary" style="width: 100%;" onclick="closeBountyInfoModal()" data-i18n="ppcModalBufferOk">Понятно</button>
+        </div>
+    </div>
+
+    <!-- Join Bounty Confirm Modal -->
+    <div id="join-bounty-confirm-modal" class="modal-overlay" onclick="closeJoinBountyConfirmModal(event)">
+        <div class="modal-content join-bounty-confirm-content" onclick="event.stopPropagation()">
+            <h3 id="join-bounty-confirm-title" data-i18n="joinBountyConfirmTitle">Подтвердите контракт</h3>
+            <p id="join-bounty-confirm-intro" class="join-bounty-confirm-intro" data-i18n="joinBountyConfirmIntro">Перед стартом посмотрите, как устроена награда и что нужно для гранта платформы.</p>
+
+            <div id="join-bounty-confirm-project" class="join-bounty-confirm-project"></div>
+
+            <div class="join-bounty-reward-card">
+                <div class="join-bounty-reward-header">
+                    <div class="join-bounty-reward-heading">
+                        <div class="join-bounty-reward-kicker">$BUST</div>
+                        <div class="join-bounty-reward-title" data-i18n="joinBountyRewardLabel">Награда</div>
+                    </div>
+                    <div id="join-bounty-confirm-total" class="join-bounty-reward-total notranslate">0 $BUST</div>
+                </div>
+                <div class="join-bounty-reward-rows">
+                    <div class="join-bounty-reward-row">
+                        <span data-i18n="joinBountyCheckinsLabel">Ежедневные чекины (65%)</span>
+                        <span id="join-bounty-confirm-checkins" class="notranslate">0 $BUST</span>
+                    </div>
+                    <div class="join-bounty-reward-row">
+                        <span data-i18n="joinBountyHoldLabel">Hold Bonus (35%)</span>
+                        <span id="join-bounty-confirm-hold" class="notranslate">0 $BUST</span>
+                    </div>
+                </div>
+                <div class="join-bounty-reward-hint" data-i18n="bountyModalHoldHint">Доступен после 14-го дня тестирования, на 15-й день</div>
+                <div class="bounty-warning-box join-bounty-confirm-warning">
+                    <span data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
+                </div>
+            </div>
+
+            <div id="join-bounty-confirm-grant" class="join-bounty-confirm-grant"></div>
+
+            <button id="join-bounty-confirm-btn" class="btn btn-primary" style="width: 100%;" onclick="confirmJoinBounty()" data-i18n="joinBountyConfirmBtn">💎 Взять контракт</button>
+            <div class="join-bounty-confirm-cancel-wrap">
+                <a href="#" id="join-bounty-confirm-cancel" class="join-bounty-confirm-cancel" onclick="closeJoinBountyConfirmModal(event); return false;" data-i18n="btnCancel">Отмена</a>
+            </div>
         </div>
     </div>
 
