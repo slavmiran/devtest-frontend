@@ -1104,9 +1104,9 @@ function _calcProtectionCost(gapDays, alreadyPaidDays) {
 /**
  * Geometry of the free Safety Buffer on the PPC slider.
  * Home slot = [platformDay − remainingDays … platformDay].
- * While the thumb is inside/right of home: band stays home (muted under green,
- * solid after the thumb). Past home to the left: band attaches to the thumb
- * as a +remainingDays tail.
+ * - thumb left of home: solid amber tail glued to the thumb
+ * - thumb inside home: muted under green / solid after thumb
+ * - thumb right of platform day: muted amber rides under the green tip
  */
 function _ppcBufferGeometry(googleDay, platformDay, remainingBufferHours, sliderMin, sliderMax) {
     const sliderRange = sliderMax - sliderMin;
@@ -1126,7 +1126,12 @@ function _ppcBufferGeometry(googleDay, platformDay, remainingBufferHours, slider
     let revealPct;
     let attached = false;
 
-    if (googleDay + 1e-9 >= homeStart) {
+    if (googleDay + 1e-9 >= homeEnd) {
+        // Past platform day to the right — muted buffer follows the thumb
+        bandStart = googleDay - remainingDays;
+        bandEnd = googleDay;
+        revealPct = 100;
+    } else if (googleDay + 1e-9 >= homeStart) {
         bandStart = homeStart;
         bandEnd = homeEnd;
         const span = bandEnd - bandStart;
@@ -1174,14 +1179,13 @@ function _ppcUpdateBufferBand(slider, track, googleDay, platformDay, remainingBu
 
 /**
  * Preview copy for the buffer legend — models the gap, does not spend buffer.
- * @returns {{ main: string, hint: string, modeledHours: number, attached: boolean }}
+ * @returns {{ main: string, modeledHours: number, attached: boolean }}
  */
 function _ppcBufferPreviewCopy(T, gapDays, remainingBufferHours) {
     const remainingDays = remainingBufferHours / 24;
     const usedHours = Math.min(gapDays * 24, remainingBufferHours);
     const modeledHours = Math.max(0, Math.round(remainingBufferHours - usedHours));
     const attached = gapDays > remainingDays + 1e-9;
-    const hint = T('ppcBufferPreviewHint');
 
     let main;
     if (gapDays <= 0) {
@@ -1191,7 +1195,7 @@ function _ppcBufferPreviewCopy(T, gapDays, remainingBufferHours) {
     } else {
         main = T('ppcBufferPreviewAttached', { hours: remainingBufferHours });
     }
-    return { main, hint, modeledHours, attached };
+    return { main, modeledHours, attached };
 }
 
 /** Updates all live-calculation UI elements in State #1 after slider/tip changes. */
@@ -1237,9 +1241,7 @@ function _ppcUpdateCalculations() {
 
     // Live buffer legend (preview — does not spend buffer)
     const legendMain = document.getElementById('ppc-buffer-legend-main');
-    const legendHint = document.getElementById('ppc-buffer-legend-hint');
     if (legendMain) legendMain.textContent = preview.main;
-    if (legendHint) legendHint.textContent = preview.hint;
 
     let state = 'A';
     if (gap > 2) {
@@ -1291,14 +1293,14 @@ function _ppcUpdateCalculations() {
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateCRequiredTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateCRequiredText'))}</div>
-                <div class="ppc-status-life">
-                    <div class="ppc-status-life-label">${window.escapeHTML(T('ppcStateCLifeLabel'))}</div>
-                    <div class="ppc-status-life-total"><em>${window.escapeHTML(String(totalLife))}</em> ${window.escapeHTML(T('ppcStateCLifeTotalUnit'))}</div>
-                    <div class="ppc-status-life-detail">${lifeDetailHtml}</div>
-                </div>
                 <div class="ppc-status-cost-block">
                     <div class="ppc-status-cost-days">${window.escapeHTML(T('ppcGapCostLabel', { days: extraDays }))}</div>
                     <div class="ppc-status-cost-amount">${totalCost} $BUST</div>
+                </div>
+                <div class="ppc-status-life">
+                    <div class="ppc-status-life-label">${window.escapeHTML(T('ppcStateCLifeLabel'))}</div>
+                    <div class="ppc-status-life-total"><em>${window.escapeHTML(String(totalLife))}</em> <span class="ppc-status-life-unit">${window.escapeHTML(T('ppcStateCLifeTotalUnit'))}</span></div>
+                    <div class="ppc-status-life-detail">${lifeDetailHtml}</div>
                 </div>
             `;
         }
@@ -1481,7 +1483,6 @@ function _renderProtectionCenterState1(project, platformDay) {
                         <span class="ppc-slider-buffer-swatch"></span>
                         <span id="ppc-buffer-legend-main">${window.escapeHTML(initPreview.main)}</span>
                     </div>
-                    <div class="ppc-slider-buffer-legend-hint" id="ppc-buffer-legend-hint">${window.escapeHTML(initPreview.hint)}</div>
                 </div>
             </div>
 
@@ -1511,8 +1512,8 @@ function _renderProtectionCenterState1(project, platformDay) {
                 <!-- Finance Summary -->
                 <div class="ppc-finance-block">
                     <div class="ppc-balance-row">
-                        <span>${window.escapeHTML(T('ppcBalanceLabel', { amount: '' })).replace('{amount}', '')}</span>
-                        <span class="ppc-balance-value">${window.escapeHTML(formatBustAmount ? formatBustAmount(balance) : String(balance))} $BUST</span>
+                        <span>${window.escapeHTML(T('ppcBalanceCaption'))}</span>
+                        <span class="ppc-balance-value">${window.escapeHTML(formatBustAmount ? formatBustAmount(balance) : (String(balance) + ' $BUST'))}</span>
                     </div>
                     <div class="ppc-total-row">
                         <span>${window.escapeHTML(T('ppcTotalCostLabel'))}</span>
