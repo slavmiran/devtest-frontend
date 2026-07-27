@@ -611,6 +611,7 @@
             reportIssueCancelBtn: "Cancel",
             reportIssueSuccess: "✅ Testing paused. The owner has been notified.",
             ownerAccessIssueBlockToast: "You can't take new projects while you have an open access issue. Fix it first.",
+            targetOwnerAccessIssueBlockToast: "This project's owner has an open access issue. Pick another project for now — you can join later.",
             ownerAccessIssueBannerTitle: "Access problem",
             ownerAccessIssueBannerMessage: "{tester} cannot download your app “{name}”. Fix the access settings.",
             ownerAccessIssueBannerUnknownTester: "A tester",

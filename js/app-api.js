@@ -1011,6 +1011,7 @@ function handleApiError(code, details = {}) {
         invalid_email_spaces: 'invalidEmailSpaces',
         invalid_email_format: 'invalidEmail',
         owner_has_access_issue: 'ownerAccessIssueBlockToast',
+        target_owner_has_access_issue: 'targetOwnerAccessIssueBlockToast',
         email_required: 'reportIssueEmailRequired',
         access_checklist_required: 'reportIssueChecklistIncomplete',
         auto_accept_reliability_required: 'auto_accept_reliability_required',

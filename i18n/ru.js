@@ -610,6 +610,7 @@
             reportIssueCancelBtn: "Отмена",
             reportIssueSuccess: "✅ Тестирование поставлено на паузу. Владелец получил уведомление.",
             ownerAccessIssueBlockToast: "Нельзя брать новые проекты, пока есть открытая проблема с доступом. Сначала устраните её.",
+            targetOwnerAccessIssueBlockToast: "У владельца этого проекта открыта проблема с доступом. Возьмите другой проект — этот можно позже.",
             ownerAccessIssueBannerTitle: "Проблема с доступом",
             ownerAccessIssueBannerMessage: "{tester} не может скачать ваше приложение «{name}». Исправьте настройки доступа.",
             ownerAccessIssueBannerUnknownTester: "Тестер",
