@@ -160,7 +160,6 @@ function syncAutoAcceptToggleUi() {
     var toggle = document.getElementById('auto-accept-mutual-toggle');
     if (!toggle) return;
     var available = _isAutoAcceptMutualAvailable();
-    var row = document.getElementById('auto-accept-mutual-row');
     var meta = document.getElementById('auto-accept-mutual-meta')
         || document.querySelector('#auto-accept-mutual-row [data-i18n="autoAcceptMutualMeta"]');
     var label = document.getElementById('auto-accept-mutual-label');
@@ -170,11 +169,8 @@ function syncAutoAcceptToggleUi() {
     toggle.checked = !!_autoAcceptMutualEnabled && available;
     toggle.setAttribute('aria-disabled', available ? 'false' : 'true');
 
-    if (row) {
-        row.classList.toggle('system-setting-row--locked', !available);
-    }
     if (meta) {
-        meta.textContent = window.t(available ? 'autoAcceptMutualMeta' : 'autoAcceptMutualLockedMeta', {}, lang);
+        meta.textContent = window.t('autoAcceptMutualMeta', {}, lang);
     }
     if (label) {
         var baseLabel = window.t('autoAcceptMutualLabel', {}, lang);

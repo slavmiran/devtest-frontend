@@ -2007,7 +2007,6 @@
             appLanguageOptionZhTw: "中文 (繁體)",
             autoAcceptMutualLabel: "Auto-accept mutual offers",
             autoAcceptMutualMeta: "New offers are accepted instantly",
-            autoAcceptMutualLockedMeta: "🔒 Locked: needs Reliability from 65% (Active or higher)",
             autoAcceptMutualInfoToast: "Auto-accept unlocks through your Reliability score. You need Reliability from 65% (Active status or higher). Missing the day-1 check-in disables auto-accept.",
             autoAcceptMutualLockedToast: "🔒 Auto-accept mutual offers unlocks through your Reliability score.\n\nYou need Reliability from 65% (Active status or higher).\n\nKeep testing — the feature unlocks automatically.",
             autoAcceptMutualEnabledToast: "⚡ Auto-accept mutual offers enabled.",
