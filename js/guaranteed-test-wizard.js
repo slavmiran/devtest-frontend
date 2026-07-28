@@ -2,7 +2,7 @@
    GUARANTEED CLOSED TEST WIZARD - 3-SCREEN MODULE
    Step 1 of 2: App Details
    Step 2 of 2: Testing Link
-   Final Step: Payment
+   Final Step: Payment (+ stepper flow per method)
    ========================================================= */
 
 (function () {
@@ -13,15 +13,104 @@
     var TESTER_GROUP_EMAIL = "closedtesthelp@googlegroups.com";
     var PAYPAL_EMAIL = "pay.hubstation@gmail.com";
     var TELEGRAM_SUPPORT = "garantxchange";
+    var PAYPAL_OPEN_URL = "https://www.paypal.com/myaccount/transfer/homepage/pay";
+
+    var CRYPTO_EXCHANGES = [
+        { id: 'binance', name: 'Binance', label: 'ID', value: '967321648', initials: 'BN' },
+        { id: 'bybit', name: 'ByBit', label: 'UID', value: '30291060', initials: 'BY' },
+        { id: 'okx', name: 'OKX', label: 'UID', value: '323906492761830368', initials: 'OK' },
+        { id: 'htx', name: 'HTX', label: 'UID', value: '442101593', initials: 'HT' },
+        { id: 'gate', name: 'Gate', label: 'UID', value: '8536355', initials: 'GT' }
+    ];
 
     var wizardState = {
         step: 1,
         appName: '',
-        appType: 'free', // 'free' or 'paid'
+        appType: 'free',
         licenseTestingConfirmed: false,
         testingLink: '',
-        paymentMethod: null // 'crypto', 'paypal', 'rub'
+        paymentMethod: null,
+        paymentExchange: null,
+        paymentStep1Done: false,
+        paymentScreenshotUrl: '',
+        paymentScreenshotFile: null,
+        prefillProject: null,
+        detailsConfirmed: false,
+        linkConfirmed: false
     };
+
+    function getDefaultWizardState() {
+        return {
+            step: 1,
+            appName: '',
+            appType: 'free',
+            licenseTestingConfirmed: false,
+            testingLink: '',
+            paymentMethod: null,
+            paymentExchange: null,
+            paymentStep1Done: false,
+            paymentScreenshotUrl: '',
+            paymentScreenshotFile: null,
+            prefillProject: null,
+            detailsConfirmed: false,
+            linkConfirmed: false
+        };
+    }
+
+    function resetWizardState(keepPrefill) {
+        var prefill = keepPrefill ? wizardState.prefillProject : null;
+        var next = getDefaultWizardState();
+        if (prefill) {
+            next.prefillProject = prefill;
+            applyProjectPrefillToState(next, prefill);
+        }
+        Object.keys(next).forEach(function (key) {
+            wizardState[key] = next[key];
+        });
+    }
+
+    function buildTestingLinkFromPackage(packageName) {
+        var pkg = String(packageName || '').trim();
+        if (!pkg) return '';
+        return 'https://play.google.com/apps/testing/' + pkg;
+    }
+
+    function applyProjectPrefillToState(state, project) {
+        if (!project) return;
+        state.appName = String(project.name || '').trim();
+        state.testingLink = buildTestingLinkFromPackage(project.package || project.package_name || '');
+        state.prefillProject = project;
+        state.detailsConfirmed = false;
+        state.linkConfirmed = false;
+    }
+
+    function applyProjectPrefill(project) {
+        applyProjectPrefillToState(wizardState, project);
+    }
+
+    function isValidTestingLink(url) {
+        var value = String(url || '').trim();
+        if (!value || !/^https?:\/\//i.test(value)) return false;
+        if (/play\.google\.com\/apps\/testing\//i.test(value)) return true;
+        if (/play\.google\.com\/store\/apps\/details/i.test(value) && /[?&]id=[\w.]+/i.test(value)) return true;
+        return false;
+    }
+
+    function normalizeTestingLink(url) {
+        var value = String(url || '').trim();
+        if (/play\.google\.com\/store\/apps\/details/i.test(value)) {
+            var match = value.match(/[?&]id=([\w.]+)/i);
+            if (match && match[1]) {
+                return 'https://play.google.com/apps/testing/' + match[1];
+            }
+        }
+        return value;
+    }
+
+    function getPaymentAmount(method) {
+        if (method === 'paypal' || method === 'rub') return 23;
+        return 20;
+    }
 
     /* =========================================================
        STEP 1 OF 2 HTML (App Details)
@@ -46,6 +135,8 @@
             </div>
 
             <div class="gtw-body">
+                <div id="gtw-prefill-badge-step1" class="gtw-prefill-badge" style="display: none;">From your project</div>
+
                 <div class="gtw-form-group">
                     <label class="gtw-label" for="gtw-app-name-input">APP NAME (REQUIRED)</label>
                     <div class="gtw-input-wrapper">
@@ -80,7 +171,6 @@
                         </div>
                     </div>
 
-                    <!-- INLINE SETUP LICENSE TESTING CARD -->
                     <div id="gtw-inline-license-block" class="gtw-inline-card" style="display: none;">
                         <h3 class="gtw-inline-title">Setup License Testing</h3>
                         <p class="gtw-inline-subtitle">This configuration allows testers to download your paid app for free.</p>
@@ -102,6 +192,11 @@
                         </button>
                     </div>
                 </div>
+
+                <label class="gtw-confirm-row" id="gtw-details-confirm-row" style="display: none;">
+                    <input type="checkbox" id="gtw-details-confirm-checkbox" />
+                    <span class="gtw-confirm-label">I confirm the app name and type are correct for this order.</span>
+                </label>
             </div>
 
             <div class="gtw-fixed-footer">
@@ -110,12 +205,10 @@
                 </div>
             </div>
 
-            <!-- MODAL: SETUP LICENSE TESTING -->
             <div id="gtw-license-modal-overlay" class="gtw-modal-overlay" style="display: none;">
                 <div class="gtw-modal-card">
                     <h3 class="gtw-modal-title">Setup License Testing</h3>
                     <p class="gtw-modal-desc">This configuration allows testers to download your paid app for free.</p>
-
                     <div class="gtw-modal-steps">
                         <div class="gtw-modal-step">
                             <span class="gtw-step-num">1</span>
@@ -145,7 +238,6 @@
                             <span class="gtw-step-text">Keep <strong>RESPOND_NORMALLY</strong> &amp; Save</span>
                         </div>
                     </div>
-
                     <button type="button" class="gtw-guide-btn" id="gtw-modal-guide-btn">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
@@ -153,7 +245,6 @@
                         </svg>
                         <span>VIEW SETUP GUIDE</span>
                     </button>
-
                     <div class="gtw-modal-actions">
                         <button type="button" class="gtw-modal-cancel-btn" id="gtw-modal-cancel-btn">CANCEL</button>
                         <button type="button" class="gtw-modal-confirm-btn" id="gtw-modal-confirm-btn">I UNDERSTAND</button>
@@ -162,6 +253,20 @@
             </div>
         </div>
         `;
+    }
+
+    function createExchangePickerHTML() {
+        return CRYPTO_EXCHANGES.map(function (ex) {
+            return `
+                <div class="gtw-exchange-pick-row" data-exchange="${ex.id}" role="button" tabindex="0">
+                    <div class="gtw-exchange-pick-left">
+                        <div class="gtw-exchange-icon">${ex.initials}</div>
+                        <span class="gtw-exchange-pick-name">${ex.name}</span>
+                    </div>
+                    <span class="gtw-exchange-pick-chevron">›</span>
+                </div>
+            `;
+        }).join('');
     }
 
     /* =========================================================
@@ -187,10 +292,12 @@
             </div>
 
             <div class="gtw-body">
+                <div id="gtw-prefill-badge-step2" class="gtw-prefill-badge" style="display: none;">From your project</div>
+
                 <div class="gtw-form-group">
                     <label class="gtw-label" for="gtw-link-input">PASTE YOUR TESTING LINK</label>
-                    <div class="gtw-input-wrapper">
-                        <input type="url" id="gtw-link-input" class="gtw-input" placeholder="https://play.google.com/apps/testing/com.example.app" autocomplete="off" />
+                    <div class="gtw-input-wrapper gtw-input-wrapper--multiline">
+                        <textarea id="gtw-link-input" class="gtw-textarea" rows="2" placeholder="https://play.google.com/apps/testing/com.example.app" autocomplete="off"></textarea>
                         <button type="button" class="gtw-paste-btn" id="gtw-paste-link-btn" title="Paste from clipboard">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -200,6 +307,11 @@
                     </div>
                     <div class="gtw-helper-text" id="gtw-link-helper">Paste the "Join on Android" link you copied from Play Console.</div>
                 </div>
+
+                <label class="gtw-confirm-row" id="gtw-link-confirm-row" style="display: none;">
+                    <input type="checkbox" id="gtw-link-confirm-checkbox" />
+                    <span class="gtw-confirm-label">I confirm this testing link is correct.</span>
+                </label>
 
                 <div class="gtw-instructions-list">
                     <div class="gtw-card-item">
@@ -319,15 +431,13 @@
             </div>
 
             <div class="gtw-body">
-                <!-- PLAN CARD -->
                 <div class="gtw-plan-card">
                     <div class="gtw-plan-label">YOUR TESTING PLAN</div>
                     <h2 class="gtw-plan-title">Production Access Sprint</h2>
                     <div class="gtw-plan-price-row">
                         <span class="gtw-plan-price">$20</span>
-                        <span class="gtw-plan-subtitle">one-time payment</span>
+                        <span class="gtw-plan-subtitle">from (crypto)</span>
                     </div>
-
                     <div class="gtw-plan-features">
                         <div class="gtw-feature-item">
                             <svg class="gtw-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -347,14 +457,7 @@
                             </svg>
                             <span><strong>Production guidance</strong> and form answers</span>
                         </div>
-                        <div class="gtw-feature-item">
-                            <svg class="gtw-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                            <span><strong>Extended testing</strong> when Google needs more time</span>
-                        </div>
                     </div>
-
                     <div class="gtw-guarantee-box">
                         <svg class="gtw-guarantee-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
@@ -367,12 +470,9 @@
                     </div>
                 </div>
 
-                <!-- PAYMENT METHOD SELECTION -->
                 <div class="gtw-form-group">
                     <label class="gtw-label">CHOOSE PAYMENT METHOD</label>
                     <div class="gtw-payment-methods">
-
-                        <!-- METHOD 1: CRYPTO -->
                         <div class="gtw-method-card" id="gtw-method-crypto" data-method="crypto">
                             <div class="gtw-method-header">
                                 <div class="gtw-method-left">
@@ -386,69 +486,12 @@
                                 </div>
                                 <span class="gtw-method-price">$20</span>
                             </div>
-                            <div class="gtw-method-details">
-                                <p class="gtw-method-desc">Send the payment via internal transfer on any supported exchange. Use the ID/UID below and then tap Pay.</p>
-                                <div class="gtw-exchanges-list">
-                                    <!-- Binance -->
-                                    <div class="gtw-exchange-row">
-                                        <div class="gtw-exchange-left">
-                                            <div class="gtw-exchange-icon">BN</div>
-                                            <div class="gtw-exchange-meta">
-                                                <span class="gtw-exchange-name">Binance</span>
-                                                <span class="gtw-exchange-id">ID: 967321648</span>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="gtw-row-copy-btn" data-copy="967321648">Copy</button>
-                                    </div>
-                                    <!-- ByBit -->
-                                    <div class="gtw-exchange-row">
-                                        <div class="gtw-exchange-left">
-                                            <div class="gtw-exchange-icon">BY</div>
-                                            <div class="gtw-exchange-meta">
-                                                <span class="gtw-exchange-name">ByBit</span>
-                                                <span class="gtw-exchange-id">UID: 30291060</span>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="gtw-row-copy-btn" data-copy="30291060">Copy</button>
-                                    </div>
-                                    <!-- OKX -->
-                                    <div class="gtw-exchange-row">
-                                        <div class="gtw-exchange-left">
-                                            <div class="gtw-exchange-icon">OK</div>
-                                            <div class="gtw-exchange-meta">
-                                                <span class="gtw-exchange-name">OKX</span>
-                                                <span class="gtw-exchange-id">UID: 323906492761830368</span>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="gtw-row-copy-btn" data-copy="323906492761830368">Copy</button>
-                                    </div>
-                                    <!-- HTX -->
-                                    <div class="gtw-exchange-row">
-                                        <div class="gtw-exchange-left">
-                                            <div class="gtw-exchange-icon">HT</div>
-                                            <div class="gtw-exchange-meta">
-                                                <span class="gtw-exchange-name">HTX</span>
-                                                <span class="gtw-exchange-id">UID: 442101593</span>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="gtw-row-copy-btn" data-copy="442101593">Copy</button>
-                                    </div>
-                                    <!-- Gate -->
-                                    <div class="gtw-exchange-row">
-                                        <div class="gtw-exchange-left">
-                                            <div class="gtw-exchange-icon">GT</div>
-                                            <div class="gtw-exchange-meta">
-                                                <span class="gtw-exchange-name">Gate</span>
-                                                <span class="gtw-exchange-id">UID: 8536355</span>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="gtw-row-copy-btn" data-copy="8536355">Copy</button>
-                                    </div>
-                                </div>
+                            <p class="gtw-method-action-hint">Select an exchange to continue</p>
+                            <div class="gtw-exchange-picker" id="gtw-exchange-picker">
+                                ${createExchangePickerHTML()}
                             </div>
                         </div>
 
-                        <!-- METHOD 2: PAYPAL -->
                         <div class="gtw-method-card" id="gtw-method-paypal" data-method="paypal">
                             <div class="gtw-method-header">
                                 <div class="gtw-method-left">
@@ -462,21 +505,9 @@
                                 </div>
                                 <span class="gtw-method-price">$23</span>
                             </div>
-                            <div class="gtw-method-details">
-                                <p class="gtw-method-desc">Send the payment to the PayPal address below.</p>
-                                <div class="gtw-copy-box">
-                                    <span class="gtw-copy-email">${PAYPAL_EMAIL}</span>
-                                    <button type="button" class="gtw-copy-btn" id="gtw-paypal-copy-btn" title="Copy PayPal email">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
+                            <p class="gtw-method-action-hint">Tap to open payment steps</p>
                         </div>
 
-                        <!-- METHOD 3: RUB TRANSFER -->
                         <div class="gtw-method-card" id="gtw-method-rub" data-method="rub">
                             <div class="gtw-method-header">
                                 <div class="gtw-method-left">
@@ -488,29 +519,23 @@
                                         </div>
                                     </div>
                                 </div>
-                                <span class="gtw-method-price">$22</span>
+                                <span class="gtw-method-price">$23</span>
                             </div>
-                            <div class="gtw-method-details">
-                                <p class="gtw-method-desc">For RUB payments, continue in Telegram to get transfer details.</p>
-                                <button type="button" class="gtw-open-tg-btn" id="gtw-rub-tg-btn">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                    </svg>
-                                    <span>Open @${TELEGRAM_SUPPORT}</span>
-                                </button>
-                            </div>
+                            <p class="gtw-method-action-hint">Tap to open payment steps</p>
                         </div>
-
                     </div>
                 </div>
             </div>
 
             <div class="gtw-fixed-footer">
                 <div class="gtw-footer-content">
-                    <button type="button" class="gtw-continue-btn" id="gtw-pay-btn" disabled>PAY $20</button>
+                    <button type="button" class="gtw-continue-btn" id="gtw-pay-btn" disabled>SELECT PAYMENT METHOD</button>
                 </div>
             </div>
+        </div>
+
+        <div id="gtw-payment-flow-overlay" class="gtw-payment-flow-overlay" aria-hidden="true">
+            <div class="gtw-payment-flow-sheet" id="gtw-payment-flow-sheet"></div>
         </div>
         `;
     }
@@ -536,9 +561,39 @@
         if (!overlayPay) {
             var divPay = document.createElement('div');
             divPay.innerHTML = createWizardPaymentHTML();
-            document.body.appendChild(divPay.firstElementChild);
+            while (divPay.firstElementChild) {
+                document.body.appendChild(divPay.firstElementChild);
+            }
             bindPaymentEvents();
         }
+    }
+
+    function syncStep1FormFromState() {
+        var input = document.getElementById('gtw-app-name-input');
+        if (input) input.value = wizardState.appName || '';
+        updateTypeSelectorUI(wizardState.appType);
+        if (wizardState.appType === 'paid') showInlineLicenseTestingBlock();
+        else hideInlineLicenseTestingBlock();
+
+        var hasPrefill = !!wizardState.prefillProject;
+        var badge = document.getElementById('gtw-prefill-badge-step1');
+        var confirmRow = document.getElementById('gtw-details-confirm-row');
+        var confirmBox = document.getElementById('gtw-details-confirm-checkbox');
+        if (badge) badge.style.display = hasPrefill ? 'inline-flex' : 'none';
+        if (confirmRow) confirmRow.style.display = hasPrefill ? 'flex' : 'none';
+        if (confirmBox) confirmBox.checked = !!wizardState.detailsConfirmed;
+    }
+
+    function syncStep2FormFromState() {
+        var linkInput = document.getElementById('gtw-link-input');
+        if (linkInput) linkInput.value = wizardState.testingLink || '';
+        var hasPrefill = !!wizardState.prefillProject && !!wizardState.testingLink;
+        var badge = document.getElementById('gtw-prefill-badge-step2');
+        var confirmRow = document.getElementById('gtw-link-confirm-row');
+        var confirmBox = document.getElementById('gtw-link-confirm-checkbox');
+        if (badge) badge.style.display = hasPrefill ? 'inline-flex' : 'none';
+        if (confirmRow) confirmRow.style.display = hasPrefill ? 'flex' : 'none';
+        if (confirmBox) confirmBox.checked = !!wizardState.linkConfirmed;
     }
 
     /* =========================================================
@@ -569,6 +624,7 @@
                     navigator.clipboard.readText().then(function (text) {
                         if (text) {
                             input.value = text.trim();
+                            wizardState.detailsConfirmed = false;
                             clearAppnameError();
                         }
                     }).catch(function () {});
@@ -576,7 +632,19 @@
             });
         }
 
-        if (input) input.addEventListener('input', clearAppnameError);
+        if (input) {
+            input.addEventListener('input', function () {
+                wizardState.detailsConfirmed = false;
+                clearAppnameError();
+            });
+        }
+
+        var detailsConfirm = document.getElementById('gtw-details-confirm-checkbox');
+        if (detailsConfirm) {
+            detailsConfirm.addEventListener('change', function () {
+                wizardState.detailsConfirmed = !!detailsConfirm.checked;
+            });
+        }
 
         var continueBtn = document.getElementById('gtw-step1-continue-btn');
         if (continueBtn) continueBtn.addEventListener('click', handleStep1Continue);
@@ -618,6 +686,7 @@
                     navigator.clipboard.readText().then(function (text) {
                         if (text) {
                             linkInput.value = text.trim();
+                            wizardState.linkConfirmed = false;
                             clearLinkError();
                         }
                     }).catch(function () {});
@@ -625,7 +694,19 @@
             });
         }
 
-        if (linkInput) linkInput.addEventListener('input', clearLinkError);
+        if (linkInput) {
+            linkInput.addEventListener('input', function () {
+                wizardState.linkConfirmed = false;
+                clearLinkError();
+            });
+        }
+
+        var linkConfirm = document.getElementById('gtw-link-confirm-checkbox');
+        if (linkConfirm) {
+            linkConfirm.addEventListener('change', function () {
+                wizardState.linkConfirmed = !!linkConfirm.checked;
+            });
+        }
 
         var cardCopyBtn = document.getElementById('gtw-card-copy-btn');
         if (cardCopyBtn) {
@@ -658,41 +739,293 @@
         var paypalCard = document.getElementById('gtw-method-paypal');
         var rubCard = document.getElementById('gtw-method-rub');
 
-        if (cryptoCard) cryptoCard.addEventListener('click', function () { selectPaymentMethod('crypto'); });
-        if (paypalCard) paypalCard.addEventListener('click', function () { selectPaymentMethod('paypal'); });
-        if (rubCard) rubCard.addEventListener('click', function () { selectPaymentMethod('rub'); });
-
-        var paypalCopyBtn = document.getElementById('gtw-paypal-copy-btn');
-        if (paypalCopyBtn) {
-            paypalCopyBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                copyTextWithFeedback(PAYPAL_EMAIL, paypalCopyBtn);
+        if (cryptoCard) {
+            cryptoCard.addEventListener('click', function (e) {
+                if (e.target.closest('.gtw-exchange-pick-row')) return;
+                selectPaymentMethod('crypto');
+            });
+        }
+        if (paypalCard) {
+            paypalCard.addEventListener('click', function () {
+                selectPaymentMethod('paypal');
+                openPaymentFlow('paypal');
+            });
+        }
+        if (rubCard) {
+            rubCard.addEventListener('click', function () {
+                selectPaymentMethod('rub');
+                openPaymentFlow('rub');
             });
         }
 
-        var rubTgBtn = document.getElementById('gtw-rub-tg-btn');
-        if (rubTgBtn) {
-            rubTgBtn.addEventListener('click', function (e) {
+        var exchangeRows = document.querySelectorAll('.gtw-exchange-pick-row');
+        exchangeRows.forEach(function (row) {
+            row.addEventListener('click', function (e) {
                 e.stopPropagation();
-                openTelegramContact("RUB Payment details requested");
-            });
-        }
-
-        // Exchange Row Copy Buttons
-        var rowCopyBtns = document.querySelectorAll('.gtw-row-copy-btn');
-        rowCopyBtns.forEach(function (btn) {
-            btn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                var textToCopy = btn.getAttribute('data-copy');
-                if (textToCopy) {
-                    copyTextWithFeedback(textToCopy, btn);
-                }
+                var exchangeId = row.getAttribute('data-exchange');
+                selectPaymentMethod('crypto');
+                wizardState.paymentExchange = exchangeId;
+                openPaymentFlow('crypto', exchangeId);
             });
         });
 
         var payBtn = document.getElementById('gtw-pay-btn');
         if (payBtn) {
-            payBtn.addEventListener('click', handleExecutePayment);
+            payBtn.addEventListener('click', function () {
+                if (wizardState.paymentMethod === 'crypto' && wizardState.paymentExchange) {
+                    openPaymentFlow('crypto', wizardState.paymentExchange);
+                }
+            });
+        }
+
+        var flowOverlay = document.getElementById('gtw-payment-flow-overlay');
+        if (flowOverlay) {
+            flowOverlay.addEventListener('click', function (e) {
+                if (e.target === flowOverlay) closePaymentFlow();
+            });
+        }
+    }
+
+    /* =========================================================
+       PAYMENT FLOW (stepper like play review)
+       ========================================================= */
+
+    function getExchangeById(id) {
+        return CRYPTO_EXCHANGES.find(function (ex) { return ex.id === id; }) || null;
+    }
+
+    function resetPaymentFlowState() {
+        wizardState.paymentStep1Done = false;
+        wizardState.paymentScreenshotUrl = '';
+        wizardState.paymentScreenshotFile = null;
+    }
+
+    function openPaymentFlow(method, exchangeId) {
+        wizardState.paymentMethod = method;
+        if (method === 'crypto') {
+            wizardState.paymentExchange = exchangeId || wizardState.paymentExchange;
+        }
+        resetPaymentFlowState();
+        renderPaymentFlow();
+        var overlay = document.getElementById('gtw-payment-flow-overlay');
+        if (overlay) {
+            overlay.classList.add('is-open');
+            overlay.setAttribute('aria-hidden', 'false');
+        }
+    }
+
+    function closePaymentFlow() {
+        var overlay = document.getElementById('gtw-payment-flow-overlay');
+        if (overlay) {
+            overlay.classList.remove('is-open');
+            overlay.setAttribute('aria-hidden', 'true');
+        }
+    }
+
+    function markPaymentStep1Done() {
+        wizardState.paymentStep1Done = true;
+        renderPaymentFlow();
+    }
+
+    function renderPaymentFlow() {
+        var sheet = document.getElementById('gtw-payment-flow-sheet');
+        if (!sheet) return;
+
+        var method = wizardState.paymentMethod;
+        var amount = getPaymentAmount(method);
+        var step1Done = !!wizardState.paymentStep1Done;
+        var step2Done = !!wizardState.paymentScreenshotUrl;
+        var step1Class = step1Done ? 'is-done' : 'is-active';
+        var step2Class = step2Done ? 'is-done' : (step1Done ? 'is-active' : 'is-locked');
+        var step1Num = step1Done
+            ? '<svg class="step-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+            : '1';
+        var step2Num = step2Done
+            ? '<svg class="step-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+            : '2';
+
+        var title = 'Payment';
+        var subtitle = 'Complete the steps below, then submit your order.';
+        var step1Title = '';
+        var step1Desc = '';
+        var step1Actions = '';
+
+        if (method === 'crypto') {
+            var exchange = getExchangeById(wizardState.paymentExchange);
+            var exName = exchange ? exchange.name : 'Exchange';
+            title = 'Crypto Transfer — ' + exName;
+            subtitle = 'Send $' + amount + ' via internal transfer on ' + exName + '.';
+            step1Title = 'Internal transfer on ' + exName;
+            step1Desc = 'Copy the ' + (exchange ? exchange.label : 'ID') + ' below and send an internal transfer inside the exchange (not on-chain).';
+            if (exchange) {
+                step1Actions = `
+                    <div class="gtw-credential-box">
+                        <span class="gtw-credential-value">${exchange.label}: ${exchange.value}</span>
+                        <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">Copy</button>
+                    </div>
+                `;
+            }
+        } else if (method === 'paypal') {
+            title = 'PayPal Transfer';
+            subtitle = 'Send $' + amount + ' to our PayPal account.';
+            step1Title = 'Copy PayPal email & pay';
+            step1Desc = 'Copy the email, then open PayPal and complete the payment.';
+            step1Actions = `
+                <div class="gtw-credential-box">
+                    <span class="gtw-credential-value">${PAYPAL_EMAIL}</span>
+                    <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">Copy</button>
+                </div>
+                <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-paypal-btn">
+                    Open PayPal
+                </button>
+            `;
+        } else if (method === 'rub') {
+            title = 'RUB Transfer';
+            subtitle = 'Send $' + amount + ' equivalent via RUB transfer.';
+            step1Title = 'Get transfer details';
+            step1Desc = 'Open Telegram support to receive RUB transfer details, then return here.';
+            step1Actions = `
+                <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-tg-btn">
+                    Open @${TELEGRAM_SUPPORT}
+                </button>
+            `;
+        }
+
+        var uploadHtml = '';
+        if (step2Done) {
+            uploadHtml = `
+                <div class="play-review-screenshot-preview">
+                    <div class="preview-success-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <div class="preview-info">
+                        <div class="preview-title">Screenshot uploaded</div>
+                        <div class="preview-subtitle">Tap ✕ to replace</div>
+                    </div>
+                    <button type="button" class="preview-remove-btn" id="gtw-flow-remove-screenshot">✕</button>
+                </div>
+            `;
+        } else {
+            var lockedClass = step1Done ? '' : ' is-locked';
+            uploadHtml = `
+                <div class="play-review-upload-zone${lockedClass}" id="gtw-flow-upload-zone">
+                    <input type="file" id="gtw-flow-file" accept="image/*" style="display: none;">
+                    <div class="upload-zone-content">
+                        <svg class="upload-zone-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        <span class="upload-zone-text">Upload payment screenshot</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        var canSubmit = step1Done && step2Done;
+
+        sheet.innerHTML = `
+            <h2 class="gtw-payment-flow-title">${title}</h2>
+            <p class="gtw-payment-flow-subtitle">${subtitle}</p>
+
+            <div class="play-review-steps">
+                <div class="review-step step-1 ${step1Class}">
+                    <div class="review-step-num-container">
+                        <div class="review-step-line"></div>
+                        <div class="review-step-num">${step1Num}</div>
+                    </div>
+                    <div class="review-step-content">
+                        <div class="review-step-title">${step1Title}</div>
+                        <div class="review-step-desc">${step1Desc}</div>
+                        ${step1Actions}
+                    </div>
+                </div>
+
+                <div class="review-step step-2 ${step2Class}">
+                    <div class="review-step-num-container">
+                        <div class="review-step-num">${step2Num}</div>
+                    </div>
+                    <div class="review-step-content">
+                        <div class="review-step-title">Upload payment screenshot</div>
+                        <div class="review-step-desc">Attach proof of your completed transfer.</div>
+                        ${uploadHtml}
+                    </div>
+                </div>
+            </div>
+
+            <div class="gtw-payment-flow-footer">
+                <button type="button" class="gtw-continue-btn" id="gtw-flow-submit-btn" ${canSubmit ? '' : 'disabled'}>
+                    SUBMIT ORDER ($${amount})
+                </button>
+                <button type="button" class="gtw-payment-flow-cancel" id="gtw-flow-cancel-btn">Cancel</button>
+            </div>
+        `;
+
+        bindPaymentFlowEvents();
+    }
+
+    function bindPaymentFlowEvents() {
+        var copyBtn = document.getElementById('gtw-flow-copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+                var textToCopy = PAYPAL_EMAIL;
+                if (wizardState.paymentMethod === 'crypto') {
+                    var exchange = getExchangeById(wizardState.paymentExchange);
+                    if (exchange) textToCopy = exchange.value;
+                }
+                copyTextWithFeedback(textToCopy, copyBtn);
+                if (wizardState.paymentMethod === 'crypto') {
+                    markPaymentStep1Done();
+                }
+            });
+        }
+
+        var openPaypalBtn = document.getElementById('gtw-flow-open-paypal-btn');
+        if (openPaypalBtn) {
+            openPaypalBtn.addEventListener('click', function () {
+                openExternalUrl(PAYPAL_OPEN_URL);
+                markPaymentStep1Done();
+            });
+        }
+
+        var openTgBtn = document.getElementById('gtw-flow-open-tg-btn');
+        if (openTgBtn) {
+            openTgBtn.addEventListener('click', function () {
+                openTelegramContact('RUB payment details requested for guaranteed testing order');
+                markPaymentStep1Done();
+            });
+        }
+
+        var uploadZone = document.getElementById('gtw-flow-upload-zone');
+        var fileInput = document.getElementById('gtw-flow-file');
+        if (uploadZone && fileInput && wizardState.paymentStep1Done) {
+            uploadZone.addEventListener('click', function () {
+                fileInput.click();
+            });
+            fileInput.addEventListener('change', function () {
+                var file = fileInput.files && fileInput.files[0];
+                if (!file) return;
+                wizardState.paymentScreenshotFile = file;
+                wizardState.paymentScreenshotUrl = URL.createObjectURL(file);
+                renderPaymentFlow();
+            });
+        }
+
+        var removeBtn = document.getElementById('gtw-flow-remove-screenshot');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function () {
+                wizardState.paymentScreenshotFile = null;
+                wizardState.paymentScreenshotUrl = '';
+                renderPaymentFlow();
+            });
+        }
+
+        var cancelBtn = document.getElementById('gtw-flow-cancel-btn');
+        if (cancelBtn) cancelBtn.addEventListener('click', closePaymentFlow);
+
+        var submitBtn = document.getElementById('gtw-flow-submit-btn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function () {
+                handleExecutePayment();
+            });
         }
     }
 
@@ -784,6 +1117,20 @@
             return;
         }
 
+        if (wizardState.prefillProject && !wizardState.detailsConfirmed) {
+            var helperPrefill = document.getElementById('gtw-appname-helper');
+            if (helperPrefill) {
+                helperPrefill.textContent = '⚠️ Please confirm the prefilled app details.';
+                helperPrefill.classList.add('error');
+            }
+            return;
+        }
+
+        if (wizardState.appType === 'paid' && !wizardState.licenseTestingConfirmed) {
+            openLicenseTestingModal();
+            return;
+        }
+
         wizardState.appName = appName;
         wizardState.step = 2;
 
@@ -801,18 +1148,38 @@
 
     function handleProceedToPayment() {
         var linkInput = document.getElementById('gtw-link-input');
-        var link = String(linkInput ? linkInput.value : '').trim();
+        var link = normalizeTestingLink(String(linkInput ? linkInput.value : '').trim());
 
         if (!link) {
-            var helper = document.getElementById('gtw-link-helper');
-            if (helper) {
-                helper.textContent = '⚠️ Testing link is required to proceed.';
-                helper.classList.add('error');
+            var helperEmpty = document.getElementById('gtw-link-helper');
+            if (helperEmpty) {
+                helperEmpty.textContent = '⚠️ Testing link is required to proceed.';
+                helperEmpty.classList.add('error');
             }
             if (linkInput) linkInput.focus();
             return;
         }
 
+        if (!isValidTestingLink(link)) {
+            var helperInvalid = document.getElementById('gtw-link-helper');
+            if (helperInvalid) {
+                helperInvalid.textContent = '⚠️ Enter a valid Play Console testing link (play.google.com/apps/testing/…).';
+                helperInvalid.classList.add('error');
+            }
+            if (linkInput) linkInput.focus();
+            return;
+        }
+
+        if (wizardState.prefillProject && wizardState.testingLink && !wizardState.linkConfirmed) {
+            var helperConfirm = document.getElementById('gtw-link-helper');
+            if (helperConfirm) {
+                helperConfirm.textContent = '⚠️ Please confirm the prefilled testing link.';
+                helperConfirm.classList.add('error');
+            }
+            return;
+        }
+
+        if (linkInput) linkInput.value = link;
         wizardState.testingLink = link;
 
         hideGuaranteedTestWizardStep2();
@@ -827,15 +1194,21 @@
         var rubCard = document.getElementById('gtw-method-rub');
         var payBtn = document.getElementById('gtw-pay-btn');
 
-        if (cryptoCard) cryptoCard.classList.toggle('selected', method === 'crypto');
+        if (cryptoCard) {
+            cryptoCard.classList.toggle('selected', method === 'crypto');
+            cryptoCard.classList.toggle('selected-crypto', method === 'crypto');
+        }
         if (paypalCard) paypalCard.classList.toggle('selected', method === 'paypal');
         if (rubCard) rubCard.classList.toggle('selected', method === 'rub');
 
         if (payBtn) {
-            payBtn.disabled = false;
-            if (method === 'crypto') payBtn.textContent = 'PAY $20 (CRYPTO)';
-            else if (method === 'paypal') payBtn.textContent = 'PAY $23 (PAYPAL)';
-            else if (method === 'rub') payBtn.textContent = 'CONTINUE IN TELEGRAM';
+            if (method === 'crypto') {
+                payBtn.disabled = !wizardState.paymentExchange;
+                payBtn.textContent = wizardState.paymentExchange ? 'CONTINUE WITH EXCHANGE' : 'SELECT EXCHANGE';
+            } else {
+                payBtn.disabled = false;
+                payBtn.textContent = 'OPEN PAYMENT STEPS ($' + getPaymentAmount(method) + ')';
+            }
         }
     }
 
@@ -843,25 +1216,56 @@
         submitGuaranteedOrderAndOpenTelegram().catch(function () {});
     }
 
-    async function submitGuaranteedOrderAndOpenTelegram() {
-        var method = wizardState.paymentMethod;
-        if (!method) {
-            return;
-        }
+    async function uploadPaymentScreenshot() {
+        var file = wizardState.paymentScreenshotFile;
+        if (!file) return '';
 
-        var payBtn = document.getElementById('gtw-pay-btn');
-        var originalBtnText = payBtn ? payBtn.textContent : '';
-        if (payBtn) {
-            payBtn.disabled = true;
-            payBtn.textContent = 'PROCESSING...';
+        var apiBase = (typeof API_BASE !== 'undefined' ? API_BASE : '') || (window.App && window.App.API_BASE) || '';
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('user_id', String((window.App && window.App.userId) || window.userId || 0));
+        if (typeof withInitData === 'function') {
+            var payload = withInitData({});
+            formData.append('init_data', payload.init_data || '');
+        } else if (typeof getTelegramInitDataRaw === 'function') {
+            formData.append('init_data', getTelegramInitDataRaw());
         }
 
         try {
-            var amountUsd = 20;
-            if (method === 'paypal') amountUsd = 23;
-            else if (method === 'rub') amountUsd = 22;
+            var resp = await fetch(apiBase + '/upload-icon', {
+                method: 'POST',
+                body: formData
+            });
+            var data = await resp.json();
+            if (data && data.status === 'success' && data.url) {
+                return String(data.url);
+            }
+        } catch (e) {
+            console.error('Payment screenshot upload failed:', e);
+        }
+        return '';
+    }
 
-            var response = await fetch(`${API_BASE}/guaranteed-test-orders`, {
+    async function submitGuaranteedOrderAndOpenTelegram() {
+        var method = wizardState.paymentMethod;
+        if (!method) return;
+
+        var submitBtn = document.getElementById('gtw-flow-submit-btn');
+        var originalBtnText = submitBtn ? submitBtn.textContent : '';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'PROCESSING...';
+        }
+
+        try {
+            var amountUsd = getPaymentAmount(method);
+            var proofUrl = await uploadPaymentScreenshot();
+            var exchange = getExchangeById(wizardState.paymentExchange);
+            var notesParts = [];
+            if (exchange) notesParts.push('exchange=' + exchange.name);
+            if (proofUrl) notesParts.push('proof=' + proofUrl);
+
+            var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(withInitData({
@@ -869,7 +1273,8 @@
                     app_type: wizardState.appType,
                     testing_link: wizardState.testingLink,
                     payment_method: method,
-                    amount_usd: amountUsd
+                    amount_usd: amountUsd,
+                    notes: notesParts.length ? notesParts.join('; ') : null
                 }))
             });
             var payload = {};
@@ -882,23 +1287,27 @@
 
             var order = payload.order || {};
             var orderId = Number(order.id || 0);
-            var summaryText = `Order Request (#GT-${orderId || 'NEW'}):\nApp: ${wizardState.appName}\nType: ${wizardState.appType.toUpperCase()}\nLink: ${wizardState.testingLink}\nMethod: ${String(method).toUpperCase()}\nAmount: $${amountUsd.toFixed(2)}`;
+            var exchangeLabel = exchange ? (' via ' + exchange.name) : '';
+            var summaryText = 'Order Request (#GT-' + (orderId || 'NEW') + '):\nApp: ' + wizardState.appName + '\nType: ' + wizardState.appType.toUpperCase() + '\nLink: ' + wizardState.testingLink + '\nMethod: ' + String(method).toUpperCase() + exchangeLabel + '\nAmount: $' + amountUsd.toFixed(2);
+            if (proofUrl) summaryText += '\nProof: ' + proofUrl;
+
+            closePaymentFlow();
+            hideGuaranteedTestWizardPayment();
             openTelegramContact(summaryText);
         } catch (error) {
             console.error('Guaranteed order submit failed:', error);
             if (typeof showToast === 'function') {
                 showToast('Failed to create order. Please try again.');
             }
-            if (payBtn) {
-                payBtn.disabled = false;
-                payBtn.textContent = originalBtnText || 'PAY';
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText || 'SUBMIT ORDER';
             }
-            return;
         }
     }
 
     function openTelegramContact(text) {
-        var targetUrl = `https://t.me/${TELEGRAM_SUPPORT}?text=${encodeURIComponent(text)}`;
+        var targetUrl = 'https://t.me/' + TELEGRAM_SUPPORT + '?text=' + encodeURIComponent(text);
         if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
             window.Telegram.WebApp.openTelegramLink(targetUrl);
         } else {
@@ -938,15 +1347,35 @@
         }
     }
 
+    function resolveProjectById(projectId) {
+        if (!projectId) return null;
+        var projects = (typeof myProjects !== 'undefined' ? myProjects : []) || [];
+        return projects.find(function (p) { return Number(p.id) === Number(projectId); }) || null;
+    }
+
     /* =========================================================
        PUBLIC EXPORTS & DISPLAY CONTROLLERS
        ========================================================= */
 
-    function showGuaranteedTestWizardStep1() {
+    function showGuaranteedTestWizardStep1(options) {
+        options = options || {};
         if (typeof window.hideGuaranteedTestOfferModal === 'function') {
             window.hideGuaranteedTestOfferModal();
         }
+
+        if (!options.keepState) {
+            resetWizardState(false);
+        }
+
+        if (options.projectId) {
+            var project = resolveProjectById(options.projectId);
+            if (project) applyProjectPrefill(project);
+        }
+
         ensureWizardInDOM();
+        syncStep1FormFromState();
+        syncStep2FormFromState();
+
         var overlay1 = document.getElementById('guaranteed-test-wizard-step1-overlay');
         if (overlay1) overlay1.style.display = 'flex';
     }
@@ -958,6 +1387,7 @@
 
     function showGuaranteedTestWizardStep2() {
         ensureWizardInDOM();
+        syncStep2FormFromState();
         var overlay2 = document.getElementById('guaranteed-test-wizard-step2-overlay');
         if (overlay2) overlay2.style.display = 'flex';
     }
@@ -969,11 +1399,19 @@
 
     function showGuaranteedTestWizardPayment() {
         ensureWizardInDOM();
+        wizardState.paymentMethod = null;
+        wizardState.paymentExchange = null;
+        var payBtn = document.getElementById('gtw-pay-btn');
+        if (payBtn) {
+            payBtn.disabled = true;
+            payBtn.textContent = 'SELECT PAYMENT METHOD';
+        }
         var overlayPay = document.getElementById('guaranteed-test-wizard-payment-overlay');
         if (overlayPay) overlayPay.style.display = 'flex';
     }
 
     function hideGuaranteedTestWizardPayment() {
+        closePaymentFlow();
         var overlayPay = document.getElementById('guaranteed-test-wizard-payment-overlay');
         if (overlayPay) overlayPay.style.display = 'none';
     }

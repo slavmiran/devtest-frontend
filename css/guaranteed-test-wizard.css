@@ -16,8 +16,10 @@
     background: var(--bg-app, #0E1116);
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    font-family: inherit;
     animation: gtwSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -30,12 +32,13 @@
     width: 100%;
     background: linear-gradient(180deg, #131E36 0%, #16223D 100%);
     border-bottom: 1px solid rgba(76, 141, 255, 0.15);
-    padding: 20px 20px 20px 20px;
+    padding: max(14px, env(safe-area-inset-top)) 56px 18px;
     text-align: center;
     position: sticky;
     top: 0;
     z-index: 10;
     box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 .gtw-back-btn {
@@ -111,7 +114,7 @@
     width: 100%;
     max-width: 480px;
     margin: 0 auto;
-    padding: 24px 20px 130px 20px;
+    padding: 20px 16px 130px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -1028,4 +1031,346 @@
     box-shadow: none;
     background: var(--bg-surface-3, #262C37);
     color: var(--text-tertiary, #717C89);
+}
+
+/* =========================================================
+   INLINE LICENSE TESTING CARD (paid app)
+   ========================================================= */
+
+.gtw-inline-card {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid var(--warning-border, rgba(255, 176, 32, 0.24));
+    background: var(--warning-surface, rgba(255, 176, 32, 0.12));
+    box-sizing: border-box;
+}
+
+.gtw-inline-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary, #F4F6F8);
+    margin: 0 0 8px 0;
+}
+
+.gtw-inline-subtitle {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-secondary, #AEB7C2);
+    margin: 0 0 8px 0;
+}
+
+.gtw-inline-desc {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-secondary, #AEB7C2);
+    margin: 0 0 10px 0;
+}
+
+.gtw-inline-desc strong {
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gtw-inline-list {
+    margin: 0 0 14px 0;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+.gtw-inline-list li {
+    margin-bottom: 4px;
+}
+
+.gtw-inline-list strong {
+    color: var(--warning, #FFB020);
+}
+
+.gtw-inline-guide-btn {
+    width: 100%;
+    min-height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #FFB020 0%, #E69500 100%);
+    color: var(--text-on-warning, #0E1116);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.2s ease;
+}
+
+.gtw-inline-guide-btn:hover {
+    opacity: 0.92;
+}
+
+/* =========================================================
+   LINK FIELD (full visibility, wrap)
+   ========================================================= */
+
+.gtw-input-wrapper--multiline {
+    align-items: flex-start;
+    padding: 12px 14px;
+}
+
+.gtw-textarea {
+    flex: 1;
+    min-height: 52px;
+    max-height: 120px;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    color: var(--text-primary, #F4F6F8);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    line-height: 1.45;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}
+
+.gtw-textarea::placeholder {
+    color: var(--text-tertiary, #717C89);
+    font-weight: 400;
+}
+
+.gtw-prefill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 5px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent-primary, #4C8DFF);
+    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.12));
+    border: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.24));
+}
+
+.gtw-confirm-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--bg-surface-1, #161A21);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    cursor: pointer;
+    user-select: none;
+}
+
+.gtw-confirm-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--accent-primary, #4C8DFF);
+}
+
+.gtw-confirm-label {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+/* =========================================================
+   PAYMENT: EXCHANGE PICKER (no credentials shown)
+   ========================================================= */
+
+.gtw-exchange-picker {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.gtw-method-card.selected-crypto .gtw-exchange-picker {
+    display: flex;
+}
+
+.gtw-exchange-pick-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--bg-surface-1, #161A21);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.gtw-exchange-pick-row:hover {
+    border-color: var(--accent-primary-border, rgba(76, 141, 255, 0.24));
+    background: var(--bg-surface-2, #1D222B);
+}
+
+.gtw-exchange-pick-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.gtw-exchange-pick-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gtw-exchange-pick-chevron {
+    color: var(--text-tertiary, #717C89);
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.gtw-method-card .gtw-method-details {
+    display: none !important;
+}
+
+.gtw-method-action-hint {
+    font-size: 12px;
+    color: var(--text-tertiary, #717C89);
+    margin: 8px 0 0;
+    line-height: 1.4;
+}
+
+.gtw-method-card.selected .gtw-method-action-hint {
+    color: var(--accent-primary, #4C8DFF);
+}
+
+/* =========================================================
+   PAYMENT FLOW OVERLAY (stepper, like play review)
+   ========================================================= */
+
+.gtw-payment-flow-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10150;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.gtw-payment-flow-overlay.is-open {
+    display: flex;
+}
+
+.gtw-payment-flow-sheet {
+    width: 100%;
+    max-width: 480px;
+    max-height: 92vh;
+    max-height: 92dvh;
+    overflow-y: auto;
+    background: var(--bg-surface-2, #1D222B);
+    border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    border-radius: 20px 20px 0 0;
+    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    animation: gtwSheetUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes gtwSheetUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.gtw-payment-flow-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary, #F4F6F8);
+    margin: 0 0 6px;
+}
+
+.gtw-payment-flow-subtitle {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-secondary, #AEB7C2);
+    margin: 0 0 16px;
+}
+
+.gtw-credential-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--bg-surface-1, #161A21);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+}
+
+.gtw-credential-value {
+    font-size: 14px;
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--accent-primary, #4C8DFF);
+    word-break: break-all;
+}
+
+.gtw-copy-action-btn {
+    flex-shrink: 0;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.24));
+    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.12));
+    color: var(--accent-primary, #4C8DFF);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.gtw-open-external-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.14));
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary, #F4F6F8);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.gtw-payment-flow-footer {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gtw-payment-flow-cancel {
+    background: none;
+    border: none;
+    color: var(--text-tertiary, #717C89);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 8px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.gtw-fixed-footer {
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
 }

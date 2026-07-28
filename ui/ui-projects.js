@@ -5667,7 +5667,7 @@ function openAttractTestersSheet(projectId) {
         </div>
 
         <!-- Item 6: Hands-free Testing -->
-        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openHandsFreeTestingWizard();">
+        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openHandsFreeTestingWizard(${projectId});">
             <div class="attract-sheet-item-icon">🛡️</div>
             <div class="attract-sheet-item-info">
                 <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractHandsFreeTitle', {}, lang))}</div>
@@ -5701,9 +5701,9 @@ function handleLeadsRadarAction() {
     }
 }
 
-function openHandsFreeTestingWizard() {
+function openHandsFreeTestingWizard(projectId) {
     if (typeof window.showGuaranteedTestWizardStep1 === 'function') {
-        window.showGuaranteedTestWizardStep1();
+        window.showGuaranteedTestWizardStep1({ projectId: projectId });
         return;
     }
     if (typeof window.showGuaranteedTestOfferModal === 'function') {
