@@ -126,23 +126,31 @@
 
     function checkGuaranteedTestRouting() {
         try {
-            var params = new URLSearchParams(window.location.search || '');
+            var searchParams = new URLSearchParams(window.location.search || '');
+            var hashString = (window.location.hash || '').replace(/^#/, '');
+            var hashParams = new URLSearchParams(hashString.indexOf('?') !== -1 ? hashString.substring(hashString.indexOf('?') + 1) : hashString);
             var tg = window.Telegram && window.Telegram.WebApp;
-            var startParam = String(
-                params.get('startapp') ||
-                params.get('tab') ||
-                params.get('route') ||
+
+            var rawParam = String(
+                searchParams.get('startapp') ||
+                searchParams.get('tgWebAppStartParam') ||
+                searchParams.get('start_param') ||
+                searchParams.get('tab') ||
+                searchParams.get('route') ||
+                hashParams.get('startapp') ||
+                hashParams.get('tgWebAppStartParam') ||
+                hashParams.get('start_param') ||
                 (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
                 ''
             ).trim().toLowerCase();
 
             if (
-                startParam === 'guaranteed_test' ||
-                startParam === 'guaranteed-test' ||
-                startParam === 'guaranteed_pass' ||
-                startParam === 'guaranteed-pass' ||
-                startParam === 'closed_test_help' ||
-                startParam === 'guaranteed'
+                rawParam === 'guaranteed_test' ||
+                rawParam === 'guaranteed-test' ||
+                rawParam === 'guaranteed_pass' ||
+                rawParam === 'guaranteed-pass' ||
+                rawParam === 'closed_test_help' ||
+                rawParam === 'guaranteed'
             ) {
                 showGuaranteedTestOfferModal();
             }

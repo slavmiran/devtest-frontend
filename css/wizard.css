@@ -224,13 +224,6 @@
     pointer-events: none;
 }
 
-.wizard-security-note {
-    margin: 12px 0 0;
-    font-size: 12px;
-    color: var(--hint-color);
-    text-align: center;
-    line-height: 1.4;
-}
 /* App icon picker (step 1) */
 .app-icon-block {
     display: flex;

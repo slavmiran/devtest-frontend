@@ -234,7 +234,6 @@
             wizardAddIconTitle: "Add an icon",
             wizardAddIconHint: "PNG, JPG · up to 2MB · 512×512",
             wizardPlayLinkTip: "💡 Paste a link to your app's page on Google Play.",
-            wizardSecurityNote: "🔒 Your data is protected and never shared with third parties.",
             wizardAccessDesc: "Choose a testing method and set up Play Console.",
             emailModeListManual: "Before every mutual test you must manually add the tester's email in Play Console.",
             emailModeListMass: "Mass invites will arrive as a list — add all the emails, then send.",

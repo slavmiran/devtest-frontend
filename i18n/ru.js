@@ -233,7 +233,6 @@
             wizardAddIconTitle: "Добавить иконку",
             wizardAddIconHint: "PNG, JPG · до 2MB · 512×512",
             wizardPlayLinkTip: "💡 Вставьте ссылку на страницу приложения в Google Play.",
-            wizardSecurityNote: "🔒 Ваши данные защищены и не передаются третьим лицам.",
             wizardAccessDesc: "Выберите способ тестирования и настройте Play Console.",
             emailModeListManual: "Перед каждой взаимкой вы обязаны вручную добавить email тестера в Play Console.",
             emailModeListMass: "Массовые рассылки придут вам списком — добавьте все email, затем отправляйте.",

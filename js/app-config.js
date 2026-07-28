@@ -921,14 +921,22 @@ function setMarketForceSkeleton(enabled) {
 window._marketForceSkeleton = _marketForceSkeleton;
 
 function _getStartappParam() {
-    var params = new URLSearchParams(window.location.search || '');
+    var searchParams = new URLSearchParams(window.location.search || '');
+    var hashString = (window.location.hash || '').replace(/^#/, '');
+    var hashParams = new URLSearchParams(hashString.indexOf('?') !== -1 ? hashString.substring(hashString.indexOf('?') + 1) : hashString);
     var tg = window.Telegram && window.Telegram.WebApp;
-    var tgStartParam = String(
-        (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
-        (typeof initData !== 'undefined' && initData && initData.start_param) ||
-        ''
-    ).trim();
-    return String(params.get('startapp') || tgStartParam || '').trim();
+
+    var val = searchParams.get('startapp') ||
+              searchParams.get('tgWebAppStartParam') ||
+              searchParams.get('start_param') ||
+              hashParams.get('startapp') ||
+              hashParams.get('tgWebAppStartParam') ||
+              hashParams.get('start_param') ||
+              (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+              (typeof initData !== 'undefined' && initData && initData.start_param) ||
+              '';
+
+    return String(val).trim();
 }
 
 function showTgDeeplinkLoader(kind) {
