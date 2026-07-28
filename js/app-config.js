@@ -1054,6 +1054,40 @@ function _clearStartappQueryParam() {
     } catch (error) {}
 }
 
+function _openGuaranteedTestOfferWhenReady(maxAttempts, intervalMs) {
+    var attemptsLeft = Number(maxAttempts || 0);
+    var waitMs = Number(intervalMs || 0);
+
+    if (attemptsLeft <= 0) attemptsLeft = 30;
+    if (waitMs <= 0) waitMs = 100;
+
+    function tryOpen() {
+        if (typeof window.showGuaranteedTestOfferModal === 'function') {
+            window.showGuaranteedTestOfferModal();
+            return true;
+        }
+        return false;
+    }
+
+    if (tryOpen()) {
+        return true;
+    }
+
+    var pollId = setInterval(function () {
+        attemptsLeft -= 1;
+        if (tryOpen()) {
+            clearInterval(pollId);
+            return;
+        }
+        if (attemptsLeft <= 0) {
+            clearInterval(pollId);
+            console.warn('Guaranteed test modal opener is not ready yet.');
+        }
+    }, waitMs);
+
+    return false;
+}
+
 function _parseInitialRouteTarget() {
     var params = new URLSearchParams(window.location.search || '');
     var startParam = _getStartappParam();
@@ -1284,9 +1318,7 @@ async function _handleInitialRoute() {
 
     if (route.openGuaranteedTest) {
         try {
-            if (typeof window.showGuaranteedTestOfferModal === 'function') {
-                window.showGuaranteedTestOfferModal();
-            }
+            _openGuaranteedTestOfferWhenReady(30, 100);
             _clearStartappQueryParam();
         } catch (error) {
             console.error('Initial guaranteed test route error:', error);
