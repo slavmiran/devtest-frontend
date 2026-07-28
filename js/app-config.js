@@ -1130,6 +1130,10 @@ function _parseInitialRouteTarget() {
             routeKind = 'contribution';
             break;
         }
+        if (normalized === 'guaranteed_test' || normalized === 'guaranteed-test' || normalized === 'guaranteed_pass' || normalized === 'guaranteed-pass' || normalized === 'closed_test_help' || normalized === 'guaranteed') {
+            routeKind = 'guaranteed_test';
+            break;
+        }
     }
 
     if (routeKind === 'feedback' || params.get('feedback') === '1') {
@@ -1245,6 +1249,13 @@ function _parseInitialRouteTarget() {
             expandProjectId: feedbackProjectId > 0 ? feedbackProjectId : null,
         };
     }
+    if (routeKind === 'guaranteed_test') {
+        return {
+            tab: 'market',
+            openGuaranteedTest: true,
+            appId: null,
+        };
+    }
     return null;
 }
 
@@ -1254,6 +1265,18 @@ async function _handleInitialRoute() {
 
     var route = _parseInitialRouteTarget();
     if (!route) return;
+
+    if (route.openGuaranteedTest) {
+        try {
+            if (typeof window.showGuaranteedTestOfferModal === 'function') {
+                window.showGuaranteedTestOfferModal();
+            }
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial guaranteed test route error:', error);
+        }
+        return;
+    }
 
     if (route.openAppFocus && route.appId) {
         try {
