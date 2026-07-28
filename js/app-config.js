@@ -922,8 +922,13 @@ window._marketForceSkeleton = _marketForceSkeleton;
 
 function _getStartappParam() {
     var params = new URLSearchParams(window.location.search || '');
-    // Prefer explicit URL startapp over Telegram initData.start_param to avoid stale routing.
-    return String(params.get('startapp') || initData.start_param || '').trim();
+    var tg = window.Telegram && window.Telegram.WebApp;
+    var tgStartParam = String(
+        (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+        (typeof initData !== 'undefined' && initData && initData.start_param) ||
+        ''
+    ).trim();
+    return String(params.get('startapp') || tgStartParam || '').trim();
 }
 
 function showTgDeeplinkLoader(kind) {
