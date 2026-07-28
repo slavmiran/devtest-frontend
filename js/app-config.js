@@ -926,9 +926,12 @@ function _getStartappParam() {
     var hashParams = new URLSearchParams(hashString.indexOf('?') !== -1 ? hashString.substring(hashString.indexOf('?') + 1) : hashString);
     var tg = window.Telegram && window.Telegram.WebApp;
 
-    var val = searchParams.get('startapp') ||
+    // dtview is our custom param name that Telegram won't intercept
+    var val = searchParams.get('dtview') ||
+              searchParams.get('startapp') ||
               searchParams.get('tgWebAppStartParam') ||
               searchParams.get('start_param') ||
+              hashParams.get('dtview') ||
               hashParams.get('startapp') ||
               hashParams.get('tgWebAppStartParam') ||
               hashParams.get('start_param') ||

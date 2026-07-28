@@ -132,11 +132,13 @@
             var tg = window.Telegram && window.Telegram.WebApp;
 
             var rawParam = String(
+                searchParams.get('dtview') ||
                 searchParams.get('startapp') ||
                 searchParams.get('tgWebAppStartParam') ||
                 searchParams.get('start_param') ||
                 searchParams.get('tab') ||
                 searchParams.get('route') ||
+                hashParams.get('dtview') ||
                 hashParams.get('startapp') ||
                 hashParams.get('tgWebAppStartParam') ||
                 hashParams.get('start_param') ||
