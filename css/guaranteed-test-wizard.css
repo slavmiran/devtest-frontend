@@ -1,0 +1,1031 @@
+/* =========================================================
+   GUARANTEED CLOSED TEST ORDER WIZARD (3-SCREEN FLOW)
+   Step 1 of 2: App Details
+   Step 2 of 2: Testing Link
+   Final Step: Payment
+   Dark Theme / DevTestHub Native Styling
+   ========================================================= */
+
+.gtw-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10050;
+    background: var(--bg-app, #0E1116);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    animation: gtwSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes gtwSlideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.gtw-header {
+    width: 100%;
+    background: linear-gradient(180deg, #131E36 0%, #16223D 100%);
+    border-bottom: 1px solid rgba(76, 141, 255, 0.15);
+    padding: 20px 20px 20px 20px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-sizing: border-box;
+}
+
+.gtw-back-btn {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-primary, #F4F6F8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gtw-back-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    transform: scale(1.05);
+}
+
+.gtw-back-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.gtw-header-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.01em;
+    font-family: inherit;
+}
+
+.gtw-header-subtitle {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 10px 0;
+}
+
+.gtw-progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.gtw-progress-step {
+    height: 4px;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.gtw-progress-step.active {
+    width: 40px;
+    background: var(--accent-primary, #4C8DFF);
+}
+
+.gtw-progress-step.inactive {
+    width: 24px;
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.gtw-body {
+    flex: 1;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 20px 130px 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.gtw-form-group {
+    margin-bottom: 24px;
+}
+
+.gtw-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary, #717C89);
+    margin-bottom: 10px;
+}
+
+.gtw-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: var(--bg-surface-2, #1D222B);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 12px 14px;
+    transition: all 0.2s ease;
+}
+
+.gtw-input-wrapper:focus-within {
+    border-color: var(--accent-primary, #4C8DFF);
+    box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.18);
+}
+
+.gtw-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary, #F4F6F8);
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+}
+
+.gtw-input::placeholder {
+    color: var(--text-tertiary, #717C89);
+    font-weight: 400;
+}
+
+.gtw-paste-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: var(--accent-primary, #4C8DFF);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.gtw-paste-btn:hover {
+    background: rgba(76, 141, 255, 0.15);
+    border-color: rgba(76, 141, 255, 0.3);
+}
+
+.gtw-helper-text {
+    font-size: 13px;
+    color: var(--text-tertiary, #717C89);
+    margin-top: 8px;
+    line-height: 1.4;
+}
+
+.gtw-helper-text.error {
+    color: var(--danger, #FF5A5F);
+}
+
+.gtw-type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.gtw-type-card {
+    background: var(--bg-surface-1, #161A21);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.gtw-type-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--bg-surface-2, #1D222B);
+}
+
+.gtw-type-card.selected-free {
+    border-color: var(--success, #30D158);
+    background: rgba(48, 209, 88, 0.1);
+    box-shadow: 0 4px 14px rgba(48, 209, 88, 0.15);
+}
+
+.gtw-type-card.selected-paid {
+    border-color: var(--warning, #FFB020);
+    background: rgba(255, 176, 32, 0.12);
+    box-shadow: 0 4px 14px rgba(255, 176, 32, 0.18);
+}
+
+.gtw-type-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--text-secondary, #AEB7C2);
+    transition: color 0.2s ease;
+}
+
+.gtw-type-card.selected-free .gtw-type-icon {
+    color: var(--success, #30D158);
+}
+
+.gtw-type-card.selected-paid .gtw-type-icon {
+    color: var(--warning, #FFB020);
+}
+
+.gtw-type-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary, #F4F6F8);
+}
+
+/* =========================================================
+   PLAN CARD (Payment Screen)
+   ========================================================= */
+
+.gtw-plan-card {
+    background: linear-gradient(180deg, #162444 0%, #111A2E 100%);
+    border: 1px solid rgba(76, 141, 255, 0.25);
+    border-radius: 24px;
+    padding: 24px 20px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    margin-bottom: 28px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.gtw-plan-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-primary, #4C8DFF);
+    margin-bottom: 6px;
+}
+
+.gtw-plan-title {
+    font-size: 24px;
+    font-weight: 900;
+    color: #FFFFFF;
+    margin: 0 0 14px 0;
+    letter-spacing: -0.02em;
+}
+
+.gtw-plan-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.gtw-plan-price {
+    font-size: 38px;
+    font-weight: 900;
+    color: #FFFFFF;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+
+.gtw-plan-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.65);
+    font-weight: 600;
+}
+
+.gtw-plan-features {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 22px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 18px;
+}
+
+.gtw-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #D1D5DB;
+    line-height: 1.4;
+}
+
+.gtw-feature-item strong {
+    color: #FFFFFF;
+}
+
+.gtw-feature-icon {
+    width: 20px;
+    height: 20px;
+    color: #30D158;
+    flex-shrink: 0;
+}
+
+.gtw-guarantee-box {
+    background: rgba(76, 141, 255, 0.1);
+    border: 1px solid rgba(76, 141, 255, 0.22);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.gtw-guarantee-icon {
+    width: 22px;
+    height: 22px;
+    color: #30D158;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.gtw-guarantee-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin: 0 0 2px 0;
+}
+
+.gtw-guarantee-text {
+    font-size: 12px;
+    color: var(--text-secondary, #AEB7C2);
+    margin: 0;
+    line-height: 1.35;
+}
+
+/* =========================================================
+   PAYMENT METHOD CARDS & EXPANDABLES
+   ========================================================= */
+
+.gtw-payment-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.gtw-method-card {
+    background: var(--bg-surface-1, #161A21);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 18px 18px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.gtw-method-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--bg-surface-2, #1D222B);
+}
+
+.gtw-method-card.selected {
+    border-color: var(--accent-primary, #4C8DFF);
+    background: var(--bg-surface-2, #1D222B);
+    box-shadow: 0 6px 20px rgba(76, 141, 255, 0.15);
+}
+
+.gtw-method-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.gtw-method-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.gtw-method-radio {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.gtw-method-card.selected .gtw-method-radio {
+    border-color: var(--accent-primary, #4C8DFF);
+    background: var(--accent-primary, #4C8DFF);
+}
+
+.gtw-method-radio::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    display: none;
+}
+
+.gtw-method-card.selected .gtw-method-radio::after {
+    display: block;
+}
+
+.gtw-method-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.gtw-method-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gtw-method-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #F4F6F8;
+}
+
+.gtw-method-badge {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 100px;
+}
+
+.gtw-badge-rec {
+    background: rgba(48, 209, 88, 0.15);
+    border: 1px solid rgba(48, 209, 88, 0.3);
+    color: #30D158;
+}
+
+.gtw-badge-fee {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-secondary, #AEB7C2);
+}
+
+.gtw-method-price {
+    font-size: 16px;
+    font-weight: 800;
+    color: #FFFFFF;
+}
+
+.gtw-method-details {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    animation: gtwFadeIn 0.2s ease;
+}
+
+.gtw-method-card.selected .gtw-method-details {
+    display: flex;
+}
+
+.gtw-method-desc {
+    font-size: 13px;
+    color: var(--text-secondary, #AEB7C2);
+    line-height: 1.45;
+    margin: 0;
+}
+
+/* Exchange Rows Grid */
+
+.gtw-exchanges-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.gtw-exchange-row {
+    background: var(--bg-surface-1, #161A21);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.gtw-exchange-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.gtw-exchange-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(76, 141, 255, 0.12);
+    border: 1px solid rgba(76, 141, 255, 0.2);
+    color: var(--accent-primary, #4C8DFF);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.gtw-exchange-meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.gtw-exchange-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #F4F6F8;
+}
+
+.gtw-exchange-id {
+    font-size: 12px;
+    font-family: monospace;
+    color: var(--accent-primary, #4C8DFF);
+    font-weight: 700;
+}
+
+.gtw-row-copy-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: var(--text-primary, #F4F6F8);
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+}
+
+.gtw-row-copy-btn:hover {
+    background: rgba(76, 141, 255, 0.15);
+    border-color: rgba(76, 141, 255, 0.3);
+    color: var(--accent-primary, #4C8DFF);
+}
+
+.gtw-open-tg-btn {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(135deg, #4C8DFF 0%, #2563EB 100%);
+    border: none;
+    border-radius: 12px;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+    transition: all 0.2s ease;
+}
+
+.gtw-open-tg-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(76, 141, 255, 0.35);
+}
+
+/* =========================================================
+   STEP 2 INSTRUCTION CARDS & TESTING GUIDE
+   ========================================================= */
+
+.gtw-instructions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 24px;
+    margin-bottom: 24px;
+}
+
+.gtw-card-item {
+    background: var(--bg-surface-1, #161A21);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 18px 18px;
+    display: flex;
+    gap: 14px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    box-sizing: border-box;
+}
+
+.gtw-card-icon-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.gtw-badge-green {
+    background: rgba(48, 209, 88, 0.12);
+    border: 1px solid rgba(48, 209, 88, 0.25);
+    color: #30D158;
+}
+
+.gtw-badge-blue {
+    background: rgba(76, 141, 255, 0.12);
+    border: 1px solid rgba(76, 141, 255, 0.25);
+    color: #4C8DFF;
+}
+
+.gtw-badge-amber {
+    background: rgba(255, 176, 32, 0.12);
+    border: 1px solid rgba(255, 176, 32, 0.25);
+    color: #FFB020;
+}
+
+.gtw-badge-purple {
+    background: rgba(160, 123, 255, 0.12);
+    border: 1px solid rgba(160, 123, 255, 0.25);
+    color: #A07BFF;
+}
+
+.gtw-card-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.gtw-card-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #F4F6F8;
+    margin: 0;
+}
+
+.gtw-card-text {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-secondary, #AEB7C2);
+    margin: 0;
+}
+
+.gtw-card-text strong {
+    color: #FFFFFF;
+}
+
+.gtw-note-box {
+    background: rgba(76, 141, 255, 0.1);
+    border: 1px solid rgba(76, 141, 255, 0.2);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #D1D5DB;
+    margin-top: 6px;
+}
+
+.gtw-guide-card {
+    background: var(--bg-surface-1, #161A21);
+    border: 1px solid rgba(76, 141, 255, 0.25);
+    border-radius: 20px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.gtw-guide-card:hover {
+    background: var(--bg-surface-2, #1D222B);
+    border-color: var(--accent-primary, #4C8DFF);
+    transform: translateY(-1px);
+}
+
+.gtw-guide-card-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.gtw-guide-icon-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(76, 141, 255, 0.12);
+    border: 1px solid rgba(76, 141, 255, 0.25);
+    color: var(--accent-primary, #4C8DFF);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.gtw-guide-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.gtw-guide-card-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #F4F6F8;
+}
+
+.gtw-guide-card-desc {
+    font-size: 12px;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+.gtw-guide-external-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--accent-primary, #4C8DFF);
+    flex-shrink: 0;
+}
+
+/* =========================================================
+   MODAL: SETUP LICENSE TESTING
+   ========================================================= */
+
+.gtw-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10100;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+    animation: gtwModalFade 0.25s ease-out;
+}
+
+@keyframes gtwModalFade {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.gtw-modal-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg-surface-2, #1D222B);
+    border: 1px solid rgba(76, 141, 255, 0.25);
+    border-radius: 24px;
+    padding: 24px 20px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.gtw-modal-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #FFFFFF;
+    text-align: center;
+    margin: 0 0 6px 0;
+}
+
+.gtw-modal-desc {
+    font-size: 13px;
+    color: var(--text-secondary, #AEB7C2);
+    text-align: center;
+    margin: 0 0 20px 0;
+    line-height: 1.4;
+}
+
+.gtw-modal-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.gtw-modal-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.gtw-step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(76, 141, 255, 0.15);
+    border: 1px solid rgba(76, 141, 255, 0.3);
+    color: var(--accent-primary, #4C8DFF);
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.gtw-step-text {
+    font-size: 14px;
+    color: var(--text-secondary, #AEB7C2);
+    line-height: 1.4;
+}
+
+.gtw-step-text strong {
+    color: #F4F6F8;
+}
+
+.gtw-step-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.gtw-copy-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-surface-1, #161A21);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 10px 12px;
+    gap: 8px;
+}
+
+.gtw-copy-email {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-primary, #4C8DFF);
+    word-break: break-all;
+    font-family: monospace;
+}
+
+.gtw-copy-btn {
+    background: rgba(76, 141, 255, 0.12);
+    border: 1px solid rgba(76, 141, 255, 0.25);
+    border-radius: 8px;
+    color: var(--accent-primary, #4C8DFF);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.gtw-copy-btn:hover {
+    background: rgba(76, 141, 255, 0.25);
+}
+
+.gtw-guide-btn {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 14px;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    transition: all 0.2s ease;
+}
+
+.gtw-guide-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.gtw-modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.gtw-modal-cancel-btn {
+    height: 48px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    color: var(--text-secondary, #AEB7C2);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gtw-modal-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #F4F6F8;
+}
+
+.gtw-modal-confirm-btn {
+    height: 48px;
+    background: linear-gradient(135deg, #4C8DFF 0%, #2563EB 100%);
+    border: none;
+    border-radius: 14px;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(76, 141, 255, 0.35);
+    transition: all 0.2s ease;
+}
+
+.gtw-modal-confirm-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(76, 141, 255, 0.45);
+}
+
+/* Fixed Footer CTA */
+
+.gtw-fixed-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    background: rgba(14, 17, 22, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 16px 20px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+}
+
+.gtw-footer-content {
+    width: 100%;
+    max-width: 480px;
+}
+
+.gtw-continue-btn {
+    width: 100%;
+    height: 60px;
+    background: linear-gradient(135deg, #4C8DFF 0%, #2563EB 100%);
+    border: none;
+    border-radius: 16px;
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(76, 141, 255, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.gtw-continue-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(76, 141, 255, 0.45);
+}
+
+.gtw-continue-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+    background: var(--bg-surface-3, #262C37);
+    color: var(--text-tertiary, #717C89);
+}
