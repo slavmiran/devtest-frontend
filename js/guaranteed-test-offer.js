@@ -76,6 +76,9 @@
     function ensureModalInDOM() {
         var overlay = document.getElementById('guaranteed-test-offer-overlay');
         if (!overlay) {
+            if (!document.body) {
+                return null;
+            }
             var div = document.createElement('div');
             div.innerHTML = createGuaranteedTestOfferHTML();
             document.body.appendChild(div.firstElementChild);
@@ -114,6 +117,9 @@
         var overlay = ensureModalInDOM();
         if (overlay) {
             overlay.style.display = 'flex';
+            overlay.style.zIndex = '99999';
+        } else {
+            setTimeout(showGuaranteedTestOfferModal, 50);
         }
     }
 
