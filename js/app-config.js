@@ -1180,7 +1180,7 @@ function _parseInitialRouteTarget() {
             routeKind = 'contribution';
             break;
         }
-        if (normalized === 'guaranteed_test' || normalized === 'guaranteed-test' || normalized === 'guaranteed_pass' || normalized === 'guaranteed-pass' || normalized === 'closed_test_help' || normalized === 'guaranteed') {
+        if (normalized === 'guaranteed_test' || normalized === 'guaranteed-test' || normalized === 'guaranteed_pass' || normalized === 'guaranteed-pass' || normalized === 'closed_test_help' || normalized === 'guaranteed' || normalized === 'order_gt') {
             routeKind = 'guaranteed_test';
             break;
         }

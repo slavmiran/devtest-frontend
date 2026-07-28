@@ -158,7 +158,8 @@
                 rawParam === 'guaranteed_pass' ||
                 rawParam === 'guaranteed-pass' ||
                 rawParam === 'closed_test_help' ||
-                rawParam === 'guaranteed'
+                rawParam === 'guaranteed' ||
+                rawParam === 'order_gt'
             ) {
                 showGuaranteedTestOfferModal();
             }

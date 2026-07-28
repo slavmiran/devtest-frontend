@@ -5665,6 +5665,16 @@ function openAttractTestersSheet(projectId) {
             </div>
             <span class="attract-sheet-item-chevron">›</span>
         </div>
+
+        <!-- Item 6: Hands-free Testing -->
+        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openHandsFreeTestingWizard();">
+            <div class="attract-sheet-item-icon">🛡️</div>
+            <div class="attract-sheet-item-info">
+                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractHandsFreeTitle', {}, lang))}</div>
+                <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractHandsFreeSubtitle', {}, lang))}</div>
+            </div>
+            <span class="attract-sheet-item-chevron">›</span>
+        </div>
     `;
 
     overlay.classList.add('is-active');
@@ -5688,6 +5698,16 @@ function handleLeadsRadarAction() {
         }
     } else {
         alert('Leads radar action (/leads) triggered.');
+    }
+}
+
+function openHandsFreeTestingWizard() {
+    if (typeof window.showGuaranteedTestWizardStep1 === 'function') {
+        window.showGuaranteedTestWizardStep1();
+        return;
+    }
+    if (typeof window.showGuaranteedTestOfferModal === 'function') {
+        window.showGuaranteedTestOfferModal();
     }
 }
 

@@ -840,10 +840,61 @@
     }
 
     function handleExecutePayment() {
-        var method = wizardState.paymentMethod;
-        var summaryText = `Order Request ($20 Plan):\nApp: ${wizardState.appName}\nType: ${wizardState.appType.toUpperCase()}\nLink: ${wizardState.testingLink}\nMethod: ${String(method).toUpperCase()}`;
+        submitGuaranteedOrderAndOpenTelegram().catch(function () {});
+    }
 
-        openTelegramContact(summaryText);
+    async function submitGuaranteedOrderAndOpenTelegram() {
+        var method = wizardState.paymentMethod;
+        if (!method) {
+            return;
+        }
+
+        var payBtn = document.getElementById('gtw-pay-btn');
+        var originalBtnText = payBtn ? payBtn.textContent : '';
+        if (payBtn) {
+            payBtn.disabled = true;
+            payBtn.textContent = 'PROCESSING...';
+        }
+
+        try {
+            var amountUsd = 20;
+            if (method === 'paypal') amountUsd = 23;
+            else if (method === 'rub') amountUsd = 22;
+
+            var response = await fetch(`${API_BASE}/guaranteed-test-orders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(withInitData({
+                    app_name: wizardState.appName,
+                    app_type: wizardState.appType,
+                    testing_link: wizardState.testingLink,
+                    payment_method: method,
+                    amount_usd: amountUsd
+                }))
+            });
+            var payload = {};
+            try {
+                payload = await response.json();
+            } catch (_) {}
+            if (!response.ok || payload.status === 'error') {
+                throw new Error((payload && (payload.code || payload.detail || payload.message)) || 'order_create_failed');
+            }
+
+            var order = payload.order || {};
+            var orderId = Number(order.id || 0);
+            var summaryText = `Order Request (#GT-${orderId || 'NEW'}):\nApp: ${wizardState.appName}\nType: ${wizardState.appType.toUpperCase()}\nLink: ${wizardState.testingLink}\nMethod: ${String(method).toUpperCase()}\nAmount: $${amountUsd.toFixed(2)}`;
+            openTelegramContact(summaryText);
+        } catch (error) {
+            console.error('Guaranteed order submit failed:', error);
+            if (typeof showToast === 'function') {
+                showToast('Failed to create order. Please try again.');
+            }
+            if (payBtn) {
+                payBtn.disabled = false;
+                payBtn.textContent = originalBtnText || 'PAY';
+            }
+            return;
+        }
     }
 
     function openTelegramContact(text) {
