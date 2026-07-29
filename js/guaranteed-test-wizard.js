@@ -10,7 +10,7 @@
 
     var SETUP_LICENSE_GUIDE_URL = "https://t.me/googleplay_console_12testers/31/2885";
     var GENERAL_TESTING_GUIDE_URL = "https://telegra.ph/Action-Required-Add-Testing-Group-to-Start-Closed-Testing-06-04";
-    var TESTER_GROUP_EMAIL = "closedtesthelp@googlegroups.com";
+    var TESTER_GROUP_EMAIL = "google-play-dev-test@googlegroups.com";
     var PAYPAL_EMAIL = "pay.hubstation@gmail.com";
     var TELEGRAM_SUPPORT = "garantxchange";
     var PAYPAL_OPEN_URL = "https://www.paypal.com/myaccount/transfer/homepage/pay";
@@ -123,6 +123,19 @@
         }
     }
 
+    function syncPrefillToggleUI(step, active) {
+        var badge = document.getElementById('gtw-prefill-badge-step' + step);
+        var hint = document.getElementById('gtw-prefill-hint-step' + step);
+        if (badge) {
+            badge.textContent = active ? 'Auto-fill from project' : 'Manual input';
+        }
+        if (hint) {
+            hint.textContent = active
+                ? 'Project defaults are applied'
+                : 'You are editing fields manually';
+        }
+    }
+
     function isValidTestingLink(url) {
         var value = String(url || '').trim();
         if (!value || !/^https?:\/\//i.test(value)) return false;
@@ -170,7 +183,10 @@
             </div>
 
             <div class="gtw-body">
-                <button type="button" id="gtw-prefill-badge-step1" class="gtw-prefill-badge" style="display: none;">From your project</button>
+                <div class="gtw-prefill-row" id="gtw-prefill-row-step1" style="display: none;">
+                    <span class="gtw-prefill-hint" id="gtw-prefill-hint-step1"></span>
+                    <button type="button" id="gtw-prefill-badge-step1" class="gtw-prefill-badge">Auto-fill from project</button>
+                </div>
 
                 <div class="gtw-form-group">
                     <label class="gtw-label" for="gtw-app-name-input">APP NAME (REQUIRED)</label>
@@ -330,7 +346,10 @@
             </div>
 
             <div class="gtw-body">
-                <button type="button" id="gtw-prefill-badge-step2" class="gtw-prefill-badge" style="display: none;">From your project</button>
+                <div class="gtw-prefill-row" id="gtw-prefill-row-step2" style="display: none;">
+                    <span class="gtw-prefill-hint" id="gtw-prefill-hint-step2"></span>
+                    <button type="button" id="gtw-prefill-badge-step2" class="gtw-prefill-badge">Auto-fill from project</button>
+                </div>
 
                 <div class="gtw-form-group">
                     <label class="gtw-label" for="gtw-link-input">PASTE YOUR TESTING LINK</label>
@@ -352,21 +371,26 @@
                     <div class="gtw-helper-text" id="gtw-link-helper">Paste the "Join on Android" link you copied from Play Console.</div>
                     <div id="gtw-link-verification" class="gtw-link-verification" style="display: none;">
                         <div class="gtw-link-verification-head">
-                            <span class="gtw-link-verification-icon" aria-hidden="true">✓</span>
+                            <span class="gtw-link-verification-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 2.4l2.15 1.76 2.73-.36 1.35 2.4 2.54 1.09-.36 2.74L22.16 12l-1.75 2.15.36 2.73-2.4 1.35-1.09 2.54-2.74-.36L12 21.6l-2.15-1.76-2.73.36-1.35-2.4-2.54-1.09.36-2.74L1.84 12l1.75-2.15-.36-2.73 2.4-1.35 1.09-2.54 2.74.36L12 2.4z" fill="currentColor" opacity=".22"/>
+                                    <path d="M12 2.4l2.15 1.76 2.73-.36 1.35 2.4 2.54 1.09-.36 2.74L22.16 12l-1.75 2.15.36 2.73-2.4 1.35-1.09 2.54-2.74-.36L12 21.6l-2.15-1.76-2.73.36-1.35-2.4-2.54-1.09.36-2.74L1.84 12l1.75-2.15-.36-2.73 2.4-1.35 1.09-2.54 2.74.36L12 2.4z" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M8.2 12.2l2.4 2.3 5.2-5.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
                             <span class="gtw-link-verification-label">LINK VERIFICATION</span>
                         </div>
                         <div class="gtw-link-verification-url" id="gtw-link-verification-url"></div>
                         <p class="gtw-link-verification-note">Please confirm your Package ID or URL carefully before submitting. Errors may delay your testing cycle.</p>
+                        <label class="gtw-confirm-row gtw-confirm-row--inside" id="gtw-link-confirm-row" style="display: none;">
+                            <input type="checkbox" id="gtw-link-confirm-checkbox" />
+                            <span class="gtw-confirm-label-wrap">
+                                <span class="gtw-confirm-label">I confirm this testing link is correct.</span>
+                                <span class="gtw-confirm-warning" id="gtw-link-confirm-warning" style="display: none;">⚠️ Please confirm the prefilled testing link.</span>
+                            </span>
+                        </label>
                     </div>
                 </div>
-
-                <label class="gtw-confirm-row" id="gtw-link-confirm-row" style="display: none;">
-                    <input type="checkbox" id="gtw-link-confirm-checkbox" />
-                    <span class="gtw-confirm-label-wrap">
-                        <span class="gtw-confirm-label">I confirm this testing link is correct.</span>
-                        <span class="gtw-confirm-warning" id="gtw-link-confirm-warning" style="display: none;">⚠️ Please confirm the prefilled testing link.</span>
-                    </span>
-                </label>
 
                 <div class="gtw-instructions-list">
                     <div class="gtw-card-item">
@@ -632,12 +656,14 @@
 
         var hasPrefill = !!wizardState.prefillProject;
         var badge = document.getElementById('gtw-prefill-badge-step1');
+        var row = document.getElementById('gtw-prefill-row-step1');
         var confirmRow = document.getElementById('gtw-details-confirm-row');
         var confirmBox = document.getElementById('gtw-details-confirm-checkbox');
+        if (row) row.style.display = hasPrefill ? 'flex' : 'none';
         if (badge) {
-            badge.style.display = hasPrefill ? 'inline-flex' : 'none';
             badge.classList.toggle('is-inactive', hasPrefill && !wizardState.prefillStep1Active);
         }
+        syncPrefillToggleUI(1, !!wizardState.prefillStep1Active);
         if (confirmRow) confirmRow.style.display = hasPrefill ? 'flex' : 'none';
         if (confirmBox) confirmBox.checked = !!wizardState.detailsConfirmed;
         var warn = document.getElementById('gtw-details-confirm-warning');
@@ -649,12 +675,14 @@
         if (linkInput) linkInput.value = wizardState.testingLink || '';
         var hasPrefill = !!wizardState.prefillProject;
         var badge = document.getElementById('gtw-prefill-badge-step2');
+        var row = document.getElementById('gtw-prefill-row-step2');
         var confirmRow = document.getElementById('gtw-link-confirm-row');
         var confirmBox = document.getElementById('gtw-link-confirm-checkbox');
+        if (row) row.style.display = hasPrefill ? 'flex' : 'none';
         if (badge) {
-            badge.style.display = hasPrefill ? 'inline-flex' : 'none';
             badge.classList.toggle('is-inactive', hasPrefill && !wizardState.prefillStep2Active);
         }
+        syncPrefillToggleUI(2, !!wizardState.prefillStep2Active);
         if (confirmRow) confirmRow.style.display = hasPrefill ? 'flex' : 'none';
         if (confirmBox) confirmBox.checked = !!wizardState.linkConfirmed;
         var warn = document.getElementById('gtw-link-confirm-warning');
@@ -1270,6 +1298,7 @@
                 urlEl.textContent = '';
                 block.style.display = 'none';
             }
+            block.classList.toggle('is-confirmed', !!wizardState.linkConfirmed);
         }
     }
 
