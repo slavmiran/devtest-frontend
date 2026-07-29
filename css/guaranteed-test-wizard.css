@@ -1677,3 +1677,54 @@
     font-size: 10px;
 }
 
+/* Right-aligned, clickable prefill badge with active/inactive states. */
+.gtw-prefill-badge {
+    align-self: flex-end;
+    cursor: pointer;
+    border: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.24));
+}
+
+.gtw-prefill-badge.is-inactive {
+    color: var(--text-tertiary, #717C89);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+.gtw-confirm-label-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.gtw-confirm-warning {
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--warning, #FFB020);
+    font-weight: 600;
+}
+
+/* Reduce visual fatigue on Testing Link screen content blocks. */
+.gtw-step2-overlay .gtw-card-title {
+    color: #D9DFE8;
+}
+
+.gtw-step2-overlay .gtw-card-text {
+    color: #95A1B2;
+}
+
+.gtw-step2-overlay .gtw-card-text strong {
+    color: #C2CCD9;
+}
+
+.gtw-step2-overlay .gtw-note-box {
+    color: #A9B5C6;
+}
+
+.gtw-step2-overlay .gtw-guide-card-title {
+    color: #D9DFE8;
+}
+
+.gtw-step2-overlay .gtw-guide-card-desc {
+    color: #8F9BAE;
+}
+

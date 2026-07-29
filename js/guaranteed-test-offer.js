@@ -10,8 +10,8 @@
         <div id="guaranteed-test-offer-overlay" class="gto-overlay" style="display: none;">
             <div class="gto-header">
                 <button type="button" class="gto-close-btn" id="gto-close-btn" aria-label="Close">&times;</button>
-                <h1 class="gto-header-title">12 Testers: Closed Test Help</h1>
-                <p class="gto-header-subtitle">DEVTESTHUB TESTERS SERVICE</p>
+                <h1 class="gto-header-title">Leave Closed Testing to Us</h1>
+                <p class="gto-header-subtitle">DEVTESTHUB PRIVATE TESTING</p>
             </div>
             <div class="gto-container">
                 <div class="gto-card">

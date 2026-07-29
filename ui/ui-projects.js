@@ -5688,7 +5688,7 @@ function openHandsFreeSupportChat() {
     var code = String(order.public_code || '');
     var text = code
         ? ('Support request for order #' + code)
-        : 'Support request for Hands-free Testing order';
+        : 'Support request for Private Testing order';
     var targetUrl = 'https://t.me/garantXchange?text=' + encodeURIComponent(text);
     if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
         window.Telegram.WebApp.openTelegramLink(targetUrl);
@@ -5833,7 +5833,7 @@ async function openAttractTestersSheet(projectId) {
             <span class="attract-sheet-item-chevron">›</span>
         </div>
 
-        <!-- Item 6: Hands-free Testing -->
+        <!-- Item 6: Private Testing -->
         ${handsFreeItemHtml}
     `;
 

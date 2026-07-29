@@ -36,7 +36,9 @@
         paymentScreenshotFile: null,
         prefillProject: null,
         detailsConfirmed: false,
-        linkConfirmed: false
+        linkConfirmed: false,
+        prefillStep1Active: false,
+        prefillStep2Active: false
     };
 
     function getDefaultWizardState() {
@@ -53,7 +55,9 @@
             paymentScreenshotFile: null,
             prefillProject: null,
             detailsConfirmed: false,
-            linkConfirmed: false
+            linkConfirmed: false,
+            prefillStep1Active: false,
+            prefillStep2Active: false
         };
     }
 
@@ -82,10 +86,41 @@
         state.prefillProject = project;
         state.detailsConfirmed = false;
         state.linkConfirmed = false;
+        state.prefillStep1Active = true;
+        state.prefillStep2Active = true;
     }
 
     function applyProjectPrefill(project) {
         applyProjectPrefillToState(wizardState, project);
+    }
+
+    function setPrefillStep1Active(active) {
+        if (!wizardState.prefillProject) {
+            wizardState.prefillStep1Active = false;
+            return;
+        }
+        wizardState.prefillStep1Active = !!active;
+        if (wizardState.prefillStep1Active) {
+            wizardState.appName = String(wizardState.prefillProject.name || '').trim();
+            wizardState.detailsConfirmed = false;
+            var input = document.getElementById('gtw-app-name-input');
+            if (input) input.value = wizardState.appName;
+        }
+    }
+
+    function setPrefillStep2Active(active) {
+        if (!wizardState.prefillProject) {
+            wizardState.prefillStep2Active = false;
+            return;
+        }
+        wizardState.prefillStep2Active = !!active;
+        if (wizardState.prefillStep2Active) {
+            wizardState.testingLink = buildTestingLinkFromPackage(wizardState.prefillProject.package || wizardState.prefillProject.package_name || '');
+            wizardState.linkConfirmed = false;
+            var input = document.getElementById('gtw-link-input');
+            if (input) input.value = wizardState.testingLink;
+            updateLinkVerificationUI();
+        }
     }
 
     function isValidTestingLink(url) {
@@ -126,7 +161,7 @@
                         <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
                 </button>
-                <h1 class="gtw-header-title">App Details</h1>
+                <h1 class="gtw-header-title">Private Testing ($20)</h1>
                 <p class="gtw-header-subtitle">STEP 1 OF 2</p>
                 <div class="gtw-progress-bar">
                     <div class="gtw-progress-step active"></div>
@@ -135,7 +170,7 @@
             </div>
 
             <div class="gtw-body">
-                <div id="gtw-prefill-badge-step1" class="gtw-prefill-badge" style="display: none;">From your project</div>
+                <button type="button" id="gtw-prefill-badge-step1" class="gtw-prefill-badge" style="display: none;">From your project</button>
 
                 <div class="gtw-form-group">
                     <label class="gtw-label" for="gtw-app-name-input">APP NAME (REQUIRED)</label>
@@ -195,7 +230,10 @@
 
                 <label class="gtw-confirm-row" id="gtw-details-confirm-row" style="display: none;">
                     <input type="checkbox" id="gtw-details-confirm-checkbox" />
-                    <span class="gtw-confirm-label">I confirm the app name and type are correct for this order.</span>
+                    <span class="gtw-confirm-label-wrap">
+                        <span class="gtw-confirm-label">I confirm the app name and type are correct for this order.</span>
+                        <span class="gtw-confirm-warning" id="gtw-details-confirm-warning" style="display: none;">⚠️ Please confirm the prefilled app details.</span>
+                    </span>
                 </label>
             </div>
 
@@ -275,7 +313,7 @@
 
     function createWizardStep2HTML() {
         return `
-        <div id="guaranteed-test-wizard-step2-overlay" class="gtw-overlay" style="display: none;">
+        <div id="guaranteed-test-wizard-step2-overlay" class="gtw-overlay gtw-step2-overlay" style="display: none;">
             <div class="gtw-header">
                 <button type="button" class="gtw-back-btn" id="gtw-step2-back-btn" aria-label="Back">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -283,7 +321,7 @@
                         <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
                 </button>
-                <h1 class="gtw-header-title">Testing Link</h1>
+                <h1 class="gtw-header-title">Private Testing ($20)</h1>
                 <p class="gtw-header-subtitle">STEP 2 OF 2</p>
                 <div class="gtw-progress-bar">
                     <div class="gtw-progress-step inactive"></div>
@@ -292,7 +330,7 @@
             </div>
 
             <div class="gtw-body">
-                <div id="gtw-prefill-badge-step2" class="gtw-prefill-badge" style="display: none;">From your project</div>
+                <button type="button" id="gtw-prefill-badge-step2" class="gtw-prefill-badge" style="display: none;">From your project</button>
 
                 <div class="gtw-form-group">
                     <label class="gtw-label" for="gtw-link-input">PASTE YOUR TESTING LINK</label>
@@ -324,7 +362,10 @@
 
                 <label class="gtw-confirm-row" id="gtw-link-confirm-row" style="display: none;">
                     <input type="checkbox" id="gtw-link-confirm-checkbox" />
-                    <span class="gtw-confirm-label">I confirm this testing link is correct.</span>
+                    <span class="gtw-confirm-label-wrap">
+                        <span class="gtw-confirm-label">I confirm this testing link is correct.</span>
+                        <span class="gtw-confirm-warning" id="gtw-link-confirm-warning" style="display: none;">⚠️ Please confirm the prefilled testing link.</span>
+                    </span>
                 </label>
 
                 <div class="gtw-instructions-list">
@@ -440,7 +481,7 @@
                         <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
                 </button>
-                <h1 class="gtw-header-title">Payment</h1>
+                <h1 class="gtw-header-title">Private Testing ($20)</h1>
                 <p class="gtw-header-subtitle">FINAL STEP</p>
             </div>
 
@@ -593,21 +634,31 @@
         var badge = document.getElementById('gtw-prefill-badge-step1');
         var confirmRow = document.getElementById('gtw-details-confirm-row');
         var confirmBox = document.getElementById('gtw-details-confirm-checkbox');
-        if (badge) badge.style.display = hasPrefill ? 'inline-flex' : 'none';
+        if (badge) {
+            badge.style.display = hasPrefill ? 'inline-flex' : 'none';
+            badge.classList.toggle('is-inactive', hasPrefill && !wizardState.prefillStep1Active);
+        }
         if (confirmRow) confirmRow.style.display = hasPrefill ? 'flex' : 'none';
         if (confirmBox) confirmBox.checked = !!wizardState.detailsConfirmed;
+        var warn = document.getElementById('gtw-details-confirm-warning');
+        if (warn) warn.style.display = 'none';
     }
 
     function syncStep2FormFromState() {
         var linkInput = document.getElementById('gtw-link-input');
         if (linkInput) linkInput.value = wizardState.testingLink || '';
-        var hasPrefill = !!wizardState.prefillProject && !!wizardState.testingLink;
+        var hasPrefill = !!wizardState.prefillProject;
         var badge = document.getElementById('gtw-prefill-badge-step2');
         var confirmRow = document.getElementById('gtw-link-confirm-row');
         var confirmBox = document.getElementById('gtw-link-confirm-checkbox');
-        if (badge) badge.style.display = hasPrefill ? 'inline-flex' : 'none';
+        if (badge) {
+            badge.style.display = hasPrefill ? 'inline-flex' : 'none';
+            badge.classList.toggle('is-inactive', hasPrefill && !wizardState.prefillStep2Active);
+        }
         if (confirmRow) confirmRow.style.display = hasPrefill ? 'flex' : 'none';
         if (confirmBox) confirmBox.checked = !!wizardState.linkConfirmed;
+        var warn = document.getElementById('gtw-link-confirm-warning');
+        if (warn) warn.style.display = 'none';
         updateLinkVerificationUI();
     }
 
@@ -649,8 +700,19 @@
 
         if (input) {
             input.addEventListener('input', function () {
+                wizardState.appName = String(input.value || '');
                 wizardState.detailsConfirmed = false;
+                if (wizardState.prefillProject) wizardState.prefillStep1Active = false;
                 clearAppnameError();
+                syncStep1FormFromState();
+            });
+        }
+
+        var prefillBadgeStep1 = document.getElementById('gtw-prefill-badge-step1');
+        if (prefillBadgeStep1) {
+            prefillBadgeStep1.addEventListener('click', function () {
+                setPrefillStep1Active(!wizardState.prefillStep1Active);
+                syncStep1FormFromState();
             });
         }
 
@@ -658,6 +720,8 @@
         if (detailsConfirm) {
             detailsConfirm.addEventListener('change', function () {
                 wizardState.detailsConfirmed = !!detailsConfirm.checked;
+                var warningStep1 = document.getElementById('gtw-details-confirm-warning');
+                if (warningStep1) warningStep1.style.display = 'none';
             });
         }
 
@@ -703,8 +767,10 @@
                         if (text) {
                             linkInput.value = text.trim();
                             wizardState.linkConfirmed = false;
+                            if (wizardState.prefillProject) wizardState.prefillStep2Active = false;
                             clearLinkError();
                             updateLinkVerificationUI();
+                            syncStep2FormFromState();
                         }
                     }).catch(function () {});
                 }
@@ -715,17 +781,30 @@
             clearLinkBtn.addEventListener('click', function () {
                 linkInput.value = '';
                 wizardState.linkConfirmed = false;
+                if (wizardState.prefillProject) wizardState.prefillStep2Active = false;
                 clearLinkError();
                 updateLinkVerificationUI();
                 linkInput.focus();
+                syncStep2FormFromState();
             });
         }
 
         if (linkInput) {
             linkInput.addEventListener('input', function () {
+                wizardState.testingLink = String(linkInput.value || '');
                 wizardState.linkConfirmed = false;
+                if (wizardState.prefillProject) wizardState.prefillStep2Active = false;
                 clearLinkError();
                 updateLinkVerificationUI();
+                syncStep2FormFromState();
+            });
+        }
+
+        var prefillBadgeStep2 = document.getElementById('gtw-prefill-badge-step2');
+        if (prefillBadgeStep2) {
+            prefillBadgeStep2.addEventListener('click', function () {
+                setPrefillStep2Active(!wizardState.prefillStep2Active);
+                syncStep2FormFromState();
             });
         }
 
@@ -733,6 +812,8 @@
         if (linkConfirm) {
             linkConfirm.addEventListener('change', function () {
                 wizardState.linkConfirmed = !!linkConfirm.checked;
+                var warningStep2 = document.getElementById('gtw-link-confirm-warning');
+                if (warningStep2) warningStep2.style.display = 'none';
             });
         }
 
@@ -1145,12 +1226,9 @@
             return;
         }
 
-        if (wizardState.prefillProject && !wizardState.detailsConfirmed) {
-            var helperPrefill = document.getElementById('gtw-appname-helper');
-            if (helperPrefill) {
-                helperPrefill.textContent = '⚠️ Please confirm the prefilled app details.';
-                helperPrefill.classList.add('error');
-            }
+        if (wizardState.prefillProject && wizardState.prefillStep1Active && !wizardState.detailsConfirmed) {
+            var warningStep1 = document.getElementById('gtw-details-confirm-warning');
+            if (warningStep1) warningStep1.style.display = 'inline';
             return;
         }
 
@@ -1221,12 +1299,9 @@
             return;
         }
 
-        if (wizardState.prefillProject && wizardState.testingLink && !wizardState.linkConfirmed) {
-            var helperConfirm = document.getElementById('gtw-link-helper');
-            if (helperConfirm) {
-                helperConfirm.textContent = '⚠️ Please confirm the prefilled testing link.';
-                helperConfirm.classList.add('error');
-            }
+        if (wizardState.prefillProject && wizardState.prefillStep2Active && !wizardState.linkConfirmed) {
+            var warningStep2 = document.getElementById('gtw-link-confirm-warning');
+            if (warningStep2) warningStep2.style.display = 'inline';
             return;
         }
 
