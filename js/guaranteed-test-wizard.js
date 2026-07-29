@@ -503,96 +503,103 @@
                         <input type="checkbox" id="gtw-check-console-review" />
                         <span><strong>I sent changes for review</strong></span>
                     </label>
-                    <p class="gtw-setup-checklist-note">Use only the standard DevTestHub group email above — personal tester lists are not supported for this service.</p>
                 </div>
 
-                <div class="gtw-instructions-list" id="gtw-step2-instructions-list">
-                    <div class="gtw-card-item">
-                        <div class="gtw-card-icon-badge gtw-badge-green">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="8.5" cy="7" r="4"></circle>
-                                <line x1="20" y1="8" x2="20" y2="14"></line>
-                                <line x1="17" y1="11" x2="23" y2="11"></line>
-                            </svg>
-                        </div>
-                        <div class="gtw-card-content">
-                            <h4 class="gtw-card-title">1. Add Testers</h4>
-                            <p class="gtw-card-text">Go to <strong>Closed Testing &rarr; Testers</strong> and add this Google Group:</p>
-                            <div class="gtw-copy-box" style="margin-top: 4px;">
-                                <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
-                                <button type="button" class="gtw-copy-btn" id="gtw-card-copy-btn" title="Copy email">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                <div id="gtw-step2-instructions-accordion" class="gtw-step2-accordion">
+                    <button type="button" class="gtw-step2-accordion-head" id="gtw-step2-accordion-head" style="display: none;" aria-expanded="false">
+                        <span>❓ How to set up</span>
+                        <span class="gtw-step2-accordion-arrow" aria-hidden="true">▼</span>
+                    </button>
+                    <div class="gtw-step2-accordion-panel" id="gtw-step2-instructions-panel">
+                        <div class="gtw-instructions-list" id="gtw-step2-instructions-list">
+                            <div class="gtw-card-item">
+                                <div class="gtw-card-icon-badge gtw-badge-green">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="8.5" cy="7" r="4"></circle>
+                                        <line x1="20" y1="8" x2="20" y2="14"></line>
+                                        <line x1="17" y1="11" x2="23" y2="11"></line>
                                     </svg>
-                                </button>
+                                </div>
+                                <div class="gtw-card-content">
+                                    <h4 class="gtw-card-title">1. Add Testers</h4>
+                                    <p class="gtw-card-text">Go to <strong>Closed Testing &rarr; Testers</strong> and add this Google Group:</p>
+                                    <div class="gtw-copy-box" style="margin-top: 4px;">
+                                        <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
+                                        <button type="button" class="gtw-copy-btn" id="gtw-card-copy-btn" title="Copy email">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="gtw-card-item">
+                                <div class="gtw-card-icon-badge gtw-badge-blue">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                    </svg>
+                                </div>
+                                <div class="gtw-card-content">
+                                    <h4 class="gtw-card-title">2. Enable Countries</h4>
+                                    <p class="gtw-card-text">In <strong>Countries/regions</strong> section, enable <strong>all countries</strong> to allow testers worldwide.</p>
+                                </div>
+                            </div>
+
+                            <div class="gtw-card-item">
+                                <div class="gtw-card-icon-badge gtw-badge-amber">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    </svg>
+                                </div>
+                                <div class="gtw-card-content">
+                                    <h4 class="gtw-card-title">3. Send for Review</h4>
+                                    <p class="gtw-card-text">Click <strong>"Send X changes for review"</strong> button in your Play Console to submit your app.</p>
+                                    <div class="gtw-note-box">
+                                        💡 While waiting for review, you can submit the app here - review usually takes only a few minutes.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="gtw-card-item">
+                                <div class="gtw-card-icon-badge gtw-badge-purple">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                    </svg>
+                                </div>
+                                <div class="gtw-card-content">
+                                    <h4 class="gtw-card-title">4. Copy Testing Link</h4>
+                                    <p class="gtw-card-text">Find <strong>"How testers join your test"</strong> section and copy the <strong>"Join on Android"</strong> link.</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="gtw-card-item">
-                        <div class="gtw-card-icon-badge gtw-badge-blue">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="2" y1="12" x2="22" y2="12"></line>
-                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                            </svg>
-                        </div>
-                        <div class="gtw-card-content">
-                            <h4 class="gtw-card-title">2. Enable Countries</h4>
-                            <p class="gtw-card-text">In <strong>Countries/regions</strong> section, enable <strong>all countries</strong> to allow testers worldwide.</p>
-                        </div>
-                    </div>
-
-                    <div class="gtw-card-item">
-                        <div class="gtw-card-icon-badge gtw-badge-amber">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="22" y1="2" x2="11" y2="13"></line>
-                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                            </svg>
-                        </div>
-                        <div class="gtw-card-content">
-                            <h4 class="gtw-card-title">3. Send for Review</h4>
-                            <p class="gtw-card-text">Click <strong>"Send X changes for review"</strong> button in your Play Console to submit your app.</p>
-                            <div class="gtw-note-box">
-                                💡 While waiting for review, you can submit the app here - review usually takes only a few minutes.
+                        <div class="gtw-guide-card" id="gtw-general-testing-guide">
+                            <div class="gtw-guide-card-left">
+                                <div class="gtw-guide-icon-badge">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="gtw-guide-card-info">
+                                    <div class="gtw-guide-card-title">Testing Guide</div>
+                                    <div class="gtw-guide-card-desc">Need help? View the general setup guide.</div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="gtw-card-item">
-                        <div class="gtw-card-icon-badge gtw-badge-purple">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                            <svg class="gtw-guide-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
                             </svg>
                         </div>
-                        <div class="gtw-card-content">
-                            <h4 class="gtw-card-title">4. Copy Testing Link</h4>
-                            <p class="gtw-card-text">Find <strong>"How testers join your test"</strong> section and copy the <strong>"Join on Android"</strong> link.</p>
-                        </div>
                     </div>
-                </div>
-
-                <div class="gtw-guide-card" id="gtw-general-testing-guide">
-                    <div class="gtw-guide-card-left">
-                        <div class="gtw-guide-icon-badge">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                            </svg>
-                        </div>
-                        <div class="gtw-guide-card-info">
-                            <div class="gtw-guide-card-title">Testing Guide</div>
-                            <div class="gtw-guide-card-desc">Need help? View the general setup guide.</div>
-                        </div>
-                    </div>
-                    <svg class="gtw-guide-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                        <polyline points="15 3 21 3 21 9"></polyline>
-                        <line x1="10" y1="14" x2="21" y2="3"></line>
-                    </svg>
                 </div>
             </div>
 
@@ -815,11 +822,29 @@
     function syncStep2LayoutMode() {
         var useChecklist = shouldShowProjectConsoleChecklist();
         var checklistEl = document.getElementById('gtw-step2-project-checklist');
-        var instructionsEl = document.getElementById('gtw-step2-instructions-list');
-        var guideEl = document.getElementById('gtw-general-testing-guide');
+        var accordion = document.getElementById('gtw-step2-instructions-accordion');
+        var accordionHead = document.getElementById('gtw-step2-accordion-head');
+        var panel = document.getElementById('gtw-step2-instructions-panel');
+
         if (checklistEl) checklistEl.style.display = useChecklist ? 'block' : 'none';
-        if (instructionsEl) instructionsEl.style.display = useChecklist ? 'none' : '';
-        if (guideEl) guideEl.style.display = useChecklist ? 'none' : '';
+        if (accordionHead) accordionHead.style.display = useChecklist ? 'flex' : 'none';
+
+        if (accordion) {
+            if (useChecklist) {
+                accordion.classList.add('is-collapsible');
+                accordion.classList.remove('is-open');
+                if (accordionHead) accordionHead.setAttribute('aria-expanded', 'false');
+            } else {
+                accordion.classList.remove('is-collapsible');
+                accordion.classList.add('is-open');
+                if (accordionHead) accordionHead.setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        if (panel) {
+            panel.style.display = useChecklist ? 'none' : 'block';
+        }
+
         if (useChecklist) {
             var emailBox = document.getElementById('gtw-check-console-email');
             var countriesBox = document.getElementById('gtw-check-console-countries');
@@ -828,6 +853,18 @@
             if (countriesBox) countriesBox.checked = !!wizardState.consoleChecklist.countries;
             if (reviewBox) reviewBox.checked = !!wizardState.consoleChecklist.review;
         }
+    }
+
+    function toggleStep2InstructionsAccordion() {
+        var accordion = document.getElementById('gtw-step2-instructions-accordion');
+        var accordionHead = document.getElementById('gtw-step2-accordion-head');
+        var panel = document.getElementById('gtw-step2-instructions-panel');
+        if (!accordion || !panel || !accordion.classList.contains('is-collapsible')) return;
+
+        var willOpen = !accordion.classList.contains('is-open');
+        accordion.classList.toggle('is-open', willOpen);
+        panel.style.display = willOpen ? 'block' : 'none';
+        if (accordionHead) accordionHead.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
     }
 
     /* =========================================================
@@ -1024,6 +1061,11 @@
                 });
             }
         });
+
+        var accordionHead = document.getElementById('gtw-step2-accordion-head');
+        if (accordionHead) {
+            accordionHead.addEventListener('click', toggleStep2InstructionsAccordion);
+        }
 
         var cardCopyBtn = document.getElementById('gtw-card-copy-btn');
         if (cardCopyBtn) {

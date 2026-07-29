@@ -1889,11 +1889,44 @@
     color: #8E9CB0;
 }
 
-.gtw-setup-checklist-note {
-    margin: 10px 0 0;
+.gtw-step2-accordion {
+    margin-top: 12px;
+}
+
+.gtw-step2-accordion-head {
+    width: 100%;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 42px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #171c24;
+    color: #CFD7E3;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.gtw-step2-accordion-arrow {
     font-size: 11px;
-    line-height: 1.4;
-    color: #7D889B;
+    color: #8F9BAE;
+    transition: transform 0.2s ease;
+}
+
+.gtw-step2-accordion.is-open .gtw-step2-accordion-arrow {
+    transform: rotate(180deg);
+}
+
+.gtw-step2-accordion.is-collapsible .gtw-step2-accordion-panel {
+    margin-top: 10px;
+}
+
+.gtw-step2-accordion:not(.is-collapsible) .gtw-step2-accordion-panel {
+    display: block !important;
 }
 
 .gtw-checklist-item {
