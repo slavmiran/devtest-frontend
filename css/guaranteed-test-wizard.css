@@ -1236,7 +1236,12 @@
     font-size: 13px;
     line-height: 1.45;
     color: var(--text-secondary, #AEB7C2);
+    font-weight: 400;
+}
+
+.gtw-confirm-label strong {
     font-weight: 700;
+    color: #D5DCE6;
 }
 
 /* =========================================================
@@ -1366,11 +1371,44 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    margin-top: 10px;
+    flex: 1;
+    min-width: 0;
     padding: 12px 14px;
     border-radius: 12px;
     background: var(--bg-surface-1, #161A21);
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+}
+
+.gtw-credential-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.gtw-credential-icon-wrap {
+    width: 44px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gtw-credential-icon-wrap .gtw-exchange-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.gtw-credential-icon-wrap.is-fallback {
+    font-size: 11px;
+    font-weight: 800;
+    color: #88AFFF;
+    background: rgba(76, 141, 255, 0.1);
 }
 
 .gtw-credential-left {
@@ -1741,6 +1779,10 @@
     font-size: 12px;
 }
 
+.gtw-confirm-label strong {
+    font-weight: 700;
+}
+
 .gtw-prefill-badge {
     margin-bottom: 8px;
     font-size: 10px;
@@ -1829,6 +1871,171 @@
 .gtw-step2-overlay .gtw-guide-icon-badge {
     width: 34px;
     height: 34px;
+}
+
+.gtw-setup-checklist {
+    margin-top: 18px;
+    margin-bottom: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    background: #171c24;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.gtw-setup-checklist-lead {
+    margin: 0 0 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #8E9CB0;
+}
+
+.gtw-setup-checklist-note {
+    margin: 10px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #7D889B;
+}
+
+.gtw-checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    user-select: none;
+}
+
+.gtw-checklist-item:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+.gtw-checklist-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--accent-primary, #4C8DFF);
+}
+
+.gtw-checklist-item strong {
+    display: block;
+    font-size: 13px;
+    line-height: 1.35;
+    color: #CFD7E3;
+    font-weight: 600;
+}
+
+.gtw-checklist-item small {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.35;
+    color: #7D889B;
+}
+
+.gtw-guide-page-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10200;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+}
+
+.gtw-guide-page {
+    width: 100%;
+    max-width: 480px;
+    max-height: 92vh;
+    max-height: 92dvh;
+    overflow-y: auto;
+    background: var(--bg-surface-2, #1D222B);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px 20px 0 0;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    position: relative;
+    font-family: inherit;
+}
+
+.gtw-guide-page-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #D5DCE6;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.gtw-guide-page-title {
+    margin: 0 28px 6px 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: #E8EDF3;
+}
+
+.gtw-guide-page-subtitle {
+    margin: 0 0 14px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #8E9CB0;
+}
+
+.gtw-guide-page-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.gtw-guide-page-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.gtw-guide-page-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(76, 141, 255, 0.14);
+    border: 1px solid rgba(76, 141, 255, 0.24);
+    color: #88AFFF;
+    font-size: 11px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.gtw-guide-page-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.gtw-guide-page-content strong {
+    display: block;
+    font-size: 13px;
+    color: #D5DCE6;
+    margin-bottom: 4px;
+}
+
+.gtw-guide-page-content p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #8E9CB0;
 }
 
 /* Serious, stable look for Step 2 and payment screens */

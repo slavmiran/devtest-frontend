@@ -38,7 +38,8 @@
         detailsConfirmed: false,
         linkConfirmed: false,
         prefillStep1Active: false,
-        prefillStep2Active: false
+        prefillStep2Active: false,
+        consoleChecklist: { email: false, countries: false, review: false }
     };
 
     function getDefaultWizardState() {
@@ -57,8 +58,29 @@
             detailsConfirmed: false,
             linkConfirmed: false,
             prefillStep1Active: false,
-            prefillStep2Active: false
+            prefillStep2Active: false,
+            consoleChecklist: { email: false, countries: false, review: false }
         };
+    }
+
+    function projectUsesStandardGoogleGroup(project) {
+        if (!project) return false;
+        var testMode = String(project.test_mode || 'google_group').toLowerCase();
+        if (testMode === 'email_list') return false;
+        var groupUrl = String(project.google_group_url || '').trim();
+        if (window.AccessSetupManager && typeof window.AccessSetupManager.isDefaultGroup === 'function') {
+            if (!groupUrl) return true;
+            return window.AccessSetupManager.isDefaultGroup(groupUrl);
+        }
+        var defaultUrl = 'https://groups.google.com/g/google-play-dev-test';
+        var normalize = function (url) {
+            return String(url || '').trim().replace(/\/+$/, '').toLowerCase();
+        };
+        return normalize(groupUrl || defaultUrl) === normalize(defaultUrl);
+    }
+
+    function shouldShowProjectConsoleChecklist() {
+        return !!(wizardState.prefillProject && projectUsesStandardGoogleGroup(wizardState.prefillProject));
     }
 
     function resetWizardState(keepPrefill) {
@@ -88,6 +110,7 @@
         state.linkConfirmed = false;
         state.prefillStep1Active = true;
         state.prefillStep2Active = true;
+        state.consoleChecklist = { email: false, countries: false, review: false };
     }
 
     function applyProjectPrefill(project) {
@@ -231,7 +254,7 @@
                         <ul class="gtw-inline-list">
                             <li>Go to <strong>Settings &rarr; License testing</strong></li>
                             <li>Select <strong>Google Groups</strong> as tester type</li>
-                            <li>Add <strong>ClosedTestHelp@googlegroups.com</strong></li>
+                            <li>Add <strong>${TESTER_GROUP_EMAIL}</strong></li>
                             <li>Keep <strong>RESPOND_NORMALLY</strong> &amp; Save</li>
                         </ul>
                         <button type="button" class="gtw-inline-guide-btn" id="gtw-inline-guide-btn">
@@ -247,7 +270,7 @@
                 <label class="gtw-confirm-row" id="gtw-details-confirm-row" style="display: none;">
                     <input type="checkbox" id="gtw-details-confirm-checkbox" />
                     <span class="gtw-confirm-label-wrap">
-                        <span class="gtw-confirm-label">I confirm the app name and type are correct for this order.</span>
+                        <span class="gtw-confirm-label">I confirm the <strong>app name</strong> and <strong>type</strong> are correct for this order.</span>
                         <span class="gtw-confirm-warning" id="gtw-details-confirm-warning" style="display: none;">⚠️ Please confirm the prefilled app details.</span>
                     </span>
                 </label>
@@ -302,6 +325,74 @@
                     <div class="gtw-modal-actions">
                         <button type="button" class="gtw-modal-cancel-btn" id="gtw-modal-cancel-btn">CANCEL</button>
                         <button type="button" class="gtw-modal-confirm-btn" id="gtw-modal-confirm-btn">I UNDERSTAND</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    }
+
+    function createLicenseGuideOverlayHTML() {
+        return `
+        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;">
+            <div class="gtw-guide-page">
+                <button type="button" class="gtw-guide-page-close" id="gtw-license-guide-close" aria-label="Close">&times;</button>
+                <h2 class="gtw-guide-page-title">Step-by-Step Setup for License Testing</h2>
+                <p class="gtw-guide-page-subtitle">For paid apps or in-app purchases, configure License Testing so testers can install without real charges.</p>
+
+                <div class="gtw-guide-page-steps">
+                    <div class="gtw-guide-page-step">
+                        <span class="gtw-guide-page-num">1</span>
+                        <div class="gtw-guide-page-content">
+                            <strong>Open Google Play Console</strong>
+                            <p>Go to your app dashboard in Play Console.</p>
+                        </div>
+                    </div>
+                    <div class="gtw-guide-page-step">
+                        <span class="gtw-guide-page-num">2</span>
+                        <div class="gtw-guide-page-content">
+                            <strong>Settings → License testing</strong>
+                            <p>Open license testing settings from the left sidebar.</p>
+                        </div>
+                    </div>
+                    <div class="gtw-guide-page-step">
+                        <span class="gtw-guide-page-num">3</span>
+                        <div class="gtw-guide-page-content">
+                            <strong>Choose Google Groups</strong>
+                            <p>Select <strong>Google Groups</strong> (not Email lists) for tester type.</p>
+                        </div>
+                    </div>
+                    <div class="gtw-guide-page-step">
+                        <span class="gtw-guide-page-num">4</span>
+                        <div class="gtw-guide-page-content">
+                            <strong>Add Google Group email</strong>
+                            <p>Enter our testing group email and press Enter:</p>
+                            <div class="gtw-copy-box">
+                                <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
+                                <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="Copy email">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="gtw-guide-page-step">
+                        <span class="gtw-guide-page-num">5</span>
+                        <div class="gtw-guide-page-content">
+                            <strong>Keep license response default</strong>
+                            <p>Under License response, keep <strong>RESPOND_NORMALLY</strong>.</p>
+                        </div>
+                    </div>
+                    <div class="gtw-guide-page-step">
+                        <span class="gtw-guide-page-num">6</span>
+                        <div class="gtw-guide-page-content">
+                            <strong>Save changes</strong>
+                            <p>Click <strong>Save changes</strong> at the bottom of the page.</p>
+                        </div>
+                    </div>
+                    <div class="gtw-guide-page-step">
+                        <span class="gtw-guide-page-num">7</span>
+                        <div class="gtw-guide-page-content">
+                            <strong>Share opt-in link with testers</strong>
+                            <p>After closed testing is approved, copy the opt-in link from <strong>Closed testing → Testers → How testers join your test</strong>.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -394,7 +485,28 @@
                     </div>
                 </div>
 
-                <div class="gtw-instructions-list">
+                <div id="gtw-step2-project-checklist" class="gtw-setup-checklist" style="display: none;">
+                    <p class="gtw-setup-checklist-lead">Confirm your Play Console is already configured for this project:</p>
+                    <label class="gtw-checklist-item">
+                        <input type="checkbox" id="gtw-check-console-email" />
+                        <span>
+                            <strong>I added DevTestHub Google Group email in Play Console</strong>
+                            <small>Selected: Google Groups</small>
+                            <small>Added: ${TESTER_GROUP_EMAIL}</small>
+                        </span>
+                    </label>
+                    <label class="gtw-checklist-item">
+                        <input type="checkbox" id="gtw-check-console-countries" />
+                        <span><strong>I selected all countries</strong></span>
+                    </label>
+                    <label class="gtw-checklist-item">
+                        <input type="checkbox" id="gtw-check-console-review" />
+                        <span><strong>I sent changes for review</strong></span>
+                    </label>
+                    <p class="gtw-setup-checklist-note">Use only the standard DevTestHub group email above — personal tester lists are not supported for this service.</p>
+                </div>
+
+                <div class="gtw-instructions-list" id="gtw-step2-instructions-list">
                     <div class="gtw-card-item">
                         <div class="gtw-card-icon-badge gtw-badge-green">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -630,6 +742,13 @@
             bindStep1Events();
         }
 
+        if (!document.getElementById('gtw-license-guide-overlay')) {
+            var divGuide = document.createElement('div');
+            divGuide.innerHTML = createLicenseGuideOverlayHTML();
+            document.body.appendChild(divGuide.firstElementChild);
+            bindLicenseGuideEvents();
+        }
+
         var overlay2 = document.getElementById('guaranteed-test-wizard-step2-overlay');
         if (!overlay2) {
             var div2 = document.createElement('div');
@@ -689,7 +808,26 @@
         if (confirmBox) confirmBox.checked = !!wizardState.linkConfirmed;
         var warn = document.getElementById('gtw-link-confirm-warning');
         if (warn) warn.style.display = 'none';
+        syncStep2LayoutMode();
         updateLinkVerificationUI();
+    }
+
+    function syncStep2LayoutMode() {
+        var useChecklist = shouldShowProjectConsoleChecklist();
+        var checklistEl = document.getElementById('gtw-step2-project-checklist');
+        var instructionsEl = document.getElementById('gtw-step2-instructions-list');
+        var guideEl = document.getElementById('gtw-general-testing-guide');
+        if (checklistEl) checklistEl.style.display = useChecklist ? 'block' : 'none';
+        if (instructionsEl) instructionsEl.style.display = useChecklist ? 'none' : '';
+        if (guideEl) guideEl.style.display = useChecklist ? 'none' : '';
+        if (useChecklist) {
+            var emailBox = document.getElementById('gtw-check-console-email');
+            var countriesBox = document.getElementById('gtw-check-console-countries');
+            var reviewBox = document.getElementById('gtw-check-console-review');
+            if (emailBox) emailBox.checked = !!wizardState.consoleChecklist.email;
+            if (countriesBox) countriesBox.checked = !!wizardState.consoleChecklist.countries;
+            if (reviewBox) reviewBox.checked = !!wizardState.consoleChecklist.review;
+        }
     }
 
     /* =========================================================
@@ -778,6 +916,34 @@
         }
     }
 
+    function bindLicenseGuideEvents() {
+        var closeBtn = document.getElementById('gtw-license-guide-close');
+        var overlay = document.getElementById('gtw-license-guide-overlay');
+        if (closeBtn) closeBtn.addEventListener('click', closeLicenseGuideModal);
+        if (overlay) {
+            overlay.addEventListener('click', function (e) {
+                if (e.target === overlay) closeLicenseGuideModal();
+            });
+        }
+        var copyBtn = document.getElementById('gtw-license-guide-copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+                copyTextWithFeedback(TESTER_GROUP_EMAIL, copyBtn);
+            });
+        }
+    }
+
+    function openLicenseGuideModal() {
+        ensureWizardInDOM();
+        var overlay = document.getElementById('gtw-license-guide-overlay');
+        if (overlay) overlay.style.display = 'flex';
+    }
+
+    function closeLicenseGuideModal() {
+        var overlay = document.getElementById('gtw-license-guide-overlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+
     function bindStep2Events() {
         var backBtn = document.getElementById('gtw-step2-back-btn');
         if (backBtn) {
@@ -845,8 +1011,19 @@
                 wizardState.linkConfirmed = !!linkConfirm.checked;
                 var warningStep2 = document.getElementById('gtw-link-confirm-warning');
                 if (warningStep2) warningStep2.style.display = 'none';
+                updateLinkVerificationUI();
             });
         }
+
+        ['email', 'countries', 'review'].forEach(function (key) {
+            var box = document.getElementById('gtw-check-console-' + key);
+            if (box) {
+                box.addEventListener('change', function () {
+                    wizardState.consoleChecklist[key] = !!box.checked;
+                    clearLinkError();
+                });
+            }
+        });
 
         var cardCopyBtn = document.getElementById('gtw-card-copy-btn');
         if (cardCopyBtn) {
@@ -999,14 +1176,14 @@
             step1Desc = 'Copy the ' + (exchange ? exchange.label : 'ID') + ' below and send an internal transfer inside ' + exName + ' (not on-chain).';
             if (exchange) {
                 step1Actions = `
-                    <div class="gtw-credential-box">
-                        <div class="gtw-credential-left">
-                            <div class="gtw-exchange-icon gtw-exchange-icon--small">
-                                <img src="${exchange.logo}" alt="${exchange.name}" class="gtw-exchange-logo" onerror="this.style.display='none'; this.parentNode.classList.add('is-fallback'); this.parentNode.textContent='${exchange.initials}';" />
-                            </div>
-                            <span class="gtw-credential-value">${exchange.label}: ${exchange.value}</span>
+                    <div class="gtw-credential-row">
+                        <div class="gtw-credential-icon-wrap">
+                            <img src="${exchange.logo}" alt="${exchange.name}" class="gtw-exchange-logo" onerror="this.style.display='none'; this.parentNode.classList.add('is-fallback'); this.parentNode.textContent='${exchange.initials}';" />
                         </div>
-                        <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">Copy</button>
+                        <div class="gtw-credential-box">
+                            <span class="gtw-credential-value">${exchange.label}: ${exchange.value}</span>
+                            <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">Copy</button>
+                        </div>
                     </div>
                 `;
             }
@@ -1348,6 +1525,18 @@
             return;
         }
 
+        if (shouldShowProjectConsoleChecklist()) {
+            var checklist = wizardState.consoleChecklist || {};
+            if (!checklist.email || !checklist.countries || !checklist.review) {
+                var helperChecklist = document.getElementById('gtw-link-helper');
+                if (helperChecklist) {
+                    helperChecklist.textContent = '⚠️ Please confirm all Play Console setup checkboxes, including the standard DevTestHub Google Group.';
+                    helperChecklist.classList.add('error');
+                }
+                return;
+            }
+        }
+
         if (linkInput) linkInput.value = link;
         wizardState.testingLink = link;
         updateLinkVerificationUI();
@@ -1495,7 +1684,7 @@
     }
 
     function handleOpenLicenseSetupGuide() {
-        openExternalUrl(SETUP_LICENSE_GUIDE_URL);
+        openLicenseGuideModal();
     }
 
     function handleOpenGeneralTestingGuide() {
