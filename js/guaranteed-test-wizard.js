@@ -1213,9 +1213,9 @@
             var exchange = getExchangeById(wizardState.paymentExchange);
             var exName = exchange ? exchange.name : 'Exchange';
             title = 'Crypto Transfer — ' + exName;
-            subtitle = 'Send $' + amount + ' via internal transfer on ' + exName + '.';
-            step1Title = 'Internal transfer on ' + exName;
-            step1Desc = 'Copy the ' + (exchange ? exchange.label : 'ID') + ' below and send an internal transfer inside ' + exName + ' (not on-chain).';
+            subtitle = 'Send $' + amount + ' via internal transfer.';
+            step1Title = 'Internal transfer';
+            step1Desc = 'Copy the ' + (exchange ? exchange.label : 'ID') + ' below and send an internal transfer inside the exchange (not on-chain).';
             if (exchange) {
                 step1Actions = `
                     <div class="gtw-credential-row">
