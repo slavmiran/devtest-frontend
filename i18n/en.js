@@ -1478,7 +1478,7 @@
             attractManualSubtitle: "Keep track of your external testers in the statistics.",
             attractInviteTitle: "Invites & Exchange",
             attractInviteSubtitle: "Personal links to recruit testers to your app.",
-            attractHandsFreeTitle: "🛡️ Hands-free Testing ($20)",
+            attractHandsFreeTitle: "Hands-free Testing ($20)",
             attractHandsFreeSubtitle: "Pass Guarantee: free re-testing or full refund if you fail to get production access.",
             kebabEdit: "Edit",
             kebabArchive: "Finish / Archive",

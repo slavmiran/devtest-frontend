@@ -30,9 +30,9 @@
 
 .gtw-header {
     width: 100%;
-    background: linear-gradient(180deg, #131E36 0%, #16223D 100%);
-    border-bottom: 1px solid rgba(76, 141, 255, 0.15);
-    padding: max(14px, env(safe-area-inset-top)) 56px 18px;
+    background: #131A2A;
+    border-bottom: 1px solid rgba(76, 141, 255, 0.12);
+    padding: max(10px, env(safe-area-inset-top)) 48px 12px;
     text-align: center;
     position: sticky;
     top: 0;
@@ -43,13 +43,13 @@
 
 .gtw-back-btn {
     position: absolute;
-    top: 16px;
-    left: 16px;
-    width: 40px;
-    height: 40px;
+    top: 10px;
+    left: 12px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-primary, #F4F6F8);
     display: flex;
     align-items: center;
@@ -69,21 +69,21 @@
 }
 
 .gtw-header-title {
-    font-size: 20px;
-    font-weight: 800;
+    font-size: 16px;
+    font-weight: 700;
     color: #FFFFFF;
-    margin: 0 0 4px 0;
+    margin: 0 0 2px 0;
     letter-spacing: -0.01em;
     font-family: inherit;
 }
 
 .gtw-header-subtitle {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.6);
-    margin: 0 0 10px 0;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0 0 8px 0;
 }
 
 .gtw-progress-bar {
@@ -168,16 +168,37 @@
 .gtw-paste-btn {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+    border-radius: 8px;
     color: var(--accent-primary, #4C8DFF);
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
     flex-shrink: 0;
+}
+
+.gtw-clear-btn {
+    background: rgba(255, 90, 95, 0.12);
+    border: 1px solid rgba(255, 90, 95, 0.22);
+    border-radius: 8px;
+    color: var(--danger, #FF5A5F);
+    width: 32px;
+    height: 32px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.gtw-helper-text {
+    font-size: 12px;
+    color: var(--text-tertiary, #717C89);
+    margin-top: 6px;
+    line-height: 1.35;
 }
 
 .gtw-paste-btn:hover {
@@ -1374,3 +1395,285 @@
 .gtw-fixed-footer {
     padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
 }
+
+/* =========================================================
+   LINK VERIFICATION BLOCK
+   ========================================================= */
+
+.gtw-link-verification {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(76, 141, 255, 0.08);
+    border: 1px solid rgba(76, 141, 255, 0.22);
+    box-sizing: border-box;
+}
+
+.gtw-link-verification-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.gtw-link-verification-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-primary, #4C8DFF);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.gtw-link-verification-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-primary, #4C8DFF);
+}
+
+.gtw-link-verification-url {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text-primary, #F4F6F8);
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}
+
+.gtw-link-verification-note {
+    margin: 8px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+    font-style: italic;
+    color: var(--text-tertiary, #717C89);
+}
+
+/* =========================================================
+   ORDER STATUS STUB MODAL + ATTRACT ACTIVE ITEM
+   ========================================================= */
+
+.gtw-order-status-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10160;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.gtw-order-status-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--bg-surface-2, #1D222B);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    border-radius: 16px;
+    padding: 18px 16px;
+    box-sizing: border-box;
+}
+
+.gtw-order-status-title {
+    margin: 0 0 14px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gtw-order-status-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 13px;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+.gtw-order-status-row strong {
+    color: var(--text-primary, #F4F6F8);
+    font-weight: 700;
+    text-align: right;
+}
+
+.gtw-order-status-link {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--accent-primary, #4C8DFF);
+    word-break: break-all;
+}
+
+.gtw-order-status-note {
+    margin: 12px 0 14px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-tertiary, #717C89);
+}
+
+.attract-sheet-item--gt-active {
+    border-color: rgba(255, 176, 32, 0.35) !important;
+    background: rgba(255, 176, 32, 0.08) !important;
+}
+
+.attract-sheet-item--gt-active .attract-sheet-item-icon {
+    background: rgba(255, 176, 32, 0.14);
+}
+
+/* =========================================================
+   COMPACT / STRICTER DENSITY PASS
+   ========================================================= */
+
+.gtw-body {
+    padding: 14px 14px 110px;
+}
+
+.gtw-form-group {
+    margin-bottom: 14px;
+}
+
+.gtw-label {
+    font-size: 11px;
+    margin-bottom: 7px;
+}
+
+.gtw-input-wrapper {
+    border-radius: 12px;
+    padding: 8px 10px;
+    gap: 6px;
+}
+
+.gtw-input {
+    min-width: 0;
+    font-size: 13.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gtw-type-card {
+    border-radius: 12px;
+    padding: 12px;
+    gap: 8px;
+}
+
+.gtw-type-title {
+    font-size: 13.5px;
+}
+
+.gtw-inline-card {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 12px;
+}
+
+.gtw-inline-title {
+    font-size: 14px;
+}
+
+.gtw-inline-subtitle,
+.gtw-inline-desc,
+.gtw-inline-list {
+    font-size: 12px;
+}
+
+.gtw-inline-guide-btn {
+    min-height: 40px;
+    font-size: 13px;
+}
+
+.gtw-card-item {
+    border-radius: 14px;
+    padding: 12px;
+    gap: 10px;
+}
+
+.gtw-card-title {
+    font-size: 14px;
+}
+
+.gtw-card-text {
+    font-size: 12px;
+}
+
+.gtw-plan-card {
+    border-radius: 16px;
+    padding: 16px 14px;
+    margin-bottom: 18px;
+}
+
+.gtw-plan-title {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.gtw-plan-price {
+    font-size: 28px;
+}
+
+.gtw-feature-item {
+    font-size: 13px;
+    gap: 8px;
+}
+
+.gtw-method-card {
+    border-radius: 14px;
+    padding: 12px;
+}
+
+.gtw-method-title {
+    font-size: 14px;
+}
+
+.gtw-method-price {
+    font-size: 14px;
+}
+
+.gtw-method-action-hint {
+    font-size: 11px;
+}
+
+.gtw-continue-btn {
+    height: 48px;
+    border-radius: 12px;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    box-shadow: 0 4px 12px rgba(76, 141, 255, 0.25);
+}
+
+.gtw-fixed-footer {
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+}
+
+.gtw-payment-flow-title {
+    font-size: 16px;
+}
+
+.gtw-payment-flow-subtitle {
+    font-size: 12px;
+}
+
+.gtw-confirm-row {
+    margin-top: 10px;
+    padding: 10px 12px;
+}
+
+.gtw-confirm-label {
+    font-size: 12px;
+}
+
+.gtw-prefill-badge {
+    margin-bottom: 8px;
+    font-size: 10px;
+}
+

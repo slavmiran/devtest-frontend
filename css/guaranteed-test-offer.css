@@ -27,9 +27,9 @@
 
 .gto-header {
     width: 100%;
-    background: linear-gradient(180deg, #131E36 0%, #182647 100%);
-    border-bottom: 1px solid rgba(76, 141, 255, 0.15);
-    padding: max(20px, env(safe-area-inset-top)) 48px 28px;
+    background: #131A2A;
+    border-bottom: 1px solid rgba(76, 141, 255, 0.12);
+    padding: max(16px, env(safe-area-inset-top)) 44px 18px;
     text-align: center;
     position: relative;
     box-sizing: border-box;
@@ -61,20 +61,20 @@
 }
 
 .gto-header-title {
-    font-size: 24px;
-    font-weight: 800;
+    font-size: 18px;
+    font-weight: 700;
     color: #FFFFFF;
-    margin: 0 0 6px 0;
-    letter-spacing: -0.02em;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.01em;
     font-family: inherit;
 }
 
 .gto-header-subtitle {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.65);
+    color: rgba(255, 255, 255, 0.55);
     margin: 0;
 }
 
@@ -82,27 +82,78 @@
     flex: 1;
     width: 100%;
     max-width: 480px;
-    margin: 16px auto 32px;
-    padding: 0 16px;
+    margin: 12px auto 24px;
+    padding: 0 14px;
     box-sizing: border-box;
 }
 
 .gto-card {
     background: var(--bg-surface-1, #161A21);
-    border: 1px solid rgba(76, 141, 255, 0.2);
-    border-radius: 24px;
-    padding: 24px 20px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(76, 141, 255, 0.18);
+    border-radius: 16px;
+    padding: 16px 14px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+}
+
+.gto-main-title {
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--text-primary, #F4F6F8);
+    margin: 0 0 12px 0;
+    letter-spacing: -0.01em;
+}
+
+.gto-price-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary, #AEB7C2);
+    margin-bottom: 2px;
+}
+
+.gto-price-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: var(--text-primary, #FFFFFF);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+.gto-benefit-text {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+.gto-cta-btn {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(135deg, #4C8DFF 0%, #2563EB 100%);
+    border: none;
+    border-radius: 12px;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(76, 141, 255, 0.28);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
 }
 
 .gto-card-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 }
 
 .gto-pill-badge {
@@ -144,76 +195,76 @@
 }
 
 .gto-main-title {
-    font-size: 22px;
-    font-weight: 800;
-    line-height: 1.25;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.3;
     color: var(--text-primary, #F4F6F8);
-    margin: 0 0 18px 0;
+    margin: 0 0 12px 0;
     letter-spacing: -0.01em;
 }
 
 .gto-price-section {
     display: flex;
     flex-direction: column;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 
 .gto-price-label {
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 600;
     color: var(--text-secondary, #AEB7C2);
     margin-bottom: 2px;
 }
 
 .gto-price-value {
-    font-size: 40px;
-    font-weight: 900;
+    font-size: 30px;
+    font-weight: 800;
     color: var(--text-primary, #FFFFFF);
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
     line-height: 1.1;
 }
 
 .gto-benefits-list {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    margin-bottom: 28px;
+    gap: 12px;
+    margin-bottom: 18px;
 }
 
 .gto-benefit-item {
     display: flex;
     align-items: flex-start;
-    gap: 14px;
+    gap: 12px;
 }
 
 .gto-benefit-icon {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     color: var(--accent-primary, #4C8DFF);
     flex-shrink: 0;
     margin-top: 2px;
 }
 
 .gto-benefit-text {
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.45;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
     color: var(--text-secondary, #AEB7C2);
 }
 
 .gto-cta-btn {
     width: 100%;
-    height: 64px;
+    height: 48px;
     background: linear-gradient(135deg, #4C8DFF 0%, #2563EB 100%);
     border: none;
-    border-radius: 16px;
+    border-radius: 12px;
     color: #FFFFFF;
-    font-size: 16px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     cursor: pointer;
-    box-shadow: 0 8px 24px rgba(76, 141, 255, 0.35);
+    box-shadow: 0 4px 14px rgba(76, 141, 255, 0.28);
     display: flex;
     align-items: center;
     justify-content: center;

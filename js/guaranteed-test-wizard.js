@@ -140,7 +140,7 @@
                 <div class="gtw-form-group">
                     <label class="gtw-label" for="gtw-app-name-input">APP NAME (REQUIRED)</label>
                     <div class="gtw-input-wrapper">
-                        <input type="text" id="gtw-app-name-input" class="gtw-input" placeholder="e.g. FitTrack Pro" autocomplete="off" />
+                        <input type="text" id="gtw-app-name-input" class="gtw-input" placeholder="e.g. Twitter X" autocomplete="off" />
                         <button type="button" class="gtw-paste-btn" id="gtw-paste-appname-btn" title="Paste from clipboard">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -296,8 +296,14 @@
 
                 <div class="gtw-form-group">
                     <label class="gtw-label" for="gtw-link-input">PASTE YOUR TESTING LINK</label>
-                    <div class="gtw-input-wrapper gtw-input-wrapper--multiline">
-                        <textarea id="gtw-link-input" class="gtw-textarea" rows="2" placeholder="https://play.google.com/apps/testing/com.example.app" autocomplete="off"></textarea>
+                    <div class="gtw-input-wrapper">
+                        <input type="url" id="gtw-link-input" class="gtw-input" placeholder="https://play.google.com/apps/testing/com.example.app" autocomplete="off" />
+                        <button type="button" class="gtw-clear-btn" id="gtw-clear-link-btn" title="Clear" style="display: none;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
                         <button type="button" class="gtw-paste-btn" id="gtw-paste-link-btn" title="Paste from clipboard">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -306,6 +312,14 @@
                         </button>
                     </div>
                     <div class="gtw-helper-text" id="gtw-link-helper">Paste the "Join on Android" link you copied from Play Console.</div>
+                    <div id="gtw-link-verification" class="gtw-link-verification" style="display: none;">
+                        <div class="gtw-link-verification-head">
+                            <span class="gtw-link-verification-icon" aria-hidden="true">✓</span>
+                            <span class="gtw-link-verification-label">LINK VERIFICATION</span>
+                        </div>
+                        <div class="gtw-link-verification-url" id="gtw-link-verification-url"></div>
+                        <p class="gtw-link-verification-note">Please confirm your Package ID or URL carefully before submitting. Errors may delay your testing cycle.</p>
+                    </div>
                 </div>
 
                 <label class="gtw-confirm-row" id="gtw-link-confirm-row" style="display: none;">
@@ -594,6 +608,7 @@
         if (badge) badge.style.display = hasPrefill ? 'inline-flex' : 'none';
         if (confirmRow) confirmRow.style.display = hasPrefill ? 'flex' : 'none';
         if (confirmBox) confirmBox.checked = !!wizardState.linkConfirmed;
+        updateLinkVerificationUI();
     }
 
     /* =========================================================
@@ -679,6 +694,7 @@
         }
 
         var pasteLinkBtn = document.getElementById('gtw-paste-link-btn');
+        var clearLinkBtn = document.getElementById('gtw-clear-link-btn');
         var linkInput = document.getElementById('gtw-link-input');
         if (pasteLinkBtn && linkInput) {
             pasteLinkBtn.addEventListener('click', function () {
@@ -688,9 +704,20 @@
                             linkInput.value = text.trim();
                             wizardState.linkConfirmed = false;
                             clearLinkError();
+                            updateLinkVerificationUI();
                         }
                     }).catch(function () {});
                 }
+            });
+        }
+
+        if (clearLinkBtn && linkInput) {
+            clearLinkBtn.addEventListener('click', function () {
+                linkInput.value = '';
+                wizardState.linkConfirmed = false;
+                clearLinkError();
+                updateLinkVerificationUI();
+                linkInput.focus();
             });
         }
 
@@ -698,6 +725,7 @@
             linkInput.addEventListener('input', function () {
                 wizardState.linkConfirmed = false;
                 clearLinkError();
+                updateLinkVerificationUI();
             });
         }
 
@@ -1146,6 +1174,27 @@
         }
     }
 
+    function updateLinkVerificationUI() {
+        var linkInput = document.getElementById('gtw-link-input');
+        var clearBtn = document.getElementById('gtw-clear-link-btn');
+        var block = document.getElementById('gtw-link-verification');
+        var urlEl = document.getElementById('gtw-link-verification-url');
+        var raw = String(linkInput ? linkInput.value : '').trim();
+        var normalized = normalizeTestingLink(raw);
+
+        if (clearBtn) clearBtn.style.display = raw ? 'flex' : 'none';
+
+        if (block && urlEl) {
+            if (raw && isValidTestingLink(normalized)) {
+                urlEl.textContent = normalized;
+                block.style.display = 'block';
+            } else {
+                urlEl.textContent = '';
+                block.style.display = 'none';
+            }
+        }
+    }
+
     function handleProceedToPayment() {
         var linkInput = document.getElementById('gtw-link-input');
         var link = normalizeTestingLink(String(linkInput ? linkInput.value : '').trim());
@@ -1156,6 +1205,7 @@
                 helperEmpty.textContent = '⚠️ Testing link is required to proceed.';
                 helperEmpty.classList.add('error');
             }
+            updateLinkVerificationUI();
             if (linkInput) linkInput.focus();
             return;
         }
@@ -1166,6 +1216,7 @@
                 helperInvalid.textContent = '⚠️ Enter a valid Play Console testing link (play.google.com/apps/testing/…).';
                 helperInvalid.classList.add('error');
             }
+            updateLinkVerificationUI();
             if (linkInput) linkInput.focus();
             return;
         }
@@ -1181,6 +1232,7 @@
 
         if (linkInput) linkInput.value = link;
         wizardState.testingLink = link;
+        updateLinkVerificationUI();
 
         hideGuaranteedTestWizardStep2();
         showGuaranteedTestWizardPayment();
@@ -1262,6 +1314,11 @@
             var proofUrl = await uploadPaymentScreenshot();
             var exchange = getExchangeById(wizardState.paymentExchange);
             var notesParts = [];
+            if (wizardState.prefillProject && wizardState.prefillProject.id) {
+                notesParts.push('app_id=' + String(wizardState.prefillProject.id));
+                var pkg = String(wizardState.prefillProject.package || wizardState.prefillProject.package_name || '').trim();
+                if (pkg) notesParts.push('package=' + pkg);
+            }
             if (exchange) notesParts.push('exchange=' + exchange.name);
             if (proofUrl) notesParts.push('proof=' + proofUrl);
 
@@ -1286,14 +1343,18 @@
             }
 
             var order = payload.order || {};
-            var orderId = Number(order.id || 0);
-            var exchangeLabel = exchange ? (' via ' + exchange.name) : '';
-            var summaryText = 'Order Request (#GT-' + (orderId || 'NEW') + '):\nApp: ' + wizardState.appName + '\nType: ' + wizardState.appType.toUpperCase() + '\nLink: ' + wizardState.testingLink + '\nMethod: ' + String(method).toUpperCase() + exchangeLabel + '\nAmount: $' + amountUsd.toFixed(2);
-            if (proofUrl) summaryText += '\nProof: ' + proofUrl;
+            var publicCode = String(order.public_code || ('GT-' + (10000 + Number(order.id || 0))));
+            if (typeof window.invalidateGuaranteedOrdersCache === 'function') {
+                window.invalidateGuaranteedOrdersCache();
+            }
 
             closePaymentFlow();
             hideGuaranteedTestWizardPayment();
-            openTelegramContact(summaryText);
+            hideGuaranteedTestWizardStep2();
+            hideGuaranteedTestWizardStep1();
+            if (typeof showToast === 'function') {
+                showToast('Order ' + publicCode + ' submitted. Check Telegram for confirmation.');
+            }
         } catch (error) {
             console.error('Guaranteed order submit failed:', error);
             if (typeof showToast === 'function') {

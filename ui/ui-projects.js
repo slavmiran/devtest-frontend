@@ -5589,7 +5589,140 @@ window.toggleProjectVisibility = toggleProjectVisibility;
 window.toggleProjectSettingsDrawer = toggleProjectSettingsDrawer;
 
 // --- Attract Testers Bottom Sheet Helper Functions ---
-function openAttractTestersSheet(projectId) {
+var _gtActiveOrdersCache = null;
+var _gtActiveOrdersCacheAt = 0;
+var _gtStatusModalOrder = null;
+
+function invalidateGuaranteedOrdersCache() {
+    _gtActiveOrdersCache = null;
+    _gtActiveOrdersCacheAt = 0;
+}
+window.invalidateGuaranteedOrdersCache = invalidateGuaranteedOrdersCache;
+
+async function fetchActiveGuaranteedOrders(forceRefresh) {
+    var now = Date.now();
+    if (!forceRefresh && _gtActiveOrdersCache && (now - _gtActiveOrdersCacheAt) < 30000) {
+        return _gtActiveOrdersCache;
+    }
+    try {
+        var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
+        var initData = (typeof getTelegramInitDataRaw === 'function')
+            ? getTelegramInitDataRaw()
+            : ((window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '');
+        var resp = await fetch(apiBase + '/guaranteed-test-orders/mine?init_data=' + encodeURIComponent(initData));
+        var data = await resp.json();
+        if (data && data.status === 'success' && Array.isArray(data.orders)) {
+            _gtActiveOrdersCache = data.orders;
+            _gtActiveOrdersCacheAt = now;
+            return _gtActiveOrdersCache;
+        }
+    } catch (e) {
+        console.warn('Failed to load guaranteed orders:', e);
+    }
+    return _gtActiveOrdersCache || [];
+}
+
+function findActiveGuaranteedOrderForProject(project, orders) {
+    if (!project || !Array.isArray(orders) || !orders.length) return null;
+    var projectId = String(project.id || '');
+    var pkg = String(project.package || project.package_name || '').trim().toLowerCase();
+    var name = String(project.name || '').trim().toLowerCase();
+
+    for (var i = 0; i < orders.length; i++) {
+        var order = orders[i] || {};
+        var notes = String(order.notes || '');
+        var link = String(order.testing_link || '').toLowerCase();
+        var orderName = String(order.app_name || '').trim().toLowerCase();
+        if (projectId && notes.indexOf('app_id=' + projectId) !== -1) return order;
+        if (pkg && (link.indexOf(pkg) !== -1 || notes.toLowerCase().indexOf('package=' + pkg) !== -1)) return order;
+        if (name && orderName === name) return order;
+    }
+    return null;
+}
+
+function getGuaranteedOrderStatusLabel(order) {
+    var status = String((order && order.status) || '').toLowerCase();
+    if (status === 'in_progress') {
+        return lang === 'ru' ? 'В работе' : 'In progress';
+    }
+    if (status === 'paid') {
+        return lang === 'ru' ? 'Оплата получена' : 'Paid';
+    }
+    return lang === 'ru' ? 'На исполнении' : 'Processing';
+}
+
+function openHandsFreeOrderStatusModal(order) {
+    _gtStatusModalOrder = order || null;
+    ensureHandsFreeStatusModal();
+    var overlay = document.getElementById('gtw-order-status-overlay');
+    if (!overlay || !order) return;
+
+    var code = String(order.public_code || ('GT-' + (10000 + Number(order.id || 0))));
+    var statusLabel = getGuaranteedOrderStatusLabel(order);
+    var titleEl = document.getElementById('gtw-order-status-title');
+    var codeEl = document.getElementById('gtw-order-status-code');
+    var appEl = document.getElementById('gtw-order-status-app');
+    var statusEl = document.getElementById('gtw-order-status-value');
+    var linkEl = document.getElementById('gtw-order-status-link');
+
+    if (titleEl) titleEl.textContent = lang === 'ru' ? 'Заявка на исполнении' : 'Order in progress';
+    if (codeEl) codeEl.textContent = '#' + code;
+    if (appEl) appEl.textContent = String(order.app_name || '—');
+    if (statusEl) statusEl.textContent = statusLabel;
+    if (linkEl) linkEl.textContent = String(order.testing_link || '—');
+
+    overlay.style.display = 'flex';
+}
+window.openHandsFreeOrderStatusModal = openHandsFreeOrderStatusModal;
+
+function closeHandsFreeOrderStatusModal(event) {
+    var overlay = document.getElementById('gtw-order-status-overlay');
+    if (!overlay) return;
+    if (event && event.target && event.target !== overlay && event.target.id !== 'gtw-order-status-close') return;
+    overlay.style.display = 'none';
+}
+window.closeHandsFreeOrderStatusModal = closeHandsFreeOrderStatusModal;
+
+function openHandsFreeSupportChat() {
+    var order = _gtStatusModalOrder || {};
+    var code = String(order.public_code || '');
+    var text = code
+        ? ('Support request for order #' + code)
+        : 'Support request for Hands-free Testing order';
+    var targetUrl = 'https://t.me/garantXchange?text=' + encodeURIComponent(text);
+    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+        window.Telegram.WebApp.openTelegramLink(targetUrl);
+    } else {
+        window.open(targetUrl, '_blank');
+    }
+}
+window.openHandsFreeSupportChat = openHandsFreeSupportChat;
+
+function ensureHandsFreeStatusModal() {
+    if (document.getElementById('gtw-order-status-overlay')) return;
+    var note = (typeof lang !== 'undefined' && lang === 'ru')
+        ? 'Повторная заявка недоступна, пока текущая в работе. По вопросам — напишите в поддержку.'
+        : 'A new order cannot be placed while this one is active. Contact support if you need help.';
+    var supportLabel = (typeof lang !== 'undefined' && lang === 'ru') ? 'СВЯЗАТЬСЯ С ПОДДЕРЖКОЙ' : 'CONTACT SUPPORT';
+    var closeLabel = (typeof lang !== 'undefined' && lang === 'ru') ? 'Закрыть' : 'Close';
+    var div = document.createElement('div');
+    div.innerHTML =
+        '<div id="gtw-order-status-overlay" class="gtw-order-status-overlay" style="display:none;" onclick="closeHandsFreeOrderStatusModal(event)">' +
+            '<div class="gtw-order-status-card" onclick="event.stopPropagation()">' +
+                '<h3 id="gtw-order-status-title" class="gtw-order-status-title">Order in progress</h3>' +
+                '<div class="gtw-order-status-row"><span>Order</span><strong id="gtw-order-status-code">—</strong></div>' +
+                '<div class="gtw-order-status-row"><span>App</span><strong id="gtw-order-status-app">—</strong></div>' +
+                '<div class="gtw-order-status-row"><span>Status</span><strong id="gtw-order-status-value">—</strong></div>' +
+                '<div class="gtw-order-status-link" id="gtw-order-status-link">—</div>' +
+                '<p class="gtw-order-status-note">' + note + '</p>' +
+                '<button type="button" class="gtw-continue-btn" onclick="openHandsFreeSupportChat()">' + supportLabel + '</button>' +
+                '<button type="button" class="gtw-payment-flow-cancel" id="gtw-order-status-close" onclick="closeHandsFreeOrderStatusModal(event)">' + closeLabel + '</button>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(div.firstElementChild);
+}
+
+async function openAttractTestersSheet(projectId) {
     const project = myProjects.find((p) => p.id === projectId);
     if (!project) return;
 
@@ -5602,6 +5735,40 @@ function openAttractTestersSheet(projectId) {
     const leadsCount = getLeadsRadarCount();
     const testersList = Array.isArray(project.testers) ? project.testers : [];
     const manualCount = testersList.filter(t => t.join_type === 'manual').length;
+
+    const activeOrders = await fetchActiveGuaranteedOrders(false);
+    const activeGtOrder = findActiveGuaranteedOrderForProject(project, activeOrders);
+    let handsFreeItemHtml = '';
+    if (activeGtOrder) {
+        const orderPayload = encodeURIComponent(JSON.stringify(activeGtOrder));
+        const statusLabel = window.escapeHTML(getGuaranteedOrderStatusLabel(activeGtOrder));
+        const code = window.escapeHTML(String(activeGtOrder.public_code || ''));
+        const subtitle = lang === 'ru'
+            ? ('Заявка #' + code + ' уже в работе. Повторная отправка недоступна.')
+            : ('Order #' + code + ' is already in progress. Resubmit is locked.');
+        handsFreeItemHtml =
+            '<div class="attract-sheet-item attract-sheet-item--gt-active" onclick="closeAttractTestersSheet(); openHandsFreeOrderStatusModal(JSON.parse(decodeURIComponent(\'' + orderPayload + '\')));">' +
+                '<div class="attract-sheet-item-icon">🛡️</div>' +
+                '<div class="attract-sheet-item-info">' +
+                    '<div class="attract-sheet-item-title-row">' +
+                        '<div class="attract-sheet-item-title">' + window.escapeHTML(window.t('attractHandsFreeTitle', {}, lang)) + '</div>' +
+                        '<span class="attract-sheet-item-badge accent-yellow">' + statusLabel + '</span>' +
+                    '</div>' +
+                    '<div class="attract-sheet-item-subtitle">' + window.escapeHTML(subtitle) + '</div>' +
+                '</div>' +
+                '<span class="attract-sheet-item-chevron">›</span>' +
+            '</div>';
+    } else {
+        handsFreeItemHtml =
+            '<div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openHandsFreeTestingWizard(' + projectId + ');">' +
+                '<div class="attract-sheet-item-icon">🛡️</div>' +
+                '<div class="attract-sheet-item-info">' +
+                    '<div class="attract-sheet-item-title">' + window.escapeHTML(window.t('attractHandsFreeTitle', {}, lang)) + '</div>' +
+                    '<div class="attract-sheet-item-subtitle">' + window.escapeHTML(window.t('attractHandsFreeSubtitle', {}, lang)) + '</div>' +
+                '</div>' +
+                '<span class="attract-sheet-item-chevron">›</span>' +
+            '</div>';
+    }
 
     content.innerHTML = `
         <!-- Item 1: Mass Invite -->
@@ -5667,14 +5834,7 @@ function openAttractTestersSheet(projectId) {
         </div>
 
         <!-- Item 6: Hands-free Testing -->
-        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openHandsFreeTestingWizard(${projectId});">
-            <div class="attract-sheet-item-icon">🛡️</div>
-            <div class="attract-sheet-item-info">
-                <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractHandsFreeTitle', {}, lang))}</div>
-                <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractHandsFreeSubtitle', {}, lang))}</div>
-            </div>
-            <span class="attract-sheet-item-chevron">›</span>
-        </div>
+        ${handsFreeItemHtml}
     `;
 
     overlay.classList.add('is-active');
@@ -5702,13 +5862,21 @@ function handleLeadsRadarAction() {
 }
 
 function openHandsFreeTestingWizard(projectId) {
-    if (typeof window.showGuaranteedTestWizardStep1 === 'function') {
-        window.showGuaranteedTestWizardStep1({ projectId: projectId });
-        return;
-    }
-    if (typeof window.showGuaranteedTestOfferModal === 'function') {
-        window.showGuaranteedTestOfferModal();
-    }
+    var project = myProjects.find(function (item) { return item.id === projectId; });
+    fetchActiveGuaranteedOrders(false).then(function (orders) {
+        var active = findActiveGuaranteedOrderForProject(project, orders);
+        if (active) {
+            openHandsFreeOrderStatusModal(active);
+            return;
+        }
+        if (typeof window.showGuaranteedTestWizardStep1 === 'function') {
+            window.showGuaranteedTestWizardStep1({ projectId: projectId });
+            return;
+        }
+        if (typeof window.showGuaranteedTestOfferModal === 'function') {
+            window.showGuaranteedTestOfferModal();
+        }
+    });
 }
 
 let _massInviteProjectId = null;

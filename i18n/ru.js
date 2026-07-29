@@ -1484,7 +1484,7 @@
             attractManualSubtitle: "Учитывайте своих внешних тестеров в общей стабике.",
             attractInviteTitle: "Инвайты и Биржа",
             attractInviteSubtitle: "Персональные ссылки для привлечения тестировщиков.",
-            attractHandsFreeTitle: "🛡️ Тест без вашего участия ($20)",
+            attractHandsFreeTitle: "Тест без вашего участия ($20)",
             attractHandsFreeSubtitle: "Гарантия результата: бесплатный перезапуск или возврат средств, если Google Play отклонит заявку.",
             kebabEdit: "Редактировать",
             kebabArchive: "Завершить / В архив",
