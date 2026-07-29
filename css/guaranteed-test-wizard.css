@@ -181,10 +181,10 @@
 }
 
 .gtw-clear-btn {
-    background: rgba(255, 90, 95, 0.12);
-    border: 1px solid rgba(255, 90, 95, 0.22);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 8px;
-    color: var(--danger, #FF5A5F);
+    color: var(--text-tertiary, #717C89);
     width: 32px;
     height: 32px;
     display: none;
@@ -192,6 +192,12 @@
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.gtw-clear-btn:hover {
+    color: #AEB7C2;
+    border-color: rgba(255, 255, 255, 0.22);
 }
 
 .gtw-helper-text {
@@ -560,15 +566,34 @@
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    background: rgba(76, 141, 255, 0.12);
-    border: 1px solid rgba(76, 141, 255, 0.2);
-    color: var(--accent-primary, #4C8DFF);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #90A0B6;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 12px;
     font-weight: 800;
     flex-shrink: 0;
+    overflow: hidden;
+}
+
+.gtw-exchange-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.gtw-exchange-icon.is-fallback {
+    background: rgba(76, 141, 255, 0.1);
+    border-color: rgba(76, 141, 255, 0.22);
+    color: #88AFFF;
+}
+
+.gtw-exchange-icon--small {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
 }
 
 .gtw-exchange-meta {
@@ -1278,7 +1303,7 @@
 }
 
 .gtw-method-card.selected .gtw-method-action-hint {
-    color: var(--accent-primary, #4C8DFF);
+    color: #95A4B8;
 }
 
 /* =========================================================
@@ -1348,6 +1373,13 @@
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
 }
 
+.gtw-credential-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
 .gtw-credential-value {
     font-size: 14px;
     font-weight: 700;
@@ -1372,7 +1404,8 @@
 .gtw-open-external-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 8px;
     margin-top: 10px;
     min-height: 40px;
     padding: 0 14px;
@@ -1383,6 +1416,12 @@
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
+}
+
+.gtw-external-link-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
 }
 
 .gtw-payment-flow-footer {
@@ -1790,5 +1829,37 @@
 .gtw-step2-overlay .gtw-guide-icon-badge {
     width: 34px;
     height: 34px;
+}
+
+/* Serious, stable look for Step 2 and payment screens */
+.gtw-step2-overlay .gtw-card-item,
+#guaranteed-test-wizard-payment-overlay .gtw-plan-card,
+#guaranteed-test-wizard-payment-overlay .gtw-method-card {
+    box-shadow: none;
+}
+
+.gtw-step2-overlay .gtw-card-item,
+.gtw-step2-overlay .gtw-guide-card,
+#guaranteed-test-wizard-payment-overlay .gtw-method-card {
+    background: #171c24;
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+.gtw-step2-overlay .gtw-card-item:hover,
+.gtw-step2-overlay .gtw-guide-card:hover,
+#guaranteed-test-wizard-payment-overlay .gtw-method-card:hover {
+    transform: none;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+#guaranteed-test-wizard-payment-overlay .gtw-plan-card {
+    background: linear-gradient(180deg, #151d2b 0%, #121826 100%);
+    border-color: rgba(76, 141, 255, 0.18);
+}
+
+.gtw-step2-overlay .gtw-card-icon-badge,
+.gtw-step2-overlay .gtw-guide-icon-badge,
+#guaranteed-test-wizard-payment-overlay .gtw-method-radio {
+    filter: saturate(0.78);
 }
 

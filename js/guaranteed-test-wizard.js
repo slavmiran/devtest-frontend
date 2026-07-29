@@ -16,11 +16,11 @@
     var PAYPAL_OPEN_URL = "https://www.paypal.com/myaccount/transfer/homepage/pay";
 
     var CRYPTO_EXCHANGES = [
-        { id: 'binance', name: 'Binance', label: 'ID', value: '967321648', initials: 'BN' },
-        { id: 'bybit', name: 'ByBit', label: 'UID', value: '30291060', initials: 'BY' },
-        { id: 'okx', name: 'OKX', label: 'UID', value: '323906492761830368', initials: 'OK' },
-        { id: 'htx', name: 'HTX', label: 'UID', value: '442101593', initials: 'HT' },
-        { id: 'gate', name: 'Gate', label: 'UID', value: '8536355', initials: 'GT' }
+        { id: 'binance', name: 'Binance', label: 'ID', value: '967321648', initials: 'BN', logo: './images/Binance.webp' },
+        { id: 'bybit', name: 'ByBit', label: 'UID', value: '30291060', initials: 'BY', logo: './images/Bybit.webp' },
+        { id: 'okx', name: 'OKX', label: 'UID', value: '323906492761830368', initials: 'OK', logo: './images/OKX.webp' },
+        { id: 'htx', name: 'HTX', label: 'UID', value: '442101593', initials: 'HT', logo: './images/HTX.webp' },
+        { id: 'gate', name: 'Gate', label: 'UID', value: '8536355', initials: 'GT', logo: './images/Gate.webp' }
     ];
 
     var wizardState = {
@@ -314,7 +314,9 @@
             return `
                 <div class="gtw-exchange-pick-row" data-exchange="${ex.id}" role="button" tabindex="0">
                     <div class="gtw-exchange-pick-left">
-                        <div class="gtw-exchange-icon">${ex.initials}</div>
+                        <div class="gtw-exchange-icon">
+                            <img src="${ex.logo}" alt="${ex.name}" class="gtw-exchange-logo" onerror="this.style.display='none'; this.parentNode.classList.add('is-fallback'); this.parentNode.textContent='${ex.initials}';" />
+                        </div>
                         <span class="gtw-exchange-pick-name">${ex.name}</span>
                     </div>
                     <span class="gtw-exchange-pick-chevron">›</span>
@@ -808,6 +810,7 @@
         if (clearLinkBtn && linkInput) {
             clearLinkBtn.addEventListener('click', function () {
                 linkInput.value = '';
+                wizardState.testingLink = '';
                 wizardState.linkConfirmed = false;
                 if (wizardState.prefillProject) wizardState.prefillStep2Active = false;
                 clearLinkError();
@@ -993,11 +996,16 @@
             title = 'Crypto Transfer — ' + exName;
             subtitle = 'Send $' + amount + ' via internal transfer on ' + exName + '.';
             step1Title = 'Internal transfer on ' + exName;
-            step1Desc = 'Copy the ' + (exchange ? exchange.label : 'ID') + ' below and send an internal transfer inside the exchange (not on-chain).';
+            step1Desc = 'Copy the ' + (exchange ? exchange.label : 'ID') + ' below and send an internal transfer inside ' + exName + ' (not on-chain).';
             if (exchange) {
                 step1Actions = `
                     <div class="gtw-credential-box">
-                        <span class="gtw-credential-value">${exchange.label}: ${exchange.value}</span>
+                        <div class="gtw-credential-left">
+                            <div class="gtw-exchange-icon gtw-exchange-icon--small">
+                                <img src="${exchange.logo}" alt="${exchange.name}" class="gtw-exchange-logo" onerror="this.style.display='none'; this.parentNode.classList.add('is-fallback'); this.parentNode.textContent='${exchange.initials}';" />
+                            </div>
+                            <span class="gtw-credential-value">${exchange.label}: ${exchange.value}</span>
+                        </div>
                         <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">Copy</button>
                     </div>
                 `;
@@ -1013,7 +1021,12 @@
                     <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">Copy</button>
                 </div>
                 <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-paypal-btn">
-                    Open PayPal
+                    <span>Open PayPal</span>
+                    <svg class="gtw-external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
                 </button>
             `;
         } else if (method === 'rub') {
@@ -1111,6 +1124,7 @@
                 copyTextWithFeedback(textToCopy, copyBtn);
                 if (wizardState.paymentMethod === 'crypto') {
                     markPaymentStep1Done();
+                    handleCryptoCopyExitHint();
                 }
             });
         }
@@ -1510,6 +1524,36 @@
                 }
             }).catch(function () {});
         }
+    }
+
+    function handleCryptoCopyExitHint() {
+        var exchange = getExchangeById(wizardState.paymentExchange);
+        var exName = exchange ? exchange.name : 'selected exchange';
+        if (typeof showToast === 'function') {
+            showToast('Copied. Make transfer in ' + exName + ', then return and upload screenshot.');
+        }
+        try {
+            var tg = window.Telegram && window.Telegram.WebApp;
+            if (tg && typeof tg.showPopup === 'function') {
+                tg.showPopup({
+                    title: 'Transfer in ' + exName,
+                    message: 'ID copied. Please complete transfer inside ' + exName + ' and come back to upload payment screenshot.',
+                    buttons: [
+                        { id: 'later', type: 'cancel', text: 'Stay here' },
+                        { id: 'close', type: 'default', text: 'Go to Telegram' }
+                    ]
+                }, function (buttonId) {
+                    if (buttonId === 'close' && typeof tg.close === 'function') {
+                        if (typeof tg.openTelegramLink === 'function') {
+                            try { tg.openTelegramLink('https://t.me/saved'); } catch (_) {}
+                        }
+                        tg.close();
+                    }
+                });
+            } else if (tg && typeof tg.close === 'function') {
+                tg.close();
+            }
+        } catch (_) {}
     }
 
     function resolveProjectById(projectId) {
