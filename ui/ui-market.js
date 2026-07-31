@@ -363,6 +363,23 @@ function buildReliabilityAlphaProjectCard(project) {
         }
     }
 
+    var ownerUsername = String(project.owner_username || '').trim().replace(/^@+/, '');
+    var ownerFullName = String(project.owner_name || '').trim().replace(/^@+/, '');
+    var showOwnerFullName = !!(ownerFullName && ownerFullName.toLowerCase() !== ownerUsername.toLowerCase());
+    var projectIconHtml = typeof renderIcon === 'function' ? renderIcon(project.title || '', project.icon_url || '') : '';
+    var ownerIconHtml = typeof renderIcon === 'function' ? renderIcon(ownerFullName || ownerUsername || project.title || '?', project.owner_avatar_url || '') : '';
+    var projectDatesHtml = window.escapeHTML(window.t('reliabilityDashProjectStartDateLabel', {}, lang)) + ': ' + window.escapeHTML(formatReliabilityDate(project.start_date)) +
+        ' · ' + window.escapeHTML(window.t('reliabilityDashProjectAsOfDateLabel', {}, lang)) + ': ' + window.escapeHTML(formatReliabilityDate(project.observed_until));
+    var ownerIdentityHtml = '';
+    if (showOwnerFullName) {
+        ownerIdentityHtml += '<span class="ri-project-owner-name">' + window.escapeHTML(ownerFullName) + '</span>';
+    }
+    if (ownerUsername) {
+        ownerIdentityHtml += '<span class="ri-project-owner-nick-row"><a href="javascript:void(0)" class="ri-project-owner-nick" onclick="event.stopPropagation(); tg.openTelegramLink(\'https://t.me/' + escapeInlineJsString(ownerUsername) + '\')">@' + window.escapeHTML(ownerUsername) + '</a></span>';
+    } else if (!showOwnerFullName) {
+        ownerIdentityHtml += '<span class="ri-project-owner-name">' + window.escapeHTML(window.t('reliabilityDashProjectUnknownOwner', {}, lang)) + '</span>';
+    }
+
     return `
         <div class="ri-project ${project.is_used_in_formula ? 'in-formula' : ''} ${project.is_bad_period_for_reliability ? 'has-penalty' : ''}" onclick="toggleProjectCardDetails(this, event)">
           <div class="ri-project-head">
@@ -384,6 +401,17 @@ function buildReliabilityAlphaProjectCard(project) {
           </div>
 
           <div class="ri-project-body" hidden onclick="event.stopPropagation()">
+            <div class="ri-project-owner-block">
+              <span class="ri-project-owner-pair" aria-hidden="true">
+                <span class="ri-project-owner-app">${projectIconHtml}</span>
+                <span class="ri-project-owner-avatar">${ownerIconHtml}</span>
+              </span>
+              <div class="ri-project-owner-meta">
+                ${ownerIdentityHtml}
+                <span class="ri-project-dates">${projectDatesHtml}</span>
+              </div>
+            </div>
+
             ${project.is_bad_period_for_reliability ? `
             <div class="ri-penalty-notice" style="background: rgba(255, 59, 48, 0.08); border: 1px solid rgba(255, 59, 48, 0.2); border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 13px; color: #ff453a; line-height: 1.4;">
                 ⚠️ <strong>${lang === 'ru' ? 'Слабый период (Штрафной)' : 'Bad Period (Penalty)'}</strong><br>
