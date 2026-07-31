@@ -209,6 +209,8 @@ function renderProjects(force) {
         }
     }
 
+    renderGuaranteedOrdersSection(container);
+
     if (myProjects.length === 0) {
         container.insertAdjacentHTML('beforeend', `
             <div class="empty-state">
@@ -3330,6 +3332,81 @@ function openModal() {
     document.getElementById('app-name').focus();
 }
 
+function getProjectUiText(key, fallback, params) {
+    if (typeof window.t === 'function') {
+        var translated = window.t(key, params || {}, lang);
+        if (translated && translated !== key) return translated;
+    }
+    return fallback;
+}
+
+function ensureAddProjectChooser() {
+    var overlay = document.getElementById('add-project-chooser-overlay');
+    if (overlay) return overlay;
+
+    var div = document.createElement('div');
+    div.innerHTML =
+        '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" role="dialog" aria-modal="true">' +
+            '<div class="add-project-chooser-card">' +
+                '<button type="button" class="add-project-chooser-close" aria-label="' + window.escapeHTML(getProjectUiText('addProjectChooserClose', 'Close')) + '">×</button>' +
+                '<h3 class="add-project-chooser-title">' + window.escapeHTML(getProjectUiText('addProjectChooserTitle', 'Choose a testing format')) + '</h3>' +
+                '<button type="button" class="add-project-chooser-option add-project-chooser-option--mutual">' +
+                    '<span class="add-project-chooser-option-title">' + window.escapeHTML(getProjectUiText('addProjectChooserMutualTitle', '🤝 Mutual exchange (Free)')) + '</span>' +
+                    '<span class="add-project-chooser-option-desc">' + window.escapeHTML(getProjectUiText('addProjectChooserMutualDesc', 'Exchange tests with other developers at no cost.')) + '</span>' +
+                '</button>' +
+                '<button type="button" class="add-project-chooser-option add-project-chooser-option--private">' +
+                    '<span class="add-project-chooser-option-title">' + window.escapeHTML(getProjectUiText('addProjectChooserPrivateTitle', '🛡️ Private Testing ($20)')) + '</span>' +
+                    '<span class="add-project-chooser-option-desc">' + window.escapeHTML(getProjectUiText('addProjectChooserPrivateDesc', '12+ devices and 14 days of guided closed testing.')) + '</span>' +
+                '</button>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(div.firstElementChild);
+    overlay = document.getElementById('add-project-chooser-overlay');
+    if (!overlay) return null;
+
+    overlay.addEventListener('click', function (event) {
+        if (event.target === overlay) closeAddProjectChooser();
+    });
+    overlay.querySelector('.add-project-chooser-close').addEventListener('click', closeAddProjectChooser);
+    overlay.querySelector('.add-project-chooser-option--mutual').addEventListener('click', function () {
+        closeAddProjectChooser(function () { openModal(); });
+    });
+    overlay.querySelector('.add-project-chooser-option--private').addEventListener('click', function () {
+        closeAddProjectChooser(function () {
+            if (typeof window.showGuaranteedTestOfferModal === 'function') {
+                window.showGuaranteedTestOfferModal();
+            }
+        });
+    });
+    return overlay;
+}
+
+function openAddProjectChooser() {
+    var overlay = ensureAddProjectChooser();
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    overlay.classList.remove('is-closing');
+    requestAnimationFrame(function () { overlay.classList.add('is-open'); });
+}
+window.openAddProjectChooser = openAddProjectChooser;
+
+function closeAddProjectChooser(afterClose) {
+    var overlay = document.getElementById('add-project-chooser-overlay');
+    if (!overlay || overlay.style.display === 'none') {
+        if (typeof afterClose === 'function') afterClose();
+        return;
+    }
+    overlay.classList.remove('is-open');
+    overlay.classList.add('is-closing');
+    setTimeout(function () {
+        if (!overlay.classList.contains('is-closing')) return;
+        overlay.style.display = 'none';
+        overlay.classList.remove('is-closing');
+        if (typeof afterClose === 'function') afterClose();
+    }, 180);
+}
+window.closeAddProjectChooser = closeAddProjectChooser;
+
 function closeModal(event) {
     if (event && event.target !== document.getElementById('add-modal')) return;
     closeIconPickerSheet();
@@ -5599,7 +5676,119 @@ function invalidateGuaranteedOrdersCache() {
 }
 window.invalidateGuaranteedOrdersCache = invalidateGuaranteedOrdersCache;
 
-async function fetchActiveGuaranteedOrders(forceRefresh) {
+function formatGuaranteedOrderDate(value) {
+    var timestamp = Date.parse(String(value || ''));
+    if (!Number.isFinite(timestamp)) return '—';
+    try {
+        return new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }).format(new Date(timestamp));
+    } catch (_) {
+        return new Date(timestamp).toLocaleDateString();
+    }
+}
+
+function getGuaranteedOrderCardMeta(order) {
+    var status = String((order && order.status) || '').toLowerCase();
+    var startedAt = Date.parse(String((order && order.started_at) || ''));
+    var completionDate = formatGuaranteedOrderDate(order && order.completion_date);
+    var now = Date.now();
+
+    if (status === 'pending') {
+        return {
+            badge: getProjectUiText('gtStatusPending', '🛡️ Payment verification'),
+            hint: getProjectUiText('gtHintPending', 'Your request was received. Please wait while payment and access settings are verified.')
+        };
+    }
+    if (status === 'paid') {
+        return {
+            badge: getProjectUiText('gtStatusPaid', '🛡️ Preparing the team'),
+            hint: getProjectUiText('gtHintPaid', 'Payment and settings are verified. We are forming your tester group.')
+        };
+    }
+    if (status === 'completed') {
+        return {
+            badge: getProjectUiText('gtStatusCompleted', '🎉 Testing completed'),
+            hint: getProjectUiText('gtHintCompleted', 'Your private testing cycle has been completed.')
+        };
+    }
+    if (status === 'in_progress' && Number.isFinite(startedAt) && (now - startedAt) >= 43200000) {
+        var day = Math.min(14, Math.max(1, Math.floor((now - startedAt) / 86400000) + 1));
+        return {
+            badge: getProjectUiText('gtStatusTestingDay', '🛡️ Testing in progress: Day {day} of 14', { day: day }),
+            hint: getProjectUiText('gtHintTesting', 'Testing is underway. Estimated completion: {completion_date}.', { completion_date: completionDate })
+        };
+    }
+    if (status === 'in_progress') {
+        return {
+            badge: getProjectUiText('gtStatusCollecting', '🛡️ Collecting testers (up to 12 hours)'),
+            hint: getProjectUiText('gtHintCollecting', 'We are collecting the team of testers for your app.')
+        };
+    }
+    return {
+        badge: getProjectUiText('gtStatusProcessing', '🛡️ Processing order'),
+        hint: getProjectUiText('gtHintProcessing', 'We are checking the details of your private testing order.')
+    };
+}
+
+function renderGuaranteedOrdersSection(container) {
+    if (!container) return;
+    var section = document.createElement('section');
+    section.className = 'guaranteed-orders-section';
+    section.setAttribute('aria-live', 'polite');
+    container.appendChild(section);
+
+    loadVisibleGuaranteedOrders(false).then(function (orders) {
+        if (!container.contains(section) || !Array.isArray(orders) || !orders.length) {
+            section.remove();
+            return;
+        }
+        var cards = orders.map(function (order) {
+            var meta = getGuaranteedOrderCardMeta(order);
+            var id = Number(order && order.id);
+            if (!Number.isFinite(id) || id <= 0) return '';
+            var isCompleted = String(order.status || '').toLowerCase() === 'completed';
+            var actions =
+                '<button type="button" class="btn btn-secondary guaranteed-order-action" onclick="openGuaranteedOrderSupport(' + id + ')">' +
+                    window.escapeHTML(getProjectUiText('gtContactManager', '💬 Contact manager')) +
+                '</button>' +
+                (isCompleted
+                    ? '<button type="button" class="btn btn-primary guaranteed-order-action" onclick="archiveGuaranteedTestOrder(' + id + ')">' +
+                        window.escapeHTML(getProjectUiText('gtArchive', '📁 Archive')) +
+                    '</button>'
+                    : '');
+            return (
+                '<article class="guaranteed-order-card">' +
+                    '<div class="guaranteed-order-card__top">' +
+                        '<h3 class="guaranteed-order-card__name">' + window.escapeHTML(String(order.app_name || getProjectUiText('unknownLabel', 'Unknown app'))) + '</h3>' +
+                        '<span class="guaranteed-order-card__badge">' + window.escapeHTML(meta.badge) + '</span>' +
+                    '</div>' +
+                    '<p class="guaranteed-order-card__hint">' + window.escapeHTML(meta.hint) + '</p>' +
+                    '<dl class="guaranteed-order-card__dates">' +
+                        '<div><dt>' + window.escapeHTML(getProjectUiText('gtStartDate', 'Start')) + '</dt><dd>' + window.escapeHTML(formatGuaranteedOrderDate(order.started_at)) + '</dd></div>' +
+                        '<div><dt>' + window.escapeHTML(getProjectUiText('gtEstimatedEnd', 'Estimated end')) + '</dt><dd>' + window.escapeHTML(formatGuaranteedOrderDate(order.completion_date)) + '</dd></div>' +
+                    '</dl>' +
+                    '<div class="guaranteed-order-card__actions">' + actions + '</div>' +
+                '</article>'
+            );
+        }).join('');
+        if (!cards) {
+            section.remove();
+            return;
+        }
+        section.innerHTML =
+            '<h2 class="guaranteed-orders-section__title">' +
+                window.escapeHTML(getProjectUiText('gtOrdersSectionTitle', '🛡️ Private Testing ($20)')) +
+            '</h2>' +
+            '<div class="guaranteed-orders-section__list">' + cards + '</div>';
+    }).catch(function () {
+        section.remove();
+    });
+}
+
+async function loadVisibleGuaranteedOrders(forceRefresh) {
     var now = Date.now();
     if (!forceRefresh && _gtActiveOrdersCache && (now - _gtActiveOrdersCacheAt) < 30000) {
         return _gtActiveOrdersCache;
@@ -5622,6 +5811,54 @@ async function fetchActiveGuaranteedOrders(forceRefresh) {
     return _gtActiveOrdersCache || [];
 }
 
+// Compatibility for existing project-level private-testing actions.
+var fetchActiveGuaranteedOrders = loadVisibleGuaranteedOrders;
+
+function getGuaranteedOrderById(orderId) {
+    var orders = Array.isArray(_gtActiveOrdersCache) ? _gtActiveOrdersCache : [];
+    return orders.find(function (order) { return Number(order && order.id) === Number(orderId); }) || null;
+}
+
+function openGuaranteedOrderSupport(orderId) {
+    _gtStatusModalOrder = getGuaranteedOrderById(orderId);
+    if (typeof window.openHandsFreeSupportChat === 'function') {
+        window.openHandsFreeSupportChat();
+    }
+}
+window.openGuaranteedOrderSupport = openGuaranteedOrderSupport;
+
+async function archiveGuaranteedTestOrder(orderId) {
+    var id = Number(orderId);
+    if (!Number.isFinite(id) || id <= 0) return;
+    var initData = (typeof getTelegramInitDataRaw === 'function')
+        ? getTelegramInitDataRaw()
+        : ((window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '');
+    if (!initData) {
+        if (typeof showToast === 'function') showToast(getProjectUiText('gtArchiveFailed', 'Could not archive the order. Please reopen the app and try again.'));
+        return;
+    }
+    try {
+        var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
+        var response = await fetch(apiBase + '/guaranteed-test-orders/' + id + '/archive', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ init_data: initData })
+        });
+        var payload = {};
+        try { payload = await response.json(); } catch (_) {}
+        if (!response.ok || (payload && payload.status === 'error')) {
+            throw new Error('guaranteed_order_archive_failed');
+        }
+        invalidateGuaranteedOrdersCache();
+        if (typeof showToast === 'function') showToast(getProjectUiText('gtArchiveSuccess', 'Order moved to archive.'));
+        renderProjects(true);
+    } catch (error) {
+        console.warn('Failed to archive guaranteed order:', error);
+        if (typeof showToast === 'function') showToast(getProjectUiText('gtArchiveFailed', 'Could not archive the order. Please try again.'));
+    }
+}
+window.archiveGuaranteedTestOrder = archiveGuaranteedTestOrder;
+
 function findActiveGuaranteedOrderForProject(project, orders) {
     if (!project || !Array.isArray(orders) || !orders.length) return null;
     var projectId = String(project.id || '');
@@ -5630,6 +5867,10 @@ function findActiveGuaranteedOrderForProject(project, orders) {
 
     for (var i = 0; i < orders.length; i++) {
         var order = orders[i] || {};
+        var status = String(order.status || '').toLowerCase();
+        // `/mine` now includes completed non-archived orders for the dashboard;
+        // they must not block a new private-testing order for the same app.
+        if (status === 'completed' || status === 'archived') continue;
         var notes = String(order.notes || '');
         var link = String(order.testing_link || '').toLowerCase();
         var orderName = String(order.app_name || '').trim().toLowerCase();

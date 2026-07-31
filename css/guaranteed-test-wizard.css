@@ -58,6 +58,33 @@
     transition: all 0.2s ease;
 }
 
+.gtw-forward-btn {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary, #F4F6F8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gtw-forward-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    transform: scale(1.05);
+}
+
+.gtw-forward-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
 .gtw-back-btn:hover {
     background: rgba(255, 255, 255, 0.16);
     transform: scale(1.05);
@@ -566,8 +593,8 @@
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    background: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    border: none;
     color: #90A0B6;
     display: flex;
     align-items: center;
@@ -1395,8 +1422,8 @@
     flex-shrink: 0;
     border-radius: 10px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: #fff;
+    border: none;
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2108,5 +2135,210 @@
 .gtw-step2-overlay .gtw-guide-icon-badge,
 #guaranteed-test-wizard-payment-overlay .gtw-method-radio {
     filter: saturate(0.78);
+}
+
+/* =========================================================
+   ADD PROJECT CHOOSER + PRIVATE TESTING PROJECT CARDS
+   ========================================================= */
+.add-project-chooser-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10040;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.add-project-chooser-overlay.is-open {
+    opacity: 1;
+}
+
+.add-project-chooser-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 22px 16px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    background: var(--bg-surface-2, #1D222B);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+    box-sizing: border-box;
+    transform: translateY(12px) scale(0.98);
+    transition: transform 0.18s ease;
+    position: relative;
+}
+
+.add-project-chooser-overlay.is-open .add-project-chooser-card {
+    transform: translateY(0) scale(1);
+}
+
+.add-project-chooser-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary, #F4F6F8);
+    cursor: pointer;
+    font: 24px/1 inherit;
+}
+
+.add-project-chooser-title {
+    margin: 0 38px 16px 0;
+    color: var(--text-primary, #F4F6F8);
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.add-project-chooser-option {
+    width: 100%;
+    margin-top: 10px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    background: var(--bg-surface-1, #161A21);
+    color: var(--text-primary, #F4F6F8);
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.add-project-chooser-option:hover {
+    transform: translateY(-1px);
+    border-color: rgba(76, 141, 255, 0.45);
+    background: rgba(76, 141, 255, 0.08);
+}
+
+.add-project-chooser-option--private {
+    border-color: rgba(76, 141, 255, 0.3);
+    background: linear-gradient(135deg, rgba(76, 141, 255, 0.14), rgba(76, 141, 255, 0.05));
+}
+
+.add-project-chooser-option-title,
+.add-project-chooser-option-desc {
+    display: block;
+}
+
+.add-project-chooser-option-title {
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.add-project-chooser-option-desc {
+    margin-top: 6px;
+    color: var(--text-secondary, #AEB7C2);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.guaranteed-orders-section {
+    margin: 0 0 18px;
+}
+
+.guaranteed-orders-section__title {
+    margin: 0 0 10px;
+    color: var(--text-primary, #F4F6F8);
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.guaranteed-orders-section__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.guaranteed-order-card {
+    padding: 14px;
+    border: 1px solid rgba(76, 141, 255, 0.26);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(76, 141, 255, 0.12), rgba(22, 26, 33, 0.96));
+}
+
+.guaranteed-order-card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.guaranteed-order-card__name {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--text-primary, #F4F6F8);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.guaranteed-order-card__badge {
+    flex-shrink: 0;
+    max-width: 58%;
+    padding: 5px 8px;
+    border: 1px solid rgba(76, 141, 255, 0.3);
+    border-radius: 999px;
+    background: rgba(76, 141, 255, 0.12);
+    color: #9fc0ff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.25;
+    text-align: right;
+}
+
+.guaranteed-order-card__hint {
+    margin: 10px 0;
+    color: var(--text-secondary, #AEB7C2);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.guaranteed-order-card__dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0;
+}
+
+.guaranteed-order-card__dates div {
+    padding: 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.16);
+}
+
+.guaranteed-order-card__dates dt {
+    color: var(--text-tertiary, #717C89);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.guaranteed-order-card__dates dd {
+    margin: 3px 0 0;
+    color: var(--text-primary, #F4F6F8);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.guaranteed-order-card__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.guaranteed-order-action {
+    flex: 1;
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 12px;
 }
 

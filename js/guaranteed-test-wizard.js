@@ -197,6 +197,12 @@
                         <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
                 </button>
+                <button type="button" class="gtw-forward-btn" id="gtw-step1-forward-btn" aria-label="Next" style="display: none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </button>
                 <h1 class="gtw-header-title">Private Testing ($20)</h1>
                 <p class="gtw-header-subtitle">STEP 1 OF 2</p>
                 <div class="gtw-progress-bar">
@@ -796,6 +802,11 @@
         if (confirmBox) confirmBox.checked = !!wizardState.detailsConfirmed;
         var warn = document.getElementById('gtw-details-confirm-warning');
         if (warn) warn.style.display = 'none';
+
+        var forwardBtn = document.getElementById('gtw-step1-forward-btn');
+        if (forwardBtn) {
+            forwardBtn.style.display = Number(wizardState.step) >= 2 ? 'flex' : 'none';
+        }
     }
 
     function syncStep2FormFromState() {
@@ -880,6 +891,11 @@
                     window.showGuaranteedTestOfferModal();
                 }
             });
+        }
+
+        var forwardBtn = document.getElementById('gtw-step1-forward-btn');
+        if (forwardBtn) {
+            forwardBtn.addEventListener('click', handleStep1Continue);
         }
 
         var freeCard = document.getElementById('gtw-type-free');
@@ -986,7 +1002,7 @@
         if (backBtn) {
             backBtn.addEventListener('click', function () {
                 hideGuaranteedTestWizardStep2();
-                showGuaranteedTestWizardStep1();
+                showGuaranteedTestWizardStep1({ keepState: true });
             });
         }
 

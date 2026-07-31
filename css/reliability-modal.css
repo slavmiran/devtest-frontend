@@ -1081,11 +1081,21 @@
 }
 
 .ri-project-dates {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
     font-size: 11px;
     color: var(--text-tertiary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow: visible;
+    line-height: 1.35;
+}
+
+.ri-project-date-line {
+    display: block;
+    white-space: normal;
+    overflow: visible;
+    word-break: break-word;
 }
 
 .ri-chip {

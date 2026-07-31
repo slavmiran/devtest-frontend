@@ -368,8 +368,9 @@ function buildReliabilityAlphaProjectCard(project) {
     var showOwnerFullName = !!(ownerFullName && ownerFullName.toLowerCase() !== ownerUsername.toLowerCase());
     var projectIconHtml = typeof renderIcon === 'function' ? renderIcon(project.title || '', project.icon_url || '') : '';
     var ownerIconHtml = typeof renderIcon === 'function' ? renderIcon(ownerFullName || ownerUsername || project.title || '?', project.owner_avatar_url || '') : '';
-    var projectDatesHtml = window.escapeHTML(window.t('reliabilityDashProjectStartDateLabel', {}, lang)) + ': ' + window.escapeHTML(formatReliabilityDate(project.start_date)) +
-        ' · ' + window.escapeHTML(window.t('reliabilityDashProjectAsOfDateLabel', {}, lang)) + ': ' + window.escapeHTML(formatReliabilityDate(project.observed_until));
+    var projectDatesHtml =
+        '<span class="ri-project-date-line">' + window.escapeHTML(window.t('reliabilityDashProjectStartDateLabel', {}, lang)) + ': ' + window.escapeHTML(formatReliabilityDate(project.start_date)) + '</span>' +
+        '<span class="ri-project-date-line">' + window.escapeHTML(window.t('reliabilityDashProjectAsOfDateLabel', {}, lang)) + ': ' + window.escapeHTML(formatReliabilityDate(project.observed_until)) + '</span>';
     var ownerIdentityHtml = '';
     if (showOwnerFullName) {
         ownerIdentityHtml += '<span class="ri-project-owner-name">' + window.escapeHTML(ownerFullName) + '</span>';
