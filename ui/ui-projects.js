@@ -3344,20 +3344,56 @@ function ensureAddProjectChooser() {
     var overlay = document.getElementById('add-project-chooser-overlay');
     if (overlay) return overlay;
 
+    var mutualIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<polyline points="17 1 21 5 17 9"></polyline>' +
+            '<path d="M3 11V9a4 4 0 0 1 4-4h14"></path>' +
+            '<polyline points="7 23 3 19 7 15"></polyline>' +
+            '<path d="M21 13v2a4 4 0 0 1-4 4H3"></path>' +
+        '</svg>';
+    var privateIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>' +
+            '<polyline points="9 12 11 14 15 10"></polyline>' +
+        '</svg>';
+    var chevron =
+        '<svg class="add-project-chooser-option-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<polyline points="9 18 15 12 9 6"></polyline>' +
+        '</svg>';
+
+    function optionHtml(variant, icon, titleKey, titleFallback, tagKey, tagFallback, descKey, descFallback) {
+        return '<button type="button" class="add-project-chooser-option add-project-chooser-option--' + variant + '">' +
+            '<span class="add-project-chooser-option-icon">' + icon + '</span>' +
+            '<span class="add-project-chooser-option-body">' +
+                '<span class="add-project-chooser-option-head">' +
+                    '<span class="add-project-chooser-option-title">' + window.escapeHTML(getProjectUiText(titleKey, titleFallback)) + '</span>' +
+                    '<span class="add-project-chooser-option-tag">' + window.escapeHTML(getProjectUiText(tagKey, tagFallback)) + '</span>' +
+                '</span>' +
+                '<span class="add-project-chooser-option-desc">' + window.escapeHTML(getProjectUiText(descKey, descFallback)) + '</span>' +
+            '</span>' +
+            chevron +
+        '</button>';
+    }
+
     var div = document.createElement('div');
     div.innerHTML =
         '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" role="dialog" aria-modal="true">' +
             '<div class="add-project-chooser-card">' +
                 '<button type="button" class="add-project-chooser-close" aria-label="' + window.escapeHTML(getProjectUiText('addProjectChooserClose', 'Close')) + '">×</button>' +
                 '<h3 class="add-project-chooser-title">' + window.escapeHTML(getProjectUiText('addProjectChooserTitle', 'Choose a testing format')) + '</h3>' +
-                '<button type="button" class="add-project-chooser-option add-project-chooser-option--mutual">' +
-                    '<span class="add-project-chooser-option-title">' + window.escapeHTML(getProjectUiText('addProjectChooserMutualTitle', '🤝 Mutual exchange (Free)')) + '</span>' +
-                    '<span class="add-project-chooser-option-desc">' + window.escapeHTML(getProjectUiText('addProjectChooserMutualDesc', 'Exchange tests with other developers at no cost.')) + '</span>' +
-                '</button>' +
-                '<button type="button" class="add-project-chooser-option add-project-chooser-option--private">' +
-                    '<span class="add-project-chooser-option-title">' + window.escapeHTML(getProjectUiText('addProjectChooserPrivateTitle', '🛡️ Private Testing ($20)')) + '</span>' +
-                    '<span class="add-project-chooser-option-desc">' + window.escapeHTML(getProjectUiText('addProjectChooserPrivateDesc', '12+ devices and 14 days of guided closed testing.')) + '</span>' +
-                '</button>' +
+                '<p class="add-project-chooser-subtitle">' + window.escapeHTML(getProjectUiText('addProjectChooserSubtitle', 'Both formats lead to production access. Pick the one that fits your time.')) + '</p>' +
+                optionHtml(
+                    'mutual', mutualIcon,
+                    'addProjectChooserMutualTitle', 'Mutual exchange',
+                    'addProjectChooserMutualTag', 'Free',
+                    'addProjectChooserMutualDesc', 'Test other apps and get tests in return.'
+                ) +
+                optionHtml(
+                    'private', privateIcon,
+                    'addProjectChooserPrivateTitle', 'Private Testing',
+                    'addProjectChooserPrivateTag', '$20',
+                    'addProjectChooserPrivateDesc', '12+ devices for 14 days without your involvement. Result guarantee.'
+                ) +
             '</div>' +
         '</div>';
     document.body.appendChild(div.firstElementChild);
@@ -5698,37 +5734,45 @@ function getGuaranteedOrderCardMeta(order) {
 
     if (status === 'pending') {
         return {
-            badge: getProjectUiText('gtStatusPending', '🛡️ Payment verification'),
+            variant: 'pending',
+            badge: getProjectUiText('gtStatusPending', 'Payment verification'),
             hint: getProjectUiText('gtHintPending', 'Your request was received. Please wait while payment and access settings are verified.')
         };
     }
     if (status === 'paid') {
         return {
-            badge: getProjectUiText('gtStatusPaid', '🛡️ Preparing the team'),
+            variant: 'pending',
+            badge: getProjectUiText('gtStatusPaid', 'Preparing the team'),
             hint: getProjectUiText('gtHintPaid', 'Payment and settings are verified. We are forming your tester group.')
         };
     }
     if (status === 'completed') {
         return {
-            badge: getProjectUiText('gtStatusCompleted', '🎉 Testing completed'),
+            variant: 'done',
+            day: 14,
+            badge: getProjectUiText('gtStatusCompleted', 'Completed'),
             hint: getProjectUiText('gtHintCompleted', 'Your private testing cycle has been completed.')
         };
     }
     if (status === 'in_progress' && Number.isFinite(startedAt) && (now - startedAt) >= 43200000) {
         var day = Math.min(14, Math.max(1, Math.floor((now - startedAt) / 86400000) + 1));
         return {
-            badge: getProjectUiText('gtStatusTestingDay', '🛡️ Testing in progress: Day {day} of 14', { day: day }),
+            variant: 'active',
+            day: day,
+            badge: getProjectUiText('gtStatusTestingDay', 'Day {day} of 14', { day: day }),
             hint: getProjectUiText('gtHintTesting', 'Testing is underway. Estimated completion: {completion_date}.', { completion_date: completionDate })
         };
     }
     if (status === 'in_progress') {
         return {
-            badge: getProjectUiText('gtStatusCollecting', '🛡️ Collecting testers (up to 12 hours)'),
+            variant: 'active',
+            badge: getProjectUiText('gtStatusCollecting', 'Collecting testers'),
             hint: getProjectUiText('gtHintCollecting', 'We are collecting the team of testers for your app.')
         };
     }
     return {
-        badge: getProjectUiText('gtStatusProcessing', '🛡️ Processing order'),
+        variant: 'pending',
+        badge: getProjectUiText('gtStatusProcessing', 'Processing order'),
         hint: getProjectUiText('gtHintProcessing', 'We are checking the details of your private testing order.')
     };
 }
@@ -5759,13 +5803,27 @@ function renderGuaranteedOrdersSection(container) {
                         window.escapeHTML(getProjectUiText('gtArchive', '📁 Archive')) +
                     '</button>'
                     : '');
+            var progress = '';
+            if (Number.isFinite(meta.day) && meta.day > 0) {
+                var percent = Math.max(4, Math.min(100, Math.round((meta.day / 14) * 100)));
+                progress =
+                    '<div class="guaranteed-order-card__progress">' +
+                        '<div class="guaranteed-order-card__progress-track">' +
+                            '<div class="guaranteed-order-card__progress-fill" style="width: ' + percent + '%;"></div>' +
+                        '</div>' +
+                        '<span class="guaranteed-order-card__progress-label">' +
+                            window.escapeHTML(getProjectUiText('gtProgressLabel', 'Day {day} of 14', { day: meta.day })) +
+                        '</span>' +
+                    '</div>';
+            }
             return (
-                '<article class="guaranteed-order-card">' +
+                '<article class="guaranteed-order-card guaranteed-order-card--' + (meta.variant || 'pending') + '">' +
                     '<div class="guaranteed-order-card__top">' +
                         '<h3 class="guaranteed-order-card__name">' + window.escapeHTML(String(order.app_name || getProjectUiText('unknownLabel', 'Unknown app'))) + '</h3>' +
                         '<span class="guaranteed-order-card__badge">' + window.escapeHTML(meta.badge) + '</span>' +
                     '</div>' +
                     '<p class="guaranteed-order-card__hint">' + window.escapeHTML(meta.hint) + '</p>' +
+                    progress +
                     '<dl class="guaranteed-order-card__dates">' +
                         '<div><dt>' + window.escapeHTML(getProjectUiText('gtStartDate', 'Start')) + '</dt><dd>' + window.escapeHTML(formatGuaranteedOrderDate(order.started_at)) + '</dd></div>' +
                         '<div><dt>' + window.escapeHTML(getProjectUiText('gtEstimatedEnd', 'Estimated end')) + '</dt><dd>' + window.escapeHTML(formatGuaranteedOrderDate(order.completion_date)) + '</dd></div>' +

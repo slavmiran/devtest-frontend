@@ -1,4 +1,4 @@
-/* =========================================================
+﻿/* =========================================================
    GUARANTEED CLOSED TEST WIZARD - 3-SCREEN MODULE
    Step 1 of 2: App Details
    Step 2 of 2: Testing Link
@@ -30,6 +30,233 @@
         { code: 'VND', en: 'Vietnam (Dong)', ru: 'Вьетнам (Донг)' },
         { code: 'RUB', en: 'Russia (Ruble)', ru: 'Россия (Рубль)' }
     ];
+
+    /* [en, ru] copy for every user-visible string of the paid flow. */
+    var COPY = {
+        headerTitle: ['Private Testing', 'Приватное тестирование'],
+        stepOf: ['Step {n} of 2', 'Шаг {n} из 2'],
+        paymentStep: ['Payment', 'Оплата'],
+        back: ['Back', 'Назад'],
+        next: ['Next', 'Далее'],
+        close: ['Close', 'Закрыть'],
+        cancel: ['Cancel', 'Отмена'],
+        gotIt: ['Got it', 'Понятно'],
+        copy: ['Copy', 'Копировать'],
+        copied: ['Copied', 'Скопировано'],
+        paste: ['Paste from clipboard', 'Вставить из буфера'],
+        clear: ['Clear', 'Очистить'],
+
+        autoFill: ['From project', 'Из проекта'],
+        manualInput: ['Manual input', 'Ручной ввод'],
+        autoFillHint: ['Project data is used', 'Используются данные проекта'],
+        manualHint: ['You fill the fields yourself', 'Вы заполняете поля сами'],
+
+        appNameLabel: ['App name', 'Название приложения'],
+        appNamePlaceholder: ['For example, Focus Timer', 'Например, Focus Timer'],
+        appNameHelper: ['Exactly as it appears in Google Play Console.', 'Точно так, как оно указано в Google Play Console.'],
+        appNameRequired: ['Enter the app name to continue.', 'Укажите название приложения, чтобы продолжить.'],
+        appTypeLabel: ['App type', 'Тип приложения'],
+        freeApp: ['Free', 'Бесплатное'],
+        paidApp: ['Paid', 'Платное'],
+        confirmDetails: [
+            'I confirm the <strong>name</strong> and <strong>type</strong> of the app are correct.',
+            'Подтверждаю, что <strong>название</strong> и <strong>тип</strong> приложения указаны верно.'
+        ],
+        confirmDetailsWarn: ['Confirm the prefilled details.', 'Подтвердите заполненные данные.'],
+        continue: ['Continue', 'Продолжить'],
+
+        licenseTitle: ['License Testing setup', 'Настройка License Testing'],
+        licenseSubtitle: [
+            'Lets testers install a paid app without paying for it.',
+            'Позволяет тестировщикам установить платное приложение без покупки.'
+        ],
+        licenseDesc: [
+            'Testers cannot install paid apps for free unless they are added to <strong>License Testing</strong>. This lets our team download and test the app without creating a sale.',
+            'Без добавления в <strong>License Testing</strong> тестировщики не смогут бесплатно установить платное приложение. Эта настройка позволяет команде скачать и протестировать приложение без реальной покупки.'
+        ],
+        licenseStep1: ['Open <strong>Settings → License testing</strong>', 'Откройте <strong>Settings → License testing</strong>'],
+        licenseStep2: ['Choose <strong>Google Groups</strong> as tester type', 'Выберите тип тестировщиков <strong>Google Groups</strong>'],
+        licenseStep3: ['Add <strong>{email}</strong>', 'Добавьте <strong>{email}</strong>'],
+        licenseStep3Short: ['Add our tester group email:', 'Добавьте почту нашей группы тестировщиков:'],
+        licenseStep4: ['Keep <strong>RESPOND_NORMALLY</strong> and save', 'Оставьте <strong>RESPOND_NORMALLY</strong> и сохраните'],
+        setupGuide: ['Setup guide', 'Инструкция по настройке'],
+
+        linkLabel: ['Testing link', 'Ссылка на тестирование'],
+        linkPlaceholder: ['https://play.google.com/apps/testing/com.example.app', 'https://play.google.com/apps/testing/com.example.app'],
+        linkHelper: [
+            'The “Join on Android” link from Play Console.',
+            'Ссылка «Join on Android» из Play Console.'
+        ],
+        linkRequired: ['Add the testing link to continue.', 'Добавьте ссылку на тестирование, чтобы продолжить.'],
+        linkInvalid: [
+            'Enter a valid Play Console link (play.google.com/apps/testing/…).',
+            'Введите корректную ссылку Play Console (play.google.com/apps/testing/…).'
+        ],
+        linkCheck: ['Link check', 'Проверка ссылки'],
+        linkCheckNote: [
+            'Check the package ID carefully — a mistake delays the whole testing cycle.',
+            'Внимательно проверьте Package ID — ошибка задержит весь цикл тестирования.'
+        ],
+        confirmLink: ['I confirm the testing link is correct.', 'Подтверждаю, что ссылка на тестирование верна.'],
+        confirmLinkWarn: ['Confirm the prefilled link.', 'Подтвердите заполненную ссылку.'],
+
+        checklistLead: [
+            'Confirm that Play Console is already configured for this project:',
+            'Подтвердите, что Play Console уже настроен для этого проекта:'
+        ],
+        checklistEmail: [
+            'The DevTestHub group is added in Play Console',
+            'Группа DevTestHub добавлена в Play Console'
+        ],
+        checklistEmailNote1: ['Tester type: Google Groups', 'Тип тестировщиков: Google Groups'],
+        checklistEmailNote2: ['Added: {email}', 'Добавлено: {email}'],
+        checklistCountries: ['All countries are enabled', 'Выбраны все страны'],
+        checklistReview: ['Changes are sent for review', 'Изменения отправлены на проверку'],
+        checklistRequired: [
+            'Confirm every Play Console item, including the DevTestHub Google Group.',
+            'Отметьте все пункты настройки Play Console, включая Google-группу DevTestHub.'
+        ],
+
+        howToSetUp: ['How to set it up', 'Как настроить'],
+        instr1Title: ['Add testers', 'Добавьте тестировщиков'],
+        instr1Text: [
+            'Open <strong>Closed testing → Testers</strong> and add this Google Group:',
+            'Откройте <strong>Closed testing → Testers</strong> и добавьте эту Google-группу:'
+        ],
+        instr2Title: ['Enable countries', 'Включите страны'],
+        instr2Text: [
+            'In <strong>Countries / regions</strong> enable <strong>all countries</strong> so testers worldwide can join.',
+            'В разделе <strong>Countries / regions</strong> включите <strong>все страны</strong>, чтобы тестировщики могли подключиться из любой точки.'
+        ],
+        instr3Title: ['Send for review', 'Отправьте на проверку'],
+        instr3Text: [
+            'Press <strong>“Send changes for review”</strong> in Play Console.',
+            'Нажмите <strong>«Send changes for review»</strong> в Play Console.'
+        ],
+        instr3Note: [
+            'You can submit the order while the review is pending — it usually takes a few minutes.',
+            'Заявку можно отправить, не дожидаясь проверки — обычно она занимает несколько минут.'
+        ],
+        instr4Title: ['Copy the testing link', 'Скопируйте ссылку'],
+        instr4Text: [
+            'Find <strong>“How testers join your test”</strong> and copy the <strong>“Join on Android”</strong> link.',
+            'Найдите блок <strong>«How testers join your test»</strong> и скопируйте ссылку <strong>«Join on Android»</strong>.'
+        ],
+        guideCardTitle: ['Testing guide', 'Гайд по тестированию'],
+        guideCardDesc: ['Full setup walkthrough', 'Полная инструкция по настройке'],
+        proceedPayment: ['Proceed to payment', 'Перейти к оплате'],
+
+        planLabel: ['Your plan', 'Ваш тариф'],
+        planTitle: ['Production Access Sprint', 'Спринт до production-доступа'],
+        planPriceNote: ['with crypto payment', 'при оплате криптовалютой'],
+        planFeature1: ['<strong>12 real testers</strong> connected within 12 hours', '<strong>12 реальных тестировщиков</strong> подключаются в течение 12 часов'],
+        planFeature2: ['<strong>14 days</strong> of continuous closed testing', '<strong>14 дней</strong> непрерывного закрытого тестирования'],
+        planFeature3: ['<strong>Support</strong> with the production application', '<strong>Помощь</strong> с заявкой на production'],
+        guaranteeTitle: ['Access guarantee', 'Гарантия доступа'],
+        guaranteeText: [
+            'We stay with you until the app is ready for the production review.',
+            'Мы ведем проект, пока приложение не будет готово к заявке на production.'
+        ],
+
+        methodLabel: ['Payment method', 'Способ оплаты'],
+        methodCrypto: ['Crypto transfer', 'Криптоперевод'],
+        methodPaypal: ['PayPal', 'PayPal'],
+        methodFiat: ['Bank / local currency', 'Банк / местная валюта'],
+        badgeRecommended: ['Recommended', 'Рекомендуем'],
+        badgeFee: ['incl. fee', 'с комиссией'],
+        hintCrypto: ['Choose an exchange', 'Выберите биржу'],
+        hintSteps: ['Tap to open the payment steps', 'Нажмите, чтобы открыть шаги оплаты'],
+        selectMethod: ['Select a payment method', 'Выберите способ оплаты'],
+        selectExchange: ['Select an exchange', 'Выберите биржу'],
+        openSteps: ['Payment steps · ${amount}', 'Шаги оплаты · ${amount}'],
+
+        flowCryptoTitle: ['Crypto transfer · {name}', 'Криптоперевод · {name}'],
+        flowCryptoSubtitle: ['Send ${amount} as an internal transfer.', 'Отправьте ${amount} внутренним переводом.'],
+        flowCryptoStep: ['Internal transfer', 'Внутренний перевод'],
+        flowCryptoDesc: [
+            'Copy the {label} and send an internal transfer inside the exchange — not an on-chain withdrawal.',
+            'Скопируйте {label} и отправьте внутренний перевод внутри биржи — не вывод в сеть.'
+        ],
+        flowPaypalTitle: ['PayPal transfer', 'Перевод через PayPal'],
+        flowPaypalSubtitle: ['Send ${amount} to our PayPal account.', 'Отправьте ${amount} на наш аккаунт PayPal.'],
+        flowPaypalStep: ['Copy the address and pay', 'Скопируйте адрес и оплатите'],
+        flowPaypalDesc: [
+            'Copy the email, open PayPal and complete the transfer.',
+            'Скопируйте почту, откройте PayPal и завершите перевод.'
+        ],
+        openPaypal: ['Open PayPal', 'Открыть PayPal'],
+        flowFiatTitle: ['Bank / local currency', 'Банк / местная валюта'],
+        flowFiatSubtitle: [
+            'The manager will calculate the exact local amount for ${amount}.',
+            'Менеджер рассчитает точную сумму в местной валюте для ${amount}.'
+        ],
+        flowFiatStep: ['Get the payment details', 'Получите реквизиты'],
+        flowFiatDesc: [
+            'Choose your currency and bank before contacting the manager.',
+            'Выберите валюту и банк перед обращением к менеджеру.'
+        ],
+        fiatBankLabel: ['Your bank', 'Ваш банк'],
+        fiatBankPlaceholder: ['Ziraat, Kaspi, T-Bank…', 'Ziraat, Kaspi, Т-Банк…'],
+        fiatPersonal: ['Paying from a personal account', 'Оплачиваю с личного счета'],
+        fiatTip: [
+            'The manager converts ${amount} into your currency at the current rate and sends the exact amount with the payment details in chat.',
+            'Менеджер пересчитает ${amount} в вашу валюту по текущему курсу и пришлет точную сумму и реквизиты в чате.'
+        ],
+        fiatGetRequisites: ['Get payment details', 'Получить реквизиты'],
+        fiatMissing: ['Choose a currency and enter your bank name.', 'Выберите валюту и укажите название банка.'],
+        fiatCreating: ['Creating the order…', 'Создаем заявку…'],
+        fiatCreateFailed: ['Could not create the order. Please try again.', 'Не удалось создать заявку. Попробуйте еще раз.'],
+
+        uploadStepTitle: ['Payment screenshot', 'Скриншот оплаты'],
+        uploadStepDesc: ['Attach proof of the completed transfer.', 'Приложите подтверждение выполненного перевода.'],
+        uploadCta: ['Upload screenshot', 'Загрузить скриншот'],
+        uploadedTitle: ['Screenshot uploaded', 'Скриншот загружен'],
+        uploadedSubtitle: ['Tap ✕ to replace it', 'Нажмите ✕, чтобы заменить'],
+        submitOrder: ['Submit order · ${amount}', 'Отправить заявку · ${amount}'],
+        submitting: ['Sending…', 'Отправляем…'],
+        submitFallback: ['Submit order', 'Отправить заявку'],
+        toastSubmitted: [
+            'Order {code} submitted. The confirmation will arrive in Telegram.',
+            'Заявка {code} отправлена. Подтверждение придет в Telegram.'
+        ],
+        toastFailed: ['Could not create the order. Please try again.', 'Не удалось создать заявку. Попробуйте еще раз.'],
+        toastProofFailed: ['Could not attach the payment proof. Please try again.', 'Не удалось прикрепить подтверждение оплаты. Попробуйте еще раз.'],
+        cryptoCopiedToast: [
+            'Copied. Make the transfer in {name}, then come back and upload the screenshot.',
+            'Скопировано. Сделайте перевод в {name}, затем вернитесь и загрузите скриншот.'
+        ],
+        cryptoPopupTitle: ['Transfer in {name}', 'Перевод в {name}'],
+        cryptoPopupText: [
+            'The ID is copied. Complete the transfer inside {name} and come back to upload the payment screenshot.',
+            'ID скопирован. Завершите перевод в {name} и вернитесь, чтобы загрузить скриншот оплаты.'
+        ],
+        cryptoPopupStay: ['Stay here', 'Остаться'],
+        cryptoPopupGo: ['Go to Telegram', 'В Telegram'],
+        selectedExchange: ['the selected exchange', 'выбранной бирже'],
+
+        guidePageTitle: ['License Testing, step by step', 'License Testing: пошаговая настройка'],
+        guidePageSubtitle: [
+            'For paid apps and in-app purchases, configure License Testing so testers install without real charges.',
+            'Для платных приложений и встроенных покупок настройте License Testing, чтобы тестировщики устанавливали приложение без реальных списаний.'
+        ],
+        guide1Title: ['Open Google Play Console', 'Откройте Google Play Console'],
+        guide1Text: ['Go to your app dashboard.', 'Перейдите на дашборд приложения.'],
+        guide2Title: ['Settings → License testing', 'Settings → License testing'],
+        guide2Text: ['Open license testing in the left sidebar.', 'Откройте раздел в левом меню.'],
+        guide3Title: ['Choose Google Groups', 'Выберите Google Groups'],
+        guide3Text: ['Select <strong>Google Groups</strong>, not Email lists.', 'Выберите <strong>Google Groups</strong>, а не Email lists.'],
+        guide4Title: ['Add the group email', 'Добавьте почту группы'],
+        guide4Text: ['Enter our group email and press Enter:', 'Введите почту нашей группы и нажмите Enter:'],
+        guide5Title: ['Keep the default response', 'Оставьте ответ по умолчанию'],
+        guide5Text: ['Under License response keep <strong>RESPOND_NORMALLY</strong>.', 'В License response оставьте <strong>RESPOND_NORMALLY</strong>.'],
+        guide6Title: ['Save the changes', 'Сохраните изменения'],
+        guide6Text: ['Press <strong>Save changes</strong> at the bottom of the page.', 'Нажмите <strong>Save changes</strong> внизу страницы.'],
+        guide7Title: ['Share the opt-in link', 'Поделитесь opt-in ссылкой'],
+        guide7Text: [
+            'Once closed testing is approved, copy the link from <strong>Closed testing → Testers → How testers join your test</strong>.',
+            'После одобрения закрытого тестирования скопируйте ссылку в <strong>Closed testing → Testers → How testers join your test</strong>.'
+        ]
+    };
 
     var wizardState = {
         step: 1,
@@ -168,12 +395,10 @@
         var badge = document.getElementById('gtw-prefill-badge-step' + step);
         var hint = document.getElementById('gtw-prefill-hint-step' + step);
         if (badge) {
-            badge.textContent = active ? 'Auto-fill from project' : 'Manual input';
+            badge.textContent = active ? L('autoFill') : L('manualInput');
         }
         if (hint) {
-            hint.textContent = active
-                ? 'Project defaults are applied'
-                : 'You are editing fields manually';
+            hint.textContent = active ? L('autoFillHint') : L('manualHint');
         }
     }
 
@@ -211,6 +436,18 @@
         return getWizardLang() === 'ru' ? ru : en;
     }
 
+    function L(key, vars) {
+        var pair = COPY[key];
+        if (!pair) return '';
+        var text = getWizardLang() === 'ru' ? pair[1] : pair[0];
+        if (vars) {
+            Object.keys(vars).forEach(function (name) {
+                text = text.split('{' + name + '}').join(String(vars[name]));
+            });
+        }
+        return text;
+    }
+
     function escapeHtml(value) {
         var div = document.createElement('div');
         div.textContent = String(value || '');
@@ -229,20 +466,18 @@
         return `
         <div id="guaranteed-test-wizard-step1-overlay" class="gtw-overlay" style="display: none;">
             <div class="gtw-header">
-                <button type="button" class="gtw-back-btn" id="gtw-step1-back-btn" aria-label="Back">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="19" y1="12" x2="5" y2="12"></line>
-                        <polyline points="12 19 5 12 12 5"></polyline>
+                <button type="button" class="gtw-back-btn" id="gtw-step1-back-btn" aria-label="${L('back')}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
-                <button type="button" class="gtw-forward-btn" id="gtw-step1-forward-btn" aria-label="Next" style="display: none;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
+                <button type="button" class="gtw-forward-btn" id="gtw-step1-forward-btn" aria-label="${L('next')}" style="display: none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
                 </button>
-                <h1 class="gtw-header-title">Private Testing ($20)</h1>
-                <p class="gtw-header-subtitle">STEP 1 OF 2</p>
+                <h1 class="gtw-header-title">${L('headerTitle')}</h1>
+                <p class="gtw-header-subtitle">${L('stepOf', { n: 1 })}</p>
                 <div class="gtw-progress-bar">
                     <div class="gtw-progress-step active"></div>
                     <div class="gtw-progress-step inactive"></div>
@@ -252,32 +487,32 @@
             <div class="gtw-body">
                 <div class="gtw-prefill-row" id="gtw-prefill-row-step1" style="display: none;">
                     <span class="gtw-prefill-hint" id="gtw-prefill-hint-step1"></span>
-                    <button type="button" id="gtw-prefill-badge-step1" class="gtw-prefill-badge">Auto-fill from project</button>
+                    <button type="button" id="gtw-prefill-badge-step1" class="gtw-prefill-badge">${L('autoFill')}</button>
                 </div>
 
                 <div class="gtw-form-group">
-                    <label class="gtw-label" for="gtw-app-name-input">APP NAME (REQUIRED)</label>
+                    <label class="gtw-label" for="gtw-app-name-input">${L('appNameLabel')}</label>
                     <div class="gtw-input-wrapper">
-                        <input type="text" id="gtw-app-name-input" class="gtw-input" placeholder="e.g. Twitter X" autocomplete="off" />
-                        <button type="button" class="gtw-paste-btn" id="gtw-paste-appname-btn" title="Paste from clipboard">
+                        <input type="text" id="gtw-app-name-input" class="gtw-input" placeholder="${L('appNamePlaceholder')}" autocomplete="off" />
+                        <button type="button" class="gtw-paste-btn" id="gtw-paste-appname-btn" title="${L('paste')}">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                                 <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                             </svg>
                         </button>
                     </div>
-                    <div class="gtw-helper-text" id="gtw-appname-helper">Please enter your app name.</div>
+                    <div class="gtw-helper-text" id="gtw-appname-helper">${L('appNameHelper')}</div>
                 </div>
 
                 <div class="gtw-form-group">
-                    <label class="gtw-label">IS YOUR APP FREE OR PAID?</label>
+                    <label class="gtw-label">${L('appTypeLabel')}</label>
                     <div class="gtw-type-grid">
                         <div class="gtw-type-card selected-free" id="gtw-type-free" data-type="free">
                             <svg class="gtw-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <polyline points="9 12 11.5 14.5 15.5 9.5"></polyline>
                             </svg>
-                            <span class="gtw-type-title">Free App</span>
+                            <span class="gtw-type-title">${L('freeApp')}</span>
                         </div>
 
                         <div class="gtw-type-card" id="gtw-type-paid" data-type="paid">
@@ -285,28 +520,26 @@
                                 <line x1="12" y1="1" x2="12" y2="23"></line>
                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                             </svg>
-                            <span class="gtw-type-title">Paid App</span>
+                            <span class="gtw-type-title">${L('paidApp')}</span>
                         </div>
                     </div>
 
                     <div id="gtw-inline-license-block" class="gtw-inline-card" style="display: none;">
-                        <h3 class="gtw-inline-title">Setup License Testing</h3>
-                        <p class="gtw-inline-subtitle">This configuration allows testers to download your paid app for free.</p>
-                        <p class="gtw-inline-desc">
-                            Testers cannot install paid apps for free unless they are added to <strong>License Testing</strong>. This allows our team to download and test your app without creating a sale.
-                        </p>
+                        <h3 class="gtw-inline-title">${L('licenseTitle')}</h3>
+                        <p class="gtw-inline-subtitle">${L('licenseSubtitle')}</p>
+                        <p class="gtw-inline-desc">${L('licenseDesc')}</p>
                         <ul class="gtw-inline-list">
-                            <li>Go to <strong>Settings &rarr; License testing</strong></li>
-                            <li>Select <strong>Google Groups</strong> as tester type</li>
-                            <li>Add <strong>${TESTER_GROUP_EMAIL}</strong></li>
-                            <li>Keep <strong>RESPOND_NORMALLY</strong> &amp; Save</li>
+                            <li>${L('licenseStep1')}</li>
+                            <li>${L('licenseStep2')}</li>
+                            <li>${L('licenseStep3', { email: TESTER_GROUP_EMAIL })}</li>
+                            <li>${L('licenseStep4')}</li>
                         </ul>
                         <button type="button" class="gtw-inline-guide-btn" id="gtw-inline-guide-btn">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                                 <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
                             </svg>
-                            <span>View Setup Guide</span>
+                            <span>${L('setupGuide')}</span>
                         </button>
                     </div>
                 </div>
@@ -314,38 +547,38 @@
                 <label class="gtw-confirm-row" id="gtw-details-confirm-row" style="display: none;">
                     <input type="checkbox" id="gtw-details-confirm-checkbox" />
                     <span class="gtw-confirm-label-wrap">
-                        <span class="gtw-confirm-label">I confirm the <strong>app name</strong> and <strong>type</strong> are correct for this order.</span>
-                        <span class="gtw-confirm-warning" id="gtw-details-confirm-warning" style="display: none;">⚠️ Please confirm the prefilled app details.</span>
+                        <span class="gtw-confirm-label">${L('confirmDetails')}</span>
+                        <span class="gtw-confirm-warning" id="gtw-details-confirm-warning" style="display: none;">${L('confirmDetailsWarn')}</span>
                     </span>
                 </label>
             </div>
 
             <div class="gtw-fixed-footer">
                 <div class="gtw-footer-content">
-                    <button type="button" class="gtw-continue-btn" id="gtw-step1-continue-btn">CONTINUE</button>
+                    <button type="button" class="gtw-continue-btn" id="gtw-step1-continue-btn">${L('continue')}</button>
                 </div>
             </div>
 
             <div id="gtw-license-modal-overlay" class="gtw-modal-overlay" style="display: none;">
                 <div class="gtw-modal-card">
-                    <h3 class="gtw-modal-title">Setup License Testing</h3>
-                    <p class="gtw-modal-desc">This configuration allows testers to download your paid app for free.</p>
+                    <h3 class="gtw-modal-title">${L('licenseTitle')}</h3>
+                    <p class="gtw-modal-desc">${L('licenseSubtitle')}</p>
                     <div class="gtw-modal-steps">
                         <div class="gtw-modal-step">
                             <span class="gtw-step-num">1</span>
-                            <span class="gtw-step-text">Go to <strong>Settings &rarr; License testing</strong></span>
+                            <span class="gtw-step-text">${L('licenseStep1')}</span>
                         </div>
                         <div class="gtw-modal-step">
                             <span class="gtw-step-num">2</span>
-                            <span class="gtw-step-text">Select <strong>Google Groups</strong> as tester type</span>
+                            <span class="gtw-step-text">${L('licenseStep2')}</span>
                         </div>
                         <div class="gtw-modal-step">
                             <span class="gtw-step-num">3</span>
                             <div class="gtw-step-content">
-                                <span class="gtw-step-text">Add our tester group email:</span>
+                                <span class="gtw-step-text">${L('licenseStep3Short')}</span>
                                 <div class="gtw-copy-box">
                                     <span class="gtw-copy-email" id="gtw-modal-email">${TESTER_GROUP_EMAIL}</span>
-                                    <button type="button" class="gtw-copy-btn" id="gtw-modal-copy-btn" title="Copy email">
+                                    <button type="button" class="gtw-copy-btn" id="gtw-modal-copy-btn" title="${L('copy')}">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -356,7 +589,7 @@
                         </div>
                         <div class="gtw-modal-step">
                             <span class="gtw-step-num">4</span>
-                            <span class="gtw-step-text">Keep <strong>RESPOND_NORMALLY</strong> &amp; Save</span>
+                            <span class="gtw-step-text">${L('licenseStep4')}</span>
                         </div>
                     </div>
                     <button type="button" class="gtw-guide-btn" id="gtw-modal-guide-btn">
@@ -364,11 +597,11 @@
                             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
                         </svg>
-                        <span>VIEW SETUP GUIDE</span>
+                        <span>${L('setupGuide')}</span>
                     </button>
                     <div class="gtw-modal-actions">
-                        <button type="button" class="gtw-modal-cancel-btn" id="gtw-modal-cancel-btn">CANCEL</button>
-                        <button type="button" class="gtw-modal-confirm-btn" id="gtw-modal-confirm-btn">I UNDERSTAND</button>
+                        <button type="button" class="gtw-modal-cancel-btn" id="gtw-modal-cancel-btn">${L('cancel')}</button>
+                        <button type="button" class="gtw-modal-confirm-btn" id="gtw-modal-confirm-btn">${L('gotIt')}</button>
                     </div>
                 </div>
             </div>
@@ -380,62 +613,62 @@
         return `
         <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;">
             <div class="gtw-guide-page">
-                <button type="button" class="gtw-guide-page-close" id="gtw-license-guide-close" aria-label="Close">&times;</button>
-                <h2 class="gtw-guide-page-title">Step-by-Step Setup for License Testing</h2>
-                <p class="gtw-guide-page-subtitle">For paid apps or in-app purchases, configure License Testing so testers can install without real charges.</p>
+                <button type="button" class="gtw-guide-page-close" id="gtw-license-guide-close" aria-label="${L('close')}">&times;</button>
+                <h2 class="gtw-guide-page-title">${L('guidePageTitle')}</h2>
+                <p class="gtw-guide-page-subtitle">${L('guidePageSubtitle')}</p>
 
                 <div class="gtw-guide-page-steps">
                     <div class="gtw-guide-page-step">
                         <span class="gtw-guide-page-num">1</span>
                         <div class="gtw-guide-page-content">
-                            <strong>Open Google Play Console</strong>
-                            <p>Go to your app dashboard in Play Console.</p>
+                            <strong>${L('guide1Title')}</strong>
+                            <p>${L('guide1Text')}</p>
                         </div>
                     </div>
                     <div class="gtw-guide-page-step">
                         <span class="gtw-guide-page-num">2</span>
                         <div class="gtw-guide-page-content">
-                            <strong>Settings → License testing</strong>
-                            <p>Open license testing settings from the left sidebar.</p>
+                            <strong>${L('guide2Title')}</strong>
+                            <p>${L('guide2Text')}</p>
                         </div>
                     </div>
                     <div class="gtw-guide-page-step">
                         <span class="gtw-guide-page-num">3</span>
                         <div class="gtw-guide-page-content">
-                            <strong>Choose Google Groups</strong>
-                            <p>Select <strong>Google Groups</strong> (not Email lists) for tester type.</p>
+                            <strong>${L('guide3Title')}</strong>
+                            <p>${L('guide3Text')}</p>
                         </div>
                     </div>
                     <div class="gtw-guide-page-step">
                         <span class="gtw-guide-page-num">4</span>
                         <div class="gtw-guide-page-content">
-                            <strong>Add Google Group email</strong>
-                            <p>Enter our testing group email and press Enter:</p>
+                            <strong>${L('guide4Title')}</strong>
+                            <p>${L('guide4Text')}</p>
                             <div class="gtw-copy-box">
                                 <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
-                                <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="Copy email">Copy</button>
+                                <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="${L('copy')}">${L('copy')}</button>
                             </div>
                         </div>
                     </div>
                     <div class="gtw-guide-page-step">
                         <span class="gtw-guide-page-num">5</span>
                         <div class="gtw-guide-page-content">
-                            <strong>Keep license response default</strong>
-                            <p>Under License response, keep <strong>RESPOND_NORMALLY</strong>.</p>
+                            <strong>${L('guide5Title')}</strong>
+                            <p>${L('guide5Text')}</p>
                         </div>
                     </div>
                     <div class="gtw-guide-page-step">
                         <span class="gtw-guide-page-num">6</span>
                         <div class="gtw-guide-page-content">
-                            <strong>Save changes</strong>
-                            <p>Click <strong>Save changes</strong> at the bottom of the page.</p>
+                            <strong>${L('guide6Title')}</strong>
+                            <p>${L('guide6Text')}</p>
                         </div>
                     </div>
                     <div class="gtw-guide-page-step">
                         <span class="gtw-guide-page-num">7</span>
                         <div class="gtw-guide-page-content">
-                            <strong>Share opt-in link with testers</strong>
-                            <p>After closed testing is approved, copy the opt-in link from <strong>Closed testing → Testers → How testers join your test</strong>.</p>
+                            <strong>${L('guide7Title')}</strong>
+                            <p>${L('guide7Text')}</p>
                         </div>
                     </div>
                 </div>
@@ -468,16 +701,15 @@
         return `
         <div id="guaranteed-test-wizard-step2-overlay" class="gtw-overlay gtw-step2-overlay" style="display: none;">
             <div class="gtw-header">
-                <button type="button" class="gtw-back-btn" id="gtw-step2-back-btn" aria-label="Back">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="19" y1="12" x2="5" y2="12"></line>
-                        <polyline points="12 19 5 12 12 5"></polyline>
+                <button type="button" class="gtw-back-btn" id="gtw-step2-back-btn" aria-label="${L('back')}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
-                <h1 class="gtw-header-title">Private Testing ($20)</h1>
-                <p class="gtw-header-subtitle">STEP 2 OF 2</p>
+                <h1 class="gtw-header-title">${L('headerTitle')}</h1>
+                <p class="gtw-header-subtitle">${L('stepOf', { n: 2 })}</p>
                 <div class="gtw-progress-bar">
-                    <div class="gtw-progress-step inactive"></div>
+                    <div class="gtw-progress-step active"></div>
                     <div class="gtw-progress-step active"></div>
                 </div>
             </div>
@@ -485,27 +717,27 @@
             <div class="gtw-body">
                 <div class="gtw-prefill-row" id="gtw-prefill-row-step2" style="display: none;">
                     <span class="gtw-prefill-hint" id="gtw-prefill-hint-step2"></span>
-                    <button type="button" id="gtw-prefill-badge-step2" class="gtw-prefill-badge">Auto-fill from project</button>
+                    <button type="button" id="gtw-prefill-badge-step2" class="gtw-prefill-badge">${L('autoFill')}</button>
                 </div>
 
                 <div class="gtw-form-group">
-                    <label class="gtw-label" for="gtw-link-input">PASTE YOUR TESTING LINK</label>
+                    <label class="gtw-label" for="gtw-link-input">${L('linkLabel')}</label>
                     <div class="gtw-input-wrapper">
-                        <input type="url" id="gtw-link-input" class="gtw-input" placeholder="https://play.google.com/apps/testing/com.example.app" autocomplete="off" />
-                        <button type="button" class="gtw-clear-btn" id="gtw-clear-link-btn" title="Clear" style="display: none;">
+                        <input type="url" id="gtw-link-input" class="gtw-input" placeholder="${L('linkPlaceholder')}" autocomplete="off" />
+                        <button type="button" class="gtw-clear-btn" id="gtw-clear-link-btn" title="${L('clear')}" style="display: none;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                 <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
                         </button>
-                        <button type="button" class="gtw-paste-btn" id="gtw-paste-link-btn" title="Paste from clipboard">
+                        <button type="button" class="gtw-paste-btn" id="gtw-paste-link-btn" title="${L('paste')}">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                                 <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                             </svg>
                         </button>
                     </div>
-                    <div class="gtw-helper-text" id="gtw-link-helper">Paste the "Join on Android" link you copied from Play Console.</div>
+                    <div class="gtw-helper-text" id="gtw-link-helper">${L('linkHelper')}</div>
                     <div id="gtw-link-verification" class="gtw-link-verification" style="display: none;">
                         <div class="gtw-link-verification-head">
                             <span class="gtw-link-verification-icon" aria-hidden="true">
@@ -515,43 +747,43 @@
                                     <path d="M8.2 12.2l2.4 2.3 5.2-5.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
                             </span>
-                            <span class="gtw-link-verification-label">LINK VERIFICATION</span>
+                            <span class="gtw-link-verification-label">${L('linkCheck')}</span>
                         </div>
                         <div class="gtw-link-verification-url" id="gtw-link-verification-url"></div>
-                        <p class="gtw-link-verification-note">Please confirm your Package ID or URL carefully before submitting. Errors may delay your testing cycle.</p>
+                        <p class="gtw-link-verification-note">${L('linkCheckNote')}</p>
                         <label class="gtw-confirm-row gtw-confirm-row--inside" id="gtw-link-confirm-row" style="display: none;">
                             <input type="checkbox" id="gtw-link-confirm-checkbox" />
                             <span class="gtw-confirm-label-wrap">
-                                <span class="gtw-confirm-label">I confirm this testing link is correct.</span>
-                                <span class="gtw-confirm-warning" id="gtw-link-confirm-warning" style="display: none;">⚠️ Please confirm the prefilled testing link.</span>
+                                <span class="gtw-confirm-label">${L('confirmLink')}</span>
+                                <span class="gtw-confirm-warning" id="gtw-link-confirm-warning" style="display: none;">${L('confirmLinkWarn')}</span>
                             </span>
                         </label>
                     </div>
                 </div>
 
                 <div id="gtw-step2-project-checklist" class="gtw-setup-checklist" style="display: none;">
-                    <p class="gtw-setup-checklist-lead">Confirm your Play Console is already configured for this project:</p>
+                    <p class="gtw-setup-checklist-lead">${L('checklistLead')}</p>
                     <label class="gtw-checklist-item">
                         <input type="checkbox" id="gtw-check-console-email" />
                         <span>
-                            <strong>I added DevTestHub Google Group email in Play Console</strong>
-                            <small>Selected: Google Groups</small>
-                            <small>Added: ${TESTER_GROUP_EMAIL}</small>
+                            <strong>${L('checklistEmail')}</strong>
+                            <small>${L('checklistEmailNote1')}</small>
+                            <small>${L('checklistEmailNote2', { email: TESTER_GROUP_EMAIL })}</small>
                         </span>
                     </label>
                     <label class="gtw-checklist-item">
                         <input type="checkbox" id="gtw-check-console-countries" />
-                        <span><strong>I selected all countries</strong></span>
+                        <span><strong>${L('checklistCountries')}</strong></span>
                     </label>
                     <label class="gtw-checklist-item">
                         <input type="checkbox" id="gtw-check-console-review" />
-                        <span><strong>I sent changes for review</strong></span>
+                        <span><strong>${L('checklistReview')}</strong></span>
                     </label>
                 </div>
 
                 <div id="gtw-step2-instructions-accordion" class="gtw-step2-accordion">
                     <button type="button" class="gtw-step2-accordion-head" id="gtw-step2-accordion-head" style="display: none;" aria-expanded="false">
-                        <span>❓ How to set up</span>
+                        <span>${L('howToSetUp')}</span>
                         <span class="gtw-step2-accordion-arrow" aria-hidden="true">▼</span>
                     </button>
                     <div class="gtw-step2-accordion-panel" id="gtw-step2-instructions-panel">
@@ -566,11 +798,11 @@
                                     </svg>
                                 </div>
                                 <div class="gtw-card-content">
-                                    <h4 class="gtw-card-title">1. Add Testers</h4>
-                                    <p class="gtw-card-text">Go to <strong>Closed Testing &rarr; Testers</strong> and add this Google Group:</p>
-                                    <div class="gtw-copy-box" style="margin-top: 4px;">
+                                    <h4 class="gtw-card-title">1. ${L('instr1Title')}</h4>
+                                    <p class="gtw-card-text">${L('instr1Text')}</p>
+                                    <div class="gtw-copy-box" style="margin-top: 8px;">
                                         <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
-                                        <button type="button" class="gtw-copy-btn" id="gtw-card-copy-btn" title="Copy email">
+                                        <button type="button" class="gtw-copy-btn" id="gtw-card-copy-btn" title="${L('copy')}">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -589,8 +821,8 @@
                                     </svg>
                                 </div>
                                 <div class="gtw-card-content">
-                                    <h4 class="gtw-card-title">2. Enable Countries</h4>
-                                    <p class="gtw-card-text">In <strong>Countries/regions</strong> section, enable <strong>all countries</strong> to allow testers worldwide.</p>
+                                    <h4 class="gtw-card-title">2. ${L('instr2Title')}</h4>
+                                    <p class="gtw-card-text">${L('instr2Text')}</p>
                                 </div>
                             </div>
 
@@ -602,11 +834,9 @@
                                     </svg>
                                 </div>
                                 <div class="gtw-card-content">
-                                    <h4 class="gtw-card-title">3. Send for Review</h4>
-                                    <p class="gtw-card-text">Click <strong>"Send X changes for review"</strong> button in your Play Console to submit your app.</p>
-                                    <div class="gtw-note-box">
-                                        💡 While waiting for review, you can submit the app here - review usually takes only a few minutes.
-                                    </div>
+                                    <h4 class="gtw-card-title">3. ${L('instr3Title')}</h4>
+                                    <p class="gtw-card-text">${L('instr3Text')}</p>
+                                    <div class="gtw-note-box">${L('instr3Note')}</div>
                                 </div>
                             </div>
 
@@ -618,8 +848,8 @@
                                     </svg>
                                 </div>
                                 <div class="gtw-card-content">
-                                    <h4 class="gtw-card-title">4. Copy Testing Link</h4>
-                                    <p class="gtw-card-text">Find <strong>"How testers join your test"</strong> section and copy the <strong>"Join on Android"</strong> link.</p>
+                                    <h4 class="gtw-card-title">4. ${L('instr4Title')}</h4>
+                                    <p class="gtw-card-text">${L('instr4Text')}</p>
                                 </div>
                             </div>
                         </div>
@@ -633,8 +863,8 @@
                                     </svg>
                                 </div>
                                 <div class="gtw-guide-card-info">
-                                    <div class="gtw-guide-card-title">Testing Guide</div>
-                                    <div class="gtw-guide-card-desc">Need help? View the general setup guide.</div>
+                                    <div class="gtw-guide-card-title">${L('guideCardTitle')}</div>
+                                    <div class="gtw-guide-card-desc">${L('guideCardDesc')}</div>
                                 </div>
                             </div>
                             <svg class="gtw-guide-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -649,7 +879,7 @@
 
             <div class="gtw-fixed-footer">
                 <div class="gtw-footer-content">
-                    <button type="button" class="gtw-continue-btn" id="gtw-proceed-payment-btn">PROCEED TO PAYMENT</button>
+                    <button type="button" class="gtw-continue-btn" id="gtw-proceed-payment-btn">${L('proceedPayment')}</button>
                 </div>
             </div>
         </div>
@@ -664,58 +894,57 @@
         return `
         <div id="guaranteed-test-wizard-payment-overlay" class="gtw-overlay" style="display: none;">
             <div class="gtw-header">
-                <button type="button" class="gtw-back-btn" id="gtw-payment-back-btn" aria-label="Back">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="19" y1="12" x2="5" y2="12"></line>
-                        <polyline points="12 19 5 12 12 5"></polyline>
+                <button type="button" class="gtw-back-btn" id="gtw-payment-back-btn" aria-label="${L('back')}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
-                <h1 class="gtw-header-title">Private Testing ($20)</h1>
-                <p class="gtw-header-subtitle">FINAL STEP</p>
+                <h1 class="gtw-header-title">${L('headerTitle')}</h1>
+                <p class="gtw-header-subtitle">${L('paymentStep')}</p>
             </div>
 
             <div class="gtw-body">
                 <div class="gtw-plan-card">
-                    <div class="gtw-plan-label">YOUR TESTING PLAN</div>
-                    <h2 class="gtw-plan-title">Production Access Sprint</h2>
+                    <div class="gtw-plan-label">${L('planLabel')}</div>
+                    <h2 class="gtw-plan-title">${L('planTitle')}</h2>
                     <div class="gtw-plan-price-row">
                         <span class="gtw-plan-price">$20</span>
-                        <span class="gtw-plan-subtitle">from (crypto)</span>
+                        <span class="gtw-plan-subtitle">${L('planPriceNote')}</span>
                     </div>
                     <div class="gtw-plan-features">
                         <div class="gtw-feature-item">
                             <svg class="gtw-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
-                            <span><strong>12 real testers</strong> added within 12 hours</span>
+                            <span>${L('planFeature1')}</span>
                         </div>
                         <div class="gtw-feature-item">
                             <svg class="gtw-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
-                            <span><strong>14-day coverage</strong> for your closed test</span>
+                            <span>${L('planFeature2')}</span>
                         </div>
                         <div class="gtw-feature-item">
                             <svg class="gtw-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
-                            <span><strong>Production guidance</strong> and form answers</span>
+                            <span>${L('planFeature3')}</span>
                         </div>
                     </div>
                     <div class="gtw-guarantee-box">
-                        <svg class="gtw-guarantee-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg class="gtw-guarantee-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                             <polyline points="9 12 11 14 15 10"></polyline>
                         </svg>
                         <div>
-                            <h4 class="gtw-guarantee-title">Access guarantee</h4>
-                            <p class="gtw-guarantee-text">Support continues until your app is ready for production review.</p>
+                            <h4 class="gtw-guarantee-title">${L('guaranteeTitle')}</h4>
+                            <p class="gtw-guarantee-text">${L('guaranteeText')}</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="gtw-form-group">
-                    <label class="gtw-label">CHOOSE PAYMENT METHOD</label>
+                    <label class="gtw-label">${L('methodLabel')}</label>
                     <div class="gtw-payment-methods">
                         <div class="gtw-method-card" id="gtw-method-crypto" data-method="crypto">
                             <div class="gtw-method-header">
@@ -723,14 +952,14 @@
                                     <div class="gtw-method-radio"></div>
                                     <div class="gtw-method-info">
                                         <div class="gtw-method-title-row">
-                                            <span class="gtw-method-title">Crypto Transfer</span>
-                                            <span class="gtw-method-badge gtw-badge-rec">RECOMMENDED</span>
+                                            <span class="gtw-method-title">${L('methodCrypto')}</span>
+                                            <span class="gtw-method-badge gtw-badge-rec">${L('badgeRecommended')}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <span class="gtw-method-price">$20</span>
                             </div>
-                            <p class="gtw-method-action-hint">Select an exchange to continue</p>
+                            <p class="gtw-method-action-hint">${L('hintCrypto')}</p>
                             <div class="gtw-exchange-picker" id="gtw-exchange-picker">
                                 ${createExchangePickerHTML()}
                             </div>
@@ -742,14 +971,14 @@
                                     <div class="gtw-method-radio"></div>
                                     <div class="gtw-method-info">
                                         <div class="gtw-method-title-row">
-                                            <span class="gtw-method-title">PayPal</span>
-                                            <span class="gtw-method-badge gtw-badge-fee">+ processing fee</span>
+                                            <span class="gtw-method-title">${L('methodPaypal')}</span>
+                                            <span class="gtw-method-badge gtw-badge-fee">${L('badgeFee')}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <span class="gtw-method-price">$23</span>
                             </div>
-                            <p class="gtw-method-action-hint">Tap to open payment steps</p>
+                            <p class="gtw-method-action-hint">${L('hintSteps')}</p>
                         </div>
 
                         <div class="gtw-method-card" id="gtw-method-rub" data-method="rub">
@@ -758,14 +987,14 @@
                                     <div class="gtw-method-radio"></div>
                                     <div class="gtw-method-info">
                                         <div class="gtw-method-title-row">
-                                            <span class="gtw-method-title">${fiatCopy('Bank / Local currency', 'Банк / местная валюта')}</span>
-                                            <span class="gtw-method-badge gtw-badge-fee">+ service fee</span>
+                                            <span class="gtw-method-title">${L('methodFiat')}</span>
+                                            <span class="gtw-method-badge gtw-badge-fee">${L('badgeFee')}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <span class="gtw-method-price">$23</span>
                             </div>
-                            <p class="gtw-method-action-hint">${fiatCopy('Tap to open payment steps', 'Нажмите, чтобы открыть шаги оплаты')}</p>
+                            <p class="gtw-method-action-hint">${L('hintSteps')}</p>
                         </div>
                     </div>
                 </div>
@@ -773,7 +1002,7 @@
 
             <div class="gtw-fixed-footer">
                 <div class="gtw-footer-content">
-                    <button type="button" class="gtw-continue-btn" id="gtw-pay-btn" disabled>SELECT PAYMENT METHOD</button>
+                    <button type="button" class="gtw-continue-btn" id="gtw-pay-btn" disabled>${L('selectMethod')}</button>
                 </div>
             </div>
         </div>
@@ -1257,19 +1486,19 @@
             ? '<svg class="step-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
             : '2';
 
-        var title = 'Payment';
-        var subtitle = 'Complete the steps below, then submit your order.';
+        var title = L('paymentStep');
+        var subtitle = '';
         var step1Title = '';
         var step1Desc = '';
         var step1Actions = '';
 
         if (method === 'crypto') {
             var exchange = getExchangeById(wizardState.paymentExchange);
-            var exName = exchange ? exchange.name : 'Exchange';
-            title = 'Crypto Transfer — ' + exName;
-            subtitle = 'Send $' + amount + ' via internal transfer.';
-            step1Title = 'Internal transfer';
-            step1Desc = 'Copy the ' + (exchange ? exchange.label : 'ID') + ' below and send an internal transfer inside the exchange (not on-chain).';
+            var exName = exchange ? exchange.name : L('selectedExchange');
+            title = L('flowCryptoTitle', { name: exName });
+            subtitle = L('flowCryptoSubtitle', { amount: amount });
+            step1Title = L('flowCryptoStep');
+            step1Desc = L('flowCryptoDesc', { label: exchange ? exchange.label : 'ID' });
             if (exchange) {
                 step1Actions = `
                     <div class="gtw-credential-row">
@@ -1278,23 +1507,23 @@
                         </div>
                         <div class="gtw-credential-box">
                             <span class="gtw-credential-value">${exchange.label}: ${exchange.value}</span>
-                            <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">Copy</button>
+                            <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">${L('copy')}</button>
                         </div>
                     </div>
                 `;
             }
         } else if (method === 'paypal') {
-            title = 'PayPal Transfer';
-            subtitle = 'Send $' + amount + ' to our PayPal account.';
-            step1Title = 'Copy PayPal email & pay';
-            step1Desc = 'Copy the email, then open PayPal and complete the payment.';
+            title = L('flowPaypalTitle');
+            subtitle = L('flowPaypalSubtitle', { amount: amount });
+            step1Title = L('flowPaypalStep');
+            step1Desc = L('flowPaypalDesc');
             step1Actions = `
                 <div class="gtw-credential-box">
                     <span class="gtw-credential-value">${PAYPAL_EMAIL}</span>
-                    <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">Copy</button>
+                    <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">${L('copy')}</button>
                 </div>
                 <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-paypal-btn">
-                    <span>Open PayPal</span>
+                    <span>${L('openPaypal')}</span>
                     <svg class="gtw-external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                         <polyline points="15 3 21 3 21 9"></polyline>
@@ -1303,16 +1532,10 @@
                 </button>
             `;
         } else if (method === 'rub') {
-            title = fiatCopy('Bank / Local currency', 'Банк / местная валюта');
-            subtitle = fiatCopy(
-                'The manager will calculate the exact local-currency amount for $' + amount + '.',
-                'Менеджер рассчитает точную сумму в местной валюте для $' + amount + '.'
-            );
-            step1Title = fiatCopy('Get payment requisites', 'Получить реквизиты');
-            step1Desc = fiatCopy(
-                'Choose your currency and bank before contacting the manager.',
-                'Выберите валюту и банк перед обращением к менеджеру.'
-            );
+            title = L('flowFiatTitle');
+            subtitle = L('flowFiatSubtitle', { amount: amount });
+            step1Title = L('flowFiatStep');
+            step1Desc = L('flowFiatDesc');
             step1Actions = `
                 <div class="gtw-fiat-currency-grid">
                     ${FIAT_CURRENCIES.map(function (currency) {
@@ -1324,20 +1547,17 @@
                     }).join('')}
                 </div>
                 <div class="gtw-fiat-bank-field">
-                    <label for="gtw-fiat-bank-input">${fiatCopy('Your bank', 'Ваш банк')}</label>
-                    <input type="text" id="gtw-fiat-bank-input" class="gtw-input" value="${escapeHtml(wizardState.fiatBankName)}" placeholder="Ziraat, Kaspi, Т-Банк, Сбер" autocomplete="organization" />
+                    <label for="gtw-fiat-bank-input">${L('fiatBankLabel')}</label>
+                    <input type="text" id="gtw-fiat-bank-input" class="gtw-input" value="${escapeHtml(wizardState.fiatBankName)}" placeholder="${L('fiatBankPlaceholder')}" autocomplete="organization" />
                 </div>
                 <label class="gtw-fiat-personal-account">
                     <input type="checkbox" id="gtw-fiat-personal-account" ${wizardState.fiatPersonalAccount ? 'checked' : ''} />
-                    <span>${fiatCopy('Pay from personal account', 'Оплачиваю с личного счета')}</span>
+                    <span>${L('fiatPersonal')}</span>
                 </label>
-                <p class="gtw-fiat-tip">${fiatCopy(
-                    '💡 The manager will convert $23 into your local currency at the current exchange rate and send the exact amount and requisites in chat.',
-                    '💡 Менеджер пересчитает $23 в вашу местную валюту по текущему курсу и пришлет точную сумму и реквизиты в чате.'
-                )}</p>
+                <p class="gtw-fiat-tip">${L('fiatTip', { amount: amount })}</p>
                 <div class="gtw-helper-text error" id="gtw-fiat-helper" style="display: none;"></div>
                 <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-tg-btn">
-                    ${fiatCopy('Get requisites', 'Получить реквизиты')}
+                    ${L('fiatGetRequisites')}
                 </button>
             `;
         }
@@ -1352,8 +1572,8 @@
                         </svg>
                     </div>
                     <div class="preview-info">
-                        <div class="preview-title">Screenshot uploaded</div>
-                        <div class="preview-subtitle">Tap ✕ to replace</div>
+                        <div class="preview-title">${L('uploadedTitle')}</div>
+                        <div class="preview-subtitle">${L('uploadedSubtitle')}</div>
                     </div>
                     <button type="button" class="preview-remove-btn" id="gtw-flow-remove-screenshot">✕</button>
                 </div>
@@ -1365,7 +1585,7 @@
                     <input type="file" id="gtw-flow-file" accept="image/*" style="display: none;">
                     <div class="upload-zone-content">
                         <svg class="upload-zone-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                        <span class="upload-zone-text">Upload payment screenshot</span>
+                        <span class="upload-zone-text">${L('uploadCta')}</span>
                     </div>
                 </div>
             `;
@@ -1395,8 +1615,8 @@
                         <div class="review-step-num">${step2Num}</div>
                     </div>
                     <div class="review-step-content">
-                        <div class="review-step-title">Upload payment screenshot</div>
-                        <div class="review-step-desc">Attach proof of your completed transfer.</div>
+                        <div class="review-step-title">${L('uploadStepTitle')}</div>
+                        <div class="review-step-desc">${L('uploadStepDesc')}</div>
                         ${uploadHtml}
                     </div>
                 </div>
@@ -1404,9 +1624,9 @@
 
             <div class="gtw-payment-flow-footer">
                 <button type="button" class="gtw-continue-btn" id="gtw-flow-submit-btn" ${canSubmit ? '' : 'disabled'}>
-                    SUBMIT ORDER ($${amount})
+                    ${L('submitOrder', { amount: amount })}
                 </button>
-                <button type="button" class="gtw-payment-flow-cancel" id="gtw-flow-cancel-btn">Cancel</button>
+                <button type="button" class="gtw-payment-flow-cancel" id="gtw-flow-cancel-btn">${L('cancel')}</button>
             </div>
         `;
 
@@ -1570,7 +1790,7 @@
     function clearAppnameError() {
         var helper = document.getElementById('gtw-appname-helper');
         if (helper) {
-            helper.textContent = 'Please enter your app name.';
+            helper.textContent = L('appNameHelper');
             helper.classList.remove('error');
         }
     }
@@ -1582,7 +1802,7 @@
         if (!appName) {
             var helper = document.getElementById('gtw-appname-helper');
             if (helper) {
-                helper.textContent = '⚠️ App name is required to continue.';
+                helper.textContent = L('appNameRequired');
                 helper.classList.add('error');
             }
             if (input) input.focus();
@@ -1610,7 +1830,7 @@
     function clearLinkError() {
         var helper = document.getElementById('gtw-link-helper');
         if (helper) {
-            helper.textContent = 'Paste the "Join on Android" link you copied from Play Console.';
+            helper.textContent = L('linkHelper');
             helper.classList.remove('error');
         }
     }
@@ -1644,7 +1864,7 @@
         if (!link) {
             var helperEmpty = document.getElementById('gtw-link-helper');
             if (helperEmpty) {
-                helperEmpty.textContent = '⚠️ Testing link is required to proceed.';
+                helperEmpty.textContent = L('linkRequired');
                 helperEmpty.classList.add('error');
             }
             updateLinkVerificationUI();
@@ -1655,7 +1875,7 @@
         if (!isValidTestingLink(link)) {
             var helperInvalid = document.getElementById('gtw-link-helper');
             if (helperInvalid) {
-                helperInvalid.textContent = '⚠️ Enter a valid Play Console testing link (play.google.com/apps/testing/…).';
+                helperInvalid.textContent = L('linkInvalid');
                 helperInvalid.classList.add('error');
             }
             updateLinkVerificationUI();
@@ -1674,7 +1894,7 @@
             if (!checklist.email || !checklist.countries || !checklist.review) {
                 var helperChecklist = document.getElementById('gtw-link-helper');
                 if (helperChecklist) {
-                    helperChecklist.textContent = '⚠️ Please confirm all Play Console setup checkboxes, including the standard DevTestHub Google Group.';
+                    helperChecklist.textContent = L('checklistRequired');
                     helperChecklist.classList.add('error');
                 }
                 return;
@@ -1707,10 +1927,12 @@
         if (payBtn) {
             if (method === 'crypto') {
                 payBtn.disabled = !wizardState.paymentExchange;
-                payBtn.textContent = wizardState.paymentExchange ? 'CONTINUE WITH EXCHANGE' : 'SELECT EXCHANGE';
+                payBtn.textContent = wizardState.paymentExchange
+                    ? L('openSteps', { amount: getPaymentAmount(method) })
+                    : L('selectExchange');
             } else {
                 payBtn.disabled = false;
-                payBtn.textContent = 'OPEN PAYMENT STEPS ($' + getPaymentAmount(method) + ')';
+                payBtn.textContent = L('openSteps', { amount: getPaymentAmount(method) });
             }
         }
     }
@@ -1749,7 +1971,7 @@
         var helper = document.getElementById('gtw-fiat-helper');
         if (!currency || !bankName) {
             if (helper) {
-                helper.textContent = fiatCopy('⚠️ Choose a currency and enter your bank name.', '⚠️ Выберите валюту и укажите название банка.');
+                helper.textContent = L('fiatMissing');
                 helper.style.display = 'block';
             }
             return;
@@ -1757,7 +1979,7 @@
 
         var originalText = button.textContent;
         button.disabled = true;
-        button.textContent = fiatCopy('Creating order...', 'Создаем заказ...');
+        button.textContent = L('fiatCreating');
         try {
             var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders', {
                 method: 'POST',
@@ -1802,7 +2024,7 @@
         } catch (error) {
             console.error('Fiat order create failed:', error);
             if (helper) {
-                helper.textContent = fiatCopy('⚠️ Could not create the order. Please try again.', '⚠️ Не удалось создать заказ. Попробуйте еще раз.');
+                helper.textContent = L('fiatCreateFailed');
                 helper.style.display = 'block';
             }
             button.disabled = false;
@@ -1848,7 +2070,7 @@
         var originalBtnText = submitBtn ? submitBtn.textContent : '';
         if (submitBtn) {
             submitBtn.disabled = true;
-            submitBtn.textContent = 'PROCESSING...';
+            submitBtn.textContent = L('submitting');
         }
 
         try {
@@ -1890,16 +2112,16 @@
             hideGuaranteedTestWizardStep2();
             hideGuaranteedTestWizardStep1();
             if (typeof showToast === 'function') {
-                showToast('Order ' + publicCode + ' submitted. Check Telegram for confirmation.');
+                showToast(L('toastSubmitted', { code: publicCode }));
             }
         } catch (error) {
             console.error('Guaranteed order submit failed:', error);
             if (typeof showToast === 'function') {
-                showToast('Failed to create order. Please try again.');
+                showToast(L('toastFailed'));
             }
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.textContent = originalBtnText || 'SUBMIT ORDER';
+                submitBtn.textContent = originalBtnText || L('submitFallback');
             }
         }
     }
@@ -1909,7 +2131,7 @@
         var originalBtnText = submitBtn ? submitBtn.textContent : '';
         if (submitBtn) {
             submitBtn.disabled = true;
-            submitBtn.textContent = 'PROCESSING...';
+            submitBtn.textContent = L('submitting');
         }
         try {
             var proofUrl = await uploadPaymentScreenshot();
@@ -1932,14 +2154,14 @@
             hideGuaranteedTestWizardStep2();
             hideGuaranteedTestWizardStep1();
             if (typeof showToast === 'function') {
-                showToast('Order ' + (wizardState.fiatPublicCode || '') + ' submitted. Check Telegram for confirmation.');
+                showToast(L('toastSubmitted', { code: wizardState.fiatPublicCode || '' }));
             }
         } catch (error) {
             console.error('Fiat proof attach failed:', error);
-            if (typeof showToast === 'function') showToast('Failed to attach payment proof. Please try again.');
+            if (typeof showToast === 'function') showToast(L('toastProofFailed'));
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.textContent = originalBtnText || 'SUBMIT ORDER';
+                submitBtn.textContent = originalBtnText || L('submitFallback');
             }
         }
     }
@@ -1974,7 +2196,7 @@
             navigator.clipboard.writeText(text).then(function () {
                 if (btnEl) {
                     var originalText = btnEl.textContent;
-                    btnEl.textContent = 'Copied!';
+                    btnEl.textContent = L('copied');
                     btnEl.style.color = '#30D158';
                     setTimeout(function () {
                         btnEl.textContent = originalText;
@@ -1987,19 +2209,19 @@
 
     function handleCryptoCopyExitHint() {
         var exchange = getExchangeById(wizardState.paymentExchange);
-        var exName = exchange ? exchange.name : 'selected exchange';
+        var exName = exchange ? exchange.name : L('selectedExchange');
         if (typeof showToast === 'function') {
-            showToast('Copied. Make transfer in ' + exName + ', then return and upload screenshot.');
+            showToast(L('cryptoCopiedToast', { name: exName }));
         }
         try {
             var tg = window.Telegram && window.Telegram.WebApp;
             if (tg && typeof tg.showPopup === 'function') {
                 tg.showPopup({
-                    title: 'Transfer in ' + exName,
-                    message: 'ID copied. Please complete transfer inside ' + exName + ' and come back to upload payment screenshot.',
+                    title: L('cryptoPopupTitle', { name: exName }),
+                    message: L('cryptoPopupText', { name: exName }),
                     buttons: [
-                        { id: 'later', type: 'cancel', text: 'Stay here' },
-                        { id: 'close', type: 'default', text: 'Go to Telegram' }
+                        { id: 'later', type: 'cancel', text: L('cryptoPopupStay') },
+                        { id: 'close', type: 'default', text: L('cryptoPopupGo') }
                     ]
                 }, function (buttonId) {
                     if (buttonId === 'close' && typeof tg.close === 'function') {
@@ -2072,7 +2294,7 @@
         var payBtn = document.getElementById('gtw-pay-btn');
         if (payBtn) {
             payBtn.disabled = true;
-            payBtn.textContent = 'SELECT PAYMENT METHOD';
+            payBtn.textContent = L('selectMethod');
         }
         var overlayPay = document.getElementById('guaranteed-test-wizard-payment-overlay');
         if (overlayPay) overlayPay.style.display = 'flex';
