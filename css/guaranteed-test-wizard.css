@@ -1490,6 +1490,109 @@
     cursor: pointer;
 }
 
+.gtw-fiat-currency-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.gtw-fiat-currency-card {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: var(--bg-surface-1, #161A21);
+    color: var(--text-secondary, #AEB7C2);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.gtw-fiat-currency-card strong,
+.gtw-fiat-currency-card span {
+    display: block;
+}
+
+.gtw-fiat-currency-card strong {
+    color: var(--text-primary, #F4F6F8);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.gtw-fiat-currency-card span {
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.gtw-fiat-currency-card.is-selected {
+    border-color: var(--accent-primary, #4C8DFF);
+    background: rgba(76, 141, 255, 0.12);
+    box-shadow: 0 0 0 1px rgba(76, 141, 255, 0.14) inset;
+}
+
+.gtw-fiat-currency-card.is-selected strong {
+    color: #9fc0ff;
+}
+
+.gtw-fiat-bank-field {
+    margin-top: 12px;
+}
+
+.gtw-fiat-bank-field label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-tertiary, #717C89);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gtw-fiat-bank-field .gtw-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    background: var(--bg-surface-1, #161A21);
+    white-space: normal;
+}
+
+.gtw-fiat-bank-field .gtw-input:focus {
+    border-color: var(--accent-primary, #4C8DFF);
+    box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.15);
+}
+
+.gtw-fiat-personal-account {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 12px;
+    color: var(--text-secondary, #AEB7C2);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.gtw-fiat-personal-account input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--accent-primary, #4C8DFF);
+}
+
+.gtw-fiat-tip {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(76, 141, 255, 0.2);
+    border-radius: 12px;
+    background: rgba(76, 141, 255, 0.08);
+    color: var(--text-secondary, #AEB7C2);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
 .gtw-external-link-icon {
     width: 15px;
     height: 15px;

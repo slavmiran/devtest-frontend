@@ -22,6 +22,14 @@
         { id: 'htx', name: 'HTX', label: 'UID', value: '442101593', initials: 'HT', logo: './images/HTX.webp' },
         { id: 'gate', name: 'Gate', label: 'UID', value: '8536355', initials: 'GT', logo: './images/Gate.webp' }
     ];
+    var FIAT_CURRENCIES = [
+        { code: 'TRY', en: 'Turkey (Lira)', ru: 'Турция (Лира)' },
+        { code: 'BYN', en: 'Belarus (Belarusian ruble)', ru: 'Беларусь (Бел. рубль)' },
+        { code: 'KZT', en: 'Kazakhstan (Tenge)', ru: 'Казахстан (Тенге)' },
+        { code: 'KGS', en: 'Kyrgyzstan (Som)', ru: 'Кыргызстан (Сом)' },
+        { code: 'VND', en: 'Vietnam (Dong)', ru: 'Вьетнам (Донг)' },
+        { code: 'RUB', en: 'Russia (Ruble)', ru: 'Россия (Рубль)' }
+    ];
 
     var wizardState = {
         step: 1,
@@ -34,6 +42,11 @@
         paymentStep1Done: false,
         paymentScreenshotUrl: '',
         paymentScreenshotFile: null,
+        fiatCurrency: '',
+        fiatBankName: '',
+        fiatPersonalAccount: true,
+        fiatOrderId: null,
+        fiatPublicCode: '',
         prefillProject: null,
         detailsConfirmed: false,
         linkConfirmed: false,
@@ -54,6 +67,11 @@
             paymentStep1Done: false,
             paymentScreenshotUrl: '',
             paymentScreenshotFile: null,
+            fiatCurrency: '',
+            fiatBankName: '',
+            fiatPersonalAccount: true,
+            fiatOrderId: null,
+            fiatPublicCode: '',
             prefillProject: null,
             detailsConfirmed: false,
             linkConfirmed: false,
@@ -181,6 +199,26 @@
     function getPaymentAmount(method) {
         if (method === 'paypal' || method === 'rub') return 23;
         return 20;
+    }
+
+    function getWizardLang() {
+        return String(window.currentLang || (document.documentElement && document.documentElement.lang) || 'en').toLowerCase().indexOf('ru') === 0
+            ? 'ru'
+            : 'en';
+    }
+
+    function fiatCopy(en, ru) {
+        return getWizardLang() === 'ru' ? ru : en;
+    }
+
+    function escapeHtml(value) {
+        var div = document.createElement('div');
+        div.textContent = String(value || '');
+        return div.innerHTML;
+    }
+
+    function getFiatCurrency(code) {
+        return FIAT_CURRENCIES.find(function (currency) { return currency.code === code; }) || null;
     }
 
     /* =========================================================
@@ -720,14 +758,14 @@
                                     <div class="gtw-method-radio"></div>
                                     <div class="gtw-method-info">
                                         <div class="gtw-method-title-row">
-                                            <span class="gtw-method-title">RUB Transfer</span>
+                                            <span class="gtw-method-title">${fiatCopy('Bank / Local currency', 'Банк / местная валюта')}</span>
                                             <span class="gtw-method-badge gtw-badge-fee">+ service fee</span>
                                         </div>
                                     </div>
                                 </div>
                                 <span class="gtw-method-price">$23</span>
                             </div>
-                            <p class="gtw-method-action-hint">Tap to open payment steps</p>
+                            <p class="gtw-method-action-hint">${fiatCopy('Tap to open payment steps', 'Нажмите, чтобы открыть шаги оплаты')}</p>
                         </div>
                     </div>
                 </div>
@@ -1265,13 +1303,41 @@
                 </button>
             `;
         } else if (method === 'rub') {
-            title = 'RUB Transfer';
-            subtitle = 'Send $' + amount + ' equivalent via RUB transfer.';
-            step1Title = 'Get transfer details';
-            step1Desc = 'Open Telegram support to receive RUB transfer details, then return here.';
+            title = fiatCopy('Bank / Local currency', 'Банк / местная валюта');
+            subtitle = fiatCopy(
+                'The manager will calculate the exact local-currency amount for $' + amount + '.',
+                'Менеджер рассчитает точную сумму в местной валюте для $' + amount + '.'
+            );
+            step1Title = fiatCopy('Get payment requisites', 'Получить реквизиты');
+            step1Desc = fiatCopy(
+                'Choose your currency and bank before contacting the manager.',
+                'Выберите валюту и банк перед обращением к менеджеру.'
+            );
             step1Actions = `
+                <div class="gtw-fiat-currency-grid">
+                    ${FIAT_CURRENCIES.map(function (currency) {
+                        var isSelected = currency.code === wizardState.fiatCurrency;
+                        return `<button type="button" class="gtw-fiat-currency-card${isSelected ? ' is-selected' : ''}" data-fiat-currency="${currency.code}">
+                            <strong>${currency.code}</strong>
+                            <span>${getWizardLang() === 'ru' ? currency.ru : currency.en}</span>
+                        </button>`;
+                    }).join('')}
+                </div>
+                <div class="gtw-fiat-bank-field">
+                    <label for="gtw-fiat-bank-input">${fiatCopy('Your bank', 'Ваш банк')}</label>
+                    <input type="text" id="gtw-fiat-bank-input" class="gtw-input" value="${escapeHtml(wizardState.fiatBankName)}" placeholder="Ziraat, Kaspi, Т-Банк, Сбер" autocomplete="organization" />
+                </div>
+                <label class="gtw-fiat-personal-account">
+                    <input type="checkbox" id="gtw-fiat-personal-account" ${wizardState.fiatPersonalAccount ? 'checked' : ''} />
+                    <span>${fiatCopy('Pay from personal account', 'Оплачиваю с личного счета')}</span>
+                </label>
+                <p class="gtw-fiat-tip">${fiatCopy(
+                    '💡 The manager will convert $23 into your local currency at the current exchange rate and send the exact amount and requisites in chat.',
+                    '💡 Менеджер пересчитает $23 в вашу местную валюту по текущему курсу и пришлет точную сумму и реквизиты в чате.'
+                )}</p>
+                <div class="gtw-helper-text error" id="gtw-fiat-helper" style="display: none;"></div>
                 <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-tg-btn">
-                    Open @${TELEGRAM_SUPPORT}
+                    ${fiatCopy('Get requisites', 'Получить реквизиты')}
                 </button>
             `;
         }
@@ -1375,8 +1441,28 @@
         var openTgBtn = document.getElementById('gtw-flow-open-tg-btn');
         if (openTgBtn) {
             openTgBtn.addEventListener('click', function () {
-                openTelegramContact('RUB payment details requested for guaranteed testing order');
-                markPaymentStep1Done();
+                createFiatOrderAndOpenTelegram(openTgBtn);
+            });
+        }
+
+        document.querySelectorAll('[data-fiat-currency]').forEach(function (currencyBtn) {
+            currencyBtn.addEventListener('click', function () {
+                wizardState.fiatCurrency = currencyBtn.getAttribute('data-fiat-currency') || '';
+                renderPaymentFlow();
+            });
+        });
+        var fiatBankInput = document.getElementById('gtw-fiat-bank-input');
+        if (fiatBankInput) {
+            fiatBankInput.addEventListener('input', function () {
+                wizardState.fiatBankName = String(fiatBankInput.value || '');
+                var helper = document.getElementById('gtw-fiat-helper');
+                if (helper) helper.style.display = 'none';
+            });
+        }
+        var personalAccount = document.getElementById('gtw-fiat-personal-account');
+        if (personalAccount) {
+            personalAccount.addEventListener('change', function () {
+                wizardState.fiatPersonalAccount = !!personalAccount.checked;
             });
         }
 
@@ -1630,7 +1716,98 @@
     }
 
     function handleExecutePayment() {
+        if (wizardState.paymentMethod === 'rub' && wizardState.fiatOrderId) {
+            attachFiatProofAndComplete().catch(function () {});
+            return;
+        }
         submitGuaranteedOrderAndOpenTelegram().catch(function () {});
+    }
+
+    function getGuaranteedOrderNotes(extraParts) {
+        var notesParts = extraParts || [];
+        if (wizardState.prefillProject && wizardState.prefillProject.id) {
+            notesParts.push('app_id=' + String(wizardState.prefillProject.id));
+            var pkg = String(wizardState.prefillProject.package || wizardState.prefillProject.package_name || '').trim();
+            if (pkg) notesParts.push('package=' + pkg);
+        }
+        return notesParts.length ? notesParts.join('; ') : null;
+    }
+
+    function getInitDataPayload(payload) {
+        if (typeof withInitData === 'function') return withInitData(payload);
+        payload.init_data = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
+        return payload;
+    }
+
+    function getOrderDetails(payload) {
+        return (payload && (payload.details || payload.detail)) || {};
+    }
+
+    async function createFiatOrderAndOpenTelegram(button) {
+        var currency = getFiatCurrency(wizardState.fiatCurrency);
+        var bankName = String(wizardState.fiatBankName || '').trim();
+        var helper = document.getElementById('gtw-fiat-helper');
+        if (!currency || !bankName) {
+            if (helper) {
+                helper.textContent = fiatCopy('⚠️ Choose a currency and enter your bank name.', '⚠️ Выберите валюту и укажите название банка.');
+                helper.style.display = 'block';
+            }
+            return;
+        }
+
+        var originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = fiatCopy('Creating order...', 'Создаем заказ...');
+        try {
+            var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(getInitDataPayload({
+                    app_name: wizardState.appName,
+                    app_type: wizardState.appType,
+                    testing_link: wizardState.testingLink,
+                    payment_method: 'rub',
+                    amount_usd: 23,
+                    notes: getGuaranteedOrderNotes([
+                        'currency=' + currency.code,
+                        'bank=' + bankName,
+                        'personal_account=' + (wizardState.fiatPersonalAccount ? 'yes' : 'no')
+                    ])
+                }))
+            });
+            var payload = {};
+            try { payload = await response.json(); } catch (_) {}
+            var order = payload.order || {};
+            if (!response.ok || payload.status === 'error') {
+                var details = getOrderDetails(payload);
+                if ((payload.code || '') === 'order_already_active') {
+                    wizardState.fiatOrderId = details.id || details.order_id || null;
+                    wizardState.fiatPublicCode = String(details.public_code || details.order_code || '');
+                    if (!wizardState.fiatPublicCode) throw new Error('order_already_active');
+                } else {
+                    throw new Error((payload && (payload.code || payload.detail || payload.message)) || 'order_create_failed');
+                }
+            } else {
+                wizardState.fiatOrderId = order.id || payload.id || null;
+                wizardState.fiatPublicCode = String(order.public_code || payload.public_code || '');
+            }
+
+            var orderCode = wizardState.fiatPublicCode || ('GT-' + (10000 + Number(wizardState.fiatOrderId || 0)));
+            var personalAccountText = fiatCopy(wizardState.fiatPersonalAccount ? 'Yes' : 'No', wizardState.fiatPersonalAccount ? 'Да' : 'Нет');
+            var message = getWizardLang() === 'ru'
+                ? 'Здравствуйте! Хочу оплатить приватное тестирование ($23).\n📌 Заказ: #' + orderCode + ' (' + wizardState.appName + ')\n💳 Валюта оплаты: ' + currency.code + ' ($23)\n🏦 Мой банк: ' + bankName + '\n👤 Оплата с личного счета: ' + personalAccountText + '\n\nПожалуйста, рассчитайте точную сумму к оплате в ' + currency.code + ' и выдайте реквизиты.'
+                : 'Hello! I want to pay for Private Testing ($23).\n📌 Order: #' + orderCode + ' (' + wizardState.appName + ')\n💳 Payment currency: ' + currency.code + ' ($23)\n🏦 My bank: ' + bankName + '\n👤 Payment from personal account: ' + personalAccountText + '\n\nPlease calculate the exact amount in ' + currency.code + ' and send the payment requisites.';
+            openTelegramContact(message);
+            markPaymentStep1Done();
+        } catch (error) {
+            console.error('Fiat order create failed:', error);
+            if (helper) {
+                helper.textContent = fiatCopy('⚠️ Could not create the order. Please try again.', '⚠️ Не удалось создать заказ. Попробуйте еще раз.');
+                helper.style.display = 'block';
+            }
+            button.disabled = false;
+            button.textContent = originalText;
+        }
     }
 
     async function uploadPaymentScreenshot() {
@@ -1679,11 +1856,6 @@
             var proofUrl = await uploadPaymentScreenshot();
             var exchange = getExchangeById(wizardState.paymentExchange);
             var notesParts = [];
-            if (wizardState.prefillProject && wizardState.prefillProject.id) {
-                notesParts.push('app_id=' + String(wizardState.prefillProject.id));
-                var pkg = String(wizardState.prefillProject.package || wizardState.prefillProject.package_name || '').trim();
-                if (pkg) notesParts.push('package=' + pkg);
-            }
             if (exchange) notesParts.push('exchange=' + exchange.name);
             if (proofUrl) notesParts.push('proof=' + proofUrl);
 
@@ -1696,7 +1868,7 @@
                     testing_link: wizardState.testingLink,
                     payment_method: method,
                     amount_usd: amountUsd,
-                    notes: notesParts.length ? notesParts.join('; ') : null
+                    notes: getGuaranteedOrderNotes(notesParts)
                 }))
             });
             var payload = {};
@@ -1725,6 +1897,46 @@
             if (typeof showToast === 'function') {
                 showToast('Failed to create order. Please try again.');
             }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText || 'SUBMIT ORDER';
+            }
+        }
+    }
+
+    async function attachFiatProofAndComplete() {
+        var submitBtn = document.getElementById('gtw-flow-submit-btn');
+        var originalBtnText = submitBtn ? submitBtn.textContent : '';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'PROCESSING...';
+        }
+        try {
+            var proofUrl = await uploadPaymentScreenshot();
+            if (!proofUrl) throw new Error('proof_upload_failed');
+            var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders/' + encodeURIComponent(wizardState.fiatOrderId) + '/attach-proof', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(getInitDataPayload({ proof_url: proofUrl }))
+            });
+            var payload = {};
+            try { payload = await response.json(); } catch (_) {}
+            if (!response.ok || payload.status === 'error') {
+                throw new Error((payload && (payload.code || payload.detail || payload.message)) || 'proof_attach_failed');
+            }
+            if (typeof window.invalidateGuaranteedOrdersCache === 'function') {
+                window.invalidateGuaranteedOrdersCache();
+            }
+            closePaymentFlow();
+            hideGuaranteedTestWizardPayment();
+            hideGuaranteedTestWizardStep2();
+            hideGuaranteedTestWizardStep1();
+            if (typeof showToast === 'function') {
+                showToast('Order ' + (wizardState.fiatPublicCode || '') + ' submitted. Check Telegram for confirmation.');
+            }
+        } catch (error) {
+            console.error('Fiat proof attach failed:', error);
+            if (typeof showToast === 'function') showToast('Failed to attach payment proof. Please try again.');
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalBtnText || 'SUBMIT ORDER';
