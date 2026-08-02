@@ -35,8 +35,8 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260802-group-chip-v2"></script>
-    <script src="./i18n/en.js?v=20260802-group-chip-v2"></script>
+    <script src="./i18n/ru.js?v=20260802-email-compact"></script>
+    <script src="./i18n/en.js?v=20260802-email-compact"></script>
     <script src="./i18n/core.js?v=20260527-referral-ui"></script>
     <script src="./js/app-state.js?v=20260802-group-chip-v2"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
@@ -46,20 +46,20 @@
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/app-config.js?v=20260802-group-chip-v2"></script>
-    <script src="./js/app-api.js?v=20260727-target-access-block"></script>
+    <script src="./js/app-api.js?v=20260802-email-compact"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v2"></script>
     <script src="./js/app-actions.js?v=20260802-group-chip-v2"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
-    <script src="./js/app-features.js?v=20260802-group-chip-v1"></script>
+    <script src="./js/app-features.js?v=20260802-email-compact"></script>
     <script src="./js/guaranteed-test-offer.js?v=20260802-gt-draft-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20260802-gt-draft-v1"></script>
-    <script src="./app.js?v=20260802-homescreen-v1"></script>
+    <script src="./app.js?v=20260802-email-compact"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260725-ppc-buffer-band-v2">
-    <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260802-homescreen-v2">
-    <link rel="stylesheet" href="./css/reliability-modal.css?v=20260731-dates-direct-label">
+    <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260802-email-compact">
+    <link rel="stylesheet" href="./css/reliability-modal.css?v=20260802-grants-3cols">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/wizard.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260706-phase2">
@@ -174,14 +174,18 @@
                     </button>
                 </div>
             </div>
-            <div class="system-email-card">
-                <div class="system-language-card-title" data-i18n="settingsEmailTitle">✉️ Тестовый email</div>
-                <div class="system-language-card-subtitle" data-i18n="settingsEmailHint">Укажите email Google Play — это даёт больше взаимных тестов от разработчиков с ручным режимом.</div>
-                <div class="email-input-wrap">
-                    <input type="email" id="settings-tester-email" class="form-input" placeholder="" data-i18n-placeholder="testerEmailPlaceholder" oninput="onSettingsEmailInput()">
-                    <span id="settings-email-valid-icon" class="email-valid-icon" aria-hidden="true">✓</span>
+            <div class="system-setting-row system-setting-row--email" id="settings-email-row">
+                <div class="system-setting-copy-wrap system-setting-copy-wrap--email">
+                    <div class="system-setting-copy" id="settings-email-label" data-i18n="settingsEmailTitle">✉️ Тестовый email</div>
+                    <button type="button" id="settings-email-preview-btn" class="settings-email-preview" onclick="openSettingsEmailModal()">
+                        <span id="settings-email-preview-text" class="settings-email-preview-text is-missing" data-i18n="settingsEmailNotSet">Указать email</span>
+                    </button>
                 </div>
-                <button type="button" class="btn btn-primary system-email-save" id="settings-email-save" onclick="saveSettingsEmail()" data-i18n="settingsEmailSave">Сохранить email</button>
+                <button type="button" class="settings-email-edit-btn" id="settings-email-edit-btn" onclick="openSettingsEmailModal()" aria-label="Edit email" hidden>
+                    <svg class="settings-email-edit-btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                    </svg>
+                </button>
             </div>
             <div class="system-feedback-buttons">
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('bug')" data-i18n="feedbackBug">🐛 Сообщить о баге</button>
@@ -781,6 +785,22 @@
             <div id="device-info-fields-root" class="device-info-fields-root"></div>
             <div class="action-row device-info-modal-actions">
                 <button type="button" class="btn btn-primary" onclick="saveDeviceInfoFromModal()" data-i18n="deviceInfoSaveBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings: Tester Email Editor Modal -->
+    <div id="settings-email-modal" class="modal-overlay" onclick="closeSettingsEmailModal(event)">
+        <div class="modal-content settings-email-modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="settingsEmailModalTitle">Тестовый email</h3>
+            <p class="settings-email-modal-hint" data-i18n="settingsEmailHint">Укажите email Google Play — это даёт больше взаимных тестов от разработчиков с ручным режимом.</p>
+            <div class="email-input-wrap">
+                <input type="email" id="settings-tester-email" class="form-input" placeholder="" data-i18n-placeholder="testerEmailPlaceholder" autocomplete="email" inputmode="email" oninput="onSettingsEmailInput()">
+                <span id="settings-email-valid-icon" class="email-valid-icon" aria-hidden="true">✓</span>
+            </div>
+            <div class="action-row settings-email-modal-actions">
+                <button type="button" class="btn btn-secondary settings-email-delete" id="settings-email-delete" onclick="deleteSettingsEmail()" data-i18n="settingsEmailDelete" hidden>Удалить</button>
+                <button type="button" class="btn btn-primary settings-email-save" id="settings-email-save" onclick="saveSettingsEmail()" data-i18n="settingsEmailSave">Сохранить email</button>
             </div>
         </div>
     </div>

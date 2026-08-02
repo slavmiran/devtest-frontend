@@ -538,8 +538,8 @@
    5. GRANTS
    ========================================================================== */
 .ri-grants-tiles {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     margin-bottom: 12px;
     max-height: 125px;
@@ -563,13 +563,17 @@
 .ri-grant-tile {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 10px 6px 6px;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 6px 6px 6px 4px;
     background: var(--bg-surface-2);
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
     color: var(--text-secondary);
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
     transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -653,12 +657,17 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    min-width: 0;
     white-space: nowrap;
 }
 
 .ri-grant-amount-val {
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
 }
 
 .ri-grant-bust-ico {

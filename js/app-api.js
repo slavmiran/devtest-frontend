@@ -1475,6 +1475,9 @@ async function _loadTasksImpl(options) {
         var data = await response.json();
         _userEmail = String(data.user_email || '').trim();
         window.App.userEmail = _userEmail;
+        if (typeof syncSettingsEmailRowUi === 'function') {
+            try { syncSettingsEmailRowUi(); } catch (e) {}
+        }
         var nextTests = _mapTestsFromApi(data);
         var nextOffers = Array.isArray(data.incoming_offers) ? data.incoming_offers : null;
 

@@ -1702,12 +1702,62 @@ function onSettingsEmailInput() {
     _updateSettingsEmailValidIcon();
 }
 
+function syncSettingsEmailRowUi() {
+    var previewText = document.getElementById('settings-email-preview-text');
+    var editBtn = document.getElementById('settings-email-edit-btn');
+    var deleteBtn = document.getElementById('settings-email-delete');
+    var current = getCurrentUserEmail();
+    var hasEmail = !!current;
+
+    if (previewText) {
+        previewText.classList.toggle('is-set', hasEmail);
+        previewText.classList.toggle('is-missing', !hasEmail);
+        if (hasEmail) {
+            previewText.textContent = current;
+            previewText.removeAttribute('data-i18n');
+        } else {
+            previewText.setAttribute('data-i18n', 'settingsEmailNotSet');
+            previewText.textContent = window.t('settingsEmailNotSet', {}, lang);
+        }
+    }
+    if (editBtn) {
+        editBtn.setAttribute('aria-label', window.t('settingsEmailEditAria', {}, lang));
+        if (hasEmail) editBtn.removeAttribute('hidden');
+        else editBtn.setAttribute('hidden', '');
+    }
+    if (deleteBtn) {
+        if (hasEmail) deleteBtn.removeAttribute('hidden');
+        else deleteBtn.setAttribute('hidden', '');
+    }
+}
+
 function populateSettingsEmail() {
+    syncSettingsEmailRowUi();
     var input = document.getElementById('settings-tester-email');
     if (!input) return;
     var current = getCurrentUserEmail();
-    if (current && !input.value) input.value = current;
+    input.value = current || '';
     _updateSettingsEmailValidIcon();
+}
+
+function openSettingsEmailModal() {
+    var modal = document.getElementById('settings-email-modal');
+    if (!modal) return;
+    populateSettingsEmail();
+    modal.classList.add('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    var input = document.getElementById('settings-tester-email');
+    if (input) {
+        try { setTimeout(function() { input.focus(); input.select && input.select(); }, 50); } catch (e) {}
+    }
+}
+
+function closeSettingsEmailModal(event) {
+    if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+    var modal = document.getElementById('settings-email-modal');
+    if (modal) modal.classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
 async function saveSettingsEmail() {
@@ -1716,7 +1766,7 @@ async function saveSettingsEmail() {
     if (!input) return;
     var value = sanitizeSingleEmailInputValue(input.value);
     input.value = value;
-    var validationCode = getEmailValidationErrorCode(value, false);
+    var validationCode = getEmailValidationErrorCode(value, true);
     if (validationCode) {
         if (typeof window.showToast === 'function') window.showToast(getEmailValidationMessage(validationCode));
         try { input.focus(); } catch (e) {}
@@ -1726,7 +1776,9 @@ async function saveSettingsEmail() {
     var res = await saveTesterEmail(value);
     if (btn) btn.classList.remove('is-loading');
     if (res && res.ok) {
+        syncSettingsEmailRowUi();
         _updateSettingsEmailValidIcon();
+        closeSettingsEmailModal();
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         if (typeof window.showToast === 'function') window.showToast(window.t('settingsEmailSaved', {}, lang));
     } else {
@@ -1734,6 +1786,32 @@ async function saveSettingsEmail() {
         if (!errorMessage) {
             errorMessage = getEmailValidationMessage(res && res.code);
         }
+        if (!errorMessage) {
+            errorMessage = window.t('emailSaveFailed', {}, lang);
+        }
+        if (typeof window.showToast === 'function') window.showToast(errorMessage);
+    }
+}
+
+async function deleteSettingsEmail() {
+    var btn = document.getElementById('settings-email-delete');
+    var input = document.getElementById('settings-tester-email');
+    if (!getCurrentUserEmail()) {
+        syncSettingsEmailRowUi();
+        return;
+    }
+    if (btn) btn.classList.add('is-loading');
+    var res = await saveTesterEmail('');
+    if (btn) btn.classList.remove('is-loading');
+    if (res && res.ok) {
+        if (input) input.value = '';
+        syncSettingsEmailRowUi();
+        _updateSettingsEmailValidIcon();
+        closeSettingsEmailModal();
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (typeof window.showToast === 'function') window.showToast(window.t('settingsEmailDeleted', {}, lang));
+    } else {
+        var errorMessage = String(res && res.message || '').trim();
         if (!errorMessage) {
             errorMessage = window.t('emailSaveFailed', {}, lang);
         }
