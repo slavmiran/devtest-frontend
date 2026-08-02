@@ -10,6 +10,9 @@
 
     var SETUP_LICENSE_GUIDE_URL = "https://t.me/googleplay_console_12testers/31/2885";
     var GENERAL_TESTING_GUIDE_URL = "https://telegra.ph/Action-Required-Add-Testing-Group-to-Start-Closed-Testing-06-04";
+    var PLAY_CONSOLE_URL = "https://play.google.com/console/";
+    var LICENSE_GUIDE_SETTINGS_IMG = "./images/Settings_l.png";
+    var LICENSE_GUIDE_RESPONSE_IMG = "./images/RESPOND_NORMALY_l.png";
     var TESTER_GROUP_EMAIL = "google-play-dev-test@googlegroups.com";
     var PAYPAL_EMAIL = "pay.hubstation@gmail.com";
     var TELEGRAM_SUPPORT = "garantxchange";
@@ -239,10 +242,17 @@
             'For paid apps and in-app purchases, configure License Testing so testers install without real charges.',
             'Для платных приложений и встроенных покупок настройте License Testing, чтобы тестировщики устанавливали приложение без реальных списаний.'
         ],
+        guideOpenConsole: ['Open Play Console', 'Открыть Play Console'],
+        guideShowScreenshot: ['Show screenshot', 'Показать скриншот'],
+        guideHideScreenshot: ['Hide screenshot', 'Скрыть скриншот'],
+        guideShotPageLabel: [
+            'These 4 actions are on the same License testing page',
+            'Эти 4 действия — на одной странице License testing'
+        ],
         guide1Title: ['Open Google Play Console', 'Откройте Google Play Console'],
         guide1Text: ['Go to your app dashboard.', 'Перейдите на дашборд приложения.'],
         guide2Title: ['Settings → License testing', 'Settings → License testing'],
-        guide2Text: ['Open license testing in the left sidebar.', 'Откройте раздел в левом меню.'],
+        guide2Text: ['Open the section in the left menu.', 'Откройте раздел в левом меню.'],
         guide3Title: ['Choose Google Groups', 'Выберите Google Groups'],
         guide3Text: ['Select <strong>Google Groups</strong>, not Email lists.', 'Выберите <strong>Google Groups</strong>, а не Email lists.'],
         guide4Title: ['Add the group email', 'Добавьте почту группы'],
@@ -250,12 +260,7 @@
         guide5Title: ['Keep the default response', 'Оставьте ответ по умолчанию'],
         guide5Text: ['Under License response keep <strong>RESPOND_NORMALLY</strong>.', 'В License response оставьте <strong>RESPOND_NORMALLY</strong>.'],
         guide6Title: ['Save the changes', 'Сохраните изменения'],
-        guide6Text: ['Press <strong>Save changes</strong> at the bottom of the page.', 'Нажмите <strong>Save changes</strong> внизу страницы.'],
-        guide7Title: ['Share the opt-in link', 'Поделитесь opt-in ссылкой'],
-        guide7Text: [
-            'Once closed testing is approved, copy the link from <strong>Closed testing → Testers → How testers join your test</strong>.',
-            'После одобрения закрытого тестирования скопируйте ссылку в <strong>Closed testing → Testers → How testers join your test</strong>.'
-        ]
+        guide6Text: ['Press <strong>Save changes</strong> at the bottom of the page.', 'Нажмите <strong>Save changes</strong> внизу страницы.']
     };
 
     var wizardState = {
@@ -736,65 +741,113 @@
     }
 
     function createLicenseGuideOverlayHTML() {
+        var externalIcon =
+            '<svg class="gtw-guide-action-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>' +
+                '<polyline points="15 3 21 3 21 9"></polyline>' +
+                '<line x1="10" y1="14" x2="21" y2="3"></line>' +
+            '</svg>';
+        var imageIcon =
+            '<svg class="gtw-guide-action-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>' +
+                '<circle cx="8.5" cy="8.5" r="1.5"></circle>' +
+                '<polyline points="21 15 16 10 5 21"></polyline>' +
+            '</svg>';
+
         return `
-        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;">
+        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;" data-gtw-license-guide="v2">
             <div class="gtw-guide-page">
                 <button type="button" class="gtw-guide-page-close" id="gtw-license-guide-close" aria-label="${L('close')}">&times;</button>
                 <h2 class="gtw-guide-page-title">${L('guidePageTitle')}</h2>
                 <p class="gtw-guide-page-subtitle">${L('guidePageSubtitle')}</p>
 
-                <div class="gtw-guide-page-steps">
-                    <div class="gtw-guide-page-step">
-                        <span class="gtw-guide-page-num">1</span>
+                <button type="button" class="gtw-guide-console-btn" id="gtw-license-open-console">
+                    ${externalIcon}
+                    <span>${L('guideOpenConsole')}</span>
+                </button>
+
+                <div class="gtw-guide-page-steps" id="gtw-license-guide-steps">
+                    <div class="gtw-guide-page-step" data-guide-step="1">
+                        <span class="gtw-guide-page-num" data-num-global="1" data-num-local="1">1</span>
                         <div class="gtw-guide-page-content">
-                            <strong>${L('guide1Title')}</strong>
-                            <p>${L('guide1Text')}</p>
-                        </div>
-                    </div>
-                    <div class="gtw-guide-page-step">
-                        <span class="gtw-guide-page-num">2</span>
-                        <div class="gtw-guide-page-content">
-                            <strong>${L('guide2Title')}</strong>
-                            <p>${L('guide2Text')}</p>
-                        </div>
-                    </div>
-                    <div class="gtw-guide-page-step">
-                        <span class="gtw-guide-page-num">3</span>
-                        <div class="gtw-guide-page-content">
-                            <strong>${L('guide3Title')}</strong>
-                            <p>${L('guide3Text')}</p>
-                        </div>
-                    </div>
-                    <div class="gtw-guide-page-step">
-                        <span class="gtw-guide-page-num">4</span>
-                        <div class="gtw-guide-page-content">
-                            <strong>${L('guide4Title')}</strong>
-                            <p>${L('guide4Text')}</p>
-                            <div class="gtw-copy-box">
-                                <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
-                                <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="${L('copy')}">${L('copy')}</button>
+                            <div class="gtw-guide-step-head">
+                                <div class="gtw-guide-step-copy">
+                                    <strong>${L('guide1Title')}</strong>
+                                    <p>${L('guide1Text')}</p>
+                                </div>
+                                <button type="button" class="gtw-guide-icon-btn" id="gtw-license-step1-console" aria-label="${L('guideOpenConsole')}" title="${L('guideOpenConsole')}">
+                                    ${externalIcon}
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <div class="gtw-guide-page-step">
-                        <span class="gtw-guide-page-num">5</span>
+
+                    <div class="gtw-guide-page-step" data-guide-step="2">
+                        <span class="gtw-guide-page-num" data-num-global="2" data-num-local="2">2</span>
                         <div class="gtw-guide-page-content">
-                            <strong>${L('guide5Title')}</strong>
-                            <p>${L('guide5Text')}</p>
+                            <div class="gtw-guide-step-head">
+                                <div class="gtw-guide-step-copy">
+                                    <strong>${L('guide2Title')}</strong>
+                                    <p>${L('guide2Text')}</p>
+                                </div>
+                                <button type="button" class="gtw-guide-icon-btn gtw-guide-shot-toggle" id="gtw-license-shot-settings-toggle" aria-expanded="false" aria-controls="gtw-license-shot-settings" title="${L('guideShowScreenshot')}">
+                                    ${imageIcon}
+                                </button>
+                            </div>
+                            <div class="gtw-guide-shot-panel" id="gtw-license-shot-settings" hidden>
+                                <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${LICENSE_GUIDE_SETTINGS_IMG}" data-zoom-alt="${L('guide2Title')}">
+                                    <img src="${LICENSE_GUIDE_SETTINGS_IMG}" alt="${L('guide2Title')}" loading="lazy" class="gtw-guide-shot-img" />
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div class="gtw-guide-page-step">
-                        <span class="gtw-guide-page-num">6</span>
-                        <div class="gtw-guide-page-content">
-                            <strong>${L('guide6Title')}</strong>
-                            <p>${L('guide6Text')}</p>
+
+                    <div class="gtw-guide-shot-group" id="gtw-license-shot-group-page" data-open="false">
+                        <div class="gtw-guide-shot-group-rail" aria-hidden="true"></div>
+                        <button type="button" class="gtw-guide-shot-group-toggle" id="gtw-license-shot-page-toggle" aria-expanded="false" aria-controls="gtw-license-shot-page">
+                            <span class="gtw-guide-shot-group-toggle-left">
+                                ${imageIcon}
+                                <span>${L('guideShotPageLabel')}</span>
+                            </span>
+                            <span class="gtw-guide-shot-group-chevron" aria-hidden="true">▼</span>
+                        </button>
+                        <div class="gtw-guide-shot-panel gtw-guide-shot-panel--group" id="gtw-license-shot-page" hidden>
+                            <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${LICENSE_GUIDE_RESPONSE_IMG}" data-zoom-alt="${L('guideShotPageLabel')}">
+                                <img src="${LICENSE_GUIDE_RESPONSE_IMG}" alt="${L('guideShotPageLabel')}" loading="lazy" class="gtw-guide-shot-img" />
+                            </button>
                         </div>
-                    </div>
-                    <div class="gtw-guide-page-step">
-                        <span class="gtw-guide-page-num">7</span>
-                        <div class="gtw-guide-page-content">
-                            <strong>${L('guide7Title')}</strong>
-                            <p>${L('guide7Text')}</p>
+
+                        <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="3" data-local-num="1">
+                            <span class="gtw-guide-page-num" data-num-global="3" data-num-local="1">3</span>
+                            <div class="gtw-guide-page-content">
+                                <strong>${L('guide3Title')}</strong>
+                                <p>${L('guide3Text')}</p>
+                            </div>
+                        </div>
+                        <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="4" data-local-num="2">
+                            <span class="gtw-guide-page-num" data-num-global="4" data-num-local="2">4</span>
+                            <div class="gtw-guide-page-content">
+                                <strong>${L('guide4Title')}</strong>
+                                <p>${L('guide4Text')}</p>
+                                <div class="gtw-copy-box">
+                                    <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
+                                    <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="${L('copy')}">${L('copy')}</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="5" data-local-num="3">
+                            <span class="gtw-guide-page-num" data-num-global="5" data-num-local="3">5</span>
+                            <div class="gtw-guide-page-content">
+                                <strong>${L('guide5Title')}</strong>
+                                <p>${L('guide5Text')}</p>
+                            </div>
+                        </div>
+                        <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="6" data-local-num="4">
+                            <span class="gtw-guide-page-num" data-num-global="6" data-num-local="4">6</span>
+                            <div class="gtw-guide-page-content">
+                                <strong>${L('guide6Title')}</strong>
+                                <p>${L('guide6Text')}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1148,7 +1201,10 @@
             bindStep1Events();
         }
 
-        if (!document.getElementById('gtw-license-guide-overlay')) {
+        if (!document.getElementById('gtw-license-guide-overlay') ||
+            document.getElementById('gtw-license-guide-overlay').getAttribute('data-gtw-license-guide') !== 'v2') {
+            var oldGuide = document.getElementById('gtw-license-guide-overlay');
+            if (oldGuide && oldGuide.parentNode) oldGuide.parentNode.removeChild(oldGuide);
             var divGuide = document.createElement('div');
             divGuide.innerHTML = createLicenseGuideOverlayHTML();
             document.body.appendChild(divGuide.firstElementChild);
@@ -1363,6 +1419,57 @@
         }
     }
 
+    function openPlayConsoleExternal() {
+        var url = PLAY_CONSOLE_URL;
+        try {
+            if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
+                window.Telegram.WebApp.openLink(url);
+                return;
+            }
+        } catch (_) {}
+        window.open(url, '_blank', 'noopener');
+    }
+
+    function openGuideImageZoom(src, alt) {
+        if (typeof window.openImageZoom === 'function') {
+            window.openImageZoom(src, alt);
+            return;
+        }
+        window.open(src, '_blank', 'noopener');
+    }
+
+    function syncLicenseGuideShotNumbers(groupOpen) {
+        var group = document.getElementById('gtw-license-shot-group-page');
+        if (!group) return;
+        group.setAttribute('data-open', groupOpen ? 'true' : 'false');
+        group.querySelectorAll('.gtw-guide-page-num[data-num-global]').forEach(function (numEl) {
+            var globalNum = numEl.getAttribute('data-num-global');
+            var localNum = numEl.getAttribute('data-num-local');
+            numEl.textContent = groupOpen ? String(localNum || globalNum) : String(globalNum || localNum);
+        });
+    }
+
+    function setLicenseShotPanelOpen(panelId, toggleId, isOpen) {
+        var panel = document.getElementById(panelId);
+        var toggle = document.getElementById(toggleId);
+        if (!panel || !toggle) return;
+        if (isOpen) {
+            panel.hidden = false;
+            panel.classList.add('is-open');
+        } else {
+            panel.hidden = true;
+            panel.classList.remove('is-open');
+        }
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        toggle.classList.toggle('is-active', !!isOpen);
+        if (toggleId === 'gtw-license-shot-settings-toggle') {
+            toggle.setAttribute('title', isOpen ? L('guideHideScreenshot') : L('guideShowScreenshot'));
+        }
+        if (toggleId === 'gtw-license-shot-page-toggle') {
+            syncLicenseGuideShotNumbers(!!isOpen);
+        }
+    }
+
     function bindLicenseGuideEvents() {
         var closeBtn = document.getElementById('gtw-license-guide-close');
         var overlay = document.getElementById('gtw-license-guide-overlay');
@@ -1372,12 +1479,47 @@
                 if (e.target === overlay) closeLicenseGuideModal();
             });
         }
+
         var copyBtn = document.getElementById('gtw-license-guide-copy-btn');
         if (copyBtn) {
             copyBtn.addEventListener('click', function () {
                 copyTextWithFeedback(TESTER_GROUP_EMAIL, copyBtn);
             });
         }
+
+        var openConsoleTop = document.getElementById('gtw-license-open-console');
+        var openConsoleStep1 = document.getElementById('gtw-license-step1-console');
+        if (openConsoleTop) openConsoleTop.addEventListener('click', openPlayConsoleExternal);
+        if (openConsoleStep1) openConsoleStep1.addEventListener('click', openPlayConsoleExternal);
+
+        var settingsToggle = document.getElementById('gtw-license-shot-settings-toggle');
+        if (settingsToggle) {
+            settingsToggle.addEventListener('click', function () {
+                var willOpen = settingsToggle.getAttribute('aria-expanded') !== 'true';
+                setLicenseShotPanelOpen('gtw-license-shot-settings', 'gtw-license-shot-settings-toggle', willOpen);
+            });
+        }
+
+        var pageToggle = document.getElementById('gtw-license-shot-page-toggle');
+        if (pageToggle) {
+            pageToggle.addEventListener('click', function () {
+                var willOpen = pageToggle.getAttribute('aria-expanded') !== 'true';
+                setLicenseShotPanelOpen('gtw-license-shot-page', 'gtw-license-shot-page-toggle', willOpen);
+            });
+        }
+
+        if (overlay) {
+            overlay.querySelectorAll('.gtw-guide-shot-frame').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    openGuideImageZoom(
+                        btn.getAttribute('data-zoom-src') || '',
+                        btn.getAttribute('data-zoom-alt') || ''
+                    );
+                });
+            });
+        }
+
+        syncLicenseGuideShotNumbers(false);
     }
 
     function openLicenseGuideModal() {
