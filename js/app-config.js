@@ -705,6 +705,8 @@ var _pendingActions = new Set();
 var _autoAcceptMutualEnabled = false;
 var _autoAcceptMutualAvailable = false;
 var _autoAcceptToggleInFlight = false;
+var _defaultGroupJoined = false;
+var _defaultGroupJoinedInFlight = false;
 var _attachDeviceInfoToBugs = false;
 var _deviceInfo = '';
 var _deviceInfoIsManual = false;
@@ -859,6 +861,8 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_autoAcceptMutualEnabled', function () { return _autoAcceptMutualEnabled; }, function (value) { _autoAcceptMutualEnabled = value; });
     window.App.bindStateProperty('_autoAcceptMutualAvailable', function () { return _autoAcceptMutualAvailable; }, function (value) { _autoAcceptMutualAvailable = value; });
     window.App.bindStateProperty('_autoAcceptToggleInFlight', function () { return _autoAcceptToggleInFlight; }, function (value) { _autoAcceptToggleInFlight = value; });
+    window.App.bindStateProperty('_defaultGroupJoined', function () { return _defaultGroupJoined; }, function (value) { _defaultGroupJoined = value; });
+    window.App.bindStateProperty('_defaultGroupJoinedInFlight', function () { return _defaultGroupJoinedInFlight; }, function (value) { _defaultGroupJoinedInFlight = value; });
     window.App.bindStateProperty('_pendingInitialHighlightTestId', function () { return _pendingInitialHighlightTestId; }, function (value) { _pendingInitialHighlightTestId = value; });
     window.App.bindStateProperty('_highlightTestTimerId', function () { return _highlightTestTimerId; }, function (value) { _highlightTestTimerId = value; });
     window.App.bindStateProperty('_backgroundSyncState', function () { return _backgroundSyncState; }, function (value) { _backgroundSyncState = value; });

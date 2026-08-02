@@ -1683,10 +1683,30 @@ function renderTests(force) {
         const safeOwnerSubtitle = window.escapeHTML(buildTestOwnerSubtitle(test));
         const langBadge = (test.target_lang && test.target_lang !== 'ALL') ? getLangBadge(test.target_lang) : '';
         const shouldShowIssueOnCard = test.status === 'new' && !!test.has_clicked_store;
-        const issueBtnDisplay = shouldShowIssueOnCard ? 'inline-flex' : 'none';
+        const issueBtnDisplay = shouldShowIssueOnCard ? 'block' : 'none';
         const isIssueBlocked = !!test.issue_reported_at && !test.issue_fixed_at;
-        const issueBtnText = isIssueBlocked ? getIssueAwaitingFixLabel(test) : ('🚨 ' + window.t('reportIssueBtnLabel', {}, lang));
-        const issueBtnHtml = `<button id="btn-issue-${test.id}" class="btn" style="display:${issueBtnDisplay}; width:100%; margin-top:8px; background:rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>${issueBtnText}</button>`;
+        const issueToggleText = '🚨 ' + window.t('accessProblemToggle', {}, lang);
+        const freezeBtnText = isIssueBlocked
+            ? getIssueAwaitingFixLabel(test)
+            : window.t('accessProblemFreezeBtn', {}, lang);
+        const recheckGroupText = window.t('accessProblemRecheckGroupBtn', {}, lang);
+        const issueBtnHtml = `
+            <div id="access-problem-wrap-${test.id}" class="access-problem-wrap" style="display:${issueBtnDisplay};">
+                <button type="button" id="access-problem-toggle-${test.id}" class="access-problem-toggle" onclick="event.stopPropagation(); toggleAccessProblemAccordion(${test.id})" aria-expanded="false">
+                    <span class="access-problem-toggle__label">${window.escapeHTML(issueToggleText)}</span>
+                    <span class="access-problem-toggle__arrow" aria-hidden="true">▼</span>
+                </button>
+                <div id="access-problem-panel-${test.id}" class="access-problem-panel" aria-hidden="true">
+                    <img class="access-problem-panel__image" src="./images/SomethingWentWrong.jpg" alt="">
+                    <div class="access-problem-panel__body">
+                        <div class="access-problem-panel__title">${window.escapeHTML(window.t('accessProblemTitle', {}, lang))}</div>
+                        <div class="access-problem-panel__hint">${window.escapeHTML(window.t('accessProblemHint', {}, lang))}</div>
+                        <button type="button" class="btn access-problem-panel__btn" onclick="event.stopPropagation(); openAccessProblemGroupLink(${test.id})">${window.escapeHTML(recheckGroupText)}</button>
+                        <button type="button" id="access-problem-freeze-${test.id}" class="btn access-problem-panel__btn access-problem-panel__btn--freeze" onclick="event.stopPropagation(); openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>${window.escapeHTML(freezeBtnText)}</button>
+                    </div>
+                </div>
+            </div>
+        `;
         const pendingReleaseButtonHtml = `
             <button type="button" class="btn btn-secondary pending-release-chip" style="width: 100%; margin-bottom: 12px;" onclick="showPendingReleaseInfo()">
                 ${window.escapeHTML(window.t('pendingReleaseChip', {}, lang))}
@@ -1830,13 +1850,24 @@ function renderTests(force) {
         }
         // State B: status = 'new' OR status = 'daily'/'opened' without ready to claim
         else if (test.status === 'new') {
-            const groupUrl = test.google_group_url || 'https://groups.google.com/g/google-play-dev-test';
+            const groupUrl = test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
             const safeGroupUrl = escapeInlineJsString(groupUrl);
             const shouldShowScreenshotAction = window.isFirstDayScreenshotVisible ? window.isFirstDayScreenshotVisible(test.id) : false;
             const hintHtml = renderCheckinRewardHint(test, 1, lang);
+            const isEmailMode = test.test_mode === 'email_list';
+            const isDefaultGroup = !isEmailMode && (typeof isDefaultGoogleGroupUrl === 'function'
+                ? isDefaultGoogleGroupUrl(groupUrl)
+                : true);
+            const hideJoinGroupStep = !isEmailMode && isDefaultGroup && !!_defaultGroupJoined;
+            const downloadLabel = hideJoinGroupStep
+                ? window.t('downloadPlayStep1', {}, lang)
+                : window.t('downloadPlay', {}, lang);
+            const screenshotLabel = hideJoinGroupStep
+                ? window.t('screenshotBtnStep2', {}, lang)
+                : window.t('screenshotBtn', {}, lang);
 
             let groupActionHtml = '';
-            if (test.test_mode === 'email_list') {
+            if (isEmailMode) {
                 const badgeTitle = lang === 'ru' ? '📧 Тестирование по Email' : '📧 Testing by Email';
                 const badgeSubtitle = lang === 'ru'
                     ? 'Разработчик должен был уже добавить ваш email в Play Console. Просто скачайте приложение.'
@@ -1847,10 +1878,10 @@ function renderTests(force) {
                         <div style="font-size: 12px; color: var(--hint-color, #8e8e93); line-height: 1.3;">${badgeSubtitle}</div>
                     </div>
                 `;
-            } else {
+            } else if (!hideJoinGroupStep) {
                 groupActionHtml = `
                     <div class="first-day-row">
-                        <button class="btn first-day-btn" style="flex: 1;" onclick="try { tg.openLink('${safeGroupUrl}', { try_browser: 'chrome' }); } catch(err) { console.error('Failed to open group link:', err); } if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged();">${t.joinGroup}</button>
+                        <button class="btn first-day-btn" style="flex: 1;" onclick="handleJoinGoogleGroupClick(${test.id}, '${safeGroupUrl}')">${window.escapeHTML(window.t('joinGroup', {}, lang))}</button>
                         <button class="btn-icon first-day-copy" style="width: 44px; min-height: 44px; font-size: 18px;" onclick="copyGroupUrl('${safeGroupUrl}')">📋</button>
                     </div>
                 `;
@@ -1860,11 +1891,11 @@ function renderTests(force) {
                 <div class="first-day-actions">
                     ${groupActionHtml}
                     <button class="btn first-day-btn" style="width: 100%;" onclick="handleFirstDownload(${test.id}, '${safePackage}')">
-                        ${t.downloadPlay}
+                        ${window.escapeHTML(downloadLabel)}
                     </button>
                     <div id="new-screenshot-box-${test.id}" style="display: ${shouldShowScreenshotAction ? 'block' : 'none'};">
                         <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
-                            ${window.escapeHTML(window.t('screenshotBtn', {}, lang))}
+                            ${window.escapeHTML(screenshotLabel)}
                         </button>
                         <div style="color: #ff3b30; font-size: 13px; margin-top: 8px; text-align: center;">
                             ${window.escapeHTML(window.t('firstDayScreenshotWarning', {}, lang))}
@@ -1973,6 +2004,26 @@ function renderTests(force) {
         }
         if (showGuestOriginChip) {
             externalMetaChips.push(renderGuestOriginChip(test.external_source));
+        }
+        if (test.status === 'new' && test.test_mode !== 'email_list') {
+            const chipGroupUrl = String(test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+            const chipIsDefault = typeof isDefaultGoogleGroupUrl === 'function'
+                ? isDefaultGoogleGroupUrl(chipGroupUrl)
+                : true;
+            const safeChipGroupUrl = escapeInlineJsString(chipGroupUrl);
+            if (!chipIsDefault) {
+                externalMetaChips.push(
+                    `<button type="button" class="meta-chip accent-orange group-status-chip" onclick="event.stopPropagation(); handleGroupStatusChipClick(${test.id}, '${safeChipGroupUrl}')">${window.escapeHTML(window.t('groupChipCustom', {}, lang))}</button>`
+                );
+            } else if (_defaultGroupJoined) {
+                externalMetaChips.push(
+                    `<span class="meta-chip accent-green group-status-chip group-status-chip--static">${window.escapeHTML(window.t('groupChipConnected', {}, lang))}</span>`
+                );
+            } else {
+                externalMetaChips.push(
+                    `<button type="button" class="meta-chip accent-orange group-status-chip" onclick="event.stopPropagation(); handleGroupStatusChipClick(${test.id}, '${safeChipGroupUrl}')">${window.escapeHTML(window.t('groupChipRequired', {}, lang))}</button>`
+                );
+            }
         }
         const cardHeaderMainHtml = `
             <div class="card-header-main">

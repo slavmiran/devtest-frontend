@@ -1409,6 +1409,9 @@ function refreshLanguageUi() {
     if (typeof syncAutoAcceptToggleUi === 'function') {
         syncAutoAcceptToggleUi();
     }
+    if (typeof syncDefaultGroupJoinedUi === 'function') {
+        syncDefaultGroupJoinedUi();
+    }
     if (typeof syncHomeScreenUi === 'function') {
         syncHomeScreenUi();
     }
@@ -1458,6 +1461,9 @@ function refreshLanguageUi() {
     }
 
     syncAutoAcceptToggleUi();
+    if (typeof syncDefaultGroupJoinedUi === 'function') {
+        syncDefaultGroupJoinedUi();
+    }
     if (typeof syncHomeScreenUi === 'function') {
         syncHomeScreenUi();
     }
@@ -1481,8 +1487,11 @@ async function loadUserProfilePreferences() {
         if (!_autoAcceptMutualAvailable) {
             _autoAcceptMutualEnabled = false;
         }
+        _defaultGroupJoined = !!profile.default_group_joined;
         syncAutoAcceptToggleUi();
+        if (typeof syncDefaultGroupJoinedUi === 'function') syncDefaultGroupJoinedUi();
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
+        window.App.defaultGroupJoined = _defaultGroupJoined;
         if (typeof applyDeviceInfoFromProfile === 'function') {
             applyDeviceInfoFromProfile(profile);
         } else {
@@ -1492,6 +1501,7 @@ async function loadUserProfilePreferences() {
     } catch (error) {
         console.error('Profile preferences load error:', error);
         syncAutoAcceptToggleUi();
+        if (typeof syncDefaultGroupJoinedUi === 'function') syncDefaultGroupJoinedUi();
         _deviceProfileBannerReady = true;
         if (typeof syncDeviceProfileBanner === 'function') syncDeviceProfileBanner();
     }

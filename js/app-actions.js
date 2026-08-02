@@ -187,6 +187,217 @@ function showAutoAcceptMutualInfo() {
     showToast(window.t('autoAcceptMutualInfoToast', {}, lang));
 }
 
+function isDefaultGoogleGroupUrl(url) {
+    var candidate = String(url || '').trim();
+    if (!candidate) return true;
+    if (window.AccessSetupManager && typeof window.AccessSetupManager.isDefaultGroup === 'function') {
+        return !!window.AccessSetupManager.isDefaultGroup(candidate);
+    }
+    var normalize = function(value) {
+        return String(value || '').trim().replace(/\/+$/, '').toLowerCase();
+    };
+    var defaultUrl = normalize(window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test');
+    return normalize(candidate) === defaultUrl;
+}
+
+function syncDefaultGroupJoinedUi() {
+    var statusBtn = document.getElementById('settings-default-group-status');
+    if (statusBtn) {
+        var connected = !!_defaultGroupJoined;
+        statusBtn.textContent = connected
+            ? window.t('settingsDefaultGroupConnected', {}, lang)
+            : window.t('settingsDefaultGroupNotConnected', {}, lang);
+        statusBtn.classList.toggle('is-connected', connected);
+        statusBtn.classList.toggle('is-missing', !connected);
+    }
+    var label = document.getElementById('settings-default-group-label');
+    if (label) {
+        label.textContent = window.t('settingsDefaultGroupLabel', {}, lang);
+    }
+    var confirmCheckbox = document.getElementById('default-group-confirm-checkbox');
+    if (confirmCheckbox) {
+        confirmCheckbox.checked = !!_defaultGroupJoined;
+        confirmCheckbox.disabled = !!_defaultGroupJoinedInFlight;
+    }
+}
+
+async function markDefaultGroupJoined(options) {
+    var settings = options || {};
+    if (_defaultGroupJoined && !settings.force) {
+        syncDefaultGroupJoinedUi();
+        return true;
+    }
+    if (_defaultGroupJoinedInFlight) return false;
+
+    var previousValue = !!_defaultGroupJoined;
+    _defaultGroupJoinedInFlight = true;
+    _defaultGroupJoined = true;
+    window.App.defaultGroupJoined = true;
+    syncDefaultGroupJoinedUi();
+
+    try {
+        var response = await fetch(API_BASE + '/users/me/default-group-joined', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                init_data: (tg && tg.initData) ? tg.initData : '',
+                joined: true,
+            }),
+        });
+        var result = await response.json();
+        if (!response.ok || !result || result.status !== 'success') {
+            _defaultGroupJoined = previousValue;
+            window.App.defaultGroupJoined = previousValue;
+            syncDefaultGroupJoinedUi();
+            if (!settings.silent) {
+                handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            }
+            return false;
+        }
+        _defaultGroupJoined = !!result.default_group_joined;
+        window.App.defaultGroupJoined = _defaultGroupJoined;
+        syncDefaultGroupJoinedUi();
+        if (settings.rerender !== false && typeof window.renderTests === 'function') {
+            window.renderTests(true);
+        }
+        return true;
+    } catch (error) {
+        console.error('default_group_joined update error:', error);
+        _defaultGroupJoined = previousValue;
+        window.App.defaultGroupJoined = previousValue;
+        syncDefaultGroupJoinedUi();
+        if (!settings.silent) {
+            handleApiError('network_error');
+        }
+        return false;
+    } finally {
+        _defaultGroupJoinedInFlight = false;
+        syncDefaultGroupJoinedUi();
+    }
+}
+
+function openDefaultGoogleGroupLink() {
+    var groupUrl = String(window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    try {
+        if (tg && typeof tg.openLink === 'function') {
+            tg.openLink(groupUrl, { try_browser: 'chrome' });
+        } else {
+            window.open(groupUrl, '_blank', 'noopener');
+        }
+    } catch (err) {
+        console.error('Failed to open default Google Group:', err);
+        window.open(groupUrl, '_blank', 'noopener');
+    }
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function handleJoinGoogleGroupClick(appId, groupUrl) {
+    var resolvedUrl = String(groupUrl || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    try {
+        if (tg && typeof tg.openLink === 'function') {
+            tg.openLink(resolvedUrl, { try_browser: 'chrome' });
+        } else {
+            window.open(resolvedUrl, '_blank', 'noopener');
+        }
+    } catch (err) {
+        console.error('Failed to open Google Group link:', err);
+        window.open(resolvedUrl, '_blank', 'noopener');
+    }
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    if (isDefaultGoogleGroupUrl(resolvedUrl)) {
+        markDefaultGroupJoined({ silent: true });
+    }
+}
+
+function handleGroupStatusChipClick(appId, groupUrl) {
+    var resolvedUrl = String(groupUrl || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    handleJoinGoogleGroupClick(appId, resolvedUrl);
+}
+
+function openDefaultGroupSettingsModal() {
+    var modal = document.getElementById('default-group-modal');
+    if (!modal) return;
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    var title = document.getElementById('t-defaultGroupModalTitle');
+    var subtitle = document.getElementById('t-defaultGroupModalSubtitle');
+    var joinBtn = document.getElementById('t-defaultGroupModalJoin');
+    var confirmLabel = document.getElementById('t-defaultGroupModalConfirm');
+    var linkText = document.getElementById('default-group-modal-link-text');
+    var groupUrl = String(window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    if (title) title.textContent = window.t('defaultGroupModalTitle', {}, lang);
+    if (subtitle) subtitle.textContent = window.t('defaultGroupModalSubtitle', {}, lang);
+    if (joinBtn) joinBtn.textContent = window.t('defaultGroupModalJoinBtn', {}, lang);
+    if (confirmLabel) confirmLabel.textContent = window.t('defaultGroupModalConfirm', {}, lang);
+    if (linkText) linkText.textContent = groupUrl;
+    syncDefaultGroupJoinedUi();
+    modal.classList.add('active');
+}
+
+function closeDefaultGroupSettingsModal(event) {
+    if (event && event.target && event.currentTarget && event.target !== event.currentTarget) {
+        return;
+    }
+    var modal = document.getElementById('default-group-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function copyDefaultGroupModalLink() {
+    var groupUrl = String(window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    var done = function() {
+        showToast(window.t('copied', {}, lang));
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(groupUrl).then(done).catch(function() {
+            showToast(groupUrl);
+        });
+        return;
+    }
+    showToast(groupUrl);
+}
+
+function handleDefaultGroupModalJoin() {
+    openDefaultGoogleGroupLink();
+    markDefaultGroupJoined({ silent: true, rerender: true });
+}
+
+async function handleDefaultGroupConfirmCheckbox(input) {
+    if (!input) return;
+    if (!input.checked) {
+        // Flag is one-way confirmation; unchecking does not revoke membership.
+        input.checked = !!_defaultGroupJoined;
+        syncDefaultGroupJoinedUi();
+        return;
+    }
+    var ok = await markDefaultGroupJoined({ silent: false, rerender: true });
+    if (!ok) {
+        input.checked = !!_defaultGroupJoined;
+    } else if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred('success');
+    }
+}
+
+function toggleAccessProblemAccordion(appId) {
+    var panel = document.getElementById('access-problem-panel-' + appId);
+    var toggle = document.getElementById('access-problem-toggle-' + appId);
+    if (!panel || !toggle) return;
+    var isOpen = panel.classList.toggle('is-open');
+    panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    toggle.classList.toggle('is-open', isOpen);
+    var arrow = toggle.querySelector('.access-problem-toggle__arrow');
+    if (arrow) arrow.textContent = isOpen ? '▲' : '▼';
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function openAccessProblemGroupLink(appId) {
+    var test = (typeof myTests !== 'undefined' ? myTests : []).find(function(item) {
+        return Number(item.id) === Number(appId);
+    });
+    var groupUrl = String((test && (test.google_group_url || test.group_url)) || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    handleJoinGoogleGroupClick(appId, groupUrl);
+}
+
 async function handleAutoAcceptMutualToggle(input) {
     if (!input || _autoAcceptToggleInFlight) {
         syncAutoAcceptToggleUi();
@@ -1105,11 +1316,25 @@ function _onStoreLinkClickedForIssueFlow(id) {
     if (!test) return;
     test.has_clicked_store = true;
 
+    var issueWrap = document.getElementById('access-problem-wrap-' + id);
+    if (issueWrap) {
+        issueWrap.style.display = 'block';
+    }
     var issueBtn = document.getElementById('btn-issue-' + id);
     if (issueBtn) {
         issueBtn.style.display = 'inline-flex';
         issueBtn.disabled = !!test.issue_reported_at && !test.issue_fixed_at;
         issueBtn.style.opacity = issueBtn.disabled ? '0.55' : '1';
+    }
+    var freezeBtn = document.getElementById('access-problem-freeze-' + id);
+    if (freezeBtn) {
+        freezeBtn.disabled = !!test.issue_reported_at && !test.issue_fixed_at;
+        freezeBtn.style.opacity = freezeBtn.disabled ? '0.55' : '1';
+        if (freezeBtn.disabled) {
+            freezeBtn.textContent = typeof window.getIssueAwaitingFixLabel === 'function'
+                ? window.getIssueAwaitingFixLabel(test)
+                : window.t('issueAwaitingFix', {}, lang);
+        }
     }
 
     persistTestsCacheSnapshot();
@@ -1491,6 +1716,14 @@ async function submitIssueReport(appId) {
             issueBtn.disabled = true;
             issueBtn.style.opacity = '0.55';
             issueBtn.innerText = typeof window.getIssueAwaitingFixLabel === 'function'
+                ? window.getIssueAwaitingFixLabel(test)
+                : window.t('issueAwaitingFix', {}, lang);
+        }
+        var freezeBtn = document.getElementById('access-problem-freeze-' + appId);
+        if (freezeBtn) {
+            freezeBtn.disabled = true;
+            freezeBtn.style.opacity = '0.55';
+            freezeBtn.textContent = typeof window.getIssueAwaitingFixLabel === 'function'
                 ? window.getIssueAwaitingFixLabel(test)
                 : window.t('issueAwaitingFix', {}, lang);
         }
@@ -2685,6 +2918,8 @@ async function confirmStart(id) {
             return Number(test.id) === Number(id);
         });
         if (updatedTest) {
+            var wasFirstCheckin = Number(updatedTest.checkins_count || 0) <= 0
+                || String(updatedTest.status || '') === 'new';
             updatedTest.last_check_date = result.last_check_date || getLocalDate();
             updatedTest.checkins_count = Math.max(0, Number(result.checkins_count || updatedTest.checkins_count || 0));
             updatedTest.skips_count = Math.max(0, Number(result.skips_count || 0));
@@ -2702,6 +2937,9 @@ async function confirmStart(id) {
             if (canEverClaim && updatedTest.testing_days === 14) {
                 updatedTest.isGrantAvailableTomorrow = true;
                 window.tg.showAlert(window.t('grantAvailableTomorrowAlert', {}, lang));
+            }
+            if (wasFirstCheckin && !result.already_checked_today) {
+                markDefaultGroupJoined({ silent: true, rerender: false });
             }
         }
 

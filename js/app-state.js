@@ -118,6 +118,8 @@
         _autoAcceptMutualEnabled: false,
         _autoAcceptMutualAvailable: false,
         _autoAcceptToggleInFlight: false,
+        _defaultGroupJoined: false,
+        _defaultGroupJoinedInFlight: false,
         _attachDeviceInfoToBugs: true,
         _deviceInfo: '',
         _deviceInfoIsManual: false,
