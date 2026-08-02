@@ -2034,7 +2034,7 @@
             appLanguageOptionVi: "Tiếng Việt",
             appLanguageOptionZhCn: "中文 (简体)",
             appLanguageOptionZhTw: "中文 (繁體)",
-            homeScreenShortcutLabel: "📲 Home Screen",
+            homeScreenShortcutLabel: "📲 Home Screen Shortcut",
             homeScreenShortcutMetaMissed: "Not added",
             homeScreenShortcutMetaAdded: "Added",
             homeScreenShortcutMetaUnknown: "Tap to add anytime",

@@ -2040,7 +2040,7 @@
             appLanguageOptionVi: "Tiếng Việt",
             appLanguageOptionZhCn: "中文 (简体)",
             appLanguageOptionZhTw: "中文 (繁體)",
-            homeScreenShortcutLabel: "📲 Рабочий стол",
+            homeScreenShortcutLabel: "📲 Иконка на рабочий стол",
             homeScreenShortcutMetaMissed: "Не добавлено",
             homeScreenShortcutMetaAdded: "Добавлено",
             homeScreenShortcutMetaUnknown: "Нажмите, чтобы добавить",
