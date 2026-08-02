@@ -1839,6 +1839,36 @@
     color: var(--text-tertiary, #717C89);
 }
 
+.gtw-guide-page-flow {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Thin sequence rail visible in the gaps between the 3 blocks */
+.gtw-guide-page-flow::before {
+    content: '';
+    position: absolute;
+    left: 27px; /* aligns with step number centers (16px pad + 12px radius) */
+    top: 20px;
+    bottom: 20px;
+    width: 2px;
+    background: rgba(76, 141, 255, 0.22);
+    border-radius: 1px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.gtw-guide-page-block {
+    position: relative;
+    z-index: 1;
+    background: var(--gt-surface);
+    border: 1px solid var(--gt-hairline);
+    border-radius: var(--gt-radius-section);
+    overflow: hidden;
+}
+
 .gtw-guide-page-steps {
     display: flex;
     flex-direction: column;
@@ -1849,29 +1879,6 @@
     overflow: hidden;
 }
 
-.gtw-guide-console-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    width: fit-content;
-    margin: 0 0 14px;
-    padding: 8px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-primary, #F4F6F8);
-    font-family: var(--gt-font);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.gtw-guide-console-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
-}
-
 .gtw-guide-page-step {
     display: flex;
     align-items: flex-start;
@@ -1880,6 +1887,7 @@
     border-top: 1px solid var(--gt-hairline);
 }
 
+.gtw-guide-page-block > .gtw-guide-page-step:first-child,
 .gtw-guide-page-step:first-child { border-top: none; }
 
 .gtw-guide-page-num {
@@ -1997,8 +2005,12 @@
 
 /* Shared License-testing page section (steps 3–6) */
 .gtw-guide-shot-group {
-    border-top: 1px solid var(--gt-hairline);
-    background: var(--gt-surface-raised);
+    border-top: none;
+    background: var(--gt-surface);
+}
+
+.gtw-guide-shot-group.gtw-guide-page-block {
+    background: var(--gt-surface);
 }
 
 .gtw-guide-shot-group-head {
@@ -2046,13 +2058,13 @@
 .gtw-guide-shot-group .gtw-guide-page-num {
     position: relative;
     z-index: 2;
-    background: var(--gt-surface-raised);
-    box-shadow: 0 0 0 2px var(--gt-surface-raised);
+    background: var(--gt-surface);
+    box-shadow: 0 0 0 2px var(--gt-surface);
 }
 
 .gtw-guide-shot-group[data-open="true"] .gtw-guide-page-step--grouped .gtw-guide-page-num {
     background: rgba(76, 141, 255, 0.18);
-    box-shadow: 0 0 0 2px var(--gt-surface-raised);
+    box-shadow: 0 0 0 2px var(--gt-surface);
     color: var(--accent-primary, #4C8DFF);
 }
 

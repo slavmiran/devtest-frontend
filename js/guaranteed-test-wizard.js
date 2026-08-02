@@ -755,54 +755,53 @@
             '</svg>';
 
         return `
-        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;" data-gtw-license-guide="v3">
+        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;" data-gtw-license-guide="v4">
             <div class="gtw-guide-page">
                 <button type="button" class="gtw-guide-page-close" id="gtw-license-guide-close" aria-label="${L('close')}">&times;</button>
                 <h2 class="gtw-guide-page-title">${L('guidePageTitle')}</h2>
                 <p class="gtw-guide-page-subtitle">${L('guidePageSubtitle')}</p>
 
-                <button type="button" class="gtw-guide-console-btn" id="gtw-license-open-console">
-                    ${externalIcon}
-                    <span>${L('guideOpenConsole')}</span>
-                </button>
-
-                <div class="gtw-guide-page-steps" id="gtw-license-guide-steps">
-                    <div class="gtw-guide-page-step" data-guide-step="1">
-                        <span class="gtw-guide-page-num" data-num-global="1" data-num-local="1">1</span>
-                        <div class="gtw-guide-page-content">
-                            <div class="gtw-guide-step-head">
-                                <div class="gtw-guide-step-copy">
-                                    <strong>${L('guide1Title')}</strong>
-                                    <p>${L('guide1Text')}</p>
+                <div class="gtw-guide-page-flow" id="gtw-license-guide-steps">
+                    <section class="gtw-guide-page-block" data-guide-block="1">
+                        <div class="gtw-guide-page-step" data-guide-step="1">
+                            <span class="gtw-guide-page-num" data-num-global="1" data-num-local="1">1</span>
+                            <div class="gtw-guide-page-content">
+                                <div class="gtw-guide-step-head">
+                                    <div class="gtw-guide-step-copy">
+                                        <strong>${L('guide1Title')}</strong>
+                                        <p>${L('guide1Text')}</p>
+                                    </div>
+                                    <button type="button" class="gtw-guide-icon-btn" id="gtw-license-step1-console" aria-label="${L('guideOpenConsole')}" title="${L('guideOpenConsole')}">
+                                        ${externalIcon}
+                                    </button>
                                 </div>
-                                <button type="button" class="gtw-guide-icon-btn" id="gtw-license-step1-console" aria-label="${L('guideOpenConsole')}" title="${L('guideOpenConsole')}">
-                                    ${externalIcon}
-                                </button>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="gtw-guide-page-step" data-guide-step="2">
-                        <span class="gtw-guide-page-num" data-num-global="2" data-num-local="2">2</span>
-                        <div class="gtw-guide-page-content">
-                            <div class="gtw-guide-step-head">
-                                <div class="gtw-guide-step-copy">
-                                    <strong>${L('guide2Title')}</strong>
-                                    <p>${L('guide2Text')}</p>
+                    <section class="gtw-guide-page-block" data-guide-block="2">
+                        <div class="gtw-guide-page-step" data-guide-step="2">
+                            <span class="gtw-guide-page-num" data-num-global="2" data-num-local="2">2</span>
+                            <div class="gtw-guide-page-content">
+                                <div class="gtw-guide-step-head">
+                                    <div class="gtw-guide-step-copy">
+                                        <strong>${L('guide2Title')}</strong>
+                                        <p>${L('guide2Text')}</p>
+                                    </div>
+                                    <button type="button" class="gtw-guide-icon-btn gtw-guide-shot-toggle" id="gtw-license-shot-settings-toggle" aria-expanded="false" aria-controls="gtw-license-shot-settings" title="${L('guideShowScreenshot')}">
+                                        ${imageIcon}
+                                    </button>
                                 </div>
-                                <button type="button" class="gtw-guide-icon-btn gtw-guide-shot-toggle" id="gtw-license-shot-settings-toggle" aria-expanded="false" aria-controls="gtw-license-shot-settings" title="${L('guideShowScreenshot')}">
-                                    ${imageIcon}
-                                </button>
-                            </div>
-                            <div class="gtw-guide-shot-panel" id="gtw-license-shot-settings" hidden>
-                                <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${LICENSE_GUIDE_SETTINGS_IMG}" data-zoom-alt="${L('guide2Title')}">
-                                    <img src="${LICENSE_GUIDE_SETTINGS_IMG}" alt="${L('guide2Title')}" loading="lazy" class="gtw-guide-shot-img" />
-                                </button>
+                                <div class="gtw-guide-shot-panel" id="gtw-license-shot-settings" hidden>
+                                    <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${LICENSE_GUIDE_SETTINGS_IMG}" data-zoom-alt="${L('guide2Title')}">
+                                        <img src="${LICENSE_GUIDE_SETTINGS_IMG}" alt="${L('guide2Title')}" loading="lazy" class="gtw-guide-shot-img" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="gtw-guide-shot-group" id="gtw-license-shot-group-page" data-open="false">
+                    <section class="gtw-guide-page-block gtw-guide-shot-group" id="gtw-license-shot-group-page" data-guide-block="3" data-open="false">
                         <div class="gtw-guide-page-step gtw-guide-shot-group-head">
                             <span class="gtw-guide-page-num gtw-guide-page-num--ghost" aria-hidden="true"></span>
                             <div class="gtw-guide-page-content">
@@ -857,7 +856,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
         </div>
@@ -1210,7 +1209,7 @@
         }
 
         if (!document.getElementById('gtw-license-guide-overlay') ||
-            document.getElementById('gtw-license-guide-overlay').getAttribute('data-gtw-license-guide') !== 'v3') {
+            document.getElementById('gtw-license-guide-overlay').getAttribute('data-gtw-license-guide') !== 'v4') {
             var oldGuide = document.getElementById('gtw-license-guide-overlay');
             if (oldGuide && oldGuide.parentNode) oldGuide.parentNode.removeChild(oldGuide);
             var divGuide = document.createElement('div');
@@ -1496,9 +1495,7 @@
             });
         }
 
-        var openConsoleTop = document.getElementById('gtw-license-open-console');
         var openConsoleStep1 = document.getElementById('gtw-license-step1-console');
-        if (openConsoleTop) openConsoleTop.addEventListener('click', openPlayConsoleExternal);
         if (openConsoleStep1) openConsoleStep1.addEventListener('click', openPlayConsoleExternal);
 
         var settingsToggle = document.getElementById('gtw-license-shot-settings-toggle');
