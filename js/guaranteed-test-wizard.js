@@ -246,8 +246,8 @@
         guideShowScreenshot: ['Show screenshot', 'Показать скриншот'],
         guideHideScreenshot: ['Hide screenshot', 'Скрыть скриншот'],
         guideShotPageLabel: [
-            'These 4 actions are on the same License testing page',
-            'Эти 4 действия — на одной странице License testing'
+            'Next 4 actions are on the same License testing page',
+            'Следующие 4 действия — на одной странице License testing'
         ],
         guide1Title: ['Open Google Play Console', 'Откройте Google Play Console'],
         guide1Text: ['Go to your app dashboard.', 'Перейдите на дашборд приложения.'],
@@ -755,7 +755,7 @@
             '</svg>';
 
         return `
-        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;" data-gtw-license-guide="v2">
+        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;" data-gtw-license-guide="v3">
             <div class="gtw-guide-page">
                 <button type="button" class="gtw-guide-page-close" id="gtw-license-guide-close" aria-label="${L('close')}">&times;</button>
                 <h2 class="gtw-guide-page-title">${L('guidePageTitle')}</h2>
@@ -803,50 +803,58 @@
                     </div>
 
                     <div class="gtw-guide-shot-group" id="gtw-license-shot-group-page" data-open="false">
-                        <div class="gtw-guide-shot-group-rail" aria-hidden="true"></div>
-                        <button type="button" class="gtw-guide-shot-group-toggle" id="gtw-license-shot-page-toggle" aria-expanded="false" aria-controls="gtw-license-shot-page">
-                            <span class="gtw-guide-shot-group-toggle-left">
-                                ${imageIcon}
-                                <span>${L('guideShotPageLabel')}</span>
-                            </span>
-                            <span class="gtw-guide-shot-group-chevron" aria-hidden="true">▼</span>
-                        </button>
-                        <div class="gtw-guide-shot-panel gtw-guide-shot-panel--group" id="gtw-license-shot-page" hidden>
-                            <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${LICENSE_GUIDE_RESPONSE_IMG}" data-zoom-alt="${L('guideShotPageLabel')}">
-                                <img src="${LICENSE_GUIDE_RESPONSE_IMG}" alt="${L('guideShotPageLabel')}" loading="lazy" class="gtw-guide-shot-img" />
-                            </button>
-                        </div>
-
-                        <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="3" data-local-num="1">
-                            <span class="gtw-guide-page-num" data-num-global="3" data-num-local="1">3</span>
+                        <div class="gtw-guide-page-step gtw-guide-shot-group-head">
+                            <span class="gtw-guide-page-num gtw-guide-page-num--ghost" aria-hidden="true"></span>
                             <div class="gtw-guide-page-content">
-                                <strong>${L('guide3Title')}</strong>
-                                <p>${L('guide3Text')}</p>
-                            </div>
-                        </div>
-                        <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="4" data-local-num="2">
-                            <span class="gtw-guide-page-num" data-num-global="4" data-num-local="2">4</span>
-                            <div class="gtw-guide-page-content">
-                                <strong>${L('guide4Title')}</strong>
-                                <p>${L('guide4Text')}</p>
-                                <div class="gtw-copy-box">
-                                    <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
-                                    <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="${L('copy')}">${L('copy')}</button>
+                                <div class="gtw-guide-step-head">
+                                    <div class="gtw-guide-step-copy">
+                                        <strong class="gtw-guide-shot-group-title">${L('guideShotPageLabel')}</strong>
+                                    </div>
+                                    <button type="button" class="gtw-guide-icon-btn gtw-guide-shot-toggle" id="gtw-license-shot-page-toggle" aria-expanded="false" aria-controls="gtw-license-shot-page" title="${L('guideShowScreenshot')}">
+                                        ${imageIcon}
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="5" data-local-num="3">
-                            <span class="gtw-guide-page-num" data-num-global="5" data-num-local="3">5</span>
-                            <div class="gtw-guide-page-content">
-                                <strong>${L('guide5Title')}</strong>
-                                <p>${L('guide5Text')}</p>
+
+                        <div class="gtw-guide-shot-group-body">
+                            <div class="gtw-guide-shot-panel gtw-guide-shot-panel--group" id="gtw-license-shot-page" hidden>
+                                <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${LICENSE_GUIDE_RESPONSE_IMG}" data-zoom-alt="${L('guideShotPageLabel')}">
+                                    <img src="${LICENSE_GUIDE_RESPONSE_IMG}" alt="${L('guideShotPageLabel')}" loading="lazy" class="gtw-guide-shot-img" />
+                                </button>
                             </div>
-                        </div>
-                        <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="6" data-local-num="4">
-                            <span class="gtw-guide-page-num" data-num-global="6" data-num-local="4">6</span>
-                            <div class="gtw-guide-page-content">
-                                <strong>${L('guide6Title')}</strong>
-                                <p>${L('guide6Text')}</p>
+
+                            <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="3" data-local-num="1">
+                                <span class="gtw-guide-page-num" data-num-global="3" data-num-local="1">3</span>
+                                <div class="gtw-guide-page-content">
+                                    <strong>${L('guide3Title')}</strong>
+                                    <p>${L('guide3Text')}</p>
+                                </div>
+                            </div>
+                            <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="4" data-local-num="2">
+                                <span class="gtw-guide-page-num" data-num-global="4" data-num-local="2">4</span>
+                                <div class="gtw-guide-page-content">
+                                    <strong>${L('guide4Title')}</strong>
+                                    <p>${L('guide4Text')}</p>
+                                    <div class="gtw-copy-box">
+                                        <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
+                                        <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="${L('copy')}">${L('copy')}</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="5" data-local-num="3">
+                                <span class="gtw-guide-page-num" data-num-global="5" data-num-local="3">5</span>
+                                <div class="gtw-guide-page-content">
+                                    <strong>${L('guide5Title')}</strong>
+                                    <p>${L('guide5Text')}</p>
+                                </div>
+                            </div>
+                            <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="6" data-local-num="4">
+                                <span class="gtw-guide-page-num" data-num-global="6" data-num-local="4">6</span>
+                                <div class="gtw-guide-page-content">
+                                    <strong>${L('guide6Title')}</strong>
+                                    <p>${L('guide6Text')}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1202,7 +1210,7 @@
         }
 
         if (!document.getElementById('gtw-license-guide-overlay') ||
-            document.getElementById('gtw-license-guide-overlay').getAttribute('data-gtw-license-guide') !== 'v2') {
+            document.getElementById('gtw-license-guide-overlay').getAttribute('data-gtw-license-guide') !== 'v3') {
             var oldGuide = document.getElementById('gtw-license-guide-overlay');
             if (oldGuide && oldGuide.parentNode) oldGuide.parentNode.removeChild(oldGuide);
             var divGuide = document.createElement('div');
@@ -1466,6 +1474,7 @@
             toggle.setAttribute('title', isOpen ? L('guideHideScreenshot') : L('guideShowScreenshot'));
         }
         if (toggleId === 'gtw-license-shot-page-toggle') {
+            toggle.setAttribute('title', isOpen ? L('guideHideScreenshot') : L('guideShowScreenshot'));
             syncLicenseGuideShotNumbers(!!isOpen);
         }
     }
