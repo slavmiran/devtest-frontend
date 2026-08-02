@@ -48,7 +48,7 @@
     <script src="./js/app-config.js?v=20260802-group-chip-v1"></script>
     <script src="./js/app-api.js?v=20260727-target-access-block"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
-    <script src="./js/app-homescreen.js?v=20260802-homescreen-v1"></script>
+    <script src="./js/app-homescreen.js?v=20260802-homescreen-v2"></script>
     <script src="./js/app-actions.js?v=20260802-group-chip-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
     <script src="./js/app-features.js?v=20260802-group-chip-v1"></script>
@@ -58,7 +58,7 @@
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260725-ppc-buffer-band-v2">
-    <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260802-group-chip-v1">
+    <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260802-homescreen-v2">
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20260731-dates-direct-label">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/wizard.css?v=20260706-phase2">
@@ -138,8 +138,17 @@
                     <div class="system-setting-copy" id="homescreen-shortcut-label" data-i18n="homeScreenShortcutLabel">📲 Иконка на рабочий стол</div>
                     <div class="system-setting-meta" id="homescreen-shortcut-meta" data-i18n="homeScreenShortcutMeta">Быстрый доступ к ежедневным чекинам</div>
                 </div>
-                <button type="button" class="btn btn-primary homescreen-shortcut-btn" id="homescreen-shortcut-btn" onclick="addDevTestHubToHomeScreen()" data-i18n="homeScreenShortcutAdd">Установить</button>
-                <span class="homescreen-shortcut-status" id="homescreen-shortcut-status" hidden data-i18n="homeScreenShortcutAdded">Добавлено</span>
+                <button type="button" class="homescreen-shortcut-action" id="homescreen-shortcut-btn" onclick="addDevTestHubToHomeScreen()" aria-label="Add">
+                    <svg class="homescreen-shortcut-action__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M18 1.01L8 1C6.9 1 6 1.9 6 3v3h2V5h10v14H8v-1H6v3c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM10 15h2V8H5v2h3.59L3 15.59 4.41 17 10 11.41V15z"/>
+                    </svg>
+                </button>
+                <span class="homescreen-shortcut-status" id="homescreen-shortcut-status" hidden>
+                    <svg class="homescreen-shortcut-status__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <span id="homescreen-shortcut-status-text" data-i18n="homeScreenShortcutAdded">Добавлено</span>
+                </span>
             </div>
             <div class="system-setting-row" id="auto-accept-mutual-row">
                 <div class="system-setting-copy-wrap">

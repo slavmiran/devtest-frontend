@@ -48,18 +48,19 @@ function syncHomeScreenUi() {
         } else {
             row.hidden = false;
             var isAdded = status === 'added';
+            var canAdd = _canPromptHomeScreenAdd(status);
+            var statusText = document.getElementById('homescreen-shortcut-status-text');
             if (btn) {
-                btn.hidden = isAdded;
-                btn.disabled = isAdded;
-                btn.textContent = window.t('homeScreenShortcutAdd', {}, uiLang);
+                btn.hidden = isAdded || !canAdd;
+                btn.disabled = isAdded || !canAdd;
+                btn.setAttribute('aria-label', window.t('homeScreenShortcutAdd', {}, uiLang));
+                btn.title = window.t('homeScreenShortcutAdd', {}, uiLang);
             }
             if (statusEl) {
                 statusEl.hidden = !isAdded;
-                statusEl.textContent = window.t('homeScreenShortcutAdded', {}, uiLang);
             }
-            // unknown/missed → Add; added → Added; unsupported handled above
-            if (!isAdded && !_canPromptHomeScreenAdd(status) && btn) {
-                btn.hidden = true;
+            if (statusText) {
+                statusText.textContent = window.t('homeScreenShortcutAdded', {}, uiLang);
             }
         }
     }

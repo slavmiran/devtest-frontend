@@ -271,25 +271,61 @@
     display: none !important;
 }
 
-.homescreen-shortcut-btn {
-    flex-shrink: 0;
-    min-width: 96px;
-    padding: 8px 14px;
-    font-size: 13px;
-    font-weight: 600;
+.homescreen-shortcut-action {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--border-strong);
     border-radius: 12px;
+    background: rgba(37, 99, 235, 0.14);
+    color: var(--button-color, #2481cc);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.homescreen-shortcut-action:active {
+    opacity: 0.75;
+    transform: scale(0.96);
+}
+
+.homescreen-shortcut-action[hidden] {
+    display: none !important;
+}
+
+.homescreen-shortcut-action__icon {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+    display: block;
 }
 
 .homescreen-shortcut-status {
-    flex-shrink: 0;
-    font-size: 13px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
     font-weight: 600;
-    color: var(--accent-primary, #5ac8fa);
+    color: #34c759;
     white-space: nowrap;
+    line-height: 1;
 }
 
 .homescreen-shortcut-status[hidden] {
     display: none !important;
+}
+
+.homescreen-shortcut-status__icon {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    flex-shrink: 0;
 }
 
 .homescreen-promo-banner {
@@ -357,6 +393,12 @@
     font-weight: 600;
     text-align: left;
     cursor: pointer;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+#homescreen-shortcut-label {
+    cursor: default;
 }
 
 .system-setting-meta {
