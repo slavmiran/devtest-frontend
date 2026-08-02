@@ -35,16 +35,8 @@
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
 }
 
-.system-drop-content::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    bottom: -1px;
-    width: calc(var(--system-tab-width) + 16px);
-    height: 2px;
-    background: var(--system-drawer-bg);
-    pointer-events: none;
-}
+/* Seam mask lives on the tab container (not inside scrollable content),
+   otherwise the 2px bar overlays mid-menu rows while scrolling. */
 
 .system-drop-title {
     font-size: 16px;
@@ -272,13 +264,13 @@
 }
 
 .homescreen-shortcut-action {
-    flex: 0 0 40px;
-    width: 40px;
-    height: 40px;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
     margin: 0;
     padding: 0;
     border: 1px solid var(--border-strong);
-    border-radius: 12px;
+    border-radius: 10px;
     background: rgba(37, 99, 235, 0.14);
     color: var(--button-color, #2481cc);
     display: inline-flex;
@@ -299,21 +291,36 @@
 }
 
 .homescreen-shortcut-action__icon {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     fill: currentColor;
     display: block;
 }
 
+.system-setting-row--homescreen {
+    padding: 10px 12px;
+    gap: 10px;
+}
+
+.system-setting-row--homescreen .system-setting-copy-wrap {
+    gap: 2px;
+}
+
+.system-setting-row--homescreen #homescreen-shortcut-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
+}
+
 .homescreen-shortcut-status {
-    flex: 0 0 auto;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 600;
+    justify-content: center;
     color: #34c759;
-    white-space: nowrap;
     line-height: 1;
 }
 
@@ -322,8 +329,8 @@
 }
 
 .homescreen-shortcut-status__icon {
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     fill: currentColor;
     flex-shrink: 0;
 }
@@ -397,10 +404,6 @@
     overflow-wrap: anywhere;
 }
 
-#homescreen-shortcut-label {
-    cursor: default;
-}
-
 .system-setting-meta {
     color: var(--hint-color);
     font-size: 12px;
@@ -415,10 +418,23 @@
 }
 
 .system-drop-tab-container {
+    position: relative;
     display: flex;
     justify-content: flex-end;
     width: 100%;
     margin-top: -1px;
+}
+
+.system-drop-tab-container::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: -1px;
+    width: calc(var(--system-tab-width) + 16px);
+    height: 2px;
+    background: var(--system-drawer-bg);
+    pointer-events: none;
+    z-index: 1;
 }
 
 .system-drop-tab {
@@ -486,13 +502,13 @@ html[dir="rtl"] .system-drop-content {
     border-radius: 0 0 20px 0;
 }
 
-html[dir="rtl"] .system-drop-content::after {
-    right: auto;
-    left: 0;
-}
-
 html[dir="rtl"] .system-drop-tab-container {
     justify-content: flex-start;
+}
+
+html[dir="rtl"] .system-drop-tab-container::before {
+    right: auto;
+    left: 0;
 }
 
 html[dir="rtl"] .system-language-select {
@@ -596,6 +612,7 @@ html[dir="rtl"] .system-language-select {
     max-width: none;
     margin: 0;
     border-radius: 24px 24px 0 0;
+    overflow-x: hidden;
 }
 
 .settings-email-modal-hint {
@@ -610,16 +627,23 @@ html[dir="rtl"] .system-language-select {
 }
 
 .settings-email-modal-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
     gap: 10px;
+    width: 100%;
 }
 
-.settings-email-modal-actions .settings-email-save {
-    flex: 1;
+/* Override global `.btn { width: 100% }` so Delete doesn't push Save off-screen. */
+.settings-email-modal-actions .btn {
+    width: auto;
+    min-width: 0;
 }
 
 .settings-email-modal-actions .settings-email-delete {
-    flex: 0 0 auto;
-    min-width: 110px;
+    flex: 0 1 auto;
+    padding-left: 14px;
+    padding-right: 14px;
     background-color: var(--secondary-bg-color);
     color: var(--text-color);
     border: 1px solid rgba(142, 142, 147, 0.2);
@@ -627,4 +651,12 @@ html[dir="rtl"] .system-language-select {
 
 .settings-email-modal-actions .settings-email-delete[hidden] {
     display: none !important;
+}
+
+.settings-email-modal-actions .settings-email-save {
+    flex: 1 1 auto;
+}
+
+.settings-email-modal-actions .settings-email-save:only-child {
+    width: 100%;
 }

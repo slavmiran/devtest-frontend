@@ -37,6 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
                 _lastFetchTimes.tests = 0;
             }
+            if (typeof refreshHomeScreenStatus === 'function') {
+                refreshHomeScreenStatus({ force: true });
+            }
             renderTests(true);
             loadTasks(true).catch(() => {});
             loadIncomingOffers({ background: true }).catch(() => {});
@@ -126,6 +129,7 @@ Object.assign(window, {
     syncAutoAcceptToggleUi,
     initHomeScreenPromo,
     syncHomeScreenUi,
+    refreshHomeScreenStatus,
     addDevTestHubToHomeScreen,
     dismissHomeScreenBanner,
     applyLanguage,

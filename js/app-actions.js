@@ -239,10 +239,7 @@ async function markDefaultGroupJoined(options) {
         var response = await fetch(API_BASE + '/users/me/default-group-joined', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                init_data: (tg && tg.initData) ? tg.initData : '',
-                joined: true,
-            }),
+            body: JSON.stringify(withInitData({ joined: true })),
         });
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {
@@ -580,6 +577,9 @@ function toggleSystemMenu() {
         }
         if (willOpen && typeof window.populateDeviceInfoSettings === 'function') {
             window.populateDeviceInfoSettings();
+        }
+        if (willOpen && typeof window.refreshHomeScreenStatus === 'function') {
+            window.refreshHomeScreenStatus({ force: true });
         }
         if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     }
