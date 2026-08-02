@@ -120,6 +120,7 @@
         _autoAcceptToggleInFlight: false,
         _defaultGroupJoined: false,
         _defaultGroupJoinedInFlight: false,
+        _openAccessProblemAppIds: new Set(),
         _attachDeviceInfoToBugs: true,
         _deviceInfo: '',
         _deviceInfoIsManual: false,

@@ -130,9 +130,25 @@
     cursor: not-allowed;
 }
 
+#default-group-joined-row {
+    align-items: flex-start;
+}
+
+#default-group-joined-row .system-setting-copy-wrap {
+    align-items: flex-start;
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .settings-default-group-status {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    width: fit-content;
+    max-width: 100%;
+    align-self: flex-start;
+    flex: 0 0 auto;
     margin-top: 4px;
     padding: 4px 10px;
     border-radius: 999px;
@@ -140,6 +156,8 @@
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
+    white-space: nowrap;
+    box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -155,11 +173,19 @@
     border-color: rgba(255, 149, 0, 0.28);
 }
 
-.default-group-modal-content {
+/* Above system-drop-menu (z-index 9999); full-bleed bottom sheet. */
+#default-group-modal.modal-overlay {
+    z-index: 10050;
+    align-items: flex-end;
+}
+
+#default-group-modal .default-group-modal-content {
+    width: 100%;
+    max-width: none;
+    margin: 0;
     padding: 0;
     overflow: hidden;
-    max-width: min(420px, calc(100vw - 32px));
-    border-radius: 20px;
+    border-radius: 24px 24px 0 0;
 }
 
 .default-group-modal__image {
@@ -168,7 +194,7 @@
     height: auto;
     max-height: 200px;
     object-fit: cover;
-    border-radius: 20px 20px 0 0;
+    border-radius: 24px 24px 0 0;
     background: rgba(0, 0, 0, 0.12);
 }
 

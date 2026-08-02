@@ -181,7 +181,7 @@
             accessProblemHint: "Убедитесь, что вы вступили в Google Group и ваш аккаунт Google Play совпадает с аккаунтом, вступившим в группу.",
             accessProblemRecheckGroupBtn: "🔗 Проверить / Перезайти в Google Group",
             accessProblemFreezeBtn: "❄️ Заморозить тест и уведомить автора",
-            settingsDefaultGroupLabel: "👥 Стандартная Google Group:",
+            settingsDefaultGroupLabel: "👥 Community Google Group:",
             settingsDefaultGroupConnected: "Подключена",
             settingsDefaultGroupNotConnected: "Не подключена",
             defaultGroupModalTitle: "Вступить в Google Group",

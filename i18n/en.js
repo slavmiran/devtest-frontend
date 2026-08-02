@@ -182,7 +182,7 @@
             accessProblemHint: "Make sure you joined the Google Group and that your Google Play account matches the account that joined the group.",
             accessProblemRecheckGroupBtn: "🔗 Check / Rejoin Google Group",
             accessProblemFreezeBtn: "❄️ Freeze test and notify the author",
-            settingsDefaultGroupLabel: "👥 Standard Google Group:",
+            settingsDefaultGroupLabel: "👥 Community Google Group:",
             settingsDefaultGroupConnected: "Connected",
             settingsDefaultGroupNotConnected: "Not connected",
             defaultGroupModalTitle: "Join Google Group",

@@ -291,7 +291,8 @@ function openDefaultGoogleGroupLink() {
     if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-function handleJoinGoogleGroupClick(appId, groupUrl) {
+function handleJoinGoogleGroupClick(appId, groupUrl, options) {
+    var settings = options || {};
     var resolvedUrl = String(groupUrl || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
     try {
         if (tg && typeof tg.openLink === 'function') {
@@ -305,7 +306,11 @@ function handleJoinGoogleGroupClick(appId, groupUrl) {
     }
     if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     if (isDefaultGoogleGroupUrl(resolvedUrl)) {
-        markDefaultGroupJoined({ silent: true });
+        // Keep accordion open across re-render after marking the default group joined.
+        markDefaultGroupJoined({
+            silent: true,
+            rerender: settings.rerender !== false,
+        });
     }
 }
 
@@ -377,25 +382,57 @@ async function handleDefaultGroupConfirmCheckbox(input) {
     }
 }
 
+function setAccessProblemAccordionOpen(appId, isOpen) {
+    var id = Number(appId || 0);
+    if (!id) return;
+    if (!(_openAccessProblemAppIds instanceof Set)) {
+        _openAccessProblemAppIds = new Set();
+    }
+    if (isOpen) {
+        _openAccessProblemAppIds.add(id);
+    } else {
+        _openAccessProblemAppIds.delete(id);
+    }
+    var panel = document.getElementById('access-problem-panel-' + id);
+    var toggle = document.getElementById('access-problem-toggle-' + id);
+    if (panel) {
+        panel.classList.toggle('is-open', !!isOpen);
+        panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+    }
+    if (toggle) {
+        toggle.classList.toggle('is-open', !!isOpen);
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        var arrow = toggle.querySelector('.access-problem-toggle__arrow');
+        if (arrow) arrow.textContent = isOpen ? '▲' : '▼';
+    }
+}
+
+function isAccessProblemAccordionOpen(appId) {
+    var id = Number(appId || 0);
+    return !!id && (_openAccessProblemAppIds instanceof Set) && _openAccessProblemAppIds.has(id);
+}
+
 function toggleAccessProblemAccordion(appId) {
-    var panel = document.getElementById('access-problem-panel-' + appId);
-    var toggle = document.getElementById('access-problem-toggle-' + appId);
-    if (!panel || !toggle) return;
-    var isOpen = panel.classList.toggle('is-open');
-    panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    toggle.classList.toggle('is-open', isOpen);
-    var arrow = toggle.querySelector('.access-problem-toggle__arrow');
-    if (arrow) arrow.textContent = isOpen ? '▲' : '▼';
+    var nextOpen = !isAccessProblemAccordionOpen(appId);
+    setAccessProblemAccordionOpen(appId, nextOpen);
     if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
+function restoreAccessProblemAccordions() {
+    if (!(_openAccessProblemAppIds instanceof Set) || !_openAccessProblemAppIds.size) return;
+    _openAccessProblemAppIds.forEach(function(id) {
+        setAccessProblemAccordionOpen(id, true);
+    });
+}
+
 function openAccessProblemGroupLink(appId) {
+    // Persist open state before leave/re-render so accordion stays expanded on return.
+    setAccessProblemAccordionOpen(appId, true);
     var test = (typeof myTests !== 'undefined' ? myTests : []).find(function(item) {
         return Number(item.id) === Number(appId);
     });
     var groupUrl = String((test && (test.google_group_url || test.group_url)) || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
-    handleJoinGoogleGroupClick(appId, groupUrl);
+    handleJoinGoogleGroupClick(appId, groupUrl, { rerender: true });
 }
 
 async function handleAutoAcceptMutualToggle(input) {
