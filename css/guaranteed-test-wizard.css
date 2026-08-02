@@ -1166,7 +1166,9 @@
 .gtw-exchange-logo {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
+    display: block;
 }
 
 .gtw-exchange-icon.is-fallback { background: rgba(76, 141, 255, 0.14); color: var(--accent-primary, #4C8DFF); }
@@ -1360,21 +1362,38 @@
 }
 
 .gtw-credential-icon-wrap {
-    flex-shrink: 0;
+    flex: 0 0 44px;
+    align-self: center;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 44px;
-    border-radius: var(--gt-radius-chip);
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    aspect-ratio: 1 / 1;
+    box-sizing: border-box;
+    border-radius: 10px;
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.06);
-    font-size: 12px;
+    background: #FFFFFF;
+    font-size: 11px;
     font-weight: 700;
     color: var(--text-secondary, #AEB7C2);
 }
 
-.gtw-credential-icon-wrap .gtw-exchange-logo { width: 100%; height: 100%; object-fit: cover; }
-.gtw-credential-icon-wrap.is-fallback { background: rgba(76, 141, 255, 0.14); color: var(--accent-primary, #4C8DFF); }
+.gtw-credential-icon-wrap .gtw-exchange-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    padding: 5px;
+    box-sizing: border-box;
+}
+.gtw-credential-icon-wrap.is-fallback {
+    background: rgba(76, 141, 255, 0.14);
+    color: var(--accent-primary, #4C8DFF);
+}
 
 .gtw-credential-box {
     flex: 1;
@@ -2124,6 +2143,69 @@
     font-family: var(--gt-font);
 }
 
+.projects-mutual-section-title {
+    margin-top: 4px;
+}
+
+.gt-draft-banner {
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    background: rgba(76, 141, 255, 0.12);
+    border: 1px solid rgba(76, 141, 255, 0.28);
+    border-radius: var(--gt-radius-section, 14px);
+    font-family: var(--gt-font);
+}
+
+.gt-draft-banner__body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.gt-draft-banner__text {
+    margin: 0;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 500;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gt-draft-banner__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.gt-draft-banner__resume,
+.gt-draft-banner__dismiss {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.gt-draft-banner__resume {
+    background: var(--accent-primary, #4C8DFF);
+    color: #FFFFFF;
+}
+
+.gt-draft-banner__dismiss {
+    background: transparent;
+    color: var(--text-secondary, #AEB7C2);
+    border: 1px solid var(--gt-hairline, rgba(255,255,255,0.08));
+}
+
+.archive-gt-orders {
+    margin: 0 0 14px;
+}
+
 .guaranteed-orders-section__title {
     display: flex;
     align-items: center;
@@ -2282,30 +2364,51 @@
     font-variant-numeric: tabular-nums;
 }
 
+.guaranteed-order-card__code {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0.02em;
+    color: var(--text-tertiary, #717C89);
+    font-variant-numeric: tabular-nums;
+}
+
 .guaranteed-order-card__actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
+    min-width: 0;
 }
 
 .guaranteed-order-card__actions .guaranteed-order-action,
 .guaranteed-order-action {
-    flex: 1;
+    flex: 1 1 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
+    box-sizing: border-box;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
     min-height: 42px;
-    padding: 0 14px;
+    padding: 0 12px;
     border: none;
     border-radius: var(--gt-radius-control);
     font-family: var(--gt-font);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    line-height: 19px;
+    line-height: 18px;
+    white-space: nowrap;
     text-transform: none;
     letter-spacing: 0;
     cursor: pointer;
     transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.guaranteed-order-card__actions .btn.guaranteed-order-action {
+    width: auto;
 }
 
 .guaranteed-order-card__actions .btn-secondary.guaranteed-order-action {
@@ -2317,13 +2420,17 @@
 .guaranteed-order-card__actions .btn-secondary.guaranteed-order-action:hover { background: rgba(255, 255, 255, 0.1); }
 
 .guaranteed-order-card__actions .btn-primary.guaranteed-order-action {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     background: var(--accent-primary, #4C8DFF);
     color: #FFFFFF;
     box-shadow: none;
 }
 
 .guaranteed-order-card__actions .btn-primary.guaranteed-order-action:hover { background: var(--accent-primary-hover, #3B7BEF); }
+
+.guaranteed-order-card__actions--single .guaranteed-order-action {
+    flex: 1 1 100%;
+}
 
 /* =========================================================
    22. MOTION

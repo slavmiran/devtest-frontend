@@ -57,6 +57,9 @@ function buildEmailTestModeChip(project) {
 
 function renderProjects(force) {
     if (!force && !isTabVisible('projects')) return;
+    if (typeof window.syncHomeScreenUi === 'function') {
+        window.syncHomeScreenUi();
+    }
     const container = document.getElementById('projects-list');
     container.innerHTML = '';
 
@@ -210,6 +213,7 @@ function renderProjects(force) {
     }
 
     renderGuaranteedOrdersSection(container);
+    renderGuaranteedDraftBanner(container);
 
     if (myProjects.length === 0) {
         container.insertAdjacentHTML('beforeend', `
@@ -220,6 +224,13 @@ function renderProjects(force) {
         `);
         return;
     }
+
+    container.insertAdjacentHTML(
+        'beforeend',
+        '<h2 class="guaranteed-orders-section__title projects-mutual-section-title">' +
+            window.escapeHTML(getProjectUiText('mutualOrdersSectionTitle', 'Mutual testing')) +
+        '</h2>'
+    );
 
     if (localStorage.getItem('hideDeleteReminder') !== 'true') {
         const reminder = document.createElement('div');
@@ -2121,73 +2132,99 @@ function renderArchivedProjects(force) {
         const packageName = String(project.package_name || '').trim().toLowerCase();
         return !packageName || !activePackages.has(packageName);
     });
-    if (visibleArchivedProjects.length === 0) {
-        section.innerHTML = `
-            <div class="archive-shell is-empty">
-                <button type="button" class="archive-toggle" onclick="toggleArchive()">
-                    <span class="archive-toggle-label">${t.archiveTitle} (0)</span>
+
+    function paintArchive(gtArchivedOrders) {
+        const gtOrders = Array.isArray(gtArchivedOrders) ? gtArchivedOrders : [];
+        const totalCount = visibleArchivedProjects.length + gtOrders.length;
+        if (totalCount === 0) {
+            section.innerHTML = `
+                <div class="archive-shell is-empty">
+                    <button type="button" class="archive-toggle" onclick="toggleArchive()">
+                        <span class="archive-toggle-label">${t.archiveTitle} (0)</span>
+                        <span class="archive-toggle-arrow">▼</span>
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        let html = `
+            <div class="archive-shell">
+                <button type="button" class="archive-toggle" onclick="toggleArchive()" id="archive-toggle">
+                    <span class="archive-toggle-label">${t.archiveTitle} (${totalCount})</span>
                     <span class="archive-toggle-arrow">▼</span>
                 </button>
+                <div id="archive-list" class="archive-list is-collapsed">
+        `;
+        if (gtOrders.length) {
+            html +=
+                '<div class="guaranteed-orders-section archive-gt-orders">' +
+                    '<h3 class="guaranteed-orders-section__title">' +
+                        window.escapeHTML(getProjectUiText('gtOrdersSectionTitle', 'Private Testing')) +
+                    '</h3>' +
+                    '<div class="guaranteed-orders-section__list">' +
+                        gtOrders.map(function (order) {
+                            return buildGuaranteedOrderCardHtml(order, { archived: true });
+                        }).join('') +
+                    '</div>' +
+                '</div>';
+        }
+        visibleArchivedProjects.forEach((project) => {
+            const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
+            const archiveName = project.name || window.t('unknownLabel', {}, lang);
+            const safeArchiveName = window.escapeHTML(archiveName);
+            const safeArchivePackage = window.escapeHTML(project.package_name || '');
+            const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
+            const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
+            const runIterationChip = buildRunIterationChip(project, 'archive-meta-chip');
+            html += `
+                <div class="card archive-card" id="archive-card-${project.app_id}" data-archive-project-id="${project.app_id}">
+                    <div class="card-header archive-card-header">
+                        ${renderIcon(archiveName, project.icon_url)}
+                        <div class="card-info">
+                            <div class="card-title notranslate">${safeArchiveName}</div>
+                            <div class="card-subtitle notranslate">${safeArchivePackage}</div>
+                        </div>
+                        ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
+                    </div>
+                    <div class="archive-meta-row">
+                        <span class="archive-meta-chip">${modeLabel}</span>
+                        ${runIterationChip}
+                        ${afkChip}
+                        <span class="archive-meta-chip">👥 ${project.total_testers}</span>
+                        <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
+                        <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
+                    </div>
+                    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                        <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="openRestartArchivedModal(${project.app_id})">
+                            ${window.escapeHTML(t.archiveRestartBtn)}
+                        </button>
+                        <button class="btn btn-secondary archive-transfer-btn" style="width: 100%;" onclick="openProjectTransferModal(${project.app_id})">
+                            ${window.escapeHTML(t.transferOwnershipBtn)}
+                        </button>
+                        <div class="action-row" style="margin-top: 0;">
+                            <div style="flex: 1;">${buildProjectFeedbackButton(project.app_id, project.feedback_total_count || 0, project.feedback_new_count || 0, true)}</div>
+                            <button class="btn archive-delete-btn" style="flex: 1;"
+                                onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
+                                ${t.archiveDeletePermanent}
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        html += `
+                </div>
             </div>
         `;
-        return;
+        section.innerHTML = html;
     }
-    let html = `
-        <div class="archive-shell">
-            <button type="button" class="archive-toggle" onclick="toggleArchive()" id="archive-toggle">
-                <span class="archive-toggle-label">${t.archiveTitle} (${visibleArchivedProjects.length})</span>
-                <span class="archive-toggle-arrow">▼</span>
-            </button>
-            <div id="archive-list" class="archive-list is-collapsed">
-    `;
-    visibleArchivedProjects.forEach((project) => {
-        const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
-        const archiveName = project.name || window.t('unknownLabel', {}, lang);
-        const safeArchiveName = window.escapeHTML(archiveName);
-        const safeArchivePackage = window.escapeHTML(project.package_name || '');
-        const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
-        const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
-        const runIterationChip = buildRunIterationChip(project, 'archive-meta-chip');
-        html += `
-            <div class="card archive-card" id="archive-card-${project.app_id}" data-archive-project-id="${project.app_id}">
-                <div class="card-header archive-card-header">
-                    ${renderIcon(archiveName, project.icon_url)}
-                    <div class="card-info">
-                        <div class="card-title notranslate">${safeArchiveName}</div>
-                        <div class="card-subtitle notranslate">${safeArchivePackage}</div>
-                    </div>
-                    ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
-                </div>
-                <div class="archive-meta-row">
-                    <span class="archive-meta-chip">${modeLabel}</span>
-                    ${runIterationChip}
-                    ${afkChip}
-                    <span class="archive-meta-chip">👥 ${project.total_testers}</span>
-                    <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
-                    <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
-                </div>
-                <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="openRestartArchivedModal(${project.app_id})">
-                        ${window.escapeHTML(t.archiveRestartBtn)}
-                    </button>
-                    <button class="btn btn-secondary archive-transfer-btn" style="width: 100%;" onclick="openProjectTransferModal(${project.app_id})">
-                        ${window.escapeHTML(t.transferOwnershipBtn)}
-                    </button>
-                    <div class="action-row" style="margin-top: 0;">
-                        <div style="flex: 1;">${buildProjectFeedbackButton(project.app_id, project.feedback_total_count || 0, project.feedback_new_count || 0, true)}</div>
-                        <button class="btn archive-delete-btn" style="flex: 1;"
-                            onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
-                            ${t.archiveDeletePermanent}
-                        </button>
-                    </div>
-                </div>
-            </div>`;
+
+    paintArchive(_gtArchivedOrdersCache || []);
+    loadArchivedGuaranteedOrders(!!force).then(function (orders) {
+        if (!document.getElementById('archive-section')) return;
+        paintArchive(orders);
+    }).catch(function () {
+        paintArchive(_gtArchivedOrdersCache || []);
     });
-    html += `
-            </div>
-        </div>
-    `;
-    section.innerHTML = html;
 }
 
 function toggleArchive() {
@@ -5704,11 +5741,15 @@ window.toggleProjectSettingsDrawer = toggleProjectSettingsDrawer;
 // --- Attract Testers Bottom Sheet Helper Functions ---
 var _gtActiveOrdersCache = null;
 var _gtActiveOrdersCacheAt = 0;
+var _gtArchivedOrdersCache = null;
+var _gtArchivedOrdersCacheAt = 0;
 var _gtStatusModalOrder = null;
 
 function invalidateGuaranteedOrdersCache() {
     _gtActiveOrdersCache = null;
     _gtActiveOrdersCacheAt = 0;
+    _gtArchivedOrdersCache = null;
+    _gtArchivedOrdersCacheAt = 0;
 }
 window.invalidateGuaranteedOrdersCache = invalidateGuaranteedOrdersCache;
 
@@ -5777,6 +5818,128 @@ function getGuaranteedOrderCardMeta(order) {
     };
 }
 
+function renderGuaranteedDraftBanner(container) {
+    if (!container) return;
+    var existing = container.querySelector('.gt-draft-banner');
+    if (existing) existing.remove();
+
+    var draft = null;
+    if (typeof window.getGuaranteedTestWizardDraft === 'function') {
+        draft = window.getGuaranteedTestWizardDraft();
+    }
+    if (!draft || !String(draft.app_name || '').trim()) return;
+
+    var step = Number(draft.step || 1);
+    var isPayment = step >= 3;
+    var banner = document.createElement('div');
+    banner.className = 'gt-draft-banner';
+    banner.setAttribute('role', 'status');
+    banner.innerHTML =
+        '<div class="gt-draft-banner__body">' +
+            '<p class="gt-draft-banner__text">' +
+                window.escapeHTML(getProjectUiText(
+                    isPayment ? 'gtDraftBannerPayment' : 'gtDraftBannerSetup',
+                    isPayment
+                        ? 'You have an unfinished paid testing order'
+                        : 'You have an unfinished private testing setup'
+                )) +
+            '</p>' +
+            '<div class="gt-draft-banner__actions">' +
+                '<button type="button" class="gt-draft-banner__resume">' +
+                    window.escapeHTML(getProjectUiText(
+                        isPayment ? 'gtDraftBannerFinishPayment' : 'gtDraftBannerContinue',
+                        isPayment ? 'Finish payment' : 'Continue setup'
+                    )) +
+                '</button>' +
+                '<button type="button" class="gt-draft-banner__dismiss">' +
+                    window.escapeHTML(getProjectUiText('gtDraftBannerDismiss', '✖ Reset')) +
+                '</button>' +
+            '</div>' +
+        '</div>';
+
+    var resumeBtn = banner.querySelector('.gt-draft-banner__resume');
+    var dismissBtn = banner.querySelector('.gt-draft-banner__dismiss');
+    if (resumeBtn) {
+        resumeBtn.addEventListener('click', function () {
+            if (typeof window.resumeGuaranteedTestWizardFromDraft === 'function') {
+                window.resumeGuaranteedTestWizardFromDraft();
+            }
+        });
+    }
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', function () {
+            if (typeof window.clearGuaranteedTestWizardDraft === 'function') {
+                window.clearGuaranteedTestWizardDraft();
+            }
+            banner.remove();
+        });
+    }
+
+    container.insertBefore(banner, container.firstChild);
+}
+window.renderGuaranteedDraftBanner = renderGuaranteedDraftBanner;
+
+function buildGuaranteedOrderCardHtml(order, options) {
+    options = options || {};
+    var meta = getGuaranteedOrderCardMeta(order);
+    var id = Number(order && order.id);
+    if (!Number.isFinite(id) || id <= 0) return '';
+    var isCompleted = String(order.status || '').toLowerCase() === 'completed';
+    var isArchivedView = !!options.archived;
+    var publicCode = String((order && order.public_code) || '').trim();
+    if (!publicCode && id > 0) publicCode = 'GT-' + (10000 + id);
+
+    var actions =
+        '<button type="button" class="btn btn-secondary guaranteed-order-action" onclick="openGuaranteedOrderSupport(' + id + ')">' +
+            window.escapeHTML(getProjectUiText('gtContactManager', 'Contact manager')) +
+        '</button>';
+    if (isCompleted && !isArchivedView) {
+        actions +=
+            '<button type="button" class="btn btn-primary guaranteed-order-action" onclick="archiveGuaranteedTestOrder(' + id + ')">' +
+                window.escapeHTML(getProjectUiText('gtArchive', 'Archive')) +
+            '</button>';
+    }
+
+    var progress = '';
+    if (Number.isFinite(meta.day) && meta.day > 0) {
+        var percent = Math.max(4, Math.min(100, Math.round((meta.day / 14) * 100)));
+        progress =
+            '<div class="guaranteed-order-card__progress">' +
+                '<div class="guaranteed-order-card__progress-track">' +
+                    '<div class="guaranteed-order-card__progress-fill" style="width: ' + percent + '%;"></div>' +
+                '</div>' +
+                '<span class="guaranteed-order-card__progress-label">' +
+                    window.escapeHTML(getProjectUiText('gtProgressLabel', 'Day {day} of 14', { day: meta.day })) +
+                '</span>' +
+            '</div>';
+    }
+
+    var codeRow = publicCode
+        ? ('<p class="guaranteed-order-card__code">' +
+            window.escapeHTML(getProjectUiText('gtOrderCode', 'Order ' + publicCode, { code: publicCode })) +
+          '</p>')
+        : '';
+
+    var actionsClass = 'guaranteed-order-card__actions' + (isCompleted && !isArchivedView ? '' : ' guaranteed-order-card__actions--single');
+
+    return (
+        '<article class="guaranteed-order-card guaranteed-order-card--' + (meta.variant || 'pending') + (isArchivedView ? ' guaranteed-order-card--archived' : '') + '" data-gt-order-id="' + id + '">' +
+            '<div class="guaranteed-order-card__top">' +
+                '<h3 class="guaranteed-order-card__name">' + window.escapeHTML(String(order.app_name || getProjectUiText('unknownLabel', 'Unknown app'))) + '</h3>' +
+                '<span class="guaranteed-order-card__badge">' + window.escapeHTML(meta.badge) + '</span>' +
+            '</div>' +
+            codeRow +
+            '<p class="guaranteed-order-card__hint">' + window.escapeHTML(meta.hint) + '</p>' +
+            progress +
+            '<dl class="guaranteed-order-card__dates">' +
+                '<div><dt>' + window.escapeHTML(getProjectUiText('gtStartDate', 'Start')) + '</dt><dd>' + window.escapeHTML(formatGuaranteedOrderDate(order.started_at)) + '</dd></div>' +
+                '<div><dt>' + window.escapeHTML(getProjectUiText('gtEstimatedEnd', 'Estimated end')) + '</dt><dd>' + window.escapeHTML(formatGuaranteedOrderDate(order.completion_date)) + '</dd></div>' +
+            '</dl>' +
+            '<div class="' + actionsClass + '">' + actions + '</div>' +
+        '</article>'
+    );
+}
+
 function renderGuaranteedOrdersSection(container) {
     if (!container) return;
     var section = document.createElement('section');
@@ -5790,47 +5953,7 @@ function renderGuaranteedOrdersSection(container) {
             return;
         }
         var cards = orders.map(function (order) {
-            var meta = getGuaranteedOrderCardMeta(order);
-            var id = Number(order && order.id);
-            if (!Number.isFinite(id) || id <= 0) return '';
-            var isCompleted = String(order.status || '').toLowerCase() === 'completed';
-            var actions =
-                '<button type="button" class="btn btn-secondary guaranteed-order-action" onclick="openGuaranteedOrderSupport(' + id + ')">' +
-                    window.escapeHTML(getProjectUiText('gtContactManager', '💬 Contact manager')) +
-                '</button>' +
-                (isCompleted
-                    ? '<button type="button" class="btn btn-primary guaranteed-order-action" onclick="archiveGuaranteedTestOrder(' + id + ')">' +
-                        window.escapeHTML(getProjectUiText('gtArchive', '📁 Archive')) +
-                    '</button>'
-                    : '');
-            var progress = '';
-            if (Number.isFinite(meta.day) && meta.day > 0) {
-                var percent = Math.max(4, Math.min(100, Math.round((meta.day / 14) * 100)));
-                progress =
-                    '<div class="guaranteed-order-card__progress">' +
-                        '<div class="guaranteed-order-card__progress-track">' +
-                            '<div class="guaranteed-order-card__progress-fill" style="width: ' + percent + '%;"></div>' +
-                        '</div>' +
-                        '<span class="guaranteed-order-card__progress-label">' +
-                            window.escapeHTML(getProjectUiText('gtProgressLabel', 'Day {day} of 14', { day: meta.day })) +
-                        '</span>' +
-                    '</div>';
-            }
-            return (
-                '<article class="guaranteed-order-card guaranteed-order-card--' + (meta.variant || 'pending') + '">' +
-                    '<div class="guaranteed-order-card__top">' +
-                        '<h3 class="guaranteed-order-card__name">' + window.escapeHTML(String(order.app_name || getProjectUiText('unknownLabel', 'Unknown app'))) + '</h3>' +
-                        '<span class="guaranteed-order-card__badge">' + window.escapeHTML(meta.badge) + '</span>' +
-                    '</div>' +
-                    '<p class="guaranteed-order-card__hint">' + window.escapeHTML(meta.hint) + '</p>' +
-                    progress +
-                    '<dl class="guaranteed-order-card__dates">' +
-                        '<div><dt>' + window.escapeHTML(getProjectUiText('gtStartDate', 'Start')) + '</dt><dd>' + window.escapeHTML(formatGuaranteedOrderDate(order.started_at)) + '</dd></div>' +
-                        '<div><dt>' + window.escapeHTML(getProjectUiText('gtEstimatedEnd', 'Estimated end')) + '</dt><dd>' + window.escapeHTML(formatGuaranteedOrderDate(order.completion_date)) + '</dd></div>' +
-                    '</dl>' +
-                    '<div class="guaranteed-order-card__actions">' + actions + '</div>' +
-                '</article>'
-            );
+            return buildGuaranteedOrderCardHtml(order, { archived: false });
         }).join('');
         if (!cards) {
             section.remove();
@@ -5838,7 +5961,7 @@ function renderGuaranteedOrdersSection(container) {
         }
         section.innerHTML =
             '<h2 class="guaranteed-orders-section__title">' +
-                window.escapeHTML(getProjectUiText('gtOrdersSectionTitle', '🛡️ Private Testing ($20)')) +
+                window.escapeHTML(getProjectUiText('gtOrdersSectionTitle', 'Private Testing')) +
             '</h2>' +
             '<div class="guaranteed-orders-section__list">' + cards + '</div>';
     }).catch(function () {
@@ -5869,12 +5992,37 @@ async function loadVisibleGuaranteedOrders(forceRefresh) {
     return _gtActiveOrdersCache || [];
 }
 
+async function loadArchivedGuaranteedOrders(forceRefresh) {
+    var now = Date.now();
+    if (!forceRefresh && _gtArchivedOrdersCache && (now - _gtArchivedOrdersCacheAt) < 30000) {
+        return _gtArchivedOrdersCache;
+    }
+    try {
+        var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
+        var initData = (typeof getTelegramInitDataRaw === 'function')
+            ? getTelegramInitDataRaw()
+            : ((window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '');
+        var resp = await fetch(apiBase + '/guaranteed-test-orders/archived?init_data=' + encodeURIComponent(initData));
+        var data = await resp.json();
+        if (data && data.status === 'success' && Array.isArray(data.orders)) {
+            _gtArchivedOrdersCache = data.orders;
+            _gtArchivedOrdersCacheAt = now;
+            return _gtArchivedOrdersCache;
+        }
+    } catch (e) {
+        console.warn('Failed to load archived guaranteed orders:', e);
+    }
+    return _gtArchivedOrdersCache || [];
+}
+
 // Compatibility for existing project-level private-testing actions.
 var fetchActiveGuaranteedOrders = loadVisibleGuaranteedOrders;
 
 function getGuaranteedOrderById(orderId) {
-    var orders = Array.isArray(_gtActiveOrdersCache) ? _gtActiveOrdersCache : [];
-    return orders.find(function (order) { return Number(order && order.id) === Number(orderId); }) || null;
+    var active = Array.isArray(_gtActiveOrdersCache) ? _gtActiveOrdersCache : [];
+    var archived = Array.isArray(_gtArchivedOrdersCache) ? _gtArchivedOrdersCache : [];
+    var all = active.concat(archived);
+    return all.find(function (order) { return Number(order && order.id) === Number(orderId); }) || null;
 }
 
 function openGuaranteedOrderSupport(orderId) {
@@ -5910,6 +6058,7 @@ async function archiveGuaranteedTestOrder(orderId) {
         invalidateGuaranteedOrdersCache();
         if (typeof showToast === 'function') showToast(getProjectUiText('gtArchiveSuccess', 'Order moved to archive.'));
         renderProjects(true);
+        try { renderArchivedProjects(true); } catch (_) { /* ignore */ }
     } catch (error) {
         console.warn('Failed to archive guaranteed order:', error);
         if (typeof showToast === 'function') showToast(getProjectUiText('gtArchiveFailed', 'Could not archive the order. Please try again.'));

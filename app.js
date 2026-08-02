@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     refreshLanguageUi();
+    if (typeof initHomeScreenPromo === 'function') {
+        initHomeScreenPromo();
+    }
     if (!hasTelegramUsername()) {
         showNoUsernameOverlay();
         return;
@@ -121,6 +124,10 @@ Object.assign(window, {
     setMarketForceSkeleton,
     refreshLanguageUi,
     syncAutoAcceptToggleUi,
+    initHomeScreenPromo,
+    syncHomeScreenUi,
+    addDevTestHubToHomeScreen,
+    dismissHomeScreenBanner,
     applyLanguage,
     showAutoAcceptMutualInfo,
     handleAutoAcceptMutualToggle,

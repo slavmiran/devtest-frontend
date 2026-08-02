@@ -150,7 +150,13 @@
     function bindEvents(overlay) {
         var closeBtn = document.getElementById('gto-close-btn');
         if (closeBtn) {
-            closeBtn.addEventListener('click', hideGuaranteedTestOfferModal);
+            closeBtn.addEventListener('click', function () {
+                hideGuaranteedTestOfferModal();
+                // Explicit close of the offer abandons the flow → drop draft.
+                if (typeof window.clearGuaranteedTestWizardDraft === 'function') {
+                    window.clearGuaranteedTestWizardDraft();
+                }
+            });
         }
 
         var ctaBtn = document.getElementById('gto-cta-btn');

@@ -308,6 +308,132 @@
         };
     }
 
+    var GT_DRAFT_STORAGE_KEY = 'dt_gt_wizard_draft';
+    var GT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+
+    function readGuaranteedTestWizardDraft() {
+        try {
+            var raw = localStorage.getItem(GT_DRAFT_STORAGE_KEY);
+            if (!raw) return null;
+            var draft = JSON.parse(raw);
+            if (!draft || typeof draft !== 'object') {
+                localStorage.removeItem(GT_DRAFT_STORAGE_KEY);
+                return null;
+            }
+            var ts = Number(draft.timestamp || 0);
+            if (!Number.isFinite(ts) || (Date.now() - ts) > GT_DRAFT_TTL_MS) {
+                localStorage.removeItem(GT_DRAFT_STORAGE_KEY);
+                return null;
+            }
+            if (!String(draft.app_name || '').trim()) {
+                localStorage.removeItem(GT_DRAFT_STORAGE_KEY);
+                return null;
+            }
+            return draft;
+        } catch (_) {
+            try { localStorage.removeItem(GT_DRAFT_STORAGE_KEY); } catch (e) {}
+            return null;
+        }
+    }
+
+    function clearGuaranteedTestWizardDraft() {
+        try { localStorage.removeItem(GT_DRAFT_STORAGE_KEY); } catch (_) {}
+    }
+
+    function persistGuaranteedTestWizardDraft() {
+        var appName = String(wizardState.appName || '').trim();
+        if (!appName) return;
+        var step = Number(wizardState.step || 1);
+        if (!Number.isFinite(step) || step < 1) step = 1;
+        if (step > 3) step = 3;
+        var draft = {
+            step: step,
+            app_name: appName,
+            app_type: wizardState.appType === 'paid' ? 'paid' : 'free',
+            license_testing_confirmed: !!wizardState.licenseTestingConfirmed,
+            testing_link: String(wizardState.testingLink || '').trim(),
+            payment_method: wizardState.paymentMethod || null,
+            payment_exchange: wizardState.paymentExchange || null,
+            payment_step1_done: !!wizardState.paymentStep1Done,
+            payment_screenshot_url: String(wizardState.paymentScreenshotUrl || '').trim(),
+            fiat_currency: String(wizardState.fiatCurrency || '').trim(),
+            selected_bank: String(wizardState.fiatBankName || '').trim(),
+            is_personal_account: wizardState.fiatPersonalAccount !== false,
+            fiat_order_id: wizardState.fiatOrderId || null,
+            fiat_public_code: String(wizardState.fiatPublicCode || '').trim(),
+            details_confirmed: !!wizardState.detailsConfirmed,
+            link_confirmed: !!wizardState.linkConfirmed,
+            console_checklist: {
+                email: !!(wizardState.consoleChecklist && wizardState.consoleChecklist.email),
+                countries: !!(wizardState.consoleChecklist && wizardState.consoleChecklist.countries),
+                review: !!(wizardState.consoleChecklist && wizardState.consoleChecklist.review)
+            },
+            prefill_project_id: wizardState.prefillProject ? Number(wizardState.prefillProject.id || 0) : 0,
+            timestamp: Date.now()
+        };
+        try {
+            localStorage.setItem(GT_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+        } catch (_) {}
+    }
+
+    function applyGuaranteedTestWizardDraft(draft) {
+        if (!draft) return false;
+        resetWizardState(false);
+        wizardState.appName = String(draft.app_name || '').trim();
+        wizardState.appType = draft.app_type === 'paid' ? 'paid' : 'free';
+        wizardState.licenseTestingConfirmed = !!draft.license_testing_confirmed;
+        wizardState.testingLink = String(draft.testing_link || '').trim();
+        wizardState.paymentMethod = draft.payment_method || null;
+        wizardState.paymentExchange = draft.payment_exchange || null;
+        wizardState.paymentStep1Done = !!draft.payment_step1_done;
+        wizardState.paymentScreenshotUrl = String(draft.payment_screenshot_url || '').trim();
+        wizardState.fiatCurrency = String(draft.fiat_currency || '').trim();
+        wizardState.fiatBankName = String(draft.selected_bank || '').trim();
+        wizardState.fiatPersonalAccount = draft.is_personal_account !== false;
+        wizardState.fiatOrderId = draft.fiat_order_id || null;
+        wizardState.fiatPublicCode = String(draft.fiat_public_code || '').trim();
+        wizardState.detailsConfirmed = !!draft.details_confirmed;
+        wizardState.linkConfirmed = !!draft.link_confirmed;
+        wizardState.consoleChecklist = {
+            email: !!(draft.console_checklist && draft.console_checklist.email),
+            countries: !!(draft.console_checklist && draft.console_checklist.countries),
+            review: !!(draft.console_checklist && draft.console_checklist.review)
+        };
+        var prefillId = Number(draft.prefill_project_id || 0);
+        if (prefillId > 0) {
+            var project = resolveProjectById(prefillId);
+            if (project) {
+                wizardState.prefillProject = project;
+                wizardState.prefillStep1Active = false;
+                wizardState.prefillStep2Active = false;
+            }
+        }
+        var step = Number(draft.step || 1);
+        if (!Number.isFinite(step) || step < 1) step = 1;
+        if (step > 3) step = 3;
+        wizardState.step = step;
+        return true;
+    }
+
+    function resumeGuaranteedTestWizardFromDraft() {
+        var draft = readGuaranteedTestWizardDraft();
+        if (!draft || !applyGuaranteedTestWizardDraft(draft)) return false;
+        ensureWizardInDOM();
+        syncStep1FormFromState();
+        syncStep2FormFromState();
+        hideGuaranteedTestWizardStep1();
+        hideGuaranteedTestWizardStep2();
+        hideGuaranteedTestWizardPayment();
+        if (wizardState.step >= 3) {
+            showGuaranteedTestWizardPayment({ keepState: true });
+        } else if (wizardState.step === 2) {
+            showGuaranteedTestWizardStep2();
+        } else {
+            showGuaranteedTestWizardStep1({ keepState: true });
+        }
+        return true;
+    }
+
     function projectUsesStandardGoogleGroup(project) {
         if (!project) return false;
         var testMode = String(project.test_mode || 'google_group').toLowerCase();
@@ -1193,6 +1319,7 @@
                 if (wizardState.prefillProject) wizardState.prefillStep1Active = false;
                 clearAppnameError();
                 syncStep1FormFromState();
+                persistGuaranteedTestWizardDraft();
             });
         }
 
@@ -1314,6 +1441,7 @@
                 clearLinkError();
                 updateLinkVerificationUI();
                 syncStep2FormFromState();
+                persistGuaranteedTestWizardDraft();
             });
         }
 
@@ -1443,11 +1571,19 @@
     }
 
     function openPaymentFlow(method, exchangeId) {
+        var prevMethod = wizardState.paymentMethod;
+        var prevExchange = wizardState.paymentExchange;
         wizardState.paymentMethod = method;
         if (method === 'crypto') {
             wizardState.paymentExchange = exchangeId || wizardState.paymentExchange;
         }
-        resetPaymentFlowState();
+        var switched =
+            prevMethod !== method ||
+            (method === 'crypto' && prevExchange !== wizardState.paymentExchange);
+        if (switched && !wizardState.fiatOrderId && !wizardState.paymentScreenshotUrl) {
+            resetPaymentFlowState();
+        }
+        persistGuaranteedTestWizardDraft();
         renderPaymentFlow();
         var overlay = document.getElementById('gtw-payment-flow-overlay');
         if (overlay) {
@@ -1466,6 +1602,7 @@
 
     function markPaymentStep1Done() {
         wizardState.paymentStep1Done = true;
+        persistGuaranteedTestWizardDraft();
         renderPaymentFlow();
     }
 
@@ -1668,6 +1805,7 @@
         document.querySelectorAll('[data-fiat-currency]').forEach(function (currencyBtn) {
             currencyBtn.addEventListener('click', function () {
                 wizardState.fiatCurrency = currencyBtn.getAttribute('data-fiat-currency') || '';
+                persistGuaranteedTestWizardDraft();
                 renderPaymentFlow();
             });
         });
@@ -1677,12 +1815,14 @@
                 wizardState.fiatBankName = String(fiatBankInput.value || '');
                 var helper = document.getElementById('gtw-fiat-helper');
                 if (helper) helper.style.display = 'none';
+                persistGuaranteedTestWizardDraft();
             });
         }
         var personalAccount = document.getElementById('gtw-fiat-personal-account');
         if (personalAccount) {
             personalAccount.addEventListener('change', function () {
                 wizardState.fiatPersonalAccount = !!personalAccount.checked;
+                persistGuaranteedTestWizardDraft();
             });
         }
 
@@ -1935,6 +2075,7 @@
                 payBtn.textContent = L('openSteps', { amount: getPaymentAmount(method) });
             }
         }
+        persistGuaranteedTestWizardDraft();
     }
 
     function handleExecutePayment() {
@@ -2021,6 +2162,7 @@
                 : 'Hello! I want to pay for Private Testing ($23).\n📌 Order: #' + orderCode + ' (' + wizardState.appName + ')\n💳 Payment currency: ' + currency.code + ' ($23)\n🏦 My bank: ' + bankName + '\n👤 Payment from personal account: ' + personalAccountText + '\n\nPlease calculate the exact amount in ' + currency.code + ' and send the payment requisites.';
             openTelegramContact(message);
             markPaymentStep1Done();
+            persistGuaranteedTestWizardDraft();
         } catch (error) {
             console.error('Fiat order create failed:', error);
             if (helper) {
@@ -2111,6 +2253,7 @@
             hideGuaranteedTestWizardPayment();
             hideGuaranteedTestWizardStep2();
             hideGuaranteedTestWizardStep1();
+            clearGuaranteedTestWizardDraft();
             if (typeof showToast === 'function') {
                 showToast(L('toastSubmitted', { code: publicCode }));
             }
@@ -2153,6 +2296,7 @@
             hideGuaranteedTestWizardPayment();
             hideGuaranteedTestWizardStep2();
             hideGuaranteedTestWizardStep1();
+            clearGuaranteedTestWizardDraft();
             if (typeof showToast === 'function') {
                 showToast(L('toastSubmitted', { code: wizardState.fiatPublicCode || '' }));
             }
@@ -2262,9 +2406,11 @@
             if (project) applyProjectPrefill(project);
         }
 
+        wizardState.step = 1;
         ensureWizardInDOM();
         syncStep1FormFromState();
         syncStep2FormFromState();
+        persistGuaranteedTestWizardDraft();
 
         var overlay1 = document.getElementById('guaranteed-test-wizard-step1-overlay');
         if (overlay1) overlay1.style.display = 'flex';
@@ -2276,8 +2422,10 @@
     }
 
     function showGuaranteedTestWizardStep2() {
+        wizardState.step = 2;
         ensureWizardInDOM();
         syncStep2FormFromState();
+        persistGuaranteedTestWizardDraft();
         var overlay2 = document.getElementById('guaranteed-test-wizard-step2-overlay');
         if (overlay2) overlay2.style.display = 'flex';
     }
@@ -2287,15 +2435,22 @@
         if (overlay2) overlay2.style.display = 'none';
     }
 
-    function showGuaranteedTestWizardPayment() {
+    function showGuaranteedTestWizardPayment(options) {
+        options = options || {};
         ensureWizardInDOM();
-        wizardState.paymentMethod = null;
-        wizardState.paymentExchange = null;
+        wizardState.step = 3;
+        if (!options.keepState) {
+            wizardState.paymentMethod = null;
+            wizardState.paymentExchange = null;
+        }
         var payBtn = document.getElementById('gtw-pay-btn');
-        if (payBtn) {
+        if (options.keepState && wizardState.paymentMethod) {
+            selectPaymentMethod(wizardState.paymentMethod);
+        } else if (payBtn) {
             payBtn.disabled = true;
             payBtn.textContent = L('selectMethod');
         }
+        persistGuaranteedTestWizardDraft();
         var overlayPay = document.getElementById('guaranteed-test-wizard-payment-overlay');
         if (overlayPay) overlayPay.style.display = 'flex';
     }
@@ -2312,5 +2467,9 @@
     window.hideGuaranteedTestWizardStep2 = hideGuaranteedTestWizardStep2;
     window.showGuaranteedTestWizardPayment = showGuaranteedTestWizardPayment;
     window.hideGuaranteedTestWizardPayment = hideGuaranteedTestWizardPayment;
+    window.getGuaranteedTestWizardDraft = readGuaranteedTestWizardDraft;
+    window.clearGuaranteedTestWizardDraft = clearGuaranteedTestWizardDraft;
+    window.resumeGuaranteedTestWizardFromDraft = resumeGuaranteedTestWizardFromDraft;
+    window.persistGuaranteedTestWizardDraft = persistGuaranteedTestWizardDraft;
     window.gtwWizardState = wizardState;
 })();

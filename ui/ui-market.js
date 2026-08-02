@@ -7306,6 +7306,9 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'projects') {
+        if (typeof window.syncHomeScreenUi === 'function') {
+            window.syncHomeScreenUi();
+        }
         var projectsList = document.getElementById('projects-list');
         var hasRenderedProjects = projectsList && projectsList.querySelector('.card, .developer-widget, .empty-state');
         if (!hasRenderedProjects) {

@@ -1409,6 +1409,9 @@ function refreshLanguageUi() {
     if (typeof syncAutoAcceptToggleUi === 'function') {
         syncAutoAcceptToggleUi();
     }
+    if (typeof syncHomeScreenUi === 'function') {
+        syncHomeScreenUi();
+    }
 
     renderAutoTranslateLanguageOptions();
 
@@ -1455,6 +1458,9 @@ function refreshLanguageUi() {
     }
 
     syncAutoAcceptToggleUi();
+    if (typeof syncHomeScreenUi === 'function') {
+        syncHomeScreenUi();
+    }
     if (typeof syncDeviceProfileUi === 'function') {
         syncDeviceProfileUi();
     }
