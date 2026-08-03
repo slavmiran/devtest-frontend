@@ -7437,7 +7437,145 @@ function getProjectModeText(mode) {
     return window.t('modeMutual', {}, lang);
 }
 
-function openTesterOwnedProjectFromDossier(testerId, projectId) {
+function getDossierRecruitModeLabel(mode) {
+    var normalized = String(mode || 'mutual').toLowerCase();
+    if (normalized === 'bounty') return window.t('dossierRecruitModeContract', {}, lang);
+    if (normalized === 'hybrid') return window.t('dossierRecruitModeCombo', {}, lang);
+    return window.t('dossierRecruitModeMutual', {}, lang);
+}
+
+function _buildDossierRecruitModeChip(ownedProject) {
+    if (!ownedProject) return '';
+    var status = String(ownedProject.status || '').toLowerCase();
+    if (status === 'completed' || status === 'archived') return '';
+    var mode = String(ownedProject.mode || 'mutual').toLowerCase();
+    var chipClass = 'dossier-project-meta-chip dossier-project-meta-chip-recruit';
+    if (mode === 'bounty') chipClass += ' is-contract';
+    else if (mode === 'hybrid') chipClass += ' is-combo';
+    else chipClass += ' is-mutual';
+    return '<span class="' + chipClass + '">' + window.escapeHTML(getDossierRecruitModeLabel(mode)) + '</span>';
+}
+
+function _isDossierProjectJoinAvailable(ownedProject) {
+    if (!ownedProject) return false;
+    var status = String(ownedProject.status || '').toLowerCase();
+    if (status === 'completed' || status === 'archived' || status === 'deleted') return false;
+    if (_isDossierProjectJoinBlocked(ownedProject)) return false;
+    if (String(ownedProject.link_type || 'none').toLowerCase() !== 'none') return false;
+    var visibility = _normalizeDossierVisibilityProject(ownedProject);
+    if (visibility.visibility_mode === 'full_isolation') return false;
+    if (visibility.visibility_mode === 'hidden_from_showcase') return false;
+    if (ownedProject.is_accepting_new_testers === false) return false;
+    var appId = Number(ownedProject.app_id || 0);
+    if (appId <= 0) return false;
+    if ((myTests || []).some(function(item) { return Number(item.id) === appId; })) return false;
+    if (ownedProject.has_pending_bounty_application) return false;
+    return true;
+}
+
+function openDossierHybridJoinChooser(appId, ownerId, project) {
+    var numericAppId = Number(appId || 0);
+    var numericOwnerId = Number(ownerId || 0);
+    if (numericAppId <= 0 || numericOwnerId <= 0) return;
+
+    var projectName = String((project && project.name) || '').trim() || window.t('unknownLabel', {}, lang);
+    var title = window.t('dossierJoinHybridTitle', {}, lang);
+    var message = window.t('dossierJoinHybridMessage', { project: projectName }, lang);
+    var mutualText = window.t('dossierJoinHybridMutual', {}, lang);
+    var contractText = window.t('dossierJoinHybridContract', {}, lang);
+
+    function startMutual() {
+        if (typeof createMutualOffer === 'function') {
+            createMutualOffer(numericAppId, numericOwnerId);
+        }
+    }
+    function startContract() {
+        if (typeof window.registerJoinBountyContext === 'function') {
+            window.registerJoinBountyContext(project || { app_id: numericAppId });
+        }
+        if (typeof joinBounty === 'function') {
+            joinBounty(numericAppId);
+        }
+    }
+
+    if (tg && typeof tg.showPopup === 'function') {
+        tg.showPopup({
+            title: title,
+            message: message,
+            buttons: [
+                { id: 'mutual', type: 'default', text: mutualText },
+                { id: 'bounty', type: 'default', text: contractText },
+                { id: 'cancel', type: 'cancel' },
+            ],
+        }, function(buttonId) {
+            if (buttonId === 'mutual') startMutual();
+            else if (buttonId === 'bounty') startContract();
+        });
+        return;
+    }
+
+    // Outside Telegram Mini App: no native chooser — default to mutual offer sheet.
+    startMutual();
+}
+
+function joinTesterOwnedProjectFromDossier(testerId, project, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (!project) return;
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+    var appId = Number(project.app_id || 0);
+    var ownerId = Number(testerId || project.owner_id || 0);
+    var mode = String(project.mode || 'mutual').toLowerCase();
+    if (appId <= 0 || ownerId <= 0) {
+        showToast(window.t('loadError', {}, lang));
+        return;
+    }
+
+    var targetIsEmailList = String(project.test_mode || '') === 'email_list'
+        || (typeof _isDossierEmailTestProject === 'function' && _isDossierEmailTestProject(project));
+    var currentEmail = (typeof getCurrentUserEmail === 'function')
+        ? getCurrentUserEmail()
+        : String((window.App && window.App.userEmail) || '').trim();
+    if (targetIsEmailList && !currentEmail && typeof window.openEmailCollectModal === 'function') {
+        window.openEmailCollectModal({
+            title: window.t('emailGateOfferTitle', {}, lang),
+            text: window.t('emailGateOfferText', {}, lang),
+            primaryLabel: window.t('emailGateSaveContinue', {}, lang),
+            onSave: function() { joinTesterOwnedProjectFromDossier(testerId, project); },
+        });
+        return;
+    }
+
+    closeDossierModal();
+    setTimeout(function() {
+        if (mode === 'bounty') {
+            if (typeof window.registerJoinBountyContext === 'function') {
+                window.registerJoinBountyContext(project);
+            }
+            if (typeof joinBounty === 'function') joinBounty(appId);
+            return;
+        }
+        if (mode === 'hybrid') {
+            openDossierHybridJoinChooser(appId, ownerId, project);
+            return;
+        }
+        if (typeof createMutualOffer === 'function') {
+            createMutualOffer(appId, ownerId);
+        }
+    }, 40);
+}
+
+function openTesterOwnedProjectFromDossier(testerId, projectId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
     var numericProjectId = Number(projectId || 0);
     if (numericProjectId <= 0) return;
 
@@ -7445,24 +7583,32 @@ function openTesterOwnedProjectFromDossier(testerId, projectId) {
         return Number(item.id) === numericProjectId;
     });
 
-    closeDossierModal();
+    var cacheKey = String(testerId || '');
+    var project = (_dossierProjectsCache[cacheKey] || []).find(function(item) {
+        return Number(item.app_id) === numericProjectId;
+    });
+    var profile = _dossierProfilesCache[cacheKey] || {};
+
     if (existingTest) {
+        closeDossierModal();
         setTimeout(function() {
             openProjectDetailsModal(numericProjectId);
         }, 40);
         return;
     }
 
-    var cacheKey = String(testerId || '');
-    var project = (_dossierProjectsCache[cacheKey] || []).find(function(item) {
-        return Number(item.app_id) === numericProjectId;
-    });
-    var profile = _dossierProfilesCache[cacheKey] || {};
     if (!project) {
         showToast(window.t('loadError', {}, lang));
         return;
     }
 
+    // Available-for-test cards on showcase: join like market CTA.
+    if (_isDossierProjectJoinAvailable(project)) {
+        joinTesterOwnedProjectFromDossier(testerId, project, event);
+        return;
+    }
+
+    closeDossierModal();
     setTimeout(function() {
         openTesterOwnedProjectPreviewModal(project, profile, testerId);
     }, 40);
@@ -7510,19 +7656,28 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         ? window.t('dossierOwnerReliability', { pct: reliabilityState.reliabilityPct, status: reliabilityState.reliabilityText }, lang)
         : window.t('dossierOwnerReliabilityNewbie', {}, lang);
     var joinBlocked = _isDossierProjectJoinBlocked(project);
-    var isBountyProject = String(project.mode || 'mutual').toLowerCase() === 'bounty';
-    var hasPendingBountyApp = isBountyProject && !!(
+    var projectMode = String(project.mode || 'mutual').toLowerCase();
+    var isBountyProject = projectMode === 'bounty';
+    var isHybridProject = projectMode === 'hybrid';
+    var hasPendingBountyApp = (isBountyProject || isHybridProject) && !!(
         project.has_pending_bounty_application
         || (typeof bountyContracts !== 'undefined' && (bountyContracts || []).some(function(card) {
             return Number(card && card.app_id) === Number(project.app_id || 0) && !!card.has_pending_bounty_application;
         }))
     );
-    if (isBountyProject && !hasPendingBountyApp && typeof window.registerJoinBountyContext === 'function') {
+    if ((isBountyProject || isHybridProject) && !hasPendingBountyApp && typeof window.registerJoinBountyContext === 'function') {
         window.registerJoinBountyContext(project);
     }
-    var takeAction = isBountyProject
-        ? 'closeProjectDetailsModal(); joinBounty(' + Number(project.app_id) + ')'
-        : 'closeProjectDetailsModal(); joinMutual(' + Number(project.app_id) + ', false)';
+    var ownerIdForJoin = Number(project.owner_id || testerId || 0);
+    window._dossierJoinPreviewProject = project;
+    var takeAction;
+    if (isBountyProject) {
+        takeAction = 'closeProjectDetailsModal(); joinBounty(' + Number(project.app_id) + ')';
+    } else if (isHybridProject) {
+        takeAction = 'closeProjectDetailsModal(); openDossierHybridJoinChooser(' + Number(project.app_id) + ', ' + ownerIdForJoin + ', window._dossierJoinPreviewProject)';
+    } else {
+        takeAction = 'closeProjectDetailsModal(); createMutualOffer(' + Number(project.app_id) + ', ' + ownerIdForJoin + ')';
+    }
     var takeBtnLabel = hasPendingBountyApp
         ? window.t('bountyAppPendingBtn', {}, lang)
         : window.t('dossierBtnTakeTest', {}, lang);
@@ -7656,6 +7811,9 @@ function _buildDossierProjectMetaChips(ownedProject) {
     
     const visibilitySnapshot = _normalizeDossierVisibilityProject(ownedProject);
     const chips = [];
+
+    const recruitChip = _buildDossierRecruitModeChip(ownedProject);
+    if (recruitChip) chips.push(recruitChip);
     
     if (isArchivedLike) {
         chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-completed" style="background: rgba(52, 199, 89, 0.14); color: #30d158;">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</span>');
@@ -7875,14 +8033,18 @@ function _renderDossierOtherProjectMiniCard(ownedProject, testerId) {
     const status = String(ownedProject.status || 'active').toLowerCase();
     const isArchivedLike = status === 'completed' || status === 'archived';
     const isJoinBlocked = _isDossierProjectJoinBlocked(ownedProject);
+    const canJoinNow = !isArchivedLike && !isJoinBlocked && _isDossierProjectJoinAvailable(ownedProject);
     const metaChipsHtml = _buildDossierProjectMetaChips(ownedProject);
     let cardStyle = '';
     if (isArchivedLike) {
         cardStyle = ' style="opacity: 0.6; pointer-events: none;"';
     }
+    const cardClassExtras = (isArchivedLike ? ' is-archived' : '')
+        + (isJoinBlocked ? ' is-join-blocked' : '')
+        + (canJoinNow ? ' is-joinable' : '');
     const cardTag = (isArchivedLike || isJoinBlocked)
-        ? '<div class="dossier-other-mini-card' + (isArchivedLike ? ' is-archived' : '') + (isJoinBlocked ? ' is-join-blocked' : '') + '"' + cardStyle + '>'
-        : '<button type="button" class="dossier-other-mini-card" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ')">';
+        ? '<div class="dossier-other-mini-card' + cardClassExtras + '"' + cardStyle + '>'
+        : '<button type="button" class="dossier-other-mini-card' + cardClassExtras + '" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ', event)">';
 
     return cardTag +
         '<div class="dossier-other-mini-inner">' +
@@ -8944,6 +9106,9 @@ Object.assign(window, {
     openDossierModal,
     closeDossierModal,
     openTesterOwnedProjectFromDossier,
+    joinTesterOwnedProjectFromDossier,
+    openDossierHybridJoinChooser,
+    getDossierRecruitModeLabel,
     resetManualExternalAddForm,
     updateManualExternalTestingDayValue,
     normalizeManualExternalOwnerNicknameInput,

@@ -1753,7 +1753,7 @@ function renderTests(force) {
                         <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
                             ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : window.escapeHTML(externalConfirmLabel)}
                         </button>
-                        <div style="color: #ff3b30; font-size: 13px; text-align: center;">
+                        <div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             ${window.escapeHTML(externalWarningText)}
                         </div>
                     </div>
@@ -1912,7 +1912,7 @@ function renderTests(force) {
                         <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
                             ${window.escapeHTML(screenshotLabel)}
                         </button>
-                        <div style="color: #ff3b30; font-size: 13px; margin-top: 8px; text-align: center;">
+                        <div class="first-day-screenshot-warning">
                             ${window.escapeHTML(window.t('firstDayScreenshotWarning', {}, lang))}
                         </div>
                     </div>
@@ -1960,7 +1960,7 @@ function renderTests(force) {
                             <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
                                 ${window.escapeHTML(confirmLabel)}
                             </button>
-                            <div style="color: #ff3b30; font-size: 13px; text-align: center;">
+                            <div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${window.escapeHTML(screenshotWarningText)}
                             </div>
                         </div>

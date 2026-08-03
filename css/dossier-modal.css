@@ -149,6 +149,10 @@
     border-color: var(--danger-border);
 }
 
+#dossier-modal .dossier-other-mini-card.is-joinable {
+    border-color: rgba(0, 122, 255, 0.35);
+}
+
 #dossier-modal .dossier-project-meta-chips {
     display: flex;
     flex-wrap: wrap;
@@ -162,9 +166,23 @@
     padding: 3px 8px;
     border-radius: 999px;
     font-size: 11px;
-    line-height: 1.2;
     font-weight: 600;
-    white-space: nowrap;
+    line-height: 1.2;
+}
+
+#dossier-modal .dossier-project-meta-chip-recruit.is-mutual {
+    background: rgba(52, 199, 89, 0.14);
+    color: #34c759;
+}
+
+#dossier-modal .dossier-project-meta-chip-recruit.is-contract {
+    background: rgba(175, 82, 222, 0.14);
+    color: #bf5af2;
+}
+
+#dossier-modal .dossier-project-meta-chip-recruit.is-combo {
+    background: rgba(255, 159, 10, 0.16);
+    color: #ff9f0a;
 }
 
 #dossier-modal .dossier-project-meta-chip-hidden {
