@@ -3394,7 +3394,7 @@ function getProjectUiText(key, fallback, params) {
 
 function ensureAddProjectChooser() {
     var overlay = document.getElementById('add-project-chooser-overlay');
-    if (overlay && overlay.getAttribute('data-chooser') === 'v2') return overlay;
+    if (overlay && overlay.getAttribute('data-chooser') === 'v3') return overlay;
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
 
     var mutualIcon =
@@ -3430,11 +3430,10 @@ function ensureAddProjectChooser() {
 
     var div = document.createElement('div');
     div.innerHTML =
-        '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" data-chooser="v2" role="dialog" aria-modal="true">' +
+        '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" data-chooser="v3" role="dialog" aria-modal="true">' +
             '<div class="add-project-chooser-card">' +
                 '<button type="button" class="add-project-chooser-close" aria-label="' + window.escapeHTML(getProjectUiText('addProjectChooserClose', 'Close')) + '">×</button>' +
                 '<h3 class="add-project-chooser-title">' + window.escapeHTML(getProjectUiText('addProjectChooserTitle', 'Choose a testing format')) + '</h3>' +
-                '<p class="add-project-chooser-subtitle">' + window.escapeHTML(getProjectUiText('addProjectChooserSubtitle', 'Both formats lead to production access. Pick the one that fits your time.')) + '</p>' +
                 '<div class="add-project-chooser-options">' +
                     optionHtml(
                         'mutual', mutualIcon,
