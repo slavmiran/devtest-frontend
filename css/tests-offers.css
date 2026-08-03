@@ -214,6 +214,10 @@
     color: var(--text-color);
 }
 
+.bounty-apps-carousel:not(:empty) {
+    margin-top: 10px;
+}
+
 .bounty-app-card {
     border-color: rgba(175, 82, 222, 0.28);
     background: linear-gradient(180deg, rgba(175, 82, 222, 0.08), transparent 48%);

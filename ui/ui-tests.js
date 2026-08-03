@@ -1142,9 +1142,8 @@ function renderIncomingOffers() {
         return;
     }
     const section = document.getElementById('offers-section');
-    const countEl = document.getElementById('offers-count');
     const carousel = document.getElementById('offers-carousel');
-    if (!section || !countEl || !carousel) return;
+    if (!section || !carousel) return;
 
     if (_offersTimerId) {
         clearInterval(_offersTimerId);
@@ -1153,25 +1152,23 @@ function renderIncomingOffers() {
 
     const pending = (incomingOffers || []).filter((offer) => !!offer && offer.status === 'pending');
     const isLoading = !!_offersInFlight;
-    countEl.innerText = t.offersCount.replace('{count}', pending.length);
 
     if (!pending.length) {
         if (isLoading && !_offersLoadedOnce) {
-            section.style.display = '';
             showSkeleton('offers-carousel');
+            if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
             return;
         }
         if (_offersLoadError && !_offersLoadedOnce) {
-            section.style.display = '';
             showRetry('offers-carousel', 'loadIncomingOffers()');
+            if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
             return;
         }
-        section.style.display = 'none';
         carousel.innerHTML = '';
+        if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
         return;
     }
 
-    section.style.display = '';
     carousel.innerHTML = pending.map((offer) => {
         const username = (offer.proposer_username || '').replace(/@/g, '');
         const safeUsername = escapeInlineJsString(username);
@@ -1200,6 +1197,8 @@ function renderIncomingOffers() {
             </div>
         `;
     }).join('');
+
+    if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
 
     _offersTimerId = setInterval(() => {
         const section = document.getElementById('offers-section');

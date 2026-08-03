@@ -1105,6 +1105,7 @@ function _parseInitialRouteTarget() {
         0
     );
     var routeKind = '';
+    var routeExtraId = 0;
     var candidateValues = [
         startParam,
         params.get('route') || '',
@@ -1146,6 +1147,19 @@ function _parseInitialRouteTarget() {
         if (testsHighlightMatch) {
             routeKind = 'tests_highlight';
             feedbackProjectId = Number(testsHighlightMatch[1] || 0);
+            break;
+        }
+        var bountyAppMatch = normalized.match(/^(?:bounty_app|bountyapp|incoming_bounty)[_:](\d+)$/);
+        if (bountyAppMatch) {
+            routeKind = 'bounty_app_highlight';
+            feedbackProjectId = Number(bountyAppMatch[1] || 0);
+            break;
+        }
+        var dossierMatch = normalized.match(/^dossier[_:](\d+)(?:[_:](\d+))?$/);
+        if (dossierMatch) {
+            routeKind = 'dossier';
+            feedbackProjectId = Number(dossierMatch[1] || 0);
+            routeExtraId = Number(dossierMatch[2] || 0);
             break;
         }
         var appFocusMatch = normalized.match(/^app_focus[_:](\d+)$/);
@@ -1225,6 +1239,23 @@ function _parseInitialRouteTarget() {
             openFeedback: false,
             appId: null,
             highlightTestId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
+    if (routeKind === 'bounty_app_highlight') {
+        return {
+            tab: 'tests',
+            openFeedback: false,
+            appId: null,
+            highlightBountyApplicationId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
+    if (routeKind === 'dossier') {
+        return {
+            tab: 'tests',
+            openFeedback: false,
+            appId: routeExtraId > 0 ? routeExtraId : null,
+            openDossierUserId: feedbackProjectId > 0 ? feedbackProjectId : null,
+            openDossierAppId: routeExtraId > 0 ? routeExtraId : null,
         };
     }
     if (routeKind === 'app_focus') {
@@ -1383,6 +1414,43 @@ async function _handleInitialRoute() {
                 _clearStartappQueryParam();
             } catch (error) {
                 console.error('Initial tests highlight route error:', error);
+            }
+            return;
+        }
+        if (route.highlightBountyApplicationId) {
+            try {
+                if (typeof focusIncomingBountyApplication === 'function') {
+                    await focusIncomingBountyApplication(route.highlightBountyApplicationId);
+                } else {
+                    switchTab('tests');
+                    if (typeof loadBountyApplications === 'function') {
+                        await loadBountyApplications();
+                    }
+                    if (typeof highlightBountyApplicationWhenReady === 'function') {
+                        highlightBountyApplicationWhenReady(route.highlightBountyApplicationId, 16);
+                    }
+                }
+                _clearStartappQueryParam();
+            } catch (error) {
+                console.error('Initial bounty application highlight route error:', error);
+            }
+            return;
+        }
+        if (route.openDossierUserId) {
+            try {
+                switchTab('tests');
+                var dossierUserId = Number(route.openDossierUserId || 0);
+                var dossierAppId = Number(route.openDossierAppId || route.appId || 0);
+                setTimeout(function() {
+                    if (typeof openTesterDossier === 'function') {
+                        openTesterDossier('', dossierUserId, dossierAppId);
+                    } else if (typeof openDossierModal === 'function') {
+                        openDossierModal('', dossierUserId, dossierAppId);
+                    }
+                }, 350);
+                _clearStartappQueryParam();
+            } catch (error) {
+                console.error('Initial dossier route error:', error);
             }
             return;
         }

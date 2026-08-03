@@ -69,6 +69,35 @@ function _formatBountyReliabilityChip(application) {
     }, lang));
 }
 
+function syncIncomingApplicationsSection() {
+    var section = document.getElementById('offers-section');
+    var countEl = document.getElementById('offers-count');
+    if (!section || !countEl) return;
+
+    var mutualPending = (typeof incomingOffers !== 'undefined' && Array.isArray(incomingOffers))
+        ? incomingOffers.filter(function(offer) { return !!offer && offer.status === 'pending'; }).length
+        : 0;
+    var bountyPending = (bountyApplications || []).filter(function(item) {
+        return !!item && item.status === 'pending';
+    }).length;
+    var total = mutualPending + bountyPending;
+
+    var mutualBootstrapping = (typeof _offersInFlight !== 'undefined' && !!_offersInFlight && typeof _offersLoadedOnce !== 'undefined' && !_offersLoadedOnce)
+        || (typeof _offersLoadError !== 'undefined' && !!_offersLoadError && typeof _offersLoadedOnce !== 'undefined' && !_offersLoadedOnce);
+    var bountyBootstrapping = (!!_bountyAppsInFlight && !_bountyAppsLoadedOnce)
+        || (!!_bountyAppsLoadError && !_bountyAppsLoadedOnce);
+
+    if (typeof window.t === 'function') {
+        countEl.innerText = window.t('offersCount', { count: total }, lang);
+    } else if (typeof t !== 'undefined' && t.offersCount) {
+        countEl.innerText = String(t.offersCount).replace('{count}', total);
+    } else {
+        countEl.innerText = String(total);
+    }
+
+    section.style.display = (total > 0 || mutualBootstrapping || bountyBootstrapping) ? '' : 'none';
+}
+
 function renderBountyApplications(force) {
     if (!force && typeof isTabVisible === 'function' && !isTabVisible('tests')) {
         if (_bountyAppsTimerId) {
@@ -77,10 +106,9 @@ function renderBountyApplications(force) {
         }
         return;
     }
-    var section = document.getElementById('bounty-apps-section');
-    var countEl = document.getElementById('bounty-apps-count');
+    var section = document.getElementById('offers-section');
     var carousel = document.getElementById('bounty-apps-carousel');
-    if (!section || !countEl || !carousel) return;
+    if (!carousel) return;
 
     if (_bountyAppsTimerId) {
         clearInterval(_bountyAppsTimerId);
@@ -91,25 +119,23 @@ function renderBountyApplications(force) {
         return !!item && item.status === 'pending';
     });
     var isLoading = !!_bountyAppsInFlight;
-    countEl.innerText = window.t('bountyAppsCount', { count: pending.length }, lang);
 
     if (!pending.length) {
         if (isLoading && !_bountyAppsLoadedOnce) {
-            section.style.display = '';
             if (typeof showSkeleton === 'function') showSkeleton('bounty-apps-carousel');
+            syncIncomingApplicationsSection();
             return;
         }
         if (_bountyAppsLoadError && !_bountyAppsLoadedOnce) {
-            section.style.display = '';
             if (typeof showRetry === 'function') showRetry('bounty-apps-carousel', 'loadBountyApplications()');
+            syncIncomingApplicationsSection();
             return;
         }
-        section.style.display = 'none';
         carousel.innerHTML = '';
+        syncIncomingApplicationsSection();
         return;
     }
 
-    section.style.display = '';
     carousel.innerHTML = pending.map(function(app) {
         var username = String(app.applicant_username || '').replace(/@/g, '');
         var safeUsername = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username;
@@ -131,10 +157,6 @@ function renderBountyApplications(force) {
         var karmaVal = typeof formatAmountValue === 'function'
             ? formatAmountValue(app.applicant_karma || 0, 1)
             : String(app.applicant_karma || 0);
-        var skipRate = app.applicant_skip_rate_pct;
-        var skipLabel = (skipRate == null || skipRate === '')
-            ? '—'
-            : (String(Math.round(Number(skipRate))) + '%');
         var fullCycles = Number(app.applicant_completed_full_cycles || 0);
 
         return '' +
@@ -150,7 +172,6 @@ function renderBountyApplications(force) {
                     '<span class="meta-chip">' + _formatBountyReliabilityChip(app) + '</span>' +
                 '</div>' +
                 '<div class="offer-sub">' + window.escapeHTML(window.t('bountyAppFullCycles', { count: fullCycles }, lang)) + '</div>' +
-                '<div class="offer-sub">' + window.escapeHTML(window.t('bountyAppSkipRate', { rate: skipLabel }, lang)) + '</div>' +
                 '<div class="offer-expire">' + expireText + '</div>' +
                 '<div class="action-row" style="margin-top: 10px;">' +
                     '<button class="btn btn-success" style="flex: 1;" onclick="decideBountyApplication(' + app.application_id + ', \'accept\', event)">' + window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang)) + '</button>' +
@@ -159,8 +180,10 @@ function renderBountyApplications(force) {
             '</div>';
     }).join('');
 
+    syncIncomingApplicationsSection();
+
     _bountyAppsTimerId = setInterval(function() {
-        var liveSection = document.getElementById('bounty-apps-section');
+        var liveSection = document.getElementById('offers-section');
         if (!liveSection || liveSection.style.display === 'none') {
             clearInterval(_bountyAppsTimerId);
             _bountyAppsTimerId = null;
@@ -188,6 +211,47 @@ function renderBountyApplications(force) {
             loadBountyApplications({ background: true }).catch(function() {});
         }
     }, 1000);
+}
+
+function highlightBountyApplicationCard(applicationId) {
+    var normalizedId = Number(applicationId || 0);
+    if (normalizedId <= 0) return false;
+    var card = document.querySelector('.bounty-app-card[data-application-id="' + normalizedId + '"]');
+    if (!card) return false;
+    try {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (e) {
+        try { card.scrollIntoView(); } catch (e2) {}
+    }
+    card.classList.remove('highlight-pulse');
+    void card.offsetWidth;
+    card.classList.add('highlight-pulse');
+    setTimeout(function() {
+        card.classList.remove('highlight-pulse');
+    }, 2200);
+    return true;
+}
+
+function highlightBountyApplicationWhenReady(applicationId, attemptsLeft) {
+    var normalizedId = Number(applicationId || 0);
+    var left = typeof attemptsLeft === 'number' ? attemptsLeft : 12;
+    if (normalizedId <= 0) return;
+    if (highlightBountyApplicationCard(normalizedId)) return;
+    if (left <= 0) return;
+    setTimeout(function() {
+        highlightBountyApplicationWhenReady(normalizedId, left - 1);
+    }, 250);
+}
+
+async function focusIncomingBountyApplication(applicationId) {
+    var normalizedId = Number(applicationId || 0);
+    if (normalizedId <= 0) return;
+    if (typeof switchTab === 'function') switchTab('tests');
+    try {
+        await loadBountyApplications({ background: false });
+    } catch (e) {}
+    if (typeof renderBountyApplications === 'function') renderBountyApplications(true);
+    highlightBountyApplicationWhenReady(normalizedId, 16);
 }
 
 async function loadBountyApplications(options) {
@@ -412,4 +476,8 @@ Object.assign(window, {
     showAutoAcceptBountyInfo: showAutoAcceptBountyInfo,
     handleAutoAcceptBountyToggle: handleAutoAcceptBountyToggle,
     formatBountyApplicationRemaining: formatBountyApplicationRemaining,
+    syncIncomingApplicationsSection: syncIncomingApplicationsSection,
+    highlightBountyApplicationCard: highlightBountyApplicationCard,
+    highlightBountyApplicationWhenReady: highlightBountyApplicationWhenReady,
+    focusIncomingBountyApplication: focusIncomingBountyApplication,
 });

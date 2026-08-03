@@ -151,6 +151,7 @@ Object.assign(window, {
     renderBountyApplications,
     decideBountyApplication,
     startBountyApplicationsPolling,
+    focusIncomingBountyApplication,
     showDeviceProfileInfo,
     openDeviceInfoEditorModal,
     closeDeviceInfoEditorModal,

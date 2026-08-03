@@ -1230,7 +1230,7 @@
             saveProjectError: "Could not save the project.",
             saveProjectChangesError: "Could not save the changes.",
             networkError: "Network error. Please try again.",
-            offersTitle: "📬 Incoming mutual offers",
+            offersTitle: "📬 Incoming applications",
             offersCount: "{count}",
             offerFrom: "From",
             offerForApp: "Wants to test: {target_app}",

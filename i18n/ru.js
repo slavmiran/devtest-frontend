@@ -1230,7 +1230,7 @@
             saveProjectError: "Не удалось сохранить проект.",
             saveProjectChangesError: "Не удалось сохранить изменения.",
             networkError: "Ошибка сети. Повторите попытку.",
-            offersTitle: "📬 Входящие заявки на взаимку",
+            offersTitle: "📬 Входящие заявки",
             offersCount: "{count} шт.",
             offerFrom: "От",
             offerForApp: "Хочет протестировать: {target_app}",
