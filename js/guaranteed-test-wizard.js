@@ -13,6 +13,9 @@
     var PLAY_CONSOLE_URL = "https://play.google.com/console/";
     var LICENSE_GUIDE_SETTINGS_IMG = "./images/Settings_l.png";
     var LICENSE_GUIDE_RESPONSE_IMG = "./images/RESPOND_NORMALY_l.png";
+    var TESTING_GUIDE_GROUP_IMG = "./images/Group.png";
+    var TESTING_GUIDE_COUNTRIES_IMG = "./images/Countries.png";
+    var TESTING_GUIDE_REVIEW_IMG = "./images/Review.png";
     var PASTE_ICON_SRC = "./images/content_paste_go_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.png";
     var TESTER_GROUP_EMAIL = "google-play-dev-test@googlegroups.com";
     var PAYPAL_EMAIL = "pay.hubstation@gmail.com";
@@ -142,8 +145,8 @@
             'You can submit the order while the review is pending — it usually takes a few minutes.',
             'Заявку можно отправить, не дожидаясь проверки — обычно она занимает несколько минут.'
         ],
-        instr4Title: ['Copy the testing link', 'Скопируйте ссылку'],
-        instr4Text: [
+        instrLinkTitle: ['Your testing link', 'Ваша Ссылка на Тестирование!'],
+        instrLinkText: [
             'Find <strong>“How testers join your test”</strong> and copy the <strong>“Join on Android”</strong> link.',
             'Найдите блок <strong>«How testers join your test»</strong> и скопируйте ссылку <strong>«Join on Android»</strong>.'
         ],
@@ -754,7 +757,7 @@
             '</svg>';
 
         return `
-        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;" data-gtw-license-guide="v5">
+        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;" data-gtw-license-guide="v6">
             <div class="gtw-guide-page">
                 <button type="button" class="gtw-guide-page-close" id="gtw-license-guide-close" aria-label="${L('close')}">&times;</button>
                 <h2 class="gtw-guide-page-title">${L('guidePageTitle')}</h2>
@@ -816,43 +819,45 @@
                         </div>
 
                         <div class="gtw-guide-shot-group-body">
-                            <div class="gtw-guide-shot-panel gtw-guide-shot-panel--group" id="gtw-license-shot-page" hidden>
-                                <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${LICENSE_GUIDE_RESPONSE_IMG}" data-zoom-alt="${L('guideShotPageLabel')}">
-                                    <img src="${LICENSE_GUIDE_RESPONSE_IMG}" alt="${L('guideShotPageLabel')}" loading="lazy" class="gtw-guide-shot-img" />
-                                </button>
-                            </div>
-
-                            <div class="gtw-guide-shot-steps">
-                                <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="3" data-local-num="1">
-                                    <span class="gtw-guide-page-num" data-num-global="3" data-num-local="1">3</span>
-                                    <div class="gtw-guide-page-content">
-                                        <strong>${L('guide3Title')}</strong>
-                                        <p>${L('guide3Text')}</p>
-                                    </div>
+                            <div class="gtw-guide-shot-rail-zone">
+                                <div class="gtw-guide-shot-panel gtw-guide-shot-panel--group" id="gtw-license-shot-page" hidden>
+                                    <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${LICENSE_GUIDE_RESPONSE_IMG}" data-zoom-alt="${L('guideShotPageLabel')}">
+                                        <img src="${LICENSE_GUIDE_RESPONSE_IMG}" alt="${L('guideShotPageLabel')}" loading="lazy" class="gtw-guide-shot-img" />
+                                    </button>
                                 </div>
-                                <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="4" data-local-num="2">
-                                    <span class="gtw-guide-page-num" data-num-global="4" data-num-local="2">4</span>
-                                    <div class="gtw-guide-page-content">
-                                        <strong>${L('guide4Title')}</strong>
-                                        <p>${L('guide4Text')}</p>
-                                        <div class="gtw-copy-box">
-                                            <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
-                                            <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="${L('copy')}">${L('copy')}</button>
+
+                                <div class="gtw-guide-shot-steps">
+                                    <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="3" data-local-num="1">
+                                        <span class="gtw-guide-page-num" data-num-global="3" data-num-local="1">3</span>
+                                        <div class="gtw-guide-page-content">
+                                            <strong>${L('guide3Title')}</strong>
+                                            <p>${L('guide3Text')}</p>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="5" data-local-num="3">
-                                    <span class="gtw-guide-page-num" data-num-global="5" data-num-local="3">5</span>
-                                    <div class="gtw-guide-page-content">
-                                        <strong>${L('guide5Title')}</strong>
-                                        <p>${L('guide5Text')}</p>
+                                    <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="4" data-local-num="2">
+                                        <span class="gtw-guide-page-num" data-num-global="4" data-num-local="2">4</span>
+                                        <div class="gtw-guide-page-content">
+                                            <strong>${L('guide4Title')}</strong>
+                                            <p>${L('guide4Text')}</p>
+                                            <div class="gtw-copy-box">
+                                                <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
+                                                <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="${L('copy')}">${L('copy')}</button>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="6" data-local-num="4">
-                                    <span class="gtw-guide-page-num" data-num-global="6" data-num-local="4">6</span>
-                                    <div class="gtw-guide-page-content">
-                                        <strong>${L('guide6Title')}</strong>
-                                        <p>${L('guide6Text')}</p>
+                                    <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="5" data-local-num="3">
+                                        <span class="gtw-guide-page-num" data-num-global="5" data-num-local="3">5</span>
+                                        <div class="gtw-guide-page-content">
+                                            <strong>${L('guide5Title')}</strong>
+                                            <p>${L('guide5Text')}</p>
+                                        </div>
+                                    </div>
+                                    <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="6" data-local-num="4">
+                                        <span class="gtw-guide-page-num" data-num-global="6" data-num-local="4">6</span>
+                                        <div class="gtw-guide-page-content">
+                                            <strong>${L('guide6Title')}</strong>
+                                            <p>${L('guide6Text')}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -886,7 +891,7 @@
 
     function createWizardStep2HTML() {
         return `
-        <div id="guaranteed-test-wizard-step2-overlay" class="gtw-overlay gtw-step2-overlay" style="display: none;" data-gtw-wizard="v2">
+        <div id="guaranteed-test-wizard-step2-overlay" class="gtw-overlay gtw-step2-overlay" style="display: none;" data-gtw-wizard="v3">
             <div class="gtw-header">
                 <button type="button" class="gtw-back-btn" id="gtw-step2-back-btn" aria-label="${L('back')}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -971,91 +976,89 @@
                         <span class="gtw-step2-accordion-arrow" aria-hidden="true">▼</span>
                     </button>
                     <div class="gtw-step2-accordion-panel" id="gtw-step2-instructions-panel">
-                        <div class="gtw-instructions-list" id="gtw-step2-instructions-list">
-                            <div class="gtw-card-item">
-                                <div class="gtw-card-icon-badge gtw-badge-green">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                        <circle cx="8.5" cy="7" r="4"></circle>
-                                        <line x1="20" y1="8" x2="20" y2="14"></line>
-                                        <line x1="17" y1="11" x2="23" y2="11"></line>
-                                    </svg>
+                        <div class="gtw-guide-page-flow gtw-step2-guide-flow" id="gtw-step2-instructions-list">
+                            <section class="gtw-guide-page-block gtw-guide-shot-group" data-guide-block="1" data-open="false" id="gtw-step2-shot-group-testers">
+                                <div class="gtw-guide-page-step">
+                                    <span class="gtw-guide-page-num">1</span>
+                                    <div class="gtw-guide-page-content">
+                                        <div class="gtw-guide-step-head">
+                                            <div class="gtw-guide-step-copy">
+                                                <strong>${L('instr1Title')}</strong>
+                                                <p>${L('instr1Text')}</p>
+                                            </div>
+                                            <button type="button" class="gtw-guide-icon-btn gtw-guide-shot-toggle" id="gtw-step2-shot-testers-toggle" aria-expanded="false" aria-controls="gtw-step2-shot-testers" title="${L('guideShowScreenshot')}">
+                                                <svg class="gtw-guide-action-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="gtw-card-content">
-                                    <h4 class="gtw-card-title">1. ${L('instr1Title')}</h4>
-                                    <p class="gtw-card-text">${L('instr1Text')}</p>
-                                    <div class="gtw-copy-box" style="margin-top: 8px;">
-                                        <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
-                                        <button type="button" class="gtw-copy-btn" id="gtw-card-copy-btn" title="${L('copy')}">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                            </svg>
+                                <div class="gtw-guide-shot-group-body">
+                                    <div class="gtw-guide-shot-panel gtw-guide-shot-panel--block" id="gtw-step2-shot-testers" hidden>
+                                        <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${TESTING_GUIDE_GROUP_IMG}" data-zoom-alt="${L('instr1Title')}">
+                                            <img src="${TESTING_GUIDE_GROUP_IMG}" alt="${L('instr1Title')}" loading="lazy" class="gtw-guide-shot-img" />
+                                        </button>
+                                        <div class="gtw-guide-nested-block">
+                                            <div class="gtw-copy-box">
+                                                <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
+                                                <button type="button" class="gtw-copy-btn" id="gtw-card-copy-btn" title="${L('copy')}">${L('copy')}</button>
+                                            </div>
+                                            <div class="gtw-guide-nested-link">
+                                                <strong class="gtw-guide-nested-link-title">${L('instrLinkTitle')}</strong>
+                                                <p>${L('instrLinkText')}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="gtw-guide-page-block gtw-guide-shot-group" data-guide-block="2" data-open="false" id="gtw-step2-shot-group-countries">
+                                <div class="gtw-guide-page-step">
+                                    <span class="gtw-guide-page-num">2</span>
+                                    <div class="gtw-guide-page-content">
+                                        <div class="gtw-guide-step-head">
+                                            <div class="gtw-guide-step-copy">
+                                                <strong>${L('instr2Title')}</strong>
+                                                <p>${L('instr2Text')}</p>
+                                            </div>
+                                            <button type="button" class="gtw-guide-icon-btn gtw-guide-shot-toggle" id="gtw-step2-shot-countries-toggle" aria-expanded="false" aria-controls="gtw-step2-shot-countries" title="${L('guideShowScreenshot')}">
+                                                <svg class="gtw-guide-action-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="gtw-guide-shot-group-body">
+                                    <div class="gtw-guide-shot-panel gtw-guide-shot-panel--block" id="gtw-step2-shot-countries" hidden>
+                                        <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${TESTING_GUIDE_COUNTRIES_IMG}" data-zoom-alt="${L('instr2Title')}">
+                                            <img src="${TESTING_GUIDE_COUNTRIES_IMG}" alt="${L('instr2Title')}" loading="lazy" class="gtw-guide-shot-img" />
                                         </button>
                                     </div>
                                 </div>
-                            </div>
+                            </section>
 
-                            <div class="gtw-card-item">
-                                <div class="gtw-card-icon-badge gtw-badge-blue">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <line x1="2" y1="12" x2="22" y2="12"></line>
-                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                                    </svg>
+                            <section class="gtw-guide-page-block gtw-guide-shot-group" data-guide-block="3" data-open="false" id="gtw-step2-shot-group-review">
+                                <div class="gtw-guide-page-step">
+                                    <span class="gtw-guide-page-num">3</span>
+                                    <div class="gtw-guide-page-content">
+                                        <div class="gtw-guide-step-head">
+                                            <div class="gtw-guide-step-copy">
+                                                <strong>${L('instr3Title')}</strong>
+                                                <p>${L('instr3Text')}</p>
+                                            </div>
+                                            <button type="button" class="gtw-guide-icon-btn gtw-guide-shot-toggle" id="gtw-step2-shot-review-toggle" aria-expanded="false" aria-controls="gtw-step2-shot-review" title="${L('guideShowScreenshot')}">
+                                                <svg class="gtw-guide-action-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="gtw-card-content">
-                                    <h4 class="gtw-card-title">2. ${L('instr2Title')}</h4>
-                                    <p class="gtw-card-text">${L('instr2Text')}</p>
+                                <div class="gtw-guide-shot-group-body">
+                                    <div class="gtw-guide-shot-panel gtw-guide-shot-panel--block" id="gtw-step2-shot-review" hidden>
+                                        <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${TESTING_GUIDE_REVIEW_IMG}" data-zoom-alt="${L('instr3Title')}">
+                                            <img src="${TESTING_GUIDE_REVIEW_IMG}" alt="${L('instr3Title')}" loading="lazy" class="gtw-guide-shot-img" />
+                                        </button>
+                                        <div class="gtw-note-box" style="margin-top: 10px;">${L('instr3Note')}</div>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div class="gtw-card-item">
-                                <div class="gtw-card-icon-badge gtw-badge-amber">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                    </svg>
-                                </div>
-                                <div class="gtw-card-content">
-                                    <h4 class="gtw-card-title">3. ${L('instr3Title')}</h4>
-                                    <p class="gtw-card-text">${L('instr3Text')}</p>
-                                    <div class="gtw-note-box">${L('instr3Note')}</div>
-                                </div>
-                            </div>
-
-                            <div class="gtw-card-item">
-                                <div class="gtw-card-icon-badge gtw-badge-purple">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                                    </svg>
-                                </div>
-                                <div class="gtw-card-content">
-                                    <h4 class="gtw-card-title">4. ${L('instr4Title')}</h4>
-                                    <p class="gtw-card-text">${L('instr4Text')}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="gtw-guide-card" id="gtw-general-testing-guide">
-                            <div class="gtw-guide-card-left">
-                                <div class="gtw-guide-icon-badge">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                                    </svg>
-                                </div>
-                                <div class="gtw-guide-card-info">
-                                    <div class="gtw-guide-card-title">${L('guideCardTitle')}</div>
-                                    <div class="gtw-guide-card-desc">${L('guideCardDesc')}</div>
-                                </div>
-                            </div>
-                            <svg class="gtw-guide-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                <polyline points="15 3 21 3 21 9"></polyline>
-                                <line x1="10" y1="14" x2="21" y2="3"></line>
-                            </svg>
+                            </section>
                         </div>
                     </div>
                 </div>
@@ -1208,7 +1211,7 @@
         }
 
         if (!document.getElementById('gtw-license-guide-overlay') ||
-            document.getElementById('gtw-license-guide-overlay').getAttribute('data-gtw-license-guide') !== 'v5') {
+            document.getElementById('gtw-license-guide-overlay').getAttribute('data-gtw-license-guide') !== 'v6') {
             var oldGuide = document.getElementById('gtw-license-guide-overlay');
             if (oldGuide && oldGuide.parentNode) oldGuide.parentNode.removeChild(oldGuide);
             var divGuide = document.createElement('div');
@@ -1218,7 +1221,7 @@
         }
 
         var overlay2 = document.getElementById('guaranteed-test-wizard-step2-overlay');
-        if (!overlay2 || overlay2.getAttribute('data-gtw-wizard') !== 'v2') {
+        if (!overlay2 || overlay2.getAttribute('data-gtw-wizard') !== 'v3') {
             if (overlay2 && overlay2.parentNode) overlay2.parentNode.removeChild(overlay2);
             var div2 = document.createElement('div');
             div2.innerHTML = createWizardStep2HTML();
@@ -1495,7 +1498,7 @@
         });
     }
 
-    function setLicenseShotPanelOpen(panelId, toggleId, isOpen) {
+    function setGuideShotPanelOpen(panelId, toggleId, isOpen, groupId) {
         var panel = document.getElementById(panelId);
         var toggle = document.getElementById(toggleId);
         if (!panel || !toggle) return;
@@ -1508,13 +1511,20 @@
         }
         toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         toggle.classList.toggle('is-active', !!isOpen);
-        if (toggleId === 'gtw-license-shot-settings-toggle') {
-            toggle.setAttribute('title', isOpen ? L('guideHideScreenshot') : L('guideShowScreenshot'));
+        toggle.setAttribute('title', isOpen ? L('guideHideScreenshot') : L('guideShowScreenshot'));
+        if (groupId) {
+            var group = document.getElementById(groupId);
+            if (group) group.setAttribute('data-open', isOpen ? 'true' : 'false');
         }
         if (toggleId === 'gtw-license-shot-page-toggle') {
-            toggle.setAttribute('title', isOpen ? L('guideHideScreenshot') : L('guideShowScreenshot'));
             syncLicenseGuideShotNumbers(!!isOpen);
         }
+    }
+
+    function setLicenseShotPanelOpen(panelId, toggleId, isOpen) {
+        var groupId = null;
+        if (toggleId === 'gtw-license-shot-page-toggle') groupId = 'gtw-license-shot-group-page';
+        setGuideShotPanelOpen(panelId, toggleId, isOpen, groupId);
     }
 
     function bindLicenseGuideEvents() {
@@ -1669,9 +1679,28 @@
             });
         }
 
-        var generalGuideCard = document.getElementById('gtw-general-testing-guide');
-        if (generalGuideCard) {
-            generalGuideCard.addEventListener('click', handleOpenGeneralTestingGuide);
+        function bindStep2ShotToggle(panelId, toggleId, groupId) {
+            var toggle = document.getElementById(toggleId);
+            if (!toggle) return;
+            toggle.addEventListener('click', function () {
+                var willOpen = toggle.getAttribute('aria-expanded') !== 'true';
+                setGuideShotPanelOpen(panelId, toggleId, willOpen, groupId);
+            });
+        }
+        bindStep2ShotToggle('gtw-step2-shot-testers', 'gtw-step2-shot-testers-toggle', 'gtw-step2-shot-group-testers');
+        bindStep2ShotToggle('gtw-step2-shot-countries', 'gtw-step2-shot-countries-toggle', 'gtw-step2-shot-group-countries');
+        bindStep2ShotToggle('gtw-step2-shot-review', 'gtw-step2-shot-review-toggle', 'gtw-step2-shot-group-review');
+
+        var step2Panel = document.getElementById('gtw-step2-instructions-panel');
+        if (step2Panel) {
+            step2Panel.querySelectorAll('.gtw-guide-shot-frame').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    openGuideImageZoom(
+                        btn.getAttribute('data-zoom-src') || '',
+                        btn.getAttribute('data-zoom-alt') || ''
+                    );
+                });
+            });
         }
 
         var paymentBtn = document.getElementById('gtw-proceed-payment-btn');

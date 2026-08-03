@@ -1909,10 +1909,11 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: rgba(76, 141, 255, 0.14);
+    background: #1E2A3D;
     color: var(--accent-primary, #4C8DFF);
     font-size: 12px;
     font-weight: 600;
+    box-shadow: 0 0 0 4px var(--gt-surface);
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 
@@ -1987,7 +1988,7 @@
 }
 
 .gtw-guide-shot-panel.is-open {
-    max-height: 1200px;
+    max-height: 2200px;
     opacity: 1;
 }
 
@@ -1995,11 +1996,11 @@
     display: none !important;
 }
 
-/* Equal screenshot width: both aligned to the content column (right of nums) */
+/* Equal full-width screenshots (no left gutter) */
 .gtw-guide-shot-panel--block,
 .gtw-guide-shot-panel--group {
     margin: 0;
-    padding: 0 16px 14px 52px; /* 16+24+12 — same start as step text */
+    padding: 0 16px 14px;
     box-sizing: border-box;
     width: 100%;
     position: relative;
@@ -2063,23 +2064,35 @@
     z-index: 1;
 }
 
-/* One solid rail in the gap between nums and screenshot/text — no border, no layout shift */
-.gtw-guide-shot-group[data-open="true"] .gtw-guide-shot-group-body::before {
+/* Rail through the CENTER of step numbers, from screenshot through all points */
+.gtw-guide-shot-rail-zone {
+    position: relative;
+}
+
+.gtw-guide-shot-group[data-open="true"] .gtw-guide-shot-rail-zone::before {
     content: '';
     position: absolute;
-    left: 46px; /* 16 + 24 + 6 — center of gap */
+    /* 16 pad + half of 24px circle = 28 */
+    left: 28px;
     top: 0;
-    bottom: 14px;
+    bottom: 16px;
     width: 2px;
+    margin-left: -1px;
     border-radius: 1px;
     background: #4C8DFF;
-    opacity: 0.7;
+    opacity: 0.75;
     pointer-events: none;
     z-index: 0;
 }
 
+.gtw-guide-shot-group[data-open="true"] .gtw-guide-shot-group-body::before,
 .gtw-guide-shot-group[data-open="true"] .gtw-guide-shot-steps::before {
     display: none;
+}
+
+.gtw-guide-shot-panel--group,
+.gtw-guide-shot-panel--block {
+    background: var(--gt-surface);
 }
 
 .gtw-guide-page-step--grouped {
@@ -2089,26 +2102,65 @@
     background: transparent;
 }
 
-/* Circles always visible — opaque ring so the rail never shows through */
+/* Circles always visible — opaque fill so the center rail never shows through */
 .gtw-guide-shot-group .gtw-guide-page-num {
     position: relative;
     z-index: 2;
-    background: rgba(76, 141, 255, 0.14);
+    background: #1E2A3D;
     color: var(--accent-primary, #4C8DFF);
-    box-shadow: 0 0 0 3px var(--gt-surface);
+    box-shadow: 0 0 0 4px var(--gt-surface);
 }
 
 .gtw-guide-shot-group[data-open="true"] .gtw-guide-page-step--grouped .gtw-guide-page-num {
-    background: rgba(76, 141, 255, 0.18);
-    box-shadow: 0 0 0 3px var(--gt-surface);
+    background: #243449;
+    box-shadow: 0 0 0 4px var(--gt-surface);
     color: var(--accent-primary, #4C8DFF);
 }
 
 .gtw-guide-shot-group[data-open="true"] .gtw-guide-shot-group-head .gtw-guide-icon-btn.is-active,
-.gtw-guide-shot-group[data-open="true"] #gtw-license-shot-page-toggle {
+.gtw-guide-shot-group[data-open="true"] #gtw-license-shot-page-toggle,
+.gtw-guide-shot-group[data-open="true"] .gtw-guide-shot-toggle.is-active {
     background: rgba(76, 141, 255, 0.14);
     border-color: rgba(76, 141, 255, 0.35);
     color: var(--accent-primary, #4C8DFF);
+}
+
+.gtw-step2-guide-flow {
+    margin-top: 2px;
+}
+
+.gtw-guide-nested-block {
+    margin-top: 12px;
+}
+
+.gtw-guide-nested-link {
+    margin-top: 12px;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--gt-hairline);
+}
+
+.gtw-guide-nested-link-title {
+    display: block !important;
+    margin-bottom: 4px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    line-height: 19px !important;
+    color: var(--text-primary, #F4F6F8) !important;
+}
+
+.gtw-guide-nested-link p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 19px;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+.gtw-guide-nested-link p strong {
+    display: inline !important;
+    margin: 0 !important;
+    font-size: inherit !important;
+    font-weight: 600 !important;
+    color: var(--text-primary, #F4F6F8) !important;
 }
 
 /* =========================================================
