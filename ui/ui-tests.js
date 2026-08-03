@@ -1022,11 +1022,14 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         parts.push(`<button class="meta-chip" onclick="event.stopPropagation(); showToast('${tooltip.replace(/'/g, "\\'")}')">${testerLabel}</button>`);
     }
     if (typeof userTestingDay === 'number' && userTestingDay > 0) {
-        const dayText = t.myTestDayShort.replace('{days}', userTestingDay);
         const isScreenshot = isMandatoryScreenshotDay(userTestingDay);
-        const screenshotIcon = isScreenshot ? ' 📸' : '';
+        let dayText = t.myTestDayShort.replace('{days}', userTestingDay);
+        // Control day: swap 🧪 → 📸 (single icon, never both).
+        if (isScreenshot) {
+            dayText = dayText.replace('🧪', '📸');
+        }
         const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip accent-blue';
-        parts.push(`<button class="${chipClass}" onclick="event.stopPropagation(); showTestDayPopup(${userTestingDay})">${dayText}${screenshotIcon}</button>`);
+        parts.push(`<button class="${chipClass}" onclick="event.stopPropagation(); showTestDayPopup(${userTestingDay})">${dayText}</button>`);
     }
     if (isNew) {
         parts.unshift(`<button class="meta-chip accent-green">${t.newBadge}</button>`);
@@ -1744,7 +1747,9 @@ function renderTests(force) {
                 var externalConfirmLabel = isExternalScreenshotOnlyDay
                     ? window.t('screenshotBtn', {}, lang)
                     : '✅ ' + window.t('completeControlDayBtn', {}, lang);
-                var externalWarningText = window.t(isExternalScreenshotOnlyDay ? 'firstDayScreenshotWarning' : 'screenshotWarning', {}, lang);
+                var externalWarningText = isExternalScreenshotOnlyDay
+                    ? ''
+                    : window.t('screenshotWarning', {}, lang);
                 actionsHtml = `
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}', 10)">
@@ -1753,9 +1758,9 @@ function renderTests(force) {
                         <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
                             ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : window.escapeHTML(externalConfirmLabel)}
                         </button>
-                        <div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${externalWarningText ? `<div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             ${window.escapeHTML(externalWarningText)}
-                        </div>
+                        </div>` : ''}
                     </div>
                 `;
             }
@@ -1912,9 +1917,6 @@ function renderTests(force) {
                         <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
                             ${window.escapeHTML(screenshotLabel)}
                         </button>
-                        <div class="first-day-screenshot-warning">
-                            ${window.escapeHTML(window.t('firstDayScreenshotWarning', {}, lang))}
-                        </div>
                     </div>
                 </div>
                 ${issueBtnHtml}
@@ -1946,7 +1948,10 @@ function renderTests(force) {
                 const screenshotBtnText = isScreenshotOnlyDay
                     ? window.t('screenshotBtn', {}, lang)
                     : '✅ ' + window.t('completeControlDayBtn', {}, lang);
-                const screenshotWarningText = window.t(isScreenshotOnlyDay ? 'firstDayScreenshotWarning' : 'screenshotWarning', {}, lang);
+                // Day 1 warning text removed from card; keep control-day hint for days 4/7/10/14 only.
+                const screenshotWarningText = isScreenshotOnlyDay
+                    ? ''
+                    : window.t('screenshotWarning', {}, lang);
 
                 if (isScreenshotDay) {
                     const confirmLabel = isFeedbackCheckinPending
@@ -1960,9 +1965,9 @@ function renderTests(force) {
                             <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
                                 ${window.escapeHTML(confirmLabel)}
                             </button>
-                            <div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${screenshotWarningText ? `<div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${window.escapeHTML(screenshotWarningText)}
-                            </div>
+                            </div>` : ''}
                         </div>
                     `;
                 } else if (isFeedbackCheckinPending) {
