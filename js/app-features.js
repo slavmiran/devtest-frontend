@@ -2886,6 +2886,8 @@ function openJoinBountyConfirmModal(appId) {
 
     var totalEl = document.getElementById('join-bounty-confirm-total');
     if (totalEl) totalEl.textContent = formatAmount(bounty);
+    var totalCompactEl = document.getElementById('join-bounty-confirm-total-compact');
+    if (totalCompactEl) totalCompactEl.textContent = formatAmount(bounty);
     var checkinsEl = document.getElementById('join-bounty-confirm-checkins');
     if (checkinsEl) checkinsEl.textContent = formatAmount(checkinsReward);
     var holdEl = document.getElementById('join-bounty-confirm-hold');
@@ -2899,6 +2901,8 @@ function openJoinBountyConfirmModal(appId) {
 
     var grantEl = document.getElementById('join-bounty-confirm-grant');
     if (grantEl) grantEl.innerHTML = _buildJoinBountyGrantPreviewHtml(grant);
+    var grantCompactEl = document.getElementById('join-bounty-confirm-grant-compact');
+    if (grantCompactEl) grantCompactEl.textContent = '~' + formatAmount(grantTotal);
 
     var grandTotalEl = document.getElementById('join-bounty-confirm-grand-total');
     if (grandTotalEl) grandTotalEl.textContent = '~' + formatAmount(grandTotal);
@@ -2910,6 +2914,18 @@ function openJoinBountyConfirmModal(appId) {
             T('joinBountyGrantPart') + ' <span class="jb-total-part notranslate">~' + formatAmount(grantTotal) + '</span>';
     }
 
+    var ownerAccordion = document.getElementById('jb-owner-accordion');
+    if (ownerAccordion) ownerAccordion.open = false;
+    var grantAccordion = document.getElementById('jb-grant-accordion');
+    if (grantAccordion) grantAccordion.open = false;
+    [ownerAccordion, grantAccordion].forEach(function(el) {
+        if (!el || el.dataset.jbBound) return;
+        el.dataset.jbBound = '1';
+        el.addEventListener('toggle', function() {
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        });
+    });
+
     var setText = function(selector, key) {
         var el = document.querySelector(selector);
         if (el) el.textContent = T(key);
@@ -2917,10 +2933,10 @@ function openJoinBountyConfirmModal(appId) {
     setText('#join-bounty-confirm-title', 'joinBountyConfirmTitle');
     setText('#join-bounty-confirm-intro', 'joinBountyConfirmIntro');
     setText('#join-bounty-confirm-modal .jb-total-label', 'joinBountyTotalLabel');
-    setText('#join-bounty-confirm-modal .jb-section-title[data-i18n="joinBountyOwnerBlockTitle"]', 'joinBountyOwnerBlockTitle');
-    setText('#join-bounty-confirm-modal .jb-section-tag[data-i18n="joinBountyOwnerBlockTag"]', 'joinBountyOwnerBlockTag');
-    setText('#join-bounty-confirm-modal .jb-section-title[data-i18n="joinBountyGrantBlockTitle"]', 'joinBountyGrantBlockTitle');
-    setText('#join-bounty-confirm-modal .jb-section-tag[data-i18n="joinBountyGrantBlockTag"]', 'joinBountyGrantBlockTag');
+    setText('#jb-owner-accordion .jb-accordion-title', 'joinBountyOwnerBlockTitle');
+    setText('#jb-owner-accordion .jb-accordion-sub', 'joinBountyOwnerCompactSub');
+    setText('#jb-grant-accordion .jb-accordion-title', 'joinBountyGrantBlockTitle');
+    setText('#jb-grant-accordion .jb-accordion-sub', 'joinBountyGrantCompactSub');
     setText('#join-bounty-confirm-modal .join-bounty-reward-title', 'joinBountyRewardLabel');
     setText('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyCheckinsLabel"]', 'joinBountyCheckinsLabel');
     setText('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyHoldLabel"]', 'joinBountyHoldLabel');
