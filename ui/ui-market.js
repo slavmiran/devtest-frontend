@@ -8572,7 +8572,7 @@ async function openDossierModal(username, testerId, appId) {
                     : 0,
             }, lang))}</div>
                 <div class="action-row dossier-bounty-app-actions">
-                    <button class="btn btn-success bounty-app-accept-btn" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'accept', event)">${window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang))}</button>
+                    <button class="btn bounty-app-accept-btn" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'accept', event)">${window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang))}</button>
                     <button class="btn bounty-app-reject-btn" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'reject', event)">${window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang))}</button>
                 </div>
             </div>` : ''}

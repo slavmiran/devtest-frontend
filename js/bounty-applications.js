@@ -52,21 +52,63 @@ function formatBountyApplicationRemaining(createdAt) {
     };
 }
 
-function _formatBountyReliabilityChip(application) {
+function _bountyReliabilityTone(application) {
     var status = String(application && application.applicant_reliability_status || 'newbie').toLowerCase();
     var index = application && application.applicant_reliability_index;
-    var emoji = application && application.applicant_reliability_emoji || '⚪';
+    if (status === 'newbie' || index == null || index === '') return 'neutral';
+    var value = Number(index);
+    if (!Number.isFinite(value)) return 'neutral';
+    if (status === 'expert' || status === 'active' || value >= 85) return 'good';
+    if (status === 'basic' || status === 'minimal' || value >= 65) return 'warn';
+    return 'bad';
+}
+
+function _formatBountyReliabilityLabel(application) {
+    var status = String(application && application.applicant_reliability_status || 'newbie').toLowerCase();
+    var index = application && application.applicant_reliability_index;
     if (status === 'newbie' || index == null || index === '') {
-        return window.escapeHTML(window.t('bountyAppReliabilityNewbie', { emoji: emoji }, lang));
+        return window.t('bountyAppReliabilityNewbieShort', {}, lang);
     }
     var value = Number(index);
     if (!Number.isFinite(value)) {
-        return window.escapeHTML(window.t('bountyAppReliabilityNewbie', { emoji: emoji }, lang));
+        return window.t('bountyAppReliabilityNewbieShort', {}, lang);
     }
-    return window.escapeHTML(window.t('bountyAppReliabilityValue', {
+    var statusKey = 'reliabilityDashStatus_' + status;
+    var statusLabel = window.t(statusKey, {}, lang);
+    if (!statusLabel || statusLabel === statusKey) {
+        statusLabel = status;
+    }
+    return window.t('bountyAppReliabilityCompact', {
         pct: Math.round(value),
-        emoji: emoji,
-    }, lang));
+        status: statusLabel,
+    }, lang);
+}
+
+function _bountyApplicantAvatarHtml(application) {
+    var name = String(
+        (application && (application.applicant_full_name || application.applicant_username)) ||
+        ('#' + (application && application.applicant_id || 0))
+    ).trim();
+    var avatarUrl = application && application.applicant_avatar_url;
+    if (typeof renderIcon === 'function') {
+        return renderIcon(name, avatarUrl || '');
+    }
+    if (typeof getAvatar === 'function') {
+        return getAvatar(name);
+    }
+    var letter = name.charAt(0).toUpperCase() || '?';
+    return '<div class="avatar">' + window.escapeHTML(letter) + '</div>';
+}
+
+function _bountyDossierIconSvg() {
+    return '' +
+        '<svg class="bounty-app-dossier-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+            '<path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v1c0 .55.45 1 1 1h14c.55 0 1-.45 1-1v-1c0-2.66-5.33-4-8-4z"/>' +
+        '</svg>';
+}
+
+function _formatBountyReliabilityChip(application) {
+    return window.escapeHTML(_formatBountyReliabilityLabel(application));
 }
 
 function applyIncomingBountyApplications(list, options) {
@@ -176,16 +218,19 @@ function renderBountyApplications(force) {
     carousel.innerHTML = pending.map(function(app) {
         var username = String(app.applicant_username || '').replace(/@/g, '');
         var safeUsername = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username;
-        var displayName = window.escapeHTML(username
-            ? ('@' + username)
-            : (app.applicant_full_name || window.t('idLabel', { id: app.applicant_id }, lang)));
+        var fullName = String(app.applicant_full_name || '').trim();
+        var handle = username ? ('@' + username) : '';
+        var primaryName = window.escapeHTML(fullName || handle || window.t('idLabel', { id: app.applicant_id }, lang));
+        var secondaryName = (fullName && handle)
+            ? ('<div class="bounty-app-handle notranslate">' + window.escapeHTML(handle) + '</div>')
+            : '';
         var remain = formatBountyApplicationRemaining(app.created_at);
         var leftTimeText = window.t('offerTimeLeftValue', {
             hours: remain ? remain.hours : 0,
             minutes: remain ? remain.minutes : 0,
         }, lang);
         var expireText = remain
-            ? window.t('bountyAppTimeLeft', { time: leftTimeText }, lang)
+            ? window.t('bountyAppTimeLeftShort', { time: leftTimeText }, lang)
             : window.t('offerTimeUnknown', {}, lang);
         var appName = app.app_name || window.t('unknownLabel', {}, lang);
         var bountyVal = typeof formatAmountValue === 'function'
@@ -195,27 +240,65 @@ function renderBountyApplications(force) {
             ? formatAmountValue(app.applicant_karma || 0, 1)
             : String(app.applicant_karma || 0);
         var fullCycles = Number(app.applicant_completed_full_cycles || 0);
+        var skipRate = app.applicant_skip_rate_pct;
+        var skipLabel = (skipRate == null || skipRate === '')
+            ? '—'
+            : (String(Math.round(Number(skipRate))) + '%');
+        var tone = _bountyReliabilityTone(app);
+        var reliabilityLabel = _formatBountyReliabilityLabel(app);
+        var dossierLabel = window.escapeHTML(window.t('bountyAppOpenDossier', {}, lang));
 
         return '' +
             '<div class="offer-card bounty-app-card" data-application-id="' + app.application_id + '">' +
-                '<div class="bounty-app-title notranslate">' +
-                    window.escapeHTML(window.t('bountyAppCardTitle', { bust: bountyVal }, lang)) +
+                '<div class="bounty-app-head">' +
+                    '<div class="bounty-app-badge">' +
+                        '<span class="bounty-app-badge-label">' + window.escapeHTML(window.t('bountyAppContractChip', {}, lang)) + '</span>' +
+                        '<span class="bounty-app-badge-reward notranslate">' + bountyVal + ' $BUST</span>' +
+                    '</div>' +
+                    '<div class="bounty-app-ttl offer-expire">' + window.escapeHTML(expireText) + '</div>' +
                 '</div>' +
-                '<div class="offer-sub bounty-app-project">' +
-                    window.escapeHTML(window.t('bountyAppForProject', { app: appName }, lang)) +
+                '<div class="bounty-app-identity">' +
+                    '<div class="bounty-app-avatar-wrap" role="button" tabindex="0" aria-label="' + dossierLabel + '" ' +
+                        'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(app.applicant_id || 0) + ', ' + Number(app.app_id || 0) + '); event.stopPropagation();">' +
+                        _bountyApplicantAvatarHtml(app) +
+                    '</div>' +
+                    '<div class="bounty-app-identity-main" role="button" tabindex="0" ' +
+                        'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(app.applicant_id || 0) + ', ' + Number(app.app_id || 0) + '); event.stopPropagation();">' +
+                        '<div class="bounty-app-name notranslate">' + primaryName + '</div>' +
+                        secondaryName +
+                        '<div class="bounty-app-signal bounty-app-signal--' + tone + '">' +
+                            '<span class="bounty-app-signal-dot" aria-hidden="true"></span>' +
+                            '<span>' + window.escapeHTML(reliabilityLabel) + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<button type="button" class="bounty-app-dossier-btn" title="' + dossierLabel + '" aria-label="' + dossierLabel + '" ' +
+                        'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(app.applicant_id || 0) + ', ' + Number(app.app_id || 0) + '); event.stopPropagation();">' +
+                        _bountyDossierIconSvg() +
+                    '</button>' +
                 '</div>' +
-                '<button class="offer-user bounty-app-tester" onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(app.applicant_id || 0) + ', ' + Number(app.app_id || 0) + '); event.stopPropagation();">' +
-                    '👤 ' + displayName +
-                '</button>' +
-                '<div class="bounty-app-line">' + _formatBountyReliabilityChip(app) + '</div>' +
-                '<div class="bounty-app-line">' + window.escapeHTML(window.t('bountyAppFullCycles', { count: fullCycles }, lang)) + '</div>' +
-                '<div class="bounty-app-line notranslate">' + window.escapeHTML(window.t('bountyAppKarmaLine', { karma: karmaVal }, lang)) + '</div>' +
-                '<div class="offer-expire">' + expireText + '</div>' +
+                '<div class="bounty-app-metrics">' +
+                    '<div class="bounty-app-metric">' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricKarma', {}, lang)) + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + window.escapeHTML(karmaVal) + '</div>' +
+                    '</div>' +
+                    '<div class="bounty-app-metric">' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricTests', {}, lang)) + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + fullCycles + '</div>' +
+                    '</div>' +
+                    '<div class="bounty-app-metric">' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricSkips', {}, lang)) + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + window.escapeHTML(skipLabel) + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="bounty-app-project-row">' +
+                    '<span class="bounty-app-project-label">' + window.escapeHTML(window.t('bountyAppProjectLabel', {}, lang)) + '</span>' +
+                    '<span class="bounty-app-project-name notranslate">' + window.escapeHTML(appName) + '</span>' +
+                '</div>' +
                 '<div class="action-row bounty-app-actions">' +
-                    '<button class="btn btn-success bounty-app-accept-btn" onclick="decideBountyApplication(' + app.application_id + ', \'accept\', event)">' +
+                    '<button type="button" class="btn bounty-app-accept-btn" onclick="decideBountyApplication(' + app.application_id + ', \'accept\', event)">' +
                         window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang)) +
                     '</button>' +
-                    '<button class="btn bounty-app-reject-btn" onclick="decideBountyApplication(' + app.application_id + ', \'reject\', event)">' +
+                    '<button type="button" class="btn bounty-app-reject-btn" onclick="decideBountyApplication(' + app.application_id + ', \'reject\', event)">' +
                         window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
                     '</button>' +
                 '</div>' +
