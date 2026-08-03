@@ -490,7 +490,16 @@ async function decideBountyApplication(applicationId, action, event) {
         } catch (parseError) {
             result = {};
         }
-        if (!response.ok || result.status !== 'success') {
+        // Backend used to return application status (accepted/rejected) under `status`,
+        // overwriting API `success`. Treat those as OK when HTTP succeeded.
+        var apiStatus = String(result && result.status || '').toLowerCase();
+        var decisionOk = response.ok && (
+            apiStatus === 'success' ||
+            apiStatus === decision ||
+            apiStatus === 'accepted' ||
+            apiStatus === 'rejected'
+        );
+        if (!decisionOk) {
             bountyApplications = rollback;
             renderBountyApplications(true);
             if (typeof handleApiError === 'function') {

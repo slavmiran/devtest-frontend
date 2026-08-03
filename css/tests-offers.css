@@ -219,8 +219,8 @@
 }
 
 .bounty-app-card {
-    border-color: rgba(175, 82, 222, 0.28);
-    background: linear-gradient(165deg, rgba(175, 82, 222, 0.1) 0%, rgba(175, 82, 222, 0.03) 42%, transparent 72%);
+    border-color: var(--reward-border);
+    background: linear-gradient(165deg, var(--reward-surface) 0%, rgba(160, 123, 255, 0.03) 42%, transparent 72%);
     padding: 14px;
 }
 
@@ -244,7 +244,7 @@
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: rgba(175, 82, 222, 0.92);
+    color: var(--reward);
 }
 
 .bounty-app-badge-reward {
@@ -277,7 +277,7 @@
     overflow: hidden;
     flex-shrink: 0;
     background: rgba(142, 142, 147, 0.18);
-    box-shadow: 0 0 0 1px rgba(175, 82, 222, 0.18);
+    box-shadow: 0 0 0 1px var(--reward-border);
 }
 
 .bounty-app-avatar-wrap .avatar,
@@ -372,9 +372,9 @@
     width: 40px;
     height: 40px;
     border-radius: 12px;
-    border: 1px solid rgba(175, 82, 222, 0.22);
-    background: rgba(175, 82, 222, 0.1);
-    color: rgba(199, 125, 255, 0.95);
+    border: 1px solid var(--reward-border);
+    background: var(--reward-surface);
+    color: var(--reward);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -387,7 +387,7 @@
 
 .bounty-app-dossier-btn:active {
     transform: scale(0.96);
-    background: rgba(175, 82, 222, 0.18);
+    background: rgba(160, 123, 255, 0.18);
 }
 
 .bounty-app-dossier-icon {
@@ -470,12 +470,12 @@
 }
 
 .bounty-app-accept-btn {
-    background: rgba(175, 82, 222, 0.92) !important;
+    background: var(--reward) !important;
     color: #fff !important;
 }
 
 .bounty-app-accept-btn:active {
-    background: rgba(155, 68, 200, 0.98) !important;
+    background: var(--reward-hover) !important;
 }
 
 .bounty-app-reject-btn {
@@ -486,8 +486,8 @@
 
 .dossier-bounty-app-block {
     padding: 10px 12px;
-    background: rgba(175, 82, 222, 0.12);
-    border: 1px solid rgba(175, 82, 222, 0.28);
+    background: var(--reward-surface);
+    border: 1px solid var(--reward-border);
     border-radius: 10px;
 }
 
