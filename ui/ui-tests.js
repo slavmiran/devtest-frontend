@@ -353,6 +353,17 @@ function getGrantEstimateData(test) {
     };
 }
 
+function getContractPossibleTotalReward(bountyPerTester) {
+    const bounty = Math.max(0, Number(bountyPerTester || 0));
+    const grant = getGrantEstimateData({ skips_count: 0, daily_timeline: '' });
+    const grantTotal = Math.max(0, Number(grant && grant.total || 0));
+    return {
+        bounty: bounty,
+        grant: grantTotal,
+        total: bounty + grantTotal,
+    };
+}
+
 function showGrantBreakdownAlertById(appId, event) {
     if (event) {
         event.preventDefault();
@@ -2181,6 +2192,8 @@ Object.assign(window, {
     getOwnerActiveStatus,
     isProjectSynced,
     showGrantBreakdownAlertById,
+    getGrantEstimateData,
+    getContractPossibleTotalReward,
     getScreenshotReminderHtml,
     dismissProjectUpdateTip,
     renderCompactMeta,

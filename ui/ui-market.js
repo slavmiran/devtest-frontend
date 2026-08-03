@@ -782,9 +782,16 @@ function renderFeedCard(item, kind) {
     const emailChip = String(item.test_mode || 'google_group') === 'email_list'
         ? `<span class="meta-chip accent-orange">📧 ${window.escapeHTML(window.t('emailTestBadge', {}, lang))}</span>`
         : '';
-    const bountyChip = kind === 'bounty'
-        ? `<span class="meta-chip accent-purple notranslate">💎 ${item.bounty_per_tester || 0} $BUST</span>`
-        : '';
+    const bountyChip = (function() {
+        if (kind !== 'bounty') return '';
+        const possible = typeof getContractPossibleTotalReward === 'function'
+            ? getContractPossibleTotalReward(item.bounty_per_tester)
+            : { total: Number(item.bounty_per_tester || 0) };
+        const amountLabel = typeof formatAmountValue === 'function'
+            ? formatAmountValue(possible.total, 1)
+            : String(Number(possible.total || 0));
+        return `<span class="meta-chip accent-purple notranslate" title="${window.escapeHTML(window.t('bountyPossibleTotalChipHint', {}, lang))}">💎~${amountLabel} $BUST</span>`;
+    })();
     const kindChip = kind === 'mutual-prelaunch'
         ? `<span class="meta-chip accent-blue">${window.t('tabPreLaunch', {}, lang)}</span>`
         : '';

@@ -29,6 +29,7 @@
             prelaunchJoinBtn: "🔓 Войти в Pre-Launch",
             prelaunchJoinModalTitle: "Вход в Pre-Launch",
             bountyTakeBtn: "💎 Взять контракт",
+            bountyPossibleTotalChipHint: "Возможная награда: контракт владельца + грант платформы",
             scoreLabel: "Score",
             testsDesc: "Приложения, которые вы должны открывать каждый день.",
             projectsDesc: "Ваши приложения, которые тестируют другие.",
