@@ -2214,6 +2214,8 @@
             gtOrdersSectionTitle: "Приватное тестирование",
             mutualOrdersSectionTitle: "Взаимное тестирование",
             gtOrderCode: "Заказ {code}",
+            gtStatusAwaitingPayment: "Ожидание реквизитов",
+            gtHintAwaitingPayment: "Реквизиты запрошены. После оплаты приложите чек и отправьте заявку.",
             gtStatusPending: "Проверка оплаты",
             gtHintPending: "Заявка принята, ожидайте проверки оплаты и настроек доступа.",
             gtStatusPaid: "Подготовка команды",

@@ -5795,6 +5795,13 @@ function getGuaranteedOrderCardMeta(order) {
     var completionDate = formatGuaranteedOrderDate(order && order.completion_date);
     var now = Date.now();
 
+    if (status === 'awaiting_payment') {
+        return {
+            variant: 'pending',
+            badge: getProjectUiText('gtStatusAwaitingPayment', 'Awaiting payment details'),
+            hint: getProjectUiText('gtHintAwaitingPayment', 'Payment details were requested. After you pay, attach the receipt and submit the order.')
+        };
+    }
     if (status === 'pending') {
         return {
             variant: 'pending',
@@ -5909,7 +5916,10 @@ function buildGuaranteedOrderCardHtml(order, options) {
     var isCompleted = String(order.status || '').toLowerCase() === 'completed';
     var isArchivedView = !!options.archived;
     var publicCode = String((order && order.public_code) || '').trim();
-    if (!publicCode && id > 0) publicCode = 'GT-' + (10000 + id);
+    if (!publicCode && id > 0) {
+        // Must stay in sync with backend format_guaranteed_order_public_code
+        publicCode = 'GT-' + (24766 + id * 41);
+    }
 
     var actions =
         '<button type="button" class="btn btn-secondary guaranteed-order-action" onclick="openGuaranteedOrderSupport(' + id + ')">' +

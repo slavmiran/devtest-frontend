@@ -2208,6 +2208,8 @@
             gtOrdersSectionTitle: "Private Testing",
             mutualOrdersSectionTitle: "Mutual testing",
             gtOrderCode: "Order {code}",
+            gtStatusAwaitingPayment: "Awaiting payment details",
+            gtHintAwaitingPayment: "Payment details were requested. After you pay, attach the receipt and submit the order.",
             gtStatusPending: "Payment verification",
             gtHintPending: "Your request was received. Please wait while payment and access settings are verified.",
             gtStatusPaid: "Preparing the team",
