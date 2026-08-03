@@ -57,11 +57,11 @@ function _formatBountyReliabilityChip(application) {
     var index = application && application.applicant_reliability_index;
     var emoji = application && application.applicant_reliability_emoji || '⚪';
     if (status === 'newbie' || index == null || index === '') {
-        return window.escapeHTML(window.t('bountyAppReliabilityNewbie', {}, lang));
+        return window.escapeHTML(window.t('bountyAppReliabilityNewbie', { emoji: emoji }, lang));
     }
     var value = Number(index);
     if (!Number.isFinite(value)) {
-        return window.escapeHTML(window.t('bountyAppReliabilityNewbie', {}, lang));
+        return window.escapeHTML(window.t('bountyAppReliabilityNewbie', { emoji: emoji }, lang));
     }
     return window.escapeHTML(window.t('bountyAppReliabilityValue', {
         pct: Math.round(value),
@@ -198,21 +198,26 @@ function renderBountyApplications(force) {
 
         return '' +
             '<div class="offer-card bounty-app-card" data-application-id="' + app.application_id + '">' +
-                '<div class="offer-top">' +
-                    '<button class="offer-user" onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(app.applicant_id || 0) + ', ' + Number(app.app_id || 0) + '); event.stopPropagation();">' + displayName + '</button>' +
-                    '<span class="meta-chip accent-purple notranslate">💎 ' + window.escapeHTML(window.t('bountyAppContractChip', {}, lang)) + '</span>' +
+                '<div class="bounty-app-title notranslate">' +
+                    window.escapeHTML(window.t('bountyAppCardTitle', { bust: bountyVal }, lang)) +
                 '</div>' +
-                '<div class="offer-sub">' + window.escapeHTML(window.t('bountyAppForProject', { app: appName }, lang)) + '</div>' +
-                '<div class="offer-sub notranslate">💎 ' + bountyVal + ' $BUST</div>' +
-                '<div class="bounty-app-stats">' +
-                    '<span class="meta-chip accent-yellow">☯️ ' + karmaVal + '</span>' +
-                    '<span class="meta-chip">' + _formatBountyReliabilityChip(app) + '</span>' +
+                '<div class="offer-sub bounty-app-project">' +
+                    window.escapeHTML(window.t('bountyAppForProject', { app: appName }, lang)) +
                 '</div>' +
-                '<div class="offer-sub">' + window.escapeHTML(window.t('bountyAppFullCycles', { count: fullCycles }, lang)) + '</div>' +
+                '<button class="offer-user bounty-app-tester" onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(app.applicant_id || 0) + ', ' + Number(app.app_id || 0) + '); event.stopPropagation();">' +
+                    '👤 ' + displayName +
+                '</button>' +
+                '<div class="bounty-app-line">' + _formatBountyReliabilityChip(app) + '</div>' +
+                '<div class="bounty-app-line">' + window.escapeHTML(window.t('bountyAppFullCycles', { count: fullCycles }, lang)) + '</div>' +
+                '<div class="bounty-app-line notranslate">' + window.escapeHTML(window.t('bountyAppKarmaLine', { karma: karmaVal }, lang)) + '</div>' +
                 '<div class="offer-expire">' + expireText + '</div>' +
-                '<div class="action-row" style="margin-top: 10px;">' +
-                    '<button class="btn btn-success" style="flex: 1;" onclick="decideBountyApplication(' + app.application_id + ', \'accept\', event)">' + window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang)) + '</button>' +
-                    '<button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.12); color: #ff3b30;" onclick="decideBountyApplication(' + app.application_id + ', \'reject\', event)">' + window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) + '</button>' +
+                '<div class="action-row bounty-app-actions">' +
+                    '<button class="btn btn-success bounty-app-accept-btn" onclick="decideBountyApplication(' + app.application_id + ', \'accept\', event)">' +
+                        window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang)) +
+                    '</button>' +
+                    '<button class="btn bounty-app-reject-btn" onclick="decideBountyApplication(' + app.application_id + ', \'reject\', event)">' +
+                        window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
+                    '</button>' +
                 '</div>' +
             '</div>';
     }).join('');
@@ -388,12 +393,20 @@ async function decideBountyApplication(applicationId, action, event) {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
     try {
+        var payload = typeof withInitData === 'function'
+            ? withInitData({ user_id: Number(userId || 0) || 0 })
+            : { user_id: Number(userId || 0) || 0, init_data: (tg && tg.initData) || '' };
         var response = await fetch(API_BASE + '/bounty-applications/' + normalizedId + '/' + decision, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(typeof withInitData === 'function' ? withInitData({ user_id: userId }) : { user_id: userId, init_data: (tg && tg.initData) || '' }),
+            body: JSON.stringify(payload),
         });
-        var result = await response.json();
+        var result = {};
+        try {
+            result = await response.json();
+        } catch (parseError) {
+            result = {};
+        }
         if (!response.ok || result.status !== 'success') {
             bountyApplications = rollback;
             renderBountyApplications(true);

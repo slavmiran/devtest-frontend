@@ -223,11 +223,77 @@
     background: linear-gradient(180deg, rgba(175, 82, 222, 0.08), transparent 48%);
 }
 
+.bounty-app-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 6px;
+}
+
+.bounty-app-project {
+    margin-bottom: 6px;
+}
+
+.bounty-app-tester {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 0 8px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: var(--tg-theme-link-color, var(--link-color, #3390ec));
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.bounty-app-line {
+    font-size: 13px;
+    color: var(--hint-color);
+    line-height: 1.45;
+    margin-bottom: 4px;
+}
+
 .bounty-app-stats {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     margin: 0 0 8px;
+}
+
+.bounty-app-actions {
+    margin-top: 10px;
+    gap: 8px;
+}
+
+.bounty-app-accept-btn,
+.bounty-app-reject-btn {
+    flex: 1;
+    border: none;
+    font-weight: 600;
+}
+
+.bounty-app-reject-btn {
+    background: rgba(142, 142, 147, 0.16) !important;
+    color: var(--hint-color) !important;
+}
+
+.dossier-bounty-app-block {
+    padding: 10px 12px;
+    background: rgba(175, 82, 222, 0.12);
+    border: 1px solid rgba(175, 82, 222, 0.28);
+    border-radius: 10px;
+}
+
+.dossier-bounty-app-hint {
+    font-size: 13px;
+    line-height: 1.45;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.dossier-bounty-app-actions {
+    gap: 8px;
+    margin: 0;
 }
 
 .own-project-chip {

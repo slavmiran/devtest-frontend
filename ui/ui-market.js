@@ -7530,10 +7530,10 @@ function openDossierHybridJoinChooser(appId, ownerId, project) {
     if (numericAppId <= 0 || numericOwnerId <= 0) return;
 
     var projectName = String((project && project.name) || '').trim() || window.t('unknownLabel', {}, lang);
-    var title = window.t('dossierJoinHybridTitle', {}, lang);
-    var message = window.t('dossierJoinHybridMessage', { project: projectName }, lang);
-    var mutualText = window.t('dossierJoinHybridMutual', {}, lang);
-    var contractText = window.t('dossierJoinHybridContract', {}, lang);
+    var bountyAmount = Number((project && project.bounty_per_tester) || 0);
+    var bountyTag = bountyAmount > 0
+        ? (typeof formatBustAmount === 'function' ? formatBustAmount(bountyAmount) : (String(bountyAmount) + ' $BUST'))
+        : window.t('dossierJoinHybridContractTag', {}, lang);
 
     function startMutual() {
         if (typeof createMutualOffer === 'function') {
@@ -7549,24 +7549,166 @@ function openDossierHybridJoinChooser(appId, ownerId, project) {
         }
     }
 
-    if (tg && typeof tg.showPopup === 'function') {
-        tg.showPopup({
-            title: title,
-            message: message,
-            buttons: [
-                { id: 'mutual', type: 'default', text: mutualText },
-                { id: 'bounty', type: 'default', text: contractText },
-                { id: 'cancel', type: 'cancel' },
-            ],
-        }, function(buttonId) {
-            if (buttonId === 'mutual') startMutual();
-            else if (buttonId === 'bounty') startContract();
-        });
+    ensureDossierHybridJoinChooser();
+    var overlay = document.getElementById('dossier-hybrid-join-overlay');
+    if (!overlay) {
+        startMutual();
         return;
     }
 
-    // Outside Telegram Mini App: no native chooser — default to mutual offer sheet.
-    startMutual();
+    var titleEl = overlay.querySelector('.dossier-hybrid-join-title');
+    if (titleEl) titleEl.textContent = window.t('dossierJoinHybridTitle', {}, lang);
+    var subtitleEl = document.getElementById('dossier-hybrid-join-subtitle');
+    if (subtitleEl) {
+        subtitleEl.textContent = window.t('dossierJoinHybridSubtitle', { project: projectName }, lang);
+    }
+    var closeBtn = overlay.querySelector('.dossier-hybrid-join-close');
+    if (closeBtn) closeBtn.setAttribute('aria-label', window.t('dossierJoinHybridClose', {}, lang));
+
+    var mutualTitle = overlay.querySelector('.dossier-hybrid-join-option.is-mutual .dossier-hybrid-join-option-title');
+    var mutualTag = overlay.querySelector('.dossier-hybrid-join-option.is-mutual .dossier-hybrid-join-option-tag');
+    var mutualDesc = overlay.querySelector('.dossier-hybrid-join-option.is-mutual .dossier-hybrid-join-option-desc');
+    if (mutualTitle) mutualTitle.textContent = window.t('dossierJoinHybridMutualTitle', {}, lang);
+    if (mutualTag) mutualTag.textContent = window.t('dossierJoinHybridMutualTag', {}, lang);
+    if (mutualDesc) mutualDesc.textContent = window.t('dossierJoinHybridMutualDesc', {}, lang);
+
+    var contractTitle = overlay.querySelector('.dossier-hybrid-join-option.is-contract .dossier-hybrid-join-option-title');
+    var contractDesc = overlay.querySelector('.dossier-hybrid-join-option.is-contract .dossier-hybrid-join-option-desc');
+    if (contractTitle) contractTitle.textContent = window.t('dossierJoinHybridContractTitle', {}, lang);
+    if (contractDesc) contractDesc.textContent = window.t('dossierJoinHybridContractDesc', {}, lang);
+
+    var projectEl = document.getElementById('dossier-hybrid-join-project');
+    if (projectEl) {
+        var iconHtml = typeof renderIcon === 'function'
+            ? renderIcon(projectName, (project && project.icon_url) || '')
+            : '';
+        projectEl.innerHTML = iconHtml +
+            '<div class="dossier-hybrid-join-project-info">' +
+                '<div class="dossier-hybrid-join-project-name notranslate">' + window.escapeHTML(projectName) + '</div>' +
+                '<div class="dossier-hybrid-join-project-mode">' + window.escapeHTML(window.t('dossierRecruitModeCombo', {}, lang)) + '</div>' +
+            '</div>';
+    }
+    var contractTagEl = document.getElementById('dossier-hybrid-join-contract-tag');
+    if (contractTagEl) {
+        contractTagEl.textContent = bountyTag;
+    }
+
+    overlay._dossierHybridStartMutual = startMutual;
+    overlay._dossierHybridStartContract = startContract;
+
+    overlay.style.display = 'flex';
+    overlay.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(function() {
+        overlay.classList.add('is-active');
+    });
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+function ensureDossierHybridJoinChooser() {
+    var existing = document.getElementById('dossier-hybrid-join-overlay');
+    if (existing) return existing;
+
+    var mutualIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<polyline points="17 1 21 5 17 9"></polyline>' +
+            '<path d="M3 11V9a4 4 0 0 1 4-4h14"></path>' +
+            '<polyline points="7 23 3 19 7 15"></polyline>' +
+            '<path d="M21 13v2a4 4 0 0 1-4 4H3"></path>' +
+        '</svg>';
+    var contractIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M12 2v20"></path>' +
+            '<path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>' +
+        '</svg>';
+    var chevron =
+        '<svg class="dossier-hybrid-join-option-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<polyline points="9 18 15 12 9 6"></polyline>' +
+        '</svg>';
+
+    var wrap = document.createElement('div');
+    wrap.innerHTML =
+        '<div id="dossier-hybrid-join-overlay" class="dossier-hybrid-join-overlay" style="display:none;" role="dialog" aria-modal="true" aria-hidden="true">' +
+            '<div class="dossier-hybrid-join-sheet" onclick="event.stopPropagation()">' +
+                '<div class="dossier-hybrid-join-handle" aria-hidden="true"></div>' +
+                '<div class="dossier-hybrid-join-header">' +
+                    '<div>' +
+                        '<h3 class="dossier-hybrid-join-title">' + window.escapeHTML(window.t('dossierJoinHybridTitle', {}, lang)) + '</h3>' +
+                        '<p id="dossier-hybrid-join-subtitle" class="dossier-hybrid-join-subtitle"></p>' +
+                    '</div>' +
+                    '<button type="button" class="dossier-hybrid-join-close" aria-label="' + window.escapeHTML(window.t('dossierJoinHybridClose', {}, lang)) + '">×</button>' +
+                '</div>' +
+                '<div id="dossier-hybrid-join-project" class="dossier-hybrid-join-project"></div>' +
+                '<div class="dossier-hybrid-join-options">' +
+                    '<button type="button" class="dossier-hybrid-join-option is-mutual" data-join-mode="mutual">' +
+                        '<span class="dossier-hybrid-join-option-icon is-mutual">' + mutualIcon + '</span>' +
+                        '<span class="dossier-hybrid-join-option-body">' +
+                            '<span class="dossier-hybrid-join-option-head">' +
+                                '<span class="dossier-hybrid-join-option-title">' + window.escapeHTML(window.t('dossierJoinHybridMutualTitle', {}, lang)) + '</span>' +
+                                '<span class="dossier-hybrid-join-option-tag is-mutual">' + window.escapeHTML(window.t('dossierJoinHybridMutualTag', {}, lang)) + '</span>' +
+                            '</span>' +
+                            '<span class="dossier-hybrid-join-option-desc">' + window.escapeHTML(window.t('dossierJoinHybridMutualDesc', {}, lang)) + '</span>' +
+                        '</span>' +
+                        chevron +
+                    '</button>' +
+                    '<button type="button" class="dossier-hybrid-join-option is-contract" data-join-mode="bounty">' +
+                        '<span class="dossier-hybrid-join-option-icon is-contract">' + contractIcon + '</span>' +
+                        '<span class="dossier-hybrid-join-option-body">' +
+                            '<span class="dossier-hybrid-join-option-head">' +
+                                '<span class="dossier-hybrid-join-option-title">' + window.escapeHTML(window.t('dossierJoinHybridContractTitle', {}, lang)) + '</span>' +
+                                '<span id="dossier-hybrid-join-contract-tag" class="dossier-hybrid-join-option-tag is-contract">' + window.escapeHTML(window.t('dossierJoinHybridContractTag', {}, lang)) + '</span>' +
+                            '</span>' +
+                            '<span class="dossier-hybrid-join-option-desc">' + window.escapeHTML(window.t('dossierJoinHybridContractDesc', {}, lang)) + '</span>' +
+                        '</span>' +
+                        chevron +
+                    '</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(wrap.firstElementChild);
+
+    var overlay = document.getElementById('dossier-hybrid-join-overlay');
+    if (!overlay) return null;
+
+    overlay.addEventListener('click', function(event) {
+        if (event.target === overlay) closeDossierHybridJoinChooser();
+    });
+    var closeBtn = overlay.querySelector('.dossier-hybrid-join-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() { closeDossierHybridJoinChooser(); });
+    }
+    var mutualBtn = overlay.querySelector('[data-join-mode="mutual"]');
+    if (mutualBtn) {
+        mutualBtn.addEventListener('click', function() {
+            var start = overlay._dossierHybridStartMutual;
+            closeDossierHybridJoinChooser(function() {
+                if (typeof start === 'function') start();
+            });
+        });
+    }
+    var contractBtn = overlay.querySelector('[data-join-mode="bounty"]');
+    if (contractBtn) {
+        contractBtn.addEventListener('click', function() {
+            var start = overlay._dossierHybridStartContract;
+            closeDossierHybridJoinChooser(function() {
+                if (typeof start === 'function') start();
+            });
+        });
+    }
+    return overlay;
+}
+
+function closeDossierHybridJoinChooser(afterClose) {
+    var overlay = document.getElementById('dossier-hybrid-join-overlay');
+    if (!overlay || overlay.style.display === 'none') {
+        if (typeof afterClose === 'function') afterClose();
+        return;
+    }
+    overlay.classList.remove('is-active');
+    overlay.setAttribute('aria-hidden', 'true');
+    setTimeout(function() {
+        overlay.style.display = 'none';
+        if (typeof afterClose === 'function') afterClose();
+    }, 240);
 }
 
 function joinTesterOwnedProjectFromDossier(testerId, project, event) {
@@ -8422,14 +8564,18 @@ async function openDossierModal(username, testerId, appId) {
     html += `<div>
         <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierActionsTitle}</div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${canDecideBountyApplication ? `<div style="padding:10px 12px; background:rgba(175,82,222,0.12); border:1px solid rgba(175,82,222,0.28); border-radius:10px; font-size:13px; line-height:1.45; margin-bottom:2px;">${window.escapeHTML(window.t('dossierBountyApplicationHint', {
+            ${canDecideBountyApplication ? `<div class="dossier-bounty-app-block">
+                <div class="dossier-bounty-app-hint">${window.escapeHTML(window.t('dossierBountyApplicationHint', {
                 app: (pendingBountyApplication && pendingBountyApplication.app_name) || window.t('unknownLabel', {}, lang),
                 bust: pendingBountyApplication && pendingBountyApplication.bounty_per_tester != null
                     ? pendingBountyApplication.bounty_per_tester
                     : 0,
             }, lang))}</div>
-            <button class="btn btn-success" style="width: 100%; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'accept', event)">${window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang))}</button>
-            <button class="btn" style="width: 100%; background: rgba(255,59,48,0.12); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'reject', event)">${window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang))}</button>` : ''}
+                <div class="action-row dossier-bounty-app-actions">
+                    <button class="btn btn-success bounty-app-accept-btn" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'accept', event)">${window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang))}</button>
+                    <button class="btn bounty-app-reject-btn" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'reject', event)">${window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang))}</button>
+                </div>
+            </div>` : ''}
             ${tgName ? `<button class="btn" style="width: 100%; background: var(--secondary-bg-color); color: var(--link-color); border: none; font-weight: 600; padding: 10px;" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
             ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" style="width: 100%; border: none; font-weight: 600; padding: 10px;" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest', {}, lang))}</button>` : ''}
             ${canReward ? `<button class="btn" style="width: 100%; background: rgba(255,204,0,0.15); color: #ffcc00; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
@@ -9160,6 +9306,7 @@ Object.assign(window, {
     openTesterOwnedProjectFromDossier,
     joinTesterOwnedProjectFromDossier,
     openDossierHybridJoinChooser,
+    closeDossierHybridJoinChooser,
     getDossierRecruitModeLabel,
     resetManualExternalAddForm,
     updateManualExternalTestingDayValue,
