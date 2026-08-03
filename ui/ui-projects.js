@@ -3051,16 +3051,31 @@ function _updateAddPlayLinkValidationUi() {
     const input = document.getElementById('app-package');
     if (!input) return;
     const value = (input.value || '').trim();
+    const currentPackage = typeof _extractPackageNameFromPlayInput === 'function'
+        ? String(_extractPackageNameFromPlayInput() || '').trim()
+        : value;
 
     if (!value) {
         input.classList.remove('field-error');
         if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+        if (typeof _clearPackageConflictState === 'function') _clearPackageConflictState();
         return;
+    }
+
+    if (typeof _packageConflictState === 'object' && _packageConflictState && _packageConflictState.packageName) {
+        if (currentPackage !== _packageConflictState.packageName) {
+            if (typeof _clearPackageConflictState === 'function') _clearPackageConflictState();
+        } else if (typeof _setPackageConflictReopenVisible === 'function') {
+            _setPackageConflictReopenVisible(true);
+        }
     }
 
     if (isAddPlayLinkValid()) {
         input.classList.remove('field-error');
-        if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+        // Keep conflict reopen chip if this package still conflicts; only clear invalid-link errors.
+        if (!_packageConflictState || !_packageConflictState.packageName || currentPackage !== _packageConflictState.packageName) {
+            if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+        }
         return;
     }
 
@@ -3379,7 +3394,8 @@ function getProjectUiText(key, fallback, params) {
 
 function ensureAddProjectChooser() {
     var overlay = document.getElementById('add-project-chooser-overlay');
-    if (overlay) return overlay;
+    if (overlay && overlay.getAttribute('data-chooser') === 'v2') return overlay;
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
 
     var mutualIcon =
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -3414,23 +3430,25 @@ function ensureAddProjectChooser() {
 
     var div = document.createElement('div');
     div.innerHTML =
-        '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" role="dialog" aria-modal="true">' +
+        '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" data-chooser="v2" role="dialog" aria-modal="true">' +
             '<div class="add-project-chooser-card">' +
                 '<button type="button" class="add-project-chooser-close" aria-label="' + window.escapeHTML(getProjectUiText('addProjectChooserClose', 'Close')) + '">×</button>' +
                 '<h3 class="add-project-chooser-title">' + window.escapeHTML(getProjectUiText('addProjectChooserTitle', 'Choose a testing format')) + '</h3>' +
                 '<p class="add-project-chooser-subtitle">' + window.escapeHTML(getProjectUiText('addProjectChooserSubtitle', 'Both formats lead to production access. Pick the one that fits your time.')) + '</p>' +
-                optionHtml(
-                    'mutual', mutualIcon,
-                    'addProjectChooserMutualTitle', 'Mutual exchange',
-                    'addProjectChooserMutualTag', 'Free',
-                    'addProjectChooserMutualDesc', 'Test other apps and get tests in return.'
-                ) +
-                optionHtml(
-                    'private', privateIcon,
-                    'addProjectChooserPrivateTitle', 'Private Testing',
-                    'addProjectChooserPrivateTag', '$20',
-                    'addProjectChooserPrivateDesc', '12+ devices for 14 days without your involvement. Result guarantee.'
-                ) +
+                '<div class="add-project-chooser-options">' +
+                    optionHtml(
+                        'mutual', mutualIcon,
+                        'addProjectChooserMutualTitle', 'Mutual exchange',
+                        'addProjectChooserMutualTag', 'Free',
+                        'addProjectChooserMutualDesc', 'Test other apps and get tests in return.'
+                    ) +
+                    optionHtml(
+                        'private', privateIcon,
+                        'addProjectChooserPrivateTitle', 'Private Testing',
+                        'addProjectChooserPrivateTag', '$20',
+                        'addProjectChooserPrivateDesc', '12+ devices for 14 days without your involvement. Result guarantee.'
+                    ) +
+                '</div>' +
             '</div>' +
         '</div>';
     document.body.appendChild(div.firstElementChild);
@@ -3495,6 +3513,11 @@ function closeModal(event) {
         document.getElementById('app-instructions').value = '';
         document.getElementById('package-error').innerHTML = '';
         document.getElementById('package-error').style.display = 'none';
+        if (typeof _clearPackageConflictState === 'function') _clearPackageConflictState();
+        if (typeof closePackageConflictModal === 'function') {
+            var conflictModal = document.getElementById('package-conflict-modal');
+            if (conflictModal) conflictModal.classList.remove('active');
+        }
         window.addWizardState.focusStep = 1;
         window.addWizardState.unlockedStep = 1;
         _revokeAppIconBlobUrl();

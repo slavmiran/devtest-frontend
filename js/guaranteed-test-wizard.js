@@ -13,6 +13,7 @@
     var PLAY_CONSOLE_URL = "https://play.google.com/console/";
     var LICENSE_GUIDE_SETTINGS_IMG = "./images/Settings_l.png";
     var LICENSE_GUIDE_RESPONSE_IMG = "./images/RESPOND_NORMALY_l.png";
+    var PASTE_ICON_SRC = "./images/content_paste_go_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.png";
     var TESTER_GROUP_EMAIL = "google-play-dev-test@googlegroups.com";
     var PAYPAL_EMAIL = "pay.hubstation@gmail.com";
     var TELEGRAM_SUPPORT = "garantxchange";
@@ -47,6 +48,7 @@
         copy: ['Copy', 'Копировать'],
         copied: ['Copied', 'Скопировано'],
         paste: ['Paste from clipboard', 'Вставить из буфера'],
+        pasteFailed: ['Could not read clipboard. Paste manually.', 'Не удалось прочитать буфер. Вставьте вручную.'],
         clear: ['Clear', 'Очистить'],
 
         autoFill: ['From project', 'Из проекта'],
@@ -595,7 +597,7 @@
 
     function createWizardStep1HTML() {
         return `
-        <div id="guaranteed-test-wizard-step1-overlay" class="gtw-overlay" style="display: none;">
+        <div id="guaranteed-test-wizard-step1-overlay" class="gtw-overlay" style="display: none;" data-gtw-wizard="v2">
             <div class="gtw-header">
                 <button type="button" class="gtw-back-btn" id="gtw-step1-back-btn" aria-label="${L('back')}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -626,10 +628,7 @@
                     <div class="gtw-input-wrapper">
                         <input type="text" id="gtw-app-name-input" class="gtw-input" placeholder="${L('appNamePlaceholder')}" autocomplete="off" />
                         <button type="button" class="gtw-paste-btn" id="gtw-paste-appname-btn" title="${L('paste')}">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                            </svg>
+                            <img src="${PASTE_ICON_SRC}" alt="" class="gtw-paste-icon" width="20" height="20" draggable="false" />
                         </button>
                     </div>
                     <div class="gtw-helper-text" id="gtw-appname-helper">${L('appNameHelper')}</div>
@@ -755,7 +754,7 @@
             '</svg>';
 
         return `
-        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;" data-gtw-license-guide="v4">
+        <div id="gtw-license-guide-overlay" class="gtw-guide-page-overlay" style="display: none;" data-gtw-license-guide="v5">
             <div class="gtw-guide-page">
                 <button type="button" class="gtw-guide-page-close" id="gtw-license-guide-close" aria-label="${L('close')}">&times;</button>
                 <h2 class="gtw-guide-page-title">${L('guidePageTitle')}</h2>
@@ -792,12 +791,12 @@
                                         ${imageIcon}
                                     </button>
                                 </div>
-                                <div class="gtw-guide-shot-panel" id="gtw-license-shot-settings" hidden>
-                                    <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${LICENSE_GUIDE_SETTINGS_IMG}" data-zoom-alt="${L('guide2Title')}">
-                                        <img src="${LICENSE_GUIDE_SETTINGS_IMG}" alt="${L('guide2Title')}" loading="lazy" class="gtw-guide-shot-img" />
-                                    </button>
-                                </div>
                             </div>
+                        </div>
+                        <div class="gtw-guide-shot-panel gtw-guide-shot-panel--block" id="gtw-license-shot-settings" hidden>
+                            <button type="button" class="gtw-guide-shot-frame" data-zoom-src="${LICENSE_GUIDE_SETTINGS_IMG}" data-zoom-alt="${L('guide2Title')}">
+                                <img src="${LICENSE_GUIDE_SETTINGS_IMG}" alt="${L('guide2Title')}" loading="lazy" class="gtw-guide-shot-img" />
+                            </button>
                         </div>
                     </section>
 
@@ -823,36 +822,38 @@
                                 </button>
                             </div>
 
-                            <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="3" data-local-num="1">
-                                <span class="gtw-guide-page-num" data-num-global="3" data-num-local="1">3</span>
-                                <div class="gtw-guide-page-content">
-                                    <strong>${L('guide3Title')}</strong>
-                                    <p>${L('guide3Text')}</p>
-                                </div>
-                            </div>
-                            <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="4" data-local-num="2">
-                                <span class="gtw-guide-page-num" data-num-global="4" data-num-local="2">4</span>
-                                <div class="gtw-guide-page-content">
-                                    <strong>${L('guide4Title')}</strong>
-                                    <p>${L('guide4Text')}</p>
-                                    <div class="gtw-copy-box">
-                                        <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
-                                        <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="${L('copy')}">${L('copy')}</button>
+                            <div class="gtw-guide-shot-steps">
+                                <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="3" data-local-num="1">
+                                    <span class="gtw-guide-page-num" data-num-global="3" data-num-local="1">3</span>
+                                    <div class="gtw-guide-page-content">
+                                        <strong>${L('guide3Title')}</strong>
+                                        <p>${L('guide3Text')}</p>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="5" data-local-num="3">
-                                <span class="gtw-guide-page-num" data-num-global="5" data-num-local="3">5</span>
-                                <div class="gtw-guide-page-content">
-                                    <strong>${L('guide5Title')}</strong>
-                                    <p>${L('guide5Text')}</p>
+                                <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="4" data-local-num="2">
+                                    <span class="gtw-guide-page-num" data-num-global="4" data-num-local="2">4</span>
+                                    <div class="gtw-guide-page-content">
+                                        <strong>${L('guide4Title')}</strong>
+                                        <p>${L('guide4Text')}</p>
+                                        <div class="gtw-copy-box">
+                                            <span class="gtw-copy-email">${TESTER_GROUP_EMAIL}</span>
+                                            <button type="button" class="gtw-copy-btn" id="gtw-license-guide-copy-btn" title="${L('copy')}">${L('copy')}</button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="6" data-local-num="4">
-                                <span class="gtw-guide-page-num" data-num-global="6" data-num-local="4">6</span>
-                                <div class="gtw-guide-page-content">
-                                    <strong>${L('guide6Title')}</strong>
-                                    <p>${L('guide6Text')}</p>
+                                <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="5" data-local-num="3">
+                                    <span class="gtw-guide-page-num" data-num-global="5" data-num-local="3">5</span>
+                                    <div class="gtw-guide-page-content">
+                                        <strong>${L('guide5Title')}</strong>
+                                        <p>${L('guide5Text')}</p>
+                                    </div>
+                                </div>
+                                <div class="gtw-guide-page-step gtw-guide-page-step--grouped" data-guide-step="6" data-local-num="4">
+                                    <span class="gtw-guide-page-num" data-num-global="6" data-num-local="4">6</span>
+                                    <div class="gtw-guide-page-content">
+                                        <strong>${L('guide6Title')}</strong>
+                                        <p>${L('guide6Text')}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -885,7 +886,7 @@
 
     function createWizardStep2HTML() {
         return `
-        <div id="guaranteed-test-wizard-step2-overlay" class="gtw-overlay gtw-step2-overlay" style="display: none;">
+        <div id="guaranteed-test-wizard-step2-overlay" class="gtw-overlay gtw-step2-overlay" style="display: none;" data-gtw-wizard="v2">
             <div class="gtw-header">
                 <button type="button" class="gtw-back-btn" id="gtw-step2-back-btn" aria-label="${L('back')}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -917,10 +918,7 @@
                             </svg>
                         </button>
                         <button type="button" class="gtw-paste-btn" id="gtw-paste-link-btn" title="${L('paste')}">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                            </svg>
+                            <img src="${PASTE_ICON_SRC}" alt="" class="gtw-paste-icon" width="20" height="20" draggable="false" />
                         </button>
                     </div>
                     <div class="gtw-helper-text" id="gtw-link-helper">${L('linkHelper')}</div>
@@ -1201,7 +1199,8 @@
 
     function ensureWizardInDOM() {
         var overlay1 = document.getElementById('guaranteed-test-wizard-step1-overlay');
-        if (!overlay1) {
+        if (!overlay1 || overlay1.getAttribute('data-gtw-wizard') !== 'v2') {
+            if (overlay1 && overlay1.parentNode) overlay1.parentNode.removeChild(overlay1);
             var div1 = document.createElement('div');
             div1.innerHTML = createWizardStep1HTML();
             document.body.appendChild(div1.firstElementChild);
@@ -1209,7 +1208,7 @@
         }
 
         if (!document.getElementById('gtw-license-guide-overlay') ||
-            document.getElementById('gtw-license-guide-overlay').getAttribute('data-gtw-license-guide') !== 'v4') {
+            document.getElementById('gtw-license-guide-overlay').getAttribute('data-gtw-license-guide') !== 'v5') {
             var oldGuide = document.getElementById('gtw-license-guide-overlay');
             if (oldGuide && oldGuide.parentNode) oldGuide.parentNode.removeChild(oldGuide);
             var divGuide = document.createElement('div');
@@ -1219,7 +1218,8 @@
         }
 
         var overlay2 = document.getElementById('guaranteed-test-wizard-step2-overlay');
-        if (!overlay2) {
+        if (!overlay2 || overlay2.getAttribute('data-gtw-wizard') !== 'v2') {
+            if (overlay2 && overlay2.parentNode) overlay2.parentNode.removeChild(overlay2);
             var div2 = document.createElement('div');
             div2.innerHTML = createWizardStep2HTML();
             document.body.appendChild(div2.firstElementChild);
@@ -1235,6 +1235,46 @@
             }
             bindPaymentEvents();
         }
+    }
+
+    function readClipboardText() {
+        return new Promise(function (resolve, reject) {
+            try {
+                var tg = window.Telegram && window.Telegram.WebApp;
+                if (tg && typeof tg.readTextFromClipboard === 'function') {
+                    tg.readTextFromClipboard(function (text) {
+                        if (text != null && String(text).length) resolve(String(text));
+                        else reject(new Error('empty'));
+                    });
+                    return;
+                }
+            } catch (_) {}
+
+            if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                navigator.clipboard.readText().then(function (text) {
+                    if (text != null && String(text).length) resolve(String(text));
+                    else reject(new Error('empty'));
+                }).catch(reject);
+                return;
+            }
+
+            reject(new Error('unsupported'));
+        });
+    }
+
+    function pasteClipboardIntoInput(input, onSuccess) {
+        if (!input) return;
+        readClipboardText().then(function (text) {
+            var value = String(text || '').trim();
+            if (!value) {
+                if (typeof showToast === 'function') showToast(L('pasteFailed'));
+                return;
+            }
+            input.value = value;
+            if (typeof onSuccess === 'function') onSuccess(value);
+        }).catch(function () {
+            if (typeof showToast === 'function') showToast(L('pasteFailed'));
+        });
     }
 
     function syncStep1FormFromState() {
@@ -1363,15 +1403,14 @@
         var input = document.getElementById('gtw-app-name-input');
         if (pasteBtn && input) {
             pasteBtn.addEventListener('click', function () {
-                if (navigator.clipboard && navigator.clipboard.readText) {
-                    navigator.clipboard.readText().then(function (text) {
-                        if (text) {
-                            input.value = text.trim();
-                            wizardState.detailsConfirmed = false;
-                            clearAppnameError();
-                        }
-                    }).catch(function () {});
-                }
+                pasteClipboardIntoInput(input, function (value) {
+                    wizardState.appName = value;
+                    wizardState.detailsConfirmed = false;
+                    if (wizardState.prefillProject) wizardState.prefillStep1Active = false;
+                    clearAppnameError();
+                    syncStep1FormFromState();
+                    persistGuaranteedTestWizardDraft();
+                });
             });
         }
 
@@ -1553,18 +1592,15 @@
         var linkInput = document.getElementById('gtw-link-input');
         if (pasteLinkBtn && linkInput) {
             pasteLinkBtn.addEventListener('click', function () {
-                if (navigator.clipboard && navigator.clipboard.readText) {
-                    navigator.clipboard.readText().then(function (text) {
-                        if (text) {
-                            linkInput.value = text.trim();
-                            wizardState.linkConfirmed = false;
-                            if (wizardState.prefillProject) wizardState.prefillStep2Active = false;
-                            clearLinkError();
-                            updateLinkVerificationUI();
-                            syncStep2FormFromState();
-                        }
-                    }).catch(function () {});
-                }
+                pasteClipboardIntoInput(linkInput, function (value) {
+                    wizardState.testingLink = value;
+                    wizardState.linkConfirmed = false;
+                    if (wizardState.prefillProject) wizardState.prefillStep2Active = false;
+                    clearLinkError();
+                    updateLinkVerificationUI();
+                    syncStep2FormFromState();
+                    persistGuaranteedTestWizardDraft();
+                });
             });
         }
 

@@ -41,7 +41,7 @@
     <script src="./js/app-state.js?v=20260802-group-chip-v2"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260802-group-chip-v2"></script>
-    <script src="./ui/ui-projects.js?v=20260802-gt-draft-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260802-chooser-page-v2"></script>
     <script src="./ui/ui-market.js?v=20260802-homescreen-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
@@ -53,7 +53,7 @@
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
     <script src="./js/app-features.js?v=20260802-email-compact"></script>
     <script src="./js/guaranteed-test-offer.js?v=20260802-gt-draft-v1"></script>
-    <script src="./js/guaranteed-test-wizard.js?v=20260802-license-guide-v4"></script>
+    <script src="./js/guaranteed-test-wizard.js?v=20260802-license-guide-v5"></script>
     <script src="./app.js?v=20260802-homescreen-v3"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
@@ -80,7 +80,7 @@
     <link rel="stylesheet" href="./styles.css?v=20260723-claim-history-bust">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
-    <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260802-license-guide-v4">
+    <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260802-license-guide-v5">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
 <body>
@@ -486,11 +486,11 @@
                     <input type="file" id="app-icon-file" accept="image/*" class="visually-hidden" tabindex="-1" onchange="onAppIconFileSelected(this)">
 
                     <div class="form-group">
-                        <div class="form-label-row">
-                            <label class="form-label" id="t-appName" data-i18n="appName">Название приложения</label>
-                            <span class="form-char-counter" id="app-name-counter">0/30</span>
+                        <label class="form-label" id="t-appName" data-i18n="appName">Название приложения</label>
+                        <div class="form-input-with-counter">
+                            <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="" data-i18n-placeholder="appNamePlaceholder" oninput="onAddAppNameInput()">
+                            <span class="form-char-counter" id="app-name-counter" aria-hidden="true">0/30</span>
                         </div>
-                        <input type="text" id="app-name" class="form-input" maxlength="30" placeholder="" data-i18n-placeholder="appNamePlaceholder" oninput="onAddAppNameInput()">
                         <div class="form-hint" id="app-name-hint" style="display:none;"></div>
                     </div>
                     <div class="form-group">
@@ -501,6 +501,7 @@
                         </div>
                         <div class="form-hint play-link-tip" data-i18n="wizardPlayLinkTip">💡 Вставьте ссылку на страницу приложения в Google Play.</div>
                         <div id="package-error" class="form-error" style="display: none;"></div>
+                        <button type="button" id="package-conflict-reopen-btn" class="package-conflict-reopen-btn" style="display: none;" onclick="reopenPackageConflictModal()">Почему нельзя продолжить?</button>
                     </div>
                 </div>
                 <button type="button" class="btn btn-primary wizard-continue-btn" id="add-continue-1" onclick="wizardContinue(1)" data-i18n="emailTesterDefaultAction">Продолжить</button>
@@ -772,6 +773,22 @@
             <div class="action-row">
                 <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEmailWarningModal()" id="t-emailWarningCancel" data-i18n="emailWarningCancel">❌ Отмена</button>
                 <button class="btn btn-success" style="flex: 1;" onclick="confirmEmailWarning()" id="t-emailWarningYes" data-i18n="emailWarningYes">✅ Да, добавил (Создать)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="package-conflict-modal" class="modal-overlay package-conflict-modal" onclick="closePackageConflictModal(event)">
+        <div class="modal-content package-conflict-modal__content" onclick="event.stopPropagation()">
+            <h3 data-i18n="packageConflictTitle">Этот проект уже есть в базе</h3>
+            <p class="package-conflict-modal__intro" data-i18n="packageConflictIntro">Приложение с такой ссылкой Google Play уже зарегистрировано на платформе. Что можно сделать:</p>
+            <ol class="package-conflict-modal__list">
+                <li data-i18n="packageConflictPointArchive">Если вы ранее добавляли это приложение — перезапустите его из раздела Архив.</li>
+                <li data-i18n="packageConflictPointTransfer">Если вы добавляли его с другого профиля — передайте права через настройки карточки проекта.</li>
+                <li data-i18n="packageConflictPointSupport">Если это ваш проект и вы раньше не добавляли его на платформу — свяжитесь с техподдержкой.</li>
+            </ol>
+            <div class="package-conflict-modal__actions">
+                <button type="button" class="btn btn-primary" style="width: 100%;" onclick="openPackageConflictSupport()" data-i18n="packageConflictSupportBtn">Написать менеджеру @garantXchange</button>
+                <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 8px; background: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closePackageConflictModal()" data-i18n="packageConflictCloseBtn">Понятно</button>
             </div>
         </div>
     </div>

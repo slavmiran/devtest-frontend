@@ -35,12 +35,144 @@ function _highlightArchivedProjectCard(appId) {
 }
 
 function openProjectDuplicateSupport() {
-    var addModal = document.getElementById('add-modal');
-    if (addModal) {
-        addModal.classList.remove('active');
-    }
-    sendFeedback('question');
+    openPackageConflictSupport();
 }
+
+var _packageConflictState = {
+    code: '',
+    packageName: '',
+};
+
+function _getCurrentAddPackageName() {
+    if (typeof _extractPackageNameFromPlayInput === 'function') {
+        return String(_extractPackageNameFromPlayInput() || '').trim();
+    }
+    var input = document.getElementById('app-package');
+    return String((input && input.value) || '').trim();
+}
+
+function _setPackageConflictReopenVisible(visible) {
+    var reopenBtn = document.getElementById('package-conflict-reopen-btn');
+    if (!reopenBtn) return;
+    reopenBtn.textContent = window.t('packageConflictReopenBtn', {}, lang);
+    reopenBtn.classList.toggle('is-visible', !!visible);
+    reopenBtn.style.display = visible ? 'block' : 'none';
+}
+
+function _clearPackageConflictState() {
+    _packageConflictState.code = '';
+    _packageConflictState.packageName = '';
+    _setPackageConflictReopenVisible(false);
+}
+
+function _syncPackageConflictModalI18n() {
+    var modal = document.getElementById('package-conflict-modal');
+    if (!modal) return;
+    var title = modal.querySelector('[data-i18n="packageConflictTitle"]');
+    var intro = modal.querySelector('[data-i18n="packageConflictIntro"]');
+    var pointArchive = modal.querySelector('[data-i18n="packageConflictPointArchive"]');
+    var pointTransfer = modal.querySelector('[data-i18n="packageConflictPointTransfer"]');
+    var pointSupport = modal.querySelector('[data-i18n="packageConflictPointSupport"]');
+    var supportBtn = modal.querySelector('[data-i18n="packageConflictSupportBtn"]');
+    var closeBtn = modal.querySelector('[data-i18n="packageConflictCloseBtn"]');
+    if (title) title.textContent = window.t('packageConflictTitle', {}, lang);
+    if (intro) intro.textContent = window.t('packageConflictIntro', {}, lang);
+    if (pointArchive) pointArchive.textContent = window.t('packageConflictPointArchive', {}, lang);
+    if (pointTransfer) pointTransfer.textContent = window.t('packageConflictPointTransfer', {}, lang);
+    if (pointSupport) pointSupport.textContent = window.t('packageConflictPointSupport', {}, lang);
+    if (supportBtn) supportBtn.textContent = window.t('packageConflictSupportBtn', {}, lang);
+    if (closeBtn) closeBtn.textContent = window.t('packageConflictCloseBtn', {}, lang);
+}
+
+function openPackageConflictModal(code, packageName) {
+    var modal = document.getElementById('package-conflict-modal');
+    if (!modal) return;
+    _packageConflictState.code = String(code || '').trim();
+    _packageConflictState.packageName = String(packageName || _getCurrentAddPackageName() || '').trim();
+    _syncPackageConflictModalI18n();
+    modal.classList.add('active');
+    _setPackageConflictReopenVisible(true);
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+}
+
+function closePackageConflictModal(event) {
+    if (event && event.target && event.target.id !== 'package-conflict-modal') return;
+    var modal = document.getElementById('package-conflict-modal');
+    if (modal) modal.classList.remove('active');
+    var currentPackage = _getCurrentAddPackageName();
+    var keepReopen = !!(_packageConflictState.packageName && currentPackage && currentPackage === _packageConflictState.packageName);
+    _setPackageConflictReopenVisible(keepReopen);
+}
+
+function reopenPackageConflictModal() {
+    if (!_packageConflictState.packageName) return;
+    var currentPackage = _getCurrentAddPackageName();
+    if (!currentPackage || currentPackage !== _packageConflictState.packageName) {
+        _clearPackageConflictState();
+        return;
+    }
+    openPackageConflictModal(_packageConflictState.code, _packageConflictState.packageName);
+}
+
+function openPackageConflictSupport() {
+    var packageName = _packageConflictState.packageName || _getCurrentAddPackageName();
+    var text = window.t('packageConflictSupportPrefill', { package: packageName || '—' }, lang);
+    var targetUrl = 'https://t.me/garantXchange?text=' + encodeURIComponent(text);
+    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+        window.Telegram.WebApp.openTelegramLink(targetUrl);
+    } else if (tg && typeof tg.openTelegramLink === 'function') {
+        tg.openTelegramLink(targetUrl);
+    } else {
+        window.open(targetUrl, '_blank');
+    }
+}
+
+function _clearProjectPackageError() {
+    var errorEl = document.getElementById('package-error');
+    if (!errorEl) return;
+    errorEl.innerHTML = '';
+    errorEl.style.display = 'none';
+}
+
+function _showProjectPackageError(messageKey, options) {
+    var errorEl = document.getElementById('package-error');
+    if (!errorEl) return;
+
+    var opts = options || {};
+    var message = window.t(messageKey, {}, lang);
+    var html = '<div>' + window.escapeHTML(message) + '</div>';
+    if (opts.actionLabelKey) {
+        html += '<button type="button" id="package-error-action-btn" class="btn btn-secondary" style="width:100%; margin-top:10px; background: rgba(255,255,255,0.08); color: var(--text-color); border: 1px solid rgba(255,255,255,0.14);">' + window.escapeHTML(window.t(opts.actionLabelKey, {}, lang)) + '</button>';
+    }
+    errorEl.innerHTML = html;
+    errorEl.style.display = 'block';
+
+    if (opts.actionLabelKey && typeof opts.onAction === 'function') {
+        var actionBtn = document.getElementById('package-error-action-btn');
+        if (actionBtn) {
+            actionBtn.onclick = function(event) {
+                event.preventDefault();
+                opts.onAction();
+            };
+        }
+    }
+}
+
+function _handleProjectCreateConflict(code) {
+    var normalizedCode = String(code || '').trim();
+    if (normalizedCode === 'ALREADY_OWNED' || normalizedCode === 'ALREADY_ACTIVE' || normalizedCode === 'NEEDS_RESTART') {
+        openPackageConflictModal(normalizedCode, _getCurrentAddPackageName());
+        // Keep a short field hint so the form still shows why Continue is blocked.
+        _showProjectPackageError(normalizedCode);
+        return true;
+    }
+    return false;
+}
+
+window.openPackageConflictModal = openPackageConflictModal;
+window.closePackageConflictModal = closePackageConflictModal;
+window.reopenPackageConflictModal = reopenPackageConflictModal;
+window.openPackageConflictSupport = openPackageConflictSupport;
 
 async function _focusAppInMiniApp(appId) {
     var normalizedId = Number(appId || 0);
@@ -3117,53 +3249,6 @@ async function submitSocialLink() {
         console.error('Social bonus submit error:', error);
         showToast(getApiErrorMessage(error && error.message, 'socialSubmitError'));
     }
-}
-
-function _clearProjectPackageError() {
-    var errorEl = document.getElementById('package-error');
-    if (!errorEl) return;
-    errorEl.innerHTML = '';
-    errorEl.style.display = 'none';
-}
-
-function _showProjectPackageError(messageKey, options) {
-    var errorEl = document.getElementById('package-error');
-    if (!errorEl) return;
-
-    var opts = options || {};
-    var message = window.t(messageKey, {}, lang);
-    var html = '<div>' + window.escapeHTML(message) + '</div>';
-    if (opts.actionLabelKey) {
-        html += '<button type="button" id="package-error-action-btn" class="btn btn-secondary" style="width:100%; margin-top:10px; background: rgba(255,255,255,0.08); color: var(--text-color); border: 1px solid rgba(255,255,255,0.14);">' + window.escapeHTML(window.t(opts.actionLabelKey, {}, lang)) + '</button>';
-    }
-    errorEl.innerHTML = html;
-    errorEl.style.display = 'block';
-
-    if (opts.actionLabelKey && typeof opts.onAction === 'function') {
-        var actionBtn = document.getElementById('package-error-action-btn');
-        if (actionBtn) {
-            actionBtn.onclick = function(event) {
-                event.preventDefault();
-                opts.onAction();
-            };
-        }
-    }
-}
-
-function _handleProjectCreateConflict(code) {
-    var normalizedCode = String(code || '').trim();
-    if (normalizedCode === 'ALREADY_OWNED') {
-        _showProjectPackageError('ALREADY_OWNED', {
-            actionLabelKey: 'projectPackageContactSupportBtn',
-            onAction: openProjectDuplicateSupport,
-        });
-        return true;
-    }
-    if (normalizedCode === 'ALREADY_ACTIVE' || normalizedCode === 'NEEDS_RESTART') {
-        _showProjectPackageError(normalizedCode);
-        return true;
-    }
-    return false;
 }
 
 function _findTransferProject(projectId) {

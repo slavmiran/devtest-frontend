@@ -260,6 +260,16 @@
 
 .gtw-paste-btn { color: var(--accent-primary, #4C8DFF); }
 
+.gtw-paste-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+    /* Source asset is dark (#1F1F1F) — invert for dark UI */
+    filter: invert(1) brightness(1.15);
+    opacity: 0.92;
+    pointer-events: none;
+}
+
 /* =========================================================
    4. SEGMENTED CHOICE (free / paid)
    ========================================================= */
@@ -1791,7 +1801,8 @@
     position: fixed;
     inset: 0;
     z-index: 10070;
-    overflow-y: auto;
+    overflow-y: scroll; /* always reserve gutter on Windows Telegram */
+    scrollbar-gutter: stable;
     -webkit-overflow-scrolling: touch;
     background: var(--bg-app, #0E1116);
 }
@@ -1984,6 +1995,17 @@
     display: none !important;
 }
 
+/* Equal screenshot width: both aligned to the content column (right of nums) */
+.gtw-guide-shot-panel--block,
+.gtw-guide-shot-panel--group {
+    margin: 0;
+    padding: 0 16px 14px 52px; /* 16+24+12 — same start as step text */
+    box-sizing: border-box;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+}
+
 .gtw-guide-shot-frame {
     display: block;
     width: 100%;
@@ -2026,7 +2048,8 @@
 .gtw-guide-shot-group-title {
     font-size: 14px !important;
     line-height: 19px !important;
-    color: var(--text-primary, #F4F6F8);
+    font-weight: 500 !important;
+    color: var(--text-tertiary, #717C89) !important;
 }
 
 .gtw-guide-shot-group-body {
@@ -2035,17 +2058,28 @@
     box-sizing: border-box;
 }
 
-.gtw-guide-shot-panel--group {
-    margin: 0;
-    padding: 0 16px 12px;
-    box-sizing: border-box;
-    width: 100%;
+.gtw-guide-shot-steps {
+    position: relative;
+    z-index: 1;
 }
 
-.gtw-guide-shot-group[data-open="true"] .gtw-guide-shot-group-body {
-    border-left: 2px solid rgba(76, 141, 255, 0.55);
-    /* Keep full width — border is inside the box, no side margins */
-    box-sizing: border-box;
+/* One solid rail in the gap between nums and screenshot/text — no border, no layout shift */
+.gtw-guide-shot-group[data-open="true"] .gtw-guide-shot-group-body::before {
+    content: '';
+    position: absolute;
+    left: 46px; /* 16 + 24 + 6 — center of gap */
+    top: 0;
+    bottom: 14px;
+    width: 2px;
+    border-radius: 1px;
+    background: #4C8DFF;
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.gtw-guide-shot-group[data-open="true"] .gtw-guide-shot-steps::before {
+    display: none;
 }
 
 .gtw-guide-page-step--grouped {
@@ -2055,16 +2089,18 @@
     background: transparent;
 }
 
+/* Circles always visible — opaque ring so the rail never shows through */
 .gtw-guide-shot-group .gtw-guide-page-num {
     position: relative;
     z-index: 2;
-    background: var(--gt-surface);
-    box-shadow: 0 0 0 2px var(--gt-surface);
+    background: rgba(76, 141, 255, 0.14);
+    color: var(--accent-primary, #4C8DFF);
+    box-shadow: 0 0 0 3px var(--gt-surface);
 }
 
 .gtw-guide-shot-group[data-open="true"] .gtw-guide-page-step--grouped .gtw-guide-page-num {
     background: rgba(76, 141, 255, 0.18);
-    box-shadow: 0 0 0 2px var(--gt-surface);
+    box-shadow: 0 0 0 3px var(--gt-surface);
     color: var(--accent-primary, #4C8DFF);
 }
 
@@ -2139,7 +2175,7 @@
 .attract-sheet-item--gt-active .attract-sheet-item-icon { filter: grayscale(1); }
 
 /* =========================================================
-   20. FORMAT CHOOSER (bottom sheet)
+   20. FORMAT CHOOSER (full-page centered)
    ========================================================= */
 
 .add-project-chooser-overlay {
@@ -2147,9 +2183,9 @@
     inset: 0;
     z-index: 10040;
     display: flex;
-    align-items: flex-end;
+    align-items: stretch;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--bg-app, #0E1116);
     opacity: 0;
     transition: opacity 0.2s ease;
 }
@@ -2158,71 +2194,74 @@
 
 .add-project-chooser-card {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     width: 100%;
     max-width: 520px;
-    padding: 22px var(--gt-pad-x) var(--gt-footer-safe);
+    min-height: 100%;
+    margin: 0 auto;
+    padding: max(28px, env(safe-area-inset-top)) var(--gt-pad-x) max(28px, env(safe-area-inset-bottom));
     background: var(--bg-app, #0E1116);
-    border-top: 1px solid var(--gt-hairline);
-    border-radius: 16px 16px 0 0;
-    transform: translateY(20px);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    border-radius: 0;
+    transform: none;
+    box-sizing: border-box;
+    transition: none;
 }
 
-.add-project-chooser-overlay.is-open .add-project-chooser-card { transform: translateY(0); }
+.add-project-chooser-overlay.is-open .add-project-chooser-card { transform: none; }
 
-.add-project-chooser-card::before {
-    content: "";
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 36px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.18);
-}
+.add-project-chooser-card::before { display: none; }
 
 .add-project-chooser-close {
     position: absolute;
-    top: 18px;
-    right: 14px;
-    width: 30px;
-    height: 30px;
+    top: max(14px, env(safe-area-inset-top));
+    right: 12px;
+    width: 32px;
+    height: 32px;
     border: none;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.07);
-    color: var(--text-tertiary, #717C89);
-    font-size: 18px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary, #AEB7C2);
+    font-size: 20px;
     line-height: 1;
     cursor: pointer;
     transition: background-color 0.15s ease;
 }
 
-.add-project-chooser-close:hover { background: rgba(255, 255, 255, 0.14); }
+.add-project-chooser-close:hover { background: rgba(255, 255, 255, 0.16); }
 
 .add-project-chooser-title {
-    margin: 0 44px 4px 0;
-    font-size: 19px;
+    margin: 0 44px 6px 0;
+    font-size: 22px;
     font-weight: 600;
-    line-height: 24px;
-    letter-spacing: -0.01em;
+    line-height: 28px;
+    letter-spacing: -0.02em;
     color: var(--text-primary, #F4F6F8);
 }
 
 .add-project-chooser-subtitle {
-    margin: 0 0 18px;
+    margin: 0 0 22px;
     font-size: 14px;
-    line-height: 19px;
+    line-height: 20px;
     color: var(--text-tertiary, #717C89);
+}
+
+.add-project-chooser-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .add-project-chooser-option {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 14px;
     width: 100%;
-    margin-bottom: 8px;
-    padding: 14px;
+    min-height: 88px;
+    margin: 0;
+    padding: 16px;
     text-align: left;
     background: var(--gt-surface);
     border: 1px solid var(--gt-hairline);
@@ -2231,37 +2270,28 @@
     transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.add-project-chooser-option:last-of-type { margin-bottom: 0; }
-.add-project-chooser-option:hover { background: var(--gt-surface-raised); }
-
-.add-project-chooser-option--private { border-color: var(--accent-primary-border, rgba(76, 141, 255, 0.24)); }
-.add-project-chooser-option--private:hover { border-color: var(--accent-primary, #4C8DFF); }
+.add-project-chooser-option:hover { background: var(--gt-surface-raised); border-color: rgba(255, 255, 255, 0.12); }
 
 .add-project-chooser-option-icon {
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
     background: var(--gt-surface-sunken);
     color: var(--text-secondary, #AEB7C2);
 }
 
-.add-project-chooser-option--private .add-project-chooser-option-icon {
-    background: rgba(76, 141, 255, 0.12);
-    color: var(--accent-primary, #4C8DFF);
-}
-
-.add-project-chooser-option-icon svg { width: 19px; height: 19px; }
+.add-project-chooser-option-icon svg { width: 20px; height: 20px; }
 
 .add-project-chooser-option-body {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
 }
 
 .add-project-chooser-option-head {
@@ -2289,11 +2319,6 @@
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
-}
-
-.add-project-chooser-option--private .add-project-chooser-option-tag {
-    background: rgba(76, 141, 255, 0.14);
-    color: var(--accent-primary, #4C8DFF);
 }
 
 .add-project-chooser-option-desc {
