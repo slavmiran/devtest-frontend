@@ -1593,6 +1593,9 @@ function refreshLanguageUi() {
     }
 
     syncAutoAcceptToggleUi();
+    if (typeof syncAutoAcceptBountyToggleUi === 'function') {
+        syncAutoAcceptBountyToggleUi();
+    }
     if (typeof syncDefaultGroupJoinedUi === 'function') {
         syncDefaultGroupJoinedUi();
     }
@@ -1619,10 +1622,19 @@ async function loadUserProfilePreferences() {
         if (!_autoAcceptMutualAvailable) {
             _autoAcceptMutualEnabled = false;
         }
+        window._autoAcceptBountyEnabled = !!profile.auto_accept_bounty;
+        window._autoAcceptBountyAvailable = (typeof profile.auto_accept_bounty_available === 'undefined')
+            ? true
+            : !!profile.auto_accept_bounty_available;
+        if (!window._autoAcceptBountyAvailable) {
+            window._autoAcceptBountyEnabled = false;
+        }
         _defaultGroupJoined = !!profile.default_group_joined;
         syncAutoAcceptToggleUi();
+        if (typeof syncAutoAcceptBountyToggleUi === 'function') syncAutoAcceptBountyToggleUi();
         if (typeof syncDefaultGroupJoinedUi === 'function') syncDefaultGroupJoinedUi();
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
+        window.App.autoAcceptBounty = !!window._autoAcceptBountyEnabled;
         window.App.defaultGroupJoined = _defaultGroupJoined;
         if (typeof applyDeviceInfoFromProfile === 'function') {
             applyDeviceInfoFromProfile(profile);
@@ -1633,6 +1645,7 @@ async function loadUserProfilePreferences() {
     } catch (error) {
         console.error('Profile preferences load error:', error);
         syncAutoAcceptToggleUi();
+        if (typeof syncAutoAcceptBountyToggleUi === 'function') syncAutoAcceptBountyToggleUi();
         if (typeof syncDefaultGroupJoinedUi === 'function') syncDefaultGroupJoinedUi();
         _deviceProfileBannerReady = true;
         if (typeof syncDeviceProfileBanner === 'function') syncDeviceProfileBanner();
@@ -2979,16 +2992,7 @@ async function confirmJoinBounty() {
     _pendingActions.add(actionKey);
 
     closeJoinBountyConfirmModal();
-
-    // Optimistic UI: remove card immediately, rollback on error
-    const rollback = [...bountyContracts];
-    bountyContracts = bountyContracts.filter(c => c.app_id !== appId);
-    renderBountyFeed();
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    if (typeof applyOptimisticMyTestJoin === 'function') {
-        applyOptimisticMyTestJoin(appId, { join_type: 'bounty', isBounty: true });
-    }
-    switchTab('tests');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
     try {
         const response = await fetch(`${API_BASE}/feed/bounty/${appId}/join`, {
@@ -2998,21 +3002,42 @@ async function confirmJoinBounty() {
         });
         const result = await response.json();
         if (result.status !== 'success') {
-            bountyContracts = rollback;
-            renderBountyFeed();
-            if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
+
+        // Owner must approve — application created, not yet joined.
+        if (result.pending_approval) {
+            bountyContracts = (bountyContracts || []).map(function(card) {
+                if (Number(card && card.app_id) !== appId) return card;
+                return Object.assign({}, card, { has_pending_bounty_application: true });
+            });
+            renderBountyFeed();
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            showToast(window.t('bountyAppSubmittedToast', {}, lang));
+            loadBountyFeed();
+            return;
+        }
+
+        // Auto-accepted or legacy instant join.
+        bountyContracts = (bountyContracts || []).filter(function(card) {
+            return Number(card && card.app_id) !== appId;
+        });
+        renderBountyFeed();
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (typeof applyOptimisticMyTestJoin === 'function') {
+            applyOptimisticMyTestJoin(appId, { join_type: 'bounty', isBounty: true });
+        }
+        if (result.auto_accepted) {
+            showToast(window.t('bountyAppAutoAcceptedToast', {}, lang));
+        }
+        switchTab('tests');
         if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
         else loadTasks(false);
         loadBountyFeed();
         loadProjects(true);
     } catch (error) {
         console.error('Join bounty error:', error);
-        bountyContracts = rollback;
-        renderBountyFeed();
-        if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
         if (tg.showAlert) tg.showAlert(t.networkError);
     } finally {
         _pendingActions.delete(actionKey);

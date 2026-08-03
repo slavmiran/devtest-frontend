@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTests(true);
             loadTasks(true).catch(() => {});
             loadIncomingOffers({ background: true }).catch(() => {});
+            if (typeof loadBountyApplications === 'function') {
+                loadBountyApplications({ background: true }).catch(() => {});
+            }
             loadReliabilitySummary(true).catch(() => {});
         }
     });
@@ -96,7 +99,13 @@ document.addEventListener('DOMContentLoaded', () => {
         loadReliabilitySummary().catch(function(e) { console.error('Bootstrap loadReliabilitySummary error:', e); });
         loadReliabilityBreakdown(true).catch(function(e) { console.error('Bootstrap loadReliabilityBreakdown error:', e); });
         loadIncomingOffers().catch(function(e) { console.error('Bootstrap loadIncomingOffers error:', e); });
+        if (typeof loadBountyApplications === 'function') {
+            loadBountyApplications().catch(function(e) { console.error('Bootstrap loadBountyApplications error:', e); });
+        }
         try { startOffersPolling(); } catch (e) { console.error('Bootstrap startOffersPolling error:', e); }
+        try {
+            if (typeof startBountyApplicationsPolling === 'function') startBountyApplicationsPolling();
+        } catch (e) { console.error('Bootstrap startBountyApplicationsPolling error:', e); }
         try { startMarketPolling(); } catch (e) { console.error('Bootstrap startMarketPolling error:', e); }
         loadEvents().catch(function(e) { console.error('Bootstrap loadEvents error:', e); });
         loadExternalCounts().catch(function(e) { console.error('Bootstrap loadExternalCounts error:', e); });
@@ -135,6 +144,13 @@ Object.assign(window, {
     applyLanguage,
     showAutoAcceptMutualInfo,
     handleAutoAcceptMutualToggle,
+    showAutoAcceptBountyInfo,
+    handleAutoAcceptBountyToggle,
+    syncAutoAcceptBountyToggleUi,
+    loadBountyApplications,
+    renderBountyApplications,
+    decideBountyApplication,
+    startBountyApplicationsPolling,
     showDeviceProfileInfo,
     openDeviceInfoEditorModal,
     closeDeviceInfoEditorModal,

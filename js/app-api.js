@@ -852,6 +852,7 @@ function loadAllData() {
     _lastFetchTimes.mutual = 0;
     _lastFetchTimes.bounty = 0;
     _lastFetchTimes.offers = 0;
+    _lastFetchTimes.bountyApps = 0;
     _lastFetchTimes.archived = 0;
     _lastFetchTimes.reliabilitySummary = 0;
     _lastFetchTimes.reliabilityBreakdown = 0;
@@ -859,6 +860,9 @@ function loadAllData() {
     loadReliabilitySummary().catch(function() {});
     loadReliabilityBreakdown().catch(function() {});
     loadIncomingOffers().catch(function() {});
+    if (typeof loadBountyApplications === 'function') {
+        loadBountyApplications().catch(function() {});
+    }
     loadProjects().catch(function() {});
     loadArchivedProjects({ silent: true }).catch(function() {});
     loadMutualFeed().catch(function() {});
@@ -993,6 +997,16 @@ function handleApiError(code, details = {}) {
         offer_no_available_apps: 'err_offer_no_available_apps',
         offer_accept_failed: 'err_offer_accept_failed',
         offer_create_failed: 'err_offer_create_failed',
+        bounty_application_already_pending: 'err_bounty_application_already_pending',
+        bounty_application_not_found: 'err_bounty_application_not_found',
+        bounty_application_forbidden: 'err_bounty_application_forbidden',
+        bounty_application_not_pending: 'err_bounty_application_not_pending',
+        bounty_application_expired: 'err_bounty_application_expired',
+        bounty_application_create_failed: 'err_bounty_application_create_failed',
+        bounty_application_accept_failed: 'err_bounty_application_accept_failed',
+        bounty_application_failed: 'err_bounty_application_failed',
+        bounty_applications_unavailable: 'err_bounty_applications_unavailable',
+        bounty_applications_load_failed: 'err_bounty_applications_load_failed',
         user_not_found: 'err_user_not_found',
         transfer_self_forbidden: 'err_transfer_self_forbidden',
         transfer_generate_failed: 'err_transfer_generate_failed',

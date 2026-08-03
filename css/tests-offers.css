@@ -210,6 +210,22 @@
     font-weight: 600;
 }
 
+.bounty-apps-section .offers-header h3 {
+    color: var(--text-color);
+}
+
+.bounty-app-card {
+    border-color: rgba(175, 82, 222, 0.28);
+    background: linear-gradient(180deg, rgba(175, 82, 222, 0.08), transparent 48%);
+}
+
+.bounty-app-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 8px;
+}
+
 .own-project-chip {
     background: rgba(100, 149, 237, 0.14);
     border: 1px solid rgba(100, 149, 237, 0.26);

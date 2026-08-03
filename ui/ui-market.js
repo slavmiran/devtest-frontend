@@ -862,11 +862,19 @@ function renderFeedCard(item, kind) {
         buttonExtraAttrs = '';
     }
     if (kind === 'bounty') {
-        buttonText = window.t('bountyTakeBtn', {}, lang);
-        clickAction = `joinBounty(${item.app_id})`;
-        buttonExtraAttrs = '';
-        if (typeof window.registerJoinBountyContext === 'function') {
-            window.registerJoinBountyContext(item);
+        if (item.has_pending_bounty_application) {
+            buttonText = window.t('bountyAppPendingBtn', {}, lang);
+            clickAction = 'void(0)';
+            buttonClass = 'btn pending disabled';
+            buttonDisabledAttr = 'disabled';
+            buttonExtraAttrs = '';
+        } else {
+            buttonText = window.t('bountyTakeBtn', {}, lang);
+            clickAction = `joinBounty(${item.app_id})`;
+            buttonExtraAttrs = '';
+            if (typeof window.registerJoinBountyContext === 'function') {
+                window.registerJoinBountyContext(item);
+            }
         }
     }
     if (isOwnProject) {
@@ -7300,6 +7308,7 @@ function switchTab(tabId, navElement) {
     if (finalTab === 'tests') {
         renderEvents(true);
         renderIncomingOffers(true);
+        if (typeof renderBountyApplications === 'function') renderBountyApplications(true);
         renderTests(true);
     }
 
@@ -7343,6 +7352,9 @@ function switchTab(tabId, navElement) {
         }
         if (window.loadIncomingOffers) {
             window.loadIncomingOffers({ background: true }).catch(function() {});
+        }
+        if (window.loadBountyApplications) {
+            window.loadBountyApplications({ background: true }).catch(function() {});
         }
         if (window.loadReliabilitySummary) {
             window.loadReliabilitySummary(true).catch(function() {});
@@ -7499,12 +7511,21 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         : window.t('dossierOwnerReliabilityNewbie', {}, lang);
     var joinBlocked = _isDossierProjectJoinBlocked(project);
     var isBountyProject = String(project.mode || 'mutual').toLowerCase() === 'bounty';
-    if (isBountyProject && typeof window.registerJoinBountyContext === 'function') {
+    var hasPendingBountyApp = isBountyProject && !!(
+        project.has_pending_bounty_application
+        || (typeof bountyContracts !== 'undefined' && (bountyContracts || []).some(function(card) {
+            return Number(card && card.app_id) === Number(project.app_id || 0) && !!card.has_pending_bounty_application;
+        }))
+    );
+    if (isBountyProject && !hasPendingBountyApp && typeof window.registerJoinBountyContext === 'function') {
         window.registerJoinBountyContext(project);
     }
     var takeAction = isBountyProject
         ? 'closeProjectDetailsModal(); joinBounty(' + Number(project.app_id) + ')'
         : 'closeProjectDetailsModal(); joinMutual(' + Number(project.app_id) + ', false)';
+    var takeBtnLabel = hasPendingBountyApp
+        ? window.t('bountyAppPendingBtn', {}, lang)
+        : window.t('dossierBtnTakeTest', {}, lang);
     var dossierMetaChipsHtml = _buildDossierProjectMetaChips(project);
     var contactButtonHtml = safeOwnerUsername
         ? '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openTelegramProfile(\'' + safeOwnerUsername + '\')">' + window.escapeHTML(window.t('detail_contact_btn', {}, lang)) + '</button>'
@@ -7580,7 +7601,9 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'' + escapeInlineJsString(project.package_name || '') + '\')">' + window.escapeHTML(window.t('openGooglePlay', {}, lang)) + '</button>' +
             (joinBlocked
                 ? '<button class="btn disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(window.t('dossierBtnTakeTestBlocked', {}, lang)) + '</button>'
-                : '<button class="btn" style="background:rgba(0,122,255,0.16);color:var(--button-color);" onclick="' + takeAction + '">' + window.escapeHTML(window.t('dossierBtnTakeTest', {}, lang)) + '</button>') +
+                : (hasPendingBountyApp
+                    ? '<button class="btn pending disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(takeBtnLabel) + '</button>'
+                    : '<button class="btn" style="background:rgba(0,122,255,0.16);color:var(--button-color);" onclick="' + takeAction + '">' + window.escapeHTML(takeBtnLabel) + '</button>')) +
         '</div>';
 
     var modal = document.getElementById('project-details-modal');
@@ -7688,6 +7711,12 @@ function _normalizeDossierOwnedProjectRow(raw) {
         direction: direction,
         linked_my_app_name: String(raw.linked_my_app_name || '').trim(),
         days_left: daysLeft,
+        has_pending_bounty_application: !!(
+            raw.has_pending_bounty_application
+            || (typeof bountyContracts !== 'undefined' && (bountyContracts || []).some(function(card) {
+                return Number(card && card.app_id) === appId && !!card.has_pending_bounty_application;
+            }))
+        ),
     };
 }
 
