@@ -755,6 +755,23 @@ function _clearPersistedActiveTimer() {
     }
 }
 
+function clearActiveTimerForApp(appId) {
+    if (!appId || Number(activeTimerAppId) !== Number(appId)) return false;
+    if (_timerIntervalId) clearInterval(_timerIntervalId);
+    _timerIntervalId = null;
+    _timerEndTimestamp = null;
+    activeTimerAppId = null;
+    _timerIsScreenshot = false;
+    _timerOwnerUsername = '';
+    _timerLocalDate = '';
+    _clearPersistedActiveTimer();
+    if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
+        window.syncCheckinOptionsJustConfirmTimer(appId, 0);
+    }
+    return true;
+}
+window.clearActiveTimerForApp = clearActiveTimerForApp;
+
 function _resolveCheckpointOwnerUsername(appId, ownerUsername) {
     var normalized = String(ownerUsername || '').trim().replace(/^@+/, '');
     if (normalized) {
@@ -911,6 +928,83 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     return true;
 }
 
+function isCheckinTimerActiveForApp(appId) {
+    return !!(activeTimerAppId
+        && Number(activeTimerAppId) === Number(appId)
+        && _timerEndTimestamp
+        && Date.now() < _timerEndTimestamp);
+}
+
+function getCheckinTimerRemainingSeconds(appId) {
+    if (!isCheckinTimerActiveForApp(appId)) return 0;
+    return Math.max(0, Math.ceil((_timerEndTimestamp - Date.now()) / 1000));
+}
+
+function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
+    if (isTestFeedbackCheckinPending(appId)) return false;
+    var btn = document.getElementById('btn-confirm-' + appId);
+    if (!btn) return false;
+
+    var test = myTests.find(function(item) { return Number(item.id) === Number(appId); });
+    if (test && test.is_external) return false;
+    if (test && test.issue_reported_at && !test.issue_fixed_at) return false;
+
+    var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(appId, ownerUsername);
+    var safeOwner = window.escapeInlineJsString
+        ? window.escapeInlineJsString(resolvedOwnerUsername || '')
+        : String(resolvedOwnerUsername || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    var optionsTitle = window.t('checkinOptionsTitle', {}, lang);
+    var optionsTitleSafe = window.escapeHTML(optionsTitle);
+    var timerLabel = btn.innerText || '';
+
+    var existingSplitGroup = btn.parentNode && btn.parentNode.classList
+        && btn.parentNode.classList.contains('split-btn-group')
+        ? btn.parentNode
+        : null;
+
+    if (existingSplitGroup) {
+        btn.disabled = true;
+        btn.className = 'btn split-btn-main';
+        btn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
+        btn.style.color = 'var(--hint-color)';
+        btn.style.cursor = 'not-allowed';
+        btn.onclick = null;
+
+        var optionsBtn = existingSplitGroup.querySelector('.split-btn-options');
+        if (!optionsBtn) {
+            optionsBtn = document.createElement('button');
+            existingSplitGroup.appendChild(optionsBtn);
+        }
+        optionsBtn.disabled = false;
+        optionsBtn.className = 'btn btn-success split-btn-options';
+        optionsBtn.textContent = '📎';
+        optionsBtn.title = optionsTitle;
+        optionsBtn.setAttribute('aria-label', optionsTitle);
+        optionsBtn.onclick = function(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            openCheckinOptionsModal(appId, resolvedOwnerUsername || '');
+        };
+        existingSplitGroup.style.flex = '2';
+        return true;
+    }
+
+    var splitWrapper = document.createElement('div');
+    splitWrapper.className = 'split-btn-group';
+    splitWrapper.style.flex = '2';
+    splitWrapper.innerHTML =
+        '<button id="btn-confirm-' + appId + '" class="btn split-btn-main" disabled ' +
+        'style="background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;">' +
+        window.escapeHTML(timerLabel) +
+        '</button>' +
+        '<button class="btn btn-success split-btn-options" onclick="openCheckinOptionsModal(' + appId + ', \'' + safeOwner + '\')" ' +
+        'title="' + optionsTitleSafe + '" aria-label="' + optionsTitleSafe + '">📎</button>';
+    btn.parentNode.replaceChild(splitWrapper, btn);
+    return true;
+}
+
 function _startActiveTimerInterval(id) {
     if (_timerIntervalId) clearInterval(_timerIntervalId);
     _timerIntervalId = setInterval(() => {
@@ -926,6 +1020,9 @@ function _startActiveTimerInterval(id) {
         }
         if (liveBtn && !liveBtn.getAttribute('data-feedback-pending')) {
             liveBtn.innerText = t.timerRemaining.replace('{sec}', remaining);
+        }
+        if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
+            window.syncCheckinOptionsJustConfirmTimer(id, remaining);
         }
     }, 1000);
 }
@@ -968,6 +1065,9 @@ function _syncActiveTimerState() {
     _timerLocalDate = '';
 
     _clearPersistedActiveTimer();
+    if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
+        window.syncCheckinOptionsJustConfirmTimer(finishedId, 0);
+    }
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     return true;
 }
@@ -1647,6 +1747,10 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '', durati
     _timerLocalDate = getLocalDate();
     _persistActiveTimer();
     btn.innerText = t.timerRemaining.replace('{sec}', resolvedDurationSeconds);
+    // Normal days: show green active 📎 immediately while confirm stays on the countdown.
+    if (!isScreenshotDay) {
+        _ensureEarlyPaperclipSplit(id, resolvedOwnerUsername);
+    }
     _startActiveTimerInterval(id);
 }
 
@@ -1661,11 +1765,16 @@ function _restoreActiveTimer() {
         _syncActiveTimerState();
     } else {
         btn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
+        if (!_timerIsScreenshot) {
+            _ensureEarlyPaperclipSplit(activeTimerAppId, _timerOwnerUsername || '');
+        }
         _persistActiveTimer();
         _startActiveTimerInterval(activeTimerAppId);
     }
 }
 window._restoreActiveTimer = _restoreActiveTimer;
+window.isCheckinTimerActiveForApp = isCheckinTimerActiveForApp;
+window.getCheckinTimerRemainingSeconds = getCheckinTimerRemainingSeconds;
 
 function openPlay(id, pkg) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
@@ -1924,6 +2033,8 @@ function markTestFeedbackCheckinPending(appId) {
     try {
         localStorage.setItem('pending_feedback_checkins_v1', JSON.stringify(_pendingFeedbackCheckinAppIds));
     } catch (e) {}
+    clearActiveTimerForApp(normalizedId);
+    setTimerReadyForConfirm(normalizedId, false, false, '');
     applyTestFeedbackCheckinPendingUi(normalizedId);
 }
 
@@ -2921,6 +3032,7 @@ async function confirmStart(id) {
         const sourceType = String(result.source_type || '').toLowerCase();
         setFirstDayScreenshotVisible(id, false);
         setTimerReadyForConfirm(id, false, false, '');
+        clearActiveTimerForApp(id);
         const rewardBust = Number(result.reward_bust || result.earned_bust || 0);
         if (result.already_checked_today) {
             showToast(t.checkinAlreadyDone);

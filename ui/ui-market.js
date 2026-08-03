@@ -3207,7 +3207,28 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
-        confirmBtn.style.display = _checkinOptionsIsControlDay ? 'none' : 'block';
+        if (_checkinOptionsIsControlDay) {
+            confirmBtn.style.display = 'none';
+            confirmBtn.disabled = false;
+            confirmBtn.style.cursor = '';
+            confirmBtn.style.opacity = '';
+        } else {
+            confirmBtn.style.display = 'block';
+            var timerRemaining = typeof window.getCheckinTimerRemainingSeconds === 'function'
+                ? window.getCheckinTimerRemainingSeconds(appId)
+                : 0;
+            if (timerRemaining > 0) {
+                // While the anti-fraud timer runs, Just Confirm shows the same countdown.
+                confirmBtn.disabled = true;
+                confirmBtn.style.cursor = 'not-allowed';
+                confirmBtn.style.opacity = '0.75';
+                confirmBtn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', timerRemaining);
+            } else {
+                confirmBtn.disabled = false;
+                confirmBtn.style.cursor = '';
+                confirmBtn.style.opacity = '';
+            }
+        }
     }
     var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
     if (reviewBtn) {
@@ -3266,6 +3287,31 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     renderCheckinReviewOptions();
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+}
+
+function syncCheckinOptionsJustConfirmTimer(appId, remainingSeconds) {
+    const modal = document.getElementById('checkin-options-modal');
+    if (!modal || !modal.classList.contains('active')) return;
+    if (Number(_checkinOptionsAppId) !== Number(appId)) return;
+    if (_checkinOptionsIsControlDay) return;
+    const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
+    if (!confirmBtn) return;
+
+    var remaining = Number(remainingSeconds || 0);
+    if (remaining > 0) {
+        confirmBtn.style.display = 'block';
+        confirmBtn.disabled = true;
+        confirmBtn.style.cursor = 'not-allowed';
+        confirmBtn.style.opacity = '0.75';
+        confirmBtn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
+        return;
+    }
+
+    confirmBtn.style.display = 'block';
+    confirmBtn.disabled = false;
+    confirmBtn.style.cursor = '';
+    confirmBtn.style.opacity = '';
+    confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
 }
 
 function closeCheckinOptionsModal(event) {
@@ -3339,6 +3385,11 @@ function checkinOptionsReview() {
 function checkinOptionsConfirm() {
     const appId = _checkinOptionsAppId;
     const flow = _checkinOptionsFlow;
+    if (flow !== 'external'
+        && typeof window.isCheckinTimerActiveForApp === 'function'
+        && window.isCheckinTimerActiveForApp(appId)) {
+        return;
+    }
     _closeCheckinOptionsModalImmediate();
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
@@ -9000,6 +9051,7 @@ Object.assign(window, {
     insertReportChip,
     openCheckinOptionsModal,
     closeCheckinOptionsModal,
+    syncCheckinOptionsJustConfirmTimer,
     renderCheckinReviewOptions,
     checkinOptionsScreenshot,
     checkinOptionsBug,
