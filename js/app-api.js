@@ -729,7 +729,18 @@ async function loadIncomingOffers(options) {
             _offersLoadedOnce = true;
             _offersLoadError = false;
             _lastFetchTimes.offers = Date.now();
+
+            // Contract applications ride along with mutual offers (same proven GET path).
+            if (Array.isArray(data.bounty_applications) && typeof applyIncomingBountyApplications === 'function') {
+                applyIncomingBountyApplications(data.bounty_applications, { forceRender: true });
+            }
+
             renderIncomingOffers();
+            if (typeof renderBountyApplications === 'function') {
+                renderBountyApplications(true);
+            } else if (typeof syncIncomingApplicationsSection === 'function') {
+                syncIncomingApplicationsSection();
+            }
         } catch (error) {
             console.error('Error loading incoming offers:', error);
             if (!Array.isArray(incomingOffers) || incomingOffers.length === 0) {

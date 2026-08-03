@@ -69,6 +69,43 @@ function _formatBountyReliabilityChip(application) {
     }, lang));
 }
 
+function applyIncomingBountyApplications(list, options) {
+    var opts = options || {};
+    bountyApplications = Array.isArray(list) ? list.slice() : [];
+    setBountyAppsCache(bountyApplications);
+    _bountyAppsLoadedOnce = true;
+    _bountyAppsLoadError = false;
+    if (window._lastFetchTimes) _lastFetchTimes.bountyApps = Date.now();
+    if (opts.render !== false) {
+        renderBountyApplications(!!opts.forceRender || true);
+    }
+    return bountyApplications;
+}
+
+function findPendingBountyApplicationForTester(testerId, appId) {
+    var normalizedTesterId = Number(testerId || 0);
+    var normalizedAppId = Number(appId || 0);
+    if (normalizedTesterId <= 0) return null;
+    var list = bountyApplications || [];
+    var match = null;
+    for (var i = 0; i < list.length; i += 1) {
+        var item = list[i];
+        if (!item || item.status !== 'pending') continue;
+        if (Number(item.applicant_id || 0) !== normalizedTesterId) continue;
+        if (normalizedAppId > 0 && Number(item.app_id || 0) !== normalizedAppId) continue;
+        match = item;
+        break;
+    }
+    if (match) return match;
+    // Fallback: any pending contract application from this tester.
+    for (var j = 0; j < list.length; j += 1) {
+        var row = list[j];
+        if (!row || row.status !== 'pending') continue;
+        if (Number(row.applicant_id || 0) === normalizedTesterId) return row;
+    }
+    return null;
+}
+
 function syncIncomingApplicationsSection() {
     var section = document.getElementById('offers-section');
     var countEl = document.getElementById('offers-count');
@@ -285,20 +322,24 @@ async function loadBountyApplications(options) {
             });
             if (!response.ok) throw new Error('HTTP ' + response.status);
             var data = await response.json();
-            bountyApplications = data.applications || [];
-            setBountyAppsCache(bountyApplications);
-            _bountyAppsLoadedOnce = true;
-            _bountyAppsLoadError = false;
-            if (window._lastFetchTimes) _lastFetchTimes.bountyApps = Date.now();
-            renderBountyApplications();
+            if (data && data.status && data.status !== 'success') {
+                throw new Error(data.code || data.message || 'bounty_applications_load_failed');
+            }
+            applyIncomingBountyApplications(data.applications || [], { forceRender: true });
         } catch (error) {
             console.error('Error loading bounty applications:', error);
-            if (!Array.isArray(bountyApplications) || bountyApplications.length === 0) {
-                bountyApplications = Array.isArray(cached) ? cached : [];
-            }
-            _bountyAppsLoadedOnce = true;
+            // Do not poison cache with empty list on transient errors.
             _bountyAppsLoadError = true;
-            renderBountyApplications();
+            if (!_bountyAppsLoadedOnce && Array.isArray(cached) && cached.length) {
+                bountyApplications = cached;
+                _bountyAppsLoadedOnce = true;
+            }
+            renderBountyApplications(true);
+            if (!background && (!bountyApplications || bountyApplications.length === 0)
+                && typeof _showNonCriticalLoaderToast === 'function'
+                && typeof getApiErrorMessage === 'function') {
+                _showNonCriticalLoaderToast(getApiErrorMessage(error && error.message, 'networkError'), 'bounty_applications');
+            }
         } finally {
             if (typeof _apiEnd === 'function') _apiEnd();
             if (shouldMarkBackgroundSync && typeof endBackgroundSync === 'function') {
@@ -477,6 +518,8 @@ Object.assign(window, {
     handleAutoAcceptBountyToggle: handleAutoAcceptBountyToggle,
     formatBountyApplicationRemaining: formatBountyApplicationRemaining,
     syncIncomingApplicationsSection: syncIncomingApplicationsSection,
+    applyIncomingBountyApplications: applyIncomingBountyApplications,
+    findPendingBountyApplicationForTester: findPendingBountyApplicationForTester,
     highlightBountyApplicationCard: highlightBountyApplicationCard,
     highlightBountyApplicationWhenReady: highlightBountyApplicationWhenReady,
     focusIncomingBountyApplication: focusIncomingBountyApplication,

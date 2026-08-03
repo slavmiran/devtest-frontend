@@ -2085,6 +2085,7 @@
             bountyAppTimeLeft: "⏳ Осталось: {time}",
             bountyAppAcceptBtn: "✅ Принять",
             bountyAppRejectBtn: "❌ Отклонить",
+            dossierBountyApplicationHint: "💎 Заявка на контракт «{app}» · {bust} $BUST",
             bountyAppAcceptedToast: "✅ Тестер принят на контракт.",
             bountyAppRejectedToast: "❌ Заявка на контракт отклонена.",
             bountyAppSubmittedToast: "📩 Заявка на контракт отправлена владельцу. Ожидайте решения до 48 часов.",

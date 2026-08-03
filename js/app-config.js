@@ -1441,13 +1441,20 @@ async function _handleInitialRoute() {
                 switchTab('tests');
                 var dossierUserId = Number(route.openDossierUserId || 0);
                 var dossierAppId = Number(route.openDossierAppId || route.appId || 0);
-                setTimeout(function() {
-                    if (typeof openTesterDossier === 'function') {
-                        openTesterDossier('', dossierUserId, dossierAppId);
-                    } else if (typeof openDossierModal === 'function') {
-                        openDossierModal('', dossierUserId, dossierAppId);
+                try {
+                    if (typeof loadIncomingOffers === 'function') {
+                        await loadIncomingOffers({ background: false });
+                    } else if (typeof loadBountyApplications === 'function') {
+                        await loadBountyApplications({ background: false });
                     }
-                }, 350);
+                } catch (preloadError) {
+                    console.warn('Dossier route preload failed:', preloadError);
+                }
+                if (typeof openTesterDossier === 'function') {
+                    openTesterDossier('', dossierUserId, dossierAppId);
+                } else if (typeof openDossierModal === 'function') {
+                    openDossierModal('', dossierUserId, dossierAppId);
+                }
                 _clearStartappQueryParam();
             } catch (error) {
                 console.error('Initial dossier route error:', error);

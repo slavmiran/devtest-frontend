@@ -7934,6 +7934,17 @@ async function openDossierModal(username, testerId, appId) {
     document.getElementById('dossier-body').innerHTML = `<p style="text-align:center; color: var(--hint-color);">${t.dossierLoading}</p>`;
     modal.classList.add('active');
 
+    // Ensure pending contract applications are available for Accept/Reject actions.
+    try {
+        if (typeof loadIncomingOffers === 'function') {
+            await loadIncomingOffers({ background: false });
+        } else if (typeof loadBountyApplications === 'function') {
+            await loadBountyApplications({ background: false });
+        }
+    } catch (preloadError) {
+        console.warn('Dossier preload incoming applications failed:', preloadError);
+    }
+
     const project = myProjects.find((item) => Number(item.id) === Number(appId));
     const tester = project ? (project.testers || []).find((candidate) => Number(candidate.tester_id) === Number(testerId)) : null;
     const marketCandidate = getMarketCandidateByAppId(appId, testerId);
@@ -8073,6 +8084,11 @@ async function openDossierModal(username, testerId, appId) {
         && marketCandidate.market_kind !== 'mutual-return';
     const takeFromShowcaseDisabled = !!(marketCandidate && marketCandidate.has_pending_offer);
     const takeFromShowcaseIsPrelaunch = !!(marketCandidate && marketCandidate.market_kind === 'mutual-prelaunch');
+    const pendingBountyApplication = (typeof findPendingBountyApplicationForTester === 'function')
+        ? findPendingBountyApplicationForTester(testerId, appId)
+        : null;
+    const pendingBountyApplicationId = Number(pendingBountyApplication && pendingBountyApplication.application_id || 0);
+    const canDecideBountyApplication = pendingBountyApplicationId > 0;
 
     let html = '';
     const goldenCountText = (profile.golden_count || 0) > 0
@@ -8193,6 +8209,14 @@ async function openDossierModal(username, testerId, appId) {
     html += `<div>
         <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierActionsTitle}</div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
+            ${canDecideBountyApplication ? `<div style="padding:10px 12px; background:rgba(175,82,222,0.12); border:1px solid rgba(175,82,222,0.28); border-radius:10px; font-size:13px; line-height:1.45; margin-bottom:2px;">${window.escapeHTML(window.t('dossierBountyApplicationHint', {
+                app: (pendingBountyApplication && pendingBountyApplication.app_name) || window.t('unknownLabel', {}, lang),
+                bust: pendingBountyApplication && pendingBountyApplication.bounty_per_tester != null
+                    ? pendingBountyApplication.bounty_per_tester
+                    : 0,
+            }, lang))}</div>
+            <button class="btn btn-success" style="width: 100%; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'accept', event)">${window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang))}</button>
+            <button class="btn" style="width: 100%; background: rgba(255,59,48,0.12); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'reject', event)">${window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang))}</button>` : ''}
             ${tgName ? `<button class="btn" style="width: 100%; background: var(--secondary-bg-color); color: var(--link-color); border: none; font-weight: 600; padding: 10px;" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
             ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" style="width: 100%; border: none; font-weight: 600; padding: 10px;" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest', {}, lang))}</button>` : ''}
             ${canReward ? `<button class="btn" style="width: 100%; background: rgba(255,204,0,0.15); color: #ffcc00; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}

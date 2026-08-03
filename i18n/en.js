@@ -2079,6 +2079,7 @@
             bountyAppTimeLeft: "⏳ Time left: {time}",
             bountyAppAcceptBtn: "✅ Accept",
             bountyAppRejectBtn: "❌ Reject",
+            dossierBountyApplicationHint: "💎 Contract application for “{app}” · {bust} $BUST",
             bountyAppAcceptedToast: "✅ Tester accepted to the contract.",
             bountyAppRejectedToast: "❌ Contract application rejected.",
             bountyAppSubmittedToast: "📩 Contract application sent to the owner. Await a decision within 48 hours.",
