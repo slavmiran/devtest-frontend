@@ -1242,26 +1242,51 @@
 
     function readClipboardText() {
         return new Promise(function (resolve, reject) {
+            var settled = false;
+            function done(ok, value) {
+                if (settled) return;
+                settled = true;
+                if (ok) resolve(value);
+                else reject(value || new Error('clipboard_failed'));
+            }
+
             try {
                 var tg = window.Telegram && window.Telegram.WebApp;
                 if (tg && typeof tg.readTextFromClipboard === 'function') {
-                    tg.readTextFromClipboard(function (text) {
-                        if (text != null && String(text).length) resolve(String(text));
-                        else reject(new Error('empty'));
-                    });
-                    return;
+                    var timer = setTimeout(function () {
+                        // Telegram Desktop often never calls back — fall through.
+                        tryNavigator();
+                    }, 900);
+                    try {
+                        tg.readTextFromClipboard(function (text) {
+                            clearTimeout(timer);
+                            if (text != null && String(text).length) {
+                                done(true, String(text));
+                                return;
+                            }
+                            tryNavigator();
+                        });
+                        return;
+                    } catch (_) {
+                        clearTimeout(timer);
+                    }
                 }
             } catch (_) {}
 
-            if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
-                navigator.clipboard.readText().then(function (text) {
-                    if (text != null && String(text).length) resolve(String(text));
-                    else reject(new Error('empty'));
-                }).catch(reject);
-                return;
-            }
+            tryNavigator();
 
-            reject(new Error('unsupported'));
+            function tryNavigator() {
+                if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                    navigator.clipboard.readText().then(function (text) {
+                        if (text != null && String(text).length) done(true, String(text));
+                        else done(false, new Error('empty'));
+                    }).catch(function (err) {
+                        done(false, err || new Error('clipboard_denied'));
+                    });
+                    return;
+                }
+                done(false, new Error('unsupported'));
+            }
         });
     }
 
@@ -1271,12 +1296,17 @@
             var value = String(text || '').trim();
             if (!value) {
                 if (typeof showToast === 'function') showToast(L('pasteFailed'));
+                try { input.focus(); } catch (_) {}
                 return;
             }
             input.value = value;
+            try {
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            } catch (_) {}
             if (typeof onSuccess === 'function') onSuccess(value);
         }).catch(function () {
             if (typeof showToast === 'function') showToast(L('pasteFailed'));
+            try { input.focus(); } catch (_) {}
         });
     }
 
@@ -2344,6 +2374,7 @@
                     testing_link: wizardState.testingLink,
                     payment_method: 'rub',
                     amount_usd: 23,
+                    create_mode: 'requisites',
                     notes: getGuaranteedOrderNotes([
                         'currency=' + currency.code,
                         'bank=' + bankName,
@@ -2359,7 +2390,7 @@
                 if ((payload.code || '') === 'order_already_active') {
                     wizardState.fiatOrderId = details.id || details.order_id || null;
                     wizardState.fiatPublicCode = String(details.public_code || details.order_code || '');
-                    if (!wizardState.fiatPublicCode) throw new Error('order_already_active');
+                    if (!wizardState.fiatPublicCode && !wizardState.fiatOrderId) throw new Error('order_already_active');
                 } else {
                     throw new Error((payload && (payload.code || payload.detail || payload.message)) || 'order_create_failed');
                 }
@@ -2368,16 +2399,18 @@
                 wizardState.fiatPublicCode = String(order.public_code || payload.public_code || '');
             }
 
-            var orderCode = wizardState.fiatPublicCode || ('GT-' + (10000 + Number(wizardState.fiatOrderId || 0)));
-            var personalAccountText = fiatCopy(wizardState.fiatPersonalAccount ? 'Yes' : 'No', wizardState.fiatPersonalAccount ? 'Да' : 'Нет');
-            var message = getWizardLang() === 'ru'
-                ? 'Здравствуйте! Хочу оплатить приватное тестирование ($23).\n📌 Заказ: #' + orderCode + ' (' + wizardState.appName + ')\n💳 Валюта оплаты: ' + currency.code + ' ($23)\n🏦 Мой банк: ' + bankName + '\n👤 Оплата с личного счета: ' + personalAccountText + '\n\nПожалуйста, рассчитайте точную сумму к оплате в ' + currency.code + ' и выдайте реквизиты.'
-                : 'Hello! I want to pay for Private Testing ($23).\n📌 Order: #' + orderCode + ' (' + wizardState.appName + ')\n💳 Payment currency: ' + currency.code + ' ($23)\n🏦 My bank: ' + bankName + '\n👤 Payment from personal account: ' + personalAccountText + '\n\nPlease calculate the exact amount in ' + currency.code + ' and send the payment requisites.';
-            openTelegramContact(message);
+            // Official order + NEW ORDER are created only after "Submit application" with proof.
             markPaymentStep1Done();
             persistGuaranteedTestWizardDraft();
+            if (typeof showToast === 'function') {
+                showToast(getWizardLang() === 'ru'
+                    ? 'Реквизиты запрошены. Менеджер скоро пришлёт их в ЛС.'
+                    : 'Payment details requested. The manager will send them in DM soon.');
+            }
+            button.disabled = false;
+            button.textContent = originalText;
         } catch (error) {
-            console.error('Fiat order create failed:', error);
+            console.error('Fiat requisites request failed:', error);
             if (helper) {
                 helper.textContent = L('fiatCreateFailed');
                 helper.style.display = 'block';

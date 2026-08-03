@@ -1161,24 +1161,26 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 7px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.06);
+    background: #FFFFFF;
     font-size: 10px;
     font-weight: 700;
     color: var(--text-secondary, #AEB7C2);
 }
 
-.gtw-exchange-icon--small { width: 22px; height: 22px; }
+.gtw-exchange-icon--small { width: 22px; height: 22px; border-radius: 6px; }
 
 .gtw-exchange-logo {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
     display: block;
+    transform: scale(1.18);
+    border-radius: 6px;
 }
 
 .gtw-exchange-icon.is-fallback { background: rgba(76, 141, 255, 0.14); color: var(--accent-primary, #4C8DFF); }
@@ -1383,7 +1385,7 @@
     min-height: 44px;
     aspect-ratio: 1 / 1;
     box-sizing: border-box;
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
     background: #FFFFFF;
     font-size: 11px;
@@ -1394,10 +1396,13 @@
 .gtw-credential-icon-wrap .gtw-exchange-logo {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
     display: block;
-    padding: 5px;
+    /* Enlarge logo so dark-on-white marks fill the white tile; soft corners */
+    transform: scale(1.22);
+    border-radius: 8px;
+    padding: 0;
     box-sizing: border-box;
 }
 .gtw-credential-icon-wrap.is-fallback {

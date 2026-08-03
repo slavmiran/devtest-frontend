@@ -9,7 +9,7 @@
         headerTitle: ['Private Testing', 'Приватное тестирование'],
         headerSubtitle: ['Closed testing, handled for you', 'Закрытое тестирование под ключ'],
         badge: ['14 days of continuous testing', '14 дней непрерывного тестирования'],
-        title: ['Production access without your involvement', 'Доступ к production без вашего участия'],
+        title: ['Google Play access without your involvement', 'Доступ в Google Play без вашего участия'],
         lead: [
             'We assemble the tester team, run the full 14-day cycle and bring your app to the production review.',
             'Мы собираем команду тестировщиков, ведем полный 14-дневный цикл и доводим приложение до заявки на production.'
@@ -33,8 +33,8 @@
             'Если доступ к production не получен, мы вернем оплату.'
         ],
         footnote: [
-            'Crypto transfer — $20. PayPal or bank transfer — $23, the difference covers the processing fee.',
-            'Оплата криптовалютой — $20. PayPal или банковский перевод — $23, разница покрывает комиссию платежных систем.'
+            'Crypto transfer — $20. PayPal or bank transfer — $23',
+            'Оплата криптовалютой — $20. PayPal или банковский перевод — $23'
         ],
         cta: ['Add your app', 'Добавить приложение'],
         close: ['Close', 'Закрыть']

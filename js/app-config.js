@@ -1190,6 +1190,12 @@ function _parseInitialRouteTarget() {
             routeKind = 'guaranteed_test';
             break;
         }
+        if (normalized.indexOf('gt_upload_') === 0 || normalized.indexOf('gt-upload-') === 0) {
+            routeKind = 'gt_upload';
+            var uploadRaw = normalized.replace('gt_upload_', '').replace('gt-upload-', '');
+            feedbackProjectId = parseInt(uploadRaw, 10) || 0;
+            break;
+        }
     }
 
     if (routeKind === 'feedback' || params.get('feedback') === '1') {
@@ -1312,6 +1318,13 @@ function _parseInitialRouteTarget() {
             appId: null,
         };
     }
+    if (routeKind === 'gt_upload') {
+        return {
+            tab: 'projects',
+            openGuaranteedUpload: true,
+            gtOrderId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
     return null;
 }
 
@@ -1328,6 +1341,20 @@ async function _handleInitialRoute() {
             _clearStartappQueryParam();
         } catch (error) {
             console.error('Initial guaranteed test route error:', error);
+        }
+        return;
+    }
+
+    if (route.openGuaranteedUpload) {
+        try {
+            if (typeof window.showGuaranteedTestWizardPayment === 'function') {
+                window.showGuaranteedTestWizardPayment({ keepState: true });
+            } else if (typeof window.showGuaranteedTestWizardStep1 === 'function') {
+                window.showGuaranteedTestWizardStep1({ keepState: true });
+            }
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial guaranteed upload route error:', error);
         }
         return;
     }

@@ -2213,7 +2213,7 @@
             gtStatusPaid: "Preparing the team",
             gtHintPaid: "Payment and settings are verified. We are forming your tester group.",
             gtStatusCollecting: "Collecting testers",
-            gtHintCollecting: "Assembling the team and connecting devices in Google Play Console. This usually takes up to 12 hours.",
+            gtHintCollecting: "Assembling the team and connecting devices. No more than 12 hours.",
             gtStatusTestingDay: "Day {day} of 14",
             gtHintTesting: "Active testing phase. Estimated completion: {completion_date}",
             gtStatusCompleted: "Completed",
