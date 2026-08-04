@@ -858,10 +858,18 @@ function getTestSourceChip(test) {
     if (joinType === 'bounty') {
         const bountyVal = test && test.bounty_per_tester ? Number(test.bounty_per_tester) : 0;
         chips.push(`<span class="meta-chip accent-purple" style="cursor: pointer;" onclick="openBountyInfoModal(${test.id}, event)">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))} +${bountyVal}</span>`);
-    } else if (joinType === 'prelaunch') {
-        chips.push(`<span class="meta-chip accent-blue">🚀 ${window.escapeHTML(window.t('testSourcePrelaunch', {}, lang))}</span>`);
     } else if (joinType === 'mutual') {
-        chips.push(`<span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('testSourceMutual', {}, lang))}</span>`);
+        if (typeof buildBarterChipHtml === 'function') {
+            chips.push(buildBarterChipHtml(test));
+        } else {
+            chips.push(`<span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('testSourceMutual', {}, lang))}</span>`);
+        }
+    } else if (joinType === 'prelaunch') {
+        if (typeof buildBarterChipHtml === 'function') {
+            chips.push(buildBarterChipHtml(test));
+        } else {
+            chips.push(`<span class="meta-chip accent-blue">🚀 ${window.escapeHTML(window.t('testSourcePrelaunch', {}, lang))}</span>`);
+        }
     } else if (joinType === 'direct' || joinType === 'invite') {
         chips.push(`<span class="meta-chip">🔗 ${window.escapeHTML(window.t('testSourceInvite', {}, lang))}</span>`);
     }

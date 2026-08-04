@@ -39,6 +39,7 @@ Object.assign(window, {
     openKickTesterModal,
     closeKickTesterModal,
     toggleKickReasonOther,
+    toggleKickUnlinkHint,
     openSyncModal,
     closeSyncModal,
     openProtectionCenter,

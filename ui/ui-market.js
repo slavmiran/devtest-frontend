@@ -8134,6 +8134,106 @@ function _getDossierProjectDisplayName(ownedProject) {
     ).trim() || window.t('unknownLabel', {}, lang);
 }
 
+function _resolveDossierRelationPair(rel, options) {
+    options = options || {};
+    const myName = String(rel && rel.my_app || '').trim();
+    const theirName = String(rel && rel.their_app || '').trim();
+    const contextAppId = Number(options.contextAppId || 0);
+    const contextProject = options.contextProject || null;
+    const testerProjects = Array.isArray(options.testerProjects) ? options.testerProjects : [];
+
+    let myAppId = Number(rel && rel.my_app_id || 0);
+    let theirAppId = Number(rel && rel.their_app_id || 0);
+    let myIcon = String(rel && rel.my_app_icon_url || '');
+    let theirIcon = String(rel && rel.their_app_icon_url || '');
+
+    let myProject = null;
+    if (myAppId > 0 && Array.isArray(myProjects)) {
+        myProject = myProjects.find(function(item) {
+            return Number(item.id) === myAppId;
+        }) || null;
+    }
+    if (!myProject && contextProject && myName && String(contextProject.name || '') === myName) {
+        myProject = contextProject;
+    }
+    if (!myProject && contextAppId > 0 && Array.isArray(myProjects)) {
+        myProject = myProjects.find(function(item) {
+            return Number(item.id) === contextAppId;
+        }) || null;
+    }
+    if (!myProject && myName && Array.isArray(myProjects)) {
+        myProject = myProjects.find(function(item) {
+            return String(item.name || '') === myName;
+        }) || null;
+    }
+    if (myProject) {
+        myAppId = Number(myProject.id || myProject.app_id || myAppId || 0);
+        if (!myIcon) myIcon = myProject.icon_url || '';
+    }
+
+    let theirProject = null;
+    if (theirAppId > 0) {
+        theirProject = testerProjects.find(function(item) {
+            return Number(item.app_id) === theirAppId;
+        }) || null;
+    }
+    if (!theirProject && theirName) {
+        theirProject = testerProjects.find(function(item) {
+            return _getDossierProjectDisplayName(item) === theirName
+                || String(item.name || '') === theirName;
+        }) || null;
+    }
+    if (theirProject) {
+        theirAppId = Number(theirProject.app_id || theirAppId || 0);
+        if (!theirIcon) theirIcon = theirProject.icon_url || '';
+    }
+
+    if (!(myAppId > 0) && contextAppId > 0) {
+        myAppId = contextAppId;
+    }
+    const isPrimary = contextAppId > 0 && myAppId > 0 && myAppId === contextAppId;
+
+    return {
+        myAppId: myAppId,
+        theirAppId: theirAppId,
+        myName: myName || window.t('unknownLabel', {}, lang),
+        theirName: theirName || window.t('unknownLabel', {}, lang),
+        myIcon: myIcon,
+        theirIcon: theirIcon,
+        isPrimary: isPrimary,
+    };
+}
+
+function _renderDossierLinkedExchangeCard(rel, options) {
+    options = options || {};
+    const pair = _resolveDossierRelationPair(rel, options);
+    const testerId = Number(options.testerId || 0);
+    const cardClass = 'dossier-linked-exchange-card' + (pair.isPrimary ? ' is-primary-link' : '');
+    const canOpenBalance = pair.myAppId > 0 && testerId > 0 && typeof openMutualBalanceModal === 'function';
+    const safeMy = window.escapeHTML(pair.myName);
+    const safeTheir = window.escapeHTML(pair.theirName);
+    const openAttrs = canOpenBalance
+        ? ` onclick="event.stopPropagation(); openMutualBalanceModal(${pair.myAppId}, event, { context: 'projects', projectId: ${pair.myAppId}, testerId: ${testerId}, myAppName: '${String(pair.myName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', theirAppName: '${String(pair.theirName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}' })"`
+        : '';
+    const tag = canOpenBalance ? 'button' : 'div';
+    const typeAttr = canOpenBalance ? ' type="button"' : '';
+
+    return `<${tag}${typeAttr} class="${cardClass}"${openAttrs}>` +
+        `<div class="dossier-linked-exchange-inner">` +
+            `<div class="dossier-linked-exchange-side">` +
+                renderIcon(pair.myName, pair.myIcon) +
+                `<div class="dossier-linked-exchange-name notranslate">${safeMy}</div>` +
+            `</div>` +
+            `<div class="dossier-linked-exchange-arrow">↔</div>` +
+            `<div class="dossier-linked-exchange-side">` +
+                renderIcon(pair.theirName, pair.theirIcon) +
+                `<div class="dossier-linked-exchange-name notranslate">${safeTheir}</div>` +
+            `</div>` +
+        `</div>` +
+        `<div class="dossier-linked-exchange-caption">${window.escapeHTML(window.t('mutualBalanceShort', {}, lang))}</div>` +
+    `</${tag}>`;
+}
+
 function _resolveDossierOwnedProjects(tester, testerProjects) {
     const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
     let relevant = _normalizeDossierProjectsList(testerProjects);
@@ -8202,6 +8302,9 @@ function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProje
     let cardClass = 'dossier-owned-project-card';
     if (isArchivedLike) {
         cardClass += ' is-archived';
+    }
+    if (isLinkedProject) {
+        cardClass += ' is-primary-link';
     }
     const innerOpen = isArchivedLike
         ? '<div class="' + cardClass + '" style="cursor:default;">'
@@ -8449,7 +8552,7 @@ async function openDossierModal(username, testerId, appId) {
     const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
     const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
     const canReward = likesAvailable > 0 && !alreadyLiked;
-    const canDeleteFromProject = !!tester && !!project && !!appId && testingDay > 0 && testingDay <= 7;
+    const canDeleteFromProject = !!tester && !!project && !!appId && testingDay > 0;
     const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project
         && marketCandidate.market_kind !== 'mutual-return';
     const takeFromShowcaseDisabled = !!(marketCandidate && marketCandidate.has_pending_offer);
@@ -8500,7 +8603,6 @@ async function openDossierModal(username, testerId, appId) {
     if (relations.length > 0) {
         relationsHtml = '<div class="dossier-relations-list" style="display:flex; flex-direction:column; gap:8px;">';
         relations.forEach(function(rel) {
-            let relText = '';
             function formatRelationAppName(name, status) {
                 const escapedName = window.escapeHTML(name);
                 if (status === 'completed' || status === 'archived') {
@@ -8513,8 +8615,17 @@ async function openDossierModal(username, testerId, appId) {
             const theirAppFormatted = rel.their_app ? formatRelationAppName(rel.their_app, rel.their_app_status) : '';
 
             if (rel.type === 'mutual') {
-                relText = window.t('dossierRelationMutual', { my_app: myAppFormatted, their_app: theirAppFormatted }, lang);
-            } else if (rel.type === 'direct_they_test_me') {
+                relationsHtml += _renderDossierLinkedExchangeCard(rel, {
+                    testerId: testerId,
+                    contextAppId: appId,
+                    contextProject: project,
+                    testerProjects: relevantTesterProjects,
+                });
+                return;
+            }
+
+            let relText = '';
+            if (rel.type === 'direct_they_test_me') {
                 relText = window.t('dossierRelationTheyTestMe', { my_app: myAppFormatted }, lang);
             } else if (rel.type === 'direct_i_test_them') {
                 relText = window.t('dossierRelationITestThem', { their_app: theirAppFormatted }, lang);
@@ -8549,6 +8660,14 @@ async function openDossierModal(username, testerId, appId) {
         const sourceMeta = getTesterSourceMeta(tester.join_type);
         const sourceText = window.escapeHTML(sourceMeta.icon + ' ' + sourceMeta.label);
         const actualSkips = Math.max(0, Math.max(0, testingDay - 1) - Number(tester.checkins_count || 0));
+        const consecutiveSkips = Number(tester.consecutive_skips != null
+            ? tester.consecutive_skips
+            : (typeof calculateConsecutiveSkips === 'function'
+                ? calculateConsecutiveSkips(Object.assign({}, tester, {
+                    testing_days: testingDay,
+                    skips_count: actualSkips,
+                }))
+                : 0));
         html += `<div style="margin-bottom: 16px;">
             <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierProjectTitle}</div>
             <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
@@ -8556,6 +8675,7 @@ async function openDossierModal(username, testerId, appId) {
                 <br>${t.dossierTestingDay.replace('{day}', Math.min(testingDay, 14))}
                 <br>${window.t('dossierCheckins', { count: tester.checkins_count || 0 }, lang)}
                 <br>${t.dossierMissedDays.replace('{count}', actualSkips)}
+                <br>${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}
                 ${startDateStr ? '<br>' + t.dossierStartDate.replace('{date}', startDateStr) : ''}
                 ${expectedFinish ? '<br>' + t.dossierExpectedFinish.replace('{date}', expectedFinish) : ''}
                 <br>${t.dossierLastCheck.replace('{status}', lastCheckStatus)}

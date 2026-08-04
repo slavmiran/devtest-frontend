@@ -303,9 +303,18 @@ function renderProjects(force) {
         let testerRowsHtml = '';
         if (regularTesters.length > 0) {
             regularTesters.forEach((tester) => {
+                const joinType = String(tester.join_type || 'invite').toLowerCase();
+                const reciprocalAppId = Number(tester.reciprocal_app_id || 0);
+                const isMutualLike = joinType === 'mutual' || joinType === 'prelaunch';
+                const isBrokenReciprocal = isMutualLike && reciprocalAppId <= 0;
+                if (isBrokenReciprocal
+                    && typeof isBrokenTesterDismissed === 'function'
+                    && isBrokenTesterDismissed(project.id, tester.tester_id)) {
+                    return;
+                }
+
                 let nameHtml = '';
                 let cleanUsername = '';
-                const joinType = String(tester.join_type || 'invite').toLowerCase();
                 const isContractTester = joinType === 'bounty';
                 const isInviteLikeTester = joinType === 'direct' || joinType === 'invite';
                 let testerPrefixHtml = '';
@@ -334,12 +343,11 @@ function renderProjects(force) {
                 }
 
                 let statusHtml = '';
-                let showBell = false;
                 let testerStatusClass = 'is-red';
                 let testerStatusIcon = '🔴';
                 let testerStatusText = t.statusNotOpened;
                 if (!tester.last_check_date) {
-                    showBell = true;
+                    // keep default red / not opened
                 } else if (tester.last_check_date === today) {
                     testerStatusClass = 'is-green';
                     testerStatusIcon = '🟢';
@@ -354,24 +362,37 @@ function renderProjects(force) {
                         testerStatusClass = 'is-orange';
                         testerStatusIcon = '🟠';
                         testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
-                        showBell = false;
                     } else {
                         testerStatusClass = 'is-red';
                         testerStatusIcon = '🔴';
                         testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
-                        showBell = true;
                     }
                 }
                 statusHtml = `<span class="tester-status ${testerStatusClass}">${testerStatusIcon} ${window.escapeHTML(testerStatusText)}</span>`;
 
-                let bellHtml = '';
-                if (showBell && cleanUsername) {
-                    const deepLink = buildTesterReminderDeepLink(project.id);
-                    const msg = window.t('bellNotifyMsg', {
-                        app_name: project.name || window.t('unknownLabel', {}, lang),
-                        deep_link: deepLink,
-                    }, lang);
-                    bellHtml = `<a href="javascript:void(0);" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${escapeInlineJsString(cleanUsername)}?text=${escapeInlineJsString(encodeURIComponent(msg))}'); return false;" class="tester-icon-action">🔔</a>`;
+                const consecutiveSkips = Number(tester.consecutive_skips != null
+                    ? tester.consecutive_skips
+                    : (typeof calculateConsecutiveSkips === 'function'
+                        ? calculateConsecutiveSkips(tester)
+                        : 0));
+                let warningHtml = '';
+                if (consecutiveSkips >= 3) {
+                    warningHtml = `<span class="tester-icon-action" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}">⚠️</span>`;
+                }
+
+                let brokenHtml = '';
+                if (isBrokenReciprocal) {
+                    let partnerAppName = String(tester.reciprocal_app_name || '').trim();
+                    if (!partnerAppName && Array.isArray(myTests)) {
+                        const partnerTest = myTests.find(function(item) {
+                            return Number(item.owner_id || 0) === Number(tester.tester_id || 0);
+                        });
+                        if (partnerTest) partnerAppName = String(partnerTest.name || '').trim();
+                    }
+                    if (!partnerAppName) {
+                        partnerAppName = window.t('unknownLabel', {}, lang);
+                    }
+                    brokenHtml = `<span class="tester-icon-action" onclick="event.stopPropagation(); openBrokenReciprocalPopup(${Number(project.id)}, ${Number(tester.tester_id)}, '${escapeInlineJsString(partnerAppName)}')">💔</span>`;
                 }
 
                 let screenshotDayHtml = '';
@@ -392,7 +413,8 @@ function renderProjects(force) {
                         <div class="tester-row-main">
                             ${nameHtml}
                             ${screenshotDayHtml}
-                            ${bellHtml}
+                            ${warningHtml}
+                            ${brokenHtml}
                             ${karmaHtml}
                         </div>
                         <div class="tester-row-meta">
@@ -846,7 +868,12 @@ function overtimeContactOwner() {
     openTelegramProfile(_overtimeTest.owner_username);
 }
 
-function openKickTesterModal(appId, testerId, event) {
+function openKickTesterModal(appId, testerId, event, options) {
+    if (event && typeof event === 'object' && !event.preventDefault && (event.forceUnlink != null || event.unlinkReciprocal != null)) {
+        options = event;
+        event = null;
+    }
+    options = options || {};
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -871,19 +898,20 @@ function openKickTesterModal(appId, testerId, event) {
     const checkedToday = !!lastCheck && lastCheck === todayIso;
     const realizedDays = checkedToday ? testingDays : Math.max(0, testingDays - 1);
     const skipsCount = Math.max(0, Math.min(14, realizedDays) - Math.min(14, checkinCount));
+    const consecutiveSkips = Number(tester.consecutive_skips != null
+        ? tester.consecutive_skips
+        : (typeof calculateConsecutiveSkips === 'function'
+            ? calculateConsecutiveSkips(tester)
+            : 0));
     const joinType = String(tester.join_type || 'invite').toLowerCase();
-    if (testingDays > 7) {
-        if (tg.showAlert) tg.showAlert(window.t('kickBlockedDesc', {}, lang));
-        else showToast(window.t('kickBlockedDesc', {}, lang));
-        return;
-    }
+    // Kick eligibility is decided by the backend (adaptive kick). Do not hard-block after day 7 on the client.
 
     const bountyPerTester = Number(project.bounty_per_tester || 0);
     const holdBonus = bountyPerTester > 0 ? bountyPerTester * 0.35 : 0;
     const dailyPool = bountyPerTester > 0 ? bountyPerTester * 0.65 : 0;
     const rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
     const dailyBurn = Math.max(0, dailyPool - (checkinCount * rewardPerCheckin));
-    const isDisciplinaryKick = skipsCount >= 3;
+    const isDisciplinaryKick = skipsCount >= 3 || consecutiveSkips >= 3;
     const isBountyJoin = joinType === 'bounty' && bountyPerTester > 0;
     const joinTypeLabelKey = joinType === 'bounty'
         ? 'kickJoinTypeBounty'
@@ -972,10 +1000,25 @@ function openKickTesterModal(appId, testerId, event) {
             `<div class="detail-section-title">${window.escapeHTML(window.t('kickTesterStats', {}, lang))}</div>` +
             `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
                 `<div>${window.escapeHTML(window.t('kickTesterDays', { days: testingDays }, lang))}</div>` +
-                `<div>${window.escapeHTML(window.t('kickTesterSkips', { skips: skipsCount }, lang))}</div>` +
                 `<div>${window.escapeHTML(window.t('kickTesterCheckins', { checkins: checkinCount }, lang))}</div>` +
+                `<div>${window.escapeHTML(window.t('kickTesterSkips', { skips: skipsCount }, lang))}</div>` +
+                `<div>${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}</div>` +
             `</div>` +
         `</div>`;
+
+    const unlinkCheckbox = document.getElementById('kick-unlink-reciprocal');
+    if (unlinkCheckbox) {
+        const forceUnlink = options.forceUnlink === true || options.unlinkReciprocal === true;
+        unlinkCheckbox.checked = options.unlinkReciprocal === false ? false : true;
+        if (forceUnlink) {
+            unlinkCheckbox.checked = true;
+        }
+        unlinkCheckbox.disabled = !!forceUnlink;
+    }
+    if (typeof toggleKickUnlinkHint === 'function') {
+        toggleKickUnlinkHint();
+    }
+
     modal.classList.add('active');
 
     // Live countdown for grace period
@@ -1005,6 +1048,14 @@ function closeKickTesterModal(event) {
     if (event && event.target !== modal) return;
     modal.classList.remove('active');
     _kickTarget = null;
+    const unlinkCheckbox = document.getElementById('kick-unlink-reciprocal');
+    if (unlinkCheckbox) {
+        unlinkCheckbox.disabled = false;
+        unlinkCheckbox.checked = true;
+    }
+    if (typeof toggleKickUnlinkHint === 'function') {
+        toggleKickUnlinkHint();
+    }
 }
 
 function toggleKickReasonOther() {
@@ -1015,6 +1066,15 @@ function toggleKickReasonOther() {
     if (select.value !== 'other') {
         other.value = '';
     }
+}
+
+function toggleKickUnlinkHint() {
+    const checkbox = document.getElementById('kick-unlink-reciprocal');
+    const hint = document.getElementById('kick-unlink-hint');
+    if (!hint) return;
+    const showHint = !!(checkbox && !checkbox.checked);
+    hint.style.display = showHint ? 'block' : 'none';
+    hint.classList.toggle('is-visible', showHint);
 }
 
 

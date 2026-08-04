@@ -40,18 +40,19 @@
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260802-group-chip-v2"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-tests.js?v=20260804-group-chip-buffer-fix"></script>
-    <script src="./ui/ui-projects.js?v=20260804-chooser-v4"></script>
-    <script src="./ui/ui-market.js?v=20260803-bounty-apps-v7"></script>
+    <script src="./ui/ui-tests.js?v=20260804-mutual-p2"></script>
+    <script src="./ui/ui-projects.js?v=20260804-mutual-p2"></script>
+    <script src="./ui/ui-market.js?v=20260804-mutual-p2"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
 <script src="./js/app-config.js?v=20260803-bounty-apps-v7"></script>
-<script src="./js/app-api.js?v=20260803-bounty-apps-v7"></script>
+<script src="./js/app-api.js?v=20260804-mutual-p2"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20260802-homescreen-v3"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
-<script src="./js/app-features.js?v=20260803-bounty-apps-v7"></script>
+<script src="./js/app-features.js?v=20260804-mutual-p2"></script>
+<script src="./js/mutual-exchange-ui.js?v=20260804-mutual-p2"></script>
 <script src="./js/bounty-applications.js?v=20260803-bounty-apps-v7"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260802-gt-draft-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20260803-payment-flow-v7"></script>
@@ -71,6 +72,7 @@
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260803-bounty-apps-v7">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/dossier-modal.css?v=20260804-hybrid-v2">
+    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260804-mutual-p2">
     <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
@@ -1918,6 +1920,17 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 data-i18n="kickModalTitle">⚠️ Исключить тестера</h3>
             <div id="kick-modal-body" style="margin-bottom: 14px;"></div>
+            <div class="kick-unlink-box details-block">
+                <label class="kick-unlink-row">
+                    <input type="checkbox" id="kick-exclude-locked" checked disabled>
+                    <span data-i18n="kickUnlinkExcludeLocked">Исключить тестера из моего проекта</span>
+                </label>
+                <label class="kick-unlink-row">
+                    <input type="checkbox" id="kick-unlink-reciprocal" checked onchange="toggleKickUnlinkHint()">
+                    <span data-i18n="kickUnlinkReciprocalLabel">Разрушить взаимность (Отменить моё тестирование его проекта)</span>
+                </label>
+                <div id="kick-unlink-hint" class="kick-unlink-hint" data-i18n="kickUnlinkReciprocalHint">Вы исключаете тестера, но добровольно продолжаете тестировать его приложение.</div>
+            </div>
             <div class="form-group" style="margin-bottom: 12px;">
                 <label class="form-label" data-i18n="kickReasonLabel">Причина исключения</label>
                 <select id="kick-reason-select" class="form-input" onchange="toggleKickReasonOther()">
@@ -1932,6 +1945,14 @@
                 <button class="btn btn-secondary" style="flex: 1;" onclick="closeKickTesterModal()" data-i18n="btnCancel">Отмена</button>
                 <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" onclick="confirmKickTester()" data-i18n="kickConfirmBtn">Исключить тестера</button>
             </div>
+        </div>
+    </div>
+
+    <div id="mutual-balance-modal" class="modal-overlay" onclick="closeMutualBalanceModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 data-i18n="mutualBalanceTitle">🤝 Статус взаимного обмена</h3>
+            <div id="mutual-balance-body" style="margin-bottom: 8px;"></div>
+            <button class="btn btn-secondary" style="width: 100%;" onclick="closeMutualBalanceModal()" data-i18n="btnCancel">Отмена</button>
         </div>
     </div>
 

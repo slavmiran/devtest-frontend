@@ -3047,10 +3047,16 @@ async function confirmJoinBounty() {
 async function confirmDropTest() {
     if (!_dropTestAppId) return;
     try {
+        const unlinkReciprocal = (typeof consumePendingUnlinkReciprocal === 'function')
+            ? consumePendingUnlinkReciprocal(true)
+            : true;
         const response = await fetch(`${API_BASE}/tests/${_dropTestAppId}/drop`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({ tester_id: userId }))
+            body: JSON.stringify(withInitData({
+                tester_id: userId,
+                unlink_reciprocal: !!unlinkReciprocal,
+            }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -3147,6 +3153,9 @@ async function confirmLeaveMutual(isJustified) {
                 tester_id: userId,
                 leave_reason: reasonPayload,
                 is_justified: !!isJustified,
+                unlink_reciprocal: (typeof consumePendingUnlinkReciprocal === 'function')
+                    ? !!consumePendingUnlinkReciprocal(true)
+                    : true,
             }))
         });
         var data = await response.json();
@@ -3215,6 +3224,9 @@ async function confirmKickTester() {
             body: JSON.stringify(withInitData({
                 owner_id: userId,
                 leave_reason: reasonPayload,
+                unlink_reciprocal: (typeof getKickUnlinkReciprocal === 'function')
+                    ? !!getKickUnlinkReciprocal()
+                    : true,
             }))
         });
         var data = await response.json();
@@ -3224,6 +3236,17 @@ async function confirmKickTester() {
             }
             if (typeof window.renderProjects === 'function') {
                 window.renderProjects(true);
+            }
+            var errorCode = typeof getBackendErrorCode === 'function'
+                ? getBackendErrorCode(data)
+                : String((data && (data.code || data.error_code || data.message)) || '');
+            if (errorCode === 'kick_blocked_active_tester') {
+                if (typeof showKickBlockedDialog === 'function') {
+                    showKickBlockedDialog((data && data.details) || data);
+                } else {
+                    showToast(window.t('kickBlockedActiveTester', {}, lang));
+                }
+                return;
             }
             showToast(getApiErrorMessage(data, 'loadError'));
             return;

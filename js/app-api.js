@@ -1378,6 +1378,14 @@ function _mapTestsFromApi(data) {
             last_owner_activity: app.last_owner_activity || null,
             checkins_count: resolvedCheckinsCount,
             skips_count: resolvedSkipsCount,
+            consecutive_skips: Number(app.consecutive_skips != null ? app.consecutive_skips : 0),
+            is_mutual_debt: !!app.is_mutual_debt,
+            partner_testing_days: Number(app.partner_testing_days || 0),
+            partner_skips: Number(app.partner_skips || 0),
+            partner_consecutive_skips: Number(app.partner_consecutive_skips || 0),
+            partner_checkins: Number(app.partner_checkins || 0),
+            partner_active: app.partner_active === true,
+            partner_progress_status: app.partner_progress_status || '',
             last_sync_date: app.last_sync_date || null,
             testing_days: testingDays,
             exact_daily_reward: typeof app.exact_daily_reward !== 'undefined' ? Number(app.exact_daily_reward) : 0,
@@ -1910,6 +1918,11 @@ function _mapProjectsFromApi(data) {
                 tester_avatar_url: tester.avatar_url || null,
                 checkins_count: Number(tester.checkins_count || 0),
                 skips_count: Number(tester.skips_count || 0),
+                consecutive_skips: Number(tester.consecutive_skips != null
+                    ? tester.consecutive_skips
+                    : (typeof calculateConsecutiveSkips === 'function'
+                        ? calculateConsecutiveSkips(tester)
+                        : 0)),
                 is_external: !!tester.is_external,
                 is_guest_tester: !!tester.is_guest_tester,
                 external_source: tester.external_source || '',
