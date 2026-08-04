@@ -35,14 +35,14 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260804-dossier-v6"></script>
-<script src="./i18n/en.js?v=20260804-dossier-v6"></script>
+<script src="./i18n/ru.js?v=20260804-link-status-v1"></script>
+<script src="./i18n/en.js?v=20260804-link-status-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260802-group-chip-v2"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-tests.js?v=20260804-mutual-p4"></script>
-    <script src="./ui/ui-projects.js?v=20260804-mutual-p4"></script>
-    <script src="./ui/ui-market.js?v=20260804-dossier-v6"></script>
+    <script src="./ui/ui-tests.js?v=20260804-buffer-collapse-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260804-link-status-v1"></script>
+    <script src="./ui/ui-market.js?v=20260804-link-status-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
 <script src="./js/app-config.js?v=20260803-bounty-apps-v7"></script>
@@ -52,7 +52,7 @@
     <script src="./js/app-actions.js?v=20260802-homescreen-v3"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
 <script src="./js/app-features.js?v=20260804-hybrid-already-v1"></script>
-<script src="./js/mutual-exchange-ui.js?v=20260804-mutual-p4"></script>
+<script src="./js/mutual-exchange-ui.js?v=20260804-link-status-v1"></script>
 <script src="./js/bounty-applications.js?v=20260803-bounty-apps-v7"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260802-gt-draft-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20260803-payment-flow-v7"></script>
@@ -68,11 +68,11 @@
     <link rel="stylesheet" href="./css/feedback-center.css?v=20260716-feedback-toolbar-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260725-ppc-footer-tone">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260802-group-chip-v1">
-    <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./css/tests-offers.css?v=20260803-bounty-apps-v7">
+    <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260804-link-status-v1">
+    <link rel="stylesheet" href="./css/tests-offers.css?v=20260804-buffer-collapse-v1">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/dossier-modal.css?v=20260804-dossier-v6">
-    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260804-dossier-v6">
+    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260804-link-status-v1">
     <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
@@ -323,14 +323,17 @@
             </div>
         </div>
 
-        <div id="pending-release-section" class="pending-release-section" style="display:none;">
-            <div class="pending-release-section__header">
-                <div>
+        <div id="pending-release-section" class="pending-release-section is-collapsed" style="display:none;">
+            <button type="button" class="pending-release-section__header" onclick="togglePendingReleaseSection()" aria-expanded="false" aria-controls="pending-release-scroll-wrap">
+                <div class="pending-release-section__titles">
                     <h3 id="t-pendingReleaseSectionTitle" data-i18n="pendingReleaseSectionTitle">⏳ Буфер безопасности</h3>
-                    <p id="t-pendingReleaseSectionDesc" data-i18n="pendingReleaseSectionDesc">Дополнительный буфер безопасности «48ч» после активного тестирования.</p>
+                    <p id="t-pendingReleaseSectionDesc" class="pending-release-section__desc" data-i18n="pendingReleaseSectionDesc">Дополнительный буфер безопасности «48ч» после активного тестирования.</p>
                 </div>
-                <span id="pending-release-count" class="offers-count">0</span>
-            </div>
+                <div class="pending-release-section__meta">
+                    <span id="pending-release-count" class="offers-count pending-release-count">0</span>
+                    <span class="pending-release-section__chevron" aria-hidden="true">▼</span>
+                </div>
+            </button>
             <div id="pending-release-scroll-wrap" class="pending-release-scroll-wrap">
                 <div id="pending-release-list" class="horizontal-scroll pending-release-scroll"></div>
             </div>
@@ -1973,11 +1976,29 @@
     </div>
 
     <div id="mutual-balance-modal" class="modal-overlay" onclick="closeMutualBalanceModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-content leave-sheet" onclick="event.stopPropagation()">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h3 data-i18n="mutualBalanceTitle">🤝 Статус взаимного обмена</h3>
+            <h3 id="mutual-balance-title" data-i18n="mutualBalanceTitle">🤝 Статус взаимного обмена</h3>
             <div id="mutual-balance-body" style="margin-bottom: 8px;"></div>
             <button class="btn btn-secondary" style="width: 100%;" onclick="closeMutualBalanceModal()" data-i18n="btnCancel">Отмена</button>
+        </div>
+    </div>
+
+    <div id="bell-remind-overlay" class="modal-overlay leave-confirm-overlay" onclick="closeBellRemindOverlay(event)">
+        <div class="modal-content leave-confirm-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h3 data-i18n="bellRemindTitle">🔔 Напомнить в Telegram</h3>
+            <div id="bell-remind-person" class="link-status-person bell-remind-person"></div>
+            <div class="bell-remind-lang-row" role="group" aria-label="Language">
+                <button type="button" id="bell-remind-lang-ru" class="reason-chip is-selected" onclick="setBellRemindLang('ru')">RU</button>
+                <button type="button" id="bell-remind-lang-en" class="reason-chip" onclick="setBellRemindLang('en')">EN</button>
+            </div>
+            <label id="bell-remind-lang-label" class="form-label" data-i18n="bellRemindPreviewLabel">Текст сообщения</label>
+            <textarea id="bell-remind-text" class="form-input bell-remind-text" rows="5" readonly></textarea>
+            <div class="leave-modal-actions" style="margin-top: 12px;">
+                <button type="button" class="btn leave-cta leave-cta--safe" onclick="confirmBellRemindSend()" data-i18n="bellRemindSendBtn">Далее — открыть ЛС</button>
+                <button type="button" class="btn btn-secondary" onclick="closeBellRemindOverlay()" data-i18n="leaveConfirmBackBtn">Назад</button>
+            </div>
         </div>
     </div>
 

@@ -8630,7 +8630,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         ? formatSkipsLabel
         : function(n) { return String(n); };
     const openAttrs = canOpenBalance
-        ? ` onclick="event.stopPropagation(); openMutualBalanceModal(${pair.myAppId}, event, { context: 'projects', projectId: ${pair.myAppId}, testerId: ${testerId}, myAppName: '${String(pair.myName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', theirAppName: '${String(pair.theirName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', myIconUrl: '${String(pair.myIcon || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', theirIconUrl: '${String(pair.theirIcon || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}' })"`
+        ? ` onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${pair.myAppId}, ${testerId}, event)"`
         : '';
     const tag = canOpenBalance ? 'button' : 'div';
     const typeAttr = canOpenBalance ? ' type="button"' : '';

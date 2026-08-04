@@ -1646,6 +1646,7 @@ function renderTests(force) {
     let activeCount = 0;
     let doneCount = 0;
     let pendingCount = 0;
+    let pendingGrantCount = 0;
     const externalGuestTestsCount = renderExternalGuestTestsSection();
 
     myTests.forEach((test) => {
@@ -2090,6 +2091,10 @@ function renderTests(force) {
             doneCount++;
         } else if (shouldShowInPendingList) {
             card.innerHTML = cardContent;
+            if (test.isReadyToClaim) {
+                card.dataset.grantReady = '1';
+                pendingGrantCount++;
+            }
             if (pendingList) pendingList.appendChild(card);
             pendingCount++;
         } else if (shouldShowInActiveList) {
@@ -2099,8 +2104,31 @@ function renderTests(force) {
         }
     });
 
-    if (pendingCountNode) pendingCountNode.innerText = pendingCount;
-    if (pendingSection) pendingSection.style.display = pendingCount > 0 ? 'block' : 'none';
+    if (pendingList && pendingList.children.length > 1) {
+        const pendingCards = Array.from(pendingList.children);
+        pendingCards.sort(function(a, b) {
+            return Number(b.dataset.grantReady || 0) - Number(a.dataset.grantReady || 0);
+        });
+        pendingCards.forEach(function(card) {
+            pendingList.appendChild(card);
+        });
+    }
+
+    if (pendingCountNode) {
+        pendingCountNode.innerText = pendingCount;
+        pendingCountNode.classList.toggle('has-grant-attention', pendingGrantCount > 0);
+    }
+    if (pendingSection) {
+        pendingSection.style.display = pendingCount > 0 ? 'block' : 'none';
+        pendingSection.classList.toggle('has-grant-attention', pendingGrantCount > 0);
+        const pendingHeader = pendingSection.querySelector('.pending-release-section__header');
+        if (pendingHeader) {
+            pendingHeader.setAttribute(
+                'aria-expanded',
+                pendingSection.classList.contains('is-collapsed') ? 'false' : 'true'
+            );
+        }
+    }
     if (pendingScrollWrap) pendingScrollWrap.classList.toggle('is-single', pendingCount <= 1);
 
     _updateDoneSectionVisibility(doneCount);
@@ -2200,6 +2228,15 @@ function _updateDoneSectionVisibility(doneCount) {
     doneSection.style.display = (isTestsActive && doneCount > 0) ? 'block' : 'none';
 }
 
+function togglePendingReleaseSection() {
+    var section = document.getElementById('pending-release-section');
+    if (!section) return;
+    var collapsed = section.classList.toggle('is-collapsed');
+    var header = section.querySelector('.pending-release-section__header');
+    if (header) header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
 Object.assign(window, {
     renderEditCreatedAtMeta,
     renderEvents,
@@ -2224,6 +2261,7 @@ Object.assign(window, {
     getMutualOfferProjectChoicesForOwner,
     isExternalNormalCheckinDay,
     getExternalConfirmButtonClasses,
+    togglePendingReleaseSection,
 });
 
 function renderCheckinRewardHint(test, testingDay, lang) {

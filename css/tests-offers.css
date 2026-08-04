@@ -92,7 +92,25 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 8px;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pending-release-section__header:active {
+    opacity: 0.85;
+}
+
+.pending-release-section__titles {
+    min-width: 0;
+    flex: 1;
 }
 
 .pending-release-section__header h3 {
@@ -102,10 +120,82 @@
     color: var(--text-color);
 }
 
-.pending-release-section__header p {
+.pending-release-section__desc {
     margin: 4px 0 0;
     font-size: 12px;
     color: var(--hint-color);
+}
+
+.pending-release-section__meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.pending-release-count {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1.5px solid transparent;
+    line-height: 1.3;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.pending-release-count.has-grant-attention {
+    color: #ffb84d;
+    border-color: rgba(255, 149, 0, 0.85);
+    box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.45);
+    animation: pending-release-count-pulse 1.4s ease-in-out infinite;
+}
+
+.pending-release-count.has-grant-attention::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ff9500;
+    box-shadow: 0 0 0 1.5px rgba(28, 28, 30, 0.95);
+    animation: dot-blink 1s infinite;
+}
+
+.pending-release-section__chevron {
+    font-size: 11px;
+    color: var(--hint-color);
+    line-height: 1;
+    transition: transform 0.2s ease;
+}
+
+.pending-release-section.is-collapsed .pending-release-section__header {
+    margin-bottom: 0;
+}
+
+.pending-release-section.is-collapsed .pending-release-section__desc,
+.pending-release-section.is-collapsed .pending-release-scroll-wrap {
+    display: none;
+}
+
+.pending-release-section:not(.is-collapsed) .pending-release-section__chevron {
+    transform: rotate(180deg);
+}
+
+@keyframes pending-release-count-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.35);
+        border-color: rgba(255, 149, 0, 0.55);
+    }
+    50% {
+        box-shadow: 0 0 0 5px rgba(255, 149, 0, 0);
+        border-color: rgba(255, 184, 77, 1);
+    }
 }
 
 .pending-release-section__hint {

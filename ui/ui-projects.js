@@ -377,7 +377,7 @@ function renderProjects(force) {
                         : 0));
                 let warningHtml = '';
                 if (consecutiveSkips >= 3) {
-                    warningHtml = `<span class="tester-icon-action" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}">⚠️</span>`;
+                    warningHtml = `<span class="tester-icon-action tester-warn-action" role="button" tabindex="0" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${Number(project.id)}, ${Number(tester.tester_id)}, event)">⚠️</span>`;
                 }
 
                 let brokenHtml = '';
