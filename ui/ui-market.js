@@ -4107,6 +4107,7 @@ async function openLeaveMutualModal(appId, event) {
     _leaveMutualAppId = appId;
     _leaveMutualStats = null;
     window._leaveJustifiedAllowed = false;
+    window._leaveKarmaBurnPreview = 0;
     if (reasonSelect) reasonSelect.value = 'inactive_partner';
     if (reasonOther) {
         reasonOther.value = '';
@@ -4114,6 +4115,9 @@ async function openLeaveMutualModal(appId, event) {
     }
     if (typeof resetLeaveReasonChips === 'function') {
         resetLeaveReasonChips('inactive_partner');
+    }
+    if (typeof cancelLeaveMutualConfirm === 'function') {
+        cancelLeaveMutualConfirm();
     }
     if (confirmBtn) {
         confirmBtn.classList.remove('is-justified');
@@ -4136,12 +4140,33 @@ async function openLeaveMutualModal(appId, event) {
         const partnerConsecutive = Number(data.partner_consecutive_skips || 0);
         const justifiedAllowed = !!data.partner_left || partnerSkips >= 3 || partnerConsecutive >= 3;
         window._leaveJustifiedAllowed = justifiedAllowed;
-        const karmaBurn = Math.min(14, Number(data.my_checkins != null ? data.my_checkins : data.my_testing_days || 0)) * 0.1;
+        const myCheckins = Number(data.my_checkins != null ? data.my_checkins : 0);
+        const karmaBurn = Math.min(14, myCheckins) * 0.1;
+        window._leaveKarmaBurnPreview = karmaBurn;
         const partnerLabel = data.partner_username
             ? '@' + String(data.partner_username || '').replace(/^@+/, '')
             : window.t('idLabel', { id: data.partner_id || 0 }, lang);
         const mySkips = Number(data.my_skips || 0);
         const waitCount = Math.max(0, 3 - Math.max(partnerSkips, partnerConsecutive));
+        const grantStillAvailable = mySkips < 3;
+        const partnerRi = data.partner_reliability_index;
+        const partnerKarma = data.partner_karma;
+        const hasPartnerSecondary = (partnerRi != null && partnerRi !== '') || (partnerKarma != null && partnerKarma !== '');
+
+        let partnerSecondaryHtml = '';
+        if (hasPartnerSecondary) {
+            const parts = [];
+            if (partnerRi != null && partnerRi !== '') {
+                parts.push('🛡 ' + window.escapeHTML(String(partnerRi)) + '%');
+            }
+            if (partnerKarma != null && partnerKarma !== '') {
+                parts.push('☯️ ' + window.escapeHTML(String(partnerKarma)));
+            }
+            partnerSecondaryHtml =
+                `<div class="leave-partner-secondary" title="${window.escapeHTML(window.t('leavePartnerSecondaryHint', {}, lang))}">` +
+                    parts.join('<span class="leave-partner-secondary-dot">·</span>') +
+                `</div>`;
+        }
 
         const statusBanner = justifiedAllowed
             ? `<div class="leave-status-banner is-justified">
@@ -4157,9 +4182,19 @@ async function openLeaveMutualModal(appId, event) {
                     }, lang))}</div>
                </div>`;
 
+        const grantBanner = grantStillAvailable
+            ? `<div class="leave-grant-tease">
+                    <div class="leave-grant-tease-title">${window.escapeHTML(window.t('leaveGrantTeaseTitle', {}, lang))}</div>
+                    <div class="leave-grant-tease-desc">${window.escapeHTML(window.t('leaveGrantTeaseDesc', {
+                        skips: mySkips,
+                        max: 3,
+                    }, lang))}</div>
+               </div>`
+            : '';
+
         body.innerHTML = '' +
-            `<div class="leave-modal-stats-grid">` +
-                `<div class="leave-stat-card">` +
+            `<div class="leave-stats-stack">` +
+                `<div class="leave-stat-card leave-stat-card--partner">` +
                     `<div class="leave-stat-card-title">${window.escapeHTML(window.t('leavePartnerTitle', {}, lang))}</div>` +
                     `<div class="leave-stat-partner notranslate">${window.escapeHTML(partnerLabel)}</div>` +
                     `<div class="leave-chip-row">` +
@@ -4169,18 +4204,31 @@ async function openLeaveMutualModal(appId, event) {
                             max: 3,
                         }, lang))}</span>` +
                     `</div>` +
+                    partnerSecondaryHtml +
                     (data.partner_left
                         ? `<div class="leave-chip is-warn" style="margin-top:8px;">${window.escapeHTML(window.t('leavePartnerLeft', {}, lang))}</div>`
                         : '') +
                 `</div>` +
-                `<div class="leave-stat-card">` +
-                    `<div class="leave-stat-card-title">${window.escapeHTML(window.t('leaveMyStatsTitle', {}, lang))}</div>` +
-                    `<div class="leave-chip-row">` +
-                        `<span class="leave-chip">📅 ${window.escapeHTML(window.t('leaveDaysChip', { days: data.my_testing_days || 0 }, lang))}</span>` +
-                        `<span class="leave-chip${mySkips >= 3 ? ' is-warn' : ''}">⚠️ ${window.escapeHTML(window.t('leaveSkipsChip', {
-                            count: mySkips,
-                            max: 3,
-                        }, lang))}</span>` +
+                `<button type="button" class="leave-my-stats-peek" id="leave-my-stats-toggle" aria-expanded="false" onclick="toggleLeaveMyStats()">` +
+                    `<div class="leave-my-stats-peek-glow" aria-hidden="true"></div>` +
+                    `<div class="leave-my-stats-peek-main">` +
+                        `<div class="leave-my-stats-peek-label">${window.escapeHTML(window.t('leaveMyStatsPeekLabel', {}, lang))}</div>` +
+                        `<div class="leave-my-stats-peek-hint">${window.escapeHTML(window.t('leaveMyStatsPeekHint', {}, lang))}</div>` +
+                    `</div>` +
+                    `<span class="leave-my-stats-peek-chevron" aria-hidden="true">⌃</span>` +
+                `</button>` +
+                `<div class="leave-my-stats-panel" id="leave-my-stats-panel" hidden>` +
+                    `<div class="leave-stat-card leave-stat-card--mine">` +
+                        `<div class="leave-stat-card-title">${window.escapeHTML(window.t('leaveMyStatsTitle', {}, lang))}</div>` +
+                        `<div class="leave-chip-row">` +
+                            `<span class="leave-chip">📅 ${window.escapeHTML(window.t('leaveDaysChip', { days: data.my_testing_days || 0 }, lang))}</span>` +
+                            `<span class="leave-chip${mySkips >= 3 ? ' is-warn' : ''}">⚠️ ${window.escapeHTML(window.t('leaveSkipsChip', {
+                                count: mySkips,
+                                max: 3,
+                            }, lang))}</span>` +
+                            `<span class="leave-chip">✅ ${window.escapeHTML(window.t('leaveCheckinsChip', { count: myCheckins }, lang))}</span>` +
+                        `</div>` +
+                        grantBanner +
                     `</div>` +
                 `</div>` +
             `</div>` +
@@ -4190,6 +4238,11 @@ async function openLeaveMutualModal(appId, event) {
             confirmBtn.classList.toggle('is-justified', justifiedAllowed);
             confirmBtn.classList.toggle('is-penalty', !justifiedAllowed);
             confirmBtn.textContent = window.t(justifiedAllowed ? 'leaveJustifiedBtn' : 'leaveAbandonedBtn', {}, lang);
+        }
+        const finalBtn = document.getElementById('leave-confirm-final-btn');
+        if (finalBtn) {
+            finalBtn.classList.toggle('is-justified', justifiedAllowed);
+            finalBtn.classList.toggle('is-penalty', !justifiedAllowed);
         }
     } catch (error) {
         console.error('Leave mutual stats error:', error);
@@ -4205,6 +4258,62 @@ function closeLeaveMutualModal(event) {
     _leaveMutualAppId = null;
     _leaveMutualStats = null;
     window._leaveJustifiedAllowed = false;
+    window._leaveKarmaBurnPreview = 0;
+    if (typeof cancelLeaveMutualConfirm === 'function') {
+        cancelLeaveMutualConfirm();
+    }
+}
+
+function toggleLeaveMyStats() {
+    const panel = document.getElementById('leave-my-stats-panel');
+    const toggle = document.getElementById('leave-my-stats-toggle');
+    if (!panel || !toggle) return;
+    const willOpen = panel.hasAttribute('hidden');
+    if (willOpen) {
+        panel.removeAttribute('hidden');
+        toggle.classList.add('is-open');
+        toggle.setAttribute('aria-expanded', 'true');
+    } else {
+        panel.setAttribute('hidden', '');
+        toggle.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+    }
+    if (window.tg && window.tg.HapticFeedback) {
+        window.tg.HapticFeedback.selectionChanged();
+    }
+}
+
+function requestLeaveMutualConfirm() {
+    const mainFooter = document.getElementById('leave-main-footer');
+    const confirmStep = document.getElementById('leave-confirm-step');
+    const desc = document.getElementById('leave-confirm-desc');
+    const finalBtn = document.getElementById('leave-confirm-final-btn');
+    if (!mainFooter || !confirmStep) return;
+
+    const justified = window._leaveJustifiedAllowed === true;
+    const karma = formatUiAmount(window._leaveKarmaBurnPreview || 0, 1);
+    if (desc) {
+        desc.textContent = justified
+            ? window.t('leaveConfirmDescJustified', {}, lang)
+            : window.t('leaveConfirmDescAbandoned', { karma: karma }, lang);
+    }
+    if (finalBtn) {
+        finalBtn.classList.toggle('is-justified', justified);
+        finalBtn.classList.toggle('is-penalty', !justified);
+        finalBtn.textContent = window.t(justified ? 'leaveConfirmFinalJustified' : 'leaveConfirmFinalAbandoned', {}, lang);
+    }
+    mainFooter.style.display = 'none';
+    confirmStep.style.display = 'block';
+    if (window.tg && window.tg.HapticFeedback) {
+        window.tg.HapticFeedback.impactOccurred('light');
+    }
+}
+
+function cancelLeaveMutualConfirm() {
+    const mainFooter = document.getElementById('leave-main-footer');
+    const confirmStep = document.getElementById('leave-confirm-step');
+    if (mainFooter) mainFooter.style.display = '';
+    if (confirmStep) confirmStep.style.display = 'none';
 }
 
 function selectLeaveReason(buttonEl) {
@@ -8282,12 +8391,80 @@ function _resolveDossierRelationPair(rel, options) {
     };
 }
 
+function _resolveDossierLinkedContractReward(rel, options) {
+    options = options || {};
+    const type = String(rel && rel.type || '');
+    if (type.indexOf('contract') !== 0) return null;
+
+    let bounty = Number(rel && rel.bounty_per_tester || 0);
+    const appId = type.indexOf('i_test_them') !== -1
+        ? Number(rel && rel.their_app_id || 0)
+        : Number(rel && rel.my_app_id || 0);
+
+    if (!(bounty > 0) && appId > 0) {
+        if (type.indexOf('i_test_them') !== -1) {
+            const owned = (Array.isArray(options.testerProjects) ? options.testerProjects : []).find(function(item) {
+                return Number(item && item.app_id || 0) === appId;
+            });
+            bounty = Number(owned && owned.bounty_per_tester || 0);
+            if (!(bounty > 0) && Array.isArray(myTests)) {
+                const mine = myTests.find(function(item) {
+                    return Number(item.id || item.app_id || 0) === appId;
+                });
+                bounty = Number(mine && mine.bounty_per_tester || 0);
+            }
+        } else if (Array.isArray(myProjects)) {
+            const mine = myProjects.find(function(item) {
+                return Number(item.id || item.app_id || 0) === appId;
+            });
+            bounty = Number(mine && mine.bounty_per_tester || 0);
+        }
+    }
+    if (!(bounty > 0)) return null;
+
+    let skips = rel && rel.skips_count != null ? Number(rel.skips_count) : NaN;
+    if (!Number.isFinite(skips) && type.indexOf('i_test_them') !== -1 && appId > 0 && Array.isArray(myTests)) {
+        const mine = myTests.find(function(item) {
+            return Number(item.id || item.app_id || 0) === appId;
+        });
+        if (mine) skips = Number(mine.skips_count || 0);
+    }
+    if (!Number.isFinite(skips)) {
+        const tester = options.tester || null;
+        if (tester && Number(options.contextAppId || 0) === appId) {
+            skips = Number(tester.skips_count != null ? tester.skips_count : 0);
+        } else {
+            skips = 0;
+        }
+    }
+
+    const grantBurned = skips > 3;
+    let amount = bounty;
+    if (!grantBurned && typeof getContractPossibleTotalReward === 'function') {
+        const possible = getContractPossibleTotalReward(bounty);
+        amount = Math.max(bounty, Number(possible && possible.total || bounty));
+    } else if (!grantBurned && typeof getGrantEstimateData === 'function') {
+        const grant = getGrantEstimateData({ skips_count: 0, daily_timeline: '' });
+        amount = bounty + Math.max(0, Number(grant && grant.total || 0));
+    }
+
+    const amountLabel = typeof formatAmountValue === 'function'
+        ? formatAmountValue(amount, 1)
+        : String(Math.round(Number(amount || 0)));
+    return {
+        bounty: bounty,
+        amount: amount,
+        grantBurned: grantBurned,
+        label: (grantBurned ? '' : '~') + amountLabel + ' $BUST',
+    };
+}
+
 function _renderDossierLinkedExchangeCard(rel, options) {
     options = options || {};
     const pair = _resolveDossierRelationPair(rel, options);
     const testerId = Number(options.testerId || 0);
     const tester = options.tester || null;
-    const cardClass = 'linked-project-card' + (pair.isPrimary ? ' is-primary-link' : '');
+    const cardClass = 'linked-project-card is-mutual' + (pair.isPrimary ? ' is-primary-link' : '');
     const canOpenBalance = pair.myAppId > 0 && testerId > 0 && typeof openMutualBalanceModal === 'function';
     const safeMy = window.escapeHTML(pair.myName);
     const safeTheir = window.escapeHTML(pair.theirName);
@@ -8326,13 +8503,19 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const typeAttr = canOpenBalance ? ' type="button"' : '';
 
     return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +
+        `<div class="linked-card-topline">` +
+            `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>` +
+            `<span class="linked-direction">${window.escapeHTML(window.t('linkedDirectionMutual', {}, lang))}</span>` +
+        `</div>` +
         `<div class="linked-mutual-pair">` +
             `<div class="linked-mutual-side">` +
+                `<div class="linked-side-label">${window.escapeHTML(window.t('linkedSideYours', {}, lang))}</div>` +
                 renderIcon(pair.myName, pair.myIcon) +
                 `<div class="linked-mutual-name notranslate">${safeMy}</div>` +
             `</div>` +
             `<div class="linked-mutual-arrow">↔</div>` +
             `<div class="linked-mutual-side">` +
+                `<div class="linked-side-label">${window.escapeHTML(window.t('linkedSideTheirs', {}, lang))}</div>` +
                 renderIcon(pair.theirName, pair.theirIcon) +
                 `<div class="linked-mutual-name notranslate">${safeTheir}</div>` +
             `</div>` +
@@ -8353,48 +8536,108 @@ function _renderDossierLinkedExchangeCard(rel, options) {
 function _renderDossierLinkedSimpleCard(rel, options) {
     options = options || {};
     const type = String(rel && rel.type || '');
+    const iTestThem = type.indexOf('i_test_them') !== -1
+        || String(rel && rel.direction || '') === 'i_test_them';
+    const isContract = type.indexOf('contract') === 0;
+    const isGuest = type.indexOf('guest') === 0;
+
     let badgeKey = 'linkedBadgeDirect';
     let badgeClass = 'is-direct';
-    let appName = '';
-    let iconUrl = '';
-    let appId = 0;
-
-    if (type.indexOf('contract') === 0) {
+    if (isContract) {
         badgeKey = 'linkedBadgeBounty';
         badgeClass = 'is-bounty';
-    } else if (type.indexOf('guest') === 0) {
+    } else if (isGuest) {
         badgeKey = 'linkedBadgeGuest';
         badgeClass = 'is-guest';
     }
 
-    if (type.indexOf('i_test_them') !== -1) {
+    let appName = '';
+    let iconUrl = '';
+    let appId = 0;
+    if (iTestThem) {
         appName = String(rel.their_app || '');
         appId = Number(rel.their_app_id || 0);
         iconUrl = String(rel.their_app_icon_url || '');
+        if ((!iconUrl || !appName) && Array.isArray(options.testerProjects) && appId > 0) {
+            const owned = options.testerProjects.find(function(item) {
+                return Number(item && item.app_id || 0) === appId;
+            });
+            if (owned) {
+                if (!appName) appName = _getDossierProjectDisplayName(owned);
+                if (!iconUrl) iconUrl = String(owned.icon_url || '');
+            }
+        }
+        if ((!iconUrl || !appName) && appId > 0 && Array.isArray(myTests)) {
+            const mine = myTests.find(function(item) {
+                return Number(item.id || item.app_id || 0) === appId;
+            });
+            if (mine) {
+                if (!appName) appName = String(mine.name || '');
+                if (!iconUrl) iconUrl = String(mine.icon_url || '');
+            }
+        }
     } else {
         appName = String(rel.my_app || rel.their_app || '');
         appId = Number(rel.my_app_id || rel.their_app_id || 0);
         iconUrl = String(rel.my_app_icon_url || rel.their_app_icon_url || '');
+        if ((!iconUrl || !appName) && appId > 0 && Array.isArray(myProjects)) {
+            const mine = myProjects.find(function(item) {
+                return Number(item.id || item.app_id || 0) === appId;
+            });
+            if (mine) {
+                if (!appName) appName = String(mine.name || '');
+                if (!iconUrl) iconUrl = String(mine.icon_url || '');
+            }
+        }
     }
     if (!appName) appName = window.t('unknownLabel', {}, lang);
 
+    const directionKey = iTestThem ? 'linkedDirectionITestThem' : 'linkedDirectionTheyTestMe';
+    const reward = isContract ? _resolveDossierLinkedContractReward(rel, options) : null;
+
     let days = 0;
-    let checkins = 0;
+    let checkins = Number(rel && rel.checkins_count || 0);
+    const startDate = rel && rel.start_date;
+    if (startDate && typeof getUserTestingDay === 'function') {
+        days = getUserTestingDay(startDate);
+    }
     const tester = options.tester || null;
     if (tester && Number(options.contextAppId || 0) === appId) {
-        days = tester.start_date && typeof getUserTestingDay === 'function'
-            ? getUserTestingDay(tester.start_date)
-            : Number(tester.testing_days || 0);
-        checkins = Number(tester.checkins_count || 0);
+        if (!(days > 0)) {
+            days = tester.start_date && typeof getUserTestingDay === 'function'
+                ? getUserTestingDay(tester.start_date)
+                : Number(tester.testing_days || 0);
+        }
+        if (!(checkins > 0)) checkins = Number(tester.checkins_count || 0);
+    } else if (iTestThem && appId > 0 && Array.isArray(myTests) && !(days > 0)) {
+        const mine = myTests.find(function(item) {
+            return Number(item.id || item.app_id || 0) === appId;
+        });
+        if (mine) {
+            days = Number(mine.testing_days || 0);
+            if (!(checkins > 0)) checkins = Number(mine.checkins_count || 0);
+        }
     }
 
-    return `<div class="linked-project-card is-static">` +
+    const rewardChip = reward
+        ? `<span class="linked-reward-chip notranslate" title="${window.escapeHTML(window.t(
+            reward.grantBurned ? 'linkedRewardOwnerOnlyHint' : 'bountyPossibleTotalChipHint',
+            {},
+            lang
+        ))}">${window.escapeHTML(reward.label)}</span>`
+        : '';
+
+    return `<div class="linked-project-card is-static${isContract ? ' is-bounty' : ' is-direct'}">` +
+        `<div class="linked-card-topline">` +
+            `<span class="linked-badge ${badgeClass}">${window.escapeHTML(window.t(badgeKey, {}, lang))}</span>` +
+            rewardChip +
+        `</div>` +
         `<div class="linked-simple-row">` +
             renderIcon(appName, iconUrl) +
             `<div class="linked-simple-body">` +
-                `<span class="linked-badge ${badgeClass}">${window.escapeHTML(window.t(badgeKey, {}, lang))}</span>` +
+                `<div class="linked-direction">${window.escapeHTML(window.t(directionKey, {}, lang))}</div>` +
                 `<div class="linked-simple-name notranslate">${window.escapeHTML(appName)}</div>` +
-                `<div class="linked-card-chips" style="justify-content:flex-start;margin-top:8px;">` +
+                `<div class="linked-card-chips linked-card-chips--start">` +
                     (days > 0
                         ? `<span class="parity-chip">📅 ${window.escapeHTML(window.t('parityDayChip', { day: days, total: 14 }, lang))}</span>`
                         : '') +
@@ -8790,6 +9033,7 @@ async function openDossierModal(username, testerId, appId) {
             relationsHtml += _renderDossierLinkedSimpleCard(rel, {
                 testerId: testerId,
                 contextAppId: appId,
+                testerProjects: relevantTesterProjects,
                 tester: tester,
             });
         });
@@ -9513,6 +9757,9 @@ Object.assign(window, {
     selectLeaveReason,
     resetLeaveReasonChips,
     confirmLeaveMutualAdaptive,
+    requestLeaveMutualConfirm,
+    cancelLeaveMutualConfirm,
+    toggleLeaveMyStats,
     closeEarnBustModal,
     openSocialModal,
     closeSocialModal,
