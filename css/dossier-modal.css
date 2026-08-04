@@ -346,36 +346,58 @@
     background: rgba(255, 255, 255, 0.14);
 }
 
+/* Project hero — foundation, not a choice row */
+.dossier-hybrid-join-project-wrap {
+    margin: 0 0 18px;
+    padding: 0 0 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .dossier-hybrid-join-project {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 14px;
-    padding: 12px;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
+    gap: 14px;
+    padding: 14px 14px 14px 12px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 159, 10, 0.28);
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255, 159, 10, 0.14), transparent 55%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+    user-select: none;
 }
 
 .dossier-hybrid-join-project .avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
     flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .dossier-hybrid-join-project-info {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
 }
 
 .dossier-hybrid-join-project-name {
-    font-size: 15px;
-    font-weight: 700;
-    line-height: 1.25;
+    font-size: 17px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
     color: var(--text-color, #fff);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dossier-hybrid-join-project-package {
+    font-size: 11px;
+    line-height: 1.3;
+    color: rgba(174, 183, 194, 0.9);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -385,18 +407,35 @@
     display: inline-flex;
     align-items: center;
     width: fit-content;
-    padding: 2px 8px;
+    padding: 3px 9px;
     border-radius: 999px;
     font-size: 11px;
     font-weight: 700;
-    background: rgba(255, 159, 10, 0.16);
+    background: rgba(255, 159, 10, 0.18);
     color: #ff9f0a;
+}
+
+/* Modes section — secondary actions under the project */
+.dossier-hybrid-join-modes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.dossier-hybrid-join-modes-title {
+    margin: 0 2px 2px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(174, 183, 194, 0.88);
 }
 
 .dossier-hybrid-join-options {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    padding-left: 2px;
 }
 
 .dossier-hybrid-join-option {
@@ -405,11 +444,11 @@
     gap: 12px;
     width: 100%;
     margin: 0;
-    padding: 14px;
+    padding: 12px 12px 12px 10px;
     text-align: left;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.035);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.028);
     color: inherit;
     cursor: pointer;
     appearance: none;
@@ -438,14 +477,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
 }
 
 .dossier-hybrid-join-option-icon svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
 }
 
 .dossier-hybrid-join-option-icon.is-mutual {

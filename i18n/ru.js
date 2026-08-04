@@ -1358,6 +1358,7 @@
             dossierJoinHybridContractTag: "$BUST",
             dossierJoinHybridContractDesc: "Возьмите тест за вознаграждение без обмена проектом.",
             dossierJoinHybridClose: "Закрыть",
+            dossierJoinHybridModesTitle: "Выберите формат",
             dossierLinkMutual: "🤝 Взаимка с: {app}",
             dossierLinkMutualBare: "🤝 Взаимное тестирование",
             dossierLinkMutualArchived: "🤝 Взаимка (Завершен) с: {app}",

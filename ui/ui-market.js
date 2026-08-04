@@ -7565,6 +7565,9 @@ function openDossierHybridJoinChooser(appId, ownerId, project) {
     var closeBtn = overlay.querySelector('.dossier-hybrid-join-close');
     if (closeBtn) closeBtn.setAttribute('aria-label', window.t('dossierJoinHybridClose', {}, lang));
 
+    var modesTitleEl = document.getElementById('dossier-hybrid-join-modes-title');
+    if (modesTitleEl) modesTitleEl.textContent = window.t('dossierJoinHybridModesTitle', {}, lang);
+
     var mutualTitle = overlay.querySelector('.dossier-hybrid-join-option.is-mutual .dossier-hybrid-join-option-title');
     var mutualTag = overlay.querySelector('.dossier-hybrid-join-option.is-mutual .dossier-hybrid-join-option-tag');
     var mutualDesc = overlay.querySelector('.dossier-hybrid-join-option.is-mutual .dossier-hybrid-join-option-desc');
@@ -7579,12 +7582,16 @@ function openDossierHybridJoinChooser(appId, ownerId, project) {
 
     var projectEl = document.getElementById('dossier-hybrid-join-project');
     if (projectEl) {
+        var packageName = String((project && project.package_name) || '').trim();
         var iconHtml = typeof renderIcon === 'function'
             ? renderIcon(projectName, (project && project.icon_url) || '')
             : '';
         projectEl.innerHTML = iconHtml +
             '<div class="dossier-hybrid-join-project-info">' +
                 '<div class="dossier-hybrid-join-project-name notranslate">' + window.escapeHTML(projectName) + '</div>' +
+                (packageName
+                    ? '<div class="dossier-hybrid-join-project-package notranslate">' + window.escapeHTML(packageName) + '</div>'
+                    : '') +
                 '<div class="dossier-hybrid-join-project-mode">' + window.escapeHTML(window.t('dossierRecruitModeCombo', {}, lang)) + '</div>' +
             '</div>';
     }
@@ -7606,7 +7613,8 @@ function openDossierHybridJoinChooser(appId, ownerId, project) {
 
 function ensureDossierHybridJoinChooser() {
     var existing = document.getElementById('dossier-hybrid-join-overlay');
-    if (existing) return existing;
+    if (existing && existing.getAttribute('data-sheet') === 'v2') return existing;
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
 
     var mutualIcon =
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -7627,7 +7635,7 @@ function ensureDossierHybridJoinChooser() {
 
     var wrap = document.createElement('div');
     wrap.innerHTML =
-        '<div id="dossier-hybrid-join-overlay" class="dossier-hybrid-join-overlay" style="display:none;" role="dialog" aria-modal="true" aria-hidden="true">' +
+        '<div id="dossier-hybrid-join-overlay" class="dossier-hybrid-join-overlay" style="display:none;" data-sheet="v2" role="dialog" aria-modal="true" aria-hidden="true">' +
             '<div class="dossier-hybrid-join-sheet" onclick="event.stopPropagation()">' +
                 '<div class="dossier-hybrid-join-handle" aria-hidden="true"></div>' +
                 '<div class="dossier-hybrid-join-header">' +
@@ -7637,30 +7645,37 @@ function ensureDossierHybridJoinChooser() {
                     '</div>' +
                     '<button type="button" class="dossier-hybrid-join-close" aria-label="' + window.escapeHTML(window.t('dossierJoinHybridClose', {}, lang)) + '">×</button>' +
                 '</div>' +
-                '<div id="dossier-hybrid-join-project" class="dossier-hybrid-join-project"></div>' +
-                '<div class="dossier-hybrid-join-options">' +
-                    '<button type="button" class="dossier-hybrid-join-option is-mutual" data-join-mode="mutual">' +
-                        '<span class="dossier-hybrid-join-option-icon is-mutual">' + mutualIcon + '</span>' +
-                        '<span class="dossier-hybrid-join-option-body">' +
-                            '<span class="dossier-hybrid-join-option-head">' +
-                                '<span class="dossier-hybrid-join-option-title">' + window.escapeHTML(window.t('dossierJoinHybridMutualTitle', {}, lang)) + '</span>' +
-                                '<span class="dossier-hybrid-join-option-tag is-mutual">' + window.escapeHTML(window.t('dossierJoinHybridMutualTag', {}, lang)) + '</span>' +
+                '<div class="dossier-hybrid-join-project-wrap">' +
+                    '<div id="dossier-hybrid-join-project" class="dossier-hybrid-join-project" aria-hidden="true"></div>' +
+                '</div>' +
+                '<div class="dossier-hybrid-join-modes">' +
+                    '<div id="dossier-hybrid-join-modes-title" class="dossier-hybrid-join-modes-title">' +
+                        window.escapeHTML(window.t('dossierJoinHybridModesTitle', {}, lang)) +
+                    '</div>' +
+                    '<div class="dossier-hybrid-join-options">' +
+                        '<button type="button" class="dossier-hybrid-join-option is-mutual" data-join-mode="mutual">' +
+                            '<span class="dossier-hybrid-join-option-icon is-mutual">' + mutualIcon + '</span>' +
+                            '<span class="dossier-hybrid-join-option-body">' +
+                                '<span class="dossier-hybrid-join-option-head">' +
+                                    '<span class="dossier-hybrid-join-option-title">' + window.escapeHTML(window.t('dossierJoinHybridMutualTitle', {}, lang)) + '</span>' +
+                                    '<span class="dossier-hybrid-join-option-tag is-mutual">' + window.escapeHTML(window.t('dossierJoinHybridMutualTag', {}, lang)) + '</span>' +
+                                '</span>' +
+                                '<span class="dossier-hybrid-join-option-desc">' + window.escapeHTML(window.t('dossierJoinHybridMutualDesc', {}, lang)) + '</span>' +
                             '</span>' +
-                            '<span class="dossier-hybrid-join-option-desc">' + window.escapeHTML(window.t('dossierJoinHybridMutualDesc', {}, lang)) + '</span>' +
-                        '</span>' +
-                        chevron +
-                    '</button>' +
-                    '<button type="button" class="dossier-hybrid-join-option is-contract" data-join-mode="bounty">' +
-                        '<span class="dossier-hybrid-join-option-icon is-contract">' + contractIcon + '</span>' +
-                        '<span class="dossier-hybrid-join-option-body">' +
-                            '<span class="dossier-hybrid-join-option-head">' +
-                                '<span class="dossier-hybrid-join-option-title">' + window.escapeHTML(window.t('dossierJoinHybridContractTitle', {}, lang)) + '</span>' +
-                                '<span id="dossier-hybrid-join-contract-tag" class="dossier-hybrid-join-option-tag is-contract">' + window.escapeHTML(window.t('dossierJoinHybridContractTag', {}, lang)) + '</span>' +
+                            chevron +
+                        '</button>' +
+                        '<button type="button" class="dossier-hybrid-join-option is-contract" data-join-mode="bounty">' +
+                            '<span class="dossier-hybrid-join-option-icon is-contract">' + contractIcon + '</span>' +
+                            '<span class="dossier-hybrid-join-option-body">' +
+                                '<span class="dossier-hybrid-join-option-head">' +
+                                    '<span class="dossier-hybrid-join-option-title">' + window.escapeHTML(window.t('dossierJoinHybridContractTitle', {}, lang)) + '</span>' +
+                                    '<span id="dossier-hybrid-join-contract-tag" class="dossier-hybrid-join-option-tag is-contract">' + window.escapeHTML(window.t('dossierJoinHybridContractTag', {}, lang)) + '</span>' +
+                                '</span>' +
+                                '<span class="dossier-hybrid-join-option-desc">' + window.escapeHTML(window.t('dossierJoinHybridContractDesc', {}, lang)) + '</span>' +
                             '</span>' +
-                            '<span class="dossier-hybrid-join-option-desc">' + window.escapeHTML(window.t('dossierJoinHybridContractDesc', {}, lang)) + '</span>' +
-                        '</span>' +
-                        chevron +
-                    '</button>' +
+                            chevron +
+                        '</button>' +
+                    '</div>' +
                 '</div>' +
             '</div>' +
         '</div>';

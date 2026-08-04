@@ -1359,6 +1359,7 @@
             dossierJoinHybridContractTag: "$BUST",
             dossierJoinHybridContractDesc: "Take the test for a reward without exchanging a project.",
             dossierJoinHybridClose: "Close",
+            dossierJoinHybridModesTitle: "Choose a format",
             dossierLinkMutual: "🤝 Mutual with: {app}",
             dossierLinkMutualBare: "🤝 Mutual testing",
             dossierLinkMutualArchived: "🤝 Mutual (Completed) with: {app}",
