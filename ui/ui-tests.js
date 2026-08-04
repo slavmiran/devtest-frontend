@@ -2025,7 +2025,12 @@ function renderTests(force) {
         if (showGuestOriginChip) {
             externalMetaChips.push(renderGuestOriginChip(test.external_source));
         }
-        if (test.status === 'new' && test.test_mode !== 'email_list') {
+        if (
+            test.status === 'new'
+            && shouldShowInActiveList
+            && !shouldShowInPendingList
+            && test.test_mode !== 'email_list'
+        ) {
             const chipGroupUrl = String(test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
             const chipIsDefault = typeof isDefaultGoogleGroupUrl === 'function'
                 ? isDefaultGoogleGroupUrl(chipGroupUrl)
