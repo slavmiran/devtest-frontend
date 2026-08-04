@@ -3385,16 +3385,54 @@ function openModal() {
 }
 
 function getProjectUiText(key, fallback, params) {
+    var activeLang = (typeof lang !== 'undefined' && lang)
+        ? lang
+        : (window.currentLang || 'en');
     if (typeof window.t === 'function') {
-        var translated = window.t(key, params || {}, lang);
+        var translated = window.t(key, params || {}, activeLang);
         if (translated && translated !== key) return translated;
     }
     return fallback;
 }
 
+function refreshAddProjectChooserTexts(overlay) {
+    if (!overlay) return;
+    var closeBtn = overlay.querySelector('.add-project-chooser-close');
+    if (closeBtn) {
+        closeBtn.setAttribute('aria-label', getProjectUiText('addProjectChooserClose', 'Close'));
+    }
+    var titleEl = overlay.querySelector('.add-project-chooser-title');
+    if (titleEl) {
+        titleEl.textContent = getProjectUiText('addProjectChooserTitle', 'Testing format');
+    }
+
+    var mutual = overlay.querySelector('.add-project-chooser-option--mutual');
+    if (mutual) {
+        var mutualTitle = mutual.querySelector('.add-project-chooser-option-title');
+        var mutualTag = mutual.querySelector('.add-project-chooser-option-tag');
+        var mutualDesc = mutual.querySelector('.add-project-chooser-option-desc');
+        if (mutualTitle) mutualTitle.textContent = getProjectUiText('addProjectChooserMutualTitle', 'Mutual exchange');
+        if (mutualTag) mutualTag.textContent = getProjectUiText('addProjectChooserMutualTag', 'Free');
+        if (mutualDesc) mutualDesc.textContent = getProjectUiText('addProjectChooserMutualDesc', 'Test other apps and get tests in return.');
+    }
+
+    var privateOpt = overlay.querySelector('.add-project-chooser-option--private');
+    if (privateOpt) {
+        var privateTitle = privateOpt.querySelector('.add-project-chooser-option-title');
+        var privateTag = privateOpt.querySelector('.add-project-chooser-option-tag');
+        var privateDesc = privateOpt.querySelector('.add-project-chooser-option-desc');
+        if (privateTitle) privateTitle.textContent = getProjectUiText('addProjectChooserPrivateTitle', 'Private Testing');
+        if (privateTag) privateTag.textContent = getProjectUiText('addProjectChooserPrivateTag', '$20');
+        if (privateDesc) privateDesc.textContent = getProjectUiText('addProjectChooserPrivateDesc', '12+ devices for 14 days without your involvement. Result guarantee.');
+    }
+}
+
 function ensureAddProjectChooser() {
     var overlay = document.getElementById('add-project-chooser-overlay');
-    if (overlay && overlay.getAttribute('data-chooser') === 'v3') return overlay;
+    if (overlay && overlay.getAttribute('data-chooser') === 'v4') {
+        refreshAddProjectChooserTexts(overlay);
+        return overlay;
+    }
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
 
     var mutualIcon =
@@ -3414,15 +3452,15 @@ function ensureAddProjectChooser() {
             '<polyline points="9 18 15 12 9 6"></polyline>' +
         '</svg>';
 
-    function optionHtml(variant, icon, titleKey, titleFallback, tagKey, tagFallback, descKey, descFallback) {
+    function optionHtml(variant, icon, titleKey, tagKey, descKey) {
         return '<button type="button" class="add-project-chooser-option add-project-chooser-option--' + variant + '">' +
             '<span class="add-project-chooser-option-icon">' + icon + '</span>' +
             '<span class="add-project-chooser-option-body">' +
                 '<span class="add-project-chooser-option-head">' +
-                    '<span class="add-project-chooser-option-title">' + window.escapeHTML(getProjectUiText(titleKey, titleFallback)) + '</span>' +
-                    '<span class="add-project-chooser-option-tag">' + window.escapeHTML(getProjectUiText(tagKey, tagFallback)) + '</span>' +
+                    '<span class="add-project-chooser-option-title" data-i18n="' + titleKey + '"></span>' +
+                    '<span class="add-project-chooser-option-tag" data-i18n="' + tagKey + '"></span>' +
                 '</span>' +
-                '<span class="add-project-chooser-option-desc">' + window.escapeHTML(getProjectUiText(descKey, descFallback)) + '</span>' +
+                '<span class="add-project-chooser-option-desc" data-i18n="' + descKey + '"></span>' +
             '</span>' +
             chevron +
         '</button>';
@@ -3430,22 +3468,22 @@ function ensureAddProjectChooser() {
 
     var div = document.createElement('div');
     div.innerHTML =
-        '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" data-chooser="v3" role="dialog" aria-modal="true">' +
+        '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" data-chooser="v4" role="dialog" aria-modal="true">' +
             '<div class="add-project-chooser-card">' +
-                '<button type="button" class="add-project-chooser-close" aria-label="' + window.escapeHTML(getProjectUiText('addProjectChooserClose', 'Close')) + '">×</button>' +
-                '<h3 class="add-project-chooser-title">' + window.escapeHTML(getProjectUiText('addProjectChooserTitle', 'Choose a testing format')) + '</h3>' +
+                '<button type="button" class="add-project-chooser-close" data-i18n-aria-label="addProjectChooserClose" aria-label="">×</button>' +
+                '<h3 class="add-project-chooser-title" data-i18n="addProjectChooserTitle"></h3>' +
                 '<div class="add-project-chooser-options">' +
                     optionHtml(
                         'mutual', mutualIcon,
-                        'addProjectChooserMutualTitle', 'Mutual exchange',
-                        'addProjectChooserMutualTag', 'Free',
-                        'addProjectChooserMutualDesc', 'Test other apps and get tests in return.'
+                        'addProjectChooserMutualTitle',
+                        'addProjectChooserMutualTag',
+                        'addProjectChooserMutualDesc'
                     ) +
                     optionHtml(
                         'private', privateIcon,
-                        'addProjectChooserPrivateTitle', 'Private Testing',
-                        'addProjectChooserPrivateTag', '$20',
-                        'addProjectChooserPrivateDesc', '12+ devices for 14 days without your involvement. Result guarantee.'
+                        'addProjectChooserPrivateTitle',
+                        'addProjectChooserPrivateTag',
+                        'addProjectChooserPrivateDesc'
                     ) +
                 '</div>' +
             '</div>' +
@@ -3453,6 +3491,8 @@ function ensureAddProjectChooser() {
     document.body.appendChild(div.firstElementChild);
     overlay = document.getElementById('add-project-chooser-overlay');
     if (!overlay) return null;
+
+    refreshAddProjectChooserTexts(overlay);
 
     overlay.addEventListener('click', function (event) {
         if (event.target === overlay) closeAddProjectChooser();
@@ -3474,6 +3514,7 @@ function ensureAddProjectChooser() {
 function openAddProjectChooser() {
     var overlay = ensureAddProjectChooser();
     if (!overlay) return;
+    refreshAddProjectChooserTexts(overlay);
     overlay.style.display = 'flex';
     overlay.classList.remove('is-closing');
     requestAnimationFrame(function () { overlay.classList.add('is-open'); });
