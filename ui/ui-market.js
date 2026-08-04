@@ -8974,14 +8974,27 @@ function toggleDossierFold(btn) {
     }
 }
 
-function _renderDossierFold(title, count, panelHtml) {
+function _renderDossierFold(title, count, panelHtml, options) {
+    options = options || {};
     const countNum = Math.max(0, Number(count || 0));
-    return `<div class="dossier-fold">` +
+    const variant = String(options.variant || 'default');
+    const foldClass = 'dossier-fold'
+        + (variant === 'quiet' ? ' dossier-fold--quiet' : '')
+        + (variant === 'inline' ? ' dossier-fold--inline' : '');
+
+    let mainInner = '';
+    if (variant === 'quiet') {
+        mainInner = `<span class="dossier-fold-title">${window.escapeHTML(window.t('dossierLinkedMoreTitle', { count: countNum }, lang))}</span>`;
+    } else if (variant === 'inline') {
+        mainInner = `<span class="dossier-fold-title">${window.escapeHTML(title)}</span>`;
+    } else {
+        mainInner = `<span class="dossier-fold-title">${window.escapeHTML(title)}</span>`
+            + `<span class="dossier-fold-count">${countNum}</span>`;
+    }
+
+    return `<div class="${foldClass}">` +
         `<button type="button" class="dossier-fold-trigger" aria-expanded="false" onclick="toggleDossierFold(this)">` +
-            `<span class="dossier-fold-main">` +
-                `<span class="dossier-fold-title">${window.escapeHTML(title)}</span>` +
-                `<span class="dossier-fold-count">${countNum}</span>` +
-            `</span>` +
+            `<span class="dossier-fold-main">${mainInner}</span>` +
             `<span class="dossier-fold-chevron" aria-hidden="true"></span>` +
         `</button>` +
         `<div class="dossier-fold-panel" hidden>${panelHtml || ''}</div>` +
@@ -8989,7 +9002,10 @@ function _renderDossierFold(title, count, panelHtml) {
 }
 
 function _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml, reliabilityState) {
-    const karmaValue = Number(profile && profile.karma || 0);
+    const karmaRaw = Number(profile && profile.karma || 0);
+    const karmaValue = typeof formatUiAmount === 'function'
+        ? formatUiAmount(karmaRaw, 1)
+        : String(karmaRaw);
     const experienceValue = Number(profile && profile.completed_tests || 0);
     const reliabilityValue = reliabilityState && reliabilityState.isNewbie
         ? window.t('dossierMetricNewbieShort', {}, lang)
@@ -9004,25 +9020,35 @@ function _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml,
     const acceptanceRateNum = acceptanceRateRaw == null || acceptanceRateRaw === ''
         ? null
         : Number(acceptanceRateRaw);
-    const secondaryChips = [];
-    if (acceptanceRateNum != null && Number.isFinite(acceptanceRateNum)) {
-        const pct = Number.isInteger(acceptanceRateNum)
+    const acceptanceLabel = (acceptanceRateNum != null && Number.isFinite(acceptanceRateNum))
+        ? ((Number.isInteger(acceptanceRateNum)
             ? String(acceptanceRateNum)
-            : acceptanceRateNum.toFixed(1).replace(/\.0$/, '');
-        secondaryChips.push(`<span class="dossier-profile-chip">🎯 ${window.escapeHTML(window.t('dossierMetricQualityShort', {}, lang))}: ${window.escapeHTML(pct)}%</span>`);
+            : acceptanceRateNum.toFixed(1).replace(/\.0$/, '')) + '%')
+        : '—';
+
+    const slaHoursLabel = (profile && profile.has_owned_apps)
+        ? formatAvgHandleHoursLabel(profile.avg_handle_hours)
+        : null;
+    const slaSlow = slaHoursLabel != null && Number(profile.avg_handle_hours) > 72;
+    const slaText = slaHoursLabel != null
+        ? ('~' + slaHoursLabel + ' ' + window.t('dossierMetricHoursShort', {}, lang))
+        : null;
+
+    const bugs = Number(profile && profile.bugs_count || 0);
+    const ideas = Number(profile && profile.ideas_count || 0);
+    const reviews = Number(profile && profile.play_reviews_count || 0);
+    const golden = Number(profile && profile.golden_count || 0);
+
+    const feedbackParts = [];
+    feedbackParts.push(`<span class="dossier-feedback-stat" title="${window.escapeHTML(window.t('dossierFeedbackAcceptHint', {}, lang))}"><b>${window.escapeHTML(acceptanceLabel)}</b></span>`);
+    if (slaText) {
+        feedbackParts.push(`<span class="dossier-feedback-stat${slaSlow ? ' is-warn' : ''}" title="${window.escapeHTML(window.t('feedbackSlaChipToast', {}, lang))}"><b>${window.escapeHTML(slaText)}</b></span>`);
     }
-    if (profile && profile.has_owned_apps) {
-        const slaHoursLabel = formatAvgHandleHoursLabel(profile.avg_handle_hours);
-        if (slaHoursLabel != null) {
-            let slaChip = `⏱ ${window.escapeHTML(window.t('dossierMetricSlaShort', {}, lang))}: ${window.escapeHTML(slaHoursLabel)} ${window.escapeHTML(window.t('dossierMetricHoursShort', {}, lang))}`;
-            if (Number(profile.avg_handle_hours) > 72) {
-                slaChip += ` · ${window.escapeHTML(window.t('dossierOwnerSlaRare', {}, lang))}`;
-            }
-            secondaryChips.push(`<span class="dossier-profile-chip${Number(profile.avg_handle_hours) > 72 ? ' is-warn' : ''}">${slaChip}</span>`);
-        }
-    }
-    if (Number(profile && profile.golden_count || 0) > 0) {
-        secondaryChips.push(`<span class="dossier-profile-chip is-gold">🏆 ${window.escapeHTML(window.t('dossierMetricGoldenShort', {}, lang))}: ${Number(profile.golden_count)}</span>`);
+    feedbackParts.push(`<span class="dossier-feedback-stat notranslate" title="${window.escapeHTML(window.t('detailOwnerBugsShort', { count: bugs }, lang))}">🐞&nbsp;${bugs}</span>`);
+    feedbackParts.push(`<span class="dossier-feedback-stat notranslate" title="${window.escapeHTML(window.t('detailOwnerIdeasShort', { count: ideas }, lang))}">💡&nbsp;${ideas}</span>`);
+    feedbackParts.push(`<span class="dossier-feedback-stat notranslate" title="${window.escapeHTML(window.t('detailOwnerReviewsShort', { count: reviews }, lang))}">⭐&nbsp;${reviews}</span>`);
+    if (golden > 0) {
+        feedbackParts.push(`<span class="dossier-feedback-stat is-gold" title="${window.escapeHTML(window.t('dossierMetricGoldenShort', {}, lang))}">🏆&nbsp;${golden}</span>`);
     }
 
     return `<section class="dossier-profile-card">` +
@@ -9036,35 +9062,72 @@ function _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml,
                 `<div class="dossier-metric-value notranslate" title="${window.escapeHTML((reliabilityState && reliabilityState.reliabilityText) || '')}">${window.escapeHTML(reliabilityValue)}</div>` +
                 `<div class="dossier-metric-label">${window.escapeHTML(window.t('dossierMetricReliability', {}, lang))}</div>` +
             `</div>` +
-            `<div class="dossier-metric">` +
+            `<div class="dossier-metric" title="${window.escapeHTML(window.t('dossierMetricTestsHint', {}, lang))}">` +
                 `<div class="dossier-metric-value notranslate">${window.escapeHTML(String(experienceValue))}</div>` +
-                `<div class="dossier-metric-label">${window.escapeHTML(window.t('dossierMetricExperience', {}, lang))}</div>` +
+                `<div class="dossier-metric-label">${window.escapeHTML(window.t('dossierMetricTests', {}, lang))}</div>` +
             `</div>` +
         `</div>` +
-        (secondaryChips.length
-            ? `<div class="dossier-profile-secondary">${secondaryChips.join('')}</div>`
-            : '') +
+        `<div class="dossier-feedback-row" title="${window.escapeHTML(window.t('dossierFeedbackBlockTitle', {}, lang))}">${feedbackParts.join('<span class="dossier-feedback-dot" aria-hidden="true">·</span>')}</div>` +
         (projectsFoldHtml || '') +
     `</section>`;
 }
 
+function _renderDossierLoadingSkeleton(identityHtml) {
+    return `<div class="dossier-loading" aria-busy="true" aria-live="polite">` +
+        `<section class="dossier-profile-card dossier-profile-card--loading">` +
+            (identityHtml || (
+                `<div class="dossier-profile-identity">` +
+                    `<div class="skeleton skeleton-avatar" style="margin-right:0;width:44px;height:44px;"></div>` +
+                    `<div class="dossier-profile-names" style="flex:1;">` +
+                        `<div class="skeleton skeleton-line medium" style="margin-bottom:6px;"></div>` +
+                        `<div class="skeleton skeleton-line short" style="margin-bottom:0;"></div>` +
+                    `</div>` +
+                `</div>`
+            )) +
+            `<div class="dossier-profile-metrics">` +
+                `<div class="dossier-metric dossier-metric--skeleton"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:42%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:58%;"></div></div>` +
+                `<div class="dossier-metric dossier-metric--skeleton"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:42%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:58%;"></div></div>` +
+                `<div class="dossier-metric dossier-metric--skeleton"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:42%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:58%;"></div></div>` +
+            `</div>` +
+            `<div class="dossier-feedback-row dossier-feedback-row--loading">` +
+                `<div class="skeleton skeleton-line medium" style="margin:0;height:12px;width:78%;"></div>` +
+            `</div>` +
+            `<div class="skeleton skeleton-line short" style="margin:10px 0 0;height:12px;width:42%;"></div>` +
+        `</section>` +
+        `<section class="dossier-links-section dossier-links-section--loading">` +
+            `<div class="skeleton skeleton-line short" style="margin-bottom:10px;height:12px;width:28%;"></div>` +
+            `<div class="linked-project-card is-static dossier-link-skeleton">` +
+                `<div class="skeleton skeleton-line short" style="margin-bottom:10px;height:18px;width:46%;"></div>` +
+                `<div style="display:flex;gap:10px;align-items:flex-start;">` +
+                    `<div class="skeleton" style="width:40px;height:40px;border-radius:10px;flex-shrink:0;"></div>` +
+                    `<div style="flex:1;min-width:0;">` +
+                        `<div class="skeleton skeleton-line medium" style="margin-bottom:8px;"></div>` +
+                        `<div class="skeleton skeleton-line short" style="margin-bottom:0;width:55%;"></div>` +
+                    `</div>` +
+                `</div>` +
+            `</div>` +
+        `</section>` +
+        `<div class="dossier-actions-section dossier-actions-section--loading">` +
+            `<div class="skeleton skeleton-line short" style="margin-bottom:10px;height:12px;width:24%;"></div>` +
+            `<div class="skeleton skeleton-btn" style="margin-top:0;"></div>` +
+            `<div class="skeleton skeleton-btn"></div>` +
+        `</div>` +
+        `<p class="dossier-loading-caption">${window.escapeHTML(window.t('dossierLoading', {}, lang) || t.dossierLoading || '…')}</p>` +
+    `</div>`;
+}
+
+var _dossierOpenSeq = 0;
+
 async function openDossierModal(username, testerId, appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     const modal = document.getElementById('dossier-modal');
-    document.getElementById('dossier-modal-title').innerHTML = '';
-    document.getElementById('dossier-body').innerHTML = `<p style="text-align:center; color: var(--hint-color);">${t.dossierLoading}</p>`;
-    modal.classList.add('active');
+    const bodyEl = document.getElementById('dossier-body');
+    const titleEl = document.getElementById('dossier-modal-title');
+    if (titleEl) titleEl.innerHTML = '';
+    if (!modal || !bodyEl) return;
 
-    // Ensure pending contract applications are available for Accept/Reject actions.
-    try {
-        if (typeof loadIncomingOffers === 'function') {
-            await loadIncomingOffers({ background: false });
-        } else if (typeof loadBountyApplications === 'function') {
-            await loadBountyApplications({ background: false });
-        }
-    } catch (preloadError) {
-        console.warn('Dossier preload incoming applications failed:', preloadError);
-    }
+    const openSeq = ++_dossierOpenSeq;
+    modal.classList.add('active');
 
     const project = myProjects.find((item) => Number(item.id) === Number(appId));
     const tester = project ? (project.testers || []).find((candidate) => Number(candidate.tester_id) === Number(testerId)) : null;
@@ -9098,21 +9161,106 @@ async function openDossierModal(username, testerId, appId) {
     const tgName = username || '';
     const safeTelegramUsername = escapeInlineJsString(tgName);
     const dossierOwnerProfile = _resolveDossierOwnerProfile(testerId, appId, tgName, tester, marketCandidate);
+    const cachedProfile = _dossierProfilesCache[String(testerId)] || null;
 
-    // Profile identity is rendered inside the dashboard body after data loads.
-    document.getElementById('dossier-modal-title').innerHTML = '';
+    // Paint shell immediately: known identity + skeleton while network work runs.
+    const earlyIdentityHtml = renderDossierHeader(
+        (cachedProfile && cachedProfile.full_name) || dossierOwnerProfile.owner_full_name,
+        (cachedProfile && cachedProfile.username) || dossierOwnerProfile.owner_username,
+        (cachedProfile && cachedProfile.avatar_url) || dossierOwnerProfile.owner_avatar_url,
+        testerId
+    );
+    bodyEl.innerHTML = _renderDossierLoadingSkeleton(earlyIdentityHtml);
 
-    let profile = { karma: 0, completed_tests: 0, total_expected_checkins: 0, total_actual_checkins: 0 };
-    try {
-        const resp = await fetch(`${API_BASE}/users/${testerId}/profile`);
-        if (resp.ok) {
-            profile = await resp.json();
+    const needsIncomingOffers = !!appId && (
+        !!project
+        || !!(marketCandidate && (String(marketCandidate.mode || '').toLowerCase() === 'bounty'
+            || String(marketCandidate.mode || '').toLowerCase() === 'hybrid'
+            || marketCandidate.market_kind === 'bounty'))
+    );
+
+    const offersTask = (async function() {
+        if (!needsIncomingOffers) return;
+        try {
+            if (typeof loadIncomingOffers === 'function') {
+                await loadIncomingOffers({ background: true });
+            } else if (typeof loadBountyApplications === 'function') {
+                await loadBountyApplications({ background: true });
+            }
+        } catch (preloadError) {
+            console.warn('Dossier preload incoming applications failed:', preloadError);
         }
-    } catch (error) {
-        console.error('Dossier fetch error:', error);
-    }
+    })();
+
+    const profileTask = (async function() {
+        let nextProfile = cachedProfile
+            ? Object.assign({
+                karma: 0,
+                completed_tests: 0,
+                total_expected_checkins: 0,
+                total_actual_checkins: 0,
+            }, cachedProfile)
+            : { karma: 0, completed_tests: 0, total_expected_checkins: 0, total_actual_checkins: 0 };
+        try {
+            const resp = await fetch(`${API_BASE}/users/${testerId}/profile`);
+            if (resp.ok) {
+                nextProfile = await resp.json();
+            }
+        } catch (error) {
+            console.error('Dossier fetch error:', error);
+        }
+        return nextProfile;
+    })();
 
     const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
+    const projectsTask = (async function() {
+        let testerProjects = [];
+        let relations = [];
+        try {
+            const projectsParams = new URLSearchParams();
+            if (Number(userId || 0) > 0) {
+                projectsParams.set('viewer_id', String(userId));
+            }
+            if (reciprocalOwnedProjectId > 0) {
+                projectsParams.set('focus_app_id', String(reciprocalOwnedProjectId));
+            }
+            if (Number(appId || 0) > 0) {
+                projectsParams.set('context_app_id', String(appId));
+            }
+            projectsParams.set('init_data', getTelegramInitDataRaw());
+            const projectsQuery = projectsParams.toString();
+            const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (projectsQuery ? `?${projectsQuery}` : '');
+            const resp = await fetch(projectsUrl);
+            let data = {};
+            try {
+                data = await resp.json();
+            } catch (parseError) {
+                console.error('Dossier projects JSON parse error:', parseError);
+            }
+            if (resp.ok) {
+                if (Array.isArray(data)) {
+                    testerProjects = data;
+                } else if (data && typeof data === 'object') {
+                    testerProjects = Array.isArray(data.projects) ? data.projects : [];
+                    relations = Array.isArray(data.relations) ? data.relations : [];
+                }
+            } else {
+                console.warn('[DOSSIER] projects request failed:', resp.status, projectsUrl);
+            }
+        } catch (error) {
+            console.error('Dossier projects fetch error:', error);
+        }
+        return { testerProjects: testerProjects, relations: relations };
+    })();
+
+    const settled = await Promise.all([offersTask, profileTask, projectsTask]);
+    if (openSeq !== _dossierOpenSeq) return;
+
+    const profile = settled[1] || {};
+    const projectsPayload = settled[2] || { testerProjects: [], relations: [] };
+    let testerProjects = projectsPayload.testerProjects || [];
+    let relations = projectsPayload.relations || [];
+
     const dossierContextTester = tester || (reciprocalOwnedProjectId > 0
         ? {
             reciprocal_app_id: reciprocalOwnedProjectId,
@@ -9123,46 +9271,7 @@ async function openDossierModal(username, testerId, appId) {
         : (marketCandidate && marketCandidate.market_kind === 'mutual-return'
             ? { join_type: marketCandidate.join_type || 'invite' }
             : null));
-    let testerProjects = [];
-    let relations = [];
-    try {
-        const projectsParams = new URLSearchParams();
-        if (Number(userId || 0) > 0) {
-            projectsParams.set('viewer_id', String(userId));
-        }
-        if (reciprocalOwnedProjectId > 0) {
-            projectsParams.set('focus_app_id', String(reciprocalOwnedProjectId));
-        }
-        if (Number(appId || 0) > 0) {
-            projectsParams.set('context_app_id', String(appId));
-        }
-        projectsParams.set('init_data', getTelegramInitDataRaw());
-        const projectsQuery = projectsParams.toString();
-        const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (projectsQuery ? `?${projectsQuery}` : '');
-        const resp = await fetch(projectsUrl);
-        let data = {};
-        try {
-            data = await resp.json();
-        } catch (parseError) {
-            console.error('Dossier projects JSON parse error:', parseError);
-        }
-        console.log('[DOSSIER DIAGNOSTICS] RAW API RESPONSE:', resp.status, data);
-        if (resp.ok) {
-            if (Array.isArray(data)) {
-                testerProjects = data;
-            } else if (data && typeof data === 'object') {
-                testerProjects = Array.isArray(data.projects) ? data.projects : [];
-                relations = Array.isArray(data.relations) ? data.relations : [];
-            } else {
-                testerProjects = [];
-                console.warn('[DOSSIER DIAGNOSTICS] Unexpected projects payload shape:', data);
-            }
-        } else {
-            console.warn('[DOSSIER DIAGNOSTICS] projects request failed:', resp.status, projectsUrl);
-        }
-    } catch (error) {
-        console.error('Dossier projects fetch error:', error);
-    }
+
     testerProjects = testerProjects.map(function(item) {
         return Object.assign({}, item, dossierOwnerProfile);
     });
@@ -9172,11 +9281,6 @@ async function openDossierModal(username, testerId, appId) {
     });
     const linkedOwnedProjectId = Number(ownedProjectsResolved.reciprocalOwnedProjectId || 0);
     const dossierBlocks = _resolveDossierProjectBlocks(dossierContextTester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId > 0 ? linkedOwnedProjectId : 0);
-    console.log('[DOSSIER DIAGNOSTICS] PROCESSED BLOCKS:', {
-        rawCount: testerProjects.length,
-        otherCount: dossierBlocks.otherProjects.length,
-        linkedState: dossierBlocks.linkedState,
-    });
     _dossierProjectsCache[String(testerId)] = relevantTesterProjects;
     _dossierProfilesCache[String(testerId)] = Object.assign({}, profile, dossierOwnerProfile);
 
@@ -9210,9 +9314,10 @@ async function openDossierModal(username, testerId, appId) {
         }).join('') + '</div>'
         : '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierOtherProjectsEmpty', {}, lang)) + '</div>';
     const projectsFoldHtml = _renderDossierFold(
-        window.t('dossierOtherProjectsTitle', {}, lang),
+        window.t('dossierOtherProjectsShort', { count: projectsCount }, lang),
         projectsCount,
-        projectsPanelHtml
+        projectsPanelHtml,
+        { variant: 'inline' }
     );
 
     let html = _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml, reliabilityState);
@@ -9229,18 +9334,18 @@ async function openDossierModal(username, testerId, appId) {
         : { primary: [], secondary: [] };
     const linkedTotal = partitioned.primary.length + partitioned.secondary.length;
 
-    html += '<section class="dossier-links-section">' +
-        '<div class="dossier-section-title">' +
+    html += '<section class="dossier-links-section">';
+
+    if (linkedTotal > 1) {
+        html += '<div class="dossier-section-title dossier-section-title--links">' +
             window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) +
             ` <span class="dossier-section-count">${linkedTotal}</span>` +
         '</div>';
+    }
 
     if (linkedTotal > 0) {
         html += '<div class="dossier-relations-block">';
 
-        html += '<div class="dossier-links-subhead dossier-links-subhead--current">' +
-            window.escapeHTML(window.t('dossierCurrentProjectTitle', {}, lang)) +
-        '</div>';
         if (partitioned.primary.length) {
             html += '<div class="dossier-relations-list dossier-relations-list--primary">';
             partitioned.primary.forEach(function(rel) {
@@ -9250,10 +9355,6 @@ async function openDossierModal(username, testerId, appId) {
                 }));
             });
             html += '</div>';
-        } else {
-            html += '<div class="dossier-owned-project-empty">' +
-                window.escapeHTML(window.t('dossierCurrentProjectEmpty', {}, lang)) +
-            '</div>';
         }
 
         if (partitioned.secondary.length) {
@@ -9268,13 +9369,14 @@ async function openDossierModal(username, testerId, appId) {
             html += _renderDossierFold(
                 window.t('dossierLinkedSecondaryTitle', {}, lang),
                 partitioned.secondary.length,
-                secondaryCards
+                secondaryCards,
+                { variant: 'quiet' }
             );
         }
 
         html += '</div>';
     } else {
-        html += '<div class="dossier-owned-project-empty">' +
+        html += '<div class="dossier-links-empty">' +
             window.escapeHTML(window.t('dossierRelationsEmpty', {}, lang)) +
         '</div>';
     }
@@ -9303,7 +9405,8 @@ async function openDossierModal(username, testerId, appId) {
         </div>
     </div>`;
 
-    document.getElementById('dossier-body').innerHTML = html;
+    if (openSeq !== _dossierOpenSeq) return;
+    bodyEl.innerHTML = html;
 }
 
 function closeDossierModal(event) {

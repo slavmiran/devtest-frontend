@@ -735,13 +735,13 @@
 }
 
 .linked-project-card.is-primary-link {
-    border-color: color-mix(in srgb, var(--accent-primary-border) 80%, var(--border-subtle));
-    box-shadow: inset 3px 0 0 var(--accent-primary);
-    background: color-mix(in srgb, var(--accent-primary-surface) 35%, var(--bg-surface-1));
+    border-color: var(--border-subtle);
+    box-shadow: none;
+    background: var(--bg-surface-1);
 }
 
 .linked-project-card.is-secondary-link {
-    opacity: 0.96;
+    opacity: 0.98;
 }
 
 .linked-project-card.is-static {
