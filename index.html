@@ -35,14 +35,14 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260804-linked-v2"></script>
-<script src="./i18n/en.js?v=20260804-linked-v2"></script>
+<script src="./i18n/ru.js?v=20260804-dossier-v3"></script>
+<script src="./i18n/en.js?v=20260804-dossier-v3"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260802-group-chip-v2"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260804-mutual-p4"></script>
     <script src="./ui/ui-projects.js?v=20260804-mutual-p4"></script>
-    <script src="./ui/ui-market.js?v=20260804-linked-v2"></script>
+    <script src="./ui/ui-market.js?v=20260804-dossier-v3"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
 <script src="./js/app-config.js?v=20260803-bounty-apps-v7"></script>
@@ -71,8 +71,8 @@
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260803-bounty-apps-v7">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./css/dossier-modal.css?v=20260804-linked-v2">
-    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260804-linked-v2">
+    <link rel="stylesheet" href="./css/dossier-modal.css?v=20260804-dossier-v3">
+    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260804-dossier-v3">
     <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
@@ -1333,9 +1333,10 @@
 
     <!-- Tester Dossier Modal -->
     <div id="dossier-modal" class="modal-overlay" onclick="closeDossierModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="dossier-modal-title" style="margin-bottom: 16px;"></h3>
-            <div id="dossier-body" style="font-size: 14px; line-height: 1.6;"></div>
+        <div class="modal-content dossier-sheet" onclick="event.stopPropagation()">
+            <div class="dossier-sheet-handle" aria-hidden="true"></div>
+            <div id="dossier-modal-title" class="dossier-modal-title" hidden></div>
+            <div id="dossier-body" class="dossier-body"></div>
         </div>
     </div>
 

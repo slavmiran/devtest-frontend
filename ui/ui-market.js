@@ -8638,28 +8638,23 @@ function _renderDossierLinkedExchangeCard(rel, options) {
 
     return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +
         `<div class="linked-card-head">` +
-            `<div class="linked-card-title-wrap">` +
-                `<div class="linked-card-title">${window.escapeHTML(window.t('linkedDirectionMutual', {}, lang))}</div>` +
-                (isPrimary
-                    ? `<span class="linked-primary-mark">${window.escapeHTML(window.t('linkedPrimaryMark', {}, lang))}</span>`
-                    : '') +
-            `</div>` +
             `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>` +
+            `<div class="linked-card-title linked-card-title--end">${window.escapeHTML(window.t('linkedDirectionMutual', {}, lang))}</div>` +
         `</div>` +
         `<div class="linked-mutual-strip">` +
-            `<div class="linked-mutual-app">` +
-                renderIcon(pair.myName, pair.myIcon) +
-                `<div class="linked-mutual-app-text">` +
-                    `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideYours', {}, lang))}</span>` +
-                    `<div class="linked-mutual-name notranslate">${safeMy}</div>` +
-                `</div>` +
-            `</div>` +
-            `<div class="linked-mutual-swap" aria-hidden="true">⇄</div>` +
             `<div class="linked-mutual-app">` +
                 renderIcon(pair.theirName, pair.theirIcon) +
                 `<div class="linked-mutual-app-text">` +
                     `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideTheirs', {}, lang))}</span>` +
                     `<div class="linked-mutual-name notranslate">${safeTheir}</div>` +
+                `</div>` +
+            `</div>` +
+            `<div class="linked-mutual-swap" aria-hidden="true">⇄</div>` +
+            `<div class="linked-mutual-app">` +
+                renderIcon(pair.myName, pair.myIcon) +
+                `<div class="linked-mutual-app-text">` +
+                    `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideYours', {}, lang))}</span>` +
+                    `<div class="linked-mutual-name notranslate">${safeMy}</div>` +
                 `</div>` +
             `</div>` +
         `</div>` +
@@ -8777,13 +8772,8 @@ function _renderDossierLinkedSimpleCard(rel, options) {
 
     return `<div class="linked-project-card is-static${isContract ? ' is-bounty' : ' is-direct'}${isPrimary ? ' is-primary-link' : ''}${options.isSecondary ? ' is-secondary-link' : ''}">` +
         `<div class="linked-card-head">` +
-            `<div class="linked-card-title-wrap">` +
-                `<div class="linked-card-title">${window.escapeHTML(window.t(directionKey, {}, lang))}</div>` +
-                (isPrimary
-                    ? `<span class="linked-primary-mark">${window.escapeHTML(window.t('linkedPrimaryMark', {}, lang))}</span>`
-                    : '') +
-            `</div>` +
             `<span class="linked-badge ${badgeClass}${reward ? ' has-reward' : ''}"${badgeTitle ? ` title="${window.escapeHTML(badgeTitle)}"` : ''}>${window.escapeHTML(badgeText)}</span>` +
+            `<div class="linked-card-title linked-card-title--end">${window.escapeHTML(window.t(directionKey, {}, lang))}</div>` +
         `</div>` +
         `<div class="linked-simple-row">` +
             renderIcon(appName, iconUrl) +
@@ -8944,28 +8934,118 @@ function renderDossierHeader(fullName, username, avatarUrl, fallbackId) {
             .trim().replace('@', '').substring(0, 2).toUpperCase()
     );
     const avatarHue = ((Number(fallbackId || 0) * 73 + 17) % 360);
-    const avatarHtml = `<div class="dossier-avatar" style="--av-hue:${avatarHue}; overflow: hidden; position: relative; width: 52px; height: 52px; border-radius: 50%; background: hsl(var(--av-hue, 220), 55%, 38%); color: rgb(255, 255, 255); font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; user-select: none;">
-        ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` : ''}
-        <span class="dossier-avatar-initials" style="${avatarUrl ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%;'}">${initials}</span>
+    const avatarHtml = `<div class="dossier-avatar" style="--av-hue:${avatarHue}">
+        ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+        <span class="dossier-avatar-initials" style="${avatarUrl ? 'display:none;' : ''}">${initials}</span>
     </div>`;
-    
+
     const cleanUsername = String(username || '').replace('@', '');
     const dispName = fullName || (username ? '@' + cleanUsername : '');
     const mainName = dispName || window.t('idLabel', { id: fallbackId || 0 }, lang);
     const subName = (fullName && username) ? `@${cleanUsername}` : '';
-    const subNameHtml = subName 
-        ? `<div style="font-size: 13px; color: var(--tg-theme-link-color, var(--link-color, #3390ec)); font-weight: 500;">${window.escapeHTML(subName)}</div>` 
+    const subNameHtml = subName
+        ? `<div class="dossier-profile-username notranslate">${window.escapeHTML(subName)}</div>`
         : '';
-        
-    return `
-        <div class="dossier-header-layout" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-            ${avatarHtml}
-            <div style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">
-                <div style="font-size: 18px; font-weight: 700; color: #ffffff; line-height: 1.2; word-break: break-word;">${window.escapeHTML(mainName)}</div>
-                ${subNameHtml}
-            </div>
+
+    return `<div class="dossier-profile-identity">
+        ${avatarHtml}
+        <div class="dossier-profile-names">
+            <div class="dossier-profile-name notranslate">${window.escapeHTML(mainName)}</div>
+            ${subNameHtml}
         </div>
-    `;
+    </div>`;
+}
+
+function toggleDossierFold(btn) {
+    if (!btn) return;
+    const expanded = btn.getAttribute('aria-expanded') === 'true';
+    const next = !expanded;
+    btn.setAttribute('aria-expanded', next ? 'true' : 'false');
+    const root = btn.closest ? btn.closest('.dossier-fold') : btn.parentElement;
+    const panel = root && root.querySelector
+        ? root.querySelector('.dossier-fold-panel')
+        : (btn.nextElementSibling || null);
+    if (panel) {
+        if (next) panel.removeAttribute('hidden');
+        else panel.setAttribute('hidden', '');
+    }
+    if (typeof tg !== 'undefined' && tg && tg.HapticFeedback && typeof tg.HapticFeedback.selectionChanged === 'function') {
+        tg.HapticFeedback.selectionChanged();
+    }
+}
+
+function _renderDossierFold(title, count, panelHtml) {
+    const countNum = Math.max(0, Number(count || 0));
+    return `<div class="dossier-fold">` +
+        `<button type="button" class="dossier-fold-trigger" aria-expanded="false" onclick="toggleDossierFold(this)">` +
+            `<span class="dossier-fold-main">` +
+                `<span class="dossier-fold-title">${window.escapeHTML(title)}</span>` +
+                `<span class="dossier-fold-count">${countNum}</span>` +
+            `</span>` +
+            `<span class="dossier-fold-chevron" aria-hidden="true"></span>` +
+        `</button>` +
+        `<div class="dossier-fold-panel" hidden>${panelHtml || ''}</div>` +
+    `</div>`;
+}
+
+function _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml, reliabilityState) {
+    const karmaValue = Number(profile && profile.karma || 0);
+    const experienceValue = Number(profile && profile.completed_tests || 0);
+    const reliabilityValue = reliabilityState && reliabilityState.isNewbie
+        ? window.t('dossierMetricNewbieShort', {}, lang)
+        : (String((reliabilityState && reliabilityState.reliabilityPct) || 0) + '%');
+    const reliabilityTone = reliabilityState && reliabilityState.isNewbie
+        ? 'is-muted'
+        : (Number(reliabilityState && reliabilityState.reliabilityPct || 0) >= 80
+            ? 'is-good'
+            : (Number(reliabilityState && reliabilityState.reliabilityPct || 0) >= 65 ? 'is-warn' : 'is-bad'));
+
+    const acceptanceRateRaw = profile && profile.acceptance_rate_pct;
+    const acceptanceRateNum = acceptanceRateRaw == null || acceptanceRateRaw === ''
+        ? null
+        : Number(acceptanceRateRaw);
+    const secondaryChips = [];
+    if (acceptanceRateNum != null && Number.isFinite(acceptanceRateNum)) {
+        const pct = Number.isInteger(acceptanceRateNum)
+            ? String(acceptanceRateNum)
+            : acceptanceRateNum.toFixed(1).replace(/\.0$/, '');
+        secondaryChips.push(`<span class="dossier-profile-chip">🎯 ${window.escapeHTML(window.t('dossierMetricQualityShort', {}, lang))}: ${window.escapeHTML(pct)}%</span>`);
+    }
+    if (profile && profile.has_owned_apps) {
+        const slaHoursLabel = formatAvgHandleHoursLabel(profile.avg_handle_hours);
+        if (slaHoursLabel != null) {
+            let slaChip = `⏱ ${window.escapeHTML(window.t('dossierMetricSlaShort', {}, lang))}: ${window.escapeHTML(slaHoursLabel)} ${window.escapeHTML(window.t('dossierMetricHoursShort', {}, lang))}`;
+            if (Number(profile.avg_handle_hours) > 72) {
+                slaChip += ` · ${window.escapeHTML(window.t('dossierOwnerSlaRare', {}, lang))}`;
+            }
+            secondaryChips.push(`<span class="dossier-profile-chip${Number(profile.avg_handle_hours) > 72 ? ' is-warn' : ''}">${slaChip}</span>`);
+        }
+    }
+    if (Number(profile && profile.golden_count || 0) > 0) {
+        secondaryChips.push(`<span class="dossier-profile-chip is-gold">🏆 ${window.escapeHTML(window.t('dossierMetricGoldenShort', {}, lang))}: ${Number(profile.golden_count)}</span>`);
+    }
+
+    return `<section class="dossier-profile-card">` +
+        identityHtml +
+        `<div class="dossier-profile-metrics">` +
+            `<div class="dossier-metric">` +
+                `<div class="dossier-metric-value notranslate">${window.escapeHTML(String(karmaValue))}</div>` +
+                `<div class="dossier-metric-label">${window.escapeHTML(window.t('dossierMetricKarma', {}, lang))}</div>` +
+            `</div>` +
+            `<div class="dossier-metric ${reliabilityTone}">` +
+                `<div class="dossier-metric-value notranslate" title="${window.escapeHTML((reliabilityState && reliabilityState.reliabilityText) || '')}">${window.escapeHTML(reliabilityValue)}</div>` +
+                `<div class="dossier-metric-label">${window.escapeHTML(window.t('dossierMetricReliability', {}, lang))}</div>` +
+            `</div>` +
+            `<div class="dossier-metric">` +
+                `<div class="dossier-metric-value notranslate">${window.escapeHTML(String(experienceValue))}</div>` +
+                `<div class="dossier-metric-label">${window.escapeHTML(window.t('dossierMetricExperience', {}, lang))}</div>` +
+            `</div>` +
+        `</div>` +
+        (secondaryChips.length
+            ? `<div class="dossier-profile-secondary">${secondaryChips.join('')}</div>`
+            : '') +
+        (projectsFoldHtml || '') +
+    `</section>`;
 }
 
 async function openDossierModal(username, testerId, appId) {
@@ -9019,26 +9099,14 @@ async function openDossierModal(username, testerId, appId) {
     const safeTelegramUsername = escapeInlineJsString(tgName);
     const dossierOwnerProfile = _resolveDossierOwnerProfile(testerId, appId, tgName, tester, marketCandidate);
 
-    // Render initial header
-    document.getElementById('dossier-modal-title').innerHTML = renderDossierHeader(
-        dossierOwnerProfile.owner_full_name,
-        dossierOwnerProfile.owner_username,
-        dossierOwnerProfile.owner_avatar_url,
-        testerId
-    );
+    // Profile identity is rendered inside the dashboard body after data loads.
+    document.getElementById('dossier-modal-title').innerHTML = '';
 
     let profile = { karma: 0, completed_tests: 0, total_expected_checkins: 0, total_actual_checkins: 0 };
     try {
         const resp = await fetch(`${API_BASE}/users/${testerId}/profile`);
         if (resp.ok) {
             profile = await resp.json();
-            // Re-render header with exact profile data
-            document.getElementById('dossier-modal-title').innerHTML = renderDossierHeader(
-                profile.full_name || dossierOwnerProfile.owner_full_name,
-                profile.username || dossierOwnerProfile.owner_username,
-                profile.avatar_url,
-                testerId
-            );
         }
     } catch (error) {
         console.error('Dossier fetch error:', error);
@@ -9113,9 +9181,6 @@ async function openDossierModal(username, testerId, appId) {
     _dossierProfilesCache[String(testerId)] = Object.assign({}, profile, dossierOwnerProfile);
 
     const reliabilityState = getDossierReliabilityState(profile);
-    const reliabilityLine = reliabilityState.isNewbie
-        ? `${t.disciplineLabel} ${reliabilityState.reliabilityText}`
-        : `${t.dossierReliability.replace('{pct}', String(reliabilityState.reliabilityPct))} (${reliabilityState.reliabilityText})`;
 
     const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
     const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
@@ -9131,43 +9196,27 @@ async function openDossierModal(username, testerId, appId) {
     const pendingBountyApplicationId = Number(pendingBountyApplication && pendingBountyApplication.application_id || 0);
     const canDecideBountyApplication = pendingBountyApplicationId > 0;
 
-    let html = '';
-    const goldenCountText = (profile.golden_count || 0) > 0
-        ? window.t('dossierGoldenCount', { count: profile.golden_count })
-        : '';
-    const acceptanceRateRaw = profile.acceptance_rate_pct;
-    const acceptanceRateNum = acceptanceRateRaw == null || acceptanceRateRaw === ''
-        ? null
-        : Number(acceptanceRateRaw);
-    const qualityLine = (acceptanceRateNum != null && Number.isFinite(acceptanceRateNum))
-        ? window.t('dossierReportQuality', {
-            pct: Number.isInteger(acceptanceRateNum)
-                ? String(acceptanceRateNum)
-                : acceptanceRateNum.toFixed(1).replace(/\.0$/, ''),
-        }, lang)
-        : '';
-    const hasOwnedApps = !!profile.has_owned_apps;
-    const slaHoursLabel = formatAvgHandleHoursLabel(profile.avg_handle_hours);
-    let ownerSlaLine = '';
-    if (hasOwnedApps && slaHoursLabel != null) {
-        ownerSlaLine = window.t('dossierOwnerSla', { hours: slaHoursLabel }, lang);
-        if (Number(profile.avg_handle_hours) > 72) {
-            ownerSlaLine += ' · ' + window.t('dossierOwnerSlaRare', {}, lang);
-        }
-    }
-    html += `<div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierGlobalTitle}</div>
-        <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
-            ${t.dossierExperience.replace('{count}', profile.completed_tests)}
-            <br>${t.dossierKarma.replace('{karma}', profile.karma)}
-            <br>${window.escapeHTML(reliabilityLine)}
-            ${qualityLine ? '<br>' + window.escapeHTML(qualityLine) : ''}
-            ${ownerSlaLine ? '<br>' + window.escapeHTML(ownerSlaLine) : ''}
-            ${goldenCountText ? '<br><span class="golden-badge">' + window.escapeHTML(goldenCountText) + '</span>' : ''}
-        </div>
-    </div>`;
+    const identityHtml = renderDossierHeader(
+        profile.full_name || dossierOwnerProfile.owner_full_name,
+        profile.username || dossierOwnerProfile.owner_username,
+        profile.avatar_url || dossierOwnerProfile.owner_avatar_url,
+        testerId
+    );
 
-    let relationsHtml = '';
+    const projectsCount = dossierBlocks.otherProjects.length;
+    const projectsPanelHtml = projectsCount
+        ? '<div class="dossier-other-projects-carousel">' + dossierBlocks.otherProjects.map(function(ownedProject) {
+            return _renderDossierOtherProjectMiniCard(ownedProject, testerId);
+        }).join('') + '</div>'
+        : '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierOtherProjectsEmpty', {}, lang)) + '</div>';
+    const projectsFoldHtml = _renderDossierFold(
+        window.t('dossierOtherProjectsTitle', {}, lang),
+        projectsCount,
+        projectsPanelHtml
+    );
+
+    let html = _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml, reliabilityState);
+
     const relationOptionsBase = {
         testerId: testerId,
         contextAppId: appId,
@@ -9175,98 +9224,66 @@ async function openDossierModal(username, testerId, appId) {
         testerProjects: relevantTesterProjects,
         tester: tester,
     };
-    if (relations.length > 0) {
-        const partitioned = _partitionDossierRelations(relations, relationOptionsBase);
-        relationsHtml = '<div class="dossier-relations-block">';
+    const partitioned = relations.length
+        ? _partitionDossierRelations(relations, relationOptionsBase)
+        : { primary: [], secondary: [] };
+    const linkedTotal = partitioned.primary.length + partitioned.secondary.length;
 
+    html += '<section class="dossier-links-section">' +
+        '<div class="dossier-section-title">' +
+            window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) +
+            ` <span class="dossier-section-count">${linkedTotal}</span>` +
+        '</div>';
+
+    if (linkedTotal > 0) {
+        html += '<div class="dossier-relations-block">';
+
+        html += '<div class="dossier-links-subhead dossier-links-subhead--current">' +
+            window.escapeHTML(window.t('dossierCurrentProjectTitle', {}, lang)) +
+        '</div>';
         if (partitioned.primary.length) {
-            relationsHtml += '<div class="dossier-relations-list dossier-relations-list--primary">';
+            html += '<div class="dossier-relations-list dossier-relations-list--primary">';
             partitioned.primary.forEach(function(rel) {
-                relationsHtml += _renderDossierLinkedRelationCard(rel, Object.assign({}, relationOptionsBase, {
+                html += _renderDossierLinkedRelationCard(rel, Object.assign({}, relationOptionsBase, {
                     forcePrimary: true,
                     isSecondary: false,
                 }));
             });
-            relationsHtml += '</div>';
+            html += '</div>';
+        } else {
+            html += '<div class="dossier-owned-project-empty">' +
+                window.escapeHTML(window.t('dossierCurrentProjectEmpty', {}, lang)) +
+            '</div>';
         }
 
         if (partitioned.secondary.length) {
-            relationsHtml += '<div class="dossier-links-subhead">' +
-                window.escapeHTML(window.t('dossierLinkedSecondaryTitle', {}, lang)) +
-            '</div>';
-            relationsHtml += '<div class="dossier-relations-list dossier-relations-list--secondary">';
+            let secondaryCards = '<div class="dossier-relations-list dossier-relations-list--secondary">';
             partitioned.secondary.forEach(function(rel) {
-                relationsHtml += _renderDossierLinkedRelationCard(rel, Object.assign({}, relationOptionsBase, {
+                secondaryCards += _renderDossierLinkedRelationCard(rel, Object.assign({}, relationOptionsBase, {
                     forcePrimary: false,
                     isSecondary: true,
                 }));
             });
-            relationsHtml += '</div>';
+            secondaryCards += '</div>';
+            html += _renderDossierFold(
+                window.t('dossierLinkedSecondaryTitle', {}, lang),
+                partitioned.secondary.length,
+                secondaryCards
+            );
         }
 
-        relationsHtml += '</div>';
+        html += '</div>';
     } else {
-        relationsHtml = '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierRelationsEmpty', {}, lang)) + '</div>';
+        html += '<div class="dossier-owned-project-empty">' +
+            window.escapeHTML(window.t('dossierRelationsEmpty', {}, lang)) +
+        '</div>';
     }
 
-    const otherProjectsHtml = dossierBlocks.otherProjects.length
-        ? '<div class="dossier-other-projects-carousel">' + dossierBlocks.otherProjects.map(function(ownedProject) {
-            return _renderDossierOtherProjectMiniCard(ownedProject, testerId);
-        }).join('') + '</div>'
-        : '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierOtherProjectsEmpty', {}, lang)) + '</div>';
+    html += '</section>';
 
-    html += '<div class="dossier-links-section">' +
-        '<div class="dossier-section-title">' + window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) + '</div>' +
-        relationsHtml +
-        '<div class="dossier-links-subhead dossier-links-subhead--catalog">' +
-            window.escapeHTML(window.t('dossierOtherProjectsTitle', {}, lang)) +
-        '</div>' +
-        otherProjectsHtml +
-    '</div>';
-
-    if (tester) {
-        const sourceMeta = getTesterSourceMeta(tester.join_type);
-        const sourceText = window.escapeHTML(sourceMeta.icon + ' ' + sourceMeta.label);
-        const actualSkips = Math.max(0, Math.max(0, testingDay - 1) - Number(tester.checkins_count || 0));
-        const consecutiveSkips = Number(tester.consecutive_skips != null
-            ? tester.consecutive_skips
-            : (typeof calculateConsecutiveSkips === 'function'
-                ? calculateConsecutiveSkips(Object.assign({}, tester, {
-                    testing_days: testingDay,
-                    skips_count: actualSkips,
-                }))
-                : 0));
-        html += `<div style="margin-bottom: 16px;">
-            <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierProjectTitle}</div>
-            <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
-                ${window.t('dossierDaysInTest', { count: testingDay }, lang)}
-                <br>${t.dossierTestingDay.replace('{day}', Math.min(testingDay, 14))}
-                <br>${window.t('dossierCheckins', { count: tester.checkins_count || 0 }, lang)}
-                <br>${t.dossierMissedDays.replace('{count}', actualSkips)}
-                <br>${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}
-                ${startDateStr ? '<br>' + t.dossierStartDate.replace('{date}', startDateStr) : ''}
-                ${expectedFinish ? '<br>' + t.dossierExpectedFinish.replace('{date}', expectedFinish) : ''}
-                <br>${t.dossierLastCheck.replace('{status}', lastCheckStatus)}
-                <br>${t.dossierSource.replace('{source}', sourceText)}
-            </div>
-        </div>`;
-    } else if (marketCandidate && marketCandidate.market_kind === 'mutual-return') {
-        const sourceMeta = getTesterSourceMeta(marketCandidate.join_type);
-        const sourceText = window.escapeHTML(sourceMeta.icon + ' ' + sourceMeta.label);
-        const contextText = window.escapeHTML(window.t('mutualReturnContext', { project: marketCandidate.my_project_name || '' }, lang));
-        html += `<div style="margin-bottom: 16px;">
-            <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierProjectTitle}</div>
-            <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
-                ${window.escapeHTML(window.t('mutualReturnsSectionTitle', {}, lang))}
-                <br>${contextText}
-                <br>${t.dossierSource.replace('{source}', sourceText)}
-            </div>
-        </div>`;
-    }
-
-    html += `<div>
-        <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierActionsTitle}</div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
+    html += `<div class="dossier-actions-section">
+        <div class="dossier-section-title">${t.dossierActionsTitle}</div>
+        <div class="dossier-actions-list">
             ${canDecideBountyApplication ? `<div class="dossier-bounty-app-block">
                 <div class="dossier-bounty-app-hint">${window.escapeHTML(window.t('dossierBountyApplicationHint', {
                 app: (pendingBountyApplication && pendingBountyApplication.app_name) || window.t('unknownLabel', {}, lang),
@@ -10012,6 +10029,7 @@ Object.assign(window, {
     closeGuestTesterDetailsModal,
     openDossierModal,
     closeDossierModal,
+    toggleDossierFold,
     openTesterOwnedProjectFromDossier,
     joinTesterOwnedProjectFromDossier,
     openDossierHybridJoinChooser,
