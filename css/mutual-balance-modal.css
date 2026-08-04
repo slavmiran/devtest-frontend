@@ -1,21 +1,26 @@
-/* Mutual balance modal + barter chip accents (Phase 2) */
+/* Mutual balance / leave / linked cards — Phase 3 polish */
 
+:root {
+    --border-medium: var(--border-strong);
+}
+
+/* --- Barter chips --- */
 .meta-chip.accent-cyan {
-    color: #38b6e6;
-    border-color: rgba(56, 182, 230, 0.35);
-    background: rgba(56, 182, 230, 0.12);
+    color: var(--security);
+    border-color: var(--security-border);
+    background: var(--security-surface);
 }
 
 .meta-chip.accent-orange {
-    color: #ff9500;
-    border-color: rgba(255, 149, 0, 0.35);
-    background: rgba(255, 149, 0, 0.12);
+    color: var(--warning);
+    border-color: var(--warning-border);
+    background: var(--warning-surface);
 }
 
 .meta-chip.accent-danger {
-    color: #ff4d4f;
-    border-color: rgba(255, 77, 79, 0.35);
-    background: rgba(255, 77, 79, 0.12);
+    color: var(--danger);
+    border-color: var(--danger-border);
+    background: var(--danger-surface);
 }
 
 .meta-chip.barter-chip {
@@ -24,39 +29,161 @@
 
 .barter-archive-btn {
     margin-left: 6px;
-    border: 1px solid rgba(255, 77, 79, 0.35);
-    background: rgba(255, 77, 79, 0.1);
-    color: #ff6b63;
+    border: 1px solid var(--danger-border);
+    background: var(--danger-surface);
+    color: var(--danger);
     border-radius: 999px;
     font-size: 11px;
     padding: 2px 8px;
     cursor: pointer;
 }
 
-.mutual-balance-grid {
+/* --- Modal overlay polish --- */
+#mutual-balance-modal.modal-overlay,
+#leave-mutual-modal.modal-overlay,
+#kick-modal.modal-overlay {
+    background: rgba(14, 17, 22, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+#mutual-balance-modal .modal-content,
+#leave-mutual-modal .modal-content {
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border-subtle);
+}
+
+/* --- Mutual balance: comparison grid --- */
+.parity-comparison-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
-.mutual-balance-col {
+.parity-side-card {
+    background: var(--bg-surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    padding: 12px 10px;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
 }
 
-.mutual-balance-app {
-    font-weight: 600;
-    margin: 6px 0 8px;
+.parity-side-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.parity-side-icon .avatar,
+.parity-side-icon img {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+    object-fit: cover;
+}
+
+.parity-side-name {
     font-size: 13px;
-    line-height: 1.4;
+    font-weight: 650;
+    line-height: 1.35;
+    color: var(--text-primary);
     word-break: break-word;
+    max-width: 100%;
 }
 
+.parity-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.parity-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    background: var(--bg-surface-muted);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+
+.parity-chip.is-warn {
+    color: var(--warning);
+    background: var(--warning-surface);
+    border-color: var(--warning-border);
+}
+
+.parity-info-banner {
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--warning);
+    background: var(--warning-surface);
+    border: 1px solid var(--warning-border);
+}
+
+.parity-info-banner.is-safe {
+    color: var(--security);
+    background: var(--security-surface);
+    border-color: var(--security-border);
+}
+
+.parity-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.parity-actions .btn {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.btn.btn-outline-tg {
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+}
+
+.btn.btn-danger-soft {
+    background: var(--danger-surface);
+    border: 1px solid var(--danger-border);
+    color: var(--danger);
+}
+
+.btn.btn-success-soft {
+    background: var(--success-surface);
+    border: 1px solid var(--success-border);
+    color: var(--success);
+}
+
+/* --- Kick unlink --- */
 .kick-unlink-box {
     display: flex;
     flex-direction: column;
     gap: 10px;
     margin: 0 0 14px;
+    background: var(--bg-surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 12px;
 }
 
 .kick-unlink-row {
@@ -76,7 +203,7 @@
 .kick-unlink-hint {
     font-size: 12px;
     line-height: 1.45;
-    color: #ff9500;
+    color: var(--warning);
     display: none;
 }
 
@@ -84,105 +211,316 @@
     display: block;
 }
 
-.tester-icon-action.is-warning {
-    filter: none;
-}
-
-.dossier-linked-mini-card {
-    display: flex;
-    align-items: center;
+/* --- Leave modal --- */
+.leave-modal-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
-    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+
+.leave-stat-card {
+    background: var(--bg-surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    padding: 12px;
+    min-width: 0;
+}
+
+.leave-stat-card-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+}
+
+.leave-stat-partner {
+    font-size: 13px;
+    font-weight: 650;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    word-break: break-word;
+}
+
+.leave-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.leave-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--bg-surface-muted);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+
+.leave-chip.is-warn {
+    color: var(--warning);
+    background: var(--warning-surface);
+    border-color: var(--warning-border);
+}
+
+.leave-status-banner {
+    margin: 0 0 14px;
+    padding: 12px 14px;
     border-radius: 12px;
-    background: var(--secondary-bg-color);
-    cursor: pointer;
-    border: 1px solid transparent;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-1);
 }
 
-.dossier-linked-mini-card.is-current {
-    border-color: rgba(56, 182, 230, 0.55);
-    box-shadow: 0 0 0 1px rgba(56, 182, 230, 0.2);
+.leave-status-banner.is-justified {
+    border-color: var(--success-border);
+    background: var(--success-surface);
 }
 
-.dossier-linked-exchange-card {
+.leave-status-banner.is-penalty {
+    border-color: var(--danger-border);
+    background: var(--danger-surface);
+}
+
+.leave-status-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+
+.leave-status-banner.is-justified .leave-status-title {
+    color: var(--success);
+}
+
+.leave-status-banner.is-penalty .leave-status-title {
+    color: var(--danger);
+}
+
+.leave-status-desc {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.reason-chip-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.reason-chip {
     display: block;
     width: 100%;
     text-align: left;
-    padding: 10px 12px;
+    padding: 12px 14px;
     border-radius: 12px;
-    background: var(--secondary-bg-color);
-    border: 1px solid transparent;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-1);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 560;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+}
+
+.reason-chip:active {
+    transform: scale(0.99);
+}
+
+.reason-chip.is-selected {
+    border-color: var(--accent-primary-border);
+    background: var(--accent-primary-surface);
+    box-shadow: inset 0 0 0 1px var(--accent-primary-border);
+}
+
+.leave-modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.leave-modal-actions .btn {
+    width: 100%;
+    margin: 0;
+}
+
+#leave-confirm-btn.is-justified {
+    background: var(--success);
+    color: var(--text-on-accent);
+    border: none;
+}
+
+#leave-confirm-btn.is-penalty {
+    background: var(--danger-surface);
+    color: var(--danger);
+    border: 1px solid var(--danger-border);
+}
+
+/* --- Dossier linked project cards --- */
+.linked-project-card {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--bg-surface-1);
+    border: 1px solid var(--border-subtle);
     color: inherit;
     cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.12s ease;
 }
 
-.dossier-linked-exchange-card.is-primary-link,
-.dossier-owned-project-card.is-primary-link {
-    border-color: rgba(56, 182, 230, 0.55);
-    box-shadow: 0 0 0 1px rgba(56, 182, 230, 0.18);
+.linked-project-card:active {
+    transform: scale(0.995);
 }
 
-.dossier-linked-exchange-inner {
-    display: flex;
-    align-items: center;
+.linked-project-card.is-primary-link {
+    border-color: var(--security-border);
+    box-shadow: 0 0 0 1px var(--security-border);
+}
+
+.linked-project-card.is-static {
+    cursor: default;
+}
+
+.linked-mutual-pair {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     gap: 8px;
+    align-items: start;
 }
 
-.dossier-linked-exchange-side {
-    flex: 1;
+.linked-mutual-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    text-align: center;
 }
 
-.dossier-linked-exchange-side .app-icon,
-.dossier-linked-exchange-side img {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
+.linked-mutual-side .avatar,
+.linked-mutual-side img {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
     object-fit: cover;
-    flex-shrink: 0;
 }
 
-.dossier-linked-exchange-name {
+.linked-mutual-name {
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 650;
     line-height: 1.3;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    color: var(--text-primary);
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
-.dossier-linked-exchange-arrow {
-    flex-shrink: 0;
-    opacity: 0.7;
+.linked-mutual-arrow {
+    padding-top: 10px;
+    color: var(--text-tertiary);
     font-size: 14px;
 }
 
-.dossier-linked-exchange-caption {
-    margin-top: 8px;
-    font-size: 11px;
-    color: var(--hint-color);
+.linked-card-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+    justify-content: center;
 }
 
-.dossier-linked-mini-card .dossier-linked-icons {
+.linked-card-footer {
+    margin-top: 10px;
     display: flex;
     align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
+    justify-content: space-between;
+    gap: 8px;
 }
 
-.dossier-linked-mini-card img {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
+.linked-card-cta {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--security);
+}
+
+.linked-simple-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.linked-simple-row .avatar,
+.linked-simple-row img {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 10px !important;
+    flex-shrink: 0;
     object-fit: cover;
-    background: rgba(255, 255, 255, 0.06);
+}
+
+.linked-simple-body {
+    min-width: 0;
+    flex: 1;
+}
+
+.linked-simple-name {
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.35;
+    color: var(--text-primary);
+    word-break: break-word;
+    white-space: normal;
+}
+
+.linked-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 6px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 650;
+    background: var(--bg-surface-muted);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+
+.linked-badge.is-bounty {
+    color: var(--reward);
+    background: var(--reward-surface);
+    border-color: var(--reward-border);
+}
+
+.linked-badge.is-direct {
+    color: var(--accent-primary);
+    background: var(--accent-primary-surface);
+    border-color: var(--accent-primary-border);
+}
+
+.linked-badge.is-guest {
+    color: var(--info-alt);
+    background: var(--info-alt-surface);
+    border-color: var(--info-alt-border);
+}
+
+/* legacy class aliases */
+.dossier-linked-exchange-card {
+    /* superseded by .linked-project-card */
 }
 
 @media (max-width: 420px) {
-    .mutual-balance-grid {
+    .parity-comparison-grid,
+    .leave-modal-stats-grid {
         grid-template-columns: 1fr;
     }
 }

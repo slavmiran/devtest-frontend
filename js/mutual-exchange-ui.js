@@ -1,6 +1,6 @@
 /**
  * Mutual exchange UI helpers — barter chips, balance modal, unlink flag, archive.
- * Phase 2 frontend for mutual-link control.
+ * Phase 2–3 frontend for mutual-link control + UI polish.
  */
 (function () {
     'use strict';
@@ -8,13 +8,55 @@
     var _balanceState = null;
     var _dismissedBrokenTesters = {};
 
+    function _lang() {
+        return (typeof lang !== 'undefined' && lang) ? String(lang) : 'ru';
+    }
+
     function _t(key, params) {
-        var langCode = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
-        return window.t ? window.t(key, params || {}, langCode) : key;
+        return window.t ? window.t(key, params || {}, _lang()) : key;
     }
 
     function _esc(value) {
         return window.escapeHTML ? window.escapeHTML(String(value == null ? '' : value)) : String(value == null ? '' : value);
+    }
+
+    /** Russian plural form picker: one / few / many */
+    function pluralizeRu(count, one, few, many) {
+        var value = Math.abs(Number(count) || 0);
+        var mod10 = value % 10;
+        var mod100 = value % 100;
+        if (mod10 === 1 && mod100 !== 11) return one;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+        return many;
+    }
+
+    function pluralizeSkipWord(count) {
+        var value = Math.abs(Number(count) || 0);
+        if (_lang().indexOf('ru') !== 0) {
+            return value === 1 ? _t('skipWord_one') : _t('skipWord_many');
+        }
+        return pluralizeRu(value, _t('skipWord_one'), _t('skipWord_few'), _t('skipWord_many'));
+    }
+
+    function formatSkipsLabel(count) {
+        var safe = Math.max(0, Number(count) || 0);
+        return String(safe) + ' ' + pluralizeSkipWord(safe);
+    }
+
+    function formatBarterWarningLabel(count) {
+        var safe = Math.max(0, Number(count) || 0);
+        return _t('barterChipWarning', {
+            count: safe,
+            word: pluralizeSkipWord(safe),
+        });
+    }
+
+    function _renderIconHtml(name, iconUrl) {
+        if (typeof renderIcon === 'function') {
+            return renderIcon(name || '?', iconUrl || '');
+        }
+        var letter = String(name || '?').charAt(0).toUpperCase();
+        return '<div class="avatar">' + _esc(letter) + '</div>';
     }
 
     function calculateConsecutiveSkips(progressLike) {
@@ -112,7 +154,7 @@
             return {
                 kind: 'warning',
                 className: 'meta-chip accent-orange barter-chip',
-                label: _t('barterChipWarning', { count: partnerConsecutive }),
+                label: formatBarterWarningLabel(partnerConsecutive),
             };
         }
 
@@ -218,6 +260,8 @@
         return _renderBalanceColumns({
             myAppName: options.context === 'projects' ? (options.myAppName || myName) : (test && test.reciprocal_app_name) || _t('mutualBalanceYourProject'),
             theirAppName: options.context === 'projects' ? (options.theirAppName || theirName) : (test && test.name) || theirName,
+            myIcon: options.myIconUrl || (test && test.reciprocal_app_icon_url) || '',
+            theirIcon: options.theirIconUrl || (test && test.icon_url) || '',
             myDays: Number(test && test.partner_testing_days || 0),
             theirDays: Number(test && test.testing_days || 0),
             mySkips: Number(test && test.partner_skips || 0),
@@ -240,6 +284,8 @@
         return _renderBalanceColumns({
             myAppName: myAppName,
             theirAppName: theirAppName,
+            myIcon: options.myIconUrl || stats.partner_app_icon_url || (test && test.reciprocal_app_icon_url) || '',
+            theirIcon: options.theirIconUrl || stats.app_icon_url || (test && test.icon_url) || '',
             myDays: Number(stats.partner_testing_days || 0),
             theirDays: Number(stats.my_testing_days || (test && test.testing_days) || 0),
             mySkips: Number(stats.partner_skips || 0),
@@ -251,13 +297,35 @@
         });
     }
 
+    function _paritySideCard(label, appName, iconUrl, day, skips) {
+        var skipWarn = Number(skips || 0) >= 3;
+        return '' +
+            '<div class="parity-side-card">' +
+                '<div class="parity-side-label">' + _esc(label) + '</div>' +
+                '<div class="parity-side-icon">' + _renderIconHtml(appName, iconUrl) + '</div>' +
+                '<div class="parity-side-name notranslate">' + _esc(appName) + '</div>' +
+                '<div class="parity-chip-row">' +
+                    '<span class="parity-chip">📅 ' + _esc(_t('parityDayChip', { day: day, total: 14 })) + '</span>' +
+                    '<span class="parity-chip' + (skipWarn ? ' is-warn' : '') + '">⚠️ ' +
+                        _esc(formatSkipsLabel(skips)) +
+                    '</span>' +
+                '</div>' +
+            '</div>';
+    }
+
     function _renderBalanceColumns(data) {
+        var partnerConsec = Number(data.partnerConsecutive || 0);
         var hint = '';
-        if (Number(data.partnerConsecutive || 0) >= 3 || data.partnerLeft) {
-            hint = '<div class="details-block" style="border-color: rgba(255,149,0,0.28);">' +
-                '<div style="font-size:13px;line-height:1.5;color:#ff9500;">' +
-                _esc(_t('mutualBalancePartnerSkipHint')) +
-                '</div></div>';
+        if (partnerConsec >= 3 || data.partnerLeft) {
+            var hintText = data.partnerLeft
+                ? _t('mutualBalancePartnerLeftHint')
+                : _t('mutualBalancePartnerSkipHint', {
+                    count: partnerConsec,
+                    word: pluralizeSkipWord(partnerConsec),
+                });
+            hint = '<div class="parity-info-banner' + (data.partnerLeft || partnerConsec >= 3 ? ' is-safe' : '') + '">' +
+                _esc(hintText) +
+                '</div>';
         }
 
         var tgLink = '';
@@ -269,27 +337,17 @@
         }
 
         return '' +
-            '<div class="mutual-balance-grid">' +
-                '<div class="mutual-balance-col details-block">' +
-                    '<div class="detail-section-title">' + _esc(_t('mutualBalanceYouAtThem')) + '</div>' +
-                    '<div class="mutual-balance-app">' + _esc(data.myAppName) + '</div>' +
-                    '<div>' + _esc(_t('mutualBalanceDayOf', { day: data.myDays, total: 14 })) + '</div>' +
-                    '<div>' + _esc(_t('mutualBalanceSkipsTotal', { skips: data.mySkips })) + '</div>' +
-                '</div>' +
-                '<div class="mutual-balance-col details-block">' +
-                    '<div class="detail-section-title">' + _esc(_t('mutualBalanceThemAtYou')) + '</div>' +
-                    '<div class="mutual-balance-app">' + _esc(data.theirAppName) + '</div>' +
-                    '<div>' + _esc(_t('mutualBalanceDayOf', { day: data.theirDays, total: 14 })) + '</div>' +
-                    '<div>' + _esc(_t('mutualBalanceSkipsTotal', { skips: data.theirSkips })) + '</div>' +
-                '</div>' +
+            '<div class="parity-comparison-grid">' +
+                _paritySideCard(_t('mutualBalanceYouAtThem'), data.myAppName, data.myIcon, data.myDays, data.mySkips) +
+                _paritySideCard(_t('mutualBalanceThemAtYou'), data.theirAppName, data.theirIcon, data.theirDays, data.theirSkips) +
             '</div>' +
             hint +
-            '<div class="action-row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">' +
+            '<div class="parity-actions">' +
                 (tgLink
-                    ? '<button type="button" class="btn btn-secondary" style="flex:1;" onclick="openMutualBalanceTelegram(\'' +
-                        String(tgLink).replace(/'/g, "\\'") + '\')">' + _esc(_t('mutualBalanceWriteTg')) + '</button>'
+                    ? '<button type="button" class="btn btn-outline-tg" onclick="openMutualBalanceTelegram(\'' +
+                        String(tgLink).replace(/'/g, "\\'") + '\')">' + _esc(_t('mutualBalanceWriteTgShort')) + '</button>'
                     : '') +
-                '<button type="button" class="btn" style="flex:1;background:rgba(255,59,48,0.12);color:#ff3b30;" onclick="startMutualBreakFromBalance()">' +
+                '<button type="button" class="btn btn-danger-soft" onclick="startMutualBreakFromBalance()">' +
                     _esc(_t('mutualBalanceBreakBtn')) +
                 '</button>' +
             '</div>';
@@ -415,6 +473,10 @@
         }
     }
 
+    window.pluralizeRu = pluralizeRu;
+    window.pluralizeSkipWord = pluralizeSkipWord;
+    window.formatSkipsLabel = formatSkipsLabel;
+    window.formatBarterWarningLabel = formatBarterWarningLabel;
     window.calculateConsecutiveSkips = calculateConsecutiveSkips;
     window.getBarterChipState = getBarterChipState;
     window.buildBarterChipHtml = buildBarterChipHtml;

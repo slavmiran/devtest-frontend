@@ -40,19 +40,19 @@
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260802-group-chip-v2"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-tests.js?v=20260804-mutual-p2"></script>
-    <script src="./ui/ui-projects.js?v=20260804-mutual-p2"></script>
-    <script src="./ui/ui-market.js?v=20260804-mutual-p2"></script>
+    <script src="./ui/ui-tests.js?v=20260804-mutual-p3"></script>
+    <script src="./ui/ui-projects.js?v=20260804-mutual-p3"></script>
+    <script src="./ui/ui-market.js?v=20260804-mutual-p3"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
 <script src="./js/app-config.js?v=20260803-bounty-apps-v7"></script>
-<script src="./js/app-api.js?v=20260804-mutual-p2"></script>
+<script src="./js/app-api.js?v=20260804-mutual-p3"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20260802-homescreen-v3"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
-<script src="./js/app-features.js?v=20260804-mutual-p2"></script>
-<script src="./js/mutual-exchange-ui.js?v=20260804-mutual-p2"></script>
+<script src="./js/app-features.js?v=20260804-mutual-p3"></script>
+<script src="./js/mutual-exchange-ui.js?v=20260804-mutual-p3"></script>
 <script src="./js/bounty-applications.js?v=20260803-bounty-apps-v7"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260802-gt-draft-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20260803-payment-flow-v7"></script>
@@ -72,7 +72,7 @@
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260803-bounty-apps-v7">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/dossier-modal.css?v=20260804-hybrid-v2">
-    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260804-mutual-p2">
+    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260804-mutual-p3">
     <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
@@ -1900,19 +1900,27 @@
             <div id="leave-mutual-body" style="margin-bottom: 14px;"></div>
             <div class="form-group" style="margin-bottom: 12px;">
                 <label class="form-label" data-i18n="leaveReasonLabel">Причина выхода</label>
-                <select id="leave-reason-select" class="form-input" onchange="toggleLeaveReasonOther()">
-                    <option value="inactive_partner" data-i18n="leaveReasonInactive">Партнёр неактивен</option>
-                    <option value="partner_left" data-i18n="leaveReasonPartnerLeft">Партнёр уже вышел</option>
-                    <option value="communication_issue" data-i18n="leaveReasonCommunication">Нет связи</option>
-                    <option value="other" data-i18n="leaveReasonOther">Другое</option>
-                </select>
+                <input type="hidden" id="leave-reason-select" value="inactive_partner">
+                <div class="reason-chip-group" id="leave-reason-chips">
+                    <button type="button" class="reason-chip is-selected" data-reason="inactive_partner" onclick="selectLeaveReason(this)">
+                        <span data-i18n="leaveReasonInactive">Партнёр неактивен</span>
+                    </button>
+                    <button type="button" class="reason-chip" data-reason="partner_left" onclick="selectLeaveReason(this)">
+                        <span data-i18n="leaveReasonPartnerLeft">Партнёр уже вышел</span>
+                    </button>
+                    <button type="button" class="reason-chip" data-reason="communication_issue" onclick="selectLeaveReason(this)">
+                        <span data-i18n="leaveReasonCommunication">Нет связи</span>
+                    </button>
+                    <button type="button" class="reason-chip" data-reason="other" onclick="selectLeaveReason(this)">
+                        <span data-i18n="leaveReasonOther">Другое</span>
+                    </button>
+                </div>
             </div>
             <textarea id="leave-reason-other" class="form-input" rows="3" style="display:none; resize:none; margin-bottom: 14px;" data-i18n-placeholder="leaveReasonPlaceholder" placeholder="Опишите причину (необязательно)..."></textarea>
-            <div class="action-row" style="margin-top: 0;">
-                <button class="btn btn-secondary" style="flex: 1;" onclick="closeLeaveMutualModal()" data-i18n="btnCancel">Отмена</button>
-                <button id="leave-justified-btn" class="btn btn-primary" style="flex: 1; display:none;" onclick="confirmLeaveMutual(true)" data-i18n="leaveJustifiedBtn">Выйти без штрафа</button>
+            <div class="leave-modal-actions">
+                <button id="leave-confirm-btn" class="btn is-penalty" onclick="confirmLeaveMutualAdaptive()" data-i18n="leaveAbandonedBtn">Покинуть с потерей кармы</button>
+                <button class="btn btn-secondary" onclick="closeLeaveMutualModal()" data-i18n="btnCancel">Отмена</button>
             </div>
-            <button class="btn" style="width: 100%; margin-top: 8px; background-color: rgba(255,59,48,0.1); color: #ff3b30;" onclick="confirmLeaveMutual(false)" data-i18n="leaveAbandonedBtn">Покинуть с потерей кармы</button>
         </div>
     </div>
 

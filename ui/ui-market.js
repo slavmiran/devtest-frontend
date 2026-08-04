@@ -4099,19 +4099,27 @@ async function openLeaveMutualModal(appId, event) {
     }
     const modal = document.getElementById('leave-mutual-modal');
     const body = document.getElementById('leave-mutual-body');
-    const justifiedBtn = document.getElementById('leave-justified-btn');
+    const confirmBtn = document.getElementById('leave-confirm-btn');
     const reasonSelect = document.getElementById('leave-reason-select');
     const reasonOther = document.getElementById('leave-reason-other');
     if (!modal || !body) return;
 
     _leaveMutualAppId = appId;
     _leaveMutualStats = null;
+    window._leaveJustifiedAllowed = false;
     if (reasonSelect) reasonSelect.value = 'inactive_partner';
     if (reasonOther) {
         reasonOther.value = '';
         reasonOther.style.display = 'none';
     }
-    if (justifiedBtn) justifiedBtn.style.display = 'none';
+    if (typeof resetLeaveReasonChips === 'function') {
+        resetLeaveReasonChips('inactive_partner');
+    }
+    if (confirmBtn) {
+        confirmBtn.classList.remove('is-justified');
+        confirmBtn.classList.add('is-penalty');
+        confirmBtn.textContent = window.t('leaveAbandonedBtn', {}, lang);
+    }
     body.innerHTML = `<p style="text-align:center; color: var(--hint-color);">${window.escapeHTML(window.t('leaveLoadingStats', {}, lang))}</p>`;
     modal.classList.add('active');
 
@@ -4124,43 +4132,65 @@ async function openLeaveMutualModal(appId, event) {
         }
 
         _leaveMutualStats = data;
-        const justifiedAllowed = !!data.partner_left || Number(data.partner_skips || 0) >= 3;
+        const partnerSkips = Number(data.partner_skips || 0);
+        const partnerConsecutive = Number(data.partner_consecutive_skips || 0);
+        const justifiedAllowed = !!data.partner_left || partnerSkips >= 3 || partnerConsecutive >= 3;
+        window._leaveJustifiedAllowed = justifiedAllowed;
         const karmaBurn = Math.min(14, Number(data.my_checkins != null ? data.my_checkins : data.my_testing_days || 0)) * 0.1;
         const partnerLabel = data.partner_username
-            ? window.t('leavePartnerUsername', { username: (data.partner_username || '').replace('@', '') }, lang)
+            ? '@' + String(data.partner_username || '').replace(/^@+/, '')
             : window.t('idLabel', { id: data.partner_id || 0 }, lang);
-        const partnerActiveLine = data.partner_left
-            ? window.t('leavePartnerLeft', {}, lang)
-            : window.t('leavePartnerLastActive', { date: formatLastActiveLabel(data.partner_last_active) }, lang);
-        const waitWarning = justifiedAllowed
-            ? ''
-            : `<div class="details-block" style="border-color: rgba(255,149,0,0.22);"><div style="color:#ff9500; font-size:13px; line-height:1.5;">${window.escapeHTML(window.t('leaveSafeWaitWarning', { count: Math.max(0, 3 - Number(data.partner_skips || 0)) }, lang))}</div></div>`;
+        const mySkips = Number(data.my_skips || 0);
+        const waitCount = Math.max(0, 3 - Math.max(partnerSkips, partnerConsecutive));
+
+        const statusBanner = justifiedAllowed
+            ? `<div class="leave-status-banner is-justified">
+                    <div class="leave-status-title">${window.escapeHTML(window.t('leaveJustifiedBadge', {}, lang))}</div>
+                    <div class="leave-status-desc">${window.escapeHTML(window.t('leaveJustifiedDesc', {}, lang))}</div>
+               </div>`
+            : `<div class="leave-status-banner is-penalty">
+                    <div class="leave-status-title">${window.escapeHTML(window.t('leaveAbandonedTitle', {}, lang))}</div>
+                    <div class="leave-status-desc">${window.escapeHTML(window.t('leaveAbandonedDesc', { karma: formatUiAmount(karmaBurn, 1) }, lang))}</div>
+                    <div class="leave-status-desc" style="margin-top:8px;">${window.escapeHTML(window.t('leaveSafeWaitWarning', {
+                        count: waitCount,
+                        word: typeof pluralizeSkipWord === 'function' ? pluralizeSkipWord(waitCount) : '',
+                    }, lang))}</div>
+               </div>`;
 
         body.innerHTML = '' +
-            `<div class="details-block">` +
-                `<div class="detail-section-title">${window.escapeHTML(window.t('leavePartnerTitle', {}, lang))}</div>` +
-                `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
-                    `<div>${window.escapeHTML(partnerLabel)}</div>` +
-                    `<div>${window.escapeHTML(window.t('leavePartnerDays', { days: data.partner_testing_days || 0 }, lang))}</div>` +
-                    `<div>${window.escapeHTML(window.t('leavePartnerSkips', { skips: data.partner_skips || 0 }, lang))}</div>` +
-                    `<div>${window.escapeHTML(partnerActiveLine)}</div>` +
+            `<div class="leave-modal-stats-grid">` +
+                `<div class="leave-stat-card">` +
+                    `<div class="leave-stat-card-title">${window.escapeHTML(window.t('leavePartnerTitle', {}, lang))}</div>` +
+                    `<div class="leave-stat-partner notranslate">${window.escapeHTML(partnerLabel)}</div>` +
+                    `<div class="leave-chip-row">` +
+                        `<span class="leave-chip">📅 ${window.escapeHTML(window.t('leaveDaysChip', { days: data.partner_testing_days || 0 }, lang))}</span>` +
+                        `<span class="leave-chip${partnerSkips >= 3 || partnerConsecutive >= 3 ? ' is-warn' : ''}">⚠️ ${window.escapeHTML(window.t('leaveSkipsChip', {
+                            count: partnerSkips,
+                            max: 3,
+                        }, lang))}</span>` +
+                    `</div>` +
+                    (data.partner_left
+                        ? `<div class="leave-chip is-warn" style="margin-top:8px;">${window.escapeHTML(window.t('leavePartnerLeft', {}, lang))}</div>`
+                        : '') +
+                `</div>` +
+                `<div class="leave-stat-card">` +
+                    `<div class="leave-stat-card-title">${window.escapeHTML(window.t('leaveMyStatsTitle', {}, lang))}</div>` +
+                    `<div class="leave-chip-row">` +
+                        `<span class="leave-chip">📅 ${window.escapeHTML(window.t('leaveDaysChip', { days: data.my_testing_days || 0 }, lang))}</span>` +
+                        `<span class="leave-chip${mySkips >= 3 ? ' is-warn' : ''}">⚠️ ${window.escapeHTML(window.t('leaveSkipsChip', {
+                            count: mySkips,
+                            max: 3,
+                        }, lang))}</span>` +
+                    `</div>` +
                 `</div>` +
             `</div>` +
-            `<div class="details-block">` +
-                `<div class="detail-section-title">${window.escapeHTML(window.t('leaveMyStatsTitle', {}, lang))}</div>` +
-                `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
-                    `<div>${window.escapeHTML(window.t('leaveMyDays', { days: data.my_testing_days || 0 }, lang))}</div>` +
-                    `<div>${window.escapeHTML(window.t('leaveMySkips', { skips: data.my_skips || 0 }, lang))}</div>` +
-                `</div>` +
-            `</div>` +
-            waitWarning +
-            `<div class="details-block" style="border-color: ${justifiedAllowed ? 'rgba(52,199,89,0.22)' : 'rgba(255,59,48,0.22)'};">` +
-                `<div class="detail-section-title">${window.escapeHTML(justifiedAllowed ? window.t('leaveJustifiedTitle', {}, lang) : window.t('leaveAbandonedTitle', {}, lang))}</div>` +
-                `<div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(justifiedAllowed ? window.t('leaveJustifiedDesc', {}, lang) : window.t('leaveAbandonedDesc', { karma: formatUiAmount(karmaBurn, 1) }, lang))}</div>` +
-                `${justifiedAllowed ? '' : `<div style="margin-top:8px; font-size:12px; color:#ff9500; line-height:1.5;">${window.escapeHTML(window.t('leaveAbandonedWarning', { karma: formatUiAmount(karmaBurn, 1) }, lang))}</div>`}` +
-            `</div>`;
+            statusBanner;
 
-        if (justifiedBtn) justifiedBtn.style.display = justifiedAllowed ? '' : 'none';
+        if (confirmBtn) {
+            confirmBtn.classList.toggle('is-justified', justifiedAllowed);
+            confirmBtn.classList.toggle('is-penalty', !justifiedAllowed);
+            confirmBtn.textContent = window.t(justifiedAllowed ? 'leaveJustifiedBtn' : 'leaveAbandonedBtn', {}, lang);
+        }
     } catch (error) {
         console.error('Leave mutual stats error:', error);
         body.innerHTML = `<div class="details-block"><div style="color: var(--hint-color);">${window.escapeHTML(getApiErrorMessage(error && error.message, 'networkError'))}</div></div>`;
@@ -4174,6 +4204,34 @@ function closeLeaveMutualModal(event) {
     modal.classList.remove('active');
     _leaveMutualAppId = null;
     _leaveMutualStats = null;
+    window._leaveJustifiedAllowed = false;
+}
+
+function selectLeaveReason(buttonEl) {
+    if (!buttonEl) return;
+    const reason = String(buttonEl.getAttribute('data-reason') || '').trim();
+    const hidden = document.getElementById('leave-reason-select');
+    if (hidden) hidden.value = reason || 'other';
+    const group = document.getElementById('leave-reason-chips');
+    if (group) {
+        Array.prototype.forEach.call(group.querySelectorAll('.reason-chip'), function(chip) {
+            chip.classList.toggle('is-selected', chip === buttonEl);
+        });
+    }
+    const other = document.getElementById('leave-reason-other');
+    if (other) {
+        other.style.display = reason === 'other' ? 'block' : 'none';
+        if (reason !== 'other') other.value = '';
+    }
+}
+
+function resetLeaveReasonChips(reason) {
+    const target = String(reason || 'inactive_partner');
+    const group = document.getElementById('leave-reason-chips');
+    if (!group) return;
+    const chip = group.querySelector('.reason-chip[data-reason="' + target + '"]')
+        || group.querySelector('.reason-chip');
+    if (chip) selectLeaveReason(chip);
 }
 
 function toggleLeaveReasonOther() {
@@ -4183,6 +4241,13 @@ function toggleLeaveReasonOther() {
     other.style.display = select.value === 'other' ? 'block' : 'none';
     if (select.value !== 'other') {
         other.value = '';
+    }
+}
+
+function confirmLeaveMutualAdaptive() {
+    const justified = window._leaveJustifiedAllowed === true;
+    if (typeof confirmLeaveMutual === 'function') {
+        confirmLeaveMutual(justified);
     }
 }
 
@@ -7531,9 +7596,22 @@ function openDossierHybridJoinChooser(appId, ownerId, project) {
 
     var projectName = String((project && project.name) || '').trim() || window.t('unknownLabel', {}, lang);
     var bountyAmount = Number((project && project.bounty_per_tester) || 0);
-    var bountyTag = bountyAmount > 0
-        ? (typeof formatBustAmount === 'function' ? formatBustAmount(bountyAmount) : (String(bountyAmount) + ' $BUST'))
-        : window.t('dossierJoinHybridContractTag', {}, lang);
+    var bountyTag = window.t('dossierJoinHybridContractTag', {}, lang);
+    if (bountyAmount > 0) {
+        var possibleTotal = bountyAmount;
+        if (typeof getContractPossibleTotalReward === 'function') {
+            var possible = getContractPossibleTotalReward(bountyAmount);
+            possibleTotal = Math.max(0, Number(possible && possible.total || bountyAmount));
+        } else if (typeof getGrantEstimateData === 'function') {
+            var grant = getGrantEstimateData({ skips_count: 0, daily_timeline: '' });
+            possibleTotal = bountyAmount + Math.max(0, Number(grant && grant.total || 0));
+        }
+        var formattedTotal = typeof formatBustAmount === 'function'
+            ? formatBustAmount(possibleTotal)
+            : (String(possibleTotal) + ' $BUST');
+        // Owner bounty + platform grant estimate; details live in join-bounty confirm modal.
+        bountyTag = '~' + formattedTotal;
+    }
 
     function startMutual() {
         if (typeof createMutualOffer === 'function') {
@@ -8208,30 +8286,125 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     options = options || {};
     const pair = _resolveDossierRelationPair(rel, options);
     const testerId = Number(options.testerId || 0);
-    const cardClass = 'dossier-linked-exchange-card' + (pair.isPrimary ? ' is-primary-link' : '');
+    const tester = options.tester || null;
+    const cardClass = 'linked-project-card' + (pair.isPrimary ? ' is-primary-link' : '');
     const canOpenBalance = pair.myAppId > 0 && testerId > 0 && typeof openMutualBalanceModal === 'function';
     const safeMy = window.escapeHTML(pair.myName);
     const safeTheir = window.escapeHTML(pair.theirName);
+
+    let theirDays = 0;
+    let theirSkips = 0;
+    if (tester) {
+        theirDays = tester.start_date && typeof getUserTestingDay === 'function'
+            ? getUserTestingDay(tester.start_date)
+            : Number(tester.testing_days || 0);
+        theirSkips = Number(tester.skips_count != null ? tester.skips_count : 0);
+    }
+    let myDays = 0;
+    let mySkips = 0;
+    if (Array.isArray(myTests)) {
+        const reciprocalTest = myTests.find(function(item) {
+            return Number(item.id || item.app_id || 0) === Number(pair.theirAppId || 0)
+                || Number(item.owner_id || 0) === testerId;
+        });
+        if (reciprocalTest) {
+            myDays = Number(reciprocalTest.testing_days || 0);
+            mySkips = Number(reciprocalTest.skips_count || 0);
+            if (!pair.theirIcon && reciprocalTest.icon_url) {
+                pair.theirIcon = reciprocalTest.icon_url;
+            }
+        }
+    }
+
+    const skipsFmt = typeof formatSkipsLabel === 'function'
+        ? formatSkipsLabel
+        : function(n) { return String(n); };
     const openAttrs = canOpenBalance
-        ? ` onclick="event.stopPropagation(); openMutualBalanceModal(${pair.myAppId}, event, { context: 'projects', projectId: ${pair.myAppId}, testerId: ${testerId}, myAppName: '${String(pair.myName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', theirAppName: '${String(pair.theirName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}' })"`
+        ? ` onclick="event.stopPropagation(); openMutualBalanceModal(${pair.myAppId}, event, { context: 'projects', projectId: ${pair.myAppId}, testerId: ${testerId}, myAppName: '${String(pair.myName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', theirAppName: '${String(pair.theirName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', myIconUrl: '${String(pair.myIcon || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', theirIconUrl: '${String(pair.theirIcon || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}' })"`
         : '';
     const tag = canOpenBalance ? 'button' : 'div';
     const typeAttr = canOpenBalance ? ' type="button"' : '';
 
-    return `<${tag}${typeAttr} class="${cardClass}"${openAttrs}>` +
-        `<div class="dossier-linked-exchange-inner">` +
-            `<div class="dossier-linked-exchange-side">` +
+    return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +
+        `<div class="linked-mutual-pair">` +
+            `<div class="linked-mutual-side">` +
                 renderIcon(pair.myName, pair.myIcon) +
-                `<div class="dossier-linked-exchange-name notranslate">${safeMy}</div>` +
+                `<div class="linked-mutual-name notranslate">${safeMy}</div>` +
             `</div>` +
-            `<div class="dossier-linked-exchange-arrow">↔</div>` +
-            `<div class="dossier-linked-exchange-side">` +
+            `<div class="linked-mutual-arrow">↔</div>` +
+            `<div class="linked-mutual-side">` +
                 renderIcon(pair.theirName, pair.theirIcon) +
-                `<div class="dossier-linked-exchange-name notranslate">${safeTheir}</div>` +
+                `<div class="linked-mutual-name notranslate">${safeTheir}</div>` +
             `</div>` +
         `</div>` +
-        `<div class="dossier-linked-exchange-caption">${window.escapeHTML(window.t('mutualBalanceShort', {}, lang))}</div>` +
+        `<div class="linked-card-chips">` +
+            `<span class="parity-chip">📅 ${window.escapeHTML(window.t('parityDayChip', {
+                day: theirDays || myDays || 0,
+                total: 14,
+            }, lang))}</span>` +
+            `<span class="parity-chip${(theirSkips || mySkips) >= 3 ? ' is-warn' : ''}">⚠️ ${window.escapeHTML(skipsFmt(theirSkips || mySkips || 0))}</span>` +
+        `</div>` +
+        (canOpenBalance
+            ? `<div class="linked-card-footer"><span class="linked-card-cta">${window.escapeHTML(window.t('mutualBalanceShort', {}, lang))}</span><span style="color:var(--text-tertiary);">›</span></div>`
+            : '') +
     `</${tag}>`;
+}
+
+function _renderDossierLinkedSimpleCard(rel, options) {
+    options = options || {};
+    const type = String(rel && rel.type || '');
+    let badgeKey = 'linkedBadgeDirect';
+    let badgeClass = 'is-direct';
+    let appName = '';
+    let iconUrl = '';
+    let appId = 0;
+
+    if (type.indexOf('contract') === 0) {
+        badgeKey = 'linkedBadgeBounty';
+        badgeClass = 'is-bounty';
+    } else if (type.indexOf('guest') === 0) {
+        badgeKey = 'linkedBadgeGuest';
+        badgeClass = 'is-guest';
+    }
+
+    if (type.indexOf('i_test_them') !== -1) {
+        appName = String(rel.their_app || '');
+        appId = Number(rel.their_app_id || 0);
+        iconUrl = String(rel.their_app_icon_url || '');
+    } else {
+        appName = String(rel.my_app || rel.their_app || '');
+        appId = Number(rel.my_app_id || rel.their_app_id || 0);
+        iconUrl = String(rel.my_app_icon_url || rel.their_app_icon_url || '');
+    }
+    if (!appName) appName = window.t('unknownLabel', {}, lang);
+
+    let days = 0;
+    let checkins = 0;
+    const tester = options.tester || null;
+    if (tester && Number(options.contextAppId || 0) === appId) {
+        days = tester.start_date && typeof getUserTestingDay === 'function'
+            ? getUserTestingDay(tester.start_date)
+            : Number(tester.testing_days || 0);
+        checkins = Number(tester.checkins_count || 0);
+    }
+
+    return `<div class="linked-project-card is-static">` +
+        `<div class="linked-simple-row">` +
+            renderIcon(appName, iconUrl) +
+            `<div class="linked-simple-body">` +
+                `<span class="linked-badge ${badgeClass}">${window.escapeHTML(window.t(badgeKey, {}, lang))}</span>` +
+                `<div class="linked-simple-name notranslate">${window.escapeHTML(appName)}</div>` +
+                `<div class="linked-card-chips" style="justify-content:flex-start;margin-top:8px;">` +
+                    (days > 0
+                        ? `<span class="parity-chip">📅 ${window.escapeHTML(window.t('parityDayChip', { day: days, total: 14 }, lang))}</span>`
+                        : '') +
+                    (checkins > 0 || days > 0
+                        ? `<span class="parity-chip">✅ ${window.escapeHTML(window.t('linkedCheckinsChip', { count: checkins }, lang))}</span>`
+                        : '') +
+                `</div>` +
+            `</div>` +
+        `</div>` +
+    `</div>`;
 }
 
 function _resolveDossierOwnedProjects(tester, testerProjects) {
@@ -8603,40 +8776,22 @@ async function openDossierModal(username, testerId, appId) {
     if (relations.length > 0) {
         relationsHtml = '<div class="dossier-relations-list" style="display:flex; flex-direction:column; gap:8px;">';
         relations.forEach(function(rel) {
-            function formatRelationAppName(name, status) {
-                const escapedName = window.escapeHTML(name);
-                if (status === 'completed' || status === 'archived') {
-                    const tagText = lang === 'ru' ? 'Завершен' : 'Completed';
-                    return escapedName + ' <span style="color:#ff9800; font-weight:bold;">(' + tagText + ')</span>';
-                }
-                return escapedName;
-            }
-            const myAppFormatted = rel.my_app ? formatRelationAppName(rel.my_app, rel.my_app_status) : '';
-            const theirAppFormatted = rel.their_app ? formatRelationAppName(rel.their_app, rel.their_app_status) : '';
-
             if (rel.type === 'mutual') {
                 relationsHtml += _renderDossierLinkedExchangeCard(rel, {
                     testerId: testerId,
                     contextAppId: appId,
                     contextProject: project,
                     testerProjects: relevantTesterProjects,
+                    tester: tester,
                 });
                 return;
             }
 
-            let relText = '';
-            if (rel.type === 'direct_they_test_me') {
-                relText = window.t('dossierRelationTheyTestMe', { my_app: myAppFormatted }, lang);
-            } else if (rel.type === 'direct_i_test_them') {
-                relText = window.t('dossierRelationITestThem', { their_app: theirAppFormatted }, lang);
-            } else if (rel.type === 'contract_they_test_me') {
-                relText = window.t('dossierRelationContractTheyTestMe', { my_app: myAppFormatted }, lang);
-            } else if (rel.type === 'contract_i_test_them') {
-                relText = window.t('dossierRelationContractITestThem', { their_app: theirAppFormatted }, lang);
-            }
-            if (relText) {
-                relationsHtml += '<div class="dossier-relation-item" style="padding:10px 12px; background:var(--secondary-bg-color); border-radius:10px; font-size:13px; font-weight:500; line-height:1.4;">' + relText + '</div>';
-            }
+            relationsHtml += _renderDossierLinkedSimpleCard(rel, {
+                testerId: testerId,
+                contextAppId: appId,
+                tester: tester,
+            });
         });
         relationsHtml += '</div>';
     } else {
@@ -9355,6 +9510,9 @@ Object.assign(window, {
     openLeaveMutualModal,
     closeLeaveMutualModal,
     toggleLeaveReasonOther,
+    selectLeaveReason,
+    resetLeaveReasonChips,
+    confirmLeaveMutualAdaptive,
     closeEarnBustModal,
     openSocialModal,
     closeSocialModal,
