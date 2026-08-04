@@ -1,5 +1,43 @@
 /* Phase 3: Developer dossier modal (extracted from styles.css). */
 
+#dossier-modal .dossier-links-section {
+    margin-bottom: 16px;
+}
+
+#dossier-modal .dossier-section-title {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+}
+
+#dossier-modal .dossier-links-subhead {
+    margin: 14px 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--text-secondary);
+}
+
+#dossier-modal .dossier-links-subhead--catalog {
+    margin-top: 16px;
+}
+
+#dossier-modal .dossier-relations-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+#dossier-modal .dossier-relations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#dossier-modal .dossier-relations-list--secondary .linked-project-card {
+    padding: 10px 12px;
+}
 
 #dossier-modal .dossier-owned-projects-list {
     display: grid;

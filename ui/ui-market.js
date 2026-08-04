@@ -772,6 +772,30 @@ function formatAvgHandleHoursLabel(hours) {
     return n.toFixed(1).replace(/\.0$/, '');
 }
 
+function getActiveMyTestForApp(appId) {
+    var id = Number(appId || 0);
+    if (id <= 0 || !Array.isArray(myTests)) return null;
+    for (var i = 0; i < myTests.length; i++) {
+        var test = myTests[i];
+        if (test && Number(test.id) === id) return test;
+    }
+    return null;
+}
+
+function getBountyAlreadyTestingBtnLabel(appId) {
+    var test = getActiveMyTestForApp(appId);
+    if (!test) return '';
+    var joinType = String(test.join_type || '').toLowerCase();
+    if (joinType === 'bounty') {
+        return window.t('bountyAlreadyContractBtn', {}, lang);
+    }
+    // mutual / invite / prelaunch / manual / empty — hybrid showcase case
+    if (joinType === 'mutual' || joinType === 'invite' || joinType === 'prelaunch' || joinType === 'manual' || !joinType) {
+        return window.t('bountyAlreadyMutualBtn', {}, lang);
+    }
+    return window.t('bountyAlreadyTestingBtn', {}, lang);
+}
+
 function renderFeedCard(item, kind) {
     const ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(item.owner_full_name, item.owner_username, item.owner_id));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
@@ -862,7 +886,14 @@ function renderFeedCard(item, kind) {
         buttonExtraAttrs = '';
     }
     if (kind === 'bounty') {
-        if (item.has_pending_bounty_application) {
+        var alreadyTestingLabel = getBountyAlreadyTestingBtnLabel(item.app_id);
+        if (alreadyTestingLabel) {
+            buttonText = alreadyTestingLabel;
+            clickAction = 'void(0)';
+            buttonClass = 'btn pending disabled';
+            buttonDisabledAttr = 'disabled';
+            buttonExtraAttrs = '';
+        } else if (item.has_pending_bounty_application) {
             buttonText = window.t('bountyAppPendingBtn', {}, lang);
             clickAction = 'void(0)';
             buttonClass = 'btn pending disabled';
@@ -4108,6 +4139,7 @@ async function openLeaveMutualModal(appId, event) {
     _leaveMutualStats = null;
     window._leaveJustifiedAllowed = false;
     window._leaveKarmaBurnPreview = 0;
+    window._leaveGrantAvailable = false;
     if (reasonSelect) reasonSelect.value = 'inactive_partner';
     if (reasonOther) {
         reasonOther.value = '';
@@ -4120,8 +4152,8 @@ async function openLeaveMutualModal(appId, event) {
         cancelLeaveMutualConfirm();
     }
     if (confirmBtn) {
-        confirmBtn.classList.remove('is-justified');
-        confirmBtn.classList.add('is-penalty');
+        confirmBtn.classList.remove('leave-cta--safe', 'leave-cta--warn');
+        confirmBtn.classList.add('leave-cta--warn');
         confirmBtn.textContent = window.t('leaveAbandonedBtn', {}, lang);
     }
     body.innerHTML = `<p style="text-align:center; color: var(--hint-color);">${window.escapeHTML(window.t('leaveLoadingStats', {}, lang))}</p>`;
@@ -4149,23 +4181,20 @@ async function openLeaveMutualModal(appId, event) {
         const mySkips = Number(data.my_skips || 0);
         const waitCount = Math.max(0, 3 - Math.max(partnerSkips, partnerConsecutive));
         const grantStillAvailable = mySkips < 3;
+        window._leaveGrantAvailable = grantStillAvailable;
         const partnerRi = data.partner_reliability_index;
         const partnerKarma = data.partner_karma;
-        const hasPartnerSecondary = (partnerRi != null && partnerRi !== '') || (partnerKarma != null && partnerKarma !== '');
 
-        let partnerSecondaryHtml = '';
-        if (hasPartnerSecondary) {
-            const parts = [];
-            if (partnerRi != null && partnerRi !== '') {
-                parts.push('🛡 ' + window.escapeHTML(String(partnerRi)) + '%');
-            }
-            if (partnerKarma != null && partnerKarma !== '') {
-                parts.push('☯️ ' + window.escapeHTML(String(partnerKarma)));
-            }
-            partnerSecondaryHtml =
-                `<div class="leave-partner-secondary" title="${window.escapeHTML(window.t('leavePartnerSecondaryHint', {}, lang))}">` +
-                    parts.join('<span class="leave-partner-secondary-dot">·</span>') +
-                `</div>`;
+        const partnerMetaParts = [];
+        if (partnerRi != null && partnerRi !== '') {
+            partnerMetaParts.push(
+                `<span class="leave-meta-item">🛡 ${window.escapeHTML(String(partnerRi))}%</span>`
+            );
+        }
+        if (partnerKarma != null && partnerKarma !== '') {
+            partnerMetaParts.push(
+                `<span class="leave-meta-item">☯️ ${window.escapeHTML(String(partnerKarma))}</span>`
+            );
         }
 
         const statusBanner = justifiedAllowed
@@ -4182,67 +4211,84 @@ async function openLeaveMutualModal(appId, event) {
                     }, lang))}</div>
                </div>`;
 
-        const grantBanner = grantStillAvailable
-            ? `<div class="leave-grant-tease">
-                    <div class="leave-grant-tease-title">${window.escapeHTML(window.t('leaveGrantTeaseTitle', {}, lang))}</div>
-                    <div class="leave-grant-tease-desc">${window.escapeHTML(window.t('leaveGrantTeaseDesc', {
-                        skips: mySkips,
-                        max: 3,
-                    }, lang))}</div>
+        const grantRow = grantStillAvailable
+            ? `<div class="leave-grant-row">
+                    <span class="leave-grant-icon" aria-hidden="true">🏆</span>
+                    <div class="leave-grant-copy">
+                        <div class="leave-grant-title">${window.escapeHTML(window.t('leaveGrantTeaseTitle', {}, lang))}</div>
+                        <div class="leave-grant-desc">${window.escapeHTML(window.t('leaveGrantTeaseDesc', {
+                            skips: mySkips,
+                            max: 3,
+                        }, lang))}</div>
+                    </div>
                </div>`
             : '';
 
         body.innerHTML = '' +
-            `<div class="leave-stats-stack">` +
-                `<div class="leave-stat-card leave-stat-card--partner">` +
-                    `<div class="leave-stat-card-title">${window.escapeHTML(window.t('leavePartnerTitle', {}, lang))}</div>` +
-                    `<div class="leave-stat-partner notranslate">${window.escapeHTML(partnerLabel)}</div>` +
-                    `<div class="leave-chip-row">` +
-                        `<span class="leave-chip">📅 ${window.escapeHTML(window.t('leaveDaysChip', { days: data.partner_testing_days || 0 }, lang))}</span>` +
-                        `<span class="leave-chip${partnerSkips >= 3 || partnerConsecutive >= 3 ? ' is-warn' : ''}">⚠️ ${window.escapeHTML(window.t('leaveSkipsChip', {
-                            count: partnerSkips,
-                            max: 3,
-                        }, lang))}</span>` +
+            `<div class="leave-exchange-card" id="leave-exchange-card">` +
+                `<div class="leave-side leave-side--partner">` +
+                    `<div class="leave-side-head">` +
+                        `<div class="leave-side-kicker">${window.escapeHTML(window.t('leavePartnerTitle', {}, lang))}</div>` +
+                        `<div class="leave-side-name notranslate">${window.escapeHTML(partnerLabel)}</div>` +
                     `</div>` +
-                    partnerSecondaryHtml +
+                    `<div class="leave-metric-list">` +
+                        `<div class="leave-metric">` +
+                            `<span class="leave-metric-ico" aria-hidden="true">📅</span>` +
+                            `<span class="leave-metric-label">${window.escapeHTML(window.t('leaveMetricDays', {}, lang))}</span>` +
+                            `<span class="leave-metric-value">${window.escapeHTML(String(data.partner_testing_days || 0))}</span>` +
+                        `</div>` +
+                        `<div class="leave-metric${partnerSkips >= 3 || partnerConsecutive >= 3 ? ' is-warn' : ''}">` +
+                            `<span class="leave-metric-ico" aria-hidden="true">⚠️</span>` +
+                            `<span class="leave-metric-label">${window.escapeHTML(window.t('leaveMetricSkips', {}, lang))}</span>` +
+                            `<span class="leave-metric-value">${window.escapeHTML(String(partnerSkips))}/3</span>` +
+                        `</div>` +
+                    `</div>` +
+                    (partnerMetaParts.length
+                        ? `<div class="leave-side-meta">${partnerMetaParts.join('<span class="leave-meta-sep" aria-hidden="true">·</span>')}</div>`
+                        : '') +
                     (data.partner_left
-                        ? `<div class="leave-chip is-warn" style="margin-top:8px;">${window.escapeHTML(window.t('leavePartnerLeft', {}, lang))}</div>`
+                        ? `<div class="leave-inline-note is-warn">${window.escapeHTML(window.t('leavePartnerLeft', {}, lang))}</div>`
                         : '') +
                 `</div>` +
-                `<button type="button" class="leave-my-stats-peek" id="leave-my-stats-toggle" aria-expanded="false" onclick="toggleLeaveMyStats()">` +
-                    `<div class="leave-my-stats-peek-glow" aria-hidden="true"></div>` +
-                    `<div class="leave-my-stats-peek-main">` +
-                        `<div class="leave-my-stats-peek-label">${window.escapeHTML(window.t('leaveMyStatsPeekLabel', {}, lang))}</div>` +
-                        `<div class="leave-my-stats-peek-hint">${window.escapeHTML(window.t('leaveMyStatsPeekHint', {}, lang))}</div>` +
-                    `</div>` +
-                    `<span class="leave-my-stats-peek-chevron" aria-hidden="true">⌃</span>` +
-                `</button>` +
-                `<div class="leave-my-stats-panel" id="leave-my-stats-panel" hidden>` +
-                    `<div class="leave-stat-card leave-stat-card--mine">` +
-                        `<div class="leave-stat-card-title">${window.escapeHTML(window.t('leaveMyStatsTitle', {}, lang))}</div>` +
-                        `<div class="leave-chip-row">` +
-                            `<span class="leave-chip">📅 ${window.escapeHTML(window.t('leaveDaysChip', { days: data.my_testing_days || 0 }, lang))}</span>` +
-                            `<span class="leave-chip${mySkips >= 3 ? ' is-warn' : ''}">⚠️ ${window.escapeHTML(window.t('leaveSkipsChip', {
-                                count: mySkips,
-                                max: 3,
-                            }, lang))}</span>` +
-                            `<span class="leave-chip">✅ ${window.escapeHTML(window.t('leaveCheckinsChip', { count: myCheckins }, lang))}</span>` +
+                `<div class="leave-side leave-side--mine" id="leave-my-side">` +
+                    `<button type="button" class="leave-pull" id="leave-my-stats-toggle" aria-expanded="false" onclick="toggleLeaveMyStats()">` +
+                        `<span class="leave-pull-rail" aria-hidden="true"><span class="leave-pull-knob"></span></span>` +
+                        `<span class="leave-pull-copy">` +
+                            `<span class="leave-pull-label">${window.escapeHTML(window.t('leaveMyStatsPeekLabel', {}, lang))}</span>` +
+                            `<span class="leave-pull-hint">${window.escapeHTML(window.t('leaveMyStatsPeekHint', {}, lang))}</span>` +
+                        `</span>` +
+                        `<span class="leave-pull-chevron" aria-hidden="true"></span>` +
+                    `</button>` +
+                    `<div class="leave-my-drawer" id="leave-my-stats-panel">` +
+                        `<div class="leave-my-drawer-inner">` +
+                            `<div class="leave-metric-list">` +
+                                `<div class="leave-metric">` +
+                                    `<span class="leave-metric-ico" aria-hidden="true">📅</span>` +
+                                    `<span class="leave-metric-label">${window.escapeHTML(window.t('leaveMetricDays', {}, lang))}</span>` +
+                                    `<span class="leave-metric-value">${window.escapeHTML(String(data.my_testing_days || 0))}</span>` +
+                                `</div>` +
+                                `<div class="leave-metric${mySkips >= 3 ? ' is-warn' : ''}">` +
+                                    `<span class="leave-metric-ico" aria-hidden="true">⚠️</span>` +
+                                    `<span class="leave-metric-label">${window.escapeHTML(window.t('leaveMetricSkips', {}, lang))}</span>` +
+                                    `<span class="leave-metric-value">${window.escapeHTML(String(mySkips))}/3</span>` +
+                                `</div>` +
+                                `<div class="leave-metric">` +
+                                    `<span class="leave-metric-ico" aria-hidden="true">✅</span>` +
+                                    `<span class="leave-metric-label">${window.escapeHTML(window.t('leaveMetricCheckins', {}, lang))}</span>` +
+                                    `<span class="leave-metric-value">${window.escapeHTML(String(myCheckins))}</span>` +
+                                `</div>` +
+                            `</div>` +
+                            grantRow +
                         `</div>` +
-                        grantBanner +
                     `</div>` +
                 `</div>` +
             `</div>` +
             statusBanner;
 
         if (confirmBtn) {
-            confirmBtn.classList.toggle('is-justified', justifiedAllowed);
-            confirmBtn.classList.toggle('is-penalty', !justifiedAllowed);
+            confirmBtn.classList.toggle('leave-cta--safe', justifiedAllowed);
+            confirmBtn.classList.toggle('leave-cta--warn', !justifiedAllowed);
             confirmBtn.textContent = window.t(justifiedAllowed ? 'leaveJustifiedBtn' : 'leaveAbandonedBtn', {}, lang);
-        }
-        const finalBtn = document.getElementById('leave-confirm-final-btn');
-        if (finalBtn) {
-            finalBtn.classList.toggle('is-justified', justifiedAllowed);
-            finalBtn.classList.toggle('is-penalty', !justifiedAllowed);
         }
     } catch (error) {
         console.error('Leave mutual stats error:', error);
@@ -4259,61 +4305,94 @@ function closeLeaveMutualModal(event) {
     _leaveMutualStats = null;
     window._leaveJustifiedAllowed = false;
     window._leaveKarmaBurnPreview = 0;
+    window._leaveGrantAvailable = false;
     if (typeof cancelLeaveMutualConfirm === 'function') {
         cancelLeaveMutualConfirm();
     }
 }
 
 function toggleLeaveMyStats() {
-    const panel = document.getElementById('leave-my-stats-panel');
+    const card = document.getElementById('leave-exchange-card');
+    const side = document.getElementById('leave-my-side');
     const toggle = document.getElementById('leave-my-stats-toggle');
-    if (!panel || !toggle) return;
-    const willOpen = panel.hasAttribute('hidden');
-    if (willOpen) {
-        panel.removeAttribute('hidden');
-        toggle.classList.add('is-open');
-        toggle.setAttribute('aria-expanded', 'true');
-    } else {
-        panel.setAttribute('hidden', '');
-        toggle.classList.remove('is-open');
-        toggle.setAttribute('aria-expanded', 'false');
-    }
+    if (!side || !toggle) return;
+    const willOpen = !side.classList.contains('is-open');
+    side.classList.toggle('is-open', willOpen);
+    toggle.classList.toggle('is-open', willOpen);
+    toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    if (card) card.classList.toggle('has-mine-open', willOpen);
     if (window.tg && window.tg.HapticFeedback) {
         window.tg.HapticFeedback.selectionChanged();
     }
 }
 
 function requestLeaveMutualConfirm() {
-    const mainFooter = document.getElementById('leave-main-footer');
-    const confirmStep = document.getElementById('leave-confirm-step');
-    const desc = document.getElementById('leave-confirm-desc');
+    const overlay = document.getElementById('leave-confirm-overlay');
+    const body = document.getElementById('leave-confirm-body');
     const finalBtn = document.getElementById('leave-confirm-final-btn');
-    if (!mainFooter || !confirmStep) return;
+    const title = document.getElementById('leave-confirm-title');
+    if (!overlay || !body) return;
 
     const justified = window._leaveJustifiedAllowed === true;
     const karma = formatUiAmount(window._leaveKarmaBurnPreview || 0, 1);
-    if (desc) {
-        desc.textContent = justified
-            ? window.t('leaveConfirmDescJustified', {}, lang)
-            : window.t('leaveConfirmDescAbandoned', { karma: karma }, lang);
+    const grantAvailable = window._leaveGrantAvailable === true;
+
+    if (title) {
+        title.textContent = window.t('leaveConfirmTitle', {}, lang);
     }
+
+    const points = [];
+    points.push(`<li>${window.escapeHTML(window.t('leaveConfirmPointMirror', {}, lang))}</li>`);
+    if (justified) {
+        points.push(`<li>${window.escapeHTML(window.t('leaveConfirmPointNoPenalty', {}, lang))}</li>`);
+    } else {
+        points.push(`<li>${window.escapeHTML(window.t('leaveConfirmPointKarma', { karma: karma }, lang))}</li>`);
+    }
+    if (grantAvailable) {
+        points.push(`<li class="is-warn">${window.escapeHTML(window.t('leaveConfirmPointGrant', {}, lang))}</li>`);
+    }
+
+    body.innerHTML = '' +
+        `<p class="leave-confirm-lead">${window.escapeHTML(justified
+            ? window.t('leaveConfirmDescJustified', {}, lang)
+            : window.t('leaveConfirmDescAbandoned', { karma: karma }, lang))}</p>` +
+        `<ul class="leave-confirm-points">${points.join('')}</ul>`;
+
     if (finalBtn) {
-        finalBtn.classList.toggle('is-justified', justified);
-        finalBtn.classList.toggle('is-penalty', !justified);
+        finalBtn.classList.toggle('leave-cta--safe', justified);
+        finalBtn.classList.toggle('leave-cta--warn', !justified);
         finalBtn.textContent = window.t(justified ? 'leaveConfirmFinalJustified' : 'leaveConfirmFinalAbandoned', {}, lang);
     }
-    mainFooter.style.display = 'none';
-    confirmStep.style.display = 'block';
+
+    overlay.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) {
-        window.tg.HapticFeedback.impactOccurred('light');
+        window.tg.HapticFeedback.impactOccurred('medium');
     }
 }
 
-function cancelLeaveMutualConfirm() {
-    const mainFooter = document.getElementById('leave-main-footer');
-    const confirmStep = document.getElementById('leave-confirm-step');
-    if (mainFooter) mainFooter.style.display = '';
-    if (confirmStep) confirmStep.style.display = 'none';
+function cancelLeaveMutualConfirm(event) {
+    const overlay = document.getElementById('leave-confirm-overlay');
+    if (!overlay) return;
+    // Backdrop: close only when the dimmed overlay itself was clicked
+    if (event && event.target === overlay) {
+        overlay.classList.remove('active');
+        return;
+    }
+    // Ignore bubbled clicks that somehow hit the overlay handler from sheet content
+    if (event && event.currentTarget === overlay && event.target !== overlay) {
+        return;
+    }
+    // Back button / programmatic dismiss
+    overlay.classList.remove('active');
+}
+
+function confirmLeaveMutualAdaptive() {
+    const overlay = document.getElementById('leave-confirm-overlay');
+    if (overlay) overlay.classList.remove('active');
+    const justified = window._leaveJustifiedAllowed === true;
+    if (typeof confirmLeaveMutual === 'function') {
+        confirmLeaveMutual(justified);
+    }
 }
 
 function selectLeaveReason(buttonEl) {
@@ -4350,13 +4429,6 @@ function toggleLeaveReasonOther() {
     other.style.display = select.value === 'other' ? 'block' : 'none';
     if (select.value !== 'other') {
         other.value = '';
-    }
-}
-
-function confirmLeaveMutualAdaptive() {
-    const justified = window._leaveJustifiedAllowed === true;
-    if (typeof confirmLeaveMutual === 'function') {
-        confirmLeaveMutual(justified);
     }
 }
 
@@ -8060,7 +8132,9 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
             return Number(card && card.app_id) === Number(project.app_id || 0) && !!card.has_pending_bounty_application;
         }))
     );
-    if ((isBountyProject || isHybridProject) && !hasPendingBountyApp && typeof window.registerJoinBountyContext === 'function') {
+    var alreadyTestingLabel = getBountyAlreadyTestingBtnLabel(project.app_id);
+    var alreadyTestingThisProject = !!alreadyTestingLabel;
+    if ((isBountyProject || isHybridProject) && !hasPendingBountyApp && !alreadyTestingThisProject && typeof window.registerJoinBountyContext === 'function') {
         window.registerJoinBountyContext(project);
     }
     var ownerIdForJoin = Number(project.owner_id || testerId || 0);
@@ -8073,9 +8147,11 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     } else {
         takeAction = 'closeProjectDetailsModal(); createMutualOffer(' + Number(project.app_id) + ', ' + ownerIdForJoin + ')';
     }
-    var takeBtnLabel = hasPendingBountyApp
-        ? window.t('bountyAppPendingBtn', {}, lang)
-        : window.t('dossierBtnTakeTest', {}, lang);
+    var takeBtnLabel = alreadyTestingThisProject
+        ? alreadyTestingLabel
+        : (hasPendingBountyApp
+            ? window.t('bountyAppPendingBtn', {}, lang)
+            : window.t('dossierBtnTakeTest', {}, lang));
     var dossierMetaChipsHtml = _buildDossierProjectMetaChips(project);
     var contactButtonHtml = safeOwnerUsername
         ? '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openTelegramProfile(\'' + safeOwnerUsername + '\')">' + window.escapeHTML(window.t('detail_contact_btn', {}, lang)) + '</button>'
@@ -8151,7 +8227,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'' + escapeInlineJsString(project.package_name || '') + '\')">' + window.escapeHTML(window.t('openGooglePlay', {}, lang)) + '</button>' +
             (joinBlocked
                 ? '<button class="btn disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(window.t('dossierBtnTakeTestBlocked', {}, lang)) + '</button>'
-                : (hasPendingBountyApp
+                : ((hasPendingBountyApp || alreadyTestingThisProject)
                     ? '<button class="btn pending disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(takeBtnLabel) + '</button>'
                     : '<button class="btn" style="background:rgba(0,122,255,0.16);color:var(--button-color);" onclick="' + takeAction + '">' + window.escapeHTML(takeBtnLabel) + '</button>')) +
         '</div>';
@@ -8391,6 +8467,59 @@ function _resolveDossierRelationPair(rel, options) {
     };
 }
 
+function _isDossierRelationPrimary(rel, options) {
+    options = options || {};
+    const contextAppId = Number(options.contextAppId || 0);
+    if (!(contextAppId > 0) || !rel) return false;
+    const type = String(rel.type || '');
+    if (type === 'mutual') {
+        const pair = _resolveDossierRelationPair(rel, options);
+        return !!pair.isPrimary;
+    }
+    if (type.indexOf('they_test_me') !== -1) {
+        return Number(rel.my_app_id || 0) === contextAppId;
+    }
+    if (type.indexOf('i_test_them') !== -1) {
+        // Opened from their project context is rare; still mark if ids match.
+        return Number(rel.their_app_id || 0) === contextAppId;
+    }
+    return false;
+}
+
+function _partitionDossierRelations(relations, options) {
+    const list = Array.isArray(relations) ? relations.slice() : [];
+    if (!list.length) return { primary: [], secondary: [] };
+
+    const primary = [];
+    const secondary = [];
+    list.forEach(function(rel) {
+        if (_isDossierRelationPrimary(rel, options)) primary.push(rel);
+        else secondary.push(rel);
+    });
+
+    // No context match: elevate first mutual, else first relation.
+    if (!primary.length && list.length) {
+        const mutualIdx = list.findIndex(function(rel) {
+            return String(rel && rel.type || '') === 'mutual';
+        });
+        const pickIdx = mutualIdx >= 0 ? mutualIdx : 0;
+        primary.push(list[pickIdx]);
+        secondary.length = 0;
+        list.forEach(function(rel, idx) {
+            if (idx !== pickIdx) secondary.push(rel);
+        });
+    }
+
+    return { primary: primary, secondary: secondary };
+}
+
+function _renderDossierLinkedRelationCard(rel, options) {
+    if (rel && String(rel.type || '') === 'mutual') {
+        return _renderDossierLinkedExchangeCard(rel, options);
+    }
+    return _renderDossierLinkedSimpleCard(rel, options);
+}
+
 function _resolveDossierLinkedContractReward(rel, options) {
     options = options || {};
     const type = String(rel && rel.type || '');
@@ -8464,7 +8593,11 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const pair = _resolveDossierRelationPair(rel, options);
     const testerId = Number(options.testerId || 0);
     const tester = options.tester || null;
-    const cardClass = 'linked-project-card is-mutual' + (pair.isPrimary ? ' is-primary-link' : '');
+    const isPrimary = options.forcePrimary === true
+        || (options.forcePrimary !== false && (pair.isPrimary || _isDossierRelationPrimary(rel, options)));
+    const cardClass = 'linked-project-card is-mutual'
+        + (isPrimary ? ' is-primary-link' : '')
+        + (options.isSecondary ? ' is-secondary-link' : '');
     const canOpenBalance = pair.myAppId > 0 && testerId > 0 && typeof openMutualBalanceModal === 'function';
     const safeMy = window.escapeHTML(pair.myName);
     const safeTheir = window.escapeHTML(pair.theirName);
@@ -8501,34 +8634,44 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         : '';
     const tag = canOpenBalance ? 'button' : 'div';
     const typeAttr = canOpenBalance ? ' type="button"' : '';
+    const dayValue = theirDays || myDays || 0;
 
     return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +
-        `<div class="linked-card-topline">` +
+        `<div class="linked-card-head">` +
+            `<div class="linked-card-title-wrap">` +
+                `<div class="linked-card-title">${window.escapeHTML(window.t('linkedDirectionMutual', {}, lang))}</div>` +
+                (isPrimary
+                    ? `<span class="linked-primary-mark">${window.escapeHTML(window.t('linkedPrimaryMark', {}, lang))}</span>`
+                    : '') +
+            `</div>` +
             `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>` +
-            `<span class="linked-direction">${window.escapeHTML(window.t('linkedDirectionMutual', {}, lang))}</span>` +
         `</div>` +
-        `<div class="linked-mutual-pair">` +
-            `<div class="linked-mutual-side">` +
-                `<div class="linked-side-label">${window.escapeHTML(window.t('linkedSideYours', {}, lang))}</div>` +
+        `<div class="linked-mutual-strip">` +
+            `<div class="linked-mutual-app">` +
                 renderIcon(pair.myName, pair.myIcon) +
-                `<div class="linked-mutual-name notranslate">${safeMy}</div>` +
+                `<div class="linked-mutual-app-text">` +
+                    `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideYours', {}, lang))}</span>` +
+                    `<div class="linked-mutual-name notranslate">${safeMy}</div>` +
+                `</div>` +
             `</div>` +
-            `<div class="linked-mutual-arrow">↔</div>` +
-            `<div class="linked-mutual-side">` +
-                `<div class="linked-side-label">${window.escapeHTML(window.t('linkedSideTheirs', {}, lang))}</div>` +
+            `<div class="linked-mutual-swap" aria-hidden="true">⇄</div>` +
+            `<div class="linked-mutual-app">` +
                 renderIcon(pair.theirName, pair.theirIcon) +
-                `<div class="linked-mutual-name notranslate">${safeTheir}</div>` +
+                `<div class="linked-mutual-app-text">` +
+                    `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideTheirs', {}, lang))}</span>` +
+                    `<div class="linked-mutual-name notranslate">${safeTheir}</div>` +
+                `</div>` +
             `</div>` +
         `</div>` +
-        `<div class="linked-card-chips">` +
+        `<div class="linked-card-chips linked-card-chips--start">` +
             `<span class="parity-chip">📅 ${window.escapeHTML(window.t('parityDayChip', {
-                day: theirDays || myDays || 0,
+                day: dayValue,
                 total: 14,
             }, lang))}</span>` +
             `<span class="parity-chip${(theirSkips || mySkips) >= 3 ? ' is-warn' : ''}">⚠️ ${window.escapeHTML(skipsFmt(theirSkips || mySkips || 0))}</span>` +
         `</div>` +
         (canOpenBalance
-            ? `<div class="linked-card-footer"><span class="linked-card-cta">${window.escapeHTML(window.t('mutualBalanceShort', {}, lang))}</span><span style="color:var(--text-tertiary);">›</span></div>`
+            ? `<div class="linked-card-footer"><span class="linked-card-cta">${window.escapeHTML(window.t('mutualBalanceShort', {}, lang))}</span><span class="linked-card-chevron">›</span></div>`
             : '') +
     `</${tag}>`;
 }
@@ -8540,6 +8683,8 @@ function _renderDossierLinkedSimpleCard(rel, options) {
         || String(rel && rel.direction || '') === 'i_test_them';
     const isContract = type.indexOf('contract') === 0;
     const isGuest = type.indexOf('guest') === 0;
+    const isPrimary = options.forcePrimary === true
+        || (options.forcePrimary !== false && _isDossierRelationPrimary(rel, options));
 
     let badgeKey = 'linkedBadgeDirect';
     let badgeClass = 'is-direct';
@@ -8619,23 +8764,30 @@ function _renderDossierLinkedSimpleCard(rel, options) {
         }
     }
 
-    const rewardChip = reward
-        ? `<span class="linked-reward-chip notranslate" title="${window.escapeHTML(window.t(
+    let badgeText = window.t(badgeKey, {}, lang);
+    let badgeTitle = '';
+    if (isContract && reward) {
+        badgeText = window.t('linkedBadgeBounty', {}, lang) + ' ' + reward.label;
+        badgeTitle = window.t(
             reward.grantBurned ? 'linkedRewardOwnerOnlyHint' : 'bountyPossibleTotalChipHint',
             {},
             lang
-        ))}">${window.escapeHTML(reward.label)}</span>`
-        : '';
+        );
+    }
 
-    return `<div class="linked-project-card is-static${isContract ? ' is-bounty' : ' is-direct'}">` +
-        `<div class="linked-card-topline">` +
-            `<span class="linked-badge ${badgeClass}">${window.escapeHTML(window.t(badgeKey, {}, lang))}</span>` +
-            rewardChip +
+    return `<div class="linked-project-card is-static${isContract ? ' is-bounty' : ' is-direct'}${isPrimary ? ' is-primary-link' : ''}${options.isSecondary ? ' is-secondary-link' : ''}">` +
+        `<div class="linked-card-head">` +
+            `<div class="linked-card-title-wrap">` +
+                `<div class="linked-card-title">${window.escapeHTML(window.t(directionKey, {}, lang))}</div>` +
+                (isPrimary
+                    ? `<span class="linked-primary-mark">${window.escapeHTML(window.t('linkedPrimaryMark', {}, lang))}</span>`
+                    : '') +
+            `</div>` +
+            `<span class="linked-badge ${badgeClass}${reward ? ' has-reward' : ''}"${badgeTitle ? ` title="${window.escapeHTML(badgeTitle)}"` : ''}>${window.escapeHTML(badgeText)}</span>` +
         `</div>` +
         `<div class="linked-simple-row">` +
             renderIcon(appName, iconUrl) +
             `<div class="linked-simple-body">` +
-                `<div class="linked-direction">${window.escapeHTML(window.t(directionKey, {}, lang))}</div>` +
                 `<div class="linked-simple-name notranslate">${window.escapeHTML(appName)}</div>` +
                 `<div class="linked-card-chips linked-card-chips--start">` +
                     (days > 0
@@ -9016,27 +9168,42 @@ async function openDossierModal(username, testerId, appId) {
     </div>`;
 
     let relationsHtml = '';
+    const relationOptionsBase = {
+        testerId: testerId,
+        contextAppId: appId,
+        contextProject: project,
+        testerProjects: relevantTesterProjects,
+        tester: tester,
+    };
     if (relations.length > 0) {
-        relationsHtml = '<div class="dossier-relations-list" style="display:flex; flex-direction:column; gap:8px;">';
-        relations.forEach(function(rel) {
-            if (rel.type === 'mutual') {
-                relationsHtml += _renderDossierLinkedExchangeCard(rel, {
-                    testerId: testerId,
-                    contextAppId: appId,
-                    contextProject: project,
-                    testerProjects: relevantTesterProjects,
-                    tester: tester,
-                });
-                return;
-            }
+        const partitioned = _partitionDossierRelations(relations, relationOptionsBase);
+        relationsHtml = '<div class="dossier-relations-block">';
 
-            relationsHtml += _renderDossierLinkedSimpleCard(rel, {
-                testerId: testerId,
-                contextAppId: appId,
-                testerProjects: relevantTesterProjects,
-                tester: tester,
+        if (partitioned.primary.length) {
+            relationsHtml += '<div class="dossier-relations-list dossier-relations-list--primary">';
+            partitioned.primary.forEach(function(rel) {
+                relationsHtml += _renderDossierLinkedRelationCard(rel, Object.assign({}, relationOptionsBase, {
+                    forcePrimary: true,
+                    isSecondary: false,
+                }));
             });
-        });
+            relationsHtml += '</div>';
+        }
+
+        if (partitioned.secondary.length) {
+            relationsHtml += '<div class="dossier-links-subhead">' +
+                window.escapeHTML(window.t('dossierLinkedSecondaryTitle', {}, lang)) +
+            '</div>';
+            relationsHtml += '<div class="dossier-relations-list dossier-relations-list--secondary">';
+            partitioned.secondary.forEach(function(rel) {
+                relationsHtml += _renderDossierLinkedRelationCard(rel, Object.assign({}, relationOptionsBase, {
+                    forcePrimary: false,
+                    isSecondary: true,
+                }));
+            });
+            relationsHtml += '</div>';
+        }
+
         relationsHtml += '</div>';
     } else {
         relationsHtml = '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierRelationsEmpty', {}, lang)) + '</div>';
@@ -9048,10 +9215,12 @@ async function openDossierModal(username, testerId, appId) {
         }).join('') + '</div>'
         : '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierOtherProjectsEmpty', {}, lang)) + '</div>';
 
-    html += '<div style="margin-bottom: 16px;">' +
-        '<div style="font-weight: 600; margin-bottom: 8px;">' + window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) + '</div>' +
+    html += '<div class="dossier-links-section">' +
+        '<div class="dossier-section-title">' + window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) + '</div>' +
         relationsHtml +
-        '<div style="font-weight: 600; margin: 14px 0 8px;">' + window.escapeHTML(window.t('dossierOtherProjectsTitle', {}, lang)) + '</div>' +
+        '<div class="dossier-links-subhead dossier-links-subhead--catalog">' +
+            window.escapeHTML(window.t('dossierOtherProjectsTitle', {}, lang)) +
+        '</div>' +
         otherProjectsHtml +
     '</div>';
 

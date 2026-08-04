@@ -2976,6 +2976,14 @@ function closeJoinBountyConfirmModal(event) {
 }
 
 function joinBounty(appId) {
+    var alreadyLabel = typeof getBountyAlreadyTestingBtnLabel === 'function'
+        ? getBountyAlreadyTestingBtnLabel(appId)
+        : '';
+    if (alreadyLabel) {
+        if (typeof showToast === 'function') showToast(alreadyLabel);
+        if (typeof renderBountyFeed === 'function') renderBountyFeed(true);
+        return;
+    }
     openJoinBountyConfirmModal(appId);
 }
 
