@@ -110,14 +110,45 @@ const telegramUsername = DEBUG_BYPASS_USERNAME_GATE
     ? (String(initData.user?.username || '').trim().replace(/^@+/, '') || 'tester_no_name')
     : String(initData.user?.username || '').trim().replace(/^@+/, '');
 const API_BASE_OVERRIDE = String(window.__API_BASE__ || '').trim();
-// Default API is always production Render.
-// For local backend via ngrok, set window.__API_BASE__ before app scripts, e.g.:
-//   <script>window.__API_BASE__ = 'https://YOUR-TUNNEL.ngrok-free.dev/api';</script>
-let API_BASE = API_BASE_OVERRIDE || 'https://devtest-backend.onrender.com/api';
+const TEST_API_BASE_DEFAULT = String(window.__TEST_API_BASE__ || '').trim();
+const PRODUCTION_API_BASE = 'https://devtest-backend.onrender.com/api';
+
+function _isTestFrontendHost() {
+    var host = String(window.location.hostname || '').toLowerCase();
+    if (!host) return false;
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+    if (host.endsWith('.vercel.app') || host === 'vercel.app') return true;
+    if (String(window.__FRONTEND_ENV__ || '').trim().toLowerCase() === 'test') return true;
+    return false;
+}
+
+function _resolveApiBase() {
+    if (API_BASE_OVERRIDE) {
+        return API_BASE_OVERRIDE;
+    }
+    if (_isTestFrontendHost()) {
+        // NEVER fall back to production on test/staging frontends.
+        if (TEST_API_BASE_DEFAULT) {
+            return TEST_API_BASE_DEFAULT;
+        }
+        console.error(
+            '[DevTest] Test frontend must set window.__API_BASE__ (or __TEST_API_BASE__) to your test/ngrok backend. Production API is blocked here.'
+        );
+        return '';
+    }
+    return PRODUCTION_API_BASE;
+}
+
+let API_BASE = _resolveApiBase();
 const API_USES_NGROK = API_BASE.includes('ngrok');
 window.API_USES_NGROK = API_USES_NGROK;
 window.API_BASE = API_BASE;
 if (window.App) window.App.API_BASE = API_BASE;
+if (API_BASE) {
+    console.info('[DevTest] API_BASE =', API_BASE, _isTestFrontendHost() ? '(test host)' : '(production host)');
+} else {
+    console.error('[DevTest] API_BASE is empty — configure window.__API_BASE__ before app scripts.');
+}
 window.FEEDBACK_PUBLIC_LINK_BASE = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
 
 /** Signed Telegram WebApp initData for backend auth. Prefer over initDataUnsafe. */
