@@ -1102,6 +1102,10 @@
     color: var(--text-secondary);
 }
 
+.linked-card-direction.is-debt {
+    color: color-mix(in srgb, var(--warning) 80%, var(--text-primary));
+}
+
 .linked-primary-mark {
     display: none;
 }
@@ -1132,6 +1136,10 @@
     min-width: 0;
 }
 
+.linked-mutual-app.is-done {
+    opacity: 0.55;
+}
+
 .linked-mutual-app .avatar,
 .linked-mutual-app img {
     width: 36px !important;
@@ -1144,6 +1152,21 @@
 .linked-mutual-app-text {
     min-width: 0;
     flex: 1;
+}
+
+.linked-side-done {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 3px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    background: color-mix(in srgb, var(--bg-surface-muted) 90%, transparent);
+    border: 1px solid var(--border-subtle);
 }
 
 .linked-mutual-swap {
@@ -1245,7 +1268,16 @@
 .linked-card-cta {
     font-size: 12px;
     font-weight: 650;
-    color: var(--security);
+    color: var(--text-secondary);
+}
+
+.linked-project-card.is-mutual .linked-card-cta {
+    color: var(--text-secondary);
+}
+
+.linked-project-card.is-mutual:not(.is-static):hover .linked-card-cta,
+.linked-project-card.is-mutual:not(.is-static):active .linked-card-cta {
+    color: var(--text-primary);
 }
 
 .linked-card-chevron {

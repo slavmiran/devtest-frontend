@@ -8595,12 +8595,20 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const tester = options.tester || null;
     const isPrimary = options.forcePrimary === true
         || (options.forcePrimary !== false && (pair.isPrimary || _isDossierRelationPrimary(rel, options)));
-    const cardClass = 'linked-project-card is-mutual'
-        + (isPrimary ? ' is-primary-link' : '')
-        + (options.isSecondary ? ' is-secondary-link' : '');
     const canOpenBalance = pair.myAppId > 0 && testerId > 0 && typeof openMutualBalanceModal === 'function';
     const safeMy = window.escapeHTML(pair.myName);
     const safeTheir = window.escapeHTML(pair.theirName);
+
+    const myStatus = String(rel && rel.my_app_status || '').trim().toLowerCase();
+    const theirStatus = String(rel && rel.their_app_status || '').trim().toLowerCase();
+    const myDone = myStatus === 'completed' || myStatus === 'archived';
+    const theirDone = theirStatus === 'completed' || theirStatus === 'archived';
+    const hasDebt = (myDone && !theirDone) || (theirDone && !myDone);
+
+    const cardClass = 'linked-project-card is-mutual'
+        + (isPrimary ? ' is-primary-link' : '')
+        + (options.isSecondary ? ' is-secondary-link' : '')
+        + (hasDebt ? ' has-debt' : '');
 
     let theirDays = 0;
     let theirSkips = 0;
@@ -8635,26 +8643,31 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const tag = canOpenBalance ? 'button' : 'div';
     const typeAttr = canOpenBalance ? ' type="button"' : '';
     const dayValue = theirDays || myDays || 0;
+    const completedBadge = `<span class="linked-side-done">${window.escapeHTML(window.t('linkedSideCompleted', {}, lang))}</span>`;
 
     return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +
         `<div class="linked-card-meta">` +
             `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>` +
-            `<span class="linked-card-direction">${window.escapeHTML(window.t('linkedDirectionMutual', {}, lang))}</span>` +
+            (hasDebt
+                ? `<span class="linked-card-direction is-debt">${window.escapeHTML(window.t('linkedMutualDebtNotice', {}, lang))}</span>`
+                : '') +
         `</div>` +
         `<div class="linked-mutual-strip">` +
-            `<div class="linked-mutual-app">` +
+            `<div class="linked-mutual-app${theirDone ? ' is-done' : ''}">` +
                 renderIcon(pair.theirName, pair.theirIcon) +
                 `<div class="linked-mutual-app-text">` +
                     `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideTheirs', {}, lang))}</span>` +
                     `<div class="linked-mutual-name notranslate">${safeTheir}</div>` +
+                    (theirDone ? completedBadge : '') +
                 `</div>` +
             `</div>` +
             `<div class="linked-mutual-swap" aria-hidden="true">⇄</div>` +
-            `<div class="linked-mutual-app">` +
+            `<div class="linked-mutual-app${myDone ? ' is-done' : ''}">` +
                 renderIcon(pair.myName, pair.myIcon) +
                 `<div class="linked-mutual-app-text">` +
                     `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideYours', {}, lang))}</span>` +
                     `<div class="linked-mutual-name notranslate">${safeMy}</div>` +
+                    (myDone ? completedBadge : '') +
                 `</div>` +
             `</div>` +
         `</div>` +
@@ -8987,13 +9000,17 @@ function _renderDossierFold(title, count, panelHtml, options) {
         + (variant === 'inline' ? ' dossier-fold--inline' : '');
 
     let mainInner = '';
+    let endInner = `<span class="dossier-fold-chevron" aria-hidden="true"></span>`;
     if (variant === 'quiet') {
-        mainInner = `<span class="dossier-fold-title">${window.escapeHTML(window.t('dossierLinkedMoreTitle', { count: countNum }, lang))}</span>`;
+        mainInner = '';
+        endInner = `<span class="dossier-fold-title">${window.escapeHTML(window.t('dossierLinkedMoreTitle', { count: countNum }, lang))}</span>`
+            + `<span class="dossier-fold-chevron" aria-hidden="true"></span>`;
     } else if (variant === 'inline') {
         mainInner = `<span class="dossier-fold-ico" aria-hidden="true">📱</span>`
             + `<span class="dossier-fold-title">${window.escapeHTML(window.t('dossierOtherProjectsTitle', {}, lang))}</span>`
-            + `<span class="dossier-fold-count">${countNum}</span>`
-            + `<span class="dossier-fold-hint">${window.escapeHTML(window.t('dossierOtherProjectsExpandHint', {}, lang))}</span>`;
+            + `<span class="dossier-fold-count">${countNum}</span>`;
+        endInner = `<span class="dossier-fold-hint">${window.escapeHTML(window.t('dossierOtherProjectsExpandHint', {}, lang))}</span>`
+            + `<span class="dossier-fold-chevron" aria-hidden="true"></span>`;
     } else {
         mainInner = `<span class="dossier-fold-title">${window.escapeHTML(title)}</span>`
             + `<span class="dossier-fold-count">${countNum}</span>`;
@@ -9002,7 +9019,7 @@ function _renderDossierFold(title, count, panelHtml, options) {
     return `<div class="${foldClass}">` +
         `<button type="button" class="dossier-fold-trigger" aria-expanded="false" onclick="toggleDossierFold(this)">` +
             `<span class="dossier-fold-main">${mainInner}</span>` +
-            `<span class="dossier-fold-chevron" aria-hidden="true"></span>` +
+            `<span class="dossier-fold-end">${endInner}</span>` +
         `</button>` +
         `<div class="dossier-fold-panel" hidden>${panelHtml || ''}</div>` +
     `</div>`;
@@ -9384,7 +9401,6 @@ async function openDossierModal(username, testerId, appId) {
     if (linkedTotal > 0) {
         html += '<div class="dossier-section-title dossier-section-title--links">' +
             window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) +
-            (linkedTotal > 1 ? ` <span class="dossier-section-count">${linkedTotal}</span>` : '') +
         '</div>';
     }
 
