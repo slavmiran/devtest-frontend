@@ -3111,9 +3111,11 @@ async function confirmJoinBounty() {
 async function confirmDropTest() {
     if (!_dropTestAppId) return;
     try {
-        const unlinkReciprocal = (typeof consumePendingUnlinkReciprocal === 'function')
-            ? consumePendingUnlinkReciprocal(true)
-            : true;
+        const unlinkReciprocal = (typeof getTermUnlinkReciprocal === 'function')
+            ? !!getTermUnlinkReciprocal()
+            : ((typeof consumePendingUnlinkReciprocal === 'function')
+                ? consumePendingUnlinkReciprocal(true)
+                : true);
         const response = await fetch(`${API_BASE}/tests/${_dropTestAppId}/drop`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3128,7 +3130,12 @@ async function confirmDropTest() {
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        closeDropTestModal({ target: document.getElementById('drop-test-modal') });
+        showToast(window.t('termDropSuccess', {}, lang));
+        if (typeof closeTerminationSheet === 'function') {
+            closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+        } else {
+            closeDropTestModal({ target: document.getElementById('drop-test-modal') });
+        }
         await Promise.all([loadTasks(), loadProjects(true)]);
     } catch (error) {
         console.error('Drop test error:', error);

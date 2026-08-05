@@ -4113,11 +4113,29 @@ function openDropTestModal(appId, event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    _dropTestAppId = appId;
-    document.getElementById('drop-test-modal').classList.add('active');
+    if (typeof window.openTerminationSheet !== 'function') {
+        console.warn('openTerminationSheet is not available');
+        _dropTestAppId = appId;
+        var legacy = document.getElementById('drop-test-modal');
+        if (legacy) legacy.classList.add('active');
+        return;
+    }
+    var test = (typeof getMyTestById === 'function')
+        ? getMyTestById(appId)
+        : (Array.isArray(myTests) ? myTests.find(function (item) { return Number(item.id) === Number(appId); }) : null);
+    return window.openTerminationSheet({
+        mode: 'drop',
+        appId: Number(appId || 0),
+        joinType: (test && test.join_type) || 'invite',
+        testSnapshot: test || null,
+        unlinkReciprocal: true,
+    });
 }
 
 function closeDropTestModal(event) {
+    if (typeof window.closeTerminationSheet === 'function') {
+        return window.closeTerminationSheet(event);
+    }
     if (event && event.target !== document.getElementById('drop-test-modal')) return;
     document.getElementById('drop-test-modal').classList.remove('active');
     _dropTestAppId = null;

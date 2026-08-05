@@ -94,6 +94,14 @@
                 { code: 'other', labelKey: 'kickReasonOther' },
             ];
         }
+        if (mode === 'drop') {
+            return [
+                { code: 'schedule_conflict', labelKey: 'termDropReasonSchedule' },
+                { code: 'not_suitable', labelKey: 'termDropReasonNotSuitable' },
+                { code: 'communication_issue', labelKey: 'termDropReasonNoContact' },
+                { code: 'other', labelKey: 'leaveReasonOther' },
+            ];
+        }
         return [
             { code: 'inactive_partner', labelKey: 'leaveReasonInactive' },
             { code: 'partner_left', labelKey: 'leaveReasonPartnerLeft' },
@@ -387,6 +395,82 @@
             _effectsBlock(_t('kickTesterEffectsTitle'), testerEffects);
     }
 
+    function _renderDropBody(test) {
+        var joinType = _normalizeJoinType(test && test.join_type);
+        var testingDays = test && test.start_date && typeof getUserTestingDay === 'function'
+            ? getUserTestingDay(test.start_date)
+            : Number(test && test.testing_days || 0);
+        var checkins = Number(test && test.checkins_count || 0);
+        var skips = Number(test && test.skips_count || 0);
+        var projectName = (test && test.name) || _t('unknownLabel');
+        var ownerLabel = test && test.owner_username
+            ? '@' + String(test.owner_username).replace(/^@+/, '')
+            : (test && test.owner_full_name) || _t('idLabel', { id: test && test.owner_id || 0 });
+        var bountyPerTester = Number(test && test.bounty_per_tester || 0);
+        var isBounty = joinType === 'bounty' && bountyPerTester > 0;
+        var dailyPool = isBounty ? bountyPerTester * 0.65 : 0;
+        var rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
+        var earnedEstimate = Math.round(checkins * rewardPerCheckin * 10) / 10;
+        var remainingEstimate = Math.max(0, Math.round((dailyPool - earnedEstimate) * 10) / 10);
+        var hasReciprocal = Number(test && test.reciprocal_app_id || 0) > 0;
+
+        if (_termState) {
+            _termState.justifiedAllowed = true; // drop: no karma burn
+            _termState.isBountyDrop = isBounty;
+            _termState.remainingBounty = remainingEstimate;
+            _termState.hasReciprocal = hasReciprocal;
+            _termState.projectName = projectName;
+        }
+
+        var banner = isBounty
+            ? '<div class="leave-status-banner is-penalty">' +
+                '<div class="leave-status-title">' + _esc(_t('termDropBountyBadge')) + '</div>' +
+                '<div class="leave-status-desc">' + _esc(_t('termDropBountyDesc', {
+                    remaining: _fmtAmount(remainingEstimate, 1),
+                })) + '</div>' +
+              '</div>'
+            : '<div class="leave-status-banner is-justified">' +
+                '<div class="leave-status-title">' + _esc(_t('termDropInviteBadge')) + '</div>' +
+                '<div class="leave-status-desc">' + _esc(_t('termDropInviteDesc')) + '</div>' +
+              '</div>';
+
+        var effects = [
+            _t('termDropEffectAccess'),
+            _t('termDropEffectNoKarma'),
+        ];
+        if (isBounty) {
+            effects.push(_t('termDropEffectBountyLost', { remaining: _fmtAmount(remainingEstimate, 1) }));
+            if (earnedEstimate > 0) {
+                effects.push(_t('termDropEffectBountyKept', { earned: _fmtAmount(earnedEstimate, 1) }));
+            }
+        } else {
+            effects.push(_t('termDropEffectInviteNeutral'));
+        }
+        if (hasReciprocal) {
+            effects.push(_t('termDropEffectReciprocalMaybe'));
+        }
+
+        return '' +
+            '<div class="leave-exchange-card">' +
+                '<div class="leave-side leave-side--partner">' +
+                    '<div class="leave-side-head">' +
+                        '<div class="leave-side-kicker">' + _esc(_t('termDropProjectSide')) + '</div>' +
+                        '<div class="leave-side-name notranslate">' + _esc(projectName) + '</div>' +
+                        '<div class="leave-side-meta" style="border-top:none;padding-top:4px;margin-top:2px;">' +
+                            '<span class="leave-meta-item">' + _esc(ownerLabel) + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="leave-metric-list">' +
+                        _metricRow('📅', _t('leaveMetricDays'), testingDays, false) +
+                        _metricRow('✅', _t('leaveMetricCheckins'), checkins, false) +
+                        _metricRow('⚠️', _t('leaveMetricSkips'), String(skips) + '/3', skips >= 3) +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            banner +
+            _effectsBlock(_t('termDropEffectsTitle'), effects);
+    }
+
     function _updatePrimaryCta() {
         var btn = document.getElementById('term-confirm-btn');
         if (!btn || !_termState) return;
@@ -395,6 +479,11 @@
             var justified = !!_termState.justifiedAllowed;
             btn.classList.add(justified ? 'leave-cta--safe' : 'leave-cta--warn');
             btn.textContent = _t(justified ? 'leaveJustifiedBtn' : 'leaveAbandonedBtn');
+            return;
+        }
+        if (_termState.mode === 'drop') {
+            btn.classList.add('leave-cta--warn');
+            btn.textContent = _t('termDropBtn');
             return;
         }
         var safe = !!_termState.justifiedAllowed;
@@ -412,8 +501,9 @@
         var reasonOther = document.getElementById('term-reason-other');
         if (!modal || !body) return;
 
-        var mode = options.mode === 'kick' ? 'kick' : 'leave';
-        var joinType = _normalizeJoinType(options.joinType || 'mutual');
+        var rawMode = String(options.mode || 'leave').toLowerCase();
+        var mode = (rawMode === 'kick' || rawMode === 'drop') ? rawMode : 'leave';
+        var joinType = _normalizeJoinType(options.joinType || (mode === 'leave' ? 'mutual' : 'invite'));
 
         _termState = {
             mode: mode,
@@ -425,12 +515,18 @@
             karmaBurnPreview: 0,
             grantAvailable: false,
             forceUnlink: !!options.forceUnlink,
+            isBountyDrop: false,
+            remainingBounty: 0,
+            hasReciprocal: false,
+            projectName: '',
         };
 
-        // Legacy globals used by confirmLeaveMutual / confirmKickTester
+        // Legacy globals used by confirmLeaveMutual / confirmKickTester / confirmDropTest
         if (mode === 'leave') {
             window._leaveMutualAppId = _termState.appId;
             window._leaveMutualStats = null;
+        } else if (mode === 'drop') {
+            window._dropTestAppId = _termState.appId;
         } else {
             window._kickTarget = { appId: _termState.projectId, testerId: _termState.testerId };
         }
@@ -443,7 +539,9 @@
         if (subtitleEl) {
             subtitleEl.textContent = mode === 'kick'
                 ? _t('termSheetSubtitleKick')
-                : _t('termSheetSubtitleLeave');
+                : (mode === 'drop'
+                    ? _t('termSheetSubtitleDrop')
+                    : _t('termSheetSubtitleLeave'));
         }
         if (reasonLabel) {
             reasonLabel.textContent = mode === 'kick'
@@ -459,8 +557,30 @@
         }
 
         _setTypeBadge(joinType);
-        _setupUnlinkBox(mode, joinType, options);
-        _renderReasonChips(mode, mode === 'kick' ? 'no_response' : 'inactive_partner');
+        // Drop: show unlink only when a reciprocal link actually exists.
+        var unlinkOptions = Object.assign({}, options);
+        if (mode === 'drop') {
+            var testSnap = options.testSnapshot || (typeof getMyTestById === 'function'
+                ? getMyTestById(_termState.appId)
+                : null);
+            var hasReciprocal = Number(testSnap && testSnap.reciprocal_app_id || 0) > 0;
+            _setupUnlinkBox(mode, hasReciprocal ? 'mutual' : joinType, unlinkOptions);
+            if (!hasReciprocal) {
+                var box = document.getElementById('term-unlink-box');
+                if (box) box.hidden = true;
+            } else if (document.getElementById('term-unlink-primary-label')) {
+                document.getElementById('term-unlink-primary-label').textContent = _t('termUnlinkLeavePrimary');
+                var recLabel = document.getElementById('term-unlink-reciprocal-label');
+                if (recLabel) recLabel.textContent = _t('termUnlinkLeaveReciprocal');
+            }
+        } else {
+            _setupUnlinkBox(mode, joinType, unlinkOptions);
+        }
+
+        var defaultReason = mode === 'kick'
+            ? 'no_response'
+            : (mode === 'drop' ? 'schedule_conflict' : 'inactive_partner');
+        _renderReasonChips(mode, defaultReason);
 
         body.innerHTML = '<p style="text-align:center; color: var(--hint-color);">' +
             _esc(_t('leaveLoadingStats')) + '</p>';
@@ -470,10 +590,29 @@
 
         if (mode === 'leave') {
             await _loadLeaveStats(_termState.appId, body);
+        } else if (mode === 'drop') {
+            _fillDropFromLocal(options, body);
         } else {
             _fillKickFromLocal(options, body);
         }
         _updatePrimaryCta();
+    }
+
+    function _fillDropFromLocal(options, body) {
+        var appId = Number(options.appId || 0);
+        var test = options.testSnapshot || (typeof getMyTestById === 'function'
+            ? getMyTestById(appId)
+            : (Array.isArray(myTests) ? myTests.find(function (item) { return Number(item.id) === appId; }) : null));
+        if (!test) {
+            body.innerHTML = '<div class="details-block"><div style="color: var(--hint-color);">' +
+                _esc(_t('loadError')) + '</div></div>';
+            return;
+        }
+        if (_termState) {
+            _termState.joinType = _normalizeJoinType(test.join_type || options.joinType || 'invite');
+        }
+        _setTypeBadge(_termState.joinType);
+        body.innerHTML = _renderDropBody(test);
     }
 
     async function _loadLeaveStats(appId, body) {
@@ -571,6 +710,7 @@
         window._leaveKarmaBurnPreview = 0;
         window._leaveGrantAvailable = false;
         window._kickTarget = null;
+        window._dropTestAppId = null;
         var reciprocal = document.getElementById('term-unlink-reciprocal');
         if (reciprocal) {
             reciprocal.disabled = false;
@@ -620,6 +760,28 @@
                 finalBtn.classList.toggle('leave-cta--safe', justified);
                 finalBtn.classList.toggle('leave-cta--warn', !justified);
                 finalBtn.textContent = _t(justified ? 'leaveConfirmFinalJustified' : 'leaveConfirmFinalAbandoned');
+            }
+        } else if (mode === 'drop') {
+            if (title) title.textContent = _t('termConfirmTitleDrop');
+            points.push('<li>' + _esc(_t('termConfirmPointDropPrimary')) + '</li>');
+            points.push('<li>' + _esc(_t('termDropEffectNoKarma')) + '</li>');
+            if (_termState.isBountyDrop) {
+                points.push('<li class="is-warn">' + _esc(_t('termDropEffectBountyLost', {
+                    remaining: _fmtAmount(_termState.remainingBounty || 0, 1),
+                })) + '</li>');
+            }
+            if (_termState.hasReciprocal) {
+                points.push('<li>' + _esc(unlink
+                    ? _t('leaveConfirmPointMirror')
+                    : _t('termConfirmPointKeepMirrorLeave')) + '</li>');
+            }
+            body.innerHTML = '' +
+                '<p class="leave-confirm-lead">' + _esc(_t('termConfirmDescDrop')) + '</p>' +
+                '<ul class="leave-confirm-points">' + points.join('') + '</ul>';
+            if (finalBtn) {
+                finalBtn.classList.remove('leave-cta--safe');
+                finalBtn.classList.add('leave-cta--warn');
+                finalBtn.textContent = _t('termDropConfirmFinal');
             }
         } else {
             if (title) title.textContent = _t('termConfirmTitleKick');
@@ -679,12 +841,33 @@
             }
             return;
         }
+        if (_termState.mode === 'drop') {
+            if (typeof confirmDropTest === 'function') {
+                confirmDropTest();
+            }
+            return;
+        }
         if (typeof confirmKickTester === 'function') {
             confirmKickTester();
         }
     }
 
     // --- Public wrappers (backward compatible entry points) ---
+
+    function openLeaveOrDropFromTest(appId, event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        var test = (typeof getMyTestById === 'function')
+            ? getMyTestById(appId)
+            : (Array.isArray(myTests) ? myTests.find(function (item) { return Number(item.id) === Number(appId); }) : null);
+        var joinType = String(test && test.join_type || '').toLowerCase();
+        if (joinType === 'mutual' || joinType === 'prelaunch') {
+            return openLeaveMutualModal(appId);
+        }
+        return openDropTestModal(appId);
+    }
 
     function openLeaveMutualModal(appId, event) {
         if (event) {
@@ -698,10 +881,32 @@
             mode: 'leave',
             appId: Number(appId || 0),
             joinType: (test && test.join_type) || 'mutual',
+            testSnapshot: test || null,
             unlinkReciprocal: (typeof window._pendingUnlinkReciprocal === 'boolean')
                 ? window._pendingUnlinkReciprocal
                 : true,
         });
+    }
+
+    function openDropTestModal(appId, event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        var test = (typeof getMyTestById === 'function')
+            ? getMyTestById(appId)
+            : (Array.isArray(myTests) ? myTests.find(function (item) { return Number(item.id) === Number(appId); }) : null);
+        return openTerminationSheet({
+            mode: 'drop',
+            appId: Number(appId || 0),
+            joinType: (test && test.join_type) || 'invite',
+            testSnapshot: test || null,
+            unlinkReciprocal: true,
+        });
+    }
+
+    function closeDropTestModal(event) {
+        closeTerminationSheet(event);
     }
 
     function closeLeaveMutualModal(event) {
@@ -807,6 +1012,9 @@
 
     window.openLeaveMutualModal = openLeaveMutualModal;
     window.closeLeaveMutualModal = closeLeaveMutualModal;
+    window.openDropTestModal = openDropTestModal;
+    window.closeDropTestModal = closeDropTestModal;
+    window.openLeaveOrDropFromTest = openLeaveOrDropFromTest;
     window.openKickTesterModal = openKickTesterModal;
     window.closeKickTesterModal = closeKickTesterModal;
     window.requestLeaveMutualConfirm = requestLeaveMutualConfirm;

@@ -2241,7 +2241,7 @@ function renderCompletedTests(completedTests) {
         if (isRegularTestingPhaseCard(test)) {
             headerActions.push(renderTestCardDetailsButton(test.id));
         }
-        headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="${isMutualExitFlow(test) ? `openLeaveMutualModal(${test.id}, event)` : `openDropTestModal(${test.id}, event)`}">🗑️</button>`);
+        headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openLeaveOrDropFromTest(${test.id}, event)">🗑️</button>`);
         const ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;" onclick="event.stopPropagation();">${headerActions.join('')}</div>`;
 
         let devInfoHtml = '';
@@ -2676,7 +2676,11 @@ function ppcPhaseModalLeave(event) {
     closePhaseInfoModal();
     if (!test) return;
     
-    // Call the original leave modal trigger
+    // Call the unified termination sheet
+    if (typeof openLeaveOrDropFromTest === 'function') {
+        openLeaveOrDropFromTest(test.id, event);
+        return;
+    }
     if (typeof isMutualExitFlow === 'function' && isMutualExitFlow(test)) {
         if (typeof openLeaveMutualModal === 'function') openLeaveMutualModal(test.id, event);
     } else {
