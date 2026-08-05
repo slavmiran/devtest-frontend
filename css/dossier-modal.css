@@ -33,19 +33,32 @@
     line-height: 1.5;
 }
 
+/* --- Profile hero: open header, not a card twin of linked blocks --- */
+#dossier-modal .dossier-profile-hero {
+    margin: 0 0 18px;
+    padding: 0 0 16px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+#dossier-modal .dossier-profile-hero--loading {
+    opacity: 0.98;
+}
+
+/* legacy alias — keep old class from breaking if cached HTML */
 #dossier-modal .dossier-profile-card {
     margin-bottom: 14px;
-    padding: 12px;
-    border-radius: 16px;
-    border: 1px solid var(--border-subtle);
-    background: var(--bg-surface-1);
+    padding: 0 0 16px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 #dossier-modal .dossier-profile-identity {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+    gap: 12px;
+    margin-bottom: 14px;
     min-width: 0;
 }
 
@@ -53,19 +66,20 @@
     --av-hue: 220;
     overflow: hidden;
     position: relative;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background: hsl(var(--av-hue), 55%, 38%);
     color: #fff;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     user-select: none;
-    border: 1px solid color-mix(in srgb, #fff 10%, transparent);
+    border: 1px solid color-mix(in srgb, #fff 12%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--bg-surface-2) 70%, transparent);
 }
 
 #dossier-modal .dossier-avatar img {
@@ -92,105 +106,163 @@
 }
 
 #dossier-modal .dossier-profile-name {
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 750;
+    letter-spacing: -0.02em;
     line-height: 1.2;
     color: var(--text-primary);
     word-break: break-word;
 }
 
 #dossier-modal .dossier-profile-username {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--tg-theme-link-color, var(--link-color, #3390ec));
 }
 
+/* Stat strip — header metrics without boxed tiles */
+#dossier-modal .dossier-stat-strip,
 #dossier-modal .dossier-profile-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 2px;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 0;
+    margin: 0;
+    padding: 0;
 }
 
+#dossier-modal .dossier-stat,
 #dossier-modal .dossier-metric {
-    padding: 8px 6px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--bg-surface-muted) 88%, transparent);
-    border: 1px solid var(--border-subtle);
-    text-align: center;
+    flex: 1;
     min-width: 0;
+    text-align: center;
+    padding: 2px 4px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
 }
 
+#dossier-modal .dossier-stat-sep {
+    width: 1px;
+    align-self: stretch;
+    margin: 4px 0;
+    background: var(--border-subtle);
+    flex-shrink: 0;
+}
+
+#dossier-modal .dossier-stat-value,
 #dossier-modal .dossier-metric-value {
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 750;
+    letter-spacing: -0.02em;
     line-height: 1.15;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
 }
 
+#dossier-modal .dossier-stat-label,
 #dossier-modal .dossier-metric-label {
-    margin-top: 3px;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.03em;
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--text-tertiary);
 }
 
+#dossier-modal .dossier-stat.is-good .dossier-stat-value,
 #dossier-modal .dossier-metric.is-good .dossier-metric-value {
     color: var(--success, #34c759);
 }
 
+#dossier-modal .dossier-stat.is-warn .dossier-stat-value,
 #dossier-modal .dossier-metric.is-warn .dossier-metric-value {
     color: var(--warning, #ff9f0a);
 }
 
+#dossier-modal .dossier-stat.is-bad .dossier-stat-value,
 #dossier-modal .dossier-metric.is-bad .dossier-metric-value {
     color: var(--danger, #ff453a);
 }
 
+#dossier-modal .dossier-stat.is-muted .dossier-stat-value,
 #dossier-modal .dossier-metric.is-muted .dossier-metric-value {
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: 13px;
 }
 
-#dossier-modal .dossier-feedback-row {
+/* Feedback chips — readable, labeled */
+#dossier-modal .dossier-feedback-block {
+    margin-top: 14px;
+}
+
+#dossier-modal .dossier-feedback-label {
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+#dossier-modal .dossier-feedback-chips {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 2px;
-    margin-top: 8px;
-    font-size: 12px;
-    line-height: 1.35;
-    color: var(--text-secondary);
+    gap: 6px;
 }
 
-#dossier-modal .dossier-feedback-stat {
+#dossier-modal .dossier-fb-chip {
     display: inline-flex;
-    align-items: baseline;
-    gap: 3px;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 9px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-surface-muted) 70%, transparent);
+    border: 1px solid var(--border-subtle);
     white-space: nowrap;
+    max-width: 100%;
 }
 
-#dossier-modal .dossier-feedback-stat b {
+#dossier-modal .dossier-fb-chip-label {
+    font-size: 10px;
+    font-weight: 650;
+    color: var(--text-tertiary);
+    text-transform: lowercase;
+}
+
+#dossier-modal .dossier-fb-chip-value {
+    font-size: 12px;
+    font-weight: 750;
     color: var(--text-primary);
-    font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
 
-#dossier-modal .dossier-feedback-stat.is-warn b {
+#dossier-modal .dossier-fb-chip-ico {
+    font-size: 12px;
+    line-height: 1;
+}
+
+#dossier-modal .dossier-fb-chip.is-warn {
+    border-color: var(--warning-border);
+    background: var(--warning-surface);
+}
+
+#dossier-modal .dossier-fb-chip.is-warn .dossier-fb-chip-value {
     color: color-mix(in srgb, var(--warning) 85%, var(--text-primary));
 }
 
-#dossier-modal .dossier-feedback-stat.is-gold {
+#dossier-modal .dossier-fb-chip.is-gold {
+    border-color: rgba(255, 204, 0, 0.28);
+    background: rgba(255, 204, 0, 0.1);
+}
+
+#dossier-modal .dossier-fb-chip.is-gold .dossier-fb-chip-value {
     color: #ffcc00;
 }
 
-#dossier-modal .dossier-feedback-dot {
-    margin: 0 4px;
-    color: var(--text-tertiary);
-    opacity: 0.7;
+/* legacy feedback row kept harmless */
+#dossier-modal .dossier-feedback-row {
+    display: none;
 }
 
 #dossier-modal .dossier-loading-caption {
@@ -201,7 +273,7 @@
 }
 
 #dossier-modal .dossier-metric--skeleton {
-    min-height: 46px;
+    min-height: 40px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -209,10 +281,6 @@
 
 #dossier-modal .dossier-link-skeleton {
     pointer-events: none;
-}
-
-#dossier-modal .dossier-profile-card--loading {
-    opacity: 0.98;
 }
 
 #dossier-modal .dossier-profile-chip {
@@ -238,12 +306,13 @@
     margin-top: 10px;
 }
 
+#dossier-modal .dossier-profile-hero > .dossier-fold--inline,
 #dossier-modal .dossier-profile-card > .dossier-fold--inline {
-    margin: 8px 0 0;
+    margin: 12px 0 0;
 }
 
 #dossier-modal .dossier-links-section .dossier-fold {
-    margin-top: 8px;
+    margin-top: 10px;
 }
 
 #dossier-modal .dossier-fold-trigger {
@@ -263,25 +332,47 @@
 }
 
 #dossier-modal .dossier-fold--inline .dossier-fold-trigger {
-    padding: 6px 8px;
-    border-radius: 8px;
-    border-color: transparent;
-    background: transparent;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px dashed color-mix(in srgb, var(--border-strong) 70%, transparent);
+    background: color-mix(in srgb, var(--bg-surface-muted) 45%, transparent);
+}
+
+#dossier-modal .dossier-fold--inline .dossier-fold-trigger:active {
+    background: color-mix(in srgb, var(--bg-surface-muted) 70%, transparent);
 }
 
 #dossier-modal .dossier-fold--inline .dossier-fold-title {
-    font-size: 12px;
-    font-weight: 650;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+#dossier-modal .dossier-fold--inline .dossier-fold-ico {
+    font-size: 14px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+#dossier-modal .dossier-fold--inline .dossier-fold-hint {
+    margin-left: 2px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+}
+
+#dossier-modal .dossier-fold--inline .dossier-fold-trigger[aria-expanded="true"] .dossier-fold-hint {
     color: var(--text-secondary);
 }
 
 #dossier-modal .dossier-fold--inline .dossier-fold-count {
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
     font-size: 11px;
-    background: var(--bg-surface-muted);
-    border-color: var(--border-subtle);
+    font-weight: 750;
+    background: var(--bg-surface-1);
+    border: 1px solid var(--border-subtle);
     color: var(--text-secondary);
 }
 
@@ -333,25 +424,28 @@
 }
 
 #dossier-modal .dossier-fold-chevron {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     flex-shrink: 0;
     position: relative;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-surface-1) 80%, transparent);
+    border: 1px solid var(--border-subtle);
 }
 
 #dossier-modal .dossier-fold-chevron::before {
     content: '';
     position: absolute;
-    inset: 3px;
-    border-right: 2px solid var(--text-tertiary);
-    border-bottom: 2px solid var(--text-tertiary);
+    inset: 4px;
+    border-right: 2px solid var(--text-secondary);
+    border-bottom: 2px solid var(--text-secondary);
     transform: rotate(-45deg);
     transition: transform 0.18s ease;
 }
 
 #dossier-modal .dossier-fold-trigger[aria-expanded="true"] .dossier-fold-chevron::before {
     transform: rotate(45deg);
-    inset: 2px 3px 4px;
+    inset: 3px 4px 5px;
 }
 
 #dossier-modal .dossier-fold-panel {
@@ -363,7 +457,7 @@
 }
 
 #dossier-modal .dossier-links-section {
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 }
 
 #dossier-modal .dossier-section-title {
@@ -377,10 +471,12 @@
 }
 
 #dossier-modal .dossier-section-title--links {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    color: var(--text-secondary);
-    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
 }
 
 #dossier-modal .dossier-section-count {
@@ -394,6 +490,8 @@
     font-size: 11px;
     font-weight: 750;
     font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+    text-transform: none;
     color: var(--text-tertiary);
     background: var(--bg-surface-muted);
     border: 1px solid var(--border-subtle);
@@ -412,11 +510,11 @@
 #dossier-modal .dossier-relations-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 #dossier-modal .dossier-relations-list--secondary .linked-project-card {
-    padding: 10px 12px;
+    padding: 12px;
 }
 
 #dossier-modal .dossier-links-empty {

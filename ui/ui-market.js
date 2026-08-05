@@ -8637,9 +8637,9 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const dayValue = theirDays || myDays || 0;
 
     return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +
-        `<div class="linked-card-head">` +
+        `<div class="linked-card-meta">` +
             `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>` +
-            `<div class="linked-card-title linked-card-title--end">${window.escapeHTML(window.t('linkedDirectionMutual', {}, lang))}</div>` +
+            `<span class="linked-card-direction">${window.escapeHTML(window.t('linkedDirectionMutual', {}, lang))}</span>` +
         `</div>` +
         `<div class="linked-mutual-strip">` +
             `<div class="linked-mutual-app">` +
@@ -8771,9 +8771,9 @@ function _renderDossierLinkedSimpleCard(rel, options) {
     }
 
     return `<div class="linked-project-card is-static${isContract ? ' is-bounty' : ' is-direct'}${isPrimary ? ' is-primary-link' : ''}${options.isSecondary ? ' is-secondary-link' : ''}">` +
-        `<div class="linked-card-head">` +
+        `<div class="linked-card-meta">` +
             `<span class="linked-badge ${badgeClass}${reward ? ' has-reward' : ''}"${badgeTitle ? ` title="${window.escapeHTML(badgeTitle)}"` : ''}>${window.escapeHTML(badgeText)}</span>` +
-            `<div class="linked-card-title linked-card-title--end">${window.escapeHTML(window.t(directionKey, {}, lang))}</div>` +
+            `<span class="linked-card-direction">${window.escapeHTML(window.t(directionKey, {}, lang))}</span>` +
         `</div>` +
         `<div class="linked-simple-row">` +
             renderIcon(appName, iconUrl) +
@@ -8969,6 +8969,10 @@ function toggleDossierFold(btn) {
         if (next) panel.removeAttribute('hidden');
         else panel.setAttribute('hidden', '');
     }
+    const hint = btn.querySelector ? btn.querySelector('.dossier-fold-hint') : null;
+    if (hint) {
+        hint.textContent = window.t(next ? 'dossierOtherProjectsCollapseHint' : 'dossierOtherProjectsExpandHint', {}, lang);
+    }
     if (typeof tg !== 'undefined' && tg && tg.HapticFeedback && typeof tg.HapticFeedback.selectionChanged === 'function') {
         tg.HapticFeedback.selectionChanged();
     }
@@ -8986,7 +8990,10 @@ function _renderDossierFold(title, count, panelHtml, options) {
     if (variant === 'quiet') {
         mainInner = `<span class="dossier-fold-title">${window.escapeHTML(window.t('dossierLinkedMoreTitle', { count: countNum }, lang))}</span>`;
     } else if (variant === 'inline') {
-        mainInner = `<span class="dossier-fold-title">${window.escapeHTML(title)}</span>`;
+        mainInner = `<span class="dossier-fold-ico" aria-hidden="true">📱</span>`
+            + `<span class="dossier-fold-title">${window.escapeHTML(window.t('dossierOtherProjectsTitle', {}, lang))}</span>`
+            + `<span class="dossier-fold-count">${countNum}</span>`
+            + `<span class="dossier-fold-hint">${window.escapeHTML(window.t('dossierOtherProjectsExpandHint', {}, lang))}</span>`;
     } else {
         mainInner = `<span class="dossier-fold-title">${window.escapeHTML(title)}</span>`
             + `<span class="dossier-fold-count">${countNum}</span>`;
@@ -9039,61 +9046,99 @@ function _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml,
     const reviews = Number(profile && profile.play_reviews_count || 0);
     const golden = Number(profile && profile.golden_count || 0);
 
-    const feedbackParts = [];
-    feedbackParts.push(`<span class="dossier-feedback-stat" title="${window.escapeHTML(window.t('dossierFeedbackAcceptHint', {}, lang))}"><b>${window.escapeHTML(acceptanceLabel)}</b></span>`);
+    const feedbackChips = [];
+    feedbackChips.push(
+        `<span class="dossier-fb-chip" title="${window.escapeHTML(window.t('dossierFeedbackAcceptHint', {}, lang))}">` +
+            `<span class="dossier-fb-chip-label">${window.escapeHTML(window.t('dossierFeedbackAcceptShort', {}, lang))}</span>` +
+            `<span class="dossier-fb-chip-value">${window.escapeHTML(acceptanceLabel)}</span>` +
+        `</span>`
+    );
     if (slaText) {
-        feedbackParts.push(`<span class="dossier-feedback-stat${slaSlow ? ' is-warn' : ''}" title="${window.escapeHTML(window.t('feedbackSlaChipToast', {}, lang))}"><b>${window.escapeHTML(slaText)}</b></span>`);
+        feedbackChips.push(
+            `<span class="dossier-fb-chip${slaSlow ? ' is-warn' : ''}" title="${window.escapeHTML(window.t('feedbackSlaChipToast', {}, lang))}">` +
+                `<span class="dossier-fb-chip-label">${window.escapeHTML(window.t('dossierFeedbackSpeedShort', {}, lang))}</span>` +
+                `<span class="dossier-fb-chip-value">${window.escapeHTML(slaText)}</span>` +
+            `</span>`
+        );
     }
-    feedbackParts.push(`<span class="dossier-feedback-stat notranslate" title="${window.escapeHTML(window.t('detailOwnerBugsShort', { count: bugs }, lang))}">🐞&nbsp;${bugs}</span>`);
-    feedbackParts.push(`<span class="dossier-feedback-stat notranslate" title="${window.escapeHTML(window.t('detailOwnerIdeasShort', { count: ideas }, lang))}">💡&nbsp;${ideas}</span>`);
-    feedbackParts.push(`<span class="dossier-feedback-stat notranslate" title="${window.escapeHTML(window.t('detailOwnerReviewsShort', { count: reviews }, lang))}">⭐&nbsp;${reviews}</span>`);
+    feedbackChips.push(
+        `<span class="dossier-fb-chip notranslate" title="${window.escapeHTML(window.t('detailOwnerBugsShort', { count: bugs }, lang))}">` +
+            `<span class="dossier-fb-chip-ico" aria-hidden="true">🐞</span>` +
+            `<span class="dossier-fb-chip-value">${bugs}</span>` +
+        `</span>`
+    );
+    feedbackChips.push(
+        `<span class="dossier-fb-chip notranslate" title="${window.escapeHTML(window.t('detailOwnerIdeasShort', { count: ideas }, lang))}">` +
+            `<span class="dossier-fb-chip-ico" aria-hidden="true">💡</span>` +
+            `<span class="dossier-fb-chip-value">${ideas}</span>` +
+        `</span>`
+    );
+    feedbackChips.push(
+        `<span class="dossier-fb-chip notranslate" title="${window.escapeHTML(window.t('detailOwnerReviewsShort', { count: reviews }, lang))}">` +
+            `<span class="dossier-fb-chip-ico" aria-hidden="true">⭐</span>` +
+            `<span class="dossier-fb-chip-value">${reviews}</span>` +
+        `</span>`
+    );
     if (golden > 0) {
-        feedbackParts.push(`<span class="dossier-feedback-stat is-gold" title="${window.escapeHTML(window.t('dossierMetricGoldenShort', {}, lang))}">🏆&nbsp;${golden}</span>`);
+        feedbackChips.push(
+            `<span class="dossier-fb-chip is-gold notranslate" title="${window.escapeHTML(window.t('dossierMetricGoldenShort', {}, lang))}">` +
+                `<span class="dossier-fb-chip-ico" aria-hidden="true">🏆</span>` +
+                `<span class="dossier-fb-chip-value">${golden}</span>` +
+            `</span>`
+        );
     }
 
-    return `<section class="dossier-profile-card">` +
+    return `<header class="dossier-profile-hero">` +
         identityHtml +
-        `<div class="dossier-profile-metrics">` +
-            `<div class="dossier-metric">` +
-                `<div class="dossier-metric-value notranslate">${window.escapeHTML(String(karmaValue))}</div>` +
-                `<div class="dossier-metric-label">${window.escapeHTML(window.t('dossierMetricKarma', {}, lang))}</div>` +
+        `<div class="dossier-stat-strip" role="group" aria-label="${window.escapeHTML(window.t('dossierGlobalTitle', {}, lang))}">` +
+            `<div class="dossier-stat">` +
+                `<div class="dossier-stat-value notranslate">${window.escapeHTML(String(karmaValue))}</div>` +
+                `<div class="dossier-stat-label">${window.escapeHTML(window.t('dossierMetricKarma', {}, lang))}</div>` +
             `</div>` +
-            `<div class="dossier-metric ${reliabilityTone}">` +
-                `<div class="dossier-metric-value notranslate" title="${window.escapeHTML((reliabilityState && reliabilityState.reliabilityText) || '')}">${window.escapeHTML(reliabilityValue)}</div>` +
-                `<div class="dossier-metric-label">${window.escapeHTML(window.t('dossierMetricReliability', {}, lang))}</div>` +
+            `<div class="dossier-stat-sep" aria-hidden="true"></div>` +
+            `<div class="dossier-stat ${reliabilityTone}">` +
+                `<div class="dossier-stat-value notranslate" title="${window.escapeHTML((reliabilityState && reliabilityState.reliabilityText) || '')}">${window.escapeHTML(reliabilityValue)}</div>` +
+                `<div class="dossier-stat-label">${window.escapeHTML(window.t('dossierMetricReliability', {}, lang))}</div>` +
             `</div>` +
-            `<div class="dossier-metric" title="${window.escapeHTML(window.t('dossierMetricTestsHint', {}, lang))}">` +
-                `<div class="dossier-metric-value notranslate">${window.escapeHTML(String(experienceValue))}</div>` +
-                `<div class="dossier-metric-label">${window.escapeHTML(window.t('dossierMetricTests', {}, lang))}</div>` +
+            `<div class="dossier-stat-sep" aria-hidden="true"></div>` +
+            `<div class="dossier-stat" title="${window.escapeHTML(window.t('dossierMetricTestsHint', {}, lang))}">` +
+                `<div class="dossier-stat-value notranslate">${window.escapeHTML(String(experienceValue))}</div>` +
+                `<div class="dossier-stat-label">${window.escapeHTML(window.t('dossierMetricTests', {}, lang))}</div>` +
             `</div>` +
         `</div>` +
-        `<div class="dossier-feedback-row" title="${window.escapeHTML(window.t('dossierFeedbackBlockTitle', {}, lang))}">${feedbackParts.join('<span class="dossier-feedback-dot" aria-hidden="true">·</span>')}</div>` +
+        `<div class="dossier-feedback-block">` +
+            `<div class="dossier-feedback-label">${window.escapeHTML(window.t('dossierFeedbackBlockTitle', {}, lang))}</div>` +
+            `<div class="dossier-feedback-chips">${feedbackChips.join('')}</div>` +
+        `</div>` +
         (projectsFoldHtml || '') +
-    `</section>`;
+    `</header>`;
 }
 
 function _renderDossierLoadingSkeleton(identityHtml) {
     return `<div class="dossier-loading" aria-busy="true" aria-live="polite">` +
-        `<section class="dossier-profile-card dossier-profile-card--loading">` +
+        `<header class="dossier-profile-hero dossier-profile-hero--loading">` +
             (identityHtml || (
                 `<div class="dossier-profile-identity">` +
-                    `<div class="skeleton skeleton-avatar" style="margin-right:0;width:44px;height:44px;"></div>` +
+                    `<div class="skeleton skeleton-avatar" style="margin-right:0;width:48px;height:48px;"></div>` +
                     `<div class="dossier-profile-names" style="flex:1;">` +
                         `<div class="skeleton skeleton-line medium" style="margin-bottom:6px;"></div>` +
                         `<div class="skeleton skeleton-line short" style="margin-bottom:0;"></div>` +
                     `</div>` +
                 `</div>`
             )) +
-            `<div class="dossier-profile-metrics">` +
-                `<div class="dossier-metric dossier-metric--skeleton"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:42%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:58%;"></div></div>` +
-                `<div class="dossier-metric dossier-metric--skeleton"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:42%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:58%;"></div></div>` +
-                `<div class="dossier-metric dossier-metric--skeleton"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:42%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:58%;"></div></div>` +
+            `<div class="dossier-stat-strip">` +
+                `<div class="dossier-stat"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:48%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:62%;"></div></div>` +
+                `<div class="dossier-stat-sep" aria-hidden="true"></div>` +
+                `<div class="dossier-stat"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:48%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:62%;"></div></div>` +
+                `<div class="dossier-stat-sep" aria-hidden="true"></div>` +
+                `<div class="dossier-stat"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:48%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:62%;"></div></div>` +
             `</div>` +
-            `<div class="dossier-feedback-row dossier-feedback-row--loading">` +
-                `<div class="skeleton skeleton-line medium" style="margin:0;height:12px;width:78%;"></div>` +
+            `<div class="dossier-feedback-block">` +
+                `<div class="skeleton skeleton-line short" style="margin-bottom:8px;height:10px;width:22%;"></div>` +
+                `<div class="skeleton skeleton-line medium" style="margin:0;height:28px;width:100%;border-radius:10px;"></div>` +
             `</div>` +
-            `<div class="skeleton skeleton-line short" style="margin:10px 0 0;height:12px;width:42%;"></div>` +
-        `</section>` +
+            `<div class="skeleton skeleton-line medium" style="margin-top:10px;height:36px;width:100%;border-radius:12px;"></div>` +
+        `</header>` +
         `<section class="dossier-links-section dossier-links-section--loading">` +
             `<div class="skeleton skeleton-line short" style="margin-bottom:10px;height:12px;width:28%;"></div>` +
             `<div class="linked-project-card is-static dossier-link-skeleton">` +
@@ -9336,10 +9381,10 @@ async function openDossierModal(username, testerId, appId) {
 
     html += '<section class="dossier-links-section">';
 
-    if (linkedTotal > 1) {
+    if (linkedTotal > 0) {
         html += '<div class="dossier-section-title dossier-section-title--links">' +
             window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) +
-            ` <span class="dossier-section-count">${linkedTotal}</span>` +
+            (linkedTotal > 1 ? ` <span class="dossier-section-count">${linkedTotal}</span>` : '') +
         '</div>';
     }
 
