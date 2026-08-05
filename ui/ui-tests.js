@@ -528,24 +528,24 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
     }
 
     const isPendingCompletion = String(test.app_status || test.status || '').toLowerCase() === 'pending_completion';
-    const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+    const isKickedSoft = !!(test.is_kicked_soft || String(test.progress_status || '').toLowerCase() === 'kicked_by_owner');
+    const isInSafetyBuffer = !isKickedSoft && (
+        isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid)
+    );
 
-    const createdTime = test.created_at ? new Date(test.created_at).getTime() : Date.now();
     const pendingStartedAt = test.pending_completion_started_at ? new Date(test.pending_completion_started_at).getTime() : null;
-    const bufferStart = (isPendingCompletion && pendingStartedAt)
-        ? new Date(pendingStartedAt)
-        : new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
-    const bufferEndTime = bufferStart.getTime() + (48 * 60 * 60 * 1000);
-    const remainingMs = Math.max(0, bufferEndTime - Date.now());
-    const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
-    const remainingHours = Math.floor(remainingTotalMinutes / 60);
-    const remainingMinutes = remainingTotalMinutes % 60;
-
+    const MAX_BUFFER_MS = 48 * 60 * 60 * 1000;
     let bufferBadgeHtml = '';
-    if (isProjectSynced(test) || userTestingDay >= 15 || extraPaid > 0) {
-        if (isInSafetyBuffer) {
-            const timeText = lang === 'ru' 
-                ? `⏳ Осталось ${remainingHours}ч ${remainingMinutes}м` 
+    if (!isKickedSoft && (isProjectSynced(test) || userTestingDay >= 15 || extraPaid > 0 || isPendingCompletion)) {
+        // Active countdown only when the project is truly in pending_completion
+        // with a real started_at. Never invent "113h left" from created_at+14d.
+        if (isPendingCompletion && pendingStartedAt && Number.isFinite(pendingStartedAt)) {
+            const remainingMs = Math.min(MAX_BUFFER_MS, Math.max(0, pendingStartedAt + MAX_BUFFER_MS - Date.now()));
+            const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
+            const remainingHours = Math.floor(remainingTotalMinutes / 60);
+            const remainingMinutes = remainingTotalMinutes % 60;
+            const timeText = lang === 'ru'
+                ? `⏳ Осталось ${remainingHours}ч ${remainingMinutes}м`
                 : `⏳ Remaining ${remainingHours}h ${remainingMinutes}m`;
             bufferBadgeHtml = '<span class="timeline-buffer-badge active">' + timeText + '</span>';
         } else {
@@ -555,7 +555,9 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
     }
 
     var remainingDays = Math.max(0, totalDays - renderTimeline.length);
-    const showOvertimeRow = !options.hideOvertimeRow && (extraPaid > 0 || isInSafetyBuffer || userTestingDay >= 15 || isProjectSynced(test));
+    const showOvertimeRow = !options.hideOvertimeRow
+        && !isKickedSoft
+        && (extraPaid > 0 || isInSafetyBuffer || userTestingDay >= 15 || isProjectSynced(test));
     const rangeText = lastPaidDay > 14 ? '15-' + lastPaidDay : '15+';
 
     const noteText = extraPaid > 0
@@ -1665,6 +1667,7 @@ function renderTests(force) {
     let doneCount = 0;
     let pendingCount = 0;
     let pendingGrantCount = 0;
+    let pendingActionCount = 0;
     const externalGuestTestsCount = renderExternalGuestTestsSection();
 
     myTests.forEach((test) => {
@@ -1675,7 +1678,13 @@ function renderTests(force) {
         
         const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
         const userTestingDay = getResolvedTestingDay(test);
-        const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+        const isPendingCompletion = !!test.is_pending_completion;
+        // Soft-kick cards need an explicit archive action — keep them visible even
+        // when the linked project is no longer in an "active buffer" state.
+        // Day>=15 alone must NOT park kicked leftovers from a previous cycle here.
+        const isInSafetyBuffer = test.is_kicked_soft
+            ? true
+            : (isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid));
         
         const isPendingForTester = isInSafetyBuffer;
         const isArchivedOrCompleted = !isExternal && String(test.app_status || 'active').toLowerCase() !== 'active' && !isInSafetyBuffer;
@@ -1796,9 +1805,9 @@ function renderTests(force) {
                 reasonDisplay = leaveReasonRaw;
             }
             const penaltyHtml = isDisputedKick
-                ? `<div class="kicked-soft-penalty">${window.escapeHTML(window.t('kickedSoftPenaltyDisputed', {}, lang))}</div>`
+                ? `<div class="kicked-soft-penalty is-disputed">${window.escapeHTML(window.t('kickedSoftPenaltyDisputed', {}, lang))}</div>`
                 : (isJustifiedKick
-                    ? `<div class="kicked-soft-penalty is-ok">${window.escapeHTML(window.t('kickedSoftPenaltyNone', {}, lang))}</div>`
+                    ? `<div class="kicked-soft-penalty is-justified">${window.escapeHTML(window.t('kickedSoftPenaltyNone', {}, lang))}</div>`
                     : '');
             const reasonHtml = reasonDisplay
                 ? `<div class="kicked-soft-reason">${window.escapeHTML(window.t('kickedSoftReasonLabel', { reason: reasonDisplay }, lang))}</div>`
@@ -1810,9 +1819,14 @@ function renderTests(force) {
                     ${reasonHtml}
                     ${penaltyHtml}
                 </div>
-                <button type="button" class="btn btn-claim-grant" style="width: 100%; margin-bottom: 4px; font-size: 16px; font-weight: 600; padding: 14px 16px;" onclick="dismissKickedTestCard(${Number(test.id)}, ${Number(test.progress_id || 0)})">
-                    ${window.escapeHTML(window.t('kickedSoftArchiveBtn', {}, lang))}
-                </button>
+                <div class="kicked-soft-actions">
+                    <button type="button" class="btn btn-kicked-uninstall" onclick="openKickedTestPlayStore(${Number(test.id)})">
+                        ${window.escapeHTML(window.t('kickedSoftUninstallBtn', {}, lang))}
+                    </button>
+                    <button type="button" class="btn btn-kicked-archive" onclick="dismissKickedTestCard(${Number(test.id)}, ${Number(test.progress_id || 0)})">
+                        ${window.escapeHTML(window.t('kickedSoftArchiveBtn', {}, lang))}
+                    </button>
+                </div>
             `;
         } else if (isExternal) {
             var isContinuedExternal = isExternalContinueModeEnabled(test);
@@ -2158,11 +2172,15 @@ function renderTests(force) {
             card.innerHTML = cardContent;
             doneList.appendChild(card);
             doneCount++;
-        } else if (shouldShowInPendingList) {
+        } else         if (shouldShowInPendingList) {
             card.innerHTML = cardContent;
             if (test.isReadyToClaim) {
                 card.dataset.grantReady = '1';
                 pendingGrantCount++;
+            }
+            if (test.is_kicked_soft || test.isReadyToClaim) {
+                card.dataset.actionRequired = '1';
+                pendingActionCount++;
             }
             if (pendingList) pendingList.appendChild(card);
             pendingCount++;
@@ -2176,6 +2194,8 @@ function renderTests(force) {
     if (pendingList && pendingList.children.length > 1) {
         const pendingCards = Array.from(pendingList.children);
         pendingCards.sort(function(a, b) {
+            const actionDelta = Number(b.dataset.actionRequired || 0) - Number(a.dataset.actionRequired || 0);
+            if (actionDelta !== 0) return actionDelta;
             return Number(b.dataset.grantReady || 0) - Number(a.dataset.grantReady || 0);
         });
         pendingCards.forEach(function(card) {
@@ -2183,19 +2203,27 @@ function renderTests(force) {
         });
     }
 
+    const pendingNeedsAttention = pendingActionCount > 0;
     if (pendingCountNode) {
         pendingCountNode.innerText = pendingCount;
-        pendingCountNode.classList.toggle('has-grant-attention', pendingGrantCount > 0);
+        pendingCountNode.classList.toggle('has-grant-attention', pendingNeedsAttention);
     }
     if (pendingSection) {
         pendingSection.style.display = pendingCount > 0 ? 'block' : 'none';
-        pendingSection.classList.toggle('has-grant-attention', pendingGrantCount > 0);
+        pendingSection.classList.toggle('has-grant-attention', pendingNeedsAttention);
+        pendingSection.classList.toggle('has-action-attention', pendingNeedsAttention);
         const pendingHeader = pendingSection.querySelector('.pending-release-section__header');
         if (pendingHeader) {
             pendingHeader.setAttribute(
                 'aria-expanded',
                 pendingSection.classList.contains('is-collapsed') ? 'false' : 'true'
             );
+        }
+        const pendingDesc = document.getElementById('t-pendingReleaseSectionDesc');
+        if (pendingDesc) {
+            pendingDesc.textContent = pendingNeedsAttention
+                ? window.t('pendingReleaseSectionActionDesc', {}, lang)
+                : window.t('pendingReleaseSectionDesc', {}, lang);
         }
     }
     if (pendingScrollWrap) pendingScrollWrap.classList.toggle('is-single', pendingCount <= 1);
@@ -2306,6 +2334,35 @@ function togglePendingReleaseSection() {
     if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
+function resolveTestPlayStoreUrl(test) {
+    if (!test) return '';
+    var explicit = String(test.play_store_url || '').trim();
+    if (/^https?:\/\//i.test(explicit)) return explicit;
+    var pkg = String(test.package || test.package_name || test.external_package_name || '').trim();
+    if (!pkg) return '';
+    return 'https://play.google.com/store/apps/details?id=' + encodeURIComponent(pkg);
+}
+
+function openKickedTestPlayStore(appId) {
+    var safeAppId = Number(appId || 0);
+    var test = (typeof myTests !== 'undefined' && Array.isArray(myTests))
+        ? myTests.find(function(item) { return Number(item.id) === safeAppId; })
+        : null;
+    var url = resolveTestPlayStoreUrl(test);
+    if (!url) {
+        showToast(window.t('kickedSoftUninstallMissing', {}, lang));
+        return;
+    }
+    if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    try {
+        if (typeof tg !== 'undefined' && typeof tg.openLink === 'function') {
+            tg.openLink(url);
+            return;
+        }
+    } catch (e) {}
+    window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 async function dismissKickedTestCard(appId, progressId) {
     var safeAppId = Number(appId || 0);
     if (safeAppId <= 0) return;
@@ -2346,6 +2403,8 @@ async function dismissKickedTestCard(appId, progressId) {
 Object.assign(window, {
     renderEditCreatedAtMeta,
     dismissKickedTestCard,
+    openKickedTestPlayStore,
+    resolveTestPlayStoreUrl,
     renderEvents,
     toggleEventsExpanded,
     getUserTestingDay,

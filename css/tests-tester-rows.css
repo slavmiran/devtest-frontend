@@ -504,12 +504,64 @@
 .kicked-soft-penalty {
     font-size: 12px;
     line-height: 1.4;
-    color: #ff9f0a;
+    color: rgba(255, 214, 180, 0.95);
     margin-top: 2px;
 }
 
-.kicked-soft-penalty.is-ok {
-    color: #30d158;
+.kicked-soft-penalty.is-justified {
+    color: rgba(255, 204, 170, 0.98);
+}
+
+.kicked-soft-penalty.is-disputed {
+    color: rgba(255, 214, 150, 0.98);
+}
+
+.kicked-soft-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.btn-kicked-uninstall {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid rgba(255, 69, 58, 0.35);
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(255, 69, 58, 0.12);
+    color: #ff8a80;
+    box-shadow: none;
+}
+
+.btn-kicked-uninstall:active {
+    opacity: 0.78;
+}
+
+.btn-kicked-archive {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid rgba(142, 142, 147, 0.35);
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(72, 72, 74, 0.92);
+    color: #f2f2f7;
+    margin-bottom: 0;
+    box-shadow: none;
+}
+
+.btn-kicked-archive:active {
+    opacity: 0.78;
 }
 
 .card-access-error-locked .no-testers {

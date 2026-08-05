@@ -4979,24 +4979,38 @@ function openProjectDetailsModal(appId) {
         const finishDateText = window.escapeHTML(formatDdMmYyyy(timelineMeta.finishDate));
         
         const isPendingCompletion = String(test.app_status || test.status || '').toLowerCase() === 'pending_completion';
+        const isKickedSoft = !!(test.is_kicked_soft || String(test.progress_status || '').toLowerCase() === 'kicked_by_owner');
         const createdTime = test.created_at ? new Date(test.created_at).getTime() : Date.now();
         const pendingStartedAt = test.pending_completion_started_at ? new Date(test.pending_completion_started_at).getTime() : null;
-        
-        const bufferStart = (isPendingCompletion && pendingStartedAt)
-            ? new Date(pendingStartedAt)
-            : new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
-        
-        const bufferEndTime = bufferStart.getTime() + (48 * 60 * 60 * 1000);
-        const remainingMs = Math.min(48 * 60 * 60 * 1000, Math.max(0, bufferEndTime - Date.now()));
+        const MAX_BUFFER_MS = 48 * 60 * 60 * 1000;
+
+        // Active countdown only with a real pending_completion_started_at.
+        // Never invent multi-day "remaining" from created_at + 14d.
+        let remainingMs = 0;
+        let bufferStart;
+        let bufferEndTime;
+        if (isPendingCompletion && pendingStartedAt && Number.isFinite(pendingStartedAt)) {
+            bufferStart = new Date(pendingStartedAt);
+            bufferEndTime = pendingStartedAt + MAX_BUFFER_MS;
+            remainingMs = Math.min(MAX_BUFFER_MS, Math.max(0, bufferEndTime - Date.now()));
+        } else {
+            bufferStart = new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
+            bufferEndTime = bufferStart.getTime() + MAX_BUFFER_MS;
+            remainingMs = 0;
+        }
         const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
         const remainingHours = Math.floor(remainingTotalMinutes / 60);
         const remainingMinutes = remainingTotalMinutes % 60;
         
         const consumedMs = Math.max(0, Date.now() - bufferStart.getTime());
         const consumedHours = consumedMs / (60 * 60 * 1000);
-        const bufferFillPercent = Math.min(100, Math.max(0, (consumedHours / 48) * 100));
+        const bufferFillPercent = isPendingCompletion && pendingStartedAt
+            ? Math.min(100, Math.max(0, (consumedHours / 48) * 100))
+            : 0;
 
-        const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+        const isInSafetyBuffer = !isKickedSoft && (
+            isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid)
+        );
 
         // Helper formatters
         const formatBufferTimeWithDayOfWeek = (dateVal) => {
@@ -5100,9 +5114,12 @@ function openProjectDetailsModal(appId) {
             archive: { cls: 'stage-archive', icon: '🏁', title: window.t('ppcTimelineArchive', {}, lang) },
         };
 
-        const bufferActiveStatus = (remainingHours <= 0 && remainingMinutes <= 0)
-            ? window.t('ppcBufferAwaitingArchiving', {}, lang)
-            : (lang === 'ru' ? `${remainingHours}ч ${remainingMinutes}м` : `${remainingHours}h ${remainingMinutes}m`);
+        const hasLiveBufferCountdown = !!(isPendingCompletion && pendingStartedAt && Number.isFinite(pendingStartedAt));
+        const bufferActiveStatus = hasLiveBufferCountdown
+            ? ((remainingHours <= 0 && remainingMinutes <= 0)
+                ? window.t('ppcBufferAwaitingArchiving', {}, lang)
+                : (lang === 'ru' ? `${remainingHours}ч ${remainingMinutes}м` : `${remainingHours}h ${remainingMinutes}m`))
+            : window.t('lifecycleBuffer48', {}, lang);
 
         const stageStatusText = (name) => {
             const st = stageState(name);
@@ -5124,10 +5141,12 @@ function openProjectDetailsModal(appId) {
             return window.t('lifecycleArchiveAuto', {}, lang);
         };
 
-        const bufferRemainingText = (remainingHours <= 0 && remainingMinutes <= 0)
-            ? window.t('ppcBufferAwaitingArchiving', {}, lang)
-            : (lang === 'ru' ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` : `Remaining: ${remainingHours}h ${remainingMinutes}m`);
-        const bufferProgressHtml = isInSafetyBuffer
+        const bufferRemainingText = hasLiveBufferCountdown
+            ? ((remainingHours <= 0 && remainingMinutes <= 0)
+                ? window.t('ppcBufferAwaitingArchiving', {}, lang)
+                : (lang === 'ru' ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` : `Remaining: ${remainingHours}h ${remainingMinutes}m`))
+            : window.t('lifecycleBuffer48', {}, lang);
+        const bufferProgressHtml = (isInSafetyBuffer && hasLiveBufferCountdown)
             ? '<div class="lifecycle-buffer-progress">' +
                 '<div class="lifecycle-buffer-progress-head">' +
                     '<span>' + window.escapeHTML(lang === 'ru' ? 'Прогресс буфера' : 'Buffer progress') + '</span>' +
