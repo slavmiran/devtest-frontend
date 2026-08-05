@@ -957,6 +957,30 @@ function getBackendErrorCode(payload) {
     return String(payload.code || payload.error_code || payload.message || '').trim();
 }
 
+async function readApiErrorPayload(response) {
+    if (!response) return null;
+    try {
+        return await response.clone().json();
+    } catch (_) {
+        return null;
+    }
+}
+
+async function buildHttpStatusError(response, fallbackKey) {
+    var payload = await readApiErrorPayload(response);
+    var code = getBackendErrorCode(payload);
+    if (code === 'invalid_init_data') {
+        return new Error(window.t ? window.t('guestClaimAuthErrorToast') : 'invalid_init_data');
+    }
+    if (code === 'username_required') {
+        return new Error(window.t ? window.t('noUsernameTitle') : 'username_required');
+    }
+    if (payload && (payload.detail || payload.message)) {
+        return new Error(String(payload.detail || payload.message));
+    }
+    return new Error('HTTP ' + (response && response.status ? response.status : 'error'));
+}
+
 function handleApiError(code, details = {}) {
     var keyMap = {
         ALREADY_OWNED: 'ALREADY_OWNED',
@@ -1509,7 +1533,7 @@ async function _loadTasksImpl(options) {
     try {
         var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
         var response = await fetchWithRetry(API_BASE + '/tasks/' + userId + '?' + initQ);
-        if (!response.ok) throw new Error('HTTP ' + response.status);
+        if (!response.ok) throw await buildHttpStatusError(response, 'networkError');
         var data = await response.json();
         _userEmail = String(data.user_email || '').trim();
         window.App.userEmail = _userEmail;
