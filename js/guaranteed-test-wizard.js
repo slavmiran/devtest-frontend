@@ -211,9 +211,22 @@
             'Менеджер пересчитает ${amount} в вашу валюту по текущему курсу и пришлет точную сумму и реквизиты в чате.'
         ],
         fiatGetRequisites: ['Get payment details', 'Получить реквизиты'],
+        fiatRequisitesRequested: ['Details requested', 'Реквизиты запрошены'],
+        fiatWaitingTitle: [
+            'Waiting for payment details',
+            'Ожидаем реквизиты'
+        ],
+        fiatWaitingDesc: [
+            'The manager will send the exact amount and payment details in Telegram DM. After you pay, upload the screenshot below.',
+            'Менеджер пришлёт точную сумму и реквизиты в личные сообщения Telegram. После оплаты загрузите скриншот ниже.'
+        ],
         fiatMissing: ['Choose a currency and enter your bank name.', 'Выберите валюту и укажите название банка.'],
-        fiatCreating: ['Creating the order…', 'Создаем заявку…'],
-        fiatCreateFailed: ['Could not create the order. Please try again.', 'Не удалось создать заявку. Попробуйте еще раз.'],
+        fiatCreating: ['Requesting details…', 'Запрашиваем реквизиты…'],
+        fiatCreateFailed: ['Could not request payment details. Please try again.', 'Не удалось запросить реквизиты. Попробуйте ещё раз.'],
+        fiatToastRequested: [
+            'Payment details requested. The manager will send them in DM soon.',
+            'Реквизиты запрошены. Менеджер скоро пришлёт их в ЛС.'
+        ],
 
         uploadStepTitle: ['Payment screenshot', 'Скриншот оплаты'],
         uploadStepDesc: ['Attach proof of the completed transfer.', 'Приложите подтверждение выполненного перевода.'],
@@ -1916,30 +1929,42 @@
             subtitle = L('flowFiatSubtitle', { amount: amount });
             step1Title = L('flowFiatStep');
             step1Desc = L('flowFiatDesc');
-            step1Actions = `
-                <div class="gtw-fiat-currency-grid">
-                    ${FIAT_CURRENCIES.map(function (currency) {
-                        var isSelected = currency.code === wizardState.fiatCurrency;
-                        return `<button type="button" class="gtw-fiat-currency-card${isSelected ? ' is-selected' : ''}" data-fiat-currency="${currency.code}">
-                            <strong>${currency.code}</strong>
-                            <span>${getWizardLang() === 'ru' ? currency.ru : currency.en}</span>
-                        </button>`;
-                    }).join('')}
-                </div>
-                <div class="gtw-fiat-bank-field">
-                    <label for="gtw-fiat-bank-input">${L('fiatBankLabel')}</label>
-                    <input type="text" id="gtw-fiat-bank-input" class="gtw-input" value="${escapeHtml(wizardState.fiatBankName)}" placeholder="${L('fiatBankPlaceholder')}" autocomplete="organization" />
-                </div>
-                <label class="gtw-fiat-personal-account">
-                    <input type="checkbox" id="gtw-fiat-personal-account" ${wizardState.fiatPersonalAccount ? 'checked' : ''} />
-                    <span>${L('fiatPersonal')}</span>
-                </label>
-                <p class="gtw-fiat-tip">${L('fiatTip', { amount: amount })}</p>
-                <div class="gtw-helper-text error" id="gtw-fiat-helper" style="display: none;"></div>
-                <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-tg-btn">
-                    ${L('fiatGetRequisites')}
-                </button>
-            `;
+            if (wizardState.fiatOrderId && step1Done) {
+                step1Actions = `
+                    <div class="gtw-fiat-waiting-card">
+                        <div class="gtw-fiat-waiting-title">${L('fiatWaitingTitle')}</div>
+                        <div class="gtw-fiat-waiting-desc">${L('fiatWaitingDesc')}</div>
+                        <button type="button" class="gtw-open-external-btn is-done" id="gtw-flow-open-tg-btn" disabled>
+                            ${L('fiatRequisitesRequested')}
+                        </button>
+                    </div>
+                `;
+            } else {
+                step1Actions = `
+                    <div class="gtw-fiat-currency-grid">
+                        ${FIAT_CURRENCIES.map(function (currency) {
+                            var isSelected = currency.code === wizardState.fiatCurrency;
+                            return `<button type="button" class="gtw-fiat-currency-card${isSelected ? ' is-selected' : ''}" data-fiat-currency="${currency.code}">
+                                <strong>${currency.code}</strong>
+                                <span>${getWizardLang() === 'ru' ? currency.ru : currency.en}</span>
+                            </button>`;
+                        }).join('')}
+                    </div>
+                    <div class="gtw-fiat-bank-field">
+                        <label for="gtw-fiat-bank-input">${L('fiatBankLabel')}</label>
+                        <input type="text" id="gtw-fiat-bank-input" class="gtw-input" value="${escapeHtml(wizardState.fiatBankName)}" placeholder="${L('fiatBankPlaceholder')}" autocomplete="organization" />
+                    </div>
+                    <label class="gtw-fiat-personal-account">
+                        <input type="checkbox" id="gtw-fiat-personal-account" ${wizardState.fiatPersonalAccount ? 'checked' : ''} />
+                        <span>${L('fiatPersonal')}</span>
+                    </label>
+                    <p class="gtw-fiat-tip">${L('fiatTip', { amount: amount })}</p>
+                    <div class="gtw-helper-text error" id="gtw-fiat-helper" style="display: none;"></div>
+                    <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-tg-btn">
+                        ${L('fiatGetRequisites')}
+                    </button>
+                `;
+            }
         }
 
         var uploadHtml = '';
@@ -2360,10 +2385,16 @@
             }
             return;
         }
+        if (wizardState.fiatOrderId) {
+            markPaymentStep1Done();
+            return;
+        }
 
-        var originalText = button.textContent;
-        button.disabled = true;
-        button.textContent = L('fiatCreating');
+        var originalText = button ? button.textContent : '';
+        if (button) {
+            button.disabled = true;
+            button.textContent = L('fiatCreating');
+        }
         try {
             var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders', {
                 method: 'POST',
@@ -2378,7 +2409,8 @@
                     notes: getGuaranteedOrderNotes([
                         'currency=' + currency.code,
                         'bank=' + bankName,
-                        'personal_account=' + (wizardState.fiatPersonalAccount ? 'yes' : 'no')
+                        'personal_account=' + (wizardState.fiatPersonalAccount ? 'yes' : 'no'),
+                        'create_mode=requisites'
                     ])
                 }))
             });
@@ -2397,26 +2429,32 @@
             } else {
                 wizardState.fiatOrderId = order.id || payload.id || null;
                 wizardState.fiatPublicCode = String(order.public_code || payload.public_code || '');
+                if (!wizardState.fiatOrderId) {
+                    throw new Error('order_create_failed');
+                }
             }
 
             // Official order + NEW ORDER are created only after "Submit application" with proof.
             markPaymentStep1Done();
-            persistGuaranteedTestWizardDraft();
             if (typeof showToast === 'function') {
-                showToast(getWizardLang() === 'ru'
-                    ? 'Реквизиты запрошены. Менеджер скоро пришлёт их в ЛС.'
-                    : 'Payment details requested. The manager will send them in DM soon.');
+                showToast(L('fiatToastRequested'));
             }
-            button.disabled = false;
-            button.textContent = originalText;
         } catch (error) {
             console.error('Fiat requisites request failed:', error);
+            helper = document.getElementById('gtw-fiat-helper');
             if (helper) {
                 helper.textContent = L('fiatCreateFailed');
                 helper.style.display = 'block';
             }
-            button.disabled = false;
-            button.textContent = originalText;
+            if (typeof showToast === 'function') {
+                showToast(L('fiatCreateFailed'));
+            }
+            if (button && document.body.contains(button)) {
+                button.disabled = false;
+                button.textContent = originalText || L('fiatGetRequisites');
+            } else {
+                renderPaymentFlow();
+            }
         }
     }
 

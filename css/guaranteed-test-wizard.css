@@ -1524,6 +1524,38 @@
     color: var(--text-secondary, #AEB7C2);
 }
 
+.gtw-fiat-waiting-card {
+    margin-top: 4px;
+    padding: 14px;
+    background: var(--gt-surface-sunken);
+    border: 1px solid var(--gt-hairline);
+    border-radius: var(--gt-radius-section);
+}
+
+.gtw-fiat-waiting-title {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gtw-fiat-waiting-desc {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+.gtw-fiat-waiting-card .gtw-open-external-btn {
+    margin-top: 12px;
+}
+
+.gtw-open-external-btn.is-done,
+.gtw-open-external-btn:disabled {
+    opacity: 0.72;
+    cursor: default;
+}
+
 /* ---- Stepper inside the sheet (shared play-review markup) ---- */
 
 .gtw-payment-flow-sheet .play-review-steps {
