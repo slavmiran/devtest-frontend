@@ -1,10 +1,19 @@
 /* Phase 3: Developer dossier modal (extracted from styles.css). */
 
+#dossier-modal.modal-overlay {
+    background: rgba(14, 17, 22, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
 #dossier-modal .modal-content.dossier-sheet {
     padding-top: 10px;
     border-radius: 20px 20px 0 0;
     max-height: 90vh;
     overflow-y: auto;
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 -14px 40px rgba(0, 0, 0, 0.4);
 }
 
 #dossier-modal .dossier-sheet-handle {
@@ -25,7 +34,7 @@
 }
 
 #dossier-modal .dossier-profile-card {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     padding: 12px;
     border-radius: 16px;
     border: 1px solid var(--border-subtle);
@@ -410,6 +419,16 @@
     padding: 10px 12px;
 }
 
+#dossier-modal .dossier-links-empty {
+    padding: 14px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-surface-muted) 60%, transparent);
+    border: 1px dashed var(--border-subtle);
+    font-size: 13px;
+    text-align: center;
+    color: var(--text-tertiary);
+}
+
 #dossier-modal .dossier-actions-section {
     margin-bottom: 4px;
 }
@@ -418,6 +437,20 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+#dossier-modal .dossier-actions-list .btn {
+    box-shadow: none;
+}
+
+#dossier-modal .dossier-action-danger-zone {
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+#dossier-modal .dossier-action-danger-zone .btn {
+    margin: 0;
 }
 
 #dossier-modal .dossier-owned-projects-list {

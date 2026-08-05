@@ -1288,9 +1288,10 @@ function _mapTestsFromApi(data) {
             status = 'done';
         }
         var progressStatus = String(app.progress_status || 'active').toLowerCase();
+        var isKickedSoft = !isExternal && progressStatus === 'kicked_by_owner';
         var appStatus = String(app.app_status || 'active').toLowerCase();
         var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
-        var isArchivedOrCompleted = !isExternal && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
+        var isArchivedOrCompleted = !isExternal && !isKickedSoft && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
         var existingTest = myTests.find(function(test) { return Number(test.id) === Number(mappedId); });
         var shouldPreserveLocalDoneToday = !!(
             existingTest
@@ -1336,15 +1337,17 @@ function _mapTestsFromApi(data) {
             ? (existingTest.last_check_date || today)
             : (shouldTreatFastTrackFirstDayAsDone ? today : (app.last_check_date || null));
         var isAppClosed = !isExternal && (appStatus !== 'active' && !isPendingCompletion);
-        var isTestClosed = !isExternal && (progressStatus !== 'active');
+        var isTestClosed = !isExternal && (progressStatus !== 'active') && !isKickedSoft;
         var actualCheckins = testingDays - skipsCount;
-        var canEverClaim = !isExternal && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
+        var canEverClaim = !isExternal && !isKickedSoft && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
 
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
         var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
-        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays < 14 && actualCheckins >= 3 && skipsCount <= 3);
+        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !isKickedSoft && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays < 14 && actualCheckins >= 3 && skipsCount <= 3);
 
-        if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow) {
+        if (isKickedSoft) {
+            status = 'done';
+        } else if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow) {
             status = 'done';
         }        
         return {
@@ -1391,6 +1394,8 @@ function _mapTestsFromApi(data) {
             exact_daily_reward: typeof app.exact_daily_reward !== 'undefined' ? Number(app.exact_daily_reward) : 0,
             grant_claimed: !!app.grant_claimed,
             progress_status: app.progress_status || 'active',
+            is_kicked_soft: isKickedSoft,
+            leave_reason: app.leave_reason || '',
             app_status: app.app_status || 'active',
             is_pending_completion: isPendingCompletion,
             join_type: app.join_type || 'invite',

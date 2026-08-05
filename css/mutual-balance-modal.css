@@ -65,6 +65,147 @@
     margin-bottom: 12px;
 }
 
+/* Loading skeleton for mutual status modal */
+.link-status-loading {
+    margin-bottom: 4px;
+}
+
+.link-status-person--skel {
+    pointer-events: none;
+}
+
+.parity-skel {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bg-surface-muted) 88%, var(--text-tertiary));
+    border-radius: 8px;
+}
+
+.parity-skel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, #fff 10%, transparent) 45%,
+        color-mix(in srgb, #fff 18%, transparent) 55%,
+        transparent 100%
+    );
+    animation: paritySkelShimmer 1.15s ease-in-out infinite;
+}
+
+@keyframes paritySkelShimmer {
+    100% { transform: translateX(100%); }
+}
+
+.parity-skel-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.parity-skel-fullname {
+    height: 16px;
+    width: 62%;
+    margin-bottom: 8px;
+}
+
+.parity-skel-username {
+    height: 12px;
+    width: 38%;
+}
+
+.parity-skel-badge {
+    width: 72px;
+    height: 24px;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.parity-skeleton-card {
+    min-height: 132px;
+}
+
+.parity-skel-label {
+    height: 10px;
+    width: 54%;
+    margin: 0 auto 8px;
+}
+
+.parity-skel-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    margin: 0 auto 8px;
+}
+
+.parity-skel-name {
+    height: 13px;
+    width: 72%;
+    margin: 0 auto 10px;
+}
+
+.parity-skel-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.parity-skel-chip {
+    height: 22px;
+    width: 68px;
+    border-radius: 999px;
+}
+
+.link-status-loading-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 2px 0 12px;
+    min-height: 20px;
+}
+
+.link-status-loading-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--text-tertiary) 75%, transparent);
+    animation: linkStatusPulse 1s ease-in-out infinite;
+}
+
+@keyframes linkStatusPulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1); }
+}
+
+.link-status-loading-text {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.parity-actions--skel {
+    gap: 8px;
+}
+
+.parity-skel-btn {
+    height: 44px;
+    width: 100%;
+    border-radius: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .parity-skel::after,
+    .link-status-loading-pulse {
+        animation: none;
+    }
+}
+
 .parity-side-card {
     background: var(--bg-surface-1);
     border: 1px solid var(--border-subtle);
@@ -316,6 +457,18 @@
     background: var(--success-surface);
     border: 1px solid var(--success-border);
     color: var(--success);
+}
+
+.btn.btn-accent-soft {
+    background: var(--accent-primary-surface);
+    border: 1px solid var(--accent-primary-border);
+    color: var(--accent-primary);
+}
+
+.btn.btn-karma-soft {
+    background: rgba(255, 204, 0, 0.12);
+    border: 1px solid rgba(255, 204, 0, 0.28);
+    color: #ffcc00;
 }
 
 /* --- Kick unlink --- */
@@ -783,18 +936,23 @@
     background: color-mix(in srgb, var(--danger) 16%, var(--bg-surface-1));
 }
 
-/* Confirm overlay above leave modal */
-#leave-confirm-overlay.leave-confirm-overlay {
+/* Confirm overlay above leave modal — full-width bottom sheet (never clamp) */
+#leave-confirm-overlay.leave-confirm-overlay,
+#bell-remind-overlay.leave-confirm-overlay {
     z-index: 10080;
     background: rgba(8, 10, 14, 0.78);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
 }
 
-#leave-confirm-overlay .leave-confirm-sheet {
+#leave-confirm-overlay .leave-confirm-sheet,
+#bell-remind-overlay .leave-confirm-sheet,
+#bell-remind-overlay .modal-content {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
     background: var(--bg-surface-2);
     border: 1px solid var(--border-subtle);
-    max-width: 420px;
     padding-top: 12px;
 }
 

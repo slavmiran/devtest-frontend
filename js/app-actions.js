@@ -200,6 +200,33 @@ function isDefaultGoogleGroupUrl(url) {
     return normalize(candidate) === defaultUrl;
 }
 
+function _persistDefaultGroupJoined() {
+    try {
+        localStorage.setItem(_defaultGroupJoinedStorageKey, JSON.stringify({
+            userId: Number(userId) || 0,
+            joined: !!_defaultGroupJoined,
+            updatedAt: Date.now(),
+        }));
+        _defaultGroupJoinedReady = true;
+        window.App.defaultGroupJoined = !!_defaultGroupJoined;
+    } catch (error) {}
+}
+
+function _hydrateDefaultGroupJoinedFromCache() {
+    try {
+        var raw = localStorage.getItem(_defaultGroupJoinedStorageKey);
+        if (!raw) return false;
+        var payload = JSON.parse(raw);
+        if (!payload || Number(payload.userId || 0) !== Number(userId || 0)) return false;
+        _defaultGroupJoined = !!payload.joined;
+        _defaultGroupJoinedReady = true;
+        window.App.defaultGroupJoined = _defaultGroupJoined;
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
 function syncDefaultGroupJoinedUi() {
     var statusBtn = document.getElementById('settings-default-group-status');
     if (statusBtn) {
@@ -221,6 +248,12 @@ function syncDefaultGroupJoinedUi() {
     }
 }
 
+_hydrateDefaultGroupJoinedFromCache();
+if (typeof window !== 'undefined') {
+    window._hydrateDefaultGroupJoinedFromCache = _hydrateDefaultGroupJoinedFromCache;
+    window._persistDefaultGroupJoined = _persistDefaultGroupJoined;
+}
+
 async function markDefaultGroupJoined(options) {
     var settings = options || {};
     if (_defaultGroupJoined && !settings.force) {
@@ -233,6 +266,7 @@ async function markDefaultGroupJoined(options) {
     _defaultGroupJoinedInFlight = true;
     _defaultGroupJoined = true;
     window.App.defaultGroupJoined = true;
+    _persistDefaultGroupJoined();
     syncDefaultGroupJoinedUi();
 
     try {
@@ -245,6 +279,7 @@ async function markDefaultGroupJoined(options) {
         if (!response.ok || !result || result.status !== 'success') {
             _defaultGroupJoined = previousValue;
             window.App.defaultGroupJoined = previousValue;
+            _persistDefaultGroupJoined();
             syncDefaultGroupJoinedUi();
             if (!settings.silent) {
                 handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
@@ -253,6 +288,7 @@ async function markDefaultGroupJoined(options) {
         }
         _defaultGroupJoined = !!result.default_group_joined;
         window.App.defaultGroupJoined = _defaultGroupJoined;
+        _persistDefaultGroupJoined();
         syncDefaultGroupJoinedUi();
         if (settings.rerender !== false && typeof window.renderTests === 'function') {
             window.renderTests(true);
@@ -262,6 +298,7 @@ async function markDefaultGroupJoined(options) {
         console.error('default_group_joined update error:', error);
         _defaultGroupJoined = previousValue;
         window.App.defaultGroupJoined = previousValue;
+        _persistDefaultGroupJoined();
         syncDefaultGroupJoinedUi();
         if (!settings.silent) {
             handleApiError('network_error');

@@ -97,23 +97,23 @@
 
     function getBarterChipState(test) {
         var joinType = String(test && test.join_type || '').toLowerCase();
+        var progressStatus = String(test && test.progress_status || 'active').toLowerCase();
+        if (progressStatus === 'kicked_by_owner') {
+            return {
+                kind: 'broken',
+                className: 'meta-chip accent-danger barter-chip',
+                label: _t('barterChipBroken'),
+            };
+        }
         if (joinType !== 'mutual' && joinType !== 'prelaunch') {
             return null;
         }
 
         if (test && test.is_mutual_debt) {
-            var debtDays = Math.max(0, 14 - Number(test.testing_days || 0));
-            if (Number(test.testing_days || 0) > 0 && Number(test.testing_days || 0) <= 14) {
-                debtDays = Math.max(0, 14 - Number(test.testing_days || 0));
-            } else if (Number(test.testing_days || 0) > 14) {
-                debtDays = 0;
-            }
-            // Remaining days to finish partner project in debt mode ≈ max(0, 14 - testing_days)
-            var remain = Math.max(0, 14 - Number(test.testing_days || 0));
             return {
                 kind: 'debt',
                 className: 'meta-chip accent-cyan barter-chip',
-                label: _t('barterChipDebt', { days: remain }),
+                label: _t('barterChipDebt'),
             };
         }
 
@@ -155,7 +155,7 @@
             return {
                 kind: 'warning',
                 className: 'meta-chip accent-orange barter-chip',
-                label: formatBarterWarningLabel(partnerConsecutive),
+                label: _t('barterChipWarning'),
             };
         }
 
@@ -171,7 +171,8 @@
         if (!state) return '';
         var appId = Number(test && (test.id || test.app_id) || 0);
         var archiveBtn = '';
-        if (state.kind === 'broken' && appId > 0) {
+        var isKickedSoft = !!(test && (test.is_kicked_soft || String(test.progress_status || '').toLowerCase() === 'kicked_by_owner'));
+        if (state.kind === 'broken' && appId > 0 && !isKickedSoft) {
             archiveBtn = ' <button type="button" class="barter-archive-btn" onclick="event.stopPropagation(); archiveBrokenMutualTest(' +
                 appId + ')">' + _esc(_t('barterArchiveBtn')) + '</button>';
         }
@@ -352,8 +353,7 @@
             titleEl.textContent = _linkStatusTitle(joinType);
         }
 
-        body.innerHTML = '<p style="text-align:center;color:var(--hint-color);">' +
-            _esc(_t('mutualBalanceLoading')) + '</p>';
+        body.innerHTML = _renderBalanceLoadingSkeleton();
         modal.classList.add('active');
 
         var partnerUserId = Number(
@@ -440,6 +440,41 @@
         };
     }
 
+    function _renderBalanceLoadingSkeleton() {
+        var side = function () {
+            return '' +
+                '<div class="parity-side-card parity-skeleton-card" aria-hidden="true">' +
+                    '<div class="parity-skel parity-skel-label"></div>' +
+                    '<div class="parity-skel parity-skel-icon"></div>' +
+                    '<div class="parity-skel parity-skel-name"></div>' +
+                    '<div class="parity-skel-chips">' +
+                        '<span class="parity-skel parity-skel-chip"></span>' +
+                        '<span class="parity-skel parity-skel-chip"></span>' +
+                    '</div>' +
+                '</div>';
+        };
+        return '' +
+            '<div class="link-status-loading" role="status" aria-live="polite" aria-label="' + _esc(_t('mutualBalanceLoading')) + '">' +
+                '<div class="link-status-person link-status-person--skel">' +
+                    '<div class="parity-skel parity-skel-avatar"></div>' +
+                    '<div class="link-status-person-copy">' +
+                        '<div class="parity-skel parity-skel-fullname"></div>' +
+                        '<div class="parity-skel parity-skel-username"></div>' +
+                    '</div>' +
+                    '<div class="parity-skel parity-skel-badge"></div>' +
+                '</div>' +
+                '<div class="parity-comparison-grid">' + side() + side() + '</div>' +
+                '<div class="link-status-loading-footer">' +
+                    '<span class="link-status-loading-pulse" aria-hidden="true"></span>' +
+                    '<span class="link-status-loading-text">' + _esc(_t('mutualBalanceLoading')) + '</span>' +
+                '</div>' +
+                '<div class="parity-actions parity-actions--skel" aria-hidden="true">' +
+                    '<div class="parity-skel parity-skel-btn"></div>' +
+                    '<div class="parity-skel parity-skel-btn"></div>' +
+                '</div>' +
+            '</div>';
+    }
+
     function _renderBalanceFromLocal(test, options) {
         options = options || {};
         var person = _resolvePersonForRender(test, options, null);
@@ -489,7 +524,9 @@
                 : Number(test && test.partner_consecutive_skips || 0),
             partnerUsername: person.username,
             partnerId: person.userId,
-            partnerLeft: !!(test && test.partner_progress_status && test.partner_progress_status !== 'active'),
+            partnerLeft: options.context === 'projects'
+                ? false
+                : !!(test && test.partner_progress_status && test.partner_progress_status !== 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
         });
@@ -534,7 +571,8 @@
             ),
             partnerUsername: person.username,
             partnerId: person.userId,
-            partnerLeft: !!stats.partner_left,
+            // Owner viewing an active tester: API partner_left = "owner left tester apps" (wrong POV).
+            partnerLeft: options.context === 'projects' ? false : !!stats.partner_left,
             joinType: person.joinType,
             context: options.context || 'tests',
         });
@@ -604,8 +642,19 @@
         }
 
         var partnerConsec = Number(data.partnerConsecutive || 0);
+        var isOwnerView = data.context === 'projects';
         var hint = '';
-        if (partnerConsec >= 3 || data.partnerLeft) {
+        // Owner POV must never use tester leave-justification copy ("partner left / leave free").
+        if (isOwnerView) {
+            if (partnerConsec >= 3) {
+                hint = '<div class="parity-info-banner is-safe">' +
+                    _esc(_t('mutualBalanceOwnerKickHint', {
+                        count: partnerConsec,
+                        word: pluralizeSkipWord(partnerConsec),
+                    })) +
+                    '</div>';
+            }
+        } else if (partnerConsec >= 3 || data.partnerLeft) {
             var hintText = data.partnerLeft
                 ? _t('mutualBalancePartnerLeftHint')
                 : _t('mutualBalancePartnerSkipHint', {
@@ -618,7 +667,6 @@
         }
 
         var isMutual = _isMutualJoin(person.joinType);
-        var isOwnerView = data.context === 'projects';
         var bodyHtml;
         if (isMutual) {
             // Owner: you→their reciprocal app; them→your project.
@@ -638,8 +686,8 @@
             var themAtYouDays = isOwnerView ? data.theirDays : data.myDays;
             var themAtYouSkips = isOwnerView ? data.theirSkips : data.mySkips;
             bodyHtml = '<div class="parity-comparison-grid">' +
-                _paritySideCard(_t('mutualBalanceYouAtThem'), youAtThemName, youAtThemIcon, youAtThemDays, youAtThemSkips) +
                 _paritySideCard(_t('mutualBalanceThemAtYou'), themAtYouName, themAtYouIcon, themAtYouDays, themAtYouSkips) +
+                _paritySideCard(_t('mutualBalanceYouAtThem'), youAtThemName, youAtThemIcon, youAtThemDays, youAtThemSkips) +
             '</div>';
         } else {
             bodyHtml = _renderSingleSideStats(data);

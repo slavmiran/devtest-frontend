@@ -988,7 +988,7 @@ function openKickTesterModal(appId, testerId, event, options) {
     if (reasonSelect) reasonSelect.value = 'no_response';
     if (reasonOther) {
         reasonOther.value = '';
-        reasonOther.style.display = 'none';
+        reasonOther.style.display = 'block';
     }
     body.innerHTML = '' +
         graceTimerHtml +
@@ -1059,13 +1059,10 @@ function closeKickTesterModal(event) {
 }
 
 function toggleKickReasonOther() {
-    const select = document.getElementById('kick-reason-select');
     const other = document.getElementById('kick-reason-other');
-    if (!select || !other) return;
-    other.style.display = select.value === 'other' ? 'block' : 'none';
-    if (select.value !== 'other') {
-        other.value = '';
-    }
+    if (!other) return;
+    // Always visible: freeform note is sent to the tester with any reason chip/select.
+    other.style.display = 'block';
 }
 
 function toggleKickUnlinkHint() {

@@ -1629,13 +1629,22 @@ async function loadUserProfilePreferences() {
         if (!window._autoAcceptBountyAvailable) {
             window._autoAcceptBountyEnabled = false;
         }
+        var previousJoined = !!_defaultGroupJoined;
+        var wasReady = !!_defaultGroupJoinedReady;
         _defaultGroupJoined = !!profile.default_group_joined;
+        _defaultGroupJoinedReady = true;
+        if (typeof _persistDefaultGroupJoined === 'function') {
+            _persistDefaultGroupJoined();
+        }
         syncAutoAcceptToggleUi();
         if (typeof syncAutoAcceptBountyToggleUi === 'function') syncAutoAcceptBountyToggleUi();
         if (typeof syncDefaultGroupJoinedUi === 'function') syncDefaultGroupJoinedUi();
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
         window.App.autoAcceptBounty = !!window._autoAcceptBountyEnabled;
         window.App.defaultGroupJoined = _defaultGroupJoined;
+        if ((!wasReady || previousJoined !== _defaultGroupJoined) && typeof window.renderTests === 'function') {
+            window.renderTests(true);
+        }
         if (typeof applyDeviceInfoFromProfile === 'function') {
             applyDeviceInfoFromProfile(profile);
         } else {
@@ -2812,12 +2821,16 @@ function _findJoinBountyContract(appId) {
 function _buildJoinBountyGrantPreviewHtml(grant) {
     grant = grant || (typeof getGrantEstimateData === 'function'
         ? getGrantEstimateData({ skips_count: 0, daily_timeline: '' })
-        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, total: 100 });
+        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, eligible: true, total: 100 });
     var formatAmount = typeof formatBustAmount === 'function'
         ? formatBustAmount
         : function(value) { return String(value) + ' $BUST'; };
-    var skipIndicator = Array.from({ length: 3 }, function() {
-        return '<span class="skip-dot available"></span>';
+    var currentSkips = Math.max(0, Number(grant.skips || 0));
+    var eligible = grant.eligible !== false && currentSkips <= 3;
+    var skipIndicator = Array.from({ length: 3 }, function(_, index) {
+        return index < currentSkips
+            ? '<span class="skip-dot used"></span>'
+            : '<span class="skip-dot available"></span>';
     }).join('');
     var T = function(key, vars) {
         return window.t(key, vars || {}, lang) || key;
@@ -2825,6 +2838,46 @@ function _buildJoinBountyGrantPreviewHtml(grant) {
     var esc = function(value) {
         return typeof window.escapeHTML === 'function' ? window.escapeHTML(value) : String(value || '');
     };
+
+    if (!eligible) {
+        return '<div class="grant-dashboard-block grant-dashboard-block-lost">' +
+            '<div class="grant-dashboard-header">' +
+                '<div class="grant-dashboard-heading">' +
+                    '<div class="grant-dashboard-title">' + esc(T('grantGoldTesterTitle')) + '</div>' +
+                    '<div class="grant-dashboard-subtitle">' + esc(T('grantLostLabel')) + '</div>' +
+                '</div>' +
+                '<div class="grant-dashboard-total notranslate">' + esc(T('grantTotalEstimateValue', { amount: formatAmount(0) })) + '</div>' +
+            '</div>' +
+            '<div class="grant-dashboard-skips-row">' +
+                '<span class="grant-skip-text">' + esc(T('grantSkipsLabel', { used: currentSkips, max: 3 })) + '</span>' +
+                '<span class="grant-dashboard-skips">' + skipIndicator + '</span>' +
+            '</div>' +
+            '<div class="grant-reward-grid grant-reward-grid-lost">' +
+                '<div class="grant-reward-card grant-reward-card-burned">' +
+                    '<div class="grant-reward-label">' + esc(T('grantBaseLabel')) + '</div>' +
+                    '<div class="grant-reward-value notranslate"><span class="grant-burned-text">' + esc(T('grantBaseValue', { amount: formatAmount(grant.base || 50) })) + '</span></div>' +
+                    '<div class="grant-reward-status is-burned">' + esc(T('grantCardBurned')) + '</div>' +
+                '</div>' +
+                '<div class="grant-reward-card grant-reward-card-burned">' +
+                    '<div class="grant-reward-label">' + esc(T('grantPerfectLabel')) + '</div>' +
+                    '<div class="grant-reward-value notranslate"><span class="grant-burned-text">' + esc(T('grantPerfectValue', { amount: formatAmount(50) })) + '</span></div>' +
+                    '<div class="grant-reward-status is-burned">' + esc(T('grantCardBurned')) + '</div>' +
+                '</div>' +
+                '<div class="grant-reward-card grant-reward-card-burned">' +
+                    '<div class="grant-reward-label">' + esc(T('grantKarmaBonusLabel')) + '</div>' +
+                    '<div class="grant-reward-value notranslate"><span class="grant-burned-text">' + esc(T('grantKarmaValue', { amount: formatAmount(grant.karmaBonus || 0) })) + '</span></div>' +
+                    '<div class="grant-reward-status is-burned">' + esc(T('grantCardBurned')) + '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="join-bounty-confirm-grant-note">' + esc(T('joinBountyGrantNote')) + '</div>' +
+        '</div>';
+    }
+
+    var perfectBurned = currentSkips > 0;
+    var perfectValueLabel = T('grantPerfectValue', { amount: formatAmount(50) });
+    var perfectValueHtml = perfectBurned
+        ? '<span class="grant-burned-text">' + esc(perfectValueLabel) + '</span>'
+        : esc(perfectValueLabel);
 
     return '<div class="grant-dashboard-block">' +
         '<div class="grant-dashboard-header">' +
@@ -2835,7 +2888,7 @@ function _buildJoinBountyGrantPreviewHtml(grant) {
             '<div class="grant-dashboard-total notranslate">' + esc(T('grantTotalEstimateValue', { amount: formatAmount(grant.total) })) + '</div>' +
         '</div>' +
         '<div class="grant-dashboard-skips-row">' +
-            '<span class="grant-skip-text">' + esc(T('grantSkipsLabel', { used: 0, max: 3 })) + '</span>' +
+            '<span class="grant-skip-text">' + esc(T('grantSkipsLabel', { used: currentSkips, max: 3 })) + '</span>' +
             '<span class="grant-dashboard-skips">' + skipIndicator + '</span>' +
         '</div>' +
         '<div class="grant-reward-grid">' +
@@ -2844,10 +2897,12 @@ function _buildJoinBountyGrantPreviewHtml(grant) {
                 '<div class="grant-reward-value notranslate">' + esc(T('grantBaseValue', { amount: formatAmount(grant.base || 50) })) + '</div>' +
                 '<div class="grant-reward-status is-active">' + esc(T('grantCardActive')) + '</div>' +
             '</div>' +
-            '<div class="grant-reward-card">' +
+            '<div class="grant-reward-card' + (perfectBurned ? ' grant-reward-card-burned' : '') + '">' +
                 '<div class="grant-reward-label">' + esc(T('grantPerfectLabel')) + '</div>' +
-                '<div class="grant-reward-value notranslate">' + esc(T('grantPerfectValue', { amount: formatAmount(50) })) + '</div>' +
-                '<div class="grant-reward-status is-active">' + esc(T('grantCardActive')) + '</div>' +
+                '<div class="grant-reward-value notranslate">' + perfectValueHtml + '</div>' +
+                '<div class="grant-reward-status ' + (perfectBurned ? 'is-burned' : 'is-active') + '">' +
+                    esc(T(perfectBurned ? 'grantCardBurned' : 'grantCardActive')) +
+                '</div>' +
             '</div>' +
             '<div class="grant-reward-card">' +
                 '<div class="grant-reward-label">' + esc(T('grantKarmaBonusLabel')) + '</div>' +
@@ -2858,6 +2913,7 @@ function _buildJoinBountyGrantPreviewHtml(grant) {
         '<div class="join-bounty-confirm-grant-note">' + esc(T('joinBountyGrantNote')) + '</div>' +
     '</div>';
 }
+window._buildJoinBountyGrantPreviewHtml = _buildJoinBountyGrantPreviewHtml;
 
 function openJoinBountyConfirmModal(appId) {
     if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
@@ -3089,6 +3145,23 @@ function _buildLeaveReasonPayload(prefix, freeformText) {
     return safePrefix || safeFreeform;
 }
 
+function _formatKickReasonForNotify(prefix, freeformText) {
+    var safePrefix = String(prefix || '').trim();
+    var safeFreeform = String(freeformText || '').trim();
+    var labelKeyByCode = {
+        no_response: 'kickReasonNoResponse',
+        inactive: 'kickReasonInactivity',
+        violation: 'kickReasonViolation',
+        other: 'kickReasonOther',
+    };
+    var labelKey = labelKeyByCode[safePrefix] || '';
+    var label = labelKey ? window.t(labelKey, {}, lang) : safePrefix;
+    if (label && safeFreeform) {
+        return label + ': ' + safeFreeform;
+    }
+    return label || safeFreeform;
+}
+
 function _removeLocalTest(appId) {
     myTests = (myTests || []).filter(function(test) {
         return Number(test.id) !== Number(appId);
@@ -3210,7 +3283,9 @@ async function confirmKickTester() {
     var reasonSelect = document.getElementById('kick-reason-select');
     var reasonOther = document.getElementById('kick-reason-other');
     var reasonText = reasonSelect ? reasonSelect.value : '';
-    var reasonPayload = _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
+    // Human-readable note for tester notification + soft-archive card.
+    var reasonPayload = _formatKickReasonForNotify(reasonText, reasonOther ? reasonOther.value : '')
+        || _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
     var target = {
         appId: _kickTarget.appId,
         testerId: _kickTarget.testerId,

@@ -35,24 +35,24 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260804-link-status-v1"></script>
-<script src="./i18n/en.js?v=20260804-link-status-v1"></script>
+<script src="./i18n/ru.js?v=20260805-kicked-soft-v1"></script>
+<script src="./i18n/en.js?v=20260805-kicked-soft-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260802-group-chip-v2"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
-    <script src="./ui/ui-tests.js?v=20260804-buffer-collapse-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260804-link-status-v1"></script>
-    <script src="./ui/ui-market.js?v=20260804-link-status-v1"></script>
+    <script src="./ui/ui-tests.js?v=20260805-kicked-soft-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260805-kicked-soft-v1"></script>
+    <script src="./ui/ui-market.js?v=20260804-dossier-v7"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
 <script src="./js/app-config.js?v=20260803-bounty-apps-v7"></script>
-<script src="./js/app-api.js?v=20260804-hybrid-already-v1"></script>
+<script src="./js/app-api.js?v=20260805-kicked-soft-v1"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20260802-homescreen-v3"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
-<script src="./js/app-features.js?v=20260804-hybrid-already-v1"></script>
-<script src="./js/mutual-exchange-ui.js?v=20260804-link-status-v1"></script>
+<script src="./js/app-features.js?v=20260805-kicked-soft-v1"></script>
+<script src="./js/mutual-exchange-ui.js?v=20260805-kicked-soft-v1"></script>
 <script src="./js/bounty-applications.js?v=20260803-bounty-apps-v7"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260802-gt-draft-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20260803-payment-flow-v7"></script>
@@ -68,11 +68,11 @@
     <link rel="stylesheet" href="./css/feedback-center.css?v=20260716-feedback-toolbar-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260725-ppc-footer-tone">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260802-group-chip-v1">
-    <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260804-link-status-v1">
+    <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260805-kicked-soft-v1">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260804-buffer-collapse-v1">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./css/dossier-modal.css?v=20260804-dossier-v6">
-    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260804-link-status-v1">
+    <link rel="stylesheet" href="./css/dossier-modal.css?v=20260804-dossier-v7">
+    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260805-parity-load">
     <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
@@ -1788,34 +1788,73 @@
         </div>
     </div>
 
-    <!-- Unified Bounty Info Modal -->
+    <!-- Active Contract Reward Modal (same 3-block style as join confirm) -->
     <div id="bounty-info-modal" class="modal-overlay" onclick="closeBountyInfoModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="bounty-modal-title" style="display: flex; align-items: center; gap: 8px;">💎 <span id="bounty-modal-title-text">Награда по контракту</span></h3>
-            
-            <div class="bounty-modal-details" style="margin-top: 16px; margin-bottom: 16px;">
-                <div class="bounty-row" style="margin-bottom: 12px; display: flex; flex-direction: column;">
-                    <div style="display: flex; justify-content: space-between; font-weight: 500;">
-                        <span id="bounty-modal-checkins-label" data-i18n="bountyModalCheckinsLabel">Ежедневные чекины (65%):</span>
-                        <span id="bounty-modal-checkins-value" class="notranslate bounty-modal-value">0 $BUST</span>
-                    </div>
-                </div>
-                
-                <div class="bounty-row" style="margin-bottom: 16px; display: flex; flex-direction: column;">
-                    <div style="display: flex; justify-content: space-between; font-weight: 500;">
-                        <span id="bounty-modal-hold-label" data-i18n="bountyModalHoldLabel">Hold-бонус (35%):</span>
-                        <span id="bounty-modal-hold-value" class="notranslate bounty-modal-value">0 $BUST</span>
-                    </div>
-                    <div id="bounty-modal-hold-hint" style="font-size: 11px; color: var(--hint-color); margin-top: 2px;" data-i18n="bountyModalHoldHint">Начисляется автоматически при чекине на 14-й день</div>
-                </div>
+        <div class="modal-content join-bounty-confirm-content" onclick="event.stopPropagation()">
+            <h3 id="bounty-info-title" data-i18n="activeContractRewardTitle">Награда по контракту</h3>
+            <p id="bounty-info-intro" class="join-bounty-confirm-intro" data-i18n="activeContractRewardIntro">Как устроена ваша награда $BUST по этому контракту</p>
 
-                <div class="bounty-warning-box">
-                    <span id="bounty-modal-warning-text" data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
-                </div>
-                
-                <div class="bounty-footnote" style="font-size: 11px; color: var(--hint-color); line-height: 1.4;">
-                    <span id="bounty-modal-footnote-text" data-i18n="bountyModalFootnoteText">🏆 Грант Золотого тестера рассчитывается и начисляется платформой дополнительно.</span>
-                </div>
+            <div id="bounty-info-project" class="join-bounty-confirm-project"></div>
+
+            <div class="jb-total">
+                <div class="jb-total-label" data-i18n="joinBountyTotalLabel">Возможная награда</div>
+                <div id="bounty-info-grand-total" class="jb-total-value notranslate">0 $BUST</div>
+                <div id="bounty-info-total-breakdown" class="jb-total-breakdown"></div>
+            </div>
+
+            <div class="jb-section">
+                <details class="jb-accordion" id="bounty-info-owner-accordion">
+                    <summary class="jb-accordion-summary">
+                        <div class="jb-accordion-main">
+                            <div class="jb-accordion-title" data-i18n="joinBountyOwnerBlockTitle">💼 Оплата от владельца</div>
+                            <div class="jb-accordion-sub" data-i18n="joinBountyOwnerCompactSub">Чекины 65% · Hold Bonus 35%</div>
+                        </div>
+                        <div class="jb-accordion-meta">
+                            <div id="bounty-info-owner-compact" class="jb-accordion-amount notranslate is-owner">0 $BUST</div>
+                            <span class="jb-accordion-chevron" aria-hidden="true"></span>
+                        </div>
+                    </summary>
+                    <div class="jb-accordion-body">
+                        <div class="join-bounty-reward-card">
+                            <div class="join-bounty-reward-header">
+                                <div class="join-bounty-reward-title" data-i18n="joinBountyRewardLabel">Награда</div>
+                                <div id="bounty-info-owner-total" class="join-bounty-reward-total notranslate">0 $BUST</div>
+                            </div>
+                            <div class="join-bounty-reward-rows">
+                                <div class="join-bounty-reward-row">
+                                    <span data-i18n="joinBountyCheckinsLabel">Ежедневные чекины (65%)</span>
+                                    <span id="bounty-info-checkins" class="notranslate">0 $BUST</span>
+                                </div>
+                                <div class="join-bounty-reward-row">
+                                    <span data-i18n="joinBountyHoldLabel">Hold Bonus (35%)</span>
+                                    <span id="bounty-info-hold" class="notranslate">0 $BUST</span>
+                                </div>
+                            </div>
+                            <div class="join-bounty-reward-hint" data-i18n="joinBountyHoldAutoHint">Hold Bonus начисляется автоматически при чекине на 14-й день, если пропусков не больше 3.</div>
+                            <div class="bounty-warning-box join-bounty-confirm-warning">
+                                <span data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <div class="jb-section">
+                <details class="jb-accordion jb-accordion-grant" id="bounty-info-grant-accordion">
+                    <summary class="jb-accordion-summary">
+                        <div class="jb-accordion-main">
+                            <div class="jb-accordion-title" data-i18n="joinBountyGrantBlockTitle">🏆 Награда от платформы</div>
+                            <div class="jb-accordion-sub" data-i18n="joinBountyGrantCompactSub">Грант Золотого тестера · до 3 пропусков</div>
+                        </div>
+                        <div class="jb-accordion-meta">
+                            <div id="bounty-info-grant-compact" class="jb-accordion-amount notranslate is-grant">~0 $BUST</div>
+                            <span class="jb-accordion-chevron" aria-hidden="true"></span>
+                        </div>
+                    </summary>
+                    <div class="jb-accordion-body">
+                        <div id="bounty-info-grant" class="join-bounty-confirm-grant"></div>
+                    </div>
+                </details>
             </div>
 
             <button class="btn btn-primary" style="width: 100%;" onclick="closeBountyInfoModal()" data-i18n="ppcModalBufferOk">Понятно</button>
@@ -1967,7 +2006,7 @@
                     <option value="other" data-i18n="kickReasonOther">Другое</option>
                 </select>
             </div>
-            <textarea id="kick-reason-other" class="form-input" rows="3" style="display:none; resize:none; margin-bottom: 14px;" data-i18n-placeholder="kickReasonPlaceholder" placeholder="Опишите причину (необязательно)..."></textarea>
+            <textarea id="kick-reason-other" class="form-input" rows="3" style="resize:none; margin-bottom: 14px;" data-i18n-placeholder="kickReasonPlaceholder" placeholder="Пояснение для тестера (необязательно)..."></textarea>
             <div class="action-row" style="margin-top: 0;">
                 <button class="btn btn-secondary" style="flex: 1;" onclick="closeKickTesterModal()" data-i18n="btnCancel">Отмена</button>
                 <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" onclick="confirmKickTester()" data-i18n="kickConfirmBtn">Исключить тестера</button>

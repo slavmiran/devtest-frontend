@@ -353,6 +353,18 @@ function getGrantEstimateData(test) {
     };
 }
 
+function getActiveContractPossibleTotal(test) {
+    const bounty = Math.max(0, Number(test && test.bounty_per_tester || 0));
+    const grant = getGrantEstimateData(test);
+    const grantTotal = Math.max(0, Number(grant && grant.total || 0));
+    return {
+        bounty: bounty,
+        grant: grantTotal,
+        grantData: grant,
+        total: bounty + grantTotal,
+    };
+}
+
 function getContractPossibleTotalReward(bountyPerTester) {
     const bounty = Math.max(0, Number(bountyPerTester || 0));
     const grant = getGrantEstimateData({ skips_count: 0, daily_timeline: '' });
@@ -856,8 +868,14 @@ function getTestSourceChip(test) {
 
     const joinType = String(test && test.join_type || '').toLowerCase();
     if (joinType === 'bounty') {
-        const bountyVal = test && test.bounty_per_tester ? Number(test.bounty_per_tester) : 0;
-        chips.push(`<span class="meta-chip accent-purple" style="cursor: pointer;" onclick="openBountyInfoModal(${test.id}, event)">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))} +${bountyVal}</span>`);
+        const possible = typeof getActiveContractPossibleTotal === 'function'
+            ? getActiveContractPossibleTotal(test)
+            : { total: Number(test && test.bounty_per_tester || 0) };
+        const amountLabel = typeof formatAmountValue === 'function'
+            ? formatAmountValue(possible.total, 1)
+            : String(Number(possible.total || 0));
+        const chipTitle = window.escapeHTML(window.t('bountyPossibleTotalChipHint', {}, lang));
+        chips.push(`<span class="meta-chip accent-purple notranslate" style="cursor: pointer;" title="${chipTitle}" onclick="openBountyInfoModal(${test.id}, event)">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))} ~${amountLabel}</span>`);
     } else if (joinType === 'mutual') {
         if (typeof buildBarterChipHtml === 'function') {
             chips.push(buildBarterChipHtml(test));
@@ -1664,6 +1682,7 @@ function renderTests(force) {
         // Skip archived cards with no actionable state (no grant, no early finish bonus).
         // This prevents cards from hanging in My Tests when neither reward applies.
         const isArchivedWithNoAction = isArchivedOrCompleted
+            && !test.is_kicked_soft
             && !test.isReadyToClaim
             && !test.isGrantAvailableTomorrow
             && !test.isEarlyFinish;
@@ -1681,8 +1700,13 @@ function renderTests(force) {
         // - Else if status='done': go to done list
         // - Else: go to active list
         const shouldShowInPendingList = isInSafetyBuffer;
-        const shouldShowInActiveList = !shouldShowInPendingList && (test.isReadyToClaim || test.isEarlyFinish || (test.status !== 'done' && !test.isGrantAvailableTomorrow));
-        const shouldShowInDoneList = !shouldShowInPendingList && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
+        const shouldShowInActiveList = !shouldShowInPendingList && (
+            test.is_kicked_soft
+            || test.isReadyToClaim
+            || test.isEarlyFinish
+            || (test.status !== 'done' && !test.isGrantAvailableTomorrow)
+        );
+        const shouldShowInDoneList = !shouldShowInPendingList && !test.is_kicked_soft && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
         
         if (shouldShowInPendingList) {
             card.className = 'card card-pending-release pending-release-carousel-card horizontal-card';
@@ -1745,8 +1769,52 @@ function renderTests(force) {
         const isFeedbackCheckinPending = typeof isTestFeedbackCheckinPending === 'function' && isTestFeedbackCheckinPending(test.id);
         const feedbackPendingBtnLabel = (typeof getFeedbackCheckinPendingLabel === 'function' ? getFeedbackCheckinPendingLabel() : window.t('feedbackCheckinPendingBtn', {}, lang));
         const feedbackPendingBtnStyle = 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;';
-        
-        if (isExternal) {
+
+        if (test.is_kicked_soft) {
+            const leaveReasonRaw = String(test.leave_reason || '').trim();
+            const isDisputedKick = /disputed_active_kick/i.test(leaveReasonRaw);
+            const isJustifiedKick = /justified_inactive_kick/i.test(leaveReasonRaw);
+            let reasonDisplay = leaveReasonRaw
+                .replace(/^justified_inactive_kick:\s*/i, '')
+                .replace(/^disputed_active_kick:\s*/i, '')
+                .replace(/^justified_inactive_kick$/i, '')
+                .replace(/^disputed_active_kick$/i, '')
+                .trim();
+            const reasonCodeMap = {
+                no_response: window.t('kickReasonNoResponse', {}, lang),
+                inactive: window.t('kickReasonInactivity', {}, lang),
+                violation: window.t('kickReasonViolation', {}, lang),
+                other: window.t('kickReasonOther', {}, lang),
+            };
+            const codeMatch = reasonDisplay.match(/^(no_response|inactive|violation|other)(?:\s*:\s*(.*))?$/i);
+            if (codeMatch) {
+                const mapped = reasonCodeMap[String(codeMatch[1] || '').toLowerCase()] || codeMatch[1];
+                const note = String(codeMatch[2] || '').trim();
+                reasonDisplay = note ? (mapped + ': ' + note) : mapped;
+            }
+            if (!reasonDisplay && leaveReasonRaw) {
+                reasonDisplay = leaveReasonRaw;
+            }
+            const penaltyHtml = isDisputedKick
+                ? `<div class="kicked-soft-penalty">${window.escapeHTML(window.t('kickedSoftPenaltyDisputed', {}, lang))}</div>`
+                : (isJustifiedKick
+                    ? `<div class="kicked-soft-penalty is-ok">${window.escapeHTML(window.t('kickedSoftPenaltyNone', {}, lang))}</div>`
+                    : '');
+            const reasonHtml = reasonDisplay
+                ? `<div class="kicked-soft-reason">${window.escapeHTML(window.t('kickedSoftReasonLabel', { reason: reasonDisplay }, lang))}</div>`
+                : '';
+            actionsHtml = `
+                <div class="kicked-soft-banner">
+                    <div class="kicked-soft-title">${window.escapeHTML(window.t('kickedSoftBannerTitle', {}, lang))}</div>
+                    <div class="kicked-soft-desc">${window.escapeHTML(window.t('kickedSoftBannerDesc', {}, lang))}</div>
+                    ${reasonHtml}
+                    ${penaltyHtml}
+                </div>
+                <button type="button" class="btn btn-claim-grant" style="width: 100%; margin-bottom: 4px; font-size: 16px; font-weight: 600; padding: 14px 16px;" onclick="dismissKickedTestCard(${Number(test.id)}, ${Number(test.progress_id || 0)})">
+                    ${window.escapeHTML(window.t('kickedSoftArchiveBtn', {}, lang))}
+                </button>
+            `;
+        } else if (isExternal) {
             var isContinuedExternal = isExternalContinueModeEnabled(test);
             if (isContinuedExternal) {
                 actionsHtml = renderExternalContinuedActions(test, safePackage, safeOwnerUsername);
@@ -1887,7 +1955,7 @@ function renderTests(force) {
             const isDefaultGroup = !isEmailMode && (typeof isDefaultGoogleGroupUrl === 'function'
                 ? isDefaultGoogleGroupUrl(groupUrl)
                 : true);
-            const hideJoinGroupStep = !isEmailMode && isDefaultGroup && !!_defaultGroupJoined;
+            const hideJoinGroupStep = !isEmailMode && isDefaultGroup && (!!_defaultGroupJoined || !_defaultGroupJoinedReady);
             const downloadLabel = hideJoinGroupStep
                 ? window.t('downloadPlayStep1', {}, lang)
                 : window.t('downloadPlay', {}, lang);
@@ -2024,7 +2092,7 @@ function renderTests(force) {
             ? `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;" onclick="event.stopPropagation();">${headerActions.join('')}</div>`
             : '';
 
-        const doneBadgeHtml = test.status === 'done' && !test.isReadyToClaim
+        const doneBadgeHtml = test.status === 'done' && !test.isReadyToClaim && !test.is_kicked_soft
             ? '<div class="done-status-pill">' + window.escapeHTML(t.doneTodayText) + '</div><div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
             : '';
         const externalMetaChips = [];
@@ -2053,7 +2121,8 @@ function renderTests(force) {
                 externalMetaChips.push(
                     `<span class="meta-chip accent-green group-status-chip group-status-chip--static">${window.escapeHTML(window.t('groupChipConnected', {}, lang))}</span>`
                 );
-            } else {
+            } else if (_defaultGroupJoinedReady) {
+                // Only show "join required" after status is known — avoids Required→Connected flash on boot.
                 externalMetaChips.push(
                     `<button type="button" class="meta-chip accent-orange group-status-chip" onclick="event.stopPropagation(); handleGroupStatusChipClick(${test.id}, '${safeChipGroupUrl}')">${window.escapeHTML(window.t('groupChipRequired', {}, lang))}</button>`
                 );
@@ -2237,8 +2306,46 @@ function togglePendingReleaseSection() {
     if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
+async function dismissKickedTestCard(appId, progressId) {
+    var safeAppId = Number(appId || 0);
+    if (safeAppId <= 0) return;
+    try {
+        var response = await fetch(API_BASE + '/tests/' + safeAppId + '/dismiss_kicked', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(withInitData({})),
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+        if (typeof _removeLocalTest === 'function') {
+            _removeLocalTest(safeAppId);
+        } else {
+            myTests = (myTests || []).filter(function(test) {
+                return Number(test.id) !== safeAppId;
+            });
+        }
+        if (typeof persistTestsCacheSnapshot === 'function') {
+            persistTestsCacheSnapshot();
+        }
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        }
+        showToast(window.t('kickedSoftArchiveDone', {}, lang));
+        if (typeof window.renderTests === 'function') {
+            window.renderTests(true);
+        }
+    } catch (error) {
+        console.error('Dismiss kicked test error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
 Object.assign(window, {
     renderEditCreatedAtMeta,
+    dismissKickedTestCard,
     renderEvents,
     toggleEventsExpanded,
     getUserTestingDay,
@@ -2247,6 +2354,7 @@ Object.assign(window, {
     isProjectSynced,
     showGrantBreakdownAlertById,
     getGrantEstimateData,
+    getActiveContractPossibleTotal,
     getContractPossibleTotalReward,
     getScreenshotReminderHtml,
     dismissProjectUpdateTip,
@@ -2305,29 +2413,100 @@ function openBountyInfoModal(testId, event) {
         event.stopPropagation();
         event.preventDefault();
     }
-    const test = myTests.find(item => item.id === testId);
+    const test = myTests.find(item => Number(item.id) === Number(testId));
     if (!test) return;
-    
+
     const bounty = Number(test.bounty_per_tester || 0);
     const checkinsReward = Math.round(bounty * 0.65);
     const holdReward = Math.round(bounty * 0.35);
-
+    const formatAmount = typeof formatBustAmount === 'function'
+        ? formatBustAmount
+        : function(value) { return String(value) + ' $BUST'; };
     const T = (key, vars) => window.t(key, vars || {}, lang) || key;
+    const grant = typeof getGrantEstimateData === 'function'
+        ? getGrantEstimateData(test)
+        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, eligible: true, total: 100 };
+    const grantTotal = Math.max(0, Number(grant.total || 0));
+    const grandTotal = bounty + grantTotal;
 
-    // Update title
-    const titleText = T('bountyModalTitle', { total: bounty });
-    const titleTextEl = document.getElementById('bounty-modal-title-text');
-    if (titleTextEl) titleTextEl.textContent = titleText;
+    const projectEl = document.getElementById('bounty-info-project');
+    if (projectEl) {
+        const safeName = window.escapeHTML(test.name || T('unknownLabel'));
+        const safePackage = window.escapeHTML(test.package_name || '');
+        const iconHtml = typeof renderIcon === 'function'
+            ? renderIcon(test.name || '', test.icon_url)
+            : '';
+        projectEl.innerHTML = iconHtml +
+            '<div class="card-info">' +
+                '<div class="card-title notranslate">' + safeName + '</div>' +
+                (safePackage ? '<div class="card-subtitle notranslate">' + safePackage + '</div>' : '') +
+            '</div>';
+    }
 
-    // Update checkins reward
-    const checkinsValEl = document.getElementById('bounty-modal-checkins-value');
-    if (checkinsValEl) checkinsValEl.textContent = `${checkinsReward} $BUST`;
+    const setText = function(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+    setText('bounty-info-title', T('activeContractRewardTitle'));
+    setText('bounty-info-intro', T('activeContractRewardIntro'));
+    setText('bounty-info-owner-total', formatAmount(bounty));
+    setText('bounty-info-owner-compact', formatAmount(bounty));
+    setText('bounty-info-checkins', formatAmount(checkinsReward));
+    setText('bounty-info-hold', formatAmount(holdReward));
+    setText('bounty-info-grand-total', '~' + formatAmount(grandTotal));
+    setText('bounty-info-grant-compact', grant.eligible === false
+        ? formatAmount(0)
+        : ('~' + formatAmount(grantTotal)));
 
-    // Update hold reward
-    const holdValEl = document.getElementById('bounty-modal-hold-value');
-    if (holdValEl) holdValEl.textContent = `${holdReward} $BUST`;
+    const setKeyText = function(selector, key) {
+        const el = document.querySelector(selector);
+        if (el) el.textContent = T(key);
+    };
+    setKeyText('#bounty-info-modal .jb-total-label', 'joinBountyTotalLabel');
+    setKeyText('#bounty-info-owner-accordion .jb-accordion-title', 'joinBountyOwnerBlockTitle');
+    setKeyText('#bounty-info-owner-accordion .jb-accordion-sub', 'joinBountyOwnerCompactSub');
+    setKeyText('#bounty-info-grant-accordion .jb-accordion-title', 'joinBountyGrantBlockTitle');
+    setKeyText('#bounty-info-grant-accordion .jb-accordion-sub', 'joinBountyGrantCompactSub');
+    setKeyText('#bounty-info-modal .join-bounty-reward-title', 'joinBountyRewardLabel');
+    setKeyText('#bounty-info-modal .join-bounty-reward-row span[data-i18n="joinBountyCheckinsLabel"]', 'joinBountyCheckinsLabel');
+    setKeyText('#bounty-info-modal .join-bounty-reward-row span[data-i18n="joinBountyHoldLabel"]', 'joinBountyHoldLabel');
+    setKeyText('#bounty-info-modal .join-bounty-reward-hint', 'joinBountyHoldAutoHint');
+    setKeyText('#bounty-info-modal .join-bounty-confirm-warning span', 'bountyModalWarningText');
+    setKeyText('#bounty-info-modal .btn.btn-primary', 'ppcModalBufferOk');
 
-    // Show modal
+    const breakdownEl = document.getElementById('bounty-info-total-breakdown');
+    if (breakdownEl) {
+        breakdownEl.innerHTML =
+            T('joinBountyContractPart') + ' <span class="jb-total-part notranslate">' + formatAmount(bounty) + '</span>' +
+            ' + ' +
+            T('joinBountyGrantPart') + ' <span class="jb-total-part notranslate">' +
+            (grant.eligible === false ? formatAmount(0) : ('~' + formatAmount(grantTotal))) +
+            '</span>';
+    }
+
+    const grantEl = document.getElementById('bounty-info-grant');
+    if (grantEl) {
+        if (typeof window._buildJoinBountyGrantPreviewHtml === 'function') {
+            grantEl.innerHTML = window._buildJoinBountyGrantPreviewHtml(grant);
+        } else if (typeof _buildJoinBountyGrantPreviewHtml === 'function') {
+            grantEl.innerHTML = _buildJoinBountyGrantPreviewHtml(grant);
+        } else {
+            grantEl.innerHTML = '';
+        }
+    }
+
+    const ownerAccordion = document.getElementById('bounty-info-owner-accordion');
+    if (ownerAccordion) ownerAccordion.open = false;
+    const grantAccordion = document.getElementById('bounty-info-grant-accordion');
+    if (grantAccordion) grantAccordion.open = false;
+    [ownerAccordion, grantAccordion].forEach(function(el) {
+        if (!el || el.dataset.jbBound) return;
+        el.dataset.jbBound = '1';
+        el.addEventListener('toggle', function() {
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        });
+    });
+
     const modal = document.getElementById('bounty-info-modal');
     if (modal) {
         modal.classList.add('active');
