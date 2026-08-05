@@ -780,6 +780,8 @@ function hasMeaningfulProjectSync(test) {
 function isProjectSynced(test) {
     return hasMeaningfulProjectSync(test);
 }
+window.isProjectSynced = isProjectSynced;
+window.hasMeaningfulProjectSync = hasMeaningfulProjectSync;
 
 function buildTestOwnerSubtitle(test) {
     if (!test || typeof test !== 'object') return '';

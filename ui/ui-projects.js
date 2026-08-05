@@ -1,4 +1,15 @@
 /* Phase 4.3 — ui/ui-projects.js (structural split from ui.js) */
+
+function _isProjectSyncedSafe(project) {
+    try {
+        if (typeof window.isProjectSynced === 'function') {
+            return !!window.isProjectSynced(project);
+        }
+    } catch (e) {}
+    var syncDay = Number(project && project.google_sync_day || 0);
+    return Number.isFinite(syncDay) && syncDay >= 1 && !!(project && project.last_sync_date);
+}
+
 function getProjectVisibilityMeta(project) {
     var mode = typeof window.getProjectVisibilityMode === 'function'
         ? window.getProjectVisibilityMode(project)
@@ -261,7 +272,7 @@ function renderProjects(force) {
         const platformDays = getProjectPlatformDay(project.created_at);
         const syncDay = Number(project.google_sync_day || 0);
         const normalizedSyncDay = Number.isFinite(syncDay) ? syncDay : 0;
-        const rawGoogleDay = isProjectSynced(project)
+        const rawGoogleDay = _isProjectSyncedSafe(project)
             ? getProjectCurrentGoogleDay(project, platformDays)
             : platformDays;
         const currentGoogleDay = Math.max(1, Number.isFinite(rawGoogleDay) ? rawGoogleDay : 1);
@@ -559,7 +570,7 @@ function renderProjects(force) {
             if (project.target_lang && project.target_lang !== 'ALL') {
                 badges += getLangBadge(project.target_lang);
             }
-            if (isProjectSynced(project)) {
+            if (_isProjectSyncedSafe(project)) {
                 // Fallback for legacy projects that may use purchased_protection_days instead of paid_protection_days
                 const extraPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0);
                 const protectedText = extraPaid > 0
@@ -572,7 +583,7 @@ function renderProjects(force) {
         })();
 
         const projectProgressHtml = (() => {
-            if (!isProjectSynced(project)) {
+            if (!_isProjectSyncedSafe(project)) {
                 const day = Math.min(platformDays, 14);
                 const pct = Math.min(100, Math.round((day / 14) * 100));
                 return `
@@ -621,7 +632,7 @@ function renderProjects(force) {
             return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
         })();
 
-        const hasSync = isProjectSynced(project);
+        const hasSync = _isProjectSyncedSafe(project);
         const syncBtnStyle = needsSyncAttention
             ? 'flex: 1; background-color: rgba(255, 149, 0, 0.2); color: #ff9500; border: 1px solid rgba(255, 149, 0, 0.4); animation: pulse-attention 2s infinite;'
             : 'flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);';
@@ -841,7 +852,7 @@ function openOvertimeModal(appId, event) {
     const timelineMeta = getTestingTimelineMeta(test);
     const finishDateText = timelineMeta.finishDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US');
 
-    const isSynced = isProjectSynced(test);
+    const isSynced = _isProjectSyncedSafe(test);
     const message = isSynced
         ? t.overtimeScenarioB
             .replace('{day}', String(test.google_sync_day || 0))
@@ -1296,7 +1307,7 @@ function _renderProtectionCenterState1(project, platformDay) {
     const sliderMin = Math.min(14, Math.max(1, platformDay - 10));
     
     // Default to current synced Google Day or platformDay
-    const hasExistingSync = isProjectSynced(project);
+    const hasExistingSync = _isProjectSyncedSafe(project);
     const currentGoogleDay = hasExistingSync ? getProjectCurrentGoogleDay(project, platformDay) : Math.min(14, platformDay);
     const sliderDefault = Math.max(sliderMin, Math.min(sliderMax, currentGoogleDay));
 
@@ -1960,7 +1971,7 @@ function openProtectionCenter(projectId) {
     // Compute platform day
     const platformDay = getProjectPlatformDay(project.created_at);
 
-    const isSynced = isProjectSynced(project);
+    const isSynced = _isProjectSyncedSafe(project);
     const googleDay = isSynced ? getProjectCurrentGoogleDay(project, platformDay) : 0;
 
     // Show loading spinner briefly then render
@@ -2513,7 +2524,7 @@ function openDeleteModal(id) {
         const platformDays = typeof getProjectPlatformDay === 'function'
             ? getProjectPlatformDay(project.created_at)
             : Math.max(1, daysOnPlatform + 1);
-        const rawGoogleDay = (typeof isProjectSynced === 'function' && isProjectSynced(project)
+        const rawGoogleDay = (_isProjectSyncedSafe(project)
             && typeof getProjectCurrentGoogleDay === 'function')
             ? getProjectCurrentGoogleDay(project, platformDays)
             : platformDays;
@@ -4942,7 +4953,7 @@ function openProjectDetailsModal(appId) {
     const skips = Number(test.skips_count || 0);
     const totalCheckins = Number(test.checkins_count || 0);
     const daysSinceCreated = Number(test.days_since_publish || 0);
-    const left = isProjectSynced(test)
+    const left = _isProjectSyncedSafe(test)
         ? Math.max(0, 14 - getProjectSyncStartDay(test))
         : Math.max(0, 14 - daysSinceCreated);
     const potential = totalCheckins + left;

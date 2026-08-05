@@ -3116,12 +3116,16 @@ async function confirmDropTest() {
             : ((typeof consumePendingUnlinkReciprocal === 'function')
                 ? consumePendingUnlinkReciprocal(true)
                 : true);
+        const reasonCode = (typeof getTermReasonCode === 'function') ? getTermReasonCode() : '';
+        const reasonNote = (typeof getTermReasonNote === 'function') ? getTermReasonNote() : '';
+        const leaveReason = _buildLeaveReasonPayload(reasonCode, reasonNote);
         const response = await fetch(`${API_BASE}/tests/${_dropTestAppId}/drop`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(withInitData({
                 tester_id: userId,
                 unlink_reciprocal: !!unlinkReciprocal,
+                leave_reason: leaveReason,
             }))
         });
         const data = await response.json();
@@ -3130,7 +3134,11 @@ async function confirmDropTest() {
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showToast(window.t('termDropSuccess', {}, lang));
+        const exitKind = String((data && data.exit_kind) || '');
+        const successKey = exitKind === 'invite_safe_exit'
+            ? 'termDropSuccessSafe'
+            : (exitKind === 'invite_costly_exit' ? 'termDropSuccessCostly' : 'termDropSuccess');
+        showToast(window.t(successKey, {}, lang));
         if (typeof closeTerminationSheet === 'function') {
             closeTerminationSheet({ target: document.getElementById('termination-sheet') });
         } else {

@@ -96,7 +96,7 @@
         }
         if (mode === 'drop') {
             return [
-                { code: 'schedule_conflict', labelKey: 'termDropReasonSchedule' },
+                { code: 'took_by_mistake', labelKey: 'termDropReasonMistake' },
                 { code: 'not_suitable', labelKey: 'termDropReasonNotSuitable' },
                 { code: 'communication_issue', labelKey: 'termDropReasonNoContact' },
                 { code: 'other', labelKey: 'leaveReasonOther' },
@@ -395,6 +395,48 @@
             _effectsBlock(_t('kickTesterEffectsTitle'), testerEffects);
     }
 
+    function _isInviteSafeExit(testingDays, checkins) {
+        return Number(testingDays || 0) <= 3 && Number(checkins || 0) <= 1;
+    }
+
+    function _renderPreserveInviteBlock(test, ownerId) {
+        var available = (typeof window.getAvailableMutualProjectsForOwner === 'function')
+            ? window.getAvailableMutualProjectsForOwner(ownerId)
+            : [];
+        var ownCandidates = (typeof window.getMutualOfferProjectChoicesForOwner === 'function')
+            ? window.getMutualOfferProjectChoicesForOwner(ownerId)
+            : [];
+        var hasOwnProject = Array.isArray(ownCandidates) && ownCandidates.length > 0;
+        var canPropose = Array.isArray(available) && available.length > 0;
+        var appId = Number(test && test.id || test && test.app_id || 0);
+
+        var actionHtml = '';
+        if (canPropose) {
+            actionHtml = '' +
+                '<button type="button" class="btn btn-primary term-preserve-btn" ' +
+                'onclick="proposeMutualFromTermination(' + appId + ', ' + Number(ownerId || 0) + ')">' +
+                _esc(_t('termDropPreserveProposeBtn')) +
+                '</button>' +
+                '<div class="term-preserve-note">' + _esc(_t('termDropPreserveProposeHint')) + '</div>';
+        } else if (!hasOwnProject) {
+            actionHtml = '' +
+                '<button type="button" class="btn btn-primary term-preserve-btn" ' +
+                'onclick="addProjectFromTermination()">' +
+                _esc(_t('termDropPreserveAddAppBtn')) +
+                '</button>' +
+                '<div class="term-preserve-note">' + _esc(_t('termDropPreserveAddAppHint')) + '</div>';
+        } else {
+            actionHtml = '<div class="term-preserve-note">' + _esc(_t('termDropPreserveNoSlot')) + '</div>';
+        }
+
+        return '' +
+            '<div class="term-preserve-block">' +
+                '<div class="term-preserve-title">' + _esc(_t('termDropPreserveTitle')) + '</div>' +
+                '<div class="term-preserve-desc">' + _esc(_t('termDropPreserveDesc')) + '</div>' +
+                '<div class="term-preserve-actions">' + actionHtml + '</div>' +
+            '</div>';
+    }
+
     function _renderDropBody(test) {
         var joinType = _normalizeJoinType(test && test.join_type);
         var testingDays = test && test.start_date && typeof getUserTestingDay === 'function'
@@ -403,52 +445,86 @@
         var checkins = Number(test && test.checkins_count || 0);
         var skips = Number(test && test.skips_count || 0);
         var projectName = (test && test.name) || _t('unknownLabel');
+        var ownerId = Number(test && test.owner_id || 0);
         var ownerLabel = test && test.owner_username
             ? '@' + String(test.owner_username).replace(/^@+/, '')
-            : (test && test.owner_full_name) || _t('idLabel', { id: test && test.owner_id || 0 });
+            : (test && test.owner_full_name) || _t('idLabel', { id: ownerId });
         var bountyPerTester = Number(test && test.bounty_per_tester || 0);
         var isBounty = joinType === 'bounty' && bountyPerTester > 0;
+        var isInviteLike = !isBounty && joinType !== 'mutual';
         var dailyPool = isBounty ? bountyPerTester * 0.65 : 0;
         var rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
         var earnedEstimate = Math.round(checkins * rewardPerCheckin * 10) / 10;
         var remainingEstimate = Math.max(0, Math.round((dailyPool - earnedEstimate) * 10) / 10);
         var hasReciprocal = Number(test && test.reciprocal_app_id || 0) > 0;
+        var isSafeExit = isInviteLike && _isInviteSafeExit(testingDays, checkins);
+        var grantStillAvailable = skips < 3;
 
         if (_termState) {
-            _termState.justifiedAllowed = true; // drop: no karma burn
+            _termState.justifiedAllowed = isBounty ? true : isSafeExit;
             _termState.isBountyDrop = isBounty;
+            _termState.isInviteDrop = isInviteLike;
+            _termState.isSafeExit = isSafeExit;
             _termState.remainingBounty = remainingEstimate;
             _termState.hasReciprocal = hasReciprocal;
             _termState.projectName = projectName;
+            _termState.ownerId = ownerId;
+            _termState.grantAvailable = grantStillAvailable;
         }
 
-        var banner = isBounty
-            ? '<div class="leave-status-banner is-penalty">' +
+        var banner;
+        if (isBounty) {
+            banner = '<div class="leave-status-banner is-penalty">' +
                 '<div class="leave-status-title">' + _esc(_t('termDropBountyBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t('termDropBountyDesc', {
                     remaining: _fmtAmount(remainingEstimate, 1),
                 })) + '</div>' +
-              '</div>'
-            : '<div class="leave-status-banner is-justified">' +
-                '<div class="leave-status-title">' + _esc(_t('termDropInviteBadge')) + '</div>' +
-                '<div class="leave-status-desc">' + _esc(_t('termDropInviteDesc')) + '</div>' +
               '</div>';
+        } else if (isSafeExit) {
+            banner = '<div class="leave-status-banner is-justified">' +
+                '<div class="leave-status-title">' + _esc(_t('termDropInviteSafeBadge')) + '</div>' +
+                '<div class="leave-status-desc">' + _esc(_t('termDropInviteSafeDesc')) + '</div>' +
+              '</div>';
+        } else {
+            banner = '<div class="leave-status-banner is-penalty">' +
+                '<div class="leave-status-title">' + _esc(_t('termDropInviteCostlyBadge')) + '</div>' +
+                '<div class="leave-status-desc">' + _esc(_t('termDropInviteCostlyDesc')) + '</div>' +
+              '</div>';
+        }
 
-        var effects = [
-            _t('termDropEffectAccess'),
-            _t('termDropEffectNoKarma'),
-        ];
+        var effects = [];
         if (isBounty) {
             effects.push(_t('termDropEffectBountyLost', { remaining: _fmtAmount(remainingEstimate, 1) }));
             if (earnedEstimate > 0) {
                 effects.push(_t('termDropEffectBountyKept', { earned: _fmtAmount(earnedEstimate, 1) }));
             }
+            effects.push(_t('termDropEffectNoKarma'));
         } else {
-            effects.push(_t('termDropEffectInviteNeutral'));
+            effects.push(_t('termDropEffectNoKarma'));
+            effects.push(_t(isSafeExit ? 'termDropEffectRiSafe' : 'termDropEffectRiCostly'));
+        }
+        if (grantStillAvailable) {
+            effects.push(_t('termDropEffectGrantLost'));
         }
         if (hasReciprocal) {
             effects.push(_t('termDropEffectReciprocalMaybe'));
         }
+
+        var grantRow = grantStillAvailable
+            ? '<div class="leave-grant-row">' +
+                '<span class="leave-grant-icon" aria-hidden="true">🏆</span>' +
+                '<div class="leave-grant-copy">' +
+                    '<div class="leave-grant-title">' + _esc(_t('leaveGrantTeaseTitle')) + '</div>' +
+                    '<div class="leave-grant-desc">' + _esc(_t('termDropGrantTeaseDesc', {
+                        skips: skips,
+                        max: 3,
+                    })) + '</div>' +
+                '</div></div>'
+            : '';
+
+        var preserveBlock = (isInviteLike && !hasReciprocal)
+            ? _renderPreserveInviteBlock(test, ownerId)
+            : '';
 
         return '' +
             '<div class="leave-exchange-card">' +
@@ -465,9 +541,11 @@
                         _metricRow('✅', _t('leaveMetricCheckins'), checkins, false) +
                         _metricRow('⚠️', _t('leaveMetricSkips'), String(skips) + '/3', skips >= 3) +
                     '</div>' +
+                    grantRow +
                 '</div>' +
             '</div>' +
             banner +
+            preserveBlock +
             _effectsBlock(_t('termDropEffectsTitle'), effects);
     }
 
@@ -482,7 +560,12 @@
             return;
         }
         if (_termState.mode === 'drop') {
-            btn.classList.add('leave-cta--warn');
+            // Bounty stays warn (money loss); invite safe → soft CTA; invite costly → warn.
+            if (_termState.isInviteDrop && _termState.isSafeExit) {
+                btn.classList.add('leave-cta--safe');
+            } else {
+                btn.classList.add('leave-cta--warn');
+            }
             btn.textContent = _t('termDropBtn');
             return;
         }
@@ -516,9 +599,12 @@
             grantAvailable: false,
             forceUnlink: !!options.forceUnlink,
             isBountyDrop: false,
+            isInviteDrop: false,
+            isSafeExit: false,
             remainingBounty: 0,
             hasReciprocal: false,
             projectName: '',
+            ownerId: 0,
         };
 
         // Legacy globals used by confirmLeaveMutual / confirmKickTester / confirmDropTest
@@ -577,9 +663,23 @@
             _setupUnlinkBox(mode, joinType, unlinkOptions);
         }
 
-        var defaultReason = mode === 'kick'
-            ? 'no_response'
-            : (mode === 'drop' ? 'schedule_conflict' : 'inactive_partner');
+        var defaultReason = 'inactive_partner';
+        if (mode === 'kick') {
+            defaultReason = 'no_response';
+        } else if (mode === 'drop') {
+            var dropSnap = options.testSnapshot || (typeof getMyTestById === 'function'
+                ? getMyTestById(_termState.appId)
+                : null);
+            var dropDays = dropSnap && dropSnap.start_date && typeof getUserTestingDay === 'function'
+                ? getUserTestingDay(dropSnap.start_date)
+                : Number(dropSnap && dropSnap.testing_days || 0);
+            var dropCheckins = Number(dropSnap && dropSnap.checkins_count || 0);
+            var dropJoin = _normalizeJoinType(dropSnap && dropSnap.join_type || joinType);
+            var dropIsBounty = dropJoin === 'bounty' && Number(dropSnap && dropSnap.bounty_per_tester || 0) > 0;
+            defaultReason = (!dropIsBounty && _isInviteSafeExit(dropDays, dropCheckins))
+                ? 'took_by_mistake'
+                : 'not_suitable';
+        }
         _renderReasonChips(mode, defaultReason);
 
         body.innerHTML = '<p style="text-align:center; color: var(--hint-color);">' +
@@ -610,6 +710,7 @@
         }
         if (_termState) {
             _termState.joinType = _normalizeJoinType(test.join_type || options.joinType || 'invite');
+            _termState.ownerId = Number(test.owner_id || 0);
         }
         _setTypeBadge(_termState.joinType);
         body.innerHTML = _renderDropBody(test);
@@ -765,10 +866,18 @@
             if (title) title.textContent = _t('termConfirmTitleDrop');
             points.push('<li>' + _esc(_t('termConfirmPointDropPrimary')) + '</li>');
             points.push('<li>' + _esc(_t('termDropEffectNoKarma')) + '</li>');
+            if (_termState.isInviteDrop) {
+                points.push('<li' + (_termState.isSafeExit ? '' : ' class="is-warn"') + '>' +
+                    _esc(_t(_termState.isSafeExit ? 'termDropEffectRiSafe' : 'termDropEffectRiCostly')) +
+                    '</li>');
+            }
             if (_termState.isBountyDrop) {
                 points.push('<li class="is-warn">' + _esc(_t('termDropEffectBountyLost', {
                     remaining: _fmtAmount(_termState.remainingBounty || 0, 1),
                 })) + '</li>');
+            }
+            if (_termState.grantAvailable) {
+                points.push('<li class="is-warn">' + _esc(_t('termDropEffectGrantLost')) + '</li>');
             }
             if (_termState.hasReciprocal) {
                 points.push('<li>' + _esc(unlink
@@ -776,11 +885,16 @@
                     : _t('termConfirmPointKeepMirrorLeave')) + '</li>');
             }
             body.innerHTML = '' +
-                '<p class="leave-confirm-lead">' + _esc(_t('termConfirmDescDrop')) + '</p>' +
+                '<p class="leave-confirm-lead">' + _esc(_t(
+                    _termState.isInviteDrop && _termState.isSafeExit
+                        ? 'termConfirmDescDropSafe'
+                        : 'termConfirmDescDrop'
+                )) + '</p>' +
                 '<ul class="leave-confirm-points">' + points.join('') + '</ul>';
             if (finalBtn) {
-                finalBtn.classList.remove('leave-cta--safe');
-                finalBtn.classList.add('leave-cta--warn');
+                var dropSafeCta = !!(_termState.isInviteDrop && _termState.isSafeExit);
+                finalBtn.classList.toggle('leave-cta--safe', dropSafeCta);
+                finalBtn.classList.toggle('leave-cta--warn', !dropSafeCta);
                 finalBtn.textContent = _t('termDropConfirmFinal');
             }
         } else {
@@ -999,6 +1113,26 @@
         }
     }
 
+    function proposeMutualFromTermination(appId, ownerId) {
+        var targetAppId = Number(appId || (_termState && _termState.appId) || 0);
+        var targetOwnerId = Number(ownerId || (_termState && _termState.ownerId) || 0);
+        cancelTerminationConfirm();
+        closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+        if (typeof createMutualOffer === 'function') {
+            createMutualOffer(targetAppId, targetOwnerId);
+        }
+    }
+
+    function addProjectFromTermination() {
+        cancelTerminationConfirm();
+        closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+        if (typeof openAddProjectChooser === 'function') {
+            openAddProjectChooser();
+        } else if (typeof openModal === 'function') {
+            openModal();
+        }
+    }
+
     window.openTerminationSheet = openTerminationSheet;
     window.closeTerminationSheet = closeTerminationSheet;
     window.requestTerminationConfirm = requestTerminationConfirm;
@@ -1026,4 +1160,6 @@
     window.toggleKickReasonOther = toggleKickReasonOther;
     window.toggleKickUnlinkHint = toggleKickUnlinkHint;
     window.toggleLeaveMyStats = toggleLeaveMyStats;
+    window.proposeMutualFromTermination = proposeMutualFromTermination;
+    window.addProjectFromTermination = addProjectFromTermination;
 })();

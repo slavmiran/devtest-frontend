@@ -894,6 +894,44 @@
     color: var(--text-secondary);
 }
 
+.term-preserve-block {
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, #0a84ff 35%, var(--border-subtle));
+    background: color-mix(in srgb, rgba(10, 132, 255, 0.12) 70%, var(--bg-surface-1));
+}
+
+.term-preserve-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #63adff;
+    margin-bottom: 4px;
+}
+
+.term-preserve-desc {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.term-preserve-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.term-preserve-btn {
+    width: 100%;
+}
+
+.term-preserve-note {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--hint-color);
+}
+
 /* Status banners — informative, not neon */
 .leave-status-banner {
     margin: 0 0 14px;
