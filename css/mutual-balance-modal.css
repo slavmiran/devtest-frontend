@@ -41,6 +41,7 @@
 /* --- Modal overlay polish --- */
 #mutual-balance-modal.modal-overlay,
 #leave-mutual-modal.modal-overlay,
+#termination-sheet.modal-overlay,
 #leave-confirm-overlay.modal-overlay,
 #bell-remind-overlay.modal-overlay,
 #kick-modal.modal-overlay {
@@ -52,6 +53,7 @@
 
 #mutual-balance-modal .modal-content,
 #leave-mutual-modal .modal-content,
+#termination-sheet .modal-content,
 #bell-remind-overlay .modal-content {
     background: var(--bg-surface-2);
     border: 1px solid var(--border-subtle);
@@ -519,8 +521,83 @@
 
 #leave-mutual-modal .modal-content,
 #kick-modal .modal-content,
+#termination-sheet .modal-content,
 #mutual-balance-modal .modal-content {
     padding-top: 12px;
+}
+
+.term-type-badge {
+    display: inline-flex;
+    align-items: center;
+    margin: -4px 0 12px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-2);
+    color: var(--text-secondary);
+}
+
+.term-type-badge.is-mutual {
+    color: #34c759;
+    border-color: rgba(52, 199, 89, 0.35);
+    background: rgba(52, 199, 89, 0.12);
+}
+
+.term-type-badge.is-bounty {
+    color: #64d2ff;
+    border-color: rgba(100, 210, 255, 0.35);
+    background: rgba(100, 210, 255, 0.12);
+}
+
+.term-type-badge.is-direct {
+    color: var(--text-secondary);
+}
+
+.term-effects-block {
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-1);
+}
+
+.term-effects-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.term-effects-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.term-effects-list li {
+    position: relative;
+    padding-left: 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-color);
+}
+
+.term-effects-list li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--text-tertiary);
+}
+
+#termination-sheet.modal-overlay {
+    z-index: 10050;
 }
 
 .leave-modal-subtitle {

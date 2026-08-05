@@ -35,14 +35,14 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260805-dossier-v9"></script>
-<script src="./i18n/en.js?v=20260805-dossier-v9"></script>
+<script src="./i18n/ru.js?v=20260805-term-sheet-v1"></script>
+<script src="./i18n/en.js?v=20260805-term-sheet-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260802-group-chip-v2"></script>
     <script src="./ui/ui-helpers.js?v=20260602-phase44"></script>
     <script src="./ui/ui-tests.js?v=20260805-kicked-soft-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260805-kicked-soft-v1"></script>
-    <script src="./ui/ui-market.js?v=20260805-dossier-v9"></script>
+    <script src="./ui/ui-projects.js?v=20260805-term-sheet-v1"></script>
+    <script src="./ui/ui-market.js?v=20260805-term-sheet-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
 <script src="./js/app-config.js?v=20260805-cloudflare"></script>
@@ -51,8 +51,9 @@
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20260805-feedback-cancel-unlock"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
-<script src="./js/app-features.js?v=20260805-kicked-soft-v1"></script>
-<script src="./js/mutual-exchange-ui.js?v=20260805-kicked-soft-v1"></script>
+<script src="./js/app-features.js?v=20260805-term-sheet-v1"></script>
+<script src="./js/mutual-exchange-ui.js?v=20260805-term-sheet-v1"></script>
+<script src="./js/termination-sheet.js?v=20260805-term-sheet-v1"></script>
 <script src="./js/bounty-applications.js?v=20260803-bounty-apps-v7"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260802-gt-draft-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20260803-payment-flow-v7"></script>
@@ -72,7 +73,7 @@
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260804-buffer-collapse-v1">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/dossier-modal.css?v=20260805-dossier-v9">
-    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260805-dossier-v9">
+    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260805-term-sheet-v1">
     <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
@@ -1937,79 +1938,59 @@
         </div>
     </div>
 
-    <div id="leave-mutual-modal" class="modal-overlay" onclick="closeLeaveMutualModal(event)">
-        <div class="modal-content leave-sheet" onclick="event.stopPropagation()">
+    <!-- Unified Termination Sheet: leave (tester) + kick (owner) -->
+    <div id="termination-sheet" class="modal-overlay" onclick="closeTerminationSheet(event)">
+        <div class="modal-content leave-sheet term-sheet" onclick="event.stopPropagation()">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h3 data-i18n="leaveModalTitle">🚪 Покинуть проект</h3>
-            <p class="leave-modal-subtitle" data-i18n="leaveModalSubtitle">Проверьте обмен и подтвердите выход</p>
-            <div id="leave-mutual-body" style="margin-bottom: 14px;"></div>
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label class="form-label" data-i18n="leaveReasonLabel">Причина выхода</label>
-                <input type="hidden" id="leave-reason-select" value="inactive_partner">
-                <div class="reason-chip-group reason-chip-grid" id="leave-reason-chips">
-                    <button type="button" class="reason-chip is-selected" data-reason="inactive_partner" onclick="selectLeaveReason(this)">
-                        <span data-i18n="leaveReasonInactive">Партнёр неактивен</span>
-                    </button>
-                    <button type="button" class="reason-chip" data-reason="partner_left" onclick="selectLeaveReason(this)">
-                        <span data-i18n="leaveReasonPartnerLeft">Партнёр уже вышел</span>
-                    </button>
-                    <button type="button" class="reason-chip" data-reason="communication_issue" onclick="selectLeaveReason(this)">
-                        <span data-i18n="leaveReasonCommunication">Нет связи</span>
-                    </button>
-                    <button type="button" class="reason-chip" data-reason="other" onclick="selectLeaveReason(this)">
-                        <span data-i18n="leaveReasonOther">Другое</span>
-                    </button>
-                </div>
+            <h3 id="term-title" data-i18n="termSheetTitleLeave">💔 Разорвать связь</h3>
+            <p id="term-subtitle" class="leave-modal-subtitle" data-i18n="termSheetSubtitleLeave">Проверьте обмен и подтвердите выход</p>
+            <div id="term-type-badge" class="term-type-badge" hidden></div>
+            <div id="term-body" style="margin-bottom: 14px;"></div>
+            <div id="term-unlink-box" class="kick-unlink-box details-block" hidden>
+                <label class="kick-unlink-row">
+                    <input type="checkbox" id="term-unlink-primary" checked disabled>
+                    <span id="term-unlink-primary-label" data-i18n="kickUnlinkExcludeLocked">Исключить тестера из моего проекта</span>
+                </label>
+                <label class="kick-unlink-row" id="term-unlink-reciprocal-row">
+                    <input type="checkbox" id="term-unlink-reciprocal" checked onchange="toggleTermUnlinkHint()">
+                    <span id="term-unlink-reciprocal-label" data-i18n="kickUnlinkReciprocalLabel">Разрушить взаимность</span>
+                </label>
+                <div id="term-unlink-hint" class="kick-unlink-hint" data-i18n="kickUnlinkReciprocalHint">Вы исключаете тестера, но добровольно продолжаете тестировать его приложение.</div>
             </div>
-            <textarea id="leave-reason-other" class="form-input" rows="3" style="display:none; resize:none; margin-bottom: 14px;" data-i18n-placeholder="leaveReasonPlaceholder" placeholder="Опишите причину (необязательно)..."></textarea>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label id="term-reason-label" class="form-label" data-i18n="leaveReasonLabel">Причина</label>
+                <input type="hidden" id="term-reason-select" value="inactive_partner">
+                <!-- Legacy aliases kept for older helpers -->
+                <input type="hidden" id="leave-reason-select" value="inactive_partner">
+                <input type="hidden" id="kick-reason-select" value="no_response">
+                <div class="reason-chip-group reason-chip-grid" id="term-reason-chips"></div>
+            </div>
+            <textarea id="term-reason-other" class="form-input" rows="3" style="resize:none; margin-bottom: 14px;" data-i18n-placeholder="termReasonPlaceholder" placeholder="Пояснение (необязательно)..."></textarea>
+            <textarea id="leave-reason-other" hidden aria-hidden="true"></textarea>
+            <textarea id="kick-reason-other" hidden aria-hidden="true"></textarea>
             <div class="leave-modal-actions">
-                <button id="leave-confirm-btn" class="btn leave-cta leave-cta--warn" onclick="requestLeaveMutualConfirm()" data-i18n="leaveAbandonedBtn">Покинуть с потерей кармы</button>
-                <button class="btn btn-secondary" onclick="closeLeaveMutualModal()" data-i18n="btnCancel">Отмена</button>
+                <button id="term-confirm-btn" class="btn leave-cta leave-cta--warn" onclick="requestTerminationConfirm()" data-i18n="leaveAbandonedBtn">Покинуть с потерей кармы</button>
+                <button class="btn btn-secondary" onclick="closeTerminationSheet()" data-i18n="btnCancel">Отмена</button>
             </div>
         </div>
     </div>
+    <!-- Backward-compatible aliases (hidden, never shown) -->
+    <div id="leave-mutual-modal" hidden aria-hidden="true"></div>
+    <div id="kick-modal" hidden aria-hidden="true"></div>
+    <input type="checkbox" id="kick-unlink-reciprocal" hidden aria-hidden="true" checked>
+    <div id="kick-unlink-hint" hidden aria-hidden="true"></div>
+    <div id="kick-modal-body" hidden aria-hidden="true"></div>
+    <div id="leave-mutual-body" hidden aria-hidden="true"></div>
+    <button id="leave-confirm-btn" type="button" hidden aria-hidden="true"></button>
 
-    <div id="leave-confirm-overlay" class="modal-overlay leave-confirm-overlay" onclick="cancelLeaveMutualConfirm(event)">
+    <div id="leave-confirm-overlay" class="modal-overlay leave-confirm-overlay" onclick="cancelTerminationConfirm(event)">
         <div class="modal-content leave-confirm-sheet" onclick="event.stopPropagation()">
             <div class="sheet-handle" aria-hidden="true"></div>
             <h3 id="leave-confirm-title" data-i18n="leaveConfirmTitle">Подтвердите выход</h3>
             <div id="leave-confirm-body" class="leave-confirm-body"></div>
             <div class="leave-modal-actions">
-                <button id="leave-confirm-final-btn" class="btn leave-cta leave-cta--warn" onclick="confirmLeaveMutualAdaptive()" data-i18n="leaveConfirmFinalBtn">Да, покинуть</button>
-                <button class="btn btn-secondary" onclick="cancelLeaveMutualConfirm()" data-i18n="leaveConfirmBackBtn">Назад</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="kick-modal" class="modal-overlay" onclick="closeKickTesterModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="sheet-handle" aria-hidden="true"></div>
-            <h3 data-i18n="kickModalTitle">⚠️ Исключить тестера</h3>
-            <div id="kick-modal-body" style="margin-bottom: 14px;"></div>
-            <div class="kick-unlink-box details-block">
-                <label class="kick-unlink-row">
-                    <input type="checkbox" id="kick-exclude-locked" checked disabled>
-                    <span data-i18n="kickUnlinkExcludeLocked">Исключить тестера из моего проекта</span>
-                </label>
-                <label class="kick-unlink-row">
-                    <input type="checkbox" id="kick-unlink-reciprocal" checked onchange="toggleKickUnlinkHint()">
-                    <span data-i18n="kickUnlinkReciprocalLabel">Разрушить взаимность (Отменить моё тестирование его проекта)</span>
-                </label>
-                <div id="kick-unlink-hint" class="kick-unlink-hint" data-i18n="kickUnlinkReciprocalHint">Вы исключаете тестера, но добровольно продолжаете тестировать его приложение.</div>
-            </div>
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label class="form-label" data-i18n="kickReasonLabel">Причина исключения</label>
-                <select id="kick-reason-select" class="form-input" onchange="toggleKickReasonOther()">
-                    <option value="no_response" data-i18n="kickReasonNoResponse">Нет связи</option>
-                    <option value="inactive" data-i18n="kickReasonInactivity">Не выполняет чекины</option>
-                    <option value="violation" data-i18n="kickReasonViolation">Нарушение договорённостей</option>
-                    <option value="other" data-i18n="kickReasonOther">Другое</option>
-                </select>
-            </div>
-            <textarea id="kick-reason-other" class="form-input" rows="3" style="resize:none; margin-bottom: 14px;" data-i18n-placeholder="kickReasonPlaceholder" placeholder="Пояснение для тестера (необязательно)..."></textarea>
-            <div class="action-row" style="margin-top: 0;">
-                <button class="btn btn-secondary" style="flex: 1;" onclick="closeKickTesterModal()" data-i18n="btnCancel">Отмена</button>
-                <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" onclick="confirmKickTester()" data-i18n="kickConfirmBtn">Исключить тестера</button>
+                <button id="leave-confirm-final-btn" class="btn leave-cta leave-cta--warn" onclick="confirmTerminationAdaptive()" data-i18n="leaveConfirmFinalBtn">Да, покинуть</button>
+                <button class="btn btn-secondary" onclick="cancelTerminationConfirm()" data-i18n="leaveConfirmBackBtn">Назад</button>
             </div>
         </div>
     </div>

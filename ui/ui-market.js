@@ -4128,190 +4128,33 @@ async function openLeaveMutualModal(appId, event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    const modal = document.getElementById('leave-mutual-modal');
-    const body = document.getElementById('leave-mutual-body');
-    const confirmBtn = document.getElementById('leave-confirm-btn');
-    const reasonSelect = document.getElementById('leave-reason-select');
-    const reasonOther = document.getElementById('leave-reason-other');
-    if (!modal || !body) return;
-
-    _leaveMutualAppId = appId;
-    _leaveMutualStats = null;
-    window._leaveJustifiedAllowed = false;
-    window._leaveKarmaBurnPreview = 0;
-    window._leaveGrantAvailable = false;
-    if (reasonSelect) reasonSelect.value = 'inactive_partner';
-    if (reasonOther) {
-        reasonOther.value = '';
-        reasonOther.style.display = 'none';
+    if (typeof window.openTerminationSheet !== 'function') {
+        console.warn('openTerminationSheet is not available');
+        return;
     }
-    if (typeof resetLeaveReasonChips === 'function') {
-        resetLeaveReasonChips('inactive_partner');
-    }
-    if (typeof cancelLeaveMutualConfirm === 'function') {
-        cancelLeaveMutualConfirm();
-    }
-    if (confirmBtn) {
-        confirmBtn.classList.remove('leave-cta--safe', 'leave-cta--warn');
-        confirmBtn.classList.add('leave-cta--warn');
-        confirmBtn.textContent = window.t('leaveAbandonedBtn', {}, lang);
-    }
-    body.innerHTML = `<p style="text-align:center; color: var(--hint-color);">${window.escapeHTML(window.t('leaveLoadingStats', {}, lang))}</p>`;
-    modal.classList.add('active');
-
-    try {
-        const response = await fetch(`${API_BASE}/tests/${appId}/partner_stats/${userId}`);
-        const data = await response.json();
-        if (!response.ok || data.status !== 'success') {
-            body.innerHTML = `<div class="details-block"><div style="color: var(--hint-color);">${window.escapeHTML(getApiErrorMessage(data, 'stats_not_available'))}</div></div>`;
-            return;
-        }
-
-        _leaveMutualStats = data;
-        const partnerSkips = Number(data.partner_skips || 0);
-        const partnerConsecutive = Number(data.partner_consecutive_skips || 0);
-        const justifiedAllowed = !!data.partner_left || partnerSkips >= 3 || partnerConsecutive >= 3;
-        window._leaveJustifiedAllowed = justifiedAllowed;
-        const myCheckins = Number(data.my_checkins != null ? data.my_checkins : 0);
-        const karmaBurn = Math.min(14, myCheckins) * 0.1;
-        window._leaveKarmaBurnPreview = karmaBurn;
-        const partnerLabel = data.partner_username
-            ? '@' + String(data.partner_username || '').replace(/^@+/, '')
-            : window.t('idLabel', { id: data.partner_id || 0 }, lang);
-        const mySkips = Number(data.my_skips || 0);
-        const waitCount = Math.max(0, 3 - Math.max(partnerSkips, partnerConsecutive));
-        const grantStillAvailable = mySkips < 3;
-        window._leaveGrantAvailable = grantStillAvailable;
-        const partnerRi = data.partner_reliability_index;
-        const partnerKarma = data.partner_karma;
-
-        const partnerMetaParts = [];
-        if (partnerRi != null && partnerRi !== '') {
-            partnerMetaParts.push(
-                `<span class="leave-meta-item">🛡 ${window.escapeHTML(String(partnerRi))}%</span>`
-            );
-        }
-        if (partnerKarma != null && partnerKarma !== '') {
-            partnerMetaParts.push(
-                `<span class="leave-meta-item">☯️ ${window.escapeHTML(String(partnerKarma))}</span>`
-            );
-        }
-
-        const statusBanner = justifiedAllowed
-            ? `<div class="leave-status-banner is-justified">
-                    <div class="leave-status-title">${window.escapeHTML(window.t('leaveJustifiedBadge', {}, lang))}</div>
-                    <div class="leave-status-desc">${window.escapeHTML(window.t('leaveJustifiedDesc', {}, lang))}</div>
-               </div>`
-            : `<div class="leave-status-banner is-penalty">
-                    <div class="leave-status-title">${window.escapeHTML(window.t('leaveAbandonedTitle', {}, lang))}</div>
-                    <div class="leave-status-desc">${window.escapeHTML(window.t('leaveAbandonedDesc', { karma: formatUiAmount(karmaBurn, 1) }, lang))}</div>
-                    <div class="leave-status-desc" style="margin-top:8px;">${window.escapeHTML(window.t('leaveSafeWaitWarning', {
-                        count: waitCount,
-                        word: typeof pluralizeSkipWord === 'function' ? pluralizeSkipWord(waitCount) : '',
-                    }, lang))}</div>
-               </div>`;
-
-        const grantRow = grantStillAvailable
-            ? `<div class="leave-grant-row">
-                    <span class="leave-grant-icon" aria-hidden="true">🏆</span>
-                    <div class="leave-grant-copy">
-                        <div class="leave-grant-title">${window.escapeHTML(window.t('leaveGrantTeaseTitle', {}, lang))}</div>
-                        <div class="leave-grant-desc">${window.escapeHTML(window.t('leaveGrantTeaseDesc', {
-                            skips: mySkips,
-                            max: 3,
-                        }, lang))}</div>
-                    </div>
-               </div>`
-            : '';
-
-        body.innerHTML = '' +
-            `<div class="leave-exchange-card" id="leave-exchange-card">` +
-                `<div class="leave-side leave-side--partner">` +
-                    `<div class="leave-side-head">` +
-                        `<div class="leave-side-kicker">${window.escapeHTML(window.t('leavePartnerTitle', {}, lang))}</div>` +
-                        `<div class="leave-side-name notranslate">${window.escapeHTML(partnerLabel)}</div>` +
-                    `</div>` +
-                    `<div class="leave-metric-list">` +
-                        `<div class="leave-metric">` +
-                            `<span class="leave-metric-ico" aria-hidden="true">📅</span>` +
-                            `<span class="leave-metric-label">${window.escapeHTML(window.t('leaveMetricDays', {}, lang))}</span>` +
-                            `<span class="leave-metric-value">${window.escapeHTML(String(data.partner_testing_days || 0))}</span>` +
-                        `</div>` +
-                        `<div class="leave-metric${partnerSkips >= 3 || partnerConsecutive >= 3 ? ' is-warn' : ''}">` +
-                            `<span class="leave-metric-ico" aria-hidden="true">⚠️</span>` +
-                            `<span class="leave-metric-label">${window.escapeHTML(window.t('leaveMetricSkips', {}, lang))}</span>` +
-                            `<span class="leave-metric-value">${window.escapeHTML(String(partnerSkips))}/3</span>` +
-                        `</div>` +
-                    `</div>` +
-                    (partnerMetaParts.length
-                        ? `<div class="leave-side-meta">${partnerMetaParts.join('<span class="leave-meta-sep" aria-hidden="true">·</span>')}</div>`
-                        : '') +
-                    (data.partner_left
-                        ? `<div class="leave-inline-note is-warn">${window.escapeHTML(window.t('leavePartnerLeft', {}, lang))}</div>`
-                        : '') +
-                `</div>` +
-                `<div class="leave-side leave-side--mine" id="leave-my-side">` +
-                    `<button type="button" class="leave-pull" id="leave-my-stats-toggle" aria-expanded="false" onclick="toggleLeaveMyStats()">` +
-                        `<span class="leave-pull-rail" aria-hidden="true"><span class="leave-pull-knob"></span></span>` +
-                        `<span class="leave-pull-copy">` +
-                            `<span class="leave-pull-label">${window.escapeHTML(window.t('leaveMyStatsPeekLabel', {}, lang))}</span>` +
-                            `<span class="leave-pull-hint">${window.escapeHTML(window.t('leaveMyStatsPeekHint', {}, lang))}</span>` +
-                        `</span>` +
-                        `<span class="leave-pull-chevron" aria-hidden="true"></span>` +
-                    `</button>` +
-                    `<div class="leave-my-drawer" id="leave-my-stats-panel">` +
-                        `<div class="leave-my-drawer-inner">` +
-                            `<div class="leave-metric-list">` +
-                                `<div class="leave-metric">` +
-                                    `<span class="leave-metric-ico" aria-hidden="true">📅</span>` +
-                                    `<span class="leave-metric-label">${window.escapeHTML(window.t('leaveMetricDays', {}, lang))}</span>` +
-                                    `<span class="leave-metric-value">${window.escapeHTML(String(data.my_testing_days || 0))}</span>` +
-                                `</div>` +
-                                `<div class="leave-metric${mySkips >= 3 ? ' is-warn' : ''}">` +
-                                    `<span class="leave-metric-ico" aria-hidden="true">⚠️</span>` +
-                                    `<span class="leave-metric-label">${window.escapeHTML(window.t('leaveMetricSkips', {}, lang))}</span>` +
-                                    `<span class="leave-metric-value">${window.escapeHTML(String(mySkips))}/3</span>` +
-                                `</div>` +
-                                `<div class="leave-metric">` +
-                                    `<span class="leave-metric-ico" aria-hidden="true">✅</span>` +
-                                    `<span class="leave-metric-label">${window.escapeHTML(window.t('leaveMetricCheckins', {}, lang))}</span>` +
-                                    `<span class="leave-metric-value">${window.escapeHTML(String(myCheckins))}</span>` +
-                                `</div>` +
-                            `</div>` +
-                            grantRow +
-                        `</div>` +
-                    `</div>` +
-                `</div>` +
-            `</div>` +
-            statusBanner;
-
-        if (confirmBtn) {
-            confirmBtn.classList.toggle('leave-cta--safe', justifiedAllowed);
-            confirmBtn.classList.toggle('leave-cta--warn', !justifiedAllowed);
-            confirmBtn.textContent = window.t(justifiedAllowed ? 'leaveJustifiedBtn' : 'leaveAbandonedBtn', {}, lang);
-        }
-    } catch (error) {
-        console.error('Leave mutual stats error:', error);
-        body.innerHTML = `<div class="details-block"><div style="color: var(--hint-color);">${window.escapeHTML(getApiErrorMessage(error && error.message, 'networkError'))}</div></div>`;
-    }
+    var test = (typeof getMyTestById === 'function')
+        ? getMyTestById(appId)
+        : (Array.isArray(myTests) ? myTests.find(function (item) { return Number(item.id) === Number(appId); }) : null);
+    return window.openTerminationSheet({
+        mode: 'leave',
+        appId: Number(appId || 0),
+        joinType: (test && test.join_type) || 'mutual',
+        unlinkReciprocal: (typeof window._pendingUnlinkReciprocal === 'boolean')
+            ? window._pendingUnlinkReciprocal
+            : true,
+    });
 }
 
 function closeLeaveMutualModal(event) {
-    const modal = document.getElementById('leave-mutual-modal');
-    if (!modal) return;
-    if (event && event.target !== modal) return;
-    modal.classList.remove('active');
-    _leaveMutualAppId = null;
-    _leaveMutualStats = null;
-    window._leaveJustifiedAllowed = false;
-    window._leaveKarmaBurnPreview = 0;
-    window._leaveGrantAvailable = false;
-    if (typeof cancelLeaveMutualConfirm === 'function') {
-        cancelLeaveMutualConfirm();
+    if (typeof window.closeTerminationSheet === 'function') {
+        return window.closeTerminationSheet(event);
     }
 }
 
 function toggleLeaveMyStats() {
+    if (typeof window.toggleLeaveMyStats === 'function' && window.toggleLeaveMyStats !== toggleLeaveMyStats) {
+        return window.toggleLeaveMyStats();
+    }
     const card = document.getElementById('leave-exchange-card');
     const side = document.getElementById('leave-my-side');
     const toggle = document.getElementById('leave-my-stats-toggle');
@@ -4321,115 +4164,41 @@ function toggleLeaveMyStats() {
     toggle.classList.toggle('is-open', willOpen);
     toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
     if (card) card.classList.toggle('has-mine-open', willOpen);
-    if (window.tg && window.tg.HapticFeedback) {
-        window.tg.HapticFeedback.selectionChanged();
-    }
 }
 
 function requestLeaveMutualConfirm() {
-    const overlay = document.getElementById('leave-confirm-overlay');
-    const body = document.getElementById('leave-confirm-body');
-    const finalBtn = document.getElementById('leave-confirm-final-btn');
-    const title = document.getElementById('leave-confirm-title');
-    if (!overlay || !body) return;
-
-    const justified = window._leaveJustifiedAllowed === true;
-    const karma = formatUiAmount(window._leaveKarmaBurnPreview || 0, 1);
-    const grantAvailable = window._leaveGrantAvailable === true;
-
-    if (title) {
-        title.textContent = window.t('leaveConfirmTitle', {}, lang);
-    }
-
-    const points = [];
-    points.push(`<li>${window.escapeHTML(window.t('leaveConfirmPointMirror', {}, lang))}</li>`);
-    if (justified) {
-        points.push(`<li>${window.escapeHTML(window.t('leaveConfirmPointNoPenalty', {}, lang))}</li>`);
-    } else {
-        points.push(`<li>${window.escapeHTML(window.t('leaveConfirmPointKarma', { karma: karma }, lang))}</li>`);
-    }
-    if (grantAvailable) {
-        points.push(`<li class="is-warn">${window.escapeHTML(window.t('leaveConfirmPointGrant', {}, lang))}</li>`);
-    }
-
-    body.innerHTML = '' +
-        `<p class="leave-confirm-lead">${window.escapeHTML(justified
-            ? window.t('leaveConfirmDescJustified', {}, lang)
-            : window.t('leaveConfirmDescAbandoned', { karma: karma }, lang))}</p>` +
-        `<ul class="leave-confirm-points">${points.join('')}</ul>`;
-
-    if (finalBtn) {
-        finalBtn.classList.toggle('leave-cta--safe', justified);
-        finalBtn.classList.toggle('leave-cta--warn', !justified);
-        finalBtn.textContent = window.t(justified ? 'leaveConfirmFinalJustified' : 'leaveConfirmFinalAbandoned', {}, lang);
-    }
-
-    overlay.classList.add('active');
-    if (window.tg && window.tg.HapticFeedback) {
-        window.tg.HapticFeedback.impactOccurred('medium');
+    if (typeof window.requestTerminationConfirm === 'function') {
+        return window.requestTerminationConfirm();
     }
 }
 
 function cancelLeaveMutualConfirm(event) {
-    const overlay = document.getElementById('leave-confirm-overlay');
-    if (!overlay) return;
-    // Backdrop: close only when the dimmed overlay itself was clicked
-    if (event && event.target === overlay) {
-        overlay.classList.remove('active');
-        return;
+    if (typeof window.cancelTerminationConfirm === 'function') {
+        return window.cancelTerminationConfirm(event);
     }
-    // Ignore bubbled clicks that somehow hit the overlay handler from sheet content
-    if (event && event.currentTarget === overlay && event.target !== overlay) {
-        return;
-    }
-    // Back button / programmatic dismiss
-    overlay.classList.remove('active');
 }
 
 function confirmLeaveMutualAdaptive() {
-    const overlay = document.getElementById('leave-confirm-overlay');
-    if (overlay) overlay.classList.remove('active');
-    const justified = window._leaveJustifiedAllowed === true;
-    if (typeof confirmLeaveMutual === 'function') {
-        confirmLeaveMutual(justified);
+    if (typeof window.confirmTerminationAdaptive === 'function') {
+        return window.confirmTerminationAdaptive();
     }
 }
 
 function selectLeaveReason(buttonEl) {
-    if (!buttonEl) return;
-    const reason = String(buttonEl.getAttribute('data-reason') || '').trim();
-    const hidden = document.getElementById('leave-reason-select');
-    if (hidden) hidden.value = reason || 'other';
-    const group = document.getElementById('leave-reason-chips');
-    if (group) {
-        Array.prototype.forEach.call(group.querySelectorAll('.reason-chip'), function(chip) {
-            chip.classList.toggle('is-selected', chip === buttonEl);
-        });
-    }
-    const other = document.getElementById('leave-reason-other');
-    if (other) {
-        other.style.display = reason === 'other' ? 'block' : 'none';
-        if (reason !== 'other') other.value = '';
+    if (typeof window.selectTermReason === 'function') {
+        return window.selectTermReason(buttonEl);
     }
 }
 
 function resetLeaveReasonChips(reason) {
-    const target = String(reason || 'inactive_partner');
-    const group = document.getElementById('leave-reason-chips');
-    if (!group) return;
-    const chip = group.querySelector('.reason-chip[data-reason="' + target + '"]')
-        || group.querySelector('.reason-chip');
-    if (chip) selectLeaveReason(chip);
+    if (typeof window.resetLeaveReasonChips === 'function' && window.resetLeaveReasonChips !== resetLeaveReasonChips) {
+        return window.resetLeaveReasonChips(reason);
+    }
 }
 
 function toggleLeaveReasonOther() {
-    const select = document.getElementById('leave-reason-select');
-    const other = document.getElementById('leave-reason-other');
-    if (!select || !other) return;
-    other.style.display = select.value === 'other' ? 'block' : 'none';
-    if (select.value !== 'other') {
-        other.value = '';
-    }
+    const other = document.getElementById('term-reason-other') || document.getElementById('leave-reason-other');
+    if (other) other.style.display = 'block';
 }
 
 function closeEarnBustModal(event) {

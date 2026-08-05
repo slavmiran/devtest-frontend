@@ -869,209 +869,51 @@ function overtimeContactOwner() {
 }
 
 function openKickTesterModal(appId, testerId, event, options) {
-    if (event && typeof event === 'object' && !event.preventDefault && (event.forceUnlink != null || event.unlinkReciprocal != null)) {
-        options = event;
-        event = null;
-    }
-    options = options || {};
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    const modal = document.getElementById('kick-modal');
-    const body = document.getElementById('kick-modal-body');
-    const reasonSelect = document.getElementById('kick-reason-select');
-    const reasonOther = document.getElementById('kick-reason-other');
-    if (!modal || !body) return;
-
-    const project = myProjects.find(function(item) { return Number(item.id) === Number(appId); });
-    const tester = project ? (project.testers || []).find(function(candidate) { return Number(candidate.tester_id) === Number(testerId); }) : null;
-    if (!project || !tester) return;
-
-    const testingDays = tester.start_date ? getUserTestingDay(tester.start_date) : 0;
-    const checkinCount = Number(tester.checkins_count || 0);
-    // Live skips (same formula as dossier) — never trust stale tester.skips_count alone.
-    const lastCheck = String(tester.last_check_date || '').trim();
-    const todayIso = (typeof getLocalDateIso === 'function')
-        ? getLocalDateIso()
-        : new Date().toISOString().slice(0, 10);
-    const checkedToday = !!lastCheck && lastCheck === todayIso;
-    const realizedDays = checkedToday ? testingDays : Math.max(0, testingDays - 1);
-    const skipsCount = Math.max(0, Math.min(14, realizedDays) - Math.min(14, checkinCount));
-    const consecutiveSkips = Number(tester.consecutive_skips != null
-        ? tester.consecutive_skips
-        : (typeof calculateConsecutiveSkips === 'function'
-            ? calculateConsecutiveSkips(tester)
-            : 0));
-    const joinType = String(tester.join_type || 'invite').toLowerCase();
-    // Kick eligibility is decided by the backend (adaptive kick). Do not hard-block after day 7 on the client.
-
-    const bountyPerTester = Number(project.bounty_per_tester || 0);
-    const holdBonus = bountyPerTester > 0 ? bountyPerTester * 0.35 : 0;
-    const dailyPool = bountyPerTester > 0 ? bountyPerTester * 0.65 : 0;
-    const rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
-    const dailyBurn = Math.max(0, dailyPool - (checkinCount * rewardPerCheckin));
-    const isDisciplinaryKick = skipsCount >= 3 || consecutiveSkips >= 3;
-    const isBountyJoin = joinType === 'bounty' && bountyPerTester > 0;
-    const joinTypeLabelKey = joinType === 'bounty'
-        ? 'kickJoinTypeBounty'
-        : joinType === 'mutual'
-            ? 'kickJoinTypeMutual'
-            : 'kickJoinTypeInvite';
-
-    // Grace period: 24h from join date, 0 checkins
-    let graceTimerHtml = '';
-    let _kickGraceEnd = 0;
-    if (checkinCount === 0 && tester.start_date) {
-        const joinDate = new Date(tester.start_date + 'T00:00:00');
-        _kickGraceEnd = joinDate.getTime() + 24 * 60 * 60 * 1000;
-        const graceRemainingMs = Math.max(0, _kickGraceEnd - Date.now());
-        if (graceRemainingMs > 0) {
-            const hours = Math.floor(graceRemainingMs / 3600000);
-            const minutes = Math.floor((graceRemainingMs % 3600000) / 60000);
-            const timeStr = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
-            graceTimerHtml =
-                `<div class="details-block" style="border-color: rgba(52,199,89,0.3); text-align: center;">` +
-                    `<div id="kick-grace-timer" style="font-size: 18px; font-weight: 700; color: #34c759;">` +
-                        `⏳ ${window.escapeHTML(window.t('kickGraceTimer', { time: timeStr }, lang))}` +
-                    `</div>` +
-                    `<div style="font-size: 11px; line-height: 1.5; color: var(--hint-color); margin-top: 8px;">` +
-                        `${window.escapeHTML(window.t('kickGraceExplanation', {}, lang))}` +
-                    `</div>` +
-                `</div>`;
+    if (typeof window.openTerminationSheet === 'function') {
+        if (event && typeof event === 'object' && !event.preventDefault && (event.forceUnlink != null || event.unlinkReciprocal != null)) {
+            options = event;
+            event = null;
         }
-    }
-
-    const verdictBodyKey = isBountyJoin
-        ? (isDisciplinaryKick ? 'kickVerdictBountySafe' : 'kickVerdictBountyUnsafe')
-        : (isDisciplinaryKick ? 'kickVerdictNonBountySafe' : 'kickVerdictNonBountyUnsafe');
-    const verdictTone = isDisciplinaryKick ? 'rgba(52,199,89,0.22)' : 'rgba(255,149,0,0.24)';
-    const verdictHtml = `<div class="details-block" style="border-color: ${verdictTone};">
-            <div class="detail-section-title">${window.escapeHTML(window.t('kickVerdictTitle', {}, lang))}</div>
-            <div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t(verdictBodyKey, {}, lang))}</div>
-        </div>`;
-
-    const ownerEffects = [];
-    if (isBountyJoin) {
-        ownerEffects.push(window.t(isDisciplinaryKick ? 'kickOwnerBountyHoldReturned' : 'kickOwnerBountyHoldBurned', { amount: formatUiAmount(holdBonus, 1) }, lang));
-        ownerEffects.push(window.t('kickOwnerBountyDailyBurn', { amount: formatUiAmount(dailyBurn, 1) }, lang));
-    } else {
-        ownerEffects.push(window.t(joinType === 'mutual' ? 'kickOwnerNoMoneyMutual' : 'kickOwnerNoMoneyInvite', {}, lang));
-    }
-    ownerEffects.push(window.t(isDisciplinaryKick ? 'kickOwnerReliabilitySafe' : 'kickOwnerReliabilityRisk', {}, lang));
-
-    const testerEffects = [
-        window.t('kickTesterEffectAccess', {}, lang),
-        window.t(isDisciplinaryKick ? 'kickTesterEffectJustified' : 'kickTesterEffectNeutral', {}, lang)
-    ];
-
-    const scenarioHtml = `<div class="details-block">
-            <div class="detail-section-title">${window.escapeHTML(window.t('kickScenarioTitle', {}, lang))}</div>
-            <div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t(joinTypeLabelKey, {}, lang))}</div>
-        </div>`;
-
-    const ownerEffectsHtml = `<div class="details-block">
-            <div class="detail-section-title">${window.escapeHTML(window.t('kickOwnerEffectsTitle', {}, lang))}</div>
-            <div style="font-size:13px; line-height:1.6; color: var(--text-color); display:flex; flex-direction:column; gap:8px;">${ownerEffects.map(function(line) {
-                return `<div>• ${window.escapeHTML(line)}</div>`;
-            }).join('')}</div>
-        </div>`;
-
-    const testerEffectsHtml = `<div class="details-block">
-            <div class="detail-section-title">${window.escapeHTML(window.t('kickTesterEffectsTitle', {}, lang))}</div>
-            <div style="font-size:13px; line-height:1.6; color: var(--text-color); display:flex; flex-direction:column; gap:8px;">${testerEffects.map(function(line) {
-                return `<div>• ${window.escapeHTML(line)}</div>`;
-            }).join('')}</div>
-        </div>`;
-
-    _kickTarget = { appId: appId, testerId: testerId };
-    if (reasonSelect) reasonSelect.value = 'no_response';
-    if (reasonOther) {
-        reasonOther.value = '';
-        reasonOther.style.display = 'block';
-    }
-    body.innerHTML = '' +
-        graceTimerHtml +
-        verdictHtml +
-        scenarioHtml +
-        ownerEffectsHtml +
-        testerEffectsHtml +
-        `<div class="details-block">` +
-            `<div class="detail-section-title">${window.escapeHTML(window.t('kickTesterStats', {}, lang))}</div>` +
-            `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
-                `<div>${window.escapeHTML(window.t('kickTesterDays', { days: testingDays }, lang))}</div>` +
-                `<div>${window.escapeHTML(window.t('kickTesterCheckins', { checkins: checkinCount }, lang))}</div>` +
-                `<div>${window.escapeHTML(window.t('kickTesterSkips', { skips: skipsCount }, lang))}</div>` +
-                `<div>${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}</div>` +
-            `</div>` +
-        `</div>`;
-
-    const unlinkCheckbox = document.getElementById('kick-unlink-reciprocal');
-    if (unlinkCheckbox) {
-        const forceUnlink = options.forceUnlink === true || options.unlinkReciprocal === true;
-        unlinkCheckbox.checked = options.unlinkReciprocal === false ? false : true;
-        if (forceUnlink) {
-            unlinkCheckbox.checked = true;
+        options = options || {};
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
         }
-        unlinkCheckbox.disabled = !!forceUnlink;
+        var project = (myProjects || []).find(function(item) { return Number(item.id) === Number(appId); });
+        var tester = project ? (project.testers || []).find(function(candidate) { return Number(candidate.tester_id) === Number(testerId); }) : null;
+        return window.openTerminationSheet({
+            mode: 'kick',
+            appId: Number(appId || 0),
+            projectId: Number(appId || 0),
+            testerId: Number(testerId || 0),
+            joinType: (tester && tester.join_type) || options.joinType || 'invite',
+            testerUsername: (tester && tester.username) || options.testerUsername || '',
+            testerFullName: (tester && tester.full_name) || options.testerFullName || '',
+            forceUnlink: options.forceUnlink === true,
+            unlinkReciprocal: options.unlinkReciprocal,
+        });
     }
-    if (typeof toggleKickUnlinkHint === 'function') {
-        toggleKickUnlinkHint();
-    }
-
-    modal.classList.add('active');
-
-    // Live countdown for grace period
-    if (_kickGraceEnd > Date.now()) {
-        var _kickGraceInterval = setInterval(function() {
-            var el = document.getElementById('kick-grace-timer');
-            if (!el || !modal.classList.contains('active')) {
-                clearInterval(_kickGraceInterval);
-                return;
-            }
-            var rem = Math.max(0, _kickGraceEnd - Date.now());
-            if (rem <= 0) {
-                clearInterval(_kickGraceInterval);
-                el.textContent = '⏳ ' + window.t('kickGraceExpired', {}, lang);
-                return;
-            }
-            var h = Math.floor(rem / 3600000);
-            var m = Math.floor((rem % 3600000) / 60000);
-            el.textContent = '⏳ ' + window.t('kickGraceTimer', { time: String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') }, lang);
-        }, 60000);
-    }
+    console.warn('openTerminationSheet is not available');
 }
 
 function closeKickTesterModal(event) {
-    const modal = document.getElementById('kick-modal');
-    if (!modal) return;
-    if (event && event.target !== modal) return;
-    modal.classList.remove('active');
-    _kickTarget = null;
-    const unlinkCheckbox = document.getElementById('kick-unlink-reciprocal');
-    if (unlinkCheckbox) {
-        unlinkCheckbox.disabled = false;
-        unlinkCheckbox.checked = true;
-    }
-    if (typeof toggleKickUnlinkHint === 'function') {
-        toggleKickUnlinkHint();
+    if (typeof window.closeTerminationSheet === 'function') {
+        return window.closeTerminationSheet(event);
     }
 }
 
 function toggleKickReasonOther() {
-    const other = document.getElementById('kick-reason-other');
-    if (!other) return;
-    // Always visible: freeform note is sent to the tester with any reason chip/select.
-    other.style.display = 'block';
+    if (typeof window.toggleTermUnlinkHint === 'function') {
+        // reason note always visible in unified sheet
+    }
+    var other = document.getElementById('term-reason-other') || document.getElementById('kick-reason-other');
+    if (other) other.style.display = 'block';
 }
 
 function toggleKickUnlinkHint() {
-    const checkbox = document.getElementById('kick-unlink-reciprocal');
-    const hint = document.getElementById('kick-unlink-hint');
-    if (!hint) return;
-    const showHint = !!(checkbox && !checkbox.checked);
-    hint.style.display = showHint ? 'block' : 'none';
-    hint.classList.toggle('is-visible', showHint);
+    if (typeof window.toggleTermUnlinkHint === 'function') {
+        return window.toggleTermUnlinkHint();
+    }
 }
 
 

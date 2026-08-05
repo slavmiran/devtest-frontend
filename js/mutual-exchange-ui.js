@@ -182,7 +182,11 @@
     }
 
     function _readUnlinkReciprocalFromKickModal() {
-        var checkbox = document.getElementById('kick-unlink-reciprocal');
+        if (typeof window.getTermUnlinkReciprocal === 'function') {
+            return !!window.getTermUnlinkReciprocal();
+        }
+        var checkbox = document.getElementById('term-unlink-reciprocal')
+            || document.getElementById('kick-unlink-reciprocal');
         if (!checkbox) return true;
         return !!checkbox.checked;
     }

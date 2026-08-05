@@ -3214,12 +3214,24 @@ function _removeLocalTesterFromProject(appId, testerId) {
 async function confirmLeaveMutual(isJustified) {
     if (!_leaveMutualAppId) return;
 
-    var reasonSelect = document.getElementById('leave-reason-select');
-    var reasonOther = document.getElementById('leave-reason-other');
-    var reasonText = reasonSelect ? reasonSelect.value : '';
-    var reasonPayload = _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
+    var reasonCode = (typeof getTermReasonCode === 'function')
+        ? getTermReasonCode()
+        : '';
+    var reasonNote = (typeof getTermReasonNote === 'function')
+        ? getTermReasonNote()
+        : '';
+    var reasonSelect = document.getElementById('term-reason-select') || document.getElementById('leave-reason-select');
+    var reasonOther = document.getElementById('term-reason-other') || document.getElementById('leave-reason-other');
+    if (!reasonCode && reasonSelect) reasonCode = reasonSelect.value;
+    if (!reasonNote && reasonOther) reasonNote = reasonOther.value;
+    var reasonPayload = _buildLeaveReasonPayload(reasonCode, reasonNote);
     var appId = _leaveMutualAppId;
     var previousTests = Array.isArray(myTests) ? myTests.slice() : [];
+    var unlinkReciprocal = (typeof getTermUnlinkReciprocal === 'function')
+        ? !!getTermUnlinkReciprocal()
+        : ((typeof consumePendingUnlinkReciprocal === 'function')
+            ? !!consumePendingUnlinkReciprocal(true)
+            : true);
 
     try {
         _removeLocalTest(appId);
@@ -3234,16 +3246,18 @@ async function confirmLeaveMutual(isJustified) {
                 tester_id: userId,
                 leave_reason: reasonPayload,
                 is_justified: !!isJustified,
-                unlink_reciprocal: (typeof consumePendingUnlinkReciprocal === 'function')
-                    ? !!consumePendingUnlinkReciprocal(true)
-                    : true,
+                unlink_reciprocal: unlinkReciprocal,
             }))
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
             var errorCode = getBackendErrorCode(data);
             if (errorCode === 'testing_not_found' || errorCode === 'app_not_found' || errorCode === 'project_pending_completion') {
-                closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+                if (typeof closeTerminationSheet === 'function') {
+                    closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+                } else {
+                    closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+                }
                 loadTasks(true).catch(function() {});
                 loadProjects(true).catch(function() {});
                 return;
@@ -3265,7 +3279,11 @@ async function confirmLeaveMutual(isJustified) {
             showToast(window.t('leaveSuccessJustified', {}, lang));
         }
 
-        closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+        if (typeof closeTerminationSheet === 'function') {
+            closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+        } else {
+            closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+        }
         await Promise.all([loadTasks(true), loadProjects(true)]);
     } catch (error) {
         console.error('Leave mutual error:', error);
@@ -3280,12 +3298,19 @@ async function confirmLeaveMutual(isJustified) {
 async function confirmKickTester() {
     if (!_kickTarget || !_kickTarget.appId || !_kickTarget.testerId) return;
 
-    var reasonSelect = document.getElementById('kick-reason-select');
-    var reasonOther = document.getElementById('kick-reason-other');
-    var reasonText = reasonSelect ? reasonSelect.value : '';
+    var reasonCode = (typeof getTermReasonCode === 'function')
+        ? getTermReasonCode()
+        : '';
+    var reasonNote = (typeof getTermReasonNote === 'function')
+        ? getTermReasonNote()
+        : '';
+    var reasonSelect = document.getElementById('term-reason-select') || document.getElementById('kick-reason-select');
+    var reasonOther = document.getElementById('term-reason-other') || document.getElementById('kick-reason-other');
+    if (!reasonCode && reasonSelect) reasonCode = reasonSelect.value;
+    if (!reasonNote && reasonOther) reasonNote = reasonOther.value;
     // Human-readable note for tester notification + soft-archive card.
-    var reasonPayload = _formatKickReasonForNotify(reasonText, reasonOther ? reasonOther.value : '')
-        || _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
+    var reasonPayload = _formatKickReasonForNotify(reasonCode, reasonNote)
+        || _buildLeaveReasonPayload(reasonCode, reasonNote);
     var target = {
         appId: _kickTarget.appId,
         testerId: _kickTarget.testerId,
@@ -3294,6 +3319,11 @@ async function confirmKickTester() {
         return Number(item.id) === Number(target.appId);
     });
     var previousTesters = project && Array.isArray(project.testers) ? project.testers.slice() : null;
+    var unlinkReciprocal = (typeof getTermUnlinkReciprocal === 'function')
+        ? !!getTermUnlinkReciprocal()
+        : ((typeof getKickUnlinkReciprocal === 'function')
+            ? !!getKickUnlinkReciprocal()
+            : true);
 
     try {
         _removeLocalTesterFromProject(target.appId, target.testerId);
@@ -3307,9 +3337,7 @@ async function confirmKickTester() {
             body: JSON.stringify(withInitData({
                 owner_id: userId,
                 leave_reason: reasonPayload,
-                unlink_reciprocal: (typeof getKickUnlinkReciprocal === 'function')
-                    ? !!getKickUnlinkReciprocal()
-                    : true,
+                unlink_reciprocal: unlinkReciprocal,
             }))
         });
         var data = await response.json();
@@ -3337,7 +3365,11 @@ async function confirmKickTester() {
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t('kickSuccessMsg', {}, lang));
-        closeKickTesterModal({ target: document.getElementById('kick-modal') });
+        if (typeof closeTerminationSheet === 'function') {
+            closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+        } else {
+            closeKickTesterModal({ target: document.getElementById('kick-modal') });
+        }
         closeDossierModal();
         await loadProjects(true);
     } catch (error) {
