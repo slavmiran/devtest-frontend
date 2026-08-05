@@ -110,11 +110,14 @@ const telegramUsername = DEBUG_BYPASS_USERNAME_GATE
     ? (String(initData.user?.username || '').trim().replace(/^@+/, '') || 'tester_no_name')
     : String(initData.user?.username || '').trim().replace(/^@+/, '');
 const API_BASE_OVERRIDE = String(window.__API_BASE__ || '').trim();
-let API_BASE = API_BASE_OVERRIDE || (window.location.hostname.includes('vercel.app')
-    ? 'https://usable-epidemic-askew.ngrok-free.dev/api'
-    : 'https://devtest-backend.onrender.com/api');
+// Default API is always production Render.
+// For local backend via ngrok, set window.__API_BASE__ before app scripts, e.g.:
+//   <script>window.__API_BASE__ = 'https://YOUR-TUNNEL.ngrok-free.dev/api';</script>
+let API_BASE = API_BASE_OVERRIDE || 'https://devtest-backend.onrender.com/api';
 const API_USES_NGROK = API_BASE.includes('ngrok');
 window.API_USES_NGROK = API_USES_NGROK;
+window.API_BASE = API_BASE;
+if (window.App) window.App.API_BASE = API_BASE;
 window.FEEDBACK_PUBLIC_LINK_BASE = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
 
 /** Signed Telegram WebApp initData for backend auth. Prefer over initDataUnsafe. */
