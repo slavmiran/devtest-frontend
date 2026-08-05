@@ -111,9 +111,10 @@ const telegramUsername = DEBUG_BYPASS_USERNAME_GATE
     : String(initData.user?.username || '').trim().replace(/^@+/, '');
 const API_BASE_OVERRIDE = String(window.__API_BASE__ || '').trim();
 const PRODUCTION_API_BASE = 'https://devtest-backend.onrender.com/api';
-// Fixed reserved ngrok for test/staging frontends (Vercel / localhost).
+// Default test/staging tunnel (Cloudflare / ngrok / staging). Override via
+// window.__API_BASE__ or window.__TEST_API_BASE__ when the tunnel URL changes.
 const TEST_API_BASE = String(window.__TEST_API_BASE__ || '').trim()
-    || 'https://usable-epidemic-askew.ngrok-free.dev/api';
+    || 'https://mating-message-recorders-parking.trycloudflare.com/api';
 
 function _isTestFrontendHost() {
     var host = String(window.location.hostname || '').toLowerCase();

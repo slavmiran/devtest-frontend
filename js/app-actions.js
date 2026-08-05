@@ -2132,6 +2132,65 @@ function reapplyAllFeedbackCheckinPendingUi() {
     });
 }
 
+/**
+ * Sync MiniApp "waiting for bot feedback" buttons with server wait-state.
+ * Clears stuck pending UI after user cancels via bot inline Cancel (or wait TTL expires / server restart).
+ */
+async function syncPendingFeedbackCheckinsFromServer() {
+    if (!hasPendingFeedbackCheckins()) {
+        return false;
+    }
+    var apiBase = (typeof API_BASE !== 'undefined' && API_BASE) || (window.App && window.App.API_BASE) || '';
+    if (!apiBase) {
+        return false;
+    }
+    var initData = (typeof getTelegramInitDataRaw === 'function')
+        ? getTelegramInitDataRaw()
+        : ((typeof tg !== 'undefined' && tg && tg.initData) || '');
+    if (!initData) {
+        return false;
+    }
+
+    try {
+        var response = await fetch(
+            apiBase + '/feedback/waiting?init_data=' + encodeURIComponent(initData),
+            { method: 'GET' }
+        );
+        if (!response.ok) {
+            return false;
+        }
+        var data = await response.json();
+        if (!data || data.status !== 'success') {
+            return false;
+        }
+
+        var waitingAppId = data.waiting ? Number(data.app_id || 0) : 0;
+        var clearedIds = [];
+        Object.keys(_pendingFeedbackCheckinAppIds || {}).forEach(function(key) {
+            var appId = Number(key);
+            if (appId > 0 && appId !== waitingAppId) {
+                clearTestFeedbackCheckinPending(appId);
+                clearedIds.push(appId);
+            }
+        });
+        if (!clearedIds.length) {
+            return false;
+        }
+
+        if (typeof renderTests === 'function') {
+            renderTests(true);
+        }
+        if (typeof window.renderShowcaseActiveTests === 'function') {
+            window.renderShowcaseActiveTests(true);
+        }
+        return true;
+    } catch (error) {
+        console.warn('syncPendingFeedbackCheckinsFromServer failed:', error);
+        return false;
+    }
+}
+window.syncPendingFeedbackCheckinsFromServer = syncPendingFeedbackCheckinsFromServer;
+
 function clearCompletedPendingFeedbackCheckins() {
     if (!hasPendingFeedbackCheckins()) return false;
 

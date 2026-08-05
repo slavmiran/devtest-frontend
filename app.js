@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
             _syncActiveTimerState();
             if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
                 _lastFetchTimes.tests = 0;
+                if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
+                    syncPendingFeedbackCheckinsFromServer().catch(function() {});
+                }
             }
             if (typeof refreshHomeScreenStatus === 'function') {
                 refreshHomeScreenStatus({ force: true });
@@ -54,6 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
         _syncActiveTimerState();
         if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
             _lastFetchTimes.tests = 0;
+            if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
+                syncPendingFeedbackCheckinsFromServer().catch(function() {});
+            }
             loadTasks(true).catch(function() {});
         }
         if (window.renderTests) window.renderTests(true);
@@ -96,6 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         loadTasks().catch(function(e) { console.error('Bootstrap loadTasks error:', e); });
+        if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
+            syncPendingFeedbackCheckinsFromServer().catch(function() {});
+        }
         loadReliabilitySummary().catch(function(e) { console.error('Bootstrap loadReliabilitySummary error:', e); });
         loadReliabilityBreakdown(true).catch(function(e) { console.error('Bootstrap loadReliabilityBreakdown error:', e); });
         loadIncomingOffers().catch(function(e) { console.error('Bootstrap loadIncomingOffers error:', e); });
@@ -247,6 +256,7 @@ Object.assign(window, {
     clearTestFeedbackCheckinPending,
     applyTestFeedbackCheckinPendingUi,
     clearCompletedPendingFeedbackCheckins,
+    syncPendingFeedbackCheckinsFromServer,
     openProjectFeedback,
     sendProjectFeedbackMedia,
     openFeedbackRewardModal,
