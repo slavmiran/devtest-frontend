@@ -4092,6 +4092,8 @@ function openReportModal(appId, ownerUsername) {
     const ideaBtn = document.getElementById('t-reportBtnIdea');
     if (bugBtn) bugBtn.textContent = window.t('reportBtnSendBug', {}, lang);
     if (ideaBtn) ideaBtn.textContent = window.t('reportBtnSendIdea', {}, lang);
+    const noteEl = document.getElementById('t-reportFeedbackScreenshotNote');
+    if (noteEl) noteEl.textContent = window.t('reportFeedbackScreenshotNote', {}, lang);
 
     document.getElementById('report-modal').classList.add('active');
     setTimeout(_fitReportTextarea, 40);
@@ -9930,6 +9932,9 @@ Object.assign(window, {
     openReportModal,
     closeReportModal,
     setReportMessageLanguage,
+    insertReportChip,
+    reportModalSendBug,
+    reportModalSendIdea,
     openScreenshotGuardModal,
     closeScreenshotGuardModal,
     confirmScreenshotGuard,
@@ -9942,7 +9947,6 @@ Object.assign(window, {
     previousIssueReportStep,
     openIssueChecklistGoogleGroup,
     openIssueChecklistGooglePlay,
-    insertReportChip,
     openCheckinOptionsModal,
     closeCheckinOptionsModal,
     syncCheckinOptionsJustConfirmTimer,

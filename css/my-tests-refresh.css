@@ -775,6 +775,57 @@ button.ts-section-head {
     box-shadow: 0 0 14px rgba(76, 141, 255, 0.17) !important;
 }
 
+/* Guest Open button — restore border (styles.css .btn { border:none } wins otherwise). */
+#tab-tests .external-tests-open-btn.btn-secondary,
+#tab-tests .external-tests-open-btn {
+    background: var(--secondary-bg-color, rgba(255, 255, 255, 0.08)) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16)) !important;
+    box-shadow: none !important;
+}
+
+/* Report modal: full visible prefill + bug/idea action buttons. */
+#report-modal .report-modal-text {
+    min-height: 180px;
+    max-height: 420px;
+    overflow-y: auto;
+    resize: vertical;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+#report-modal .report-feedback-actions {
+    display: flex;
+    gap: 10px;
+    margin: 4px 0 8px;
+}
+
+#report-modal .report-feedback-btn {
+    flex: 1;
+    min-height: 46px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    background: rgba(76, 141, 255, 0.16) !important;
+    color: #fff !important;
+    border: 1px solid rgba(76, 141, 255, 0.42) !important;
+    box-shadow: 0 0 14px rgba(76, 141, 255, 0.17) !important;
+}
+
+#report-modal .report-feedback-note {
+    margin: 0 0 12px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--hint-color);
+    text-align: center;
+}
+
+#report-modal .btn-primary {
+    min-height: 46px;
+    border-radius: 14px;
+    font-weight: 600;
+}
+
 /* --------------------------------------------------------------------------
    7. Motion preferences
    -------------------------------------------------------------------------- */
