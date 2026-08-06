@@ -1102,7 +1102,7 @@
             claimGrantOvertimeToast: "🎉 Вы забрали {amount} $BUST! Проект в овертайме — продолжайте тесты за повышенную Карму!",
             claimGrantMissedToast: "Грант упущен: количество пропусков ({count}) превышает допустимый лимит (3).",
             earlyFinishCardTitle: "Ранний финиш",
-            earlyFinishReliabilityLabel: "Индекс надёжности",
+            earlyFinishReliabilityLabel: "Надёжность партнёра",
             earlyFinishCardDesc: "По <strong>правилам платформы</strong> разработчик продолжит тестировать ваше приложение до окончания срока.",
             earlyFinishProtected: "✓ Защищено правилами платформы",
             earlyFinishDays: "Дней: {days}",
