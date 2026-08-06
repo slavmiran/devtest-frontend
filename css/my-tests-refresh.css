@@ -794,10 +794,18 @@ button.ts-section-head {
     white-space: pre-wrap;
 }
 
+#report-modal .report-feedback-block {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(76, 141, 255, 0.08);
+    border: 1px solid rgba(76, 141, 255, 0.28);
+}
+
 #report-modal .report-feedback-actions {
     display: flex;
     gap: 10px;
-    margin: 4px 0 8px;
+    margin: 0;
 }
 
 #report-modal .report-feedback-btn {
@@ -813,11 +821,12 @@ button.ts-section-head {
 }
 
 #report-modal .report-feedback-note {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     font-size: 12px;
     line-height: 1.4;
-    color: var(--hint-color);
+    color: #7eb3ff;
     text-align: center;
+    font-weight: 600;
 }
 
 #report-modal .btn-primary {

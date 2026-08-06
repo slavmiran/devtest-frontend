@@ -4090,8 +4090,22 @@ function openReportModal(appId, ownerUsername) {
     const ideaBtn = document.getElementById('t-reportBtnIdea');
     if (bugBtn) bugBtn.textContent = window.t('reportBtnSendBug', {}, lang);
     if (ideaBtn) ideaBtn.textContent = window.t('reportBtnSendIdea', {}, lang);
+
     const noteEl = document.getElementById('t-reportFeedbackScreenshotNote');
-    if (noteEl) noteEl.textContent = window.t('reportFeedbackScreenshotNote', {}, lang);
+    if (noteEl) {
+        var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
+        var testingDay = test && typeof window.getUserTestingDay === 'function'
+            ? Number(window.getUserTestingDay(test.start_date) || 0)
+            : 0;
+        var controlDays = (typeof window.CONTROL_DAYS !== 'undefined' && Array.isArray(window.CONTROL_DAYS))
+            ? window.CONTROL_DAYS
+            : [1, 4, 7, 10, 14];
+        var isControlDay = controlDays.indexOf(testingDay) !== -1;
+        var noteKey = 'reportFeedbackScreenshotNoteRegular';
+        if (testingDay === 1) noteKey = 'reportFeedbackScreenshotNoteDay1';
+        else if (isControlDay) noteKey = 'reportFeedbackScreenshotNoteControl';
+        noteEl.textContent = window.t(noteKey, {}, lang);
+    }
 
     document.getElementById('report-modal').classList.add('active');
     setTimeout(_fitReportTextarea, 40);
