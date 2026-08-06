@@ -115,22 +115,41 @@
         if (!group) return;
         var defs = _reasonDefsForMode(mode);
         var selected = selectedCode || defs[0].code;
+        group.className = 'term-reason-radio-list';
+        group.setAttribute('role', 'radiogroup');
         group.innerHTML = defs.map(function (def) {
-            var selectedClass = def.code === selected ? ' is-selected' : '';
-            return '<button type="button" class="reason-chip' + selectedClass + '" data-reason="' +
-                _esc(def.code) + '" onclick="selectTermReason(this)">' +
-                '<span>' + _esc(_t(def.labelKey)) + '</span></button>';
+            var isSelected = def.code === selected;
+            return '' +
+                '<label class="term-reason-radio' + (isSelected ? ' is-selected' : '') + '">' +
+                    '<input type="radio" name="term-reason-radio" value="' + _esc(def.code) + '"' +
+                    (isSelected ? ' checked' : '') +
+                    ' onchange="selectTermReason(this)">' +
+                    '<span class="term-reason-radio-mark" aria-hidden="true"></span>' +
+                    '<span class="term-reason-radio-label">' + _esc(_t(def.labelKey)) + '</span>' +
+                '</label>';
         }).join('');
         _syncLegacyReasonFields(selected, getTermReasonNote());
     }
 
-    function selectTermReason(buttonEl) {
-        if (!buttonEl) return;
-        var reason = String(buttonEl.getAttribute('data-reason') || '').trim() || 'other';
+    function selectTermReason(inputOrButtonEl) {
+        if (!inputOrButtonEl) return;
+        var reason = '';
+        if (inputOrButtonEl.tagName === 'INPUT') {
+            reason = String(inputOrButtonEl.value || '').trim() || 'other';
+        } else {
+            reason = String(inputOrButtonEl.getAttribute('data-reason') || '').trim() || 'other';
+        }
         var group = document.getElementById('term-reason-chips');
         if (group) {
+            Array.prototype.forEach.call(group.querySelectorAll('.term-reason-radio'), function (row) {
+                var input = row.querySelector('input[type="radio"]');
+                var checked = !!(input && input.value === reason);
+                if (input) input.checked = checked;
+                row.classList.toggle('is-selected', checked);
+            });
+            // Legacy chip support (if any leftover markup).
             Array.prototype.forEach.call(group.querySelectorAll('.reason-chip'), function (chip) {
-                chip.classList.toggle('is-selected', chip === buttonEl);
+                chip.classList.toggle('is-selected', chip.getAttribute('data-reason') === reason);
             });
         }
         _syncLegacyReasonFields(reason, getTermReasonNote());
@@ -1186,6 +1205,12 @@
         var target = String(reason || 'inactive_partner');
         var group = document.getElementById('term-reason-chips');
         if (!group) return;
+        var radio = group.querySelector('.term-reason-radio input[value="' + target + '"]')
+            || group.querySelector('.term-reason-radio input[type="radio"]');
+        if (radio) {
+            selectTermReason(radio);
+            return;
+        }
         var chip = group.querySelector('.reason-chip[data-reason="' + target + '"]')
             || group.querySelector('.reason-chip');
         if (chip) selectTermReason(chip);

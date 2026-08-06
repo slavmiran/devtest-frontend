@@ -1225,6 +1225,79 @@
     box-shadow: inset 0 0 0 1px var(--accent-primary-border);
 }
 
+/* Termination reason radios — lighter than impact pills / chips */
+.term-reason-radio-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0 0 10px;
+    padding: 2px 0;
+}
+
+.term-reason-radio {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 8px 2px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    user-select: none;
+}
+
+.term-reason-radio input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.term-reason-radio-mark {
+    position: relative;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid color-mix(in srgb, var(--hint-color) 70%, var(--border-subtle));
+    background: transparent;
+    box-sizing: border-box;
+}
+
+.term-reason-radio.is-selected .term-reason-radio-mark,
+.term-reason-radio:has(input:checked) .term-reason-radio-mark {
+    border-color: var(--accent-primary, #0a84ff);
+}
+
+.term-reason-radio-mark::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    background: var(--accent-primary, #0a84ff);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.term-reason-radio.is-selected .term-reason-radio-mark::after,
+.term-reason-radio:has(input:checked) .term-reason-radio-mark::after {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.term-reason-radio-label {
+    font-size: 14px;
+    line-height: 1.35;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.term-reason-radio.is-selected .term-reason-radio-label,
+.term-reason-radio:has(input:checked) .term-reason-radio-label {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
 .leave-modal-actions {
     display: flex;
     flex-direction: column;
