@@ -9462,7 +9462,31 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         await proceed();
     };
     if (footerEl) {
-        footerEl.innerHTML = `<button class="btn btn-secondary project-select-direct-btn" style="width: 100%;" onclick="closeProjectSelectModal(); joinDirect(${targetAppId});">${window.escapeHTML(window.t('takeWithoutMutualBtn', {}, lang))}</button>`;
+        var flags = (window.__offerSelectFlags && typeof window.__offerSelectFlags === 'object')
+            ? window.__offerSelectFlags
+            : {};
+        window.__offerSelectFlags = null;
+        var showAddProjectCta = !!(options && options.showAddProjectCta) || !!flags.showAddProjectCta;
+        var hideDirectJoin = !!(options && options.hideDirectJoin) || !!flags.hideDirectJoin;
+        var footerParts = [];
+        if (showAddProjectCta) {
+            footerParts.push(
+                '<button class="btn btn-primary project-select-add-btn" style="width: 100%; margin-bottom: 8px;" ' +
+                'onclick="closeProjectSelectModal(); if (typeof openAddProjectChooser === \'function\') openAddProjectChooser(); else if (typeof openModal === \'function\') openModal();">' +
+                window.escapeHTML(window.t('termDropPreserveAddAppBtn', {}, lang)) +
+                '</button>'
+            );
+        }
+        if (!hideDirectJoin) {
+            footerParts.push(
+                '<button class="btn btn-secondary project-select-direct-btn" style="width: 100%;" onclick="closeProjectSelectModal(); joinDirect(' +
+                targetAppId +
+                ');">' +
+                window.escapeHTML(window.t('takeWithoutMutualBtn', {}, lang)) +
+                '</button>'
+            );
+        }
+        footerEl.innerHTML = footerParts.join('');
     }
     modal.classList.add('active');
 }

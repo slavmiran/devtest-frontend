@@ -399,83 +399,135 @@
         return Number(testingDays || 0) <= 3 && Number(checkins || 0) <= 1;
     }
 
-    function _renderPreserveInviteBlock(test, ownerId) {
-        var available = (typeof window.getAvailableMutualProjectsForOwner === 'function')
-            ? window.getAvailableMutualProjectsForOwner(ownerId)
-            : [];
-        var ownCandidates = (typeof window.getMutualOfferProjectChoicesForOwner === 'function')
-            ? window.getMutualOfferProjectChoicesForOwner(ownerId)
-            : [];
-        var hasOwnProject = Array.isArray(ownCandidates) && ownCandidates.length > 0;
-        var canPropose = Array.isArray(available) && available.length > 0;
-        var appId = Number(test && test.id || test && test.app_id || 0);
-
-        var actionHtml = '';
-        if (canPropose) {
-            actionHtml = '' +
-                '<button type="button" class="btn btn-primary term-preserve-btn" ' +
-                'onclick="proposeMutualFromTermination(' + appId + ', ' + Number(ownerId || 0) + ')">' +
-                _esc(_t('termDropPreserveProposeBtn')) +
-                '</button>' +
-                '<div class="term-preserve-note">' + _esc(_t('termDropPreserveProposeHint')) + '</div>';
-        } else if (!hasOwnProject) {
-            actionHtml = '' +
-                '<button type="button" class="btn btn-primary term-preserve-btn" ' +
-                'onclick="addProjectFromTermination()">' +
-                _esc(_t('termDropPreserveAddAppBtn')) +
-                '</button>' +
-                '<div class="term-preserve-note">' + _esc(_t('termDropPreserveAddAppHint')) + '</div>';
-        } else {
-            actionHtml = '' +
-                '<button type="button" class="btn btn-primary term-preserve-btn is-disabled" disabled aria-disabled="true">' +
-                _esc(_t('termDropPreserveProposeBtn')) +
-                '</button>' +
-                '<div class="term-preserve-note">' + _esc(_t('termDropPreserveNoSlot')) + '</div>';
+    function _estimateGrantTotal(test) {
+        if (typeof window.getGrantEstimateData === 'function') {
+            var grant = window.getGrantEstimateData(test || {});
+            if (grant && grant.eligible === false) return 0;
+            return Math.max(0, Number(grant && grant.total || 0));
         }
+        return 0;
+    }
 
+    function _setPreserveSlot(html) {
+        var slot = document.getElementById('term-preserve-slot');
+        if (!slot) return;
+        if (html) {
+            slot.innerHTML = html;
+            slot.hidden = false;
+        } else {
+            slot.innerHTML = '';
+            slot.hidden = true;
+        }
+    }
+
+    function _hideDropUnlinkBox() {
+        var box = document.getElementById('term-unlink-box');
+        if (box) {
+            box.hidden = true;
+            box.style.display = 'none';
+        }
+        var reciprocal = document.getElementById('term-unlink-reciprocal');
+        if (reciprocal) {
+            reciprocal.checked = false;
+            reciprocal.disabled = false;
+        }
+        toggleTermUnlinkHint();
+    }
+
+    function _renderPreserveInviteBlock(test, ownerId) {
+        var appId = Number(test && test.id || test && test.app_id || 0);
+        // Propose stays active; add-project lives inside the project-select modal.
         return '' +
             '<div class="term-preserve-block">' +
                 '<div class="term-preserve-title">' + _esc(_t('termDropPreserveTitle')) + '</div>' +
                 '<div class="term-preserve-desc">' + _esc(_t('termDropPreserveDesc')) + '</div>' +
-                '<div class="term-preserve-actions">' + actionHtml + '</div>' +
+                '<div class="term-preserve-actions">' +
+                    '<button type="button" class="btn btn-primary term-preserve-btn" ' +
+                    'onclick="proposeMutualFromTermination(' + appId + ', ' + Number(ownerId || 0) + ')">' +
+                    _esc(_t('termDropPreserveProposeBtn')) +
+                    '</button>' +
+                    '<div class="term-preserve-note">' + _esc(_t('termDropPreserveProposeHint')) + '</div>' +
+                '</div>' +
             '</div>';
     }
 
-    function _renderBountyLossBlock(totalLost, earned, contractTotal, grantStillAvailable, skips) {
-        var lines = [
-            _t('termDropBountyLossDesc', { total: _fmtAmount(totalLost, 1) }),
-        ];
-        if (Number(earned || 0) > 0) {
-            lines.push(_t('termDropBountyLossKept', { earned: _fmtAmount(earned, 1) }));
-        }
-        if (grantStillAvailable) {
-            lines.push(_t('termDropBountyGrantNote', {
-                skips: skips,
-                max: 3,
-                contract: _fmtAmount(contractTotal, 1),
-            }));
-        }
+    function _renderBountyLossBlock(contractLost, grantLost, earned, grantStillAvailable, skips) {
+        var totalLost = Math.max(0, Number(contractLost || 0) + Number(grantLost || 0));
+        var keptHtml = Number(earned || 0) > 0
+            ? '<div class="term-bust-kept">' + _esc(_t('termDropBountyLossKept', {
+                earned: _fmtAmount(earned, 1),
+            })) + '</div>'
+            : '';
+        var grantChipClass = grantStillAvailable ? '' : ' is-muted';
         return '' +
-            '<div class="leave-status-banner is-penalty term-bust-loss">' +
-                '<div class="leave-status-title">' + _esc(_t('termDropBountyLossTitle', {
-                    total: _fmtAmount(totalLost, 1),
-                })) + '</div>' +
-                lines.map(function (line) {
-                    return '<div class="leave-status-desc">' + _esc(line) + '</div>';
-                }).join('') +
+            '<div class="term-bust-hero">' +
+                '<div class="term-bust-hero-kicker">' + _esc(_t('termDropBountyHeroKicker')) + '</div>' +
+                '<div class="term-bust-hero-amount notranslate">~' + _esc(_fmtAmount(totalLost, 0)) + '</div>' +
+                '<div class="term-bust-hero-unit">$BUST</div>' +
+                '<div class="term-bust-split" aria-hidden="true">' +
+                    '<div class="term-bust-chip">' +
+                        '<span class="term-bust-chip-n notranslate">~' + _esc(_fmtAmount(contractLost, 0)) + '</span>' +
+                        '<span class="term-bust-chip-l">' + _esc(_t('termDropBountyChipContract')) + '</span>' +
+                    '</div>' +
+                    '<span class="term-bust-plus">+</span>' +
+                    '<div class="term-bust-chip' + grantChipClass + '">' +
+                        '<span class="term-bust-chip-n notranslate">~' + _esc(_fmtAmount(grantLost, 0)) + '</span>' +
+                        '<span class="term-bust-chip-l">' + _esc(_t('termDropBountyChipGrant')) + '</span>' +
+                    '</div>' +
+                '</div>' +
+                keptHtml +
+                (grantStillAvailable
+                    ? '<div class="term-bust-grant-note">' + _esc(_t('termDropBountyGrantVisualNote', {
+                        skips: skips,
+                        max: 3,
+                    })) + '</div>'
+                    : '') +
             '</div>';
     }
 
-    function _renderInviteGrantRow(skips) {
+    function _renderInviteGrantRow(skips, grantTotal) {
         return '' +
-            '<div class="leave-grant-row">' +
+            '<div class="leave-grant-row term-grant-visual">' +
                 '<div class="leave-grant-copy">' +
-                    '<div class="leave-grant-title">' + _esc(_t('leaveGrantTeaseTitle')) + '</div>' +
+                    '<div class="term-grant-visual-top">' +
+                        '<div class="leave-grant-title">' + _esc(_t('leaveGrantTeaseTitle')) + '</div>' +
+                        '<div class="term-grant-amount notranslate">~' + _esc(_fmtAmount(grantTotal, 0)) +
+                        ' <span>$BUST</span></div>' +
+                    '</div>' +
                     '<div class="leave-grant-desc">' + _esc(_t('termDropGrantTeaseDesc', {
                         skips: skips,
                         max: 3,
+                        amount: _fmtAmount(grantTotal, 0),
                     })) + '</div>' +
                 '</div>' +
+            '</div>';
+    }
+
+    function _renderImpactMeters(opts) {
+        opts = opts || {};
+        var karmaOk = opts.karmaOk !== false;
+        var riOk = !!opts.riOk;
+        var hint = opts.hint || '';
+        return '' +
+            '<div class="term-impact-block">' +
+                '<div class="term-impact-title">' + _esc(_t('termDropEffectsTitle')) + '</div>' +
+                '<div class="term-impact-grid">' +
+                    '<div class="term-impact-pill ' + (karmaOk ? 'is-ok' : 'is-risk') + '">' +
+                        '<span class="term-impact-ico" aria-hidden="true">☯️</span>' +
+                        '<span class="term-impact-label">' + _esc(_t('termDropImpactKarma')) + '</span>' +
+                        '<span class="term-impact-status">' +
+                            _esc(_t(karmaOk ? 'termDropImpactOk' : 'termDropImpactRisk')) +
+                        '</span>' +
+                    '</div>' +
+                    '<div class="term-impact-pill ' + (riOk ? 'is-ok' : 'is-risk') + '">' +
+                        '<span class="term-impact-ico" aria-hidden="true">🛡</span>' +
+                        '<span class="term-impact-label">' + _esc(_t('termDropImpactRi')) + '</span>' +
+                        '<span class="term-impact-status">' +
+                            _esc(_t(riOk ? 'termDropImpactOk' : 'termDropImpactRiRisk')) +
+                        '</span>' +
+                    '</div>' +
+                '</div>' +
+                (hint ? '<div class="term-impact-hint">' + _esc(hint) + '</div>' : '') +
             '</div>';
     }
 
@@ -497,56 +549,67 @@
         var dailyPool = isBounty ? bountyPerTester * 0.65 : 0;
         var rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
         var earnedEstimate = Math.round(checkins * rewardPerCheckin * 10) / 10;
-        // Hold (35%) + unpaid daily remainder — one total of not-yet-paid contract BUST.
-        var totalLostEstimate = isBounty
+        var contractLost = isBounty
             ? Math.max(0, Math.round((bountyPerTester - earnedEstimate) * 10) / 10)
             : 0;
-        var isSafeExit = isInviteLike && _isInviteSafeExit(testingDays, checkins);
         var grantStillAvailable = skips < 3;
+        var grantTotal = grantStillAvailable ? _estimateGrantTotal(test) : 0;
+        var grantLost = grantStillAvailable ? grantTotal : 0;
+        var totalAtRisk = contractLost + grantLost;
+        var isSafeExit = isInviteLike && _isInviteSafeExit(testingDays, checkins);
+        // Bounty RI: immature window (<7d) usually excluded; invite uses ≤3d & ≤1 check-in.
+        var riOk = isInviteLike ? isSafeExit : (testingDays < 7);
+        var impactHint = isInviteLike
+            ? (isSafeExit
+                ? _t('termDropImpactHintInviteSafe')
+                : _t('termDropImpactHintInviteRisk'))
+            : (riOk
+                ? _t('termDropImpactHintBountySafe')
+                : _t('termDropImpactHintBountyRisk'));
 
         if (_termState) {
             _termState.justifiedAllowed = isBounty ? true : isSafeExit;
             _termState.isBountyDrop = isBounty;
             _termState.isInviteDrop = isInviteLike;
             _termState.isSafeExit = isSafeExit;
-            _termState.remainingBounty = totalLostEstimate;
+            _termState.riOk = riOk;
+            _termState.remainingBounty = totalAtRisk;
+            _termState.contractLost = contractLost;
+            _termState.grantLost = grantLost;
             _termState.hasReciprocal = false;
             _termState.projectName = projectName;
             _termState.ownerId = ownerId;
             _termState.grantAvailable = grantStillAvailable;
             _termState.contractTotal = bountyPerTester;
             _termState.earnedBounty = earnedEstimate;
+            _termState.grantTotal = grantTotal;
+            _termState.preserveHtml = isInviteLike ? _renderPreserveInviteBlock(test, ownerId) : '';
         }
 
         var impactBlock = '';
         if (isBounty) {
             impactBlock = _renderBountyLossBlock(
-                totalLostEstimate,
+                contractLost,
+                grantLost,
                 earnedEstimate,
-                bountyPerTester,
                 grantStillAvailable,
                 skips
             );
         } else if (isSafeExit) {
-            impactBlock = '<div class="leave-status-banner is-justified">' +
+            impactBlock = '<div class="leave-status-banner is-justified term-status-compact">' +
                 '<div class="leave-status-title">' + _esc(_t('termDropInviteSafeBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t('termDropInviteSafeDesc')) + '</div>' +
               '</div>';
         } else {
-            impactBlock = '<div class="leave-status-banner is-penalty">' +
+            impactBlock = '<div class="leave-status-banner is-penalty term-status-compact">' +
                 '<div class="leave-status-title">' + _esc(_t('termDropInviteCostlyBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t('termDropInviteCostlyDesc')) + '</div>' +
               '</div>';
         }
 
-        // Effects: only karma / Reliability — money & grant already shown above.
-        var effects = [_t('termDropEffectNoKarma')];
-        if (isInviteLike) {
-            effects.push(_t(isSafeExit ? 'termDropEffectRiSafe' : 'termDropEffectRiCostly'));
-        }
-
-        var grantRow = (!isBounty && grantStillAvailable) ? _renderInviteGrantRow(skips) : '';
-        var preserveBlock = isInviteLike ? _renderPreserveInviteBlock(test, ownerId) : '';
+        var grantRow = (!isBounty && grantStillAvailable)
+            ? _renderInviteGrantRow(skips, grantTotal)
+            : '';
 
         return '' +
             '<div class="leave-exchange-card">' +
@@ -567,8 +630,11 @@
                 '</div>' +
             '</div>' +
             impactBlock +
-            preserveBlock +
-            _effectsBlock(_t('termDropEffectsTitle'), effects);
+            _renderImpactMeters({
+                karmaOk: true,
+                riOk: riOk,
+                hint: impactHint,
+            });
     }
 
     function _updatePrimaryCta() {
@@ -629,7 +695,14 @@
             ownerId: 0,
             contractTotal: 0,
             earnedBounty: 0,
+            grantTotal: 0,
+            grantLost: 0,
+            contractLost: 0,
+            riOk: true,
+            preserveHtml: '',
         };
+
+        _setPreserveSlot('');
 
         // Legacy globals used by confirmLeaveMutual / confirmKickTester / confirmDropTest
         if (mode === 'leave') {
@@ -670,15 +743,10 @@
         // Drop (invite/bounty): never show reciprocal unlink — only mutual leave/kick use it.
         var unlinkOptions = Object.assign({}, options);
         if (mode === 'drop') {
-            var dropUnlinkBox = document.getElementById('term-unlink-box');
-            if (dropUnlinkBox) dropUnlinkBox.hidden = true;
-            var dropReciprocal = document.getElementById('term-unlink-reciprocal');
-            if (dropReciprocal) {
-                dropReciprocal.checked = false;
-                dropReciprocal.disabled = false;
-            }
-            toggleTermUnlinkHint();
+            _hideDropUnlinkBox();
         } else {
+            var leaveUnlinkBox = document.getElementById('term-unlink-box');
+            if (leaveUnlinkBox) leaveUnlinkBox.style.display = '';
             _setupUnlinkBox(mode, joinType, unlinkOptions);
         }
 
@@ -725,6 +793,7 @@
         if (!test) {
             body.innerHTML = '<div class="details-block"><div style="color: var(--hint-color);">' +
                 _esc(_t('loadError')) + '</div></div>';
+            _setPreserveSlot('');
             return;
         }
         if (_termState) {
@@ -732,7 +801,9 @@
             _termState.ownerId = Number(test.owner_id || 0);
         }
         _setTypeBadge(_termState.joinType);
+        _hideDropUnlinkBox();
         body.innerHTML = _renderDropBody(test);
+        _setPreserveSlot((_termState && _termState.preserveHtml) || '');
     }
 
     async function _loadLeaveStats(appId, body) {
@@ -823,6 +894,7 @@
         if (event && event.target !== modal) return;
         modal.classList.remove('active');
         cancelTerminationConfirm();
+        _setPreserveSlot('');
         _termState = null;
         window._leaveMutualAppId = null;
         window._leaveMutualStats = null;
@@ -884,21 +956,25 @@
         } else if (mode === 'drop') {
             if (title) title.textContent = _t('termConfirmTitleDrop');
             points.push('<li>' + _esc(_t('termConfirmPointDropPrimary')) + '</li>');
-            points.push('<li>' + _esc(_t('termDropEffectNoKarma')) + '</li>');
-            if (_termState.isInviteDrop) {
-                points.push('<li' + (_termState.isSafeExit ? '' : ' class="is-warn"') + '>' +
-                    _esc(_t(_termState.isSafeExit ? 'termDropEffectRiSafe' : 'termDropEffectRiCostly')) +
-                    '</li>');
-            }
             if (_termState.isBountyDrop) {
                 points.push('<li class="is-warn">' + _esc(_t('termDropBountyLossTitle', {
-                    total: _fmtAmount(_termState.remainingBounty || 0, 1),
+                    total: _fmtAmount(_termState.remainingBounty || 0, 0),
                 })) + '</li>');
-                if (Number(_termState.earnedBounty || 0) > 0) {
-                    points.push('<li>' + _esc(_t('termDropBountyLossKept', {
-                        earned: _fmtAmount(_termState.earnedBounty || 0, 1),
+                if (Number(_termState.contractLost || 0) > 0 || Number(_termState.grantLost || 0) > 0) {
+                    points.push('<li>' + _esc(_t('termDropConfirmBustSplit', {
+                        contract: _fmtAmount(_termState.contractLost || 0, 0),
+                        grant: _fmtAmount(_termState.grantLost || 0, 0),
                     })) + '</li>');
                 }
+            }
+            points.push('<li>' + _esc(_t('termDropEffectNoKarma')) + '</li>');
+            if (_termState.isInviteDrop || _termState.isBountyDrop) {
+                var riOkConfirm = _termState.isInviteDrop
+                    ? !!_termState.isSafeExit
+                    : (_termState.riOk !== false);
+                points.push('<li' + (riOkConfirm ? '' : ' class="is-warn"') + '>' +
+                    _esc(_t(riOkConfirm ? 'termDropEffectRiSafe' : 'termDropEffectRiCostly')) +
+                    '</li>');
             }
             body.innerHTML = '' +
                 '<p class="leave-confirm-lead">' + _esc(_t(
@@ -1136,6 +1212,10 @@
         var targetOwnerId = Number(ownerId || (_termState && _termState.ownerId) || 0);
         cancelTerminationConfirm();
         closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+        window.__offerSelectFlags = {
+            showAddProjectCta: true,
+            hideDirectJoin: true,
+        };
         if (typeof createMutualOffer === 'function') {
             createMutualOffer(targetAppId, targetOwnerId);
         }

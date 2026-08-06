@@ -485,6 +485,10 @@
     padding: 12px;
 }
 
+.kick-unlink-box[hidden] {
+    display: none !important;
+}
+
 .kick-unlink-row {
     display: flex;
     align-items: flex-start;
@@ -894,8 +898,16 @@
     color: var(--text-secondary);
 }
 
+.term-preserve-slot {
+    margin: 0 0 12px;
+}
+
+.term-preserve-slot[hidden] {
+    display: none !important;
+}
+
 .term-preserve-block {
-    margin: 0 0 14px;
+    margin: 0;
     padding: 12px 14px;
     border-radius: 12px;
     border: 1px solid color-mix(in srgb, #0a84ff 35%, var(--border-subtle));
@@ -939,8 +951,178 @@
     color: var(--hint-color);
 }
 
-.term-bust-loss .leave-status-desc + .leave-status-desc {
+.term-bust-hero {
+    margin: 0 0 14px;
+    padding: 16px 14px 14px;
+    border-radius: 16px;
+    text-align: center;
+    border: 1px solid color-mix(in srgb, var(--danger, #ff453a) 40%, var(--border-subtle));
+    background:
+        radial-gradient(120% 80% at 50% 0%, rgba(255, 69, 58, 0.22), transparent 55%),
+        var(--bg-surface-1);
+}
+
+.term-bust-hero-kicker {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--danger, #ff453a) 75%, var(--text-secondary));
+    margin-bottom: 4px;
+}
+
+.term-bust-hero-amount {
+    font-size: 42px;
+    line-height: 1;
+    font-weight: 800;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.term-bust-hero-unit {
+    margin-top: 2px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.term-bust-split {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.term-bust-chip {
+    flex: 1;
+    max-width: 140px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-surface-2, #1c1c1e) 80%, transparent);
+    border: 1px solid var(--border-subtle);
+}
+
+.term-bust-chip.is-muted {
+    opacity: 0.55;
+}
+
+.term-bust-chip-n {
+    display: block;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.term-bust-chip-l {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--hint-color);
+}
+
+.term-bust-plus {
+    align-self: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--hint-color);
+}
+
+.term-bust-kept,
+.term-bust-grant-note {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+.term-grant-visual-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.term-grant-amount {
+    flex-shrink: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--warning);
+    line-height: 1.1;
+}
+
+.term-grant-amount span {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.85;
+}
+
+.term-impact-block {
+    margin: 0 0 4px;
+}
+
+.term-impact-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--hint-color);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.term-impact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.term-impact-pill {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-1);
+    min-height: 74px;
+}
+
+.term-impact-pill.is-ok {
+    border-color: color-mix(in srgb, var(--success-border, #30d158) 55%, var(--border-subtle));
+    background: color-mix(in srgb, var(--success-surface, rgba(48, 209, 88, 0.14)) 55%, var(--bg-surface-1));
+}
+
+.term-impact-pill.is-risk {
+    border-color: color-mix(in srgb, var(--danger, #ff453a) 45%, var(--border-subtle));
+    background: color-mix(in srgb, rgba(255, 69, 58, 0.14) 55%, var(--bg-surface-1));
+}
+
+.term-impact-ico {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.term-impact-label {
+    font-size: 11px;
+    color: var(--hint-color);
+}
+
+.term-impact-status {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.term-impact-hint {
     margin-top: 8px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--hint-color);
+}
+
+.term-status-compact {
+    margin-bottom: 12px;
 }
 
 .leave-grant-row .leave-grant-copy {
