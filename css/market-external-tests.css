@@ -284,6 +284,37 @@
     margin-bottom: 8px;
 }
 
+.external-tests-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 2px 0 8px;
+}
+
+.external-tests-owner-subtitle {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--hint-color);
+    line-height: 1.35;
+    text-align: left;
+}
+
+button.external-tests-owner-subtitle.external-tests-owner-link {
+    cursor: pointer;
+}
+
+button.external-tests-owner-subtitle.external-tests-owner-link:hover {
+    color: var(--guest-surface-accent, #3eb9cd);
+    text-decoration: underline;
+}
+
 .external-tests-owner {
     display: inline-flex;
     align-items: center;
@@ -334,6 +365,18 @@
 }
 
 .external-tests-substatus:empty {
+    display: none;
+}
+
+.external-tests-last-checkin {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--hint-color);
+}
+
+.external-tests-last-checkin:empty {
     display: none;
 }
 

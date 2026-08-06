@@ -1545,6 +1545,9 @@ function getExternalStatusPresentation(test) {
     var lastCheckDate = String(test && test.last_check_date || '').trim();
     var statusText = '';
     var substatusText = '';
+    var lastCheckinText = lastCheckDate
+        ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
+        : '';
 
     if (isDoneToday) {
         statusText = window.t('externalProjectCheckedTodayBtn', {}, lang);
@@ -1553,25 +1556,17 @@ function getExternalStatusPresentation(test) {
             : window.t('externalTestsAllControlsDone', {}, lang);
     } else if (test && isExternalControlDayDue(test)) {
         statusText = window.t('externalTestsControlDayDue', { day: meta.currentDay }, lang);
-        substatusText = lastCheckDate
-            ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
-            : '';
     } else if (meta.nextControlDay) {
         statusText = window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang);
-        substatusText = lastCheckDate
-            ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
-            : '';
     } else {
         statusText = window.t('externalTestsAllControlsDone', {}, lang);
-        substatusText = lastCheckDate
-            ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
-            : '';
     }
 
     return {
         meta: meta,
         statusText: statusText,
         substatusText: substatusText,
+        lastCheckinText: lastCheckinText,
         isDoneToday: isDoneToday,
         isPostControlWindow: !meta.nextControlDay,
     };
@@ -1673,12 +1668,15 @@ function renderExternalGuestTestsSection() {
         var ownerLabel = ownerUsername
             ? '@' + ownerUsername
             : window.t('guestInviteOwnerMissing', {}, lang);
-        var ownerLabelHtml = ownerUsername
-            ? `<button type="button" class="external-tests-owner external-tests-owner-link notranslate" onclick="return openTelegramProfile('${safeOwnerUsernameInline}', event)">${window.escapeHTML(ownerLabel)}</button>`
-            : `<div class="external-tests-owner">${window.escapeHTML(ownerLabel)}</div>`;
+        var ownerSubtitleHtml = ownerUsername
+            ? `<button type="button" class="card-subtitle external-tests-owner-subtitle external-tests-owner-link notranslate" onclick="event.stopPropagation(); return openTelegramProfile('${safeOwnerUsernameInline}', event)">${window.escapeHTML(ownerLabel)}</button>`
+            : `<div class="card-subtitle external-tests-owner-subtitle">${window.escapeHTML(ownerLabel)}</div>`;
         var dayChipHtml = `<span class="meta-chip">${window.escapeHTML(window.t('externalTrackDayLabel', { day: displayDay }, lang))}</span>`;
         var originChipHtml = (!!test.is_external && !!String(test.external_source || '').trim())
             ? renderGuestOriginChip(test.external_source)
+            : '';
+        var chipsHtml = (originChipHtml || dayChipHtml)
+            ? `<div class="external-tests-chips">${originChipHtml}${dayChipHtml}</div>`
             : '';
         var primaryActionLabel = statusMeta.isPostControlWindow && !isContinuedExternal
             ? window.t('externalProjectContinueBtn', {}, lang)
@@ -1689,6 +1687,9 @@ function renderExternalGuestTestsSection() {
         var phaseDoneNotice = !meta.nextControlDay;
         var statusExtraClass = (phaseDoneNotice && !isDoneToday) ? ' external-tests-status--phase-done' : '';
         var substatusExtraClass = (phaseDoneNotice && isDoneToday) ? ' external-tests-status--phase-done' : '';
+        var lastCheckinHtml = statusMeta.lastCheckinText
+            ? `<div class="external-tests-last-checkin">${window.escapeHTML(statusMeta.lastCheckinText)}</div>`
+            : '';
         var actionsHtml = '';
         if (!isDoneToday) {
             if (showPost14Choice) {
@@ -1720,20 +1721,18 @@ function renderExternalGuestTestsSection() {
                         ${renderTestAvatarWithPhaseBadge(test, lang)}
                         <div class="card-info" onclick="openProjectDetailsModal(${test.id}); event.stopPropagation();" style="cursor: pointer;">
                             <div class="card-title notranslate">${safeName}</div>
-                            <div class="card-subtitle notranslate">${safePackage}</div>
+                            ${ownerSubtitleHtml}
                         </div>
                     </div>
                     <div onclick="event.stopPropagation();" style="display: flex; align-items: center;">
                         ${renderTestCardDetailsButton(test.id)}
                     </div>
                 </div>
-                <div class="external-tests-topline">
-                    ${ownerLabelHtml}
-                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${originChipHtml}${dayChipHtml}</div>
-                </div>
+                ${chipsHtml}
                 ${showPost14Choice ? '' : `<div class="external-tests-status${statusExtraClass}">${window.escapeHTML(statusMeta.statusText)}</div>`}
-                ${showPost14Choice ? '' : `<div class="external-tests-substatus${substatusExtraClass}">${window.escapeHTML(statusMeta.substatusText)}</div>`}
+                ${showPost14Choice || !statusMeta.substatusText ? '' : `<div class="external-tests-substatus${substatusExtraClass}">${window.escapeHTML(statusMeta.substatusText)}</div>`}
                 ${actionsHtml}
+                ${lastCheckinHtml}
             </div>
         `;
     }).join('');
