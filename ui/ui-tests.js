@@ -1680,7 +1680,6 @@ function renderTests(force) {
         
         const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
         const userTestingDay = getResolvedTestingDay(test);
-        const isPendingCompletion = !!test.is_pending_completion;
         // Soft-kick cards need an explicit archive action — keep them visible even
         // when the linked project is no longer in an "active buffer" state.
         // Day>=15 alone must NOT park kicked leftovers from a previous cycle here.
