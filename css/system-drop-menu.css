@@ -592,8 +592,9 @@ html[dir="rtl"] .system-language-select {
 }
 
 .settings-email-preview-text.is-set {
-    font-weight: 700;
-    color: var(--text-color);
+    font-weight: 500;
+    font-size: 12px;
+    color: var(--hint-color);
 }
 
 .settings-email-preview-text.is-missing {

@@ -877,9 +877,11 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     }
 
     btn.disabled = false;
-    btn.style.backgroundColor = 'var(--success-color)';
-    btn.style.color = '#fff';
+    btn.style.backgroundColor = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
     btn.style.cursor = 'pointer';
+    btn.classList.add('btn-success', 'btn-confirm-ready');
     if (isScreenshot) {
         if (isExternalTest) {
             btn.innerText = isFirstDayScreenshot
@@ -935,7 +937,10 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
                     }
                 };
             } else {
-                btn.className = 'btn btn-success split-btn-main';
+                btn.className = 'btn btn-success btn-confirm-ready split-btn-main';
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
                 btn.textContent = window.t('confirmTest', {}, lang);
                 btn.onclick = function() {
                     confirmStart(finishedId);
@@ -975,7 +980,7 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         splitWrapper.className = isExternalTest ? 'split-btn-group external-tests-confirm-group' : 'split-btn-group';
         splitWrapper.style.flex = '2';
         splitWrapper.innerHTML =
-            '<button id="btn-confirm-' + finishedId + '" class="' + (isExternalTest ? 'btn btn-success split-btn-main external-tests-confirm-btn external-tests-confirm-ready' : 'btn btn-success split-btn-main') + '" onclick="' + (isExternalTest
+            '<button id="btn-confirm-' + finishedId + '" class="' + (isExternalTest ? 'btn btn-success btn-confirm-ready split-btn-main external-tests-confirm-btn external-tests-confirm-ready' : 'btn btn-success btn-confirm-ready split-btn-main') + '" onclick="' + (isExternalTest
                 ? 'sendExternalDailyCheckinFromUi(' + finishedId + ', event)'
                 : 'confirmStart(' + finishedId + ')') + '">' +
             window.escapeHTML(window.t(isExternalTest ? 'externalProjectCheckinBtn' : 'confirmTest', {}, lang)) +
@@ -3135,7 +3140,9 @@ async function confirmStart(id) {
             card.classList.remove('removing');
             if (btn) {
                 btn.innerText = t.confirmStart;
-                btn.style.backgroundColor = 'var(--success-color)';
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+                btn.classList.add('btn-success', 'btn-confirm-ready');
                 btn.disabled = false;
             }
 
@@ -3234,7 +3241,9 @@ async function confirmStart(id) {
         card.classList.remove('removing');
         if (btn) {
             btn.innerText = t.confirmStart;
-            btn.style.backgroundColor = 'var(--success-color)';
+            btn.style.backgroundColor = '';
+            btn.style.color = '';
+            btn.classList.add('btn-success', 'btn-confirm-ready');
             btn.disabled = false;
         }
         handleApiError('network_error');

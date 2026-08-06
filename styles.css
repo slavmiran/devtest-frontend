@@ -337,6 +337,40 @@
 
 .modal-overlay.active .modal-content { transform: translateY(0); }
 
+/* Shared bottom-sheet drag handle for sliding modals */
+.sheet-handle,
+.dossier-sheet-handle,
+.icon-picker-sheet__handle,
+.package-conflict-modal__handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.22);
+    margin: 0 auto 14px;
+    flex-shrink: 0;
+}
+
+.modal-content:not(:has(> .sheet-handle)):not(:has(> .dossier-sheet-handle)):not(:has(> .icon-picker-sheet__handle)):not(:has(> .package-conflict-modal__handle))::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.22);
+    margin: 0 auto 14px;
+    flex-shrink: 0;
+}
+
+/* Non-bottom-sheet overlays should not get a handle */
+.centered-popup-overlay .modal-content::before,
+.image-zoom-overlay .modal-content::before,
+#image-zoom-modal .modal-content::before,
+#karma-select-popup .modal-content::before,
+.guest-claim-status-modal .modal-content::before {
+    content: none;
+    display: none;
+}
+
 .no-username-overlay__desc,
     z-index: 260;
 }

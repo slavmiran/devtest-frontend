@@ -464,6 +464,7 @@
                 '<div class="term-bust-hero-kicker">' + _esc(_t('termDropBountyHeroKicker')) + '</div>' +
                 '<div class="term-bust-hero-amount notranslate">~' + _esc(_fmtAmount(totalLost, 0)) + '</div>' +
                 '<div class="term-bust-hero-unit">$BUST</div>' +
+                '<div class="term-bust-hero-footnote">' + _esc(_t('termDropBountyHeroFootnote')) + '</div>' +
                 '<div class="term-bust-split" aria-hidden="true">' +
                     '<div class="term-bust-chip">' +
                         '<span class="term-bust-chip-n notranslate">~' + _esc(_fmtAmount(contractLost, 0)) + '</span>' +
@@ -957,15 +958,17 @@
             if (title) title.textContent = _t('termConfirmTitleDrop');
             points.push('<li>' + _esc(_t('termConfirmPointDropPrimary')) + '</li>');
             if (_termState.isBountyDrop) {
-                points.push('<li class="is-warn">' + _esc(_t('termDropBountyLossTitle', {
+                var bustMain = _esc(_t('termDropBountyLossTitle', {
                     total: _fmtAmount(_termState.remainingBounty || 0, 0),
-                })) + '</li>');
+                }));
+                var bustSub = '';
                 if (Number(_termState.contractLost || 0) > 0 || Number(_termState.grantLost || 0) > 0) {
-                    points.push('<li>' + _esc(_t('termDropConfirmBustSplit', {
+                    bustSub = '<div class="leave-confirm-sub">' + _esc(_t('termDropConfirmBustSplit', {
                         contract: _fmtAmount(_termState.contractLost || 0, 0),
                         grant: _fmtAmount(_termState.grantLost || 0, 0),
-                    })) + '</li>');
+                    })) + '</div>';
                 }
+                points.push('<li class="is-warn"><div class="leave-confirm-main">' + bustMain + '</div>' + bustSub + '</li>');
             }
             points.push('<li>' + _esc(_t('termDropEffectNoKarma')) + '</li>');
             if (_termState.isInviteDrop || _termState.isBountyDrop) {

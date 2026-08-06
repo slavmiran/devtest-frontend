@@ -453,17 +453,18 @@
 }
 
 /* Calm confirm buttons on My Tests (avoid acid success green) */
-#tab-tests .btn-success,
-#tab-tests .btn-confirm-ready {
-    background-color: var(--accent-primary, #4c8dff);
-    color: var(--text-on-accent, #fff);
+#tab-tests .btn-success:not([disabled]),
+#tab-tests .btn-confirm-ready:not([disabled]) {
+    background-color: var(--accent-primary, #4c8dff) !important;
+    color: var(--text-on-accent, #fff) !important;
+    border-color: transparent;
 }
 
-#tab-tests .first-day-btn.btn-success,
-#tab-tests .first-day-btn.btn-confirm-ready {
-    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.14));
-    color: var(--accent-primary, #4c8dff);
-    border: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.28));
+#tab-tests .first-day-btn.btn-success:not([disabled]),
+#tab-tests .first-day-btn.btn-confirm-ready:not([disabled]) {
+    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.14)) !important;
+    color: var(--accent-primary, #4c8dff) !important;
+    border: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.28)) !important;
 }
 
 #tab-tests .meta-chip.meta-chip--rewards {

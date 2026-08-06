@@ -1627,6 +1627,7 @@ async function _handleInitialRoute() {
             _clearStartappQueryParam();
         } catch (error) {
             console.error('Initial contribution route error:', error);
+        } finally {
             hideTgDeeplinkLoader('contribution');
         }
         return;

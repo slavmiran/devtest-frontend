@@ -6577,10 +6577,18 @@ async function showContributionInfo(options) {
     switchContributionTab(initialTab);
     modal.classList.add('active');
 
-    if (initialTab === 'history') {
-        await _loadContributionHistoryTab();
-    } else {
-        await _loadContributionCurrentTab();
+    try {
+        if (initialTab === 'history') {
+            await _loadContributionHistoryTab();
+        } else {
+            await _loadContributionCurrentTab();
+        }
+    } finally {
+        // History tab never hid the deeplink glass loader (only Current did),
+        // so claim/history startapp stayed on "Loading data…" forever.
+        if (typeof window.hideTgDeeplinkLoader === 'function') {
+            window.hideTgDeeplinkLoader('contribution');
+        }
     }
 }
 
