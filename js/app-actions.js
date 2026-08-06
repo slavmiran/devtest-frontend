@@ -1857,6 +1857,13 @@ function handleFirstDownload(id, pkg) {
     setTimeout(() => {
         const screenshotBox = document.getElementById(`new-screenshot-box-${id}`);
         if (screenshotBox) screenshotBox.style.display = 'block';
+        const confirmBtn = document.getElementById(`btn-confirm-${id}`);
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.removeAttribute('aria-disabled');
+            confirmBtn.classList.remove('first-day-btn--pending');
+            confirmBtn.classList.add('btn-confirm-ready');
+        }
     }, 1000);
 }
 

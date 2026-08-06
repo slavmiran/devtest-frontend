@@ -436,10 +436,41 @@
     color: var(--text-color);
 }
 
-.first-day-btn.btn-success {
-    border: 1px solid rgba(52, 199, 89, 0.35);
-    background: rgba(52, 199, 89, 0.18);
-    color: #c8ffd8;
+.first-day-btn.btn-success,
+.first-day-btn.btn-confirm-ready {
+    border: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.28));
+    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.14));
+    color: var(--accent-primary, #4c8dff);
+}
+
+.first-day-btn.first-day-btn--pending,
+.first-day-btn.first-day-btn--pending:disabled {
+    border: 1px solid rgba(142, 142, 147, 0.18);
+    background: rgba(142, 142, 147, 0.16);
+    color: var(--hint-color);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+/* Calm confirm buttons on My Tests (avoid acid success green) */
+#tab-tests .btn-success,
+#tab-tests .btn-confirm-ready {
+    background-color: var(--accent-primary, #4c8dff);
+    color: var(--text-on-accent, #fff);
+}
+
+#tab-tests .first-day-btn.btn-success,
+#tab-tests .first-day-btn.btn-confirm-ready {
+    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.14));
+    color: var(--accent-primary, #4c8dff);
+    border: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.28));
+}
+
+#tab-tests .meta-chip.meta-chip--rewards {
+    background: var(--bg-surface-muted);
+    color: var(--hint-color);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    font-weight: 500;
 }
 
 .first-day-copy {
@@ -495,12 +526,27 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 16px;
+    padding: 14px;
     background: rgba(255, 149, 0, 0.07);
     border: 1px solid rgba(255, 149, 0, 0.28);
     border-radius: 14px;
     backdrop-filter: blur(8px);
     margin-bottom: 4px;
+}
+.early-finish-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255, 149, 0, 0.15);
+    padding-bottom: 10px;
+}
+.early-finish-title-block {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
 }
 .early-finish-header {
     display: flex;
@@ -509,14 +555,47 @@
     flex-wrap: wrap;
 }
 .early-finish-icon {
-    font-size: 20px;
+    font-size: 28px;
     line-height: 1;
+    flex-shrink: 0;
 }
 .early-finish-title {
     font-size: 15px;
     font-weight: 700;
     color: #ff9500;
-    flex: 1;
+    line-height: 1.2;
+    min-width: 0;
+}
+.early-finish-reliability {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 1px;
+    flex-shrink: 0;
+    padding: 4px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    max-width: 46%;
+}
+.early-finish-reliability__label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+    color: var(--hint-color);
+    text-align: right;
+    text-transform: uppercase;
+    white-space: normal;
+    max-width: 9.5em;
+}
+.early-finish-reliability__value {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
 }
 .early-finish-bonus-badge {
     font-size: 12px;
@@ -530,13 +609,22 @@
 }
 .early-finish-desc {
     font-size: 13px;
-    color: var(--hint-color);
+    color: var(--text-color);
     line-height: 1.5;
 }
+.early-finish-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+}
 .early-finish-meta {
-    font-size: 12px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 400;
     color: var(--hint-color);
-    opacity: 0.7;
+    line-height: 1.4;
+    opacity: 1;
 }
 .btn-early-finish {
     width: 100%;

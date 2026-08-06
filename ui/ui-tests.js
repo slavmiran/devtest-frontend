@@ -1092,7 +1092,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         const rewardChipLabel = getRewardsChipLabel(rewardsSummary);
         if (rewardChipLabel) {
             const rewardLabel = window.escapeHTML(rewardChipLabel);
-            parts.push(`<button class="meta-chip accent-green notranslate" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
+            parts.push(`<button class="meta-chip meta-chip--rewards notranslate" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
         }
         if (isProjectSynced(test)) {
             const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
@@ -1933,28 +1933,25 @@ function renderTests(force) {
                 }
 
                 actionsHtml = `
-                    <div class="early-finish-banner" style="gap: 10px;">
-                        <!-- HEADER: big icon | title+subtitle | reliability number -->
-                        <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255, 149, 0, 0.15); padding-bottom: 10px;">
-                            <span style="font-size: 36px; line-height: 1; flex-shrink: 0;">🏁</span>
-                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;">
-                                <span style="font-size: 15px; font-weight: 700; color: #ff9500; line-height: 1.2;">${window.t('earlyFinishCardTitle', {}, lang)}</span>
-                                <span style="font-size: 11px; color: var(--hint-color); font-weight: 500; line-height: 1.3;">${lang === 'ru' ? 'Индекс надёжности разработчика' : 'Developer Reliability Index'}</span>
+                    <div class="early-finish-banner">
+                        <div class="early-finish-header-row">
+                            <div class="early-finish-title-block">
+                                <span class="early-finish-icon" aria-hidden="true">🏁</span>
+                                <span class="early-finish-title">${window.escapeHTML(window.t('earlyFinishCardTitle', {}, lang))}</span>
                             </div>
-                            <span style="font-size: 26px; font-weight: 800; color: ${devReliabilityColor}; flex-shrink: 0; line-height: 1;">${devReliability}</span>
+                            <div class="early-finish-reliability" title="${window.escapeHTML(window.t('earlyFinishReliabilityLabel', {}, lang))}">
+                                <span class="early-finish-reliability__label">${window.escapeHTML(window.t('earlyFinishReliabilityLabel', {}, lang))}</span>
+                                <span class="early-finish-reliability__value" style="color: ${devReliabilityColor};">${devReliability}</span>
+                            </div>
                         </div>
-                        <!-- DESCRIPTION -->
-                        <div class="early-finish-desc" style="font-size: 13px; color: var(--text-color); line-height: 1.5;">
+                        <div class="early-finish-desc">
                             ${window.t('earlyFinishCardDesc', {}, lang)}
                         </div>
-                        <!-- BUTTON + stats as subtitle -->
-                        <div style="display: flex; flex-direction: column; align-items: stretch; gap: 4px;">
+                        <div class="early-finish-actions">
                             <button id="btn-early-finish-${test.id}" class="btn btn-early-finish" onclick="claimEarlyFinishBonus(${test.progress_id}, ${test.id})">
-                                ${window.t('earlyFinishClaimBtn', {}, lang)}
+                                ${window.escapeHTML(window.t('earlyFinishClaimBtn', {}, lang))}
                             </button>
-                            <div style="text-align: center; font-size: 11px; font-weight: 400; color: var(--hint-color); line-height: 1.4;">
-                                ${efMetaLabel}
-                            </div>
+                            <div class="early-finish-meta">${window.escapeHTML(efMetaLabel)}</div>
                         </div>
                     </div>
                 `;
@@ -1999,14 +1996,18 @@ function renderTests(force) {
                 `;
             }
 
+            const screenshotDisabledAttrs = shouldShowScreenshotAction
+                ? ''
+                : ' disabled aria-disabled="true"';
+            const screenshotReadyClass = shouldShowScreenshotAction ? ' btn-confirm-ready' : ' first-day-btn--pending';
             actionsHtml = `
                 <div class="first-day-actions">
                     ${groupActionHtml}
                     <button class="btn first-day-btn" style="width: 100%;" onclick="handleFirstDownload(${test.id}, '${safePackage}')">
                         ${window.escapeHTML(downloadLabel)}
                     </button>
-                    <div id="new-screenshot-box-${test.id}" style="display: ${shouldShowScreenshotAction ? 'block' : 'none'};">
-                        <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
+                    <div id="new-screenshot-box-${test.id}">
+                        <button id="btn-confirm-${test.id}" class="btn first-day-btn${screenshotReadyClass}" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')"${screenshotDisabledAttrs}>
                             ${window.escapeHTML(screenshotLabel)}
                         </button>
                     </div>
