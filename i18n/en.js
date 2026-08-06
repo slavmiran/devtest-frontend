@@ -897,7 +897,7 @@
             guestProjectsAccordionTitle: "👽 Show Guest Projects",
             projectFindTestersCta: "🕹 Invite testers",
             projectManualExternalCta: "➕ Add manually",
-            guestTestsInfoLink: "ℹ️ How guest testing works",
+            guestTestsInfoLink: "How guest testing works",
             guestTestsActionBtn: "🕹 Invite testers",
             guestTestsFullInfo: "While a project is not claimed by its owner, it remains a guest project. On ordinary days, they stay here. On control days, they move to the main list.\n\nNo karma, bonuses, or penalties apply. For manually added projects, you define the starting day.\n\n📊 <b>Available for test:</b> {guest_count} guest projects.\n👥 <b>Available contacts:</b> {leads_count} raw leads (can be retrieved via <code>/leads</code> command in the bot).",
             manualExternalModalTitle: "➕ Add external project",
