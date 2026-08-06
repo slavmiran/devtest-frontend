@@ -1142,6 +1142,52 @@ function _openGuaranteedTestOfferWhenReady(maxAttempts, intervalMs) {
     return false;
 }
 
+function _openGuaranteedFiatUploadWhenReady(orderId, maxAttempts, intervalMs) {
+    var attemptsLeft = Number(maxAttempts || 0);
+    var waitMs = Number(intervalMs || 0);
+    var targetOrderId = Number(orderId || 0) || null;
+    var inFlight = false;
+
+    if (attemptsLeft <= 0) attemptsLeft = 40;
+    if (waitMs <= 0) waitMs = 100;
+
+    function tryOpen() {
+        if (inFlight) return;
+        if (typeof window.openGuaranteedFiatUploadFromOrder !== 'function') return;
+        inFlight = true;
+        Promise.resolve(window.openGuaranteedFiatUploadFromOrder(targetOrderId))
+            .then(function (ok) {
+                inFlight = false;
+                if (ok) {
+                    clearInterval(pollId);
+                    return;
+                }
+                attemptsLeft -= 1;
+                if (attemptsLeft <= 0) {
+                    clearInterval(pollId);
+                    console.warn('Guaranteed fiat upload deep link failed to open.');
+                }
+            })
+            .catch(function (error) {
+                inFlight = false;
+                attemptsLeft -= 1;
+                console.error('Guaranteed fiat upload deep link error:', error);
+                if (attemptsLeft <= 0) clearInterval(pollId);
+            });
+    }
+
+    tryOpen();
+    var pollId = setInterval(function () {
+        if (attemptsLeft <= 0) {
+            clearInterval(pollId);
+            return;
+        }
+        tryOpen();
+    }, waitMs);
+
+    return false;
+}
+
 function _parseInitialRouteTarget() {
     var params = new URLSearchParams(window.location.search || '');
     var startParam = _getStartappParam();
@@ -1426,11 +1472,7 @@ async function _handleInitialRoute() {
 
     if (route.openGuaranteedUpload) {
         try {
-            if (typeof window.showGuaranteedTestWizardPayment === 'function') {
-                window.showGuaranteedTestWizardPayment({ keepState: true });
-            } else if (typeof window.showGuaranteedTestWizardStep1 === 'function') {
-                window.showGuaranteedTestWizardStep1({ keepState: true });
-            }
+            _openGuaranteedFiatUploadWhenReady(route.gtOrderId, 40, 100);
             _clearStartappQueryParam();
         } catch (error) {
             console.error('Initial guaranteed upload route error:', error);

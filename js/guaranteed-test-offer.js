@@ -178,13 +178,19 @@
         }
     }
 
-    function showGuaranteedTestOfferModal() {
+    function showGuaranteedTestOfferModal(skipGuard) {
+        if (!skipGuard && typeof window.guardGuaranteedPrivateTestStart === 'function') {
+            window.guardGuaranteedPrivateTestStart(function () {
+                showGuaranteedTestOfferModal(true);
+            });
+            return;
+        }
         var overlay = ensureModalInDOM();
         if (overlay) {
             overlay.style.display = 'flex';
             overlay.style.zIndex = '99999';
         } else {
-            setTimeout(showGuaranteedTestOfferModal, 50);
+            setTimeout(function () { showGuaranteedTestOfferModal(true); }, 50);
         }
     }
 

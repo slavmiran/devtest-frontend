@@ -1544,6 +1544,72 @@
     color: var(--text-secondary, #AEB7C2);
 }
 
+.gtw-start-gate-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10060;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(8, 10, 14, 0.72);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.gtw-start-gate-overlay.is-open { opacity: 1; }
+
+.gtw-start-gate-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+    border-radius: var(--gt-radius-section, 16px);
+    background: var(--gt-surface-raised, #171b22);
+    border: 1px solid var(--gt-hairline, rgba(255, 255, 255, 0.08));
+}
+
+.gtw-start-gate-title {
+    margin: 0 0 10px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gtw-start-gate-desc {
+    margin: 0 0 16px;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+.gtw-start-gate-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gtw-start-gate-secondary,
+.gtw-start-gate-cancel {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.gtw-start-gate-secondary {
+    border: 1px solid var(--gt-hairline, rgba(255, 255, 255, 0.12));
+    background: transparent;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gtw-start-gate-cancel {
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary, #717C89);
+}
+
 .gtw-fiat-waiting-card {
     margin-top: 4px;
     padding: 14px;

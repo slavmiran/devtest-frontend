@@ -236,6 +236,10 @@
             'Opening chat with the manager…',
             'Открываем чат с менеджером…'
         ],
+        fiatUploadOpenFailed: [
+            'Could not open the payment receipt screen for this order.',
+            'Не удалось открыть экран загрузки чека для этого заказа.'
+        ],
         fiatPersonalYes: ['Yes', 'Да'],
         fiatPersonalNo: ['No', 'Нет'],
         fiatDmMessage: [
@@ -257,6 +261,27 @@
         ],
         toastFailed: ['Could not create the order. Please try again.', 'Не удалось создать заявку. Попробуйте еще раз.'],
         toastProofFailed: ['Could not attach the payment proof. Please try again.', 'Не удалось прикрепить подтверждение оплаты. Попробуйте еще раз.'],
+        toastOrderAlreadyActive: [
+            'You already have an active order for this app. We attached the receipt to order {code}.',
+            'У вас уже есть активный заказ для этого приложения. Чек прикреплён к заказу {code}.'
+        ],
+        toastProofMissing: ['Upload the payment screenshot first.', 'Сначала загрузите скриншот оплаты.'],
+        gtGateTitle: ['Unfinished Private Testing order', 'Незавершённое оформление'],
+        gtGateDraftDesc: [
+            'You have a draft for “{app}”. Continue where you left off or start a new setup.',
+            'У вас есть черновик для «{app}». Продолжите оформление или начните новое.'
+        ],
+        gtGateAwaitingDesc: [
+            'Order #{code} for “{app}” is waiting for payment. Continue to attach the receipt or start a new setup for another app.',
+            'Заказ #{code} для «{app}» ожидает оплату. Продолжите, чтобы приложить чек, или начните новое оформление для другого приложения.'
+        ],
+        gtGateContinue: ['Continue', 'Продолжить'],
+        gtGateStartNew: ['Start new', 'Начать новый'],
+        gtGateClose: ['Close', 'Закрыть'],
+        gtGateStartNewHint: [
+            'Draft cleared. Order #{code} stays in My Projects — a new order is only possible for a different app.',
+            'Черновик сброшен. Заказ #{code} останется в «Мои проекты» — новый заказ возможен только для другого приложения.'
+        ],
         cryptoCopiedToast: [
             'Copied. Make the transfer in {name}, then come back and upload the screenshot.',
             'Скопировано. Сделайте перевод в {name}, затем вернитесь и загрузите скриншот.'
@@ -2507,6 +2532,28 @@
         }
     }
 
+    function getOrderPublicCode(order, fallbackId) {
+        var code = String((order && order.public_code) || '').trim();
+        if (code) return code;
+        var id = Number((order && order.id) || fallbackId || 0);
+        if (id > 0) return 'GT-' + (24766 + id * 41);
+        return '';
+    }
+
+    function finishGuaranteedOrderSubmit(publicCode, toastKey, toastVars) {
+        if (typeof window.invalidateGuaranteedOrdersCache === 'function') {
+            window.invalidateGuaranteedOrdersCache();
+        }
+        closePaymentFlow();
+        hideGuaranteedTestWizardPayment();
+        hideGuaranteedTestWizardStep2();
+        hideGuaranteedTestWizardStep1();
+        clearGuaranteedTestWizardDraft();
+        if (typeof showToast === 'function') {
+            showToast(L(toastKey || 'toastSubmitted', toastVars || { code: publicCode }));
+        }
+    }
+
     async function uploadPaymentScreenshot() {
         var file = wizardState.paymentScreenshotFile;
         if (!file) return '';
@@ -2514,6 +2561,7 @@
         var apiBase = (typeof API_BASE !== 'undefined' ? API_BASE : '') || (window.App && window.App.API_BASE) || '';
         var formData = new FormData();
         formData.append('file', file);
+        formData.append('upload_kind', 'payment_proof');
         formData.append('user_id', String((window.App && window.App.userId) || window.userId || 0));
         if (typeof withInitData === 'function') {
             var payload = withInitData({});
@@ -2537,6 +2585,25 @@
         return '';
     }
 
+    async function attachProofToGuaranteedOrder(orderId, publicCode, toastKey, existingProofUrl) {
+        var proofUrl = String(existingProofUrl || '').trim() || await uploadPaymentScreenshot();
+        if (!proofUrl) throw new Error('proof_upload_failed');
+        var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders/' + encodeURIComponent(orderId) + '/attach-proof', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(getInitDataPayload({ proof_url: proofUrl }))
+        });
+        var payload = {};
+        try { payload = await response.json(); } catch (_) {}
+        if (!response.ok || payload.status === 'error') {
+            throw new Error((payload && (payload.code || payload.detail || payload.message)) || 'proof_attach_failed');
+        }
+        var order = payload.order || {};
+        var code = getOrderPublicCode(order, orderId) || publicCode || '';
+        finishGuaranteedOrderSubmit(code, toastKey || 'toastSubmitted', { code: code });
+        return code;
+    }
+
     async function submitGuaranteedOrderAndOpenTelegram() {
         var method = wizardState.paymentMethod;
         if (!method) return;
@@ -2551,20 +2618,25 @@
         try {
             var amountUsd = getPaymentAmount(method);
             var proofUrl = await uploadPaymentScreenshot();
+            if (!proofUrl) {
+                if (typeof showToast === 'function') showToast(L('toastProofMissing'));
+                throw new Error('proof_upload_failed');
+            }
             var exchange = getExchangeById(wizardState.paymentExchange);
             var notesParts = [];
             if (exchange) notesParts.push('exchange=' + exchange.name);
-            if (proofUrl) notesParts.push('proof=' + proofUrl);
+            notesParts.push('proof=' + proofUrl);
 
             var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(withInitData({
+                body: JSON.stringify(getInitDataPayload({
                     app_name: wizardState.appName,
                     app_type: wizardState.appType,
                     testing_link: wizardState.testingLink,
                     payment_method: method,
                     amount_usd: amountUsd,
+                    create_mode: 'submit',
                     notes: getGuaranteedOrderNotes(notesParts)
                 }))
             });
@@ -2572,28 +2644,32 @@
             try {
                 payload = await response.json();
             } catch (_) {}
+
             if (!response.ok || payload.status === 'error') {
+                if ((payload.code || '') === 'order_already_active') {
+                    var details = getOrderDetails(payload);
+                    var existingId = Number(details.id || details.order_id || 0);
+                    var existingStatus = String(details.status || '').toLowerCase();
+                    var existingCode = String(details.public_code || details.order_code || '').trim();
+                    if (existingId > 0 && (existingStatus === 'awaiting_payment' || existingStatus === 'pending')) {
+                        await attachProofToGuaranteedOrder(existingId, existingCode, 'toastOrderAlreadyActive', proofUrl);
+                        return;
+                    }
+                }
                 throw new Error((payload && (payload.code || payload.detail || payload.message)) || 'order_create_failed');
             }
 
             var order = payload.order || {};
-            var publicCode = String(order.public_code || ('GT-' + (10000 + Number(order.id || 0))));
-            if (typeof window.invalidateGuaranteedOrdersCache === 'function') {
-                window.invalidateGuaranteedOrdersCache();
-            }
-
-            closePaymentFlow();
-            hideGuaranteedTestWizardPayment();
-            hideGuaranteedTestWizardStep2();
-            hideGuaranteedTestWizardStep1();
-            clearGuaranteedTestWizardDraft();
-            if (typeof showToast === 'function') {
-                showToast(L('toastSubmitted', { code: publicCode }));
-            }
+            var publicCode = getOrderPublicCode(order, order.id);
+            finishGuaranteedOrderSubmit(publicCode, 'toastSubmitted', { code: publicCode });
         } catch (error) {
             console.error('Guaranteed order submit failed:', error);
             if (typeof showToast === 'function') {
-                showToast(L('toastFailed'));
+                if (String(error && error.message) === 'proof_upload_failed') {
+                    showToast(L('toastProofMissing'));
+                } else {
+                    showToast(L('toastFailed'));
+                }
             }
             if (submitBtn) {
                 submitBtn.disabled = false;
@@ -2610,29 +2686,11 @@
             submitBtn.textContent = L('submitting');
         }
         try {
-            var proofUrl = await uploadPaymentScreenshot();
-            if (!proofUrl) throw new Error('proof_upload_failed');
-            var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders/' + encodeURIComponent(wizardState.fiatOrderId) + '/attach-proof', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(getInitDataPayload({ proof_url: proofUrl }))
-            });
-            var payload = {};
-            try { payload = await response.json(); } catch (_) {}
-            if (!response.ok || payload.status === 'error') {
-                throw new Error((payload && (payload.code || payload.detail || payload.message)) || 'proof_attach_failed');
-            }
-            if (typeof window.invalidateGuaranteedOrdersCache === 'function') {
-                window.invalidateGuaranteedOrdersCache();
-            }
-            closePaymentFlow();
-            hideGuaranteedTestWizardPayment();
-            hideGuaranteedTestWizardStep2();
-            hideGuaranteedTestWizardStep1();
-            clearGuaranteedTestWizardDraft();
-            if (typeof showToast === 'function') {
-                showToast(L('toastSubmitted', { code: wizardState.fiatPublicCode || '' }));
-            }
+            await attachProofToGuaranteedOrder(
+                wizardState.fiatOrderId,
+                wizardState.fiatPublicCode,
+                'toastSubmitted'
+            );
         } catch (error) {
             console.error('Fiat proof attach failed:', error);
             if (typeof showToast === 'function') showToast(L('toastProofFailed'));
@@ -2794,12 +2852,247 @@
         if (overlayPay) overlayPay.style.display = 'none';
     }
 
+    async function fetchIncompleteGuaranteedOrders() {
+        var apiBase = (typeof API_BASE !== 'undefined' ? API_BASE : '') || (window.App && window.App.API_BASE) || '';
+        var initData = '';
+        if (typeof withInitData === 'function') {
+            initData = String((withInitData({}) || {}).init_data || '');
+        } else if (typeof getTelegramInitDataRaw === 'function') {
+            initData = String(getTelegramInitDataRaw() || '');
+        }
+        try {
+            var resp = await fetch(apiBase + '/guaranteed-test-orders/mine?init_data=' + encodeURIComponent(initData));
+            var data = await resp.json();
+            if (data && data.status === 'success' && Array.isArray(data.orders)) {
+                return data.orders.filter(function (order) {
+                    return String((order && order.status) || '').toLowerCase() === 'awaiting_payment';
+                });
+            }
+        } catch (e) {
+            console.warn('Failed to load incomplete guaranteed orders:', e);
+        }
+        return [];
+    }
+
+    async function detectGuaranteedStartConflict() {
+        var draft = readGuaranteedTestWizardDraft();
+        if (draft && String(draft.app_name || '').trim()) {
+            return {
+                kind: 'draft',
+                appName: String(draft.app_name || '').trim(),
+                step: Number(draft.step || 1),
+                fiatOrderId: draft.fiat_order_id || null
+            };
+        }
+        var awaitingOrders = await fetchIncompleteGuaranteedOrders();
+        if (awaitingOrders.length) {
+            var order = awaitingOrders[0];
+            return {
+                kind: 'awaiting_payment',
+                order: order,
+                appName: String((order && order.app_name) || '').trim(),
+                orderId: Number(order && order.id) || 0,
+                publicCode: getOrderPublicCode(order, order && order.id)
+            };
+        }
+        return null;
+    }
+
+    function hideGuaranteedStartGate() {
+        var overlay = document.getElementById('gtw-start-gate-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.style.display = 'none';
+    }
+
+    function showGuaranteedStartGate(conflict, onProceed) {
+        var overlay = document.getElementById('gtw-start-gate-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'gtw-start-gate-overlay';
+            overlay.className = 'gtw-start-gate-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            document.body.appendChild(overlay);
+        }
+
+        var desc = '';
+        if (conflict.kind === 'draft') {
+            desc = L('gtGateDraftDesc', { app: conflict.appName });
+        } else {
+            desc = L('gtGateAwaitingDesc', {
+                code: conflict.publicCode || ('#' + conflict.orderId),
+                app: conflict.appName || '—'
+            });
+        }
+
+        overlay.innerHTML =
+            '<div class="gtw-start-gate-card">' +
+                '<h3 class="gtw-start-gate-title">' + escapeHtml(L('gtGateTitle')) + '</h3>' +
+                '<p class="gtw-start-gate-desc">' + escapeHtml(desc) + '</p>' +
+                '<div class="gtw-start-gate-actions">' +
+                    '<button type="button" class="gtw-continue-btn" id="gtw-start-gate-continue">' + escapeHtml(L('gtGateContinue')) + '</button>' +
+                    '<button type="button" class="gtw-start-gate-secondary" id="gtw-start-gate-new">' + escapeHtml(L('gtGateStartNew')) + '</button>' +
+                    '<button type="button" class="gtw-start-gate-cancel" id="gtw-start-gate-close">' + escapeHtml(L('gtGateClose')) + '</button>' +
+                '</div>' +
+            '</div>';
+
+        overlay.style.display = 'flex';
+        overlay.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(function () { overlay.classList.add('is-open'); });
+
+        overlay.onclick = function (event) {
+            if (event.target === overlay) hideGuaranteedStartGate();
+        };
+
+        var continueBtn = overlay.querySelector('#gtw-start-gate-continue');
+        var newBtn = overlay.querySelector('#gtw-start-gate-new');
+        var closeBtn = overlay.querySelector('#gtw-start-gate-close');
+
+        if (continueBtn) {
+            continueBtn.onclick = function () {
+                hideGuaranteedStartGate();
+                if (conflict.kind === 'draft') {
+                    resumeGuaranteedTestWizardFromDraft();
+                    return;
+                }
+                if (conflict.orderId && typeof window.openGuaranteedFiatUploadFromOrder === 'function') {
+                    window.openGuaranteedFiatUploadFromOrder(conflict.orderId);
+                }
+            };
+        }
+        if (newBtn) {
+            newBtn.onclick = function () {
+                hideGuaranteedStartGate();
+                clearGuaranteedTestWizardDraft();
+                if (conflict.kind === 'awaiting_payment' && conflict.publicCode) {
+                    if (typeof showToast === 'function') {
+                        showToast(L('gtGateStartNewHint', { code: conflict.publicCode }));
+                    }
+                }
+                if (typeof onProceed === 'function') onProceed();
+            };
+        }
+        if (closeBtn) {
+            closeBtn.onclick = hideGuaranteedStartGate;
+        }
+    }
+
+    async function guardGuaranteedPrivateTestStart(onProceed) {
+        if (typeof onProceed !== 'function') return;
+        try {
+            var conflict = await detectGuaranteedStartConflict();
+            if (!conflict) {
+                onProceed();
+                return;
+            }
+            showGuaranteedStartGate(conflict, onProceed);
+        } catch (error) {
+            console.warn('Guaranteed start gate failed, proceeding:', error);
+            onProceed();
+        }
+    }
+
+    function parseGuaranteedOrderNotesMap(notes) {
+        var map = {};
+        String(notes || '').split(';').forEach(function (part) {
+            var chunk = String(part || '').trim();
+            if (!chunk) return;
+            var idx = chunk.indexOf('=');
+            if (idx <= 0) return;
+            var key = chunk.slice(0, idx).trim().toLowerCase();
+            var value = chunk.slice(idx + 1).trim();
+            if (key) map[key] = value;
+        });
+        return map;
+    }
+
+    async function fetchMyGuaranteedOrderById(orderId) {
+        var id = Number(orderId || 0);
+        if (!id) return null;
+        var apiBase = (typeof API_BASE !== 'undefined' ? API_BASE : '') || (window.App && window.App.API_BASE) || '';
+        var initData = '';
+        if (typeof withInitData === 'function') {
+            initData = String((withInitData({}) || {}).init_data || '');
+        } else if (typeof getTelegramInitDataRaw === 'function') {
+            initData = String(getTelegramInitDataRaw() || '');
+        } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+            initData = String(window.Telegram.WebApp.initData || '');
+        }
+        var resp = await fetch(apiBase + '/guaranteed-test-orders/mine?init_data=' + encodeURIComponent(initData));
+        var payload = {};
+        try { payload = await resp.json(); } catch (_) {}
+        if (!resp.ok || payload.status === 'error') return null;
+        var orders = Array.isArray(payload.orders) ? payload.orders : [];
+        return orders.find(function (order) { return Number(order && order.id) === id; }) || null;
+    }
+
+    function applyGuaranteedOrderForFiatUpload(order) {
+        var notes = parseGuaranteedOrderNotesMap(order && order.notes);
+        wizardState.step = 3;
+        wizardState.appName = String((order && order.app_name) || wizardState.appName || '').trim();
+        wizardState.appType = String((order && order.app_type) || wizardState.appType || 'free').toLowerCase() === 'paid' ? 'paid' : 'free';
+        wizardState.testingLink = String((order && order.testing_link) || wizardState.testingLink || '').trim();
+        wizardState.paymentMethod = 'rub';
+        wizardState.paymentExchange = null;
+        wizardState.fiatOrderId = Number(order && order.id) || null;
+        wizardState.fiatPublicCode = String((order && order.public_code) || '').trim();
+        if (!wizardState.fiatPublicCode && wizardState.fiatOrderId) {
+            wizardState.fiatPublicCode = 'GT-' + (24766 + Number(wizardState.fiatOrderId) * 41);
+        }
+        wizardState.fiatCurrency = String(notes.currency || wizardState.fiatCurrency || '').trim().toUpperCase();
+        wizardState.fiatBankName = String(notes.bank || wizardState.fiatBankName || '').trim();
+        if (Object.prototype.hasOwnProperty.call(notes, 'personal_account')) {
+            wizardState.fiatPersonalAccount = String(notes.personal_account || '').toLowerCase() !== 'no';
+        }
+        wizardState.paymentStep1Done = true;
+        wizardState.paymentScreenshotUrl = '';
+        wizardState.paymentScreenshotFile = null;
+        persistGuaranteedTestWizardDraft();
+    }
+
+    async function openGuaranteedFiatUploadFromOrder(orderId) {
+        var id = Number(orderId || 0);
+        if (!id) return false;
+        if (typeof window.hideGuaranteedTestOfferModal === 'function') {
+            window.hideGuaranteedTestOfferModal();
+        }
+        ensureWizardInDOM();
+        try {
+            var order = await fetchMyGuaranteedOrderById(id);
+            if (!order) {
+                if (typeof showToast === 'function') showToast(L('fiatUploadOpenFailed'));
+                return false;
+            }
+            var status = String(order.status || '').toLowerCase();
+            if (status !== 'awaiting_payment' && status !== 'pending' && status !== 'paid') {
+                if (typeof showToast === 'function') showToast(L('fiatUploadOpenFailed'));
+                return false;
+            }
+            applyGuaranteedOrderForFiatUpload(order);
+            hideGuaranteedTestWizardStep1();
+            hideGuaranteedTestWizardStep2();
+            showGuaranteedTestWizardPayment({ keepState: true });
+            openPaymentFlow('rub');
+            wizardState.paymentStep1Done = true;
+            renderPaymentFlow();
+            return true;
+        } catch (error) {
+            console.error('Failed to open fiat upload from deep link:', error);
+            if (typeof showToast === 'function') showToast(L('fiatUploadOpenFailed'));
+            return false;
+        }
+    }
+
     window.showGuaranteedTestWizardStep1 = showGuaranteedTestWizardStep1;
     window.hideGuaranteedTestWizardStep1 = hideGuaranteedTestWizardStep1;
     window.showGuaranteedTestWizardStep2 = showGuaranteedTestWizardStep2;
     window.hideGuaranteedTestWizardStep2 = hideGuaranteedTestWizardStep2;
     window.showGuaranteedTestWizardPayment = showGuaranteedTestWizardPayment;
     window.hideGuaranteedTestWizardPayment = hideGuaranteedTestWizardPayment;
+    window.openGuaranteedFiatUploadFromOrder = openGuaranteedFiatUploadFromOrder;
+    window.guardGuaranteedPrivateTestStart = guardGuaranteedPrivateTestStart;
     window.getGuaranteedTestWizardDraft = readGuaranteedTestWizardDraft;
     window.clearGuaranteedTestWizardDraft = clearGuaranteedTestWizardDraft;
     window.resumeGuaranteedTestWizardFromDraft = resumeGuaranteedTestWizardFromDraft;
