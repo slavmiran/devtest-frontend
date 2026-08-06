@@ -4,14 +4,33 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. Cards: flatter surface, tighter rhythm
+   1. Cards: subtle lift gradient so edges read clearly off the page bg
    -------------------------------------------------------------------------- */
-#tab-tests .card {
+#tab-tests .card:not(.external-tests-card) {
     padding: 14px;
     margin-bottom: 10px;
     border-radius: 18px;
-    box-shadow: none;
-    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    background:
+        radial-gradient(circle at 10% 0%, rgba(255, 255, 255, 0.055), transparent 44%),
+        linear-gradient(180deg, rgba(46, 46, 50, 0.98) 0%, rgba(32, 32, 36, 0.96) 100%);
+}
+
+#tab-tests .card.card-done,
+#tab-tests .card.card-done.done-today-card {
+    background:
+        radial-gradient(circle at 10% 0%, rgba(52, 199, 89, 0.1), transparent 44%),
+        linear-gradient(180deg, rgba(38, 46, 42, 0.98) 0%, rgba(28, 34, 31, 0.96) 100%);
+    border-color: rgba(52, 199, 89, 0.22);
+}
+
+#tab-tests .card.card-pending-release,
+#tab-tests .card.pending-release-carousel-card {
+    background:
+        radial-gradient(circle at 10% 0%, rgba(255, 149, 0, 0.1), transparent 44%),
+        linear-gradient(180deg, rgba(50, 42, 34, 0.98) 0%, rgba(34, 30, 26, 0.96) 100%);
+    border-color: rgba(255, 149, 0, 0.22);
 }
 
 #tab-tests .card > .card-header {
@@ -481,12 +500,39 @@ button.ts-section-head {
     flex-shrink: 0;
 }
 
+.ts-section-head__title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.ts-section-head__count--inline {
+    margin-top: 1px;
+}
+
 .ts-section-head__chevron {
     flex-shrink: 0;
-    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     color: var(--ts-accent, var(--hint-color));
-    opacity: 0.7;
-    transition: transform 0.2s ease;
+    opacity: 0.85;
+    transition: transform 0.22s ease, background-color 0.18s ease;
+}
+
+.ts-section-head__chevron-icon {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.ts-section-head--clickable:active .ts-section-head__chevron {
+    background: rgba(255, 255, 255, 0.06);
 }
 
 /* --- theme: Мои тесты (active) --- */
@@ -541,22 +587,34 @@ button.ts-section-head {
     --ts-border: rgba(52, 199, 89, 0.22);
     --ts-count-bg: rgba(52, 199, 89, 0.16);
     margin-bottom: 0;
-    border-radius: 16px 16px 0 0;
 }
 
 #done-section.accordion {
+    overflow: visible;
     border: none;
     background: transparent;
+    margin-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Collapsed: full rounded header — avoids clipped bottom corners from .accordion { overflow:hidden } */
+#done-section.accordion:not(.active) .ts-section-head--done {
+    border-radius: 16px;
 }
 
 #done-section .accordion-content.done-today-scroll {
     border: 1px solid var(--ts-border, var(--border-strong));
     border-top: none;
     border-radius: 0 0 16px 16px;
+    background: rgba(28, 28, 30, 0.35);
 }
 
 #done-section.accordion.active .ts-section-head--done {
     border-radius: 16px 16px 0 0;
+}
+
+#done-section.accordion.active .accordion-icon,
+.pending-release-section:not(.is-collapsed) .pending-release-section__chevron {
+    transform: rotate(180deg);
 }
 
 /* Grant-attention pulse on the buffer header rides the same accent token now. */

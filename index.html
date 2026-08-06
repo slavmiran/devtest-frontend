@@ -86,7 +86,7 @@
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260806-gt-start-gate-v2">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260806-section-seams-v1">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260806-card-lift-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
 <body>
@@ -343,7 +343,9 @@
                 </div>
                 <div class="ts-section-head__meta pending-release-section__meta">
                     <span id="pending-release-count" class="ts-section-head__count pending-release-count">0</span>
-                    <span class="ts-section-head__chevron pending-release-section__chevron" aria-hidden="true">▼</span>
+                    <span class="ts-section-head__chevron pending-release-section__chevron" aria-hidden="true">
+                        <svg class="ts-section-head__chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </span>
                 </div>
             </button>
             <div id="pending-release-scroll-wrap" class="pending-release-scroll-wrap">
@@ -355,10 +357,14 @@
             <div class="ts-section-head ts-section-head--done ts-section-head--clickable accordion-header" onclick="toggleAccordion()">
                 <span class="ts-section-head__icon" aria-hidden="true">✅</span>
                 <div class="ts-section-head__titles">
-                    <h3 id="t-doneToday" class="ts-section-head__title" data-i18n="doneToday">Выполнено сегодня</h3>
-                    <p class="ts-section-head__desc">(<span id="done-count">0</span>)</p>
+                    <div class="ts-section-head__title-row">
+                        <h3 id="t-doneToday" class="ts-section-head__title" data-i18n="doneToday">Выполнено сегодня</h3>
+                        <span id="done-count" class="ts-section-head__count ts-section-head__count--inline">0</span>
+                    </div>
                 </div>
-                <span class="ts-section-head__chevron accordion-icon" aria-hidden="true">▼</span>
+                <span class="ts-section-head__chevron accordion-icon" aria-hidden="true">
+                    <svg class="ts-section-head__chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </span>
             </div>
             <div class="accordion-content done-today-scroll" id="done-list">
                 <!-- Done cards will be injected here -->
