@@ -146,6 +146,14 @@ function _isAutoAcceptMutualAvailable() {
     return !!_autoAcceptMutualAvailable;
 }
 
+function _isAutoAcceptSectionAvailable() {
+    var mutualOk = _isAutoAcceptMutualAvailable();
+    var bountyOk = (typeof _isAutoAcceptBountyAvailable === 'function')
+        ? _isAutoAcceptBountyAvailable()
+        : (typeof window._autoAcceptBountyAvailable === 'undefined' ? true : !!window._autoAcceptBountyAvailable);
+    return mutualOk && bountyOk;
+}
+
 function _showAutoAcceptLockedFeedback() {
     var message = window.t('autoAcceptMutualLockedToast', {}, lang);
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
@@ -156,12 +164,23 @@ function _showAutoAcceptLockedFeedback() {
     }
 }
 
+function syncAutoAcceptSectionUi() {
+    var sectionLabel = document.getElementById('auto-accept-section-label');
+    var sectionMeta = document.getElementById('auto-accept-section-meta');
+    var available = _isAutoAcceptSectionAvailable();
+    if (sectionMeta) {
+        sectionMeta.textContent = window.t('autoAcceptSectionMeta', {}, lang);
+    }
+    if (sectionLabel) {
+        var baseLabel = window.t('autoAcceptSectionLabel', {}, lang);
+        sectionLabel.textContent = available ? baseLabel : ('🔒 ' + baseLabel);
+    }
+}
+
 function syncAutoAcceptToggleUi() {
     var toggle = document.getElementById('auto-accept-mutual-toggle');
     if (!toggle) return;
     var available = _isAutoAcceptMutualAvailable();
-    var meta = document.getElementById('auto-accept-mutual-meta')
-        || document.querySelector('#auto-accept-mutual-row [data-i18n="autoAcceptMutualMeta"]');
     var label = document.getElementById('auto-accept-mutual-label');
 
     // Keep input clickable when locked — disabled checkboxes swallow taps and show no feedback.
@@ -169,13 +188,19 @@ function syncAutoAcceptToggleUi() {
     toggle.checked = !!_autoAcceptMutualEnabled && available;
     toggle.setAttribute('aria-disabled', available ? 'false' : 'true');
 
-    if (meta) {
-        meta.textContent = window.t('autoAcceptMutualMeta', {}, lang);
-    }
     if (label) {
-        var baseLabel = window.t('autoAcceptMutualLabel', {}, lang);
-        label.textContent = available ? baseLabel : ('🔒 ' + baseLabel);
+        label.textContent = window.t('autoAcceptMutualLabel', {}, lang);
     }
+    syncAutoAcceptSectionUi();
+}
+
+function showAutoAcceptSectionInfo() {
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    if (!_isAutoAcceptSectionAvailable()) {
+        _showAutoAcceptLockedFeedback();
+        return;
+    }
+    showToast(window.t('autoAcceptSectionInfoToast', {}, lang));
 }
 
 function showAutoAcceptMutualInfo() {

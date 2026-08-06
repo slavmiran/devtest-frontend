@@ -534,15 +534,15 @@ function syncAutoAcceptBountyToggleUi() {
     var toggle = document.getElementById('auto-accept-bounty-toggle');
     if (!toggle) return;
     var available = _isAutoAcceptBountyAvailable();
-    var meta = document.getElementById('auto-accept-bounty-meta');
     var label = document.getElementById('auto-accept-bounty-label');
     toggle.disabled = !!_bountyAppsToggleInFlight;
     toggle.checked = !!window._autoAcceptBountyEnabled && available;
     toggle.setAttribute('aria-disabled', available ? 'false' : 'true');
-    if (meta) meta.textContent = window.t('autoAcceptBountyMeta', {}, lang);
     if (label) {
-        var baseLabel = window.t('autoAcceptBountyLabel', {}, lang);
-        label.textContent = available ? baseLabel : ('🔒 ' + baseLabel);
+        label.textContent = window.t('autoAcceptBountyLabel', {}, lang);
+    }
+    if (typeof syncAutoAcceptSectionUi === 'function') {
+        syncAutoAcceptSectionUi();
     }
 }
 

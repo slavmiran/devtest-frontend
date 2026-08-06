@@ -154,25 +154,27 @@
                     </svg>
                 </span>
             </div>
-            <div class="system-setting-row" id="auto-accept-mutual-row">
+            <div class="system-setting-row system-setting-row--auto-accept" id="auto-accept-section">
                 <div class="system-setting-copy-wrap">
-                    <button type="button" class="system-setting-copy" id="auto-accept-mutual-label" onclick="showAutoAcceptMutualInfo()" data-i18n="autoAcceptMutualLabel">Авто-принятие взаимок</button>
-                    <div class="system-setting-meta" id="auto-accept-mutual-meta" data-i18n="autoAcceptMutualMeta">Новые заявки подтверждаются без ожидания</div>
+                    <button type="button" class="system-setting-copy" id="auto-accept-section-label" onclick="showAutoAcceptSectionInfo()" data-i18n="autoAcceptSectionLabel">Авто-принятие</button>
+                    <div class="system-setting-meta" id="auto-accept-section-meta" data-i18n="autoAcceptSectionMeta">Мгновенно, без вашего решения</div>
+                    <div class="auto-accept-subrows">
+                        <div class="auto-accept-subrow" id="auto-accept-mutual-row">
+                            <button type="button" class="auto-accept-subrow-label" id="auto-accept-mutual-label" onclick="showAutoAcceptMutualInfo()" data-i18n="autoAcceptMutualLabel">Взаимки</button>
+                            <label class="toggle-switch" id="auto-accept-mutual-switch" aria-label="Auto-accept mutual offers">
+                                <input type="checkbox" id="auto-accept-mutual-toggle" onchange="handleAutoAcceptMutualToggle(this)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="auto-accept-subrow" id="auto-accept-bounty-row">
+                            <button type="button" class="auto-accept-subrow-label" id="auto-accept-bounty-label" onclick="showAutoAcceptBountyInfo()" data-i18n="autoAcceptBountyLabel">Контракты</button>
+                            <label class="toggle-switch" id="auto-accept-bounty-switch" aria-label="Auto-accept contract applications">
+                                <input type="checkbox" id="auto-accept-bounty-toggle" onchange="handleAutoAcceptBountyToggle(this)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
-                <label class="toggle-switch" id="auto-accept-mutual-switch" aria-label="Auto-accept mutual offers">
-                    <input type="checkbox" id="auto-accept-mutual-toggle" onchange="handleAutoAcceptMutualToggle(this)">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <div class="system-setting-row" id="auto-accept-bounty-row">
-                <div class="system-setting-copy-wrap">
-                    <button type="button" class="system-setting-copy" id="auto-accept-bounty-label" onclick="showAutoAcceptBountyInfo()" data-i18n="autoAcceptBountyLabel">Авто-принятие Bounty-заявок</button>
-                    <div class="system-setting-meta" id="auto-accept-bounty-meta" data-i18n="autoAcceptBountyMeta">Контрактные заявки подтверждаются без ожидания</div>
-                </div>
-                <label class="toggle-switch" id="auto-accept-bounty-switch" aria-label="Auto-accept bounty applications">
-                    <input type="checkbox" id="auto-accept-bounty-toggle" onchange="handleAutoAcceptBountyToggle(this)">
-                    <span class="toggle-slider"></span>
-                </label>
             </div>
             <div class="system-setting-row" id="default-group-joined-row">
                 <div class="system-setting-copy-wrap">

@@ -410,6 +410,48 @@
     line-height: 1.4;
 }
 
+.system-setting-row--auto-accept {
+    align-items: stretch;
+}
+
+.system-setting-row--auto-accept .system-setting-copy-wrap {
+    gap: 6px;
+}
+
+.auto-accept-subrows {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 4px;
+    border-top: 1px solid var(--border-strong);
+}
+
+.auto-accept-subrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 40px;
+    padding: 4px 0;
+}
+
+.auto-accept-subrow + .auto-accept-subrow {
+    border-top: 1px solid var(--border-strong);
+}
+
+.auto-accept-subrow-label {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    line-height: 1.35;
+    min-width: 0;
+}
+
 .system-btn {
     font-size: 13px;
     padding: 10px 12px;
