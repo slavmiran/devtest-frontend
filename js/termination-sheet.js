@@ -426,7 +426,11 @@
                 '</button>' +
                 '<div class="term-preserve-note">' + _esc(_t('termDropPreserveAddAppHint')) + '</div>';
         } else {
-            actionHtml = '<div class="term-preserve-note">' + _esc(_t('termDropPreserveNoSlot')) + '</div>';
+            actionHtml = '' +
+                '<button type="button" class="btn btn-primary term-preserve-btn is-disabled" disabled aria-disabled="true">' +
+                _esc(_t('termDropPreserveProposeBtn')) +
+                '</button>' +
+                '<div class="term-preserve-note">' + _esc(_t('termDropPreserveNoSlot')) + '</div>';
         }
 
         return '' +
@@ -434,6 +438,44 @@
                 '<div class="term-preserve-title">' + _esc(_t('termDropPreserveTitle')) + '</div>' +
                 '<div class="term-preserve-desc">' + _esc(_t('termDropPreserveDesc')) + '</div>' +
                 '<div class="term-preserve-actions">' + actionHtml + '</div>' +
+            '</div>';
+    }
+
+    function _renderBountyLossBlock(totalLost, earned, contractTotal, grantStillAvailable, skips) {
+        var lines = [
+            _t('termDropBountyLossDesc', { total: _fmtAmount(totalLost, 1) }),
+        ];
+        if (Number(earned || 0) > 0) {
+            lines.push(_t('termDropBountyLossKept', { earned: _fmtAmount(earned, 1) }));
+        }
+        if (grantStillAvailable) {
+            lines.push(_t('termDropBountyGrantNote', {
+                skips: skips,
+                max: 3,
+                contract: _fmtAmount(contractTotal, 1),
+            }));
+        }
+        return '' +
+            '<div class="leave-status-banner is-penalty term-bust-loss">' +
+                '<div class="leave-status-title">' + _esc(_t('termDropBountyLossTitle', {
+                    total: _fmtAmount(totalLost, 1),
+                })) + '</div>' +
+                lines.map(function (line) {
+                    return '<div class="leave-status-desc">' + _esc(line) + '</div>';
+                }).join('') +
+            '</div>';
+    }
+
+    function _renderInviteGrantRow(skips) {
+        return '' +
+            '<div class="leave-grant-row">' +
+                '<div class="leave-grant-copy">' +
+                    '<div class="leave-grant-title">' + _esc(_t('leaveGrantTeaseTitle')) + '</div>' +
+                    '<div class="leave-grant-desc">' + _esc(_t('termDropGrantTeaseDesc', {
+                        skips: skips,
+                        max: 3,
+                    })) + '</div>' +
+                '</div>' +
             '</div>';
     }
 
@@ -455,8 +497,10 @@
         var dailyPool = isBounty ? bountyPerTester * 0.65 : 0;
         var rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
         var earnedEstimate = Math.round(checkins * rewardPerCheckin * 10) / 10;
-        var remainingEstimate = Math.max(0, Math.round((dailyPool - earnedEstimate) * 10) / 10);
-        var hasReciprocal = Number(test && test.reciprocal_app_id || 0) > 0;
+        // Hold (35%) + unpaid daily remainder — one total of not-yet-paid contract BUST.
+        var totalLostEstimate = isBounty
+            ? Math.max(0, Math.round((bountyPerTester - earnedEstimate) * 10) / 10)
+            : 0;
         var isSafeExit = isInviteLike && _isInviteSafeExit(testingDays, checkins);
         var grantStillAvailable = skips < 3;
 
@@ -465,66 +509,44 @@
             _termState.isBountyDrop = isBounty;
             _termState.isInviteDrop = isInviteLike;
             _termState.isSafeExit = isSafeExit;
-            _termState.remainingBounty = remainingEstimate;
-            _termState.hasReciprocal = hasReciprocal;
+            _termState.remainingBounty = totalLostEstimate;
+            _termState.hasReciprocal = false;
             _termState.projectName = projectName;
             _termState.ownerId = ownerId;
             _termState.grantAvailable = grantStillAvailable;
+            _termState.contractTotal = bountyPerTester;
+            _termState.earnedBounty = earnedEstimate;
         }
 
-        var banner;
+        var impactBlock = '';
         if (isBounty) {
-            banner = '<div class="leave-status-banner is-penalty">' +
-                '<div class="leave-status-title">' + _esc(_t('termDropBountyBadge')) + '</div>' +
-                '<div class="leave-status-desc">' + _esc(_t('termDropBountyDesc', {
-                    remaining: _fmtAmount(remainingEstimate, 1),
-                })) + '</div>' +
-              '</div>';
+            impactBlock = _renderBountyLossBlock(
+                totalLostEstimate,
+                earnedEstimate,
+                bountyPerTester,
+                grantStillAvailable,
+                skips
+            );
         } else if (isSafeExit) {
-            banner = '<div class="leave-status-banner is-justified">' +
+            impactBlock = '<div class="leave-status-banner is-justified">' +
                 '<div class="leave-status-title">' + _esc(_t('termDropInviteSafeBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t('termDropInviteSafeDesc')) + '</div>' +
               '</div>';
         } else {
-            banner = '<div class="leave-status-banner is-penalty">' +
+            impactBlock = '<div class="leave-status-banner is-penalty">' +
                 '<div class="leave-status-title">' + _esc(_t('termDropInviteCostlyBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t('termDropInviteCostlyDesc')) + '</div>' +
               '</div>';
         }
 
-        var effects = [];
-        if (isBounty) {
-            effects.push(_t('termDropEffectBountyLost', { remaining: _fmtAmount(remainingEstimate, 1) }));
-            if (earnedEstimate > 0) {
-                effects.push(_t('termDropEffectBountyKept', { earned: _fmtAmount(earnedEstimate, 1) }));
-            }
-            effects.push(_t('termDropEffectNoKarma'));
-        } else {
-            effects.push(_t('termDropEffectNoKarma'));
+        // Effects: only karma / Reliability — money & grant already shown above.
+        var effects = [_t('termDropEffectNoKarma')];
+        if (isInviteLike) {
             effects.push(_t(isSafeExit ? 'termDropEffectRiSafe' : 'termDropEffectRiCostly'));
         }
-        if (grantStillAvailable) {
-            effects.push(_t('termDropEffectGrantLost'));
-        }
-        if (hasReciprocal) {
-            effects.push(_t('termDropEffectReciprocalMaybe'));
-        }
 
-        var grantRow = grantStillAvailable
-            ? '<div class="leave-grant-row">' +
-                '<span class="leave-grant-icon" aria-hidden="true">🏆</span>' +
-                '<div class="leave-grant-copy">' +
-                    '<div class="leave-grant-title">' + _esc(_t('leaveGrantTeaseTitle')) + '</div>' +
-                    '<div class="leave-grant-desc">' + _esc(_t('termDropGrantTeaseDesc', {
-                        skips: skips,
-                        max: 3,
-                    })) + '</div>' +
-                '</div></div>'
-            : '';
-
-        var preserveBlock = (isInviteLike && !hasReciprocal)
-            ? _renderPreserveInviteBlock(test, ownerId)
-            : '';
+        var grantRow = (!isBounty && grantStillAvailable) ? _renderInviteGrantRow(skips) : '';
+        var preserveBlock = isInviteLike ? _renderPreserveInviteBlock(test, ownerId) : '';
 
         return '' +
             '<div class="leave-exchange-card">' +
@@ -544,7 +566,7 @@
                     grantRow +
                 '</div>' +
             '</div>' +
-            banner +
+            impactBlock +
             preserveBlock +
             _effectsBlock(_t('termDropEffectsTitle'), effects);
     }
@@ -605,6 +627,8 @@
             hasReciprocal: false,
             projectName: '',
             ownerId: 0,
+            contractTotal: 0,
+            earnedBounty: 0,
         };
 
         // Legacy globals used by confirmLeaveMutual / confirmKickTester / confirmDropTest
@@ -643,22 +667,17 @@
         }
 
         _setTypeBadge(joinType);
-        // Drop: show unlink only when a reciprocal link actually exists.
+        // Drop (invite/bounty): never show reciprocal unlink — only mutual leave/kick use it.
         var unlinkOptions = Object.assign({}, options);
         if (mode === 'drop') {
-            var testSnap = options.testSnapshot || (typeof getMyTestById === 'function'
-                ? getMyTestById(_termState.appId)
-                : null);
-            var hasReciprocal = Number(testSnap && testSnap.reciprocal_app_id || 0) > 0;
-            _setupUnlinkBox(mode, hasReciprocal ? 'mutual' : joinType, unlinkOptions);
-            if (!hasReciprocal) {
-                var box = document.getElementById('term-unlink-box');
-                if (box) box.hidden = true;
-            } else if (document.getElementById('term-unlink-primary-label')) {
-                document.getElementById('term-unlink-primary-label').textContent = _t('termUnlinkLeavePrimary');
-                var recLabel = document.getElementById('term-unlink-reciprocal-label');
-                if (recLabel) recLabel.textContent = _t('termUnlinkLeaveReciprocal');
+            var dropUnlinkBox = document.getElementById('term-unlink-box');
+            if (dropUnlinkBox) dropUnlinkBox.hidden = true;
+            var dropReciprocal = document.getElementById('term-unlink-reciprocal');
+            if (dropReciprocal) {
+                dropReciprocal.checked = false;
+                dropReciprocal.disabled = false;
             }
+            toggleTermUnlinkHint();
         } else {
             _setupUnlinkBox(mode, joinType, unlinkOptions);
         }
@@ -872,23 +891,22 @@
                     '</li>');
             }
             if (_termState.isBountyDrop) {
-                points.push('<li class="is-warn">' + _esc(_t('termDropEffectBountyLost', {
-                    remaining: _fmtAmount(_termState.remainingBounty || 0, 1),
+                points.push('<li class="is-warn">' + _esc(_t('termDropBountyLossTitle', {
+                    total: _fmtAmount(_termState.remainingBounty || 0, 1),
                 })) + '</li>');
-            }
-            if (_termState.grantAvailable) {
-                points.push('<li class="is-warn">' + _esc(_t('termDropEffectGrantLost')) + '</li>');
-            }
-            if (_termState.hasReciprocal) {
-                points.push('<li>' + _esc(unlink
-                    ? _t('leaveConfirmPointMirror')
-                    : _t('termConfirmPointKeepMirrorLeave')) + '</li>');
+                if (Number(_termState.earnedBounty || 0) > 0) {
+                    points.push('<li>' + _esc(_t('termDropBountyLossKept', {
+                        earned: _fmtAmount(_termState.earnedBounty || 0, 1),
+                    })) + '</li>');
+                }
             }
             body.innerHTML = '' +
                 '<p class="leave-confirm-lead">' + _esc(_t(
                     _termState.isInviteDrop && _termState.isSafeExit
                         ? 'termConfirmDescDropSafe'
-                        : 'termConfirmDescDrop'
+                        : (_termState.isBountyDrop
+                            ? 'termConfirmDescDropBounty'
+                            : 'termConfirmDescDrop')
                 )) + '</p>' +
                 '<ul class="leave-confirm-points">' + points.join('') + '</ul>';
             if (finalBtn) {

@@ -926,10 +926,26 @@
     width: 100%;
 }
 
+.term-preserve-btn.is-disabled,
+.term-preserve-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    filter: grayscale(0.15);
+}
+
 .term-preserve-note {
     font-size: 11px;
     line-height: 1.4;
     color: var(--hint-color);
+}
+
+.term-bust-loss .leave-status-desc + .leave-status-desc {
+    margin-top: 8px;
+}
+
+.leave-grant-row .leave-grant-copy {
+    flex: 1;
+    min-width: 0;
 }
 
 /* Status banners — informative, not neon */
