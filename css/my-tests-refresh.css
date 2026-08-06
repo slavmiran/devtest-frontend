@@ -14,7 +14,7 @@
     --guest-surface-bottom: rgba(14, 18, 26, 0.96);
     --guest-surface-glow: rgba(77, 163, 255, 0.12);
     --guest-surface-border: rgba(77, 163, 255, 0.16);
-    --guest-surface-accent: #1d4854;
+    --guest-surface-accent: #3eb9cd;
 }
 
 /* --------------------------------------------------------------------------
@@ -381,12 +381,19 @@
     cursor: not-allowed;
 }
 
-/* Match confirm CTA tone with active first-day step (soft primary). */
-#tab-tests .action-row .btn-success:not([disabled]),
-#tab-tests .split-btn-group .btn-success:not([disabled]),
-#tab-tests .checkin-confirm-btn.btn-success:not([disabled]),
-#tab-tests .btn-confirm-ready:not([disabled]) {
-    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.12)) !important;
+/* Confirm CTA: solid primary + white label (first-day steps stay soft/outline). */
+#tab-tests .action-row .btn-success:not([disabled]):not(.first-day-btn),
+#tab-tests .split-btn-group .btn-success:not([disabled]):not(.first-day-btn),
+#tab-tests .checkin-confirm-btn.btn-success:not([disabled]):not(.first-day-btn),
+#tab-tests .btn-confirm-ready:not([disabled]):not(.first-day-btn) {
+    background-color: var(--accent-primary, #4c8dff) !important;
+    color: var(--text-on-accent, #fff) !important;
+    border-color: transparent !important;
+}
+
+#tab-tests .first-day-btn.btn-success:not([disabled]),
+#tab-tests .first-day-btn.btn-confirm-ready:not([disabled]) {
+    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.14)) !important;
     color: var(--accent-primary, #4c8dff) !important;
     border: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.28)) !important;
 }
@@ -418,17 +425,20 @@
 #tab-tests .split-btn-options {
     position: relative;
     font-size: 0 !important;
-    color: var(--accent-primary, #4c8dff) !important;
+    line-height: 0;
+    overflow: visible;
+    color: var(--text-on-accent, #fff) !important;
 }
 
 #tab-tests .split-btn-options::before {
     content: '';
-    width: 18px;
-    height: 18px;
-    display: inline-block;
+    width: 16px;
+    height: 16px;
+    display: block;
+    flex-shrink: 0;
     background: currentColor;
-    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.5 6.5V16a4.5 4.5 0 1 1-9 0V7.5a3 3 0 1 1 6 0V15a1.5 1.5 0 0 1-3 0V8.5h1.5V15a1.5 1.5 0 0 0 3 0V7.5a3 3 0 1 0-6 0V16a4.5 4.5 0 1 0 9 0V6.5h1.5z'/%3E%3C/svg%3E") center / contain no-repeat;
-            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.5 6.5V16a4.5 4.5 0 1 1-9 0V7.5a3 3 0 1 1 6 0V15a1.5 1.5 0 0 1-3 0V8.5h1.5V15a1.5 1.5 0 0 0 3 0V7.5a3 3 0 1 0-6 0V16a4.5 4.5 0 1 0 9 0V6.5h1.5z'/%3E%3C/svg%3E") center / contain no-repeat;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.5 6.5V16a4.5 4.5 0 1 1-9 0V7.5a3 3 0 1 1 6 0V15a1.5 1.5 0 0 1-3 0V8.5h1.5V15a1.5 1.5 0 0 0 3 0V7.5a3 3 0 1 0-6 0V16a4.5 4.5 0 1 0 9 0V6.5h1.5z'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.5 6.5V16a4.5 4.5 0 1 1-9 0V7.5a3 3 0 1 1 6 0V15a1.5 1.5 0 0 1-3 0V8.5h1.5V15a1.5 1.5 0 0 0 3 0V7.5a3 3 0 1 0-6 0V16a4.5 4.5 0 1 0 9 0V6.5h1.5z'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
 }
 
 /* Material info-circle icon before guest help link text. */
@@ -436,7 +446,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--guest-surface-accent, #1d4854);
+    color: var(--guest-surface-accent, #3eb9cd);
 }
 
 .external-tests-section .external-tests-info-link::before {
@@ -610,16 +620,34 @@ button.ts-section-head {
 
 /* --- theme: Гостевые проекты — blue from guest card gradient (#4da3ff) --- */
 .ts-section-block--guest {
-    --ts-accent: var(--guest-surface-accent, #1d4854);
+    --ts-accent: var(--guest-surface-accent, #3eb9cd);
 }
 
 .ts-section-head--guest {
-    --ts-accent: var(--guest-surface-accent, #1d4854);
-    --ts-icon-bg: rgba(29, 72, 84, 0.18);
-    --ts-icon-border: rgba(29, 72, 84, 0.34);
+    --ts-accent: var(--guest-surface-accent, #3eb9cd);
+    --ts-icon-bg: rgba(62, 185, 205, 0.18);
+    --ts-icon-border: rgba(62, 185, 205, 0.34);
     --ts-bg: linear-gradient(90deg, var(--guest-surface-top, rgba(20, 27, 38, 0.98)) 0%, var(--guest-surface-bottom, rgba(14, 18, 26, 0.96)) 100%);
-    --ts-border: rgba(29, 72, 84, 0.3);
-    --ts-count-bg: rgba(29, 72, 84, 0.24);
+    --ts-border: rgba(62, 185, 205, 0.3);
+    --ts-count-bg: rgba(62, 185, 205, 0.24);
+}
+
+/* Guest confirm: same calm solid style as My Tests (no bright glow). */
+.external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) {
+    box-shadow: none !important;
+}
+
+.external-tests-card .external-tests-confirm-btn.external-tests-confirm-ready,
+.external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-attach-btn {
+    background: var(--accent-primary, #4c8dff) !important;
+    background-image: none !important;
+    color: var(--text-on-accent, #fff) !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+}
+
+.external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-confirm-btn.split-btn-main {
+    border-right-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 /* --- theme: Буфер безопасности (buffer) --- */
