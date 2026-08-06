@@ -4082,10 +4082,8 @@ function openReportModal(appId, ownerUsername) {
 
     const chipsEl = document.getElementById('chips-report');
     if (chipsEl) {
-        const goodChip = window.escapeHTML(t.reportChipGood || '');
-        chipsEl.innerHTML = goodChip
-            ? `<button type="button" class="chip" onclick="insertReportChip(this.dataset.text)" data-text="${String(t.reportChipGood || '').replace(/"/g, '&quot;')}">${goodChip}</button>`
-            : '';
+        chipsEl.innerHTML = '';
+        chipsEl.style.display = 'none';
     }
 
     const bugBtn = document.getElementById('t-reportBtnBug');

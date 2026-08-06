@@ -747,7 +747,7 @@ button.ts-section-head {
     box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.16);
 }
 
-/* Checkin options modal — same CTA language as My Tests cards. */
+/* Checkin options modal — neutral secondary actions; soft accent for Just Confirm. */
 #checkin-options-modal .modal-content .btn {
     min-height: 46px;
     border-radius: 14px;
@@ -762,17 +762,17 @@ button.ts-section-head {
 }
 
 #checkin-options-modal .modal-content .btn-secondary {
-    background: rgba(76, 141, 255, 0.1) !important;
-    color: #fff !important;
-    border: 1px solid rgba(76, 141, 255, 0.28) !important;
+    background: var(--secondary-bg-color, rgba(255, 255, 255, 0.08)) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16)) !important;
     box-shadow: none !important;
 }
 
 #checkin-options-modal .modal-content .btn-success {
-    background: rgba(76, 141, 255, 0.16) !important;
+    background: rgba(76, 141, 255, 0.12) !important;
     color: #fff !important;
-    border: 1px solid rgba(76, 141, 255, 0.42) !important;
-    box-shadow: 0 0 14px rgba(76, 141, 255, 0.17) !important;
+    border: 1px solid rgba(76, 141, 255, 0.32) !important;
+    box-shadow: none !important;
 }
 
 /* Guest Open button — restore border (styles.css .btn { border:none } wins otherwise). */
