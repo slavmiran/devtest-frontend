@@ -321,18 +321,20 @@ function getCurrentUserKarmaValue() {
 }
 
 function getFinalizedGrantSkips(test) {
-    // Count skips from daily_timeline (days 1-14 only) as source of truth
+    // Prefer live API skips_count — same source as backend claim_grant / card copy.
+    // Counting daily_timeline[0:14] over-counts incomplete timelines and showed grant ~0
+    // while "пропусков 1/3 · грант ещё доступен" still looked correct.
+    if (test && test.skips_count != null && test.skips_count !== '') {
+        const fromApi = Number(test.skips_count);
+        if (Number.isFinite(fromApi)) return Math.max(0, Math.floor(fromApi));
+    }
     if (test && test.daily_timeline) {
         const timeline = String(test.daily_timeline || '');
-        // Only count baseline period (days 1-14)
         const baselinePeriod = timeline.substring(0, 14);
-        // '0' = standard skip, '3' = overtime skip (but shouldn't exist in days 1-14)
-        // Count occurrences of skip characters
         const skipCount = (baselinePeriod.match(/[03]/g) || []).length;
         return Math.max(0, skipCount);
     }
-    // Fallback to skips_count if no timeline
-    return Math.max(0, Number(test && test.skips_count || 0));
+    return 0;
 }
 
 function getGrantEstimateData(test) {

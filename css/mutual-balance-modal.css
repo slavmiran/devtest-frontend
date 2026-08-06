@@ -1128,6 +1128,14 @@
     color: var(--hint-color);
 }
 
+.term-impact-block .term-impact-status-banner {
+    margin: 8px 0 0;
+}
+
+.term-impact-block .term-impact-status-banner.term-status-compact {
+    margin-bottom: 0;
+}
+
 .term-status-compact {
     margin-bottom: 12px;
 }

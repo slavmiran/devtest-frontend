@@ -509,6 +509,7 @@
         var karmaOk = opts.karmaOk !== false;
         var riOk = !!opts.riOk;
         var hint = opts.hint || '';
+        var statusBanner = opts.statusBanner || '';
         return '' +
             '<div class="term-impact-block">' +
                 '<div class="term-impact-title">' + _esc(_t('termDropEffectsTitle')) + '</div>' +
@@ -528,8 +529,22 @@
                         '</span>' +
                     '</div>' +
                 '</div>' +
+                statusBanner +
                 (hint ? '<div class="term-impact-hint">' + _esc(hint) + '</div>' : '') +
             '</div>';
+    }
+
+    function _renderInviteExitBanner(isSafeExit) {
+        if (isSafeExit) {
+            return '<div class="leave-status-banner is-justified term-status-compact term-impact-status-banner">' +
+                '<div class="leave-status-title">' + _esc(_t('termDropInviteSafeBadge')) + '</div>' +
+                '<div class="leave-status-desc">' + _esc(_t('termDropInviteSafeDesc')) + '</div>' +
+              '</div>';
+        }
+        return '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
+            '<div class="leave-status-title">' + _esc(_t('termDropInviteCostlyBadge')) + '</div>' +
+            '<div class="leave-status-desc">' + _esc(_t('termDropInviteCostlyDesc')) + '</div>' +
+          '</div>';
     }
 
     function _renderDropBody(test) {
@@ -539,6 +554,7 @@
             : Number(test && test.testing_days || 0);
         var checkins = Number(test && test.checkins_count || 0);
         var skips = Number(test && test.skips_count || 0);
+        if (!Number.isFinite(skips) || skips < 0) skips = 0;
         var projectName = (test && test.name) || _t('unknownLabel');
         var ownerId = Number(test && test.owner_id || 0);
         var ownerLabel = test && test.owner_username
@@ -553,7 +569,8 @@
         var contractLost = isBounty
             ? Math.max(0, Math.round((bountyPerTester - earnedEstimate) * 10) / 10)
             : 0;
-        var grantStillAvailable = skips < 3;
+        // Match backend claim_grant: eligible while skips <= 3.
+        var grantStillAvailable = skips <= 3;
         var grantTotal = grantStillAvailable ? _estimateGrantTotal(test) : 0;
         var grantLost = grantStillAvailable ? grantTotal : 0;
         var totalAtRisk = contractLost + grantLost;
@@ -587,26 +604,17 @@
             _termState.preserveHtml = isInviteLike ? _renderPreserveInviteBlock(test, ownerId) : '';
         }
 
-        var impactBlock = '';
-        if (isBounty) {
-            impactBlock = _renderBountyLossBlock(
+        // Bounty keeps the money hero above; invite exit banner lives inside profile impact.
+        var moneyBlock = isBounty
+            ? _renderBountyLossBlock(
                 contractLost,
                 grantLost,
                 earnedEstimate,
                 grantStillAvailable,
                 skips
-            );
-        } else if (isSafeExit) {
-            impactBlock = '<div class="leave-status-banner is-justified term-status-compact">' +
-                '<div class="leave-status-title">' + _esc(_t('termDropInviteSafeBadge')) + '</div>' +
-                '<div class="leave-status-desc">' + _esc(_t('termDropInviteSafeDesc')) + '</div>' +
-              '</div>';
-        } else {
-            impactBlock = '<div class="leave-status-banner is-penalty term-status-compact">' +
-                '<div class="leave-status-title">' + _esc(_t('termDropInviteCostlyBadge')) + '</div>' +
-                '<div class="leave-status-desc">' + _esc(_t('termDropInviteCostlyDesc')) + '</div>' +
-              '</div>';
-        }
+            )
+            : '';
+        var inviteStatusBanner = isInviteLike ? _renderInviteExitBanner(isSafeExit) : '';
 
         var grantRow = (!isBounty && grantStillAvailable)
             ? _renderInviteGrantRow(skips, grantTotal)
@@ -630,11 +638,12 @@
                     grantRow +
                 '</div>' +
             '</div>' +
-            impactBlock +
+            moneyBlock +
             _renderImpactMeters({
                 karmaOk: true,
                 riOk: riOk,
                 hint: impactHint,
+                statusBanner: inviteStatusBanner,
             });
     }
 

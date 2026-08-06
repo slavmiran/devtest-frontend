@@ -2,11 +2,15 @@
 /* checkin/timer flow, UI control, offers decisions, karma, feedback actions */
 /* Depends on globals from js/app-config.js and js/app-api.js. */
 function countGrantSkips(app) {
+    if (app && app.skips_count != null && app.skips_count !== '') {
+        var fromApi = Number(app.skips_count);
+        if (Number.isFinite(fromApi)) return Math.max(0, Math.floor(fromApi));
+    }
     var timeline = String(app && app.daily_timeline || '');
     if (timeline) {
         return Math.max(0, (timeline.substring(0, 14).match(/[03]/g) || []).length);
     }
-    return Math.max(0, Number(app && app.skips_count || 0));
+    return 0;
 }
 
 function buildCheckpointTestLink(appId) {
