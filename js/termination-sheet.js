@@ -104,7 +104,6 @@
         }
         return [
             { code: 'inactive_partner', labelKey: 'leaveReasonInactive' },
-            { code: 'partner_left', labelKey: 'leaveReasonPartnerLeft' },
             { code: 'communication_issue', labelKey: 'leaveReasonCommunication' },
             { code: 'other', labelKey: 'leaveReasonOther' },
         ];
@@ -282,11 +281,14 @@
         var myTestingDays = Number(data.my_testing_days || 0);
         // Quick abandon: 0 check-ins and <7 days → RI not penalized (backend parity).
         var riOk = justifiedAllowed || (myCheckins === 0 && myTestingDays < 7);
-        var impactHint = justifiedAllowed
-            ? _t('termLeaveImpactHintJustified')
-            : (riOk
-                ? _t('termLeaveImpactHintQuick')
-                : _t('termLeaveImpactHintRisk'));
+        var currentRi = null;
+        try {
+            var vs = (typeof visibilityStats !== 'undefined') ? visibilityStats : (window.visibilityStats || null);
+            if (vs && vs.reliability_index != null && vs.reliability_index !== '') {
+                var riNum = Number(vs.reliability_index);
+                if (Number.isFinite(riNum)) currentRi = Math.round(riNum * 10) / 10;
+            }
+        } catch (e) { /* ignore */ }
         var mutualStatusBanner = justifiedAllowed
             ? '<div class="leave-status-banner is-justified term-status-compact term-impact-status-banner">' +
                 '<div class="leave-status-title">' + _esc(_t('leaveJustifiedBadge')) + '</div>' +
@@ -343,7 +345,9 @@
             _renderImpactMeters({
                 karmaOk: justifiedAllowed,
                 riOk: riOk,
-                hint: impactHint,
+                karmaBurn: justifiedAllowed ? 0 : karmaBurn,
+                riCurrent: currentRi,
+                hint: '',
                 statusBanner: mutualStatusBanner,
                 ownerCycle: true,
             });
@@ -540,12 +544,23 @@
     function _renderOwnerCyclePlea() {
         return '' +
             '<div class="term-owner-cycle">' +
-                '<span class="term-owner-cycle-icon" aria-hidden="true">⚠️</span>' +
+                '<span class="term-owner-cycle-icon" aria-hidden="true">💔</span>' +
                 '<div class="term-owner-cycle-copy">' +
                     '<div class="term-owner-cycle-title">' + _esc(_t('termOwnerCycleTitle')) + '</div>' +
                     '<div class="term-owner-cycle-desc">' + _esc(_t('termOwnerCycleDesc')) + '</div>' +
                 '</div>' +
             '</div>';
+    }
+
+    function _currentReliabilityIndex() {
+        try {
+            var vs = (typeof visibilityStats !== 'undefined') ? visibilityStats : (window.visibilityStats || null);
+            if (vs && vs.reliability_index != null && vs.reliability_index !== '') {
+                var riNum = Number(vs.reliability_index);
+                if (Number.isFinite(riNum)) return Math.round(riNum * 10) / 10;
+            }
+        } catch (e) { /* ignore */ }
+        return null;
     }
 
     function _renderImpactMeters(opts) {
@@ -554,7 +569,34 @@
         var riOk = !!opts.riOk;
         var hint = opts.hint || '';
         var statusBanner = opts.statusBanner || '';
-        var ownerCycle = opts.ownerCycle !== false ? _renderOwnerCyclePlea() : '';
+        var ownerCycle = opts.ownerCycle === true ? _renderOwnerCyclePlea() : '';
+        var karmaBurn = Math.max(0, Number(opts.karmaBurn || 0));
+        var riCurrent = (opts.riCurrent != null && Number.isFinite(Number(opts.riCurrent)))
+            ? Number(opts.riCurrent)
+            : _currentReliabilityIndex();
+        var riAfter = (opts.riAfter != null && Number.isFinite(Number(opts.riAfter)))
+            ? Number(opts.riAfter)
+            : null;
+
+        var karmaStatus = karmaOk
+            ? _t('termDropImpactOk')
+            : (karmaBurn > 0
+                ? _t('termDropImpactKarmaBurn', { amount: _fmtAmount(karmaBurn, 1) })
+                : _t('termDropImpactOk'));
+        var riStatus;
+        if (riOk) {
+            riStatus = (riCurrent != null)
+                ? _t('termDropImpactRiKeep', { value: _fmtAmount(riCurrent, 1) })
+                : _t('termDropImpactOk');
+        } else if (riCurrent != null && riAfter != null) {
+            riStatus = _fmtAmount(riCurrent, 1) + ' → ' + _fmtAmount(riAfter, 1);
+        } else if (riCurrent != null) {
+            // Overall index will drop after a bad abandon period; show current with down marker.
+            riStatus = _fmtAmount(riCurrent, 1) + ' ↓';
+        } else {
+            riStatus = _t('termDropImpactRiRisk');
+        }
+
         return '' +
             '<div class="term-impact-block">' +
                 '<div class="term-impact-title">' + _esc(_t('termDropEffectsTitle')) + '</div>' +
@@ -562,16 +604,12 @@
                     '<div class="term-impact-pill ' + (karmaOk ? 'is-ok' : 'is-risk') + '">' +
                         '<span class="term-impact-ico" aria-hidden="true">☯️</span>' +
                         '<span class="term-impact-label">' + _esc(_t('termDropImpactKarma')) + '</span>' +
-                        '<span class="term-impact-status">' +
-                            _esc(_t(karmaOk ? 'termDropImpactOk' : 'termDropImpactRisk')) +
-                        '</span>' +
+                        '<span class="term-impact-status">' + _esc(karmaStatus) + '</span>' +
                     '</div>' +
                     '<div class="term-impact-pill ' + (riOk ? 'is-ok' : 'is-risk') + '">' +
                         '<span class="term-impact-ico" aria-hidden="true">🛡</span>' +
                         '<span class="term-impact-label">' + _esc(_t('termDropImpactRi')) + '</span>' +
-                        '<span class="term-impact-status">' +
-                            _esc(_t(riOk ? 'termDropImpactOk' : 'termDropImpactRiRisk')) +
-                        '</span>' +
+                        '<span class="term-impact-status">' + _esc(riStatus) + '</span>' +
                     '</div>' +
                 '</div>' +
                 ownerCycle +
@@ -623,13 +661,6 @@
         var isSafeExit = isInviteLike && _isInviteSafeExit(testingDays, checkins);
         // Bounty RI: immature window (<7d) usually excluded; invite uses ≤3d & ≤1 check-in.
         var riOk = isInviteLike ? isSafeExit : (testingDays < 7);
-        var impactHint = isInviteLike
-            ? (isSafeExit
-                ? _t('termDropImpactHintInviteSafe')
-                : _t('termDropImpactHintInviteRisk'))
-            : (riOk
-                ? _t('termDropImpactHintBountySafe')
-                : _t('termDropImpactHintBountyRisk'));
 
         if (_termState) {
             _termState.justifiedAllowed = isBounty ? true : isSafeExit;
@@ -688,7 +719,7 @@
             _renderImpactMeters({
                 karmaOk: true,
                 riOk: riOk,
-                hint: impactHint,
+                hint: '',
                 statusBanner: inviteStatusBanner,
                 ownerCycle: true,
             });

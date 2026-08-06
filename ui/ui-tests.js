@@ -1931,10 +1931,8 @@ function renderTests(force) {
                 var isExternalScreenshotOnlyDay = isScreenshotOnlyControlDay(externalTestingDay);
                 var externalConfirmLabel = isExternalScreenshotOnlyDay
                     ? window.t('screenshotBtn', {}, lang)
-                    : '✅ ' + window.t('completeControlDayBtn', {}, lang);
-                var externalWarningText = isExternalScreenshotOnlyDay
-                    ? ''
-                    : window.t('screenshotWarning', {}, lang);
+                    : window.t('completeControlDayBtn', {}, lang);
+                var externalWarningText = '';
                 actionsHtml = `
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}', 10)">
@@ -1970,7 +1968,7 @@ function renderTests(force) {
                 if (isScreenshotDay) {
                     secondaryActions += `
                         <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
-                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : '✅ ' + window.t('completeControlDayBtn', {}, lang)}
+                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : window.t('completeControlDayBtn', {}, lang)}
                         </button>
                     `;
                 } else {
@@ -2083,11 +2081,8 @@ function renderTests(force) {
                 const isScreenshotOnlyDay = isScreenshotOnlyControlDay(testingDay);
                 const screenshotBtnText = isScreenshotOnlyDay
                     ? window.t('screenshotBtn', {}, lang)
-                    : '✅ ' + window.t('completeControlDayBtn', {}, lang);
-                // Day 1 warning text removed from card; keep control-day hint for days 4/7/10/14 only.
-                const screenshotWarningText = isScreenshotOnlyDay
-                    ? ''
-                    : window.t('screenshotWarning', {}, lang);
+                    : window.t('completeControlDayBtn', {}, lang);
+                const screenshotWarningText = '';
 
                 if (isScreenshotDay) {
                     const confirmLabel = isFeedbackCheckinPending

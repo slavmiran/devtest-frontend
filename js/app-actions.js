@@ -932,7 +932,7 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         if (isExternalTest) {
             btn.innerText = isFirstDayScreenshot
                 ? window.t('screenshotBtn', {}, lang)
-                : '✅ ' + window.t('completeControlDayBtn', {}, lang);
+                : window.t('completeControlDayBtn', {}, lang);
             btn.onclick = function(event) {
                 if (event) {
                     event.preventDefault();
@@ -952,7 +952,7 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         }
         btn.innerText = isFirstDayScreenshot
             ? window.t('screenshotBtn', {}, lang)
-            : '✅ ' + window.t('completeControlDayBtn', {}, lang);
+            : window.t('completeControlDayBtn', {}, lang);
         btn.onclick = function() {
             if (isFirstDayScreenshot) {
                 handleScreenshotAndConfirm(finishedId, resolvedOwnerUsername || '');
