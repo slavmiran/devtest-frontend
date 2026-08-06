@@ -969,7 +969,7 @@
             externalTestsSectionTitle: "Гостевые проекты",
             externalTestsControlDayDue: "Сегодня контрольный день {day}",
             externalTestsNextControlDay: "Следующий контроль: день {day} · через {count} дн.",
-            externalTestsAllControlsDone: "14 дней закрыты. Можно продолжать, пока владелец не сделает claim.",
+            externalTestsAllControlsDone: "14 дней завершены. Подтвердите удаление приложения у владельца.",
             externalTestsLastCheckin: "Последний check-in: {date}",
             externalTestsLastControlDay: "Последний закрытый контроль: день {day}",
             externalTrackProofMessageTemplate: "Привет! Отправляю proof за контрольный день {day} для приложения {app_name}. Скриншот приложу ниже.\n\nЕсли удобно, позже можно привязать проект через claim-ссылку: {claim_link}",

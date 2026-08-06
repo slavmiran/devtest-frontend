@@ -970,7 +970,7 @@
             externalTestsSectionTitle: "Guest Projects",
             externalTestsControlDayDue: "Control day {day} is due today",
             externalTestsNextControlDay: "Next control: Day {day} · in {count} day(s)",
-            externalTestsAllControlsDone: "All 14 days are covered. You can keep testing until the owner claims the project.",
+            externalTestsAllControlsDone: "14 days completed. Confirm app removal with the owner.",
             externalTestsLastCheckin: "Last check-in: {date}",
             externalTestsLastControlDay: "Last completed control: day {day}",
             externalTrackProofMessageTemplate: "Hi! Sending proof for control day {day} for the app {app_name}. I'll attach the screenshot below.\n\nIf convenient, you can later connect the project via this claim link: {claim_link}",

@@ -27,24 +27,24 @@
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     border: 1px solid var(--mytests-surface-border);
     background:
-        radial-gradient(circle at top right, var(--mytests-surface-glow), transparent 25%),
-        linear-gradient(180deg, var(--mytests-surface-top), var(--mytests-surface-bottom));
+        radial-gradient(ellipse 72% 58% at 100% 0%, var(--mytests-surface-glow), transparent 68%),
+        linear-gradient(225deg, rgba(46, 46, 50, 0.22) 0%, transparent 52%);
 }
 
 #tab-tests .card.card-done,
 #tab-tests .card.card-done.done-today-card {
     border-color: rgba(52, 199, 89, 0.22);
     background:
-        radial-gradient(circle at top right, rgba(52, 199, 89, 0.084), transparent 25%),
-        linear-gradient(180deg, rgba(38, 46, 42, 0.98), rgba(28, 34, 31, 0.96));
+        radial-gradient(ellipse 72% 58% at 100% 0%, rgba(52, 199, 89, 0.084), transparent 68%),
+        linear-gradient(225deg, rgba(38, 46, 42, 0.2) 0%, transparent 52%);
 }
 
 #tab-tests .card.card-pending-release,
 #tab-tests .card.pending-release-carousel-card {
     border-color: rgba(255, 149, 0, 0.22);
     background:
-        radial-gradient(circle at top right, rgba(255, 149, 0, 0.084), transparent 25%),
-        linear-gradient(180deg, rgba(50, 42, 34, 0.98), rgba(34, 30, 26, 0.96));
+        radial-gradient(ellipse 72% 58% at 100% 0%, rgba(255, 149, 0, 0.084), transparent 68%),
+        linear-gradient(225deg, rgba(50, 42, 34, 0.2) 0%, transparent 52%);
 }
 
 #tab-tests .card > .card-header {
@@ -381,14 +381,18 @@
     cursor: not-allowed;
 }
 
-/* Confirm CTA: solid primary + white label (first-day steps stay soft/outline). */
+/* Confirm CTA: soft transparent fill + white label (first-day steps keep outline primary). */
 #tab-tests .action-row .btn-success:not([disabled]):not(.first-day-btn),
 #tab-tests .split-btn-group .btn-success:not([disabled]):not(.first-day-btn),
 #tab-tests .checkin-confirm-btn.btn-success:not([disabled]):not(.first-day-btn),
 #tab-tests .btn-confirm-ready:not([disabled]):not(.first-day-btn) {
-    background-color: var(--accent-primary, #4c8dff) !important;
+    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.12)) !important;
     color: var(--text-on-accent, #fff) !important;
-    border-color: transparent !important;
+    border: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.28)) !important;
+}
+
+#tab-tests .split-btn-group .split-btn-main.btn-success:not([disabled]):not(.first-day-btn) {
+    border-right: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.28)) !important;
 }
 
 #tab-tests .first-day-btn.btn-success:not([disabled]),
@@ -432,13 +436,13 @@
 
 #tab-tests .split-btn-options::before {
     content: '';
-    width: 16px;
-    height: 16px;
+    width: 22px;
+    height: 22px;
     display: block;
     flex-shrink: 0;
     background: currentColor;
-    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.5 6.5V16a4.5 4.5 0 1 1-9 0V7.5a3 3 0 1 1 6 0V15a1.5 1.5 0 0 1-3 0V8.5h1.5V15a1.5 1.5 0 0 0 3 0V7.5a3 3 0 1 0-6 0V16a4.5 4.5 0 1 0 9 0V6.5h1.5z'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
-            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.5 6.5V16a4.5 4.5 0 1 1-9 0V7.5a3 3 0 1 1 6 0V15a1.5 1.5 0 0 1-3 0V8.5h1.5V15a1.5 1.5 0 0 0 3 0V7.5a3 3 0 1 0-6 0V16a4.5 4.5 0 1 0 9 0V6.5h1.5z'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.5 6.5V16a4.5 4.5 0 1 1-9 0V7.5a3 3 0 1 1 6 0V15a1.5 1.5 0 0 1-3 0V8.5h1.5V15a1.5 1.5 0 0 0 3 0V7.5a3 3 0 1 0-6 0V16a4.5 4.5 0 1 0 9 0V6.5h1.5z'/%3E%3C/svg%3E") center / 20px 20px no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.5 6.5V16a4.5 4.5 0 1 1-9 0V7.5a3 3 0 1 1 6 0V15a1.5 1.5 0 0 1-3 0V8.5h1.5V15a1.5 1.5 0 0 0 3 0V7.5a3 3 0 1 0-6 0V16a4.5 4.5 0 1 0 9 0V6.5h1.5z'/%3E%3C/svg%3E") center / 20px 20px no-repeat;
 }
 
 /* Material info-circle icon before guest help link text. */
@@ -613,7 +617,7 @@ button.ts-section-head {
     --ts-accent: var(--mytests-surface-accent, #c8ccd4);
     --ts-icon-bg: rgba(255, 255, 255, 0.1);
     --ts-icon-border: rgba(255, 255, 255, 0.14);
-    --ts-bg: linear-gradient(90deg, var(--mytests-surface-top, rgba(46, 46, 50, 0.98)) 0%, var(--mytests-surface-bottom, rgba(32, 32, 36, 0.96)) 100%);
+    --ts-bg: linear-gradient(90deg, rgba(46, 46, 50, 0.78) 0%, rgba(40, 40, 44, 0.28) 38%, transparent 68%);
     --ts-border: var(--mytests-surface-border, rgba(255, 255, 255, 0.11));
     --ts-count-bg: rgba(255, 255, 255, 0.1);
 }
@@ -632,22 +636,22 @@ button.ts-section-head {
     --ts-count-bg: rgba(62, 185, 205, 0.24);
 }
 
-/* Guest confirm: same calm solid style as My Tests (no bright glow). */
+/* Guest confirm: same soft transparent style as My Tests (no bright glow). */
 .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) {
     box-shadow: none !important;
 }
 
 .external-tests-card .external-tests-confirm-btn.external-tests-confirm-ready,
 .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-attach-btn {
-    background: var(--accent-primary, #4c8dff) !important;
+    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.12)) !important;
     background-image: none !important;
     color: var(--text-on-accent, #fff) !important;
-    border: 1px solid transparent !important;
+    border: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.28)) !important;
     box-shadow: none !important;
 }
 
 .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-confirm-btn.split-btn-main {
-    border-right-color: rgba(255, 255, 255, 0.2) !important;
+    border-right: 1px solid var(--accent-primary-border, rgba(76, 141, 255, 0.28)) !important;
 }
 
 /* --- theme: Буфер безопасности (buffer) --- */

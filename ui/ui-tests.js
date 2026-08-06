@@ -1686,6 +1686,9 @@ function renderExternalGuestTestsSection() {
         var primaryActionClick = statusMeta.isPostControlWindow && !isContinuedExternal
             ? `activateExternalContinueModeFromUi(${Number(test.id || 0)}, event)`
             : `sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)`;
+        var phaseDoneNotice = !meta.nextControlDay;
+        var statusExtraClass = (phaseDoneNotice && !isDoneToday) ? ' external-tests-status--phase-done' : '';
+        var substatusExtraClass = (phaseDoneNotice && isDoneToday) ? ' external-tests-status--phase-done' : '';
         var actionsHtml = '';
         if (!isDoneToday) {
             if (showPost14Choice) {
@@ -1728,8 +1731,8 @@ function renderExternalGuestTestsSection() {
                     ${ownerLabelHtml}
                     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${originChipHtml}${dayChipHtml}</div>
                 </div>
-                ${showPost14Choice ? '' : `<div class="external-tests-status">${window.escapeHTML(statusMeta.statusText)}</div>`}
-                ${showPost14Choice ? '' : `<div class="external-tests-substatus">${window.escapeHTML(statusMeta.substatusText)}</div>`}
+                ${showPost14Choice ? '' : `<div class="external-tests-status${statusExtraClass}">${window.escapeHTML(statusMeta.statusText)}</div>`}
+                ${showPost14Choice ? '' : `<div class="external-tests-substatus${substatusExtraClass}">${window.escapeHTML(statusMeta.substatusText)}</div>`}
                 ${actionsHtml}
             </div>
         `;
