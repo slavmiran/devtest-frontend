@@ -242,11 +242,12 @@
     function _renderLeaveBody(data) {
         var partnerSkips = Number(data.partner_skips || 0);
         var partnerConsecutive = Number(data.partner_consecutive_skips || 0);
-        var justifiedAllowed = !!data.partner_left || partnerSkips >= 3 || partnerConsecutive >= 3;
+        // Justified: partner left OR ≥3 consecutive skips (total skips are informational only).
+        var justifiedAllowed = !!data.partner_left || partnerConsecutive >= 3;
         var myCheckins = Number(data.my_checkins != null ? data.my_checkins : 0);
         var karmaBurn = Math.min(14, myCheckins) * 0.1;
         var mySkips = Number(data.my_skips || 0);
-        var waitCount = Math.max(0, 3 - Math.max(partnerSkips, partnerConsecutive));
+        var waitCount = Math.max(0, 3 - partnerConsecutive);
         var grantStillAvailable = mySkips < 3;
         var partnerLabel = data.partner_username
             ? '@' + String(data.partner_username || '').replace(/^@+/, '')
@@ -279,8 +280,15 @@
             : '';
 
         var myTestingDays = Number(data.my_testing_days || 0);
-        // Quick abandon: 0 check-ins and <7 days → RI not penalized (backend parity).
-        var riOk = justifiedAllowed || (myCheckins === 0 && myTestingDays < 7);
+        var partnerCheckins = Number(data.partner_checkins || 0);
+        var isSafeExit = !justifiedAllowed && _isUniversalSafeExit({
+            testingDays: myTestingDays,
+            checkins: myCheckins,
+            partnerCheckins: partnerCheckins,
+            requirePartnerGate: true,
+        });
+        var noPenalty = justifiedAllowed || isSafeExit;
+        var riOk = noPenalty;
         var currentRi = null;
         try {
             var vs = (typeof visibilityStats !== 'undefined') ? visibilityStats : (window.visibilityStats || null);
@@ -289,19 +297,37 @@
                 if (Number.isFinite(riNum)) currentRi = Math.round(riNum * 10) / 10;
             }
         } catch (e) { /* ignore */ }
+
+        if (_termState) {
+            _termState.isSafeExit = isSafeExit;
+            _termState.noPenaltyExit = noPenalty;
+            if (noPenalty) {
+                _termState.karmaBurnPreview = 0;
+                window._leaveKarmaBurnPreview = 0;
+            }
+        }
+
         var mutualStatusBanner = justifiedAllowed
             ? '<div class="leave-status-banner is-justified term-status-compact term-impact-status-banner">' +
                 '<div class="leave-status-title">' + _esc(_t('leaveJustifiedBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t('leaveJustifiedDesc')) + '</div>' +
               '</div>'
-            : '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
-                '<div class="leave-status-title">' + _esc(_t('leaveAbandonedTitle')) + '</div>' +
-                '<div class="leave-status-desc">' + _esc(_t('leaveAbandonedDesc', { karma: _fmtAmount(karmaBurn, 1) })) + '</div>' +
-                '<div class="leave-status-desc" style="margin-top:8px;">' + _esc(_t('leaveSafeWaitWarning', {
-                    count: waitCount,
-                    word: typeof pluralizeSkipWord === 'function' ? pluralizeSkipWord(waitCount) : '',
-                })) + '</div>' +
-              '</div>';
+            : (isSafeExit
+                ? _renderExitBanner(true)
+                : '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
+                    '<div class="leave-status-title">' + _esc(_t('leaveAbandonedTitle')) + '</div>' +
+                    '<div class="leave-status-desc">' + _esc(_t('leaveAbandonedDesc', { karma: _fmtAmount(karmaBurn, 1) })) + '</div>' +
+                    '<div class="leave-status-desc" style="margin-top:8px;">' + _esc(_t('leaveSafeWaitWarning', {
+                        count: waitCount,
+                        word: typeof pluralizeSkipWord === 'function' ? pluralizeSkipWord(waitCount) : '',
+                    })) + '</div>' +
+                  '</div>');
+
+        var impactHint = justifiedAllowed
+            ? _t('termLeaveImpactHintJustified')
+            : (isSafeExit
+                ? _t('termSafeExitHint')
+                : _t('termCostlyExitHint'));
 
         return '' +
             '<div class="leave-exchange-card" id="leave-exchange-card">' +
@@ -312,7 +338,9 @@
                     '</div>' +
                     '<div class="leave-metric-list">' +
                         _metricRow('📅', _t('leaveMetricDays'), data.partner_testing_days || 0, false) +
-                        _metricRow('⚠️', _t('leaveMetricSkips'), String(partnerSkips) + '/3', partnerSkips >= 3 || partnerConsecutive >= 3) +
+                        _metricRow('🔁', _t('leaveMetricConsecutiveSkips'), String(partnerConsecutive) + '/3', partnerConsecutive >= 3) +
+                        _metricRow('⚠️', _t('leaveMetricTotalSkips'), String(partnerSkips), false) +
+                        _metricRow('✅', _t('leaveMetricCheckins'), partnerCheckins, partnerCheckins > 0) +
                     '</div>' +
                     (partnerMetaParts.length
                         ? '<div class="leave-side-meta">' + partnerMetaParts.join('<span class="leave-meta-sep" aria-hidden="true">·</span>') + '</div>'
@@ -343,11 +371,11 @@
                 '</div>' +
             '</div>' +
             _renderImpactMeters({
-                karmaOk: justifiedAllowed,
+                karmaOk: noPenalty,
                 riOk: riOk,
-                karmaBurn: justifiedAllowed ? 0 : karmaBurn,
+                karmaBurn: noPenalty ? 0 : karmaBurn,
                 riCurrent: currentRi,
-                hint: '',
+                hint: impactHint,
                 statusBanner: mutualStatusBanner,
                 ownerCycle: true,
             });
@@ -432,8 +460,14 @@
             _effectsBlock(_t('kickTesterEffectsTitle'), testerEffects);
     }
 
-    function _isInviteSafeExit(testingDays, checkins) {
-        return Number(testingDays || 0) <= 3 && Number(checkins || 0) <= 1;
+    function _isUniversalSafeExit(opts) {
+        opts = opts || {};
+        var checkins = Number(opts.checkins || 0);
+        if (checkins > 0) return false;
+        if (opts.requirePartnerGate && Number(opts.partnerCheckins || 0) > 0) return false;
+        var testingDays = Number(opts.testingDays || 0);
+        // Date-only start_date → calendar day 1 ≈ first ~24h (backend parity).
+        return testingDays <= 1;
     }
 
     function _estimateGrantTotal(test) {
@@ -618,16 +652,16 @@
             '</div>';
     }
 
-    function _renderInviteExitBanner(isSafeExit) {
+    function _renderExitBanner(isSafeExit) {
         if (isSafeExit) {
             return '<div class="leave-status-banner is-justified term-status-compact term-impact-status-banner">' +
-                '<div class="leave-status-title">' + _esc(_t('termDropInviteSafeBadge')) + '</div>' +
-                '<div class="leave-status-desc">' + _esc(_t('termDropInviteSafeDesc')) + '</div>' +
+                '<div class="leave-status-title">' + _esc(_t('termSafeExitBadge')) + '</div>' +
+                '<div class="leave-status-desc">' + _esc(_t('termSafeExitDesc')) + '</div>' +
               '</div>';
         }
         return '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
-            '<div class="leave-status-title">' + _esc(_t('termDropInviteCostlyBadge')) + '</div>' +
-            '<div class="leave-status-desc">' + _esc(_t('termDropInviteCostlyDesc')) + '</div>' +
+            '<div class="leave-status-title">' + _esc(_t('termCostlyExitBadge')) + '</div>' +
+            '<div class="leave-status-desc">' + _esc(_t('termCostlyExitDesc')) + '</div>' +
           '</div>';
     }
 
@@ -658,16 +692,22 @@
         var grantTotal = grantStillAvailable ? _estimateGrantTotal(test) : 0;
         var grantLost = grantStillAvailable ? grantTotal : 0;
         var totalAtRisk = contractLost + grantLost;
-        var isSafeExit = isInviteLike && _isInviteSafeExit(testingDays, checkins);
-        // Bounty RI: immature window (<7d) usually excluded; invite uses ≤3d & ≤1 check-in.
-        var riOk = isInviteLike ? isSafeExit : (testingDays < 7);
+        var isSafeExit = _isUniversalSafeExit({
+            testingDays: testingDays,
+            checkins: checkins,
+            requirePartnerGate: false,
+        });
+        var karmaBurn = isSafeExit ? 0 : Math.min(14, checkins) * 0.1;
+        var riOk = isSafeExit;
+        var karmaOk = isSafeExit;
 
         if (_termState) {
-            _termState.justifiedAllowed = isBounty ? true : isSafeExit;
+            _termState.justifiedAllowed = isSafeExit;
             _termState.isBountyDrop = isBounty;
             _termState.isInviteDrop = isInviteLike;
             _termState.isSafeExit = isSafeExit;
             _termState.riOk = riOk;
+            _termState.karmaBurnPreview = karmaBurn;
             _termState.remainingBounty = totalAtRisk;
             _termState.contractLost = contractLost;
             _termState.grantLost = grantLost;
@@ -681,7 +721,7 @@
             _termState.preserveHtml = isInviteLike ? _renderPreserveInviteBlock(test, ownerId) : '';
         }
 
-        // Bounty keeps the money hero above; invite exit banner lives inside profile impact.
+        // Bounty keeps the money hero above; exit banner lives inside profile impact.
         var moneyBlock = isBounty
             ? _renderBountyLossBlock(
                 contractLost,
@@ -691,7 +731,7 @@
                 skips
             )
             : '';
-        var inviteStatusBanner = isInviteLike ? _renderInviteExitBanner(isSafeExit) : '';
+        var exitStatusBanner = _renderExitBanner(isSafeExit);
 
         var grantRow = (!isBounty && grantStillAvailable)
             ? _renderInviteGrantRow(skips, grantTotal)
@@ -717,10 +757,11 @@
             '</div>' +
             moneyBlock +
             _renderImpactMeters({
-                karmaOk: true,
+                karmaOk: karmaOk,
                 riOk: riOk,
-                hint: '',
-                statusBanner: inviteStatusBanner,
+                karmaBurn: karmaBurn,
+                hint: isSafeExit ? _t('termSafeExitHint') : _t('termCostlyExitHint'),
+                statusBanner: exitStatusBanner,
                 ownerCycle: true,
             });
     }
@@ -730,14 +771,13 @@
         if (!btn || !_termState) return;
         btn.classList.remove('leave-cta--safe', 'leave-cta--warn');
         if (_termState.mode === 'leave') {
-            var justified = !!_termState.justifiedAllowed;
-            btn.classList.add(justified ? 'leave-cta--safe' : 'leave-cta--warn');
-            btn.textContent = _t(justified ? 'leaveJustifiedBtn' : 'leaveAbandonedBtn');
+            var softLeave = !!_termState.justifiedAllowed || !!_termState.isSafeExit || !!_termState.noPenaltyExit;
+            btn.classList.add(softLeave ? 'leave-cta--safe' : 'leave-cta--warn');
+            btn.textContent = _t(softLeave ? 'leaveJustifiedBtn' : 'leaveAbandonedBtn');
             return;
         }
         if (_termState.mode === 'drop') {
-            // Bounty stays warn (money loss); invite safe → soft CTA; invite costly → warn.
-            if (_termState.isInviteDrop && _termState.isSafeExit) {
+            if (_termState.isSafeExit) {
                 btn.classList.add('leave-cta--safe');
             } else {
                 btn.classList.add('leave-cta--warn');
@@ -849,9 +889,11 @@
                 ? getUserTestingDay(dropSnap.start_date)
                 : Number(dropSnap && dropSnap.testing_days || 0);
             var dropCheckins = Number(dropSnap && dropSnap.checkins_count || 0);
-            var dropJoin = _normalizeJoinType(dropSnap && dropSnap.join_type || joinType);
-            var dropIsBounty = dropJoin === 'bounty' && Number(dropSnap && dropSnap.bounty_per_tester || 0) > 0;
-            defaultReason = (!dropIsBounty && _isInviteSafeExit(dropDays, dropCheckins))
+            defaultReason = _isUniversalSafeExit({
+                testingDays: dropDays,
+                checkins: dropCheckins,
+                requirePartnerGate: false,
+            })
                 ? 'took_by_mistake'
                 : 'not_suitable';
         }
@@ -1016,30 +1058,31 @@
 
         if (mode === 'leave') {
             if (title) title.textContent = _t('leaveConfirmTitle');
+            var leaveNoPenalty = justified || !!_termState.isSafeExit || !!_termState.noPenaltyExit;
             if (unlink && _isMutualJoin(_termState.joinType)) {
                 points.push('<li>' + _esc(_t('leaveConfirmPointMirror')) + '</li>');
             } else if (_isMutualJoin(_termState.joinType)) {
                 points.push('<li>' + _esc(_t('termConfirmPointKeepMirrorLeave')) + '</li>');
             }
-            if (justified) {
+            if (leaveNoPenalty) {
                 points.push('<li>' + _esc(_t('leaveConfirmPointNoPenalty')) + '</li>');
             } else {
                 points.push('<li>' + _esc(_t('leaveConfirmPointKarma', {
                     karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1),
                 })) + '</li>');
             }
-            if (_termState.grantAvailable) {
+            if (_termState.grantAvailable && !leaveNoPenalty) {
                 points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointGrant')) + '</li>');
             }
             body.innerHTML = '' +
-                '<p class="leave-confirm-lead">' + _esc(justified
+                '<p class="leave-confirm-lead">' + _esc(leaveNoPenalty
                     ? _t('leaveConfirmDescJustified')
                     : _t('leaveConfirmDescAbandoned', { karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1) })) +
                 '</p><ul class="leave-confirm-points">' + points.join('') + '</ul>';
             if (finalBtn) {
-                finalBtn.classList.toggle('leave-cta--safe', justified);
-                finalBtn.classList.toggle('leave-cta--warn', !justified);
-                finalBtn.textContent = _t(justified ? 'leaveConfirmFinalJustified' : 'leaveConfirmFinalAbandoned');
+                finalBtn.classList.toggle('leave-cta--safe', leaveNoPenalty);
+                finalBtn.classList.toggle('leave-cta--warn', !leaveNoPenalty);
+                finalBtn.textContent = _t(leaveNoPenalty ? 'leaveConfirmFinalJustified' : 'leaveConfirmFinalAbandoned');
             }
         } else if (mode === 'drop') {
             if (title) title.textContent = _t('termConfirmTitleDrop');
@@ -1057,18 +1100,19 @@
                 }
                 points.push('<li class="is-warn"><div class="leave-confirm-main">' + bustMain + '</div>' + bustSub + '</li>');
             }
-            points.push('<li>' + _esc(_t('termDropEffectNoKarma')) + '</li>');
-            if (_termState.isInviteDrop || _termState.isBountyDrop) {
-                var riOkConfirm = _termState.isInviteDrop
-                    ? !!_termState.isSafeExit
-                    : (_termState.riOk !== false);
-                points.push('<li' + (riOkConfirm ? '' : ' class="is-warn"') + '>' +
-                    _esc(_t(riOkConfirm ? 'termDropEffectRiSafe' : 'termDropEffectRiCostly')) +
-                    '</li>');
-            }
+            points.push('<li' + (_termState.isSafeExit ? '' : ' class="is-warn"') + '>' +
+                _esc(_termState.isSafeExit
+                    ? _t('termDropEffectNoKarma')
+                    : _t('leaveConfirmPointKarma', {
+                        karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1),
+                    })) +
+                '</li>');
+            points.push('<li' + (_termState.isSafeExit ? '' : ' class="is-warn"') + '>' +
+                _esc(_t(_termState.isSafeExit ? 'termDropEffectRiSafe' : 'termDropEffectRiCostly')) +
+                '</li>');
             body.innerHTML = '' +
                 '<p class="leave-confirm-lead">' + _esc(_t(
-                    _termState.isInviteDrop && _termState.isSafeExit
+                    _termState.isSafeExit
                         ? 'termConfirmDescDropSafe'
                         : (_termState.isBountyDrop
                             ? 'termConfirmDescDropBounty'
@@ -1076,7 +1120,7 @@
                 )) + '</p>' +
                 '<ul class="leave-confirm-points">' + points.join('') + '</ul>';
             if (finalBtn) {
-                var dropSafeCta = !!(_termState.isInviteDrop && _termState.isSafeExit);
+                var dropSafeCta = !!_termState.isSafeExit;
                 finalBtn.classList.toggle('leave-cta--safe', dropSafeCta);
                 finalBtn.classList.toggle('leave-cta--warn', !dropSafeCta);
                 finalBtn.textContent = _t('termDropConfirmFinal');
