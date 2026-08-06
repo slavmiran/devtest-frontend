@@ -111,10 +111,9 @@ const telegramUsername = DEBUG_BYPASS_USERNAME_GATE
     : String(initData.user?.username || '').trim().replace(/^@+/, '');
 const API_BASE_OVERRIDE = String(window.__API_BASE__ || '').trim();
 const PRODUCTION_API_BASE = 'https://devtest-backend.onrender.com/api';
-// Default test/staging tunnel (Cloudflare / ngrok / staging). Override via
-// window.__API_BASE__ or window.__TEST_API_BASE__ when the tunnel URL changes.
-const TEST_API_BASE = String(window.__TEST_API_BASE__ || '').trim()
-    || 'https://mating-message-recorders-parking.trycloudflare.com/api';
+// Test API comes only from js/env-config.js (synced from backend .env).
+// Set TEST_API_BASE or WEBHOOK_URL in devtest-backend/.env, then restart backend.
+const TEST_API_BASE = String(window.__TEST_API_BASE__ || '').trim();
 
 function _isTestFrontendHost() {
     var host = String(window.location.hostname || '').toLowerCase();
@@ -125,24 +124,41 @@ function _isTestFrontendHost() {
     return false;
 }
 
+function _normalizeApiBase(value) {
+    var base = String(value || '').trim().replace(/\/+$/, '');
+    if (!base) return '';
+    return /\/api$/i.test(base) ? base : (base + '/api');
+}
+
 function _resolveApiBase() {
-    // Optional explicit override only — never required.
+    // Optional one-off override (devtools) — never required for normal flow.
     if (API_BASE_OVERRIDE) {
-        return API_BASE_OVERRIDE;
+        return _normalizeApiBase(API_BASE_OVERRIDE);
     }
-    // Test hosts always use the reserved test backend (never production).
+    // localhost / Vercel → test tunnel from env-config.js (never production Render).
     if (_isTestFrontendHost()) {
-        return TEST_API_BASE;
+        var testBase = _normalizeApiBase(TEST_API_BASE);
+        if (!testBase) {
+            console.error(
+                '[DevTest] TEST_API_BASE is missing. '
+                + 'Set TEST_API_BASE or WEBHOOK_URL in devtest-backend/.env and restart the backend '
+                + '(it syncs js/env-config.js).'
+            );
+        }
+        return testBase;
     }
     return PRODUCTION_API_BASE;
 }
 
 let API_BASE = _resolveApiBase();
-const API_USES_NGROK = API_BASE.includes('ngrok');
-window.API_USES_NGROK = API_USES_NGROK;
+const API_USES_TUNNEL = /trycloudflare\.com|ngrok/i.test(API_BASE);
+const API_USES_NGROK = /ngrok/i.test(API_BASE);
+window.API_USES_TUNNEL = API_USES_TUNNEL;
+// Back-compat alias used by media helpers.
+window.API_USES_NGROK = API_USES_TUNNEL;
 window.API_BASE = API_BASE;
 if (window.App) window.App.API_BASE = API_BASE;
-console.info('[DevTest] API_BASE =', API_BASE, _isTestFrontendHost() ? '(test)' : '(production)');
+console.info('[DevTest] API_BASE =', API_BASE || '(empty)', _isTestFrontendHost() ? '(test)' : '(production)');
 window.FEEDBACK_PUBLIC_LINK_BASE = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
 
 /** Signed Telegram WebApp initData for backend auth. Prefer over initDataUnsafe. */
@@ -179,7 +195,8 @@ function _resolveFetchRequestUrl(input) {
 
 window.fetch = function(input, init) {
     var requestUrl = _resolveFetchRequestUrl(input);
-    if (!API_USES_NGROK || requestUrl.indexOf(API_BASE) !== 0) {
+    // Legacy ngrok interstitial bypass only — Cloudflare Tunnel does not need it.
+    if (!API_USES_NGROK || !API_BASE || requestUrl.indexOf(API_BASE) !== 0) {
         return _nativeFetch(input, init);
     }
 
