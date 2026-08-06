@@ -340,12 +340,12 @@
                     '</div>' +
                 '</div>' +
             '</div>' +
-            _renderOwnerCyclePlea() +
             _renderImpactMeters({
                 karmaOk: justifiedAllowed,
                 riOk: riOk,
                 hint: impactHint,
                 statusBanner: mutualStatusBanner,
+                ownerCycle: true,
             });
     }
 
@@ -540,7 +540,7 @@
     function _renderOwnerCyclePlea() {
         return '' +
             '<div class="term-owner-cycle">' +
-                '<span class="term-owner-cycle-icon" aria-hidden="true">💔</span>' +
+                '<span class="term-owner-cycle-icon" aria-hidden="true">⚠️</span>' +
                 '<div class="term-owner-cycle-copy">' +
                     '<div class="term-owner-cycle-title">' + _esc(_t('termOwnerCycleTitle')) + '</div>' +
                     '<div class="term-owner-cycle-desc">' + _esc(_t('termOwnerCycleDesc')) + '</div>' +
@@ -554,6 +554,7 @@
         var riOk = !!opts.riOk;
         var hint = opts.hint || '';
         var statusBanner = opts.statusBanner || '';
+        var ownerCycle = opts.ownerCycle !== false ? _renderOwnerCyclePlea() : '';
         return '' +
             '<div class="term-impact-block">' +
                 '<div class="term-impact-title">' + _esc(_t('termDropEffectsTitle')) + '</div>' +
@@ -573,6 +574,7 @@
                         '</span>' +
                     '</div>' +
                 '</div>' +
+                ownerCycle +
                 statusBanner +
                 (hint ? '<div class="term-impact-hint">' + _esc(hint) + '</div>' : '') +
             '</div>';
@@ -683,12 +685,12 @@
                 '</div>' +
             '</div>' +
             moneyBlock +
-            _renderOwnerCyclePlea() +
             _renderImpactMeters({
                 karmaOk: true,
                 riOk: riOk,
                 hint: impactHint,
                 statusBanner: inviteStatusBanner,
+                ownerCycle: true,
             });
     }
 

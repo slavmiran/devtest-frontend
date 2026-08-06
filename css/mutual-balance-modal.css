@@ -870,41 +870,44 @@
 
 .leave-grant-row {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin-top: 10px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--warning-surface) 80%, transparent);
-    border: 1px solid var(--warning-border);
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 6px 0;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    border-top: 1px dashed color-mix(in srgb, var(--border-subtle) 70%, transparent);
 }
 
+/* Owner Cycle — inline row inside impact section, no separate card */
 .term-owner-cycle {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    margin: 0 0 14px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: color-mix(in srgb, rgba(255, 69, 58, 0.12) 75%, var(--bg-surface-1));
-    border: 1px solid color-mix(in srgb, var(--danger, #ff453a) 35%, var(--border-subtle));
+    gap: 8px;
+    margin: 0;
+    padding: 10px 0 6px;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    border-top: 1px dashed color-mix(in srgb, var(--border-subtle) 70%, transparent);
 }
 
 .term-owner-cycle-icon {
     flex-shrink: 0;
-    font-size: 16px;
-    line-height: 1.2;
+    font-size: 14px;
+    line-height: 1.3;
 }
 
 .term-owner-cycle-title {
     font-size: 12px;
     font-weight: 700;
     color: color-mix(in srgb, var(--danger, #ff453a) 85%, var(--text-color));
-    margin-bottom: 3px;
+    margin-bottom: 2px;
 }
 
 .term-owner-cycle-desc {
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.4;
     color: var(--text-secondary);
 }
@@ -924,11 +927,11 @@
     font-size: 12px;
     font-weight: 700;
     color: var(--warning);
-    margin-bottom: 3px;
+    margin-bottom: 0;
 }
 
 .leave-grant-desc {
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.4;
     color: var(--text-secondary);
 }
@@ -941,12 +944,17 @@
     display: none !important;
 }
 
+/* Preserve Block — soft gradient accent, no hard border */
 .term-preserve-block {
     margin: 0;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 1px solid color-mix(in srgb, #0a84ff 35%, var(--border-subtle));
-    background: color-mix(in srgb, rgba(10, 132, 255, 0.12) 70%, var(--bg-surface-1));
+    padding: 14px 14px;
+    border-radius: 14px;
+    border: none;
+    background:
+        radial-gradient(ellipse 100% 80% at 100% 0%, rgba(10, 132, 255, 0.14), transparent 65%),
+        linear-gradient(225deg, rgba(20, 50, 90, 0.22) 0%, transparent 55%),
+        var(--bg-surface-1);
+    box-shadow: inset 0 1px 0 rgba(99, 173, 255, 0.08);
 }
 
 .term-preserve-title {
@@ -1100,44 +1108,60 @@
     opacity: 0.85;
 }
 
+/* Impact Block — single wrapping card for all impact info */
 .term-impact-block {
-    margin: 0 0 4px;
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .term-impact-title {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--hint-color);
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.05em;
 }
 
+/* Impact pills — flat, borderless chip-pair */
 .term-impact-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 0;
 }
 
 .term-impact-pill {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 1px solid var(--border-subtle);
-    background: var(--bg-surface-1);
-    min-height: 74px;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    min-height: 0;
+}
+
+.term-impact-pill:first-child {
+    padding-right: 12px;
+    border-right: 1px solid color-mix(in srgb, var(--border-subtle) 65%, transparent);
+}
+
+.term-impact-pill:last-child {
+    padding-left: 12px;
 }
 
 .term-impact-pill.is-ok {
-    border-color: color-mix(in srgb, var(--success-border, #30d158) 55%, var(--border-subtle));
-    background: color-mix(in srgb, var(--success-surface, rgba(48, 209, 88, 0.14)) 55%, var(--bg-surface-1));
+    border-color: color-mix(in srgb, var(--border-subtle) 65%, transparent);
+    background: transparent;
 }
 
 .term-impact-pill.is-risk {
-    border-color: color-mix(in srgb, var(--danger, #ff453a) 45%, var(--border-subtle));
-    background: color-mix(in srgb, rgba(255, 69, 58, 0.14) 55%, var(--bg-surface-1));
+    border-color: color-mix(in srgb, var(--border-subtle) 65%, transparent);
+    background: transparent;
 }
 
 .term-impact-ico {
@@ -1156,15 +1180,33 @@
     color: var(--text-color);
 }
 
+.term-impact-pill.is-ok .term-impact-status {
+    color: color-mix(in srgb, var(--success, #34c759) 80%, var(--text-color));
+}
+
+.term-impact-pill.is-risk .term-impact-status {
+    color: color-mix(in srgb, var(--danger, #ff453a) 80%, var(--text-color));
+}
+
 .term-impact-hint {
     margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed color-mix(in srgb, var(--border-subtle) 55%, transparent);
     font-size: 11px;
     line-height: 1.4;
     color: var(--hint-color);
 }
 
+/* Status Banner inside impact section — compact inline with dot indicator */
 .term-impact-block .term-impact-status-banner {
-    margin: 8px 0 0;
+    margin: 10px 0 0;
+    padding: 8px 0 0;
+    border-top: 1px dashed color-mix(in srgb, var(--border-subtle) 55%, transparent);
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    background: transparent;
 }
 
 .term-impact-block .term-impact-status-banner.term-status-compact {
@@ -1180,44 +1222,66 @@
     min-width: 0;
 }
 
-/* Status banners — informative, not neon */
+/* Status banners — compact inline inside impact section */
 .leave-status-banner {
     margin: 0 0 14px;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--border-subtle);
-    background: var(--bg-surface-1);
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    background: transparent;
 }
 
 .leave-status-banner.is-justified {
-    border-color: color-mix(in srgb, var(--success-border) 55%, var(--border-subtle));
-    background: color-mix(in srgb, var(--success-surface) 45%, var(--bg-surface-1));
+    border-color: transparent;
+    background: transparent;
 }
 
 .leave-status-banner.is-penalty {
-    border-color: color-mix(in srgb, var(--danger-border) 60%, var(--border-subtle));
-    background: color-mix(in srgb, var(--danger-surface) 40%, var(--bg-surface-1));
+    border-color: transparent;
+    background: transparent;
 }
 
 .leave-status-title {
-    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: 3px;
     color: var(--text-primary);
 }
 
+.leave-status-title::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--hint-color);
+}
+
 .leave-status-banner.is-justified .leave-status-title {
-    color: color-mix(in srgb, var(--success) 70%, var(--text-primary));
+    color: color-mix(in srgb, var(--success) 80%, var(--text-primary));
+}
+
+.leave-status-banner.is-justified .leave-status-title::before {
+    background: var(--success, #34c759);
 }
 
 .leave-status-banner.is-penalty .leave-status-title {
-    color: color-mix(in srgb, var(--danger) 75%, var(--text-primary));
+    color: color-mix(in srgb, var(--danger) 80%, var(--text-primary));
+}
+
+.leave-status-banner.is-penalty .leave-status-title::before {
+    background: var(--danger, #ff453a);
 }
 
 .leave-status-desc {
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.45;
     color: var(--text-secondary);
+    padding-left: 12px;
 }
 
 .reason-chip-group {
