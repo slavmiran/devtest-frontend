@@ -156,7 +156,7 @@
 
         planLabel: ['Your plan', 'Ваш тариф'],
         planTitle: ['Production Access Sprint', 'Спринт до production-доступа'],
-        planPriceNote: ['with crypto payment', 'при оплате криптовалютой'],
+        planPriceNote: ['official price · crypto', 'официальная цена · крипто'],
         planFeature1: ['<strong>12 real testers</strong> connected within 12 hours', '<strong>12 реальных тестировщиков</strong> подключаются в течение 12 часов'],
         planFeature2: ['<strong>14 days</strong> of continuous closed testing', '<strong>14 дней</strong> непрерывного закрытого тестирования'],
         planFeature3: ['<strong>Support</strong> with the production application', '<strong>Помощь</strong> с заявкой на production'],
@@ -171,12 +171,18 @@
         methodPaypal: ['PayPal', 'PayPal'],
         methodFiat: ['Bank / local currency', 'Банк / местная валюта'],
         badgeRecommended: ['Recommended', 'Рекомендуем'],
-        badgeFee: ['incl. fee', 'с комиссией'],
+        badgeFee: ['+$3 fee', '+$3 комиссия'],
         hintCrypto: ['Choose an exchange', 'Выберите биржу'],
         hintSteps: ['Tap to open the payment steps', 'Нажмите, чтобы открыть шаги оплаты'],
         selectMethod: ['Select a payment method', 'Выберите способ оплаты'],
         selectExchange: ['Select an exchange', 'Выберите биржу'],
         openSteps: ['Payment steps · ${amount}', 'Шаги оплаты · ${amount}'],
+        priceBase: ['$20', '$20'],
+        priceFeeExtra: ['+$3', '+$3'],
+        amountDueWithFee: [
+            '$20 + $3 fee = $23',
+            '$20 + комиссия $3 = $23'
+        ],
 
         flowCryptoTitle: ['Crypto transfer · {name}', 'Криптоперевод · {name}'],
         flowCryptoSubtitle: ['Send ${amount} as an internal transfer.', 'Отправьте ${amount} внутренним переводом.'],
@@ -186,17 +192,20 @@
             'Скопируйте {label} и отправьте внутренний перевод внутри биржи — не вывод в сеть.'
         ],
         flowPaypalTitle: ['PayPal transfer', 'Перевод через PayPal'],
-        flowPaypalSubtitle: ['Send ${amount} to our PayPal account.', 'Отправьте ${amount} на наш аккаунт PayPal.'],
+        flowPaypalSubtitle: [
+            'Service $20 + $3 fee. Send $23 to our PayPal account.',
+            'Услуга $20 + комиссия $3. Отправьте $23 на наш PayPal.'
+        ],
         flowPaypalStep: ['Copy the address and pay', 'Скопируйте адрес и оплатите'],
         flowPaypalDesc: [
-            'Copy the email, open PayPal and complete the transfer.',
-            'Скопируйте почту, откройте PayPal и завершите перевод.'
+            'Copy the email, open PayPal and complete the transfer of $23 ($20 + $3 fee).',
+            'Скопируйте почту, откройте PayPal и переведите $23 ($20 + комиссия $3).'
         ],
         openPaypal: ['Open PayPal', 'Открыть PayPal'],
         flowFiatTitle: ['Bank / local currency', 'Банк / местная валюта'],
         flowFiatSubtitle: [
-            'The manager will calculate the exact local amount for ${amount}.',
-            'Менеджер рассчитает точную сумму в местной валюте для ${amount}.'
+            'Service $20 + $3 fee. The manager will convert $23 into your local currency.',
+            'Услуга $20 + комиссия $3. Менеджер пересчитает $23 в вашу местную валюту.'
         ],
         flowFiatStep: ['Get the payment details', 'Получите реквизиты'],
         flowFiatDesc: [
@@ -207,8 +216,8 @@
         fiatBankPlaceholder: ['Ziraat, Kaspi, T-Bank…', 'Ziraat, Kaspi, Т-Банк…'],
         fiatPersonal: ['Paying from a personal account', 'Оплачиваю с личного счета'],
         fiatTip: [
-            'The manager converts ${amount} into your currency at the current rate and sends the exact amount with the payment details in chat.',
-            'Менеджер пересчитает ${amount} в вашу валюту по текущему курсу и пришлет точную сумму и реквизиты в чате.'
+            '💡 The manager converts $20 + $3 fee ($23) into your currency at the current rate and sends the exact amount with payment details in chat.',
+            '💡 Менеджер пересчитает $20 + комиссию $3 ($23) в вашу валюту по текущему курсу и пришлёт точную сумму и реквизиты в чате.'
         ],
         fiatGetRequisites: ['Get payment details', 'Получить реквизиты'],
         fiatRequisitesRequested: ['Details requested', 'Реквизиты запрошены'],
@@ -217,15 +226,21 @@
             'Ожидаем реквизиты'
         ],
         fiatWaitingDesc: [
-            'The manager will send the exact amount and payment details in Telegram DM. After you pay, upload the screenshot below.',
-            'Менеджер пришлёт точную сумму и реквизиты в личные сообщения Telegram. После оплаты загрузите скриншот ниже.'
+            'We opened a chat with the manager. After you receive the details and pay, upload the screenshot below.',
+            'Мы открыли чат с менеджером. Когда получите реквизиты и оплатите — загрузите скриншот ниже.'
         ],
         fiatMissing: ['Choose a currency and enter your bank name.', 'Выберите валюту и укажите название банка.'],
         fiatCreating: ['Requesting details…', 'Запрашиваем реквизиты…'],
         fiatCreateFailed: ['Could not request payment details. Please try again.', 'Не удалось запросить реквизиты. Попробуйте ещё раз.'],
         fiatToastRequested: [
-            'Payment details requested. The manager will send them in DM soon.',
-            'Реквизиты запрошены. Менеджер скоро пришлёт их в ЛС.'
+            'Opening chat with the manager…',
+            'Открываем чат с менеджером…'
+        ],
+        fiatPersonalYes: ['Yes', 'Да'],
+        fiatPersonalNo: ['No', 'Нет'],
+        fiatDmMessage: [
+            'Hello! I want to pay for Private Testing ($20).\n📌 Order: #{code} ({app})\n💳 Payment currency: {currency}\n🏦 My bank: {bank}\n👤 Payment from personal account: {personal}\n💰 Amount with fee: $23 (need equivalent in {currency})\n\nPlease calculate the exact amount in {currency} and send the payment details.',
+            'Здравствуйте! Хочу оплатить Приватное тестирование ($20).\n📌 Заказ: #{code} ({app})\n💳 Валюта оплаты: {currency}\n🏦 Мой банк: {bank}\n👤 Оплата с личного счета: {personal}\n💰 Сумма с комиссией: $23 (нужен эквивалент в {currency})\n\nПожалуйста, рассчитайте точную сумму в {currency} и выдайте реквизиты.'
         ],
 
         uploadStepTitle: ['Payment screenshot', 'Скриншот оплаты'],
@@ -570,9 +585,30 @@
         return value;
     }
 
-    function getPaymentAmount(method) {
-        if (method === 'paypal' || method === 'rub') return 23;
+    function getPaymentBaseAmount() {
         return 20;
+    }
+
+    function getPaymentFee(method) {
+        return (method === 'paypal' || method === 'rub') ? 3 : 0;
+    }
+
+    function getPaymentAmount(method) {
+        return getPaymentBaseAmount() + getPaymentFee(method);
+    }
+
+    function buildFiatManagerMessage(orderCode, currencyCode, bankName) {
+        return L('fiatDmMessage', {
+            code: orderCode,
+            app: String(wizardState.appName || '').trim(),
+            currency: currencyCode,
+            bank: bankName,
+            personal: wizardState.fiatPersonalAccount ? L('fiatPersonalYes') : L('fiatPersonalNo')
+        });
+    }
+
+    function openFiatManagerChat(orderCode, currencyCode, bankName) {
+        openTelegramContact(buildFiatManagerMessage(orderCode, currencyCode, bankName));
     }
 
     function getWizardLang() {
@@ -1176,7 +1212,10 @@
                                         </div>
                                     </div>
                                 </div>
-                                <span class="gtw-method-price">$23</span>
+                                <span class="gtw-method-price gtw-method-price--fee">
+                                    <span class="gtw-method-price-base">$20</span>
+                                    <span class="gtw-method-price-extra">${L('priceFeeExtra')}</span>
+                                </span>
                             </div>
                             <p class="gtw-method-action-hint">${L('hintSteps')}</p>
                         </div>
@@ -1192,7 +1231,10 @@
                                         </div>
                                     </div>
                                 </div>
-                                <span class="gtw-method-price">$23</span>
+                                <span class="gtw-method-price gtw-method-price--fee">
+                                    <span class="gtw-method-price-base">$20</span>
+                                    <span class="gtw-method-price-extra">${L('priceFeeExtra')}</span>
+                                </span>
                             </div>
                             <p class="gtw-method-action-hint">${L('hintSteps')}</p>
                         </div>
@@ -2386,6 +2428,8 @@
             return;
         }
         if (wizardState.fiatOrderId) {
+            var existingCode = wizardState.fiatPublicCode || ('GT-' + (24766 + Number(wizardState.fiatOrderId || 0) * 41));
+            openFiatManagerChat(existingCode, currency.code, bankName);
             markPaymentStep1Done();
             return;
         }
@@ -2404,13 +2448,15 @@
                     app_type: wizardState.appType,
                     testing_link: wizardState.testingLink,
                     payment_method: 'rub',
-                    amount_usd: 23,
+                    amount_usd: getPaymentAmount('rub'),
                     create_mode: 'requisites',
                     notes: getGuaranteedOrderNotes([
                         'currency=' + currency.code,
                         'bank=' + bankName,
                         'personal_account=' + (wizardState.fiatPersonalAccount ? 'yes' : 'no'),
-                        'create_mode=requisites'
+                        'create_mode=requisites',
+                        'base_amount=20',
+                        'fee_amount=3'
                     ])
                 }))
             });
@@ -2434,7 +2480,10 @@
                 }
             }
 
-            // Official order + NEW ORDER are created only after "Submit application" with proof.
+            var orderCode = wizardState.fiatPublicCode || ('GT-' + (24766 + Number(wizardState.fiatOrderId || 0) * 41));
+            wizardState.fiatPublicCode = orderCode;
+            // Official NEW ORDER + receipt only after submit with proof.
+            openFiatManagerChat(orderCode, currency.code, bankName);
             markPaymentStep1Done();
             if (typeof showToast === 'function') {
                 showToast(L('fiatToastRequested'));

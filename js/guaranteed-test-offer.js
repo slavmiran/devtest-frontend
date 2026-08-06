@@ -33,8 +33,8 @@
             'Если доступ к production не получен, мы вернем оплату.'
         ],
         footnote: [
-            'Crypto transfer — $20. PayPal or bank transfer — $23',
-            'Оплата криптовалютой — $20. PayPal или банковский перевод — $23'
+            'Official price $20. Crypto — $20. PayPal / bank — $20 + $3 fee.',
+            'Официальная цена $20. Крипто — $20. PayPal / банк — $20 + комиссия $3.'
         ],
         cta: ['Add your app', 'Добавить приложение'],
         close: ['Close', 'Закрыть']

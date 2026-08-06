@@ -1103,6 +1103,26 @@
     font-variant-numeric: tabular-nums;
 }
 
+.gtw-method-price--fee {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    line-height: 1.15;
+}
+
+.gtw-method-price-base {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gtw-method-price-extra {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary, #717C89);
+}
+
 .gtw-method-action-hint {
     margin: 4px 0 0 32px;
     font-size: 13px;
