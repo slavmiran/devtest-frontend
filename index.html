@@ -86,7 +86,7 @@
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260806-gt-start-gate-v2">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260806-tuning-v5">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260806-tuning-v8">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
 <body>
@@ -355,7 +355,11 @@
 
         <div id="done-section" class="ts-section-block ts-section-block--done accordion" style="display: none;">
             <div class="ts-section-head ts-section-head--done ts-section-head--clickable accordion-header" onclick="toggleAccordion()">
-                <span class="ts-section-head__icon" aria-hidden="true">✅</span>
+                <span class="ts-section-head__icon ts-section-head__icon--done" aria-hidden="true">
+                    <svg class="ts-section-head__done-icon" viewBox="0 0 24 24" focusable="false">
+                        <path fill="currentColor" d="M22 5.18 10.59 16.6l-4.24-4.24 1.41-1.41 2.83 2.83 10-10L22 5.18zM19.79 10.22C19.92 10.79 20 11.39 20 12c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8c1.58 0 3.04.46 4.28 1.25l1.44-1.44C16.1 2.67 14.13 2 12 2 6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10c0-1.19-.22-2.33-.61-3.39l-1.6 1.61z"/>
+                    </svg>
+                </span>
                 <div class="ts-section-head__titles">
                     <div class="ts-section-head__title-row">
                         <h3 id="t-doneToday" class="ts-section-head__title" data-i18n="doneToday">Выполнено сегодня</h3>
