@@ -111,9 +111,12 @@ const telegramUsername = DEBUG_BYPASS_USERNAME_GATE
     : String(initData.user?.username || '').trim().replace(/^@+/, '');
 const API_BASE_OVERRIDE = String(window.__API_BASE__ || '').trim();
 const PRODUCTION_API_BASE = 'https://devtest-backend.onrender.com/api';
-// Test API comes only from js/env-config.js (synced from backend .env).
-// Set TEST_API_BASE or WEBHOOK_URL in devtest-backend/.env, then restart backend.
-const TEST_API_BASE = String(window.__TEST_API_BASE__ || '').trim();
+// Optional local hint from js/env-config.js. Vercel does NOT need redeploy on tunnel restart:
+// it discovers the live URL from staging Supabase (published by local backend on start).
+const TEST_API_BASE_HINT = String(window.__TEST_API_BASE__ || '').trim();
+// Staging publishable discovery (anon can only SELECT key=test_api_base).
+const TEST_API_DISCOVERY_URL = 'https://fksbrckitigxehxxfaru.supabase.co/rest/v1/dev_runtime_config?key=eq.test_api_base&select=value&limit=1';
+const TEST_API_DISCOVERY_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrc2JyY2tpdGlneGVoeHhmYXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODgxMjYsImV4cCI6MjA5NTQ2NDEyNn0.9VAo0mcz-PuRuNJn9bNYUOkMD42PfEM58puzY_n836g';
 
 function _isTestFrontendHost() {
     var host = String(window.location.hostname || '').toLowerCase();
@@ -130,36 +133,79 @@ function _normalizeApiBase(value) {
     return /\/api$/i.test(base) ? base : (base + '/api');
 }
 
-function _resolveApiBase() {
-    // Optional one-off override (devtools) — never required for normal flow.
+function _applyResolvedApiBase(nextBase) {
+    API_BASE = _normalizeApiBase(nextBase) || '';
+    window.API_BASE = API_BASE;
+    if (window.App) window.App.API_BASE = API_BASE;
+    window.API_USES_TUNNEL = /trycloudflare\.com|ngrok/i.test(API_BASE);
+    window.API_USES_NGROK = window.API_USES_TUNNEL;
+    console.info('[DevTest] API_BASE =', API_BASE || '(empty)', _isTestFrontendHost() ? '(test)' : '(production)');
+    return API_BASE;
+}
+
+function _resolveApiBaseSync() {
     if (API_BASE_OVERRIDE) {
         return _normalizeApiBase(API_BASE_OVERRIDE);
     }
-    // localhost / Vercel → test tunnel from env-config.js (never production Render).
     if (_isTestFrontendHost()) {
-        var testBase = _normalizeApiBase(TEST_API_BASE);
-        if (!testBase) {
-            console.error(
-                '[DevTest] TEST_API_BASE is missing. '
-                + 'Set TEST_API_BASE or WEBHOOK_URL in devtest-backend/.env and restart the backend '
-                + '(it syncs js/env-config.js).'
-            );
-        }
-        return testBase;
+        return _normalizeApiBase(TEST_API_BASE_HINT);
     }
     return PRODUCTION_API_BASE;
 }
 
-let API_BASE = _resolveApiBase();
-const API_USES_TUNNEL = /trycloudflare\.com|ngrok/i.test(API_BASE);
-const API_USES_NGROK = /ngrok/i.test(API_BASE);
-window.API_USES_TUNNEL = API_USES_TUNNEL;
-// Back-compat alias used by media helpers.
-window.API_USES_NGROK = API_USES_TUNNEL;
+let API_BASE = _resolveApiBaseSync();
+window.API_USES_TUNNEL = /trycloudflare\.com|ngrok/i.test(API_BASE);
+window.API_USES_NGROK = window.API_USES_TUNNEL;
 window.API_BASE = API_BASE;
 if (window.App) window.App.API_BASE = API_BASE;
-console.info('[DevTest] API_BASE =', API_BASE || '(empty)', _isTestFrontendHost() ? '(test)' : '(production)');
+console.info('[DevTest] API_BASE (initial) =', API_BASE || '(empty)', _isTestFrontendHost() ? '(test)' : '(production)');
 window.FEEDBACK_PUBLIC_LINK_BASE = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
+
+async function resolveTestApiBase() {
+    if (API_BASE_OVERRIDE) {
+        return _applyResolvedApiBase(API_BASE_OVERRIDE);
+    }
+    if (!_isTestFrontendHost()) {
+        return _applyResolvedApiBase(PRODUCTION_API_BASE);
+    }
+
+    var discovered = '';
+    try {
+        var response = await fetch(TEST_API_DISCOVERY_URL, {
+            method: 'GET',
+            headers: {
+                apikey: TEST_API_DISCOVERY_ANON_KEY,
+                Authorization: 'Bearer ' + TEST_API_DISCOVERY_ANON_KEY,
+                Accept: 'application/json',
+            },
+            cache: 'no-store',
+        });
+        if (response.ok) {
+            var rows = await response.json();
+            if (Array.isArray(rows) && rows[0] && rows[0].value) {
+                discovered = _normalizeApiBase(rows[0].value);
+            }
+        } else {
+            console.warn('[DevTest] test API discovery HTTP', response.status);
+        }
+    } catch (err) {
+        console.warn('[DevTest] test API discovery failed:', err && err.message ? err.message : err);
+    }
+
+    if (discovered) {
+        return _applyResolvedApiBase(discovered);
+    }
+
+    var fallback = _normalizeApiBase(TEST_API_BASE_HINT);
+    if (!fallback) {
+        console.error(
+            '[DevTest] No test API base. Start local backend with WEBHOOK_URL set '
+            + '(it publishes the tunnel pointer to staging).'
+        );
+    }
+    return _applyResolvedApiBase(fallback);
+}
+window.resolveTestApiBase = resolveTestApiBase;
 
 /** Signed Telegram WebApp initData for backend auth. Prefer over initDataUnsafe. */
 function getTelegramInitDataRaw() {
@@ -196,7 +242,8 @@ function _resolveFetchRequestUrl(input) {
 window.fetch = function(input, init) {
     var requestUrl = _resolveFetchRequestUrl(input);
     // Legacy ngrok interstitial bypass only — Cloudflare Tunnel does not need it.
-    if (!API_USES_NGROK || !API_BASE || requestUrl.indexOf(API_BASE) !== 0) {
+    var usesNgrok = /ngrok/i.test(API_BASE || '');
+    if (!usesNgrok || !API_BASE || requestUrl.indexOf(API_BASE) !== 0) {
         return _nativeFetch(input, init);
     }
 

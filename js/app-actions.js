@@ -1946,11 +1946,13 @@ function handleFirstDownload(id, pkg) {
 
 async function handleScreenshotAndConfirm(id, ownerUsername) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    if (window.openScreenshotGuardModal) {
-        window.openScreenshotGuardModal(id, ownerUsername);
+    if (typeof openReportModal === 'function') {
+        openReportModal(id, ownerUsername);
         return;
     }
-    openReportModal(id, ownerUsername);
+    if (window.openReportModal) {
+        window.openReportModal(id, ownerUsername);
+    }
 }
 
 async function submitIssueReport(appId) {

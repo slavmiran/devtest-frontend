@@ -20,73 +20,79 @@ document.addEventListener('DOMContentLoaded', () => {
         showNoUsernameOverlay();
         return;
     }
-    var runtimeConfigPromise = loadRuntimeConfig();
-    var bootstrapProfileSyncPromise = syncTelegramProfile();
-    loadUserProfilePreferences().catch(function() {});
 
-    syncUserTimezone(false).catch(() => {});
-
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && _pendingScreenshotReminderUsername !== null) {
-            const username = _pendingScreenshotReminderUsername;
-            _pendingScreenshotReminderUsername = null;
-            setTimeout(() => showScreenshotCompleteModal(username), 300);
+    (async function() {
+        // Resolve live Cloudflare tunnel URL from staging (no Vercel redeploy needed).
+        if (typeof resolveTestApiBase === 'function') {
+            await resolveTestApiBase();
         }
-        if (!document.hidden) {
+
+        var runtimeConfigPromise = loadRuntimeConfig();
+        var bootstrapProfileSyncPromise = syncTelegramProfile();
+        loadUserProfilePreferences().catch(function() {});
+
+        syncUserTimezone(false).catch(() => {});
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && _pendingScreenshotReminderUsername !== null) {
+                const username = _pendingScreenshotReminderUsername;
+                _pendingScreenshotReminderUsername = null;
+                setTimeout(() => showScreenshotCompleteModal(username), 300);
+            }
+            if (!document.hidden) {
+                _syncActiveTimerState();
+                if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
+                    _lastFetchTimes.tests = 0;
+                    if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
+                        syncPendingFeedbackCheckinsFromServer().catch(function() {});
+                    }
+                }
+                if (typeof refreshHomeScreenStatus === 'function') {
+                    refreshHomeScreenStatus({ force: true });
+                }
+                renderTests(true);
+                loadTasks(true).catch(() => {});
+                loadIncomingOffers({ background: true }).catch(() => {});
+                if (typeof loadBountyApplications === 'function') {
+                    loadBountyApplications({ background: true }).catch(() => {});
+                }
+                loadReliabilitySummary(true).catch(() => {});
+            }
+        });
+
+        window.addEventListener('focus', function() {
             _syncActiveTimerState();
             if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
                 _lastFetchTimes.tests = 0;
                 if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
                     syncPendingFeedbackCheckinsFromServer().catch(function() {});
                 }
+                loadTasks(true).catch(function() {});
             }
-            if (typeof refreshHomeScreenStatus === 'function') {
-                refreshHomeScreenStatus({ force: true });
+            if (window.renderTests) window.renderTests(true);
+        });
+
+        window.addEventListener('pageshow', function() {
+            _syncActiveTimerState();
+            if (window.renderTests) window.renderTests(true);
+        });
+
+        document.addEventListener('pointerdown', (event) => {
+            const menu = document.getElementById('system-drop-menu');
+            if (!menu || !menu.classList.contains('active')) return;
+            if (!menu.contains(event.target)) {
+                menu.classList.remove('active');
             }
-            renderTests(true);
-            loadTasks(true).catch(() => {});
-            loadIncomingOffers({ background: true }).catch(() => {});
-            if (typeof loadBountyApplications === 'function') {
-                loadBountyApplications({ background: true }).catch(() => {});
-            }
-            loadReliabilitySummary(true).catch(() => {});
+        });
+
+        _loadFirstDayScreenshotState();
+        _loadCustomGroupJoinedState();
+        _loadTimerReadyState();
+        _loadPersistedActiveTimer();
+        if (typeof initTelegramBackButton === 'function') {
+            initTelegramBackButton();
         }
-    });
 
-    window.addEventListener('focus', function() {
-        _syncActiveTimerState();
-        if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
-            _lastFetchTimes.tests = 0;
-            if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
-                syncPendingFeedbackCheckinsFromServer().catch(function() {});
-            }
-            loadTasks(true).catch(function() {});
-        }
-        if (window.renderTests) window.renderTests(true);
-    });
-
-    window.addEventListener('pageshow', function() {
-        _syncActiveTimerState();
-        if (window.renderTests) window.renderTests(true);
-    });
-
-    document.addEventListener('pointerdown', (event) => {
-        const menu = document.getElementById('system-drop-menu');
-        if (!menu || !menu.classList.contains('active')) return;
-        if (!menu.contains(event.target)) {
-            menu.classList.remove('active');
-        }
-    });
-
-    _loadFirstDayScreenshotState();
-    _loadCustomGroupJoinedState();
-    _loadTimerReadyState();
-    _loadPersistedActiveTimer();
-    if (typeof initTelegramBackButton === 'function') {
-        initTelegramBackButton();
-    }
-
-    (async function() {
         console.log('[DEBUG] bootstrap IIFE started');
         var profileSyncResult = await bootstrapProfileSyncPromise;
         console.log('[DEBUG] bootstrap: profileSync done, ok=', profileSyncResult && profileSyncResult.ok);

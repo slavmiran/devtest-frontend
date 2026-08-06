@@ -2839,20 +2839,8 @@ function closeScreenshotCompleteModal(event) {
 }
 
 function openScreenshotGuardModal(appId, ownerUsername) {
-    window._screenshotGuardAppId = appId;
-    window._screenshotGuardOwner = ownerUsername || '';
-    const modal = document.getElementById('screenshot-guard-modal');
-    if (!modal) {
-        openReportModal(appId, ownerUsername || '');
-        return;
-    }
-    const title = document.getElementById('t-screenshotGuardTitle');
-    const yesBtn = document.getElementById('t-screenshotGuardYes');
-    const cancelBtn = document.getElementById('t-screenshotGuardCancel');
-    if (title) title.innerText = window.t('screenshotGuardTitle', {}, lang);
-    if (yesBtn) yesBtn.innerText = window.t('screenshotGuardYes', {}, lang);
-    if (cancelBtn) cancelBtn.innerText = window.t('screenshotGuardCancel', {}, lang);
-    modal.classList.add('active');
+    // Guard step removed — go straight to report BottomSheet.
+    openReportModal(appId, ownerUsername || '');
 }
 
 function closeScreenshotGuardModal(event) {
@@ -4060,6 +4048,15 @@ function updateReportModalPrefill() {
     textarea.value = typeof window.buildCheckpointReportPrefill === 'function'
         ? window.buildCheckpointReportPrefill(_reportAppId, _reportMessageLang)
         : t.reportPrefill;
+    _fitReportTextarea();
+}
+
+function _fitReportTextarea() {
+    const textarea = document.getElementById('report-text');
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    var nextHeight = Math.min(Math.max(textarea.scrollHeight + 2, 180), 420);
+    textarea.style.height = nextHeight + 'px';
 }
 
 function setReportMessageLanguage(nextLang) {
@@ -4082,10 +4079,22 @@ function openReportModal(appId, ownerUsername) {
     document.getElementById('t-reportModalTitle').innerText = t.reportModalTitle;
     document.getElementById('t-reportModalHint').innerText = t.reportModalHint;
     document.getElementById('t-reportBtnSend').innerText = t.reportBtnSend;
-    const chips = [t.reportChipBug, t.reportChipIdea, t.reportChipGood];
+
     const chipsEl = document.getElementById('chips-report');
-    chipsEl.innerHTML = chips.map((chip) => `<button type="button" class="chip" onclick="insertReportChip(this.dataset.text)" data-text="${chip.replace(/"/g, '&quot;')}">${chip}</button>`).join('');
+    if (chipsEl) {
+        const goodChip = window.escapeHTML(t.reportChipGood || '');
+        chipsEl.innerHTML = goodChip
+            ? `<button type="button" class="chip" onclick="insertReportChip(this.dataset.text)" data-text="${String(t.reportChipGood || '').replace(/"/g, '&quot;')}">${goodChip}</button>`
+            : '';
+    }
+
+    const bugBtn = document.getElementById('t-reportBtnBug');
+    const ideaBtn = document.getElementById('t-reportBtnIdea');
+    if (bugBtn) bugBtn.textContent = window.t('reportBtnSendBug', {}, lang);
+    if (ideaBtn) ideaBtn.textContent = window.t('reportBtnSendIdea', {}, lang);
+
     document.getElementById('report-modal').classList.add('active');
+    setTimeout(_fitReportTextarea, 40);
 }
 
 function closeReportModal(event) {
@@ -4105,7 +4114,43 @@ function insertReportChip(chipText) {
     }
     textarea.value += chipText + ' ';
     textarea.focus();
+    _fitReportTextarea();
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function reportModalSendBug() {
+    _reportModalSendFeedback('bug');
+}
+
+function reportModalSendIdea() {
+    _reportModalSendFeedback('idea');
+}
+
+function _reportModalSendFeedback(feedbackType) {
+    const appId = _reportAppId;
+    if (appId == null) return;
+    document.getElementById('report-modal').classList.remove('active');
+    _reportAppId = null;
+    _reportOwnerUsername = null;
+    _reportMessageLang = null;
+
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+
+    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
+    var testingDay = test && typeof window.getUserTestingDay === 'function'
+        ? window.getUserTestingDay(test.start_date)
+        : null;
+    var localDate = typeof getLocalDate === 'function' ? getLocalDate() : '';
+    var checkinContext = (testingDay && localDate)
+        ? { day: Number(testingDay), local_date: localDate }
+        : null;
+
+    if (typeof initiateProjectFeedback === 'function') {
+        initiateProjectFeedback(appId, {
+            feedbackType: feedbackType,
+            checkinContext: checkinContext,
+        });
+    }
 }
 
 function openDropTestModal(appId, event) {
