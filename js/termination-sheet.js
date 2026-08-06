@@ -270,20 +270,6 @@
             partnerMetaParts.push('<span class="leave-meta-item">☯️ ' + _esc(String(data.partner_karma)) + '</span>');
         }
 
-        var statusBanner = justifiedAllowed
-            ? '<div class="leave-status-banner is-justified">' +
-                '<div class="leave-status-title">' + _esc(_t('leaveJustifiedBadge')) + '</div>' +
-                '<div class="leave-status-desc">' + _esc(_t('leaveJustifiedDesc')) + '</div>' +
-              '</div>'
-            : '<div class="leave-status-banner is-penalty">' +
-                '<div class="leave-status-title">' + _esc(_t('leaveAbandonedTitle')) + '</div>' +
-                '<div class="leave-status-desc">' + _esc(_t('leaveAbandonedDesc', { karma: _fmtAmount(karmaBurn, 1) })) + '</div>' +
-                '<div class="leave-status-desc" style="margin-top:8px;">' + _esc(_t('leaveSafeWaitWarning', {
-                    count: waitCount,
-                    word: typeof pluralizeSkipWord === 'function' ? pluralizeSkipWord(waitCount) : '',
-                })) + '</div>' +
-              '</div>';
-
         var grantRow = grantStillAvailable
             ? '<div class="leave-grant-row">' +
                 '<span class="leave-grant-icon" aria-hidden="true">🏆</span>' +
@@ -292,6 +278,28 @@
                     '<div class="leave-grant-desc">' + _esc(_t('leaveGrantTeaseDesc', { skips: mySkips, max: 3 })) + '</div>' +
                 '</div></div>'
             : '';
+
+        var myTestingDays = Number(data.my_testing_days || 0);
+        // Quick abandon: 0 check-ins and <7 days → RI not penalized (backend parity).
+        var riOk = justifiedAllowed || (myCheckins === 0 && myTestingDays < 7);
+        var impactHint = justifiedAllowed
+            ? _t('termLeaveImpactHintJustified')
+            : (riOk
+                ? _t('termLeaveImpactHintQuick')
+                : _t('termLeaveImpactHintRisk'));
+        var mutualStatusBanner = justifiedAllowed
+            ? '<div class="leave-status-banner is-justified term-status-compact term-impact-status-banner">' +
+                '<div class="leave-status-title">' + _esc(_t('leaveJustifiedBadge')) + '</div>' +
+                '<div class="leave-status-desc">' + _esc(_t('leaveJustifiedDesc')) + '</div>' +
+              '</div>'
+            : '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
+                '<div class="leave-status-title">' + _esc(_t('leaveAbandonedTitle')) + '</div>' +
+                '<div class="leave-status-desc">' + _esc(_t('leaveAbandonedDesc', { karma: _fmtAmount(karmaBurn, 1) })) + '</div>' +
+                '<div class="leave-status-desc" style="margin-top:8px;">' + _esc(_t('leaveSafeWaitWarning', {
+                    count: waitCount,
+                    word: typeof pluralizeSkipWord === 'function' ? pluralizeSkipWord(waitCount) : '',
+                })) + '</div>' +
+              '</div>';
 
         return '' +
             '<div class="leave-exchange-card" id="leave-exchange-card">' +
@@ -332,7 +340,13 @@
                     '</div>' +
                 '</div>' +
             '</div>' +
-            statusBanner;
+            _renderOwnerCyclePlea() +
+            _renderImpactMeters({
+                karmaOk: justifiedAllowed,
+                riOk: riOk,
+                hint: impactHint,
+                statusBanner: mutualStatusBanner,
+            });
     }
 
     function _renderKickBody(ctx) {
@@ -523,6 +537,17 @@
             '</div>';
     }
 
+    function _renderOwnerCyclePlea() {
+        return '' +
+            '<div class="term-owner-cycle">' +
+                '<span class="term-owner-cycle-icon" aria-hidden="true">💔</span>' +
+                '<div class="term-owner-cycle-copy">' +
+                    '<div class="term-owner-cycle-title">' + _esc(_t('termOwnerCycleTitle')) + '</div>' +
+                    '<div class="term-owner-cycle-desc">' + _esc(_t('termOwnerCycleDesc')) + '</div>' +
+                '</div>' +
+            '</div>';
+    }
+
     function _renderImpactMeters(opts) {
         opts = opts || {};
         var karmaOk = opts.karmaOk !== false;
@@ -658,6 +683,7 @@
                 '</div>' +
             '</div>' +
             moneyBlock +
+            _renderOwnerCyclePlea() +
             _renderImpactMeters({
                 karmaOk: true,
                 riOk: riOk,
