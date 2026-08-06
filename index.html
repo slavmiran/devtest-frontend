@@ -35,8 +35,8 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260806-mytests-refresh-v1"></script>
-<script src="./i18n/en.js?v=20260806-mytests-refresh-v1"></script>
+<script src="./i18n/ru.js?v=20260806-section-seams-v1"></script>
+<script src="./i18n/en.js?v=20260806-section-seams-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260806-mytests-refresh-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260805-isProjectSynced-v1"></script>
@@ -86,7 +86,7 @@
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260806-gt-start-gate-v2">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260806-mytests-refresh-v1">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260806-section-seams-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
 <body>
@@ -306,8 +306,13 @@
             </div>
         </div>
 
-        <h2 id="t-testsTitle" data-i18n="testsMainTitle">📱 Мои тесты</h2>
-        <p id="t-testsDesc" data-i18n="testsDesc">Приложения, которые вы должны открывать каждый день.</p>
+        <div class="ts-section-head ts-section-head--active">
+            <span class="ts-section-head__icon" aria-hidden="true">📱</span>
+            <div class="ts-section-head__titles">
+                <h2 id="t-testsTitle" class="ts-section-head__title" data-i18n="testsMainTitle">Мои тесты</h2>
+                <p id="t-testsDesc" class="ts-section-head__desc" data-i18n="testsDesc">Приложения, которые вы должны открывать каждый день.</p>
+            </div>
+        </div>
 
         <div id="my-tests-list">
             <div id="tests-list">
@@ -315,28 +320,30 @@
             </div>
         </div>
 
-        <div id="external-tests-section" class="pending-release-section external-tests-section" style="display:none;">
-            <div class="pending-release-section__header external-tests-section__header">
-                <div>
-                    <h3 id="t-externalTestsSectionTitle" data-i18n="externalTestsSectionTitle">👽 Гостевые проекты</h3>
+        <div id="external-tests-section" class="ts-section-block ts-section-block--guest external-tests-section" style="display:none;">
+            <div class="ts-section-head ts-section-head--guest">
+                <span class="ts-section-head__icon" aria-hidden="true">👽</span>
+                <div class="ts-section-head__titles">
+                    <h3 id="t-externalTestsSectionTitle" class="ts-section-head__title" data-i18n="externalTestsSectionTitle">Гостевые проекты</h3>
                     <button type="button" id="t-externalTestsInfoLink" class="external-tests-info-link" onclick="showGuestTestsInfoAlert()" data-i18n="guestTestsInfoLink">ℹ️ Как работает гостевой режим</button>
                 </div>
-                <span id="external-tests-count" class="offers-count">0</span>
+                <span id="external-tests-count" class="ts-section-head__count">0</span>
             </div>
             <div id="external-tests-scroll-wrap" class="pending-release-scroll-wrap">
                 <div id="external-tests-list" class="external-tests-list"></div>
             </div>
         </div>
 
-        <div id="pending-release-section" class="pending-release-section is-collapsed" style="display:none;">
-            <button type="button" class="pending-release-section__header" onclick="togglePendingReleaseSection()" aria-expanded="false" aria-controls="pending-release-scroll-wrap">
-                <div class="pending-release-section__titles">
-                    <h3 id="t-pendingReleaseSectionTitle" data-i18n="pendingReleaseSectionTitle">⏳ Буфер безопасности</h3>
-                    <p id="t-pendingReleaseSectionDesc" class="pending-release-section__desc" data-i18n="pendingReleaseSectionDesc">Дополнительный буфер безопасности «48ч» после активного тестирования.</p>
+        <div id="pending-release-section" class="ts-section-block ts-section-block--buffer pending-release-section is-collapsed" style="display:none;">
+            <button type="button" class="ts-section-head ts-section-head--buffer ts-section-head--clickable pending-release-section__header" onclick="togglePendingReleaseSection()" aria-expanded="false" aria-controls="pending-release-scroll-wrap">
+                <span class="ts-section-head__icon" aria-hidden="true">⏳</span>
+                <div class="ts-section-head__titles pending-release-section__titles">
+                    <h3 id="t-pendingReleaseSectionTitle" class="ts-section-head__title" data-i18n="pendingReleaseSectionTitle">Буфер безопасности</h3>
+                    <p id="t-pendingReleaseSectionDesc" class="ts-section-head__desc pending-release-section__desc" data-i18n="pendingReleaseSectionDesc">Дополнительный буфер безопасности «48ч» после активного тестирования.</p>
                 </div>
-                <div class="pending-release-section__meta">
-                    <span id="pending-release-count" class="offers-count pending-release-count">0</span>
-                    <span class="pending-release-section__chevron" aria-hidden="true">▼</span>
+                <div class="ts-section-head__meta pending-release-section__meta">
+                    <span id="pending-release-count" class="ts-section-head__count pending-release-count">0</span>
+                    <span class="ts-section-head__chevron pending-release-section__chevron" aria-hidden="true">▼</span>
                 </div>
             </button>
             <div id="pending-release-scroll-wrap" class="pending-release-scroll-wrap">
@@ -344,10 +351,14 @@
             </div>
         </div>
 
-        <div id="done-section" class="accordion" style="display: none;">
-            <div class="accordion-header" onclick="toggleAccordion()">
-                <div><span id="t-doneToday" data-i18n="doneToday">✅ Выполнено сегодня</span> (<span id="done-count">0</span>)</div>
-                <div class="accordion-icon">▼</div>
+        <div id="done-section" class="ts-section-block ts-section-block--done accordion" style="display: none;">
+            <div class="ts-section-head ts-section-head--done ts-section-head--clickable accordion-header" onclick="toggleAccordion()">
+                <span class="ts-section-head__icon" aria-hidden="true">✅</span>
+                <div class="ts-section-head__titles">
+                    <h3 id="t-doneToday" class="ts-section-head__title" data-i18n="doneToday">Выполнено сегодня</h3>
+                    <p class="ts-section-head__desc">(<span id="done-count">0</span>)</p>
+                </div>
+                <span class="ts-section-head__chevron accordion-icon" aria-hidden="true">▼</span>
             </div>
             <div class="accordion-content done-today-scroll" id="done-list">
                 <!-- Done cards will be injected here -->

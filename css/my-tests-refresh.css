@@ -372,7 +372,201 @@
 }
 
 /* --------------------------------------------------------------------------
-   6. Motion preferences
+   6. Section headers: one clear, colour-coded system for every zone
+      on My Tests (active / guest / buffer / done). Each zone gets its own
+      accent so switching between them reads as a deliberate transition,
+      not just another card.
+   -------------------------------------------------------------------------- */
+.ts-section-block {
+    position: relative;
+    margin-top: 30px;
+    padding-top: 22px;
+}
+
+/* The seam: a soft accent-coloured rule that "hands off" from the section
+   above into this one's theme colour — the visual cue the transition asked for. */
+.ts-section-block::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 4px;
+    right: 4px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--ts-accent, rgba(255, 255, 255, 0.16)) 50%, transparent);
+    opacity: 0.55;
+}
+
+.ts-section-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid var(--ts-border, var(--border-subtle, rgba(255, 255, 255, 0.08)));
+    background: var(--ts-bg, rgba(255, 255, 255, 0.03));
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+button.ts-section-head {
+    cursor: pointer;
+}
+
+.ts-section-head--clickable:active {
+    opacity: 0.88;
+}
+
+.ts-section-head__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    line-height: 1;
+    background: var(--ts-icon-bg, rgba(255, 255, 255, 0.06));
+    box-shadow: inset 0 0 0 1px var(--ts-icon-border, rgba(255, 255, 255, 0.08));
+}
+
+.ts-section-head__titles {
+    flex: 1;
+    min-width: 0;
+}
+
+.ts-section-head__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text-color);
+}
+
+.ts-section-head__desc {
+    margin: 3px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--hint-color);
+}
+
+.external-tests-section .external-tests-info-link {
+    margin-top: 3px;
+}
+
+.ts-section-head__count {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+    background: var(--ts-count-bg, rgba(255, 255, 255, 0.08));
+    color: var(--ts-accent, var(--hint-color));
+}
+
+.ts-section-head__meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.ts-section-head__chevron {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--ts-accent, var(--hint-color));
+    opacity: 0.7;
+    transition: transform 0.2s ease;
+}
+
+/* --- theme: Мои тесты (active) --- */
+.ts-section-head--active {
+    --ts-accent: var(--link-color, #3390ec);
+    --ts-icon-bg: rgba(51, 144, 236, 0.14);
+    --ts-icon-border: rgba(51, 144, 236, 0.3);
+    --ts-bg: linear-gradient(135deg, rgba(51, 144, 236, 0.08), rgba(51, 144, 236, 0) 65%);
+    --ts-border: rgba(51, 144, 236, 0.18);
+    --ts-count-bg: rgba(51, 144, 236, 0.14);
+}
+
+/* --- theme: Гостевые проекты (guest) --- */
+.ts-section-block--guest {
+    --ts-accent: #b98cff;
+}
+
+.ts-section-head--guest {
+    --ts-accent: #b98cff;
+    --ts-icon-bg: rgba(160, 123, 255, 0.16);
+    --ts-icon-border: rgba(160, 123, 255, 0.34);
+    --ts-bg: linear-gradient(135deg, rgba(160, 123, 255, 0.1), rgba(160, 123, 255, 0) 65%);
+    --ts-border: rgba(160, 123, 255, 0.24);
+    --ts-count-bg: rgba(160, 123, 255, 0.18);
+}
+
+/* --- theme: Буфер безопасности (buffer) --- */
+.ts-section-block--buffer {
+    --ts-accent: #ffb84d;
+}
+
+.ts-section-head--buffer {
+    --ts-accent: #ffb84d;
+    --ts-icon-bg: rgba(255, 149, 0, 0.15);
+    --ts-icon-border: rgba(255, 149, 0, 0.32);
+    --ts-bg: linear-gradient(135deg, rgba(255, 149, 0, 0.09), rgba(255, 149, 0, 0) 65%);
+    --ts-border: rgba(255, 149, 0, 0.22);
+    --ts-count-bg: rgba(255, 149, 0, 0.16);
+}
+
+/* --- theme: Выполнено сегодня (done) --- */
+.ts-section-block--done {
+    --ts-accent: #34c759;
+    margin-top: 24px;
+}
+
+.ts-section-head--done {
+    --ts-accent: #34c759;
+    --ts-icon-bg: rgba(52, 199, 89, 0.15);
+    --ts-icon-border: rgba(52, 199, 89, 0.32);
+    --ts-bg: linear-gradient(135deg, rgba(52, 199, 89, 0.09), rgba(52, 199, 89, 0) 65%);
+    --ts-border: rgba(52, 199, 89, 0.22);
+    --ts-count-bg: rgba(52, 199, 89, 0.16);
+    margin-bottom: 0;
+    border-radius: 16px 16px 0 0;
+}
+
+#done-section.accordion {
+    border: none;
+    background: transparent;
+}
+
+#done-section .accordion-content.done-today-scroll {
+    border: 1px solid var(--ts-border, var(--border-strong));
+    border-top: none;
+    border-radius: 0 0 16px 16px;
+}
+
+#done-section.accordion.active .ts-section-head--done {
+    border-radius: 16px 16px 0 0;
+}
+
+/* Grant-attention pulse on the buffer header rides the same accent token now. */
+.pending-release-section.has-action-attention .ts-section-head--buffer {
+    border-color: rgba(255, 149, 0, 0.55);
+    box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.16);
+}
+
+/* --------------------------------------------------------------------------
+   7. Motion preferences
    -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
     #tests-list > .card,
