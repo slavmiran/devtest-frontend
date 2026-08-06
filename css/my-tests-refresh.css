@@ -6,7 +6,7 @@
 #tab-tests {
     --mytests-surface-top: rgba(46, 46, 50, 0.98);
     --mytests-surface-bottom: rgba(32, 32, 36, 0.96);
-    --mytests-surface-glow: rgba(255, 255, 255, 0.07);
+    --mytests-surface-glow: rgba(255, 255, 255, 0.09);
     --mytests-surface-border: rgba(255, 255, 255, 0.11);
     --mytests-surface-accent: #c8ccd4;
 
@@ -27,8 +27,8 @@
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     border: 1px solid var(--mytests-surface-border);
     background:
-        radial-gradient(ellipse 72% 58% at 100% 0%, var(--mytests-surface-glow), transparent 68%),
-        linear-gradient(225deg, rgba(46, 46, 50, 0.275) 0%, transparent 52%);
+        radial-gradient(ellipse 90% 73% at 100% 0%, var(--mytests-surface-glow), transparent 75%),
+        linear-gradient(225deg, rgba(46, 46, 50, 0.34) 0%, transparent 58%);
 }
 
 #tab-tests .card.card-done,
@@ -273,13 +273,13 @@
     border-color: rgba(76, 141, 255, 0.42);
     background: rgba(76, 141, 255, 0.16);
     color: #fff;
-    box-shadow: 0 0 14px rgba(76, 141, 255, 0.2);
+    box-shadow: 0 0 14px rgba(76, 141, 255, 0.17);
 }
 
 .tstep.is-current .tstep__marker {
     background: var(--accent-primary, #4c8dff);
     color: #fff;
-    box-shadow: 0 0 10px rgba(76, 141, 255, 0.35);
+    box-shadow: 0 0 10px rgba(76, 141, 255, 0.3);
 }
 
 .tstep.is-current .tstep__arrow {
@@ -291,7 +291,7 @@
     border-color: rgba(76, 141, 255, 0.42);
     background: rgba(76, 141, 255, 0.16);
     color: var(--accent-primary, #4c8dff);
-    box-shadow: 0 0 12px rgba(76, 141, 255, 0.18);
+    box-shadow: 0 0 12px rgba(76, 141, 255, 0.15);
 }
 
 /* --- completed step --- */
@@ -401,11 +401,16 @@
     background: rgba(76, 141, 255, 0.16) !important;
     color: #fff !important;
     border: 1px solid rgba(76, 141, 255, 0.42) !important;
-    box-shadow: 0 0 14px rgba(76, 141, 255, 0.2) !important;
+    box-shadow: 0 0 14px rgba(76, 141, 255, 0.17) !important;
 }
 
 #tab-tests .split-btn-group .split-btn-main.btn-success:not([disabled]) {
     border-right: 1px solid rgba(76, 141, 255, 0.42) !important;
+}
+
+/* Paperclip keeps section primary — do not inherit white from btn-success. */
+#tab-tests .split-btn-group .split-btn-options.btn-success:not([disabled]) {
+    color: var(--accent-primary, #4c8dff) !important;
 }
 
 #tab-tests .action-row .btn,
@@ -447,8 +452,8 @@
     display: block;
     flex-shrink: 0;
     background: currentColor;
-    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E") center / 20px 20px no-repeat;
-            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E") center / 20px 20px no-repeat;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E") center / 20px 20px no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E") center / 20px 20px no-repeat;
 }
 
 /* Material info-circle icon before guest help link text. */
@@ -652,7 +657,7 @@ button.ts-section-head {
     background-image: none !important;
     color: #fff !important;
     border: 1px solid rgba(62, 185, 205, 0.42) !important;
-    box-shadow: 0 0 14px rgba(62, 185, 205, 0.22) !important;
+    box-shadow: 0 0 14px rgba(62, 185, 205, 0.187) !important;
 }
 
 #tab-tests .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-attach-btn,
@@ -661,7 +666,7 @@ button.ts-section-head {
     background-image: none !important;
     color: var(--guest-surface-accent, #3eb9cd) !important;
     border: 1px solid rgba(62, 185, 205, 0.42) !important;
-    box-shadow: 0 0 14px rgba(62, 185, 205, 0.22) !important;
+    box-shadow: 0 0 14px rgba(62, 185, 205, 0.187) !important;
 }
 
 #tab-tests .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-confirm-btn.split-btn-main {
