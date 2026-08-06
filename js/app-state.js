@@ -26,6 +26,8 @@
         _timerReadyState: {},
         _firstDayScreenshotStateKey: 'devtest_firstday_screenshot_state_v1',
         _firstDayScreenshotState: {},
+        _customGroupJoinedStateKey: 'devtest_custom_group_joined_v1',
+        _customGroupJoinedState: {},
         pendingProjectData: null,
         projectToEdit: null,
         _transferProjectId: null,

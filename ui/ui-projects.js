@@ -5284,8 +5284,12 @@ function openProjectDetailsModal(appId) {
         '</details>';
     })();
 
+    const detailRunIterationChip = typeof buildRunIterationChip === 'function'
+        ? buildRunIterationChip(test, 'meta-chip')
+        : '';
     const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:10px;">' +
         '<span>' + window.escapeHTML(window.t('grantProgressText', { day: userTestingDay }, lang)) + '</span>' +
+        detailRunIterationChip +
         (!timelineMeta.isSynced
             ? (progressData.remainingDays > 0
                 ? '<span>' + window.escapeHTML(window.t('timelineApproxRemaining', { count: progressData.remainingDays }, lang)) + '</span>'

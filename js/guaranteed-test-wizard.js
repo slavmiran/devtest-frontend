@@ -267,21 +267,18 @@
         ],
         toastProofMissing: ['Upload the payment screenshot first.', 'Сначала загрузите скриншот оплаты.'],
         gtGateTitle: ['Unfinished Private Testing order', 'Незавершённое оформление'],
-        gtGateDraftDesc: [
-            'You have a draft for “{app}”. Continue where you left off or start a new setup.',
-            'У вас есть черновик для «{app}». Продолжите оформление или начните новое.'
+        gtGateSubtitle: [
+            'Continue or delete each draft below.',
+            'Продолжите оформление или удалите черновик.'
         ],
-        gtGateAwaitingDesc: [
-            'Order #{code} for “{app}” is waiting for payment. Continue to attach the receipt or start a new setup for another app.',
-            'Заказ #{code} для «{app}» ожидает оплату. Продолжите, чтобы приложить чек, или начните новое оформление для другого приложения.'
-        ],
+        gtGateDraftLabel: ['Draft', 'Черновик'],
+        gtGateAwaitingLabel: ['Awaiting payment', 'Ожидает оплату'],
         gtGateContinue: ['Continue', 'Продолжить'],
-        gtGateStartNew: ['Start new', 'Начать новый'],
+        gtGateDelete: ['Delete', 'Удалить'],
         gtGateClose: ['Close', 'Закрыть'],
-        gtGateStartNewHint: [
-            'Draft cleared. Order #{code} stays in My Projects — a new order is only possible for a different app.',
-            'Черновик сброшен. Заказ #{code} останется в «Мои проекты» — новый заказ возможен только для другого приложения.'
-        ],
+        gtGateDeletedDraft: ['Draft deleted.', 'Черновик удалён.'],
+        gtGateDeletedOrder: ['Order #{code} cancelled.', 'Заказ #{code} отменён.'],
+        gtGateDeleteFailed: ['Could not delete. Please try again.', 'Не удалось удалить. Попробуйте снова.'],
         cryptoCopiedToast: [
             'Copied. Make the transfer in {name}, then come back and upload the screenshot.',
             'Скопировано. Сделайте перевод в {name}, затем вернитесь и загрузите скриншот.'
@@ -2874,28 +2871,96 @@
         return [];
     }
 
-    async function detectGuaranteedStartConflict() {
-        var draft = readGuaranteedTestWizardDraft();
-        if (draft && String(draft.app_name || '').trim()) {
-            return {
-                kind: 'draft',
-                appName: String(draft.app_name || '').trim(),
-                step: Number(draft.step || 1),
-                fiatOrderId: draft.fiat_order_id || null
-            };
+    function draftMatchesAwaitingOrder(draft, order) {
+        if (!draft || !order) return false;
+        var linkedId = Number(draft.fiat_order_id || 0);
+        if (linkedId && linkedId === Number(order.id || 0)) return true;
+        var draftApp = String(draft.app_name || '').trim().toLowerCase();
+        var orderApp = String(order.app_name || '').trim().toLowerCase();
+        return !!(draftApp && orderApp && draftApp === orderApp);
+    }
+
+    async function cancelGuaranteedTestOrder(orderId) {
+        var id = Number(orderId || 0);
+        if (!id) return { ok: false };
+        var apiBase = (typeof API_BASE !== 'undefined' ? API_BASE : '') || (window.App && window.App.API_BASE) || '';
+        var body = (typeof withInitData === 'function') ? withInitData({}) : { init_data: '' };
+        if (!body.init_data && typeof getTelegramInitDataRaw === 'function') {
+            body.init_data = String(getTelegramInitDataRaw() || '');
         }
+        try {
+            var resp = await fetch(apiBase + '/guaranteed-test-orders/' + id + '/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            var data = {};
+            try { data = await resp.json(); } catch (_) {}
+            return { ok: !!(resp.ok && data && data.status === 'success'), data: data };
+        } catch (e) {
+            console.warn('Failed to cancel guaranteed order:', e);
+            return { ok: false };
+        }
+    }
+
+    async function detectGuaranteedStartConflicts() {
+        var items = [];
+        var draft = readGuaranteedTestWizardDraft();
         var awaitingOrders = await fetchIncompleteGuaranteedOrders();
-        if (awaitingOrders.length) {
-            var order = awaitingOrders[0];
-            return {
+
+        awaitingOrders.forEach(function (order) {
+            items.push({
                 kind: 'awaiting_payment',
+                key: 'order-' + String(order && order.id),
+                orderId: Number(order && order.id) || 0,
                 order: order,
                 appName: String((order && order.app_name) || '').trim(),
-                orderId: Number(order && order.id) || 0,
                 publicCode: getOrderPublicCode(order, order && order.id)
-            };
+            });
+        });
+
+        if (draft && String(draft.app_name || '').trim()) {
+            var coveredByOrder = awaitingOrders.some(function (order) {
+                return draftMatchesAwaitingOrder(draft, order);
+            });
+            if (!coveredByOrder) {
+                items.push({
+                    kind: 'draft',
+                    key: 'draft',
+                    appName: String(draft.app_name || '').trim(),
+                    step: Number(draft.step || 1),
+                    fiatOrderId: draft.fiat_order_id || null
+                });
+            }
         }
-        return null;
+
+        return items;
+    }
+
+    function buildGuaranteedStartGateItemHtml(item) {
+        var badge = item.kind === 'draft' ? L('gtGateDraftLabel') : L('gtGateAwaitingLabel');
+        var codeHtml = item.publicCode
+            ? '<span class="gtw-start-gate-item-code">#' + escapeHtml(item.publicCode) + '</span>'
+            : '';
+        return (
+            '<article class="gtw-start-gate-item" data-gate-key="' + escapeHtml(item.key) + '">' +
+                '<div class="gtw-start-gate-item-head">' +
+                    '<span class="gtw-start-gate-item-badge">' + escapeHtml(badge) + '</span>' +
+                    codeHtml +
+                '</div>' +
+                '<p class="gtw-start-gate-item-title" title="' + escapeHtml(item.appName || '—') + '">' +
+                    escapeHtml(item.appName || '—') +
+                '</p>' +
+                '<div class="gtw-start-gate-item-actions">' +
+                    '<button type="button" class="gtw-start-gate-continue" data-action="continue">' +
+                        escapeHtml(L('gtGateContinue')) +
+                    '</button>' +
+                    '<button type="button" class="gtw-start-gate-delete" data-action="delete">' +
+                        escapeHtml(L('gtGateDelete')) +
+                    '</button>' +
+                '</div>' +
+            '</article>'
+        );
     }
 
     function hideGuaranteedStartGate() {
@@ -2906,7 +2971,13 @@
         overlay.style.display = 'none';
     }
 
-    function showGuaranteedStartGate(conflict, onProceed) {
+    function showGuaranteedStartGate(items, onProceed) {
+        var conflicts = Array.isArray(items) ? items.slice() : [];
+        if (!conflicts.length) {
+            if (typeof onProceed === 'function') onProceed();
+            return;
+        }
+
         var overlay = document.getElementById('gtw-start-gate-overlay');
         if (!overlay) {
             overlay = document.createElement('div');
@@ -2917,25 +2988,16 @@
             document.body.appendChild(overlay);
         }
 
-        var desc = '';
-        if (conflict.kind === 'draft') {
-            desc = L('gtGateDraftDesc', { app: conflict.appName });
-        } else {
-            desc = L('gtGateAwaitingDesc', {
-                code: conflict.publicCode || ('#' + conflict.orderId),
-                app: conflict.appName || '—'
-            });
-        }
+        var listHtml = conflicts.map(buildGuaranteedStartGateItemHtml).join('');
 
         overlay.innerHTML =
             '<div class="gtw-start-gate-card">' +
                 '<h3 class="gtw-start-gate-title">' + escapeHtml(L('gtGateTitle')) + '</h3>' +
-                '<p class="gtw-start-gate-desc">' + escapeHtml(desc) + '</p>' +
-                '<div class="gtw-start-gate-actions">' +
-                    '<button type="button" class="gtw-continue-btn" id="gtw-start-gate-continue">' + escapeHtml(L('gtGateContinue')) + '</button>' +
-                    '<button type="button" class="gtw-start-gate-secondary" id="gtw-start-gate-new">' + escapeHtml(L('gtGateStartNew')) + '</button>' +
-                    '<button type="button" class="gtw-start-gate-cancel" id="gtw-start-gate-close">' + escapeHtml(L('gtGateClose')) + '</button>' +
-                '</div>' +
+                '<p class="gtw-start-gate-desc">' + escapeHtml(L('gtGateSubtitle')) + '</p>' +
+                '<div class="gtw-start-gate-list" id="gtw-start-gate-list">' + listHtml + '</div>' +
+                '<button type="button" class="gtw-start-gate-cancel" id="gtw-start-gate-close">' +
+                    escapeHtml(L('gtGateClose')) +
+                '</button>' +
             '</div>';
 
         overlay.style.display = 'flex';
@@ -2946,48 +3008,95 @@
             if (event.target === overlay) hideGuaranteedStartGate();
         };
 
-        var continueBtn = overlay.querySelector('#gtw-start-gate-continue');
-        var newBtn = overlay.querySelector('#gtw-start-gate-new');
         var closeBtn = overlay.querySelector('#gtw-start-gate-close');
+        if (closeBtn) closeBtn.onclick = hideGuaranteedStartGate;
 
-        if (continueBtn) {
-            continueBtn.onclick = function () {
+        function finishIfEmpty() {
+            var list = overlay.querySelector('#gtw-start-gate-list');
+            if (!list || !list.children.length) {
                 hideGuaranteedStartGate();
-                if (conflict.kind === 'draft') {
-                    resumeGuaranteedTestWizardFromDraft();
-                    return;
-                }
-                if (conflict.orderId && typeof window.openGuaranteedFiatUploadFromOrder === 'function') {
-                    window.openGuaranteedFiatUploadFromOrder(conflict.orderId);
-                }
-            };
-        }
-        if (newBtn) {
-            newBtn.onclick = function () {
-                hideGuaranteedStartGate();
-                clearGuaranteedTestWizardDraft();
-                if (conflict.kind === 'awaiting_payment' && conflict.publicCode) {
-                    if (typeof showToast === 'function') {
-                        showToast(L('gtGateStartNewHint', { code: conflict.publicCode }));
-                    }
-                }
                 if (typeof onProceed === 'function') onProceed();
-            };
+            }
         }
-        if (closeBtn) {
-            closeBtn.onclick = hideGuaranteedStartGate;
+
+        function findConflictByKey(key) {
+            return conflicts.find(function (item) { return item.key === key; }) || null;
         }
+
+        function removeConflictByKey(key) {
+            conflicts = conflicts.filter(function (item) { return item.key !== key; });
+        }
+
+        overlay.querySelectorAll('.gtw-start-gate-item').forEach(function (card) {
+            var key = card.getAttribute('data-gate-key');
+            var conflict = findConflictByKey(key);
+            if (!conflict) return;
+
+            var continueBtn = card.querySelector('[data-action="continue"]');
+            var deleteBtn = card.querySelector('[data-action="delete"]');
+
+            if (continueBtn) {
+                continueBtn.onclick = function () {
+                    hideGuaranteedStartGate();
+                    if (conflict.kind === 'draft') {
+                        resumeGuaranteedTestWizardFromDraft();
+                        return;
+                    }
+                    if (conflict.orderId && typeof window.openGuaranteedFiatUploadFromOrder === 'function') {
+                        window.openGuaranteedFiatUploadFromOrder(conflict.orderId);
+                    }
+                };
+            }
+
+            if (deleteBtn) {
+                deleteBtn.onclick = async function () {
+                    continueBtn && (continueBtn.disabled = true);
+                    deleteBtn.disabled = true;
+
+                    if (conflict.kind === 'draft') {
+                        clearGuaranteedTestWizardDraft();
+                        if (typeof showToast === 'function') showToast(L('gtGateDeletedDraft'));
+                        card.remove();
+                        removeConflictByKey(key);
+                        finishIfEmpty();
+                        return;
+                    }
+
+                    var result = await cancelGuaranteedTestOrder(conflict.orderId);
+                    if (!result.ok) {
+                        if (typeof showToast === 'function') showToast(L('gtGateDeleteFailed'));
+                        continueBtn && (continueBtn.disabled = false);
+                        deleteBtn.disabled = false;
+                        return;
+                    }
+
+                    var linkedDraft = readGuaranteedTestWizardDraft();
+                    if (linkedDraft && draftMatchesAwaitingOrder(linkedDraft, conflict.order)) {
+                        clearGuaranteedTestWizardDraft();
+                    }
+
+                    if (typeof showToast === 'function') {
+                        showToast(L('gtGateDeletedOrder', {
+                            code: conflict.publicCode || ('#' + conflict.orderId)
+                        }));
+                    }
+                    card.remove();
+                    removeConflictByKey(key);
+                    finishIfEmpty();
+                };
+            }
+        });
     }
 
     async function guardGuaranteedPrivateTestStart(onProceed) {
         if (typeof onProceed !== 'function') return;
         try {
-            var conflict = await detectGuaranteedStartConflict();
-            if (!conflict) {
+            var conflicts = await detectGuaranteedStartConflicts();
+            if (!conflicts.length) {
                 onProceed();
                 return;
             }
-            showGuaranteedStartGate(conflict, onProceed);
+            showGuaranteedStartGate(conflicts, onProceed);
         } catch (error) {
             console.warn('Guaranteed start gate failed, proceeding:', error);
             onProceed();

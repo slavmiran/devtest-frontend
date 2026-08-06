@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     _loadFirstDayScreenshotState();
+    _loadCustomGroupJoinedState();
     _loadTimerReadyState();
     _loadPersistedActiveTimer();
     if (typeof initTelegramBackButton === 'function') {
@@ -323,7 +324,9 @@ Object.assign(window, {
     publishProjectToMarket,
     showFeedbackRewardKarmaInfo,
     isFirstDayScreenshotVisible,
-    setFirstDayScreenshotVisible
+    setFirstDayScreenshotVisible,
+    isCustomGroupJoined,
+    markCustomGroupJoined
 });
 
 Object.assign(window.App, {

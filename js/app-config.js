@@ -644,6 +644,8 @@ var _timerReadyStateKey = 'devtest_timer_ready_state_v1';
 var _timerReadyState = {};
 var _firstDayScreenshotStateKey = 'devtest_firstday_screenshot_state_v1';
 var _firstDayScreenshotState = {};
+var _customGroupJoinedStateKey = 'devtest_custom_group_joined_v1';
+var _customGroupJoinedState = {};
 var pendingProjectData = null;
 var projectToEdit = null;
 var _transferProjectId = null;
@@ -817,6 +819,8 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_timerReadyState', function () { return _timerReadyState; }, function (value) { _timerReadyState = value; });
     window.App.bindStateProperty('_firstDayScreenshotStateKey', function () { return _firstDayScreenshotStateKey; }, function (value) { _firstDayScreenshotStateKey = value; });
     window.App.bindStateProperty('_firstDayScreenshotState', function () { return _firstDayScreenshotState; }, function (value) { _firstDayScreenshotState = value; });
+    window.App.bindStateProperty('_customGroupJoinedStateKey', function () { return _customGroupJoinedStateKey; }, function (value) { _customGroupJoinedStateKey = value; });
+    window.App.bindStateProperty('_customGroupJoinedState', function () { return _customGroupJoinedState; }, function (value) { _customGroupJoinedState = value; });
     window.App.bindStateProperty('pendingProjectData', function () { return pendingProjectData; }, function (value) { pendingProjectData = value; });
     window.App.bindStateProperty('projectToEdit', function () { return projectToEdit; }, function (value) { projectToEdit = value; });
     window.App.bindStateProperty('_transferProjectId', function () { return _transferProjectId; }, function (value) { _transferProjectId = value; });

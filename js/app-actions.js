@@ -370,6 +370,12 @@ function handleJoinGoogleGroupClick(appId, groupUrl, options) {
             silent: true,
             rerender: settings.rerender !== false,
         });
+        return;
+    }
+    // Custom groups have no server-side membership flag, so completion is tracked locally.
+    markCustomGroupJoined(appId);
+    if (settings.rerender !== false && typeof renderTests === 'function') {
+        renderTests(true);
     }
 }
 
@@ -660,6 +666,42 @@ function sendFeedback(type) {
     }
     openFeedbackModal(typeKeyMap[_feedbackType]);
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+/** Writes a confirm-button caption without destroying step-row markup. */
+function _setConfirmButtonLabel(btn, text) {
+    if (!btn) return;
+    var label = btn.querySelector('.tstep__label');
+    if (label) {
+        label.textContent = text;
+        return;
+    }
+    btn.innerText = text;
+}
+
+function _loadCustomGroupJoinedState() {
+    try {
+        var raw = localStorage.getItem(_customGroupJoinedStateKey);
+        var parsed = raw ? JSON.parse(raw) : null;
+        _customGroupJoinedState = parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        _customGroupJoinedState = {};
+    }
+}
+
+function markCustomGroupJoined(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return;
+    _customGroupJoinedState[key] = true;
+    try {
+        localStorage.setItem(_customGroupJoinedStateKey, JSON.stringify(_customGroupJoinedState));
+    } catch (error) {}
+}
+
+function isCustomGroupJoined(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return false;
+    return !!(_customGroupJoinedState && _customGroupJoinedState[key]);
 }
 
 function _loadFirstDayScreenshotState() {
@@ -1135,8 +1177,26 @@ function _syncActiveTimerState() {
     if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
         window.syncCheckinOptionsJustConfirmTimer(finishedId, 0);
     }
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    notifyCheckinTimerFinished();
     return true;
+}
+
+/**
+ * Timer-finished feedback. Telegram's HapticFeedback is missing on some clients
+ * (older Android builds, desktop), so fall back to the Vibration API.
+ */
+function notifyCheckinTimerFinished() {
+    try {
+        if (tg && tg.HapticFeedback && typeof tg.HapticFeedback.notificationOccurred === 'function') {
+            tg.HapticFeedback.notificationOccurred('success');
+            return;
+        }
+    } catch (error) {}
+    try {
+        if (navigator && typeof navigator.vibrate === 'function') {
+            navigator.vibrate([18, 55, 28]);
+        }
+    } catch (error) {}
 }
 
 function _loadPersistedActiveTimer() {
@@ -1854,22 +1914,34 @@ function openPlay(id, pkg) {
     }
 }
 
+function advanceFirstDayStepsAfterDownload(id) {
+    const flow = document.getElementById(`tstep-flow-${id}`);
+    if (!flow) return;
+    const downloadStep = flow.querySelector('[data-step-key="download"]');
+    if (downloadStep) {
+        downloadStep.classList.remove('is-current', 'is-next');
+        downloadStep.classList.add('is-done');
+    }
+    const screenshotStep = flow.querySelector('[data-step-key="screenshot"]');
+    if (screenshotStep) {
+        screenshotStep.classList.remove('is-locked', 'is-next');
+        screenshotStep.classList.add('is-current');
+    }
+    const confirmBtn = document.getElementById(`btn-confirm-${id}`);
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.removeAttribute('aria-disabled');
+    }
+}
+
 function handleFirstDownload(id, pkg) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     setFirstDayScreenshotVisible(id, true);
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
     _onStoreLinkClickedForIssueFlow(id);
     setTimeout(() => {
-        const screenshotBox = document.getElementById(`new-screenshot-box-${id}`);
-        if (screenshotBox) screenshotBox.style.display = 'block';
-        const confirmBtn = document.getElementById(`btn-confirm-${id}`);
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.removeAttribute('aria-disabled');
-            confirmBtn.classList.remove('first-day-btn--pending');
-            confirmBtn.classList.add('btn-confirm-ready');
-        }
-    }, 1000);
+        advanceFirstDayStepsAfterDownload(id);
+    }, 600);
 }
 
 async function handleScreenshotAndConfirm(id, ownerUsername) {
@@ -2149,7 +2221,7 @@ function applyTestFeedbackCheckinPendingUi(appId) {
         confirmBtn.style.color = 'var(--hint-color)';
         confirmBtn.style.cursor = 'not-allowed';
         confirmBtn.classList.remove('btn-success', 'external-tests-confirm-ready');
-        confirmBtn.textContent = pendingLabel;
+        _setConfirmButtonLabel(confirmBtn, pendingLabel);
         confirmBtn.onclick = null;
         confirmBtn.removeAttribute('onclick');
     }
@@ -3108,9 +3180,8 @@ async function confirmStart(id) {
     const btn = document.getElementById(`btn-confirm-${id}`);
 
     if (btn) {
-        btn.innerText = t.confirmed;
-        btn.style.backgroundColor = '#2e7d32';
-        btn.style.color = '#ffffff';
+        _setConfirmButtonLabel(btn, t.confirmed);
+        btn.classList.add('is-confirming');
         btn.disabled = true;
     }
 
@@ -3139,10 +3210,16 @@ async function confirmStart(id) {
         if (!response.ok || !result || result.status !== 'success') {
             card.classList.remove('removing');
             if (btn) {
-                btn.innerText = t.confirmStart;
-                btn.style.backgroundColor = '';
-                btn.style.color = '';
-                btn.classList.add('btn-success', 'btn-confirm-ready');
+                btn.classList.remove('is-confirming');
+                if (btn.classList.contains('tstep__row')) {
+                    // Step rows keep their own caption; only the busy state is undone.
+                    _setConfirmButtonLabel(btn, window.t('stepSendScreenshot', {}, lang));
+                } else {
+                    _setConfirmButtonLabel(btn, t.confirmStart);
+                    btn.style.backgroundColor = '';
+                    btn.style.color = '';
+                    btn.classList.add('btn-success', 'btn-confirm-ready');
+                }
                 btn.disabled = false;
             }
 

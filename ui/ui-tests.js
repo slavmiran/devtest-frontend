@@ -862,6 +862,12 @@ function getScreenshotReminderHtml(test) {
     `;
 }
 
+/** Tags a chip as the card's "testing type" anchor so styling can lift it above the rest. */
+function markSourceChip(chipHtml) {
+    if (!chipHtml) return '';
+    return chipHtml.replace('class="meta-chip', 'class="meta-chip meta-chip--source');
+}
+
 function getTestSourceChip(test) {
     const chips = [];
 
@@ -879,21 +885,21 @@ function getTestSourceChip(test) {
             ? formatAmountValue(possible.total, 1)
             : String(Number(possible.total || 0));
         const chipTitle = window.escapeHTML(window.t('bountyPossibleTotalChipHint', {}, lang));
-        chips.push(`<span class="meta-chip accent-purple notranslate" style="cursor: pointer;" title="${chipTitle}" onclick="openBountyInfoModal(${test.id}, event)">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))} ~${amountLabel}</span>`);
+        chips.push(markSourceChip(`<span class="meta-chip accent-purple notranslate" style="cursor: pointer;" title="${chipTitle}" onclick="openBountyInfoModal(${test.id}, event)">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))} ~${amountLabel}</span>`));
     } else if (joinType === 'mutual') {
         if (typeof buildBarterChipHtml === 'function') {
-            chips.push(buildBarterChipHtml(test));
+            chips.push(markSourceChip(buildBarterChipHtml(test)));
         } else {
-            chips.push(`<span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('testSourceMutual', {}, lang))}</span>`);
+            chips.push(markSourceChip(`<span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('testSourceMutual', {}, lang))}</span>`));
         }
     } else if (joinType === 'prelaunch') {
         if (typeof buildBarterChipHtml === 'function') {
-            chips.push(buildBarterChipHtml(test));
+            chips.push(markSourceChip(buildBarterChipHtml(test)));
         } else {
-            chips.push(`<span class="meta-chip accent-blue">🚀 ${window.escapeHTML(window.t('testSourcePrelaunch', {}, lang))}</span>`);
+            chips.push(markSourceChip(`<span class="meta-chip accent-blue">🚀 ${window.escapeHTML(window.t('testSourcePrelaunch', {}, lang))}</span>`));
         }
     } else if (joinType === 'direct' || joinType === 'invite') {
-        chips.push(`<span class="meta-chip">🔗 ${window.escapeHTML(window.t('testSourceInvite', {}, lang))}</span>`);
+        chips.push(markSourceChip(`<span class="meta-chip">🔗 ${window.escapeHTML(window.t('testSourceInvite', {}, lang))}</span>`));
     }
 
     return chips.join('');
@@ -1030,10 +1036,6 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         if (proposeMutualChip) {
             parts.push(proposeMutualChip);
         }
-        const runIterationChip = buildRunIterationChip(test);
-        if (runIterationChip) {
-            parts.push(runIterationChip);
-        }
         if (test.app_status === 'archived') {
             var archiveLabel = test.archive_reason === 'afk' ? t.archivedAfkBadge : t.archivedBadge;
             var archiveToast = test.archive_reason === 'afk' ? (t.archivedAfkToast || '').replace(/'/g, "\\'") : '';
@@ -1053,12 +1055,9 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
     }
     if (typeof userTestingDay === 'number' && userTestingDay > 0) {
         const isScreenshot = isMandatoryScreenshotDay(userTestingDay);
-        let dayText = t.myTestDayShort.replace('{days}', userTestingDay);
-        // Control day: swap 🧪 → 📸 (single icon, never both).
-        if (isScreenshot) {
-            dayText = dayText.replace('🧪', '📸');
-        }
-        const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip accent-blue';
+        // Only control days carry an icon; regular days stay plain to reduce visual noise.
+        const dayText = (isScreenshot ? '📸 ' : '') + t.myTestDayShort.replace('{days}', userTestingDay);
+        const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip';
         parts.push(`<button class="${chipClass}" onclick="event.stopPropagation(); showTestDayPopup(${userTestingDay})">${dayText}</button>`);
     }
     if (isNew) {
@@ -1087,12 +1086,6 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
                 reviewClass = 'meta-chip accent-red';
             }
             parts.push(`<button class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${window.escapeHTML(reviewLabel)}</button>`);
-        }
-        const rewardsSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : null;
-        const rewardChipLabel = getRewardsChipLabel(rewardsSummary);
-        if (rewardChipLabel) {
-            const rewardLabel = window.escapeHTML(rewardChipLabel);
-            parts.push(`<button class="meta-chip meta-chip--rewards notranslate" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
         }
         if (isProjectSynced(test)) {
             const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
@@ -1141,7 +1134,103 @@ function isRegularTestingPhaseCard(test) {
 
 function renderTestCardDetailsButton(testId) {
     const ariaLabel = window.escapeHTML(window.t('testCardDetailsBtnAria', {}, lang));
-    return `<button type="button" class="btn-icon test-card-details-btn" aria-label="${ariaLabel}" onclick="openProjectDetailsModal(${Number(testId)}); event.stopPropagation();">🔍</button>`;
+    return `<button type="button" class="btn-icon test-card-details-btn" aria-label="${ariaLabel}" onclick="openProjectDetailsModal(${Number(testId)}); event.stopPropagation();">`
+        + '<svg class="test-card-details-btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+        + '<circle cx="12" cy="5" r="1.9"></circle>'
+        + '<circle cx="12" cy="12" r="1.9"></circle>'
+        + '<circle cx="12" cy="19" r="1.9"></circle>'
+        + '</svg></button>';
+}
+
+function isFirstDayGroupStepDone(test) {
+    if (!test) return false;
+    if (String(test.test_mode || '') === 'email_list') return true;
+    const groupUrl = test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || '';
+    const isDefaultGroup = typeof isDefaultGoogleGroupUrl === 'function'
+        ? isDefaultGoogleGroupUrl(groupUrl)
+        : true;
+    if (isDefaultGroup) {
+        // Unknown status on boot is treated as joined to avoid a "not joined" flash.
+        return !!_defaultGroupJoined || !_defaultGroupJoinedReady;
+    }
+    return typeof window.isCustomGroupJoined === 'function' && !!window.isCustomGroupJoined(test.id);
+}
+
+/**
+ * First-day onboarding as a connected 3-step checklist.
+ * Every step stays visible; completed ones collapse into a muted "done" row.
+ */
+function renderFirstDaySteps(test, safePackage, safeOwnerUsername) {
+    const testId = Number(test.id);
+    const groupUrl = test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
+    const safeGroupUrl = escapeInlineJsString(groupUrl);
+    const isEmailMode = String(test.test_mode || '') === 'email_list';
+    const groupDone = isFirstDayGroupStepDone(test);
+    const downloadDone = window.isFirstDayScreenshotVisible
+        ? !!window.isFirstDayScreenshotVisible(testId)
+        : false;
+
+    const steps = [];
+    if (!isEmailMode) {
+        steps.push({
+            key: 'group',
+            done: groupDone,
+            label: window.t('stepJoinGroup', {}, lang),
+            onclick: `handleJoinGoogleGroupClick(${testId}, '${safeGroupUrl}', { rerender: true })`,
+            side: `<button type="button" class="tstep__side" aria-label="${window.escapeHTML(window.t('stepCopyGroupAria', {}, lang))}" onclick="event.stopPropagation(); copyGroupUrl('${safeGroupUrl}')">📋</button>`,
+        });
+    }
+    steps.push({
+        key: 'download',
+        done: downloadDone,
+        label: window.t('stepDownloadPlay', {}, lang),
+        onclick: `handleFirstDownload(${testId}, '${safePackage}')`,
+    });
+    steps.push({
+        key: 'screenshot',
+        done: false,
+        locked: !downloadDone,
+        buttonId: `btn-confirm-${testId}`,
+        label: window.t('stepSendScreenshot', {}, lang),
+        onclick: `handleScreenshotAndConfirm(${testId}, '${safeOwnerUsername}')`,
+    });
+
+    const currentIndex = steps.findIndex(function(step) {
+        return !step.done && !step.locked;
+    });
+
+    const rowsHtml = steps.map(function(step, index) {
+        const stateClass = step.done
+            ? 'is-done'
+            : (step.locked ? 'is-locked' : (index === currentIndex ? 'is-current' : 'is-next'));
+        const disabledAttrs = step.locked ? ' disabled aria-disabled="true"' : '';
+        const buttonIdAttr = step.buttonId ? ` id="${step.buttonId}"` : '';
+        return `
+            <div class="tstep ${stateClass}" data-step-key="${step.key}">
+                <button type="button"${buttonIdAttr} class="tstep__row" onclick="${step.onclick}"${disabledAttrs}>
+                    <span class="tstep__marker" aria-hidden="true">
+                        <span class="tstep__num">${index + 1}</span>
+                        <svg class="tstep__check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l3 3 6-6.4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="tstep__label">${window.escapeHTML(step.label)}</span>
+                    <span class="tstep__arrow" aria-hidden="true">›</span>
+                </button>
+                ${step.side || ''}
+            </div>
+        `;
+    }).join('');
+
+    const emailNoteHtml = isEmailMode
+        ? `<div class="tstep-note">
+                <div class="tstep-note__title">${window.escapeHTML(window.t('emailStepNoteTitle', {}, lang))}</div>
+                <div class="tstep-note__text">${window.escapeHTML(window.t('emailStepNoteText', {}, lang))}</div>
+           </div>`
+        : '';
+
+    return `
+        ${emailNoteHtml}
+        <div class="tstep-flow" id="tstep-flow-${testId}">${rowsHtml}</div>
+    `;
 }
 
 function openTelegramProfile(username, event) {
@@ -1959,59 +2048,9 @@ function renderTests(force) {
         }
         // State B: status = 'new' OR status = 'daily'/'opened' without ready to claim
         else if (test.status === 'new') {
-            const groupUrl = test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
-            const safeGroupUrl = escapeInlineJsString(groupUrl);
-            const shouldShowScreenshotAction = window.isFirstDayScreenshotVisible ? window.isFirstDayScreenshotVisible(test.id) : false;
             const hintHtml = renderCheckinRewardHint(test, 1, lang);
-            const isEmailMode = test.test_mode === 'email_list';
-            const isDefaultGroup = !isEmailMode && (typeof isDefaultGoogleGroupUrl === 'function'
-                ? isDefaultGoogleGroupUrl(groupUrl)
-                : true);
-            const hideJoinGroupStep = !isEmailMode && isDefaultGroup && (!!_defaultGroupJoined || !_defaultGroupJoinedReady);
-            const downloadLabel = hideJoinGroupStep
-                ? window.t('downloadPlayStep1', {}, lang)
-                : window.t('downloadPlay', {}, lang);
-            const screenshotLabel = hideJoinGroupStep
-                ? window.t('screenshotBtnStep2', {}, lang)
-                : window.t('screenshotBtn', {}, lang);
-
-            let groupActionHtml = '';
-            if (isEmailMode) {
-                const badgeTitle = lang === 'ru' ? '📧 Тестирование по Email' : '📧 Testing by Email';
-                const badgeSubtitle = lang === 'ru'
-                    ? 'Разработчик должен был уже добавить ваш email в Play Console. Просто скачайте приложение.'
-                    : 'The developer should have already added your email in the Play Console. Just download the app.';
-                groupActionHtml = `
-                    <div class="email-testing-badge" style="background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.2); border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: center;">
-                        <div style="font-weight: bold; color: var(--accent-color, #007aff); font-size: 14px; margin-bottom: 4px;">${badgeTitle}</div>
-                        <div style="font-size: 12px; color: var(--hint-color, #8e8e93); line-height: 1.3;">${badgeSubtitle}</div>
-                    </div>
-                `;
-            } else if (!hideJoinGroupStep) {
-                groupActionHtml = `
-                    <div class="first-day-row">
-                        <button class="btn first-day-btn" style="flex: 1;" onclick="handleJoinGoogleGroupClick(${test.id}, '${safeGroupUrl}')">${window.escapeHTML(window.t('joinGroup', {}, lang))}</button>
-                        <button class="btn-icon first-day-copy" style="width: 44px; min-height: 44px; font-size: 18px;" onclick="copyGroupUrl('${safeGroupUrl}')">📋</button>
-                    </div>
-                `;
-            }
-
-            const screenshotDisabledAttrs = shouldShowScreenshotAction
-                ? ''
-                : ' disabled aria-disabled="true"';
-            const screenshotReadyClass = shouldShowScreenshotAction ? ' btn-confirm-ready' : ' first-day-btn--pending';
             actionsHtml = `
-                <div class="first-day-actions">
-                    ${groupActionHtml}
-                    <button class="btn first-day-btn" style="width: 100%;" onclick="handleFirstDownload(${test.id}, '${safePackage}')">
-                        ${window.escapeHTML(downloadLabel)}
-                    </button>
-                    <div id="new-screenshot-box-${test.id}">
-                        <button id="btn-confirm-${test.id}" class="btn first-day-btn${screenshotReadyClass}" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')"${screenshotDisabledAttrs}>
-                            ${window.escapeHTML(screenshotLabel)}
-                        </button>
-                    </div>
-                </div>
+                ${renderFirstDaySteps(test, safePackage, safeOwnerUsername)}
                 ${issueBtnHtml}
                 ${hintHtml}
             `;
@@ -2051,11 +2090,11 @@ function renderTests(force) {
                         ? feedbackPendingBtnLabel
                         : (isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText);
                     actionsHtml = `
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
+                        <div class="checkin-actions checkin-actions--stacked">
+                            <button class="btn btn-secondary checkin-open-btn" style="width: 100%;" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
-                            <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
+                            <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
                                 ${window.escapeHTML(confirmLabel)}
                             </button>
                             ${screenshotWarningText ? `<div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -2066,10 +2105,10 @@ function renderTests(force) {
                 } else if (isFeedbackCheckinPending) {
                     actionsHtml = `
                         <div class="action-row">
-                            <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
+                            <button class="btn btn-secondary checkin-open-btn" style="flex: 1;" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
-                            <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; ${feedbackPendingBtnStyle}" disabled data-feedback-pending="1">
+                            <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="flex: 2; ${feedbackPendingBtnStyle}" disabled data-feedback-pending="1">
                                 ${window.escapeHTML(feedbackPendingBtnLabel)}
                             </button>
                         </div>
@@ -2077,10 +2116,10 @@ function renderTests(force) {
                 } else {
                     actionsHtml = `
                         <div class="action-row">
-                            <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
+                            <button class="btn btn-secondary checkin-open-btn" style="flex: 1;" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
-                            <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
+                            <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="flex: 2;" disabled>
                                 ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : t.confirmStart}
                             </button>
                         </div>
@@ -2129,14 +2168,16 @@ function renderTests(force) {
                 ? isDefaultGoogleGroupUrl(chipGroupUrl)
                 : true;
             const safeChipGroupUrl = escapeInlineJsString(chipGroupUrl);
-            if (!chipIsDefault) {
+            const chipCustomJoined = typeof window.isCustomGroupJoined === 'function'
+                && window.isCustomGroupJoined(test.id);
+            if (!chipIsDefault && chipCustomJoined) {
+                // Handled by the checklist step.
+            } else if (!chipIsDefault) {
                 externalMetaChips.push(
                     `<button type="button" class="meta-chip accent-orange group-status-chip" onclick="event.stopPropagation(); handleGroupStatusChipClick(${test.id}, '${safeChipGroupUrl}')">${window.escapeHTML(window.t('groupChipCustom', {}, lang))}</button>`
                 );
             } else if (_defaultGroupJoined) {
-                externalMetaChips.push(
-                    `<span class="meta-chip accent-green group-status-chip group-status-chip--static">${window.escapeHTML(window.t('groupChipConnected', {}, lang))}</span>`
-                );
+                // Step 1 of the checklist already shows a completed state — no duplicate chip.
             } else if (_defaultGroupJoinedReady) {
                 // Only show "join required" after status is known — avoids Required→Connected flash on boot.
                 externalMetaChips.push(

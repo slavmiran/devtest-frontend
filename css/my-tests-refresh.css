@@ -1,0 +1,389 @@
+/* ==========================================================================
+   My Tests — visual refresh
+   Calmer chips, connected step checklist, lighter cards, softer motion.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Cards: flatter surface, tighter rhythm
+   -------------------------------------------------------------------------- */
+#tab-tests .card {
+    padding: 14px;
+    margin-bottom: 10px;
+    border-radius: 18px;
+    box-shadow: none;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+}
+
+#tab-tests .card > .card-header {
+    background: transparent;
+    padding: 0;
+    margin-bottom: 12px;
+}
+
+#tab-tests .card-title {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+#tab-tests .card-subtitle {
+    font-size: 12.5px;
+}
+
+@keyframes tests-card-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#tests-list > .card,
+#external-tests-list > .card {
+    animation: tests-card-in 0.26s cubic-bezier(0.25, 0.8, 0.25, 1) both;
+}
+
+/* Let the removal transition own the transform again. */
+#tab-tests .card.removing {
+    animation: none;
+}
+
+/* --------------------------------------------------------------------------
+   2. Meta chips: one neutral pill, colour only where it means something
+   -------------------------------------------------------------------------- */
+#tab-tests .meta-chip {
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--hint-color);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#tab-tests .meta-chip.accent-green { color: var(--success, #34c759); }
+#tab-tests .meta-chip.accent-blue { color: var(--link-color, #3390ec); }
+#tab-tests .meta-chip.accent-yellow { color: #e0b341; }
+#tab-tests .meta-chip.accent-purple { color: var(--reward, #b07cff); }
+#tab-tests .meta-chip.accent-cyan { color: #4fd1c5; }
+#tab-tests .meta-chip.accent-protection { color: var(--stage-protection, #7ea8ff); }
+#tab-tests .meta-chip.accent-buffer { color: var(--stage-buffer, #ffb84d); }
+
+/* Chips that ask for an action keep a soft wash so they stay findable. */
+#tab-tests .meta-chip.accent-orange,
+#tab-tests .meta-chip.accent-danger {
+    background: rgba(255, 149, 0, 0.11);
+    color: #ffab3d;
+    border-color: rgba(255, 149, 0, 0.2);
+}
+
+#tab-tests .meta-chip.accent-red {
+    background: rgba(255, 59, 48, 0.11);
+    color: var(--danger, #ff5a5f);
+    border-color: rgba(255, 59, 48, 0.2);
+}
+
+/* Testing type is the anchor chip of a card — slightly stronger, still quiet. */
+#tab-tests .meta-chip--source {
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.075);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --------------------------------------------------------------------------
+   3. Details button: vertical ellipsis
+   -------------------------------------------------------------------------- */
+#tab-tests .test-card-details-btn {
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--hint-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+#tab-tests .test-card-details-btn:active {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-color);
+}
+
+.test-card-details-btn__icon {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    display: block;
+}
+
+/* --------------------------------------------------------------------------
+   4. First-day checklist: numbered steps joined by a rail
+   -------------------------------------------------------------------------- */
+.tstep-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tstep {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+/* Rail segment bridging one step to the next. */
+.tstep:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 26px;
+    top: 100%;
+    width: 2px;
+    height: 10px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.12);
+    transition: background-color 0.25s ease;
+    pointer-events: none;
+}
+
+.tstep.is-done:not(:last-child)::after {
+    background: rgba(48, 209, 88, 0.35);
+}
+
+.tstep__row {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.22s ease, border-color 0.22s ease,
+        color 0.22s ease, opacity 0.22s ease, min-height 0.22s ease,
+        transform 0.12s ease;
+}
+
+.tstep__row:active:not([disabled]) {
+    transform: scale(0.985);
+}
+
+.tstep__label {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.tstep__arrow {
+    margin-left: auto;
+    font-size: 19px;
+    line-height: 1;
+    color: var(--hint-color);
+    opacity: 0.45;
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.tstep__marker {
+    position: relative;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--hint-color);
+    transition: background-color 0.22s ease, color 0.22s ease;
+}
+
+.tstep__check {
+    display: none;
+    width: 15px;
+    height: 15px;
+}
+
+.tstep__side {
+    flex-shrink: 0;
+    width: 50px;
+    padding: 0;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.12s ease, opacity 0.22s ease;
+}
+
+.tstep__side:active {
+    transform: scale(0.94);
+}
+
+/* --- current step --- */
+.tstep.is-current .tstep__row {
+    border-color: var(--accent-primary-border, rgba(76, 141, 255, 0.32));
+    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.12));
+}
+
+.tstep.is-current .tstep__marker {
+    background: var(--accent-primary, #4c8dff);
+    color: #fff;
+}
+
+.tstep.is-current .tstep__arrow {
+    color: var(--accent-primary, #4c8dff);
+    opacity: 0.9;
+}
+
+/* --- completed step --- */
+.tstep.is-done .tstep__row {
+    min-height: 44px;
+    background: transparent;
+    border-color: transparent;
+    color: var(--hint-color);
+    font-weight: 500;
+}
+
+.tstep.is-done .tstep__num { display: none; }
+.tstep.is-done .tstep__check { display: block; }
+
+.tstep.is-done .tstep__marker {
+    background: rgba(48, 209, 88, 0.16);
+    color: #34c759;
+}
+
+.tstep.is-done .tstep__arrow { opacity: 0; }
+.tstep.is-done .tstep__side { opacity: 0.5; }
+
+@keyframes tstep-check-pop {
+    0% { transform: scale(0.5); opacity: 0.2; }
+    65% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.tstep.is-done .tstep__check {
+    animation: tstep-check-pop 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* --- locked step --- */
+.tstep.is-locked .tstep__row {
+    background: transparent;
+    border-style: dashed;
+    border-color: rgba(255, 255, 255, 0.09);
+    color: var(--hint-color);
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.tstep.is-locked .tstep__arrow { opacity: 0; }
+
+/* --- confirming (server round-trip) --- */
+#tab-tests .tstep__row.is-confirming,
+#tab-tests .btn.is-confirming {
+    background: rgba(48, 209, 88, 0.16) !important;
+    border-color: rgba(48, 209, 88, 0.3) !important;
+    color: #34c759 !important;
+}
+
+.tstep-note {
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tstep-note__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 2px;
+}
+
+.tstep-note__text {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--hint-color);
+}
+
+/* --------------------------------------------------------------------------
+   5. Daily check-in row
+   -------------------------------------------------------------------------- */
+#tab-tests .action-row {
+    gap: 8px;
+}
+
+#tab-tests .checkin-actions--stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#tab-tests .checkin-open-btn {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-color);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+}
+
+#tab-tests .checkin-confirm-btn[disabled] {
+    background: rgba(142, 142, 147, 0.16);
+    color: var(--hint-color);
+    border: 1px solid transparent;
+    cursor: not-allowed;
+}
+
+#tab-tests .action-row .btn,
+#tab-tests .split-btn-group .btn {
+    min-height: 46px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.22s ease, color 0.22s ease,
+        border-color 0.22s ease, transform 0.12s ease;
+}
+
+#tab-tests .action-row .btn:active:not([disabled]),
+#tab-tests .split-btn-group .btn:active:not([disabled]) {
+    transform: scale(0.98);
+}
+
+#tab-tests .split-btn-group .split-btn-main {
+    border-radius: 14px 0 0 14px;
+}
+
+#tab-tests .split-btn-group .split-btn-options {
+    border-radius: 0 14px 14px 0;
+}
+
+/* --------------------------------------------------------------------------
+   6. Motion preferences
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    #tests-list > .card,
+    #external-tests-list > .card,
+    .tstep.is-done .tstep__check {
+        animation: none;
+    }
+
+    .tstep__row,
+    .tstep__side,
+    #tab-tests .action-row .btn {
+        transition: none;
+    }
+}
