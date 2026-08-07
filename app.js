@@ -41,6 +41,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (!document.hidden) {
                 _syncActiveTimerState();
+                // Drop stale Confirm-ready state when local calendar day rolls over.
+                if (typeof _loadTimerReadyState === 'function') {
+                    _loadTimerReadyState();
+                }
+                if (typeof _applyPersistedReadyTimerButtons === 'function') {
+                    _applyPersistedReadyTimerButtons();
+                }
                 if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
                     _lastFetchTimes.tests = 0;
                     if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {

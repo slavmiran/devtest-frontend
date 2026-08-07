@@ -5411,11 +5411,15 @@ function openProjectDetailsModal(appId) {
 
     const grant = getGrantEstimateData(test);
     const currentSkips = Math.max(0, Number(grant.skips || 0));
-    const skipIndicator = Array.from({ length: 3 }, function(_, index) {
-        return index < currentSkips
-            ? '<span class="skip-dot used"></span>'
-            : '<span class="skip-dot available"></span>';
-    }).join('');
+    const skipIndicator = typeof buildGrantSkipDots === 'function'
+        ? buildGrantSkipDots(currentSkips)
+        : Array.from({ length: 3 }, function(_, index) {
+            if (index === 0) return currentSkips > 0 ? '<span class="skip-dot used"></span>' : '<span class="skip-dot available"></span>';
+            if (index === 1) return currentSkips > 1 ? '<span class="skip-dot used"></span>' : '<span class="skip-dot available"></span>';
+            if (currentSkips === 3) return '<span class="skip-dot warning" title="3-й пропуск">⚠️</span>';
+            if (currentSkips >= 4) return '<span class="skip-dot used"></span>';
+            return '<span class="skip-dot available"></span>';
+        }).join('');
     const perfectCardClass = currentSkips > 0 ? ' grant-reward-card-burned' : '';
     const perfectValueLabel = window.t('grantPerfectValue', { amount: formatBustAmount(50) }, lang);
     const perfectValue = currentSkips > 0 ? '<span class="grant-burned-text">' + window.escapeHTML(perfectValueLabel) + '</span>' : window.escapeHTML(perfectValueLabel);
@@ -5465,6 +5469,10 @@ function openProjectDetailsModal(appId) {
             '</summary>' +
             '<div class="grant-dashboard-lost-body">' +
                 '<div class="grant-dashboard-subtitle">' + window.escapeHTML(window.t('grantLostLabel', {}, lang)) + '</div>' +
+                '<div class="grant-dashboard-skips-row">' +
+                    '<span class="grant-skip-text">' + window.escapeHTML(window.t('grantSkipsLabel', { used: currentSkips, max: 3 }, lang)) + '</span>' +
+                    '<span class="grant-dashboard-skips">' + skipIndicator + '</span>' +
+                '</div>' +
                 '<div class="grant-reward-grid grant-reward-grid-lost">' +
                     '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantBaseLabel', {}, lang)) + '</div><div class="grant-reward-value notranslate"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantBaseValue', { amount: formatBustAmount(50) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
                     '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantPerfectLabel', {}, lang)) + '</div><div class="grant-reward-value notranslate"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantPerfectValue', { amount: formatBustAmount(50) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +

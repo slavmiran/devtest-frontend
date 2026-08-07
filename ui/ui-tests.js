@@ -355,6 +355,29 @@ function getGrantEstimateData(test) {
     };
 }
 
+function buildGrantSkipDots(skipsCount) {
+    const skips = Math.max(0, Number(skipsCount || 0));
+    return Array.from({ length: 3 }, function(_, index) {
+        if (index === 0) {
+            return skips > 0
+                ? '<span class="skip-dot used"></span>'
+                : '<span class="skip-dot available"></span>';
+        }
+        if (index === 1) {
+            return skips > 1
+                ? '<span class="skip-dot used"></span>'
+                : '<span class="skip-dot available"></span>';
+        }
+        if (skips === 3) {
+            return '<span class="skip-dot warning" title="3-й пропуск">⚠️</span>';
+        }
+        if (skips >= 4) {
+            return '<span class="skip-dot used"></span>';
+        }
+        return '<span class="skip-dot available"></span>';
+    }).join('');
+}
+
 function getActiveContractPossibleTotal(test) {
     const bounty = Math.max(0, Number(test && test.bounty_per_tester || 0));
     const grant = getGrantEstimateData(test);
@@ -2455,6 +2478,7 @@ Object.assign(window, {
     isProjectSynced,
     showGrantBreakdownAlertById,
     getGrantEstimateData,
+    buildGrantSkipDots,
     getActiveContractPossibleTotal,
     getContractPossibleTotalReward,
     getScreenshotReminderHtml,

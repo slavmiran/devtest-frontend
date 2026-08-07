@@ -689,6 +689,7 @@ var _timerLocalDate = '';
 var _timerStorageKey = 'devtest_active_timer';
 var _timerReadyStateKey = 'devtest_timer_ready_state_v1';
 var _timerReadyState = {};
+var _checkinOpenTokenState = {};
 var _firstDayScreenshotStateKey = 'devtest_firstday_screenshot_state_v1';
 var _firstDayScreenshotState = {};
 var _customGroupJoinedStateKey = 'devtest_custom_group_joined_v1';

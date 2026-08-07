@@ -782,7 +782,20 @@ function _loadTimerReadyState() {
                     isScreenshot: !!payload.isScreenshot,
                     ownerUsername: String(payload.ownerUsername || ''),
                     localDate: today,
+                    openToken: String(payload.openToken || ''),
+                    readyAtMs: Number(payload.readyAtMs || 0) || 0,
+                    expiresAtMs: Number(payload.expiresAtMs || 0) || 0,
+                    progressId: Number(payload.progressId || 0) || 0,
                 };
+                if (nextState[key].openToken) {
+                    _checkinOpenTokenState[key] = {
+                        token: nextState[key].openToken,
+                        readyAtMs: nextState[key].readyAtMs,
+                        expiresAtMs: nextState[key].expiresAtMs,
+                        progressId: nextState[key].progressId,
+                        localDate: today,
+                    };
+                }
             });
         }
         _timerReadyState = nextState;
@@ -801,13 +814,19 @@ function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername) {
     var key = String(Number(appId) || 0);
     if (key === '0') return;
     if (isReady) {
+        var openMeta = (_checkinOpenTokenState && _checkinOpenTokenState[key]) || {};
         _timerReadyState[key] = {
             isScreenshot: !!isScreenshot,
             ownerUsername: String(ownerUsername || ''),
             localDate: getLocalDate(),
+            openToken: String(openMeta.token || ''),
+            readyAtMs: Number(openMeta.readyAtMs || 0) || 0,
+            expiresAtMs: Number(openMeta.expiresAtMs || 0) || 0,
+            progressId: Number(openMeta.progressId || 0) || 0,
         };
     } else {
         delete _timerReadyState[key];
+        if (_checkinOpenTokenState) delete _checkinOpenTokenState[key];
     }
     _persistTimerReadyState();
     _syncExternalTimerReadyVisual(appId, isReady);
@@ -849,8 +868,10 @@ function _applyPersistedReadyTimerButtons() {
             applyTestFeedbackCheckinPendingUi(appId);
             return;
         }
-        var payload = _timerReadyState[key];
-        _setTimerButtonReady(appId, !!(payload && payload.isScreenshot), (payload && payload.ownerUsername) || '');
+        // Revalidate localDate on every render — prevents Confirm lighting up after midnight.
+        var payload = _getTimerReadyPayload(appId);
+        if (!payload) return;
+        _setTimerButtonReady(appId, !!payload.isScreenshot, payload.ownerUsername || '');
     });
 }
 
@@ -1821,7 +1842,67 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
     }
 }
 
+function _getCheckinOpenToken(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return '';
+    var readyPayload = _timerReadyState[key];
+    if (readyPayload && String(readyPayload.localDate || '') === getLocalDate() && readyPayload.openToken) {
+        return String(readyPayload.openToken || '');
+    }
+    var live = _checkinOpenTokenState[key];
+    if (live && String(live.localDate || '') === getLocalDate() && live.token) {
+        return String(live.token || '');
+    }
+    return '';
+}
+
+async function _requestCheckinOpenToken(appId) {
+    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id) === Number(appId);
+    });
+    var response = await fetch(API_BASE + '/checkin/open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(withInitData({
+            app_id: Number(appId) || 0,
+            progress_id: Number(test && test.progress_id || 0) || 0,
+        })),
+    });
+    var result = null;
+    try {
+        result = await response.json();
+    } catch (e) {
+        result = null;
+    }
+    if (!response.ok || !result || result.status !== 'success') {
+        var code = getBackendErrorCode(result) || 'database_error';
+        handleApiError(code, (result && result.details) || {});
+        return null;
+    }
+    var key = String(Number(appId) || 0);
+    if (result.required === false) {
+        if (_checkinOpenTokenState) delete _checkinOpenTokenState[key];
+        return result;
+    }
+    _checkinOpenTokenState[key] = {
+        token: String(result.token || ''),
+        readyAtMs: Number(result.ready_at_ms || 0) || 0,
+        expiresAtMs: Number(result.expires_at_ms || 0) || 0,
+        progressId: Number(result.progress_id || 0) || 0,
+        localDate: getLocalDate(),
+        serverNowMs: Number(result.server_now_ms || 0) || Date.now(),
+    };
+    return result;
+}
+
 function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '', durationSeconds = 15) {
+    _startTimerAsync(id, pkg, isScreenshotDay, ownerUsername, durationSeconds).catch(function(err) {
+        console.error('startTimer failed:', err);
+        handleApiError('network_error');
+    });
+}
+
+async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername = '', durationSeconds = 15) {
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(id, ownerUsername);
     var resolvedDurationSeconds = Number(durationSeconds || 15);
     if (!Number.isFinite(resolvedDurationSeconds) || resolvedDurationSeconds < 1) {
@@ -1864,6 +1945,26 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '', durati
         showCustomAlert(t.antiFraudAlert);
         return;
     }
+
+    var openPayload = await _requestCheckinOpenToken(id);
+    if (!openPayload) {
+        return;
+    }
+    if (openPayload.required === false) {
+        // Day 15+ should not use Open timer, but if we got here — unlock Confirm.
+        setTimerReadyForConfirm(id, true, isScreenshotDay, resolvedOwnerUsername);
+        _setTimerButtonReady(id, !!isScreenshotDay, resolvedOwnerUsername);
+        tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+        _onStoreLinkClickedForIssueFlow(id);
+        return;
+    }
+
+    var serverWaitMs = Math.max(
+        1000,
+        Number(openPayload.ready_at_ms || 0) - Number(openPayload.server_now_ms || Date.now())
+    );
+    resolvedDurationSeconds = Math.max(1, Math.ceil(serverWaitMs / 1000));
+
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
     _onStoreLinkClickedForIssueFlow(id);
@@ -3203,6 +3304,7 @@ async function confirmStart(id) {
                 app_id: id,
                 local_date: getLocalDate(),
                 play_feedback_submitted: shouldSubmitPlayFeedback,
+                open_token: _getCheckinOpenToken(id),
             }))
         });
 
@@ -3236,6 +3338,20 @@ async function confirmStart(id) {
                     || errorCode === 'test_or_app_not_found'
                     || errorCode === 'project_pending_completion') {
                     _handleInactiveCheckinCard(id, errorCode);
+                } else if (
+                    errorCode === 'open_required'
+                    || errorCode === 'open_invalid'
+                    || errorCode === 'open_mismatch'
+                    || errorCode === 'open_expired'
+                    || errorCode === 'open_not_ready'
+                    || errorCode === 'day_boundary_moved'
+                ) {
+                    setTimerReadyForConfirm(id, false);
+                    clearActiveTimerForApp(id);
+                    if (typeof window.renderTests === 'function') {
+                        window.renderTests(true);
+                    }
+                    handleApiError(errorCode, result.details || {});
                 } else {
                     handleApiError(errorCode, result.details || {});
                 }

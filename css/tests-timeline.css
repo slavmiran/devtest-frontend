@@ -234,6 +234,18 @@
 }
 .skip-dot.available { background: var(--success); }
 .skip-dot.used { background: var(--danger); }
+.skip-dot.warning {
+    width: 10px;
+    height: 10px;
+    border-radius: 0;
+    background: transparent;
+    font-size: 10px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
 
 .grant-skip-text {
     font-size: 11px;

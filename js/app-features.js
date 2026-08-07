@@ -2827,11 +2827,15 @@ function _buildJoinBountyGrantPreviewHtml(grant) {
         : function(value) { return String(value) + ' $BUST'; };
     var currentSkips = Math.max(0, Number(grant.skips || 0));
     var eligible = grant.eligible !== false && currentSkips <= 3;
-    var skipIndicator = Array.from({ length: 3 }, function(_, index) {
-        return index < currentSkips
-            ? '<span class="skip-dot used"></span>'
-            : '<span class="skip-dot available"></span>';
-    }).join('');
+    var skipIndicator = typeof buildGrantSkipDots === 'function'
+        ? buildGrantSkipDots(currentSkips)
+        : Array.from({ length: 3 }, function(_, index) {
+            if (index === 0) return currentSkips > 0 ? '<span class="skip-dot used"></span>' : '<span class="skip-dot available"></span>';
+            if (index === 1) return currentSkips > 1 ? '<span class="skip-dot used"></span>' : '<span class="skip-dot available"></span>';
+            if (currentSkips === 3) return '<span class="skip-dot warning" title="3-й пропуск">⚠️</span>';
+            if (currentSkips >= 4) return '<span class="skip-dot used"></span>';
+            return '<span class="skip-dot available"></span>';
+        }).join('');
     var T = function(key, vars) {
         return window.t(key, vars || {}, lang) || key;
     };
