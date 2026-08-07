@@ -323,6 +323,44 @@
     text-align: center;
 }
 
+/* ── Unified reward card: header + nested accordions ── */
+.jb-total.jb-total-unified {
+    padding: 0;
+    overflow: hidden;
+}
+
+.jb-total-unified .jb-total-header {
+    padding: 18px 16px 14px;
+}
+
+.jb-total-unified .jb-total-accordions {
+    border-top: 1px solid rgba(10, 132, 255, 0.18);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.jb-total-unified .jb-total-accordions .jb-section {
+    margin-bottom: 0;
+}
+
+.jb-total-unified .jb-total-accordions .jb-section + .jb-section {
+    margin-top: 8px;
+}
+
+.jb-total-unified .jb-accordion {
+    border-color: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.jb-total-unified .jb-accordion-grant {
+    border-color: rgba(255, 215, 0, 0.12);
+    background:
+        linear-gradient(180deg, rgba(255, 216, 104, 0.04), transparent),
+        rgba(255, 255, 255, 0.02);
+}
+
 .jb-total-label {
     font-size: 12px;
     font-weight: 600;

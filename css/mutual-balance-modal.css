@@ -233,9 +233,40 @@
     line-height: 1.3;
 }
 
+.parity-side-card.is-debt-done {
+    border-color: rgba(90, 200, 250, 0.35);
+    background: rgba(90, 200, 250, 0.08);
+    opacity: 0.92;
+}
+
+.parity-side-card.is-debt-active {
+    border-color: rgba(100, 210, 255, 0.55);
+    background: rgba(100, 210, 255, 0.12);
+}
+
+.parity-side-debt-done,
+.parity-side-debt-active {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.parity-side-debt-done {
+    color: rgba(90, 200, 250, 0.95);
+}
+
+.parity-side-debt-active {
+    color: #64d2ff;
+}
+
 .parity-info-banner.is-broken {
     border-color: rgba(255, 69, 58, 0.35);
     background: rgba(255, 69, 58, 0.08);
+}
+
+.parity-info-banner.is-debt {
+    border-color: rgba(100, 210, 255, 0.35);
+    background: rgba(100, 210, 255, 0.1);
 }
 
 .parity-side-label {
@@ -341,6 +372,18 @@
     color: var(--security);
     background: var(--security-surface);
     border-color: var(--security-border);
+}
+
+.link-status-type-badge.is-debt {
+    color: #64d2ff;
+    background: rgba(100, 210, 255, 0.14);
+    border-color: rgba(100, 210, 255, 0.35);
+}
+
+.link-status-type-badge.is-broken {
+    color: #ff453a;
+    background: rgba(255, 69, 58, 0.12);
+    border-color: rgba(255, 69, 58, 0.35);
 }
 
 .link-status-type-badge.is-bounty {

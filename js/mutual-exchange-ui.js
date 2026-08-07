@@ -205,7 +205,14 @@
         return normalized === 'mutual';
     }
 
-    function _linkTypeBadge(joinType) {
+    function _linkTypeBadge(joinType, options) {
+        options = options || {};
+        if (options.isDebt) {
+            return { className: 'is-debt', label: _t('linkedBadgeDebt') };
+        }
+        if (options.isBroken) {
+            return { className: 'is-broken', label: _t('linkedBadgeBroken') };
+        }
         var normalized = _normalizeJoinType(joinType);
         if (normalized === 'bounty') {
             return { className: 'is-bounty', label: _t('linkedBadgeBounty') };
@@ -216,7 +223,10 @@
         return { className: 'is-direct', label: _t('linkedBadgeDirect') };
     }
 
-    function _linkStatusTitle(joinType) {
+    function _linkStatusTitle(joinType, options) {
+        options = options || {};
+        if (options.isDebt) return _t('linkStatusTitleDebt');
+        if (options.isBroken) return _t('linkStatusTitleBroken');
         var normalized = _normalizeJoinType(joinType);
         if (normalized === 'bounty') return _t('linkStatusTitleBounty');
         if (normalized === 'mutual') return _t('linkStatusTitleMutual');
@@ -239,7 +249,10 @@
     function _renderPersonHero(data) {
         var fullName = String(data.fullName || '').trim();
         var username = String(data.username || '').replace(/^@+/, '').trim();
-        var badge = _linkTypeBadge(data.joinType);
+        var badge = _linkTypeBadge(data.joinType, {
+            isDebt: !!data.isDebt,
+            isBroken: !!data.isBroken,
+        });
         var nameLine = fullName || (username ? ('@' + username) : _t('unknownLabel'));
         var nickLine = username
             ? ('@' + username)
@@ -346,6 +359,7 @@
             context: context,
             projectId: Number(options.projectId || (context === 'projects' ? safeAppId : 0)),
             joinType: joinType,
+            isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt)),
             testerUsername: String(options.testerUsername || '').replace(/^@+/, ''),
             testerFullName: String(options.testerFullName || '').trim(),
             testerAvatarUrl: String(options.testerAvatarUrl || '').trim(),
@@ -356,7 +370,9 @@
         };
 
         if (titleEl) {
-            titleEl.textContent = _linkStatusTitle(joinType);
+            titleEl.textContent = _linkStatusTitle(joinType, {
+                isDebt: !!_balanceState.isMutualDebt,
+            });
         }
 
         body.innerHTML = _renderBalanceLoadingSkeleton();
@@ -536,6 +552,7 @@
             myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
+            isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
         });
     }
 
@@ -584,6 +601,7 @@
             myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
+            isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
         });
     }
 
@@ -591,15 +609,23 @@
         options = options || {};
         var skipWarn = Number(skips || 0) >= 3;
         var isBroken = !!options.broken;
-        var brokenBadge = isBroken
-            ? '<div class="parity-side-broken">' + _esc(_t('mutualBalanceSideBroken')) + '</div>'
-            : '';
+        var isDebtDone = !!options.debtDone;
+        var isDebtActive = !!options.debtActive;
+        var stateClass = isBroken ? ' is-broken' : (isDebtDone ? ' is-debt-done' : (isDebtActive ? ' is-debt-active' : ''));
+        var stateBadge = '';
+        if (isBroken) {
+            stateBadge = '<div class="parity-side-broken">' + _esc(_t('mutualBalanceSideBroken')) + '</div>';
+        } else if (isDebtDone) {
+            stateBadge = '<div class="parity-side-debt-done">' + _esc(_t('mutualBalanceSideDebtDone')) + '</div>';
+        } else if (isDebtActive) {
+            stateBadge = '<div class="parity-side-debt-active">' + _esc(_t('mutualBalanceSideDebtActive')) + '</div>';
+        }
         return '' +
-            '<div class="parity-side-card' + (isBroken ? ' is-broken' : '') + '">' +
+            '<div class="parity-side-card' + stateClass + '">' +
                 '<div class="parity-side-label">' + _esc(label) + '</div>' +
                 '<div class="parity-side-icon">' + _renderIconHtml(appName, iconUrl) + '</div>' +
                 '<div class="parity-side-name notranslate">' + _esc(appName) + '</div>' +
-                brokenBadge +
+                stateBadge +
                 '<div class="parity-chip-row">' +
                     '<span class="parity-chip">📅 ' + _esc(_t('parityDayChip', { day: day, total: 14 })) + '</span>' +
                     '<span class="parity-chip' + (skipWarn ? ' is-warn' : '') + '">⚠️ ' +
@@ -647,6 +673,8 @@
             userId: data.partnerId || 0,
             joinType: data.joinType || 'mutual',
         };
+        var isDebt = !!(data.isMutualDebt || (_balanceState && _balanceState.isMutualDebt));
+        person.isDebt = isDebt;
         if (_balanceState) {
             _balanceState.joinType = person.joinType || _balanceState.joinType;
             _balanceState.testerUsername = person.username || _balanceState.testerUsername;
@@ -654,31 +682,34 @@
             _balanceState.testerAvatarUrl = person.avatarUrl || _balanceState.testerAvatarUrl;
             _balanceState.testerLanguage = person.language || _balanceState.testerLanguage;
             if (person.userId) _balanceState.testerId = person.userId;
+            _balanceState.isMutualDebt = isDebt;
         }
 
         var partnerConsec = Number(data.partnerConsecutive || 0);
         var isOwnerView = data.context === 'projects';
         var hint = '';
         // Owner POV must never use tester leave-justification copy ("partner left / leave free").
-        if (isOwnerView) {
-            if (partnerConsec >= 3) {
-                hint = '<div class="parity-info-banner is-safe">' +
-                    _esc(_t('mutualBalanceOwnerKickHint', {
+        if (!isDebt) {
+            if (isOwnerView) {
+                if (partnerConsec >= 3) {
+                    hint = '<div class="parity-info-banner is-safe">' +
+                        _esc(_t('mutualBalanceOwnerKickHint', {
+                            count: partnerConsec,
+                            word: pluralizeSkipWord(partnerConsec),
+                        })) +
+                        '</div>';
+                }
+            } else if (partnerConsec >= 3 || data.partnerLeft) {
+                var hintText = data.partnerLeft
+                    ? _t('mutualBalancePartnerLeftHint')
+                    : _t('mutualBalancePartnerSkipHint', {
                         count: partnerConsec,
                         word: pluralizeSkipWord(partnerConsec),
-                    })) +
+                    });
+                hint = '<div class="parity-info-banner' + (data.partnerLeft || partnerConsec >= 3 ? ' is-safe' : '') + '">' +
+                    _esc(hintText) +
                     '</div>';
             }
-        } else if (partnerConsec >= 3 || data.partnerLeft) {
-            var hintText = data.partnerLeft
-                ? _t('mutualBalancePartnerLeftHint')
-                : _t('mutualBalancePartnerSkipHint', {
-                    count: partnerConsec,
-                    word: pluralizeSkipWord(partnerConsec),
-                });
-            hint = '<div class="parity-info-banner' + (data.partnerLeft || partnerConsec >= 3 ? ' is-safe' : '') + '">' +
-                _esc(hintText) +
-                '</div>';
         }
 
         var isMutual = _isMutualJoin(person.joinType);
@@ -701,17 +732,41 @@
             var themAtYouDays = isOwnerView ? data.theirDays : data.myDays;
             var themAtYouSkips = isOwnerView ? data.theirSkips : data.mySkips;
             // One-sided link: partner left / was kicked / unlinked — mark their side broken.
-            var themBroken = !!data.partnerLeft;
+            var themBroken = !isDebt && !!data.partnerLeft;
             var youBroken = false;
-            if (data.context === 'tests') {
+            if (!isDebt && data.context === 'tests') {
                 var myProgress = String(data.myProgressStatus || '').toLowerCase();
                 youBroken = myProgress === 'kicked_by_owner' || myProgress === 'canceled_neutral';
             }
+            // Debt: your project side is finished; your counter-test is still the obligation.
+            var themDebtDone = false;
+            var youDebtActive = false;
+            if (isDebt) {
+                if (isOwnerView) {
+                    // Owner still testing tester's app while own project already finished.
+                    themDebtDone = true;
+                    youDebtActive = true;
+                } else {
+                    // Tester POV: reciprocal (my) project finished; still testing their app.
+                    themDebtDone = true;
+                    youDebtActive = true;
+                }
+            }
             bodyHtml = '<div class="parity-comparison-grid">' +
-                _paritySideCard(_t('mutualBalanceThemAtYou'), themAtYouName, themAtYouIcon, themAtYouDays, themAtYouSkips, { broken: themBroken }) +
-                _paritySideCard(_t('mutualBalanceYouAtThem'), youAtThemName, youAtThemIcon, youAtThemDays, youAtThemSkips, { broken: youBroken }) +
+                _paritySideCard(_t('mutualBalanceThemAtYou'), themAtYouName, themAtYouIcon, themAtYouDays, themAtYouSkips, {
+                    broken: themBroken,
+                    debtDone: themDebtDone,
+                }) +
+                _paritySideCard(_t('mutualBalanceYouAtThem'), youAtThemName, youAtThemIcon, youAtThemDays, youAtThemSkips, {
+                    broken: youBroken,
+                    debtActive: youDebtActive,
+                }) +
             '</div>';
-            if (themBroken || youBroken) {
+            if (isDebt) {
+                hint = '<div class="parity-info-banner is-debt">' +
+                    _esc(_t('mutualBalanceDebtHint')) +
+                    '</div>' + hint;
+            } else if (themBroken || youBroken) {
                 hint = '<div class="parity-info-banner is-broken">' +
                     _esc(_t('mutualBalanceOneSidedHint')) +
                     '</div>' + hint;
@@ -720,21 +775,27 @@
             bodyHtml = _renderSingleSideStats(data);
         }
 
-        var breakLabel = isMutual ? _t('mutualBalanceBreakBtn') : _t('linkStatusKickBtn');
-        var breakClass = isMutual ? 'btn-danger-soft' : 'btn-danger-soft';
+        var breakLabel = isDebt
+            ? _t('mutualBalanceDebtExitBtn')
+            : (isMutual ? _t('mutualBalanceBreakBtn') : _t('linkStatusKickBtn'));
+        var actionsHtml = '<div class="parity-actions">';
+        if (!isDebt) {
+            actionsHtml += '' +
+                '<button type="button" class="btn btn-outline-tg" onclick="openBellRemindPreview()">' +
+                    _esc(_t('mutualBalanceBellBtn')) +
+                '</button>';
+        }
+        actionsHtml += '' +
+                '<button type="button" class="btn btn-danger-soft" onclick="startMutualBreakFromBalance()">' +
+                    _esc(breakLabel) +
+                '</button>' +
+            '</div>';
 
         return '' +
             _renderPersonHero(person) +
             bodyHtml +
             hint +
-            '<div class="parity-actions">' +
-                '<button type="button" class="btn btn-outline-tg" onclick="openBellRemindPreview()">' +
-                    _esc(_t('mutualBalanceBellBtn')) +
-                '</button>' +
-                '<button type="button" class="btn ' + breakClass + '" onclick="startMutualBreakFromBalance()">' +
-                    _esc(breakLabel) +
-                '</button>' +
-            '</div>';
+            actionsHtml;
     }
 
     function closeMutualBalanceModal(event) {
