@@ -510,6 +510,12 @@
     padding: 0 14px 14px;
 }
 
+/* Hide duplicated inner total headers when accordion is open */
+.jb-accordion-body .join-bounty-reward-header,
+.jb-accordion-body .grant-dashboard-header {
+    display: none;
+}
+
 .jb-accordion-body .join-bounty-reward-card,
 .jb-accordion-body .join-bounty-confirm-grant,
 .jb-accordion-body .grant-dashboard-block {
