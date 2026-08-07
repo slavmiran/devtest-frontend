@@ -472,6 +472,21 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
     var currentDay = null;
     var currentDayState = '';
     var hasCheckedToday = isTestedToday(test);  // ← Use normalized date comparison
+    var checkinsCount = Math.max(0, Number(test.checkins_count || 0));
+    var skipsCount = Math.max(0, Number(test.skips_count || 0));
+    // Fresh / rejoined cycle: counters are zero but an old daily_timeline may linger.
+    // Never paint a previous run's markers onto a brand-new personal cycle.
+    if (!test.last_check_date && checkinsCount === 0 && skipsCount === 0) {
+        timeline = '';
+        renderTimeline = '';
+    } else {
+        var realizedThrough = hasCheckedToday
+            ? Math.max(0, userTestingDay || 0)
+            : Math.max(0, (userTestingDay || 0) - 1);
+        if (renderTimeline.length > realizedThrough) {
+            renderTimeline = renderTimeline.slice(0, realizedThrough);
+        }
+    }
 
     if (!hasCheckedToday && userTestingDay > 0 && renderTimeline.length >= userTestingDay) {
         var unresolvedMarker = renderTimeline[userTestingDay - 1] || '';
@@ -488,7 +503,11 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
     function getDayState(dayNum) {
         const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
         const isBufferDay = dayNum > 14 + extraPaid;
-        var ch = renderTimeline[dayNum - 1] || '';
+        var ch = '';
+        // Future personal days must stay empty even if a stale timeline string is longer.
+        if (dayNum <= (hasCheckedToday ? userTestingDay : Math.max(0, userTestingDay - 1))) {
+            ch = renderTimeline[dayNum - 1] || '';
+        }
         
         // Fallback: if user is on Day 15+, ensure all days 1-14 are colored
         if (dayNum <= 14 && userTestingDay > 14) {
