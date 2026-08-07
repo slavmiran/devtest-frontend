@@ -323,42 +323,30 @@
     text-align: center;
 }
 
-/* ── Unified reward card: header + nested accordions ── */
-.jb-total.jb-total-unified {
-    padding: 0;
+/* ── Reward stack: header + accordions as seamless vertical group ── */
+.jb-reward-stack {
+    border-radius: 18px;
     overflow: hidden;
+    border: 1px solid rgba(10, 132, 255, 0.30);
+    margin-bottom: 16px;
 }
 
-.jb-total-unified .jb-total-header {
-    padding: 18px 16px 14px;
-}
-
-.jb-total-unified .jb-total-accordions {
-    border-top: 1px solid rgba(10, 132, 255, 0.18);
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-}
-
-.jb-total-unified .jb-total-accordions .jb-section {
+.jb-reward-stack > .jb-total {
     margin-bottom: 0;
+    border: none;
+    border-radius: 0;
 }
 
-.jb-total-unified .jb-total-accordions .jb-section + .jb-section {
-    margin-top: 8px;
+.jb-reward-stack > .jb-accordion {
+    border: none;
+    border-radius: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.jb-total-unified .jb-accordion {
-    border-color: rgba(255, 255, 255, 0.06);
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.jb-total-unified .jb-accordion-grant {
-    border-color: rgba(255, 215, 0, 0.12);
+.jb-reward-stack > .jb-accordion-grant {
     background:
-        linear-gradient(180deg, rgba(255, 216, 104, 0.04), transparent),
-        rgba(255, 255, 255, 0.02);
+        linear-gradient(180deg, rgba(255, 216, 104, 0.05), transparent),
+        rgba(255, 255, 255, 0.03);
 }
 
 .jb-total-label {

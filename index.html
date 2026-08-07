@@ -1830,69 +1830,63 @@
 
             <div id="bounty-info-project" class="join-bounty-confirm-project"></div>
 
-            <div class="jb-total jb-total-unified">
-                <div class="jb-total-header">
+            <div class="jb-reward-stack">
+                <div class="jb-total">
                     <div class="jb-total-label" data-i18n="joinBountyTotalLabel">Возможная награда</div>
                     <div id="bounty-info-grand-total" class="jb-total-value notranslate">0 $BUST</div>
                     <div id="bounty-info-total-breakdown" class="jb-total-breakdown"></div>
                 </div>
 
-                <div class="jb-total-accordions">
-                    <div class="jb-section">
-                        <details class="jb-accordion" id="bounty-info-owner-accordion">
-                            <summary class="jb-accordion-summary">
-                                <div class="jb-accordion-main">
-                                    <div class="jb-accordion-title" data-i18n="joinBountyOwnerBlockTitle">💼 Оплата от владельца</div>
-                                    <div class="jb-accordion-sub" data-i18n="joinBountyOwnerCompactSub">Чекины 65% · Hold Bonus 35%</div>
+                <details class="jb-accordion" id="bounty-info-owner-accordion">
+                    <summary class="jb-accordion-summary">
+                        <div class="jb-accordion-main">
+                            <div class="jb-accordion-title" data-i18n="joinBountyOwnerBlockTitle">💼 Оплата от владельца</div>
+                            <div class="jb-accordion-sub" data-i18n="joinBountyOwnerCompactSub">Чекины 65% · Hold Bonus 35%</div>
+                        </div>
+                        <div class="jb-accordion-meta">
+                            <div id="bounty-info-owner-compact" class="jb-accordion-amount notranslate is-owner">0 $BUST</div>
+                            <span class="jb-accordion-chevron" aria-hidden="true"></span>
+                        </div>
+                    </summary>
+                    <div class="jb-accordion-body">
+                        <div class="join-bounty-reward-card">
+                            <div class="join-bounty-reward-header">
+                                <div class="join-bounty-reward-title" data-i18n="joinBountyRewardLabel">Награда</div>
+                                <div id="bounty-info-owner-total" class="join-bounty-reward-total notranslate">0 $BUST</div>
+                            </div>
+                            <div class="join-bounty-reward-rows">
+                                <div class="join-bounty-reward-row">
+                                    <span data-i18n="joinBountyCheckinsLabel">Ежедневные чекины (65%)</span>
+                                    <span id="bounty-info-checkins" class="notranslate">0 $BUST</span>
                                 </div>
-                                <div class="jb-accordion-meta">
-                                    <div id="bounty-info-owner-compact" class="jb-accordion-amount notranslate is-owner">0 $BUST</div>
-                                    <span class="jb-accordion-chevron" aria-hidden="true"></span>
-                                </div>
-                            </summary>
-                            <div class="jb-accordion-body">
-                                <div class="join-bounty-reward-card">
-                                    <div class="join-bounty-reward-header">
-                                        <div class="join-bounty-reward-title" data-i18n="joinBountyRewardLabel">Награда</div>
-                                        <div id="bounty-info-owner-total" class="join-bounty-reward-total notranslate">0 $BUST</div>
-                                    </div>
-                                    <div class="join-bounty-reward-rows">
-                                        <div class="join-bounty-reward-row">
-                                            <span data-i18n="joinBountyCheckinsLabel">Ежедневные чекины (65%)</span>
-                                            <span id="bounty-info-checkins" class="notranslate">0 $BUST</span>
-                                        </div>
-                                        <div class="join-bounty-reward-row">
-                                            <span data-i18n="joinBountyHoldLabel">Hold Bonus (35%)</span>
-                                            <span id="bounty-info-hold" class="notranslate">0 $BUST</span>
-                                        </div>
-                                    </div>
-                                    <div class="join-bounty-reward-hint" data-i18n="joinBountyHoldAutoHint">Hold Bonus начисляется автоматически при чекине на 14-й день, если пропусков не больше 3.</div>
-                                    <div class="bounty-warning-box join-bounty-confirm-warning">
-                                        <span data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
-                                    </div>
+                                <div class="join-bounty-reward-row">
+                                    <span data-i18n="joinBountyHoldLabel">Hold Bonus (35%)</span>
+                                    <span id="bounty-info-hold" class="notranslate">0 $BUST</span>
                                 </div>
                             </div>
-                        </details>
+                            <div class="join-bounty-reward-hint" data-i18n="joinBountyHoldAutoHint">Hold Bonus начисляется автоматически при чекине на 14-й день, если пропусков не больше 3.</div>
+                            <div class="bounty-warning-box join-bounty-confirm-warning">
+                                <span data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
+                            </div>
+                        </div>
                     </div>
+                </details>
 
-                    <div class="jb-section">
-                        <details class="jb-accordion jb-accordion-grant" id="bounty-info-grant-accordion">
-                            <summary class="jb-accordion-summary">
-                                <div class="jb-accordion-main">
-                                    <div class="jb-accordion-title" data-i18n="joinBountyGrantBlockTitle">🏆 Награда от платформы</div>
-                                    <div class="jb-accordion-sub" data-i18n="joinBountyGrantCompactSub">Грант Золотого тестера · до 3 пропусков</div>
-                                </div>
-                                <div class="jb-accordion-meta">
-                                    <div id="bounty-info-grant-compact" class="jb-accordion-amount notranslate is-grant">~0 $BUST</div>
-                                    <span class="jb-accordion-chevron" aria-hidden="true"></span>
-                                </div>
-                            </summary>
-                            <div class="jb-accordion-body">
-                                <div id="bounty-info-grant" class="join-bounty-confirm-grant"></div>
-                            </div>
-                        </details>
+                <details class="jb-accordion jb-accordion-grant" id="bounty-info-grant-accordion">
+                    <summary class="jb-accordion-summary">
+                        <div class="jb-accordion-main">
+                            <div class="jb-accordion-title" data-i18n="joinBountyGrantBlockTitle">🏆 Награда от платформы</div>
+                            <div class="jb-accordion-sub" data-i18n="joinBountyGrantCompactSub">Грант Золотого тестера · до 3 пропусков</div>
+                        </div>
+                        <div class="jb-accordion-meta">
+                            <div id="bounty-info-grant-compact" class="jb-accordion-amount notranslate is-grant">~0 $BUST</div>
+                            <span class="jb-accordion-chevron" aria-hidden="true"></span>
+                        </div>
+                    </summary>
+                    <div class="jb-accordion-body">
+                        <div id="bounty-info-grant" class="join-bounty-confirm-grant"></div>
                     </div>
-                </div>
+                </details>
             </div>
 
             <button class="btn btn-primary" style="width: 100%;" onclick="closeBountyInfoModal()" data-i18n="ppcModalBufferOk">Понятно</button>
@@ -1907,69 +1901,63 @@
 
             <div id="join-bounty-confirm-project" class="join-bounty-confirm-project"></div>
 
-            <div class="jb-total jb-total-unified">
-                <div class="jb-total-header">
+            <div class="jb-reward-stack">
+                <div class="jb-total">
                     <div class="jb-total-label" data-i18n="joinBountyTotalLabel">Итого возможная награда</div>
                     <div id="join-bounty-confirm-grand-total" class="jb-total-value notranslate">0 $BUST</div>
                     <div id="join-bounty-confirm-total-breakdown" class="jb-total-breakdown"></div>
                 </div>
 
-                <div class="jb-total-accordions">
-                    <div class="jb-section">
-                        <details class="jb-accordion" id="jb-owner-accordion">
-                            <summary class="jb-accordion-summary">
-                                <div class="jb-accordion-main">
-                                    <div class="jb-accordion-title" data-i18n="joinBountyOwnerBlockTitle">💼 Оплата от владельца</div>
-                                    <div class="jb-accordion-sub" data-i18n="joinBountyOwnerCompactSub">Чекины 65% · Hold Bonus 35%</div>
+                <details class="jb-accordion" id="jb-owner-accordion">
+                    <summary class="jb-accordion-summary">
+                        <div class="jb-accordion-main">
+                            <div class="jb-accordion-title" data-i18n="joinBountyOwnerBlockTitle">💼 Оплата от владельца</div>
+                            <div class="jb-accordion-sub" data-i18n="joinBountyOwnerCompactSub">Чекины 65% · Hold Bonus 35%</div>
+                        </div>
+                        <div class="jb-accordion-meta">
+                            <div id="join-bounty-confirm-total-compact" class="jb-accordion-amount notranslate is-owner">0 $BUST</div>
+                            <span class="jb-accordion-chevron" aria-hidden="true"></span>
+                        </div>
+                    </summary>
+                    <div class="jb-accordion-body">
+                        <div class="join-bounty-reward-card">
+                            <div class="join-bounty-reward-header">
+                                <div class="join-bounty-reward-title" data-i18n="joinBountyRewardLabel">Награда</div>
+                                <div id="join-bounty-confirm-total" class="join-bounty-reward-total notranslate">0 $BUST</div>
+                            </div>
+                            <div class="join-bounty-reward-rows">
+                                <div class="join-bounty-reward-row">
+                                    <span data-i18n="joinBountyCheckinsLabel">Ежедневные чекины (65%)</span>
+                                    <span id="join-bounty-confirm-checkins" class="notranslate">0 $BUST</span>
                                 </div>
-                                <div class="jb-accordion-meta">
-                                    <div id="join-bounty-confirm-total-compact" class="jb-accordion-amount notranslate is-owner">0 $BUST</div>
-                                    <span class="jb-accordion-chevron" aria-hidden="true"></span>
-                                </div>
-                            </summary>
-                            <div class="jb-accordion-body">
-                                <div class="join-bounty-reward-card">
-                                    <div class="join-bounty-reward-header">
-                                        <div class="join-bounty-reward-title" data-i18n="joinBountyRewardLabel">Награда</div>
-                                        <div id="join-bounty-confirm-total" class="join-bounty-reward-total notranslate">0 $BUST</div>
-                                    </div>
-                                    <div class="join-bounty-reward-rows">
-                                        <div class="join-bounty-reward-row">
-                                            <span data-i18n="joinBountyCheckinsLabel">Ежедневные чекины (65%)</span>
-                                            <span id="join-bounty-confirm-checkins" class="notranslate">0 $BUST</span>
-                                        </div>
-                                        <div class="join-bounty-reward-row">
-                                            <span data-i18n="joinBountyHoldLabel">Hold Bonus (35%)</span>
-                                            <span id="join-bounty-confirm-hold" class="notranslate">0 $BUST</span>
-                                        </div>
-                                    </div>
-                                    <div class="join-bounty-reward-hint" data-i18n="joinBountyHoldAutoHint">Hold Bonus начисляется автоматически при чекине на 14-й день, если пропусков не больше 3.</div>
-                                    <div class="bounty-warning-box join-bounty-confirm-warning">
-                                        <span data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
-                                    </div>
+                                <div class="join-bounty-reward-row">
+                                    <span data-i18n="joinBountyHoldLabel">Hold Bonus (35%)</span>
+                                    <span id="join-bounty-confirm-hold" class="notranslate">0 $BUST</span>
                                 </div>
                             </div>
-                        </details>
+                            <div class="join-bounty-reward-hint" data-i18n="joinBountyHoldAutoHint">Hold Bonus начисляется автоматически при чекине на 14-й день, если пропусков не больше 3.</div>
+                            <div class="bounty-warning-box join-bounty-confirm-warning">
+                                <span data-i18n="bountyModalWarningText">⚠️ Правило: не больше 3 пропусков за 14 дней, иначе Hold Bonus не будет начислен!</span>
+                            </div>
+                        </div>
                     </div>
+                </details>
 
-                    <div class="jb-section">
-                        <details class="jb-accordion jb-accordion-grant" id="jb-grant-accordion">
-                            <summary class="jb-accordion-summary">
-                                <div class="jb-accordion-main">
-                                    <div class="jb-accordion-title" data-i18n="joinBountyGrantBlockTitle">🏆 Награда от платформы</div>
-                                    <div class="jb-accordion-sub" data-i18n="joinBountyGrantCompactSub">Грант Золотого тестера · до 3 пропусков</div>
-                                </div>
-                                <div class="jb-accordion-meta">
-                                    <div id="join-bounty-confirm-grant-compact" class="jb-accordion-amount notranslate is-grant">~0 $BUST</div>
-                                    <span class="jb-accordion-chevron" aria-hidden="true"></span>
-                                </div>
-                            </summary>
-                            <div class="jb-accordion-body">
-                                <div id="join-bounty-confirm-grant" class="join-bounty-confirm-grant"></div>
-                            </div>
-                        </details>
+                <details class="jb-accordion jb-accordion-grant" id="jb-grant-accordion">
+                    <summary class="jb-accordion-summary">
+                        <div class="jb-accordion-main">
+                            <div class="jb-accordion-title" data-i18n="joinBountyGrantBlockTitle">🏆 Награда от платформы</div>
+                            <div class="jb-accordion-sub" data-i18n="joinBountyGrantCompactSub">Грант Золотого тестера · до 3 пропусков</div>
+                        </div>
+                        <div class="jb-accordion-meta">
+                            <div id="join-bounty-confirm-grant-compact" class="jb-accordion-amount notranslate is-grant">~0 $BUST</div>
+                            <span class="jb-accordion-chevron" aria-hidden="true"></span>
+                        </div>
+                    </summary>
+                    <div class="jb-accordion-body">
+                        <div id="join-bounty-confirm-grant" class="join-bounty-confirm-grant"></div>
                     </div>
-                </div>
+                </details>
             </div>
 
             <button id="join-bounty-confirm-btn" class="btn btn-primary" style="width: 100%;" onclick="confirmJoinBounty()" data-i18n="joinBountyConfirmBtn">💎 Взять контракт</button>
