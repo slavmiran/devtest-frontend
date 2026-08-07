@@ -2403,7 +2403,7 @@
             leaveReasonPartnerLeft: "Партнёр уже вышел",
             leaveReasonCommunication: "Нет связи",
             leaveReasonOther: "Другое",
-            leaveReasonPlaceholder: "Опишите причину (необязательно)...",
+            leaveReasonPlaceholder: "Опишите причину — её увидит партнёр (необязательно)...",
             leaveJustifiedTitle: "✅ Справедливый выход",
             leaveJustifiedBadge: "Справедливый выход — без штрафа",
             leaveJustifiedDesc: "Партнёр нарушил обязательства (3+ пропуска подряд или покинул ваш проект). Вы можете уйти без штрафа.",

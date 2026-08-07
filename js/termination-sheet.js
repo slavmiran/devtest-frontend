@@ -652,13 +652,17 @@
                 '<div class="term-impact-title">' + _esc(_t('termDropEffectsTitle')) + '</div>' +
                 '<div class="term-impact-grid">' +
                     '<div class="term-impact-pill ' + (karmaOk ? 'is-ok' : 'is-risk') + '">' +
-                        '<span class="term-impact-ico" aria-hidden="true">☯️</span>' +
-                        '<span class="term-impact-label">' + _esc(_t('termDropImpactKarma')) + '</span>' +
+                        '<div class="term-impact-head">' +
+                            '<span class="term-impact-ico" aria-hidden="true">☯️</span>' +
+                            '<span class="term-impact-label">' + _esc(_t('termDropImpactKarma')) + '</span>' +
+                        '</div>' +
                         '<span class="term-impact-status">' + _esc(karmaStatus) + '</span>' +
                     '</div>' +
                     '<div class="term-impact-pill ' + (riOk ? 'is-ok' : 'is-risk') + '">' +
-                        '<span class="term-impact-ico" aria-hidden="true">🛡</span>' +
-                        '<span class="term-impact-label">' + _esc(_t('termDropImpactRi')) + '</span>' +
+                        '<div class="term-impact-head">' +
+                            '<span class="term-impact-ico" aria-hidden="true">🛡</span>' +
+                            '<span class="term-impact-label">' + _esc(_t('termDropImpactRi')) + '</span>' +
+                        '</div>' +
                         '<span class="term-impact-status">' + _esc(riStatus) + '</span>' +
                     '</div>' +
                 '</div>' +

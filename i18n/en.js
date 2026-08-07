@@ -2397,7 +2397,7 @@
             leaveReasonPartnerLeft: "Partner already left",
             leaveReasonCommunication: "No communication",
             leaveReasonOther: "Other",
-            leaveReasonPlaceholder: "Describe the reason (optional)...",
+            leaveReasonPlaceholder: "Describe the reason — your partner will see it (optional)...",
             leaveJustifiedTitle: "✅ Justified exit",
             leaveJustifiedBadge: "Fair exit — no penalty",
             leaveJustifiedDesc: "Partner violated obligations (3+ consecutive skips or left your project). You can leave without a penalty.",

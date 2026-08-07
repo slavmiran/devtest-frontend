@@ -488,99 +488,65 @@
    -------------------------------------------------------------------------- */
 .ts-section-block {
     position: relative;
-    margin-top: 34px;
-    padding-top: 24px;
+    margin-top: 30px;
+    padding-top: 22px;
     overflow: visible;
 }
 
-/*
- * Section handoff seam — every zone paints its accent upward onto the
- * previous block's bottom edge. Soft bloom + crisp hairline.
- */
+/* Subtle neon seam — thin accent line + soft glow only, no wash fill */
 .ts-section-block::before {
-    content: '';
-    position: absolute;
-    top: -28px;
-    left: -2px;
-    right: -2px;
-    height: 56px;
-    pointer-events: none;
-    z-index: 2;
-    background:
-        radial-gradient(
-            ellipse 58% 85% at 50% 88%,
-            color-mix(in srgb, var(--ts-accent, #fff) 42%, transparent),
-            transparent 70%
-        ),
-        linear-gradient(
-            180deg,
-            transparent 0%,
-            color-mix(in srgb, var(--ts-accent, #fff) 14%, transparent) 55%,
-            transparent 100%
-        );
-    opacity: 0.9;
-    filter: blur(0.2px);
+    content: none;
 }
 
 .ts-section-block::after {
     content: '';
     position: absolute;
     top: 0;
-    left: 6%;
-    right: 6%;
+    left: 12%;
+    right: 12%;
     height: 1px;
     pointer-events: none;
     z-index: 3;
     background: linear-gradient(
         90deg,
         transparent 0%,
-        color-mix(in srgb, var(--ts-accent, #fff) 35%, transparent) 18%,
-        color-mix(in srgb, var(--ts-accent, #fff) 95%, transparent) 50%,
-        color-mix(in srgb, var(--ts-accent, #fff) 35%, transparent) 82%,
+        color-mix(in srgb, var(--ts-accent, #fff) 70%, transparent) 50%,
         transparent 100%
     );
     box-shadow:
-        0 0 14px color-mix(in srgb, var(--ts-accent, #fff) 55%, transparent),
-        0 0 4px color-mix(in srgb, var(--ts-accent, #fff) 70%, transparent),
-        0 1px 0 color-mix(in srgb, var(--ts-accent, #fff) 25%, transparent);
-    opacity: 1;
+        0 0 8px color-mix(in srgb, var(--ts-accent, #fff) 35%, transparent),
+        0 0 2px color-mix(in srgb, var(--ts-accent, #fff) 50%, transparent);
+    opacity: 0.75;
 }
 
-/* Bottom edge of previous zone — tinted by the upcoming section accent */
+/* Previous card/zone: only a light neon kiss on the bottom edge */
 #tab-tests .ts-handoff-glow {
     position: relative;
     z-index: 1;
     border-bottom-color: color-mix(
         in srgb,
-        var(--ts-handoff-accent, rgba(255, 255, 255, 0.35)) 62%,
+        var(--ts-handoff-accent, rgba(255, 255, 255, 0.3)) 40%,
         var(--mytests-surface-border, rgba(255, 255, 255, 0.11))
     ) !important;
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.04),
-        0 1px 0 color-mix(in srgb, var(--ts-handoff-accent, #fff) 45%, transparent),
-        0 10px 26px -12px color-mix(in srgb, var(--ts-handoff-accent, #fff) 72%, transparent),
-        0 18px 36px -18px color-mix(in srgb, var(--ts-handoff-accent, #fff) 38%, transparent);
+        0 6px 14px -10px color-mix(in srgb, var(--ts-handoff-accent, #fff) 45%, transparent);
 }
 
 #tab-tests .ts-handoff-glow::after {
     content: '';
     position: absolute;
-    left: 8%;
-    right: 8%;
+    left: 18%;
+    right: 18%;
     bottom: -1px;
-    height: 2px;
+    height: 1px;
     border-radius: 999px;
     pointer-events: none;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        color-mix(in srgb, var(--ts-handoff-accent, #fff) 75%, transparent) 50%,
-        transparent 100%
-    );
+    background: color-mix(in srgb, var(--ts-handoff-accent, #fff) 55%, transparent);
     box-shadow:
-        0 0 12px color-mix(in srgb, var(--ts-handoff-accent, #fff) 55%, transparent),
-        0 0 3px color-mix(in srgb, var(--ts-handoff-accent, #fff) 70%, transparent);
-    opacity: 0.95;
+        0 0 6px color-mix(in srgb, var(--ts-handoff-accent, #fff) 40%, transparent),
+        0 0 2px color-mix(in srgb, var(--ts-handoff-accent, #fff) 55%, transparent);
+    opacity: 0.7;
 }
 
 /* Horizontal section trails (guest / buffer wraps) keep rounded bottom lit */
