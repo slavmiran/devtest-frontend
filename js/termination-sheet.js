@@ -387,7 +387,15 @@
         var skipsCount = ctx.skipsCount;
         var consecutiveSkips = ctx.consecutiveSkips;
         var joinType = ctx.joinType;
-        var isDisciplinaryKick = skipsCount >= 3 || consecutiveSkips >= 3;
+        var requirePartnerGate = joinType === 'mutual' || joinType === 'prelaunch';
+        // Justified kick: ≥3 consecutive skips anytime, or early 0/0 check-ins (~24h).
+        var isDisciplinaryKick = _isJustifiedKick({
+            testingDays: testingDays,
+            checkins: checkinCount,
+            consecutiveSkips: consecutiveSkips,
+            partnerCheckins: ctx.reciprocalOwnerCheckins,
+            requirePartnerGate: requirePartnerGate,
+        });
         var isBountyJoin = joinType === 'bounty' && ctx.bountyPerTester > 0;
         var holdBonus = ctx.holdBonus;
         var dailyBurn = ctx.dailyBurn;
@@ -444,10 +452,8 @@
                     '<div class="leave-metric-list">' +
                         _metricRow('📅', _t('leaveMetricDays'), testingDays, false) +
                         _metricRow('✅', _t('leaveMetricCheckins'), checkinCount, false) +
-                        _metricRow('⚠️', _t('leaveMetricSkips'), String(skipsCount) + '/3', skipsCount >= 3) +
-                        (consecutiveSkips > 0
-                            ? _metricRow('🔁', _t('linkStatusConsecutiveSkips'), consecutiveSkips, consecutiveSkips >= 3)
-                            : '') +
+                        _metricRow('🔁', _t('leaveMetricConsecutiveSkips'), String(consecutiveSkips) + '/3', consecutiveSkips >= 3) +
+                        _metricRow('⚠️', _t('leaveMetricTotalSkips'), String(skipsCount), false) +
                     '</div>' +
                     '<div class="leave-inline-note">' + _esc(_t(
                         joinType === 'bounty' ? 'kickJoinTypeBounty'
@@ -468,6 +474,17 @@
         var testingDays = Number(opts.testingDays || 0);
         // Date-only start_date → calendar day 1 ≈ first ~24h (backend parity).
         return testingDays <= 1;
+    }
+
+    function _isJustifiedKick(opts) {
+        opts = opts || {};
+        if (Number(opts.consecutiveSkips || 0) >= 3) return true;
+        return _isUniversalSafeExit({
+            testingDays: opts.testingDays,
+            checkins: opts.checkins,
+            partnerCheckins: opts.partnerCheckins,
+            requirePartnerGate: !!opts.requirePartnerGate,
+        });
     }
 
     function _estimateGrantTotal(test) {
@@ -998,6 +1015,9 @@
         var dailyPool = bountyPerTester > 0 ? bountyPerTester * 0.65 : 0;
         var rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
         var dailyBurn = Math.max(0, dailyPool - (checkinCount * rewardPerCheckin));
+        var reciprocalOwnerCheckins = Number(
+            tester.reciprocal_owner_checkins != null ? tester.reciprocal_owner_checkins : 0
+        );
 
         if (_termState) _termState.joinType = joinType;
         _setTypeBadge(joinType);
@@ -1012,6 +1032,7 @@
             bountyPerTester: bountyPerTester,
             holdBonus: holdBonus,
             dailyBurn: dailyBurn,
+            reciprocalOwnerCheckins: reciprocalOwnerCheckins,
             testerId: testerId,
             testerUsername: tester.username || options.testerUsername || '',
             testerFullName: tester.full_name || options.testerFullName || '',
