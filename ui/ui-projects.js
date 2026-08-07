@@ -429,17 +429,39 @@ function renderProjects(force) {
                     karmaHtml = '<span class="tester-icon-action tester-icon-muted" title="☯️">+☯️</span>';
                 }
 
-                const archiveBtnHtml = isLeftSoft
-                    ? `<button type="button" class="tester-left-archive-btn" onclick="event.stopPropagation(); dismissLeftTesterRow(${Number(project.id)}, ${Number(tester.tester_id)})">${window.escapeHTML(window.t('testerLeftSoftArchiveBtn', {}, lang))}</button>`
-                    : '';
-                const chevronHtml = isLeftSoft ? '' : '<span class="tester-chevron">›</span>';
-                const rowClick = isLeftSoft
-                    ? ''
-                    : `onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;"`;
-                const rowClass = isLeftSoft ? ' class="tester-row-left-soft"' : '';
+                const joinTypeLabel = isContractTester
+                    ? window.t('linkedBadgeBounty', {}, lang)
+                    : (isInviteLikeTester
+                        ? window.t('linkedBadgeDirect', {}, lang)
+                        : (isMutualLike ? window.t('linkedBadgeMutual', {}, lang) : ''));
 
-                testerRowsHtml += `
-                    <li${rowClass} ${rowClick}>
+                let rowHtml = '';
+                if (isLeftSoft) {
+                    const leftName = tester.username
+                        ? `@${window.escapeHTML(String(tester.username).replace(/^@+/, ''))}`
+                        : (tester.full_name
+                            ? window.escapeHTML(tester.full_name)
+                            : window.escapeHTML(window.t('idLabel', { id: tester.tester_id }, lang)));
+                    rowHtml = `
+                        <li class="tester-row-left-soft">
+                            <div class="tester-left-soft-card">
+                                <div class="tester-left-soft-main">
+                                    <span class="tester-left-soft-icon" aria-hidden="true">👋</span>
+                                    <div class="tester-left-soft-copy">
+                                        <div class="tester-left-soft-name notranslate">${leftName}</div>
+                                        <div class="tester-left-soft-sub">${window.escapeHTML(window.t('testerLeftSoftHint', {}, lang))}${joinTypeLabel ? ` · ${window.escapeHTML(joinTypeLabel)}` : ''}</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="tester-left-archive-btn" onclick="event.stopPropagation(); dismissLeftTesterRow(${Number(project.id)}, ${Number(tester.tester_id)})">${window.escapeHTML(window.t('testerLeftSoftArchiveBtn', {}, lang))}</button>
+                            </div>
+                        </li>
+                    `;
+                } else {
+                    const archiveBtnHtml = '';
+                    const chevronHtml = '<span class="tester-chevron">›</span>';
+                    const rowClick = `onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;"`;
+                    rowHtml = `
+                    <li ${rowClick}>
                         <div class="tester-row-main">
                             ${nameHtml}
                             ${screenshotDayHtml}
@@ -454,6 +476,8 @@ function renderProjects(force) {
                         </div>
                     </li>
                 `;
+                }
+                testerRowsHtml += rowHtml;
             });
         }
 
@@ -815,10 +839,7 @@ function renderProjects(force) {
                     ${updateTipHtml}
                     <div class="testers-section">
                         <div class="testers-title-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                            <div class="testers-title">${t.testersList} (${leftSoftCount > 0
-                                ? `${window.escapeHTML(String(activeRegularTesters.length + guestTesters.length + leftSoftCount))}<span class="testers-count-star">*</span> <span class="testers-count-delta">(-${window.escapeHTML(String(leftSoftCount))})</span>`
-                                : window.escapeHTML(String(activeRegularTesters.length + guestTesters.length))
-                            })${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(activeRegularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
+                            <div class="testers-title">${window.escapeHTML(t.testersList)} <span class="testers-count-pill">${window.escapeHTML(String(activeRegularTesters.length + guestTesters.length))}</span>${leftSoftCount > 0 ? `<span class="testers-count-delta" title="${window.escapeHTML(window.t('testerLeftSoftCountHint', { count: leftSoftCount }, lang))}">−${window.escapeHTML(String(leftSoftCount))}</span>` : ''}${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(activeRegularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
                             ${karmaRewardsChipHtml}
                         </div>
                         ${energyBarTopHtml}

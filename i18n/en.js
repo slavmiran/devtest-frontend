@@ -2457,6 +2457,8 @@
             unlinkedSoftBannerTitle: "💔 Counter-test unlinked",
             unlinkedSoftBannerDesc: "You removed the tester and stopped testing their app. You can uninstall it, then archive this card.",
             testerLeftSoftStatus: "Left",
+            testerLeftSoftHint: "Left testing",
+            testerLeftSoftCountHint: "Left and not dismissed yet: {count}",
             testerLeftSoftArchiveBtn: "Got it / Archive",
             testerLeftSoftArchiveDone: "Tester hidden",
             kickVerdictTitle: "⚠️ System Verdict",

@@ -154,19 +154,6 @@
     animation: pending-release-count-pulse 1.4s ease-in-out infinite;
 }
 
-.pending-release-count.has-grant-attention::after {
-    content: '';
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #ff9500;
-    box-shadow: 0 0 0 1.5px rgba(28, 28, 30, 0.95);
-    animation: dot-blink 1s infinite;
-}
-
 .pending-release-section.has-action-attention.is-collapsed .pending-release-section__header {
     position: relative;
 }

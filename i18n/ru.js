@@ -2463,6 +2463,8 @@
             unlinkedSoftBannerTitle: "💔 Встречный тест отвязан",
             unlinkedSoftBannerDesc: "Вы исключили тестера и отказались от тестирования его приложения. Можете удалить приложение, затем отправьте карточку в архив.",
             testerLeftSoftStatus: "Вышел",
+            testerLeftSoftHint: "Вышел из тестирования",
+            testerLeftSoftCountHint: "Ушедших ещё не скрыто: {count}",
             testerLeftSoftArchiveBtn: "Понял / В архив",
             testerLeftSoftArchiveDone: "Тестер скрыт",
             kickVerdictTitle: "⚠️ Вердикт системы",
