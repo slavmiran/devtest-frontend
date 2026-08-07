@@ -15,6 +15,8 @@
     --guest-surface-glow: rgba(77, 163, 255, 0.12);
     --guest-surface-border: rgba(77, 163, 255, 0.16);
     --guest-surface-accent: #3eb9cd;
+
+    overflow: visible;
 }
 
 /* --------------------------------------------------------------------------
@@ -486,69 +488,112 @@
    -------------------------------------------------------------------------- */
 .ts-section-block {
     position: relative;
-    margin-top: 30px;
-    padding-top: 22px;
+    margin-top: 34px;
+    padding-top: 24px;
     overflow: visible;
 }
 
-/* Handoff glow: the next section's accent softly lights the bottom edge
-   of the last card above — the WOW seam between My Tests zones. */
+/*
+ * Section handoff seam — every zone paints its accent upward onto the
+ * previous block's bottom edge. Soft bloom + crisp hairline.
+ */
 .ts-section-block::before {
     content: '';
     position: absolute;
-    top: -20px;
-    left: 0;
-    right: 0;
-    height: 40px;
+    top: -28px;
+    left: -2px;
+    right: -2px;
+    height: 56px;
     pointer-events: none;
     z-index: 2;
     background:
         radial-gradient(
-            ellipse 72% 100% at 50% 100%,
-            color-mix(in srgb, var(--ts-accent, rgba(255, 255, 255, 0.55)) 58%, transparent),
-            transparent 74%
+            ellipse 58% 85% at 50% 88%,
+            color-mix(in srgb, var(--ts-accent, #fff) 42%, transparent),
+            transparent 70%
+        ),
+        linear-gradient(
+            180deg,
+            transparent 0%,
+            color-mix(in srgb, var(--ts-accent, #fff) 14%, transparent) 55%,
+            transparent 100%
         );
-    opacity: 0.72;
+    opacity: 0.9;
+    filter: blur(0.2px);
 }
 
-/* Crisp accent hairline sitting in the glow */
 .ts-section-block::after {
     content: '';
     position: absolute;
     top: 0;
-    left: 8px;
-    right: 8px;
+    left: 6%;
+    right: 6%;
     height: 1px;
     pointer-events: none;
     z-index: 3;
     background: linear-gradient(
         90deg,
         transparent 0%,
-        color-mix(in srgb, var(--ts-accent, rgba(255, 255, 255, 0.7)) 85%, transparent) 50%,
+        color-mix(in srgb, var(--ts-accent, #fff) 35%, transparent) 18%,
+        color-mix(in srgb, var(--ts-accent, #fff) 95%, transparent) 50%,
+        color-mix(in srgb, var(--ts-accent, #fff) 35%, transparent) 82%,
         transparent 100%
     );
     box-shadow:
-        0 0 12px color-mix(in srgb, var(--ts-accent, #fff) 45%, transparent),
-        0 0 2px color-mix(in srgb, var(--ts-accent, #fff) 55%, transparent);
+        0 0 14px color-mix(in srgb, var(--ts-accent, #fff) 55%, transparent),
+        0 0 4px color-mix(in srgb, var(--ts-accent, #fff) 70%, transparent),
+        0 1px 0 color-mix(in srgb, var(--ts-accent, #fff) 25%, transparent);
+    opacity: 1;
+}
+
+/* Bottom edge of previous zone — tinted by the upcoming section accent */
+#tab-tests .ts-handoff-glow {
+    position: relative;
+    z-index: 1;
+    border-bottom-color: color-mix(
+        in srgb,
+        var(--ts-handoff-accent, rgba(255, 255, 255, 0.35)) 62%,
+        var(--mytests-surface-border, rgba(255, 255, 255, 0.11))
+    ) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+        0 1px 0 color-mix(in srgb, var(--ts-handoff-accent, #fff) 45%, transparent),
+        0 10px 26px -12px color-mix(in srgb, var(--ts-handoff-accent, #fff) 72%, transparent),
+        0 18px 36px -18px color-mix(in srgb, var(--ts-handoff-accent, #fff) 38%, transparent);
+}
+
+#tab-tests .ts-handoff-glow::after {
+    content: '';
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    bottom: -1px;
+    height: 2px;
+    border-radius: 999px;
+    pointer-events: none;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--ts-handoff-accent, #fff) 75%, transparent) 50%,
+        transparent 100%
+    );
+    box-shadow:
+        0 0 12px color-mix(in srgb, var(--ts-handoff-accent, #fff) 55%, transparent),
+        0 0 3px color-mix(in srgb, var(--ts-handoff-accent, #fff) 70%, transparent);
     opacity: 0.95;
 }
 
-/* Active → Guest: tint the last My Tests card bottom with guest accent */
-#tab-tests #my-tests-list:has(+ #external-tests-section[style*="display: block"]) #tests-list > .card:last-child,
-#tab-tests #my-tests-list:has(+ #external-tests-section[style*="display:block"]) #tests-list > .card:last-child {
-    border-bottom-color: color-mix(in srgb, var(--guest-surface-accent, #3eb9cd) 55%, var(--mytests-surface-border));
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.04),
-        0 10px 22px -14px color-mix(in srgb, var(--guest-surface-accent, #3eb9cd) 70%, transparent);
+/* Horizontal section trails (guest / buffer wraps) keep rounded bottom lit */
+#tab-tests .pending-release-scroll-wrap.ts-handoff-glow,
+#tab-tests #external-tests-scroll-wrap.ts-handoff-glow {
+    border-radius: 0 0 16px 16px;
+    padding-bottom: 2px;
+    /* overflow-y:hidden clips ::after — rely on box-shadow bloom */
 }
 
-/* Active → Buffer (when guest section is hidden) */
-#tab-tests #my-tests-list:has(+ #external-tests-section[style*="display: none"] + #pending-release-section[style*="display: block"]) #tests-list > .card:last-child,
-#tab-tests #my-tests-list:has(+ #external-tests-section[style*="display:none"] + #pending-release-section[style*="display:block"]) #tests-list > .card:last-child {
-    border-bottom-color: color-mix(in srgb, #ffb84d 55%, var(--mytests-surface-border, rgba(255, 255, 255, 0.11)));
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.04),
-        0 10px 22px -14px color-mix(in srgb, #ffb84d 70%, transparent);
+#tab-tests .pending-release-scroll-wrap.ts-handoff-glow::after,
+#tab-tests #external-tests-scroll-wrap.ts-handoff-glow::after {
+    display: none;
 }
 
 .ts-section-head {

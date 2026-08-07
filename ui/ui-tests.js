@@ -2327,6 +2327,95 @@ function renderTests(force) {
     if (window._restoreActiveTimer) window._restoreActiveTimer();
     if (typeof reapplyAllFeedbackCheckinPendingUi === 'function') reapplyAllFeedbackCheckinPendingUi();
     if (typeof restoreAccessProblemAccordions === 'function') restoreAccessProblemAccordions();
+    refreshMyTestsSectionHandoffs();
+}
+
+function _isMyTestsSectionVisible(el) {
+    if (!el) return false;
+    if (el.hidden) return false;
+    if (String(el.style && el.style.display || '').toLowerCase() === 'none') return false;
+    try {
+        var cs = window.getComputedStyle(el);
+        if (!cs) return true;
+        return cs.display !== 'none' && cs.visibility !== 'hidden';
+    } catch (e) {
+        return true;
+    }
+}
+
+function refreshMyTestsSectionHandoffs() {
+    var tab = document.getElementById('tab-tests');
+    if (!tab) return;
+
+    tab.querySelectorAll('.ts-handoff-glow').forEach(function(node) {
+        node.classList.remove('ts-handoff-glow');
+        node.style.removeProperty('--ts-handoff-accent');
+    });
+
+    var zones = [
+        {
+            id: 'my-tests-list',
+            accent: null,
+            isVisible: function() {
+                return !!(
+                    document.querySelector('#tests-list > .card') ||
+                    document.querySelector('#tests-list > .empty-state')
+                );
+            },
+            getTrail: function() {
+                var cards = document.querySelectorAll('#tests-list > .card');
+                if (cards.length) return cards[cards.length - 1];
+                return document.querySelector('#tests-list > .empty-state');
+            },
+        },
+        {
+            id: 'external-tests-section',
+            accent: 'var(--guest-surface-accent, #3eb9cd)',
+            isVisible: function() {
+                return _isMyTestsSectionVisible(document.getElementById('external-tests-section'));
+            },
+            getTrail: function() {
+                return document.getElementById('external-tests-scroll-wrap')
+                    || document.getElementById('external-tests-section');
+            },
+        },
+        {
+            id: 'pending-release-section',
+            accent: '#ffb84d',
+            isVisible: function() {
+                return _isMyTestsSectionVisible(document.getElementById('pending-release-section'));
+            },
+            getTrail: function() {
+                var section = document.getElementById('pending-release-section');
+                if (section && section.classList.contains('is-collapsed')) {
+                    return section.querySelector('.pending-release-section__header') || section;
+                }
+                return document.getElementById('pending-release-scroll-wrap') || section;
+            },
+        },
+        {
+            id: 'done-section',
+            accent: '#34c759',
+            isVisible: function() {
+                return _isMyTestsSectionVisible(document.getElementById('done-section'));
+            },
+            getTrail: function() { return null; },
+        },
+    ];
+
+    var visible = zones.filter(function(zone) {
+        return typeof zone.isVisible === 'function' && zone.isVisible();
+    });
+
+    for (var i = 1; i < visible.length; i++) {
+        var nextZone = visible[i];
+        var prevZone = visible[i - 1];
+        if (!nextZone.accent || typeof prevZone.getTrail !== 'function') continue;
+        var trail = prevZone.getTrail();
+        if (!trail) continue;
+        trail.classList.add('ts-handoff-glow');
+        trail.style.setProperty('--ts-handoff-accent', nextZone.accent);
+    }
 }
 
 function renderCompletedTests(completedTests) {
@@ -2407,6 +2496,7 @@ function _updateDoneSectionVisibility(doneCount) {
     var testsTab = document.getElementById('tab-tests');
     var isTestsActive = !!(testsTab && testsTab.classList.contains('active'));
     doneSection.style.display = (isTestsActive && doneCount > 0) ? 'block' : 'none';
+    refreshMyTestsSectionHandoffs();
 }
 
 function togglePendingReleaseSection() {
@@ -2416,6 +2506,7 @@ function togglePendingReleaseSection() {
     var header = section.querySelector('.pending-release-section__header');
     if (header) header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
     if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    refreshMyTestsSectionHandoffs();
 }
 
 function resolveTestPlayStoreUrl(test) {
@@ -2507,6 +2598,7 @@ Object.assign(window, {
     renderIncomingOffers,
     renderTests,
     renderCompletedTests,
+    refreshMyTestsSectionHandoffs,
     activateExternalContinueModeFromUi,
     showOwnerLastSeenToast,
     getAvailableMutualProjectsForOwner,
