@@ -2286,7 +2286,7 @@ function renderTests(force) {
             : '';
 
         const doneBadgeHtml = test.status === 'done' && !test.isReadyToClaim && !test.is_kicked_soft
-            ? '<div class="done-status-pill">' + window.escapeHTML(t.doneTodayText) + '</div><div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
+            ? '<div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
             : '';
         const externalMetaChips = [];
         if (isExternal) {
@@ -2553,7 +2553,6 @@ function renderCompletedTests(completedTests) {
         }
 
         let cardContent = `
-            <div class="done-status-pill">${window.escapeHTML(t.doneTodayText)}</div>
             <div class="done-watermark">${window.escapeHTML(window.t('doneWatermarkText', {}, lang))}</div>
             <div class="card-header" onclick="openProjectDetailsModal(${test.id})" style="cursor: pointer; user-select: none;">
                 <div class="card-header-main">

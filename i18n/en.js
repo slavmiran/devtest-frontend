@@ -1124,6 +1124,8 @@
             feedbackBotRedirectCheckinIdeaToast: "Go to the bot: describe the idea and attach an in-app screenshot (proof for the owner that you installed it). The day will be counted after you send it.",
             feedbackBotRedirectToast: "Go to the bot chat to continue the submission.",
             feedbackCheckinPendingBtn: "⏳ Waiting for feedback in bot...",
+            feedbackCheckinPendingRestoredToast: "Bot session ended without counting the day. Confirm is ready again — no need to re-Open or wait the timer.",
+            feedbackCheckinPendingClearedToast: "Bot session ended without counting the day. Open the card and finish check-in (resend idea/bug if needed).",
             feedbackMediaSentToast: "The screenshot has been sent to your bot chat!",
             feedbackRewardSuccessToast: "✅ Reward sent, ticket closed.",
             feedbackQuickAcceptToast: "✅ Accepted",

@@ -1123,6 +1123,8 @@
             feedbackBotRedirectCheckinIdeaToast: "Перейдите в бота: опишите идею и приложите скриншот из запущенного приложения (для владельца — доказательство установки). День засчитается после отправки.",
             feedbackBotRedirectToast: "Перейдите в чат с ботом, чтобы продолжить отправку.",
             feedbackCheckinPendingBtn: "⏳ Ожидаем отзыв в боте...",
+            feedbackCheckinPendingRestoredToast: "Сессия в боте завершилась без засчёта дня. «Подтвердить» снова активно — Open/таймер повторять не нужно.",
+            feedbackCheckinPendingClearedToast: "Сессия в боте завершилась без засчёта дня. Откройте карточку и завершите чекин (если просили идею/баг — отправьте ещё раз).",
             feedbackMediaSentToast: "Скриншот отправлен вам в бота!",
             feedbackRewardSuccessToast: "✅ Награда отправлена, тикет закрыт.",
             feedbackQuickAcceptToast: "✅ Принято",

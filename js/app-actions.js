@@ -2286,10 +2286,41 @@ function markTestFeedbackCheckinPending(appId) {
     try {
         localStorage.setItem('pending_feedback_checkins_v1', JSON.stringify(_pendingFeedbackCheckinAppIds));
     } catch (e) {}
+    // Stop the visible countdown, but KEEP open_token / Confirm-ready state.
+    // If bot auto-checkin fails or wait-state is lost, the tester must not be forced
+    // through Open → timer again with no explanation.
     clearActiveTimerForApp(normalizedId);
-    setTimerReadyForConfirm(normalizedId, false, false, '');
     applyTestFeedbackCheckinPendingUi(normalizedId);
 }
+
+function restoreCheckinReadyAfterFeedbackPending(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return false;
+    var card = document.getElementById('test-card-' + normalizedId);
+    if (card) {
+        card.classList.remove('card-feedback-pending');
+        var splitBtn = card.querySelector('.split-btn-options');
+        if (splitBtn) {
+            splitBtn.disabled = false;
+            splitBtn.style.pointerEvents = '';
+            splitBtn.style.opacity = '';
+        }
+    }
+    var payload = typeof _getTimerReadyPayload === 'function' ? _getTimerReadyPayload(normalizedId) : null;
+    var hasOpenToken = !!(typeof _getCheckinOpenToken === 'function' && _getCheckinOpenToken(normalizedId));
+    if (payload || hasOpenToken) {
+        var isScreenshot = !!(payload && payload.isScreenshot);
+        var ownerUsername = (payload && payload.ownerUsername) || '';
+        if (typeof _setTimerButtonReady === 'function') {
+            _setTimerButtonReady(normalizedId, isScreenshot, ownerUsername);
+        } else if (typeof setTimerReadyForConfirm === 'function') {
+            setTimerReadyForConfirm(normalizedId, true, isScreenshot, ownerUsername);
+        }
+        return true;
+    }
+    return false;
+}
+window.restoreCheckinReadyAfterFeedbackPending = restoreCheckinReadyAfterFeedbackPending;
 
 function clearTestFeedbackCheckinPending(appId) {
     var normalizedId = Number(appId || 0);
@@ -2382,6 +2413,7 @@ async function syncPendingFeedbackCheckinsFromServer() {
 
         var waitingAppId = data.waiting ? Number(data.app_id || 0) : 0;
         var clearedIds = [];
+        var today = typeof getLocalDate === 'function' ? getLocalDate() : '';
         Object.keys(_pendingFeedbackCheckinAppIds || {}).forEach(function(key) {
             var appId = Number(key);
             if (appId > 0 && appId !== waitingAppId) {
@@ -2393,11 +2425,36 @@ async function syncPendingFeedbackCheckinsFromServer() {
             return false;
         }
 
+        var restoredReady = false;
+        var unfinishedCleared = false;
+        clearedIds.forEach(function(appId) {
+            var test = (myTests || []).find(function(item) {
+                return Number(item.id) === appId;
+            });
+            var doneToday = !!(test && test.status === 'done' && String(test.last_check_date || '') === today);
+            if (!doneToday) {
+                unfinishedCleared = true;
+                if (restoreCheckinReadyAfterFeedbackPending(appId)) {
+                    restoredReady = true;
+                }
+            }
+        });
+
         if (typeof renderTests === 'function') {
             renderTests(true);
         }
         if (typeof window.renderShowcaseActiveTests === 'function') {
             window.renderShowcaseActiveTests(true);
+        }
+        if (typeof _applyPersistedReadyTimerButtons === 'function') {
+            _applyPersistedReadyTimerButtons();
+        }
+        if (unfinishedCleared) {
+            showToast(window.t(
+                restoredReady ? 'feedbackCheckinPendingRestoredToast' : 'feedbackCheckinPendingClearedToast',
+                {},
+                lang
+            ));
         }
         return true;
     } catch (error) {
