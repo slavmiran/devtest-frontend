@@ -1901,7 +1901,7 @@ function renderTests(force) {
         // Soft-kick cards need an explicit archive action — keep them visible even
         // when the linked project is no longer in an "active buffer" state.
         // Day>=15 alone must NOT park kicked leftovers from a previous cycle here.
-        const isInSafetyBuffer = test.is_kicked_soft
+        const isInSafetyBuffer = (test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail)
             ? true
             : (isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid));
         
@@ -1911,6 +1911,8 @@ function renderTests(force) {
         // This prevents cards from hanging in My Tests when neither reward applies.
         const isArchivedWithNoAction = isArchivedOrCompleted
             && !test.is_kicked_soft
+            && !test.is_unlinked_soft
+            && !test.is_soft_tail
             && !test.isReadyToClaim
             && !test.isGrantAvailableTomorrow
             && !test.isEarlyFinish;
@@ -1928,13 +1930,14 @@ function renderTests(force) {
         // - Else if status='done': go to done list
         // - Else: go to active list
         const shouldShowInPendingList = isInSafetyBuffer;
+        const isSoftTailCard = !!(test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail);
         const shouldShowInActiveList = !shouldShowInPendingList && (
-            test.is_kicked_soft
+            isSoftTailCard
             || test.isReadyToClaim
             || test.isEarlyFinish
             || (test.status !== 'done' && !test.isGrantAvailableTomorrow)
         );
-        const shouldShowInDoneList = !shouldShowInPendingList && !test.is_kicked_soft && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
+        const shouldShowInDoneList = !shouldShowInPendingList && !isSoftTailCard && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
         
         if (shouldShowInPendingList) {
             card.className = 'card card-pending-release pending-release-carousel-card horizontal-card';
@@ -1998,15 +2001,18 @@ function renderTests(force) {
         const feedbackPendingBtnLabel = (typeof getFeedbackCheckinPendingLabel === 'function' ? getFeedbackCheckinPendingLabel() : window.t('feedbackCheckinPendingBtn', {}, lang));
         const feedbackPendingBtnStyle = 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;';
 
-        if (test.is_kicked_soft) {
+        if (test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail) {
             const leaveReasonRaw = String(test.leave_reason || '').trim();
-            const isDisputedKick = /disputed_active_kick/i.test(leaveReasonRaw);
-            const isJustifiedKick = /justified_inactive_kick/i.test(leaveReasonRaw);
+            const isUnlinkedSoft = !!(test.is_unlinked_soft || String(test.progress_status || '').toLowerCase() === 'canceled_neutral');
+            const isDisputedKick = !isUnlinkedSoft && /disputed_active_kick/i.test(leaveReasonRaw);
+            const isJustifiedKick = !isUnlinkedSoft && /justified_inactive_kick/i.test(leaveReasonRaw);
             let reasonDisplay = leaveReasonRaw
                 .replace(/^justified_inactive_kick:\s*/i, '')
                 .replace(/^disputed_active_kick:\s*/i, '')
                 .replace(/^justified_inactive_kick$/i, '')
                 .replace(/^disputed_active_kick$/i, '')
+                .replace(/^reciprocal_unlinked_(kick|leave|drop):\s*/i, '')
+                .replace(/^reciprocal_unlinked_(kick|leave|drop)$/i, '')
                 .trim();
             const reasonCodeMap = {
                 no_response: window.t('kickReasonNoResponse', {}, lang),
@@ -2020,21 +2026,29 @@ function renderTests(force) {
                 const note = String(codeMatch[2] || '').trim();
                 reasonDisplay = note ? (mapped + ': ' + note) : mapped;
             }
-            if (!reasonDisplay && leaveReasonRaw) {
+            if (!reasonDisplay && leaveReasonRaw && !isUnlinkedSoft) {
                 reasonDisplay = leaveReasonRaw;
             }
-            const penaltyHtml = isDisputedKick
-                ? `<div class="kicked-soft-penalty is-disputed">${window.escapeHTML(window.t('kickedSoftPenaltyDisputed', {}, lang))}</div>`
-                : (isJustifiedKick
-                    ? `<div class="kicked-soft-penalty is-justified">${window.escapeHTML(window.t('kickedSoftPenaltyNone', {}, lang))}</div>`
-                    : '');
-            const reasonHtml = reasonDisplay
+            const bannerTitle = isUnlinkedSoft
+                ? window.t('unlinkedSoftBannerTitle', {}, lang)
+                : window.t('kickedSoftBannerTitle', {}, lang);
+            const bannerDesc = isUnlinkedSoft
+                ? window.t('unlinkedSoftBannerDesc', {}, lang)
+                : window.t('kickedSoftBannerDesc', {}, lang);
+            const penaltyHtml = isUnlinkedSoft
+                ? ''
+                : (isDisputedKick
+                    ? `<div class="kicked-soft-penalty is-disputed">${window.escapeHTML(window.t('kickedSoftPenaltyDisputed', {}, lang))}</div>`
+                    : (isJustifiedKick
+                        ? `<div class="kicked-soft-penalty is-justified">${window.escapeHTML(window.t('kickedSoftPenaltyNone', {}, lang))}</div>`
+                        : ''));
+            const reasonHtml = (!isUnlinkedSoft && reasonDisplay)
                 ? `<div class="kicked-soft-reason">${window.escapeHTML(window.t('kickedSoftReasonLabel', { reason: reasonDisplay }, lang))}</div>`
                 : '';
             actionsHtml = `
                 <div class="kicked-soft-banner">
-                    <div class="kicked-soft-title">${window.escapeHTML(window.t('kickedSoftBannerTitle', {}, lang))}</div>
-                    <div class="kicked-soft-desc">${window.escapeHTML(window.t('kickedSoftBannerDesc', {}, lang))}</div>
+                    <div class="kicked-soft-title">${window.escapeHTML(bannerTitle)}</div>
+                    <div class="kicked-soft-desc">${window.escapeHTML(bannerDesc)}</div>
                     ${reasonHtml}
                     ${penaltyHtml}
                 </div>

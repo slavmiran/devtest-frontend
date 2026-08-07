@@ -98,7 +98,7 @@
     function getBarterChipState(test) {
         var joinType = String(test && test.join_type || '').toLowerCase();
         var progressStatus = String(test && test.progress_status || 'active').toLowerCase();
-        if (progressStatus === 'kicked_by_owner') {
+        if (progressStatus === 'kicked_by_owner' || progressStatus === 'canceled_neutral') {
             return {
                 kind: 'broken',
                 className: 'meta-chip accent-danger barter-chip',
@@ -171,7 +171,9 @@
         if (!state) return '';
         var appId = Number(test && (test.id || test.app_id) || 0);
         var archiveBtn = '';
-        var isKickedSoft = !!(test && (test.is_kicked_soft || String(test.progress_status || '').toLowerCase() === 'kicked_by_owner'));
+        var isKickedSoft = !!(test && (test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail
+            || String(test.progress_status || '').toLowerCase() === 'kicked_by_owner'
+            || String(test.progress_status || '').toLowerCase() === 'canceled_neutral'));
         if (state.kind === 'broken' && appId > 0 && !isKickedSoft) {
             archiveBtn = ' <button type="button" class="barter-archive-btn" onclick="event.stopPropagation(); archiveBrokenMutualTest(' +
                 appId + ')">' + _esc(_t('barterArchiveBtn')) + '</button>';
@@ -529,8 +531,9 @@
             partnerUsername: person.username,
             partnerId: person.userId,
             partnerLeft: options.context === 'projects'
-                ? false
-                : !!(test && test.partner_progress_status && test.partner_progress_status !== 'active'),
+                ? !!(options.testerSnapshot && options.testerSnapshot.is_left_soft)
+                : !!(test && test.partner_progress_status && test.partner_progress_status !== 'active' && test.partner_progress_status !== 'completed'),
+            myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
         });
@@ -575,20 +578,28 @@
             ),
             partnerUsername: person.username,
             partnerId: person.userId,
-            // Owner viewing an active tester: API partner_left = "owner left tester apps" (wrong POV).
-            partnerLeft: options.context === 'projects' ? false : !!stats.partner_left,
+            partnerLeft: options.context === 'projects'
+                ? !!(options.testerSnapshot && options.testerSnapshot.is_left_soft)
+                : !!stats.partner_left,
+            myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
         });
     }
 
-    function _paritySideCard(label, appName, iconUrl, day, skips) {
+    function _paritySideCard(label, appName, iconUrl, day, skips, options) {
+        options = options || {};
         var skipWarn = Number(skips || 0) >= 3;
+        var isBroken = !!options.broken;
+        var brokenBadge = isBroken
+            ? '<div class="parity-side-broken">' + _esc(_t('mutualBalanceSideBroken')) + '</div>'
+            : '';
         return '' +
-            '<div class="parity-side-card">' +
+            '<div class="parity-side-card' + (isBroken ? ' is-broken' : '') + '">' +
                 '<div class="parity-side-label">' + _esc(label) + '</div>' +
                 '<div class="parity-side-icon">' + _renderIconHtml(appName, iconUrl) + '</div>' +
                 '<div class="parity-side-name notranslate">' + _esc(appName) + '</div>' +
+                brokenBadge +
                 '<div class="parity-chip-row">' +
                     '<span class="parity-chip">📅 ' + _esc(_t('parityDayChip', { day: day, total: 14 })) + '</span>' +
                     '<span class="parity-chip' + (skipWarn ? ' is-warn' : '') + '">⚠️ ' +
@@ -689,10 +700,22 @@
             var themAtYouIcon = data.myIcon;
             var themAtYouDays = isOwnerView ? data.theirDays : data.myDays;
             var themAtYouSkips = isOwnerView ? data.theirSkips : data.mySkips;
+            // One-sided link: partner left / was kicked / unlinked — mark their side broken.
+            var themBroken = !!data.partnerLeft;
+            var youBroken = false;
+            if (data.context === 'tests') {
+                var myProgress = String(data.myProgressStatus || '').toLowerCase();
+                youBroken = myProgress === 'kicked_by_owner' || myProgress === 'canceled_neutral';
+            }
             bodyHtml = '<div class="parity-comparison-grid">' +
-                _paritySideCard(_t('mutualBalanceThemAtYou'), themAtYouName, themAtYouIcon, themAtYouDays, themAtYouSkips) +
-                _paritySideCard(_t('mutualBalanceYouAtThem'), youAtThemName, youAtThemIcon, youAtThemDays, youAtThemSkips) +
+                _paritySideCard(_t('mutualBalanceThemAtYou'), themAtYouName, themAtYouIcon, themAtYouDays, themAtYouSkips, { broken: themBroken }) +
+                _paritySideCard(_t('mutualBalanceYouAtThem'), youAtThemName, youAtThemIcon, youAtThemDays, youAtThemSkips, { broken: youBroken }) +
             '</div>';
+            if (themBroken || youBroken) {
+                hint = '<div class="parity-info-banner is-broken">' +
+                    _esc(_t('mutualBalanceOneSidedHint')) +
+                    '</div>' + hint;
+            }
         } else {
             bodyHtml = _renderSingleSideStats(data);
         }
@@ -889,8 +912,7 @@
         }
 
         if (typeof openLeaveMutualModal === 'function') {
-            // Stash preferred unlink for leave confirm
-            window._pendingUnlinkReciprocal = true;
+            window._pendingUnlinkReciprocal = false;
             openLeaveMutualModal(appId);
         }
     }

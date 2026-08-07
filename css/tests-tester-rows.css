@@ -343,6 +343,39 @@
     color: rgba(233, 241, 255, 0.72);
 }
 
+.tester-status.is-left-soft {
+    color: #ff9f0a;
+    font-weight: 700;
+}
+
+.tester-row-left-soft {
+    opacity: 0.92;
+    background: rgba(255, 159, 10, 0.06);
+}
+
+.tester-left-archive-btn {
+    border: 1px solid rgba(255, 159, 10, 0.35);
+    background: rgba(255, 159, 10, 0.12);
+    color: var(--text-color);
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 650;
+    padding: 5px 8px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.testers-count-star {
+    color: #ff9f0a;
+    font-weight: 800;
+}
+
+.testers-count-delta {
+    color: #ff453a;
+    font-weight: 700;
+    margin-left: 2px;
+}
+
 .tester-icon-action {
     display: inline-flex;
     align-items: center;

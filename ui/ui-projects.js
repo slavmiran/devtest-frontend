@@ -308,6 +308,12 @@ function renderProjects(force) {
         const regularTesters = allProjectTesters.filter(function(tester) {
             return !tester.is_guest_tester && !tester.is_external;
         });
+        const activeRegularTesters = regularTesters.filter(function(tester) {
+            return !tester.is_left_soft;
+        });
+        const leftSoftCount = regularTesters.filter(function(tester) {
+            return !!tester.is_left_soft;
+        }).length;
         const guestTesterCount = Math.max(Number(project.guest_testers_count || 0), guestTesters.length);
 
         let testersHtml = '';
@@ -318,7 +324,9 @@ function renderProjects(force) {
                 const reciprocalAppId = Number(tester.reciprocal_app_id || 0);
                 const isMutualLike = joinType === 'mutual' || joinType === 'prelaunch';
                 const isBrokenReciprocal = isMutualLike && reciprocalAppId <= 0;
+                const isLeftSoft = !!tester.is_left_soft;
                 if (isBrokenReciprocal
+                    && !isLeftSoft
                     && typeof isBrokenTesterDismissed === 'function'
                     && isBrokenTesterDismissed(project.id, tester.tester_id)) {
                     return;
@@ -354,32 +362,36 @@ function renderProjects(force) {
                 }
 
                 let statusHtml = '';
-                let testerStatusClass = 'is-red';
-                let testerStatusIcon = '🔴';
-                let testerStatusText = t.statusNotOpened;
-                if (!tester.last_check_date) {
-                    // keep default red / not opened
-                } else if (tester.last_check_date === today) {
-                    testerStatusClass = 'is-green';
-                    testerStatusIcon = '🟢';
-                    testerStatusText = t.statusToday;
+                if (isLeftSoft) {
+                    statusHtml = `<span class="tester-status is-left-soft">${window.escapeHTML(window.t('testerLeftSoftStatus', {}, lang))}</span>`;
                 } else {
-                    const daysDiff = getDaysDiff(tester.last_check_date);
-                    if (daysDiff === 1) {
-                        testerStatusClass = 'is-yellow';
-                        testerStatusIcon = '🟡';
-                        testerStatusText = t.statusYesterday;
-                    } else if (daysDiff >= 2 && daysDiff <= 3) {
-                        testerStatusClass = 'is-orange';
-                        testerStatusIcon = '🟠';
-                        testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
+                    let testerStatusClass = 'is-red';
+                    let testerStatusIcon = '🔴';
+                    let testerStatusText = t.statusNotOpened;
+                    if (!tester.last_check_date) {
+                        // keep default red / not opened
+                    } else if (tester.last_check_date === today) {
+                        testerStatusClass = 'is-green';
+                        testerStatusIcon = '🟢';
+                        testerStatusText = t.statusToday;
                     } else {
-                        testerStatusClass = 'is-red';
-                        testerStatusIcon = '🔴';
-                        testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
+                        const daysDiff = getDaysDiff(tester.last_check_date);
+                        if (daysDiff === 1) {
+                            testerStatusClass = 'is-yellow';
+                            testerStatusIcon = '🟡';
+                            testerStatusText = t.statusYesterday;
+                        } else if (daysDiff >= 2 && daysDiff <= 3) {
+                            testerStatusClass = 'is-orange';
+                            testerStatusIcon = '🟠';
+                            testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
+                        } else {
+                            testerStatusClass = 'is-red';
+                            testerStatusIcon = '🔴';
+                            testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
+                        }
                     }
+                    statusHtml = `<span class="tester-status ${testerStatusClass}">${testerStatusIcon} ${window.escapeHTML(testerStatusText)}</span>`;
                 }
-                statusHtml = `<span class="tester-status ${testerStatusClass}">${testerStatusIcon} ${window.escapeHTML(testerStatusText)}</span>`;
 
                 const consecutiveSkips = Number(tester.consecutive_skips != null
                     ? tester.consecutive_skips
@@ -387,12 +399,12 @@ function renderProjects(force) {
                         ? calculateConsecutiveSkips(tester)
                         : 0));
                 let warningHtml = '';
-                if (consecutiveSkips >= 3) {
+                if (!isLeftSoft && consecutiveSkips >= 3) {
                     warningHtml = `<span class="tester-icon-action tester-warn-action" role="button" tabindex="0" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${Number(project.id)}, ${Number(tester.tester_id)}, event)">⚠️</span>`;
                 }
 
                 let brokenHtml = '';
-                if (isBrokenReciprocal) {
+                if (!isLeftSoft && isBrokenReciprocal) {
                     let partnerAppName = String(tester.reciprocal_app_name || '').trim();
                     if (!partnerAppName && Array.isArray(myTests)) {
                         const partnerTest = myTests.find(function(item) {
@@ -407,20 +419,27 @@ function renderProjects(force) {
                 }
 
                 let screenshotDayHtml = '';
-                if (isMandatoryScreenshotDay(testerDay)) {
+                if (!isLeftSoft && isMandatoryScreenshotDay(testerDay)) {
                     screenshotDayHtml = `<span class="tester-icon-action" onclick="event.stopPropagation(); showScreenshotDayAlert()">📸</span>`;
                 }
 
                 let karmaHtml = '';
                 const alreadyLiked = (project.likes || []).some((like) => like.tester_id === tester.tester_id);
-                if (alreadyLiked) {
+                if (!isLeftSoft && alreadyLiked) {
                     karmaHtml = '<span class="tester-icon-action tester-icon-muted" title="☯️">+☯️</span>';
                 }
 
-                const chevronHtml = '<span class="tester-chevron">›</span>';
+                const archiveBtnHtml = isLeftSoft
+                    ? `<button type="button" class="tester-left-archive-btn" onclick="event.stopPropagation(); dismissLeftTesterRow(${Number(project.id)}, ${Number(tester.tester_id)})">${window.escapeHTML(window.t('testerLeftSoftArchiveBtn', {}, lang))}</button>`
+                    : '';
+                const chevronHtml = isLeftSoft ? '' : '<span class="tester-chevron">›</span>';
+                const rowClick = isLeftSoft
+                    ? ''
+                    : `onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;"`;
+                const rowClass = isLeftSoft ? ' class="tester-row-left-soft"' : '';
 
                 testerRowsHtml += `
-                    <li onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;">
+                    <li${rowClass} ${rowClick}>
                         <div class="tester-row-main">
                             ${nameHtml}
                             ${screenshotDayHtml}
@@ -430,6 +449,7 @@ function renderProjects(force) {
                         </div>
                         <div class="tester-row-meta">
                             ${statusHtml}
+                            ${archiveBtnHtml}
                             ${chevronHtml}
                         </div>
                     </li>
@@ -611,7 +631,7 @@ function renderProjects(force) {
 
         const quotaSummaryHtml = (() => {
             const chips = [];
-            const testers = regularTesters;
+            const testers = activeRegularTesters;
             const mutualCount = testers.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
             const bountyCount = testers.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
             if (project.mode === 'mutual' || project.mode === 'hybrid') {
@@ -628,7 +648,7 @@ function renderProjects(force) {
         })();
 
         const karmaBonusChipHtml = (() => {
-            if (platformDays < 14 || regularTesters.length < 5) return '';
+            if (platformDays < 14 || activeRegularTesters.length < 5) return '';
             return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
         })();
 
@@ -659,6 +679,9 @@ function renderProjects(force) {
         let count_done = 0;
         let count_waiting = 0;
         allProjectTesters.forEach((tester) => {
+            if (tester.is_left_soft) {
+                return;
+            }
             if (tester.is_guest_tester || tester.is_external) {
                 var controlMeta = getExternalTesterControlMeta(tester);
                 if (controlMeta.tone === 'green') {
@@ -675,7 +698,7 @@ function renderProjects(force) {
             }
         });
 
-        const totalTesters = allProjectTesters.length;
+        const totalTesters = activeRegularTesters.length + guestTesters.length;
         const targetCheckins = Math.min(totalTesters, 12);
         const hasEnergyBar = totalTesters > 0;
         
@@ -792,7 +815,10 @@ function renderProjects(force) {
                     ${updateTipHtml}
                     <div class="testers-section">
                         <div class="testers-title-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                            <div class="testers-title">${t.testersList} (${allProjectTesters.length})${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(regularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
+                            <div class="testers-title">${t.testersList} (${leftSoftCount > 0
+                                ? `${window.escapeHTML(String(activeRegularTesters.length + guestTesters.length + leftSoftCount))}<span class="testers-count-star">*</span> <span class="testers-count-delta">(-${window.escapeHTML(String(leftSoftCount))})</span>`
+                                : window.escapeHTML(String(activeRegularTesters.length + guestTesters.length))
+                            })${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(activeRegularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
                             ${karmaRewardsChipHtml}
                         </div>
                         ${energyBarTopHtml}
@@ -6572,6 +6598,47 @@ window.triggerResetCooldown = triggerResetCooldown;
 window.renderMassInviteModalContent = renderMassInviteModalContent;
 window.updateMassInviteModalTimers = updateMassInviteModalTimers;
 window.toggleTestingDayInstructions = toggleTestingDayInstructions;
+
+async function dismissLeftTesterRow(appId, testerId) {
+    var safeAppId = Number(appId || 0);
+    var safeTesterId = Number(testerId || 0);
+    if (safeAppId <= 0 || safeTesterId <= 0) return;
+    try {
+        var response = await fetch(API_BASE + '/projects/' + safeAppId + '/testers/' + safeTesterId + '/dismiss_left', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(withInitData({})),
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+        if (typeof _removeLocalTesterFromProject === 'function') {
+            _removeLocalTesterFromProject(safeAppId, safeTesterId);
+        } else {
+            var project = (myProjects || []).find(function(item) {
+                return Number(item.id) === safeAppId;
+            });
+            if (project && Array.isArray(project.testers)) {
+                project.testers = project.testers.filter(function(item) {
+                    return Number(item.tester_id) !== safeTesterId;
+                });
+            }
+        }
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        }
+        showToast(window.t('testerLeftSoftArchiveDone', {}, lang));
+        if (typeof window.renderProjects === 'function') {
+            window.renderProjects(true);
+        }
+    } catch (error) {
+        console.error('Dismiss left tester error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+window.dismissLeftTesterRow = dismissLeftTesterRow;
 
 (function initProjectsScrollPerf() {
     var scrollEndTimer = null;

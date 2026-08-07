@@ -182,6 +182,16 @@
         if (!box) return;
 
         var isMutual = _isMutualJoin(joinType);
+        // Leave: only the leaver's side ends — no unlink choice (owner keeps counter-test).
+        if (mode === 'leave' || mode === 'drop') {
+            box.hidden = true;
+            if (reciprocal) {
+                reciprocal.checked = false;
+                reciprocal.disabled = false;
+            }
+            return;
+        }
+
         box.hidden = !isMutual;
         if (!isMutual) {
             if (reciprocal) reciprocal.checked = false;
@@ -1257,9 +1267,7 @@
             appId: Number(appId || 0),
             joinType: (test && test.join_type) || 'mutual',
             testSnapshot: test || null,
-            unlinkReciprocal: (typeof window._pendingUnlinkReciprocal === 'boolean')
-                ? window._pendingUnlinkReciprocal
-                : true,
+            unlinkReciprocal: false,
         });
     }
 
@@ -1276,7 +1284,7 @@
             appId: Number(appId || 0),
             joinType: (test && test.join_type) || 'invite',
             testSnapshot: test || null,
-            unlinkReciprocal: true,
+            unlinkReciprocal: false,
         });
     }
 

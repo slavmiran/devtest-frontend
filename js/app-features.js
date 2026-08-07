@@ -3115,11 +3115,7 @@ async function confirmJoinBounty() {
 async function confirmDropTest() {
     if (!_dropTestAppId) return;
     try {
-        const unlinkReciprocal = (typeof getTermUnlinkReciprocal === 'function')
-            ? !!getTermUnlinkReciprocal()
-            : ((typeof consumePendingUnlinkReciprocal === 'function')
-                ? consumePendingUnlinkReciprocal(true)
-                : true);
+        const unlinkReciprocal = false;
         const reasonCode = (typeof getTermReasonCode === 'function') ? getTermReasonCode() : '';
         const reasonNote = (typeof getTermReasonNote === 'function') ? getTermReasonNote() : '';
         const leaveReason = _buildLeaveReasonPayload(reasonCode, reasonNote);
@@ -3246,11 +3242,7 @@ async function confirmLeaveMutual(isJustified) {
     var reasonPayload = _buildLeaveReasonPayload(reasonCode, reasonNote);
     var appId = _leaveMutualAppId;
     var previousTests = Array.isArray(myTests) ? myTests.slice() : [];
-    var unlinkReciprocal = (typeof getTermUnlinkReciprocal === 'function')
-        ? !!getTermUnlinkReciprocal()
-        : ((typeof consumePendingUnlinkReciprocal === 'function')
-            ? !!consumePendingUnlinkReciprocal(true)
-            : true);
+    var unlinkReciprocal = false;
 
     try {
         _removeLocalTest(appId);
