@@ -880,11 +880,8 @@
     border-top: 1px dashed color-mix(in srgb, var(--border-subtle) 70%, transparent);
 }
 
-/* Owner Cycle — same left icon column as status banner dots */
+/* Owner Cycle — same red status-dot as penalty banner title */
 .term-owner-cycle {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
     margin: 0;
     padding: 10px 0 6px;
     border-radius: 0;
@@ -893,30 +890,34 @@
     border-top: 1px dashed color-mix(in srgb, var(--border-subtle) 70%, transparent);
 }
 
-.term-owner-cycle-icon {
-    flex-shrink: 0;
-    width: 14px;
-    font-size: 13px;
-    line-height: 1.35;
-    text-align: center;
-}
-
 .term-owner-cycle-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 12px;
     font-weight: 700;
     color: color-mix(in srgb, var(--danger, #ff453a) 85%, var(--text-color));
     margin-bottom: 2px;
 }
 
+.term-owner-cycle-title::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    border: 4px solid transparent;
+    background-clip: padding-box;
+    background-color: var(--danger, #ff453a);
+}
+
 .term-owner-cycle-desc {
     font-size: 11px;
     line-height: 1.4;
     color: var(--text-secondary);
-}
-
-.term-owner-cycle-copy {
-    flex: 1;
-    min-width: 0;
+    padding-left: 22px;
 }
 
 .leave-grant-icon {
@@ -1332,11 +1333,11 @@
     box-shadow: inset 0 0 0 1px var(--accent-primary-border);
 }
 
-/* Termination reason radios — lighter than impact pills / chips */
+/* Termination reason radios — 2-column grid (kick/drop 4 items; leave 3 wraps) */
 .term-reason-radio-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 10px;
     margin: 0 0 10px;
     padding: 2px 0;
 }
@@ -1344,13 +1345,21 @@
 .term-reason-radio {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     margin: 0;
-    padding: 8px 2px;
-    border: 0;
-    background: transparent;
+    padding: 10px 10px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--border-subtle) 90%, transparent);
+    background: color-mix(in srgb, var(--bg-surface-1) 88%, transparent);
     cursor: pointer;
     user-select: none;
+    min-height: 44px;
+}
+
+.term-reason-radio.is-selected,
+.term-reason-radio:has(input:checked) {
+    border-color: color-mix(in srgb, var(--accent-primary, #0a84ff) 45%, var(--border-subtle));
+    background: color-mix(in srgb, var(--accent-primary-surface, rgba(10, 132, 255, 0.12)) 70%, var(--bg-surface-1));
 }
 
 .term-reason-radio input[type="radio"] {
@@ -1393,8 +1402,8 @@
 }
 
 .term-reason-radio-label {
-    font-size: 14px;
-    line-height: 1.35;
+    font-size: 13px;
+    line-height: 1.3;
     font-weight: 500;
     color: var(--text-secondary);
 }

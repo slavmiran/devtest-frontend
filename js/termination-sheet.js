@@ -316,7 +316,11 @@
                 ? _renderExitBanner(true)
                 : '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
                     '<div class="leave-status-title">' + _esc(_t('leaveAbandonedTitle')) + '</div>' +
-                    '<div class="leave-status-desc">' + _esc(_t('leaveAbandonedDesc', { karma: _fmtAmount(karmaBurn, 1) })) + '</div>' +
+                    '<div class="leave-status-desc">' + _esc(
+                        karmaBurn > 0
+                            ? _t('leaveAbandonedDesc', { karma: _fmtAmount(karmaBurn, 1) })
+                            : _t('termCostlyExitDescRiOnly')
+                    ) + '</div>' +
                     '<div class="leave-status-desc" style="margin-top:8px;">' + _esc(_t('leaveSafeWaitWarning', {
                         count: waitCount,
                         word: typeof pluralizeSkipWord === 'function' ? pluralizeSkipWord(waitCount) : '',
@@ -325,9 +329,7 @@
 
         var impactHint = justifiedAllowed
             ? _t('termLeaveImpactHintJustified')
-            : (isSafeExit
-                ? _t('termSafeExitHint')
-                : _t('termCostlyExitHint'));
+            : '';
 
         return '' +
             '<div class="leave-exchange-card" id="leave-exchange-card">' +
@@ -371,7 +373,7 @@
                 '</div>' +
             '</div>' +
             _renderImpactMeters({
-                karmaOk: noPenalty,
+                karmaOk: noPenalty || karmaBurn <= 0,
                 riOk: riOk,
                 karmaBurn: noPenalty ? 0 : karmaBurn,
                 riCurrent: currentRi,
@@ -595,11 +597,8 @@
     function _renderOwnerCyclePlea() {
         return '' +
             '<div class="term-owner-cycle">' +
-                '<span class="term-owner-cycle-icon" aria-hidden="true">💔</span>' +
-                '<div class="term-owner-cycle-copy">' +
-                    '<div class="term-owner-cycle-title">' + _esc(_t('termOwnerCycleTitle')) + '</div>' +
-                    '<div class="term-owner-cycle-desc">' + _esc(_t('termOwnerCycleDesc')) + '</div>' +
-                '</div>' +
+                '<div class="term-owner-cycle-title">' + _esc(_t('termOwnerCycleTitle')) + '</div>' +
+                '<div class="term-owner-cycle-desc">' + _esc(_t('termOwnerCycleDesc')) + '</div>' +
             '</div>';
     }
 
@@ -669,16 +668,21 @@
             '</div>';
     }
 
-    function _renderExitBanner(isSafeExit) {
+    function _renderExitBanner(isSafeExit, opts) {
+        opts = opts || {};
         if (isSafeExit) {
             return '<div class="leave-status-banner is-justified term-status-compact term-impact-status-banner">' +
                 '<div class="leave-status-title">' + _esc(_t('termSafeExitBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t('termSafeExitDesc')) + '</div>' +
               '</div>';
         }
+        // 0 check-ins → no karma to burn; only RI is at risk (avoid "karma burns" contradiction).
+        var costlyDesc = Number(opts.karmaBurn || 0) > 0
+            ? _t('termCostlyExitDesc')
+            : _t('termCostlyExitDescRiOnly');
         return '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
             '<div class="leave-status-title">' + _esc(_t('termCostlyExitBadge')) + '</div>' +
-            '<div class="leave-status-desc">' + _esc(_t('termCostlyExitDesc')) + '</div>' +
+            '<div class="leave-status-desc">' + _esc(costlyDesc) + '</div>' +
           '</div>';
     }
 
@@ -716,7 +720,8 @@
         });
         var karmaBurn = isSafeExit ? 0 : Math.min(14, checkins) * 0.1;
         var riOk = isSafeExit;
-        var karmaOk = isSafeExit;
+        // No check-ins → nothing to burn; pill stays "no penalty" even on costly RI exit.
+        var karmaOk = isSafeExit || karmaBurn <= 0;
 
         if (_termState) {
             _termState.justifiedAllowed = isSafeExit;
@@ -748,7 +753,7 @@
                 skips
             )
             : '';
-        var exitStatusBanner = _renderExitBanner(isSafeExit);
+        var exitStatusBanner = _renderExitBanner(isSafeExit, { karmaBurn: karmaBurn });
 
         var grantRow = (!isBounty && grantStillAvailable)
             ? _renderInviteGrantRow(skips, grantTotal)
@@ -777,7 +782,7 @@
                 karmaOk: karmaOk,
                 riOk: riOk,
                 karmaBurn: karmaBurn,
-                hint: isSafeExit ? _t('termSafeExitHint') : _t('termCostlyExitHint'),
+                hint: '',
                 statusBanner: exitStatusBanner,
                 ownerCycle: true,
             });
@@ -1087,10 +1092,12 @@
             }
             if (leaveNoPenalty) {
                 points.push('<li>' + _esc(_t('leaveConfirmPointNoPenalty')) + '</li>');
-            } else {
+            } else if (Number(_termState.karmaBurnPreview || 0) > 0) {
                 points.push('<li>' + _esc(_t('leaveConfirmPointKarma', {
                     karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1),
                 })) + '</li>');
+            } else {
+                points.push('<li class="is-warn">' + _esc(_t('termDropEffectRiCostly')) + '</li>');
             }
             if (_termState.grantAvailable && !leaveNoPenalty) {
                 points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointGrant')) + '</li>');
@@ -1121,11 +1128,12 @@
                 }
                 points.push('<li class="is-warn"><div class="leave-confirm-main">' + bustMain + '</div>' + bustSub + '</li>');
             }
-            points.push('<li' + (_termState.isSafeExit ? '' : ' class="is-warn"') + '>' +
-                _esc(_termState.isSafeExit
+            var dropKarmaBurn = Number(_termState.karmaBurnPreview || 0);
+            points.push('<li' + ((_termState.isSafeExit || dropKarmaBurn <= 0) ? '' : ' class="is-warn"') + '>' +
+                _esc((_termState.isSafeExit || dropKarmaBurn <= 0)
                     ? _t('termDropEffectNoKarma')
                     : _t('leaveConfirmPointKarma', {
-                        karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1),
+                        karma: _fmtAmount(dropKarmaBurn, 1),
                     })) +
                 '</li>');
             points.push('<li' + (_termState.isSafeExit ? '' : ' class="is-warn"') + '>' +

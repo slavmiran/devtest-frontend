@@ -432,6 +432,71 @@ function showGrantBreakdownAlertById(appId, event) {
     }
 }
 
+function getProjectProtectionDays(test) {
+    return Math.max(0, Number(test && (test.paid_protection_days || test.purchased_protection_days) || 0) || 0);
+}
+
+function getProjectCycleLimitDays(test) {
+    return 14 + getProjectProtectionDays(test);
+}
+
+function getProjectLifecycleDay(test) {
+    var platformDay = typeof getProjectPlatformDay === 'function'
+        ? getProjectPlatformDay(test && test.created_at)
+        : 1;
+    platformDay = Number.isFinite(platformDay) && platformDay > 0 ? platformDay : 1;
+    if (!isProjectSynced(test)) {
+        return platformDay;
+    }
+    var googleDay = getProjectCurrentGoogleDay(test, platformDay);
+    // Match backend enter_project_pending_completion: max(cycle_day, platform_day).
+    return Math.max(platformDay, Number(googleDay) || 0, 1);
+}
+
+function isSameLocalCalendarDay(a, b) {
+    if (!(a instanceof Date) || !(b instanceof Date)) return false;
+    if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return false;
+    return a.getFullYear() === b.getFullYear()
+        && a.getMonth() === b.getMonth()
+        && a.getDate() === b.getDate();
+}
+
+function getProjectCompletionDate(test, today) {
+    var todayDate = today instanceof Date && !Number.isNaN(today.getTime())
+        ? today
+        : (parseLocalDateOnly(getLocalDate()) || new Date());
+    var BUFFER_MS = 48 * 60 * 60 * 1000;
+    var DAY_MS = 24 * 60 * 60 * 1000;
+    var appStatus = String(test && (test.app_status || test.status) || '').toLowerCase();
+    var isPendingCompletion = appStatus === 'pending_completion' || !!(test && test.is_pending_completion);
+    var pendingStartedAt = test && test.pending_completion_started_at
+        ? new Date(test.pending_completion_started_at).getTime()
+        : NaN;
+
+    // In Safety Buffer the archive deadline is fixed: started_at + 48h.
+    if (isPendingCompletion && Number.isFinite(pendingStartedAt)) {
+        return new Date(pendingStartedAt + BUFFER_MS);
+    }
+
+    var cycleLimit = getProjectCycleLimitDays(test);
+    var lifecycleDay = getProjectLifecycleDay(test);
+    // Backend enters pending when lifecycle_day > cycle_limit (next calendar day after the limit).
+    var daysUntilBufferStart = Math.max(0, (cycleLimit + 1) - lifecycleDay);
+    var todayStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
+    var bufferStart = new Date(todayStart.getTime() + (daysUntilBufferStart * DAY_MS));
+
+    // Prefer the created_at-based wall clock when it is earlier/equal — same formula as owner PPC.
+    var createdMs = test && test.created_at ? new Date(test.created_at).getTime() : NaN;
+    if (Number.isFinite(createdMs)) {
+        var createdBasedBufferStart = createdMs + (cycleLimit * DAY_MS);
+        if (createdBasedBufferStart < bufferStart.getTime()) {
+            bufferStart = new Date(createdBasedBufferStart);
+        }
+    }
+
+    return new Date(bufferStart.getTime() + BUFFER_MS);
+}
+
 function getTestingTimelineMeta(test) {
     var today = parseLocalDateOnly(getLocalDate()) || new Date();
     var userTestingDayRaw = getResolvedTestingDay(test);
@@ -450,6 +515,10 @@ function getTestingTimelineMeta(test) {
     }
 
     var finishDate = new Date(today.getTime() + (projectDaysLeft * 24 * 60 * 60 * 1000));
+    var completionDate = getProjectCompletionDate(test, today);
+    // "Last day!" = calendar day when the project actually ends (14 + paid protection + 48h buffer),
+    // not merely Google 14/14.
+    var isLastDay = isSameLocalCalendarDay(today, completionDate);
     return {
         today: today,
         userTestingDay: userTestingDay,
@@ -459,7 +528,8 @@ function getTestingTimelineMeta(test) {
         overtimeDays: overtimeDays,
         isSynced: isSynced,
         finishDate: finishDate,
-        isLastDay: isSynced && projectDaysLeft === 0,
+        completionDate: completionDate,
+        isLastDay: isLastDay,
     };
 }
 
@@ -845,6 +915,19 @@ function getProjectCurrentGoogleDay(test, fallbackDay) {
     if (!syncDay) {
         var fallback = Number(fallbackDay || 0);
         return Number.isFinite(fallback) ? Math.max(0, fallback) : 0;
+    }
+
+    // Match backend `_calculate_project_cycle_day`: a day-1 sync does not tick from
+    // last_sync_date — use platform age since created_at instead. Only sync_day > 1
+    // advances as syncDay + calendar days since last_sync.
+    if (syncDay <= 1) {
+        var platformDay = typeof getProjectPlatformDay === 'function'
+            ? getProjectPlatformDay(test && test.created_at)
+            : Number(fallbackDay || 0);
+        if (Number.isFinite(platformDay) && platformDay > 0) {
+            return Math.max(1, platformDay);
+        }
+        return 1;
     }
 
     var syncDiffDays = test && test.last_sync_date ? getDayDiffFromToday(test.last_sync_date) : 0;
