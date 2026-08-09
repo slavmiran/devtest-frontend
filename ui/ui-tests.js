@@ -1421,30 +1421,125 @@ function renderIncomingOffers() {
     carousel.innerHTML = pending.map((offer) => {
         const username = (offer.proposer_username || '').replace(/@/g, '');
         const safeUsername = escapeInlineJsString(username);
-        const displayName = window.escapeHTML(username
-            ? `@${username}`
-            : (offer.proposer_full_name || window.t('idLabel', { id: offer.proposer_id }, lang)));
+        const fullName = String(offer.proposer_full_name || '').trim();
+        const handle = username ? ('@' + username) : '';
+        const primaryName = window.escapeHTML(fullName || handle || window.t('idLabel', { id: offer.proposer_id }, lang));
+        const secondaryName = (fullName && handle)
+            ? ('<div class="bounty-app-handle notranslate">' + window.escapeHTML(handle) + '</div>')
+            : '';
         const remain = formatOfferRemaining(offer.created_at);
         const leftTimeText = window.t('offerTimeLeftValue', { hours: remain ? remain.hours : 0, minutes: remain ? remain.minutes : 0 }, lang);
-        const expireText = remain ? window.t('offerTimeLeft', { time: leftTimeText }, lang) : window.t('offerTimeUnknown', {}, lang);
+        const expireText = remain ? window.t('bountyAppTimeLeftShort', { time: leftTimeText }, lang) : window.t('offerTimeUnknown', {}, lang);
         const targetAppName = offer.target_app_name || window.t('unknownLabel', {}, lang);
         const proposerAppName = offer.proposer_app_name || window.t('unknownLabel', {}, lang);
 
-        return `
-            <div class="offer-card" data-offer-id="${offer.offer_id}">
-                <div class="offer-top">
-                    <button class="offer-user" onclick="openTesterDossier('${safeUsername}', ${offer.proposer_id}, ${offer.target_app_id}); event.stopPropagation();">${displayName}</button>
-                    <span class="meta-chip accent-yellow">☯️ ${offer.proposer_karma || 0}</span>
-                </div>
-                <div class="offer-sub">${window.escapeHTML(window.t('offerForApp', { target_app: targetAppName }, lang))}</div>
-                <div class="offer-sub">${window.escapeHTML(window.t('offerWithApp', { proposer_app: proposerAppName }, lang))}</div>
-                <div class="offer-expire">${expireText}</div>
-                <div class="action-row" style="margin-top: 10px;">
-                    <button class="btn btn-success" style="flex: 1;" onclick="decideOffer(${offer.offer_id}, 'accept', event)">${window.t('offerAcceptBtn', {}, lang)}</button>
-                    <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.12); color: #ff3b30;" onclick="decideOffer(${offer.offer_id}, 'reject', event)">${window.t('offerRejectBtn', {}, lang)}</button>
-                </div>
-            </div>
-        `;
+        // Reliability tone (reuses bounty logic with proposer_ fields)
+        const relStatus = String(offer.proposer_reliability_status || 'newbie').toLowerCase();
+        const relIndex = offer.proposer_reliability_index;
+        let tone = 'neutral';
+        if (relStatus !== 'newbie' && relIndex != null && relIndex !== '') {
+            const relVal = Number(relIndex);
+            if (Number.isFinite(relVal)) {
+                if (relStatus === 'expert' || relStatus === 'active' || relVal >= 85) tone = 'good';
+                else if (relStatus === 'basic' || relStatus === 'minimal' || relVal >= 65) tone = 'warn';
+                else tone = 'bad';
+            }
+        }
+
+        // Reliability label
+        let reliabilityLabel;
+        if (relStatus === 'newbie' || relIndex == null || relIndex === '') {
+            reliabilityLabel = window.t('bountyAppReliabilityNewbieShort', {}, lang);
+        } else {
+            const relVal = Number(relIndex);
+            if (!Number.isFinite(relVal)) {
+                reliabilityLabel = window.t('bountyAppReliabilityNewbieShort', {}, lang);
+            } else {
+                const statusKey = 'reliabilityDashStatus_' + relStatus;
+                let statusLabel = window.t(statusKey, {}, lang);
+                if (!statusLabel || statusLabel === statusKey) statusLabel = relStatus;
+                reliabilityLabel = window.t('bountyAppReliabilityCompact', { pct: Math.round(relVal), status: statusLabel }, lang);
+            }
+        }
+
+        // Avatar
+        const avatarName = String(fullName || handle || ('#' + (offer.proposer_id || 0))).trim();
+        const avatarUrl = offer.proposer_avatar_url || '';
+        const avatarHtml = typeof renderIcon === 'function'
+            ? renderIcon(avatarName, avatarUrl)
+            : (typeof getAvatar === 'function' ? getAvatar(avatarName) : '<div class="avatar">' + window.escapeHTML(avatarName.charAt(0).toUpperCase() || '?') + '</div>');
+
+        // Metrics
+        const karmaVal = typeof formatAmountValue === 'function'
+            ? formatAmountValue(offer.proposer_karma || 0, 1)
+            : String(offer.proposer_karma || 0);
+        const fullCycles = Number(offer.proposer_completed_full_cycles || 0);
+        const skipRate = offer.proposer_skip_rate_pct;
+        const skipLabel = (skipRate == null || skipRate === '')
+            ? '—'
+            : (String(Math.round(Number(skipRate))) + '%');
+
+        const dossierLabel = window.escapeHTML(window.t('bountyAppOpenDossier', {}, lang));
+        const dossierSvg = typeof _bountyDossierIconSvg === 'function' ? _bountyDossierIconSvg() : '';
+
+        return '' +
+            '<div class="offer-card bounty-app-card mutual-offer-card" data-offer-id="' + offer.offer_id + '">' +
+                '<div class="bounty-app-head">' +
+                    '<div class="bounty-app-badge">' +
+                        '<span class="bounty-app-badge-label">' + window.escapeHTML(window.t('mutualOfferChip', {}, lang)) + '</span>' +
+                    '</div>' +
+                    '<div class="bounty-app-ttl offer-expire">' + window.escapeHTML(expireText) + '</div>' +
+                '</div>' +
+                '<div class="bounty-app-identity">' +
+                    '<div class="bounty-app-avatar-wrap" role="button" tabindex="0" aria-label="' + dossierLabel + '" ' +
+                        'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(offer.proposer_id || 0) + ', ' + Number(offer.target_app_id || 0) + '); event.stopPropagation();">' +
+                        avatarHtml +
+                    '</div>' +
+                    '<div class="bounty-app-identity-main" role="button" tabindex="0" ' +
+                        'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(offer.proposer_id || 0) + ', ' + Number(offer.target_app_id || 0) + '); event.stopPropagation();">' +
+                        '<div class="bounty-app-name notranslate">' + primaryName + '</div>' +
+                        secondaryName +
+                        '<div class="bounty-app-signal bounty-app-signal--' + tone + '">' +
+                            '<span class="bounty-app-signal-dot" aria-hidden="true"></span>' +
+                            '<span>' + window.escapeHTML(reliabilityLabel) + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<button type="button" class="bounty-app-dossier-btn" title="' + dossierLabel + '" aria-label="' + dossierLabel + '" ' +
+                        'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(offer.proposer_id || 0) + ', ' + Number(offer.target_app_id || 0) + '); event.stopPropagation();">' +
+                        dossierSvg +
+                    '</button>' +
+                '</div>' +
+                '<div class="bounty-app-metrics">' +
+                    '<div class="bounty-app-metric">' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricKarma', {}, lang)) + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + window.escapeHTML(karmaVal) + '</div>' +
+                    '</div>' +
+                    '<div class="bounty-app-metric">' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricTests', {}, lang)) + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + fullCycles + '</div>' +
+                    '</div>' +
+                    '<div class="bounty-app-metric">' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricSkips', {}, lang)) + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + window.escapeHTML(skipLabel) + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="bounty-app-project-row">' +
+                    '<span class="bounty-app-project-label">' + window.escapeHTML(window.t('mutualOfferTargetProject', {}, lang)) + '</span>' +
+                    '<span class="bounty-app-project-name notranslate">' + window.escapeHTML(targetAppName) + '</span>' +
+                '</div>' +
+                '<div class="bounty-app-project-row">' +
+                    '<span class="bounty-app-project-label">' + window.escapeHTML(window.t('mutualOfferSwapProject', {}, lang)) + '</span>' +
+                    '<span class="bounty-app-project-name notranslate">' + window.escapeHTML(proposerAppName) + '</span>' +
+                '</div>' +
+                '<div class="action-row bounty-app-actions">' +
+                    '<button type="button" class="btn bounty-app-accept-btn" onclick="decideOffer(' + offer.offer_id + ', \'accept\', event)">' +
+                        window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang)) +
+                    '</button>' +
+                    '<button type="button" class="btn bounty-app-reject-btn" onclick="decideOffer(' + offer.offer_id + ', \'reject\', event)">' +
+                        window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
+                    '</button>' +
+                '</div>' +
+            '</div>';
     }).join('');
 
     if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();

@@ -613,3 +613,36 @@
     color: var(--stage-buffer) !important;
     border-color: var(--stage-buffer-border) !important;
 }
+
+/* ── Mutual Offer Card (reuses bounty-app-* layout with teal/blue accent) ── */
+.mutual-offer-card {
+    border-color: rgba(100, 210, 255, 0.28);
+    background: linear-gradient(165deg, rgba(100, 210, 255, 0.08) 0%, rgba(51, 144, 236, 0.03) 42%, transparent 72%);
+}
+
+.mutual-offer-card .bounty-app-badge-label {
+    color: #64d2ff;
+}
+
+.mutual-offer-card .bounty-app-avatar-wrap {
+    box-shadow: 0 0 0 1px rgba(100, 210, 255, 0.35);
+}
+
+.mutual-offer-card .bounty-app-dossier-btn {
+    border-color: rgba(100, 210, 255, 0.28);
+    background: rgba(100, 210, 255, 0.10);
+    color: #64d2ff;
+}
+
+.mutual-offer-card .bounty-app-dossier-btn:active {
+    background: rgba(100, 210, 255, 0.20);
+}
+
+.mutual-offer-card .bounty-app-accept-btn {
+    background: #3390ec !important;
+    color: #fff !important;
+}
+
+.mutual-offer-card .bounty-app-accept-btn:active {
+    background: #2b7ecf !important;
+}
