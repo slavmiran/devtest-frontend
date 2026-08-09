@@ -1514,7 +1514,8 @@ async function _handleInitialRoute() {
 
     if (route.openGuaranteedTest) {
         try {
-            _openGuaranteedTestOfferWhenReady(30, 100);
+            // Open offer immediately (no async API gate) — mirrors openAdd → openModal().
+            _openGuaranteedTestOfferWhenReady(40, 100);
             _clearStartappQueryParam();
         } catch (error) {
             console.error('Initial guaranteed test route error:', error);

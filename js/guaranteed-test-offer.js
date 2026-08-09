@@ -165,32 +165,36 @@
         }
     }
 
-    function handleOrderSubmission() {
+    function openGuaranteedWizardFromOffer() {
         if (typeof window.showGuaranteedTestWizardStep1 === 'function') {
             window.showGuaranteedTestWizardStep1();
+            return;
+        }
+        var targetUrl = "https://t.me/garantXchange";
+        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+            window.Telegram.WebApp.openTelegramLink(targetUrl);
         } else {
-            var targetUrl = "https://t.me/garantXchange";
-            if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
-                window.Telegram.WebApp.openTelegramLink(targetUrl);
-            } else {
-                window.open(targetUrl, '_blank');
-            }
+            window.open(targetUrl, '_blank');
         }
     }
 
-    function showGuaranteedTestOfferModal(skipGuard) {
-        if (!skipGuard && typeof window.guardGuaranteedPrivateTestStart === 'function') {
-            window.guardGuaranteedPrivateTestStart(function () {
-                showGuaranteedTestOfferModal(true);
-            });
+    function handleOrderSubmission() {
+        // Gate drafts / awaiting-payment here (on CTA), not when opening the offer page.
+        // Deep links must open the offer immediately — same reliability as startapp=add_app.
+        if (typeof window.guardGuaranteedPrivateTestStart === 'function') {
+            window.guardGuaranteedPrivateTestStart(openGuaranteedWizardFromOffer);
             return;
         }
+        openGuaranteedWizardFromOffer();
+    }
+
+    function showGuaranteedTestOfferModal() {
         var overlay = ensureModalInDOM();
         if (overlay) {
             overlay.style.display = 'flex';
             overlay.style.zIndex = '99999';
         } else {
-            setTimeout(function () { showGuaranteedTestOfferModal(true); }, 50);
+            setTimeout(function () { showGuaranteedTestOfferModal(); }, 50);
         }
     }
 
