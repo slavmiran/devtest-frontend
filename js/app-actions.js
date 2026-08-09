@@ -173,10 +173,15 @@ function syncAutoAcceptSectionUi() {
     var sectionMeta = document.getElementById('auto-accept-section-meta');
     var available = _isAutoAcceptSectionAvailable();
     if (sectionMeta) {
-        sectionMeta.textContent = window.t('autoAcceptSectionMeta', {}, lang);
+        sectionMeta.textContent = window.t(
+            available ? 'autoAcceptSectionMeta' : 'autoAcceptSectionLockedMeta',
+            {},
+            lang
+        );
     }
     if (sectionLabel) {
         var baseLabel = window.t('autoAcceptSectionLabel', {}, lang);
+        // Lock icon only on the section title — do not repeat on meta/subrows.
         sectionLabel.textContent = available ? baseLabel : ('🔒 ' + baseLabel);
     }
 }
