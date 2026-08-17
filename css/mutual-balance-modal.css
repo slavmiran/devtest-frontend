@@ -1737,6 +1737,17 @@
     min-width: 0;
 }
 
+.linked-mutual-app.is-start {
+    justify-content: flex-start;
+    text-align: left;
+}
+
+.linked-mutual-app.is-end {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    text-align: right;
+}
+
 .linked-mutual-app.is-done {
     opacity: 0.55;
 }
@@ -1753,6 +1764,17 @@
 .linked-mutual-app-text {
     min-width: 0;
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.linked-mutual-app.is-end .linked-mutual-app-text {
+    align-items: flex-end;
+}
+
+.linked-mutual-app.is-end .linked-side-done {
+    margin-left: auto;
 }
 
 .linked-side-done {
@@ -1813,6 +1835,11 @@
     margin-bottom: 2px;
 }
 
+.linked-mutual-app.is-end .linked-side-label,
+.linked-mutual-app.is-end .linked-mutual-name {
+    text-align: right;
+}
+
 .linked-mutual-side .avatar,
 .linked-mutual-side img {
     width: 36px !important;
@@ -1866,10 +1893,39 @@
     border-top: 1px solid var(--border-subtle);
 }
 
+.linked-card-footer-copy {
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 8px;
+}
+
 .linked-card-cta {
     font-size: 12px;
     font-weight: 650;
     color: var(--text-secondary);
+}
+
+.linked-card-stats {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+.linked-card-stats-dot {
+    margin: 0 5px;
+    opacity: 0.55;
+}
+
+.linked-card-stats .is-warn {
+    color: color-mix(in srgb, var(--warning) 75%, var(--text-tertiary));
 }
 
 .linked-project-card.is-mutual .linked-card-cta {

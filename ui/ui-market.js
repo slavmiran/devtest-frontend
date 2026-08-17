@@ -8503,7 +8503,19 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const tag = canOpenBalance ? 'button' : 'div';
     const typeAttr = canOpenBalance ? ' type="button"' : '';
     const dayValue = theirDays || myDays || 0;
+    const skipValue = theirSkips || mySkips || 0;
+    const skipWarn = skipValue >= 3;
     const completedBadge = `<span class="linked-side-done">${window.escapeHTML(window.t('linkedSideCompleted', {}, lang))}</span>`;
+    const statsParts = [];
+    if (dayValue > 0) {
+        statsParts.push(window.escapeHTML(window.t('parityDayChip', { day: dayValue, total: 14 }, lang)));
+    }
+    statsParts.push(
+        `<span${skipWarn ? ' class="is-warn"' : ''}>${window.escapeHTML(skipsFmt(skipValue))}</span>`
+    );
+    const statsHtml = statsParts.length
+        ? `<span class="linked-card-stats">${statsParts.join('<span class="linked-card-stats-dot" aria-hidden="true">•</span>')}</span>`
+        : '';
 
     return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +
         `<div class="linked-card-meta">` +
@@ -8513,7 +8525,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
                 : '') +
         `</div>` +
         `<div class="linked-mutual-strip">` +
-            `<div class="linked-mutual-app${theirDone ? ' is-done' : ''}">` +
+            `<div class="linked-mutual-app is-start${theirDone ? ' is-done' : ''}">` +
                 renderIcon(pair.theirName, pair.theirIcon) +
                 `<div class="linked-mutual-app-text">` +
                     `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideTheirs', {}, lang))}</span>` +
@@ -8522,7 +8534,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
                 `</div>` +
             `</div>` +
             `<div class="linked-mutual-swap" aria-hidden="true">⇄</div>` +
-            `<div class="linked-mutual-app${myDone ? ' is-done' : ''}">` +
+            `<div class="linked-mutual-app is-end${myDone ? ' is-done' : ''}">` +
                 renderIcon(pair.myName, pair.myIcon) +
                 `<div class="linked-mutual-app-text">` +
                     `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideYours', {}, lang))}</span>` +
@@ -8531,16 +8543,15 @@ function _renderDossierLinkedExchangeCard(rel, options) {
                 `</div>` +
             `</div>` +
         `</div>` +
-        `<div class="linked-card-chips linked-card-chips--start">` +
-            `<span class="parity-chip">📅 ${window.escapeHTML(window.t('parityDayChip', {
-                day: dayValue,
-                total: 14,
-            }, lang))}</span>` +
-            `<span class="parity-chip${(theirSkips || mySkips) >= 3 ? ' is-warn' : ''}">⚠️ ${window.escapeHTML(skipsFmt(theirSkips || mySkips || 0))}</span>` +
+        `<div class="linked-card-footer">` +
+            `<div class="linked-card-footer-copy">` +
+                (canOpenBalance
+                    ? `<span class="linked-card-cta">${window.escapeHTML(window.t('mutualBalanceShort', {}, lang))}</span>`
+                    : '') +
+                statsHtml +
+            `</div>` +
+            (canOpenBalance ? `<span class="linked-card-chevron">›</span>` : '') +
         `</div>` +
-        (canOpenBalance
-            ? `<div class="linked-card-footer"><span class="linked-card-cta">${window.escapeHTML(window.t('mutualBalanceShort', {}, lang))}</span><span class="linked-card-chevron">›</span></div>`
-            : '') +
     `</${tag}>`;
 }
 
