@@ -3373,9 +3373,11 @@ function _submitCheckinFeedback(feedbackType) {
     const appId = _checkinOptionsAppId;
     const flow = _checkinOptionsFlow;
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
-    var testingDay = test && typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date) : null;
+    var testingDay = test && typeof window.getUserTestingDay === 'function'
+        ? window.getUserTestingDay(test.start_date, test.testing_days)
+        : null;
     var localDate = typeof getLocalDate === 'function' ? getLocalDate() : '';
-    var checkinContext = _checkinOptionsIsControlDay && testingDay && localDate
+    var checkinContext = (testingDay && localDate)
         ? { day: Number(testingDay), local_date: localDate }
         : null;
     if (flow !== 'external' && checkinContext) {

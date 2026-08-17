@@ -139,23 +139,9 @@ function openOwnerCheckpointChat(ownerUsername, text) {
     return true;
 }
 
-function _isFirstDayScreenshotProof(appId) {
-    var test = typeof getMyTestById === 'function'
-        ? getMyTestById(appId)
-        : (Array.isArray(myTests) ? myTests.find(function(item) { return Number(item.id) === Number(appId); }) : null);
-    if (!test) return false;
-    var testingDay = typeof window.getUserTestingDay === 'function'
-        ? window.getUserTestingDay(test.start_date, test.testing_days)
-        : null;
-    if (typeof window.isScreenshotOnlyControlDay === 'function') {
-        return !!window.isScreenshotOnlyControlDay(testingDay);
-    }
-    return Number(testingDay || 0) === 1;
-}
-
 function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(appId, ownerUsername);
-    confirmStart(appId, _isFirstDayScreenshotProof(appId) ? { proofKind: 'checkpoint_screenshot' } : null);
+    confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
     openOwnerCheckpointChat(resolvedOwnerUsername, buildCheckpointReportPrefill(appId));
 }
 
@@ -2282,7 +2268,7 @@ async function sendReport() {
     document.getElementById('report-modal').classList.remove('active');
 
     if (appId) {
-        confirmStart(appId, _isFirstDayScreenshotProof(appId) ? { proofKind: 'checkpoint_screenshot' } : null);
+        confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
     }
     if (ownerUsername) {
         openOwnerCheckpointChat(ownerUsername, text);
@@ -3541,10 +3527,13 @@ async function confirmStart(id, options) {
                     || errorCode === 'open_not_ready'
                     || errorCode === 'day_boundary_moved'
                 ) {
-                    setTimerReadyForConfirm(id, false);
-                    clearActiveTimerForApp(id);
-                    if (typeof window.renderTests === 'function') {
-                        window.renderTests(true);
+                    // Screenshot-during-timer must not wipe the Open session.
+                    if (!(proofKind === 'checkpoint_screenshot' && errorCode === 'open_not_ready')) {
+                        setTimerReadyForConfirm(id, false);
+                        clearActiveTimerForApp(id);
+                        if (typeof window.renderTests === 'function') {
+                            window.renderTests(true);
+                        }
                     }
                     handleApiError(errorCode, result.details || {});
                 } else {
