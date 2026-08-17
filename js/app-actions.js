@@ -708,6 +708,16 @@ function _setConfirmButtonLabel(btn, text) {
     btn.innerText = text;
 }
 
+function _setAccessProblemStepLabel(btn, text) {
+    if (!btn) return;
+    var label = btn.querySelector('.apstep__label');
+    if (label) {
+        label.textContent = text;
+        return;
+    }
+    btn.textContent = text;
+}
+
 function _loadCustomGroupJoinedState() {
     try {
         var raw = localStorage.getItem(_customGroupJoinedStateKey);
@@ -1734,12 +1744,15 @@ function _onStoreLinkClickedForIssueFlow(id) {
     }
     var freezeBtn = document.getElementById('access-problem-freeze-' + id);
     if (freezeBtn) {
-        freezeBtn.disabled = !!test.issue_reported_at && !test.issue_fixed_at;
-        freezeBtn.style.opacity = freezeBtn.disabled ? '0.55' : '1';
-        if (freezeBtn.disabled) {
-            freezeBtn.textContent = typeof window.getIssueAwaitingFixLabel === 'function'
-                ? window.getIssueAwaitingFixLabel(test)
-                : window.t('issueAwaitingFix', {}, lang);
+            freezeBtn.disabled = !!test.issue_reported_at && !test.issue_fixed_at;
+            freezeBtn.style.opacity = freezeBtn.disabled ? '0.55' : '1';
+            if (freezeBtn.disabled) {
+                _setAccessProblemStepLabel(
+                    freezeBtn,
+                    typeof window.getIssueAwaitingFixLabel === 'function'
+                        ? window.getIssueAwaitingFixLabel(test)
+                        : window.t('issueAwaitingFix', {}, lang)
+                );
         }
     }
 
@@ -2239,9 +2252,12 @@ async function submitIssueReport(appId) {
         if (freezeBtn) {
             freezeBtn.disabled = true;
             freezeBtn.style.opacity = '0.55';
-            freezeBtn.textContent = typeof window.getIssueAwaitingFixLabel === 'function'
-                ? window.getIssueAwaitingFixLabel(test)
-                : window.t('issueAwaitingFix', {}, lang);
+            _setAccessProblemStepLabel(
+                freezeBtn,
+                typeof window.getIssueAwaitingFixLabel === 'function'
+                    ? window.getIssueAwaitingFixLabel(test)
+                    : window.t('issueAwaitingFix', {}, lang)
+            );
         }
 
         persistTestsCacheSnapshot();

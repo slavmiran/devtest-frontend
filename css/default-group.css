@@ -73,12 +73,6 @@
     background: transparent;
 }
 
-.access-problem-panel__media {
-    padding: 10px 10px 0;
-    background: rgba(0, 0, 0, 0.16);
-    border-radius: 16px 16px 0 0;
-}
-
 .access-problem-panel__image {
     display: block;
     width: 100%;
@@ -86,8 +80,117 @@
     max-height: none;
     object-fit: contain;
     object-position: center;
-    border-radius: 12px 12px 0 0;
-    background: transparent;
+    border-radius: 16px 16px 0 0;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.apstep-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.apstep {
+    position: relative;
+}
+
+.apstep:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 25px;
+    top: calc(100% - 1px);
+    width: 2px;
+    height: 10px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.14);
+    pointer-events: none;
+}
+
+.apstep__row {
+    width: 100%;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(142, 142, 147, 0.25);
+    background: var(--bg-surface-muted, rgba(255, 255, 255, 0.05));
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 650;
+    line-height: 1.3;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.apstep__row:active:not([disabled]) {
+    transform: scale(0.985);
+}
+
+.apstep__num {
+    flex: 0 0 26px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.apstep__glyph {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    color: currentColor;
+    opacity: 0.92;
+}
+
+.apstep__icon {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+.apstep__label {
+    flex: 1;
+    min-width: 0;
+}
+
+.apstep__row--group .apstep__num {
+    background: #4c8dff;
+    box-shadow: 0 0 10px rgba(76, 141, 255, 0.28);
+}
+
+.apstep__row--group {
+    border-color: rgba(76, 141, 255, 0.32);
+    background: rgba(76, 141, 255, 0.10);
+}
+
+.apstep__row--freeze {
+    background: rgba(255, 59, 48, 0.12);
+    color: #ff6b63;
+    border-color: rgba(255, 59, 48, 0.35);
+}
+
+.apstep__row--freeze .apstep__num {
+    background: #ff3b30;
+    color: #fff;
+}
+
+.apstep__row--freeze:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .access-problem-wait {

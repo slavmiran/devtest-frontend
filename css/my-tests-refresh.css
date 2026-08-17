@@ -843,7 +843,65 @@ button.ts-section-head {
     box-shadow: none !important;
 }
 
-/* Report modal: full visible prefill + bug/idea action buttons. */
+/* Report modal: one process, standard screenshot + optional bug/idea. */
+#report-modal .report-modal-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+#report-modal #t-reportModalHint {
+    color: var(--hint-color);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    margin: 0;
+}
+
+#report-modal .report-path-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--hint-color);
+}
+
+#report-modal .report-path-label--alt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    text-align: center;
+}
+
+#report-modal .report-path-label--alt::before,
+#report-modal .report-path-label--alt::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+#report-modal .report-standard-block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#report-modal .report-standard-block .form-group {
+    margin: 0;
+}
+
+#report-modal #report-language-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 #report-modal .report-modal-text {
     min-height: 180px;
     max-height: 420px;
@@ -854,11 +912,13 @@ button.ts-section-head {
 }
 
 #report-modal .report-feedback-block {
-    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     padding: 12px;
     border-radius: 14px;
-    background: rgba(76, 141, 255, 0.08);
-    border: 1px solid rgba(76, 141, 255, 0.28);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 #report-modal .report-feedback-actions {
@@ -873,23 +933,24 @@ button.ts-section-head {
     border-radius: 14px;
     font-size: 14px;
     font-weight: 600;
-    background: rgba(76, 141, 255, 0.16) !important;
-    color: #fff !important;
-    border: 1px solid rgba(76, 141, 255, 0.42) !important;
-    box-shadow: 0 0 14px rgba(76, 141, 255, 0.17) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--text-color) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    box-shadow: none !important;
 }
 
 #report-modal .report-feedback-note {
-    margin: 10px 0 0;
+    margin: 0;
     font-size: 12px;
     line-height: 1.4;
-    color: #7eb3ff;
+    color: var(--hint-color);
     text-align: center;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 #report-modal .btn-primary {
     min-height: 46px;
+    margin-top: 2px;
     border-radius: 14px;
     font-weight: 600;
 }

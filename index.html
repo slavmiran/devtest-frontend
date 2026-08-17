@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -35,14 +35,14 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260817-group-wait-v1"></script>
-<script src="./i18n/en.js?v=20260817-group-wait-v1"></script>
+<script src="./i18n/ru.js?v=20260817-apstep-v1"></script>
+<script src="./i18n/en.js?v=20260817-apstep-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260817-group-wait-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260805-isProjectSynced-v1"></script>
-    <script src="./ui/ui-tests.js?v=20260817-group-wait-v1"></script>
+    <script src="./ui/ui-tests.js?v=20260817-apstep-v1"></script>
     <script src="./ui/ui-projects.js?v=20260807-left-soft-ui-v2"></script>
-    <script src="./ui/ui-market.js?v=20260806-report-bug-idea-v3"></script>
+    <script src="./ui/ui-market.js?v=20260817-report-ux-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
 <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
@@ -50,7 +50,7 @@
 <script src="./js/app-api.js?v=20260807-soft-tail-v1"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260817-group-wait-v1"></script>
+    <script src="./js/app-actions.js?v=20260817-apstep-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
 <script src="./js/app-features.js?v=20260807-soft-tail-v1"></script>
 <script src="./js/mutual-exchange-ui.js?v=20260807-debt-modal-v1"></script>
@@ -81,12 +81,12 @@
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260803-jb-accordion">
     <link rel="stylesheet" href="./css/access-issue.css?v=20260722-access-timer-v1">
-    <link rel="stylesheet" href="./css/default-group.css?v=20260817-group-wait-v1">
+    <link rel="stylesheet" href="./css/default-group.css?v=20260817-apstep-v1">
     <link rel="stylesheet" href="./styles.css?v=20260806-ui-polish-v2">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260806-gt-start-gate-v2">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260807-section-seam-v3">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260817-report-ux-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
 <body>
@@ -1392,21 +1392,25 @@
 
     <!-- Report Modal -->
     <div id="report-modal" class="modal-overlay" onclick="closeReportModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-content report-modal-sheet" onclick="event.stopPropagation()">
             <h3 id="t-reportModalTitle" data-i18n="reportModalTitle">📸 Отправка отчёта</h3>
-            <p id="t-reportModalHint" data-i18n="reportModalHint" style="color: #ff9500; font-size: 14px; font-weight: 600; line-height: 1.4; margin-bottom: 12px;">Не забудьте прикрепить сам скриншот, когда откроется Telegram!</p>
-            <div id="report-language-toggle" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;"></div>
-            <div class="form-group">
-                <textarea id="report-text" class="form-input report-modal-text" rows="8"></textarea>
-                <div id="chips-report" class="chip-scroll" style="display:none;margin-top: 8px;"></div>
+            <p id="t-reportModalHint" data-i18n="reportModalHint">Подтвердите, что приложение скачано и запущено — любым из трёх способов.</p>
+            <div class="report-standard-block">
+                <div class="report-path-label" id="t-reportStandardLabel" data-i18n="reportStandardLabel">Стандартно</div>
+                <div id="report-language-toggle"></div>
+                <div class="form-group">
+                    <textarea id="report-text" class="form-input report-modal-text" rows="8"></textarea>
+                    <div id="chips-report" class="chip-scroll" style="display:none;margin-top: 8px;"></div>
+                </div>
+                <button class="btn btn-primary" id="t-reportBtnSend" onclick="sendReport()" data-i18n="reportBtnSend">📸 Отправить скриншот</button>
             </div>
-            <button class="btn btn-primary" id="t-reportBtnSend" onclick="sendReport()" data-i18n="reportBtnSend">Open chat</button>
             <div class="report-feedback-block">
+                <div class="report-path-label report-path-label--alt" id="t-reportAltLabel" data-i18n="reportAltLabel">или отправить как отзыв</div>
                 <div class="report-feedback-actions">
                     <button type="button" class="btn report-feedback-btn" id="t-reportBtnBug" onclick="reportModalSendBug()" data-i18n="reportBtnSendBug">🐞 Send bug</button>
                     <button type="button" class="btn report-feedback-btn" id="t-reportBtnIdea" onclick="reportModalSendIdea()" data-i18n="reportBtnSendIdea">💡 Send idea</button>
                 </div>
-                <p class="report-feedback-note" id="t-reportFeedbackScreenshotNote" data-i18n="reportFeedbackScreenshotNote">Control day bug/idea requires an app screenshot.</p>
+                <p class="report-feedback-note" id="t-reportFeedbackScreenshotNote" data-i18n="reportFeedbackScreenshotNote">Для бага или идеи бот попросит описание и скриншот из приложения. День тоже будет засчитан.</p>
             </div>
         </div>
     </div>

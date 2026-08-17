@@ -53,6 +53,20 @@ function getIssueAwaitingFixLabel(test) {
     }, lang);
 }
 
+function accessProblemMaterialIcon(name) {
+    if (name === 'groups') {
+        return '<svg class="apstep__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+            + '<path fill="currentColor" d="M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37.14-.72.31-1.04.53C3.41 15.04 3 16.01 3 17.09V18h1.02v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-.89 1.63c-.32-.22-.67-.4-1.04-.53.4.68.63 1.46.63 2.29V18H21v-.91c0-1.08-.41-2.05-1.09-2.47zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/>'
+            + '</svg>';
+    }
+    if (name === 'ac_unit') {
+        return '<svg class="apstep__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+            + '<path fill="currentColor" d="M22 11h-4.17l3.24-3.24-1.41-1.41L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.41L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.41L17.83 13H22z"/>'
+            + '</svg>';
+    }
+    return '';
+}
+
 function getResolvedTestingDay(test) {
     if (test && test.is_external && typeof isExternalContinueModeEnabled === 'function' && isExternalContinueModeEnabled(test)) {
         return 14;
@@ -2090,15 +2104,27 @@ function renderTests(force) {
                     <span class="access-problem-toggle__label">${window.escapeHTML(issueToggleText)}</span>
                 </button>
                 <div id="access-problem-panel-${test.id}" class="access-problem-panel${accessAccordionOpenClass}" aria-hidden="${isAccessAccordionOpen ? 'false' : 'true'}">
-                    <div class="access-problem-panel__media">
-                        <img class="access-problem-panel__image" src="./images/SomethingWentWrong.jpg" alt="">
-                    </div>
+                    <img class="access-problem-panel__image" src="./images/SomethingWentWrong.jpg" alt="">
                     <div class="access-problem-panel__body">
                         <div class="access-problem-panel__title">${window.escapeHTML(window.t('accessProblemTitle', {}, lang))}</div>
                         <div class="access-problem-panel__hint">${window.escapeHTML(window.t('accessProblemHint', {}, lang))}</div>
                         ${waitHintHtml}
-                        <button type="button" class="btn access-problem-panel__btn" onclick="event.stopPropagation(); openAccessProblemGroupLink(${test.id})">${window.escapeHTML(recheckGroupText)}</button>
-                        <button type="button" id="access-problem-freeze-${test.id}" class="btn access-problem-panel__btn access-problem-panel__btn--freeze" onclick="event.stopPropagation(); openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>${window.escapeHTML(freezeBtnText)}</button>
+                        <div class="apstep-flow">
+                            <div class="apstep">
+                                <button type="button" class="apstep__row apstep__row--group" onclick="event.stopPropagation(); openAccessProblemGroupLink(${test.id})">
+                                    <span class="apstep__num">1</span>
+                                    <span class="apstep__glyph" aria-hidden="true">${accessProblemMaterialIcon('groups')}</span>
+                                    <span class="apstep__label">${window.escapeHTML(recheckGroupText)}</span>
+                                </button>
+                            </div>
+                            <div class="apstep">
+                                <button type="button" id="access-problem-freeze-${test.id}" class="apstep__row apstep__row--freeze" onclick="event.stopPropagation(); openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>
+                                    <span class="apstep__num">2</span>
+                                    <span class="apstep__glyph" aria-hidden="true">${accessProblemMaterialIcon('ac_unit')}</span>
+                                    <span class="apstep__label">${window.escapeHTML(freezeBtnText)}</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

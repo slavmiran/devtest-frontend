@@ -4079,6 +4079,10 @@ function openReportModal(appId, ownerUsername) {
     document.getElementById('t-reportModalTitle').innerText = t.reportModalTitle;
     document.getElementById('t-reportModalHint').innerText = t.reportModalHint;
     document.getElementById('t-reportBtnSend').innerText = t.reportBtnSend;
+    var standardLabel = document.getElementById('t-reportStandardLabel');
+    var altLabel = document.getElementById('t-reportAltLabel');
+    if (standardLabel) standardLabel.textContent = window.t('reportStandardLabel', {}, lang);
+    if (altLabel) altLabel.textContent = window.t('reportAltLabel', {}, lang);
 
     const chipsEl = document.getElementById('chips-report');
     if (chipsEl) {
