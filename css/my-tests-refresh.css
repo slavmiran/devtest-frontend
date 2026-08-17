@@ -510,27 +510,23 @@
     background: linear-gradient(
         90deg,
         transparent 0%,
-        color-mix(in srgb, var(--ts-accent, #fff) 55%, transparent) 50%,
+        color-mix(in srgb, var(--ts-accent, #fff) 45%, transparent) 50%,
         transparent 100%
     );
-    box-shadow:
-        0 0 4px color-mix(in srgb, var(--ts-accent, #fff) 25%, transparent),
-        0 0 1px color-mix(in srgb, var(--ts-accent, #fff) 40%, transparent);
+    /* No box-shadow — prevents glow bleeding beyond card boundaries */
     opacity: 0.6;
 }
 
-/* Previous card/zone: only a light neon kiss on the bottom edge */
+/* Previous card/zone: subtle tint on bottom border only */
 #tab-tests .ts-handoff-glow {
     position: relative;
     z-index: 1;
     border-bottom-color: color-mix(
         in srgb,
-        var(--ts-handoff-accent, rgba(255, 255, 255, 0.3)) 30%,
+        var(--ts-handoff-accent, rgba(255, 255, 255, 0.3)) 25%,
         var(--mytests-surface-border, rgba(255, 255, 255, 0.11))
     ) !important;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.04),
-        0 4px 10px -8px color-mix(in srgb, var(--ts-handoff-accent, #fff) 30%, transparent);
+    /* No box-shadow — prevents glow extending beyond card boundaries */
 }
 
 #tab-tests .ts-handoff-glow::after {
@@ -542,16 +538,14 @@
     height: 1px;
     border-radius: 999px;
     pointer-events: none;
-    background: color-mix(in srgb, var(--ts-handoff-accent, #fff) 40%, transparent);
-    box-shadow:
-        0 0 3px color-mix(in srgb, var(--ts-handoff-accent, #fff) 25%, transparent),
-        0 0 1px color-mix(in srgb, var(--ts-handoff-accent, #fff) 35%, transparent);
-    opacity: 0.55;
+    background: color-mix(in srgb, var(--ts-handoff-accent, #fff) 35%, transparent);
+    /* No box-shadow — prevents glow bleeding beyond card boundaries */
+    opacity: 0.5;
 }
 
 /* Suppress handoff glow on collapsed buffer header — prevents green strip artifact */
 #tab-tests .pending-release-section.is-collapsed .pending-release-section__header.ts-handoff-glow {
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    border-bottom-color: rgba(255, 149, 0, 0.22) !important;
 }
 
 #tab-tests .pending-release-section.is-collapsed .pending-release-section__header.ts-handoff-glow::after {
@@ -563,7 +557,7 @@
 #tab-tests #external-tests-scroll-wrap.ts-handoff-glow {
     border-radius: 0 0 16px 16px;
     padding-bottom: 2px;
-    /* overflow-y:hidden clips ::after — rely on box-shadow bloom */
+    /* Handoff glow is subtle border-tint only on wraps — no pseudo or shadow */
 }
 
 #tab-tests .pending-release-scroll-wrap.ts-handoff-glow::after,
@@ -822,19 +816,17 @@ button.ts-section-head {
 }
 
 #done-section .accordion-content.done-today-scroll {
-    border: 1px solid rgba(52, 199, 89, 0.22);
-    border-top: none;
-    border-radius: 0 0 16px 16px;
-    background: rgba(28, 28, 30, 0.35);
+    border: none;
+    border-radius: 0;
+    background: transparent;
 }
 
-/* Expanded: header gets top rounding only to connect with content below */
+/* Expanded: clean heading, no box — cards display freely below */
 #done-section.accordion.active .ts-section-head--done {
-    border: 1px solid rgba(52, 199, 89, 0.22);
-    background: linear-gradient(90deg, rgba(52, 199, 89, 0.11) 0%, rgba(52, 199, 89, 0) 100%);
-    border-radius: 16px 16px 0 0;
-    border-bottom: none;
-    padding-left: 14px;
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
 }
 
 #done-section.accordion.active .accordion-icon,

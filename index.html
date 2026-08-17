@@ -338,15 +338,15 @@
             <button type="button" class="ts-section-head ts-section-head--buffer ts-section-head--clickable pending-release-section__header" onclick="togglePendingReleaseSection()" aria-expanded="false" aria-controls="pending-release-scroll-wrap">
                 <span class="ts-section-head__icon" aria-hidden="true">⏳</span>
                 <div class="ts-section-head__titles pending-release-section__titles">
-                    <h3 id="t-pendingReleaseSectionTitle" class="ts-section-head__title" data-i18n="pendingReleaseSectionTitle">Буфер безопасности</h3>
+                    <div class="ts-section-head__title-row">
+                        <h3 id="t-pendingReleaseSectionTitle" class="ts-section-head__title" data-i18n="pendingReleaseSectionTitle">Буфер безопасности</h3>
+                        <span id="pending-release-count" class="ts-section-head__count ts-section-head__count--inline pending-release-count">0</span>
+                    </div>
                     <p id="t-pendingReleaseSectionDesc" class="ts-section-head__desc pending-release-section__desc" data-i18n="pendingReleaseSectionDesc">Дополнительный буфер безопасности «48ч» после активного тестирования.</p>
                 </div>
-                <div class="ts-section-head__meta pending-release-section__meta">
-                    <span id="pending-release-count" class="ts-section-head__count pending-release-count">0</span>
-                    <span class="ts-section-head__chevron pending-release-section__chevron" aria-hidden="true">
-                        <svg class="ts-section-head__chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </span>
-                </div>
+                <span class="ts-section-head__chevron pending-release-section__chevron" aria-hidden="true">
+                    <svg class="ts-section-head__chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </span>
             </button>
             <div id="pending-release-scroll-wrap" class="pending-release-scroll-wrap">
                 <div id="pending-release-list" class="horizontal-scroll pending-release-scroll"></div>
