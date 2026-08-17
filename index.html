@@ -50,7 +50,7 @@
 <script src="./js/app-api.js?v=20260807-soft-tail-v1"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260809-auto-accept-lock"></script>
+    <script src="./js/app-actions.js?v=20260817-day1-screenshot-checkin"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
 <script src="./js/app-features.js?v=20260807-soft-tail-v1"></script>
 <script src="./js/mutual-exchange-ui.js?v=20260807-debt-modal-v1"></script>
@@ -543,6 +543,13 @@
                             <span id="play-link-valid-icon" class="play-link-valid-icon" aria-hidden="true">✅</span>
                         </div>
                         <div class="form-hint play-link-tip" data-i18n="wizardPlayLinkTip">💡 Вставьте ссылку на страницу приложения в Google Play.</div>
+                        <button type="button" class="play-link-help-btn" id="play-link-help-btn" onclick="togglePlayLinkHelpAccordion()" aria-expanded="false">
+                            <span id="play-link-help-btn-text" data-i18n="wizardPlayLinkHelpBtn">Где взять ссылку?</span>
+                            <span class="play-link-help-btn__icon" id="play-link-help-btn-icon">▼</span>
+                        </button>
+                        <div class="play-link-help-accordion" id="play-link-help-accordion" style="display: none;">
+                            <img src="images/TestLink.png" alt="Google Play Link Guide" class="play-link-help-img zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                        </div>
                         <div id="package-error" class="form-error" style="display: none;"></div>
                         <button type="button" id="package-conflict-reopen-btn" class="package-conflict-reopen-btn" style="display: none;" onclick="reopenPackageConflictModal()">Почему нельзя продолжить?</button>
                     </div>

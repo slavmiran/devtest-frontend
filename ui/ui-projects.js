@@ -3320,6 +3320,25 @@ function onAddAppNameInput() {
     evaluateAddStages();
 }
 
+function togglePlayLinkHelpAccordion() {
+    const btn = document.getElementById('play-link-help-btn');
+    const accordion = document.getElementById('play-link-help-accordion');
+    const icon = document.getElementById('play-link-help-btn-icon');
+    if (!accordion || !btn) return;
+    const isHidden = accordion.style.display === 'none' || !accordion.style.display;
+    if (isHidden) {
+        accordion.style.display = 'block';
+        btn.setAttribute('aria-expanded', 'true');
+        btn.classList.add('is-open');
+        if (icon) icon.textContent = '▲';
+    } else {
+        accordion.style.display = 'none';
+        btn.setAttribute('aria-expanded', 'false');
+        btn.classList.remove('is-open');
+        if (icon) icon.textContent = '▼';
+    }
+}
+
 function openModal() {
     window.addWizardState.focusStep = 1;
     window.addWizardState.unlockedStep = 1;
@@ -3543,6 +3562,12 @@ function resetAddFlow() {
 
     const nameHint = document.getElementById('app-name-hint');
     if (nameHint) { nameHint.style.display = 'none'; nameHint.textContent = ''; }
+    const helpAccordion = document.getElementById('play-link-help-accordion');
+    const helpBtn = document.getElementById('play-link-help-btn');
+    const helpIcon = document.getElementById('play-link-help-btn-icon');
+    if (helpAccordion) helpAccordion.style.display = 'none';
+    if (helpBtn) { helpBtn.setAttribute('aria-expanded', 'false'); helpBtn.classList.remove('is-open'); }
+    if (helpIcon) helpIcon.textContent = '▼';
     const validIcon = document.getElementById('tester-email-valid-icon');
     if (validIcon) validIcon.classList.remove('is-valid');
     const testerEmailInput = document.getElementById('app-tester-email');

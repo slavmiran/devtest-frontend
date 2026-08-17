@@ -139,9 +139,23 @@ function openOwnerCheckpointChat(ownerUsername, text) {
     return true;
 }
 
+function _isFirstDayScreenshotProof(appId) {
+    var test = typeof getMyTestById === 'function'
+        ? getMyTestById(appId)
+        : (Array.isArray(myTests) ? myTests.find(function(item) { return Number(item.id) === Number(appId); }) : null);
+    if (!test) return false;
+    var testingDay = typeof window.getUserTestingDay === 'function'
+        ? window.getUserTestingDay(test.start_date, test.testing_days)
+        : null;
+    if (typeof window.isScreenshotOnlyControlDay === 'function') {
+        return !!window.isScreenshotOnlyControlDay(testingDay);
+    }
+    return Number(testingDay || 0) === 1;
+}
+
 function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(appId, ownerUsername);
-    confirmStart(appId);
+    confirmStart(appId, _isFirstDayScreenshotProof(appId) ? { proofKind: 'checkpoint_screenshot' } : null);
     openOwnerCheckpointChat(resolvedOwnerUsername, buildCheckpointReportPrefill(appId));
 }
 
@@ -2154,7 +2168,7 @@ async function sendReport() {
     document.getElementById('report-modal').classList.remove('active');
 
     if (appId) {
-        confirmStart(appId);
+        confirmStart(appId, _isFirstDayScreenshotProof(appId) ? { proofKind: 'checkpoint_screenshot' } : null);
     }
     if (ownerUsername) {
         openOwnerCheckpointChat(ownerUsername, text);
@@ -3317,8 +3331,12 @@ function showCheckinRewardToasts(result) {
     }
 }
 
-async function confirmStart(id) {
+async function confirmStart(id, options) {
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    var proofKind = String((options && options.proofKind) || 'open_token').trim().toLowerCase();
+    if (proofKind !== 'checkpoint_screenshot') {
+        proofKind = 'open_token';
+    }
 
     const actionKey = 'checkin_' + id;
     if (_pendingActions.has(actionKey)) return false;
@@ -3367,6 +3385,7 @@ async function confirmStart(id) {
                 local_date: getLocalDate(),
                 play_feedback_submitted: shouldSubmitPlayFeedback,
                 open_token: _getCheckinOpenToken(id),
+                proof_kind: proofKind,
             }))
         });
 
