@@ -1642,7 +1642,7 @@
             attractMassInviteTitle: "Mass Invite",
             attractMassInviteSubtitle: "Automatic invite blast to the platform's developer pool.",
             attractGuestTitle: "Guest Projects",
-            attractGuestSubtitle: "They do not receive email invites — recruit them manually.",
+            attractGuestSubtitle: "They are not included in the <b>Mass invites</b> — recruit them manually.",
             attractLeadsTitle: "Leads Radar",
             attractLeadsSubtitle: "The bot will send fresh leads from external channels.",
             attractManualTitle: "Add manually",
