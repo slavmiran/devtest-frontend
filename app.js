@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         _loadFirstDayScreenshotState();
         _loadCustomGroupJoinedState();
+        if (typeof _loadCustomGroupWaitState === 'function') _loadCustomGroupWaitState();
         _loadTimerReadyState();
         _loadPersistedActiveTimer();
         if (typeof initTelegramBackButton === 'function') {
@@ -339,7 +340,9 @@ Object.assign(window, {
     isFirstDayScreenshotVisible,
     setFirstDayScreenshotVisible,
     isCustomGroupJoined,
-    markCustomGroupJoined
+    markCustomGroupJoined,
+    startCustomGroupAccessWait,
+    getCustomGroupAccessWaitRemainingMs
 });
 
 Object.assign(window.App, {

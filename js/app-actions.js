@@ -397,6 +397,7 @@ function handleJoinGoogleGroupClick(appId, groupUrl, options) {
     }
     // Custom groups have no server-side membership flag, so completion is tracked locally.
     markCustomGroupJoined(appId);
+    startCustomGroupAccessWait(appId);
     if (settings.rerender !== false && typeof renderTests === 'function') {
         renderTests(true);
     }
@@ -490,8 +491,9 @@ function setAccessProblemAccordionOpen(appId, isOpen) {
     if (toggle) {
         toggle.classList.toggle('is-open', !!isOpen);
         toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        var arrow = toggle.querySelector('.access-problem-toggle__arrow');
-        if (arrow) arrow.textContent = isOpen ? '▲' : '▼';
+    }
+    if (typeof syncCustomGroupAccessWaitUi === 'function') {
+        syncCustomGroupAccessWaitUi();
     }
 }
 
@@ -507,10 +509,14 @@ function toggleAccessProblemAccordion(appId) {
 }
 
 function restoreAccessProblemAccordions() {
-    if (!(_openAccessProblemAppIds instanceof Set) || !_openAccessProblemAppIds.size) return;
-    _openAccessProblemAppIds.forEach(function(id) {
-        setAccessProblemAccordionOpen(id, true);
-    });
+    if ((_openAccessProblemAppIds instanceof Set) && _openAccessProblemAppIds.size) {
+        _openAccessProblemAppIds.forEach(function(id) {
+            setAccessProblemAccordionOpen(id, true);
+        });
+    }
+    if (typeof syncCustomGroupAccessWaitUi === 'function') {
+        syncCustomGroupAccessWaitUi();
+    }
 }
 
 function openAccessProblemGroupLink(appId) {
@@ -725,6 +731,98 @@ function isCustomGroupJoined(appId) {
     var key = String(Number(appId) || 0);
     if (key === '0') return false;
     return !!(_customGroupJoinedState && _customGroupJoinedState[key]);
+}
+
+function _loadCustomGroupWaitState() {
+    try {
+        var raw = localStorage.getItem(_customGroupWaitStateKey);
+        var parsed = raw ? JSON.parse(raw) : null;
+        _customGroupWaitState = parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        _customGroupWaitState = {};
+    }
+    var waitMs = Number(CUSTOM_GROUP_ACCESS_WAIT_MS) || (15 * 60 * 1000);
+    var now = Date.now();
+    var cleaned = {};
+    Object.keys(_customGroupWaitState || {}).forEach(function(key) {
+        var startedAt = Number(_customGroupWaitState[key] || 0);
+        if (startedAt > 0 && (now - startedAt) < waitMs) {
+            cleaned[key] = startedAt;
+        }
+    });
+    _customGroupWaitState = cleaned;
+}
+
+function _persistCustomGroupWaitState() {
+    try {
+        localStorage.setItem(_customGroupWaitStateKey, JSON.stringify(_customGroupWaitState || {}));
+    } catch (error) {}
+}
+
+function startCustomGroupAccessWait(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return;
+    var waitMs = Number(CUSTOM_GROUP_ACCESS_WAIT_MS) || (15 * 60 * 1000);
+    var existing = Number((_customGroupWaitState && _customGroupWaitState[key]) || 0);
+    if (existing > 0 && (Date.now() - existing) < waitMs) {
+        if (typeof syncCustomGroupAccessWaitUi === 'function') syncCustomGroupAccessWaitUi();
+        return;
+    }
+    if (!_customGroupWaitState || typeof _customGroupWaitState !== 'object') {
+        _customGroupWaitState = {};
+    }
+    _customGroupWaitState[key] = Date.now();
+    _persistCustomGroupWaitState();
+    if (typeof syncCustomGroupAccessWaitUi === 'function') syncCustomGroupAccessWaitUi();
+}
+
+function getCustomGroupAccessWaitRemainingMs(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return 0;
+    var startedAt = Number((_customGroupWaitState && _customGroupWaitState[key]) || 0);
+    if (startedAt <= 0) return 0;
+    var waitMs = Number(CUSTOM_GROUP_ACCESS_WAIT_MS) || (15 * 60 * 1000);
+    return Math.max(0, waitMs - (Date.now() - startedAt));
+}
+
+function formatCustomGroupAccessWaitClock(remainingMs) {
+    var totalSeconds = Math.max(0, Math.ceil(Number(remainingMs || 0) / 1000));
+    var minutes = Math.floor(totalSeconds / 60);
+    var seconds = totalSeconds % 60;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+}
+
+function _clearCustomGroupWaitTicker() {
+    if (_customGroupWaitTimerId) {
+        clearInterval(_customGroupWaitTimerId);
+        _customGroupWaitTimerId = null;
+    }
+}
+
+function syncCustomGroupAccessWaitUi() {
+    var nodes = document.querySelectorAll('[data-custom-group-wait]');
+    var anyActive = false;
+    Array.prototype.forEach.call(nodes, function(wrap) {
+        var appId = Number(wrap.getAttribute('data-custom-group-wait') || 0);
+        var remaining = getCustomGroupAccessWaitRemainingMs(appId);
+        var clock = wrap.querySelector('[data-custom-group-wait-clock]');
+        if (remaining <= 0) {
+            wrap.hidden = true;
+            return;
+        }
+        wrap.hidden = false;
+        if (clock) clock.textContent = formatCustomGroupAccessWaitClock(remaining);
+        var panel = wrap.closest('.access-problem-panel');
+        if (panel && panel.classList.contains('is-open')) {
+            anyActive = true;
+        }
+    });
+    if (!anyActive) {
+        _clearCustomGroupWaitTicker();
+        return;
+    }
+    if (_customGroupWaitTimerId) return;
+    _customGroupWaitTimerId = setInterval(syncCustomGroupAccessWaitUi, 1000);
 }
 
 function _loadFirstDayScreenshotState() {

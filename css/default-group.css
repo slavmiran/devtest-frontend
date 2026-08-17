@@ -44,13 +44,7 @@
 }
 
 .access-problem-toggle__arrow {
-    font-size: 11px;
-    opacity: 0.8;
-    transition: transform 0.2s ease;
-}
-
-.access-problem-toggle.is-open .access-problem-toggle__arrow {
-    opacity: 1;
+    display: none;
 }
 
 .access-problem-wrap {
@@ -72,22 +66,77 @@
 
 .access-problem-panel.is-open {
     margin-top: 10px;
-    max-height: 720px;
+    max-height: 980px;
     opacity: 1;
     pointer-events: auto;
-    border-color: rgba(255, 59, 48, 0.18);
-    background: rgba(255, 59, 48, 0.06);
+    border-color: rgba(255, 59, 48, 0.42);
+    background: transparent;
+}
+
+.access-problem-panel__media {
+    padding: 10px 10px 0;
+    background: rgba(0, 0, 0, 0.16);
+    border-radius: 16px 16px 0 0;
 }
 
 .access-problem-panel__image {
     display: block;
     width: 100%;
     height: auto;
-    max-height: 320px;
+    max-height: none;
     object-fit: contain;
-    object-position: center top;
-    border-radius: 16px 16px 0 0;
-    background: rgba(0, 0, 0, 0.12);
+    object-position: center;
+    border-radius: 12px 12px 0 0;
+    background: transparent;
+}
+
+.access-problem-wait {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(88, 150, 255, 0.10);
+    border: 1px solid rgba(120, 168, 255, 0.30);
+}
+
+.access-problem-wait[hidden] {
+    display: none;
+}
+
+.access-problem-wait__clock {
+    flex: 0 0 auto;
+    min-width: 64px;
+    padding: 7px 8px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    color: #d7e6ff;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(150, 188, 255, 0.35);
+}
+
+.access-problem-wait__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.access-problem-wait__copy strong {
+    color: #c9dcff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.access-problem-wait__copy span {
+    color: rgba(199, 219, 255, 0.82);
+    font-size: 11px;
+    line-height: 1.4;
 }
 
 .access-problem-panel__body {

@@ -2062,22 +2062,41 @@ function renderTests(force) {
             ? getIssueAwaitingFixLabel(test)
             : window.t('accessProblemFreezeBtn', {}, lang);
         const recheckGroupText = window.t('accessProblemRecheckGroupBtn', {}, lang);
+        const groupUrlForIssue = String(test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || '');
+        const isCustomGroupForIssue = String(test.test_mode || '') !== 'email_list'
+            && typeof isDefaultGoogleGroupUrl === 'function'
+            && !isDefaultGoogleGroupUrl(groupUrlForIssue);
+        const waitRemainingMs = isCustomGroupForIssue && typeof getCustomGroupAccessWaitRemainingMs === 'function'
+            ? getCustomGroupAccessWaitRemainingMs(test.id)
+            : 0;
+        const waitClockText = typeof formatCustomGroupAccessWaitClock === 'function'
+            ? formatCustomGroupAccessWaitClock(waitRemainingMs || (15 * 60 * 1000))
+            : '15:00';
+        const waitHintHtml = isCustomGroupForIssue
+            ? `<div class="access-problem-wait" data-custom-group-wait="${test.id}"${waitRemainingMs > 0 ? '' : ' hidden'}>`
+                + `<div class="access-problem-wait__clock" data-custom-group-wait-clock="${test.id}">${waitClockText}</div>`
+                + `<div class="access-problem-wait__copy">`
+                + `<strong>${window.escapeHTML(window.t('accessProblemWaitTitle', {}, lang))}</strong>`
+                + `<span>${window.escapeHTML(window.t('accessProblemWaitText', {}, lang))}</span>`
+                + `</div></div>`
+            : '';
         const isAccessAccordionOpen = typeof isAccessProblemAccordionOpen === 'function'
             && isAccessProblemAccordionOpen(test.id);
         const accessAccordionExpanded = isAccessAccordionOpen ? 'true' : 'false';
         const accessAccordionOpenClass = isAccessAccordionOpen ? ' is-open' : '';
-        const accessAccordionArrow = isAccessAccordionOpen ? '▲' : '▼';
         const issueBtnHtml = `
             <div id="access-problem-wrap-${test.id}" class="access-problem-wrap" style="display:${issueBtnDisplay};">
                 <button type="button" id="access-problem-toggle-${test.id}" class="access-problem-toggle${accessAccordionOpenClass}" onclick="event.stopPropagation(); toggleAccessProblemAccordion(${test.id})" aria-expanded="${accessAccordionExpanded}">
                     <span class="access-problem-toggle__label">${window.escapeHTML(issueToggleText)}</span>
-                    <span class="access-problem-toggle__arrow" aria-hidden="true">${accessAccordionArrow}</span>
                 </button>
                 <div id="access-problem-panel-${test.id}" class="access-problem-panel${accessAccordionOpenClass}" aria-hidden="${isAccessAccordionOpen ? 'false' : 'true'}">
-                    <img class="access-problem-panel__image" src="./images/SomethingWentWrong.jpg" alt="">
+                    <div class="access-problem-panel__media">
+                        <img class="access-problem-panel__image" src="./images/SomethingWentWrong.jpg" alt="">
+                    </div>
                     <div class="access-problem-panel__body">
                         <div class="access-problem-panel__title">${window.escapeHTML(window.t('accessProblemTitle', {}, lang))}</div>
                         <div class="access-problem-panel__hint">${window.escapeHTML(window.t('accessProblemHint', {}, lang))}</div>
+                        ${waitHintHtml}
                         <button type="button" class="btn access-problem-panel__btn" onclick="event.stopPropagation(); openAccessProblemGroupLink(${test.id})">${window.escapeHTML(recheckGroupText)}</button>
                         <button type="button" id="access-problem-freeze-${test.id}" class="btn access-problem-panel__btn access-problem-panel__btn--freeze" onclick="event.stopPropagation(); openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>${window.escapeHTML(freezeBtnText)}</button>
                     </div>
