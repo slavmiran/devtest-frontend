@@ -275,9 +275,10 @@
 
 .tester-row-main {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
-    flex-wrap: wrap;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .tester-row-meta {
@@ -290,13 +291,18 @@
 .tester-name {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     color: var(--text-color);
     font-weight: 500;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .tester-primary-label {
     color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .tester-guest-prefix {
@@ -453,14 +459,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 40px;
-    min-height: 40px;
-    padding: 8px;
-    margin: -6px -2px;
-    font-size: 16px;
+    padding: 2px 4px;
+    margin: 0;
+    font-size: 15px;
     cursor: pointer;
     text-decoration: none;
-    border-radius: 10px;
+    border-radius: 6px;
+    flex-shrink: 0;
     -webkit-tap-highlight-color: transparent;
 }
 
