@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -542,10 +542,11 @@
                             <input type="text" id="app-package" class="form-input" placeholder="" data-i18n-placeholder="playLinkPlaceholder" oninput="onAddPlayLinkInput()">
                             <span id="play-link-valid-icon" class="play-link-valid-icon" aria-hidden="true">✅</span>
                         </div>
-                        <div class="form-hint play-link-tip" data-i18n="wizardPlayLinkTip">💡 Вставьте ссылку на страницу приложения в Google Play.</div>
-                        <button type="button" class="play-link-help-btn" id="play-link-help-btn" onclick="togglePlayLinkHelpAccordion()" aria-expanded="false">
-                            <span id="play-link-help-btn-text" data-i18n="wizardPlayLinkHelpBtn">Где взять ссылку?</span>
-                            <span class="play-link-help-btn__icon" id="play-link-help-btn-icon">▼</span>
+                        <button type="button" class="play-link-tip-trigger" id="play-link-help-btn" onclick="togglePlayLinkHelpAccordion()" aria-expanded="false">
+                            <span class="play-link-tip-trigger__text" data-i18n="wizardPlayLinkTip">💡 Вставьте ссылку на страницу в Google Play (где её взять?)</span>
+                            <svg class="play-link-tip-trigger__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
                         </button>
                         <div class="play-link-help-accordion" id="play-link-help-accordion" style="display: none;">
                             <img src="images/TestLink.png" alt="Google Play Link Guide" class="play-link-help-img zoomable-img" onclick="openImageZoom(this.src, this.alt)">
