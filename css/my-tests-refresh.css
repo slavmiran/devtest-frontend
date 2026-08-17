@@ -493,7 +493,7 @@
     overflow: visible;
 }
 
-/* Subtle neon seam — thin accent line + soft glow only, no wash fill */
+/* Subtle neon seam — thin accent line + soft glow, tightly bound to card width */
 .ts-section-block::before {
     content: none;
 }
@@ -502,21 +502,21 @@
     content: '';
     position: absolute;
     top: 0;
-    left: 12%;
-    right: 12%;
+    left: 4%;
+    right: 4%;
     height: 1px;
     pointer-events: none;
     z-index: 3;
     background: linear-gradient(
         90deg,
         transparent 0%,
-        color-mix(in srgb, var(--ts-accent, #fff) 70%, transparent) 50%,
+        color-mix(in srgb, var(--ts-accent, #fff) 55%, transparent) 50%,
         transparent 100%
     );
     box-shadow:
-        0 0 8px color-mix(in srgb, var(--ts-accent, #fff) 35%, transparent),
-        0 0 2px color-mix(in srgb, var(--ts-accent, #fff) 50%, transparent);
-    opacity: 0.75;
+        0 0 4px color-mix(in srgb, var(--ts-accent, #fff) 25%, transparent),
+        0 0 1px color-mix(in srgb, var(--ts-accent, #fff) 40%, transparent);
+    opacity: 0.6;
 }
 
 /* Previous card/zone: only a light neon kiss on the bottom edge */
@@ -525,28 +525,37 @@
     z-index: 1;
     border-bottom-color: color-mix(
         in srgb,
-        var(--ts-handoff-accent, rgba(255, 255, 255, 0.3)) 40%,
+        var(--ts-handoff-accent, rgba(255, 255, 255, 0.3)) 30%,
         var(--mytests-surface-border, rgba(255, 255, 255, 0.11))
     ) !important;
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.04),
-        0 6px 14px -10px color-mix(in srgb, var(--ts-handoff-accent, #fff) 45%, transparent);
+        0 4px 10px -8px color-mix(in srgb, var(--ts-handoff-accent, #fff) 30%, transparent);
 }
 
 #tab-tests .ts-handoff-glow::after {
     content: '';
     position: absolute;
-    left: 18%;
-    right: 18%;
+    left: 4%;
+    right: 4%;
     bottom: -1px;
     height: 1px;
     border-radius: 999px;
     pointer-events: none;
-    background: color-mix(in srgb, var(--ts-handoff-accent, #fff) 55%, transparent);
+    background: color-mix(in srgb, var(--ts-handoff-accent, #fff) 40%, transparent);
     box-shadow:
-        0 0 6px color-mix(in srgb, var(--ts-handoff-accent, #fff) 40%, transparent),
-        0 0 2px color-mix(in srgb, var(--ts-handoff-accent, #fff) 55%, transparent);
-    opacity: 0.7;
+        0 0 3px color-mix(in srgb, var(--ts-handoff-accent, #fff) 25%, transparent),
+        0 0 1px color-mix(in srgb, var(--ts-handoff-accent, #fff) 35%, transparent);
+    opacity: 0.55;
+}
+
+/* Suppress handoff glow on collapsed buffer header — prevents green strip artifact */
+#tab-tests .pending-release-section.is-collapsed .pending-release-section__header.ts-handoff-glow {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+#tab-tests .pending-release-section.is-collapsed .pending-release-section__header.ts-handoff-glow::after {
+    display: none;
 }
 
 /* Horizontal section trails (guest / buffer wraps) keep rounded bottom lit */
@@ -569,14 +578,15 @@
     gap: 12px;
     margin: 0 0 12px;
     padding: 12px 14px;
-    border-radius: 16px;
-    border: 1px solid var(--ts-border, var(--border-subtle, rgba(255, 255, 255, 0.08)));
-    background: var(--ts-bg, rgba(255, 255, 255, 0.03));
+    border-radius: 0;
+    border: none;
+    background: transparent;
     width: 100%;
     text-align: left;
     font: inherit;
     color: inherit;
     -webkit-tap-highlight-color: transparent;
+    transition: background 0.22s ease, border-color 0.22s ease, border-radius 0.22s ease;
 }
 
 button.ts-section-head {
@@ -683,13 +693,17 @@ button.ts-section-head {
 }
 
 /* --- theme: Мои тесты (active) — same gray surface as the cards below --- */
+/* "Мои тесты" — always expanded, clean heading style (no box) */
 .ts-section-head--active {
     --ts-accent: var(--mytests-surface-accent, #c8ccd4);
     --ts-icon-bg: rgba(255, 255, 255, 0.1);
     --ts-icon-border: rgba(255, 255, 255, 0.14);
-    --ts-bg: linear-gradient(90deg, rgba(46, 46, 50, 0.78) 0%, rgba(40, 40, 44, 0.28) 38%, transparent 68%);
-    --ts-border: var(--mytests-surface-border, rgba(255, 255, 255, 0.11));
     --ts-count-bg: rgba(255, 255, 255, 0.1);
+    /* No border, no background — pure heading */
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
 }
 
 /* --- theme: Гостевые проекты — blue from guest card gradient (#4da3ff) --- */
@@ -697,13 +711,17 @@ button.ts-section-head {
     --ts-accent: var(--guest-surface-accent, #3eb9cd);
 }
 
+/* "Гостевые проекты" — always expanded, clean heading style (no box) */
 .ts-section-head--guest {
     --ts-accent: var(--guest-surface-accent, #3eb9cd);
     --ts-icon-bg: rgba(62, 185, 205, 0.18);
     --ts-icon-border: rgba(62, 185, 205, 0.34);
-    --ts-bg: linear-gradient(90deg, var(--guest-surface-top, rgba(20, 27, 38, 0.98)) 0%, var(--guest-surface-bottom, rgba(14, 18, 26, 0.96)) 100%);
-    --ts-border: rgba(62, 185, 205, 0.3);
     --ts-count-bg: rgba(62, 185, 205, 0.24);
+    /* No border, no background — pure heading */
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
 }
 
 /* Guest confirm: guest primary + soft neon; label white, paperclip guest primary. */
@@ -737,13 +755,25 @@ button.ts-section-head {
     --ts-accent: #ffb84d;
 }
 
+/* Buffer header: clean heading by default (expanded) */
 .ts-section-head--buffer {
     --ts-accent: #ffb84d;
     --ts-icon-bg: rgba(255, 149, 0, 0.15);
     --ts-icon-border: rgba(255, 149, 0, 0.32);
-    --ts-bg: linear-gradient(135deg, rgba(255, 149, 0, 0.09), rgba(255, 149, 0, 0) 65%);
-    --ts-border: rgba(255, 149, 0, 0.22);
     --ts-count-bg: rgba(255, 149, 0, 0.16);
+    /* Expanded: no box */
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
+}
+
+/* Buffer header: compact box when collapsed */
+.pending-release-section.is-collapsed .ts-section-head--buffer {
+    border: 1px solid rgba(255, 149, 0, 0.22);
+    background: linear-gradient(135deg, rgba(255, 149, 0, 0.09), rgba(255, 149, 0, 0) 65%);
+    border-radius: 16px;
+    padding-left: 14px;
 }
 
 /* --- theme: Выполнено сегодня (done) --- */
@@ -752,13 +782,17 @@ button.ts-section-head {
     margin-top: 24px;
 }
 
+/* Done header: clean heading by default */
 .ts-section-head--done {
     --ts-accent: #34c759;
     --ts-icon-bg: rgba(52, 199, 89, 0.15);
     --ts-icon-border: rgba(52, 199, 89, 0.32);
-    --ts-bg: linear-gradient(90deg, rgba(52, 199, 89, 0.11) 0%, rgba(52, 199, 89, 0) 100%);
-    --ts-border: rgba(52, 199, 89, 0.22);
     --ts-count-bg: rgba(52, 199, 89, 0.16);
+    /* Expanded: no box */
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
     margin-bottom: 0;
 }
 
@@ -779,20 +813,28 @@ button.ts-section-head {
     margin-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
-/* Collapsed: full rounded header — avoids clipped bottom corners from .accordion { overflow:hidden } */
+/* Collapsed: compact box style — rounded header acts as the whole section */
 #done-section.accordion:not(.active) .ts-section-head--done {
+    border: 1px solid rgba(52, 199, 89, 0.22);
+    background: linear-gradient(90deg, rgba(52, 199, 89, 0.11) 0%, rgba(52, 199, 89, 0) 100%);
     border-radius: 16px;
+    padding-left: 14px;
 }
 
 #done-section .accordion-content.done-today-scroll {
-    border: 1px solid var(--ts-border, var(--border-strong));
+    border: 1px solid rgba(52, 199, 89, 0.22);
     border-top: none;
     border-radius: 0 0 16px 16px;
     background: rgba(28, 28, 30, 0.35);
 }
 
+/* Expanded: header gets top rounding only to connect with content below */
 #done-section.accordion.active .ts-section-head--done {
+    border: 1px solid rgba(52, 199, 89, 0.22);
+    background: linear-gradient(90deg, rgba(52, 199, 89, 0.11) 0%, rgba(52, 199, 89, 0) 100%);
     border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    padding-left: 14px;
 }
 
 #done-section.accordion.active .accordion-icon,
@@ -800,9 +842,10 @@ button.ts-section-head {
     transform: rotate(180deg);
 }
 
-/* Grant-attention pulse on the buffer header rides the same accent token now. */
+/* Grant-attention pulse on the buffer header — needs explicit border since expanded state is borderless */
 .pending-release-section.has-action-attention .ts-section-head--buffer {
-    border-color: rgba(255, 149, 0, 0.55);
+    border: 1px solid rgba(255, 149, 0, 0.55);
+    border-radius: 16px;
     box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.16);
 }
 
