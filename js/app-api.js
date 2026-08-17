@@ -1551,6 +1551,8 @@ async function _loadTasksImpl(options) {
             try { syncSettingsEmailRowUi(); } catch (e) {}
         }
         var nextTests = _mapTestsFromApi(data);
+        // Offers live on GET /api/offers/incoming (bootstrap + 30s poll).
+        // /api/tasks no longer embeds incoming_offers; missing key must not wipe the inbox.
         var nextOffers = Array.isArray(data.incoming_offers) ? data.incoming_offers : null;
 
         // Diff: only re-render if changed
