@@ -13,6 +13,19 @@ function countGrantSkips(app) {
     return 0;
 }
 
+function countEarlyFinishCheckins(app) {
+    var fromApi = Number(app && app.checkins_count);
+    if (Number.isFinite(fromApi)) return Math.max(0, Math.floor(fromApi));
+    return 0;
+}
+
+function qualifiesEarlyFinishGrant(app, testingDays, skipsCount) {
+    return countEarlyFinishCheckins(app) >= 3
+        && Number(skipsCount || 0) <= 3
+        && Number(testingDays || 0) < 14
+        && Number(testingDays || 0) > 0;
+}
+
 function buildCheckpointTestLink(appId) {
     var normalizedId = Number(appId || 0);
     if (!normalizedId) return '';
@@ -1510,11 +1523,10 @@ function recomputeLocalTestState(test) {
 
     var isAppClosed = !isExternal && (appStatus !== 'active' && !isPendingCompletion);
     var isTestClosed = !isExternal && (progressStatus !== 'active');
-    var actualCheckins = testingDays - skipsCount;
 
     test.isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
     test.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
-    test.isEarlyFinish = !!((isAppClosed || isTestClosed) && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && testingDays < 14 && actualCheckins >= 3 && skipsCount <= 3);
+    test.isEarlyFinish = !!((isAppClosed || isTestClosed) && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && qualifiesEarlyFinishGrant(test, testingDays, skipsCount));
     test.is_pending_completion = isPendingCompletion;
     test.external_control_day_due = !!(isExternal && isMandatoryScreenshotDay(testingDays));
 

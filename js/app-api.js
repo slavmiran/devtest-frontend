@@ -1370,12 +1370,14 @@ function _mapTestsFromApi(data) {
             : (shouldTreatFastTrackFirstDayAsDone ? today : (app.last_check_date || null));
         var isAppClosed = !isExternal && (appStatus !== 'active' && !isPendingCompletion);
         var isTestClosed = !isExternal && (progressStatus !== 'active') && !isSoftTail;
-        var actualCheckins = testingDays - skipsCount;
         var canEverClaim = !isExternal && !isSoftTail && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
 
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
         var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
-        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !isSoftTail && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays < 14 && actualCheckins >= 3 && skipsCount <= 3);
+        var earlyFinishCheckinsSource = { checkins_count: resolvedCheckinsCount };
+        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !isSoftTail && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && (typeof qualifiesEarlyFinishGrant === 'function'
+            ? qualifiesEarlyFinishGrant(earlyFinishCheckinsSource, testingDays, skipsCount)
+            : (resolvedCheckinsCount >= 3 && skipsCount <= 3 && testingDays < 14)));
 
         if (isSoftTail) {
             status = 'done';

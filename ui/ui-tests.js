@@ -2283,8 +2283,12 @@ function renderTests(force) {
         } else if (test.isEarlyFinish) {
             const efDays = Number(test.testing_days || 0);
             const efSkips = Number(test.skips_count || 0);
-            const actualCheckins = efDays - efSkips;
-            const qualifies = actualCheckins >= 3 && efSkips <= 3;
+            const actualCheckins = typeof countEarlyFinishCheckins === 'function'
+                ? countEarlyFinishCheckins(test)
+                : Math.max(0, Number(test.checkins_count || 0));
+            const qualifies = typeof qualifiesEarlyFinishGrant === 'function'
+                ? qualifiesEarlyFinishGrant(test, efDays, efSkips)
+                : (actualCheckins >= 3 && efSkips <= 3 && efDays < 14);
 
             if (!qualifies) {
                 // Тестер не квалифицируется — карточка не отображается совсем
