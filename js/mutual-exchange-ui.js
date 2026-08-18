@@ -290,15 +290,14 @@
         if (!project || !tester) return;
 
         var theirAppName = String(tester.reciprocal_app_name || '').trim();
-        var theirIconUrl = '';
-        if (Array.isArray(myTests)) {
+        var theirIconUrl = String(tester.reciprocal_app_icon_url || '').trim();
+        if (Array.isArray(myTests) && Number(tester.reciprocal_app_id || 0) > 0) {
             var reciprocalTest = myTests.find(function (item) {
-                return Number(item.owner_id || 0) === safeTesterId
-                    || Number(item.id || item.app_id || 0) === Number(tester.reciprocal_app_id || 0);
+                return Number(item.id || item.app_id || 0) === Number(tester.reciprocal_app_id || 0);
             });
             if (reciprocalTest) {
                 if (!theirAppName) theirAppName = String(reciprocalTest.name || '').trim();
-                theirIconUrl = String(reciprocalTest.icon_url || '').trim();
+                if (!theirIconUrl) theirIconUrl = String(reciprocalTest.icon_url || '').trim();
             }
         }
 
@@ -316,6 +315,7 @@
             myIconUrl: project.icon_url || '',
             theirIconUrl: theirIconUrl,
             testerSnapshot: tester,
+            isMutualDebt: !!tester.is_mutual_debt,
         });
     }
 
@@ -392,13 +392,17 @@
         }
 
         var canFetchPartnerStats = _isMutualJoin(joinType);
+        var initDataRaw = (typeof getTelegramInitDataRaw === 'function')
+            ? getTelegramInitDataRaw()
+            : ((typeof tg !== 'undefined' && tg && tg.initData) || '');
         if (!canFetchPartnerStats) {
             body.innerHTML = _renderBalanceFromLocal(test, options);
             return;
         }
 
         var apiBase = (typeof API_BASE !== 'undefined') ? API_BASE : '';
-        fetch(apiBase + '/tests/' + safeAppId + '/partner_stats/' + statsTesterId)
+        fetch(apiBase + '/tests/' + safeAppId + '/partner_stats/' + statsTesterId
+            + '?init_data=' + encodeURIComponent(initDataRaw || ''))
             .then(function (response) { return response.json().then(function (data) {
                 return { ok: response.ok, data: data };
             }); })
@@ -601,7 +605,7 @@
             myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
-            isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            isMutualDebt: !!(options.isMutualDebt || stats.is_mutual_debt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
         });
     }
 
@@ -640,10 +644,10 @@
         return '' +
             '<div class="link-status-single">' +
                 '<div class="link-status-single-head">' +
-                    '<div class="parity-side-icon">' + _renderIconHtml(data.theirAppName || data.myAppName, data.theirIcon || data.myIcon) + '</div>' +
+                    '<div class="parity-side-icon">' + _renderIconHtml(data.myAppName || _t('unknownLabel'), data.myIcon || '') + '</div>' +
                     '<div class="link-status-single-copy">' +
                         '<div class="parity-side-label">' + _esc(_t('linkStatusOnYourProject')) + '</div>' +
-                        '<div class="parity-side-name notranslate">' + _esc(data.myAppName || data.theirAppName || _t('unknownLabel')) + '</div>' +
+                        '<div class="parity-side-name notranslate">' + _esc(data.myAppName || _t('unknownLabel')) + '</div>' +
                     '</div>' +
                 '</div>' +
                 '<div class="leave-metric-list">' +
@@ -717,18 +721,12 @@
         if (isMutual) {
             // Owner: you→their reciprocal app; them→your project.
             // Tester: you→current (owner) app; them→your reciprocal.
-            var youAtThemName = isOwnerView
-                ? (data.theirAppName || data.myAppName)
-                : (data.theirAppName || data.myAppName);
-            var youAtThemIcon = isOwnerView
-                ? (data.theirIcon || data.myIcon)
-                : (data.theirIcon || data.myIcon);
+            var youAtThemName = data.theirAppName || _t('unknownLabel');
+            var youAtThemIcon = data.theirIcon || '';
             var youAtThemDays = isOwnerView ? data.myDays : data.theirDays;
             var youAtThemSkips = isOwnerView ? data.mySkips : data.theirSkips;
-            var themAtYouName = isOwnerView
-                ? data.myAppName
-                : (data.myAppName || _t('mutualBalanceYourProject'));
-            var themAtYouIcon = data.myIcon;
+            var themAtYouName = data.myAppName || _t('mutualBalanceYourProject');
+            var themAtYouIcon = data.myIcon || '';
             var themAtYouDays = isOwnerView ? data.theirDays : data.myDays;
             var themAtYouSkips = isOwnerView ? data.theirSkips : data.mySkips;
             // One-sided link: partner left / was kicked / unlinked — mark their side broken.

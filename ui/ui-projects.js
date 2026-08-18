@@ -336,8 +336,11 @@ function renderProjects(force) {
                 let cleanUsername = '';
                 const isContractTester = joinType === 'bounty';
                 const isInviteLikeTester = joinType === 'direct' || joinType === 'invite';
+                const isMutualDebt = !!tester.is_mutual_debt;
                 let testerPrefixHtml = '';
-                if (isContractTester) {
+                if (isMutualDebt) {
+                    testerPrefixHtml = '<span class="tester-debt-prefix" title="' + window.escapeHTML(window.t('linkedBadgeDebt', {}, lang)) + '">🫵</span>';
+                } else if (isContractTester) {
                     testerPrefixHtml = '<span class="tester-contract-prefix">💎</span>';
                 } else if (isInviteLikeTester) {
                     testerPrefixHtml = '<span class="tester-invite-prefix">🔗</span>';
@@ -429,11 +432,13 @@ function renderProjects(force) {
                     karmaHtml = '<span class="tester-icon-action tester-icon-muted" title="☯️">+☯️</span>';
                 }
 
-                const joinTypeLabel = isContractTester
+                const joinTypeLabel = isMutualDebt
+                    ? window.t('linkedBadgeDebt', {}, lang)
+                    : (isContractTester
                     ? window.t('linkedBadgeBounty', {}, lang)
                     : (isInviteLikeTester
                         ? window.t('linkedBadgeDirect', {}, lang)
-                        : (isMutualLike ? window.t('linkedBadgeMutual', {}, lang) : ''));
+                        : (isMutualLike ? window.t('linkedBadgeMutual', {}, lang) : '')));
 
                 let rowHtml = '';
                 if (isLeftSoft) {
