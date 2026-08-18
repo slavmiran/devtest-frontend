@@ -1025,9 +1025,9 @@
         var checkedToday = !!lastCheck && lastCheck === todayIso;
         var realizedDays = checkedToday ? testingDays : Math.max(0, testingDays - 1);
         var skipsCount = Math.max(0, Math.min(14, realizedDays) - Math.min(14, checkinCount));
-        var consecutiveSkips = Number(tester.consecutive_skips != null
-            ? tester.consecutive_skips
-            : (typeof calculateConsecutiveSkips === 'function' ? calculateConsecutiveSkips(tester) : 0));
+        var consecutiveSkips = (typeof calculateConsecutiveSkips === 'function')
+            ? calculateConsecutiveSkips(tester)
+            : Math.max(0, Number(tester.consecutive_skips || 0));
         var joinType = _normalizeJoinType(tester.join_type || options.joinType || 'invite');
         var bountyPerTester = Number(project.bounty_per_tester || 0);
         var holdBonus = bountyPerTester > 0 ? bountyPerTester * 0.35 : 0;

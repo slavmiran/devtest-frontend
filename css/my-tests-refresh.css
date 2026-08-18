@@ -326,16 +326,21 @@
     animation: tstep-check-pop 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* --- locked step --- */
+/* --- upcoming / locked steps share the same muted look --- */
+.tstep.is-next .tstep__row,
 .tstep.is-locked .tstep__row {
     background: transparent;
     border-style: dashed;
     border-color: rgba(255, 255, 255, 0.09);
     color: var(--hint-color);
     opacity: 0.6;
+}
+
+.tstep.is-locked .tstep__row {
     cursor: not-allowed;
 }
 
+.tstep.is-next .tstep__arrow,
 .tstep.is-locked .tstep__arrow { opacity: 0; }
 
 /* --- confirming (server round-trip) --- */

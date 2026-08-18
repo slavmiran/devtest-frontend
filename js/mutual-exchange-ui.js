@@ -60,39 +60,33 @@
         return '<div class="avatar">' + _esc(letter) + '</div>';
     }
 
+    function _parseIsoDateOnly(value) {
+        var match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!match) return null;
+        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    }
+
     function calculateConsecutiveSkips(progressLike) {
         var row = progressLike || {};
-        var timeline = String(row.daily_timeline || '');
-        var testingDays = Number(row.testing_days || 0);
-        if (!testingDays && row.start_date && typeof getUserTestingDay === 'function') {
-            testingDays = getUserTestingDay(row.start_date);
-        }
-        if (testingDays <= 0) return 0;
-
         var todayIso = (typeof getLocalDateIso === 'function')
             ? getLocalDateIso()
-            : new Date().toISOString().slice(0, 10);
-        var lastCheck = String(row.last_check_date || '').trim();
-        var checkedToday = !!lastCheck && lastCheck === todayIso;
-        var realizedDays = checkedToday ? testingDays : Math.max(0, testingDays - 1);
-        var standardDays = Math.min(14, Math.max(0, realizedDays));
-        if (standardDays <= 0) return 0;
-
-        if (timeline && timeline.length >= standardDays) {
-            var streak = 0;
-            for (var i = standardDays - 1; i >= 0; i -= 1) {
-                var marker = timeline.charAt(i);
-                if (marker === '0' || marker === '3') {
-                    streak += 1;
-                    continue;
-                }
-                break;
-            }
-            return streak;
+            : ((typeof getLocalDate === 'function') ? getLocalDate() : '');
+        var today = _parseIsoDateOnly(todayIso);
+        if (!today) return 0;
+        var yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+        var lastCheck = _parseIsoDateOnly(row.last_check_date);
+        var start = _parseIsoDateOnly(row.start_date);
+        var streakStart;
+        if (lastCheck) {
+            if (lastCheck.getTime() >= today.getTime()) return 0;
+            streakStart = new Date(lastCheck.getFullYear(), lastCheck.getMonth(), lastCheck.getDate() + 1);
+        } else if (start) {
+            streakStart = start;
+        } else {
+            return 0;
         }
-
-        var checkins = Math.min(14, Number(row.checkins_count || 0));
-        return Math.max(0, standardDays - checkins);
+        if (streakStart.getTime() > yesterday.getTime()) return 0;
+        return Math.round((yesterday.getTime() - streakStart.getTime()) / 86400000) + 1;
     }
 
     function getBarterChipState(test) {
@@ -140,17 +134,15 @@
             };
         }
 
-        var partnerConsecutive = Number(test && test.partner_consecutive_skips != null
-            ? test.partner_consecutive_skips
-            : 0);
-        if (!(partnerConsecutive > 0)) {
-            partnerConsecutive = calculateConsecutiveSkips({
-                daily_timeline: test && test.partner_daily_timeline,
-                testing_days: test && test.partner_testing_days,
+        var partnerHasDates = !!(test && (test.partner_last_check_date || test.partner_start_date));
+        var partnerConsecutive = partnerHasDates
+            ? calculateConsecutiveSkips({
                 last_check_date: test && test.partner_last_check_date,
-                checkins_count: test && test.partner_checkins,
-            });
-        }
+                start_date: test && test.partner_start_date,
+            })
+            : Number(test && test.partner_consecutive_skips != null
+                ? test.partner_consecutive_skips
+                : 0);
         if (partnerConsecutive >= 3) {
             return {
                 kind: 'warning',

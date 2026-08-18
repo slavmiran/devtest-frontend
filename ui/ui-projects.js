@@ -396,11 +396,9 @@ function renderProjects(force) {
                     statusHtml = `<span class="tester-status ${testerStatusClass}">${testerStatusIcon} ${window.escapeHTML(testerStatusText)}</span>`;
                 }
 
-                const consecutiveSkips = Number(tester.consecutive_skips != null
-                    ? tester.consecutive_skips
-                    : (typeof calculateConsecutiveSkips === 'function'
-                        ? calculateConsecutiveSkips(tester)
-                        : 0));
+                const consecutiveSkips = (typeof calculateConsecutiveSkips === 'function')
+                    ? calculateConsecutiveSkips(tester)
+                    : 0;
                 let warningHtml = '';
                 if (!isLeftSoft && consecutiveSkips >= 3) {
                     warningHtml = `<span class="tester-icon-action tester-warn-action" role="button" tabindex="0" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${Number(project.id)}, ${Number(tester.tester_id)}, event)">⚠️</span>`;

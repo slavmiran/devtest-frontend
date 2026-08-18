@@ -1324,6 +1324,7 @@ function renderFirstDaySteps(test, safePackage, safeOwnerUsername) {
     steps.push({
         key: 'download',
         done: downloadDone,
+        locked: !isEmailMode && !groupDone,
         label: window.t('stepDownloadPlay', {}, lang),
         onclick: `handleFirstDownload(${testId}, '${safePackage}')`,
     });
@@ -2438,34 +2439,6 @@ function renderTests(force) {
         }
         if (showGuestOriginChip) {
             externalMetaChips.push(renderGuestOriginChip(test.external_source));
-        }
-        if (
-            test.status === 'new'
-            && shouldShowInActiveList
-            && !shouldShowInPendingList
-            && test.test_mode !== 'email_list'
-        ) {
-            const chipGroupUrl = String(test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
-            const chipIsDefault = typeof isDefaultGoogleGroupUrl === 'function'
-                ? isDefaultGoogleGroupUrl(chipGroupUrl)
-                : true;
-            const safeChipGroupUrl = escapeInlineJsString(chipGroupUrl);
-            const chipCustomJoined = typeof window.isCustomGroupJoined === 'function'
-                && window.isCustomGroupJoined(test.id);
-            if (!chipIsDefault && chipCustomJoined) {
-                // Handled by the checklist step.
-            } else if (!chipIsDefault) {
-                externalMetaChips.push(
-                    `<button type="button" class="meta-chip accent-orange group-status-chip" onclick="event.stopPropagation(); handleGroupStatusChipClick(${test.id}, '${safeChipGroupUrl}')">${window.escapeHTML(window.t('groupChipCustom', {}, lang))}</button>`
-                );
-            } else if (_defaultGroupJoined) {
-                // Step 1 of the checklist already shows a completed state — no duplicate chip.
-            } else if (_defaultGroupJoinedReady) {
-                // Only show "join required" after status is known — avoids Required→Connected flash on boot.
-                externalMetaChips.push(
-                    `<button type="button" class="meta-chip accent-orange group-status-chip" onclick="event.stopPropagation(); handleGroupStatusChipClick(${test.id}, '${safeChipGroupUrl}')">${window.escapeHTML(window.t('groupChipRequired', {}, lang))}</button>`
-                );
-            }
         }
         const cardHeaderMainHtml = `
             <div class="card-header-main">
