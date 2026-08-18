@@ -8332,7 +8332,7 @@ function _isDossierRelationPrimary(rel, options) {
     const contextAppId = Number(options.contextAppId || 0);
     if (!(contextAppId > 0) || !rel) return false;
     const type = String(rel.type || '');
-    if (type === 'mutual') {
+    if (type === 'mutual' || type === 'mutual_they_test_me') {
         const pair = _resolveDossierRelationPair(rel, options);
         return !!pair.isPrimary;
     }
@@ -8374,7 +8374,7 @@ function _partitionDossierRelations(relations, options) {
 }
 
 function _renderDossierLinkedRelationCard(rel, options) {
-    if (rel && String(rel.type || '') === 'mutual') {
+    if (rel && String(rel.type || '') === 'mutual' && Number(rel.their_app_id || 0) > 0) {
         return _renderDossierLinkedExchangeCard(rel, options);
     }
     return _renderDossierLinkedSimpleCard(rel, options);
@@ -8482,8 +8482,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     let mySkips = 0;
     if (Array.isArray(myTests)) {
         const reciprocalTest = myTests.find(function(item) {
-            return Number(item.id || item.app_id || 0) === Number(pair.theirAppId || 0)
-                || Number(item.owner_id || 0) === testerId;
+            return Number(item.id || item.app_id || 0) === Number(pair.theirAppId || 0);
         });
         if (reciprocalTest) {
             myDays = Number(reciprocalTest.testing_days || 0);
@@ -8565,9 +8564,14 @@ function _renderDossierLinkedSimpleCard(rel, options) {
     const isPrimary = options.forcePrimary === true
         || (options.forcePrimary !== false && _isDossierRelationPrimary(rel, options));
 
+    const isMutualOneSided = type === 'mutual_they_test_me'
+        || (type === 'mutual' && !(Number(rel.their_app_id || 0) > 0));
     let badgeKey = 'linkedBadgeDirect';
     let badgeClass = 'is-direct';
-    if (isContract) {
+    if (isMutualOneSided) {
+        badgeKey = 'linkedBadgeMutual';
+        badgeClass = 'is-mutual';
+    } else if (isContract) {
         badgeKey = 'linkedBadgeBounty';
         badgeClass = 'is-bounty';
     } else if (isGuest) {

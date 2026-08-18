@@ -566,8 +566,8 @@
         var myAppName = stats.partner_app_name || (test && test.reciprocal_app_name) || _t('mutualBalanceYourProject');
         var theirAppName = stats.app_name || (test && test.name) || _t('unknownLabel');
         if (options.context === 'projects') {
-            myAppName = options.myAppName || myAppName;
-            theirAppName = options.theirAppName || theirAppName;
+            myAppName = options.myAppName || stats.app_name || myAppName;
+            theirAppName = options.theirAppName || stats.partner_app_name || theirAppName;
         }
         if (_balanceState) {
             _balanceState.testerLanguage = person.language || _balanceState.testerLanguage;
@@ -581,12 +581,17 @@
                 _balanceState.testerAvatarUrl = person.avatarUrl;
             }
         }
+        var isOwnerView = options.context === 'projects';
         return _renderBalanceColumns({
             person: person,
             myAppName: myAppName,
             theirAppName: theirAppName,
-            myIcon: options.myIconUrl || stats.partner_app_icon_url || (test && test.reciprocal_app_icon_url) || '',
-            theirIcon: options.theirIconUrl || stats.app_icon_url || (test && test.icon_url) || '',
+            myIcon: isOwnerView
+                ? (options.myIconUrl || stats.app_icon_url || '')
+                : (options.myIconUrl || stats.partner_app_icon_url || (test && test.reciprocal_app_icon_url) || ''),
+            theirIcon: isOwnerView
+                ? (options.theirIconUrl || stats.partner_app_icon_url || '')
+                : (options.theirIconUrl || stats.app_icon_url || (test && test.icon_url) || ''),
             myDays: Number(stats.partner_testing_days || 0),
             theirDays: Number(stats.my_testing_days || (test && test.testing_days) || 0),
             mySkips: Number(stats.partner_skips || 0),
@@ -615,12 +620,15 @@
         var isBroken = !!options.broken;
         var isDebtDone = !!options.debtDone;
         var isDebtActive = !!options.debtActive;
-        var stateClass = isBroken ? ' is-broken' : (isDebtDone ? ' is-debt-done' : (isDebtActive ? ' is-debt-active' : ''));
+        var isPartnerDebt = !!options.partnerDebt;
+        var stateClass = isBroken ? ' is-broken' : (isDebtDone ? ' is-debt-done' : (isDebtActive || isPartnerDebt ? ' is-debt-active' : ''));
         var stateBadge = '';
         if (isBroken) {
             stateBadge = '<div class="parity-side-broken">' + _esc(_t('mutualBalanceSideBroken')) + '</div>';
         } else if (isDebtDone) {
             stateBadge = '<div class="parity-side-debt-done">' + _esc(_t('mutualBalanceSideDebtDone')) + '</div>';
+        } else if (isPartnerDebt) {
+            stateBadge = '<div class="parity-side-debt-active">' + _esc(_t('mutualBalanceSidePartnerDebt')) + '</div>';
         } else if (isDebtActive) {
             stateBadge = '<div class="parity-side-debt-active">' + _esc(_t('mutualBalanceSideDebtActive')) + '</div>';
         }
@@ -717,6 +725,8 @@
         }
 
         var isMutual = _isMutualJoin(person.joinType);
+        var isPartnerDebt = isOwnerView && isDebt;
+        var isSelfDebt = !isOwnerView && isDebt;
         var bodyHtml;
         if (isMutual) {
             // Owner: you→their reciprocal app; them→your project.
@@ -736,31 +746,27 @@
                 var myProgress = String(data.myProgressStatus || '').toLowerCase();
                 youBroken = myProgress === 'kicked_by_owner' || myProgress === 'canceled_neutral';
             }
-            // Debt: your project side is finished; your counter-test is still the obligation.
-            var themDebtDone = false;
-            var youDebtActive = false;
-            if (isDebt) {
-                if (isOwnerView) {
-                    // Owner still testing tester's app while own project already finished.
-                    themDebtDone = true;
-                    youDebtActive = true;
-                } else {
-                    // Tester POV: reciprocal (my) project finished; still testing their app.
-                    themDebtDone = true;
-                    youDebtActive = true;
-                }
-            }
+            var themPartnerDebt = isPartnerDebt;
+            var youSideDone = isPartnerDebt;
+            var themDebtDone = isSelfDebt;
+            var youDebtActive = isSelfDebt;
             bodyHtml = '<div class="parity-comparison-grid">' +
                 _paritySideCard(_t('mutualBalanceThemAtYou'), themAtYouName, themAtYouIcon, themAtYouDays, themAtYouSkips, {
                     broken: themBroken,
                     debtDone: themDebtDone,
+                    partnerDebt: themPartnerDebt,
                 }) +
                 _paritySideCard(_t('mutualBalanceYouAtThem'), youAtThemName, youAtThemIcon, youAtThemDays, youAtThemSkips, {
                     broken: youBroken,
                     debtActive: youDebtActive,
+                    debtDone: youSideDone,
                 }) +
             '</div>';
-            if (isDebt) {
+            if (isPartnerDebt) {
+                hint = '<div class="parity-info-banner is-debt">' +
+                    _esc(_t('mutualBalancePartnerDebtHint')) +
+                    '</div>' + hint;
+            } else if (isSelfDebt) {
                 hint = '<div class="parity-info-banner is-debt">' +
                     _esc(_t('mutualBalanceDebtHint')) +
                     '</div>' + hint;
@@ -773,11 +779,11 @@
             bodyHtml = _renderSingleSideStats(data);
         }
 
-        var breakLabel = isDebt
+        var breakLabel = isSelfDebt
             ? _t('mutualBalanceDebtExitBtn')
-            : (isMutual ? _t('mutualBalanceBreakBtn') : _t('linkStatusKickBtn'));
+            : (isOwnerView ? _t('linkStatusKickBtn') : (isMutual ? _t('mutualBalanceBreakBtn') : _t('linkStatusKickBtn')));
         var actionsHtml = '<div class="parity-actions">';
-        if (!isDebt) {
+        if (!isSelfDebt) {
             actionsHtml += '' +
                 '<button type="button" class="btn btn-outline-tg" onclick="openBellRemindPreview()">' +
                     _esc(_t('mutualBalanceBellBtn')) +
