@@ -2099,17 +2099,23 @@ function renderTests(force) {
             && isAccessProblemAccordionOpen(test.id);
         const accessAccordionExpanded = isAccessAccordionOpen ? 'true' : 'false';
         const accessAccordionOpenClass = isAccessAccordionOpen ? ' is-open' : '';
+        const showInlineWait = isCustomGroupForIssue && waitRemainingMs > 0 && !isAccessAccordionOpen;
+        const inlineWaitHtml = isCustomGroupForIssue
+            ? `<span class="access-problem-toggle__inline-wait" data-custom-group-wait-toggle="${test.id}"${showInlineWait ? '' : ' hidden'}>`
+                + `• <span class="access-problem-toggle__inline-wait-clock" data-custom-group-wait-toggle-clock="${test.id}">${waitClockText}</span>`
+                + `</span>`
+            : '';
         const issueBtnHtml = `
             <div id="access-problem-wrap-${test.id}" class="access-problem-wrap" style="display:${issueBtnDisplay};">
                 <button type="button" id="access-problem-toggle-${test.id}" class="access-problem-toggle${accessAccordionOpenClass}" onclick="event.stopPropagation(); toggleAccessProblemAccordion(${test.id})" aria-expanded="${accessAccordionExpanded}">
-                    <span class="access-problem-toggle__label">${window.escapeHTML(issueToggleText)}</span>
+                    <span class="access-problem-toggle__label">${window.escapeHTML(issueToggleText)}</span>${inlineWaitHtml}
                 </button>
                 <div id="access-problem-panel-${test.id}" class="access-problem-panel${accessAccordionOpenClass}" aria-hidden="${isAccessAccordionOpen ? 'false' : 'true'}">
                     <img class="access-problem-panel__image" src="./images/SomethingWentWrong.jpg" alt="">
                     <div class="access-problem-panel__body">
+                        ${waitHintHtml}
                         <div class="access-problem-panel__title">${window.escapeHTML(window.t('accessProblemTitle', {}, lang))}</div>
                         <div class="access-problem-panel__hint">${window.escapeHTML(window.t('accessProblemHint', {}, lang))}</div>
-                        ${waitHintHtml}
                         <div class="apstep-flow">
                             <div class="apstep">
                                 <button type="button" class="apstep__row apstep__row--group" onclick="event.stopPropagation(); openAccessProblemGroupLink(${test.id})">

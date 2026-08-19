@@ -809,9 +809,10 @@ function _clearCustomGroupWaitTicker() {
 }
 
 function syncCustomGroupAccessWaitUi() {
-    var nodes = document.querySelectorAll('[data-custom-group-wait]');
     var anyActive = false;
-    Array.prototype.forEach.call(nodes, function(wrap) {
+
+    var panelNodes = document.querySelectorAll('[data-custom-group-wait]');
+    Array.prototype.forEach.call(panelNodes, function(wrap) {
         var appId = Number(wrap.getAttribute('data-custom-group-wait') || 0);
         var remaining = getCustomGroupAccessWaitRemainingMs(appId);
         var clock = wrap.querySelector('[data-custom-group-wait-clock]');
@@ -820,12 +821,26 @@ function syncCustomGroupAccessWaitUi() {
             return;
         }
         wrap.hidden = false;
+        anyActive = true;
         if (clock) clock.textContent = formatCustomGroupAccessWaitClock(remaining);
-        var panel = wrap.closest('.access-problem-panel');
-        if (panel && panel.classList.contains('is-open')) {
-            anyActive = true;
-        }
     });
+
+    var toggleNodes = document.querySelectorAll('[data-custom-group-wait-toggle]');
+    Array.prototype.forEach.call(toggleNodes, function(inlineWrap) {
+        var appId = Number(inlineWrap.getAttribute('data-custom-group-wait-toggle') || 0);
+        var remaining = getCustomGroupAccessWaitRemainingMs(appId);
+        var clock = inlineWrap.querySelector('[data-custom-group-wait-toggle-clock]');
+        var panel = document.getElementById('access-problem-panel-' + appId);
+        var panelOpen = !!(panel && panel.classList.contains('is-open'));
+        if (remaining <= 0 || panelOpen) {
+            inlineWrap.hidden = true;
+            return;
+        }
+        inlineWrap.hidden = false;
+        anyActive = true;
+        if (clock) clock.textContent = formatCustomGroupAccessWaitClock(remaining);
+    });
+
     if (!anyActive) {
         _clearCustomGroupWaitTicker();
         return;

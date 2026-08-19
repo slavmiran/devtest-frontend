@@ -197,7 +197,7 @@
             accessProblemRecheckGroupBtn: "Check / Rejoin Google Group",
             accessProblemFreezeBtn: "Freeze test and notify the owner",
             accessProblemWaitTitle: "Play Console is updating access",
-            accessProblemWaitText: "You joined the group. This usually takes up to 15 minutes.",
+            accessProblemWaitText: "For a new Google Group member",
             settingsDefaultGroupLabel: "👥 Community Google Group:",
             settingsDefaultGroupConnected: "Connected",
             settingsDefaultGroupNotConnected: "Not connected",

@@ -196,7 +196,7 @@
             accessProblemRecheckGroupBtn: "Проверить / Перезайти в Google Group",
             accessProblemFreezeBtn: "Заморозить тест и уведомить владельца",
             accessProblemWaitTitle: "Play Console обновляет доступ",
-            accessProblemWaitText: "Вы вступили в группу. Обычно это занимает до 15 минут.",
+            accessProblemWaitText: "Для нового участника Google Group",
             settingsDefaultGroupLabel: "👥 Community Google Group:",
             settingsDefaultGroupConnected: "Подключена",
             settingsDefaultGroupNotConnected: "Не подключена",
