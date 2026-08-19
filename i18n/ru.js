@@ -492,6 +492,8 @@
             emailTesterDefaultAction: "Продолжить",
             emailTesterSendOfferBtn: "Отправить заявку",
             emailTesterMassInviteBtn: "Разослать приглашения",
+            emailTesterAcceptBountyBtn: "Принять тестера",
+            emailTesterBountyAcceptText: "Так как проект тестируется по Email, добавьте адрес тестера в Play Console перед принятием заявки.",
             emailTesterCopied: "Скопировано в буфер обмена",
             emailTesterCopiedMass: "✅ Скопированы все email адреса. Добавьте их в консоль!",
             offerProjectGroupsOnly: "Этот разработчик принимает только тесты через Google Groups.",

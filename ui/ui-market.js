@@ -136,6 +136,13 @@ function getMarketCandidateByAppId(appId, testerId) {
         return Object.assign({ market_kind: 'mutual-prelaunch' }, prelaunchCandidate);
     }
 
+    const bountyCandidate = (Array.isArray(bountyContracts) ? bountyContracts : []).find(function(item) {
+        return Number(item && item.app_id) === normalizedAppId;
+    });
+    if (bountyCandidate) {
+        return Object.assign({ market_kind: 'bounty' }, bountyCandidate);
+    }
+
     return null;
 }
 
@@ -803,7 +810,10 @@ function renderFeedCard(item, kind) {
     const syncChip = isProjectSynced(item)
         ? `<span class="meta-chip accent-green">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
         : '';
-    const emailChip = String(item.test_mode || 'google_group') === 'email_list'
+    const emailChip = (
+        (typeof _isDossierEmailTestProject === 'function' && _isDossierEmailTestProject(item))
+        || String(item.test_mode || 'google_group') === 'email_list'
+    )
         ? `<span class="meta-chip accent-orange">📧 ${window.escapeHTML(window.t('emailTestBadge', {}, lang))}</span>`
         : '';
     const bountyChip = (function() {

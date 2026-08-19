@@ -2020,6 +2020,28 @@ async function fetchOfferEmailPreview(targetAppId, proposerAppId) {
     }
 }
 
+async function fetchBountyApplicationEmailPreview(applicationId) {
+    try {
+        var payload = typeof withInitData === 'function'
+            ? withInitData({ user_id: Number(userId || 0) || 0 })
+            : { user_id: Number(userId || 0) || 0, init_data: (tg && tg.initData) || '' };
+        var response = await fetch(`${API_BASE}/bounty-applications/${Number(applicationId)}/email-preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        var result = null;
+        try { result = await response.json(); } catch (e) { result = null; }
+        if (!response.ok || !result || result.status !== 'success') {
+            return { ok: false, emails: [], code: getBackendErrorCode(result) || 'database_error' };
+        }
+        return { ok: true, emails: Array.isArray(result.emails) ? result.emails.filter(Boolean) : [] };
+    } catch (error) {
+        console.warn('Bounty application email preview failed:', error);
+        return { ok: false, emails: [], code: 'network_error' };
+    }
+}
+
 function getCurrentUserEmail() {
     try {
         if (window.App && typeof window.App.getState === 'function') {
@@ -2786,6 +2808,8 @@ function registerJoinBountyContext(item) {
         package_name: item.package_name || item.package || '',
         icon_url: item.icon_url || '',
         bounty_per_tester: Number(item.bounty_per_tester || 0),
+        test_mode: item.test_mode || item.testing_mode || '',
+        is_email_test: !!item.is_email_test,
     };
 }
 
@@ -2806,12 +2830,14 @@ function _findJoinBountyContract(appId) {
     if (ctx) {
         if (!candidate) {
             candidate = ctx;
-        } else if (!Number(candidate.bounty_per_tester) && Number(ctx.bounty_per_tester)) {
+        } else {
             candidate = Object.assign({}, candidate, {
-                bounty_per_tester: ctx.bounty_per_tester,
+                bounty_per_tester: Number(candidate.bounty_per_tester) || Number(ctx.bounty_per_tester) || 0,
                 name: candidate.name || ctx.name,
                 package_name: candidate.package_name || ctx.package_name,
                 icon_url: candidate.icon_url || ctx.icon_url,
+                test_mode: candidate.test_mode || ctx.test_mode,
+                is_email_test: !!(candidate.is_email_test || ctx.is_email_test),
             });
         }
     }
@@ -3044,6 +3070,22 @@ function joinBounty(appId) {
         if (typeof renderBountyFeed === 'function') renderBountyFeed(true);
         return;
     }
+    var target = typeof _findJoinBountyContract === 'function' ? _findJoinBountyContract(appId) : null;
+    var targetIsEmailList = typeof _isDossierEmailTestProject === 'function'
+        ? _isDossierEmailTestProject(target)
+        : !!(target && String(target.test_mode || '').toLowerCase() === 'email_list');
+    var currentEmail = (typeof getCurrentUserEmail === 'function')
+        ? getCurrentUserEmail()
+        : String((window.App && window.App.userEmail) || '').trim();
+    if (targetIsEmailList && !currentEmail && typeof window.openEmailCollectModal === 'function') {
+        window.openEmailCollectModal({
+            title: window.t('emailGateOfferTitle', {}, lang),
+            text: window.t('emailGateOfferText', {}, lang),
+            primaryLabel: window.t('emailGateSaveContinue', {}, lang),
+            onSave: function() { joinBounty(appId); },
+        });
+        return;
+    }
     openJoinBountyConfirmModal(appId);
 }
 
@@ -3070,7 +3112,20 @@ async function confirmJoinBounty() {
         });
         const result = await response.json();
         if (result.status !== 'success') {
-            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            var joinCode = typeof getBackendErrorCode === 'function' ? getBackendErrorCode(result) : '';
+            if (joinCode === 'email_required' && typeof window.openEmailCollectModal === 'function') {
+                window.openEmailCollectModal({
+                    title: window.t('emailGateOfferTitle', {}, lang),
+                    text: window.t('emailGateOfferText', {}, lang),
+                    primaryLabel: window.t('emailGateSaveContinue', {}, lang),
+                    onSave: function() {
+                        _pendingJoinBountyAppId = appId;
+                        confirmJoinBounty();
+                    },
+                });
+                return;
+            }
+            handleApiError(joinCode, result && result.details ? result.details : {});
             return;
         }
 

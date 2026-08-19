@@ -255,6 +255,9 @@ function renderBountyApplications(force) {
                         '<span class="bounty-app-badge-label">' + window.escapeHTML(window.t('bountyAppContractChip', {}, lang)) + '</span>' +
                         '<span class="bounty-app-badge-reward notranslate">' + bountyVal + ' $BUST</span>' +
                     '</div>' +
+                    (String(app.test_mode || '').toLowerCase() === 'email_list'
+                        ? '<span class="meta-chip accent-orange">📧 ' + window.escapeHTML(window.t('emailTestBadge', {}, lang)) + '</span>'
+                        : '') +
                     '<div class="bounty-app-ttl offer-expire">' + window.escapeHTML(expireText) + '</div>' +
                 '</div>' +
                 '<div class="bounty-app-identity">' +
@@ -455,7 +458,7 @@ function startBountyApplicationsPolling() {
     }, 30000);
 }
 
-async function decideBountyApplication(applicationId, action, event) {
+async function decideBountyApplication(applicationId, action, event, options) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -463,6 +466,28 @@ async function decideBountyApplication(applicationId, action, event) {
     var normalizedId = Number(applicationId || 0);
     var decision = String(action || '').toLowerCase() === 'accept' ? 'accept' : 'reject';
     if (normalizedId <= 0) return;
+
+    if (decision === 'accept' && !(options && options.emailConsoleConfirmed)) {
+        var application = (bountyApplications || []).find(function(item) {
+            return Number(item && item.application_id) === normalizedId;
+        });
+        var isEmailList = !!(application && String(application.test_mode || '').toLowerCase() === 'email_list');
+        if (isEmailList && typeof window.openEmailTesterModal === 'function') {
+            window.openEmailTesterModal({
+                actionLabel: window.t('emailTesterAcceptBountyBtn', {}, lang),
+                text: window.t('emailTesterBountyAcceptText', {}, lang),
+                loadEmails: function() {
+                    return (typeof fetchBountyApplicationEmailPreview === 'function')
+                        ? fetchBountyApplicationEmailPreview(normalizedId)
+                        : Promise.resolve({ ok: false, emails: [] });
+                },
+                onConfirm: function() {
+                    decideBountyApplication(normalizedId, 'accept', null, { emailConsoleConfirmed: true });
+                },
+            });
+            return;
+        }
+    }
 
     var actionKey = 'bountyApp_' + decision + '_' + normalizedId;
     if (typeof _pendingActions !== 'undefined' && _pendingActions.has(actionKey)) return;
