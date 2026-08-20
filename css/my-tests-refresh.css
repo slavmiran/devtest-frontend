@@ -946,37 +946,27 @@ button.ts-section-head {
     min-width: 0;
 }
 
-#report-modal .report-owner-flag {
-    flex: 0 0 auto;
-    font-size: 22px;
-    line-height: 1;
-}
-
 #report-modal .report-owner-meta {
     display: flex;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
+    width: 100%;
 }
 
-#report-modal .report-owner-name {
-    font-size: 15px;
-    font-weight: 700;
+#report-modal .report-owner-line {
+    font-size: 14px;
+    font-weight: 600;
     color: var(--text-color);
-    line-height: 1.25;
+    line-height: 1.35;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-#report-modal .report-owner-nick {
-    font-size: 13px;
+#report-modal .report-owner-line .report-owner-nick {
     font-weight: 500;
     color: var(--hint-color);
-    line-height: 1.25;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 #report-modal #report-language-toggle {

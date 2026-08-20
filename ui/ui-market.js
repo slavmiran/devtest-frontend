@@ -4066,18 +4066,9 @@ function renderReportLanguageToggle() {
     `;
 }
 
-function _getReportOwnerFlag(languageCode) {
-    const code = String(languageCode || '').trim().toLowerCase();
-    if (code === 'ru') return '🇷🇺';
-    if (code === 'en') return '🇬🇧';
-    return '🌐';
-}
-
 function renderReportOwnerHeader(appId, ownerUsername) {
-    const flagEl = document.getElementById('report-owner-flag');
-    const nameEl = document.getElementById('report-owner-name');
-    const nickEl = document.getElementById('report-owner-nick');
-    if (!flagEl || !nameEl || !nickEl) return;
+    const lineEl = document.getElementById('report-owner-line');
+    if (!lineEl) return;
 
     const test = typeof window.getMyTestById === 'function'
         ? window.getMyTestById(appId)
@@ -4089,14 +4080,23 @@ function renderReportOwnerHeader(appId, ownerUsername) {
         ownerUsername ||
         ''
     ).trim().replace(/^@+/, '');
-    const defaultLang = typeof window.getDefaultCheckpointReportLanguage === 'function'
-        ? window.getDefaultCheckpointReportLanguage(appId)
-        : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
 
-    flagEl.textContent = _getReportOwnerFlag(defaultLang);
-    nameEl.textContent = fullName || (username ? ('@' + username) : window.t('unknownLabel', {}, lang));
-    nickEl.textContent = fullName && username ? ('@' + username) : '';
-    nickEl.style.display = fullName && username ? '' : 'none';
+    if (fullName && username) {
+        lineEl.innerHTML = window.escapeHTML(fullName)
+            + ' <span class="report-owner-nick">'
+            + window.escapeHTML('@' + username)
+            + '</span>';
+        return;
+    }
+    if (username) {
+        lineEl.textContent = '@' + username;
+        return;
+    }
+    if (fullName) {
+        lineEl.textContent = fullName;
+        return;
+    }
+    lineEl.textContent = window.t('unknownLabel', {}, lang);
 }
 
 function updateReportModalPrefill() {
