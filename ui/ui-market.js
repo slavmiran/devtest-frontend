@@ -4051,17 +4051,34 @@ function renderReportLanguageToggle() {
     const resolvedDefaultLang = typeof window.normalizeGuestInviteLanguage === 'function'
         ? window.normalizeGuestInviteLanguage(defaultLang, selectedLang)
         : (String(defaultLang || 'en').trim().toLowerCase() === 'ru' ? 'ru' : 'en');
-    const defaultCheckHtml = '<span class="report-lang-default-check" title="' + window.escapeHTML(window.t('reportLanguageDefaultMark', {}, lang)) + '" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>';
+    const defaultMarkTitle = window.escapeHTML(window.t('reportLanguageDefaultMark', {}, lang));
+    const defaultMarkHtml = '<span class="report-lang-default-check" title="' + defaultMarkTitle + '" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>';
+
+    function renderOption(code) {
+        const isSelected = selectedLang === code;
+        const isDefault = resolvedDefaultLang === code;
+        const label = window.escapeHTML(window.t(code === 'ru' ? 'guestInviteLanguageRu' : 'guestInviteLanguageEn', {}, lang));
+        return `
+            <label class="report-lang-option ${isSelected ? 'is-selected' : ''}">
+                <input
+                    type="radio"
+                    class="report-lang-option__input"
+                    name="report-message-language"
+                    value="${code}"
+                    ${isSelected ? 'checked' : ''}
+                    onchange="setReportMessageLanguage('${code}')"
+                >
+                <span class="report-lang-option__radio" aria-hidden="true"></span>
+                <span class="report-lang-option__label">${label}</span>
+                ${isDefault ? defaultMarkHtml : ''}
+            </label>
+        `;
+    }
+
     toggle.innerHTML = `
-        <div class="segmented-control report-language-toggle-soft" role="group" aria-label="${window.escapeHTML(window.t('reportLanguageToggleAria', {}, lang))}">
-            <button type="button" class="seg-btn ${selectedLang === 'ru' ? 'active' : ''}" onclick="setReportMessageLanguage('ru')">
-                <span>${window.escapeHTML(window.t('guestInviteLanguageRu', {}, lang))}</span>
-                ${resolvedDefaultLang === 'ru' ? defaultCheckHtml : ''}
-            </button>
-            <button type="button" class="seg-btn ${selectedLang === 'en' ? 'active' : ''}" onclick="setReportMessageLanguage('en')">
-                <span>${window.escapeHTML(window.t('guestInviteLanguageEn', {}, lang))}</span>
-                ${resolvedDefaultLang === 'en' ? defaultCheckHtml : ''}
-            </button>
+        <div class="report-lang-radios" role="radiogroup" aria-label="${window.escapeHTML(window.t('reportLanguageToggleAria', {}, lang))}">
+            ${renderOption('ru')}
+            ${renderOption('en')}
         </div>
     `;
 }

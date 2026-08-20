@@ -979,41 +979,93 @@ button.ts-section-head {
     display: block;
 }
 
-#report-modal .report-language-toggle-soft {
-    width: 100%;
-    margin-bottom: 0;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+#report-modal .report-lang-radios {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
 }
 
-#report-modal .report-language-toggle-soft .seg-btn {
+#report-modal .report-lang-option {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 5px;
-    min-height: 36px;
-    font-size: 13px;
-    font-weight: 600;
+    gap: 7px;
+    margin: 0;
+    padding: 2px 0;
+    cursor: pointer;
+    user-select: none;
     color: var(--hint-color);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.2;
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
-#report-modal .report-language-toggle-soft .seg-btn.active {
-    background: rgba(255, 255, 255, 0.12);
+#report-modal .report-lang-option__input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 1px;
+    height: 1px;
+}
+
+#report-modal .report-lang-option__radio {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    background: transparent;
+    box-sizing: border-box;
+    position: relative;
+    flex: 0 0 auto;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#report-modal .report-lang-option__radio::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    background: var(--button-color, #3d9cf0);
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+#report-modal .report-lang-option.is-selected {
     color: var(--text-color);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+#report-modal .report-lang-option.is-selected .report-lang-option__radio {
+    border-color: var(--button-color, #3d9cf0);
+}
+
+#report-modal .report-lang-option.is-selected .report-lang-option__radio::after {
+    opacity: 1;
+    transform: scale(1);
+}
+
+#report-modal .report-lang-option:focus-within .report-lang-option__radio {
+    box-shadow: 0 0 0 3px rgba(61, 156, 240, 0.18);
+}
+
+#report-modal .report-lang-option__label {
+    letter-spacing: 0.01em;
 }
 
 #report-modal .report-lang-default-check {
     display: inline-flex;
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
     color: var(--hint-color);
-    opacity: 0.85;
+    opacity: 0.75;
 }
 
 #report-modal .report-lang-default-check svg {
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
     display: block;
 }
 
