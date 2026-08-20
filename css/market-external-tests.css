@@ -257,10 +257,9 @@
     min-height: 0;
     padding: 14px;
     scroll-snap-align: start;
-    background:
-        radial-gradient(circle at top right, rgba(77, 163, 255, 0.12), transparent 35%),
-        linear-gradient(180deg, rgba(20, 27, 38, 0.98), rgba(14, 18, 26, 0.96));
-    border: 1px solid rgba(77, 163, 255, 0.16);
+    background: rgba(30, 34, 42, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: none;
 }
 
 .external-tests-card-header {
@@ -314,7 +313,7 @@ button.external-tests-owner-subtitle.external-tests-owner-link {
 }
 
 button.external-tests-owner-subtitle.external-tests-owner-link:hover {
-    color: var(--guest-surface-accent, #3eb9cd);
+    color: var(--guest-surface-accent, #5b9fd4);
     text-decoration: underline;
 }
 
@@ -433,20 +432,20 @@ button.external-tests-owner-subtitle.external-tests-owner-link:hover {
 
 .external-tests-confirm-group:has(.external-tests-confirm-ready) {
     border-radius: 12px;
-    box-shadow: 0 0 0 1px rgba(52, 199, 89, 0.06), 0 3px 8px rgba(48, 209, 88, 0.08);
+    box-shadow: none;
 }
 
 .external-tests-confirm-btn.external-tests-confirm-ready,
 .external-tests-confirm-ready {
-    background: linear-gradient(180deg, rgba(52, 199, 89, 0.24), rgba(48, 209, 88, 0.14));
-    border: 1px solid rgba(52, 199, 89, 0.34);
+    background: rgba(52, 199, 89, 0.14);
+    border: 1px solid rgba(52, 199, 89, 0.28);
     color: #f4fff7;
     box-shadow: none;
 }
 
 .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-attach-btn {
-    background: linear-gradient(180deg, rgba(52, 199, 89, 0.24), rgba(48, 209, 88, 0.14));
-    border: 1px solid rgba(52, 199, 89, 0.34);
+    background: rgba(52, 199, 89, 0.14);
+    border: 1px solid rgba(52, 199, 89, 0.28);
     border-left: 1px solid rgba(255, 255, 255, 0.14);
     color: #f4fff7;
     box-shadow: none;
@@ -457,19 +456,19 @@ button.external-tests-owner-subtitle.external-tests-owner-link:hover {
 }
 
 .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) {
-    box-shadow: 0 0 0 1px rgba(77, 163, 255, 0.07), 0 3px 8px rgba(77, 163, 255, 0.09);
+    box-shadow: none;
 }
 
 .external-tests-card .external-tests-confirm-btn.external-tests-confirm-ready {
-    background: linear-gradient(180deg, rgba(77, 163, 255, 0.28), rgba(77, 163, 255, 0.16));
-    border: 1px solid rgba(77, 163, 255, 0.38);
+    background: rgba(91, 159, 212, 0.14);
+    border: 1px solid rgba(91, 159, 212, 0.28);
     color: #f0f7ff;
     box-shadow: none;
 }
 
 .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-attach-btn {
-    background: linear-gradient(180deg, rgba(77, 163, 255, 0.28), rgba(77, 163, 255, 0.16));
-    border: 1px solid rgba(77, 163, 255, 0.38);
+    background: rgba(91, 159, 212, 0.14);
+    border: 1px solid rgba(91, 159, 212, 0.28);
     border-left: 1px solid rgba(255, 255, 255, 0.14);
     color: #f0f7ff;
     box-shadow: none;
