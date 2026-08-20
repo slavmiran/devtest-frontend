@@ -2641,7 +2641,7 @@ function clearCompletedPendingFeedbackCheckins() {
         if (test) {
             var testingDay = Number(test.testing_days || 0);
             var isOvertime = testingDay >= 15;
-            var earnedKarma = isOvertime ? 0.5 : 0.1;
+            var earnedKarma = isOvertime ? 0.5 : 0;
             var earnedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : (test.join_type === 'bounty' ? test.bounty_per_tester * 0.65 / 14 : 0);
             
             if (earnedBust > 0 && earnedKarma > 0) {
@@ -2760,28 +2760,38 @@ function setFeedbackRewardBust(amount) {
 
 function setFeedbackRewardKarma(amount) {
     var item = getFeedbackRewardItem();
-    var isKarmaAvailable = item ? (item.project_karma_available !== false) : true;
-    var isTesterAlreadyRewarded = item ? !!item.tester_already_rewarded_karma : false;
-    var isKarmaLocked = !isKarmaAvailable || isTesterAlreadyRewarded;
+    var thanksAvailable = item ? (item.thanks_available !== false) : true;
+    var specialAvailable = item ? (item.special_available !== false) : true;
+    if (item && item.thanks_available == null && item.special_available == null) {
+        thanksAvailable = item.project_karma_available !== false;
+        specialAvailable = thanksAvailable;
+    }
+    var alreadyThanked = item ? !!item.tester_already_thanked : false;
+    var alreadySpecial = item ? !!item.tester_already_special : false;
+    if (!item || (item.tester_already_thanked == null && item.tester_already_special == null && item.tester_already_rewarded_karma)) {
+        alreadyThanked = !!item && !!item.tester_already_rewarded_karma;
+        alreadySpecial = alreadyThanked;
+    }
 
-    if (isKarmaLocked) {
+    if ((Number(amount) === 1.5 && (!thanksAvailable || alreadyThanked)) ||
+        (Number(amount) === 3 && (!specialAvailable || alreadySpecial))) {
         amount = 0;
     }
 
     _feedbackRewardKarma = Number(amount || 0);
-    var project = getFeedbackRewardProject();
-    var likesUsed = (project && project.likes_used) || 0;
-    var likesMax = (project && project.likes_max) || 1;
-    var remaining = Math.max(0, likesMax - likesUsed);
     var mapping = { 0: '0', 1.5: '15', 3: '30' };
     ['0', '15', '30'].forEach(function(code) {
         var chip = document.getElementById('feedback-karma-chip-' + code);
         if (chip) {
             chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
-            if (code !== '0') {
-                var disabled = isKarmaLocked || (remaining <= 0);
-                chip.classList.toggle('is-disabled', disabled);
-                chip.disabled = disabled;
+            if (code === '15') {
+                var disabledThanks = !thanksAvailable || alreadyThanked;
+                chip.classList.toggle('is-disabled', disabledThanks);
+                chip.disabled = disabledThanks;
+            } else if (code === '30') {
+                var disabledSpecial = !specialAvailable || alreadySpecial;
+                chip.classList.toggle('is-disabled', disabledSpecial);
+                chip.disabled = disabledSpecial;
             } else {
                 chip.classList.remove('is-disabled');
                 chip.disabled = false;
@@ -3381,6 +3391,11 @@ async function sendKarmaReward(appId, testerId, rewardType) {
             if (project) {
                 if (project.likes) project.likes.push({ tester_id: testerId, type: rewardType });
                 project.likes_used = (project.likes_used || 0) + 1;
+                if (rewardType === 'good') {
+                    project.thanks_used = (project.thanks_used || 0) + 1;
+                } else if (rewardType === 'bug') {
+                    project.special_used = (project.special_used || 0) + 1;
+                }
             }
             renderProjects();
             if (window._karmaDistributionProjectId === appId && window.openKarmaDistribution) {

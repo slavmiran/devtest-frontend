@@ -2831,7 +2831,7 @@ Object.assign(window, {
 function renderCheckinRewardHint(test, testingDay, lang) {
     const isBounty = test.join_type === 'bounty';
     const isOvertime = testingDay >= 15;
-    const karmaVal = isOvertime ? '0.5' : '0.1';
+    const karmaVal = isOvertime ? '0.5' : '0';
     const holdAmount = isBounty && Number(test.bounty_per_tester || 0) > 0
         ? Math.round(Number(test.bounty_per_tester) * 0.35)
         : 0;
@@ -2855,7 +2855,7 @@ function renderCheckinRewardHint(test, testingDay, lang) {
         if (isBounty && test.bounty_per_tester > 0) {
             const calculatedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : (test.bounty_per_tester * 0.65 / 14);
             const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
-            html += `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('testerCheckinHintBoth', { bust: calculatedBustFormatted, karma: karmaVal }, lang))}</div>`;
+            html += `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('testerCheckinHintBust', { bust: calculatedBustFormatted }, lang))}</div>`;
             if (testingDay === 14 && holdAmount > 0 && test.status !== 'done') {
                 html += `<div class="notranslate" style="text-align:center;margin-top:4px;font-size:11px;color:var(--hint-color);">${window.escapeHTML(window.t('holdBonusTodayHint', { amount: holdAmountFormatted }, lang))}</div>`;
             }

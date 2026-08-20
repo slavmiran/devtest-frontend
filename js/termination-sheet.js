@@ -6,7 +6,7 @@
 (function () {
     'use strict';
 
-    var _termState = null;
+    var KARMA_ABANDONED_BURN = 3.0;
 
     function _lang() {
         return (typeof lang !== 'undefined' && lang) ? String(lang) : 'ru';
@@ -255,7 +255,7 @@
         // Justified: partner left OR ≥3 consecutive skips (total skips are informational only).
         var justifiedAllowed = !!data.partner_left || partnerConsecutive >= 3;
         var myCheckins = Number(data.my_checkins != null ? data.my_checkins : 0);
-        var karmaBurn = Math.min(14, myCheckins) * 0.1;
+        var karmaBurn = KARMA_ABANDONED_BURN;
         var mySkips = Number(data.my_skips || 0);
         var waitCount = Math.max(0, 3 - partnerConsecutive);
         var grantStillAvailable = mySkips < 3;
@@ -327,9 +327,7 @@
                 : '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
                     '<div class="leave-status-title">' + _esc(_t('leaveAbandonedTitle')) + '</div>' +
                     '<div class="leave-status-desc">' + _esc(
-                        karmaBurn > 0
-                            ? _t('leaveAbandonedDesc', { karma: _fmtAmount(karmaBurn, 1) })
-                            : _t('termCostlyExitDescRiOnly')
+                        _t('leaveAbandonedDesc', { karma: _fmtAmount(karmaBurn, 1) })
                     ) + '</div>' +
                     '<div class="leave-status-desc" style="margin-top:8px;">' + _esc(_t('leaveSafeWaitWarning', {
                         count: waitCount,
@@ -689,10 +687,7 @@
                 '<div class="leave-status-desc">' + _esc(_t('termSafeExitDesc')) + '</div>' +
               '</div>';
         }
-        // 0 check-ins → no karma to burn; only RI is at risk (avoid "karma burns" contradiction).
-        var costlyDesc = Number(opts.karmaBurn || 0) > 0
-            ? _t('termCostlyExitDesc')
-            : _t('termCostlyExitDescRiOnly');
+        var costlyDesc = _t('termCostlyExitDesc');
         return '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
             '<div class="leave-status-title">' + _esc(_t('termCostlyExitBadge')) + '</div>' +
             '<div class="leave-status-desc">' + _esc(costlyDesc) + '</div>' +
@@ -731,10 +726,9 @@
             checkins: checkins,
             requirePartnerGate: false,
         });
-        var karmaBurn = isSafeExit ? 0 : Math.min(14, checkins) * 0.1;
+        var karmaBurn = isSafeExit ? 0 : KARMA_ABANDONED_BURN;
         var riOk = isSafeExit;
-        // No check-ins → nothing to burn; pill stays "no penalty" even on costly RI exit.
-        var karmaOk = isSafeExit || karmaBurn <= 0;
+        var karmaOk = isSafeExit;
 
         if (_termState) {
             _termState.justifiedAllowed = isSafeExit;
