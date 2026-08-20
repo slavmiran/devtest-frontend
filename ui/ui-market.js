@@ -4045,13 +4045,58 @@ function renderReportLanguageToggle() {
     const selectedLang = typeof window.normalizeGuestInviteLanguage === 'function'
         ? window.normalizeGuestInviteLanguage(_reportMessageLang, lang)
         : (String(_reportMessageLang || lang || 'en').trim().toLowerCase() === 'ru' ? 'ru' : 'en');
+    const defaultLang = typeof window.getDefaultCheckpointReportLanguage === 'function' && _reportAppId
+        ? window.getDefaultCheckpointReportLanguage(_reportAppId)
+        : selectedLang;
+    const resolvedDefaultLang = typeof window.normalizeGuestInviteLanguage === 'function'
+        ? window.normalizeGuestInviteLanguage(defaultLang, selectedLang)
+        : (String(defaultLang || 'en').trim().toLowerCase() === 'ru' ? 'ru' : 'en');
+    const defaultCheckHtml = '<span class="report-lang-default-check" title="' + window.escapeHTML(window.t('reportLanguageDefaultMark', {}, lang)) + '" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>';
     toggle.innerHTML = `
-        <div class="report-language-label">${window.escapeHTML(window.t('reportLanguageLabel', {}, lang))}</div>
-        <div class="segmented-control" style="margin-bottom: 0;">
-            <button type="button" class="seg-btn ${selectedLang === 'ru' ? 'active' : ''}" onclick="setReportMessageLanguage('ru')">${window.escapeHTML(window.t('guestInviteLanguageRu', {}, lang))}</button>
-            <button type="button" class="seg-btn ${selectedLang === 'en' ? 'active' : ''}" onclick="setReportMessageLanguage('en')">${window.escapeHTML(window.t('guestInviteLanguageEn', {}, lang))}</button>
+        <div class="segmented-control report-language-toggle-soft" role="group" aria-label="${window.escapeHTML(window.t('reportLanguageToggleAria', {}, lang))}">
+            <button type="button" class="seg-btn ${selectedLang === 'ru' ? 'active' : ''}" onclick="setReportMessageLanguage('ru')">
+                <span>${window.escapeHTML(window.t('guestInviteLanguageRu', {}, lang))}</span>
+                ${resolvedDefaultLang === 'ru' ? defaultCheckHtml : ''}
+            </button>
+            <button type="button" class="seg-btn ${selectedLang === 'en' ? 'active' : ''}" onclick="setReportMessageLanguage('en')">
+                <span>${window.escapeHTML(window.t('guestInviteLanguageEn', {}, lang))}</span>
+                ${resolvedDefaultLang === 'en' ? defaultCheckHtml : ''}
+            </button>
         </div>
     `;
+}
+
+function _getReportOwnerFlag(languageCode) {
+    const code = String(languageCode || '').trim().toLowerCase();
+    if (code === 'ru') return '🇷🇺';
+    if (code === 'en') return '🇬🇧';
+    return '🌐';
+}
+
+function renderReportOwnerHeader(appId, ownerUsername) {
+    const flagEl = document.getElementById('report-owner-flag');
+    const nameEl = document.getElementById('report-owner-name');
+    const nickEl = document.getElementById('report-owner-nick');
+    if (!flagEl || !nameEl || !nickEl) return;
+
+    const test = typeof window.getMyTestById === 'function'
+        ? window.getMyTestById(appId)
+        : (Array.isArray(myTests) ? myTests.find(function(item) { return Number(item && item.id) === Number(appId); }) : null);
+
+    const fullName = String((test && test.owner_full_name) || '').trim();
+    const username = String(
+        (test && test.owner_username) ||
+        ownerUsername ||
+        ''
+    ).trim().replace(/^@+/, '');
+    const defaultLang = typeof window.getDefaultCheckpointReportLanguage === 'function'
+        ? window.getDefaultCheckpointReportLanguage(appId)
+        : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
+
+    flagEl.textContent = _getReportOwnerFlag(defaultLang);
+    nameEl.textContent = fullName || (username ? ('@' + username) : window.t('unknownLabel', {}, lang));
+    nickEl.textContent = fullName && username ? ('@' + username) : '';
+    nickEl.style.display = fullName && username ? '' : 'none';
 }
 
 function updateReportModalPrefill() {
@@ -4060,15 +4105,39 @@ function updateReportModalPrefill() {
     textarea.value = typeof window.buildCheckpointReportPrefill === 'function'
         ? window.buildCheckpointReportPrefill(_reportAppId, _reportMessageLang)
         : t.reportPrefill;
-    _fitReportTextarea();
+    _syncReportTextareaLayout();
 }
 
-function _fitReportTextarea() {
+function _syncReportTextareaLayout() {
     const textarea = document.getElementById('report-text');
+    const wrap = document.querySelector('#report-modal .report-text-wrap');
+    const expandBtn = document.getElementById('report-text-expand-btn');
     if (!textarea) return;
+
+    const expanded = !!_reportTextExpanded;
+    textarea.classList.toggle('is-collapsed', !expanded);
+    textarea.classList.toggle('is-expanded', expanded);
+    if (wrap) wrap.classList.toggle('is-expanded', expanded);
+    if (expandBtn) {
+        expandBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        expandBtn.title = window.t(expanded ? 'reportTextCollapse' : 'reportTextExpand', {}, lang);
+        expandBtn.setAttribute('aria-label', expandBtn.title);
+    }
+
+    if (!expanded) {
+        textarea.style.height = '';
+        return;
+    }
+
     textarea.style.height = 'auto';
-    var nextHeight = Math.min(Math.max(textarea.scrollHeight + 2, 180), 420);
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight + 2, 140), 420);
     textarea.style.height = nextHeight + 'px';
+}
+
+function toggleReportTextExpand() {
+    _reportTextExpanded = !_reportTextExpanded;
+    _syncReportTextareaLayout();
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
 function setReportMessageLanguage(nextLang) {
@@ -4083,17 +4152,17 @@ function setReportMessageLanguage(nextLang) {
 function openReportModal(appId, ownerUsername) {
     _reportAppId = appId;
     _reportOwnerUsername = ownerUsername;
+    _reportTextExpanded = false;
     _reportMessageLang = typeof window.getDefaultCheckpointReportLanguage === 'function'
         ? window.getDefaultCheckpointReportLanguage(appId)
         : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
+    renderReportOwnerHeader(appId, ownerUsername);
     renderReportLanguageToggle();
     updateReportModalPrefill();
     document.getElementById('t-reportModalTitle').innerText = t.reportModalTitle;
     document.getElementById('t-reportModalHint').innerText = t.reportModalHint;
     document.getElementById('t-reportBtnSend').innerText = t.reportBtnSend;
-    var standardLabel = document.getElementById('t-reportStandardLabel');
     var altLabel = document.getElementById('t-reportAltLabel');
-    if (standardLabel) standardLabel.textContent = window.t('reportStandardLabel', {}, lang);
     if (altLabel) altLabel.textContent = window.t('reportAltLabel', {}, lang);
 
     const chipsEl = document.getElementById('chips-report');
@@ -4124,7 +4193,7 @@ function openReportModal(appId, ownerUsername) {
     }
 
     document.getElementById('report-modal').classList.add('active');
-    setTimeout(_fitReportTextarea, 40);
+    setTimeout(_syncReportTextareaLayout, 40);
 }
 
 function closeReportModal(event) {
@@ -4134,6 +4203,7 @@ function closeReportModal(event) {
         _reportAppId = null;
         _reportOwnerUsername = null;
         _reportMessageLang = null;
+        _reportTextExpanded = false;
     }, 300);
 }
 
@@ -9975,6 +10045,7 @@ Object.assign(window, {
     openReportModal,
     closeReportModal,
     setReportMessageLanguage,
+    toggleReportTextExpand,
     insertReportChip,
     reportModalSendBug,
     reportModalSendIdea,

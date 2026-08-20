@@ -40,6 +40,7 @@ var _guestTesterProjectId = 0;
 var _guestTesterProgressId = 0;
 var _guestLinkRemoveState = null;
 var _reportMessageLang = null;
+var _reportTextExpanded = false;
 function showSkeleton(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;

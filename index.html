@@ -35,14 +35,14 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260820-group-wait-inline-v1"></script>
-<script src="./i18n/en.js?v=20260820-group-wait-inline-v1"></script>
+<script src="./i18n/ru.js?v=20260820-report-modal-v1"></script>
+<script src="./i18n/en.js?v=20260820-report-modal-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260817-group-wait-v1"></script>
-    <script src="./ui/ui-helpers.js?v=20260805-isProjectSynced-v1"></script>
+    <script src="./ui/ui-helpers.js?v=20260820-report-modal-v1"></script>
     <script src="./ui/ui-tests.js?v=20260820-group-wait-inline-v1"></script>
     <script src="./ui/ui-projects.js?v=20260818-consec-skip-v1"></script>
-    <script src="./ui/ui-market.js?v=20260819-email-bounty-v1"></script>
+    <script src="./ui/ui-market.js?v=20260820-report-modal-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
 <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
@@ -86,7 +86,7 @@
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260806-gt-start-gate-v2">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260818-firstday-steps-v1">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260820-report-modal-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 </head>
 <body>
@@ -1395,11 +1395,21 @@
         <div class="modal-content report-modal-sheet" onclick="event.stopPropagation()">
             <h3 id="t-reportModalTitle" data-i18n="reportModalTitle">📸 Отправка отчёта</h3>
             <p id="t-reportModalHint" data-i18n="reportModalHint">Подтвердите, что приложение скачано и запущено — любым из трёх способов.</p>
-            <div class="report-standard-block">
-                <div class="report-path-label" id="t-reportStandardLabel" data-i18n="reportStandardLabel">Стандартно</div>
+            <div class="report-standard-block report-screenshot-card">
+                <div class="report-owner-row" id="report-owner-row">
+                    <span class="report-owner-flag notranslate" id="report-owner-flag" aria-hidden="true">🌐</span>
+                    <div class="report-owner-meta">
+                        <span class="report-owner-name notranslate" id="report-owner-name"></span>
+                        <span class="report-owner-nick notranslate" id="report-owner-nick"></span>
+                    </div>
+                </div>
                 <div id="report-language-toggle"></div>
-                <div class="form-group">
-                    <textarea id="report-text" class="form-input report-modal-text" rows="8"></textarea>
+                <div class="form-group report-text-wrap">
+                    <textarea id="report-text" class="form-input report-modal-text is-collapsed" rows="5"></textarea>
+                    <button type="button" class="report-text-expand-btn" id="report-text-expand-btn" onclick="toggleReportTextExpand()" aria-expanded="false" title="Expand">
+                        <svg class="report-text-expand-icon report-text-expand-icon--more" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 5.83L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z"/></svg>
+                        <svg class="report-text-expand-icon report-text-expand-icon--less" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.41 18.59L8.83 20 12 16.83 15.17 20l1.41-1.41L12 14l-4.59 4.59zm9.18-13.18L15.17 4 12 7.17 8.83 4 7.41 5.41 12 10l4.59-4.59z"/></svg>
+                    </button>
                     <div id="chips-report" class="chip-scroll" style="display:none;margin-top: 8px;"></div>
                 </div>
                 <button class="btn btn-primary" id="t-reportBtnSend" onclick="sendReport()" data-i18n="reportBtnSend">📸 Отправить скриншот</button>
