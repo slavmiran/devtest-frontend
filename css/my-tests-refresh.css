@@ -1030,13 +1030,7 @@ button.ts-section-head {
 }
 
 #report-modal .report-lang-link__label {
-    text-decoration: underline;
-    text-decoration-color: transparent;
-    text-underline-offset: 3px;
-}
-
-#report-modal .report-lang-link.is-idle .report-lang-link__label {
-    text-decoration-color: rgba(255, 255, 255, 0.18);
+    text-decoration: none;
 }
 
 #report-modal .report-lang-default-check {
