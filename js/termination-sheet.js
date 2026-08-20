@@ -399,14 +399,13 @@
         var skipsCount = ctx.skipsCount;
         var consecutiveSkips = ctx.consecutiveSkips;
         var joinType = ctx.joinType;
-        var requirePartnerGate = joinType === 'mutual' || joinType === 'prelaunch';
-        // Justified kick: ≥3 consecutive skips anytime, or early 0/0 check-ins (~24h).
+        // Justified kick: ≥3 consecutive skips anytime, or early 0 check-ins (~24h)
+        // on THIS project only — owner's reciprocal check-ins do not block it.
         var isDisciplinaryKick = _isJustifiedKick({
             testingDays: testingDays,
             checkins: checkinCount,
             consecutiveSkips: consecutiveSkips,
-            partnerCheckins: ctx.reciprocalOwnerCheckins,
-            requirePartnerGate: requirePartnerGate,
+            requirePartnerGate: false,
         });
         var isBountyJoin = joinType === 'bounty' && ctx.bountyPerTester > 0;
         var holdBonus = ctx.holdBonus;
@@ -491,11 +490,11 @@
     function _isJustifiedKick(opts) {
         opts = opts || {};
         if (Number(opts.consecutiveSkips || 0) >= 3) return true;
+        // Kick early window is always tester-side only (no partner gate).
         return _isUniversalSafeExit({
             testingDays: opts.testingDays,
             checkins: opts.checkins,
-            partnerCheckins: opts.partnerCheckins,
-            requirePartnerGate: !!opts.requirePartnerGate,
+            requirePartnerGate: false,
         });
     }
 
@@ -972,18 +971,38 @@
         _setPreserveSlot((_termState && _termState.preserveHtml) || '');
     }
 
+    function _leaveStatsErrorText(payload, fallbackKey) {
+        var code = '';
+        if (payload && typeof payload === 'object') {
+            code = String(payload.code || payload.error_code || payload.detail || payload.message || '').trim();
+        } else if (typeof payload === 'string') {
+            code = payload.trim();
+        }
+        if (code === 'invalid_init_data') {
+            return _t('contributionClaimError_invalid_init_data') || _t('guestClaimAuthErrorToast');
+        }
+        if (typeof getApiErrorMessage === 'function') {
+            return getApiErrorMessage(payload, fallbackKey);
+        }
+        return fallbackKey || 'stats_not_available';
+    }
+
     async function _loadLeaveStats(appId, body) {
         try {
             var apiBase = (typeof API_BASE !== 'undefined') ? API_BASE : '';
             var actorId = (typeof userId !== 'undefined') ? userId : 0;
-            var response = await fetch(apiBase + '/tests/' + appId + '/partner_stats/' + actorId);
+            var initDataRaw = (typeof getTelegramInitDataRaw === 'function')
+                ? getTelegramInitDataRaw()
+                : ((typeof tg !== 'undefined' && tg && tg.initData) || '');
+            var response = await fetch(
+                apiBase + '/tests/' + appId + '/partner_stats/' + actorId
+                + '?init_data=' + encodeURIComponent(initDataRaw || '')
+            );
             var data = await response.json();
             if (!_termState || Number(_termState.appId) !== Number(appId)) return;
             if (!response.ok || data.status !== 'success') {
                 body.innerHTML = '<div class="details-block"><div style="color: var(--hint-color);">' +
-                    _esc(typeof getApiErrorMessage === 'function'
-                        ? getApiErrorMessage(data, 'stats_not_available')
-                        : 'stats_not_available') +
+                    _esc(_leaveStatsErrorText(data, 'stats_not_available')) +
                     '</div></div>';
                 return;
             }
@@ -992,9 +1011,7 @@
         } catch (error) {
             console.error('Termination leave stats error:', error);
             body.innerHTML = '<div class="details-block"><div style="color: var(--hint-color);">' +
-                _esc(typeof getApiErrorMessage === 'function'
-                    ? getApiErrorMessage(error && error.message, 'networkError')
-                    : 'networkError') +
+                _esc(_leaveStatsErrorText(error && error.message, 'networkError')) +
                 '</div></div>';
         }
     }
