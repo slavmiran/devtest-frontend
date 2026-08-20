@@ -4083,7 +4083,8 @@ function renderReportOwnerHeader(appId, ownerUsername) {
 
     if (fullName && username) {
         lineEl.innerHTML = window.escapeHTML(fullName)
-            + ' <span class="report-owner-nick">'
+            + '<span class="report-owner-sep">•</span>'
+            + '<span class="report-owner-nick">'
             + window.escapeHTML('@' + username)
             + '</span>';
         return;

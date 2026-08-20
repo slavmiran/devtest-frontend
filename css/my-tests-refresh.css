@@ -955,13 +955,19 @@ button.ts-section-head {
 }
 
 #report-modal .report-owner-line {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text-color);
     line-height: 1.35;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+#report-modal .report-owner-line .report-owner-sep {
+    font-weight: 500;
+    color: var(--hint-color);
+    margin: 0 0.28em;
 }
 
 #report-modal .report-owner-line .report-owner-nick {
@@ -1022,12 +1028,17 @@ button.ts-section-head {
     resize: none;
     box-sizing: border-box;
     padding-bottom: 34px;
+    color: var(--hint-color);
+    color: color-mix(in srgb, var(--text-color) 78%, transparent);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
 }
 
 #report-modal .report-modal-text.is-collapsed {
     height: calc(1.45em * 5 + 28px);
     max-height: calc(1.45em * 5 + 28px);
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 #report-modal .report-modal-text.is-expanded {
@@ -1076,10 +1087,10 @@ button.ts-section-head {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 12px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
 }
 
 #report-modal .report-feedback-actions {
