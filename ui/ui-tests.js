@@ -1122,7 +1122,8 @@ function canProposeMutualFromTest(test) {
     if (!targetOwnerId || targetOwnerId === Number(userId || 0)) {
         return false;
     }
-    if (joinType === 'mutual' || appStatus === 'archived') {
+    // Contract/bounty tests are paid slots — no mutual-offer chip on those cards.
+    if (joinType === 'mutual' || joinType === 'bounty' || appStatus === 'archived') {
         return false;
     }
     if (Number(test && test.reciprocal_app_id || 0) > 0) {
