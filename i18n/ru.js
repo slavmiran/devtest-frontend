@@ -2575,7 +2575,7 @@
 
             // Private testing chooser and project cards
             addProjectChooserClose: "Закрыть",
-            addProjectChooserTitle: "Формат тестирования",
+            addProjectChooserTitle: "Формат Запуска",
             addProjectChooserSubtitle: "Оба формата ведут к доступу в production. Выберите тот, что подходит по времени.",
             addProjectChooserMutualTitle: "Взаимный обмен",
             addProjectChooserMutualTag: "Бесплатно",

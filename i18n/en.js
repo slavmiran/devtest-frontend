@@ -2569,7 +2569,7 @@
 
             // Private testing chooser and project cards
             addProjectChooserClose: "Close",
-            addProjectChooserTitle: "Testing format",
+            addProjectChooserTitle: "Launch Format",
             addProjectChooserSubtitle: "Both formats lead to production access. Pick the one that fits your time.",
             addProjectChooserMutualTitle: "Mutual exchange",
             addProjectChooserMutualTag: "Free",
