@@ -2952,7 +2952,10 @@ function renderPlayReviewModal() {
     if (isApproved) {
         // Render a beautiful, premium confirmation screen!
         var rewardsSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
-        var reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 1.0);
+        // Platform confirm for Play review is +0.3 (see PLAY_REVIEW_PLATFORM_KARMA / KARMA_PLATFORM_CONFIRM).
+        // Do not fall back to legacy +1.0 when summary is empty.
+        var reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 0);
+        if (!(reviewPlatformKarma > 0)) reviewPlatformKarma = 0.3;
         var reviewOwnerBoostBust = Number(rewardsSummary.review_owner_boost_bust || 0);
         var reviewOwnerBoostKarma = Number(rewardsSummary.review_owner_boost_karma || 0);
         var developerReply = rewardsSummary.review_developer_reply || '';
