@@ -1196,16 +1196,15 @@ button.ts-section-head {
 }
 
 .karma-dist-icon-badge {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
-    background: radial-gradient(circle at 30% 30%, rgba(255, 214, 10, 0.22), rgba(255, 214, 10, 0.06));
-    border: 1px solid rgba(255, 214, 10, 0.3);
-    box-shadow: 0 4px 14px rgba(255, 214, 10, 0.15);
+    font-size: 22px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     flex-shrink: 0;
 }
 
@@ -1227,6 +1226,9 @@ button.ts-section-head {
     color: var(--hint-color, #8e8e93);
     margin-top: 2px;
     line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .karma-dist-close-btn {
@@ -1262,95 +1264,116 @@ button.ts-section-head {
     background: rgba(255, 255, 255, 0.035);
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 14px;
-    padding: 11px 12px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
+    min-width: 0;
 }
 
 .karma-dist-pool-card.good {
-    border-color: rgba(52, 199, 89, 0.2);
-    background: linear-gradient(180deg, rgba(52, 199, 89, 0.07) 0%, rgba(52, 199, 89, 0.02) 100%);
+    border-color: rgba(52, 199, 89, 0.18);
+    background: linear-gradient(180deg, rgba(52, 199, 89, 0.06) 0%, rgba(52, 199, 89, 0.015) 100%);
 }
 
 .karma-dist-pool-card.special {
-    border-color: rgba(0, 122, 255, 0.2);
-    background: linear-gradient(180deg, rgba(0, 122, 255, 0.07) 0%, rgba(0, 122, 255, 0.02) 100%);
+    border-color: rgba(0, 122, 255, 0.18);
+    background: linear-gradient(180deg, rgba(0, 122, 255, 0.06) 0%, rgba(0, 122, 255, 0.015) 100%);
 }
 
-.karma-dist-pool-top {
+.karma-dist-pool-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 4px;
+    gap: 6px;
 }
 
 .karma-dist-pool-name {
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-color, #fff);
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
-.karma-dist-pool-amount {
+.karma-dist-pool-badge {
     font-size: 11px;
     font-weight: 700;
-    padding: 1px 6px;
+    padding: 2px 6px;
     border-radius: 6px;
+    flex-shrink: 0;
+    line-height: 1.2;
 }
 
-.karma-dist-pool-amount.good {
-    background: rgba(52, 199, 89, 0.18);
+.karma-dist-pool-badge.good {
+    background: rgba(52, 199, 89, 0.15);
     color: var(--success, #34c759);
+    border: 1px solid rgba(52, 199, 89, 0.25);
 }
 
-.karma-dist-pool-amount.special {
-    background: rgba(0, 122, 255, 0.18);
+.karma-dist-pool-badge.special {
+    background: rgba(0, 122, 255, 0.15);
     color: var(--link-color, #0a84ff);
+    border: 1px solid rgba(0, 122, 255, 0.25);
 }
 
 .karma-dist-pool-count {
     font-size: 12px;
-    font-weight: 600;
-    color: var(--text-color, #fff);
-    margin-top: 2px;
+    font-weight: 500;
+    color: var(--hint-color, #8e8e93);
 }
 
 .karma-dist-pool-count .pool-rem {
-    color: var(--success, #34c759);
+    color: var(--text-color, #fff);
     font-weight: 700;
 }
 
-.karma-dist-pool-card.special .karma-dist-pool-count .pool-rem {
-    color: var(--link-color, #0a84ff);
+/* Collapsible limits accordion */
+.karma-dist-limits-box {
+    margin-bottom: 12px;
 }
 
-.karma-dist-pool-desc {
-    font-size: 11px;
-    color: var(--hint-color, #8e8e93);
-    line-height: 1.25;
-}
-
-/* Guide hint */
-.karma-dist-guide-box {
+.karma-dist-limits-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 12px;
-    padding: 9px 12px;
-    margin-bottom: 14px;
+    color: var(--hint-color, #8e8e93);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.karma-dist-limits-toggle:active {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.karma-dist-limits-arrow {
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+.karma-dist-limits-body {
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 12px 6px;
     font-size: 11.5px;
     color: var(--hint-color, #8e8e93);
     line-height: 1.45;
 }
 
-.karma-dist-guide-box strong {
-    color: var(--text-color, #fff);
-    font-weight: 600;
+.karma-dist-limit-item {
+    display: block;
 }
 
-/* Tester cards list */
+/* Tester list rows */
 .karma-dist-list {
     display: flex;
     flex-direction: column;
@@ -1358,7 +1381,7 @@ button.ts-section-head {
     margin-bottom: 16px;
 }
 
-.karma-dist-card {
+.karma-dist-row {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 14px;
@@ -1370,20 +1393,13 @@ button.ts-section-head {
     transition: background 0.15s ease;
 }
 
-.karma-dist-card:hover {
-    background: rgba(255, 255, 255, 0.05);
+.karma-dist-row:hover {
+    background: rgba(255, 255, 255, 0.045);
 }
 
-.karma-dist-card-main {
+.karma-dist-row-main {
     flex: 1;
     min-width: 0;
-}
-
-.karma-dist-card-user {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 4px;
 }
 
 .karma-dist-tester-name {
@@ -1398,89 +1414,87 @@ button.ts-section-head {
     padding: 0;
     text-align: left;
     cursor: pointer;
+    display: block;
 }
 
 .karma-dist-tester-name:active {
     opacity: 0.7;
 }
 
-.karma-dist-stats-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 5px;
-}
-
-.karma-dist-stat-pill {
-    font-size: 11px;
-    font-weight: 500;
-    padding: 2px 7px;
-    border-radius: 6px;
-    background: rgba(142, 142, 147, 0.1);
+.karma-dist-tester-meta {
+    font-size: 12px;
     color: var(--hint-color, #8e8e93);
-    line-height: 1.25;
+    margin-top: 2px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.karma-dist-stat-pill.success {
-    background: rgba(52, 199, 89, 0.12);
-    color: var(--success, #34c759);
-}
-
-.karma-dist-stat-pill.warning {
-    background: rgba(255, 159, 10, 0.12);
-    color: #ff9f0a;
-}
-
-.karma-dist-stat-pill.info {
-    background: rgba(0, 122, 255, 0.12);
-    color: var(--link-color, #0a84ff);
-}
-
-.karma-dist-card-actions {
+.karma-dist-row-actions {
     display: flex;
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
 }
 
-.karma-given-chip {
+.karma-awarded-pill {
     font-size: 11px;
     font-weight: 600;
     padding: 4px 8px;
     border-radius: 8px;
-    background: rgba(142, 142, 147, 0.12);
+    background: rgba(255, 255, 255, 0.05);
     color: var(--hint-color, #8e8e93);
-    border: 1px solid rgba(142, 142, 147, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
+}
+
+.karma-done-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: rgba(52, 199, 89, 0.08);
+    color: var(--success, #34c759);
+    border: 1px solid rgba(52, 199, 89, 0.2);
     white-space: nowrap;
 }
 
 .karma-action-btn {
-    padding: 6px 13px;
+    padding: 6px 14px;
     border-radius: 10px;
-    border: none;
+    border: 1px solid rgba(52, 199, 89, 0.35);
     font-size: 12.5px;
-    font-weight: 700;
-    background: var(--success, #34c759);
-    color: #fff;
+    font-weight: 600;
+    background: rgba(52, 199, 89, 0.12);
+    color: var(--success, #34c759);
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    transition: transform 0.1s ease, filter 0.15s ease;
-    box-shadow: 0 3px 10px rgba(52, 199, 89, 0.25);
+    transition: all 0.15s ease;
     white-space: nowrap;
 }
 
 .karma-action-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.96);
+    background: rgba(52, 199, 89, 0.22);
 }
 
 .karma-action-btn:disabled,
 .karma-action-btn.is-disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: not-allowed;
-    background: rgba(142, 142, 147, 0.15);
+    background: rgba(142, 142, 147, 0.08);
     color: var(--hint-color, #8e8e93);
-    box-shadow: none;
+    border-color: transparent;
     transform: none;
+}
+
+.karma-dist-footer-btn {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    background: var(--secondary-bg-color, rgba(142, 142, 147, 0.12));
+    color: var(--text-color, #fff);
+    border: 1px solid rgba(142, 142, 147, 0.2);
 }
