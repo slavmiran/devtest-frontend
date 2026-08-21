@@ -377,6 +377,8 @@
             massInviteStatusRejected: "Declined",
             massInviteStatusExpired: "Timed out",
             massInviteStatusError: "Failed",
+            massInviteStatusAccessIssue: "Access issue",
+            massInviteAccessIssueHint: "This user has an active Access Error on their app. The invite was skipped — the blast continues.",
             massInvitePhaseCollectTitle: "Finding candidates",
             massInvitePhaseCollectSubtitle: "Looking for matching developers on the Showcase.",
             massInvitePhaseSendTitle: "Sending invites",

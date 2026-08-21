@@ -163,10 +163,22 @@
     }
 
     function markFailed(appId, ownerId, code) {
+        var safeCode = code || null;
+        var isAccessIssue = safeCode === 'owner_has_access_issue'
+            || safeCode === 'target_owner_has_access_issue'
+            || safeCode === 'access_issue';
         return _updateCandidate(appId, ownerId, {
-            ui_status: 'error',
-            outcome: 'error',
-            code: code || null,
+            ui_status: isAccessIssue ? 'access_issue' : 'error',
+            outcome: isAccessIssue ? 'access_issue' : 'error',
+            code: safeCode,
+        });
+    }
+
+    function markAccessIssue(appId, ownerId, code) {
+        return _updateCandidate(appId, ownerId, {
+            ui_status: 'access_issue',
+            outcome: 'access_issue',
+            code: code || 'access_issue',
         });
     }
 
@@ -290,6 +302,7 @@
         markSending: markSending,
         markSent: markSent,
         markFailed: markFailed,
+        markAccessIssue: markAccessIssue,
         finalize: finalize,
         mergeServerOffers: mergeServerOffers,
         computeStats: computeStats,

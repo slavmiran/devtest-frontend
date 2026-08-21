@@ -2534,12 +2534,31 @@ async function startMassInvite(projectId) {
                         }
                     }
                 } else {
-                    failedCount++;
-                    if (typeof MassInviteSession !== 'undefined') {
-                        MassInviteSession.markFailed(projectId, candidate.owner_id, sendData && sendData.code);
-                    }
-                    if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                        MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
+                    var skipCode = String((sendData && sendData.code) || (sendData && sendData.outcome) || '');
+                    var isAccessIssue = skipCode === 'owner_has_access_issue'
+                        || skipCode === 'target_owner_has_access_issue'
+                        || skipCode === 'access_issue'
+                        || (sendData && sendData.outcome === 'access_issue');
+                    if (isAccessIssue) {
+                        // Soft skip: warn in UI, keep blast running.
+                        if (typeof MassInviteSession !== 'undefined') {
+                            if (MassInviteSession.markAccessIssue) {
+                                MassInviteSession.markAccessIssue(projectId, candidate.owner_id, skipCode || 'access_issue');
+                            } else {
+                                MassInviteSession.markFailed(projectId, candidate.owner_id, skipCode || 'access_issue');
+                            }
+                        }
+                        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'access_issue');
+                        }
+                    } else {
+                        failedCount++;
+                        if (typeof MassInviteSession !== 'undefined') {
+                            MassInviteSession.markFailed(projectId, candidate.owner_id, sendData && sendData.code);
+                        }
+                        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
+                        }
                     }
                 }
             } catch (err) {

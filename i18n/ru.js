@@ -376,6 +376,8 @@
             massInviteStatusRejected: "Отказался",
             massInviteStatusExpired: "Время вышло",
             massInviteStatusError: "Ошибка",
+            massInviteStatusAccessIssue: "Ошибка доступа",
+            massInviteAccessIssueHint: "У пользователя открыта активная «Ошибка доступа» к приложению. Приглашение пропущено — рассылка продолжается.",
             massInvitePhaseCollectTitle: "Подбираем кандидатов",
             massInvitePhaseCollectSubtitle: "Ищем подходящих разработчиков на витрине.",
             massInvitePhaseSendTitle: "Отправляем приглашения",

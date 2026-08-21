@@ -12,6 +12,7 @@
         accepted: 'massInviteStatusAccepted',
         rejected: 'massInviteStatusRejected',
         expired: 'massInviteStatusExpired',
+        access_issue: 'massInviteStatusAccessIssue',
         error: 'massInviteStatusError',
         failed: 'massInviteStatusError',
         skipped: 'massInviteStatusError',
@@ -25,6 +26,7 @@
         accepted: '✓',
         rejected: '✕',
         expired: '⏱',
+        access_issue: '!',
         error: '!',
         failed: '!',
         skipped: '!',
@@ -69,6 +71,9 @@
         var value = String(status || 'selected').toLowerCase();
         if (value === 'pending') return 'sent';
         if (value === 'auto_accepted') return 'accepted';
+        if (value === 'owner_has_access_issue' || value === 'target_owner_has_access_issue') {
+            return 'access_issue';
+        }
         if (value === 'failed') return 'error';
         if (value === 'skipped') return 'error';
         return value;
@@ -228,12 +233,40 @@
         if (overlay && overlay.classList.contains('active') && overlay.getAttribute('aria-busy') === 'true') {
             return;
         }
+        if (window.tg && tg.HapticFeedback) {
+            try { tg.HapticFeedback.impactOccurred('light'); } catch (e) { /* ignore */ }
+        }
+
+        var status = String(el.getAttribute('data-status') || '').toLowerCase();
+        if (status === 'access_issue') {
+            var hint = window.t
+                ? window.t('massInviteAccessIssueHint', {}, _lang())
+                : 'Active access issue — invite was skipped.';
+            try {
+                if (window.tg && typeof tg.showPopup === 'function') {
+                    tg.showPopup({
+                        title: window.t ? window.t('massInviteStatusAccessIssue', {}, _lang()) : 'Access issue',
+                        message: hint,
+                        buttons: [{ type: 'close' }],
+                    });
+                    return;
+                }
+                if (window.tg && typeof tg.showAlert === 'function') {
+                    tg.showAlert(hint);
+                    return;
+                }
+            } catch (e) { /* fall through to dossier */ }
+            if (typeof showToast === 'function') {
+                showToast(hint);
+                return;
+            }
+            window.alert(hint);
+            return;
+        }
+
         // Overlay sits above dossier modal — close it first so the profile is visible.
         if (overlay && overlay.classList.contains('active') && typeof MassInviteProgressOverlay !== 'undefined') {
             MassInviteProgressOverlay.hide();
-        }
-        if (window.tg && tg.HapticFeedback) {
-            try { tg.HapticFeedback.impactOccurred('light'); } catch (e) { /* ignore */ }
         }
         openDossier({
             owner_id: Number(el.getAttribute('data-owner-id') || 0),

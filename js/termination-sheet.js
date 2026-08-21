@@ -1130,94 +1130,57 @@
             }
             _syncLegacyReasonFields(getTermReasonCode(), getTermReasonNote());
 
-            var mode = _termState.mode;
-            var justified = !!_termState.justifiedAllowed;
-            var leaveNoPenalty = justified || !!_termState.isSafeExit || !!_termState.noPenaltyExit;
-            var confirmMsg = '';
-            if (mode === 'leave') {
-                confirmMsg = leaveNoPenalty
-                    ? _t('leaveConfirmDescJustified')
-                    : _t('leaveConfirmDescAbandoned', { karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1) });
-            } else if (mode === 'drop') {
-                confirmMsg = _t(
-                    _termState.isSafeExit
-                        ? 'termConfirmDescDropSafe'
-                        : (_termState.isBountyDrop ? 'termConfirmDescDropBounty' : 'termConfirmDescDrop')
-                );
-            } else {
-                confirmMsg = _t('termConfirmDescKick');
-            }
-
-            // Telegram native confirm is reliable in Mini App; custom overlay often
-            // paints under the sheet / looks like "no reaction".
-            if (window.tg && typeof window.tg.showConfirm === 'function') {
-                window.tg.showConfirm(String(confirmMsg || _t('leaveConfirmTitle')), function (ok) {
-                    if (ok) confirmTerminationAdaptive();
-                });
-                return;
-            }
-            if (window.tg && typeof window.tg.showPopup === 'function') {
-                window.tg.showPopup({
-                    title: _t(mode === 'kick' ? 'termConfirmTitleKick' : 'leaveConfirmTitle'),
-                    message: String(confirmMsg || ''),
-                    buttons: [
-                        { id: 'ok', type: 'destructive', text: _t(mode === 'kick' ? 'kickConfirmBtn' : 'leaveConfirmFinalBtn') },
-                        { id: 'cancel', type: 'cancel' },
-                    ],
-                }, function (buttonId) {
-                    if (buttonId === 'ok') confirmTerminationAdaptive();
-                });
-                return;
-            }
-
             var overlay = document.getElementById('leave-confirm-overlay');
             var body = document.getElementById('leave-confirm-body');
             var finalBtn = document.getElementById('leave-confirm-final-btn');
             var title = document.getElementById('leave-confirm-title');
             if (!overlay || !body) {
-                console.warn('requestTerminationConfirm: overlay missing — executing directly');
-                confirmTerminationAdaptive();
+                console.warn('requestTerminationConfirm: overlay missing');
+                if (typeof showToast === 'function') showToast(_t('loadError'));
                 return;
             }
 
-            // Keep overlay above every sheet in Telegram WebView.
+            // Keep informative confirm sheet above the termination sheet.
             if (overlay.parentNode !== document.body) {
                 document.body.appendChild(overlay);
             }
             overlay.style.zIndex = '12000';
 
+            var mode = _termState.mode;
             var points = [];
+            var justified = !!_termState.justifiedAllowed;
+            var leaveNoPenalty = justified || !!_termState.isSafeExit || !!_termState.noPenaltyExit;
             var unlink = getTermUnlinkReciprocal();
 
-        if (mode === 'leave') {
-            if (title) title.textContent = _t('leaveConfirmTitle');
-            if (unlink && _isMutualJoin(_termState.joinType)) {
-                points.push('<li>' + _esc(_t('leaveConfirmPointMirror')) + '</li>');
-            } else if (_isMutualJoin(_termState.joinType)) {
-                points.push('<li>' + _esc(_t('termConfirmPointKeepMirrorLeave')) + '</li>');
-            }
-            if (leaveNoPenalty) {
-                points.push('<li>' + _esc(_t('leaveConfirmPointNoPenalty')) + '</li>');
-            } else if (Number(_termState.karmaBurnPreview || 0) > 0) {
-                points.push('<li>' + _esc(_t('leaveConfirmPointKarma', {
-                    karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1),
-                })) + '</li>');
-            } else {
-                points.push('<li class="is-warn">' + _esc(_t('termDropEffectRiCostly')) + '</li>');
-            }
-            if (_termState.grantAvailable && !leaveNoPenalty) {
-                points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointGrant')) + '</li>');
-            }
-            body.innerHTML = '' +
-                '<p class="leave-confirm-lead">' + _esc(leaveNoPenalty
-                    ? _t('leaveConfirmDescJustified')
-                    : _t('leaveConfirmDescAbandoned', { karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1) })) +
-                '</p><ul class="leave-confirm-points">' + points.join('') + '</ul>';
-            if (finalBtn) {
-                finalBtn.classList.toggle('leave-cta--safe', leaveNoPenalty);
-                finalBtn.classList.toggle('leave-cta--warn', !leaveNoPenalty);
-                finalBtn.textContent = _t(leaveNoPenalty ? 'leaveConfirmFinalJustified' : 'leaveConfirmFinalAbandoned');
-            }
+            if (mode === 'leave') {
+                if (title) title.textContent = _t('leaveConfirmTitle');
+                if (unlink && _isMutualJoin(_termState.joinType)) {
+                    points.push('<li>' + _esc(_t('leaveConfirmPointMirror')) + '</li>');
+                } else if (_isMutualJoin(_termState.joinType)) {
+                    points.push('<li>' + _esc(_t('termConfirmPointKeepMirrorLeave')) + '</li>');
+                }
+                if (leaveNoPenalty) {
+                    points.push('<li>' + _esc(_t('leaveConfirmPointNoPenalty')) + '</li>');
+                } else if (Number(_termState.karmaBurnPreview || 0) > 0) {
+                    points.push('<li>' + _esc(_t('leaveConfirmPointKarma', {
+                        karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1),
+                    })) + '</li>');
+                } else {
+                    points.push('<li class="is-warn">' + _esc(_t('termDropEffectRiCostly')) + '</li>');
+                }
+                if (_termState.grantAvailable && !leaveNoPenalty) {
+                    points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointGrant')) + '</li>');
+                }
+                body.innerHTML = '' +
+                    '<p class="leave-confirm-lead">' + _esc(leaveNoPenalty
+                        ? _t('leaveConfirmDescJustified')
+                        : _t('leaveConfirmDescAbandoned', { karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1) })) +
+                    '</p><ul class="leave-confirm-points">' + points.join('') + '</ul>';
+                if (finalBtn) {
+                    finalBtn.classList.toggle('leave-cta--safe', leaveNoPenalty);
+                    finalBtn.classList.toggle('leave-cta--warn', !leaveNoPenalty);
+                    finalBtn.textContent = _t(leaveNoPenalty ? 'leaveConfirmFinalJustified' : 'leaveConfirmFinalAbandoned');
+                }
         } else if (mode === 'drop') {
             if (title) title.textContent = _t('termConfirmTitleDrop');
             points.push('<li>' + _esc(_t('termConfirmPointDropPrimary')) + '</li>');

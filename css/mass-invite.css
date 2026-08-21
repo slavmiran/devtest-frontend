@@ -194,6 +194,24 @@
     opacity: 0.72;
 }
 
+.mi-candidate-card[data-status="access_issue"] {
+    --mi-ring: var(--warning);
+    --mi-ring-glow: rgba(255, 159, 10, 0.22);
+}
+
+.mi-candidate-card[data-status="access_issue"] .mi-candidate-badge {
+    background: var(--warning);
+    color: var(--text-on-accent);
+}
+
+.mi-candidate-card[data-status="access_issue"] .mi-candidate-label {
+    color: var(--warning);
+}
+
+.mi-candidate-card[data-status="access_issue"] .mi-candidate-pair {
+    opacity: 0.85;
+}
+
 .mi-candidate-card[data-status="expired"] {
     --mi-ring: var(--warning);
 }
