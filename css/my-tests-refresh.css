@@ -1252,82 +1252,83 @@ button.ts-section-head {
     background: rgba(142, 142, 147, 0.28);
 }
 
+/* Unified Hero Container */
+.karma-dist-hero-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+
+.karma-dist-hero-desc {
+    font-size: 12.5px;
+    color: var(--hint-color, #8e8e93);
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
 /* Pool status tiles */
 .karma-dist-pool-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: 12px;
 }
 
 .karma-dist-pool-card {
-    background: rgba(255, 255, 255, 0.035);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 14px;
-    padding: 12px;
+    background: transparent;
+    border: none;
+    padding: 0;
     display: flex;
-    flex-direction: column;
-    gap: 5px;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 6px;
     min-width: 0;
 }
 
-.karma-dist-pool-card.good {
-    border-color: rgba(52, 199, 89, 0.18);
-    background: linear-gradient(180deg, rgba(52, 199, 89, 0.06) 0%, rgba(52, 199, 89, 0.015) 100%);
-}
-
-.karma-dist-pool-card.special {
-    border-color: rgba(0, 122, 255, 0.18);
-    background: linear-gradient(180deg, rgba(0, 122, 255, 0.06) 0%, rgba(0, 122, 255, 0.015) 100%);
-}
-
-.karma-dist-pool-head {
+.karma-dist-pool-info {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
 }
 
 .karma-dist-pool-name {
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 600;
     color: var(--text-color, #fff);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    min-width: 0;
-}
-
-.karma-dist-pool-badge {
-    font-size: 11px;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 6px;
-    flex-shrink: 0;
-    line-height: 1.2;
-}
-
-.karma-dist-pool-badge.good {
-    background: rgba(52, 199, 89, 0.15);
-    color: var(--success, #34c759);
-    border: 1px solid rgba(52, 199, 89, 0.25);
-}
-
-.karma-dist-pool-badge.special {
-    background: rgba(0, 122, 255, 0.15);
-    color: var(--link-color, #0a84ff);
-    border: 1px solid rgba(0, 122, 255, 0.25);
 }
 
 .karma-dist-pool-count {
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 500;
     color: var(--hint-color, #8e8e93);
+    white-space: nowrap;
 }
 
 .karma-dist-pool-count .pool-rem {
     color: var(--text-color, #fff);
     font-weight: 700;
+}
+
+.karma-dist-pool-amount {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+}
+
+.karma-dist-pool-amount.good {
+    color: #34c759;
+}
+
+.karma-dist-pool-amount.special {
+    color: #0a84ff;
 }
 
 /* Collapsible limits accordion */
@@ -1340,13 +1341,13 @@ button.ts-section-head {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: 8px 12px;
-    border-radius: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
-    color: var(--hint-color, #8e8e93);
-    font-size: 12px;
-    font-weight: 500;
+    color: var(--text-color, #fff);
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
     transition: background 0.15s ease;
 }
@@ -1355,18 +1356,36 @@ button.ts-section-head {
     background: rgba(255, 255, 255, 0.06);
 }
 
-.karma-dist-limits-arrow {
-    font-size: 10px;
-    opacity: 0.7;
+.karma-dist-limits-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.karma-limit-badge {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: rgba(10, 132, 255, 0.16);
+    color: #0a84ff;
+    border: 1px solid rgba(10, 132, 255, 0.3);
+}
+
+.karma-chevron-icon {
+    transition: transform 0.2s ease;
+    stroke: var(--hint-color, #8e8e93);
+    flex-shrink: 0;
 }
 
 .karma-dist-limits-body {
     flex-direction: column;
-    gap: 4px;
-    padding: 8px 12px 6px;
-    font-size: 11.5px;
+    gap: 6px;
+    padding: 10px 12px 6px;
+    font-size: 12px;
     color: var(--hint-color, #8e8e93);
     line-height: 1.45;
+    word-break: break-word;
 }
 
 .karma-dist-limit-item {
@@ -1461,21 +1480,22 @@ button.ts-section-head {
 }
 
 .karma-action-btn {
-    padding: 6px 14px;
+    padding: 7px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(52, 199, 89, 0.35);
+    border: none;
     font-size: 12.5px;
     font-weight: 600;
-    background: rgba(52, 199, 89, 0.12);
-    color: var(--success, #34c759);
+    background: var(--link-color, #0a84ff);
+    color: #fff;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(10, 132, 255, 0.25);
 }
 
 .karma-action-btn:active {
     transform: scale(0.96);
-    background: rgba(52, 199, 89, 0.22);
+    opacity: 0.9;
 }
 
 .karma-action-btn:disabled,
