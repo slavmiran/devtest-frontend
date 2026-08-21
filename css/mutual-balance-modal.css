@@ -1296,24 +1296,38 @@
     border-top: none;
 }
 
-.term-kick-details {
+.term-kick-details.leave-side--mine {
     margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px dashed color-mix(in srgb, var(--border-subtle) 55%, transparent);
+    border-top: none;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--border-subtle) 85%, transparent);
+    background: color-mix(in srgb, var(--bg-surface-2) 55%, var(--bg-surface-1));
+    overflow: hidden;
 }
 
 .term-kick-details .leave-pull {
     margin: 0;
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.term-kick-details.is-chevron-only .leave-pull-rail {
+    display: none;
 }
 
 .term-kick-details-inner .term-effects-block {
     margin: 0 0 10px;
     padding: 10px 12px;
+    border-radius: 10px;
     background: color-mix(in srgb, var(--bg-surface-2, var(--bg-surface-1)) 88%, transparent);
 }
 
 .term-kick-details-inner .term-effects-block:last-child {
     margin-bottom: 0;
+}
+
+.term-kick-impact .term-impact-grid {
+    margin-bottom: 8px;
 }
 
 .term-status-compact {
@@ -1600,6 +1614,16 @@
     font-size: 13px;
     line-height: 1.4;
     color: var(--text-secondary);
+}
+
+.leave-confirm-points li.leave-confirm-grant {
+    padding: 8px 12px 8px 34px;
+}
+
+.leave-confirm-points li.leave-confirm-grant .leave-grant-row {
+    margin-top: 0;
+    padding: 0;
+    border-top: none;
 }
 
 .leave-confirm-points li::before {

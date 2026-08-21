@@ -260,6 +260,9 @@
         var mySkips = Number(data.my_skips || 0);
         var waitCount = Math.max(0, 3 - partnerConsecutive);
         var grantStillAvailable = mySkips <= 3;
+        var grantTotal = grantStillAvailable
+            ? _estimateGrantTotal({ skips_count: mySkips })
+            : 0;
         var partnerLabel = data.partner_username
             ? '@' + String(data.partner_username || '').replace(/^@+/, '')
             : _t('idLabel', { id: data.partner_id || 0 });
@@ -268,6 +271,7 @@
             _termState.justifiedAllowed = justifiedAllowed;
             _termState.karmaBurnPreview = karmaBurn;
             _termState.grantAvailable = grantStillAvailable;
+            _termState.grantTotal = grantTotal;
             _termState.partnerLeft = !!data.partner_left;
             _termState.isMutualDebt = !!data.is_mutual_debt;
             _termState.mySkips = mySkips;
@@ -284,13 +288,9 @@
             partnerMetaParts.push('<span class="leave-meta-item">☯️ ' + _esc(String(data.partner_karma)) + '</span>');
         }
 
+        // Same grant tease as invite/drop — always show ~$BUST when still claimable.
         var grantRow = grantStillAvailable
-            ? '<div class="leave-grant-row">' +
-                '<span class="leave-grant-icon" aria-hidden="true">🏆</span>' +
-                '<div class="leave-grant-copy">' +
-                    '<div class="leave-grant-title">' + _esc(_t('leaveGrantTeaseTitle')) + '</div>' +
-                    '<div class="leave-grant-desc">' + _esc(_t('leaveGrantTeaseDesc', { skips: mySkips, max: 3 })) + '</div>' +
-                '</div></div>'
+            ? _renderInviteGrantRow(mySkips, grantTotal)
             : '';
 
         var myTestingDays = Number(data.my_testing_days || 0);
@@ -494,9 +494,8 @@
         }
 
         var detailsHtml = '' +
-            '<div class="term-kick-details leave-side--mine" id="kick-impact-details">' +
+            '<div class="term-kick-details leave-side--mine is-chevron-only" id="kick-impact-details">' +
                 '<button type="button" class="leave-pull" id="kick-impact-details-toggle" aria-expanded="false" onclick="toggleKickImpactDetails()">' +
-                    '<span class="leave-pull-rail" aria-hidden="true"><span class="leave-pull-knob"></span></span>' +
                     '<span class="leave-pull-copy">' +
                         '<span class="leave-pull-label">' + _esc(_t('kickImpactDetailsLabel')) + '</span>' +
                         '<span class="leave-pull-hint">' + _esc(_t('kickImpactDetailsHint')) + '</span>' +
@@ -528,11 +527,15 @@
                 '</div>' +
                 mySideHtml +
             '</div>' +
-            '<div class="term-impact-block term-kick-impact">' +
-                '<div class="term-impact-title">' + _esc(_t('termDropEffectsTitle')) + '</div>' +
-                statusBanner +
-                detailsHtml +
-            '</div>';
+            _renderImpactMeters({
+                karmaOk: true,
+                riOk: isDisciplinaryKick,
+                karmaBurn: 0,
+                statusBanner: statusBanner,
+                extraHtml: detailsHtml,
+                blockClass: 'term-kick-impact',
+                ownerCycle: false,
+            });
     }
 
     function _isUniversalSafeExit(opts) {
@@ -608,7 +611,7 @@
             '</div>';
     }
 
-    function _renderBountyLossBlock(contractLost, grantLost, earned, grantStillAvailable, skips) {
+    function _renderBountyLossBlock(contractLost, grantLost, earned, grantStillAvailable) {
         var totalLost = Math.max(0, Number(contractLost || 0) + Number(grantLost || 0));
         var keptHtml = Number(earned || 0) > 0
             ? '<div class="term-bust-kept">' + _esc(_t('termDropBountyLossKept', {
@@ -634,15 +637,10 @@
                     '</div>' +
                 '</div>' +
                 keptHtml +
-                (grantStillAvailable
-                    ? '<div class="term-bust-grant-note">' + _esc(_t('termDropBountyGrantVisualNote', {
-                        skips: skips,
-                        max: 3,
-                    })) + '</div>'
-                    : '') +
             '</div>';
     }
 
+    /** Shared “grant still available” row with ~$BUST — invite, mutual leave, bounty drop, confirm. */
     function _renderInviteGrantRow(skips, grantTotal) {
         return '' +
             '<div class="leave-grant-row term-grant-visual">' +
@@ -686,6 +684,8 @@
         var riOk = !!opts.riOk;
         var hint = opts.hint || '';
         var statusBanner = opts.statusBanner || '';
+        var extraHtml = opts.extraHtml || '';
+        var blockClass = 'term-impact-block' + (opts.blockClass ? (' ' + opts.blockClass) : '');
         var ownerCycle = opts.ownerCycle === true ? _renderOwnerCyclePlea() : '';
         var karmaBurn = Math.max(0, Number(opts.karmaBurn || 0));
         var riCurrent = (opts.riCurrent != null && Number.isFinite(Number(opts.riCurrent)))
@@ -715,7 +715,7 @@
         }
 
         return '' +
-            '<div class="term-impact-block">' +
+            '<div class="' + blockClass + '">' +
                 '<div class="term-impact-title">' + _esc(_t('termDropEffectsTitle')) + '</div>' +
                 '<div class="term-impact-grid">' +
                     '<div class="term-impact-pill ' + (karmaOk ? 'is-ok' : 'is-risk') + '">' +
@@ -735,6 +735,7 @@
                 '</div>' +
                 ownerCycle +
                 statusBanner +
+                extraHtml +
                 (hint ? '<div class="term-impact-hint">' + _esc(hint) + '</div>' : '') +
             '</div>';
     }
@@ -807,6 +808,7 @@
             _termState.contractTotal = bountyPerTester;
             _termState.earnedBounty = earnedEstimate;
             _termState.grantTotal = grantTotal;
+            _termState.mySkips = skips;
             _termState.preserveHtml = isInviteLike ? _renderPreserveInviteBlock(test, ownerId) : '';
         }
 
@@ -816,13 +818,13 @@
                 contractLost,
                 grantLost,
                 earnedEstimate,
-                grantStillAvailable,
-                skips
+                grantStillAvailable
             )
             : '';
         var exitStatusBanner = _renderExitBanner(isSafeExit, { karmaBurn: karmaBurn });
 
-        var grantRow = (!isBounty && grantStillAvailable)
+        // Invite + bounty: same grant tease with visible ~$BUST when still claimable.
+        var grantRow = grantStillAvailable
             ? _renderInviteGrantRow(skips, grantTotal)
             : '';
 
@@ -1256,12 +1258,14 @@
                     points.push('<li class="is-warn">' + _esc(_t('termDropEffectRiCostly')) + '</li>');
                 }
                 if (_termState.grantAvailable) {
-                    points.push('<li>' +
-                        '<div class="leave-confirm-main">' + _esc(_t('leaveGrantTeaseTitle')) + '</div>' +
-                        '<div class="leave-confirm-sub">' + _esc(_t('leaveGrantTeaseDesc', {
-                            skips: Number(_termState.mySkips || 0),
-                            max: 3,
-                        })) + '</div>' +
+                    var confirmGrantTotal = Number(_termState.grantTotal || 0);
+                    if (!(confirmGrantTotal > 0)) {
+                        confirmGrantTotal = _estimateGrantTotal({
+                            skips_count: Number(_termState.mySkips || 0),
+                        });
+                    }
+                    points.push('<li class="leave-confirm-grant">' +
+                        _renderInviteGrantRow(Number(_termState.mySkips || 0), confirmGrantTotal) +
                         '</li>');
                 } else if (!leaveNoPenalty) {
                     points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointGrant')) + '</li>');
