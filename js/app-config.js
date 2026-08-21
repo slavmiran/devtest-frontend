@@ -895,6 +895,26 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_leaveMutualAppId', function () { return _leaveMutualAppId; }, function (value) { _leaveMutualAppId = value; });
     window.App.bindStateProperty('_leaveMutualStats', function () { return _leaveMutualStats; }, function (value) { _leaveMutualStats = value; });
     window.App.bindStateProperty('_kickTarget', function () { return _kickTarget; }, function (value) { _kickTarget = value; });
+
+    // Canonical writers so IIFE modules (termination-sheet) update the same lexical vars
+    // that confirmDropTest / confirmLeaveMutual / confirmKickTester read.
+    function setLeaveMutualAppId(appId) {
+        _leaveMutualAppId = Number(appId || 0) || null;
+        window._leaveMutualAppId = _leaveMutualAppId;
+    }
+    function setDropTestAppId(appId) {
+        _dropTestAppId = Number(appId || 0) || null;
+        window._dropTestAppId = _dropTestAppId;
+    }
+    function setKickTarget(appId, testerId) {
+        var aid = Number(appId || 0);
+        var tid = Number(testerId || 0);
+        _kickTarget = (aid > 0 && tid > 0) ? { appId: aid, testerId: tid } : null;
+        window._kickTarget = _kickTarget;
+    }
+    window.setLeaveMutualAppId = setLeaveMutualAppId;
+    window.setDropTestAppId = setDropTestAppId;
+    window.setKickTarget = setKickTarget;
     window.App.bindStateProperty('_overtimeTest', function () { return _overtimeTest; }, function (value) { _overtimeTest = value; });
     window.App.bindStateProperty('_syncProjectId', function () { return _syncProjectId; }, function (value) { _syncProjectId = value; });
     window.App.bindStateProperty('_socialBonusStatus', function () { return _socialBonusStatus; }, function (value) { _socialBonusStatus = value; });

@@ -3167,14 +3167,29 @@ async function confirmJoinBounty() {
     }
 }
 
-async function confirmDropTest() {
-    if (!_dropTestAppId) return;
+async function confirmDropTest(explicitAppId) {
+    var appId = Number(
+        explicitAppId ||
+        _dropTestAppId ||
+        (window._terminationState && window._terminationState.appId) ||
+        window._dropTestAppId ||
+        0
+    );
+    if (appId > 0) {
+        _dropTestAppId = appId;
+        window._dropTestAppId = appId;
+    }
+    if (!appId) {
+        console.warn('confirmDropTest: missing app id');
+        if (typeof showToast === 'function') showToast(window.t ? window.t('loadError', {}, lang) : 'Error');
+        return;
+    }
     try {
         const unlinkReciprocal = false;
         const reasonCode = (typeof getTermReasonCode === 'function') ? getTermReasonCode() : '';
         const reasonNote = (typeof getTermReasonNote === 'function') ? getTermReasonNote() : '';
         const leaveReason = _buildLeaveReasonPayload(reasonCode, reasonNote);
-        const response = await fetch(`${API_BASE}/tests/${_dropTestAppId}/drop`, {
+        const response = await fetch(`${API_BASE}/tests/${appId}/drop`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(withInitData({
@@ -3281,8 +3296,23 @@ function _removeLocalTesterFromProject(appId, testerId) {
     });
 }
 
-async function confirmLeaveMutual(isJustified) {
-    if (!_leaveMutualAppId) return;
+async function confirmLeaveMutual(isJustified, explicitAppId) {
+    var appId = Number(
+        explicitAppId ||
+        _leaveMutualAppId ||
+        (window._terminationState && window._terminationState.appId) ||
+        window._leaveMutualAppId ||
+        0
+    );
+    if (appId > 0) {
+        _leaveMutualAppId = appId;
+        window._leaveMutualAppId = appId;
+    }
+    if (!appId) {
+        console.warn('confirmLeaveMutual: missing app id');
+        if (typeof showToast === 'function') showToast(window.t ? window.t('loadError', {}, lang) : 'Error');
+        return;
+    }
 
     var reasonCode = (typeof getTermReasonCode === 'function')
         ? getTermReasonCode()
@@ -3295,7 +3325,6 @@ async function confirmLeaveMutual(isJustified) {
     if (!reasonCode && reasonSelect) reasonCode = reasonSelect.value;
     if (!reasonNote && reasonOther) reasonNote = reasonOther.value;
     var reasonPayload = _buildLeaveReasonPayload(reasonCode, reasonNote);
-    var appId = _leaveMutualAppId;
     var previousTests = Array.isArray(myTests) ? myTests.slice() : [];
     var unlinkReciprocal = false;
 
@@ -3361,8 +3390,30 @@ async function confirmLeaveMutual(isJustified) {
     }
 }
 
-async function confirmKickTester() {
-    if (!_kickTarget || !_kickTarget.appId || !_kickTarget.testerId) return;
+async function confirmKickTester(explicitAppId, explicitTesterId) {
+    var appId = Number(
+        explicitAppId ||
+        (_kickTarget && _kickTarget.appId) ||
+        (window._terminationState && window._terminationState.projectId) ||
+        (window._kickTarget && window._kickTarget.appId) ||
+        0
+    );
+    var testerId = Number(
+        explicitTesterId ||
+        (_kickTarget && _kickTarget.testerId) ||
+        (window._terminationState && window._terminationState.testerId) ||
+        (window._kickTarget && window._kickTarget.testerId) ||
+        0
+    );
+    if (appId > 0 && testerId > 0) {
+        _kickTarget = { appId: appId, testerId: testerId };
+        window._kickTarget = _kickTarget;
+    }
+    if (!appId || !testerId) {
+        console.warn('confirmKickTester: missing target');
+        if (typeof showToast === 'function') showToast(window.t ? window.t('loadError', {}, lang) : 'Error');
+        return;
+    }
 
     var reasonCode = (typeof getTermReasonCode === 'function')
         ? getTermReasonCode()

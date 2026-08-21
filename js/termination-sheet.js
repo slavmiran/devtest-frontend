@@ -860,15 +860,29 @@
         };
 
         _setPreserveSlot('');
+        window._terminationState = _termState;
 
-        // Legacy globals used by confirmLeaveMutual / confirmKickTester / confirmDropTest
+        // Write into the same lexical vars that confirmDropTest / confirmLeaveMutual read.
         if (mode === 'leave') {
-            window._leaveMutualAppId = _termState.appId;
+            if (typeof window.setLeaveMutualAppId === 'function') {
+                window.setLeaveMutualAppId(_termState.appId);
+            } else {
+                window._leaveMutualAppId = _termState.appId;
+            }
             window._leaveMutualStats = null;
+            if (window.App && window.App.state) window.App.state._leaveMutualStats = null;
         } else if (mode === 'drop') {
-            window._dropTestAppId = _termState.appId;
+            if (typeof window.setDropTestAppId === 'function') {
+                window.setDropTestAppId(_termState.appId);
+            } else {
+                window._dropTestAppId = _termState.appId;
+            }
         } else {
-            window._kickTarget = { appId: _termState.projectId, testerId: _termState.testerId };
+            if (typeof window.setKickTarget === 'function') {
+                window.setKickTarget(_termState.projectId, _termState.testerId);
+            } else {
+                window._kickTarget = { appId: _termState.projectId, testerId: _termState.testerId };
+            }
         }
 
         if (titleEl) {
@@ -1077,13 +1091,27 @@
         cancelTerminationConfirm();
         _setPreserveSlot('');
         _termState = null;
-        window._leaveMutualAppId = null;
+        window._terminationState = null;
+        if (typeof window.setLeaveMutualAppId === 'function') {
+            window.setLeaveMutualAppId(0);
+        } else {
+            window._leaveMutualAppId = null;
+        }
         window._leaveMutualStats = null;
+        if (window.App && window.App.state) window.App.state._leaveMutualStats = null;
         window._leaveJustifiedAllowed = false;
         window._leaveKarmaBurnPreview = 0;
         window._leaveGrantAvailable = false;
-        window._kickTarget = null;
-        window._dropTestAppId = null;
+        if (typeof window.setKickTarget === 'function') {
+            window.setKickTarget(0, 0);
+        } else {
+            window._kickTarget = null;
+        }
+        if (typeof window.setDropTestAppId === 'function') {
+            window.setDropTestAppId(0);
+        } else {
+            window._dropTestAppId = null;
+        }
         var reciprocal = document.getElementById('term-unlink-reciprocal');
         if (reciprocal) {
             reciprocal.disabled = false;
@@ -1093,19 +1121,26 @@
     }
 
     function requestTerminationConfirm() {
-        if (!_termState) return;
-        _syncLegacyReasonFields(getTermReasonCode(), getTermReasonNote());
+        try {
+            if (!_termState) {
+                console.warn('requestTerminationConfirm: no _termState');
+                return;
+            }
+            _syncLegacyReasonFields(getTermReasonCode(), getTermReasonNote());
 
-        var overlay = document.getElementById('leave-confirm-overlay');
-        var body = document.getElementById('leave-confirm-body');
-        var finalBtn = document.getElementById('leave-confirm-final-btn');
-        var title = document.getElementById('leave-confirm-title');
-        if (!overlay || !body) return;
+            var overlay = document.getElementById('leave-confirm-overlay');
+            var body = document.getElementById('leave-confirm-body');
+            var finalBtn = document.getElementById('leave-confirm-final-btn');
+            var title = document.getElementById('leave-confirm-title');
+            if (!overlay || !body) {
+                console.warn('requestTerminationConfirm: overlay missing');
+                return;
+            }
 
-        var mode = _termState.mode;
-        var points = [];
-        var justified = !!_termState.justifiedAllowed;
-        var unlink = getTermUnlinkReciprocal();
+            var mode = _termState.mode;
+            var points = [];
+            var justified = !!_termState.justifiedAllowed;
+            var unlink = getTermUnlinkReciprocal();
 
         if (mode === 'leave') {
             if (title) title.textContent = _t('leaveConfirmTitle');
@@ -1206,6 +1241,12 @@
         if (window.tg && window.tg.HapticFeedback) {
             window.tg.HapticFeedback.impactOccurred('medium');
         }
+        } catch (error) {
+            console.error('requestTerminationConfirm failed', error);
+            if (typeof showToast === 'function') {
+                showToast(_t('loadError'));
+            }
+        }
     }
 
     function cancelTerminationConfirm(event) {
@@ -1224,27 +1265,41 @@
     function confirmTerminationAdaptive() {
         var overlay = document.getElementById('leave-confirm-overlay');
         if (overlay) overlay.classList.remove('active');
-        if (!_termState) return;
+        if (!_termState) {
+            console.warn('confirmTerminationAdaptive: no _termState');
+            return;
+        }
 
         _syncLegacyReasonFields(getTermReasonCode(), getTermReasonNote());
         var unlink = getTermUnlinkReciprocal();
         window._pendingUnlinkReciprocal = unlink;
+        var appId = Number(_termState.appId || _termState.projectId || 0);
+        var testerId = Number(_termState.testerId || 0);
 
         if (_termState.mode === 'leave') {
-            var justified = !!_termState.justifiedAllowed;
-            if (typeof confirmLeaveMutual === 'function') {
-                confirmLeaveMutual(justified);
+            var justified = !!_termState.justifiedAllowed || !!_termState.isSafeExit || !!_termState.noPenaltyExit;
+            var leaveFn = window.confirmLeaveMutual || (typeof confirmLeaveMutual === 'function' ? confirmLeaveMutual : null);
+            if (typeof leaveFn === 'function') {
+                leaveFn(justified, appId);
+            } else {
+                console.error('confirmLeaveMutual is not available');
             }
             return;
         }
         if (_termState.mode === 'drop') {
-            if (typeof confirmDropTest === 'function') {
-                confirmDropTest();
+            var dropFn = window.confirmDropTest || (typeof confirmDropTest === 'function' ? confirmDropTest : null);
+            if (typeof dropFn === 'function') {
+                dropFn(appId);
+            } else {
+                console.error('confirmDropTest is not available');
             }
             return;
         }
-        if (typeof confirmKickTester === 'function') {
-            confirmKickTester();
+        var kickFn = window.confirmKickTester || (typeof confirmKickTester === 'function' ? confirmKickTester : null);
+        if (typeof kickFn === 'function') {
+            kickFn(appId, testerId);
+        } else {
+            console.error('confirmKickTester is not available');
         }
     }
 
