@@ -256,11 +256,12 @@
             '</div>';
     }
 
-    function openTesterLinkStatusFromRow(projectId, testerId, event) {
+    function openTesterLinkStatusFromRow(projectId, testerId, event, options) {
         if (event) {
             event.preventDefault();
             event.stopPropagation();
         }
+        options = options || {};
         var safeProjectId = Number(projectId || 0);
         var safeTesterId = Number(testerId || 0);
         if (safeProjectId <= 0 || safeTesterId <= 0) return;
@@ -275,11 +276,27 @@
 
         var theirAppName = String(tester.reciprocal_app_name || '').trim();
         var theirIconUrl = String(tester.reciprocal_app_icon_url || '').trim();
-        if (Array.isArray(myTests) && Number(tester.reciprocal_app_id || 0) > 0) {
-            var reciprocalTest = myTests.find(function (item) {
-                return Number(item.id || item.app_id || 0) === Number(tester.reciprocal_app_id || 0);
-            });
+        var reciprocalAppId = Number(
+            options.reciprocalAppId
+            || tester.reciprocal_app_id
+            || 0
+        );
+        if (Array.isArray(myTests)) {
+            var reciprocalTest = null;
+            if (reciprocalAppId > 0) {
+                reciprocalTest = myTests.find(function (item) {
+                    return Number(item.id || item.app_id || 0) === reciprocalAppId;
+                });
+            }
+            if (!reciprocalTest) {
+                reciprocalTest = myTests.find(function (item) {
+                    return Number(item.owner_id || 0) === Number(tester.tester_id || 0);
+                }) || null;
+            }
             if (reciprocalTest) {
+                if (reciprocalAppId <= 0) {
+                    reciprocalAppId = Number(reciprocalTest.id || reciprocalTest.app_id || 0);
+                }
                 if (!theirAppName) theirAppName = String(reciprocalTest.name || '').trim();
                 if (!theirIconUrl) theirIconUrl = String(reciprocalTest.icon_url || '').trim();
             }
@@ -300,7 +317,13 @@
             theirIconUrl: theirIconUrl,
             testerSnapshot: tester,
             isMutualDebt: !!tester.is_mutual_debt,
+            leftSoft: !!options.leftSoft,
+            reciprocalAppId: reciprocalAppId,
         });
+    }
+
+    function openLeftTesterLinkStatus(projectId, testerId, event) {
+        openTesterLinkStatusFromRow(projectId, testerId, event, { leftSoft: true });
     }
 
     function openMutualBalanceModal(appId, event, options) {
@@ -344,6 +367,8 @@
             projectId: Number(options.projectId || (context === 'projects' ? safeAppId : 0)),
             joinType: joinType,
             isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt)),
+            leftSoft: !!options.leftSoft,
+            reciprocalAppId: Number(options.reciprocalAppId || 0),
             testerUsername: String(options.testerUsername || '').replace(/^@+/, ''),
             testerFullName: String(options.testerFullName || '').trim(),
             testerAvatarUrl: String(options.testerAvatarUrl || '').trim(),
@@ -356,7 +381,11 @@
         if (titleEl) {
             titleEl.textContent = _linkStatusTitle(joinType, {
                 isDebt: !!_balanceState.isMutualDebt,
+                isBroken: !!_balanceState.leftSoft,
             });
+            if (_balanceState.leftSoft && _isMutualJoin(joinType)) {
+                titleEl.textContent = _t('mutualBalanceTitle');
+            }
         }
 
         body.innerHTML = _renderBalanceLoadingSkeleton();
@@ -541,6 +570,7 @@
             joinType: person.joinType,
             context: options.context || 'tests',
             isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            leftSoft: !!(options.leftSoft || (_balanceState && _balanceState.leftSoft)),
         });
     }
 
@@ -595,6 +625,8 @@
             joinType: person.joinType,
             context: options.context || 'tests',
             isMutualDebt: !!(options.isMutualDebt || stats.is_mutual_debt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            leftSoft: !!(options.leftSoft || (_balanceState && _balanceState.leftSoft)
+                || (options.testerSnapshot && options.testerSnapshot.is_left_soft)),
         });
     }
 
@@ -724,7 +756,8 @@
             var themAtYouDays = isOwnerView ? data.theirDays : data.myDays;
             var themAtYouSkips = isOwnerView ? data.theirSkips : data.mySkips;
             // One-sided link: partner left / was kicked / unlinked — mark their side broken.
-            var themBroken = !isDebt && !!data.partnerLeft;
+            var themBroken = !isDebt && (!!data.partnerLeft || !!data.leftSoft
+                || !!(_balanceState && _balanceState.leftSoft));
             var youBroken = false;
             if (!isDebt && data.context === 'tests') {
                 var myProgress = String(data.myProgressStatus || '').toLowerCase();
@@ -766,24 +799,72 @@
         var breakLabel = isSelfDebt
             ? _t('mutualBalanceDebtExitBtn')
             : (isOwnerView ? _t('linkStatusKickBtn') : (isMutual ? _t('mutualBalanceBreakBtn') : _t('linkStatusKickBtn')));
+        var isLeftSoftView = !!(data.leftSoft || (_balanceState && _balanceState.leftSoft));
         var actionsHtml = '<div class="parity-actions">';
-        if (!isSelfDebt) {
+        if (isLeftSoftView) {
             actionsHtml += '' +
-                '<button type="button" class="btn btn-outline-tg" onclick="openBellRemindPreview()">' +
-                    _esc(_t('mutualBalanceBellBtn')) +
+                '<button type="button" class="btn btn-outline-tg" onclick="openLeftTesterReciprocalCard()">' +
+                    _esc(_t('leftTesterOpenCardBtn')) +
+                '</button>' +
+                '<button type="button" class="btn btn-secondary" onclick="hideLeftTesterFromBalance()">' +
+                    _esc(_t('leftTesterHideBtn')) +
                 '</button>';
-        }
-        actionsHtml += '' +
+        } else {
+            if (!isSelfDebt) {
+                actionsHtml += '' +
+                    '<button type="button" class="btn btn-outline-tg" onclick="openBellRemindPreview()">' +
+                        _esc(_t('mutualBalanceBellBtn')) +
+                    '</button>';
+            }
+            actionsHtml += '' +
                 '<button type="button" class="btn btn-danger-soft" onclick="startMutualBreakFromBalance()">' +
                     _esc(breakLabel) +
-                '</button>' +
-            '</div>';
+                '</button>';
+        }
+        actionsHtml += '</div>';
 
         return '' +
             _renderPersonHero(person) +
             bodyHtml +
             hint +
             actionsHtml;
+    }
+
+    function openLeftTesterReciprocalCard() {
+        if (!_balanceState) return;
+        var reciprocalAppId = Number(_balanceState.reciprocalAppId || 0);
+        var modal = document.getElementById('mutual-balance-modal');
+        if (modal) modal.classList.remove('active');
+        _balanceState = null;
+        if (reciprocalAppId <= 0) {
+            if (typeof showToast === 'function') showToast(_t('leftTesterNoCard'));
+            if (typeof switchTab === 'function') switchTab('tests');
+            return;
+        }
+        if (typeof switchTab === 'function') switchTab('tests');
+        if (typeof loadTasks === 'function') {
+            Promise.resolve(loadTasks(true)).finally(function () {
+                if (typeof _highlightTestCardWhenReady === 'function') {
+                    _highlightTestCardWhenReady(reciprocalAppId, 12);
+                } else if (typeof _highlightTestCard === 'function') {
+                    _highlightTestCard(reciprocalAppId);
+                }
+            });
+        } else if (typeof _highlightTestCardWhenReady === 'function') {
+            _highlightTestCardWhenReady(reciprocalAppId, 12);
+        }
+    }
+
+    function hideLeftTesterFromBalance() {
+        if (!_balanceState) return;
+        var projectId = Number(_balanceState.projectId || _balanceState.appId || 0);
+        var testerId = Number(_balanceState.testerId || 0);
+        var modal = document.getElementById('mutual-balance-modal');
+        if (modal) modal.classList.remove('active');
+        _balanceState = null;
+        if (typeof window.dismissLeftTesterRow === 'function') {
+            window.dismissLeftTesterRow(projectId, testerId);
+        }
     }
 
     function closeMutualBalanceModal(event) {
@@ -1094,6 +1175,9 @@
     window.buildBarterChipHtml = buildBarterChipHtml;
     window.openMutualBalanceModal = openMutualBalanceModal;
     window.openTesterLinkStatusFromRow = openTesterLinkStatusFromRow;
+    window.openLeftTesterLinkStatus = openLeftTesterLinkStatus;
+    window.openLeftTesterReciprocalCard = openLeftTesterReciprocalCard;
+    window.hideLeftTesterFromBalance = hideLeftTesterFromBalance;
     window.closeMutualBalanceModal = closeMutualBalanceModal;
     window.openMutualBalanceTelegram = openMutualBalanceTelegram;
     window.openBellRemindPreview = openBellRemindPreview;

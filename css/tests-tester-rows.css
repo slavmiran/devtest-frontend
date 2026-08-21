@@ -377,11 +377,45 @@
 
 .tester-row-left-soft {
     list-style: none;
-    padding: 0 !important;
-    margin: 0 0 8px !important;
-    background: transparent !important;
-    border: none !important;
-    cursor: default !important;
+    opacity: 0.92;
+}
+
+.tester-row-left-soft .tester-row-main,
+.tester-row-left-soft .tester-row-meta {
+    align-items: center;
+}
+
+.tester-left-heart {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+    font-size: 13px;
+    line-height: 1;
+    opacity: 0.95;
+}
+
+.tester-leave-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 107, 129, 0.45);
+    background: rgba(255, 107, 129, 0.14);
+    color: #ff8fa0;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    cursor: pointer;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.tester-leave-chip:active {
+    transform: scale(0.97);
+    opacity: 0.9;
 }
 
 .tester-left-soft-card {

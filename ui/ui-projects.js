@@ -440,28 +440,25 @@ function renderProjects(force) {
 
                 let rowHtml = '';
                 if (isLeftSoft) {
-                    const leftName = tester.username
+                    const leftLabel = tester.username
                         ? `@${window.escapeHTML(String(tester.username).replace(/^@+/, ''))}`
                         : (tester.full_name
                             ? window.escapeHTML(tester.full_name)
                             : window.escapeHTML(window.t('idLabel', { id: tester.tester_id }, lang)));
+                    const leftDayHtml = testerDay > 0
+                        ? `<span class="tester-day-badge">[${window.escapeHTML(String(testerDay))}]</span>`
+                        : '';
                     rowHtml = `
-                        <li class="tester-row-left-soft">
-                            <div class="tester-left-soft-card">
-                                <div class="tester-left-soft-main">
-                                    <span class="tester-left-soft-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
-                                            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-                                        </svg>
-                                    </span>
-                                    <div class="tester-left-soft-copy">
-                                        <div class="tester-left-soft-name notranslate">${leftName}</div>
-                                        <div class="tester-left-soft-sub">${window.escapeHTML(window.t('testerLeftSoftHint', {}, lang))}${joinTypeLabel ? ` · ${window.escapeHTML(joinTypeLabel)}` : ''}</div>
-                                    </div>
-                                </div>
-                                <button type="button" class="tester-left-archive-btn" onclick="event.stopPropagation(); dismissLeftTesterRow(${Number(project.id)}, ${Number(tester.tester_id)})">${window.escapeHTML(window.t('testerLeftSoftArchiveBtn', {}, lang))}</button>
-                            </div>
-                        </li>
+                    <li class="tester-row-left-soft">
+                        <div class="tester-row-main">
+                            <span class="tester-name">
+                                ${leftDayHtml}<span class="tester-left-heart" aria-hidden="true">💔</span><span class="tester-primary-label notranslate">${leftLabel}</span>
+                            </span>
+                        </div>
+                        <div class="tester-row-meta">
+                            <button type="button" class="tester-leave-chip" onclick="event.stopPropagation(); openLeftTesterLinkStatus(${Number(project.id)}, ${Number(tester.tester_id)}, event)">${window.escapeHTML(window.t('testerLeftChip', {}, lang))}</button>
+                        </div>
+                    </li>
                     `;
                 } else {
                     const archiveBtnHtml = '';
