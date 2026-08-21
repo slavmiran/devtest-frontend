@@ -2630,17 +2630,18 @@
 }
 
 .add-project-chooser-section--growth {
-    margin-top: 16px;
+    margin-top: 26px;
 }
 
 .add-project-chooser-section-title {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-muted, var(--text-tertiary, #717C89));
-    margin-bottom: 8px;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary, #AEB7C2);
+    margin-bottom: 10px;
     padding-left: 2px;
+    opacity: 0.9;
 }
 
 .add-project-chooser-option--boost {
