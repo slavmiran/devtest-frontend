@@ -3381,6 +3381,16 @@ function refreshAddProjectChooserTexts(overlay) {
         titleEl.textContent = getProjectUiText('addProjectChooserTitle', 'Testing format');
     }
 
+    var sec1Header = overlay.querySelector('.add-project-chooser-section--closed .add-project-chooser-section-title');
+    if (sec1Header) {
+        sec1Header.textContent = getProjectUiText('section_closed_testing', 'ЗАКРЫТОЕ ТЕСТИРОВАНИЕ (14 ДНЕЙ)');
+    }
+
+    var sec2Header = overlay.querySelector('.add-project-chooser-section--growth .add-project-chooser-section-title');
+    if (sec2Header) {
+        sec2Header.textContent = getProjectUiText('section_growth', 'МАСШТАБИРОВАНИЕ И РОСТ');
+    }
+
     var mutual = overlay.querySelector('.add-project-chooser-option--mutual');
     if (mutual) {
         var mutualTitle = mutual.querySelector('.add-project-chooser-option-title');
@@ -3400,11 +3410,21 @@ function refreshAddProjectChooserTexts(overlay) {
         if (privateTag) privateTag.textContent = getProjectUiText('addProjectChooserPrivateTag', '$20');
         if (privateDesc) privateDesc.textContent = getProjectUiText('addProjectChooserPrivateDesc', '12+ devices for 14 days without your involvement. Result guarantee.');
     }
+
+    var boostOpt = overlay.querySelector('.add-project-chooser-option--boost');
+    if (boostOpt) {
+        var boostTitle = boostOpt.querySelector('.add-project-chooser-option-title');
+        var boostBadge = boostOpt.querySelector('.add-project-chooser-option-tag');
+        var boostDesc = boostOpt.querySelector('.add-project-chooser-option-desc');
+        if (boostTitle) boostTitle.textContent = getProjectUiText('promo_card_title', 'Буст в Google Play');
+        if (boostBadge) boostBadge.textContent = getProjectUiText('promo_card_badge', 'Скоро');
+        if (boostDesc) boostDesc.textContent = getProjectUiText('promo_card_desc', 'Привлекайте пользователей, улучшайте позиции и развивайте опубликованный проект.');
+    }
 }
 
 function ensureAddProjectChooser() {
     var overlay = document.getElementById('add-project-chooser-overlay');
-    if (overlay && overlay.getAttribute('data-chooser') === 'v4') {
+    if (overlay && overlay.getAttribute('data-chooser') === 'v5') {
         refreshAddProjectChooserTexts(overlay);
         return overlay;
     }
@@ -3421,6 +3441,11 @@ function ensureAddProjectChooser() {
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>' +
             '<polyline points="9 12 11 14 15 10"></polyline>' +
+        '</svg>';
+    var trendingIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>' +
+            '<polyline points="17 6 23 6 23 12"></polyline>' +
         '</svg>';
     var chevron =
         '<svg class="add-project-chooser-option-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -3443,23 +3468,39 @@ function ensureAddProjectChooser() {
 
     var div = document.createElement('div');
     div.innerHTML =
-        '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" data-chooser="v4" role="dialog" aria-modal="true">' +
+        '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" data-chooser="v5" role="dialog" aria-modal="true">' +
             '<div class="add-project-chooser-card">' +
                 '<button type="button" class="add-project-chooser-close" data-i18n-aria-label="addProjectChooserClose" aria-label="">×</button>' +
                 '<h3 class="add-project-chooser-title" data-i18n="addProjectChooserTitle"></h3>' +
-                '<div class="add-project-chooser-options">' +
-                    optionHtml(
-                        'mutual', mutualIcon,
-                        'addProjectChooserMutualTitle',
-                        'addProjectChooserMutualTag',
-                        'addProjectChooserMutualDesc'
-                    ) +
-                    optionHtml(
-                        'private', privateIcon,
-                        'addProjectChooserPrivateTitle',
-                        'addProjectChooserPrivateTag',
-                        'addProjectChooserPrivateDesc'
-                    ) +
+                '<div class="add-project-chooser-content">' +
+                    '<div class="add-project-chooser-section add-project-chooser-section--closed">' +
+                        '<div class="add-project-chooser-section-title" data-i18n="section_closed_testing">ЗАКРЫТОЕ ТЕСТИРОВАНИЕ (14 ДНЕЙ)</div>' +
+                        '<div class="add-project-chooser-options">' +
+                            optionHtml(
+                                'mutual', mutualIcon,
+                                'addProjectChooserMutualTitle',
+                                'addProjectChooserMutualTag',
+                                'addProjectChooserMutualDesc'
+                            ) +
+                            optionHtml(
+                                'private', privateIcon,
+                                'addProjectChooserPrivateTitle',
+                                'addProjectChooserPrivateTag',
+                                'addProjectChooserPrivateDesc'
+                            ) +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="add-project-chooser-section add-project-chooser-section--growth">' +
+                        '<div class="add-project-chooser-section-title" data-i18n="section_growth">МАСШТАБИРОВАНИЕ И РОСТ</div>' +
+                        '<div class="add-project-chooser-options">' +
+                            optionHtml(
+                                'boost', trendingIcon,
+                                'promo_card_title',
+                                'promo_card_badge',
+                                'promo_card_desc'
+                            ) +
+                        '</div>' +
+                    '</div>' +
                 '</div>' +
             '</div>' +
         '</div>';
@@ -3483,6 +3524,17 @@ function ensureAddProjectChooser() {
             }
         });
     });
+    var boostBtn = overlay.querySelector('.add-project-chooser-option--boost');
+    if (boostBtn) {
+        boostBtn.addEventListener('click', function () {
+            if (typeof tg !== 'undefined' && tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+            if (typeof showToast === 'function') {
+                showToast(getProjectUiText('promo_card_toast', 'App promotion and growth features are under development and will be available soon!'));
+            }
+        });
+    }
     return overlay;
 }
 

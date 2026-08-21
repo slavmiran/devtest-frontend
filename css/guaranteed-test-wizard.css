@@ -2616,6 +2616,58 @@
     color: var(--text-tertiary, #717C89);
 }
 
+/* Chooser Sections & Teaser Card */
+.add-project-chooser-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.add-project-chooser-section {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.add-project-chooser-section--growth {
+    margin-top: 16px;
+}
+
+.add-project-chooser-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted, var(--text-tertiary, #717C89));
+    margin-bottom: 8px;
+    padding-left: 2px;
+}
+
+.add-project-chooser-option--boost {
+    opacity: 0.8;
+    background: var(--gt-surface);
+    border: 1px solid var(--gt-hairline, rgba(255, 255, 255, 0.08));
+    border-radius: var(--gt-radius-section);
+    cursor: pointer;
+    transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.add-project-chooser-option--boost:hover,
+.add-project-chooser-option--boost:active {
+    opacity: 1;
+    background: var(--gt-surface-raised, rgba(255, 255, 255, 0.06));
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.add-project-chooser-option--boost .add-project-chooser-option-tag {
+    background: var(--bg-surface-3, rgba(255, 255, 255, 0.08));
+    color: var(--text-tertiary, #AEB7C2);
+}
+
+.add-project-chooser-option--boost .add-project-chooser-option-chevron {
+    opacity: 0.35;
+}
+
 /* =========================================================
    21. ORDER CARDS IN "MY PROJECTS"
    ========================================================= */
