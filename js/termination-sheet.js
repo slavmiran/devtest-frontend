@@ -7,6 +7,7 @@
     'use strict';
 
     var KARMA_ABANDONED_BURN = 3.0;
+    var _termState = null;
 
     function _lang() {
         return (typeof lang !== 'undefined' && lang) ? String(lang) : 'ru';
@@ -1368,32 +1369,47 @@
 
     // --- Public wrappers (backward compatible entry points) ---
 
+    function _findLocalTest(appId) {
+        var id = Number(appId || 0);
+        if (id <= 0) return null;
+        if (typeof getMyTestById === 'function') {
+            var found = getMyTestById(id);
+            if (found) return found;
+        }
+        if (Array.isArray(myTests)) {
+            return myTests.find(function (item) {
+                return Number(item && item.id) === id || Number(item && item.app_id) === id;
+            }) || null;
+        }
+        return null;
+    }
+
     function openLeaveOrDropFromTest(appId, event) {
         if (event) {
-            event.preventDefault();
-            event.stopPropagation();
+            try {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            } catch (e) {}
         }
-        var test = (typeof getMyTestById === 'function')
-            ? getMyTestById(appId)
-            : (Array.isArray(myTests) ? myTests.find(function (item) { return Number(item.id) === Number(appId); }) : null);
+        var test = _findLocalTest(appId);
         var joinType = String(test && test.join_type || '').toLowerCase();
         if (joinType === 'mutual' || joinType === 'prelaunch') {
-            return openLeaveMutualModal(appId);
+            return openLeaveMutualModal(appId, event);
         }
-        return openDropTestModal(appId);
+        return openDropTestModal(appId, event);
     }
 
     function openLeaveMutualModal(appId, event) {
         if (event) {
-            event.preventDefault();
-            event.stopPropagation();
+            try {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            } catch (e) {}
         }
-        var test = (typeof getMyTestById === 'function')
-            ? getMyTestById(appId)
-            : (Array.isArray(myTests) ? myTests.find(function (item) { return Number(item.id) === Number(appId); }) : null);
+        var test = _findLocalTest(appId);
         return openTerminationSheet({
             mode: 'leave',
-            appId: Number(appId || 0),
+            appId: Number(appId || (test && (test.id || test.app_id)) || 0),
             joinType: (test && test.join_type) || 'mutual',
             testSnapshot: test || null,
             unlinkReciprocal: false,
@@ -1402,15 +1418,15 @@
 
     function openDropTestModal(appId, event) {
         if (event) {
-            event.preventDefault();
-            event.stopPropagation();
+            try {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            } catch (e) {}
         }
-        var test = (typeof getMyTestById === 'function')
-            ? getMyTestById(appId)
-            : (Array.isArray(myTests) ? myTests.find(function (item) { return Number(item.id) === Number(appId); }) : null);
+        var test = _findLocalTest(appId);
         return openTerminationSheet({
             mode: 'drop',
-            appId: Number(appId || 0),
+            appId: Number(appId || (test && (test.id || test.app_id)) || 0),
             joinType: (test && test.join_type) || 'invite',
             testSnapshot: test || null,
             unlinkReciprocal: false,
@@ -1432,19 +1448,22 @@
         }
         options = options || {};
         if (event) {
-            event.preventDefault();
-            event.stopPropagation();
+            try {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            } catch (e) {}
         }
+        var targetAppId = Number(appId || 0);
         var project = Array.isArray(myProjects)
-            ? myProjects.find(function (item) { return Number(item.id) === Number(appId); })
+            ? myProjects.find(function (item) { return Number(item && item.id) === targetAppId || Number(item && item.app_id) === targetAppId; })
             : null;
         var tester = project && Array.isArray(project.testers)
-            ? project.testers.find(function (item) { return Number(item.tester_id) === Number(testerId); })
+            ? project.testers.find(function (item) { return Number(item && item.tester_id) === Number(testerId); })
             : null;
         return openTerminationSheet({
             mode: 'kick',
-            appId: Number(appId || 0),
-            projectId: Number(appId || 0),
+            appId: targetAppId,
+            projectId: targetAppId,
             testerId: Number(testerId || 0),
             joinType: (tester && tester.join_type) || options.joinType || 'invite',
             testerUsername: (tester && tester.username) || options.testerUsername || '',

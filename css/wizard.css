@@ -1482,3 +1482,176 @@ body.wizard-open .bottom-nav {
     animation: ppc-spin 0.6s linear infinite;
     vertical-align: middle;
 }
+
+/* ── Modern Edit Project Page ────────────────────────────── */
+#edit-project-modal.wizard-overlay {
+    z-index: 1000;
+}
+
+.edit-project-page {
+    background: var(--bg-color);
+}
+
+.edit-project-body {
+    flex: 1;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px 16px calc(32px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.edit-icon-picker {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    border: 2px dashed rgba(142, 142, 147, 0.45);
+    background: var(--bg-color);
+    padding: 0;
+    cursor: pointer;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: border-color 0.2s, transform 0.15s;
+}
+
+.edit-icon-picker:hover {
+    border-color: var(--link-color);
+}
+
+.edit-icon-picker:active {
+    transform: scale(0.96);
+}
+
+.edit-icon-picker__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 16px;
+    display: none;
+}
+
+.edit-icon-picker.has-icon {
+    border-style: solid;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.edit-icon-picker.has-icon .edit-icon-picker__img {
+    display: block !important;
+    visibility: visible;
+    opacity: 1;
+}
+
+.edit-icon-picker.has-icon .edit-icon-picker__plus {
+    display: none;
+}
+
+.edit-icon-picker__plus {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    color: var(--hint-color);
+    line-height: 1;
+    pointer-events: none;
+}
+
+.edit-icon-picker__badge {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--secondary-bg-color);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.edit-package-readonly-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.edit-package-readonly-wrap .form-input {
+    background-color: rgba(142, 142, 147, 0.1);
+    border-color: rgba(142, 142, 147, 0.2);
+    color: var(--text-color);
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    padding-right: 42px;
+    cursor: default;
+}
+
+.edit-package-readonly-wrap .edit-package-lock-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.6;
+    font-size: 14px;
+    pointer-events: none;
+}
+
+.edit-project-footer-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 6px;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.edit-project-footer-actions .btn {
+    flex: 1;
+    min-height: 48px;
+    font-size: 15px;
+    font-weight: 650;
+    border-radius: 14px;
+}
+
+.edit-project-meta-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(142, 142, 147, 0.15);
+    border-radius: 14px;
+}
+
+.edit-project-meta-info {
+    font-size: 12px;
+    color: var(--hint-color);
+    line-height: 1.4;
+}
+
+.edit-project-transfer-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 149, 0, 0.12);
+    border: 1px solid rgba(255, 149, 0, 0.28);
+    color: #ff9f0a;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.18s, transform 0.12s;
+}
+
+.edit-project-transfer-btn:active {
+    transform: scale(0.97);
+    background: rgba(255, 149, 0, 0.2);
+}

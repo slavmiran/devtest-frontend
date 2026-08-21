@@ -4155,6 +4155,8 @@ function openEditModal(projectId, options) {
     }
     onEditAcceptsEmailTestersChange();
 
+    syncEditAppIconPreview();
+    updateEditNameCounter();
     setProjectMode('edit', project.mode || 'mutual');
     setProjectTargetLang('edit', project.target_lang || 'ALL');
     renderEditAccessSetup();
@@ -4222,6 +4224,60 @@ function closeEditModal(event) {
         renderEditCreatedAtMeta();
     }, 300);
 }
+
+function syncEditAppIconPreview() {
+    var iconInput = document.getElementById('edit-icon');
+    var preview = document.getElementById('edit-icon-preview');
+    var picker = document.getElementById('edit-icon-picker');
+    if (!iconInput || !preview || !picker) return;
+    var url = (iconInput.value || '').trim();
+    if (url) {
+        if (typeof resolveIconUrl === 'function') url = resolveIconUrl(url);
+        preview.src = url;
+        preview.style.display = 'block';
+        picker.classList.add('has-icon');
+    } else {
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+        picker.classList.remove('has-icon');
+    }
+}
+
+function onEditIconPreviewError() {
+    var preview = document.getElementById('edit-icon-preview');
+    if (preview) {
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+    }
+    var picker = document.getElementById('edit-icon-picker');
+    if (picker) picker.classList.remove('has-icon');
+}
+
+function updateEditNameCounter() {
+    var nameInput = document.getElementById('edit-name');
+    var counter = document.getElementById('edit-name-counter');
+    if (!nameInput || !counter) return;
+    counter.textContent = (nameInput.value || '').length + '/30';
+}
+
+function copyEditPackageName() {
+    var pkgInput = document.getElementById('edit-package');
+    if (!pkgInput) return;
+    var val = (pkgInput.value || '').trim();
+    if (!val) return;
+    try {
+        navigator.clipboard.writeText(val).then(function() {
+            if (typeof window.showToast === 'function') {
+                window.showToast(window.t('packageCopiedToast', {}, lang) || 'Пакет скопирован');
+            }
+        }).catch(function() {});
+    } catch (e) {}
+}
+
+window.syncEditAppIconPreview = syncEditAppIconPreview;
+window.onEditIconPreviewError = onEditIconPreviewError;
+window.updateEditNameCounter = updateEditNameCounter;
+window.copyEditPackageName = copyEditPackageName;
 
 function resetEditGoogleGroupToDefault() {
     if (window.editAccessFlow) {

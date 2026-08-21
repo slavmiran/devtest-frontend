@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -41,20 +41,20 @@
     <script src="./js/app-state.js?v=20260817-group-wait-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260820-report-modal-v1"></script>
     <script src="./ui/ui-tests.js?v=20260820-hide-mutual-on-bounty-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260818-consec-skip-v1"></script>
-    <script src="./ui/ui-market.js?v=20260820-report-modal-v5"></script>
-    <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
-    <script src="./ui.js?v=20260602-phase44"></script>
-<script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
-<script src="./js/app-config.js?v=20260821-leave-click-v3"></script>
+    <script src="./ui/ui-projects.js?v=20260821-edit-modal-v1"></script>
+    <script src="./ui/ui-timeline.js?v=20260714-timeline-v1"></script>
+    <script src="./ui/ui-market.js?v=20260818-auto-scroll-v3"></script>
+    <script src="./ui/ui-dossier.js?v=20260805-dossier-v9"></script>
+    <script src="./ui/ui-tests.js?v=20260818-early-finish-checkins-v1"></script>
+    <script src="./ui/ui-init.js?v=20260713-feedback-inbox-ux5"></script>
 <script src="./js/app-api.js?v=20260818-early-finish-checkins-v1"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260820-group-wait-inline-v1"></script>
+    <script src="./js/app-actions.js?v=20260821-leave-click-v4"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
-<script src="./js/app-features.js?v=20260821-leave-click-v3"></script>
-<script src="./js/mutual-exchange-ui.js?v=20260821-leave-click-v3"></script>
-<script src="./js/termination-sheet.js?v=20260821-leave-click-v3"></script>
+<script src="./js/app-features.js?v=20260821-leave-click-v4"></script>
+<script src="./js/mutual-exchange-ui.js?v=20260821-leave-click-v4"></script>
+<script src="./js/termination-sheet.js?v=20260821-leave-click-v4"></script>
 <script src="./js/bounty-applications.js?v=20260819-email-bounty-v1"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260809-gt-deeplink-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20260809-gt-deeplink-v1"></script>
@@ -65,7 +65,7 @@
     <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260806-ui-polish-v2">
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20260802-grants-3cols">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/wizard.css?v=20260706-phase2">
+    <link rel="stylesheet" href="./css/wizard.css?v=20260821-edit-modal-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260806-section-seam-v1">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20260716-feedback-toolbar-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260725-ppc-footer-tone">
@@ -74,7 +74,7 @@
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260819-email-bounty-v1">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/dossier-modal.css?v=20260805-dossier-v9">
-    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260821-leave-click-v3">
+    <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260821-leave-click-v4">
     <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
@@ -1112,220 +1112,279 @@
     </div>
 
     <!-- Edit Project Modal -->
-    <div id="edit-project-modal" class="modal-overlay" onclick="closeEditModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-editProjectTitle" data-i18n="editProjectTitle">Редактировать проект</h3>
-            <div class="form-group">
-                <label class="form-label" id="t-editName" data-i18n="appName">Название</label>
-                <input type="text" id="edit-name" class="form-input" maxlength="30">
-            </div>
-            <div class="form-group">
-                <label class="form-label" id="t-editDescription" data-i18n="instructions">Инструкции</label>
-                <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000" data-i18n-placeholder="instPlaceholder"></textarea>
-                <div id="chips-edit-instructions" class="chip-scroll"></div>
-            </div>
-            <div class="form-group">
-                <label class="form-label" id="t-editIconUrl" data-i18n="iconUrl">Ссылка на иконку</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="url" id="edit-icon" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder" style="flex: 1;">
-                    <input type="file" id="edit-icon-file" accept="image/*" style="display: none;" onchange="handleIconUpload(this, 'edit-icon')">
-                    <button type="button" class="btn btn-secondary icon-upload-btn" style="width: auto; padding: 0 12px; white-space: nowrap;" onclick="document.getElementById('edit-icon-file').click()" title="Upload icon from device">📎</button>
+    <div id="edit-project-modal" class="wizard-overlay modal-overlay" onclick="closeEditModal(event)">
+        <div class="wizard-page edit-project-page" onclick="event.stopPropagation()">
+            <header class="wizard-header">
+                <div class="wizard-header__top">
+                    <button type="button" class="wizard-back-btn" onclick="closeEditModal()" aria-label="Back">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                    </button>
+                    <h2 class="wizard-title" id="t-editProjectTitle" data-i18n="editProjectTitle">Редактировать проект</h2>
                 </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label" id="t-editPackage" data-i18n="editPackage">Пакет (Play Store Link)</label>
-                <input type="text" id="edit-package" class="form-input" readonly style="background-color: rgba(142, 142, 147, 0.15); cursor: not-allowed;" onclick="showReadonlyAlert()">
-            </div>
-            <div class="form-group">
-                <label class="form-label" id="t-editGroup" data-i18n="googleGroup">Ссылка на Google Group</label>
-                <div id="edit-access-view-card" class="access-view-card">
-                    <div class="access-view-row">
-                        <div class="access-view-main">
-                            <div id="edit-access-view-title" class="access-view-title"></div>
-                            <div id="edit-access-view-value" class="access-view-value notranslate"></div>
-                        </div>
-                        <div class="access-view-actions">
-                            <button type="button" id="edit-access-quick-copy-btn" class="btn-icon setup-email-copy" onclick="copyEditAccessValue()">📋</button>
+            </header>
+
+            <div class="wizard-body edit-project-body" id="edit-project-body">
+                <!-- Card 1: App Identity -->
+                <div class="wizard-section-card">
+                    <div class="app-icon-block">
+                        <button type="button" class="edit-icon-picker" id="edit-icon-picker" onclick="document.getElementById('edit-icon-file').click()" aria-label="Edit app icon">
+                            <img id="edit-icon-preview" class="edit-icon-picker__img" alt="" onerror="onEditIconPreviewError()">
+                            <span class="edit-icon-picker__plus" id="edit-icon-placeholder">+</span>
+                            <span class="edit-icon-picker__badge" aria-hidden="true">📷</span>
+                        </button>
+                        <div class="app-icon-block__meta">
+                            <div class="app-icon-block__title" id="t-editIconUrl" data-i18n="iconUrl">Иконка приложения</div>
+                            <div class="app-icon-block__hint">Нажмите на иконку, чтобы сменить фото</div>
+                            <input type="url" id="edit-icon" class="visually-hidden" tabindex="-1" aria-hidden="true" oninput="syncEditAppIconPreview()">
+                            <input type="file" id="edit-icon-file" accept="image/*" class="visually-hidden" tabindex="-1" onchange="handleIconUpload(this, 'edit-icon')">
                         </div>
                     </div>
-                    <button type="button" id="edit-access-change-btn" class="btn btn-secondary" style="width: 100%; margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="enterEditAccessMode()" data-i18n="editAccessChangeBtn">Изменить</button>
-                </div>
 
-                <div id="edit-access-edit-shell" class="access-edit-shell" style="display:none;">
-                    <div class="seg-control" id="edit-group-seg-control">
-                        <button type="button" class="seg-btn active" id="edit-seg-standard" onclick="setEditAccessTab('standard_group')" data-i18n="groupStandard">Public Group</button>
-                        <button type="button" class="seg-btn" id="edit-seg-custom" onclick="setEditAccessTab('custom_group')" data-i18n="groupCustom">Custom Group</button>
+                    <div class="form-group">
+                        <label class="form-label" id="t-editName" data-i18n="appName">Название приложения</label>
+                        <div class="form-input-with-counter">
+                            <input type="text" id="edit-name" class="form-input" maxlength="30" oninput="updateEditNameCounter()">
+                            <span class="form-char-counter" id="edit-name-counter" aria-hidden="true">0/30</span>
+                        </div>
                     </div>
 
-                    <div id="edit-group-standard-block" class="group-setup-card">
-                        <div class="group-setup-state0-hint" data-i18n="publicGroupState0Hint">💡 Скопируйте email нашей группы и добавьте его в Play Console.</div>
-                        <div class="setup-email-row">
-                            <span class="setup-email-address" role="button" tabindex="0" onclick="copyEditAccessStandardEmail()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyEditAccessStandardEmail();}">google-play-dev-test@googlegroups.com</span>
-                            <button type="button" id="edit-setup-email-copy-btn" class="btn-icon setup-email-copy setup-pulse-accent" onclick="copyEditAccessStandardEmail()"><span id="edit-setup-email-copy-icon">📋</span></button>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" id="t-editPackage" data-i18n="editPackage">Пакет (Play Store Link)</label>
+                        <div class="edit-package-readonly-wrap" onclick="showReadonlyAlert()">
+                            <input type="text" id="edit-package" class="form-input" readonly onclick="showReadonlyAlert()">
+                            <span class="edit-package-lock-icon" aria-hidden="true">🔒</span>
                         </div>
+                        <div class="form-hint" style="margin-top: 6px; font-size: 11px;">Пакет приложения фиксируется при создании и не подлежит изменению.</div>
+                    </div>
+                </div>
 
-                        <div class="setup-reveal" id="edit-setup-actions-reveal">
-                            <div class="setup-note" data-i18n-html="standardGroupNote">В Play Console обязательно выберите режим тестирования через <b>Группы Google</b> (не email-списки) и вставьте этот адрес.</div>
-                            <div class="setup-action-row">
-                                <button type="button" class="btn btn-primary setup-console-btn" id="edit-setup-console-btn" onclick="onEditAccessConsoleClick()"><span id="edit-setup-console-btn-label" data-i18n="publicGroupOpenConsoleBtn">🌐 Открыть Play Console</span></button>
-                                <button type="button" class="btn btn-secondary setup-help-btn" onclick="toggleEditSetupAccordion()" data-i18n="setupGuideToggle">❓ Как настроить</button>
+                <!-- Card 2: Access Setup -->
+                <div class="wizard-section-card">
+                    <div class="wizard-section-head">
+                        <h3 class="wizard-section-title" id="t-editGroup" data-i18n="googleGroup">Настройка доступа</h3>
+                        <p class="wizard-section-desc">Google Group или E-mail для закрытого тестирования в Play Console.</p>
+                    </div>
+
+                    <div id="edit-access-view-card" class="access-view-card">
+                        <div class="access-view-row">
+                            <div class="access-view-main">
+                                <div id="edit-access-view-title" class="access-view-title"></div>
+                                <div id="edit-access-view-value" class="access-view-value notranslate"></div>
                             </div>
-                            <div class="setup-guide setup-guide-inline">
-                                <div class="setup-accordion" id="edit-setup-accordion">
-                                    <button type="button" class="setup-accordion-head" onclick="toggleEditSetupAccordion()" aria-expanded="false" aria-controls="edit-setup-accordion-panel">
-                                        <span data-i18n="setupGuideToggle">❓ Как настроить</span>
-                                        <span class="setup-accordion-arrow" aria-hidden="true">▼</span>
-                                    </button>
-                                    <div class="setup-accordion-content" id="edit-setup-accordion-panel">
-                                        <div class="setup-step">
-                                            <div class="setup-step-title" data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</div>
-                                            <img src="images/step1.png" alt="Step 1" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
-                                            <div class="setup-step-path" data-i18n="setupStep1Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Страны/регионы → Включить все.</div>
-                                        </div>
-                                        <div class="setup-step">
-                                            <div class="setup-step-title" data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</div>
-                                            <img src="images/step2.png" alt="Step 2" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
-                                            <div class="setup-step-path" data-i18n="setupStep2Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Количество тестировщиков → Выбрать Группы Google → Вставить email.</div>
-                                        </div>
-                                        <div class="setup-step">
-                                            <div class="setup-step-title" data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</div>
-                                            <img src="images/step3.png" alt="Step 3" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
-                                            <div class="setup-step-path" data-i18n="setupStep3Path">Play Console → Обзор публикации → Отправить «X» изменений на проверку.</div>
+                            <div class="access-view-actions">
+                                <button type="button" id="edit-access-quick-copy-btn" class="btn-icon setup-email-copy" onclick="copyEditAccessValue()">📋</button>
+                            </div>
+                        </div>
+                        <button type="button" id="edit-access-change-btn" class="btn btn-secondary" style="width: 100%; margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="enterEditAccessMode()" data-i18n="editAccessChangeBtn">Изменить способ доступа</button>
+                    </div>
+
+                    <div id="edit-access-edit-shell" class="access-edit-shell" style="display:none;">
+                        <div class="seg-control" id="edit-group-seg-control">
+                            <button type="button" class="seg-btn active" id="edit-seg-standard" onclick="setEditAccessTab('standard_group')" data-i18n="groupStandard">Public Group</button>
+                            <button type="button" class="seg-btn" id="edit-seg-custom" onclick="setEditAccessTab('custom_group')" data-i18n="groupCustom">Custom Group</button>
+                        </div>
+
+                        <div id="edit-group-standard-block" class="group-setup-card">
+                            <div class="group-setup-state0-hint" data-i18n="publicGroupState0Hint">💡 Скопируйте email нашей группы и добавьте его в Play Console.</div>
+                            <div class="setup-email-row">
+                                <span class="setup-email-address" role="button" tabindex="0" onclick="copyEditAccessStandardEmail()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyEditAccessStandardEmail();}">google-play-dev-test@googlegroups.com</span>
+                                <button type="button" id="edit-setup-email-copy-btn" class="btn-icon setup-email-copy setup-pulse-accent" onclick="copyEditAccessStandardEmail()"><span id="edit-setup-email-copy-icon">📋</span></button>
+                            </div>
+
+                            <div class="setup-reveal" id="edit-setup-actions-reveal">
+                                <div class="setup-note" data-i18n-html="standardGroupNote">В Play Console обязательно выберите режим тестирования через <b>Группы Google</b> (не email-списки) и вставьте этот адрес.</div>
+                                <div class="setup-action-row">
+                                    <button type="button" class="btn btn-primary setup-console-btn" id="edit-setup-console-btn" onclick="onEditAccessConsoleClick()"><span id="edit-setup-console-btn-label" data-i18n="publicGroupOpenConsoleBtn">🌐 Открыть Play Console</span></button>
+                                    <button type="button" class="btn btn-secondary setup-help-btn" onclick="toggleEditSetupAccordion()" data-i18n="setupGuideToggle">❓ Как настроить</button>
+                                </div>
+                                <div class="setup-guide setup-guide-inline">
+                                    <div class="setup-accordion" id="edit-setup-accordion">
+                                        <button type="button" class="setup-accordion-head" onclick="toggleEditSetupAccordion()" aria-expanded="false" aria-controls="edit-setup-accordion-panel">
+                                            <span data-i18n="setupGuideToggle">❓ Как настроить</span>
+                                            <span class="setup-accordion-arrow" aria-hidden="true">▼</span>
+                                        </button>
+                                        <div class="setup-accordion-content" id="edit-setup-accordion-panel">
+                                            <div class="setup-step">
+                                                <div class="setup-step-title" data-i18n="setupStep1Title">Шаг 1: Выберите ВСЕ страны</div>
+                                                <img src="images/step1.png" alt="Step 1" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                                                <div class="setup-step-path" data-i18n="setupStep1Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Страны/регионы → Включить все.</div>
+                                            </div>
+                                            <div class="setup-step">
+                                                <div class="setup-step-title" data-i18n="setupStep2Title">Шаг 2: Добавить Google Group</div>
+                                                <img src="images/step2.png" alt="Step 2" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                                                <div class="setup-step-path" data-i18n="setupStep2Path">Play Console → Тестирование и выпуск → Тестирование → Закрытое тестирование → Управление версией → Количество тестировщиков → Выбрать Группы Google → Вставить email.</div>
+                                            </div>
+                                            <div class="setup-step">
+                                                <div class="setup-step-title" data-i18n="setupStep3Title">Шаг 3: Отправить изменение на проверку</div>
+                                                <img src="images/step3.png" alt="Step 3" loading="lazy" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                                                <div class="setup-step-path" data-i18n="setupStep3Path">Play Console → Обзор публикации → Отправить «X» изменений на проверку.</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="setup-reveal" id="edit-setup-checklist-reveal">
-                            <div class="setup-checklist" id="edit-setup-checklist">
-                                <div class="setup-checklist-lock" data-i18n="checklistLockedHint">🔒 Скопируйте email выше, чтобы разблокировать чеклист.</div>
-                                <label class="review-checkbox-row checklist-item" id="edit-checklist-item-email">
-                                    <input type="checkbox" id="edit-check-email" disabled onchange="onEditAccessChecklistChange('email', this.checked)">
-                                    <span>
-                                        <strong data-i18n="checklistAddedEmail">Я добавил email в Play Console</strong>
-                                        <small data-i18n="checklistAddedEmailSub1">Выбрал «Группы Google»</small>
-                                        <small data-i18n="checklistAddedEmailSub2">Вставил google-play-dev-test@googlegroups.com</small>
-                                    </span>
-                                </label>
-                                <label class="review-checkbox-row checklist-item" id="edit-checklist-item-countries">
-                                    <input type="checkbox" id="edit-check-countries" disabled onchange="onEditAccessChecklistChange('countries', this.checked)">
-                                    <span><strong data-i18n="checklistAllCountries">Я выбрал все страны</strong></span>
-                                </label>
-                                <label class="review-checkbox-row checklist-item" id="edit-checklist-item-review">
-                                    <input type="checkbox" id="edit-check-review" disabled onchange="onEditAccessChecklistChange('review', this.checked)">
-                                    <span><strong data-i18n="checklistSubmittedReview">Я отправил на проверку</strong></span>
-                                </label>
+                            <div class="setup-reveal" id="edit-setup-checklist-reveal">
+                                <div class="setup-checklist" id="edit-setup-checklist">
+                                    <div class="setup-checklist-lock" data-i18n="checklistLockedHint">🔒 Скопируйте email выше, чтобы разблокировать чеклист.</div>
+                                    <label class="review-checkbox-row checklist-item" id="edit-checklist-item-email">
+                                        <input type="checkbox" id="edit-check-email" disabled onchange="onEditAccessChecklistChange('email', this.checked)">
+                                        <span>
+                                            <strong data-i18n="checklistAddedEmail">Я добавил email в Play Console</strong>
+                                            <small data-i18n="checklistAddedEmailSub1">Выбрал «Группы Google»</small>
+                                            <small data-i18n="checklistAddedEmailSub2">Вставил google-play-dev-test@googlegroups.com</small>
+                                        </span>
+                                    </label>
+                                    <label class="review-checkbox-row checklist-item" id="edit-checklist-item-countries">
+                                        <input type="checkbox" id="edit-check-countries" disabled onchange="onEditAccessChecklistChange('countries', this.checked)">
+                                        <span><strong data-i18n="checklistAllCountries">Я выбрал все страны</strong></span>
+                                    </label>
+                                    <label class="review-checkbox-row checklist-item" id="edit-checklist-item-review">
+                                        <input type="checkbox" id="edit-check-review" disabled onchange="onEditAccessChecklistChange('review', this.checked)">
+                                        <span><strong data-i18n="checklistSubmittedReview">Я отправил на проверку</strong></span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div id="edit-group-custom-block" style="display:none;" class="group-setup-card">
-                        <div class="custom-group-meta">
-                            <strong data-i18n="customGroupStepTitle">Укажите вашу ссылку</strong>
+                        <div id="edit-group-custom-block" style="display:none;" class="group-setup-card">
+                            <div class="custom-group-meta">
+                                <strong data-i18n="customGroupStepTitle">Укажите вашу ссылку</strong>
+                            </div>
+                            <input type="url" id="edit-group" class="form-input" placeholder="" data-i18n-placeholder="groupUrlPlaceholder" oninput="onEditAccessGroupInput()">
+                            <div class="setup-note" data-i18n="customGroupManualHint">Вы сами управляете группой: добавляйте тестеров вручную из дашборда.</div>
                         </div>
-                        <input type="url" id="edit-group" class="form-input" placeholder="" data-i18n-placeholder="groupUrlPlaceholder" oninput="onEditAccessGroupInput()">
-                        <div class="setup-note" data-i18n="customGroupManualHint">Вы сами управляете группой: добавляйте тестеров вручную из дашборда.</div>
-                    </div>
 
-                    <div id="edit-email-mode-banner" class="email-mode-banner" style="display:none; margin-top: 10px;">
-                        <span data-i18n="emailModeActive">✉️ Выбрано тестирование по email</span>
-                        <button type="button" class="email-mode-change" onclick="exitEditEmailTestingMode()" data-i18n="emailModeChange">Изменить</button>
-                    </div>
+                        <div id="edit-email-mode-banner" class="email-mode-banner" style="display:none; margin-top: 10px;">
+                            <span data-i18n="emailModeActive">✉️ Выбрано тестирование по email</span>
+                            <button type="button" class="email-mode-change" onclick="exitEditEmailTestingMode()" data-i18n="emailModeChange">Изменить</button>
+                        </div>
 
-                    <button type="button" class="setup-email-toggle" id="edit-use-email-testing-btn" onclick="enableEditEmailTestingMode()" data-i18n="useEmailTesting">Использовать тестирование по email</button>
-                    <button type="button" class="btn btn-secondary access-edit-cancel" onclick="cancelEditAccessMode()" data-i18n="editAccessCancelBtn">Отмена</button>
+                        <button type="button" class="setup-email-toggle" id="edit-use-email-testing-btn" onclick="enableEditEmailTestingMode()" data-i18n="useEmailTesting">Использовать тестирование по email</button>
+                        <button type="button" class="btn btn-secondary access-edit-cancel" onclick="cancelEditAccessMode()" data-i18n="editAccessCancelBtn">Отмена</button>
+                    </div>
                 </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label" id="t-editModeLabel" data-i18n="modeLabel">Режим проекта</label>
-                <div class="form-hint" id="t-editModeHint" data-i18n="editModeHint">Можно менять режим и квоты, а при росте бюджета система спишет только разницу.</div>
-                <input type="hidden" id="edit-mode" value="mutual">
-                <div class="seg-control">
-                    <button type="button" class="seg-btn active" id="edit-mode-mutual" onclick="setProjectMode('edit', 'mutual')" data-i18n="modeMutual">🤝 Взаимно</button>
-                    <button type="button" class="seg-btn" id="edit-mode-bounty" onclick="setProjectMode('edit', 'bounty')" data-i18n="modeBounty">💎 Биржа</button>
-                    <button type="button" class="seg-btn" id="edit-mode-hybrid" onclick="setProjectMode('edit', 'hybrid')" data-i18n="modeHybrid">🔥 Гибрид</button>
-                </div>
-            </div>
-            <div id="edit-mutual-settings" class="reveal-panel active">
-                <div class="form-surface">
-                    <div class="form-section-title" id="t-editMutualSettingsTitle" data-i18n="mutualSettingsTitle">🤝 Взаимные тестеры</div>
+
+                <!-- Card 3: Project Mode & Quotas -->
+                <div class="wizard-section-card wizard-mode-card">
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label" id="t-editLimitMutualLabel" data-i18n="limitMutualLabel">Лимит взаимных тестеров</label>
-                        <input type="number" id="edit-limit-mutual" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('edit')">
-                        <div class="form-hint" id="t-editLimitMutualHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitMutualHint">Изменяет лимит набора по взаимке.</div>
-                    </div>
-                </div>
-            </div>
-            <div id="edit-bounty-settings" class="reveal-panel">
-                <div class="form-surface">
-                    <div class="form-section-title" id="t-editBountySettingsTitle" data-i18n="bountySettingsTitle">💎 Платные тестеры</div>
-                    <div style="background: rgba(52,199,89,0.12); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 16px; font-weight: 700; color: var(--link-color);" id="edit-balance-badge">💎 </span>
-                        <span style="font-size: 15px; font-weight: 600; color: var(--text-color);" id="edit-balance-badge-value"></span>
-                    </div>
-                    <div class="form-inline">
-                        <div class="form-group">
-                            <label class="form-label" id="t-editLimitBountyLabel" data-i18n="limitBountyLabel">Сколько тестеров нанять?</label>
-                            <input type="number" id="edit-limit-bounty" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('edit')">
-                            <div class="form-hint" id="t-editLimitBountyHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitBountyHint">Сколько слотов открыто в Бирже.</div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" id="t-editBountyPerTesterLabel" data-i18n="bountyPerTesterLabel">Награда одному тестеру</label>
-                            <input type="number" id="edit-bounty-per-tester" class="form-input" min="100" step="1" value="100" oninput="updateProjectPricing('edit')">
-                            <div class="form-hint" id="t-editBountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="bountyPerTesterHint">Минимум 100 $BUST.</div>
+                        <label class="form-label" id="t-editModeLabel" data-i18n="modeLabel">Режим проекта</label>
+                        <div class="form-hint" id="t-editModeHint" data-i18n="editModeHint">Можно менять режим и квоты, а при росте бюджета система спишет только разницу.</div>
+                        <input type="hidden" id="edit-mode" value="mutual">
+                        <div class="seg-control">
+                            <button type="button" class="seg-btn active" id="edit-mode-mutual" onclick="setProjectMode('edit', 'mutual')" data-i18n="modeMutual">🤝 Взаимно</button>
+                            <button type="button" class="seg-btn" id="edit-mode-bounty" onclick="setProjectMode('edit', 'bounty')" data-i18n="modeBounty">💎 Биржа</button>
+                            <button type="button" class="seg-btn" id="edit-mode-hybrid" onclick="setProjectMode('edit', 'hybrid')" data-i18n="modeHybrid">🔥 Гибрид</button>
                         </div>
                     </div>
-                    <div class="calc-card">
-                        <div class="calc-title" id="t-editCalculatorTitle" data-i18n="calculatorTitle">Калькулятор $BUST</div>
-                        <div class="calc-row"><span id="t-editCalcRewardPerTester" data-i18n="calcRewardPerTester">Награда на 1 тестера</span><span id="edit-calc-per-tester">100 $BUST</span></div>
-                        <div class="calc-row"><span id="t-editCalcDailyShare" data-i18n="calcDailyShare">Ежедневные чекины (65%)</span><span id="edit-calc-daily">65 $BUST</span></div>
-                        <div class="calc-row"><span id="t-editCalcHoldBonus" data-i18n="calcHoldBonus">Hold Bonus (35%)</span><span id="edit-calc-hold">35 $BUST</span></div>
-                        <div class="calc-row total"><span id="t-editCalcTotalCost" data-i18n="calcTotalCost">Всего спишется</span><span id="edit-calc-total">1200 $BUST</span></div>
+
+                    <div id="edit-mutual-settings" class="reveal-panel active wizard-mode-panel">
+                        <div class="form-section-title" id="t-editMutualSettingsTitle" data-i18n="mutualSettingsTitle">🤝 Взаимные тестеры</div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" id="t-editLimitMutualLabel" data-i18n="limitMutualLabel">Лимит взаимных тестеров</label>
+                            <input type="number" id="edit-limit-mutual" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('edit')">
+                            <div class="form-hint" id="t-editLimitMutualHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitMutualHint">Изменяет лимит набора по взаимке.</div>
+                        </div>
+                    </div>
+
+                    <div id="edit-bounty-settings" class="reveal-panel wizard-mode-panel">
+                        <div class="form-section-title" id="t-editBountySettingsTitle" data-i18n="bountySettingsTitle">💎 Платные тестеры</div>
+                        <div style="background: rgba(52,199,89,0.12); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px; font-weight: 700; color: var(--link-color);" id="edit-balance-badge">💎 </span>
+                            <span style="font-size: 15px; font-weight: 600; color: var(--text-color);" id="edit-balance-badge-value"></span>
+                        </div>
+                        <div class="form-inline">
+                            <div class="form-group">
+                                <label class="form-label" id="t-editLimitBountyLabel" data-i18n="limitBountyLabel">Сколько тестеров нанять?</label>
+                                <input type="number" id="edit-limit-bounty" class="form-input" min="1" step="1" value="12" oninput="updateProjectPricing('edit')">
+                                <div class="form-hint" id="t-editLimitBountyHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="limitBountyHint">Сколько слотов открыто в Бирже.</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" id="t-editBountyPerTesterLabel" data-i18n="bountyPerTesterLabel">Награда одному тестеру</label>
+                                <input type="number" id="edit-bounty-per-tester" class="form-input" min="100" step="1" value="100" oninput="updateProjectPricing('edit')">
+                                <div class="form-hint" id="t-editBountyPerTesterHint" style="margin-top: 8px; margin-bottom: 0;" data-i18n="bountyPerTesterHint">Минимум 100 $BUST.</div>
+                            </div>
+                        </div>
+                        <div class="calc-card">
+                            <div class="calc-title" id="t-editCalculatorTitle" data-i18n="calculatorTitle">Калькулятор $BUST</div>
+                            <div class="calc-row"><span id="t-editCalcRewardPerTester" data-i18n="calcRewardPerTester">Награда на 1 тестера</span><span id="edit-calc-per-tester">100 $BUST</span></div>
+                            <div class="calc-row"><span id="t-editCalcDailyShare" data-i18n="calcDailyShare">Ежедневные чекины (65%)</span><span id="edit-calc-daily">65 $BUST</span></div>
+                            <div class="calc-row"><span id="t-editCalcHoldBonus" data-i18n="calcHoldBonus">Hold Bonus (35%)</span><span id="edit-calc-hold">35 $BUST</span></div>
+                            <div class="calc-row total"><span id="t-editCalcTotalCost" data-i18n="calcTotalCost">Всего спишется</span><span id="edit-calc-total">1200 $BUST</span></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label" data-i18n="projectLanguageLabel">Язык коммуникации</label>
-                <div class="form-hint" data-i18n="projectLanguageHint">Укажите, на каком языке вы готовы общаться с тестерами.</div>
-                <input type="hidden" id="edit-target-lang" value="ALL">
-                <div class="seg-control">
-                    <button type="button" class="seg-btn" id="edit-target-lang-ru" onclick="setProjectTargetLang('edit', 'RU')" data-i18n="projectLanguageRu">🇷🇺 RU</button>
-                    <button type="button" class="seg-btn" id="edit-target-lang-en" onclick="setProjectTargetLang('edit', 'EN')" data-i18n="projectLanguageEn">🇬🇧 EN</button>
-                    <button type="button" class="seg-btn active" id="edit-target-lang-all" onclick="setProjectTargetLang('edit', 'ALL')" data-i18n="projectLanguageAll">🌐 ALL</button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="review-checkbox-row project-setting-checkbox">
-                    <input type="checkbox" id="edit-request-reviews" checked>
-                    <span>
-                        <strong data-i18n="requestReviewsLabel">Запрашивать Google Play отзывы</strong>
-                        <small data-i18n="requestReviewsHint">После 7 дней теста покажем тестеру мягкий запрос оставить отзыв в Google Play.</small>
-                    </span>
-                </label>
-            </div>
-            <div class="project-setting-checkbox add-email-testers-box" id="edit-add-email-testers-box" style="margin-bottom: 12px;">
-                <label class="review-checkbox-row add-email-testers-box__toggle">
-                    <input type="checkbox" id="edit-app-accepts-email-testers" onchange="onEditAcceptsEmailTestersChange()">
-                    <span>
-                        <strong data-i18n="acceptsEmailTestersLabel">Хотите получать ещё больше взаимных тестов?</strong>
-                        <small data-i18n="acceptsEmailTestersHint">Другие разработчики, использующие email-списки, смогут добавить вас в тестеры.</small>
-                    </span>
-                </label>
-                <div id="edit-tester-email-group" class="add-email-testers-expand">
-                    <label class="form-label" id="t-editTesterEmail" data-i18n="testerEmailLabel">Ваш Email тестировщика</label>
-                    <div class="email-input-wrap">
-                        <input type="email" id="edit-app-tester-email" class="form-input" placeholder="" data-i18n-placeholder="testerEmailPlaceholder" oninput="onEditTesterEmailInput()">
-                        <span id="edit-tester-email-valid-icon" class="email-valid-icon" aria-hidden="true">✅</span>
+
+                <!-- Card 4: Optional Settings -->
+                <div class="wizard-optional-card is-expanded" id="edit-wizard-optional-card">
+                    <div class="wizard-optional-card__head" style="cursor: default;">
+                        <span data-i18n="optionalSettings">⚙️ Дополнительные настройки</span>
                     </div>
-                    <div class="form-hint" id="t-editTesterEmailHint" data-i18n="testerEmailHint">Укажите email аккаунта Google Play, с которого вы будете устанавливать чужие приложения для теста.</div>
+                    <div class="wizard-optional-card__body" style="display: block;">
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="projectLanguageLabel">Язык коммуникации</label>
+                            <div class="form-hint" data-i18n="projectLanguageHint">Укажите, на каком языке вы готовы общаться с тестерами.</div>
+                            <input type="hidden" id="edit-target-lang" value="ALL">
+                            <div class="seg-control">
+                                <button type="button" class="seg-btn" id="edit-target-lang-ru" onclick="setProjectTargetLang('edit', 'RU')" data-i18n="projectLanguageRu">🇷🇺 RU</button>
+                                <button type="button" class="seg-btn" id="edit-target-lang-en" onclick="setProjectTargetLang('edit', 'EN')" data-i18n="projectLanguageEn">🇬🇧 EN</button>
+                                <button type="button" class="seg-btn active" id="edit-target-lang-all" onclick="setProjectTargetLang('edit', 'ALL')" data-i18n="projectLanguageAll">🌐 ALL</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="review-checkbox-row project-setting-checkbox">
+                                <input type="checkbox" id="edit-request-reviews" checked>
+                                <span>
+                                    <strong data-i18n="requestReviewsLabel">Запрашивать Google Play отзывы</strong>
+                                    <small data-i18n="requestReviewsHint">После 7 дней теста покажем тестеру мягкий запрос оставить отзыв в Google Play.</small>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" id="t-editDescription" data-i18n="instructions">Инструкции для тестеров</label>
+                            <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000" data-i18n-placeholder="instPlaceholder"></textarea>
+                            <div id="chips-edit-instructions" class="chip-scroll"></div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div id="edit-created-at" style="font-size: 12px; color: var(--hint-color); opacity: 0.75; margin: 6px 2px 12px 2px;"></div>
-            <button class="btn btn-secondary transfer-trigger-btn" type="button" onclick="openProjectTransferModal(projectToEdit)" data-i18n="transferOwnershipBtn">🔐 Передать права</button>
-            <div class="action-row">
-                <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="closeEditModal()" id="t-editCancel" data-i18n="editCancel">Отмена</button>
-                <button class="btn btn-primary" style="flex: 1;" onclick="saveProjectEdit()" id="t-editSave" data-i18n="save">Сохранить</button>
+
+                <!-- Card 5: Email Testers Outreach -->
+                <div class="wizard-outreach-card project-setting-checkbox add-email-testers-box" id="edit-add-email-testers-box">
+                    <label class="review-checkbox-row add-email-testers-box__toggle">
+                        <input type="checkbox" id="edit-app-accepts-email-testers" onchange="onEditAcceptsEmailTestersChange()">
+                        <span>
+                            <strong data-i18n="acceptsEmailTestersLabel">Хотите получать ещё больше взаимных тестов?</strong>
+                            <small data-i18n="acceptsEmailTestersHint">Другие разработчики, использующие email-списки, смогут добавить вас в тестеры.</small>
+                        </span>
+                    </label>
+                    <div id="edit-tester-email-group" class="add-email-testers-expand">
+                        <label class="form-label" id="t-editTesterEmail" data-i18n="testerEmailLabel">Ваш Email тестировщика</label>
+                        <div class="email-input-wrap">
+                            <input type="email" id="edit-app-tester-email" class="form-input" placeholder="" data-i18n-placeholder="testerEmailPlaceholder" oninput="onEditTesterEmailInput()">
+                            <span id="edit-tester-email-valid-icon" class="email-valid-icon" aria-hidden="true">✅</span>
+                        </div>
+                        <div class="form-hint" id="t-editTesterEmailHint" data-i18n="testerEmailHint">Укажите email аккаунта Google Play, с которого вы будете устанавливать чужие приложения для теста.</div>
+                    </div>
+                </div>
+
+                <!-- Card 6: Project Meta & Management -->
+                <div class="edit-project-meta-card">
+                    <div class="edit-project-meta-info">
+                        <div id="edit-created-at"></div>
+                    </div>
+                    <button class="btn btn-secondary transfer-trigger-btn edit-project-transfer-btn" type="button" onclick="openProjectTransferModal(projectToEdit)" data-i18n="transferOwnershipBtn">🔐 Передать права</button>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="edit-project-footer-actions">
+                    <button class="btn btn-secondary" onclick="closeEditModal()" id="t-editCancel" data-i18n="editCancel">Отмена</button>
+                    <button class="btn btn-primary" onclick="saveProjectEdit()" id="t-editSave" data-i18n="save">Сохранить</button>
+                </div>
             </div>
         </div>
     </div>

@@ -1554,8 +1554,10 @@ function recomputeLocalTestState(test) {
 }
 
 function getMyTestById(appId) {
+    var targetId = Number(appId || 0);
+    if (targetId <= 0) return null;
     return (myTests || []).find(function(item) {
-        return Number(item.id) === Number(appId);
+        return Number(item && item.id) === targetId || Number(item && item.app_id) === targetId;
     }) || null;
 }
 
@@ -3963,11 +3965,18 @@ function updateIconPreview(inputId, previewId) {
     var input = document.getElementById(inputId);
     var preview = document.getElementById(previewId);
     if (!input || !preview) return;
+    var picker = inputId.indexOf('edit-') === 0 ? document.getElementById('edit-icon-picker') : document.getElementById('app-icon-picker');
     var url = (input.value || '').trim();
-    if (!url) { preview.style.display = 'none'; preview.src = ''; return; }
+    if (!url) {
+        preview.style.display = 'none';
+        preview.src = '';
+        if (picker) picker.classList.remove('has-icon');
+        return;
+    }
     if (typeof resolveIconUrl === 'function') url = resolveIconUrl(url);
     preview.src = url;
     preview.style.display = 'block';
+    if (picker) picker.classList.add('has-icon');
 }
 
 let _feedbackAcceptLongPressTimeout = null;

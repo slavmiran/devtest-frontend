@@ -1006,8 +1006,18 @@
         var safeAppId = Number(appId || 0);
         if (safeAppId <= 0) return;
         window._pendingUnlinkReciprocal = true;
-        if (typeof openLeaveMutualModal === 'function') {
-            openLeaveMutualModal(safeAppId);
+        var openLeave = window.openLeaveMutualModal || (typeof openLeaveMutualModal === 'function' ? openLeaveMutualModal : null);
+        if (typeof openLeave === 'function') {
+            openLeave(safeAppId);
+            return;
+        }
+        if (typeof window.openTerminationSheet === 'function') {
+            window.openTerminationSheet({
+                mode: 'leave',
+                appId: safeAppId,
+                joinType: 'mutual',
+                unlinkReciprocal: true,
+            });
             return;
         }
         if (typeof confirmLeaveMutual === 'function') {
