@@ -1527,7 +1527,7 @@
 /* Confirm overlay above leave modal — full-width bottom sheet (never clamp) */
 #leave-confirm-overlay.leave-confirm-overlay,
 #bell-remind-overlay.leave-confirm-overlay {
-    z-index: 10080;
+    z-index: 12000 !important;
     background: rgba(8, 10, 14, 0.78);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);

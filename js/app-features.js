@@ -4230,3 +4230,9 @@ async function deleteAccessTester(projectId, progressId, testerLabel) {
     }
 }
 
+// Explicit globals for termination-sheet (onclick / IIFE resolve against window).
+window.confirmDropTest = confirmDropTest;
+window.confirmLeaveMutual = confirmLeaveMutual;
+window.confirmKickTester = confirmKickTester;
+window.confirmOvertimeLeave = confirmOvertimeLeave;
+

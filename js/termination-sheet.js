@@ -1124,27 +1124,72 @@
         try {
             if (!_termState) {
                 console.warn('requestTerminationConfirm: no _termState');
+                if (typeof showToast === 'function') showToast(_t('loadError'));
                 return;
             }
             _syncLegacyReasonFields(getTermReasonCode(), getTermReasonNote());
+
+            var mode = _termState.mode;
+            var justified = !!_termState.justifiedAllowed;
+            var leaveNoPenalty = justified || !!_termState.isSafeExit || !!_termState.noPenaltyExit;
+            var confirmMsg = '';
+            if (mode === 'leave') {
+                confirmMsg = leaveNoPenalty
+                    ? _t('leaveConfirmDescJustified')
+                    : _t('leaveConfirmDescAbandoned', { karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1) });
+            } else if (mode === 'drop') {
+                confirmMsg = _t(
+                    _termState.isSafeExit
+                        ? 'termConfirmDescDropSafe'
+                        : (_termState.isBountyDrop ? 'termConfirmDescDropBounty' : 'termConfirmDescDrop')
+                );
+            } else {
+                confirmMsg = _t('termConfirmDescKick');
+            }
+
+            // Telegram native confirm is reliable in Mini App; custom overlay often
+            // paints under the sheet / looks like "no reaction".
+            if (window.tg && typeof window.tg.showConfirm === 'function') {
+                window.tg.showConfirm(String(confirmMsg || _t('leaveConfirmTitle')), function (ok) {
+                    if (ok) confirmTerminationAdaptive();
+                });
+                return;
+            }
+            if (window.tg && typeof window.tg.showPopup === 'function') {
+                window.tg.showPopup({
+                    title: _t(mode === 'kick' ? 'termConfirmTitleKick' : 'leaveConfirmTitle'),
+                    message: String(confirmMsg || ''),
+                    buttons: [
+                        { id: 'ok', type: 'destructive', text: _t(mode === 'kick' ? 'kickConfirmBtn' : 'leaveConfirmFinalBtn') },
+                        { id: 'cancel', type: 'cancel' },
+                    ],
+                }, function (buttonId) {
+                    if (buttonId === 'ok') confirmTerminationAdaptive();
+                });
+                return;
+            }
 
             var overlay = document.getElementById('leave-confirm-overlay');
             var body = document.getElementById('leave-confirm-body');
             var finalBtn = document.getElementById('leave-confirm-final-btn');
             var title = document.getElementById('leave-confirm-title');
             if (!overlay || !body) {
-                console.warn('requestTerminationConfirm: overlay missing');
+                console.warn('requestTerminationConfirm: overlay missing — executing directly');
+                confirmTerminationAdaptive();
                 return;
             }
 
-            var mode = _termState.mode;
+            // Keep overlay above every sheet in Telegram WebView.
+            if (overlay.parentNode !== document.body) {
+                document.body.appendChild(overlay);
+            }
+            overlay.style.zIndex = '12000';
+
             var points = [];
-            var justified = !!_termState.justifiedAllowed;
             var unlink = getTermUnlinkReciprocal();
 
         if (mode === 'leave') {
             if (title) title.textContent = _t('leaveConfirmTitle');
-            var leaveNoPenalty = justified || !!_termState.isSafeExit || !!_termState.noPenaltyExit;
             if (unlink && _isMutualJoin(_termState.joinType)) {
                 points.push('<li>' + _esc(_t('leaveConfirmPointMirror')) + '</li>');
             } else if (_isMutualJoin(_termState.joinType)) {
@@ -1278,28 +1323,46 @@
 
         if (_termState.mode === 'leave') {
             var justified = !!_termState.justifiedAllowed || !!_termState.isSafeExit || !!_termState.noPenaltyExit;
+            if (typeof window.setLeaveMutualAppId === 'function') {
+                window.setLeaveMutualAppId(appId);
+            } else {
+                window._leaveMutualAppId = appId;
+            }
             var leaveFn = window.confirmLeaveMutual || (typeof confirmLeaveMutual === 'function' ? confirmLeaveMutual : null);
             if (typeof leaveFn === 'function') {
                 leaveFn(justified, appId);
             } else {
                 console.error('confirmLeaveMutual is not available');
+                if (typeof showToast === 'function') showToast(_t('loadError'));
             }
             return;
         }
         if (_termState.mode === 'drop') {
+            if (typeof window.setDropTestAppId === 'function') {
+                window.setDropTestAppId(appId);
+            } else {
+                window._dropTestAppId = appId;
+            }
             var dropFn = window.confirmDropTest || (typeof confirmDropTest === 'function' ? confirmDropTest : null);
             if (typeof dropFn === 'function') {
                 dropFn(appId);
             } else {
                 console.error('confirmDropTest is not available');
+                if (typeof showToast === 'function') showToast(_t('loadError'));
             }
             return;
+        }
+        if (typeof window.setKickTarget === 'function') {
+            window.setKickTarget(appId, testerId);
+        } else {
+            window._kickTarget = { appId: appId, testerId: testerId };
         }
         var kickFn = window.confirmKickTester || (typeof confirmKickTester === 'function' ? confirmKickTester : null);
         if (typeof kickFn === 'function') {
             kickFn(appId, testerId);
         } else {
             console.error('confirmKickTester is not available');
+            if (typeof showToast === 'function') showToast(_t('loadError'));
         }
     }
 

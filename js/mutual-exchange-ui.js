@@ -942,35 +942,63 @@
     }
 
     function startMutualBreakFromBalance() {
-        if (!_balanceState) return;
+        if (!_balanceState) {
+            if (typeof showToast === 'function') showToast(_t('loadError'));
+            return;
+        }
         var appId = Number(_balanceState.appId || 0);
         var context = _balanceState.context || 'tests';
         var projectId = Number(_balanceState.projectId || appId);
         var testerId = Number(_balanceState.testerId || 0);
         var joinType = _normalizeJoinType(_balanceState.joinType || 'mutual');
         var forceUnlink = _isMutualJoin(joinType);
-        closeMutualBalanceModal();
+
+        // Close balance without wiping copied ids (close clears _balanceState).
+        var modal = document.getElementById('mutual-balance-modal');
+        if (modal) modal.classList.remove('active');
+        _balanceState = null;
 
         if (context === 'projects') {
-            if (typeof openKickTesterModal === 'function') {
+            if (projectId <= 0 || testerId <= 0) {
+                console.warn('startMutualBreakFromBalance: missing project/tester', projectId, testerId);
+                if (typeof showToast === 'function') showToast(_t('linkStatusKickOpenFailed'));
+                return;
+            }
+            var openKick = window.openKickTesterModal || (typeof openKickTesterModal === 'function' ? openKickTesterModal : null);
+            if (typeof openKick === 'function') {
                 try {
-                    openKickTesterModal(projectId, testerId, null, {
+                    openKick(projectId, testerId, null, {
                         forceUnlink: forceUnlink,
                         unlinkReciprocal: forceUnlink,
                     });
                 } catch (error) {
                     console.error('openKickTesterModal failed', error);
-                    if (typeof showToast === 'function') {
-                        showToast(_t('linkStatusKickOpenFailed'));
-                    }
+                    if (typeof showToast === 'function') showToast(_t('linkStatusKickOpenFailed'));
                 }
+            } else if (typeof showToast === 'function') {
+                showToast(_t('linkStatusKickOpenFailed'));
             }
             return;
         }
 
-        if (typeof openLeaveMutualModal === 'function') {
-            window._pendingUnlinkReciprocal = false;
-            openLeaveMutualModal(appId);
+        if (appId <= 0) {
+            console.warn('startMutualBreakFromBalance: missing appId');
+            if (typeof showToast === 'function') showToast(_t('loadError'));
+            return;
+        }
+        window._pendingUnlinkReciprocal = false;
+        var openLeave = window.openLeaveMutualModal || (typeof openLeaveMutualModal === 'function' ? openLeaveMutualModal : null);
+        if (typeof openLeave === 'function') {
+            openLeave(appId);
+        } else if (typeof window.openTerminationSheet === 'function') {
+            window.openTerminationSheet({
+                mode: 'leave',
+                appId: appId,
+                joinType: joinType || 'mutual',
+                unlinkReciprocal: false,
+            });
+        } else if (typeof showToast === 'function') {
+            showToast(_t('loadError'));
         }
     }
 
