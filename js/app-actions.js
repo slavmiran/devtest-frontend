@@ -637,6 +637,9 @@ function _highlightTestCardWhenReady(appId, attemptsLeft) {
     }, 180);
 }
 
+window._highlightTestCard = _highlightTestCard;
+window._highlightTestCardWhenReady = _highlightTestCardWhenReady;
+
 function _expandProjectCardWhenReady(projectId, attemptsLeft) {
     var normalizedId = Number(projectId || 0);
     if (normalizedId <= 0) return false;

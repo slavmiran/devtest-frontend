@@ -836,23 +836,53 @@
         var modal = document.getElementById('mutual-balance-modal');
         if (modal) modal.classList.remove('active');
         _balanceState = null;
+
         if (reciprocalAppId <= 0) {
             if (typeof showToast === 'function') showToast(_t('leftTesterNoCard'));
             if (typeof switchTab === 'function') switchTab('tests');
             return;
         }
-        if (typeof switchTab === 'function') switchTab('tests');
-        if (typeof loadTasks === 'function') {
-            Promise.resolve(loadTasks(true)).finally(function () {
-                if (typeof _highlightTestCardWhenReady === 'function') {
-                    _highlightTestCardWhenReady(reciprocalAppId, 12);
-                } else if (typeof _highlightTestCard === 'function') {
-                    _highlightTestCard(reciprocalAppId);
-                }
-            });
-        } else if (typeof _highlightTestCardWhenReady === 'function') {
-            _highlightTestCardWhenReady(reciprocalAppId, 12);
+
+        function _runHighlight() {
+            var highlightReady = (typeof window._highlightTestCardWhenReady === 'function')
+                ? window._highlightTestCardWhenReady
+                : (typeof _highlightTestCardWhenReady === 'function' ? _highlightTestCardWhenReady : null);
+            var highlightNow = (typeof window._highlightTestCard === 'function')
+                ? window._highlightTestCard
+                : (typeof _highlightTestCard === 'function' ? _highlightTestCard : null);
+            if (highlightReady) {
+                highlightReady(reciprocalAppId, 24);
+                return;
+            }
+            if (highlightNow) highlightNow(reciprocalAppId);
         }
+
+        // Prefer the same deep-focus path used by startapp=test_* / my_tests_highlight_*.
+        if (typeof _focusAppInMiniApp === 'function') {
+            Promise.resolve(_focusAppInMiniApp(reciprocalAppId)).catch(function () {
+                if (typeof switchTab === 'function') switchTab('tests');
+                _runHighlight();
+            });
+            return;
+        }
+        if (typeof window._focusAppInMiniApp === 'function') {
+            Promise.resolve(window._focusAppInMiniApp(reciprocalAppId)).catch(function () {
+                if (typeof switchTab === 'function') switchTab('tests');
+                _runHighlight();
+            });
+            return;
+        }
+
+        if (typeof switchTab === 'function') switchTab('tests');
+        // Non-background refresh so the tests list is actually rendered.
+        var refresh = (typeof loadTasks === 'function') ? loadTasks(false) : null;
+        Promise.resolve(refresh).finally(function () {
+            requestAnimationFrame(function () {
+                _runHighlight();
+                setTimeout(_runHighlight, 220);
+                setTimeout(_runHighlight, 650);
+            });
+        });
     }
 
     function hideLeftTesterFromBalance() {

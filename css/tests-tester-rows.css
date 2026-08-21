@@ -266,6 +266,12 @@
     opacity: 0.82;
 }
 
+.tester-left-prefix {
+    opacity: 0.9;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
 
 .tester-link {
     color: var(--link-color);
@@ -383,16 +389,6 @@
 .tester-row-left-soft .tester-row-main,
 .tester-row-left-soft .tester-row-meta {
     align-items: center;
-}
-
-.tester-left-heart {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 4px;
-    font-size: 13px;
-    line-height: 1;
-    opacity: 0.95;
 }
 
 .tester-leave-chip {

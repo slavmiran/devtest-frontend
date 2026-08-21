@@ -179,8 +179,15 @@ async function _focusAppInMiniApp(appId) {
     if (!normalizedId) return false;
 
     switchTab('tests');
-    await loadTasks(true);
-    _highlightTestCardWhenReady(normalizedId, 10);
+    // Force a real refresh (background throttle can skip render and miss the card).
+    try {
+        await loadTasks(false);
+    } catch (e) { /* ignore */ }
+    if (typeof window._highlightTestCardWhenReady === 'function') {
+        window._highlightTestCardWhenReady(normalizedId, 16);
+    } else {
+        _highlightTestCardWhenReady(normalizedId, 16);
+    }
 
     await new Promise(function(resolve) { setTimeout(resolve, 520); });
     if (_highlightTestCard(normalizedId)) {
@@ -226,6 +233,8 @@ async function _focusAppInMiniApp(appId) {
     }
     return false;
 }
+
+window._focusAppInMiniApp = _focusAppInMiniApp;
 
 const GUEST_CLAIM_COMMUNITY_URL = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
 

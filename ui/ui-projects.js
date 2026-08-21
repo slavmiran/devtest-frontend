@@ -451,9 +451,7 @@ function renderProjects(force) {
                     rowHtml = `
                     <li class="tester-row-left-soft">
                         <div class="tester-row-main">
-                            <span class="tester-name">
-                                ${leftDayHtml}<span class="tester-left-heart" aria-hidden="true">💔</span><span class="tester-primary-label notranslate">${leftLabel}</span>
-                            </span>
+                            <span class="tester-name">${leftDayHtml}<span class="tester-left-prefix" aria-hidden="true">💔</span><span class="tester-primary-label notranslate">${leftLabel}</span></span>
                         </div>
                         <div class="tester-row-meta">
                             <button type="button" class="tester-leave-chip" onclick="event.stopPropagation(); openLeftTesterLinkStatus(${Number(project.id)}, ${Number(tester.tester_id)}, event)">${window.escapeHTML(window.t('testerLeftChip', {}, lang))}</button>
