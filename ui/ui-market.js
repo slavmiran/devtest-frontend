@@ -6902,6 +6902,37 @@ function insertChip(textareaId, chipText) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
+function getProjectKarmaPools(project, testerId) {
+    const payload = project || {};
+    const thanksMax = Math.max(0, Number(payload.thanks_max != null ? payload.thanks_max : 2) || 0);
+    const specialMax = Math.max(0, Number(payload.special_max != null ? payload.special_max : 1) || 0);
+    const thanksUsed = Math.max(0, Number(payload.thanks_used || 0) || 0);
+    const specialUsed = Math.max(0, Number(payload.special_used || 0) || 0);
+    const likes = Array.isArray(payload.likes) ? payload.likes : [];
+    const safeTesterId = Number(testerId || 0);
+    const hasThanks = safeTesterId > 0 && likes.some(function(like) {
+        return Number(like.tester_id) === safeTesterId && String(like.type || '').toLowerCase() === 'good';
+    });
+    const hasSpecial = safeTesterId > 0 && likes.some(function(like) {
+        return Number(like.tester_id) === safeTesterId && String(like.type || '').toLowerCase() === 'bug';
+    });
+    const thanksAvailable = Math.max(0, thanksMax - thanksUsed);
+    const specialAvailable = Math.max(0, specialMax - specialUsed);
+    return {
+        thanksMax: thanksMax,
+        specialMax: specialMax,
+        thanksUsed: thanksUsed,
+        specialUsed: specialUsed,
+        thanksAvailable: thanksAvailable,
+        specialAvailable: specialAvailable,
+        hasThanks: hasThanks,
+        hasSpecial: hasSpecial,
+        canGiveThanks: thanksAvailable > 0 && !hasThanks,
+        canGiveSpecial: specialAvailable > 0 && !hasSpecial,
+        canReward: (thanksAvailable > 0 && !hasThanks) || (specialAvailable > 0 && !hasSpecial),
+    };
+}
+
 function buildKarmaDistributionTesterStats(tester, feedbackCountByTester) {
     const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
     const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
@@ -6919,22 +6950,25 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
     const body = document.getElementById('karma-distribution-body');
     if (!body || !project) return;
 
-    const likesAvailable = Math.max(0, (project.likes_max || 0) - (project.likes_used || 0));
+    const pools = getProjectKarmaPools(project);
     const testers = project.testers || [];
     const rowsHtml = testers.map((tester) => {
-        const liked = (project.likes || []).find((like) => like.tester_id === tester.tester_id);
+        const testerPools = getProjectKarmaPools(project, tester.tester_id);
         const name = tester.username
             ? '@' + window.escapeHTML(tester.username.replace('@', ''))
             : tester.full_name
                 ? window.escapeHTML(tester.full_name)
             : window.escapeHTML(window.t('idLabel', { id: tester.tester_id }));
         const stats = buildKarmaDistributionTesterStats(tester, feedbackCountByTester || {});
-        const amountByType = liked ? (liked.type === 'bug' ? '3.0' : liked.type === 'overtime' ? '2.0' : '1.5') : '';
-        const actionHtml = liked
-            ? `<span class="karma-dist-btn disabled">${window.escapeHTML(window.t('karmaDistributionUsed', { amount: amountByType }))}</span>`
-            : likesAvailable <= 0
-                ? '<span class="karma-dist-btn disabled">+☯️</span>'
-                : `<button class="karma-dist-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">+☯️</button>`;
+        const usedAmounts = [];
+        if (testerPools.hasThanks) usedAmounts.push('1.5');
+        if (testerPools.hasSpecial) usedAmounts.push('3.0');
+        const usedHtml = usedAmounts.length
+            ? `<span class="karma-dist-btn disabled">${window.escapeHTML(window.t('karmaDistributionUsed', { amount: usedAmounts.join(' · ') }))}</span>`
+            : '';
+        const actionHtml = testerPools.canReward
+            ? `${usedHtml}<button class="karma-dist-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">+☯️</button>`
+            : (usedHtml || '<span class="karma-dist-btn disabled">+☯️</span>');
 
         return `<div class="karma-dist-tester">
             <div>
@@ -6950,9 +6984,10 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
         <p style="font-size:13px;color:var(--hint-color);margin-bottom:14px;">${window.escapeHTML(t.karmaDistributionDesc)}</p>
         <div class="delete-info-block karma-dist" style="margin-bottom:12px;">
             <div style="font-weight:600;margin-bottom:6px;">${window.escapeHTML(window.t('karmaDistributionGuideTitle', {}, lang))}</div>
-            <div style="font-size:13px;color:var(--hint-color);line-height:1.55;">${window.escapeHTML(window.t('karmaDistributionGuideText', {}, lang))}</div>
+            <div style="font-size:13px;color:var(--hint-color);line-height:1.55;white-space:pre-line;">${window.escapeHTML(window.t('karmaDistributionGuideText', {}, lang))}</div>
             <div class="delete-chip-row" style="margin-top:8px;">
-                <span class="meta-chip accent-green">${window.escapeHTML(window.t('karmaDistributionGuideStatus', { available: likesAvailable, total: 2 }, lang))}</span>
+                <span class="meta-chip accent-green">${window.escapeHTML(window.t('karmaDistributionGuideStatusThanks', { available: pools.thanksAvailable, max: pools.thanksMax }, lang))}</span>
+                <span class="meta-chip accent-green">${window.escapeHTML(window.t('karmaDistributionGuideStatusSpecial', { available: pools.specialAvailable, max: pools.specialMax }, lang))}</span>
             </div>
         </div>
         <div>${rowsHtml}</div>
@@ -9326,9 +9361,8 @@ async function openDossierModal(username, testerId, appId) {
 
     const reliabilityState = getDossierReliabilityState(profile);
 
-    const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
-    const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
-    const canReward = likesAvailable > 0 && !alreadyLiked;
+    const karmaPools = project ? getProjectKarmaPools(project, testerId) : { canReward: false };
+    const canReward = !!karmaPools.canReward;
     const canDeleteFromProject = !!tester && !!project && !!appId && testingDay > 0;
     const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project
         && marketCandidate.market_kind !== 'mutual-return';
@@ -9735,6 +9769,20 @@ function openKarmaSelectPopup(appId, testerId) {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     _karmaAppId = appId;
     _karmaTesterId = testerId;
+    const project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function(item) {
+        return Number(item.id) === Number(appId);
+    });
+    const pools = getProjectKarmaPools(project, testerId);
+    const goodBtn = document.querySelector('#karma-select-popup .popup-btn.good');
+    const bugBtn = document.querySelector('#karma-select-popup .popup-btn.bug');
+    if (goodBtn) {
+        goodBtn.disabled = !pools.canGiveThanks;
+        goodBtn.classList.toggle('is-disabled', !pools.canGiveThanks);
+    }
+    if (bugBtn) {
+        bugBtn.disabled = !pools.canGiveSpecial;
+        bugBtn.classList.toggle('is-disabled', !pools.canGiveSpecial);
+    }
     document.getElementById('karma-select-popup').classList.add('active');
 }
 
@@ -9747,6 +9795,12 @@ function closeKarmaSelectPopup(event) {
 
 function confirmKarmaSelect(type) {
     if (_karmaAppId === null || _karmaTesterId === null) return;
+    const project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function(item) {
+        return Number(item.id) === Number(_karmaAppId);
+    });
+    const pools = getProjectKarmaPools(project, _karmaTesterId);
+    if (type === 'good' && !pools.canGiveThanks) return;
+    if (type === 'bug' && !pools.canGiveSpecial) return;
     document.getElementById('karma-select-popup').classList.remove('active');
     sendKarmaReward(_karmaAppId, _karmaTesterId, type);
     _karmaAppId = null;

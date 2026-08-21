@@ -449,7 +449,11 @@ function renderProjects(force) {
                         <li class="tester-row-left-soft">
                             <div class="tester-left-soft-card">
                                 <div class="tester-left-soft-main">
-                                    <span class="tester-left-soft-icon" aria-hidden="true">👋</span>
+                                    <span class="tester-left-soft-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
+                                            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                                        </svg>
+                                    </span>
                                     <div class="tester-left-soft-copy">
                                         <div class="tester-left-soft-name notranslate">${leftName}</div>
                                         <div class="tester-left-soft-sub">${window.escapeHTML(window.t('testerLeftSoftHint', {}, lang))}${joinTypeLabel ? ` · ${window.escapeHTML(joinTypeLabel)}` : ''}</div>

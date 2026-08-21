@@ -409,8 +409,15 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 159, 10, 0.12);
+    background: rgba(90, 166, 255, 0.14);
+    color: #7eb6ff;
     font-size: 16px;
+}
+
+.tester-left-soft-icon svg {
+    display: block;
+    width: 18px;
+    height: 18px;
 }
 
 .tester-left-soft-copy {

@@ -162,17 +162,9 @@
         var state = getBarterChipState(test);
         if (!state) return '';
         var appId = Number(test && (test.id || test.app_id) || 0);
-        var archiveBtn = '';
-        var isKickedSoft = !!(test && (test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail
-            || String(test.progress_status || '').toLowerCase() === 'kicked_by_owner'
-            || String(test.progress_status || '').toLowerCase() === 'canceled_neutral'));
-        if (state.kind === 'broken' && appId > 0 && !isKickedSoft) {
-            archiveBtn = ' <button type="button" class="barter-archive-btn" onclick="event.stopPropagation(); archiveBrokenMutualTest(' +
-                appId + ')">' + _esc(_t('barterArchiveBtn')) + '</button>';
-        }
         return '<span class="' + state.className + '" data-barter-kind="' + state.kind + '"' +
             ' onclick="event.stopPropagation(); openMutualBalanceModal(' + appId + ', event)">' +
-            _esc(state.label) + '</span>' + archiveBtn;
+            _esc(state.label) + '</span>';
     }
 
     function _readUnlinkReciprocalFromKickModal() {

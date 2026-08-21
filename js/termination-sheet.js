@@ -259,7 +259,7 @@
         var karmaBurn = KARMA_ABANDONED_BURN;
         var mySkips = Number(data.my_skips || 0);
         var waitCount = Math.max(0, 3 - partnerConsecutive);
-        var grantStillAvailable = mySkips < 3;
+        var grantStillAvailable = mySkips <= 3;
         var partnerLabel = data.partner_username
             ? '@' + String(data.partner_username || '').replace(/^@+/, '')
             : _t('idLabel', { id: data.partner_id || 0 });
@@ -268,6 +268,9 @@
             _termState.justifiedAllowed = justifiedAllowed;
             _termState.karmaBurnPreview = karmaBurn;
             _termState.grantAvailable = grantStillAvailable;
+            _termState.partnerLeft = !!data.partner_left;
+            _termState.isMutualDebt = !!data.is_mutual_debt;
+            _termState.mySkips = mySkips;
             window._leaveJustifiedAllowed = justifiedAllowed;
             window._leaveKarmaBurnPreview = karmaBurn;
             window._leaveGrantAvailable = grantStillAvailable;
@@ -843,6 +846,9 @@
             justifiedAllowed: false,
             karmaBurnPreview: 0,
             grantAvailable: false,
+            partnerLeft: false,
+            isMutualDebt: false,
+            mySkips: 0,
             forceUnlink: !!options.forceUnlink,
             isBountyDrop: false,
             isInviteDrop: false,
@@ -1154,8 +1160,11 @@
 
             if (mode === 'leave') {
                 if (title) title.textContent = _t('leaveConfirmTitle');
-                if (unlink && _isMutualJoin(_termState.joinType)) {
+                var partnerAlreadyGone = !!(_termState.partnerLeft || _termState.isMutualDebt);
+                if (unlink && _isMutualJoin(_termState.joinType) && !partnerAlreadyGone) {
                     points.push('<li>' + _esc(_t('leaveConfirmPointMirror')) + '</li>');
+                } else if (_isMutualJoin(_termState.joinType) && partnerAlreadyGone) {
+                    points.push('<li>' + _esc(_t('termConfirmPointMirrorAlreadyGone')) + '</li>');
                 } else if (_isMutualJoin(_termState.joinType)) {
                     points.push('<li>' + _esc(_t('termConfirmPointKeepMirrorLeave')) + '</li>');
                 }
@@ -1168,7 +1177,15 @@
                 } else {
                     points.push('<li class="is-warn">' + _esc(_t('termDropEffectRiCostly')) + '</li>');
                 }
-                if (_termState.grantAvailable && !leaveNoPenalty) {
+                if (_termState.grantAvailable) {
+                    points.push('<li>' +
+                        '<div class="leave-confirm-main">' + _esc(_t('leaveGrantTeaseTitle')) + '</div>' +
+                        '<div class="leave-confirm-sub">' + _esc(_t('leaveGrantTeaseDesc', {
+                            skips: Number(_termState.mySkips || 0),
+                            max: 3,
+                        })) + '</div>' +
+                        '</li>');
+                } else if (!leaveNoPenalty) {
                     points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointGrant')) + '</li>');
                 }
                 body.innerHTML = '' +
