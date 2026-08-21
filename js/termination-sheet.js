@@ -352,9 +352,9 @@
                     '</div>' +
                     '<div class="leave-metric-list">' +
                         _metricRow('📅', _t('leaveMetricDays'), data.partner_testing_days || 0, false) +
-                        _metricRow('🔁', _t('leaveMetricConsecutiveSkips'), String(partnerConsecutive) + '/3', partnerConsecutive >= 3) +
+                        _metricRow('🔁', _t('leaveMetricConsecutiveSkips'), String(partnerConsecutive) + '/3', partnerConsecutive > 0) +
                         _metricRow('⚠️', _t('leaveMetricTotalSkips'), String(partnerSkips), false) +
-                        _metricRow('✅', _t('leaveMetricCheckins'), partnerCheckins, partnerCheckins > 0) +
+                        _metricRow('✅', _t('leaveMetricCheckins'), partnerCheckins, false) +
                     '</div>' +
                     (partnerMetaParts.length
                         ? '<div class="leave-side-meta">' + partnerMetaParts.join('<span class="leave-meta-sep" aria-hidden="true">·</span>') + '</div>'
@@ -410,8 +410,13 @@
             requirePartnerGate: false,
         });
         var isBountyJoin = joinType === 'bounty' && ctx.bountyPerTester > 0;
+        var isMutualJoin = _isMutualJoin(joinType);
         var holdBonus = ctx.holdBonus;
         var dailyBurn = ctx.dailyBurn;
+        var myDays = Number(ctx.myTestingDays || 0);
+        var mySkips = Number(ctx.mySkips || 0);
+        var myCheckins = Number(ctx.myCheckins || 0);
+        var showMySide = isMutualJoin || Number(ctx.reciprocalAppId || 0) > 0;
 
         if (_termState) {
             _termState.justifiedAllowed = isDisciplinaryKick;
@@ -435,8 +440,10 @@
                 amount: _fmtAmount(holdBonus, 1),
             }));
             ownerEffects.push(_t('kickOwnerBountyDailyBurn', { amount: _fmtAmount(dailyBurn, 1) }));
+        } else if (!isMutualJoin) {
+            ownerEffects.push(_t('kickOwnerNoMoneyInvite'));
         } else {
-            ownerEffects.push(_t(joinType === 'mutual' ? 'kickOwnerNoMoneyMutual' : 'kickOwnerNoMoneyInvite'));
+            ownerEffects.push(_t('kickOwnerNoMoneyMutual'));
         }
         ownerEffects.push(_t(isDisciplinaryKick ? 'kickOwnerReliabilitySafe' : 'kickOwnerReliabilityRisk'));
 
@@ -446,17 +453,66 @@
         ];
 
         var statusBanner = isDisciplinaryKick
-            ? '<div class="leave-status-banner is-justified">' +
+            ? '<div class="leave-status-banner is-justified term-status-compact term-impact-status-banner">' +
                 '<div class="leave-status-title">' + _esc(_t('termKickSafeBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t(verdictKey)) + '</div>' +
               '</div>'
-            : '<div class="leave-status-banner is-penalty">' +
+            : '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
                 '<div class="leave-status-title">' + _esc(_t('termKickRiskBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t(verdictKey)) + '</div>' +
               '</div>';
 
+        var joinNote = '';
+        if (isBountyJoin) {
+            joinNote = '<div class="leave-inline-note">' + _esc(_t('kickJoinTypeBounty')) + '</div>';
+        } else if (!isMutualJoin) {
+            joinNote = '<div class="leave-inline-note">' + _esc(_t('kickJoinTypeInvite')) + '</div>';
+        }
+
+        var mySideHtml = '';
+        if (showMySide) {
+            mySideHtml = '' +
+                '<div class="leave-side leave-side--mine" id="leave-my-side">' +
+                    '<button type="button" class="leave-pull" id="leave-my-stats-toggle" aria-expanded="false" onclick="toggleLeaveMyStats()">' +
+                        '<span class="leave-pull-rail" aria-hidden="true"><span class="leave-pull-knob"></span></span>' +
+                        '<span class="leave-pull-copy">' +
+                            '<span class="leave-pull-label">' + _esc(_t('leaveMyStatsPeekLabel')) + '</span>' +
+                            '<span class="leave-pull-hint">' + _esc(_t('leaveMyStatsPeekHint')) + '</span>' +
+                        '</span>' +
+                        '<span class="leave-pull-chevron" aria-hidden="true"></span>' +
+                    '</button>' +
+                    '<div class="leave-my-drawer" id="leave-my-stats-panel">' +
+                        '<div class="leave-my-drawer-inner">' +
+                            '<div class="leave-metric-list">' +
+                                _metricRow('📅', _t('leaveMetricDays'), myDays, false) +
+                                _metricRow('⚠️', _t('leaveMetricSkips'), String(mySkips) + '/3', mySkips >= 3) +
+                                _metricRow('✅', _t('leaveMetricCheckins'), myCheckins, false) +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+        }
+
+        var detailsHtml = '' +
+            '<div class="term-kick-details leave-side--mine" id="kick-impact-details">' +
+                '<button type="button" class="leave-pull" id="kick-impact-details-toggle" aria-expanded="false" onclick="toggleKickImpactDetails()">' +
+                    '<span class="leave-pull-rail" aria-hidden="true"><span class="leave-pull-knob"></span></span>' +
+                    '<span class="leave-pull-copy">' +
+                        '<span class="leave-pull-label">' + _esc(_t('kickImpactDetailsLabel')) + '</span>' +
+                        '<span class="leave-pull-hint">' + _esc(_t('kickImpactDetailsHint')) + '</span>' +
+                    '</span>' +
+                    '<span class="leave-pull-chevron" aria-hidden="true"></span>' +
+                '</button>' +
+                '<div class="leave-my-drawer" id="kick-impact-details-panel">' +
+                    '<div class="leave-my-drawer-inner term-kick-details-inner">' +
+                        _effectsBlock(_t('kickOwnerEffectsTitle'), ownerEffects) +
+                        _effectsBlock(_t('kickTesterEffectsTitle'), testerEffects) +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
         return '' +
-            '<div class="leave-exchange-card">' +
+            '<div class="leave-exchange-card" id="leave-exchange-card">' +
                 '<div class="leave-side leave-side--partner">' +
                     '<div class="leave-side-head">' +
                         '<div class="leave-side-kicker">' + _esc(_t('termKickTesterSide')) + '</div>' +
@@ -464,19 +520,19 @@
                     '</div>' +
                     '<div class="leave-metric-list">' +
                         _metricRow('📅', _t('leaveMetricDays'), testingDays, false) +
-                        _metricRow('✅', _t('leaveMetricCheckins'), checkinCount, false) +
-                        _metricRow('🔁', _t('leaveMetricConsecutiveSkips'), String(consecutiveSkips) + '/3', consecutiveSkips >= 3) +
+                        _metricRow('🔁', _t('leaveMetricConsecutiveSkips'), String(consecutiveSkips) + '/3', consecutiveSkips > 0) +
                         _metricRow('⚠️', _t('leaveMetricTotalSkips'), String(skipsCount), false) +
+                        _metricRow('✅', _t('leaveMetricCheckins'), checkinCount, false) +
                     '</div>' +
-                    '<div class="leave-inline-note">' + _esc(_t(
-                        joinType === 'bounty' ? 'kickJoinTypeBounty'
-                            : (joinType === 'mutual' ? 'kickJoinTypeMutual' : 'kickJoinTypeInvite')
-                    )) + '</div>' +
+                    joinNote +
                 '</div>' +
+                mySideHtml +
             '</div>' +
-            statusBanner +
-            _effectsBlock(_t('kickOwnerEffectsTitle'), ownerEffects) +
-            _effectsBlock(_t('kickTesterEffectsTitle'), testerEffects);
+            '<div class="term-impact-block term-kick-impact">' +
+                '<div class="term-impact-title">' + _esc(_t('termDropEffectsTitle')) + '</div>' +
+                statusBanner +
+                detailsHtml +
+            '</div>';
     }
 
     function _isUniversalSafeExit(opts) {
@@ -1069,6 +1125,24 @@
         var reciprocalOwnerCheckins = Number(
             tester.reciprocal_owner_checkins != null ? tester.reciprocal_owner_checkins : 0
         );
+        var reciprocalAppId = Number(tester.reciprocal_app_id || 0);
+        var myTestingDays = 0;
+        var mySkips = 0;
+        var myCheckins = reciprocalOwnerCheckins;
+        if (reciprocalAppId > 0 && Array.isArray(myTests)) {
+            var reciprocalTest = myTests.find(function (item) {
+                return Number(item.id || item.app_id || 0) === reciprocalAppId;
+            });
+            if (reciprocalTest) {
+                myTestingDays = reciprocalTest.start_date && typeof getUserTestingDay === 'function'
+                    ? getUserTestingDay(reciprocalTest.start_date)
+                    : Number(reciprocalTest.testing_days || 0);
+                mySkips = Number(reciprocalTest.skips_count || 0);
+                if (reciprocalTest.checkins_count != null && reciprocalTest.checkins_count !== '') {
+                    myCheckins = Number(reciprocalTest.checkins_count || 0);
+                }
+            }
+        }
 
         if (_termState) _termState.joinType = joinType;
         _setTypeBadge(joinType);
@@ -1084,6 +1158,10 @@
             holdBonus: holdBonus,
             dailyBurn: dailyBurn,
             reciprocalOwnerCheckins: reciprocalOwnerCheckins,
+            reciprocalAppId: reciprocalAppId,
+            myTestingDays: myTestingDays,
+            mySkips: mySkips,
+            myCheckins: myCheckins,
             testerId: testerId,
             testerUsername: tester.username || options.testerUsername || '',
             testerFullName: tester.full_name || options.testerFullName || '',
@@ -1516,6 +1594,19 @@
         }
     }
 
+    function toggleKickImpactDetails() {
+        var side = document.getElementById('kick-impact-details');
+        var toggle = document.getElementById('kick-impact-details-toggle');
+        if (!side || !toggle) return;
+        var willOpen = !side.classList.contains('is-open');
+        side.classList.toggle('is-open', willOpen);
+        toggle.classList.toggle('is-open', willOpen);
+        toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.selectionChanged();
+        }
+    }
+
     function proposeMutualFromTermination(appId, ownerId) {
         var targetAppId = Number(appId || (_termState && _termState.appId) || 0);
         var targetOwnerId = Number(ownerId || (_termState && _termState.ownerId) || 0);
@@ -1567,6 +1658,7 @@
     window.toggleKickReasonOther = toggleKickReasonOther;
     window.toggleKickUnlinkHint = toggleKickUnlinkHint;
     window.toggleLeaveMyStats = toggleLeaveMyStats;
+    window.toggleKickImpactDetails = toggleKickImpactDetails;
     window.proposeMutualFromTermination = proposeMutualFromTermination;
     window.addProjectFromTermination = addProjectFromTermination;
 })();

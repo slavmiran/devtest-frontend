@@ -2341,6 +2341,8 @@
             termKickRiskBadge: "Спорное исключение",
             termKickBtnSafe: "Исключить без риска",
             termKickBtnRisk: "Исключить с риском для Надёжности",
+            kickImpactDetailsLabel: "Подробности последствий",
+            kickImpactDetailsHint: "Нажмите, чтобы раскрыть",
             termConfirmTitleKick: "Подтвердите исключение",
             termConfirmDescKick: "Проверьте последствия перед разрывом связи.",
             termConfirmPointKickPrimary: "Тестер будет исключён из вашего проекта.",

@@ -1290,6 +1290,32 @@
     margin-bottom: 0;
 }
 
+.term-kick-impact .term-impact-status-banner {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.term-kick-details {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed color-mix(in srgb, var(--border-subtle) 55%, transparent);
+}
+
+.term-kick-details .leave-pull {
+    margin: 0;
+}
+
+.term-kick-details-inner .term-effects-block {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    background: color-mix(in srgb, var(--bg-surface-2, var(--bg-surface-1)) 88%, transparent);
+}
+
+.term-kick-details-inner .term-effects-block:last-child {
+    margin-bottom: 0;
+}
+
 .term-status-compact {
     margin-bottom: 12px;
 }

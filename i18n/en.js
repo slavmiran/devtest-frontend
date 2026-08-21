@@ -2335,6 +2335,8 @@
             termKickRiskBadge: "Disputed removal",
             termKickBtnSafe: "Remove without risk",
             termKickBtnRisk: "Remove with Reliability risk",
+            kickImpactDetailsLabel: "Consequence details",
+            kickImpactDetailsHint: "Tap to expand",
             termConfirmTitleKick: "Confirm removal",
             termConfirmDescKick: "Review the consequences before breaking the link.",
             termConfirmPointKickPrimary: "The tester will be removed from your project.",

@@ -6965,7 +6965,9 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
     const pools = getProjectKarmaPools(project);
     const testers = project.testers || [];
     const projectName = project.name ? window.escapeHTML(project.name) : '';
-    const subtitleText = projectName || (window.t('karmaDistSubtitle', {}, lang) || 'Поощрите участников вашего проекта');
+    const subtitleText = projectName
+        ? `${projectName} · ${window.t('karmaDistHeroDesc', {}, lang) || 'Поощрите тестеров, внесших наибольший вклад в проект.'}`
+        : (window.t('karmaDistHeroDesc', {}, lang) || 'Поощрите тестеров, внесших наибольший вклад в проект.');
 
     const totalAvailable = pools.thanksAvailable + pools.specialAvailable;
     const totalMax = pools.thanksMax + pools.specialMax;
@@ -7022,42 +7024,32 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
             </div>
         </div>
 
-        <div class="karma-dist-hero-card">
-            <div class="karma-dist-hero-desc">${window.escapeHTML(window.t('karmaDistHeroDesc', {}, lang) || 'Поощрите тестеров, внесших наибольший вклад в проект.')}</div>
-
-            <div class="karma-dist-pool-grid">
-                <div class="karma-dist-pool-card good">
-                    <div class="karma-dist-pool-info">
-                        <div class="karma-dist-pool-name">👍 ${window.escapeHTML(window.t('karmaSelectGood', {}, lang) || 'Спасибо')}</div>
-                        <div class="karma-dist-pool-count"><span class="pool-rem">${pools.thanksAvailable}</span> из ${pools.thanksMax} доступно</div>
-                    </div>
-                    <div class="karma-dist-pool-amount good">+1.5</div>
-                </div>
-
-                <div class="karma-dist-pool-card special">
-                    <div class="karma-dist-pool-info">
-                        <div class="karma-dist-pool-name">💡 ${window.escapeHTML(window.t('karmaSelectBug', {}, lang) || 'Особый вклад')}</div>
-                        <div class="karma-dist-pool-count"><span class="pool-rem">${pools.specialAvailable}</span> из ${pools.specialMax} доступно</div>
-                    </div>
-                    <div class="karma-dist-pool-amount special">+3.0</div>
-                </div>
-            </div>
-        </div>
-
         <div class="karma-dist-limits-box">
             <button type="button" class="karma-dist-limits-toggle" onclick="toggleKarmaLimitsAccordion()">
-                <span class="karma-dist-limits-label">
-                    ${window.escapeHTML(window.t('karmaDistLimitsTitle', {}, lang) || 'Доступный лимит')}
-                    <span class="karma-limit-badge">${totalAvailable}/${totalMax}</span>
-                </span>
+                <div class="karma-dist-limits-label">
+                    <span>${window.escapeHTML(window.t('karmaDistLimitsTitle', {}, lang) || 'Доступный лимит')}</span>
+                    <span class="karma-limit-badge">${totalAvailable} из ${totalMax} наград</span>
+                </div>
                 <svg class="karma-chevron-icon" id="karma-dist-limits-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
             </button>
             <div class="karma-dist-limits-body" id="karma-dist-limits-body" style="display: none;">
-                <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesWeek1', {}, lang) || '1-я неделя: 2 Спасибо (+1.5) и 1 Особый вклад (+3.0)')}</div>
-                <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesWeek2', {}, lang) || 'Со 2-й недели: ещё 2 Спасибо и 1 Особый вклад (всего 4 и 2)')}</div>
-                <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesBoth', {}, lang) || 'Один тестер может получить оба типа наград')}</div>
+                <div class="karma-dist-pool-list">
+                    <div class="karma-dist-pool-item">
+                        <span class="karma-dist-pool-title">👍 ${window.escapeHTML(window.t('karmaSelectGood', {}, lang) || 'Спасибо')} (+1.5)</span>
+                        <span class="karma-dist-pool-val">${pools.thanksAvailable} из ${pools.thanksMax} доступно</span>
+                    </div>
+                    <div class="karma-dist-pool-item">
+                        <span class="karma-dist-pool-title">💡 ${window.escapeHTML(window.t('karmaSelectBug', {}, lang) || 'Особый вклад')} (+3.0)</span>
+                        <span class="karma-dist-pool-val">${pools.specialAvailable} из ${pools.specialMax} доступно</span>
+                    </div>
+                </div>
+                <div class="karma-dist-rules-list">
+                    <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesWeek1', {}, lang) || '1-я неделя: 2 Спасибо (+1.5) и 1 Особый вклад (+3.0)')}</div>
+                    <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesWeek2', {}, lang) || 'Со 2-й недели: ещё 2 Спасибо и 1 Особый вклад (всего 4 и 2)')}</div>
+                    <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesBoth', {}, lang) || 'Один тестер может получить оба типа наград')}</div>
+                </div>
             </div>
         </div>
 
