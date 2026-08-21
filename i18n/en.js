@@ -590,7 +590,7 @@
             karmaInfoWhyTitle: "Why karma matters",
             karmaInfoWhyText: "Karma is your reputation. First, it affects your project position in the Showcase ranking. Second, it directly increases your $BUST payouts: the Golden Tester grant bonus is calculated from your karma.",
             karmaInfoHowTitle: "How to gain and lose",
-            karmaInfoHowText: "🟢 From the platform:\n• Overtime check-in: +0.5 ☯️\n• Confirmed bug: +0.3 ☯️\n• Confirmed idea: +0.3 ☯️\n• Confirmed Google Play review: +0.3 ☯️ (max +3.0 per run)\n• Project completion (owner): +3.0 ☯️\n• Support / platform feedback: up to +3.0 ☯️\n• Admin reward: custom amount ☯️\n\n🤝 From developers:\n• Thanks: +1.5 ☯️ (2 in week 1, 2 more from week 2)\n• Special contribution: +3.0 ☯️ (1 in week 1, 1 more from week 2)\n• Overtime reward (one tester): +2.0 ☯️\n• Google Play review boost: +1.5 / +3.0 ☯️\n\n🔴 How to lose:\n• Leaving a project early (abandoned): −3.0 ☯️",
+            karmaInfoHowText: "🟢 From the platform:\n• Overtime check-in: +0.5 ☯️\n• Confirmed bug: +0.3 ☯️\n• Confirmed idea: +0.3 ☯️\n• Confirmed Google Play review: +0.3 ☯️\n• Project completion (owner): +3.0 ☯️\n• Support / platform feedback: up to +3.0 ☯️\n• Admin reward: custom amount ☯️\n\n🤝 From developers:\n• Thanks: +1.5 ☯️ (2 in week 1, 2 more from week 2)\n• Special contribution: +3.0 ☯️ (1 in week 1, 1 more from week 2)\n• Overtime reward (one tester): +2.0 ☯️\n• Google Play review boost: +1.5 / +3.0 ☯️\n\n🔴 How to lose:\n• Leaving a project early (abandoned): −3.0 ☯️",
             karmaInfoNetworkFallbackToast: "Showing saved balance. Breakdown is temporarily unavailable.",
             karmaInfoCloseBtn: "Close",
             karmaSrc_checkin: "Daily check-ins (legacy)",
