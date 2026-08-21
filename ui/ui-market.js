@@ -6952,46 +6952,100 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
 
     const pools = getProjectKarmaPools(project);
     const testers = project.testers || [];
-    const rowsHtml = testers.map((tester) => {
+    const projectName = project.name ? window.escapeHTML(project.name) : '';
+    const subtitleText = projectName ? `${projectName} · ${window.t('karmaDistSubtitle', {}, lang) || 'Поощрите активных участников'}` : (window.t('karmaDistSubtitle', {}, lang) || 'Поощрите активных участников');
+
+    const rowsHtml = testers.length ? testers.map((tester) => {
         const testerPools = getProjectKarmaPools(project, tester.tester_id);
         const name = tester.username
             ? '@' + window.escapeHTML(tester.username.replace('@', ''))
             : tester.full_name
                 ? window.escapeHTML(tester.full_name)
             : window.escapeHTML(window.t('idLabel', { id: tester.tester_id }));
-        const stats = buildKarmaDistributionTesterStats(tester, feedbackCountByTester || {});
-        const usedAmounts = [];
-        if (testerPools.hasThanks) usedAmounts.push('1.5');
-        if (testerPools.hasSpecial) usedAmounts.push('3.0');
-        const usedHtml = usedAmounts.length
-            ? `<span class="karma-dist-btn disabled">${window.escapeHTML(window.t('karmaDistributionUsed', { amount: usedAmounts.join(' · ') }))}</span>`
-            : '';
-        const actionHtml = testerPools.canReward
-            ? `${usedHtml}<button class="karma-dist-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">+☯️</button>`
-            : (usedHtml || '<span class="karma-dist-btn disabled">+☯️</span>');
 
-        return `<div class="karma-dist-tester">
-            <div>
-                <button type="button" class="karma-dist-name-btn" onclick="showTestDayPopup(${tester.tester_id})"><span class="tester-name">${name}</span></button>
-                <span class="karma-dist-meta">${stats}</span>
+        const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
+        const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
+        const checkinsCount = tester.checkins_count || 0;
+        const feedbackCount = Number((feedbackCountByTester && feedbackCountByTester[Number(tester.tester_id)]) || 0);
+
+        const usedBadges = [];
+        if (testerPools.hasThanks) usedBadges.push(`<span class="karma-given-chip">👍 1.5 ☯️</span>`);
+        if (testerPools.hasSpecial) usedBadges.push(`<span class="karma-given-chip">💡 3.0 ☯️</span>`);
+
+        let actionBtnHtml = '';
+        if (testerPools.canReward) {
+            actionBtnHtml = `<button type="button" class="karma-action-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+☯️ Наградить')}</button>`;
+        } else if (usedBadges.length >= 2) {
+            actionBtnHtml = `<span class="karma-given-chip" style="color:var(--success);border-color:rgba(52,199,89,0.3);">${window.escapeHTML(window.t('karmaAllRewarded', {}, lang) || '✓ Награждён')}</span>`;
+        } else {
+            actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled>+☯️</button>`;
+        }
+
+        return `<div class="karma-dist-card">
+            <div class="karma-dist-card-main">
+                <div class="karma-dist-card-user">
+                    <button type="button" class="karma-dist-tester-name" onclick="showTestDayPopup(${tester.tester_id})">${name}</button>
+                </div>
+                <div class="karma-dist-stats-row">
+                    <span class="karma-dist-stat-pill">🗓️ День ${testerDay}</span>
+                    <span class="karma-dist-stat-pill success">✅ ${checkinsCount}/14</span>
+                    ${actualSkips > 0 ? `<span class="karma-dist-stat-pill warning">⚠️ ${actualSkips} проп.</span>` : ''}
+                    ${feedbackCount > 0 ? `<span class="karma-dist-stat-pill info">💬 ${feedbackCount} фидбэк</span>` : ''}
+                </div>
             </div>
-            ${actionHtml}
+            <div class="karma-dist-card-actions">
+                ${usedBadges.join('')}
+                ${actionBtnHtml}
+            </div>
         </div>`;
-    }).join('');
+    }).join('') : `<div class="empty-state-card" style="padding:20px;text-align:center;color:var(--hint-color);"><span style="font-size:32px;display:block;margin-bottom:8px;">👥</span>${window.escapeHTML(t.karmaDistNoTesters)}</div>`;
 
     body.innerHTML = `
-        <h3>${window.escapeHTML(t.karmaDistributionTitle)}</h3>
-        <p style="font-size:13px;color:var(--hint-color);margin-bottom:14px;">${window.escapeHTML(t.karmaDistributionDesc)}</p>
-        <div class="delete-info-block karma-dist" style="margin-bottom:12px;">
-            <div style="font-weight:600;margin-bottom:6px;">${window.escapeHTML(window.t('karmaDistributionGuideTitle', {}, lang))}</div>
-            <div style="font-size:13px;color:var(--hint-color);line-height:1.55;white-space:pre-line;">${window.escapeHTML(window.t('karmaDistributionGuideText', {}, lang))}</div>
-            <div class="delete-chip-row" style="margin-top:8px;">
-                <span class="meta-chip accent-green">${window.escapeHTML(window.t('karmaDistributionGuideStatusThanks', { available: pools.thanksAvailable, max: pools.thanksMax }, lang))}</span>
-                <span class="meta-chip accent-green">${window.escapeHTML(window.t('karmaDistributionGuideStatusSpecial', { available: pools.specialAvailable, max: pools.specialMax }, lang))}</span>
+        <div class="karma-dist-header">
+            <div class="karma-dist-icon-badge">☯️</div>
+            <div class="karma-dist-header-main">
+                <h3 class="karma-dist-title">${window.escapeHTML(t.karmaDistributionTitle)}</h3>
+                <div class="karma-dist-subtitle">${window.escapeHTML(subtitleText)}</div>
+            </div>
+            <button type="button" class="karma-dist-close-btn" onclick="closeKarmaDistribution()" aria-label="Close">✕</button>
+        </div>
+
+        <div class="karma-dist-pool-grid">
+            <div class="karma-dist-pool-card good">
+                <div class="karma-dist-pool-top">
+                    <span class="karma-dist-pool-name">👍 ${window.escapeHTML(window.t('karmaSelectGood', {}, lang) || 'Спасибо')}</span>
+                    <span class="karma-dist-pool-amount good">+1.5 ☯️</span>
+                </div>
+                <div class="karma-dist-pool-count">
+                    <span class="pool-rem">${pools.thanksAvailable}</span> из ${pools.thanksMax} доступно
+                </div>
+                <div class="karma-dist-pool-desc">${window.escapeHTML(window.t('karmaSelectDescGood', {}, lang) || 'За стабильные чекины')}</div>
+            </div>
+
+            <div class="karma-dist-pool-card special">
+                <div class="karma-dist-pool-top">
+                    <span class="karma-dist-pool-name">💡 ${window.escapeHTML(window.t('karmaSelectBug', {}, lang) || 'Особый вклад')}</span>
+                    <span class="karma-dist-pool-amount special">+3.0 ☯️</span>
+                </div>
+                <div class="karma-dist-pool-count">
+                    <span class="pool-rem">${pools.specialAvailable}</span> из ${pools.specialMax} доступно
+                </div>
+                <div class="karma-dist-pool-desc">${window.escapeHTML(window.t('karmaSelectDescBug', {}, lang) || 'За баги, идеи и отзыв')}</div>
             </div>
         </div>
-        <div>${rowsHtml}</div>
-        <button class="btn btn-secondary" style="width:100%;margin-top:14px;" onclick="closeKarmaDistribution()">${window.escapeHTML(t.inviteClose)}</button>
+
+        <div class="karma-dist-guide-box">
+            <strong>🎯 ${window.escapeHTML(window.t('karmaDistRulesTitle', {}, lang) || 'Правила распределения')}:</strong><br>
+            • ${window.escapeHTML(window.t('karmaDistRulesWeek1', {}, lang) || '1-я неделя: 2 Спасибо + 1 Особый вклад')}<br>
+            • ${window.escapeHTML(window.t('karmaDistRulesWeek2', {}, lang) || 'Со 2-й недели: ещё 2 Спасибо + 1 Особый вклад (всего 4 и 2)')}<br>
+            • ${window.escapeHTML(window.t('karmaDistRulesBoth', {}, lang) || 'Один тестер может получить оба типа наград')}
+        </div>
+
+        <div class="karma-dist-list">
+            ${rowsHtml}
+        </div>
+
+        <button type="button" class="btn btn-secondary" style="width:100%;margin-top:4px;" onclick="closeKarmaDistribution()">${window.escapeHTML(t.inviteClose)}</button>
     `;
 }
 
@@ -9772,9 +9826,28 @@ function openKarmaSelectPopup(appId, testerId) {
     const project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function(item) {
         return Number(item.id) === Number(appId);
     });
+    const tester = project && Array.isArray(project.testers)
+        ? project.testers.find(function(t) { return Number(t.tester_id) === Number(testerId); })
+        : null;
     const pools = getProjectKarmaPools(project, testerId);
-    const goodBtn = document.querySelector('#karma-select-popup .popup-btn.good');
-    const bugBtn = document.querySelector('#karma-select-popup .popup-btn.bug');
+
+    const testerMetaEl = document.getElementById('karma-select-tester-meta');
+    if (testerMetaEl) {
+        if (tester) {
+            const name = tester.username
+                ? '@' + tester.username.replace('@', '')
+                : tester.full_name || (window.t('idLabel', { id: tester.tester_id }, lang) || ('ID: ' + tester.tester_id));
+            testerMetaEl.textContent = name;
+        } else {
+            testerMetaEl.textContent = 'ID: ' + testerId;
+        }
+    }
+
+    const goodBtn = document.getElementById('karma-btn-good') || document.querySelector('#karma-select-popup .popup-btn.good');
+    const bugBtn = document.getElementById('karma-btn-bug') || document.querySelector('#karma-select-popup .popup-btn.bug');
+    const goodStatus = document.getElementById('karma-status-good');
+    const bugStatus = document.getElementById('karma-status-bug');
+
     if (goodBtn) {
         goodBtn.disabled = !pools.canGiveThanks;
         goodBtn.classList.toggle('is-disabled', !pools.canGiveThanks);
@@ -9783,6 +9856,33 @@ function openKarmaSelectPopup(appId, testerId) {
         bugBtn.disabled = !pools.canGiveSpecial;
         bugBtn.classList.toggle('is-disabled', !pools.canGiveSpecial);
     }
+
+    if (goodStatus) {
+        if (pools.hasThanks) {
+            goodStatus.textContent = window.t('karmaRewardAlreadyGiven', {}, lang) || 'Уже выдано этому тестеру';
+            goodStatus.className = 'karma-option-status is-given';
+        } else if (pools.thanksAvailable <= 0) {
+            goodStatus.textContent = window.t('karmaPoolExhausted', {}, lang) || 'Лимит наград исчерпан';
+            goodStatus.className = 'karma-option-status is-exhausted';
+        } else {
+            goodStatus.textContent = (window.t('karmaDistributionGuideStatusThanks', { available: pools.thanksAvailable, max: pools.thanksMax }, lang) || `Доступно: ${pools.thanksAvailable} из ${pools.thanksMax}`);
+            goodStatus.className = 'karma-option-status is-available';
+        }
+    }
+
+    if (bugStatus) {
+        if (pools.hasSpecial) {
+            bugStatus.textContent = window.t('karmaRewardAlreadyGiven', {}, lang) || 'Уже выдано этому тестеру';
+            bugStatus.className = 'karma-option-status is-given';
+        } else if (pools.specialAvailable <= 0) {
+            bugStatus.textContent = window.t('karmaPoolExhausted', {}, lang) || 'Лимит наград исчерпан';
+            bugStatus.className = 'karma-option-status is-exhausted';
+        } else {
+            bugStatus.textContent = (window.t('karmaDistributionGuideStatusSpecial', { available: pools.specialAvailable, max: pools.specialMax }, lang) || `Доступно: ${pools.specialAvailable} из ${pools.specialMax}`);
+            bugStatus.className = 'karma-option-status is-available';
+        }
+    }
+
     document.getElementById('karma-select-popup').classList.add('active');
 }
 
