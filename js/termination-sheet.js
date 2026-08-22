@@ -75,6 +75,25 @@
         return el ? String(el.value || '').trim() : '';
     }
 
+    function _updateUnlinkGrantNote() {
+        var label = document.getElementById('term-unlink-reciprocal-label');
+        var checkbox = document.getElementById('term-unlink-reciprocal');
+        if (!label) return;
+        var mode = _termState ? _termState.mode : 'kick';
+        var baseText = _t(mode === 'kick' ? 'kickUnlinkReciprocalLabel' : 'termUnlinkLeaveReciprocal');
+        var isChecked = !!(checkbox && checkbox.checked);
+        var grantAvailable = !!(_termState && _termState.grantAvailable && Number(_termState.grantTotal || 0) > 0);
+
+        if (mode === 'kick' && grantAvailable && isChecked) {
+            var amountStr = _fmtAmount(_termState.grantTotal, 0);
+            var noteHtml = '<span class="term-unlink-grant-note" id="term-unlink-grant-note">' +
+                _esc(_t('termUnlinkGrantLossNote', { amount: amountStr })) + '</span>';
+            label.innerHTML = _esc(baseText) + ' ' + noteHtml;
+        } else {
+            label.textContent = baseText;
+        }
+    }
+
     function toggleTermUnlinkHint() {
         var checkbox = document.getElementById('term-unlink-reciprocal');
         var hint = document.getElementById('term-unlink-hint');
@@ -84,6 +103,7 @@
         hint.classList.toggle('is-visible', showHint);
         var legacy = document.getElementById('kick-unlink-reciprocal');
         if (legacy && checkbox) legacy.checked = !!checkbox.checked;
+        _updateUnlinkGrantNote();
     }
 
     function _reasonDefsForMode(mode) {
@@ -414,6 +434,13 @@
         var mySkips = Number(ctx.mySkips || 0);
         var myCheckins = Number(ctx.myCheckins || 0);
         var showMySide = isMutualJoin || Number(ctx.reciprocalAppId || 0) > 0;
+        var grantStillAvailable = showMySide && mySkips <= 3;
+        var grantTotal = grantStillAvailable
+            ? (ctx.grantTotal || _estimateGrantTotal({ skips_count: mySkips }))
+            : 0;
+        var grantRow = (grantStillAvailable && grantTotal > 0)
+            ? _renderInviteGrantRow(mySkips, grantTotal)
+            : '';
 
         if (_termState) {
             _termState.justifiedAllowed = isDisciplinaryKick;
@@ -422,6 +449,11 @@
             _termState.isBountyJoin = isBountyJoin;
             _termState.holdBonus = holdBonus;
             _termState.dailyBurn = dailyBurn;
+            _termState.grantAvailable = grantStillAvailable && grantTotal > 0;
+            _termState.grantTotal = grantTotal;
+            _termState.mySkips = mySkips;
+            _termState.reciprocalAppId = Number(ctx.reciprocalAppId || 0);
+            _termState.reciprocalAppName = ctx.reciprocalAppName || '';
         }
 
         var testerLabel = ctx.testerUsername
@@ -488,6 +520,7 @@
                                 _metricRow('⚠️', _t('leaveMetricSkips'), String(mySkips) + '/3', mySkips >= 3) +
                                 _metricRow('✅', _t('leaveMetricCheckins'), myCheckins, false) +
                             '</div>' +
+                            grantRow +
                         '</div>' +
                     '</div>' +
                 '</div>';
@@ -1132,14 +1165,17 @@
             tester.reciprocal_owner_checkins != null ? tester.reciprocal_owner_checkins : 0
         );
         var reciprocalAppId = Number(tester.reciprocal_app_id || 0);
+        var reciprocalAppName = '';
         var myTestingDays = 0;
         var mySkips = 0;
         var myCheckins = reciprocalOwnerCheckins;
+        var reciprocalTest = null;
         if (reciprocalAppId > 0 && Array.isArray(myTests)) {
-            var reciprocalTest = myTests.find(function (item) {
+            reciprocalTest = myTests.find(function (item) {
                 return Number(item.id || item.app_id || 0) === reciprocalAppId;
             });
             if (reciprocalTest) {
+                reciprocalAppName = reciprocalTest.name || reciprocalTest.app_name || '';
                 myTestingDays = reciprocalTest.start_date && typeof getUserTestingDay === 'function'
                     ? getUserTestingDay(reciprocalTest.start_date)
                     : Number(reciprocalTest.testing_days || 0);
@@ -1149,8 +1185,19 @@
                 }
             }
         }
+        var grantStillAvailable = (reciprocalAppId > 0 || joinType === 'mutual') && mySkips <= 3;
+        var grantTotal = grantStillAvailable
+            ? _estimateGrantTotal(reciprocalTest || { skips_count: mySkips })
+            : 0;
 
-        if (_termState) _termState.joinType = joinType;
+        if (_termState) {
+            _termState.joinType = joinType;
+            _termState.grantAvailable = grantStillAvailable && grantTotal > 0;
+            _termState.grantTotal = grantTotal;
+            _termState.mySkips = mySkips;
+            _termState.reciprocalAppId = reciprocalAppId;
+            _termState.reciprocalAppName = reciprocalAppName;
+        }
         _setTypeBadge(joinType);
         _setupUnlinkBox('kick', joinType, options);
 
@@ -1165,13 +1212,17 @@
             dailyBurn: dailyBurn,
             reciprocalOwnerCheckins: reciprocalOwnerCheckins,
             reciprocalAppId: reciprocalAppId,
+            reciprocalAppName: reciprocalAppName,
             myTestingDays: myTestingDays,
             mySkips: mySkips,
             myCheckins: myCheckins,
+            grantStillAvailable: grantStillAvailable,
+            grantTotal: grantTotal,
             testerId: testerId,
             testerUsername: tester.username || options.testerUsername || '',
             testerFullName: tester.full_name || options.testerFullName || '',
         });
+        _updateUnlinkGrantNote();
     }
 
     function closeTerminationSheet(event) {
@@ -1345,6 +1396,17 @@
             } else {
                 points.push('<li class="is-warn">' + _esc(_t('termConfirmPointKickOwnerPenalized')) + '</li>');
             }
+            if (_termState.grantAvailable && unlink) {
+                var confirmGrantTotal = Number(_termState.grantTotal || 0);
+                if (!(confirmGrantTotal > 0)) {
+                    confirmGrantTotal = _estimateGrantTotal({
+                        skips_count: Number(_termState.mySkips || 0),
+                    });
+                }
+                points.push('<li class="leave-confirm-grant">' +
+                    _renderInviteGrantRow(Number(_termState.mySkips || 0), confirmGrantTotal) +
+                    '</li>');
+            }
             body.innerHTML = '' +
                 '<p class="leave-confirm-lead">' + _esc(_t('termConfirmDescKick')) + '</p>' +
                 '<ul class="leave-confirm-points">' + points.join('') + '</ul>';
@@ -1430,6 +1492,199 @@
             var modal = document.getElementById('termination-sheet');
             if (modal) modal.classList.add('active');
         }
+    }
+
+    function showTerminationResult(opts) {
+        opts = opts || {};
+        var mode = opts.mode || (_termState ? _termState.mode : 'kick');
+        var overlay = _ensureTermProgressOverlay();
+        var card = overlay ? overlay.querySelector('.term-progress-card') : null;
+        if (!card) return;
+        _setTerminationSheetBusy(false);
+
+        var title = '';
+        var subHtml = '';
+        var appCardHtml = '';
+        var closeBtnText = _t('termCompletionCloseBtn') || 'Понятно';
+
+        var unlinkReciprocal = opts.unlinkReciprocal !== false && opts.unlinkReciprocal !== 'false';
+        var data = opts.data || {};
+        var appId = Number(opts.appId || (_termState && (_termState.appId || _termState.projectId)) || 0);
+
+        if (mode === 'kick') {
+            title = _t('termCompletionTitleKicked') || 'Тестировщик исключен';
+            var reciprocalTest = opts.reciprocalTest || null;
+            var reciprocalAppId = Number(
+                data.reciprocal_app_id ||
+                (reciprocalTest && (reciprocalTest.id || reciprocalTest.app_id)) ||
+                (_termState && _termState.reciprocalAppId) ||
+                0
+            );
+            if (!reciprocalTest && reciprocalAppId > 0 && Array.isArray(window.myTests)) {
+                reciprocalTest = window.myTests.find(function (t) {
+                    return Number(t.id || t.app_id || 0) === reciprocalAppId;
+                }) || null;
+            }
+            var reciprocalAppName = (reciprocalTest && (reciprocalTest.name || reciprocalTest.app_name)) ||
+                data.reciprocal_app_name ||
+                (_termState && _termState.reciprocalAppName) ||
+                '';
+
+            if (!unlinkReciprocal) {
+                // Checkbox was UNCHECKED: owner keeps counter-testing partner's app voluntarily
+                var appNameDisplay = reciprocalAppName || _t('partnerProjectFallback');
+                subHtml = '' +
+                    '<div class="term-completion-notice">' +
+                        _esc(_t('termCompletionKeptReciprocal', { name: appNameDisplay })) + ' ' +
+                        '<span class="meta-chip meta-chip--source accent-danger" style="display:inline-flex;vertical-align:middle;margin:0 2px;">💔 ' + _esc(_t('testSourceMutual')) + '</span>.' +
+                    '</div>';
+            } else {
+                // Checkbox was CHECKED: mutual link broken both ways
+                subHtml = '<div class="term-completion-notice">' + _esc(_t('termCompletionUnlinkedDesc')) + '</div>';
+                if (reciprocalAppId > 0 || reciprocalTest) {
+                    appCardHtml = _renderCompletionAppBox({
+                        appId: reciprocalAppId,
+                        name: reciprocalAppName || (reciprocalTest && (reciprocalTest.name || reciprocalTest.app_name)) || '',
+                        iconUrl: reciprocalTest ? (reciprocalTest.icon_url || reciprocalTest.icon) : '',
+                        packageName: reciprocalTest ? (reciprocalTest.package_name || '') : '',
+                        playStoreUrl: reciprocalTest ? (reciprocalTest.play_store_url || '') : '',
+                        isSoftTail: true,
+                    });
+                }
+            }
+        } else {
+            // Leave / Drop
+            title = mode === 'drop'
+                ? (_t('termCompletionTitleSuccess') || 'Связь разорвана')
+                : (_t('termCompletionTitleLeft') || 'Вы вышли из проекта');
+            subHtml = '<div class="term-completion-notice">' + _esc(_t('termCompletionUnlinkedDesc')) + '</div>';
+            var currentTest = opts.test || _findLocalTest(appId);
+            if (currentTest) {
+                appCardHtml = _renderCompletionAppBox({
+                    appId: Number(currentTest.id || currentTest.app_id || appId || 0),
+                    name: currentTest.name || currentTest.app_name || '',
+                    iconUrl: currentTest.icon_url || currentTest.icon || '',
+                    packageName: currentTest.package_name || '',
+                    playStoreUrl: currentTest.play_store_url || '',
+                    isSoftTail: false,
+                });
+            }
+        }
+
+        card.innerHTML = '' +
+            '<div class="term-completion-icon" aria-hidden="true">✅</div>' +
+            '<div class="term-progress-title">' + _esc(title) + '</div>' +
+            subHtml +
+            appCardHtml +
+            '<div class="term-completion-actions">' +
+                '<button type="button" class="btn btn-primary term-completion-close-btn" onclick="closeTerminationResult()">' +
+                    _esc(closeBtnText) +
+                '</button>' +
+            '</div>';
+
+        overlay.classList.add('active');
+    }
+
+    function _renderCompletionAppBox(appInfo) {
+        var iconHtml = appInfo.iconUrl
+            ? '<img class="term-comp-app-icon" src="' + _esc(appInfo.iconUrl) + '" alt="" onerror="this.style.display=\'none\'">'
+            : '<div class="term-comp-app-icon-placeholder">' + _esc((appInfo.name || 'A').charAt(0).toUpperCase()) + '</div>';
+        var appId = Number(appInfo.appId || 0);
+        return '' +
+            '<div class="term-comp-app-box" id="term-comp-app-box-' + appId + '">' +
+                '<div class="term-comp-app-main">' +
+                    iconHtml +
+                    '<div class="term-comp-app-info">' +
+                        '<div class="term-comp-app-title">' + _esc(appInfo.name || 'App') + '</div>' +
+                        (appInfo.packageName ? ('<div class="term-comp-app-pkg">' + _esc(appInfo.packageName) + '</div>') : '') +
+                    '</div>' +
+                '</div>' +
+                '<button type="button" class="btn btn-secondary term-comp-uninstall-btn" id="term-comp-btn-' + appId + '" ' +
+                'onclick="handleCompletionUninstallClick(' + appId + ', ' + (appInfo.isSoftTail ? 'true' : 'false') + ')">' +
+                    _esc(_t('termCompletionUninstallBtn')) +
+                '</button>' +
+            '</div>';
+    }
+
+    async function handleCompletionUninstallClick(appId, isSoftTail) {
+        var safeAppId = Number(appId || 0);
+        var test = _findLocalTest(safeAppId);
+        if (typeof openKickedTestPlayStore === 'function') {
+            openKickedTestPlayStore(safeAppId);
+        } else {
+            var url = (test && typeof resolveTestPlayStoreUrl === 'function')
+                ? resolveTestPlayStoreUrl(test)
+                : ('https://play.google.com/store/apps/details?id=' + (test && test.package_name || ''));
+            if (url) {
+                try {
+                    if (typeof tg !== 'undefined' && tg && typeof tg.openLink === 'function') {
+                        tg.openLink(url);
+                    } else {
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                    }
+                } catch (e) {}
+            }
+        }
+
+        // If it's a soft-tail card for reciprocal test, dismiss it in DB so it doesn't appear on My Tests page
+        if (isSoftTail && safeAppId > 0) {
+            try {
+                if (typeof dismissKickedTestCard === 'function') {
+                    dismissKickedTestCard(safeAppId, 0).catch(function(e) { console.warn('Dismiss error', e); });
+                } else {
+                    var apiBase = (typeof API_BASE !== 'undefined') ? API_BASE : '';
+                    var initDataRaw = (typeof withInitData === 'function') ? withInitData({}) : {};
+                    fetch(apiBase + '/tests/' + safeAppId + '/dismiss_kicked', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(initDataRaw)
+                    }).catch(function(e) { console.warn('Dismiss error', e); });
+                }
+            } catch (e) {}
+        }
+
+        var btn = document.getElementById('term-comp-btn-' + safeAppId);
+        if (btn) {
+            btn.classList.add('is-clicked');
+            btn.textContent = _t('termCompletionUninstallDone') || '✅ Открыто в Google Play';
+            btn.disabled = true;
+        }
+    }
+
+    function closeTerminationResult() {
+        var overlay = document.getElementById('term-progress-overlay');
+        if (overlay) overlay.classList.remove('active');
+        _setTerminationSheetBusy(false);
+        if (_termState) _termState.isSubmitting = false;
+
+        var modal = document.getElementById('termination-sheet');
+        if (modal) modal.classList.remove('active');
+        cancelTerminationConfirm();
+        _setPreserveSlot('');
+        _termState = null;
+        window._terminationState = null;
+
+        if (typeof window.setLeaveMutualAppId === 'function') {
+            window.setLeaveMutualAppId(0);
+        } else {
+            window._leaveMutualAppId = null;
+        }
+        if (typeof window.setKickTarget === 'function') {
+            window.setKickTarget(0, 0);
+        } else {
+            window._kickTarget = null;
+        }
+        if (typeof window.setDropTestAppId === 'function') {
+            window.setDropTestAppId(0);
+        } else {
+            window._dropTestAppId = null;
+        }
+        if (typeof closeDossierModal === 'function') {
+            closeDossierModal();
+        }
+
+        if (typeof loadProjects === 'function') loadProjects(true).catch(function() {});
+        if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
     }
 
     function cancelTerminationConfirm(event) {
@@ -1725,8 +1980,9 @@
     window.confirmTerminationAdaptive = confirmTerminationAdaptive;
     window.beginTerminationSubmit = beginTerminationSubmit;
     window.endTerminationSubmit = endTerminationSubmit;
-    window.beginTerminationSubmit = beginTerminationSubmit;
-    window.endTerminationSubmit = endTerminationSubmit;
+    window.showTerminationResult = showTerminationResult;
+    window.closeTerminationResult = closeTerminationResult;
+    window.handleCompletionUninstallClick = handleCompletionUninstallClick;
     window.selectTermReason = selectTermReason;
     window.toggleTermUnlinkHint = toggleTermUnlinkHint;
     window.getTermUnlinkReciprocal = getTermUnlinkReciprocal;

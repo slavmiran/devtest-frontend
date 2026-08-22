@@ -3272,13 +3272,23 @@ async function confirmDropTest(explicitAppId) {
             ? 'termDropSuccessSafe'
             : (exitKind === 'invite_costly_exit' ? 'termDropSuccessCostly' : 'termDropSuccess');
         showToast(window.t(successKey, {}, lang));
-        if (typeof window.endTerminationSubmit === 'function') {
-            window.endTerminationSubmit({ reopenSheet: false });
-        }
-        if (typeof closeTerminationSheet === 'function') {
-            closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+        if (typeof window.showTerminationResult === 'function') {
+            window.showTerminationResult({
+                mode: 'drop',
+                appId: appId,
+                unlinkReciprocal: false,
+                data: data,
+                test: (Array.isArray(myTests) ? myTests.find(function(t) { return Number(t.id || t.app_id || 0) === Number(appId); }) : null),
+            });
         } else {
-            closeDropTestModal({ target: document.getElementById('drop-test-modal') });
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: false });
+            }
+            if (typeof closeTerminationSheet === 'function') {
+                closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+            } else {
+                closeDropTestModal({ target: document.getElementById('drop-test-modal') });
+            }
         }
         await Promise.all([loadTasks(), loadProjects(true)]);
     } catch (error) {
@@ -3452,13 +3462,23 @@ async function confirmLeaveMutual(isJustified, explicitAppId) {
             showToast(window.t('leaveSuccessSafe', {}, lang));
         }
 
-        if (typeof window.endTerminationSubmit === 'function') {
-            window.endTerminationSubmit({ reopenSheet: false });
-        }
-        if (typeof closeTerminationSheet === 'function') {
-            closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+        if (typeof window.showTerminationResult === 'function') {
+            window.showTerminationResult({
+                mode: 'leave',
+                appId: appId,
+                unlinkReciprocal: false,
+                data: data,
+                test: previousTests.find(function(t) { return Number(t.id || t.app_id || 0) === Number(appId); }),
+            });
         } else {
-            closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: false });
+            }
+            if (typeof closeTerminationSheet === 'function') {
+                closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+            } else {
+                closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+            }
         }
         await Promise.all([loadTasks(true), loadProjects(true)]);
     } catch (error) {
@@ -3519,6 +3539,13 @@ async function confirmKickTester(explicitAppId, explicitTesterId) {
     var project = (myProjects || []).find(function(item) {
         return Number(item.id) === Number(target.appId);
     });
+    var currentTesterObj = project && Array.isArray(project.testers)
+        ? project.testers.find(function(t) { return Number(t.tester_id) === Number(target.testerId); })
+        : null;
+    var reciprocalAppId = Number((currentTesterObj && currentTesterObj.reciprocal_app_id) || 0);
+    var reciprocalTest = (reciprocalAppId > 0 && Array.isArray(myTests))
+        ? myTests.find(function(t) { return Number(t.id || t.app_id || 0) === reciprocalAppId; })
+        : null;
     var previousTesters = project && Array.isArray(project.testers) ? project.testers.slice() : null;
     var unlinkReciprocal = (typeof getTermUnlinkReciprocal === 'function')
         ? !!getTermUnlinkReciprocal()
@@ -3572,16 +3599,28 @@ async function confirmKickTester(explicitAppId, explicitTesterId) {
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t('kickSuccessMsg', {}, lang));
-        if (typeof window.endTerminationSubmit === 'function') {
-            window.endTerminationSubmit({ reopenSheet: false });
-        }
-        if (typeof closeTerminationSheet === 'function') {
-            closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+        if (typeof window.showTerminationResult === 'function') {
+            window.showTerminationResult({
+                mode: 'kick',
+                appId: target.appId,
+                testerId: target.testerId,
+                unlinkReciprocal: unlinkReciprocal,
+                data: data,
+                reciprocalTest: reciprocalTest,
+            });
         } else {
-            closeKickTesterModal({ target: document.getElementById('kick-modal') });
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: false });
+            }
+            if (typeof closeTerminationSheet === 'function') {
+                closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+            } else {
+                closeKickTesterModal({ target: document.getElementById('kick-modal') });
+            }
+            closeDossierModal();
         }
-        closeDossierModal();
         await loadProjects(true);
+        loadTasks(true).catch(function() {});
     } catch (error) {
         console.error('Kick tester error:', error);
         if (project && previousTesters) {

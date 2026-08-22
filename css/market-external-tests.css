@@ -185,6 +185,24 @@
     overflow: visible;
 }
 
+.external-tests-section__header {
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.external-tests-section__header:active {
+    opacity: 0.88;
+}
+
+.external-tests-section__titles {
+    min-width: 0;
+    flex: 1;
+}
+
 .external-tests-info-link {
     display: inline-flex;
     margin-top: 4px;

@@ -1886,6 +1886,13 @@ function renderExternalGuestTestsSection() {
 
     section.style.display = 'block';
     countNode.textContent = String(externalTests.length);
+    var guestHeader = section.querySelector('.external-tests-section__header');
+    if (guestHeader) {
+        guestHeader.setAttribute(
+            'aria-expanded',
+            section.classList.contains('is-collapsed') ? 'false' : 'true'
+        );
+    }
     list.classList.toggle('single-row', externalTests.length <= 2);
     list.classList.toggle('single-card', externalTests.length === 1);
     if (scrollWrap) {
@@ -2526,9 +2533,7 @@ function renderTests(force) {
         }
         const pendingDesc = document.getElementById('t-pendingReleaseSectionDesc');
         if (pendingDesc) {
-            pendingDesc.textContent = pendingNeedsAttention
-                ? window.t('pendingReleaseSectionActionDesc', {}, lang)
-                : window.t('pendingReleaseSectionDesc', {}, lang);
+            refreshPendingReleaseSectionDesc(pendingNeedsAttention);
         }
     }
     if (pendingScrollWrap) pendingScrollWrap.classList.toggle('is-single', pendingCount <= 1);
@@ -2596,8 +2601,11 @@ function refreshMyTestsSectionHandoffs() {
                 return _isMyTestsSectionVisible(document.getElementById('external-tests-section'));
             },
             getTrail: function() {
-                return document.getElementById('external-tests-scroll-wrap')
-                    || document.getElementById('external-tests-section');
+                var section = document.getElementById('external-tests-section');
+                if (section && section.classList.contains('is-collapsed')) {
+                    return section.querySelector('.external-tests-section__header') || section;
+                }
+                return document.getElementById('external-tests-scroll-wrap') || section;
             },
         },
         {
@@ -2719,12 +2727,36 @@ function _updateDoneSectionVisibility(doneCount) {
     refreshMyTestsSectionHandoffs();
 }
 
+function toggleExternalTestsSection() {
+    var section = document.getElementById('external-tests-section');
+    if (!section) return;
+    var collapsed = section.classList.toggle('is-collapsed');
+    var header = section.querySelector('.external-tests-section__header');
+    if (header) header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    refreshMyTestsSectionHandoffs();
+}
+
+function refreshPendingReleaseSectionDesc(needsAttentionOverride) {
+    var section = document.getElementById('pending-release-section');
+    var pendingDesc = document.getElementById('t-pendingReleaseSectionDesc');
+    if (!section || !pendingDesc) return;
+    var needsAttention = typeof needsAttentionOverride === 'boolean'
+        ? needsAttentionOverride
+        : section.classList.contains('has-action-attention');
+    var collapsed = section.classList.contains('is-collapsed');
+    pendingDesc.textContent = (needsAttention && collapsed)
+        ? window.t('pendingReleaseSectionActionDesc', {}, lang)
+        : window.t('pendingReleaseSectionDesc', {}, lang);
+}
+
 function togglePendingReleaseSection() {
     var section = document.getElementById('pending-release-section');
     if (!section) return;
     var collapsed = section.classList.toggle('is-collapsed');
     var header = section.querySelector('.pending-release-section__header');
     if (header) header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    refreshPendingReleaseSectionDesc();
     if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     refreshMyTestsSectionHandoffs();
 }
@@ -2826,6 +2858,7 @@ Object.assign(window, {
     isExternalNormalCheckinDay,
     getExternalConfirmButtonClasses,
     togglePendingReleaseSection,
+    toggleExternalTestsSection,
 });
 
 function renderCheckinRewardHint(test, testingDay, lang) {

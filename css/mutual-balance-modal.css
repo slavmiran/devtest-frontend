@@ -1645,6 +1645,134 @@
     color: var(--text-secondary);
 }
 
+.term-unlink-grant-note {
+    color: var(--text-tertiary, rgba(142, 142, 147, 0.75));
+    font-size: 13px;
+    font-weight: 500;
+    margin-left: 4px;
+    display: inline-block;
+    transition: opacity 0.2s ease;
+}
+
+.term-completion-icon {
+    font-size: 36px;
+    line-height: 1;
+    margin-bottom: 10px;
+    animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.term-completion-notice {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    margin: 8px 0 12px;
+    text-align: center;
+}
+
+.term-comp-app-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--bg-surface-3, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin: 12px 0 16px;
+    text-align: left;
+}
+
+.term-comp-app-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+
+.term-comp-app-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.term-comp-app-icon-placeholder {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent, #3390ec), #5ea5f5);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.term-comp-app-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.term-comp-app-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.term-comp-app-pkg {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.term-comp-uninstall-btn {
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    border-radius: 10px;
+    flex-shrink: 0;
+    background: var(--danger-surface, rgba(255, 59, 48, 0.12));
+    color: var(--danger, #ff3b30);
+    border: 1px solid var(--danger-border, rgba(255, 59, 48, 0.25));
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.term-comp-uninstall-btn:active {
+    transform: scale(0.97);
+}
+
+.term-comp-uninstall-btn.is-clicked {
+    background: rgba(52, 199, 89, 0.12);
+    color: var(--success, #34c759);
+    border-color: rgba(52, 199, 89, 0.25);
+    opacity: 0.9;
+    cursor: default;
+}
+
+.term-completion-actions {
+    margin-top: 14px;
+}
+
+.term-completion-close-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
 #termination-sheet.is-submitting {
     pointer-events: none;
 }

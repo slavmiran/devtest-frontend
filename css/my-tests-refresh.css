@@ -718,17 +718,56 @@ button.ts-section-head {
     --ts-accent: var(--guest-surface-accent, #3eb9cd);
 }
 
-/* "Гостевые проекты" — always expanded, clean heading style (no box) */
+/* "Гостевые проекты" — expanded by default; collapsible like buffer */
 .ts-section-head--guest {
     --ts-accent: var(--guest-surface-accent, #3eb9cd);
     --ts-icon-bg: rgba(62, 185, 205, 0.18);
     --ts-icon-border: rgba(62, 185, 205, 0.34);
     --ts-count-bg: rgba(62, 185, 205, 0.24);
-    /* No border, no background — pure heading */
     border: none;
     background: transparent;
     border-radius: 0;
     padding-left: 4px;
+}
+
+.external-tests-section.is-collapsed .ts-section-head--guest {
+    border: 1px solid rgba(62, 185, 205, 0.22);
+    background: linear-gradient(135deg, rgba(62, 185, 205, 0.09), rgba(62, 185, 205, 0) 65%);
+    border-radius: 16px;
+    padding-left: 14px;
+}
+
+.external-tests-section:not(.is-collapsed) .ts-section-head--guest {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
+    box-shadow: none;
+}
+
+.external-tests-section.is-collapsed .external-tests-section__info-link,
+.external-tests-section.is-collapsed #external-tests-scroll-wrap {
+    display: none;
+}
+
+.external-tests-section.is-collapsed .external-tests-section__header {
+    margin-bottom: 0;
+}
+
+.external-tests-section:not(.is-collapsed) .external-tests-section__chevron {
+    transform: rotate(180deg);
+}
+
+#tab-tests .external-tests-section:not(.is-collapsed) .external-tests-section__header.ts-handoff-glow {
+    border: none !important;
+}
+
+#tab-tests .external-tests-section:not(.is-collapsed) .external-tests-section__header.ts-handoff-glow::after {
+    display: none;
+}
+
+#tab-tests .external-tests-section.is-collapsed .external-tests-section__header.ts-handoff-glow::after {
+    display: none;
 }
 
 /* Guest confirm: guest primary + soft neon; label white, paperclip guest primary. */
@@ -781,6 +820,23 @@ button.ts-section-head {
     background: linear-gradient(135deg, rgba(255, 149, 0, 0.09), rgba(255, 149, 0, 0) 65%);
     border-radius: 16px;
     padding-left: 14px;
+}
+
+/* Expanded: clean heading, no box — same as «Выполнено сегодня» */
+.pending-release-section:not(.is-collapsed) .ts-section-head--buffer {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
+    box-shadow: none;
+}
+
+#tab-tests .pending-release-section:not(.is-collapsed) .pending-release-section__header.ts-handoff-glow {
+    border: none !important;
+}
+
+#tab-tests .pending-release-section:not(.is-collapsed) .pending-release-section__header.ts-handoff-glow::after {
+    display: none;
 }
 
 /* --- theme: Выполнено сегодня (done) --- */
@@ -847,8 +903,8 @@ button.ts-section-head {
     transform: rotate(180deg);
 }
 
-/* Grant-attention pulse on the buffer header — needs explicit border since expanded state is borderless */
-.pending-release-section.has-action-attention .ts-section-head--buffer {
+/* Grant-attention outline only when buffer section is collapsed */
+.pending-release-section.has-action-attention.is-collapsed .ts-section-head--buffer {
     border: 1px solid rgba(255, 149, 0, 0.55);
     border-radius: 16px;
     box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.16);
