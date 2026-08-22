@@ -9522,6 +9522,10 @@ async function openDossierModal(username, testerId, appId) {
 
     html += '</section>';
 
+    var isAdmin = Boolean(window.App && (window.App.isAdmin || (window.currentUser && window.currentUser.is_admin)));
+    var currentUserId = Number((window.App && window.App.userId) || (window.currentUser && window.currentUser.user_id) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user && window.Telegram.WebApp.initDataUnsafe.user.id) || 0);
+    var canAdminBan = isAdmin && Number(testerId || 0) > 0 && Number(testerId || 0) !== currentUserId;
+
     html += `<div class="dossier-actions-section">
         <div class="dossier-section-title">${t.dossierActionsTitle}</div>
         <div class="dossier-actions-list">
@@ -9541,6 +9545,7 @@ async function openDossierModal(username, testerId, appId) {
             ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest', {}, lang))}</button>` : ''}
             ${canReward ? `<button class="btn btn-karma-soft" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
             ${canDeleteFromProject ? `<div class="dossier-action-danger-zone"><button class="btn btn-danger-soft" onclick="closeDossierModal(); openKickTesterModal(${appId}, ${testerId})">${t.dossierBtnDelete}</button></div>` : ''}
+            ${canAdminBan ? `<div class="dossier-action-danger-zone"><button class="btn btn-danger" onclick="closeDossierModal(); openBanUserModal(${testerId}, '${safeTelegramUsername}')">${t.dossierBtnBan || '🛑 Заблокировать'}</button></div>` : ''}
         </div>
     </div>`;
 

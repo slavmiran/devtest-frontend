@@ -2616,8 +2616,33 @@
             // Overtime & Anti-AFK
             overtimeBadge: "🔥 Overtime",
             syncDayProgress: "🔄 Day {day}/14",
-            
 
+            // Ban Screen & Appeal
+            banScreenTitle: "Platform Access Restricted",
+            banScreenSubtitle: "Your account has been restricted for violating platform rules",
+            banScreenReasonLabel: "Ban reason",
+            banScreenDefaultReason: "Violation of community guidelines and testing rules",
+            banScreenAppealTitle: "Submit Unban Appeal",
+            banScreenAppealPlaceholder: "Describe the reason for missing tests or your position...",
+            banScreenAppealSubmitBtn: "📨 Submit Appeal",
+            banScreenAppealPending: "⏳ Your appeal is under review by administration. Please wait for a response.",
+            banScreenAppealRejected: "❌ Your appeal was rejected. The administration's decision is final.",
+            banScreenAppealSentToast: "Appeal submitted successfully for review!",
+            banScreenAppealEmptyToast: "Please describe your reason in the appeal field (min 5 characters)",
+
+            // Admin Ban Action in Dossier Modal
+            dossierBtnBan: "🛑 Ban user",
+            banModalTitle: "Ban User",
+            banModalWarning: "⚠️ All violator's projects will be completely isolated, and all active tests will be closed neutrally without penalty for honest partners.",
+            banModalReasonLabel: "Ban reason",
+            banModalReasonPlaceholder: "Enter ban reason...",
+            banModalConfirmBtn: "🛑 Confirm Ban",
+            banModalCancelBtn: "Cancel",
+            banSuccessToast: "User has been banned successfully",
+            banReasonRequiredToast: "Please specify the ban reason",
+            cannot_ban_self: "You cannot ban your own account",
+            cannot_ban_admin: "You cannot ban a platform administrator",
+            user_banned_toast: "Your account has been banned",
         
     };
     window.I18N_EN = window.I18NEN;

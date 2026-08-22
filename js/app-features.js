@@ -1772,9 +1772,37 @@ async function syncTelegramProfile() {
             return { ok: false };
         }
 
+        window.currentUser = {
+            user_id: result.user_id,
+            username: result.username,
+            full_name: result.full_name,
+            is_admin: Boolean(result.is_admin),
+            is_banned: Boolean(result.is_banned),
+            ban_reason: result.ban_reason || '',
+            banned_at: result.banned_at || '',
+            appeal_status: result.appeal_status || 'none',
+            appeal_text: result.appeal_text || '',
+        };
+        if (window.App) {
+            window.App.isAdmin = Boolean(result.is_admin);
+            window.App.isBanned = Boolean(result.is_banned);
+            window.App.banReason = result.ban_reason || '';
+            window.App.appealStatus = result.appeal_status || 'none';
+            window.App.appealText = result.appeal_text || '';
+        }
+
         return {
             ok: true,
             interface_language: normalizeNativeLanguageCode(result.interface_language) || '',
+            user_id: result.user_id,
+            username: result.username,
+            full_name: result.full_name,
+            is_admin: Boolean(result.is_admin),
+            is_banned: Boolean(result.is_banned),
+            ban_reason: result.ban_reason || '',
+            banned_at: result.banned_at || '',
+            appeal_status: result.appeal_status || 'none',
+            appeal_text: result.appeal_text || '',
         };
     } catch (error) {
         console.warn('Telegram profile sync failed:', error);
@@ -4255,6 +4283,194 @@ async function deleteAccessTester(projectId, progressId, testerLabel) {
         handleApiError('network_error');
     } finally {
         _pendingActions.delete(actionKey);
+    }
+}
+
+
+function showBanScreen(banData) {
+    var data = banData || (window.currentUser || {});
+    var banScreen = document.getElementById('ban-screen');
+    if (!banScreen) return;
+
+    var lang = (typeof getActiveLanguage === 'function' ? getActiveLanguage() : (window.selectedLanguage || 'ru'));
+    var banReason = (data.ban_reason || '').trim() || (window.t ? window.t('banScreenDefaultReason', {}, lang) : 'Нарушение правил сообщества');
+    var appealStatus = (data.appeal_status || 'none').toLowerCase();
+
+    var reasonEl = document.getElementById('ban-screen-reason');
+    if (reasonEl) {
+        reasonEl.textContent = banReason;
+    }
+
+    var formState = document.getElementById('ban-appeal-form-state');
+    var pendingState = document.getElementById('ban-appeal-pending-state');
+    var rejectedState = document.getElementById('ban-appeal-rejected-state');
+
+    if (formState) formState.style.display = (appealStatus === 'none') ? 'block' : 'none';
+    if (pendingState) pendingState.style.display = (appealStatus === 'pending') ? 'flex' : 'none';
+    if (rejectedState) rejectedState.style.display = (appealStatus === 'rejected') ? 'flex' : 'none';
+
+    banScreen.style.display = 'flex';
+    banScreen.classList.add('active');
+    banScreen.setAttribute('aria-hidden', 'false');
+
+    // Hide main containers
+    var appContainer = document.querySelector('.container');
+    if (appContainer) appContainer.style.display = 'none';
+    var bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) bottomNav.style.display = 'none';
+    var dropMenu = document.getElementById('system-drop-menu');
+    if (dropMenu) dropMenu.style.display = 'none';
+    var mainBanner = document.getElementById('main-banner');
+    if (mainBanner) mainBanner.style.display = 'none';
+}
+
+async function submitBanAppeal() {
+    var textarea = document.getElementById('ban-appeal-textarea');
+    var submitBtn = document.getElementById('ban-appeal-submit-btn');
+    if (!textarea) return;
+
+    var text = textarea.value.trim();
+    var lang = (typeof getActiveLanguage === 'function' ? getActiveLanguage() : (window.selectedLanguage || 'ru'));
+    if (text.length < 5) {
+        if (typeof showToast === 'function') {
+            showToast(window.t ? window.t('banScreenAppealEmptyToast', {}, lang) : 'Пожалуйста, опишите причину в поле апелляции');
+        }
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '...';
+    }
+
+    try {
+        var response = await fetch(`${API_BASE}/user/appeal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: text,
+                init_data: (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || (tg && tg.initData) || '',
+            }),
+        });
+        var result = await response.json();
+        if (response.ok && result && result.status === 'success') {
+            if (window.currentUser) {
+                window.currentUser.appeal_status = 'pending';
+            }
+            if (window.App) {
+                window.App.appealStatus = 'pending';
+            }
+            showBanScreen({ ban_reason: (window.currentUser && window.currentUser.ban_reason) || '', appeal_status: 'pending' });
+            if (typeof showToast === 'function') {
+                showToast(window.t ? window.t('banScreenAppealSentToast', {}, lang) : 'Апелляция успешно отправлена на рассмотрение!');
+            }
+        } else {
+            var errCode = (result && result.detail) || (result && result.error) || 'error';
+            if (typeof showToast === 'function') {
+                showToast(`❌ ${errCode}`);
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = window.t ? window.t('banScreenAppealSubmitBtn', {}, lang) : '📨 Отправить апелляцию';
+            }
+        }
+    } catch (err) {
+        console.error('Failed to submit ban appeal:', err);
+        if (typeof showToast === 'function') {
+            showToast('❌ Ошибка отправки апелляции');
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = window.t ? window.t('banScreenAppealSubmitBtn', {}, lang) : '📨 Отправить апелляцию';
+        }
+    }
+}
+
+var _currentBanTargetUserId = 0;
+var _currentBanTargetUsername = '';
+
+function openBanUserModal(userId, username) {
+    _currentBanTargetUserId = Number(userId || 0);
+    _currentBanTargetUsername = String(username || '').trim();
+    var modal = document.getElementById('ban-confirm-modal');
+    var targetEl = document.getElementById('ban-modal-target');
+    var inputEl = document.getElementById('ban-modal-reason-input');
+
+    if (targetEl) {
+        var nameDisplay = _currentBanTargetUsername ? `@${_currentBanTargetUsername}` : `ID ${_currentBanTargetUserId}`;
+        targetEl.textContent = `👤 ${nameDisplay}`;
+    }
+    if (inputEl) {
+        inputEl.value = '';
+    }
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function closeBanUserModal(event) {
+    if (event && event.target && event.target.id !== 'ban-confirm-modal') return;
+    var modal = document.getElementById('ban-confirm-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    _currentBanTargetUserId = 0;
+    _currentBanTargetUsername = '';
+}
+
+async function submitBanUser() {
+    var userId = _currentBanTargetUserId;
+    if (!userId) return;
+    var inputEl = document.getElementById('ban-modal-reason-input');
+    var reason = inputEl ? inputEl.value.trim() : '';
+    var lang = (typeof getActiveLanguage === 'function' ? getActiveLanguage() : (window.selectedLanguage || 'ru'));
+    if (!reason) {
+        if (typeof showToast === 'function') {
+            showToast(window.t ? window.t('banReasonRequiredToast', {}, lang) : 'Пожалуйста, укажите причину блокировки');
+        }
+        return;
+    }
+
+    var confirmBtn = document.getElementById('ban-modal-confirm-btn');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = '...';
+    }
+
+    try {
+        var response = await fetch(`${API_BASE}/admin/users/${userId}/ban`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                reason: reason,
+                init_data: (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || (tg && tg.initData) || '',
+            }),
+        });
+        var result = await response.json();
+        if (response.ok && result && result.status === 'success') {
+            closeBanUserModal();
+            if (typeof showToast === 'function') {
+                showToast(window.t ? window.t('banSuccessToast', {}, lang) : 'Пользователь успешно заблокирован');
+            }
+            if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
+            if (typeof loadProjects === 'function') loadProjects().catch(function() {});
+        } else {
+            var errCode = (result && result.detail) || (result && result.error) || 'error';
+            var localizedErr = (window.t && window.t(errCode, {}, lang)) || errCode;
+            if (typeof showToast === 'function') {
+                showToast(`❌ ${localizedErr}`);
+            }
+        }
+    } catch (err) {
+        console.error('Failed to ban user:', err);
+        if (typeof showToast === 'function') {
+            showToast('❌ Ошибка выполнения блокировки');
+        }
+    } finally {
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = window.t ? window.t('banModalConfirmBtn', {}, lang) : '🛑 Заблокировать';
+        }
     }
 }
 

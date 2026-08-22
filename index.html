@@ -73,6 +73,7 @@
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260821-left-row-v2">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260819-email-bounty-v1">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
+    <link rel="stylesheet" href="./css/ban-screen.css?v=20260822-ban-screen">
     <link rel="stylesheet" href="./css/dossier-modal.css?v=20260805-dossier-v9">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260821-grant-reuse-v1">
     <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
@@ -118,6 +119,42 @@
             </div>
             <p class="no-username-overlay__note" data-i18n="noUsernameOverlayNote">Пока username не установлен, интерфейс и действия с проектами заблокированы.</p>
             <button type="button" class="btn btn-primary no-username-overlay__button" onclick="closeNoUsernameOverlay()" data-i18n="noUsernameOverlayClose">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Isolated Ban Screen -->
+    <div id="ban-screen" class="ban-screen" style="display: none;" aria-hidden="true">
+        <div class="ban-screen__glass">
+            <div class="ban-screen__icon" aria-hidden="true">🛑</div>
+            <div class="ban-screen__eyebrow" id="ban-screen-eyebrow" data-i18n="banScreenSubtitle">Ваш аккаунт заблокирован</div>
+            <h1 class="ban-screen__title" id="ban-screen-title" data-i18n="banScreenTitle">Доступ к платформе ограничен</h1>
+            
+            <div class="ban-screen__card">
+                <div class="ban-screen__card-label" id="ban-screen-reason-label" data-i18n="banScreenReasonLabel">Причина блокировки:</div>
+                <div class="ban-screen__reason" id="ban-screen-reason">Нарушение правил сообщества</div>
+            </div>
+
+            <!-- Appeal Section -->
+            <div id="ban-appeal-section" class="ban-screen__appeal-section">
+                <!-- None / Form state -->
+                <div id="ban-appeal-form-state" style="display: none;">
+                    <div class="ban-screen__appeal-title" data-i18n="banScreenAppealTitle">Апелляция на разблокировку</div>
+                    <textarea id="ban-appeal-textarea" class="form-input ban-screen__textarea" rows="4" placeholder="Опишите причину пропуска тестов или вашу позицию..." data-i18n-placeholder="banScreenAppealPlaceholder"></textarea>
+                    <button type="button" class="btn btn-primary ban-screen__submit-btn" id="ban-appeal-submit-btn" onclick="submitBanAppeal()" data-i18n="banScreenAppealSubmitBtn">📨 Отправить апелляцию</button>
+                </div>
+
+                <!-- Pending state -->
+                <div id="ban-appeal-pending-state" class="ban-screen__status-banner ban-screen__status-banner--pending" style="display: none;">
+                    <div class="ban-screen__status-icon">⏳</div>
+                    <div class="ban-screen__status-text" data-i18n="banScreenAppealPending">Ваша апелляция находится на рассмотрении администрации. Ожидайте ответа.</div>
+                </div>
+
+                <!-- Rejected state -->
+                <div id="ban-appeal-rejected-state" class="ban-screen__status-banner ban-screen__status-banner--rejected" style="display: none;">
+                    <div class="ban-screen__status-icon">❌</div>
+                    <div class="ban-screen__status-text" data-i18n="banScreenAppealRejected">Ваша апелляция была отклонена. Решение администрации окончательное.</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1434,6 +1471,23 @@
             <div class="dossier-sheet-handle" aria-hidden="true"></div>
             <div id="dossier-modal-title" class="dossier-modal-title" hidden></div>
             <div id="dossier-body" class="dossier-body"></div>
+        </div>
+    </div>
+
+    <!-- Admin Ban Confirm Modal -->
+    <div id="ban-confirm-modal" class="modal-overlay" onclick="closeBanUserModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 420px;">
+            <h3 id="ban-modal-title" data-i18n="banModalTitle" style="color: #ff3b30; margin-bottom: 8px;">🛑 Блокировка пользователя</h3>
+            <div id="ban-modal-target" style="font-weight: 600; font-size: 15px; margin-bottom: 12px; color: #ffffff;"></div>
+            <p id="ban-modal-warning" data-i18n="banModalWarning" style="font-size: 13px; color: #ff9500; line-height: 1.4; margin-bottom: 14px; background: rgba(255,149,0,0.1); border-left: 3px solid #ff9500; padding: 8px 12px; border-radius: 6px;">⚠️ Все проекты нарушителя будут полностью изолированы, а все активные тесты закрыты нейтрально без штрафов для честных партнёров.</p>
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label id="ban-modal-reason-label" data-i18n="banModalReasonLabel" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Причина блокировки</label>
+                <textarea id="ban-modal-reason-input" class="form-input" rows="3" style="width: 100%; resize: vertical; box-sizing: border-box;" placeholder="Укажите причину блокировки..." data-i18n-placeholder="banModalReasonPlaceholder"></textarea>
+            </div>
+            <div class="action-row" style="display: flex; gap: 10px;">
+                <button type="button" class="btn" style="flex: 1; background: #ff3b30; color: #ffffff; font-weight: 600; padding: 12px;" id="ban-modal-confirm-btn" onclick="submitBanUser()" data-i18n="banModalConfirmBtn">🛑 Заблокировать</button>
+                <button type="button" class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="closeBanUserModal()" data-i18n="banModalCancelBtn">Отмена</button>
+            </div>
         </div>
     </div>
 
