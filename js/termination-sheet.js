@@ -879,9 +879,14 @@
             btn.textContent = _t('termDropBtn');
             return;
         }
-        var safe = !!_termState.justifiedAllowed;
-        btn.classList.add(safe ? 'leave-cta--safe' : 'leave-cta--warn');
-        btn.textContent = _t(safe ? 'termKickBtnSafe' : 'termKickBtnRisk');
+        var isSafeBreak = !!_termState.isSafeBreak;
+        var isDisciplinary = !!_termState.isDisciplinaryKick;
+        var ownerSafeKick = isSafeBreak || isDisciplinary;
+        btn.classList.add(ownerSafeKick ? 'leave-cta--safe' : 'leave-cta--warn');
+        var kickBtnKey = isSafeBreak
+            ? 'termKickBtnSafeBreak'
+            : (isDisciplinary ? 'termKickBtnDisciplinary' : 'termKickBtnOwnerPenalty');
+        btn.textContent = _t(kickBtnKey);
     }
 
     async function openTerminationSheet(options) {
@@ -1331,17 +1336,21 @@
                     ? _t('termConfirmPointKickMirror')
                     : _t('termConfirmPointKickKeepMirror')) + '</li>');
             }
-            if (justified) {
-                points.push('<li>' + _esc(_t('termConfirmPointKickSafe')) + '</li>');
+            var isSafeBreakKick = !!_termState.isSafeBreak;
+            var isDisciplinaryKick = !!_termState.isDisciplinaryKick;
+            if (isSafeBreakKick) {
+                points.push('<li>' + _esc(_t('termConfirmPointKickNoPenalty')) + '</li>');
+            } else if (isDisciplinaryKick) {
+                points.push('<li>' + _esc(_t('termConfirmPointKickTesterPenalized')) + '</li>');
             } else {
-                points.push('<li class="is-warn">' + _esc(_t('termConfirmPointKickRisk')) + '</li>');
+                points.push('<li class="is-warn">' + _esc(_t('termConfirmPointKickOwnerPenalized')) + '</li>');
             }
             body.innerHTML = '' +
                 '<p class="leave-confirm-lead">' + _esc(_t('termConfirmDescKick')) + '</p>' +
                 '<ul class="leave-confirm-points">' + points.join('') + '</ul>';
             if (finalBtn) {
-                finalBtn.classList.toggle('leave-cta--safe', justified);
-                finalBtn.classList.toggle('leave-cta--warn', !justified);
+                finalBtn.classList.toggle('leave-cta--safe', isSafeBreakKick || isDisciplinaryKick);
+                finalBtn.classList.toggle('leave-cta--warn', !(isSafeBreakKick || isDisciplinaryKick));
                 finalBtn.textContent = _t('kickConfirmBtn');
             }
         }

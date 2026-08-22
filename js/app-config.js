@@ -1579,8 +1579,8 @@ async function _handleInitialRoute() {
         if (route.highlightTestId) {
             try {
                 _pendingInitialHighlightTestId = Number(route.highlightTestId || 0) || null;
-                await loadTasks(true);
-                _highlightTestCardWhenReady(_pendingInitialHighlightTestId);
+                await loadTasks(false);
+                _highlightTestCardWhenReady(_pendingInitialHighlightTestId, 24);
                 _clearStartappQueryParam();
             } catch (error) {
                 console.error('Initial tests highlight route error:', error);

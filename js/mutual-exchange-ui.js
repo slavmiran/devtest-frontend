@@ -858,15 +858,21 @@
         }
 
         // Prefer the same deep-focus path used by startapp=test_* / my_tests_highlight_*.
+        function _afterFocus() {
+            requestAnimationFrame(function () {
+                _runHighlight();
+                setTimeout(_runHighlight, 280);
+            });
+        }
         if (typeof _focusAppInMiniApp === 'function') {
-            Promise.resolve(_focusAppInMiniApp(reciprocalAppId)).catch(function () {
+            Promise.resolve(_focusAppInMiniApp(reciprocalAppId)).then(_afterFocus).catch(function () {
                 if (typeof switchTab === 'function') switchTab('tests');
                 _runHighlight();
             });
             return;
         }
         if (typeof window._focusAppInMiniApp === 'function') {
-            Promise.resolve(window._focusAppInMiniApp(reciprocalAppId)).catch(function () {
+            Promise.resolve(window._focusAppInMiniApp(reciprocalAppId)).then(_afterFocus).catch(function () {
                 if (typeof switchTab === 'function') switchTab('tests');
                 _runHighlight();
             });

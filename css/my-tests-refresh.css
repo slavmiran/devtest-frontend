@@ -33,6 +33,14 @@
         linear-gradient(225deg, rgba(46, 46, 50, 0.34) 0%, transparent 58%);
 }
 
+#tab-tests .card.test-card-highlight-pulse {
+    transition: none !important;
+    animation: testCardHighlightPulse 3.6s ease-out;
+    z-index: 4;
+    position: relative;
+    outline: none;
+}
+
 #tab-tests .card.card-done,
 #tab-tests .card.card-done.done-today-card {
     border-color: rgba(52, 199, 89, 0.22);
