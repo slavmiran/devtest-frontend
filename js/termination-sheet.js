@@ -295,13 +295,10 @@
 
         var myTestingDays = Number(data.my_testing_days || 0);
         var partnerCheckins = Number(data.partner_checkins || 0);
-        var isSafeExit = !justifiedAllowed && _isUniversalSafeExit({
+        var isSafeBreak = !data.is_mutual_debt && _isSafeBreakWindow({
             testingDays: myTestingDays,
-            checkins: myCheckins,
-            partnerCheckins: partnerCheckins,
-            requirePartnerGate: true,
         });
-        var noPenalty = justifiedAllowed || isSafeExit;
+        var noPenalty = justifiedAllowed || isSafeBreak;
         var riOk = noPenalty;
         var currentRi = null;
         try {
@@ -313,7 +310,7 @@
         } catch (e) { /* ignore */ }
 
         if (_termState) {
-            _termState.isSafeExit = isSafeExit;
+            _termState.isSafeExit = isSafeBreak;
             _termState.noPenaltyExit = noPenalty;
             if (noPenalty) {
                 _termState.karmaBurnPreview = 0;
@@ -326,7 +323,7 @@
                 '<div class="leave-status-title">' + _esc(_t('leaveJustifiedBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t('leaveJustifiedDesc')) + '</div>' +
               '</div>'
-            : (isSafeExit
+            : (isSafeBreak
                 ? _renderExitBanner(true)
                 : '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
                     '<div class="leave-status-title">' + _esc(_t('leaveAbandonedTitle')) + '</div>' +
@@ -401,9 +398,9 @@
         var skipsCount = ctx.skipsCount;
         var consecutiveSkips = ctx.consecutiveSkips;
         var joinType = ctx.joinType;
-        // Justified kick: ≥3 consecutive skips anytime, or early 0 check-ins (~24h)
-        // on THIS project only — owner's reciprocal check-ins do not block it.
-        var isDisciplinaryKick = _isJustifiedKick({
+        // Justified kick after safe-break window: ≥3 consecutive skips, or 0 check-ins past ~24h.
+        var isSafeBreak = _isSafeBreakWindow({ testingDays: testingDays });
+        var isDisciplinaryKick = !isSafeBreak && _isJustifiedKick({
             testingDays: testingDays,
             checkins: checkinCount,
             consecutiveSkips: consecutiveSkips,
@@ -421,6 +418,7 @@
         if (_termState) {
             _termState.justifiedAllowed = isDisciplinaryKick;
             _termState.isDisciplinaryKick = isDisciplinaryKick;
+            _termState.isSafeBreak = isSafeBreak;
             _termState.isBountyJoin = isBountyJoin;
             _termState.holdBonus = holdBonus;
             _termState.dailyBurn = dailyBurn;
@@ -430,13 +428,15 @@
             ? '@' + String(ctx.testerUsername).replace(/^@+/, '')
             : (ctx.testerFullName || _t('idLabel', { id: ctx.testerId || 0 }));
 
-        var verdictKey = isBountyJoin
-            ? (isDisciplinaryKick ? 'kickVerdictBountySafe' : 'kickVerdictBountyUnsafe')
-            : (isDisciplinaryKick ? 'kickVerdictNonBountySafe' : 'kickVerdictNonBountyUnsafe');
+        var verdictKey = isSafeBreak
+            ? 'kickVerdictSafeBreak'
+            : (isBountyJoin
+                ? (isDisciplinaryKick ? 'kickVerdictBountySafe' : 'kickVerdictBountyUnsafe')
+                : (isDisciplinaryKick ? 'kickVerdictNonBountySafe' : 'kickVerdictNonBountyUnsafe'));
 
         var ownerEffects = [];
         if (isBountyJoin) {
-            ownerEffects.push(_t(isDisciplinaryKick ? 'kickOwnerBountyHoldReturned' : 'kickOwnerBountyHoldBurned', {
+            ownerEffects.push(_t((isSafeBreak || isDisciplinaryKick) ? 'kickOwnerBountyHoldReturned' : 'kickOwnerBountyHoldBurned', {
                 amount: _fmtAmount(holdBonus, 1),
             }));
             ownerEffects.push(_t('kickOwnerBountyDailyBurn', { amount: _fmtAmount(dailyBurn, 1) }));
@@ -445,16 +445,16 @@
         } else {
             ownerEffects.push(_t('kickOwnerNoMoneyMutual'));
         }
-        ownerEffects.push(_t(isDisciplinaryKick ? 'kickOwnerReliabilitySafe' : 'kickOwnerReliabilityRisk'));
+        ownerEffects.push(_t((isSafeBreak || isDisciplinaryKick) ? 'kickOwnerReliabilitySafe' : 'kickOwnerReliabilityRisk'));
 
         var testerEffects = [
             _t('kickTesterEffectAccess'),
-            _t(isDisciplinaryKick ? 'kickTesterEffectJustified' : 'kickTesterEffectNeutral'),
+            _t(isSafeBreak || !isDisciplinaryKick ? 'kickTesterEffectNeutral' : 'kickTesterEffectJustified'),
         ];
 
-        var statusBanner = isDisciplinaryKick
+        var statusBanner = (isSafeBreak || isDisciplinaryKick)
             ? '<div class="leave-status-banner is-justified term-status-compact term-impact-status-banner">' +
-                '<div class="leave-status-title">' + _esc(_t('termKickSafeBadge')) + '</div>' +
+                '<div class="leave-status-title">' + _esc(_t(isSafeBreak ? 'termSafeExitBadge' : 'termKickSafeBadge')) + '</div>' +
                 '<div class="leave-status-desc">' + _esc(_t(verdictKey)) + '</div>' +
               '</div>'
             : '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
@@ -529,13 +529,20 @@
             '</div>' +
             _renderImpactMeters({
                 karmaOk: true,
-                riOk: isDisciplinaryKick,
+                riOk: isSafeBreak || isDisciplinaryKick,
                 karmaBurn: 0,
                 statusBanner: statusBanner,
                 extraHtml: detailsHtml,
                 blockClass: 'term-kick-impact',
                 ownerCycle: false,
             });
+    }
+
+    function _isSafeBreakWindow(opts) {
+        opts = opts || {};
+        var testingDays = Number(opts.testingDays || 0);
+        // Date-only start_date → calendar day 1 ≈ first ~24h (backend parity).
+        return testingDays <= 1;
     }
 
     function _isUniversalSafeExit(opts) {
@@ -782,11 +789,7 @@
         var grantTotal = grantStillAvailable ? _estimateGrantTotal(test) : 0;
         var grantLost = grantStillAvailable ? grantTotal : 0;
         var totalAtRisk = contractLost + grantLost;
-        var isSafeExit = _isUniversalSafeExit({
-            testingDays: testingDays,
-            checkins: checkins,
-            requirePartnerGate: false,
-        });
+        var isSafeExit = _isSafeBreakWindow({ testingDays: testingDays });
         var karmaBurn = isSafeExit ? 0 : KARMA_ABANDONED_BURN;
         var riOk = isSafeExit;
         var karmaOk = isSafeExit;
@@ -997,11 +1000,7 @@
                 ? getUserTestingDay(dropSnap.start_date)
                 : Number(dropSnap && dropSnap.testing_days || 0);
             var dropCheckins = Number(dropSnap && dropSnap.checkins_count || 0);
-            defaultReason = _isUniversalSafeExit({
-                testingDays: dropDays,
-                checkins: dropCheckins,
-                requirePartnerGate: false,
-            })
+            defaultReason = _isSafeBreakWindow({ testingDays: dropDays })
                 ? 'took_by_mistake'
                 : 'not_suitable';
         }
@@ -1174,6 +1173,8 @@
         var modal = document.getElementById('termination-sheet');
         if (!modal) return;
         if (event && event.target !== modal) return;
+        if (_termState && _termState.isSubmitting) return;
+        endTerminationSubmit({ reopenSheet: false });
         modal.classList.remove('active');
         cancelTerminationConfirm();
         _setPreserveSlot('');
@@ -1357,7 +1358,73 @@
         }
     }
 
+    function _ensureTermProgressOverlay() {
+        var el = document.getElementById('term-progress-overlay');
+        if (el) return el;
+        el = document.createElement('div');
+        el.id = 'term-progress-overlay';
+        el.className = 'term-progress-overlay';
+        el.setAttribute('aria-live', 'polite');
+        el.innerHTML = '' +
+            '<div class="term-progress-card">' +
+                '<div class="term-progress-spinner" aria-hidden="true"></div>' +
+                '<div class="term-progress-title" id="term-progress-title"></div>' +
+                '<div class="term-progress-sub" id="term-progress-sub"></div>' +
+            '</div>';
+        document.body.appendChild(el);
+        return el;
+    }
+
+    function _setTerminationSheetBusy(isBusy) {
+        var modal = document.getElementById('termination-sheet');
+        if (modal) modal.classList.toggle('is-submitting', !!isBusy);
+        var confirmBtn = document.getElementById('term-confirm-btn');
+        var finalBtn = document.getElementById('leave-confirm-final-btn');
+        [confirmBtn, finalBtn].forEach(function (btn) {
+            if (!btn) return;
+            btn.disabled = !!isBusy;
+            btn.classList.toggle('btn-loading', !!isBusy);
+        });
+    }
+
+    function beginTerminationSubmit() {
+        if (_termState && _termState.isSubmitting) return false;
+        if (_termState) _termState.isSubmitting = true;
+
+        cancelTerminationConfirm();
+
+        var modal = document.getElementById('termination-sheet');
+        if (modal) modal.classList.remove('active');
+
+        var overlay = _ensureTermProgressOverlay();
+        var titleEl = document.getElementById('term-progress-title');
+        var subEl = document.getElementById('term-progress-sub');
+        var mode = _termState ? _termState.mode : 'leave';
+        var titleKey = mode === 'kick'
+            ? 'termProgressKick'
+            : (mode === 'drop' ? 'termProgressDrop' : 'termProgressLeave');
+        if (titleEl) titleEl.textContent = _t(titleKey);
+        if (subEl) subEl.textContent = _t('termProgressHint');
+        overlay.classList.add('active');
+        _setTerminationSheetBusy(true);
+        return true;
+    }
+
+    function endTerminationSubmit(opts) {
+        opts = opts || {};
+        var overlay = document.getElementById('term-progress-overlay');
+        if (overlay) overlay.classList.remove('active');
+        _setTerminationSheetBusy(false);
+        if (_termState) _termState.isSubmitting = false;
+
+        if (opts.reopenSheet) {
+            var modal = document.getElementById('termination-sheet');
+            if (modal) modal.classList.add('active');
+        }
+    }
+
     function cancelTerminationConfirm(event) {
+        if (_termState && _termState.isSubmitting) return;
         var overlay = document.getElementById('leave-confirm-overlay');
         if (!overlay) return;
         if (event && event.target === overlay) {
@@ -1370,13 +1437,9 @@
         overlay.classList.remove('active');
     }
 
-    function confirmTerminationAdaptive() {
-        var overlay = document.getElementById('leave-confirm-overlay');
-        if (overlay) overlay.classList.remove('active');
-        if (!_termState) {
-            console.warn('confirmTerminationAdaptive: no _termState');
-            return;
-        }
+    async function confirmTerminationAdaptive() {
+        if (!_termState || _termState.isSubmitting) return;
+        if (!beginTerminationSubmit()) return;
 
         _syncLegacyReasonFields(getTermReasonCode(), getTermReasonNote());
         var unlink = getTermUnlinkReciprocal();
@@ -1384,48 +1447,59 @@
         var appId = Number(_termState.appId || _termState.projectId || 0);
         var testerId = Number(_termState.testerId || 0);
 
-        if (_termState.mode === 'leave') {
-            var justified = !!_termState.justifiedAllowed || !!_termState.isSafeExit || !!_termState.noPenaltyExit;
-            if (typeof window.setLeaveMutualAppId === 'function') {
-                window.setLeaveMutualAppId(appId);
-            } else {
-                window._leaveMutualAppId = appId;
+        try {
+            if (_termState.mode === 'leave') {
+                var justified = !!_termState.justifiedAllowed || !!_termState.isSafeExit || !!_termState.noPenaltyExit;
+                if (typeof window.setLeaveMutualAppId === 'function') {
+                    window.setLeaveMutualAppId(appId);
+                } else {
+                    window._leaveMutualAppId = appId;
+                }
+                var leaveFn = window.confirmLeaveMutual || (typeof confirmLeaveMutual === 'function' ? confirmLeaveMutual : null);
+                if (typeof leaveFn === 'function') {
+                    await leaveFn(justified, appId);
+                } else {
+                    console.error('confirmLeaveMutual is not available');
+                    endTerminationSubmit({ reopenSheet: true });
+                    if (typeof showToast === 'function') showToast(_t('loadError'));
+                }
+                return;
             }
-            var leaveFn = window.confirmLeaveMutual || (typeof confirmLeaveMutual === 'function' ? confirmLeaveMutual : null);
-            if (typeof leaveFn === 'function') {
-                leaveFn(justified, appId);
+            if (_termState.mode === 'drop') {
+                if (typeof window.setDropTestAppId === 'function') {
+                    window.setDropTestAppId(appId);
+                } else {
+                    window._dropTestAppId = appId;
+                }
+                var dropFn = window.confirmDropTest || (typeof confirmDropTest === 'function' ? confirmDropTest : null);
+                if (typeof dropFn === 'function') {
+                    await dropFn(appId);
+                } else {
+                    console.error('confirmDropTest is not available');
+                    endTerminationSubmit({ reopenSheet: true });
+                    if (typeof showToast === 'function') showToast(_t('loadError'));
+                }
+                return;
+            }
+            if (typeof window.setKickTarget === 'function') {
+                window.setKickTarget(appId, testerId);
             } else {
-                console.error('confirmLeaveMutual is not available');
+                window._kickTarget = { appId: appId, testerId: testerId };
+            }
+            var kickFn = window.confirmKickTester || (typeof confirmKickTester === 'function' ? confirmKickTester : null);
+            if (typeof kickFn === 'function') {
+                await kickFn(appId, testerId);
+            } else {
+                console.error('confirmKickTester is not available');
+                endTerminationSubmit({ reopenSheet: true });
                 if (typeof showToast === 'function') showToast(_t('loadError'));
             }
-            return;
-        }
-        if (_termState.mode === 'drop') {
-            if (typeof window.setDropTestAppId === 'function') {
-                window.setDropTestAppId(appId);
-            } else {
-                window._dropTestAppId = appId;
+        } catch (error) {
+            console.error('confirmTerminationAdaptive error:', error);
+            endTerminationSubmit({ reopenSheet: true });
+            if (typeof showToast === 'function') {
+                showToast(_t('networkError'));
             }
-            var dropFn = window.confirmDropTest || (typeof confirmDropTest === 'function' ? confirmDropTest : null);
-            if (typeof dropFn === 'function') {
-                dropFn(appId);
-            } else {
-                console.error('confirmDropTest is not available');
-                if (typeof showToast === 'function') showToast(_t('loadError'));
-            }
-            return;
-        }
-        if (typeof window.setKickTarget === 'function') {
-            window.setKickTarget(appId, testerId);
-        } else {
-            window._kickTarget = { appId: appId, testerId: testerId };
-        }
-        var kickFn = window.confirmKickTester || (typeof confirmKickTester === 'function' ? confirmKickTester : null);
-        if (typeof kickFn === 'function') {
-            kickFn(appId, testerId);
-        } else {
-            console.error('confirmKickTester is not available');
-            if (typeof showToast === 'function') showToast(_t('loadError'));
         }
     }
 
@@ -1640,6 +1714,10 @@
     window.requestTerminationConfirm = requestTerminationConfirm;
     window.cancelTerminationConfirm = cancelTerminationConfirm;
     window.confirmTerminationAdaptive = confirmTerminationAdaptive;
+    window.beginTerminationSubmit = beginTerminationSubmit;
+    window.endTerminationSubmit = endTerminationSubmit;
+    window.beginTerminationSubmit = beginTerminationSubmit;
+    window.endTerminationSubmit = endTerminationSubmit;
     window.selectTermReason = selectTermReason;
     window.toggleTermUnlinkHint = toggleTermUnlinkHint;
     window.getTermUnlinkReciprocal = getTermUnlinkReciprocal;

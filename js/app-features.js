@@ -3261,6 +3261,9 @@ async function confirmDropTest(explicitAppId) {
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
             showToast(getApiErrorMessage(data, 'loadError'));
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: true });
+            }
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -3269,6 +3272,9 @@ async function confirmDropTest(explicitAppId) {
             ? 'termDropSuccessSafe'
             : (exitKind === 'invite_costly_exit' ? 'termDropSuccessCostly' : 'termDropSuccess');
         showToast(window.t(successKey, {}, lang));
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: false });
+        }
         if (typeof closeTerminationSheet === 'function') {
             closeTerminationSheet({ target: document.getElementById('termination-sheet') });
         } else {
@@ -3277,6 +3283,9 @@ async function confirmDropTest(explicitAppId) {
         await Promise.all([loadTasks(), loadProjects(true)]);
     } catch (error) {
         console.error('Drop test error:', error);
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: true });
+        }
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }
@@ -3408,6 +3417,9 @@ async function confirmLeaveMutual(isJustified, explicitAppId) {
         if (!response.ok || data.status !== 'success') {
             var errorCode = getBackendErrorCode(data);
             if (errorCode === 'testing_not_found' || errorCode === 'app_not_found' || errorCode === 'project_pending_completion') {
+                if (typeof window.endTerminationSubmit === 'function') {
+                    window.endTerminationSubmit({ reopenSheet: false });
+                }
                 if (typeof closeTerminationSheet === 'function') {
                     closeTerminationSheet({ target: document.getElementById('termination-sheet') });
                 } else {
@@ -3421,19 +3433,28 @@ async function confirmLeaveMutual(isJustified, explicitAppId) {
             if (typeof window.renderTests === 'function') {
                 window.renderTests(true);
             }
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: true });
+            }
             showToast(getApiErrorMessage(data, 'loadError'));
             return;
         }
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        if (data.exit_status === 'abandoned') {
+        var karmaBurned = Number(data.karma_burned || 0);
+        if (karmaBurned > 0) {
             showToast(window.t('leaveSuccessAbandoned', {
-                karma: formatUiAmount(data.karma_burned || 0, 1)
+                karma: formatUiAmount(karmaBurned, 1)
             }, lang));
-        } else {
+        } else if (data.exit_status === 'justified_exit' || isJustified) {
             showToast(window.t('leaveSuccessJustified', {}, lang));
+        } else {
+            showToast(window.t('leaveSuccessSafe', {}, lang));
         }
 
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: false });
+        }
         if (typeof closeTerminationSheet === 'function') {
             closeTerminationSheet({ target: document.getElementById('termination-sheet') });
         } else {
@@ -3445,6 +3466,9 @@ async function confirmLeaveMutual(isJustified, explicitAppId) {
         myTests = previousTests;
         if (typeof window.renderTests === 'function') {
             window.renderTests(true);
+        }
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: true });
         }
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
@@ -3534,7 +3558,13 @@ async function confirmKickTester(explicitAppId, explicitTesterId) {
                 } else {
                     showToast(window.t('kickBlockedActiveTester', {}, lang));
                 }
+                if (typeof window.endTerminationSubmit === 'function') {
+                    window.endTerminationSubmit({ reopenSheet: true });
+                }
                 return;
+            }
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: true });
             }
             showToast(getApiErrorMessage(data, 'loadError'));
             return;
@@ -3542,6 +3572,9 @@ async function confirmKickTester(explicitAppId, explicitTesterId) {
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t('kickSuccessMsg', {}, lang));
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: false });
+        }
         if (typeof closeTerminationSheet === 'function') {
             closeTerminationSheet({ target: document.getElementById('termination-sheet') });
         } else {
@@ -3556,6 +3589,9 @@ async function confirmKickTester(explicitAppId, explicitTesterId) {
         }
         if (typeof window.renderProjects === 'function') {
             window.renderProjects(true);
+        }
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: true });
         }
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
