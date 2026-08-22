@@ -2158,8 +2158,33 @@
             // Overtime & Anti-AFK
             overtimeBadge: "🔥 Овертайм",
             syncDayProgress: "🔄 День {day}/14",
-            
 
+            // Ban Screen & Appeal
+            banScreenTitle: "Доступ к платформе ограничен",
+            banScreenSubtitle: "Ваш аккаунт заблокирован за нарушение правил платформы",
+            banScreenReasonLabel: "Причина блокировки",
+            banScreenDefaultReason: "Нарушение правил сообщества и регламента тестирования",
+            banScreenAppealTitle: "Апелляция на разблокировку",
+            banScreenAppealPlaceholder: "Опишите причину пропуска тестов или вашу позицию...",
+            banScreenAppealSubmitBtn: "📨 Отправить апелляцию",
+            banScreenAppealPending: "⏳ Ваша апелляция находится на рассмотрении администрации. Ожидайте ответа.",
+            banScreenAppealRejected: "❌ Ваша апелляция была отклонена. Решение администрации окончательное.",
+            banScreenAppealSentToast: "Апелляция успешно отправлена на рассмотрение!",
+            banScreenAppealEmptyToast: "Пожалуйста, опишите причину в поле апелляции (минимум 5 символов)",
+
+            // Admin Ban Action in Dossier Modal
+            dossierBtnBan: "🛑 Заблокировать",
+            banModalTitle: "Блокировка пользователя",
+            banModalWarning: "⚠️ Все проекты нарушителя будут полностью изолированы, а все активные тесты закрыты нейтрально без штрафов для честных партнёров.",
+            banModalReasonLabel: "Причина блокировки",
+            banModalReasonPlaceholder: "Укажите причину блокировки...",
+            banModalConfirmBtn: "🛑 Заблокировать",
+            banModalCancelBtn: "Отмена",
+            banSuccessToast: "Пользователь успешно заблокирован",
+            banReasonRequiredToast: "Пожалуйста, укажите причину блокировки",
+            cannot_ban_self: "Вы не можете заблокировать собственный аккаунт",
+            cannot_ban_admin: "Нельзя заблокировать администратора платформы",
+            user_banned_toast: "Ваш аккаунт заблокирован",
         
     };
     window.I18N_RU = window.I18NRU;

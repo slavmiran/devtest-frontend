@@ -74,6 +74,10 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[DEBUG] bootstrap IIFE started');
         var profileSyncResult = await bootstrapProfileSyncPromise;
         console.log('[DEBUG] bootstrap: profileSync done, ok=', profileSyncResult && profileSyncResult.ok);
+        if (profileSyncResult && profileSyncResult.is_banned) {
+            showBanScreen(profileSyncResult);
+            return;
+        }
         await bootstrapInterfaceLanguage({ profileSyncResult: profileSyncResult });
         await runtimeConfigPromise;
         var guestIntent = _parseGuestClaimIntent();
@@ -234,6 +238,11 @@ Object.assign(window, {
     loadReliabilitySummary,
     loadReliabilityBreakdown,
     confirmHardDelete,
+    showBanScreen,
+    submitBanAppeal,
+    openBanUserModal,
+    closeBanUserModal,
+    submitBanUser,
     fetchKarmaBreakdown,
     fetchContributionStats,
     fetchContributionCurrent,
@@ -346,5 +355,10 @@ Object.assign(window.App, {
     submitExternalTrackingProof,
     submitExternalDailyCheckin,
     cancelExternalTracking,
-    buildExternalClaimStartLink
+    buildExternalClaimStartLink,
+    showBanScreen,
+    submitBanAppeal,
+    openBanUserModal,
+    closeBanUserModal,
+    submitBanUser
 });
