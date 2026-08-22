@@ -1624,6 +1624,10 @@ async function loadUserProfilePreferences() {
         var response = await fetchWithRetry(API_BASE + '/users/' + userId + '/profile');
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var profile = await response.json();
+        if (profile && profile.is_banned) {
+            showBanScreen(profile);
+            return;
+        }
         _autoAcceptMutualEnabled = !!profile.auto_accept_mutual;
         _autoAcceptMutualAvailable = (typeof profile.auto_accept_available === 'undefined')
             ? true
@@ -4479,4 +4483,9 @@ window.confirmDropTest = confirmDropTest;
 window.confirmLeaveMutual = confirmLeaveMutual;
 window.confirmKickTester = confirmKickTester;
 window.confirmOvertimeLeave = confirmOvertimeLeave;
+window.showBanScreen = showBanScreen;
+window.submitBanAppeal = submitBanAppeal;
+window.openBanUserModal = openBanUserModal;
+window.closeBanUserModal = closeBanUserModal;
+window.submitBanUser = submitBanUser;
 

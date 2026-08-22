@@ -2625,15 +2625,15 @@
 
             // Ban Screen & Appeal
             banScreenTitle: "Доступ к платформе ограничен",
-            banScreenSubtitle: "Ваш аккаунт заблокирован за нарушение правил платформы",
+            banScreenSubtitle: "Аккаунт заблокирован",
             banScreenReasonLabel: "Причина блокировки",
             banScreenDefaultReason: "Нарушение правил сообщества и регламента тестирования",
-            banScreenAppealTitle: "Апелляция на разблокировку",
+            banScreenAppealTitle: "Подача апелляции",
             banScreenAppealPlaceholder: "Опишите причину пропуска тестов или вашу позицию...",
-            banScreenAppealSubmitBtn: "📨 Отправить апелляцию",
-            banScreenAppealPending: "⏳ Ваша апелляция находится на рассмотрении администрации. Ожидайте ответа.",
-            banScreenAppealRejected: "❌ Ваша апелляция была отклонена. Решение администрации окончательное.",
-            banScreenAppealSentToast: "Апелляция успешно отправлена на рассмотрение!",
+            banScreenAppealSubmitBtn: "Отправить апелляцию",
+            banScreenAppealPending: "Ваша апелляция находится на рассмотрении администрации. Ожидайте ответа.",
+            banScreenAppealRejected: "Ваша апелляция была отклонена. Решение администрации окончательное.",
+            banScreenAppealSentToast: "Апелляция успешно отправлена на рассмотрение",
             banScreenAppealEmptyToast: "Пожалуйста, опишите причину в поле апелляции (минимум 5 символов)",
 
             // Admin Ban Action in Dossier Modal

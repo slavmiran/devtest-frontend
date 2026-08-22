@@ -125,12 +125,17 @@
     <!-- Isolated Ban Screen -->
     <div id="ban-screen" class="ban-screen" style="display: none;" aria-hidden="true">
         <div class="ban-screen__glass">
-            <div class="ban-screen__icon" aria-hidden="true">🛑</div>
-            <div class="ban-screen__eyebrow" id="ban-screen-eyebrow" data-i18n="banScreenSubtitle">Ваш аккаунт заблокирован</div>
+            <div class="ban-screen__icon-wrap" aria-hidden="true">
+                <svg class="ban-screen__svg-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+            </div>
+            <div class="ban-screen__eyebrow" id="ban-screen-eyebrow" data-i18n="banScreenSubtitle">Аккаунт заблокирован</div>
             <h1 class="ban-screen__title" id="ban-screen-title" data-i18n="banScreenTitle">Доступ к платформе ограничен</h1>
             
             <div class="ban-screen__card">
-                <div class="ban-screen__card-label" id="ban-screen-reason-label" data-i18n="banScreenReasonLabel">Причина блокировки:</div>
+                <div class="ban-screen__card-label" id="ban-screen-reason-label" data-i18n="banScreenReasonLabel">Причина блокировки</div>
                 <div class="ban-screen__reason" id="ban-screen-reason">Нарушение правил сообщества</div>
             </div>
 
@@ -138,20 +143,20 @@
             <div id="ban-appeal-section" class="ban-screen__appeal-section">
                 <!-- None / Form state -->
                 <div id="ban-appeal-form-state" style="display: none;">
-                    <div class="ban-screen__appeal-title" data-i18n="banScreenAppealTitle">Апелляция на разблокировку</div>
+                    <div class="ban-screen__appeal-title" data-i18n="banScreenAppealTitle">Подача апелляции</div>
                     <textarea id="ban-appeal-textarea" class="form-input ban-screen__textarea" rows="4" placeholder="Опишите причину пропуска тестов или вашу позицию..." data-i18n-placeholder="banScreenAppealPlaceholder"></textarea>
-                    <button type="button" class="btn btn-primary ban-screen__submit-btn" id="ban-appeal-submit-btn" onclick="submitBanAppeal()" data-i18n="banScreenAppealSubmitBtn">📨 Отправить апелляцию</button>
+                    <button type="button" class="btn btn-primary ban-screen__submit-btn" id="ban-appeal-submit-btn" onclick="submitBanAppeal()" data-i18n="banScreenAppealSubmitBtn">Отправить апелляцию</button>
                 </div>
 
                 <!-- Pending state -->
                 <div id="ban-appeal-pending-state" class="ban-screen__status-banner ban-screen__status-banner--pending" style="display: none;">
-                    <div class="ban-screen__status-icon">⏳</div>
+                    <div class="ban-screen__status-icon" aria-hidden="true">⏳</div>
                     <div class="ban-screen__status-text" data-i18n="banScreenAppealPending">Ваша апелляция находится на рассмотрении администрации. Ожидайте ответа.</div>
                 </div>
 
                 <!-- Rejected state -->
                 <div id="ban-appeal-rejected-state" class="ban-screen__status-banner ban-screen__status-banner--rejected" style="display: none;">
-                    <div class="ban-screen__status-icon">❌</div>
+                    <div class="ban-screen__status-icon" aria-hidden="true">✕</div>
                     <div class="ban-screen__status-text" data-i18n="banScreenAppealRejected">Ваша апелляция была отклонена. Решение администрации окончательное.</div>
                 </div>
             </div>

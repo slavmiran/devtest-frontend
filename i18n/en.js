@@ -2619,15 +2619,15 @@
 
             // Ban Screen & Appeal
             banScreenTitle: "Platform Access Restricted",
-            banScreenSubtitle: "Your account has been restricted for violating platform rules",
+            banScreenSubtitle: "Account Suspended",
             banScreenReasonLabel: "Ban reason",
             banScreenDefaultReason: "Violation of community guidelines and testing rules",
-            banScreenAppealTitle: "Submit Unban Appeal",
+            banScreenAppealTitle: "Submit Appeal",
             banScreenAppealPlaceholder: "Describe the reason for missing tests or your position...",
-            banScreenAppealSubmitBtn: "📨 Submit Appeal",
-            banScreenAppealPending: "⏳ Your appeal is under review by administration. Please wait for a response.",
-            banScreenAppealRejected: "❌ Your appeal was rejected. The administration's decision is final.",
-            banScreenAppealSentToast: "Appeal submitted successfully for review!",
+            banScreenAppealSubmitBtn: "Submit Appeal",
+            banScreenAppealPending: "Your appeal is under review by administration. Please wait for a response.",
+            banScreenAppealRejected: "Your appeal was rejected. The administration's decision is final.",
+            banScreenAppealSentToast: "Appeal submitted successfully for review",
             banScreenAppealEmptyToast: "Please describe your reason in the appeal field (min 5 characters)",
 
             // Admin Ban Action in Dossier Modal
