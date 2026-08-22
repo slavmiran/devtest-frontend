@@ -650,18 +650,55 @@
 }
 
 .kicked-soft-penalty {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: 12px;
-    line-height: 1.4;
-    color: rgba(255, 214, 180, 0.95);
-    margin-top: 2px;
+    font-weight: 500;
+    line-height: 1.35;
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin-top: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
 }
 
-.kicked-soft-penalty.is-justified {
-    color: rgba(255, 204, 170, 0.98);
+.kicked-soft-penalty:hover,
+.kicked-soft-penalty:active {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: var(--border-color, rgba(255, 255, 255, 0.2));
 }
 
 .kicked-soft-penalty.is-disputed {
-    color: rgba(255, 214, 150, 0.98);
+    background: rgba(255, 149, 0, 0.08);
+    border-color: rgba(255, 149, 0, 0.25);
+    color: #ff9f0a;
+}
+
+.kicked-soft-penalty.is-justified {
+    background: rgba(52, 199, 89, 0.08);
+    border-color: rgba(52, 199, 89, 0.25);
+    color: #34c759;
+}
+
+.kicked-soft-penalty-icon {
+    font-size: 13px;
+}
+
+.kicked-soft-penalty-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 4px;
 }
 
 .kicked-soft-actions {

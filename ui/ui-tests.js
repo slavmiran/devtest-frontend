@@ -2193,9 +2193,17 @@ function renderTests(force) {
             const penaltyHtml = isUnlinkedSoft
                 ? ''
                 : (isDisputedKick
-                    ? `<div class="kicked-soft-penalty is-disputed">${window.escapeHTML(window.t('kickedSoftPenaltyDisputed', {}, lang))}</div>`
+                    ? `<div class="kicked-soft-penalty is-disputed" onclick="showKickPenaltyDetailsModal(${Number(test.id)}, 'tester')" role="button" tabindex="0" title="Нажмите для анализа метрик">
+                        <span class="kicked-soft-penalty-icon">⚖️</span>
+                        <span>${window.escapeHTML(window.t('kickedSoftPenaltyDisputed', {}, lang))}</span>
+                        <span class="kicked-soft-penalty-info">ℹ</span>
+                      </div>`
                     : (isJustifiedKick
-                        ? `<div class="kicked-soft-penalty is-justified">${window.escapeHTML(window.t('kickedSoftPenaltyNone', {}, lang))}</div>`
+                        ? `<div class="kicked-soft-penalty is-justified" onclick="showKickPenaltyDetailsModal(${Number(test.id)}, 'tester')" role="button" tabindex="0" title="Нажмите для анализа метрик">
+                            <span class="kicked-soft-penalty-icon">📋</span>
+                            <span>${window.escapeHTML(window.t('kickedSoftPenaltyNone', {}, lang))}</span>
+                            <span class="kicked-soft-penalty-info">ℹ</span>
+                          </div>`
                         : ''));
             const reasonHtml = (!isUnlinkedSoft && reasonDisplay)
                 ? `<div class="kicked-soft-reason">${window.escapeHTML(window.t('kickedSoftReasonLabel', { reason: reasonDisplay }, lang))}</div>`
@@ -3177,7 +3185,128 @@ function ppcPhaseModalLeave(event) {
     }
 }
 
+function showKickPenaltyDetailsModal(testId, role) {
+    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+    var test = null;
+    if (Array.isArray(window.myTests)) {
+        test = window.myTests.find(function(t) { return Number(t.id || t.app_id || 0) === Number(testId); });
+    }
+    if (!test) return;
+
+    var leaveReason = String(test.leave_reason || '').trim();
+    var isDisputed = /disputed_active_kick/i.test(leaveReason);
+    var checkins = Number(test.checkins_count != null ? test.checkins_count : (test.checkins || 0));
+    var skips = Number(test.skips_count != null ? test.skips_count : 0);
+
+    var statusText = isDisputed
+        ? window.t('kickDetailsTesterStatusActive', {}, lang)
+        : window.t('kickDetailsTesterStatusInactive', {}, lang);
+    var statusClass = isDisputed ? 'active' : 'inactive';
+
+    var skipsValueText = isDisputed
+        ? window.t('kickDetailsSkipsValueDisputed', { skips: skips }, lang)
+        : window.t('kickDetailsSkipsValueJustified', { skips: skips }, lang);
+
+    // Tester metrics
+    var testerBadgeText = isDisputed
+        ? window.t('kickDetailsStatusProtected', {}, lang)
+        : window.t('kickDetailsStatusInactivity', {}, lang);
+    var testerBadgeClass = isDisputed ? 'safe' : 'warning';
+
+    var testerKarmaVal = isDisputed
+        ? window.t('kickDetailsKarmaProtected', {}, lang)
+        : window.t('kickDetailsKarmaJustifiedTester', {}, lang);
+
+    var testerRiVal = isDisputed
+        ? window.t('kickDetailsRiProtectedTester', {}, lang)
+        : window.t('kickDetailsRiInactiveTester', {}, lang);
+    var testerRiClass = isDisputed ? 'safe' : 'danger';
+
+    // Owner metrics
+    var ownerBadgeText = isDisputed
+        ? window.t('kickDetailsStatusPenalty', {}, lang)
+        : window.t('kickDetailsStatusJustified', {}, lang);
+    var ownerBadgeClass = isDisputed ? 'danger' : 'safe';
+
+    var ownerKarmaVal = isDisputed
+        ? window.t('kickDetailsKarmaProtected', {}, lang)
+        : window.t('kickDetailsKarmaJustifiedOwner', {}, lang);
+
+    var ownerRiVal = isDisputed
+        ? window.t('kickDetailsRiDisputedOwner', {}, lang)
+        : window.t('kickDetailsRiJustifiedOwner', {}, lang);
+    var ownerRiClass = isDisputed ? 'danger' : 'safe';
+
+    var html = '' +
+        '<div class="kick-analytics-modal">' +
+            '<div class="kick-analytics-header">' +
+                '<div class="kick-analytics-title">' + window.escapeHTML(window.t('kickDetailsTitle', {}, lang)) + '</div>' +
+                '<div class="kick-analytics-subtitle">' + window.escapeHTML(window.t('kickDetailsSubtitle', {}, lang)) + '</div>' +
+            '</div>' +
+
+            '<div class="kick-analytics-card">' +
+                '<div class="kick-analytics-row">' +
+                    '<span class="kick-analytics-label">' + window.escapeHTML(window.t('kickDetailsStatusLabel', {}, lang)) + '</span>' +
+                    '<span class="kick-analytics-value ' + statusClass + '">' + window.escapeHTML(statusText) + '</span>' +
+                '</div>' +
+                '<div class="kick-analytics-row">' +
+                    '<span class="kick-analytics-label">' + window.escapeHTML(window.t('kickDetailsCheckinsLabel', {}, lang)) + '</span>' +
+                    '<span class="kick-analytics-value">' + window.escapeHTML(window.t('kickDetailsCheckinsValue', { checkins: checkins }, lang)) + '</span>' +
+                '</div>' +
+                '<div class="kick-analytics-row">' +
+                    '<span class="kick-analytics-label">' + window.escapeHTML(window.t('kickDetailsSkipsLabel', {}, lang)) + '</span>' +
+                    '<span class="kick-analytics-value">' + window.escapeHTML(skipsValueText) + '</span>' +
+                '</div>' +
+            '</div>' +
+
+            '<div class="kick-analytics-section-title">' + window.escapeHTML(window.t('kickDetailsImpactSectionTitle', {}, lang)) + '</div>' +
+
+            '<!-- Tester Box -->' +
+            '<div class="kick-analytics-box">' +
+                '<div class="kick-analytics-box-header">' +
+                    '<span class="kick-analytics-role">' + window.escapeHTML(window.t('kickDetailsRoleTester', {}, lang)) + '</span>' +
+                    '<span class="kick-analytics-badge ' + testerBadgeClass + '">' + window.escapeHTML(testerBadgeText) + '</span>' +
+                '</div>' +
+                '<div class="kick-analytics-grid">' +
+                    '<div class="kick-analytics-cell">' +
+                        '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsKarmaTitle', {}, lang)) + '</div>' +
+                        '<div class="kick-analytics-cell-val neutral">' + window.escapeHTML(testerKarmaVal) + '</div>' +
+                    '</div>' +
+                    '<div class="kick-analytics-cell">' +
+                        '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsRiTitle', {}, lang)) + '</div>' +
+                        '<div class="kick-analytics-cell-val ' + testerRiClass + '">' + window.escapeHTML(testerRiVal) + '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+
+            '<!-- Owner Box -->' +
+            '<div class="kick-analytics-box">' +
+                '<div class="kick-analytics-box-header">' +
+                    '<span class="kick-analytics-role">' + window.escapeHTML(window.t('kickDetailsRoleOwner', {}, lang)) + '</span>' +
+                    '<span class="kick-analytics-badge ' + ownerBadgeClass + '">' + window.escapeHTML(ownerBadgeText) + '</span>' +
+                '</div>' +
+                '<div class="kick-analytics-grid">' +
+                    '<div class="kick-analytics-cell">' +
+                        '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsKarmaTitle', {}, lang)) + '</div>' +
+                        '<div class="kick-analytics-cell-val neutral">' + window.escapeHTML(ownerKarmaVal) + '</div>' +
+                    '</div>' +
+                    '<div class="kick-analytics-cell">' +
+                        '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsRiTitle', {}, lang)) + '</div>' +
+                        '<div class="kick-analytics-cell-val ' + ownerRiClass + '">' + window.escapeHTML(ownerRiVal) + '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+
+    if (typeof showCustomAlert === 'function') {
+        showCustomAlert(html, { html: true });
+    } else {
+        alert(statusText);
+    }
+}
+
 // Expose functions globally
+window.showKickPenaltyDetailsModal = showKickPenaltyDetailsModal;
 window.openPhaseInfoModal = openPhaseInfoModal;
 window.closePhaseInfoModal = closePhaseInfoModal;
 window.ppcPhaseModalLeave = ppcPhaseModalLeave;

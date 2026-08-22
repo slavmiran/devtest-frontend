@@ -1197,6 +1197,13 @@
             _termState.mySkips = mySkips;
             _termState.reciprocalAppId = reciprocalAppId;
             _termState.reciprocalAppName = reciprocalAppName;
+            _termState.reciprocalIconUrl = reciprocalTest ? (reciprocalTest.icon_url || '') : '';
+            _termState.reciprocalPackageName = reciprocalTest ? (reciprocalTest.package_name || '') : '';
+            _termState.reciprocalPlayStoreUrl = reciprocalTest ? (reciprocalTest.play_store_url || '') : '';
+            _termState.reciprocalOwnerUsername = reciprocalTest ? (reciprocalTest.owner_username || '') : '';
+            _termState.testerUsername = tester.username || options.testerUsername || '';
+            _termState.testerFullName = tester.full_name || options.testerFullName || '';
+            _termState.projectName = project.app_name || project.name || '';
         }
         _setTypeBadge(joinType);
         _setupUnlinkBox('kick', joinType, options);
@@ -1502,23 +1509,23 @@
         if (!card) return;
         _setTerminationSheetBusy(false);
 
-        var title = '';
-        var subHtml = '';
-        var appCardHtml = '';
         var closeBtnText = _t('termCompletionCloseBtn') || 'Понятно';
-
         var unlinkReciprocal = opts.unlinkReciprocal !== false && opts.unlinkReciprocal !== 'false';
         var data = opts.data || {};
         var appId = Number(opts.appId || (_termState && (_termState.appId || _termState.projectId)) || 0);
 
+        // --- Collect all display data from _termState / opts (no DB queries) ---
+        var headerHtml = '';
+        var bodyHtml = '';
+        var appCardHtml = '';
+
         if (mode === 'kick') {
-            title = _t('termCompletionTitleKicked') || 'Тестировщик исключен';
+            // --- KICK completion ---
             var reciprocalTest = opts.reciprocalTest || null;
             var reciprocalAppId = Number(
                 data.reciprocal_app_id ||
                 (reciprocalTest && (reciprocalTest.id || reciprocalTest.app_id)) ||
-                (_termState && _termState.reciprocalAppId) ||
-                0
+                (_termState && _termState.reciprocalAppId) || 0
             );
             if (!reciprocalTest && reciprocalAppId > 0 && Array.isArray(window.myTests)) {
                 reciprocalTest = window.myTests.find(function (t) {
@@ -1526,55 +1533,86 @@
                 }) || null;
             }
             var reciprocalAppName = (reciprocalTest && (reciprocalTest.name || reciprocalTest.app_name)) ||
-                data.reciprocal_app_name ||
-                (_termState && _termState.reciprocalAppName) ||
-                '';
+                data.reciprocal_app_name || (_termState && _termState.reciprocalAppName) || '';
+            var reciprocalIconUrl = (reciprocalTest && (reciprocalTest.icon_url || '')) ||
+                (_termState && _termState.reciprocalIconUrl) || '';
+            var reciprocalPkg = (reciprocalTest && (reciprocalTest.package_name || '')) ||
+                (_termState && _termState.reciprocalPackageName) || '';
+
+            // Tester info from _termState (saved during _fillKickFromLocal)
+            var testerUsername = (_termState && _termState.testerUsername) || '';
+            var projectName = (_termState && _termState.projectName) || '';
+            var testerLabel = testerUsername
+                ? '@' + String(testerUsername).replace(/^@+/, '')
+                : (_termState && _termState.testerFullName) || '';
+
+            // Header with project context
+            headerHtml = '<div class="term-comp-header">' +
+                '<div class="term-completion-icon" aria-hidden="true">✅</div>' +
+                '<div class="term-progress-title">' + _esc(_t('termCompletionTitleKicked')) + '</div>' +
+                (testerLabel
+                    ? '<div class="term-comp-context-line"><span class="term-comp-context-label">' + _esc(testerLabel) + '</span></div>'
+                    : '') +
+                (projectName
+                    ? '<div class="term-comp-context-line term-comp-context-project">«' + _esc(projectName) + '»</div>'
+                    : '') +
+            '</div>';
 
             if (!unlinkReciprocal) {
-                // Checkbox was UNCHECKED: owner keeps counter-testing partner's app voluntarily
+                // Owner keeps counter-testing partner's app voluntarily
                 var appNameDisplay = reciprocalAppName || _t('partnerProjectFallback');
-                subHtml = '' +
-                    '<div class="term-completion-notice">' +
-                        _esc(_t('termCompletionKeptReciprocal', { name: appNameDisplay })) + ' ' +
-                        '<span class="meta-chip meta-chip--source accent-danger" style="display:inline-flex;vertical-align:middle;margin:0 2px;">💔 ' + _esc(_t('testSourceMutual')) + '</span>.' +
-                    '</div>';
+                bodyHtml = '<div class="term-completion-notice">' +
+                    _esc(_t('termCompletionKeptReciprocal', { name: appNameDisplay })) + ' ' +
+                    '<span class="meta-chip meta-chip--source accent-danger" style="display:inline-flex;vertical-align:middle;margin:0 2px;">💔 ' + _esc(_t('testSourceMutual') || 'Бартер') + '</span>.' +
+                '</div>';
             } else {
-                // Checkbox was CHECKED: mutual link broken both ways
-                subHtml = '<div class="term-completion-notice">' + _esc(_t('termCompletionUnlinkedDesc')) + '</div>';
-                if (reciprocalAppId > 0 || reciprocalTest) {
+                // Mutual link broken both ways — show app card to uninstall
+                bodyHtml = '<div class="term-completion-notice">' + _esc(_t('termCompletionUnlinkedDesc')) + '</div>';
+                if (reciprocalAppId > 0 || reciprocalAppName) {
                     appCardHtml = _renderCompletionAppBox({
                         appId: reciprocalAppId,
-                        name: reciprocalAppName || (reciprocalTest && (reciprocalTest.name || reciprocalTest.app_name)) || '',
-                        iconUrl: reciprocalTest ? (reciprocalTest.icon_url || reciprocalTest.icon) : '',
-                        packageName: reciprocalTest ? (reciprocalTest.package_name || '') : '',
-                        playStoreUrl: reciprocalTest ? (reciprocalTest.play_store_url || '') : '',
+                        name: reciprocalAppName,
+                        iconUrl: reciprocalIconUrl,
+                        packageName: reciprocalPkg,
                         isSoftTail: true,
                     });
                 }
             }
         } else {
-            // Leave / Drop
-            title = mode === 'drop'
-                ? (_t('termCompletionTitleSuccess') || 'Связь разорвана')
-                : (_t('termCompletionTitleLeft') || 'Вы вышли из проекта');
-            subHtml = '<div class="term-completion-notice">' + _esc(_t('termCompletionUnlinkedDesc')) + '</div>';
+            // --- LEAVE / DROP completion ---
             var currentTest = opts.test || _findLocalTest(appId);
+            var testName = (currentTest && (currentTest.name || currentTest.app_name)) || '';
+            var testIcon = (currentTest && (currentTest.icon_url || currentTest.icon)) || '';
+            var testPkg = (currentTest && currentTest.package_name) || '';
+            var ownerUsername = (currentTest && currentTest.owner_username) || '';
+            var ownerLabel = ownerUsername ? '@' + String(ownerUsername).replace(/^@+/, '') : '';
+
+            headerHtml = '<div class="term-comp-header">' +
+                '<div class="term-completion-icon" aria-hidden="true">✅</div>' +
+                '<div class="term-progress-title">' +
+                    _esc(mode === 'drop'
+                        ? (_t('termCompletionTitleSuccess') || 'Связь разорвана')
+                        : (_t('termCompletionTitleLeft') || 'Вы вышли из проекта')
+                    ) +
+                '</div>' +
+            '</div>';
+
+            bodyHtml = '<div class="term-completion-notice">' + _esc(_t('termCompletionUnlinkedDesc')) + '</div>';
             if (currentTest) {
                 appCardHtml = _renderCompletionAppBox({
                     appId: Number(currentTest.id || currentTest.app_id || appId || 0),
-                    name: currentTest.name || currentTest.app_name || '',
-                    iconUrl: currentTest.icon_url || currentTest.icon || '',
-                    packageName: currentTest.package_name || '',
-                    playStoreUrl: currentTest.play_store_url || '',
+                    name: testName,
+                    iconUrl: testIcon,
+                    packageName: testPkg,
+                    ownerUsername: ownerLabel,
                     isSoftTail: false,
                 });
             }
         }
 
         card.innerHTML = '' +
-            '<div class="term-completion-icon" aria-hidden="true">✅</div>' +
-            '<div class="term-progress-title">' + _esc(title) + '</div>' +
-            subHtml +
+            headerHtml +
+            bodyHtml +
             appCardHtml +
             '<div class="term-completion-actions">' +
                 '<button type="button" class="btn btn-primary term-completion-close-btn" onclick="closeTerminationResult()">' +
@@ -1586,17 +1624,35 @@
     }
 
     function _renderCompletionAppBox(appInfo) {
-        var iconHtml = appInfo.iconUrl
-            ? '<img class="term-comp-app-icon" src="' + _esc(appInfo.iconUrl) + '" alt="" onerror="this.style.display=\'none\'">'
-            : '<div class="term-comp-app-icon-placeholder">' + _esc((appInfo.name || 'A').charAt(0).toUpperCase()) + '</div>';
+        var name = appInfo.name || 'App';
         var appId = Number(appInfo.appId || 0);
+        var iconHtml = '';
+        if (appInfo.iconUrl) {
+            iconHtml = '<img class="term-comp-app-icon" src="' + _esc(appInfo.iconUrl) + '" alt="" ' +
+                'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
+                '<div class="term-comp-app-icon-placeholder" style="display:none">' +
+                    _esc(name.charAt(0).toUpperCase()) +
+                '</div>';
+        } else {
+            iconHtml = '<div class="term-comp-app-icon-placeholder">' +
+                _esc(name.charAt(0).toUpperCase()) +
+            '</div>';
+        }
+        var ownerLine = appInfo.ownerUsername
+            ? '<div class="term-comp-app-owner">' + _esc(appInfo.ownerUsername) + '</div>'
+            : '';
+        var pkgLine = appInfo.packageName
+            ? '<div class="term-comp-app-pkg">' + _esc(appInfo.packageName) + '</div>'
+            : '';
+
         return '' +
             '<div class="term-comp-app-box" id="term-comp-app-box-' + appId + '">' +
                 '<div class="term-comp-app-main">' +
                     iconHtml +
                     '<div class="term-comp-app-info">' +
-                        '<div class="term-comp-app-title">' + _esc(appInfo.name || 'App') + '</div>' +
-                        (appInfo.packageName ? ('<div class="term-comp-app-pkg">' + _esc(appInfo.packageName) + '</div>') : '') +
+                        '<div class="term-comp-app-title">' + _esc(name) + '</div>' +
+                        ownerLine +
+                        pkgLine +
                     '</div>' +
                 '</div>' +
                 '<button type="button" class="btn btn-secondary term-comp-uninstall-btn" id="term-comp-btn-' + appId + '" ' +
