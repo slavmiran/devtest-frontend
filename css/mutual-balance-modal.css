@@ -1298,79 +1298,66 @@
 
 /* Term Impact Accordion / Collapsible Details */
 .term-impact-accordion {
-    margin-top: 10px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--bg-surface-2, rgba(255, 255, 255, 0.05)) 80%, transparent);
-    border: 1px solid color-mix(in srgb, var(--border-subtle, rgba(255, 255, 255, 0.1)) 70%, transparent);
+    margin-top: 6px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
     overflow: hidden;
-    transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background 0.25s ease, margin 0.25s ease;
 }
 
 .term-impact-accordion.is-open {
-    background: color-mix(in srgb, var(--bg-surface-2, rgba(255, 255, 255, 0.08)) 95%, transparent);
-    border-color: color-mix(in srgb, var(--accent-color, #0088cc) 35%, var(--border-subtle));
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.term-impact-accordion.is-warn.is-open {
-    border-color: color-mix(in srgb, var(--warning, #ff9500) 45%, var(--border-subtle));
+    margin-top: 10px;
+    background: color-mix(in srgb, var(--bg-surface-2, rgba(255, 255, 255, 0.04)) 85%, transparent);
+    border-radius: 10px;
 }
 
 .term-impact-toggle {
     width: 100%;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 10px;
     background: transparent;
     border: none;
-    color: var(--text-color, #ffffff);
-    font-size: 12px;
-    font-weight: 600;
+    color: var(--hint-color, rgba(255, 255, 255, 0.5));
+    font-size: 11px;
+    font-weight: 500;
     cursor: pointer;
-    text-align: left;
+    text-align: center;
     outline: none;
-    gap: 8px;
     user-select: none;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, color 0.2s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
-.term-impact-toggle:active {
-    opacity: 0.8;
-}
-
-.term-impact-toggle-content {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.term-impact-toggle-icon {
-    font-size: 13px;
-    line-height: 1;
+.term-impact-toggle:hover,
+.term-impact-toggle:active,
+.term-impact-accordion.is-open .term-impact-toggle {
+    opacity: 1;
+    color: var(--hint-color, rgba(255, 255, 255, 0.85));
 }
 
 .term-impact-toggle-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-color);
-    letter-spacing: -0.01em;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
 }
 
 .term-impact-toggle-chevron {
-    font-size: 10px;
-    color: var(--hint-color, rgba(255, 255, 255, 0.5));
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
-    display: inline-block;
+    width: 12px;
+    height: 12px;
+    stroke: currentColor;
+    opacity: 0.7;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    flex-shrink: 0;
 }
 
 .term-impact-accordion.is-open .term-impact-toggle-chevron {
     transform: rotate(180deg);
-    color: var(--accent-color, #0088cc);
-}
-
-.term-impact-accordion.is-warn.is-open .term-impact-toggle-chevron {
-    color: var(--warning, #ff9500);
+    opacity: 1;
 }
 
 .term-impact-drawer {
@@ -1385,10 +1372,10 @@
 
 .term-impact-drawer-inner {
     overflow: hidden;
-    padding: 0 10px 10px 10px;
+    padding: 0 8px 8px 8px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .term-impact-drawer-inner .term-impact-status-banner {

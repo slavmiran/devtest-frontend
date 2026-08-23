@@ -785,16 +785,12 @@
 
         var accordionHtml = '';
         if (detailsHtml.trim()) {
-            var accordionTitle = _t(isSafe ? 'termImpactAccordionTitleSafe' : 'termImpactAccordionTitle') || (isSafe ? 'Подробности выхода' : 'Подробности и риски выхода');
-            var accordionIcon = isSafe ? 'ℹ️' : '⚠️';
+            var accordionTitle = _t('termImpactAccordionTitle') || 'Подробности';
             accordionHtml = '' +
                 '<div class="term-impact-accordion' + (isSafe ? ' is-safe' : ' is-warn') + '">' +
                     '<button type="button" class="term-impact-toggle" onclick="toggleTermImpactAccordion(this)" aria-expanded="false">' +
-                        '<div class="term-impact-toggle-content">' +
-                            '<span class="term-impact-toggle-icon">' + accordionIcon + '</span>' +
-                            '<span class="term-impact-toggle-title">' + _esc(accordionTitle) + '</span>' +
-                        '</div>' +
-                        '<span class="term-impact-toggle-chevron" aria-hidden="true">▼</span>' +
+                        '<span class="term-impact-toggle-title">' + _esc(accordionTitle) + '</span>' +
+                        '<svg class="term-impact-toggle-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>' +
                     '</button>' +
                     '<div class="term-impact-drawer">' +
                         '<div class="term-impact-drawer-inner">' +
