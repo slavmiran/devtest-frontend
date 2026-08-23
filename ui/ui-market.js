@@ -5914,8 +5914,8 @@ function _formatContributionCountdown(endsAt) {
 }
 
 var CONTRIBUTION_PRIZE_BY_RANK = {
-    1: 500, 2: 350, 3: 250, 4: 180, 5: 150,
-    6: 100, 7: 100, 8: 100, 9: 100, 10: 100
+    1: 450, 2: 350, 3: 300, 4: 250, 5: 200,
+    6: 120, 7: 100, 8: 90, 9: 80, 10: 60
 };
 var CONTRIBUTION_POOL_DISPLAY = 2000;
 
@@ -5975,8 +5975,16 @@ function _renderContributionPrizeTable() {
     const el = document.getElementById('contribution-prize-table');
     if (!el) return;
     const rows = [
-        [1, 500], [2, 350], [3, 250], [4, 180], [5, 150],
-        ['6–10', 100]
+        [1, CONTRIBUTION_PRIZE_BY_RANK[1]],
+        [2, CONTRIBUTION_PRIZE_BY_RANK[2]],
+        [3, CONTRIBUTION_PRIZE_BY_RANK[3]],
+        [4, CONTRIBUTION_PRIZE_BY_RANK[4]],
+        [5, CONTRIBUTION_PRIZE_BY_RANK[5]],
+        [6, CONTRIBUTION_PRIZE_BY_RANK[6]],
+        [7, CONTRIBUTION_PRIZE_BY_RANK[7]],
+        [8, CONTRIBUTION_PRIZE_BY_RANK[8]],
+        [9, CONTRIBUTION_PRIZE_BY_RANK[9]],
+        [10, CONTRIBUTION_PRIZE_BY_RANK[10]],
     ];
     el.innerHTML = rows.map(function(pair) {
         const place = pair[0];
