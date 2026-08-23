@@ -742,16 +742,13 @@
                 : _t('termDropImpactOk'));
         var riStatus;
         if (riOk) {
-            riStatus = (riCurrent != null)
-                ? _t('termDropImpactRiKeep', { value: _fmtAmount(riCurrent, 1) })
+            riStatus = (riCurrent != null && riCurrent > 0)
+                ? _fmtAmount(riCurrent, 1) + '%'
                 : _t('termDropImpactOk');
         } else if (riCurrent != null && riAfter != null) {
-            riStatus = _fmtAmount(riCurrent, 1) + ' → ' + _fmtAmount(riAfter, 1);
-        } else if (riCurrent != null) {
-            // Overall index will drop after a bad abandon period; show current with down marker.
-            riStatus = _fmtAmount(riCurrent, 1) + ' ↓';
+            riStatus = _fmtAmount(riCurrent, 1) + '% → ' + _fmtAmount(riAfter, 1) + '%';
         } else {
-            riStatus = _t('termDropImpactRiRisk');
+            riStatus = _t('termDropImpactRiPenalty') || '−8%...−15%';
         }
 
         return '' +
@@ -1314,12 +1311,13 @@
                 }
                 if (leaveNoPenalty) {
                     points.push('<li>' + _esc(_t('leaveConfirmPointNoPenalty')) + '</li>');
-                } else if (Number(_termState.karmaBurnPreview || 0) > 0) {
-                    points.push('<li>' + _esc(_t('leaveConfirmPointKarma', {
-                        karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1),
-                    })) + '</li>');
                 } else {
-                    points.push('<li class="is-warn">' + _esc(_t('termDropEffectRiCostly')) + '</li>');
+                    if (Number(_termState.karmaBurnPreview || 0) > 0) {
+                        points.push('<li>' + _esc(_t('leaveConfirmPointKarma', {
+                            karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1),
+                        })) + '</li>');
+                    }
+                    points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointRiPenalty')) + '</li>');
                 }
                 if (_termState.grantAvailable) {
                     var confirmGrantTotal = Number(_termState.grantTotal || 0);
