@@ -8739,7 +8739,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         if (!isViewerBroken && !isTesterBroken) {
             isViewerBroken = true; // default fallback
         }
-        const brokenTagHtml = `<div class="linked-side-broken-tag" style="color:#ff453a;font-size:11px;font-weight:600;margin-top:2px;display:flex;align-items:center;gap:3px;">💔 ${window.escapeHTML(window.t('mutualBalanceSideBroken', {}, lang) || 'Связь разорвана')}</div>`;
+        const brokenTagHtml = `<div class="linked-side-broken-tag" style="color:#ff453a;font-size:11px;font-weight:600;margin-top:2px;">${window.escapeHTML(window.t('mutualBalanceSideBrokenText', {}, lang) || 'Связь разорвана')}</div>`;
         if (isViewerBroken) theirBrokenTag = brokenTagHtml;
         if (isTesterBroken) myBrokenTag = brokenTagHtml;
 
@@ -8752,7 +8752,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     }
 
     const badgeHtml = isBroken
-        ? `<span class="linked-badge is-broken" style="background: rgba(255, 59, 48, 0.15); color: #ff453a; border-color: rgba(255, 59, 48, 0.3);">💔 ${window.escapeHTML(window.t('dossierRecruitModeMutual', {}, lang) || 'Взаимка')}</span>`
+        ? `<span class="linked-badge is-broken" style="background: rgba(255, 59, 48, 0.15); color: #ff453a; border-color: rgba(255, 59, 48, 0.3);">${window.escapeHTML(window.t('barterChipBroken', {}, lang) || '💔 Взаимка')}</span>`
         : `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>`;
 
     return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +

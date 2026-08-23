@@ -281,22 +281,11 @@
             || tester.reciprocal_app_id
             || 0
         );
-        if (Array.isArray(myTests)) {
-            var reciprocalTest = null;
-            if (reciprocalAppId > 0) {
-                reciprocalTest = myTests.find(function (item) {
-                    return Number(item.id || item.app_id || 0) === reciprocalAppId;
-                });
-            }
-            if (!reciprocalTest) {
-                reciprocalTest = myTests.find(function (item) {
-                    return Number(item.owner_id || 0) === Number(tester.tester_id || 0);
-                }) || null;
-            }
+        if (Array.isArray(myTests) && reciprocalAppId > 0) {
+            var reciprocalTest = myTests.find(function (item) {
+                return Number(item.id || item.app_id || 0) === reciprocalAppId;
+            });
             if (reciprocalTest) {
-                if (reciprocalAppId <= 0) {
-                    reciprocalAppId = Number(reciprocalTest.id || reciprocalTest.app_id || 0);
-                }
                 if (!theirAppName) theirAppName = String(reciprocalTest.name || '').trim();
                 if (!theirIconUrl) theirIconUrl = String(reciprocalTest.icon_url || '').trim();
             }
