@@ -124,7 +124,11 @@ function renderProjects(force) {
         const balanceAmount = (typeof formatUiAmount === 'function')
             ? formatUiAmount(visibilityStats.balance_bust || 0, 1)
             : String(Math.round(Number(visibilityStats.balance_bust || 0) * 10) / 10);
-        const reservedBust = (visibilityStats.projects || []).reduce(function(acc, p) {
+        const projectsList = (typeof myProjects !== 'undefined' && Array.isArray(myProjects)) ? myProjects : ((visibilityStats && visibilityStats.projects) || []);
+        const reservedBust = projectsList.reduce(function(acc, p) {
+            if (!p) return acc;
+            const status = String(p.status || p.app_status || 'active').toLowerCase();
+            if (status === 'completed' || status === 'archived') return acc;
             const mode = String(p.mode || 'mutual').toLowerCase();
             if (mode !== 'bounty' && mode !== 'hybrid') return acc + Number(p.protection_bust_pool || 0);
             const limit = Number(p.limit_bounty || 0);
