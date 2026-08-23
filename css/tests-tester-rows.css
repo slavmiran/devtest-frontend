@@ -678,6 +678,12 @@
     color: #ff9f0a;
 }
 
+.kicked-soft-penalty.is-safe {
+    background: rgba(0, 122, 255, 0.08);
+    border-color: rgba(0, 122, 255, 0.25);
+    color: #0a84ff;
+}
+
 .kicked-soft-penalty.is-justified {
     background: rgba(52, 199, 89, 0.08);
     border-color: rgba(52, 199, 89, 0.25);

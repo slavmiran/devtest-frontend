@@ -2159,28 +2159,10 @@ function renderTests(force) {
         if (test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail) {
             const leaveReasonRaw = String(test.leave_reason || '').trim();
             const isUnlinkedSoft = !!(test.is_unlinked_soft || String(test.progress_status || '').toLowerCase() === 'canceled_neutral');
-            const isDisputedKick = !isUnlinkedSoft && /disputed_active_kick/i.test(leaveReasonRaw);
-            const isJustifiedKick = !isUnlinkedSoft && /justified_inactive_kick/i.test(leaveReasonRaw);
-            let reasonDisplay = leaveReasonRaw
-                .replace(/^justified_inactive_kick:\s*/i, '')
-                .replace(/^disputed_active_kick:\s*/i, '')
-                .replace(/^justified_inactive_kick$/i, '')
-                .replace(/^disputed_active_kick$/i, '')
-                .replace(/^reciprocal_unlinked_(kick|leave|drop):\s*/i, '')
-                .replace(/^reciprocal_unlinked_(kick|leave|drop)$/i, '')
-                .trim();
-            const reasonCodeMap = {
-                no_response: window.t('kickReasonNoResponse', {}, lang),
-                inactive: window.t('kickReasonInactivity', {}, lang),
-                violation: window.t('kickReasonViolation', {}, lang),
-                other: window.t('kickReasonOther', {}, lang),
-            };
-            const codeMatch = reasonDisplay.match(/^(no_response|inactive|violation|other)(?:\s*:\s*(.*))?$/i);
-            if (codeMatch) {
-                const mapped = reasonCodeMap[String(codeMatch[1] || '').toLowerCase()] || codeMatch[1];
-                const note = String(codeMatch[2] || '').trim();
-                reasonDisplay = note ? (mapped + ': ' + note) : mapped;
-            }
+            const isSafeBreakKick = !isUnlinkedSoft && /safe_break_kick/i.test(leaveReasonRaw);
+            const isDisputedKick = !isUnlinkedSoft && !isSafeBreakKick && /disputed_active_kick/i.test(leaveReasonRaw);
+            const isJustifiedKick = !isUnlinkedSoft && !isSafeBreakKick && /justified_inactive_kick/i.test(leaveReasonRaw);
+            let reasonDisplay = formatKickLeaveReason(leaveReasonRaw, lang);
             if (!reasonDisplay && leaveReasonRaw && !isUnlinkedSoft) {
                 reasonDisplay = leaveReasonRaw;
             }
@@ -2192,19 +2174,25 @@ function renderTests(force) {
                 : window.t('kickedSoftBannerDesc', {}, lang);
             const penaltyHtml = isUnlinkedSoft
                 ? ''
-                : (isDisputedKick
-                    ? `<div class="kicked-soft-penalty is-disputed" onclick="showKickPenaltyDetailsModal(${Number(test.id)}, 'tester')" role="button" tabindex="0" title="Нажмите для анализа метрик">
-                        <span class="kicked-soft-penalty-icon">⚖️</span>
-                        <span>${window.escapeHTML(window.t('kickedSoftPenaltyDisputed', {}, lang))}</span>
+                : (isSafeBreakKick
+                    ? `<div class="kicked-soft-penalty is-safe" onclick="showKickPenaltyDetailsModal(${Number(test.id)}, 'tester')" role="button" tabindex="0" title="Нажмите для анализа метрик">
+                        <span class="kicked-soft-penalty-icon">🛡</span>
+                        <span>${window.escapeHTML(window.t('kickedSoftPenaltySafeBreak', {}, lang) || 'Безопасное окно • Без списаний')}</span>
                         <span class="kicked-soft-penalty-info">ℹ</span>
                       </div>`
-                    : (isJustifiedKick
-                        ? `<div class="kicked-soft-penalty is-justified" onclick="showKickPenaltyDetailsModal(${Number(test.id)}, 'tester')" role="button" tabindex="0" title="Нажмите для анализа метрик">
-                            <span class="kicked-soft-penalty-icon">📋</span>
-                            <span>${window.escapeHTML(window.t('kickedSoftPenaltyNone', {}, lang))}</span>
+                    : (isDisputedKick
+                        ? `<div class="kicked-soft-penalty is-disputed" onclick="showKickPenaltyDetailsModal(${Number(test.id)}, 'tester')" role="button" tabindex="0" title="Нажмите для анализа метрик">
+                            <span class="kicked-soft-penalty-icon">⚖️</span>
+                            <span>${window.escapeHTML(window.t('kickedSoftPenaltyDisputed', {}, lang))}</span>
                             <span class="kicked-soft-penalty-info">ℹ</span>
                           </div>`
-                        : ''));
+                        : (isJustifiedKick
+                            ? `<div class="kicked-soft-penalty is-justified" onclick="showKickPenaltyDetailsModal(${Number(test.id)}, 'tester')" role="button" tabindex="0" title="Нажмите для анализа метрик">
+                                <span class="kicked-soft-penalty-icon">📋</span>
+                                <span>${window.escapeHTML(window.t('kickedSoftPenaltyNone', {}, lang))}</span>
+                                <span class="kicked-soft-penalty-info">ℹ</span>
+                              </div>`
+                            : '')));
             const reasonHtml = (!isUnlinkedSoft && reasonDisplay)
                 ? `<div class="kicked-soft-reason">${window.escapeHTML(window.t('kickedSoftReasonLabel', { reason: reasonDisplay }, lang))}</div>`
                 : '';
@@ -3185,6 +3173,44 @@ function ppcPhaseModalLeave(event) {
     }
 }
 
+function formatKickLeaveReason(leaveReasonRaw, lang) {
+    if (!leaveReasonRaw) return '';
+    let reasonDisplay = String(leaveReasonRaw || '').trim();
+    // 1. Strip all system prefixes
+    reasonDisplay = reasonDisplay
+        .replace(/^(safe_break_kick|justified_inactive_kick|disputed_active_kick|safe_exit|justified_exit|costly_exit|mutual_debt_abandoned|abandoned|dropped|kicked_by_owner|reciprocal_unlinked_(kick|leave|drop)):\s*/gi, '')
+        .replace(/^(safe_break_kick|justified_inactive_kick|disputed_active_kick|safe_exit|justified_exit|costly_exit|mutual_debt_abandoned|abandoned|dropped|kicked_by_owner|reciprocal_unlinked_(kick|leave|drop))$/gi, '')
+        .trim();
+
+    const reasonCodeMap = {
+        no_response: window.t('kickReasonNoResponse', {}, lang) || 'Нет связи',
+        inactive: window.t('kickReasonInactivity', {}, lang) || 'Не выполняет чекины',
+        inactive_partner: window.t('kickReasonInactivity', {}, lang) || 'Неактивность партнёра',
+        violation: window.t('kickReasonViolation', {}, lang) || 'Нарушение договорённостей',
+        took_by_mistake: window.t('leaveReasonMistake', {}, lang) || 'Взял проект по ошибке',
+        not_suitable: window.t('leaveReasonNotSuitable', {}, lang) || 'Не подходит',
+        other: window.t('kickReasonOther', {}, lang) || 'Другое',
+        'другое': window.t('kickReasonOther', {}, lang) || 'Другое',
+    };
+
+    const codeMatch = reasonDisplay.match(/^(no_response|inactive_partner|inactive|violation|took_by_mistake|not_suitable|other|другое)(?:\s*:\s*(.*))?$/i);
+    if (codeMatch) {
+        const key = String(codeMatch[1] || '').toLowerCase();
+        const mapped = reasonCodeMap[key] || codeMatch[1];
+        const note = String(codeMatch[2] || '').trim();
+        if (note) {
+            const cleanNote = note.replace(/^(other|другое):\s*/i, '').trim();
+            if (key === 'other' || key === 'другое') {
+                return cleanNote ? (mapped + ': ' + cleanNote) : mapped;
+            }
+            return cleanNote ? (mapped + ' (' + cleanNote + ')') : mapped;
+        }
+        return mapped;
+    }
+    return reasonDisplay;
+}
+window.formatKickLeaveReason = formatKickLeaveReason;
+
 function showKickPenaltyDetailsModal(testId, role) {
     var lang = (typeof getLang === 'function') ? getLang() : 'ru';
     var test = null;
@@ -3194,52 +3220,67 @@ function showKickPenaltyDetailsModal(testId, role) {
     if (!test) return;
 
     var leaveReason = String(test.leave_reason || '').trim();
-    var isDisputed = /disputed_active_kick/i.test(leaveReason);
+    var isSafeBreak = /safe_break_kick/i.test(leaveReason);
+    var isDisputed = !isSafeBreak && /disputed_active_kick/i.test(leaveReason);
     var checkins = Number(test.checkins_count != null ? test.checkins_count : (test.checkins || 0));
     var skips = Number(test.skips_count != null ? test.skips_count : 0);
 
-    var statusText = isDisputed
-        ? window.t('kickDetailsTesterStatusActive', {}, lang)
-        : window.t('kickDetailsTesterStatusInactive', {}, lang);
-    var statusClass = isDisputed ? 'active' : 'inactive';
+    var statusText = isSafeBreak
+        ? (window.t('kickDetailsTesterStatusSafeBreak', {}, lang) || 'Безопасный период (<24ч от старта)')
+        : (isDisputed
+            ? window.t('kickDetailsTesterStatusActive', {}, lang)
+            : window.t('kickDetailsTesterStatusInactive', {}, lang));
+    var statusClass = isSafeBreak ? 'safe' : (isDisputed ? 'active' : 'inactive');
 
-    var skipsValueText = isDisputed
-        ? window.t('kickDetailsSkipsValueDisputed', { skips: skips }, lang)
-        : window.t('kickDetailsSkipsValueJustified', { skips: skips }, lang);
+    var skipsValueText = isSafeBreak
+        ? (window.t('kickDetailsSkipsValueSafeBreak', { skips: skips }, lang) || (skips + ' (в пределах безопасного окна)'))
+        : (isDisputed
+            ? window.t('kickDetailsSkipsValueDisputed', { skips: skips }, lang)
+            : window.t('kickDetailsSkipsValueJustified', { skips: skips }, lang));
 
     var riPenalty = Number(test.ri_penalty || (test.bad_periods_count && test.bad_periods_count >= 1 ? 15 : 8));
     if (!(riPenalty > 0)) riPenalty = 8;
 
     // Tester metrics
-    var testerBadgeText = isDisputed
-        ? window.t('kickDetailsStatusProtected', {}, lang)
-        : window.t('kickDetailsStatusInactivity', {}, lang);
-    var testerBadgeClass = isDisputed ? 'safe' : 'warning';
+    var testerBadgeText = isSafeBreak
+        ? (window.t('kickDetailsStatusSafe', {}, lang) || 'Безопасно')
+        : (isDisputed
+            ? window.t('kickDetailsStatusProtected', {}, lang)
+            : window.t('kickDetailsStatusInactivity', {}, lang));
+    var testerBadgeClass = (isSafeBreak || isDisputed) ? 'safe' : 'warning';
 
-    var testerKarmaVal = isDisputed
+    var testerKarmaVal = (isSafeBreak || isDisputed)
         ? window.t('kickDetailsKarmaProtected', {}, lang)
         : window.t('kickDetailsKarmaJustifiedTester', {}, lang);
-    var testerKarmaClass = isDisputed ? 'neutral' : 'danger';
+    var testerKarmaClass = (isSafeBreak || isDisputed) ? 'neutral' : 'danger';
 
-    var testerRiVal = isDisputed
-        ? window.t('kickDetailsRiProtectedTester', {}, lang)
-        : window.t('kickDetailsRiInactiveTester', {}, lang);
-    var testerRiClass = isDisputed ? 'safe' : 'danger';
+    var testerRiVal = isSafeBreak
+        ? (window.t('kickDetailsRiSafeBreak', {}, lang) || 'Без штрафа (безопасный период)')
+        : (isDisputed
+            ? window.t('kickDetailsRiProtectedTester', {}, lang)
+            : window.t('kickDetailsRiInactiveTester', {}, lang));
+    var testerRiClass = (isSafeBreak || isDisputed) ? 'safe' : 'danger';
 
     // Owner metrics
-    var ownerBadgeText = isDisputed
-        ? window.t('kickDetailsStatusPenalty', {}, lang)
-        : window.t('kickDetailsStatusJustified', {}, lang);
-    var ownerBadgeClass = isDisputed ? 'danger' : 'safe';
+    var ownerBadgeText = isSafeBreak
+        ? (window.t('kickDetailsStatusSafe', {}, lang) || 'Безопасно')
+        : (isDisputed
+            ? window.t('kickDetailsStatusPenalty', {}, lang)
+            : window.t('kickDetailsStatusJustified', {}, lang));
+    var ownerBadgeClass = isSafeBreak ? 'safe' : (isDisputed ? 'danger' : 'safe');
 
-    var ownerKarmaVal = isDisputed
-        ? (window.t('kickDetailsKarmaPenaltyOwner', {}, lang) || '-3.0 (списание за спорный кик)')
-        : window.t('kickDetailsKarmaJustifiedOwner', {}, lang);
+    var ownerKarmaVal = isSafeBreak
+        ? window.t('kickDetailsKarmaJustifiedOwner', {}, lang)
+        : (isDisputed
+            ? (window.t('kickDetailsKarmaPenaltyOwner', {}, lang) || '-3.0 (списание за спорный кик)')
+            : window.t('kickDetailsKarmaJustifiedOwner', {}, lang));
     var ownerKarmaClass = isDisputed ? 'danger' : 'neutral';
 
-    var ownerRiVal = isDisputed
-        ? window.t('kickDetailsRiDisputedOwner', { ri_penalty: String(riPenalty) }, lang)
-        : window.t('kickDetailsRiJustifiedOwner', {}, lang);
+    var ownerRiVal = isSafeBreak
+        ? (window.t('kickDetailsRiSafeBreak', {}, lang) || 'Без штрафа (безопасный период)')
+        : (isDisputed
+            ? window.t('kickDetailsRiDisputedOwner', { ri_penalty: String(riPenalty) }, lang)
+            : window.t('kickDetailsRiJustifiedOwner', {}, lang));
     var ownerRiClass = isDisputed ? 'danger' : 'safe';
 
     var html = '' +
