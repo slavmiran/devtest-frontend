@@ -320,6 +320,7 @@
         });
         var noPenalty = justifiedAllowed || isSafeBreak;
         var riOk = noPenalty;
+        var myRiPenalty = Number(data.my_ri_penalty || _resolveConcreteRiPenalty());
         var currentRi = null;
         try {
             var vs = (typeof visibilityStats !== 'undefined') ? visibilityStats : (window.visibilityStats || null);
@@ -330,6 +331,7 @@
         } catch (e) { /* ignore */ }
 
         if (_termState) {
+            _termState.myRiPenalty = myRiPenalty;
             _termState.isSafeExit = isSafeBreak;
             _termState.noPenaltyExit = noPenalty;
             if (noPenalty) {
@@ -348,7 +350,10 @@
                 : '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
                     '<div class="leave-status-title">' + _esc(_t('leaveAbandonedTitle')) + '</div>' +
                     '<div class="leave-status-desc">' + _esc(
-                        _t('leaveAbandonedDesc', { karma: _fmtAmount(karmaBurn, 1) })
+                        _t('leaveAbandonedDesc', {
+                            karma: _fmtAmount(karmaBurn, 1),
+                            ri_penalty: String(myRiPenalty),
+                        })
                     ) + '</div>' +
                     '<div class="leave-status-desc" style="margin-top:8px;">' + _esc(_t('leaveSafeWaitWarning', {
                         count: waitCount,
@@ -406,6 +411,7 @@
                 riOk: riOk,
                 karmaBurn: noPenalty ? 0 : karmaBurn,
                 riCurrent: currentRi,
+                riPenalty: myRiPenalty,
                 hint: impactHint,
                 statusBanner: mutualStatusBanner,
                 ownerCycle: true,
@@ -460,6 +466,7 @@
             ? '@' + String(ctx.testerUsername).replace(/^@+/, '')
             : (ctx.testerFullName || _t('idLabel', { id: ctx.testerId || 0 }));
 
+        var kickOwnerRiPenalty = _resolveConcreteRiPenalty();
         var verdictKey = isSafeBreak
             ? 'kickVerdictSafeBreak'
             : (isBountyJoin
@@ -477,21 +484,26 @@
         } else {
             ownerEffects.push(_t('kickOwnerNoMoneyMutual'));
         }
-        ownerEffects.push(_t((isSafeBreak || isDisciplinaryKick) ? 'kickOwnerReliabilitySafe' : 'kickOwnerReliabilityRisk'));
+        ownerEffects.push(_t((isSafeBreak || isDisciplinaryKick) ? 'kickOwnerReliabilitySafe' : 'kickOwnerReliabilityRisk', {
+            ri_penalty: String(kickOwnerRiPenalty),
+        }));
 
         var testerEffects = [
             _t('kickTesterEffectAccess'),
-            _t(isSafeBreak || !isDisciplinaryKick ? 'kickTesterEffectNeutral' : 'kickTesterEffectJustified'),
+            _t(isSafeBreak || !isDisciplinaryKick ? 'kickTesterEffectNeutral' : 'kickTesterEffectJustified', {
+                ri_penalty: '8',
+                karma: '3',
+            }),
         ];
 
         var statusBanner = (isSafeBreak || isDisciplinaryKick)
             ? '<div class="leave-status-banner is-justified term-status-compact term-impact-status-banner">' +
                 '<div class="leave-status-title">' + _esc(_t(isSafeBreak ? 'termSafeExitBadge' : 'termKickSafeBadge')) + '</div>' +
-                '<div class="leave-status-desc">' + _esc(_t(verdictKey)) + '</div>' +
+                '<div class="leave-status-desc">' + _esc(_t(verdictKey, { ri_penalty: String(kickOwnerRiPenalty) })) + '</div>' +
               '</div>'
             : '<div class="leave-status-banner is-penalty term-status-compact term-impact-status-banner">' +
                 '<div class="leave-status-title">' + _esc(_t('termKickRiskBadge')) + '</div>' +
-                '<div class="leave-status-desc">' + _esc(_t(verdictKey)) + '</div>' +
+                '<div class="leave-status-desc">' + _esc(_t(verdictKey, { ri_penalty: String(kickOwnerRiPenalty) })) + '</div>' +
               '</div>';
 
         var joinNote = '';
@@ -718,6 +730,22 @@
         return null;
     }
 
+    function _resolveConcreteRiPenalty(customPenalty) {
+        if (customPenalty != null && Number(customPenalty) > 0) {
+            return Number(customPenalty);
+        }
+        if (_termState && Number(_termState.myRiPenalty || 0) > 0) {
+            return Number(_termState.myRiPenalty);
+        }
+        try {
+            var vs = (typeof visibilityStats !== 'undefined') ? visibilityStats : (window.visibilityStats || null);
+            var badCount = vs ? Number(vs.bad_periods_count || 0) : 0;
+            return badCount >= 1 ? 15 : 8;
+        } catch (e) {
+            return 8;
+        }
+    }
+
     function _renderImpactMeters(opts) {
         opts = opts || {};
         var karmaOk = opts.karmaOk !== false;
@@ -728,6 +756,7 @@
         var blockClass = 'term-impact-block' + (opts.blockClass ? (' ' + opts.blockClass) : '');
         var ownerCycle = opts.ownerCycle === true ? _renderOwnerCyclePlea() : '';
         var karmaBurn = Math.max(0, Number(opts.karmaBurn || 0));
+        var riPenaltyAmount = _resolveConcreteRiPenalty(opts.riPenalty);
         var riCurrent = (opts.riCurrent != null && Number.isFinite(Number(opts.riCurrent)))
             ? Number(opts.riCurrent)
             : _currentReliabilityIndex();
@@ -748,7 +777,31 @@
         } else if (riCurrent != null && riAfter != null) {
             riStatus = _fmtAmount(riCurrent, 1) + '% → ' + _fmtAmount(riAfter, 1) + '%';
         } else {
-            riStatus = _t('termDropImpactRiPenalty') || '−8%...−15%';
+            riStatus = _t('termDropImpactRiPenalty', { ri_penalty: String(riPenaltyAmount) }) || ('−' + riPenaltyAmount + '%');
+        }
+
+        var isSafe = karmaOk && riOk;
+        var detailsHtml = ownerCycle + statusBanner + extraHtml + (hint ? '<div class="term-impact-hint">' + _esc(hint) + '</div>' : '');
+
+        var accordionHtml = '';
+        if (detailsHtml.trim()) {
+            var accordionTitle = _t(isSafe ? 'termImpactAccordionTitleSafe' : 'termImpactAccordionTitle') || (isSafe ? 'Подробности выхода' : 'Подробности и риски выхода');
+            var accordionIcon = isSafe ? 'ℹ️' : '⚠️';
+            accordionHtml = '' +
+                '<div class="term-impact-accordion' + (isSafe ? ' is-safe' : ' is-warn') + '">' +
+                    '<button type="button" class="term-impact-toggle" onclick="toggleTermImpactAccordion(this)" aria-expanded="false">' +
+                        '<div class="term-impact-toggle-content">' +
+                            '<span class="term-impact-toggle-icon">' + accordionIcon + '</span>' +
+                            '<span class="term-impact-toggle-title">' + _esc(accordionTitle) + '</span>' +
+                        '</div>' +
+                        '<span class="term-impact-toggle-chevron" aria-hidden="true">▼</span>' +
+                    '</button>' +
+                    '<div class="term-impact-drawer">' +
+                        '<div class="term-impact-drawer-inner">' +
+                            detailsHtml +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
         }
 
         return '' +
@@ -770,10 +823,7 @@
                         '<span class="term-impact-status">' + _esc(riStatus) + '</span>' +
                     '</div>' +
                 '</div>' +
-                ownerCycle +
-                statusBanner +
-                extraHtml +
-                (hint ? '<div class="term-impact-hint">' + _esc(hint) + '</div>' : '') +
+                accordionHtml +
             '</div>';
     }
 
@@ -1312,12 +1362,15 @@
                 if (leaveNoPenalty) {
                     points.push('<li>' + _esc(_t('leaveConfirmPointNoPenalty')) + '</li>');
                 } else {
+                    var leaveRiPenalty = Number(_termState.myRiPenalty || _resolveConcreteRiPenalty());
                     if (Number(_termState.karmaBurnPreview || 0) > 0) {
                         points.push('<li>' + _esc(_t('leaveConfirmPointKarma', {
                             karma: _fmtAmount(_termState.karmaBurnPreview || 0, 1),
                         })) + '</li>');
                     }
-                    points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointRiPenalty')) + '</li>');
+                    points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointRiPenalty', {
+                        ri_penalty: String(leaveRiPenalty),
+                    })) + '</li>');
                 }
                 if (_termState.grantAvailable) {
                     var confirmGrantTotal = Number(_termState.grantTotal || 0);
@@ -1359,6 +1412,7 @@
                 points.push('<li class="is-warn"><div class="leave-confirm-main">' + bustMain + '</div>' + bustSub + '</li>');
             }
             var dropKarmaBurn = Number(_termState.karmaBurnPreview || 0);
+            var dropRiPenalty = _resolveConcreteRiPenalty();
             points.push('<li' + ((_termState.isSafeExit || dropKarmaBurn <= 0) ? '' : ' class="is-warn"') + '>' +
                 _esc((_termState.isSafeExit || dropKarmaBurn <= 0)
                     ? _t('termDropEffectNoKarma')
@@ -1367,7 +1421,9 @@
                     })) +
                 '</li>');
             points.push('<li' + (_termState.isSafeExit ? '' : ' class="is-warn"') + '>' +
-                _esc(_t(_termState.isSafeExit ? 'termDropEffectRiSafe' : 'termDropEffectRiCostly')) +
+                _esc(_t(_termState.isSafeExit ? 'termDropEffectRiSafe' : 'termDropEffectRiCostly', {
+                    ri_penalty: String(dropRiPenalty),
+                })) +
                 '</li>');
             body.innerHTML = '' +
                 '<p class="leave-confirm-lead">' + _esc(_t(
@@ -1394,12 +1450,18 @@
             }
             var isSafeBreakKick = !!_termState.isSafeBreak;
             var isDisciplinaryKick = !!_termState.isDisciplinaryKick;
+            var kickOwnerRiPenalty = _resolveConcreteRiPenalty();
             if (isSafeBreakKick) {
                 points.push('<li>' + _esc(_t('termConfirmPointKickNoPenalty')) + '</li>');
             } else if (isDisciplinaryKick) {
-                points.push('<li>' + _esc(_t('termConfirmPointKickTesterPenalized')) + '</li>');
+                points.push('<li>' + _esc(_t('termConfirmPointKickTesterPenalized', {
+                    ri_penalty: '8',
+                    karma: '3',
+                })) + '</li>');
             } else {
-                points.push('<li class="is-warn">' + _esc(_t('termConfirmPointKickOwnerPenalized')) + '</li>');
+                points.push('<li class="is-warn">' + _esc(_t('termConfirmPointKickOwnerPenalized', {
+                    ri_penalty: String(kickOwnerRiPenalty),
+                })) + '</li>');
             }
             if (_termState.grantAvailable && unlink) {
                 var confirmGrantTotal = Number(_termState.grantTotal || 0);
@@ -2027,6 +2089,19 @@
         }
     }
 
+    function toggleTermImpactAccordion(btn) {
+        if (!btn) return;
+        var accordion = btn.closest('.term-impact-accordion');
+        if (!accordion) return;
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', !expanded ? 'true' : 'false');
+        accordion.classList.toggle('is-open', !expanded);
+        if (window.tg && window.tg.HapticFeedback) {
+            try { window.tg.HapticFeedback.selectionChanged(); } catch (e) {}
+        }
+    }
+
+    window.toggleTermImpactAccordion = toggleTermImpactAccordion;
     window.openTerminationSheet = openTerminationSheet;
     window.closeTerminationSheet = closeTerminationSheet;
     window.requestTerminationConfirm = requestTerminationConfirm;

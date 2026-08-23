@@ -1296,6 +1296,107 @@
     border-top: none;
 }
 
+/* Term Impact Accordion / Collapsible Details */
+.term-impact-accordion {
+    margin-top: 10px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-surface-2, rgba(255, 255, 255, 0.05)) 80%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-subtle, rgba(255, 255, 255, 0.1)) 70%, transparent);
+    overflow: hidden;
+    transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.term-impact-accordion.is-open {
+    background: color-mix(in srgb, var(--bg-surface-2, rgba(255, 255, 255, 0.08)) 95%, transparent);
+    border-color: color-mix(in srgb, var(--accent-color, #0088cc) 35%, var(--border-subtle));
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.term-impact-accordion.is-warn.is-open {
+    border-color: color-mix(in srgb, var(--warning, #ff9500) 45%, var(--border-subtle));
+}
+
+.term-impact-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-color, #ffffff);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    outline: none;
+    gap: 8px;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.term-impact-toggle:active {
+    opacity: 0.8;
+}
+
+.term-impact-toggle-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.term-impact-toggle-icon {
+    font-size: 13px;
+    line-height: 1;
+}
+
+.term-impact-toggle-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
+}
+
+.term-impact-toggle-chevron {
+    font-size: 10px;
+    color: var(--hint-color, rgba(255, 255, 255, 0.5));
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+    display: inline-block;
+}
+
+.term-impact-accordion.is-open .term-impact-toggle-chevron {
+    transform: rotate(180deg);
+    color: var(--accent-color, #0088cc);
+}
+
+.term-impact-accordion.is-warn.is-open .term-impact-toggle-chevron {
+    color: var(--warning, #ff9500);
+}
+
+.term-impact-drawer {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.term-impact-accordion.is-open .term-impact-drawer {
+    grid-template-rows: 1fr;
+}
+
+.term-impact-drawer-inner {
+    overflow: hidden;
+    padding: 0 10px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.term-impact-drawer-inner .term-impact-status-banner {
+    margin-top: 4px !important;
+    border-top: none !important;
+    padding-top: 0 !important;
+}
+
 .term-kick-details.leave-side--mine {
     margin-top: 10px;
     border-top: none;
