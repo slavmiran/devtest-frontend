@@ -1010,6 +1010,7 @@
             grantTotal: 0,
             grantLost: 0,
             contractLost: 0,
+            isReciprocalActive: false,
             riOk: true,
             preserveHtml: '',
         };
@@ -1254,6 +1255,7 @@
 
         if (_termState) {
             _termState.joinType = joinType;
+            _termState.isReciprocalActive = isReciprocalActive;
             _termState.grantAvailable = grantStillAvailable && grantTotal > 0;
             _termState.grantTotal = grantTotal;
             _termState.mySkips = mySkips;
@@ -1459,7 +1461,7 @@
         } else {
             if (title) title.textContent = _t('termConfirmTitleKick');
             points.push('<li>' + _esc(_t('termConfirmPointKickPrimary')) + '</li>');
-            if (_isMutualJoin(_termState.joinType)) {
+            if (_isMutualJoin(_termState.joinType) && _termState.isReciprocalActive) {
                 points.push('<li>' + _esc(unlink
                     ? _t('termConfirmPointKickMirror')
                     : _t('termConfirmPointKickKeepMirror')) + '</li>');

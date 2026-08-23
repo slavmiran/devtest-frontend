@@ -8804,12 +8804,15 @@ function _renderDossierLinkedSimpleCard(rel, options) {
         || (options.forcePrimary !== false && _isDossierRelationPrimary(rel, options));
 
     const isMutualOneSided = type === 'mutual_they_test_me'
+        || type === 'mutual_i_test_them'
         || (type === 'mutual' && !(Number(rel.their_app_id || 0) > 0));
     let badgeKey = 'linkedBadgeDirect';
     let badgeClass = 'is-direct';
+    let badgeStyle = '';
     if (isMutualOneSided) {
-        badgeKey = 'linkedBadgeMutual';
-        badgeClass = 'is-mutual';
+        badgeKey = 'barterChipBroken';
+        badgeClass = 'is-broken';
+        badgeStyle = 'style="background: rgba(255, 59, 48, 0.15); color: #ff453a; border-color: rgba(255, 59, 48, 0.3);"';
     } else if (isContract) {
         badgeKey = 'linkedBadgeBounty';
         badgeClass = 'is-bounty';
@@ -8860,6 +8863,16 @@ function _renderDossierLinkedSimpleCard(rel, options) {
     if (!appName) appName = window.t('unknownLabel', {}, lang);
 
     const directionKey = iTestThem ? 'linkedDirectionITestThem' : 'linkedDirectionTheyTestMe';
+    let directionText = window.t(directionKey, {}, lang);
+    let directionClass = 'linked-card-direction';
+    let directionStyle = '';
+    if (isMutualOneSided) {
+        directionText = iTestThem
+            ? (window.t('linkedDirectionITestThemBroken', {}, lang) || 'Вы тестируете его проект • Связь разорвана')
+            : (window.t('linkedDirectionTheyTestMeBroken', {}, lang) || 'Он тестирует ваш проект • Связь разорвана');
+        directionClass = 'linked-card-direction is-debt';
+        directionStyle = 'style="color: #ff453a;"';
+    }
     const reward = isContract ? _resolveDossierLinkedContractReward(rel, options) : null;
 
     let days = 0;
@@ -8897,10 +8910,10 @@ function _renderDossierLinkedSimpleCard(rel, options) {
         );
     }
 
-    return `<div class="linked-project-card is-static${isContract ? ' is-bounty' : ' is-direct'}${isPrimary ? ' is-primary-link' : ''}${options.isSecondary ? ' is-secondary-link' : ''}">` +
+    return `<div class="linked-project-card is-static${isContract ? ' is-bounty' : (isMutualOneSided ? ' is-broken' : ' is-direct')}${isPrimary ? ' is-primary-link' : ''}${options.isSecondary ? ' is-secondary-link' : ''}">` +
         `<div class="linked-card-meta">` +
-            `<span class="linked-badge ${badgeClass}${reward ? ' has-reward' : ''}"${badgeTitle ? ` title="${window.escapeHTML(badgeTitle)}"` : ''}>${window.escapeHTML(badgeText)}</span>` +
-            `<span class="linked-card-direction">${window.escapeHTML(window.t(directionKey, {}, lang))}</span>` +
+            `<span class="linked-badge ${badgeClass}${reward ? ' has-reward' : ''}"${badgeStyle}${badgeTitle ? ` title="${window.escapeHTML(badgeTitle)}"` : ''}>${window.escapeHTML(badgeText)}</span>` +
+            `<span class="${directionClass}"${directionStyle}>${window.escapeHTML(directionText)}</span>` +
         `</div>` +
         `<div class="linked-simple-row">` +
             renderIcon(appName, iconUrl) +

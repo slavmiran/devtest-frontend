@@ -372,10 +372,16 @@ function renderProjects(force) {
                     testerPrefixHtml = '<span class="tester-invite-prefix">🔗</span>';
                 }
                 let testerDay = 0;
-                if (tester.start_date) {
-                    const startDt = new Date(tester.start_date);
-                    if (!Number.isNaN(startDt.getTime())) {
-                        testerDay = Math.max(1, Math.floor((todayDate - startDt) / (1000 * 60 * 60 * 24)) + 1);
+                if (tester.testing_days != null && Number(tester.testing_days) > 0) {
+                    testerDay = Number(tester.testing_days);
+                } else if (tester.start_date) {
+                    if (typeof getUserTestingDay === 'function') {
+                        testerDay = getUserTestingDay(tester.start_date, tester.testing_days);
+                    } else {
+                        const startDt = new Date(tester.start_date);
+                        if (!Number.isNaN(startDt.getTime())) {
+                            testerDay = Math.max(1, Math.floor((todayDate - startDt) / (1000 * 60 * 60 * 24)) + 1);
+                        }
                     }
                 }
                 const testerDayHtml = testerDay > 0

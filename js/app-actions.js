@@ -121,7 +121,7 @@ function buildCheckpointReportPrefill(appId, messageLang) {
     }).join('\n\n') + '\n\n';
 }
 
-function openOwnerCheckpointChat(ownerUsername, text) {
+function openOwnerCheckpointChat(ownerUsername, text, options) {
     var normalizedUsername = String(ownerUsername || '').replace('@', '').trim();
     if (!normalizedUsername) return false;
 
@@ -130,9 +130,11 @@ function openOwnerCheckpointChat(ownerUsername, text) {
         try {
             if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
                 navigator.clipboard.writeText(messageText).then(function() {
-                    showToast(window.t('checkpointReportCopied', {
-                        username: '@' + normalizedUsername,
-                    }, lang));
+                    if (!options || options.showCopyToast !== false) {
+                        showToast(window.t('checkpointReportCopied', {
+                            username: '@' + normalizedUsername,
+                        }, lang));
+                    }
                 }).catch(function() {});
             }
         } catch (error) {}
@@ -148,7 +150,9 @@ function openOwnerCheckpointChat(ownerUsername, text) {
             window.location.href = 'https://t.me/' + normalizedUsername + '?text=' + encodedText;
         }
     }
-    _pendingScreenshotReminderUsername = normalizedUsername;
+    if (!options || options.trackScreenshotReminder !== false) {
+        _pendingScreenshotReminderUsername = normalizedUsername;
+    }
     return true;
 }
 
@@ -1784,6 +1788,26 @@ async function decideOffer(offerId, action, event) {
     }
     if (!offerId) return;
 
+    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+    var card = document.querySelector(`.offer-card[data-offer-id="${offerId}"]`);
+    var clickedBtn = event && event.currentTarget ? event.currentTarget : null;
+    var prevText = clickedBtn ? clickedBtn.textContent : '';
+
+    if (card) {
+        var btns = card.querySelectorAll('button');
+        btns.forEach(function(b) {
+            b.disabled = true;
+            b.style.opacity = '0.6';
+            b.style.cursor = 'not-allowed';
+        });
+        if (clickedBtn) {
+            var spinText = action === 'accept'
+                ? (window.t('acceptingOffer', {}, lang) || 'Принятие...')
+                : (window.t('rejectingOffer', {}, lang) || 'Отклонение...');
+            clickedBtn.innerHTML = '<span class="offer-btn-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px;"></span>' + window.escapeHTML(spinText);
+        }
+    }
+
     try {
         const response = await fetch(`${API_BASE}/offers/${offerId}/${action}`, {
             method: 'POST',
@@ -1792,14 +1816,62 @@ async function decideOffer(offerId, action, event) {
         });
         const result = await response.json();
         if (result.status !== 'success') {
+            if (card) {
+                var btns = card.querySelectorAll('button');
+                btns.forEach(function(b) {
+                    b.disabled = false;
+                    b.style.opacity = '1';
+                    b.style.cursor = 'pointer';
+                });
+                if (clickedBtn && prevText) clickedBtn.textContent = prevText;
+            }
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
         }
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        await Promise.all([loadTasks(), loadIncomingOffers({ background: true })]);
-        loadProjects(true).catch(() => {});
+
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        if (card) {
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
+            setTimeout(function() {
+                try { card.remove(); } catch (e) {}
+            }, 300);
+        }
+
+        if (typeof _lastFetchTimes === 'object' && _lastFetchTimes) {
+            _lastFetchTimes.tests = 0;
+            _lastFetchTimes.offers = 0;
+        }
+        if (typeof _testsInFlight !== 'undefined') {
+            _testsInFlight = null;
+        }
+
+        await Promise.all([
+            loadTasks(false),
+            loadIncomingOffers({ background: false })
+        ]);
+        if (typeof renderTests === 'function') renderTests();
+        if (typeof renderIncomingOffers === 'function') renderIncomingOffers();
+        loadProjects(true).catch(function() {});
+
+        if (action === 'accept' && typeof showToast === 'function') {
+            showToast(window.t('offerAcceptedToast', {}, lang) || '✅ Взаимный обмен принят! Проект добавлен в список тестов.');
+        }
     } catch (error) {
         console.error('Offer decision error:', error);
+        if (card) {
+            var btns = card.querySelectorAll('button');
+            btns.forEach(function(b) {
+                b.disabled = false;
+                b.style.opacity = '1';
+                b.style.cursor = 'pointer';
+            });
+            if (clickedBtn && prevText) clickedBtn.textContent = prevText;
+        }
         handleApiError('network_error');
     }
 }

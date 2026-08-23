@@ -1032,7 +1032,13 @@
         }
 
         if (typeof openOwnerCheckpointChat === 'function') {
-            openOwnerCheckpointChat(username, text);
+            openOwnerCheckpointChat(username, text, {
+                trackScreenshotReminder: false,
+                showCopyToast: false,
+            });
+            if (typeof showToast === 'function') {
+                showToast(_t('bellRemindSentToast', {}, 'ru') || '✉️ Текст скопирован, открываем диалог...');
+            }
         } else {
             try {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
