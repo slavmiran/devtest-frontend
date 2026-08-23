@@ -302,6 +302,14 @@
             }
         }
 
+        var partnerProgressStatus = String(tester.reciprocal_partner_progress_status || '').toLowerCase();
+        var isPartnerLeft = partnerProgressStatus === 'abandoned'
+            || partnerProgressStatus === 'justified_exit'
+            || partnerProgressStatus === 'kicked_by_owner'
+            || partnerProgressStatus === 'canceled_neutral'
+            || partnerProgressStatus === 'dropped';
+        var isBroken = !!options.leftSoft || !!tester.is_left_soft || !!tester.is_broken_reciprocal || isPartnerLeft;
+
         openMutualBalanceModal(safeProjectId, null, {
             context: 'projects',
             projectId: safeProjectId,
@@ -317,7 +325,7 @@
             theirIconUrl: theirIconUrl,
             testerSnapshot: tester,
             isMutualDebt: !!tester.is_mutual_debt,
-            leftSoft: !!options.leftSoft,
+            leftSoft: isBroken,
             reciprocalAppId: reciprocalAppId,
         });
     }
@@ -383,9 +391,6 @@
                 isDebt: !!_balanceState.isMutualDebt,
                 isBroken: !!_balanceState.leftSoft,
             });
-            if (_balanceState.leftSoft && _isMutualJoin(joinType)) {
-                titleEl.textContent = _t('mutualBalanceTitle');
-            }
         }
 
         body.innerHTML = _renderBalanceLoadingSkeleton();

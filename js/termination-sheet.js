@@ -484,6 +484,7 @@
         } else {
             ownerEffects.push(_t('kickOwnerNoMoneyMutual'));
         }
+        ownerEffects.push(_t((isSafeBreak || isDisciplinaryKick) ? 'kickOwnerKarmaSafe' : 'kickOwnerKarmaRisk'));
         ownerEffects.push(_t((isSafeBreak || isDisciplinaryKick) ? 'kickOwnerReliabilitySafe' : 'kickOwnerReliabilityRisk', {
             ri_penalty: String(kickOwnerRiPenalty),
         }));
@@ -1639,7 +1640,8 @@
             var currentTest = opts.test || _findLocalTest(appId);
             var testName = (currentTest && (currentTest.name || currentTest.app_name)) || '';
             var testIcon = (currentTest && (currentTest.icon_url || currentTest.icon)) || '';
-            var testPkg = (currentTest && currentTest.package_name) || '';
+            var testPkg = (currentTest && (currentTest.package_name || currentTest.package || currentTest.external_package_name)) || '';
+            var playStoreUrl = (currentTest && currentTest.play_store_url) || '';
             var ownerUsername = (currentTest && currentTest.owner_username) || '';
             var ownerLabel = ownerUsername ? '@' + String(ownerUsername).replace(/^@+/, '') : '';
 
@@ -1654,12 +1656,13 @@
             '</div>';
 
             bodyHtml = '<div class="term-completion-notice">' + _esc(_t('termCompletionUnlinkedDesc')) + '</div>';
-            if (currentTest) {
+            if (currentTest || appId > 0 || testPkg) {
                 appCardHtml = _renderCompletionAppBox({
-                    appId: Number(currentTest.id || currentTest.app_id || appId || 0),
-                    name: testName,
+                    appId: Number((currentTest && (currentTest.id || currentTest.app_id)) || appId || 0),
+                    name: testName || (currentTest && currentTest.title) || 'App',
                     iconUrl: testIcon,
                     packageName: testPkg,
+                    playStoreUrl: playStoreUrl,
                     ownerUsername: ownerLabel,
                     isSoftTail: false,
                 });
@@ -1679,9 +1682,13 @@
         overlay.classList.add('active');
     }
 
+    var _completionAppCache = {};
+
     function _renderCompletionAppBox(appInfo) {
         var name = appInfo.name || 'App';
         var appId = Number(appInfo.appId || 0);
+        _completionAppCache[appId] = appInfo;
+
         var iconHtml = '';
         if (appInfo.iconUrl) {
             iconHtml = '<img class="term-comp-app-icon" src="' + _esc(appInfo.iconUrl) + '" alt="" ' +
@@ -1701,6 +1708,9 @@
             ? '<div class="term-comp-app-pkg">' + _esc(appInfo.packageName) + '</div>'
             : '';
 
+        var pkgAttr = appInfo.packageName ? ' data-package="' + _esc(appInfo.packageName) + '"' : '';
+        var urlAttr = appInfo.playStoreUrl ? ' data-play-url="' + _esc(appInfo.playStoreUrl) + '"' : '';
+
         return '' +
             '<div class="term-comp-app-box" id="term-comp-app-box-' + appId + '">' +
                 '<div class="term-comp-app-main">' +
@@ -1711,7 +1721,8 @@
                         pkgLine +
                     '</div>' +
                 '</div>' +
-                '<button type="button" class="btn btn-secondary term-comp-uninstall-btn" id="term-comp-btn-' + appId + '" ' +
+                '<button type="button" class="btn btn-secondary term-comp-uninstall-btn" id="term-comp-btn-' + appId + '"' +
+                pkgAttr + urlAttr + ' ' +
                 'onclick="handleCompletionUninstallClick(' + appId + ', ' + (appInfo.isSoftTail ? 'true' : 'false') + ')">' +
                     _esc(_t('termCompletionUninstallBtn')) +
                 '</button>' +
@@ -1720,22 +1731,36 @@
 
     async function handleCompletionUninstallClick(appId, isSoftTail) {
         var safeAppId = Number(appId || 0);
-        var test = _findLocalTest(safeAppId);
-        if (typeof openKickedTestPlayStore === 'function') {
-            openKickedTestPlayStore(safeAppId);
-        } else {
-            var url = (test && typeof resolveTestPlayStoreUrl === 'function')
-                ? resolveTestPlayStoreUrl(test)
-                : ('https://play.google.com/store/apps/details?id=' + (test && test.package_name || ''));
-            if (url) {
-                try {
-                    if (typeof tg !== 'undefined' && tg && typeof tg.openLink === 'function') {
-                        tg.openLink(url);
-                    } else {
-                        window.open(url, '_blank', 'noopener,noreferrer');
-                    }
-                } catch (e) {}
+        var cached = _completionAppCache[safeAppId] || {};
+        var btn = document.getElementById('term-comp-btn-' + safeAppId);
+        var explicitUrl = (btn && btn.getAttribute('data-play-url')) || cached.playStoreUrl || '';
+        var pkg = (btn && btn.getAttribute('data-package')) || cached.packageName || '';
+
+        var finalUrl = explicitUrl;
+        if (!finalUrl && pkg) {
+            finalUrl = 'https://play.google.com/store/apps/details?id=' + encodeURIComponent(pkg);
+        }
+        if (!finalUrl) {
+            var test = _findLocalTest(safeAppId);
+            if (test && typeof resolveTestPlayStoreUrl === 'function') {
+                finalUrl = resolveTestPlayStoreUrl(test);
+            } else if (test && (test.package_name || test.package)) {
+                finalUrl = 'https://play.google.com/store/apps/details?id=' + encodeURIComponent(test.package_name || test.package);
             }
+        }
+
+        if (finalUrl) {
+            try {
+                if (typeof tg !== 'undefined' && tg && typeof tg.openLink === 'function') {
+                    tg.openLink(finalUrl);
+                } else {
+                    window.open(finalUrl, '_blank', 'noopener,noreferrer');
+                }
+            } catch (e) {
+                window.open(finalUrl, '_blank', 'noopener,noreferrer');
+            }
+        } else if (typeof showToast === 'function') {
+            showToast(_t('kickedSoftUninstallMissing') || 'Не удалось открыть Google Play');
         }
 
         // If it's a soft-tail card for reciprocal test, dismiss it in DB so it doesn't appear on My Tests page
@@ -1755,11 +1780,8 @@
             } catch (e) {}
         }
 
-        var btn = document.getElementById('term-comp-btn-' + safeAppId);
         if (btn) {
             btn.classList.add('is-clicked');
-            btn.textContent = _t('termCompletionUninstallDone') || '✅ Открыто в Google Play';
-            btn.disabled = true;
         }
     }
 

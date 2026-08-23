@@ -323,7 +323,13 @@ function renderProjects(force) {
                 const joinType = String(tester.join_type || 'invite').toLowerCase();
                 const reciprocalAppId = Number(tester.reciprocal_app_id || 0);
                 const isMutualLike = joinType === 'mutual' || joinType === 'prelaunch';
-                const isBrokenReciprocal = isMutualLike && reciprocalAppId <= 0;
+                const partnerProgressStatus = String(tester.reciprocal_partner_progress_status || '').toLowerCase();
+                const isPartnerLeft = partnerProgressStatus === 'abandoned'
+                    || partnerProgressStatus === 'justified_exit'
+                    || partnerProgressStatus === 'kicked_by_owner'
+                    || partnerProgressStatus === 'canceled_neutral'
+                    || partnerProgressStatus === 'dropped';
+                const isBrokenReciprocal = isMutualLike && (reciprocalAppId <= 0 || !!tester.is_broken_reciprocal || isPartnerLeft);
                 const isLeftSoft = !!tester.is_left_soft;
                 if (isBrokenReciprocal
                     && !isLeftSoft

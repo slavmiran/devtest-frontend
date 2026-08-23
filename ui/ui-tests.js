@@ -3207,6 +3207,9 @@ function showKickPenaltyDetailsModal(testId, role) {
         ? window.t('kickDetailsSkipsValueDisputed', { skips: skips }, lang)
         : window.t('kickDetailsSkipsValueJustified', { skips: skips }, lang);
 
+    var riPenalty = Number(test.ri_penalty || (test.bad_periods_count && test.bad_periods_count >= 1 ? 15 : 8));
+    if (!(riPenalty > 0)) riPenalty = 8;
+
     // Tester metrics
     var testerBadgeText = isDisputed
         ? window.t('kickDetailsStatusProtected', {}, lang)
@@ -3216,6 +3219,7 @@ function showKickPenaltyDetailsModal(testId, role) {
     var testerKarmaVal = isDisputed
         ? window.t('kickDetailsKarmaProtected', {}, lang)
         : window.t('kickDetailsKarmaJustifiedTester', {}, lang);
+    var testerKarmaClass = isDisputed ? 'neutral' : 'danger';
 
     var testerRiVal = isDisputed
         ? window.t('kickDetailsRiProtectedTester', {}, lang)
@@ -3229,11 +3233,12 @@ function showKickPenaltyDetailsModal(testId, role) {
     var ownerBadgeClass = isDisputed ? 'danger' : 'safe';
 
     var ownerKarmaVal = isDisputed
-        ? window.t('kickDetailsKarmaProtected', {}, lang)
+        ? (window.t('kickDetailsKarmaPenaltyOwner', {}, lang) || '-3.0 (списание за спорный кик)')
         : window.t('kickDetailsKarmaJustifiedOwner', {}, lang);
+    var ownerKarmaClass = isDisputed ? 'danger' : 'neutral';
 
     var ownerRiVal = isDisputed
-        ? window.t('kickDetailsRiDisputedOwner', {}, lang)
+        ? window.t('kickDetailsRiDisputedOwner', { ri_penalty: String(riPenalty) }, lang)
         : window.t('kickDetailsRiJustifiedOwner', {}, lang);
     var ownerRiClass = isDisputed ? 'danger' : 'safe';
 
@@ -3270,7 +3275,7 @@ function showKickPenaltyDetailsModal(testId, role) {
                 '<div class="kick-analytics-grid">' +
                     '<div class="kick-analytics-cell">' +
                         '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsKarmaTitle', {}, lang)) + '</div>' +
-                        '<div class="kick-analytics-cell-val neutral">' + window.escapeHTML(testerKarmaVal) + '</div>' +
+                        '<div class="kick-analytics-cell-val ' + testerKarmaClass + '">' + window.escapeHTML(testerKarmaVal) + '</div>' +
                     '</div>' +
                     '<div class="kick-analytics-cell">' +
                         '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsRiTitle', {}, lang)) + '</div>' +
@@ -3288,7 +3293,7 @@ function showKickPenaltyDetailsModal(testId, role) {
                 '<div class="kick-analytics-grid">' +
                     '<div class="kick-analytics-cell">' +
                         '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsKarmaTitle', {}, lang)) + '</div>' +
-                        '<div class="kick-analytics-cell-val neutral">' + window.escapeHTML(ownerKarmaVal) + '</div>' +
+                        '<div class="kick-analytics-cell-val ' + ownerKarmaClass + '">' + window.escapeHTML(ownerKarmaVal) + '</div>' +
                     '</div>' +
                     '<div class="kick-analytics-cell">' +
                         '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsRiTitle', {}, lang)) + '</div>' +

@@ -8677,9 +8677,11 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const theirDone = theirStatus === 'completed' || theirStatus === 'archived';
     const hasDebt = (myDone && !theirDone) || (theirDone && !myDone);
 
+    const isBroken = !!(rel && rel.is_broken);
     const cardClass = 'linked-project-card is-mutual'
         + (isPrimary ? ' is-primary-link' : '')
         + (options.isSecondary ? ' is-secondary-link' : '')
+        + (isBroken ? ' is-broken' : '')
         + (hasDebt ? ' has-debt' : '');
 
     let theirDays = 0;
@@ -8728,12 +8730,26 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         ? `<span class="linked-card-stats">${statsParts.join('<span class="linked-card-stats-dot" aria-hidden="true">•</span>')}</span>`
         : '';
 
+    let brokenNoticeHtml = '';
+    if (isBroken) {
+        let brokenMsg = (rel && rel.broken_by === 'viewer')
+            ? (window.t('dossierRelationBrokenViewer', {}, lang) || 'Вы вышли из тестирования')
+            : ((rel && rel.broken_by === 'tester')
+                ? (window.t('dossierRelationBrokenTester', {}, lang) || 'Партнёр вышел из тестирования')
+                : (window.t('mutualBalanceSideBroken', {}, lang) || '💔 Связь разорвана'));
+        brokenNoticeHtml = `<span class="linked-card-direction is-debt" style="color: #ff453a;">${window.escapeHTML(brokenMsg)}</span>`;
+    } else if (hasDebt) {
+        brokenNoticeHtml = `<span class="linked-card-direction is-debt">${window.escapeHTML(window.t('linkedMutualDebtNotice', {}, lang))}</span>`;
+    }
+
+    const badgeHtml = isBroken
+        ? `<span class="linked-badge is-broken" style="background: rgba(255, 59, 48, 0.15); color: #ff453a; border-color: rgba(255, 59, 48, 0.3);">${window.escapeHTML(window.t('barterChipBroken', {}, lang) || '💔 Бартер')}</span>`
+        : `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>`;
+
     return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +
         `<div class="linked-card-meta">` +
-            `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>` +
-            (hasDebt
-                ? `<span class="linked-card-direction is-debt">${window.escapeHTML(window.t('linkedMutualDebtNotice', {}, lang))}</span>`
-                : '') +
+            badgeHtml +
+            brokenNoticeHtml +
         `</div>` +
         `<div class="linked-mutual-strip">` +
             `<div class="linked-mutual-app is-start${theirDone ? ' is-done' : ''}">` +
