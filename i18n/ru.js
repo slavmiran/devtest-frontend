@@ -1340,7 +1340,7 @@
             mutualBalanceSideBroken: "💔 Связь разорвана",
             mutualBalanceSideDebtDone: "✅ Завершено",
             mutualBalanceSideDebtActive: "🫵 Ваш долг",
-            mutualBalanceSidePartnerDebt: "🫵 Их долг",
+            mutualBalanceSidePartnerDebt: "🫵 Его долг",
             mutualBalanceOneSidedHint: "Связь стала односторонней: одна сторона больше не тестирует, вторая может продолжить или удалить проект.",
             mutualBalanceDebtHint: "Вы завершили своё тестирование, но ещё должны дотестировать приложение партнёра. Это взаимный долг.",
             mutualBalancePartnerDebtHint: "Партнёр завершил свой проект, но ещё должен дотестировать ваш. Это взаимный долг.",

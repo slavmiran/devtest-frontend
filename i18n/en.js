@@ -1340,7 +1340,7 @@
             mutualBalanceSideBroken: "💔 Link broken",
             mutualBalanceSideDebtDone: "✅ Finished",
             mutualBalanceSideDebtActive: "🫵 Your debt",
-            mutualBalanceSidePartnerDebt: "🫵 Their debt",
+            mutualBalanceSidePartnerDebt: "🫵 His debt",
             mutualBalanceOneSidedHint: "The link is now one-sided: one party stopped testing; the other may continue or delete the project.",
             mutualBalanceDebtHint: "You finished your own testing, but still owe completing the partner's app. This is mutual debt.",
             mutualBalancePartnerDebtHint: "The partner finished their project, but still owes completing yours. This is mutual debt.",
