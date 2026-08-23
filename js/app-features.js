@@ -3330,6 +3330,9 @@ function _removeLocalTest(appId) {
     myTests = (myTests || []).filter(function(test) {
         return Number(test.id) !== Number(appId);
     });
+    if (typeof persistTestsCacheSnapshot === 'function') {
+        persistTestsCacheSnapshot();
+    }
 }
 
 function _handleInactiveCheckinCard(appId, errorCode) {

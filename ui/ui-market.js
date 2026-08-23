@@ -7679,6 +7679,9 @@ function switchTab(tabId, navElement) {
         renderIncomingOffers(true);
         if (typeof renderBountyApplications === 'function') renderBountyApplications(true);
         renderTests(true);
+        if (typeof loadTasks === 'function') {
+            loadTasks(true).catch(function() {});
+        }
     }
 
     if (finalTab === 'market') {
