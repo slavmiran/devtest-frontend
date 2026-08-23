@@ -810,7 +810,7 @@ async function fetchBlockedOfferProjects(targetOwnerId, forceRefresh) {
 async function fetchWithRetry(url, options, maxRetries) {
     var retries = (typeof maxRetries === 'number') ? maxRetries : 2;
     var retryableStatuses = [408, 425, 429, 500, 502, 503, 504, 520, 522, 524];
-    var timeoutMs = options && typeof options.timeoutMs === 'number' ? options.timeoutMs : 15000;
+    var timeoutMs = options && typeof options.timeoutMs === 'number' ? options.timeoutMs : 25000;
     var baseOptions = Object.assign({}, options || {});
     delete baseOptions.timeoutMs;
     var lastError;
