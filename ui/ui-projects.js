@@ -124,6 +124,17 @@ function renderProjects(force) {
         const balanceAmount = (typeof formatUiAmount === 'function')
             ? formatUiAmount(visibilityStats.balance_bust || 0, 1)
             : String(Math.round(Number(visibilityStats.balance_bust || 0) * 10) / 10);
+        const reservedBust = (visibilityStats.projects || []).reduce(function(acc, p) {
+            const mode = String(p.mode || 'mutual').toLowerCase();
+            if (mode !== 'bounty' && mode !== 'hybrid') return acc + Number(p.protection_bust_pool || 0);
+            const limit = Number(p.limit_bounty || 0);
+            const rate = Number(p.bounty_per_tester || 0);
+            const protection = Number(p.protection_bust_pool || 0);
+            return acc + (limit * rate) + protection;
+        }, 0);
+        const reservedBustFormatted = (typeof formatUiAmount === 'function')
+            ? formatUiAmount(reservedBust, 1)
+            : String(Math.round(Number(reservedBust || 0) * 10) / 10);
         const achievementsLine = window.escapeHTML(
             formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
         );
@@ -168,7 +179,10 @@ function renderProjects(force) {
                             <span class="metric-label">${window.t('metricBalanceBust', {}, lang) || 'Баланс'} $BUST</span>
                             <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${window.escapeHTML(balanceAmount)} <span class="metric-value-mark">💎</span></div>
+                        <div class="metric-bust-body">
+                            <div class="metric-value">${window.escapeHTML(balanceAmount)} <span class="metric-value-mark">💎</span></div>
+                            ${reservedBust > 0 ? `<div class="metric-bust-reserved">🔒 ${window.escapeHTML(reservedBustFormatted)} ${window.t('metricBustReservedLabel', {}, lang) || 'в резерве'}</div>` : ''}
+                        </div>
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-neutral metric-card-sprint" onclick="showContributionInfo()">
                         <div class="metric-card-top">

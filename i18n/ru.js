@@ -1713,6 +1713,7 @@
             metricKarma: "Карма",
             metricBalance: "Баланс",
             metricBalanceBust: "Баланс",
+            metricBustReservedLabel: "в резерве",
             metricActiveTests: "Мои тесты",
             metricContribution: "Вклад",
             developerAchievementsLine: "{tests_count} {tests_word} • {grants_count} {grants_word} • {golden_count} 🏆 • {active_label}: {active_count}",

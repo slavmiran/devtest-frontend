@@ -1706,6 +1706,7 @@
             metricKarma: "Karma",
             metricBalance: "Balance",
             metricBalanceBust: "Balance",
+            metricBustReservedLabel: "reserved",
             metricActiveTests: "My Tests",
             metricContribution: "Contribution",
             developerAchievementsLine: "{tests_count} {tests_word} • {grants_count} {grants_word} • {golden_count} 🏆 • {active_label}: {active_count}",

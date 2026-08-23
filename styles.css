@@ -2391,6 +2391,37 @@ input::placeholder,
     text-overflow: ellipsis;
     max-width: 100%;
 }
+.metric-sprint-timer {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--hint-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.85;
+}
+
+.metric-bust-body {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.metric-bust-body .metric-value {
+    margin-top: 0;
+}
+
+.metric-bust-reserved {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--hint-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.85;
+}
 .showcase-active-test-owner:active { opacity: 0.6; }
 
 /* Clickable Google Group email + tester email validity */
