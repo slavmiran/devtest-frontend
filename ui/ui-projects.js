@@ -185,7 +185,7 @@ function renderProjects(force) {
                         </div>
                         <div class="metric-bust-body">
                             <div class="metric-value">${window.escapeHTML(balanceAmount)} <span class="metric-value-mark">💎</span></div>
-                            ${reservedBust > 0 ? `<div class="metric-bust-reserved">🔒 ${window.escapeHTML(reservedBustFormatted)} ${window.t('metricBustReservedLabel', {}, lang) || 'в резерве'}</div>` : ''}
+                            ${reservedBust > 0 ? `<div class="metric-bust-reserved">${window.escapeHTML(reservedBustFormatted)} ${window.t('metricBustReservedLabel', {}, lang) || 'в резерве'}</div>` : ''}
                         </div>
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-neutral metric-card-sprint" onclick="showContributionInfo()">
