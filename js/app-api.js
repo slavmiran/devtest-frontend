@@ -1139,8 +1139,11 @@ function _findFeedItemForOptimisticJoin(appId) {
 
 function _buildOptimisticMyTestFromFeedItem(feedItem, options) {
     options = options || {};
-    var appId = Number((feedItem && feedItem.app_id) || options.appId || 0);
+    var appId = Number((feedItem && (feedItem.app_id || feedItem.id)) || options.appId || 0);
     if (appId <= 0) return null;
+    var name = (feedItem && (feedItem.name || feedItem.title || feedItem.app_name)) || '';
+    var pkg = (feedItem && (feedItem.package_name || feedItem.package || feedItem.external_package_name)) || '';
+    if (!name && !pkg) return null;
     var today = getLocalDate();
     var isBounty = !!options.isBounty;
     var joinType = String(options.join_type || (isBounty ? 'bounty' : 'mutual')).toLowerCase();
@@ -1220,7 +1223,8 @@ function _buildOptimisticMyTestFromFeedItem(feedItem, options) {
 function applyOptimisticMyTestJoin(appId, options) {
     var normalizedId = Number(appId || 0);
     if (normalizedId <= 0) return;
-    var feedItem = _findFeedItemForOptimisticJoin(normalizedId) || { app_id: normalizedId };
+    var feedItem = _findFeedItemForOptimisticJoin(normalizedId);
+    if (!feedItem) return;
     var optimisticRow = _buildOptimisticMyTestFromFeedItem(feedItem, Object.assign({ appId: normalizedId }, options || {}));
     if (!optimisticRow) return;
     var alreadyExists = (myTests || []).some(function(test) {
