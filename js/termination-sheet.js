@@ -203,6 +203,11 @@
         if (!box) return;
 
         var isMutual = _isMutualJoin(joinType);
+        var isReciprocalActive = options.isReciprocalActive !== false;
+        if (mode === 'kick' && !isReciprocalActive) {
+            isMutual = false;
+        }
+
         // Leave: only the leaver's side ends — no unlink choice (owner keeps counter-test).
         if (mode === 'leave' || mode === 'drop') {
             box.hidden = true;
@@ -439,7 +444,7 @@
         var myDays = Number(ctx.myTestingDays || 0);
         var mySkips = Number(ctx.mySkips || 0);
         var myCheckins = Number(ctx.myCheckins || 0);
-        var showMySide = isMutualJoin || Number(ctx.reciprocalAppId || 0) > 0;
+        var showMySide = (isMutualJoin || Number(ctx.reciprocalAppId || 0) > 0) && ctx.isReciprocalActive !== false;
         var grantStillAvailable = showMySide && mySkips <= 3;
         var grantTotal = grantStillAvailable
             ? (ctx.grantTotal || _estimateGrantTotal({ skips_count: mySkips }))
@@ -1229,7 +1234,20 @@
                 }
             }
         }
-        var grantStillAvailable = (reciprocalAppId > 0 || joinType === 'mutual') && mySkips <= 3;
+        var isReciprocalActive = false;
+        if (reciprocalTest) {
+            var rStatus = String(reciprocalTest.status || 'active').toLowerCase();
+            var partnerProgressStatus = String(tester.reciprocal_partner_progress_status || '').toLowerCase();
+            var isPartnerLeft = partnerProgressStatus === 'abandoned'
+                || partnerProgressStatus === 'justified_exit'
+                || partnerProgressStatus === 'kicked_by_owner'
+                || partnerProgressStatus === 'canceled_neutral'
+                || partnerProgressStatus === 'dropped';
+            if (rStatus === 'active' && !tester.is_broken_reciprocal && !isPartnerLeft) {
+                isReciprocalActive = true;
+            }
+        }
+        var grantStillAvailable = isReciprocalActive && (reciprocalAppId > 0 || joinType === 'mutual') && mySkips <= 3;
         var grantTotal = grantStillAvailable
             ? _estimateGrantTotal(reciprocalTest || { skips_count: mySkips })
             : 0;
@@ -1250,7 +1268,7 @@
             _termState.projectName = project.app_name || project.name || '';
         }
         _setTypeBadge(joinType);
-        _setupUnlinkBox('kick', joinType, options);
+        _setupUnlinkBox('kick', joinType, Object.assign({}, options, { isReciprocalActive: isReciprocalActive }));
 
         body.innerHTML = _renderKickBody({
             testingDays: testingDays,
@@ -1264,6 +1282,7 @@
             reciprocalOwnerCheckins: reciprocalOwnerCheckins,
             reciprocalAppId: reciprocalAppId,
             reciprocalAppName: reciprocalAppName,
+            isReciprocalActive: isReciprocalActive,
             myTestingDays: myTestingDays,
             mySkips: mySkips,
             myCheckins: myCheckins,

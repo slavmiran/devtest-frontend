@@ -346,6 +346,8 @@ function renderProjects(force) {
                 let testerPrefixHtml = '';
                 if (isMutualDebt) {
                     testerPrefixHtml = '<span class="tester-debt-prefix" title="' + window.escapeHTML(window.t('linkedBadgeDebt', {}, lang)) + '">🫵</span>';
+                } else if (isBrokenReciprocal) {
+                    testerPrefixHtml = '<span class="tester-broken-prefix" style="margin-right:2px;" title="' + window.escapeHTML(window.t('barterChipBroken', {}, lang) || '💔 Взаимка') + '">💔</span>';
                 } else if (isContractTester) {
                     testerPrefixHtml = '<span class="tester-contract-prefix">💎</span>';
                 } else if (isInviteLikeTester) {
@@ -411,19 +413,6 @@ function renderProjects(force) {
                 }
 
                 let brokenHtml = '';
-                if (!isLeftSoft && isBrokenReciprocal) {
-                    let partnerAppName = String(tester.reciprocal_app_name || '').trim();
-                    if (!partnerAppName && Array.isArray(myTests)) {
-                        const partnerTest = myTests.find(function(item) {
-                            return Number(item.owner_id || 0) === Number(tester.tester_id || 0);
-                        });
-                        if (partnerTest) partnerAppName = String(partnerTest.name || '').trim();
-                    }
-                    if (!partnerAppName) {
-                        partnerAppName = window.t('unknownLabel', {}, lang);
-                    }
-                    brokenHtml = `<span class="tester-icon-action" onclick="event.stopPropagation(); openBrokenReciprocalPopup(${Number(project.id)}, ${Number(tester.tester_id)}, '${escapeInlineJsString(partnerAppName)}')">💔</span>`;
-                }
 
                 let screenshotDayHtml = '';
                 if (!isLeftSoft && isMandatoryScreenshotDay(testerDay)) {
