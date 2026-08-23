@@ -729,7 +729,18 @@ async function loadIncomingOffers(options) {
             _offersLoadedOnce = true;
             _offersLoadError = false;
             _lastFetchTimes.offers = Date.now();
+
+            // Contract applications ride along with mutual offers (same proven GET path).
+            if (Array.isArray(data.bounty_applications) && typeof applyIncomingBountyApplications === 'function') {
+                applyIncomingBountyApplications(data.bounty_applications, { forceRender: true });
+            }
+
             renderIncomingOffers();
+            if (typeof renderBountyApplications === 'function') {
+                renderBountyApplications(true);
+            } else if (typeof syncIncomingApplicationsSection === 'function') {
+                syncIncomingApplicationsSection();
+            }
         } catch (error) {
             console.error('Error loading incoming offers:', error);
             if (!Array.isArray(incomingOffers) || incomingOffers.length === 0) {
@@ -852,6 +863,7 @@ function loadAllData() {
     _lastFetchTimes.mutual = 0;
     _lastFetchTimes.bounty = 0;
     _lastFetchTimes.offers = 0;
+    _lastFetchTimes.bountyApps = 0;
     _lastFetchTimes.archived = 0;
     _lastFetchTimes.reliabilitySummary = 0;
     _lastFetchTimes.reliabilityBreakdown = 0;
@@ -859,6 +871,9 @@ function loadAllData() {
     loadReliabilitySummary().catch(function() {});
     loadReliabilityBreakdown().catch(function() {});
     loadIncomingOffers().catch(function() {});
+    if (typeof loadBountyApplications === 'function') {
+        loadBountyApplications().catch(function() {});
+    }
     loadProjects().catch(function() {});
     loadArchivedProjects({ silent: true }).catch(function() {});
     loadMutualFeed().catch(function() {});
@@ -942,6 +957,30 @@ function getBackendErrorCode(payload) {
     return String(payload.code || payload.error_code || payload.message || '').trim();
 }
 
+async function readApiErrorPayload(response) {
+    if (!response) return null;
+    try {
+        return await response.clone().json();
+    } catch (_) {
+        return null;
+    }
+}
+
+async function buildHttpStatusError(response, fallbackKey) {
+    var payload = await readApiErrorPayload(response);
+    var code = getBackendErrorCode(payload);
+    if (code === 'invalid_init_data') {
+        return new Error(window.t ? window.t('guestClaimAuthErrorToast') : 'invalid_init_data');
+    }
+    if (code === 'username_required') {
+        return new Error(window.t ? window.t('noUsernameTitle') : 'username_required');
+    }
+    if (payload && (payload.detail || payload.message)) {
+        return new Error(String(payload.detail || payload.message));
+    }
+    return new Error('HTTP ' + (response && response.status ? response.status : 'error'));
+}
+
 function handleApiError(code, details = {}) {
     var keyMap = {
         ALREADY_OWNED: 'ALREADY_OWNED',
@@ -954,6 +993,12 @@ function handleApiError(code, details = {}) {
         grant_not_ready: 'err_grant_not_ready',
         grant_too_many_skips: 'err_grant_too_many_skips',
         grant_already_claimed: 'err_grant_already_claimed',
+        open_required: 'err_open_required',
+        open_invalid: 'err_open_invalid',
+        open_mismatch: 'err_open_mismatch',
+        open_expired: 'err_open_expired',
+        open_not_ready: 'err_open_not_ready',
+        day_boundary_moved: 'err_day_boundary_moved',
         app_not_archived: 'err_app_not_archived_early_finish',
         invalid_start_date: 'err_grant_unavailable',
         invalid_google_group_url: 'invalid_google_group_url',
@@ -993,6 +1038,16 @@ function handleApiError(code, details = {}) {
         offer_no_available_apps: 'err_offer_no_available_apps',
         offer_accept_failed: 'err_offer_accept_failed',
         offer_create_failed: 'err_offer_create_failed',
+        bounty_application_already_pending: 'err_bounty_application_already_pending',
+        bounty_application_not_found: 'err_bounty_application_not_found',
+        bounty_application_forbidden: 'err_bounty_application_forbidden',
+        bounty_application_not_pending: 'err_bounty_application_not_pending',
+        bounty_application_expired: 'err_bounty_application_expired',
+        bounty_application_create_failed: 'err_bounty_application_create_failed',
+        bounty_application_accept_failed: 'err_bounty_application_accept_failed',
+        bounty_application_failed: 'err_bounty_application_failed',
+        bounty_applications_unavailable: 'err_bounty_applications_unavailable',
+        bounty_applications_load_failed: 'err_bounty_applications_load_failed',
         user_not_found: 'err_user_not_found',
         transfer_self_forbidden: 'err_transfer_self_forbidden',
         transfer_generate_failed: 'err_transfer_generate_failed',
@@ -1263,9 +1318,12 @@ function _mapTestsFromApi(data) {
             status = 'done';
         }
         var progressStatus = String(app.progress_status || 'active').toLowerCase();
+        var isKickedSoft = !isExternal && progressStatus === 'kicked_by_owner';
+        var isUnlinkedSoft = !isExternal && progressStatus === 'canceled_neutral';
+        var isSoftTail = isKickedSoft || isUnlinkedSoft;
         var appStatus = String(app.app_status || 'active').toLowerCase();
         var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
-        var isArchivedOrCompleted = !isExternal && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
+        var isArchivedOrCompleted = !isExternal && !isSoftTail && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
         var existingTest = myTests.find(function(test) { return Number(test.id) === Number(mappedId); });
         var shouldPreserveLocalDoneToday = !!(
             existingTest
@@ -1311,15 +1369,19 @@ function _mapTestsFromApi(data) {
             ? (existingTest.last_check_date || today)
             : (shouldTreatFastTrackFirstDayAsDone ? today : (app.last_check_date || null));
         var isAppClosed = !isExternal && (appStatus !== 'active' && !isPendingCompletion);
-        var isTestClosed = !isExternal && (progressStatus !== 'active');
-        var actualCheckins = testingDays - skipsCount;
-        var canEverClaim = !isExternal && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
+        var isTestClosed = !isExternal && (progressStatus !== 'active') && !isSoftTail;
+        var canEverClaim = !isExternal && !isSoftTail && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
 
         var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
         var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
-        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays < 14 && actualCheckins >= 3 && skipsCount <= 3);
+        var earlyFinishCheckinsSource = { checkins_count: resolvedCheckinsCount };
+        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !isSoftTail && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && (typeof qualifiesEarlyFinishGrant === 'function'
+            ? qualifiesEarlyFinishGrant(earlyFinishCheckinsSource, testingDays, skipsCount)
+            : (resolvedCheckinsCount >= 3 && skipsCount <= 3 && testingDays < 14)));
 
-        if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow) {
+        if (isSoftTail) {
+            status = 'done';
+        } else if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow) {
             status = 'done';
         }        
         return {
@@ -1353,11 +1415,23 @@ function _mapTestsFromApi(data) {
             last_owner_activity: app.last_owner_activity || null,
             checkins_count: resolvedCheckinsCount,
             skips_count: resolvedSkipsCount,
+            consecutive_skips: Number(app.consecutive_skips != null ? app.consecutive_skips : 0),
+            is_mutual_debt: !!app.is_mutual_debt,
+            partner_testing_days: Number(app.partner_testing_days || 0),
+            partner_skips: Number(app.partner_skips || 0),
+            partner_consecutive_skips: Number(app.partner_consecutive_skips || 0),
+            partner_checkins: Number(app.partner_checkins || 0),
+            partner_active: app.partner_active === true,
+            partner_progress_status: app.partner_progress_status || '',
             last_sync_date: app.last_sync_date || null,
             testing_days: testingDays,
             exact_daily_reward: typeof app.exact_daily_reward !== 'undefined' ? Number(app.exact_daily_reward) : 0,
             grant_claimed: !!app.grant_claimed,
             progress_status: app.progress_status || 'active',
+            is_kicked_soft: isKickedSoft,
+            is_unlinked_soft: isUnlinkedSoft,
+            is_soft_tail: isSoftTail,
+            leave_reason: app.leave_reason || '',
             app_status: app.app_status || 'active',
             is_pending_completion: isPendingCompletion,
             join_type: app.join_type || 'invite',
@@ -1471,11 +1545,16 @@ async function _loadTasksImpl(options) {
     try {
         var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
         var response = await fetchWithRetry(API_BASE + '/tasks/' + userId + '?' + initQ);
-        if (!response.ok) throw new Error('HTTP ' + response.status);
+        if (!response.ok) throw await buildHttpStatusError(response, 'networkError');
         var data = await response.json();
         _userEmail = String(data.user_email || '').trim();
         window.App.userEmail = _userEmail;
+        if (typeof syncSettingsEmailRowUi === 'function') {
+            try { syncSettingsEmailRowUi(); } catch (e) {}
+        }
         var nextTests = _mapTestsFromApi(data);
+        // Offers live on GET /api/offers/incoming (bootstrap + 30s poll).
+        // /api/tasks no longer embeds incoming_offers; missing key must not wipe the inbox.
         var nextOffers = Array.isArray(data.incoming_offers) ? data.incoming_offers : null;
 
         // Diff: only re-render if changed
@@ -1488,6 +1567,7 @@ async function _loadTasksImpl(options) {
                 renderTests();
                 if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
             }
+            if (typeof renderBountyFeed === 'function') renderBountyFeed(true);
         } else if (typeof clearCompletedPendingFeedbackCheckins === 'function') {
             clearCompletedPendingFeedbackCheckins();
         }
@@ -1882,6 +1962,11 @@ function _mapProjectsFromApi(data) {
                 tester_avatar_url: tester.avatar_url || null,
                 checkins_count: Number(tester.checkins_count || 0),
                 skips_count: Number(tester.skips_count || 0),
+                consecutive_skips: Number(tester.consecutive_skips != null
+                    ? tester.consecutive_skips
+                    : (typeof calculateConsecutiveSkips === 'function'
+                        ? calculateConsecutiveSkips(tester)
+                        : 0)),
                 is_external: !!tester.is_external,
                 is_guest_tester: !!tester.is_guest_tester,
                 external_source: tester.external_source || '',
@@ -1913,7 +1998,11 @@ function _mapProjectsFromApi(data) {
             created_at: project.created_at || null,
             likes: project.likes || [],
             likes_used: project.likes_used || 0,
-            likes_max: project.likes_max || 1,
+            likes_max: project.likes_max || 3,
+            thanks_used: project.thanks_used || 0,
+            thanks_max: project.thanks_max || 2,
+            special_used: project.special_used || 0,
+            special_max: project.special_max || 1,
             mode: project.mode || 'mutual',
             test_mode: project.test_mode === 'email_list' ? 'email_list' : 'google_group',
             accepts_email_testers: !!project.accepts_email_testers,

@@ -13,64 +13,94 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     refreshLanguageUi();
+    if (typeof initHomeScreenPromo === 'function') {
+        initHomeScreenPromo();
+    }
     if (!hasTelegramUsername()) {
         showNoUsernameOverlay();
         return;
     }
-    var runtimeConfigPromise = loadRuntimeConfig();
-    var bootstrapProfileSyncPromise = syncTelegramProfile();
-    loadUserProfilePreferences().catch(function() {});
 
-    syncUserTimezone(false).catch(() => {});
-
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && _pendingScreenshotReminderUsername !== null) {
-            const username = _pendingScreenshotReminderUsername;
-            _pendingScreenshotReminderUsername = null;
-            setTimeout(() => showScreenshotCompleteModal(username), 300);
+    (async function() {
+        // Resolve live Cloudflare tunnel URL from staging (no Vercel redeploy needed).
+        if (typeof resolveTestApiBase === 'function') {
+            await resolveTestApiBase();
         }
-        if (!document.hidden) {
+
+        var runtimeConfigPromise = loadRuntimeConfig();
+        var bootstrapProfileSyncPromise = syncTelegramProfile();
+        loadUserProfilePreferences().catch(function() {});
+
+        syncUserTimezone(false).catch(() => {});
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && _pendingScreenshotReminderUsername !== null) {
+                const username = _pendingScreenshotReminderUsername;
+                _pendingScreenshotReminderUsername = null;
+                setTimeout(() => showScreenshotCompleteModal(username), 300);
+            }
+            if (!document.hidden) {
+                _syncActiveTimerState();
+                // Drop stale Confirm-ready state when local calendar day rolls over.
+                if (typeof _loadTimerReadyState === 'function') {
+                    _loadTimerReadyState();
+                }
+                if (typeof _applyPersistedReadyTimerButtons === 'function') {
+                    _applyPersistedReadyTimerButtons();
+                }
+                if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
+                    _lastFetchTimes.tests = 0;
+                    if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
+                        syncPendingFeedbackCheckinsFromServer().catch(function() {});
+                    }
+                }
+                if (typeof refreshHomeScreenStatus === 'function') {
+                    refreshHomeScreenStatus({ force: true });
+                }
+                renderTests(true);
+                loadTasks(true).catch(() => {});
+                loadIncomingOffers({ background: true }).catch(() => {});
+                if (typeof loadBountyApplications === 'function') {
+                    loadBountyApplications({ background: true }).catch(() => {});
+                }
+                loadReliabilitySummary(true).catch(() => {});
+            }
+        });
+
+        window.addEventListener('focus', function() {
             _syncActiveTimerState();
             if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
                 _lastFetchTimes.tests = 0;
+                if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
+                    syncPendingFeedbackCheckinsFromServer().catch(function() {});
+                }
+                loadTasks(true).catch(function() {});
             }
-            renderTests(true);
-            loadTasks(true).catch(() => {});
-            loadIncomingOffers({ background: true }).catch(() => {});
-            loadReliabilitySummary(true).catch(() => {});
+            if (window.renderTests) window.renderTests(true);
+        });
+
+        window.addEventListener('pageshow', function() {
+            _syncActiveTimerState();
+            if (window.renderTests) window.renderTests(true);
+        });
+
+        document.addEventListener('pointerdown', (event) => {
+            const menu = document.getElementById('system-drop-menu');
+            if (!menu || !menu.classList.contains('active')) return;
+            if (!menu.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+
+        _loadFirstDayScreenshotState();
+        _loadCustomGroupJoinedState();
+        if (typeof _loadCustomGroupWaitState === 'function') _loadCustomGroupWaitState();
+        _loadTimerReadyState();
+        _loadPersistedActiveTimer();
+        if (typeof initTelegramBackButton === 'function') {
+            initTelegramBackButton();
         }
-    });
 
-    window.addEventListener('focus', function() {
-        _syncActiveTimerState();
-        if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
-            _lastFetchTimes.tests = 0;
-            loadTasks(true).catch(function() {});
-        }
-        if (window.renderTests) window.renderTests(true);
-    });
-
-    window.addEventListener('pageshow', function() {
-        _syncActiveTimerState();
-        if (window.renderTests) window.renderTests(true);
-    });
-
-    document.addEventListener('pointerdown', (event) => {
-        const menu = document.getElementById('system-drop-menu');
-        if (!menu || !menu.classList.contains('active')) return;
-        if (!menu.contains(event.target)) {
-            menu.classList.remove('active');
-        }
-    });
-
-    _loadFirstDayScreenshotState();
-    _loadTimerReadyState();
-    _loadPersistedActiveTimer();
-    if (typeof initTelegramBackButton === 'function') {
-        initTelegramBackButton();
-    }
-
-    (async function() {
         console.log('[DEBUG] bootstrap IIFE started');
         var profileSyncResult = await bootstrapProfileSyncPromise;
         console.log('[DEBUG] bootstrap: profileSync done, ok=', profileSyncResult && profileSyncResult.ok);
@@ -91,10 +121,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         loadTasks().catch(function(e) { console.error('Bootstrap loadTasks error:', e); });
+        if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
+            syncPendingFeedbackCheckinsFromServer().catch(function() {});
+        }
         loadReliabilitySummary().catch(function(e) { console.error('Bootstrap loadReliabilitySummary error:', e); });
         loadReliabilityBreakdown(true).catch(function(e) { console.error('Bootstrap loadReliabilityBreakdown error:', e); });
         loadIncomingOffers().catch(function(e) { console.error('Bootstrap loadIncomingOffers error:', e); });
+        if (typeof loadBountyApplications === 'function') {
+            loadBountyApplications().catch(function(e) { console.error('Bootstrap loadBountyApplications error:', e); });
+        }
         try { startOffersPolling(); } catch (e) { console.error('Bootstrap startOffersPolling error:', e); }
+        try {
+            if (typeof startBountyApplicationsPolling === 'function') startBountyApplicationsPolling();
+        } catch (e) { console.error('Bootstrap startBountyApplicationsPolling error:', e); }
         try { startMarketPolling(); } catch (e) { console.error('Bootstrap startMarketPolling error:', e); }
         loadEvents().catch(function(e) { console.error('Bootstrap loadEvents error:', e); });
         loadExternalCounts().catch(function(e) { console.error('Bootstrap loadExternalCounts error:', e); });
@@ -125,13 +164,34 @@ Object.assign(window, {
     setMarketForceSkeleton,
     refreshLanguageUi,
     syncAutoAcceptToggleUi,
+    syncAutoAcceptSectionUi,
+    initHomeScreenPromo,
+    syncHomeScreenUi,
+    refreshHomeScreenStatus,
+    addDevTestHubToHomeScreen,
+    dismissHomeScreenBanner,
     applyLanguage,
+    showAutoAcceptSectionInfo,
     showAutoAcceptMutualInfo,
     handleAutoAcceptMutualToggle,
+    showAutoAcceptBountyInfo,
+    handleAutoAcceptBountyToggle,
+    syncAutoAcceptBountyToggleUi,
+    loadBountyApplications,
+    renderBountyApplications,
+    decideBountyApplication,
+    startBountyApplicationsPolling,
+    focusIncomingBountyApplication,
     showDeviceProfileInfo,
     openDeviceInfoEditorModal,
     closeDeviceInfoEditorModal,
     saveDeviceInfoFromModal,
+    openSettingsEmailModal,
+    closeSettingsEmailModal,
+    saveSettingsEmail,
+    deleteSettingsEmail,
+    populateSettingsEmail,
+    syncSettingsEmailRowUi,
     detectAndroidVersionInModal,
     openDeviceProfileFromPrompt,
     closeDeviceProfileBanner,
@@ -217,6 +277,7 @@ Object.assign(window, {
     clearTestFeedbackCheckinPending,
     applyTestFeedbackCheckinPendingUi,
     clearCompletedPendingFeedbackCheckins,
+    syncPendingFeedbackCheckinsFromServer,
     openProjectFeedback,
     sendProjectFeedbackMedia,
     openFeedbackRewardModal,
@@ -286,7 +347,11 @@ Object.assign(window, {
     publishProjectToMarket,
     showFeedbackRewardKarmaInfo,
     isFirstDayScreenshotVisible,
-    setFirstDayScreenshotVisible
+    setFirstDayScreenshotVisible,
+    isCustomGroupJoined,
+    markCustomGroupJoined,
+    startCustomGroupAccessWait,
+    getCustomGroupAccessWaitRemainingMs
 });
 
 Object.assign(window.App, {

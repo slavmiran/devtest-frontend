@@ -1,0 +1,306 @@
+/* =========================================================
+   PRIVATE TESTING ($20) — OFFER PAGE
+   Same Telegram-native language as the order wizard.
+   ========================================================= */
+
+.gto-overlay {
+    --gt-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text",
+               "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --gt-hairline: rgba(255, 255, 255, 0.07);
+    --gt-surface: #161A21;
+    --gt-surface-raised: #1D222B;
+    --gt-surface-sunken: rgba(255, 255, 255, 0.045);
+    --gt-radius-section: 14px;
+    --gt-radius-control: 10px;
+    --gt-pad-x: 16px;
+
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--bg-app, #0E1116);
+    color: var(--text-primary, #F4F6F8);
+    font-family: var(--gt-font);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Header ------------------------------------------------- */
+
+.gto-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 100%;
+    padding: max(10px, env(safe-area-inset-top)) 56px 10px;
+    text-align: center;
+    background: rgba(14, 17, 22, 0.86);
+    backdrop-filter: saturate(150%) blur(14px);
+    -webkit-backdrop-filter: saturate(150%) blur(14px);
+    border-bottom: 1px solid var(--gt-hairline);
+}
+
+.gto-header-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 22px;
+    letter-spacing: -0.01em;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gto-header-subtitle {
+    margin: 1px 0 0;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 16px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text-tertiary, #717C89);
+}
+
+.gto-close-btn {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-secondary, #AEB7C2);
+    font-size: 19px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.gto-close-btn:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* ---- Layout -------------------------------------------------- */
+
+.gto-container {
+    flex: 1;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 22px var(--gt-pad-x) calc(96px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+}
+
+.gto-card {
+    display: block;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+/* ---- Hero ---------------------------------------------------- */
+
+.gto-card-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.gto-group-icon-badge {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    background: rgba(76, 141, 255, 0.12);
+    color: var(--accent-primary, #4C8DFF);
+}
+
+.gto-group-icon-badge svg { width: 21px; height: 21px; }
+
+.gto-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 100px;
+    background: var(--gt-surface-sunken);
+    color: var(--text-secondary, #AEB7C2);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.gto-pill-icon { width: 13px; height: 13px; flex-shrink: 0; }
+
+.gto-main-title {
+    margin: 0 0 6px;
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 30px;
+    letter-spacing: -0.02em;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gto-lead {
+    margin: 0 0 20px;
+    font-size: 15px;
+    line-height: 21px;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+/* ---- Price --------------------------------------------------- */
+
+.gto-price-section {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    background: var(--gt-surface);
+    border: 1px solid var(--gt-hairline);
+    border-radius: var(--gt-radius-section);
+}
+
+.gto-price-value {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 32px;
+    letter-spacing: -0.02em;
+    color: var(--text-primary, #F4F6F8);
+    font-variant-numeric: tabular-nums;
+}
+
+.gto-price-label {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 19px;
+    color: var(--text-tertiary, #717C89);
+    margin: 0;
+}
+
+/* ---- Benefits ------------------------------------------------ */
+
+.gto-section-label {
+    margin: 0 2px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary, #717C89);
+}
+
+.gto-benefits-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 20px;
+    background: var(--gt-surface);
+    border: 1px solid var(--gt-hairline);
+    border-radius: var(--gt-radius-section);
+    overflow: hidden;
+}
+
+.gto-benefit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--gt-hairline);
+}
+
+.gto-benefit-item:first-child { border-top: none; }
+
+.gto-benefit-icon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    color: var(--accent-primary, #4C8DFF);
+}
+
+.gto-benefit-text {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 19px;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+.gto-benefit-text strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gto-footnote {
+    margin: 0;
+    padding: 12px 14px;
+    background: var(--gt-surface-sunken);
+    border-left: 2px solid var(--accent-primary, #4C8DFF);
+    border-radius: 0 10px 10px 0;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+/* ---- CTA ----------------------------------------------------- */
+
+.gto-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 6;
+    padding: 10px var(--gt-pad-x) calc(16px + env(safe-area-inset-bottom, 0px));
+    background: rgba(14, 17, 22, 0.9);
+    backdrop-filter: saturate(150%) blur(14px);
+    -webkit-backdrop-filter: saturate(150%) blur(14px);
+    border-top: 1px solid var(--gt-hairline);
+}
+
+.gto-footer-content {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.gto-cta-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 50px;
+    padding: 0 20px;
+    border: none;
+    border-radius: var(--gt-radius-control);
+    background: var(--accent-primary, #4C8DFF);
+    color: #FFFFFF;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 21px;
+    letter-spacing: 0;
+    text-transform: none;
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.gto-cta-btn:hover { background: var(--accent-primary-hover, #3B7BEF); transform: none; box-shadow: none; }
+.gto-cta-btn:active { opacity: 0.85; transform: none; }

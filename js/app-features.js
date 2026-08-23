@@ -35,20 +35,159 @@ function _highlightArchivedProjectCard(appId) {
 }
 
 function openProjectDuplicateSupport() {
-    var addModal = document.getElementById('add-modal');
-    if (addModal) {
-        addModal.classList.remove('active');
-    }
-    sendFeedback('question');
+    openPackageConflictSupport();
 }
+
+var _packageConflictState = {
+    code: '',
+    packageName: '',
+};
+
+function _getCurrentAddPackageName() {
+    if (typeof _extractPackageNameFromPlayInput === 'function') {
+        return String(_extractPackageNameFromPlayInput() || '').trim();
+    }
+    var input = document.getElementById('app-package');
+    return String((input && input.value) || '').trim();
+}
+
+function _setPackageConflictReopenVisible(visible) {
+    var reopenBtn = document.getElementById('package-conflict-reopen-btn');
+    if (!reopenBtn) return;
+    reopenBtn.textContent = window.t('packageConflictReopenBtn', {}, lang);
+    reopenBtn.classList.toggle('is-visible', !!visible);
+    reopenBtn.style.display = visible ? 'block' : 'none';
+}
+
+function _clearPackageConflictState() {
+    _packageConflictState.code = '';
+    _packageConflictState.packageName = '';
+    _setPackageConflictReopenVisible(false);
+}
+
+function _syncPackageConflictModalI18n() {
+    var modal = document.getElementById('package-conflict-modal');
+    if (!modal) return;
+    var title = modal.querySelector('[data-i18n="packageConflictTitle"]');
+    var intro = modal.querySelector('[data-i18n="packageConflictIntro"]');
+    var pointArchive = modal.querySelector('[data-i18n="packageConflictPointArchive"]');
+    var pointTransfer = modal.querySelector('[data-i18n="packageConflictPointTransfer"]');
+    var pointSupport = modal.querySelector('[data-i18n="packageConflictPointSupport"]');
+    var supportBtn = modal.querySelector('[data-i18n="packageConflictSupportBtn"]');
+    var closeBtn = modal.querySelector('[data-i18n="packageConflictCloseBtn"]');
+    if (title) title.textContent = window.t('packageConflictTitle', {}, lang);
+    if (intro) intro.textContent = window.t('packageConflictIntro', {}, lang);
+    if (pointArchive) pointArchive.textContent = window.t('packageConflictPointArchive', {}, lang);
+    if (pointTransfer) pointTransfer.textContent = window.t('packageConflictPointTransfer', {}, lang);
+    if (pointSupport) pointSupport.textContent = window.t('packageConflictPointSupport', {}, lang);
+    if (supportBtn) supportBtn.textContent = window.t('packageConflictSupportBtn', {}, lang);
+    if (closeBtn) closeBtn.textContent = window.t('packageConflictCloseBtn', {}, lang);
+}
+
+function openPackageConflictModal(code, packageName) {
+    var modal = document.getElementById('package-conflict-modal');
+    if (!modal) return;
+    _packageConflictState.code = String(code || '').trim();
+    _packageConflictState.packageName = String(packageName || _getCurrentAddPackageName() || '').trim();
+    _syncPackageConflictModalI18n();
+    modal.classList.add('active');
+    _setPackageConflictReopenVisible(true);
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+}
+
+function closePackageConflictModal(event) {
+    if (event && event.target && event.target.id !== 'package-conflict-modal') return;
+    var modal = document.getElementById('package-conflict-modal');
+    if (modal) modal.classList.remove('active');
+    var currentPackage = _getCurrentAddPackageName();
+    var keepReopen = !!(_packageConflictState.packageName && currentPackage && currentPackage === _packageConflictState.packageName);
+    _setPackageConflictReopenVisible(keepReopen);
+}
+
+function reopenPackageConflictModal() {
+    if (!_packageConflictState.packageName) return;
+    var currentPackage = _getCurrentAddPackageName();
+    if (!currentPackage || currentPackage !== _packageConflictState.packageName) {
+        _clearPackageConflictState();
+        return;
+    }
+    openPackageConflictModal(_packageConflictState.code, _packageConflictState.packageName);
+}
+
+function openPackageConflictSupport() {
+    var packageName = _packageConflictState.packageName || _getCurrentAddPackageName();
+    var text = window.t('packageConflictSupportPrefill', { package: packageName || '—' }, lang);
+    var targetUrl = 'https://t.me/garantXchange?text=' + encodeURIComponent(text);
+    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+        window.Telegram.WebApp.openTelegramLink(targetUrl);
+    } else if (tg && typeof tg.openTelegramLink === 'function') {
+        tg.openTelegramLink(targetUrl);
+    } else {
+        window.open(targetUrl, '_blank');
+    }
+}
+
+function _clearProjectPackageError() {
+    var errorEl = document.getElementById('package-error');
+    if (!errorEl) return;
+    errorEl.innerHTML = '';
+    errorEl.style.display = 'none';
+}
+
+function _showProjectPackageError(messageKey, options) {
+    var errorEl = document.getElementById('package-error');
+    if (!errorEl) return;
+
+    var opts = options || {};
+    var message = window.t(messageKey, {}, lang);
+    var html = '<div>' + window.escapeHTML(message) + '</div>';
+    if (opts.actionLabelKey) {
+        html += '<button type="button" id="package-error-action-btn" class="btn btn-secondary" style="width:100%; margin-top:10px; background: rgba(255,255,255,0.08); color: var(--text-color); border: 1px solid rgba(255,255,255,0.14);">' + window.escapeHTML(window.t(opts.actionLabelKey, {}, lang)) + '</button>';
+    }
+    errorEl.innerHTML = html;
+    errorEl.style.display = 'block';
+
+    if (opts.actionLabelKey && typeof opts.onAction === 'function') {
+        var actionBtn = document.getElementById('package-error-action-btn');
+        if (actionBtn) {
+            actionBtn.onclick = function(event) {
+                event.preventDefault();
+                opts.onAction();
+            };
+        }
+    }
+}
+
+function _handleProjectCreateConflict(code) {
+    var normalizedCode = String(code || '').trim();
+    if (normalizedCode === 'ALREADY_OWNED' || normalizedCode === 'ALREADY_ACTIVE' || normalizedCode === 'NEEDS_RESTART') {
+        openPackageConflictModal(normalizedCode, _getCurrentAddPackageName());
+        // Keep a short field hint so the form still shows why Continue is blocked.
+        _showProjectPackageError(normalizedCode);
+        return true;
+    }
+    return false;
+}
+
+window.openPackageConflictModal = openPackageConflictModal;
+window.closePackageConflictModal = closePackageConflictModal;
+window.reopenPackageConflictModal = reopenPackageConflictModal;
+window.openPackageConflictSupport = openPackageConflictSupport;
 
 async function _focusAppInMiniApp(appId) {
     var normalizedId = Number(appId || 0);
     if (!normalizedId) return false;
 
     switchTab('tests');
-    await loadTasks(true);
-    _highlightTestCardWhenReady(normalizedId, 10);
+    // Force a real refresh (background throttle can skip render and miss the card).
+    try {
+        await loadTasks(false);
+    } catch (e) { /* ignore */ }
+    if (typeof window._highlightTestCardWhenReady === 'function') {
+        window._highlightTestCardWhenReady(normalizedId, 16);
+    } else {
+        _highlightTestCardWhenReady(normalizedId, 16);
+    }
 
     await new Promise(function(resolve) { setTimeout(resolve, 520); });
     if (_highlightTestCard(normalizedId)) {
@@ -94,6 +233,8 @@ async function _focusAppInMiniApp(appId) {
     }
     return false;
 }
+
+window._focusAppInMiniApp = _focusAppInMiniApp;
 
 const GUEST_CLAIM_COMMUNITY_URL = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
 
@@ -1409,6 +1550,12 @@ function refreshLanguageUi() {
     if (typeof syncAutoAcceptToggleUi === 'function') {
         syncAutoAcceptToggleUi();
     }
+    if (typeof syncDefaultGroupJoinedUi === 'function') {
+        syncDefaultGroupJoinedUi();
+    }
+    if (typeof syncHomeScreenUi === 'function') {
+        syncHomeScreenUi();
+    }
 
     renderAutoTranslateLanguageOptions();
 
@@ -1455,6 +1602,15 @@ function refreshLanguageUi() {
     }
 
     syncAutoAcceptToggleUi();
+    if (typeof syncAutoAcceptBountyToggleUi === 'function') {
+        syncAutoAcceptBountyToggleUi();
+    }
+    if (typeof syncDefaultGroupJoinedUi === 'function') {
+        syncDefaultGroupJoinedUi();
+    }
+    if (typeof syncHomeScreenUi === 'function') {
+        syncHomeScreenUi();
+    }
     if (typeof syncDeviceProfileUi === 'function') {
         syncDeviceProfileUi();
     }
@@ -1468,6 +1624,10 @@ async function loadUserProfilePreferences() {
         var response = await fetchWithRetry(API_BASE + '/users/' + userId + '/profile');
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var profile = await response.json();
+        if (profile && profile.is_banned) {
+            showBanScreen(profile);
+            return;
+        }
         _autoAcceptMutualEnabled = !!profile.auto_accept_mutual;
         _autoAcceptMutualAvailable = (typeof profile.auto_accept_available === 'undefined')
             ? true
@@ -1475,8 +1635,29 @@ async function loadUserProfilePreferences() {
         if (!_autoAcceptMutualAvailable) {
             _autoAcceptMutualEnabled = false;
         }
+        window._autoAcceptBountyEnabled = !!profile.auto_accept_bounty;
+        window._autoAcceptBountyAvailable = (typeof profile.auto_accept_bounty_available === 'undefined')
+            ? true
+            : !!profile.auto_accept_bounty_available;
+        if (!window._autoAcceptBountyAvailable) {
+            window._autoAcceptBountyEnabled = false;
+        }
+        var previousJoined = !!_defaultGroupJoined;
+        var wasReady = !!_defaultGroupJoinedReady;
+        _defaultGroupJoined = !!profile.default_group_joined;
+        _defaultGroupJoinedReady = true;
+        if (typeof _persistDefaultGroupJoined === 'function') {
+            _persistDefaultGroupJoined();
+        }
         syncAutoAcceptToggleUi();
+        if (typeof syncAutoAcceptBountyToggleUi === 'function') syncAutoAcceptBountyToggleUi();
+        if (typeof syncDefaultGroupJoinedUi === 'function') syncDefaultGroupJoinedUi();
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
+        window.App.autoAcceptBounty = !!window._autoAcceptBountyEnabled;
+        window.App.defaultGroupJoined = _defaultGroupJoined;
+        if ((!wasReady || previousJoined !== _defaultGroupJoined) && typeof window.renderTests === 'function') {
+            window.renderTests(true);
+        }
         if (typeof applyDeviceInfoFromProfile === 'function') {
             applyDeviceInfoFromProfile(profile);
         } else {
@@ -1486,6 +1667,8 @@ async function loadUserProfilePreferences() {
     } catch (error) {
         console.error('Profile preferences load error:', error);
         syncAutoAcceptToggleUi();
+        if (typeof syncAutoAcceptBountyToggleUi === 'function') syncAutoAcceptBountyToggleUi();
+        if (typeof syncDefaultGroupJoinedUi === 'function') syncDefaultGroupJoinedUi();
         _deviceProfileBannerReady = true;
         if (typeof syncDeviceProfileBanner === 'function') syncDeviceProfileBanner();
     }
@@ -1714,12 +1897,62 @@ function onSettingsEmailInput() {
     _updateSettingsEmailValidIcon();
 }
 
+function syncSettingsEmailRowUi() {
+    var previewText = document.getElementById('settings-email-preview-text');
+    var editBtn = document.getElementById('settings-email-edit-btn');
+    var deleteBtn = document.getElementById('settings-email-delete');
+    var current = getCurrentUserEmail();
+    var hasEmail = !!current;
+
+    if (previewText) {
+        previewText.classList.toggle('is-set', hasEmail);
+        previewText.classList.toggle('is-missing', !hasEmail);
+        if (hasEmail) {
+            previewText.textContent = current;
+            previewText.removeAttribute('data-i18n');
+        } else {
+            previewText.setAttribute('data-i18n', 'settingsEmailNotSet');
+            previewText.textContent = window.t('settingsEmailNotSet', {}, lang);
+        }
+    }
+    if (editBtn) {
+        editBtn.setAttribute('aria-label', window.t('settingsEmailEditAria', {}, lang));
+        if (hasEmail) editBtn.removeAttribute('hidden');
+        else editBtn.setAttribute('hidden', '');
+    }
+    if (deleteBtn) {
+        if (hasEmail) deleteBtn.removeAttribute('hidden');
+        else deleteBtn.setAttribute('hidden', '');
+    }
+}
+
 function populateSettingsEmail() {
+    syncSettingsEmailRowUi();
     var input = document.getElementById('settings-tester-email');
     if (!input) return;
     var current = getCurrentUserEmail();
-    if (current && !input.value) input.value = current;
+    input.value = current || '';
     _updateSettingsEmailValidIcon();
+}
+
+function openSettingsEmailModal() {
+    var modal = document.getElementById('settings-email-modal');
+    if (!modal) return;
+    populateSettingsEmail();
+    modal.classList.add('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    var input = document.getElementById('settings-tester-email');
+    if (input) {
+        try { setTimeout(function() { input.focus(); input.select && input.select(); }, 50); } catch (e) {}
+    }
+}
+
+function closeSettingsEmailModal(event) {
+    if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+    var modal = document.getElementById('settings-email-modal');
+    if (modal) modal.classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
 async function saveSettingsEmail() {
@@ -1728,7 +1961,7 @@ async function saveSettingsEmail() {
     if (!input) return;
     var value = sanitizeSingleEmailInputValue(input.value);
     input.value = value;
-    var validationCode = getEmailValidationErrorCode(value, false);
+    var validationCode = getEmailValidationErrorCode(value, true);
     if (validationCode) {
         if (typeof window.showToast === 'function') window.showToast(getEmailValidationMessage(validationCode));
         try { input.focus(); } catch (e) {}
@@ -1738,7 +1971,9 @@ async function saveSettingsEmail() {
     var res = await saveTesterEmail(value);
     if (btn) btn.classList.remove('is-loading');
     if (res && res.ok) {
+        syncSettingsEmailRowUi();
         _updateSettingsEmailValidIcon();
+        closeSettingsEmailModal();
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         if (typeof window.showToast === 'function') window.showToast(window.t('settingsEmailSaved', {}, lang));
     } else {
@@ -1746,6 +1981,32 @@ async function saveSettingsEmail() {
         if (!errorMessage) {
             errorMessage = getEmailValidationMessage(res && res.code);
         }
+        if (!errorMessage) {
+            errorMessage = window.t('emailSaveFailed', {}, lang);
+        }
+        if (typeof window.showToast === 'function') window.showToast(errorMessage);
+    }
+}
+
+async function deleteSettingsEmail() {
+    var btn = document.getElementById('settings-email-delete');
+    var input = document.getElementById('settings-tester-email');
+    if (!getCurrentUserEmail()) {
+        syncSettingsEmailRowUi();
+        return;
+    }
+    if (btn) btn.classList.add('is-loading');
+    var res = await saveTesterEmail('');
+    if (btn) btn.classList.remove('is-loading');
+    if (res && res.ok) {
+        if (input) input.value = '';
+        syncSettingsEmailRowUi();
+        _updateSettingsEmailValidIcon();
+        closeSettingsEmailModal();
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (typeof window.showToast === 'function') window.showToast(window.t('settingsEmailDeleted', {}, lang));
+    } else {
+        var errorMessage = String(res && res.message || '').trim();
         if (!errorMessage) {
             errorMessage = window.t('emailSaveFailed', {}, lang);
         }
@@ -1796,6 +2057,28 @@ async function fetchOfferEmailPreview(targetAppId, proposerAppId) {
         return { ok: true, emails: Array.isArray(result.emails) ? result.emails.filter(Boolean) : [] };
     } catch (error) {
         console.warn('Offer email preview failed:', error);
+        return { ok: false, emails: [], code: 'network_error' };
+    }
+}
+
+async function fetchBountyApplicationEmailPreview(applicationId) {
+    try {
+        var payload = typeof withInitData === 'function'
+            ? withInitData({ user_id: Number(userId || 0) || 0 })
+            : { user_id: Number(userId || 0) || 0, init_data: (tg && tg.initData) || '' };
+        var response = await fetch(`${API_BASE}/bounty-applications/${Number(applicationId)}/email-preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        var result = null;
+        try { result = await response.json(); } catch (e) { result = null; }
+        if (!response.ok || !result || result.status !== 'success') {
+            return { ok: false, emails: [], code: getBackendErrorCode(result) || 'database_error' };
+        }
+        return { ok: true, emails: Array.isArray(result.emails) ? result.emails.filter(Boolean) : [] };
+    } catch (error) {
+        console.warn('Bounty application email preview failed:', error);
         return { ok: false, emails: [], code: 'network_error' };
     }
 }
@@ -2292,12 +2575,31 @@ async function startMassInvite(projectId) {
                         }
                     }
                 } else {
-                    failedCount++;
-                    if (typeof MassInviteSession !== 'undefined') {
-                        MassInviteSession.markFailed(projectId, candidate.owner_id, sendData && sendData.code);
-                    }
-                    if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                        MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
+                    var skipCode = String((sendData && sendData.code) || (sendData && sendData.outcome) || '');
+                    var isAccessIssue = skipCode === 'owner_has_access_issue'
+                        || skipCode === 'target_owner_has_access_issue'
+                        || skipCode === 'access_issue'
+                        || (sendData && sendData.outcome === 'access_issue');
+                    if (isAccessIssue) {
+                        // Soft skip: warn in UI, keep blast running.
+                        if (typeof MassInviteSession !== 'undefined') {
+                            if (MassInviteSession.markAccessIssue) {
+                                MassInviteSession.markAccessIssue(projectId, candidate.owner_id, skipCode || 'access_issue');
+                            } else {
+                                MassInviteSession.markFailed(projectId, candidate.owner_id, skipCode || 'access_issue');
+                            }
+                        }
+                        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'access_issue');
+                        }
+                    } else {
+                        failedCount++;
+                        if (typeof MassInviteSession !== 'undefined') {
+                            MassInviteSession.markFailed(projectId, candidate.owner_id, sendData && sendData.code);
+                        }
+                        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
+                        }
                     }
                 }
             } catch (err) {
@@ -2566,6 +2868,8 @@ function registerJoinBountyContext(item) {
         package_name: item.package_name || item.package || '',
         icon_url: item.icon_url || '',
         bounty_per_tester: Number(item.bounty_per_tester || 0),
+        test_mode: item.test_mode || item.testing_mode || '',
+        is_email_test: !!item.is_email_test,
     };
 }
 
@@ -2586,12 +2890,14 @@ function _findJoinBountyContract(appId) {
     if (ctx) {
         if (!candidate) {
             candidate = ctx;
-        } else if (!Number(candidate.bounty_per_tester) && Number(ctx.bounty_per_tester)) {
+        } else {
             candidate = Object.assign({}, candidate, {
-                bounty_per_tester: ctx.bounty_per_tester,
+                bounty_per_tester: Number(candidate.bounty_per_tester) || Number(ctx.bounty_per_tester) || 0,
                 name: candidate.name || ctx.name,
                 package_name: candidate.package_name || ctx.package_name,
                 icon_url: candidate.icon_url || ctx.icon_url,
+                test_mode: candidate.test_mode || ctx.test_mode,
+                is_email_test: !!(candidate.is_email_test || ctx.is_email_test),
             });
         }
     }
@@ -2601,19 +2907,67 @@ function _findJoinBountyContract(appId) {
 function _buildJoinBountyGrantPreviewHtml(grant) {
     grant = grant || (typeof getGrantEstimateData === 'function'
         ? getGrantEstimateData({ skips_count: 0, daily_timeline: '' })
-        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, total: 100 });
+        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, eligible: true, total: 100 });
     var formatAmount = typeof formatBustAmount === 'function'
         ? formatBustAmount
         : function(value) { return String(value) + ' $BUST'; };
-    var skipIndicator = Array.from({ length: 3 }, function() {
-        return '<span class="skip-dot available"></span>';
-    }).join('');
+    var currentSkips = Math.max(0, Number(grant.skips || 0));
+    var eligible = grant.eligible !== false && currentSkips <= 3;
+    var skipIndicator = typeof buildGrantSkipDots === 'function'
+        ? buildGrantSkipDots(currentSkips)
+        : Array.from({ length: 3 }, function(_, index) {
+            if (index === 0) return currentSkips > 0 ? '<span class="skip-dot used"></span>' : '<span class="skip-dot available"></span>';
+            if (index === 1) return currentSkips > 1 ? '<span class="skip-dot used"></span>' : '<span class="skip-dot available"></span>';
+            if (currentSkips === 3) return '<span class="skip-dot warning" title="3-й пропуск">⚠️</span>';
+            if (currentSkips >= 4) return '<span class="skip-dot used"></span>';
+            return '<span class="skip-dot available"></span>';
+        }).join('');
     var T = function(key, vars) {
         return window.t(key, vars || {}, lang) || key;
     };
     var esc = function(value) {
         return typeof window.escapeHTML === 'function' ? window.escapeHTML(value) : String(value || '');
     };
+
+    if (!eligible) {
+        return '<div class="grant-dashboard-block grant-dashboard-block-lost">' +
+            '<div class="grant-dashboard-header">' +
+                '<div class="grant-dashboard-heading">' +
+                    '<div class="grant-dashboard-title">' + esc(T('grantGoldTesterTitle')) + '</div>' +
+                    '<div class="grant-dashboard-subtitle">' + esc(T('grantLostLabel')) + '</div>' +
+                '</div>' +
+                '<div class="grant-dashboard-total notranslate">' + esc(T('grantTotalEstimateValue', { amount: formatAmount(0) })) + '</div>' +
+            '</div>' +
+            '<div class="grant-dashboard-skips-row">' +
+                '<span class="grant-skip-text">' + esc(T('grantSkipsLabel', { used: currentSkips, max: 3 })) + '</span>' +
+                '<span class="grant-dashboard-skips">' + skipIndicator + '</span>' +
+            '</div>' +
+            '<div class="grant-reward-grid grant-reward-grid-lost">' +
+                '<div class="grant-reward-card grant-reward-card-burned">' +
+                    '<div class="grant-reward-label">' + esc(T('grantBaseLabel')) + '</div>' +
+                    '<div class="grant-reward-value notranslate"><span class="grant-burned-text">' + esc(T('grantBaseValue', { amount: formatAmount(grant.base || 50) })) + '</span></div>' +
+                    '<div class="grant-reward-status is-burned">' + esc(T('grantCardBurned')) + '</div>' +
+                '</div>' +
+                '<div class="grant-reward-card grant-reward-card-burned">' +
+                    '<div class="grant-reward-label">' + esc(T('grantPerfectLabel')) + '</div>' +
+                    '<div class="grant-reward-value notranslate"><span class="grant-burned-text">' + esc(T('grantPerfectValue', { amount: formatAmount(50) })) + '</span></div>' +
+                    '<div class="grant-reward-status is-burned">' + esc(T('grantCardBurned')) + '</div>' +
+                '</div>' +
+                '<div class="grant-reward-card grant-reward-card-burned">' +
+                    '<div class="grant-reward-label">' + esc(T('grantKarmaBonusLabel')) + '</div>' +
+                    '<div class="grant-reward-value notranslate"><span class="grant-burned-text">' + esc(T('grantKarmaValue', { amount: formatAmount(grant.karmaBonus || 0) })) + '</span></div>' +
+                    '<div class="grant-reward-status is-burned">' + esc(T('grantCardBurned')) + '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="join-bounty-confirm-grant-note">' + esc(T('joinBountyGrantNote')) + '</div>' +
+        '</div>';
+    }
+
+    var perfectBurned = currentSkips > 0;
+    var perfectValueLabel = T('grantPerfectValue', { amount: formatAmount(50) });
+    var perfectValueHtml = perfectBurned
+        ? '<span class="grant-burned-text">' + esc(perfectValueLabel) + '</span>'
+        : esc(perfectValueLabel);
 
     return '<div class="grant-dashboard-block">' +
         '<div class="grant-dashboard-header">' +
@@ -2624,7 +2978,7 @@ function _buildJoinBountyGrantPreviewHtml(grant) {
             '<div class="grant-dashboard-total notranslate">' + esc(T('grantTotalEstimateValue', { amount: formatAmount(grant.total) })) + '</div>' +
         '</div>' +
         '<div class="grant-dashboard-skips-row">' +
-            '<span class="grant-skip-text">' + esc(T('grantSkipsLabel', { used: 0, max: 3 })) + '</span>' +
+            '<span class="grant-skip-text">' + esc(T('grantSkipsLabel', { used: currentSkips, max: 3 })) + '</span>' +
             '<span class="grant-dashboard-skips">' + skipIndicator + '</span>' +
         '</div>' +
         '<div class="grant-reward-grid">' +
@@ -2633,10 +2987,12 @@ function _buildJoinBountyGrantPreviewHtml(grant) {
                 '<div class="grant-reward-value notranslate">' + esc(T('grantBaseValue', { amount: formatAmount(grant.base || 50) })) + '</div>' +
                 '<div class="grant-reward-status is-active">' + esc(T('grantCardActive')) + '</div>' +
             '</div>' +
-            '<div class="grant-reward-card">' +
+            '<div class="grant-reward-card' + (perfectBurned ? ' grant-reward-card-burned' : '') + '">' +
                 '<div class="grant-reward-label">' + esc(T('grantPerfectLabel')) + '</div>' +
-                '<div class="grant-reward-value notranslate">' + esc(T('grantPerfectValue', { amount: formatAmount(50) })) + '</div>' +
-                '<div class="grant-reward-status is-active">' + esc(T('grantCardActive')) + '</div>' +
+                '<div class="grant-reward-value notranslate">' + perfectValueHtml + '</div>' +
+                '<div class="grant-reward-status ' + (perfectBurned ? 'is-burned' : 'is-active') + '">' +
+                    esc(T(perfectBurned ? 'grantCardBurned' : 'grantCardActive')) +
+                '</div>' +
             '</div>' +
             '<div class="grant-reward-card">' +
                 '<div class="grant-reward-label">' + esc(T('grantKarmaBonusLabel')) + '</div>' +
@@ -2647,6 +3003,7 @@ function _buildJoinBountyGrantPreviewHtml(grant) {
         '<div class="join-bounty-confirm-grant-note">' + esc(T('joinBountyGrantNote')) + '</div>' +
     '</div>';
 }
+window._buildJoinBountyGrantPreviewHtml = _buildJoinBountyGrantPreviewHtml;
 
 function openJoinBountyConfirmModal(appId) {
     if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
@@ -2688,6 +3045,8 @@ function openJoinBountyConfirmModal(appId) {
 
     var totalEl = document.getElementById('join-bounty-confirm-total');
     if (totalEl) totalEl.textContent = formatAmount(bounty);
+    var totalCompactEl = document.getElementById('join-bounty-confirm-total-compact');
+    if (totalCompactEl) totalCompactEl.textContent = formatAmount(bounty);
     var checkinsEl = document.getElementById('join-bounty-confirm-checkins');
     if (checkinsEl) checkinsEl.textContent = formatAmount(checkinsReward);
     var holdEl = document.getElementById('join-bounty-confirm-hold');
@@ -2701,6 +3060,8 @@ function openJoinBountyConfirmModal(appId) {
 
     var grantEl = document.getElementById('join-bounty-confirm-grant');
     if (grantEl) grantEl.innerHTML = _buildJoinBountyGrantPreviewHtml(grant);
+    var grantCompactEl = document.getElementById('join-bounty-confirm-grant-compact');
+    if (grantCompactEl) grantCompactEl.textContent = '~' + formatAmount(grantTotal);
 
     var grandTotalEl = document.getElementById('join-bounty-confirm-grand-total');
     if (grandTotalEl) grandTotalEl.textContent = '~' + formatAmount(grandTotal);
@@ -2712,6 +3073,18 @@ function openJoinBountyConfirmModal(appId) {
             T('joinBountyGrantPart') + ' <span class="jb-total-part notranslate">~' + formatAmount(grantTotal) + '</span>';
     }
 
+    var ownerAccordion = document.getElementById('jb-owner-accordion');
+    if (ownerAccordion) ownerAccordion.open = false;
+    var grantAccordion = document.getElementById('jb-grant-accordion');
+    if (grantAccordion) grantAccordion.open = false;
+    [ownerAccordion, grantAccordion].forEach(function(el) {
+        if (!el || el.dataset.jbBound) return;
+        el.dataset.jbBound = '1';
+        el.addEventListener('toggle', function() {
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        });
+    });
+
     var setText = function(selector, key) {
         var el = document.querySelector(selector);
         if (el) el.textContent = T(key);
@@ -2719,10 +3092,10 @@ function openJoinBountyConfirmModal(appId) {
     setText('#join-bounty-confirm-title', 'joinBountyConfirmTitle');
     setText('#join-bounty-confirm-intro', 'joinBountyConfirmIntro');
     setText('#join-bounty-confirm-modal .jb-total-label', 'joinBountyTotalLabel');
-    setText('#join-bounty-confirm-modal .jb-section-title[data-i18n="joinBountyOwnerBlockTitle"]', 'joinBountyOwnerBlockTitle');
-    setText('#join-bounty-confirm-modal .jb-section-tag[data-i18n="joinBountyOwnerBlockTag"]', 'joinBountyOwnerBlockTag');
-    setText('#join-bounty-confirm-modal .jb-section-title[data-i18n="joinBountyGrantBlockTitle"]', 'joinBountyGrantBlockTitle');
-    setText('#join-bounty-confirm-modal .jb-section-tag[data-i18n="joinBountyGrantBlockTag"]', 'joinBountyGrantBlockTag');
+    setText('#jb-owner-accordion .jb-accordion-title', 'joinBountyOwnerBlockTitle');
+    setText('#jb-owner-accordion .jb-accordion-sub', 'joinBountyOwnerCompactSub');
+    setText('#jb-grant-accordion .jb-accordion-title', 'joinBountyGrantBlockTitle');
+    setText('#jb-grant-accordion .jb-accordion-sub', 'joinBountyGrantCompactSub');
     setText('#join-bounty-confirm-modal .join-bounty-reward-title', 'joinBountyRewardLabel');
     setText('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyCheckinsLabel"]', 'joinBountyCheckinsLabel');
     setText('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyHoldLabel"]', 'joinBountyHoldLabel');
@@ -2749,6 +3122,30 @@ function closeJoinBountyConfirmModal(event) {
 }
 
 function joinBounty(appId) {
+    var alreadyLabel = typeof getBountyAlreadyTestingBtnLabel === 'function'
+        ? getBountyAlreadyTestingBtnLabel(appId)
+        : '';
+    if (alreadyLabel) {
+        if (typeof showToast === 'function') showToast(alreadyLabel);
+        if (typeof renderBountyFeed === 'function') renderBountyFeed(true);
+        return;
+    }
+    var target = typeof _findJoinBountyContract === 'function' ? _findJoinBountyContract(appId) : null;
+    var targetIsEmailList = typeof _isDossierEmailTestProject === 'function'
+        ? _isDossierEmailTestProject(target)
+        : !!(target && String(target.test_mode || '').toLowerCase() === 'email_list');
+    var currentEmail = (typeof getCurrentUserEmail === 'function')
+        ? getCurrentUserEmail()
+        : String((window.App && window.App.userEmail) || '').trim();
+    if (targetIsEmailList && !currentEmail && typeof window.openEmailCollectModal === 'function') {
+        window.openEmailCollectModal({
+            title: window.t('emailGateOfferTitle', {}, lang),
+            text: window.t('emailGateOfferText', {}, lang),
+            primaryLabel: window.t('emailGateSaveContinue', {}, lang),
+            onSave: function() { joinBounty(appId); },
+        });
+        return;
+    }
     openJoinBountyConfirmModal(appId);
 }
 
@@ -2765,16 +3162,7 @@ async function confirmJoinBounty() {
     _pendingActions.add(actionKey);
 
     closeJoinBountyConfirmModal();
-
-    // Optimistic UI: remove card immediately, rollback on error
-    const rollback = [...bountyContracts];
-    bountyContracts = bountyContracts.filter(c => c.app_id !== appId);
-    renderBountyFeed();
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    if (typeof applyOptimisticMyTestJoin === 'function') {
-        applyOptimisticMyTestJoin(appId, { join_type: 'bounty', isBounty: true });
-    }
-    switchTab('tests');
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
     try {
         const response = await fetch(`${API_BASE}/feed/bounty/${appId}/join`, {
@@ -2784,45 +3172,130 @@ async function confirmJoinBounty() {
         });
         const result = await response.json();
         if (result.status !== 'success') {
-            bountyContracts = rollback;
-            renderBountyFeed();
-            if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
-            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            var joinCode = typeof getBackendErrorCode === 'function' ? getBackendErrorCode(result) : '';
+            if (joinCode === 'email_required' && typeof window.openEmailCollectModal === 'function') {
+                window.openEmailCollectModal({
+                    title: window.t('emailGateOfferTitle', {}, lang),
+                    text: window.t('emailGateOfferText', {}, lang),
+                    primaryLabel: window.t('emailGateSaveContinue', {}, lang),
+                    onSave: function() {
+                        _pendingJoinBountyAppId = appId;
+                        confirmJoinBounty();
+                    },
+                });
+                return;
+            }
+            handleApiError(joinCode, result && result.details ? result.details : {});
             return;
         }
+
+        // Owner must approve — application created, not yet joined.
+        if (result.pending_approval) {
+            bountyContracts = (bountyContracts || []).map(function(card) {
+                if (Number(card && card.app_id) !== appId) return card;
+                return Object.assign({}, card, { has_pending_bounty_application: true });
+            });
+            renderBountyFeed();
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            showToast(window.t('bountyAppSubmittedToast', {}, lang));
+            loadBountyFeed();
+            return;
+        }
+
+        // Auto-accepted or legacy instant join.
+        bountyContracts = (bountyContracts || []).filter(function(card) {
+            return Number(card && card.app_id) !== appId;
+        });
+        renderBountyFeed();
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (typeof applyOptimisticMyTestJoin === 'function') {
+            applyOptimisticMyTestJoin(appId, { join_type: 'bounty', isBounty: true });
+        }
+        if (result.auto_accepted) {
+            showToast(window.t('bountyAppAutoAcceptedToast', {}, lang));
+        }
+        switchTab('tests');
         if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
         else loadTasks(false);
         loadBountyFeed();
         loadProjects(true);
     } catch (error) {
         console.error('Join bounty error:', error);
-        bountyContracts = rollback;
-        renderBountyFeed();
-        if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
         if (tg.showAlert) tg.showAlert(t.networkError);
     } finally {
         _pendingActions.delete(actionKey);
     }
 }
 
-async function confirmDropTest() {
-    if (!_dropTestAppId) return;
+async function confirmDropTest(explicitAppId) {
+    var appId = Number(
+        explicitAppId ||
+        _dropTestAppId ||
+        (window._terminationState && window._terminationState.appId) ||
+        window._dropTestAppId ||
+        0
+    );
+    if (appId > 0) {
+        _dropTestAppId = appId;
+        window._dropTestAppId = appId;
+    }
+    if (!appId) {
+        console.warn('confirmDropTest: missing app id');
+        if (typeof showToast === 'function') showToast(window.t ? window.t('loadError', {}, lang) : 'Error');
+        return;
+    }
     try {
-        const response = await fetch(`${API_BASE}/tests/${_dropTestAppId}/drop`, {
+        const unlinkReciprocal = false;
+        const reasonCode = (typeof getTermReasonCode === 'function') ? getTermReasonCode() : '';
+        const reasonNote = (typeof getTermReasonNote === 'function') ? getTermReasonNote() : '';
+        const leaveReason = _buildLeaveReasonPayload(reasonCode, reasonNote);
+        const response = await fetch(`${API_BASE}/tests/${appId}/drop`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({ tester_id: userId }))
+            body: JSON.stringify(withInitData({
+                tester_id: userId,
+                unlink_reciprocal: !!unlinkReciprocal,
+                leave_reason: leaveReason,
+            }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
             showToast(getApiErrorMessage(data, 'loadError'));
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: true });
+            }
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        closeDropTestModal({ target: document.getElementById('drop-test-modal') });
+        const exitKind = String((data && data.exit_kind) || '');
+        const successKey = exitKind === 'invite_safe_exit'
+            ? 'termDropSuccessSafe'
+            : (exitKind === 'invite_costly_exit' ? 'termDropSuccessCostly' : 'termDropSuccess');
+        showToast(window.t(successKey, {}, lang));
+        if (typeof window.showTerminationResult === 'function') {
+            window.showTerminationResult({
+                mode: 'drop',
+                appId: appId,
+                unlinkReciprocal: false,
+                data: data,
+                test: (Array.isArray(myTests) ? myTests.find(function(t) { return Number(t.id || t.app_id || 0) === Number(appId); }) : null),
+            });
+        } else {
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: false });
+            }
+            if (typeof closeTerminationSheet === 'function') {
+                closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+            } else {
+                closeDropTestModal({ target: document.getElementById('drop-test-modal') });
+            }
+        }
         await Promise.all([loadTasks(), loadProjects(true)]);
     } catch (error) {
         console.error('Drop test error:', error);
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: true });
+        }
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }
@@ -2834,6 +3307,23 @@ function _buildLeaveReasonPayload(prefix, freeformText) {
         return safePrefix + ': ' + safeFreeform;
     }
     return safePrefix || safeFreeform;
+}
+
+function _formatKickReasonForNotify(prefix, freeformText) {
+    var safePrefix = String(prefix || '').trim();
+    var safeFreeform = String(freeformText || '').trim();
+    var labelKeyByCode = {
+        no_response: 'kickReasonNoResponse',
+        inactive: 'kickReasonInactivity',
+        violation: 'kickReasonViolation',
+        other: 'kickReasonOther',
+    };
+    var labelKey = labelKeyByCode[safePrefix] || '';
+    var label = labelKey ? window.t(labelKey, {}, lang) : safePrefix;
+    if (label && safeFreeform) {
+        return label + ': ' + safeFreeform;
+    }
+    return label || safeFreeform;
 }
 
 function _removeLocalTest(appId) {
@@ -2885,15 +3375,37 @@ function _removeLocalTesterFromProject(appId, testerId) {
     });
 }
 
-async function confirmLeaveMutual(isJustified) {
-    if (!_leaveMutualAppId) return;
+async function confirmLeaveMutual(isJustified, explicitAppId) {
+    var appId = Number(
+        explicitAppId ||
+        _leaveMutualAppId ||
+        (window._terminationState && window._terminationState.appId) ||
+        window._leaveMutualAppId ||
+        0
+    );
+    if (appId > 0) {
+        _leaveMutualAppId = appId;
+        window._leaveMutualAppId = appId;
+    }
+    if (!appId) {
+        console.warn('confirmLeaveMutual: missing app id');
+        if (typeof showToast === 'function') showToast(window.t ? window.t('loadError', {}, lang) : 'Error');
+        return;
+    }
 
-    var reasonSelect = document.getElementById('leave-reason-select');
-    var reasonOther = document.getElementById('leave-reason-other');
-    var reasonText = reasonSelect ? reasonSelect.value : '';
-    var reasonPayload = _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
-    var appId = _leaveMutualAppId;
+    var reasonCode = (typeof getTermReasonCode === 'function')
+        ? getTermReasonCode()
+        : '';
+    var reasonNote = (typeof getTermReasonNote === 'function')
+        ? getTermReasonNote()
+        : '';
+    var reasonSelect = document.getElementById('term-reason-select') || document.getElementById('leave-reason-select');
+    var reasonOther = document.getElementById('term-reason-other') || document.getElementById('leave-reason-other');
+    if (!reasonCode && reasonSelect) reasonCode = reasonSelect.value;
+    if (!reasonNote && reasonOther) reasonNote = reasonOther.value;
+    var reasonPayload = _buildLeaveReasonPayload(reasonCode, reasonNote);
     var previousTests = Array.isArray(myTests) ? myTests.slice() : [];
+    var unlinkReciprocal = false;
 
     try {
         _removeLocalTest(appId);
@@ -2908,13 +3420,21 @@ async function confirmLeaveMutual(isJustified) {
                 tester_id: userId,
                 leave_reason: reasonPayload,
                 is_justified: !!isJustified,
+                unlink_reciprocal: unlinkReciprocal,
             }))
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
             var errorCode = getBackendErrorCode(data);
             if (errorCode === 'testing_not_found' || errorCode === 'app_not_found' || errorCode === 'project_pending_completion') {
-                closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+                if (typeof window.endTerminationSubmit === 'function') {
+                    window.endTerminationSubmit({ reopenSheet: false });
+                }
+                if (typeof closeTerminationSheet === 'function') {
+                    closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+                } else {
+                    closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+                }
                 loadTasks(true).catch(function() {});
                 loadProjects(true).catch(function() {});
                 return;
@@ -2923,20 +3443,43 @@ async function confirmLeaveMutual(isJustified) {
             if (typeof window.renderTests === 'function') {
                 window.renderTests(true);
             }
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: true });
+            }
             showToast(getApiErrorMessage(data, 'loadError'));
             return;
         }
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        if (data.exit_status === 'abandoned') {
+        var karmaBurned = Number(data.karma_burned || 0);
+        if (karmaBurned > 0) {
             showToast(window.t('leaveSuccessAbandoned', {
-                karma: formatUiAmount(data.karma_burned || 0, 1)
+                karma: formatUiAmount(karmaBurned, 1)
             }, lang));
-        } else {
+        } else if (data.exit_status === 'justified_exit' || isJustified) {
             showToast(window.t('leaveSuccessJustified', {}, lang));
+        } else {
+            showToast(window.t('leaveSuccessSafe', {}, lang));
         }
 
-        closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+        if (typeof window.showTerminationResult === 'function') {
+            window.showTerminationResult({
+                mode: 'leave',
+                appId: appId,
+                unlinkReciprocal: false,
+                data: data,
+                test: previousTests.find(function(t) { return Number(t.id || t.app_id || 0) === Number(appId); }),
+            });
+        } else {
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: false });
+            }
+            if (typeof closeTerminationSheet === 'function') {
+                closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+            } else {
+                closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+            }
+        }
         await Promise.all([loadTasks(true), loadProjects(true)]);
     } catch (error) {
         console.error('Leave mutual error:', error);
@@ -2944,17 +3487,51 @@ async function confirmLeaveMutual(isJustified) {
         if (typeof window.renderTests === 'function') {
             window.renderTests(true);
         }
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: true });
+        }
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }
 
-async function confirmKickTester() {
-    if (!_kickTarget || !_kickTarget.appId || !_kickTarget.testerId) return;
+async function confirmKickTester(explicitAppId, explicitTesterId) {
+    var appId = Number(
+        explicitAppId ||
+        (_kickTarget && _kickTarget.appId) ||
+        (window._terminationState && window._terminationState.projectId) ||
+        (window._kickTarget && window._kickTarget.appId) ||
+        0
+    );
+    var testerId = Number(
+        explicitTesterId ||
+        (_kickTarget && _kickTarget.testerId) ||
+        (window._terminationState && window._terminationState.testerId) ||
+        (window._kickTarget && window._kickTarget.testerId) ||
+        0
+    );
+    if (appId > 0 && testerId > 0) {
+        _kickTarget = { appId: appId, testerId: testerId };
+        window._kickTarget = _kickTarget;
+    }
+    if (!appId || !testerId) {
+        console.warn('confirmKickTester: missing target');
+        if (typeof showToast === 'function') showToast(window.t ? window.t('loadError', {}, lang) : 'Error');
+        return;
+    }
 
-    var reasonSelect = document.getElementById('kick-reason-select');
-    var reasonOther = document.getElementById('kick-reason-other');
-    var reasonText = reasonSelect ? reasonSelect.value : '';
-    var reasonPayload = _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
+    var reasonCode = (typeof getTermReasonCode === 'function')
+        ? getTermReasonCode()
+        : '';
+    var reasonNote = (typeof getTermReasonNote === 'function')
+        ? getTermReasonNote()
+        : '';
+    var reasonSelect = document.getElementById('term-reason-select') || document.getElementById('kick-reason-select');
+    var reasonOther = document.getElementById('term-reason-other') || document.getElementById('kick-reason-other');
+    if (!reasonCode && reasonSelect) reasonCode = reasonSelect.value;
+    if (!reasonNote && reasonOther) reasonNote = reasonOther.value;
+    // Human-readable note for tester notification + soft-archive card.
+    var reasonPayload = _formatKickReasonForNotify(reasonCode, reasonNote)
+        || _buildLeaveReasonPayload(reasonCode, reasonNote);
     var target = {
         appId: _kickTarget.appId,
         testerId: _kickTarget.testerId,
@@ -2962,7 +3539,19 @@ async function confirmKickTester() {
     var project = (myProjects || []).find(function(item) {
         return Number(item.id) === Number(target.appId);
     });
+    var currentTesterObj = project && Array.isArray(project.testers)
+        ? project.testers.find(function(t) { return Number(t.tester_id) === Number(target.testerId); })
+        : null;
+    var reciprocalAppId = Number((currentTesterObj && currentTesterObj.reciprocal_app_id) || 0);
+    var reciprocalTest = (reciprocalAppId > 0 && Array.isArray(myTests))
+        ? myTests.find(function(t) { return Number(t.id || t.app_id || 0) === reciprocalAppId; })
+        : null;
     var previousTesters = project && Array.isArray(project.testers) ? project.testers.slice() : null;
+    var unlinkReciprocal = (typeof getTermUnlinkReciprocal === 'function')
+        ? !!getTermUnlinkReciprocal()
+        : ((typeof getKickUnlinkReciprocal === 'function')
+            ? !!getKickUnlinkReciprocal()
+            : true);
 
     try {
         _removeLocalTesterFromProject(target.appId, target.testerId);
@@ -2976,6 +3565,7 @@ async function confirmKickTester() {
             body: JSON.stringify(withInitData({
                 owner_id: userId,
                 leave_reason: reasonPayload,
+                unlink_reciprocal: unlinkReciprocal,
             }))
         });
         var data = await response.json();
@@ -2986,15 +3576,51 @@ async function confirmKickTester() {
             if (typeof window.renderProjects === 'function') {
                 window.renderProjects(true);
             }
+            var errorCode = typeof getBackendErrorCode === 'function'
+                ? getBackendErrorCode(data)
+                : String((data && (data.code || data.error_code || data.message)) || '');
+            if (errorCode === 'kick_blocked_active_tester') {
+                if (typeof showKickBlockedDialog === 'function') {
+                    showKickBlockedDialog((data && data.details) || data);
+                } else {
+                    showToast(window.t('kickBlockedActiveTester', {}, lang));
+                }
+                if (typeof window.endTerminationSubmit === 'function') {
+                    window.endTerminationSubmit({ reopenSheet: true });
+                }
+                return;
+            }
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: true });
+            }
             showToast(getApiErrorMessage(data, 'loadError'));
             return;
         }
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t('kickSuccessMsg', {}, lang));
-        closeKickTesterModal({ target: document.getElementById('kick-modal') });
-        closeDossierModal();
+        if (typeof window.showTerminationResult === 'function') {
+            window.showTerminationResult({
+                mode: 'kick',
+                appId: target.appId,
+                testerId: target.testerId,
+                unlinkReciprocal: unlinkReciprocal,
+                data: data,
+                reciprocalTest: reciprocalTest,
+            });
+        } else {
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: false });
+            }
+            if (typeof closeTerminationSheet === 'function') {
+                closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+            } else {
+                closeKickTesterModal({ target: document.getElementById('kick-modal') });
+            }
+            closeDossierModal();
+        }
         await loadProjects(true);
+        loadTasks(true).catch(function() {});
     } catch (error) {
         console.error('Kick tester error:', error);
         if (project && previousTesters) {
@@ -3002,6 +3628,9 @@ async function confirmKickTester() {
         }
         if (typeof window.renderProjects === 'function') {
             window.renderProjects(true);
+        }
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: true });
         }
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
@@ -3051,53 +3680,6 @@ async function submitSocialLink() {
         console.error('Social bonus submit error:', error);
         showToast(getApiErrorMessage(error && error.message, 'socialSubmitError'));
     }
-}
-
-function _clearProjectPackageError() {
-    var errorEl = document.getElementById('package-error');
-    if (!errorEl) return;
-    errorEl.innerHTML = '';
-    errorEl.style.display = 'none';
-}
-
-function _showProjectPackageError(messageKey, options) {
-    var errorEl = document.getElementById('package-error');
-    if (!errorEl) return;
-
-    var opts = options || {};
-    var message = window.t(messageKey, {}, lang);
-    var html = '<div>' + window.escapeHTML(message) + '</div>';
-    if (opts.actionLabelKey) {
-        html += '<button type="button" id="package-error-action-btn" class="btn btn-secondary" style="width:100%; margin-top:10px; background: rgba(255,255,255,0.08); color: var(--text-color); border: 1px solid rgba(255,255,255,0.14);">' + window.escapeHTML(window.t(opts.actionLabelKey, {}, lang)) + '</button>';
-    }
-    errorEl.innerHTML = html;
-    errorEl.style.display = 'block';
-
-    if (opts.actionLabelKey && typeof opts.onAction === 'function') {
-        var actionBtn = document.getElementById('package-error-action-btn');
-        if (actionBtn) {
-            actionBtn.onclick = function(event) {
-                event.preventDefault();
-                opts.onAction();
-            };
-        }
-    }
-}
-
-function _handleProjectCreateConflict(code) {
-    var normalizedCode = String(code || '').trim();
-    if (normalizedCode === 'ALREADY_OWNED') {
-        _showProjectPackageError('ALREADY_OWNED', {
-            actionLabelKey: 'projectPackageContactSupportBtn',
-            onAction: openProjectDuplicateSupport,
-        });
-        return true;
-    }
-    if (normalizedCode === 'ALREADY_ACTIVE' || normalizedCode === 'NEEDS_RESTART') {
-        _showProjectPackageError(normalizedCode);
-        return true;
-    }
-    return false;
 }
 
 function _findTransferProject(projectId) {
@@ -3970,4 +4552,15 @@ async function submitBanUser() {
         }
     }
 }
+
+// Explicit globals for termination-sheet (onclick / IIFE resolve against window).
+window.confirmDropTest = confirmDropTest;
+window.confirmLeaveMutual = confirmLeaveMutual;
+window.confirmKickTester = confirmKickTester;
+window.confirmOvertimeLeave = confirmOvertimeLeave;
+window.showBanScreen = showBanScreen;
+window.submitBanAppeal = submitBanAppeal;
+window.openBanUserModal = openBanUserModal;
+window.closeBanUserModal = closeBanUserModal;
+window.submitBanUser = submitBanUser;
 

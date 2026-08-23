@@ -136,6 +136,13 @@ function getMarketCandidateByAppId(appId, testerId) {
         return Object.assign({ market_kind: 'mutual-prelaunch' }, prelaunchCandidate);
     }
 
+    const bountyCandidate = (Array.isArray(bountyContracts) ? bountyContracts : []).find(function(item) {
+        return Number(item && item.app_id) === normalizedAppId;
+    });
+    if (bountyCandidate) {
+        return Object.assign({ market_kind: 'bounty' }, bountyCandidate);
+    }
+
     return null;
 }
 
@@ -363,6 +370,24 @@ function buildReliabilityAlphaProjectCard(project) {
         }
     }
 
+    var ownerUsername = String(project.owner_username || '').trim().replace(/^@+/, '');
+    var ownerFullName = String(project.owner_name || '').trim().replace(/^@+/, '');
+    var showOwnerFullName = !!(ownerFullName && ownerFullName.toLowerCase() !== ownerUsername.toLowerCase());
+    var projectIconHtml = typeof renderIcon === 'function' ? renderIcon(project.title || '', project.icon_url || '') : '';
+    var ownerIconHtml = typeof renderIcon === 'function' ? renderIcon(ownerFullName || ownerUsername || project.title || '?', project.owner_avatar_url || '') : '';
+    var projectDatesHtml =
+        '<span class="ri-project-date-line">' + window.escapeHTML(window.t('reliabilityDashProjectStartDateLabel', {}, lang)) + ': ' + window.escapeHTML(formatReliabilityDate(project.start_date)) + '</span>' +
+        '<span class="ri-project-date-line">' + window.escapeHTML(window.t('reliabilityDashProjectAsOfDateLabel', {}, lang)) + ': ' + window.escapeHTML(formatReliabilityDate(project.observed_until)) + '</span>';
+    var ownerIdentityHtml = '';
+    if (showOwnerFullName) {
+        ownerIdentityHtml += '<span class="ri-project-owner-name">' + window.escapeHTML(ownerFullName) + '</span>';
+    }
+    if (ownerUsername) {
+        ownerIdentityHtml += '<span class="ri-project-owner-nick-row"><a href="javascript:void(0)" class="ri-project-owner-nick" onclick="event.stopPropagation(); tg.openTelegramLink(\'https://t.me/' + escapeInlineJsString(ownerUsername) + '\')">@' + window.escapeHTML(ownerUsername) + '</a></span>';
+    } else if (!showOwnerFullName) {
+        ownerIdentityHtml += '<span class="ri-project-owner-name">' + window.escapeHTML(window.t('reliabilityDashProjectUnknownOwner', {}, lang)) + '</span>';
+    }
+
     return `
         <div class="ri-project ${project.is_used_in_formula ? 'in-formula' : ''} ${project.is_bad_period_for_reliability ? 'has-penalty' : ''}" onclick="toggleProjectCardDetails(this, event)">
           <div class="ri-project-head">
@@ -384,6 +409,17 @@ function buildReliabilityAlphaProjectCard(project) {
           </div>
 
           <div class="ri-project-body" hidden onclick="event.stopPropagation()">
+            <div class="ri-project-owner-block">
+              <span class="ri-project-owner-pair" aria-hidden="true">
+                <span class="ri-project-owner-app">${projectIconHtml}</span>
+                <span class="ri-project-owner-avatar">${ownerIconHtml}</span>
+              </span>
+              <div class="ri-project-owner-meta">
+                ${ownerIdentityHtml}
+                <span class="ri-project-dates">${projectDatesHtml}</span>
+              </div>
+            </div>
+
             ${project.is_bad_period_for_reliability ? `
             <div class="ri-penalty-notice" style="background: rgba(255, 59, 48, 0.08); border: 1px solid rgba(255, 59, 48, 0.2); border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 13px; color: #ff453a; line-height: 1.4;">
                 ⚠️ <strong>${lang === 'ru' ? 'Слабый период (Штрафной)' : 'Bad Period (Penalty)'}</strong><br>
@@ -743,6 +779,30 @@ function formatAvgHandleHoursLabel(hours) {
     return n.toFixed(1).replace(/\.0$/, '');
 }
 
+function getActiveMyTestForApp(appId) {
+    var id = Number(appId || 0);
+    if (id <= 0 || !Array.isArray(myTests)) return null;
+    for (var i = 0; i < myTests.length; i++) {
+        var test = myTests[i];
+        if (test && Number(test.id) === id) return test;
+    }
+    return null;
+}
+
+function getBountyAlreadyTestingBtnLabel(appId) {
+    var test = getActiveMyTestForApp(appId);
+    if (!test) return '';
+    var joinType = String(test.join_type || '').toLowerCase();
+    if (joinType === 'bounty') {
+        return window.t('bountyAlreadyContractBtn', {}, lang);
+    }
+    // mutual / invite / prelaunch / manual / empty — hybrid showcase case
+    if (joinType === 'mutual' || joinType === 'invite' || joinType === 'prelaunch' || joinType === 'manual' || !joinType) {
+        return window.t('bountyAlreadyMutualBtn', {}, lang);
+    }
+    return window.t('bountyAlreadyTestingBtn', {}, lang);
+}
+
 function renderFeedCard(item, kind) {
     const ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(item.owner_full_name, item.owner_username, item.owner_id));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
@@ -750,12 +810,22 @@ function renderFeedCard(item, kind) {
     const syncChip = isProjectSynced(item)
         ? `<span class="meta-chip accent-green">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
         : '';
-    const emailChip = String(item.test_mode || 'google_group') === 'email_list'
+    const emailChip = (
+        (typeof _isDossierEmailTestProject === 'function' && _isDossierEmailTestProject(item))
+        || String(item.test_mode || 'google_group') === 'email_list'
+    )
         ? `<span class="meta-chip accent-orange">📧 ${window.escapeHTML(window.t('emailTestBadge', {}, lang))}</span>`
         : '';
-    const bountyChip = kind === 'bounty'
-        ? `<span class="meta-chip accent-purple notranslate">💎 ${item.bounty_per_tester || 0} $BUST</span>`
-        : '';
+    const bountyChip = (function() {
+        if (kind !== 'bounty') return '';
+        const possible = typeof getContractPossibleTotalReward === 'function'
+            ? getContractPossibleTotalReward(item.bounty_per_tester)
+            : { total: Number(item.bounty_per_tester || 0) };
+        const amountLabel = typeof formatAmountValue === 'function'
+            ? formatAmountValue(possible.total, 1)
+            : String(Number(possible.total || 0));
+        return `<span class="meta-chip accent-purple notranslate" title="${window.escapeHTML(window.t('bountyPossibleTotalChipHint', {}, lang))}">💎~${amountLabel} $BUST</span>`;
+    })();
     const kindChip = kind === 'mutual-prelaunch'
         ? `<span class="meta-chip accent-blue">${window.t('tabPreLaunch', {}, lang)}</span>`
         : '';
@@ -826,11 +896,26 @@ function renderFeedCard(item, kind) {
         buttonExtraAttrs = '';
     }
     if (kind === 'bounty') {
-        buttonText = window.t('bountyTakeBtn', {}, lang);
-        clickAction = `joinBounty(${item.app_id})`;
-        buttonExtraAttrs = '';
-        if (typeof window.registerJoinBountyContext === 'function') {
-            window.registerJoinBountyContext(item);
+        var alreadyTestingLabel = getBountyAlreadyTestingBtnLabel(item.app_id);
+        if (alreadyTestingLabel) {
+            buttonText = alreadyTestingLabel;
+            clickAction = 'void(0)';
+            buttonClass = 'btn pending disabled';
+            buttonDisabledAttr = 'disabled';
+            buttonExtraAttrs = '';
+        } else if (item.has_pending_bounty_application) {
+            buttonText = window.t('bountyAppPendingBtn', {}, lang);
+            clickAction = 'void(0)';
+            buttonClass = 'btn pending disabled';
+            buttonDisabledAttr = 'disabled';
+            buttonExtraAttrs = '';
+        } else {
+            buttonText = window.t('bountyTakeBtn', {}, lang);
+            clickAction = `joinBounty(${item.app_id})`;
+            buttonExtraAttrs = '';
+            if (typeof window.registerJoinBountyContext === 'function') {
+                window.registerJoinBountyContext(item);
+            }
         }
     }
     if (isOwnProject) {
@@ -2764,20 +2849,8 @@ function closeScreenshotCompleteModal(event) {
 }
 
 function openScreenshotGuardModal(appId, ownerUsername) {
-    window._screenshotGuardAppId = appId;
-    window._screenshotGuardOwner = ownerUsername || '';
-    const modal = document.getElementById('screenshot-guard-modal');
-    if (!modal) {
-        openReportModal(appId, ownerUsername || '');
-        return;
-    }
-    const title = document.getElementById('t-screenshotGuardTitle');
-    const yesBtn = document.getElementById('t-screenshotGuardYes');
-    const cancelBtn = document.getElementById('t-screenshotGuardCancel');
-    if (title) title.innerText = window.t('screenshotGuardTitle', {}, lang);
-    if (yesBtn) yesBtn.innerText = window.t('screenshotGuardYes', {}, lang);
-    if (cancelBtn) cancelBtn.innerText = window.t('screenshotGuardCancel', {}, lang);
-    modal.classList.add('active');
+    // Guard step removed — go straight to report BottomSheet.
+    openReportModal(appId, ownerUsername || '');
 }
 
 function closeScreenshotGuardModal(event) {
@@ -2879,7 +2952,10 @@ function renderPlayReviewModal() {
     if (isApproved) {
         // Render a beautiful, premium confirmation screen!
         var rewardsSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
-        var reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 1.0);
+        // Platform confirm for Play review is +0.3 (see PLAY_REVIEW_PLATFORM_KARMA / KARMA_PLATFORM_CONFIRM).
+        // Do not fall back to legacy +1.0 when summary is empty.
+        var reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 0);
+        if (!(reviewPlatformKarma > 0)) reviewPlatformKarma = 0.3;
         var reviewOwnerBoostBust = Number(rewardsSummary.review_owner_boost_bust || 0);
         var reviewOwnerBoostKarma = Number(rewardsSummary.review_owner_boost_karma || 0);
         var developerReply = rewardsSummary.review_developer_reply || '';
@@ -3163,7 +3239,28 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
-        confirmBtn.style.display = _checkinOptionsIsControlDay ? 'none' : 'block';
+        if (_checkinOptionsIsControlDay) {
+            confirmBtn.style.display = 'none';
+            confirmBtn.disabled = false;
+            confirmBtn.style.cursor = '';
+            confirmBtn.style.opacity = '';
+        } else {
+            confirmBtn.style.display = 'block';
+            var timerRemaining = typeof window.getCheckinTimerRemainingSeconds === 'function'
+                ? window.getCheckinTimerRemainingSeconds(appId)
+                : 0;
+            if (timerRemaining > 0) {
+                // While the anti-fraud timer runs, Just Confirm shows the same countdown.
+                confirmBtn.disabled = true;
+                confirmBtn.style.cursor = 'not-allowed';
+                confirmBtn.style.opacity = '0.75';
+                confirmBtn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', timerRemaining);
+            } else {
+                confirmBtn.disabled = false;
+                confirmBtn.style.cursor = '';
+                confirmBtn.style.opacity = '';
+            }
+        }
     }
     var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
     if (reviewBtn) {
@@ -3224,6 +3321,31 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
 
+function syncCheckinOptionsJustConfirmTimer(appId, remainingSeconds) {
+    const modal = document.getElementById('checkin-options-modal');
+    if (!modal || !modal.classList.contains('active')) return;
+    if (Number(_checkinOptionsAppId) !== Number(appId)) return;
+    if (_checkinOptionsIsControlDay) return;
+    const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
+    if (!confirmBtn) return;
+
+    var remaining = Number(remainingSeconds || 0);
+    if (remaining > 0) {
+        confirmBtn.style.display = 'block';
+        confirmBtn.disabled = true;
+        confirmBtn.style.cursor = 'not-allowed';
+        confirmBtn.style.opacity = '0.75';
+        confirmBtn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
+        return;
+    }
+
+    confirmBtn.style.display = 'block';
+    confirmBtn.disabled = false;
+    confirmBtn.style.cursor = '';
+    confirmBtn.style.opacity = '';
+    confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
+}
+
 function closeCheckinOptionsModal(event) {
     const modal = document.getElementById('checkin-options-modal');
     if (!modal) return;
@@ -3264,9 +3386,11 @@ function _submitCheckinFeedback(feedbackType) {
     const appId = _checkinOptionsAppId;
     const flow = _checkinOptionsFlow;
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
-    var testingDay = test && typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date) : null;
+    var testingDay = test && typeof window.getUserTestingDay === 'function'
+        ? window.getUserTestingDay(test.start_date, test.testing_days)
+        : null;
     var localDate = typeof getLocalDate === 'function' ? getLocalDate() : '';
-    var checkinContext = _checkinOptionsIsControlDay && testingDay && localDate
+    var checkinContext = (testingDay && localDate)
         ? { day: Number(testingDay), local_date: localDate }
         : null;
     if (flow !== 'external' && checkinContext) {
@@ -3295,6 +3419,11 @@ function checkinOptionsReview() {
 function checkinOptionsConfirm() {
     const appId = _checkinOptionsAppId;
     const flow = _checkinOptionsFlow;
+    if (flow !== 'external'
+        && typeof window.isCheckinTimerActiveForApp === 'function'
+        && window.isCheckinTimerActiveForApp(appId)) {
+        return;
+    }
     _closeCheckinOptionsModalImmediate();
     if (appId == null) return;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
@@ -3919,13 +4048,73 @@ function renderReportLanguageToggle() {
     const selectedLang = typeof window.normalizeGuestInviteLanguage === 'function'
         ? window.normalizeGuestInviteLanguage(_reportMessageLang, lang)
         : (String(_reportMessageLang || lang || 'en').trim().toLowerCase() === 'ru' ? 'ru' : 'en');
+    const defaultLang = typeof window.getDefaultCheckpointReportLanguage === 'function' && _reportAppId
+        ? window.getDefaultCheckpointReportLanguage(_reportAppId)
+        : selectedLang;
+    const resolvedDefaultLang = typeof window.normalizeGuestInviteLanguage === 'function'
+        ? window.normalizeGuestInviteLanguage(defaultLang, selectedLang)
+        : (String(defaultLang || 'en').trim().toLowerCase() === 'ru' ? 'ru' : 'en');
+    const defaultMarkTitle = window.escapeHTML(window.t('reportLanguageDefaultMark', {}, lang));
+    const defaultMarkHtml = '<span class="report-lang-default-check" title="' + defaultMarkTitle + '" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>';
+
+    function renderOption(code) {
+        const isSelected = selectedLang === code;
+        const isDefault = resolvedDefaultLang === code;
+        const label = window.escapeHTML(window.t(code === 'ru' ? 'guestInviteLanguageRu' : 'guestInviteLanguageEn', {}, lang));
+        return `
+            <button
+                type="button"
+                class="report-lang-link ${isSelected ? 'is-active' : 'is-idle'}"
+                onclick="setReportMessageLanguage('${code}')"
+                aria-pressed="${isSelected ? 'true' : 'false'}"
+            >
+                <span class="report-lang-link__label">${label}</span>
+                ${isDefault ? defaultMarkHtml : ''}
+            </button>
+        `;
+    }
+
     toggle.innerHTML = `
-        <div class="report-language-label">${window.escapeHTML(window.t('reportLanguageLabel', {}, lang))}</div>
-        <div class="segmented-control" style="margin-bottom: 0;">
-            <button type="button" class="seg-btn ${selectedLang === 'ru' ? 'active' : ''}" onclick="setReportMessageLanguage('ru')">${window.escapeHTML(window.t('guestInviteLanguageRu', {}, lang))}</button>
-            <button type="button" class="seg-btn ${selectedLang === 'en' ? 'active' : ''}" onclick="setReportMessageLanguage('en')">${window.escapeHTML(window.t('guestInviteLanguageEn', {}, lang))}</button>
+        <div class="report-lang-inline" role="group" aria-label="${window.escapeHTML(window.t('reportLanguageToggleAria', {}, lang))}">
+            ${renderOption('ru')}
+            <span class="report-lang-divider" aria-hidden="true">|</span>
+            ${renderOption('en')}
         </div>
     `;
+}
+
+function renderReportOwnerHeader(appId, ownerUsername) {
+    const lineEl = document.getElementById('report-owner-line');
+    if (!lineEl) return;
+
+    const test = typeof window.getMyTestById === 'function'
+        ? window.getMyTestById(appId)
+        : (Array.isArray(myTests) ? myTests.find(function(item) { return Number(item && item.id) === Number(appId); }) : null);
+
+    const fullName = String((test && test.owner_full_name) || '').trim();
+    const username = String(
+        (test && test.owner_username) ||
+        ownerUsername ||
+        ''
+    ).trim().replace(/^@+/, '');
+
+    if (fullName && username) {
+        lineEl.innerHTML = window.escapeHTML(fullName)
+            + '<span class="report-owner-sep">•</span>'
+            + '<span class="report-owner-nick">'
+            + window.escapeHTML('@' + username)
+            + '</span>';
+        return;
+    }
+    if (username) {
+        lineEl.textContent = '@' + username;
+        return;
+    }
+    if (fullName) {
+        lineEl.textContent = fullName;
+        return;
+    }
+    lineEl.textContent = window.t('unknownLabel', {}, lang);
 }
 
 function updateReportModalPrefill() {
@@ -3934,6 +4123,39 @@ function updateReportModalPrefill() {
     textarea.value = typeof window.buildCheckpointReportPrefill === 'function'
         ? window.buildCheckpointReportPrefill(_reportAppId, _reportMessageLang)
         : t.reportPrefill;
+    _syncReportTextareaLayout();
+}
+
+function _syncReportTextareaLayout() {
+    const textarea = document.getElementById('report-text');
+    const wrap = document.querySelector('#report-modal .report-text-wrap');
+    const expandBtn = document.getElementById('report-text-expand-btn');
+    if (!textarea) return;
+
+    const expanded = !!_reportTextExpanded;
+    textarea.classList.toggle('is-collapsed', !expanded);
+    textarea.classList.toggle('is-expanded', expanded);
+    if (wrap) wrap.classList.toggle('is-expanded', expanded);
+    if (expandBtn) {
+        expandBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        expandBtn.title = window.t(expanded ? 'reportTextCollapse' : 'reportTextExpand', {}, lang);
+        expandBtn.setAttribute('aria-label', expandBtn.title);
+    }
+
+    if (!expanded) {
+        textarea.style.height = '';
+        return;
+    }
+
+    textarea.style.height = 'auto';
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight + 2, 140), 420);
+    textarea.style.height = nextHeight + 'px';
+}
+
+function toggleReportTextExpand() {
+    _reportTextExpanded = !_reportTextExpanded;
+    _syncReportTextareaLayout();
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
 function setReportMessageLanguage(nextLang) {
@@ -3948,18 +4170,48 @@ function setReportMessageLanguage(nextLang) {
 function openReportModal(appId, ownerUsername) {
     _reportAppId = appId;
     _reportOwnerUsername = ownerUsername;
+    _reportTextExpanded = false;
     _reportMessageLang = typeof window.getDefaultCheckpointReportLanguage === 'function'
         ? window.getDefaultCheckpointReportLanguage(appId)
         : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
+    renderReportOwnerHeader(appId, ownerUsername);
     renderReportLanguageToggle();
     updateReportModalPrefill();
     document.getElementById('t-reportModalTitle').innerText = t.reportModalTitle;
     document.getElementById('t-reportModalHint').innerText = t.reportModalHint;
     document.getElementById('t-reportBtnSend').innerText = t.reportBtnSend;
-    const chips = [t.reportChipBug, t.reportChipIdea, t.reportChipGood];
+    var altLabel = document.getElementById('t-reportAltLabel');
+    if (altLabel) altLabel.textContent = window.t('reportAltLabel', {}, lang);
+
     const chipsEl = document.getElementById('chips-report');
-    chipsEl.innerHTML = chips.map((chip) => `<button type="button" class="chip" onclick="insertReportChip(this.dataset.text)" data-text="${chip.replace(/"/g, '&quot;')}">${chip}</button>`).join('');
+    if (chipsEl) {
+        chipsEl.innerHTML = '';
+        chipsEl.style.display = 'none';
+    }
+
+    const bugBtn = document.getElementById('t-reportBtnBug');
+    const ideaBtn = document.getElementById('t-reportBtnIdea');
+    if (bugBtn) bugBtn.textContent = window.t('reportBtnSendBug', {}, lang);
+    if (ideaBtn) ideaBtn.textContent = window.t('reportBtnSendIdea', {}, lang);
+
+    const noteEl = document.getElementById('t-reportFeedbackScreenshotNote');
+    if (noteEl) {
+        var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
+        var testingDay = test && typeof window.getUserTestingDay === 'function'
+            ? Number(window.getUserTestingDay(test.start_date) || 0)
+            : 0;
+        var controlDays = (typeof window.CONTROL_DAYS !== 'undefined' && Array.isArray(window.CONTROL_DAYS))
+            ? window.CONTROL_DAYS
+            : [1, 4, 7, 10, 14];
+        var isControlDay = controlDays.indexOf(testingDay) !== -1;
+        var noteKey = 'reportFeedbackScreenshotNoteRegular';
+        if (testingDay === 1) noteKey = 'reportFeedbackScreenshotNoteDay1';
+        else if (isControlDay) noteKey = 'reportFeedbackScreenshotNoteControl';
+        noteEl.textContent = window.t(noteKey, {}, lang);
+    }
+
     document.getElementById('report-modal').classList.add('active');
+    setTimeout(_syncReportTextareaLayout, 40);
 }
 
 function closeReportModal(event) {
@@ -3969,6 +4221,7 @@ function closeReportModal(event) {
         _reportAppId = null;
         _reportOwnerUsername = null;
         _reportMessageLang = null;
+        _reportTextExpanded = false;
     }, 300);
 }
 
@@ -3979,7 +4232,43 @@ function insertReportChip(chipText) {
     }
     textarea.value += chipText + ' ';
     textarea.focus();
+    _fitReportTextarea();
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function reportModalSendBug() {
+    _reportModalSendFeedback('bug');
+}
+
+function reportModalSendIdea() {
+    _reportModalSendFeedback('idea');
+}
+
+function _reportModalSendFeedback(feedbackType) {
+    const appId = _reportAppId;
+    if (appId == null) return;
+    document.getElementById('report-modal').classList.remove('active');
+    _reportAppId = null;
+    _reportOwnerUsername = null;
+    _reportMessageLang = null;
+
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+
+    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
+    var testingDay = test && typeof window.getUserTestingDay === 'function'
+        ? window.getUserTestingDay(test.start_date)
+        : null;
+    var localDate = typeof getLocalDate === 'function' ? getLocalDate() : '';
+    var checkinContext = (testingDay && localDate)
+        ? { day: Number(testingDay), local_date: localDate }
+        : null;
+
+    if (typeof initiateProjectFeedback === 'function') {
+        initiateProjectFeedback(appId, {
+            feedbackType: feedbackType,
+            checkinContext: checkinContext,
+        });
+    }
 }
 
 function openDropTestModal(appId, event) {
@@ -3987,11 +4276,29 @@ function openDropTestModal(appId, event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    _dropTestAppId = appId;
-    document.getElementById('drop-test-modal').classList.add('active');
+    if (typeof window.openTerminationSheet !== 'function') {
+        console.warn('openTerminationSheet is not available');
+        _dropTestAppId = appId;
+        var legacy = document.getElementById('drop-test-modal');
+        if (legacy) legacy.classList.add('active');
+        return;
+    }
+    var test = (typeof getMyTestById === 'function')
+        ? getMyTestById(appId)
+        : (Array.isArray(myTests) ? myTests.find(function (item) { return Number(item.id) === Number(appId); }) : null);
+    return window.openTerminationSheet({
+        mode: 'drop',
+        appId: Number(appId || 0),
+        joinType: (test && test.join_type) || 'invite',
+        testSnapshot: test || null,
+        unlinkReciprocal: true,
+    });
 }
 
 function closeDropTestModal(event) {
+    if (typeof window.closeTerminationSheet === 'function') {
+        return window.closeTerminationSheet(event);
+    }
     if (event && event.target !== document.getElementById('drop-test-modal')) return;
     document.getElementById('drop-test-modal').classList.remove('active');
     _dropTestAppId = null;
@@ -4002,93 +4309,77 @@ async function openLeaveMutualModal(appId, event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    const modal = document.getElementById('leave-mutual-modal');
-    const body = document.getElementById('leave-mutual-body');
-    const justifiedBtn = document.getElementById('leave-justified-btn');
-    const reasonSelect = document.getElementById('leave-reason-select');
-    const reasonOther = document.getElementById('leave-reason-other');
-    if (!modal || !body) return;
-
-    _leaveMutualAppId = appId;
-    _leaveMutualStats = null;
-    if (reasonSelect) reasonSelect.value = 'inactive_partner';
-    if (reasonOther) {
-        reasonOther.value = '';
-        reasonOther.style.display = 'none';
+    if (typeof window.openTerminationSheet !== 'function') {
+        console.warn('openTerminationSheet is not available');
+        return;
     }
-    if (justifiedBtn) justifiedBtn.style.display = 'none';
-    body.innerHTML = `<p style="text-align:center; color: var(--hint-color);">${window.escapeHTML(window.t('leaveLoadingStats', {}, lang))}</p>`;
-    modal.classList.add('active');
-
-    try {
-        const response = await fetch(`${API_BASE}/tests/${appId}/partner_stats/${userId}`);
-        const data = await response.json();
-        if (!response.ok || data.status !== 'success') {
-            body.innerHTML = `<div class="details-block"><div style="color: var(--hint-color);">${window.escapeHTML(getApiErrorMessage(data, 'stats_not_available'))}</div></div>`;
-            return;
-        }
-
-        _leaveMutualStats = data;
-        const justifiedAllowed = !!data.partner_left || Number(data.partner_skips || 0) >= 3;
-        const karmaBurn = Math.min(14, Number(data.my_checkins != null ? data.my_checkins : data.my_testing_days || 0)) * 0.1;
-        const partnerLabel = data.partner_username
-            ? window.t('leavePartnerUsername', { username: (data.partner_username || '').replace('@', '') }, lang)
-            : window.t('idLabel', { id: data.partner_id || 0 }, lang);
-        const partnerActiveLine = data.partner_left
-            ? window.t('leavePartnerLeft', {}, lang)
-            : window.t('leavePartnerLastActive', { date: formatLastActiveLabel(data.partner_last_active) }, lang);
-        const waitWarning = justifiedAllowed
-            ? ''
-            : `<div class="details-block" style="border-color: rgba(255,149,0,0.22);"><div style="color:#ff9500; font-size:13px; line-height:1.5;">${window.escapeHTML(window.t('leaveSafeWaitWarning', { count: Math.max(0, 3 - Number(data.partner_skips || 0)) }, lang))}</div></div>`;
-
-        body.innerHTML = '' +
-            `<div class="details-block">` +
-                `<div class="detail-section-title">${window.escapeHTML(window.t('leavePartnerTitle', {}, lang))}</div>` +
-                `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
-                    `<div>${window.escapeHTML(partnerLabel)}</div>` +
-                    `<div>${window.escapeHTML(window.t('leavePartnerDays', { days: data.partner_testing_days || 0 }, lang))}</div>` +
-                    `<div>${window.escapeHTML(window.t('leavePartnerSkips', { skips: data.partner_skips || 0 }, lang))}</div>` +
-                    `<div>${window.escapeHTML(partnerActiveLine)}</div>` +
-                `</div>` +
-            `</div>` +
-            `<div class="details-block">` +
-                `<div class="detail-section-title">${window.escapeHTML(window.t('leaveMyStatsTitle', {}, lang))}</div>` +
-                `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
-                    `<div>${window.escapeHTML(window.t('leaveMyDays', { days: data.my_testing_days || 0 }, lang))}</div>` +
-                    `<div>${window.escapeHTML(window.t('leaveMySkips', { skips: data.my_skips || 0 }, lang))}</div>` +
-                `</div>` +
-            `</div>` +
-            waitWarning +
-            `<div class="details-block" style="border-color: ${justifiedAllowed ? 'rgba(52,199,89,0.22)' : 'rgba(255,59,48,0.22)'};">` +
-                `<div class="detail-section-title">${window.escapeHTML(justifiedAllowed ? window.t('leaveJustifiedTitle', {}, lang) : window.t('leaveAbandonedTitle', {}, lang))}</div>` +
-                `<div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(justifiedAllowed ? window.t('leaveJustifiedDesc', {}, lang) : window.t('leaveAbandonedDesc', { karma: formatUiAmount(karmaBurn, 1) }, lang))}</div>` +
-                `${justifiedAllowed ? '' : `<div style="margin-top:8px; font-size:12px; color:#ff9500; line-height:1.5;">${window.escapeHTML(window.t('leaveAbandonedWarning', { karma: formatUiAmount(karmaBurn, 1) }, lang))}</div>`}` +
-            `</div>`;
-
-        if (justifiedBtn) justifiedBtn.style.display = justifiedAllowed ? '' : 'none';
-    } catch (error) {
-        console.error('Leave mutual stats error:', error);
-        body.innerHTML = `<div class="details-block"><div style="color: var(--hint-color);">${window.escapeHTML(getApiErrorMessage(error && error.message, 'networkError'))}</div></div>`;
-    }
+    var test = (typeof getMyTestById === 'function')
+        ? getMyTestById(appId)
+        : (Array.isArray(myTests) ? myTests.find(function (item) { return Number(item.id) === Number(appId); }) : null);
+    return window.openTerminationSheet({
+        mode: 'leave',
+        appId: Number(appId || 0),
+        joinType: (test && test.join_type) || 'mutual',
+        unlinkReciprocal: (typeof window._pendingUnlinkReciprocal === 'boolean')
+            ? window._pendingUnlinkReciprocal
+            : true,
+    });
 }
 
 function closeLeaveMutualModal(event) {
-    const modal = document.getElementById('leave-mutual-modal');
-    if (!modal) return;
-    if (event && event.target !== modal) return;
-    modal.classList.remove('active');
-    _leaveMutualAppId = null;
-    _leaveMutualStats = null;
+    if (typeof window.closeTerminationSheet === 'function') {
+        return window.closeTerminationSheet(event);
+    }
+}
+
+function toggleLeaveMyStats() {
+    if (typeof window.toggleLeaveMyStats === 'function' && window.toggleLeaveMyStats !== toggleLeaveMyStats) {
+        return window.toggleLeaveMyStats();
+    }
+    const card = document.getElementById('leave-exchange-card');
+    const side = document.getElementById('leave-my-side');
+    const toggle = document.getElementById('leave-my-stats-toggle');
+    if (!side || !toggle) return;
+    const willOpen = !side.classList.contains('is-open');
+    side.classList.toggle('is-open', willOpen);
+    toggle.classList.toggle('is-open', willOpen);
+    toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    if (card) card.classList.toggle('has-mine-open', willOpen);
+}
+
+function requestLeaveMutualConfirm() {
+    if (typeof window.requestTerminationConfirm === 'function') {
+        return window.requestTerminationConfirm();
+    }
+}
+
+function cancelLeaveMutualConfirm(event) {
+    if (typeof window.cancelTerminationConfirm === 'function') {
+        return window.cancelTerminationConfirm(event);
+    }
+}
+
+function confirmLeaveMutualAdaptive() {
+    if (typeof window.confirmTerminationAdaptive === 'function') {
+        return window.confirmTerminationAdaptive();
+    }
+}
+
+function selectLeaveReason(buttonEl) {
+    if (typeof window.selectTermReason === 'function') {
+        return window.selectTermReason(buttonEl);
+    }
+}
+
+function resetLeaveReasonChips(reason) {
+    if (typeof window.resetLeaveReasonChips === 'function' && window.resetLeaveReasonChips !== resetLeaveReasonChips) {
+        return window.resetLeaveReasonChips(reason);
+    }
 }
 
 function toggleLeaveReasonOther() {
-    const select = document.getElementById('leave-reason-select');
-    const other = document.getElementById('leave-reason-other');
-    if (!select || !other) return;
-    other.style.display = select.value === 'other' ? 'block' : 'none';
-    if (select.value !== 'other') {
-        other.value = '';
-    }
+    const other = document.getElementById('term-reason-other') || document.getElementById('leave-reason-other');
+    if (other) other.style.display = 'block';
 }
 
 function closeEarnBustModal(event) {
@@ -5485,7 +5776,12 @@ function getKarmaSourceLabel(sourceType) {
         overtime_reward: 'karmaSrc_overtime_reward',
         owner_bonus: 'karmaSrc_owner_bonus',
         play_review: 'karmaSrc_play_review',
+        bug_accepted: 'karmaSrc_bug_accepted',
+        idea_accepted: 'karmaSrc_idea_accepted',
         platform_feedback: 'karmaSrc_platform_feedback',
+        admin_reward: 'karmaSrc_admin_reward',
+        karma_burn: 'karmaSrc_karma_burn',
+        checkin_reset: 'karmaSrc_checkin_reset',
         penalty: 'karmaSrc_penalty',
         other: 'karmaSrc_other',
         good: 'karmaSrc_good_test',
@@ -5618,8 +5914,8 @@ function _formatContributionCountdown(endsAt) {
 }
 
 var CONTRIBUTION_PRIZE_BY_RANK = {
-    1: 500, 2: 350, 3: 250, 4: 180, 5: 150,
-    6: 100, 7: 100, 8: 100, 9: 100, 10: 100
+    1: 450, 2: 350, 3: 300, 4: 250, 5: 200,
+    6: 120, 7: 100, 8: 90, 9: 80, 10: 60
 };
 var CONTRIBUTION_POOL_DISPLAY = 2000;
 
@@ -5679,8 +5975,16 @@ function _renderContributionPrizeTable() {
     const el = document.getElementById('contribution-prize-table');
     if (!el) return;
     const rows = [
-        [1, 500], [2, 350], [3, 250], [4, 180], [5, 150],
-        ['6–10', 100]
+        [1, CONTRIBUTION_PRIZE_BY_RANK[1]],
+        [2, CONTRIBUTION_PRIZE_BY_RANK[2]],
+        [3, CONTRIBUTION_PRIZE_BY_RANK[3]],
+        [4, CONTRIBUTION_PRIZE_BY_RANK[4]],
+        [5, CONTRIBUTION_PRIZE_BY_RANK[5]],
+        [6, CONTRIBUTION_PRIZE_BY_RANK[6]],
+        [7, CONTRIBUTION_PRIZE_BY_RANK[7]],
+        [8, CONTRIBUTION_PRIZE_BY_RANK[8]],
+        [9, CONTRIBUTION_PRIZE_BY_RANK[9]],
+        [10, CONTRIBUTION_PRIZE_BY_RANK[10]],
     ];
     el.innerHTML = rows.map(function(pair) {
         const place = pair[0];
@@ -6449,10 +6753,18 @@ async function showContributionInfo(options) {
     switchContributionTab(initialTab);
     modal.classList.add('active');
 
-    if (initialTab === 'history') {
-        await _loadContributionHistoryTab();
-    } else {
-        await _loadContributionCurrentTab();
+    try {
+        if (initialTab === 'history') {
+            await _loadContributionHistoryTab();
+        } else {
+            await _loadContributionCurrentTab();
+        }
+    } finally {
+        // History tab never hid the deeplink glass loader (only Current did),
+        // so claim/history startapp stayed on "Loading data…" forever.
+        if (typeof window.hideTgDeeplinkLoader === 'function') {
+            window.hideTgDeeplinkLoader('contribution');
+        }
     }
 }
 
@@ -6598,6 +6910,37 @@ function insertChip(textareaId, chipText) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
+function getProjectKarmaPools(project, testerId) {
+    const payload = project || {};
+    const thanksMax = Math.max(0, Number(payload.thanks_max != null ? payload.thanks_max : 2) || 0);
+    const specialMax = Math.max(0, Number(payload.special_max != null ? payload.special_max : 1) || 0);
+    const thanksUsed = Math.max(0, Number(payload.thanks_used || 0) || 0);
+    const specialUsed = Math.max(0, Number(payload.special_used || 0) || 0);
+    const likes = Array.isArray(payload.likes) ? payload.likes : [];
+    const safeTesterId = Number(testerId || 0);
+    const hasThanks = safeTesterId > 0 && likes.some(function(like) {
+        return Number(like.tester_id) === safeTesterId && String(like.type || '').toLowerCase() === 'good';
+    });
+    const hasSpecial = safeTesterId > 0 && likes.some(function(like) {
+        return Number(like.tester_id) === safeTesterId && String(like.type || '').toLowerCase() === 'bug';
+    });
+    const thanksAvailable = Math.max(0, thanksMax - thanksUsed);
+    const specialAvailable = Math.max(0, specialMax - specialUsed);
+    return {
+        thanksMax: thanksMax,
+        specialMax: specialMax,
+        thanksUsed: thanksUsed,
+        specialUsed: specialUsed,
+        thanksAvailable: thanksAvailable,
+        specialAvailable: specialAvailable,
+        hasThanks: hasThanks,
+        hasSpecial: hasSpecial,
+        canGiveThanks: thanksAvailable > 0 && !hasThanks,
+        canGiveSpecial: specialAvailable > 0 && !hasSpecial,
+        canReward: (thanksAvailable > 0 && !hasThanks) || (specialAvailable > 0 && !hasSpecial),
+    };
+}
+
 function buildKarmaDistributionTesterStats(tester, feedbackCountByTester) {
     const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
     const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
@@ -6611,48 +6954,118 @@ function buildKarmaDistributionTesterStats(tester, feedbackCountByTester) {
     return window.escapeHTML(stats);
 }
 
+function toggleKarmaLimitsAccordion() {
+    const body = document.getElementById('karma-dist-limits-body');
+    const arrow = document.getElementById('karma-dist-limits-arrow');
+    if (!body) return;
+    const isHidden = body.style.display === 'none' || !body.style.display;
+    body.style.display = isHidden ? 'flex' : 'none';
+    if (arrow) {
+        arrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+}
+window.toggleKarmaLimitsAccordion = toggleKarmaLimitsAccordion;
+
 function renderKarmaDistributionModal(project, feedbackCountByTester) {
     const body = document.getElementById('karma-distribution-body');
     if (!body || !project) return;
 
-    const likesAvailable = Math.max(0, (project.likes_max || 0) - (project.likes_used || 0));
+    const pools = getProjectKarmaPools(project);
     const testers = project.testers || [];
-    const rowsHtml = testers.map((tester) => {
-        const liked = (project.likes || []).find((like) => like.tester_id === tester.tester_id);
+    const projectName = project.name ? window.escapeHTML(project.name) : '';
+    const subtitleText = projectName
+        ? `${projectName} · ${window.t('karmaDistHeroDesc', {}, lang) || 'Поощрите тестеров, внесших наибольший вклад в проект.'}`
+        : (window.t('karmaDistHeroDesc', {}, lang) || 'Поощрите тестеров, внесших наибольший вклад в проект.');
+
+    const totalAvailable = pools.thanksAvailable + pools.specialAvailable;
+    const totalMax = pools.thanksMax + pools.specialMax;
+
+    const rowsHtml = testers.length ? testers.map((tester) => {
+        const testerPools = getProjectKarmaPools(project, tester.tester_id);
         const name = tester.username
             ? '@' + window.escapeHTML(tester.username.replace('@', ''))
             : tester.full_name
                 ? window.escapeHTML(tester.full_name)
             : window.escapeHTML(window.t('idLabel', { id: tester.tester_id }));
-        const stats = buildKarmaDistributionTesterStats(tester, feedbackCountByTester || {});
-        const amountByType = liked ? (liked.type === 'bug' ? '3.0' : liked.type === 'overtime' ? '2.0' : '1.5') : '';
-        const actionHtml = liked
-            ? `<span class="karma-dist-btn disabled">${window.escapeHTML(window.t('karmaDistributionUsed', { amount: amountByType }))}</span>`
-            : likesAvailable <= 0
-                ? '<span class="karma-dist-btn disabled">+☯️</span>'
-                : `<button class="karma-dist-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">+☯️</button>`;
 
-        return `<div class="karma-dist-tester">
-            <div>
-                <button type="button" class="karma-dist-name-btn" onclick="showTestDayPopup(${tester.tester_id})"><span class="tester-name">${name}</span></button>
-                <span class="karma-dist-meta">${stats}</span>
+        const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
+        const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
+        const feedbackCount = Number((feedbackCountByTester && feedbackCountByTester[Number(tester.tester_id)]) || 0);
+
+        const statsParts = [];
+        if (testerDay > 0) statsParts.push(`День ${testerDay}`);
+        if (actualSkips > 0) statsParts.push(`Пропуски: ${actualSkips}`);
+        if (feedbackCount > 0) statsParts.push(`Фидбэки: ${feedbackCount}`);
+        const metaStr = statsParts.length ? statsParts.join(' · ') : `День ${testerDay || 1}`;
+
+        const usedBadges = [];
+        if (testerPools.hasThanks) usedBadges.push(`<span class="karma-awarded-pill">👍 +1.5</span>`);
+        if (testerPools.hasSpecial) usedBadges.push(`<span class="karma-awarded-pill">💡 +3.0</span>`);
+
+        let actionBtnHtml = '';
+        if (testerPools.canReward) {
+            actionBtnHtml = `<button type="button" class="karma-action-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Наградить')}</button>`;
+        } else if (usedBadges.length >= 2) {
+            actionBtnHtml = `<span class="karma-done-badge">${window.escapeHTML(window.t('karmaAllRewarded', {}, lang) || '✓ Награждён')}</span>`;
+        } else {
+            actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled>+ Наградить</button>`;
+        }
+
+        return `<div class="karma-dist-row">
+            <div class="karma-dist-row-main">
+                <button type="button" class="karma-dist-tester-name" onclick="showTestDayPopup(${tester.tester_id})">${name}</button>
+                <div class="karma-dist-tester-meta">${window.escapeHTML(metaStr)}</div>
             </div>
-            ${actionHtml}
+            <div class="karma-dist-row-actions">
+                ${usedBadges.join('')}
+                ${actionBtnHtml}
+            </div>
         </div>`;
-    }).join('');
+    }).join('') : `<div class="empty-state-card" style="padding:24px 16px;text-align:center;color:var(--hint-color);"><span style="font-size:32px;display:block;margin-bottom:8px;">👥</span>${window.escapeHTML(t.karmaDistNoTesters)}</div>`;
 
     body.innerHTML = `
-        <h3>${window.escapeHTML(t.karmaDistributionTitle)}</h3>
-        <p style="font-size:13px;color:var(--hint-color);margin-bottom:14px;">${window.escapeHTML(t.karmaDistributionDesc)}</p>
-        <div class="delete-info-block karma-dist" style="margin-bottom:12px;">
-            <div style="font-weight:600;margin-bottom:6px;">${window.escapeHTML(window.t('karmaDistributionGuideTitle', {}, lang))}</div>
-            <div style="font-size:13px;color:var(--hint-color);line-height:1.55;">${window.escapeHTML(window.t('karmaDistributionGuideText', {}, lang))}</div>
-            <div class="delete-chip-row" style="margin-top:8px;">
-                <span class="meta-chip accent-green">${window.escapeHTML(window.t('karmaDistributionGuideStatus', { available: likesAvailable, total: 2 }, lang))}</span>
+        <div class="karma-dist-header">
+            <div class="karma-dist-icon-badge">☯️</div>
+            <div class="karma-dist-header-main">
+                <h3 class="karma-dist-title">${window.escapeHTML(window.t('karmaDistributionTitle', {}, lang) || 'Раздача Кармы')}</h3>
+                <div class="karma-dist-subtitle">${window.escapeHTML(subtitleText)}</div>
             </div>
         </div>
-        <div>${rowsHtml}</div>
-        <button class="btn btn-secondary" style="width:100%;margin-top:14px;" onclick="closeKarmaDistribution()">${window.escapeHTML(t.inviteClose)}</button>
+
+        <div class="karma-dist-limits-box">
+            <button type="button" class="karma-dist-limits-toggle" onclick="toggleKarmaLimitsAccordion()">
+                <div class="karma-dist-limits-label">
+                    <span>${window.escapeHTML(window.t('karmaDistLimitsTitle', {}, lang) || 'Доступный лимит')}</span>
+                    <span class="karma-limit-badge">${totalAvailable} из ${totalMax} наград</span>
+                </div>
+                <svg class="karma-chevron-icon" id="karma-dist-limits-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </button>
+            <div class="karma-dist-limits-body" id="karma-dist-limits-body" style="display: none;">
+                <div class="karma-dist-pool-list">
+                    <div class="karma-dist-pool-item">
+                        <span class="karma-dist-pool-title">👍 ${window.escapeHTML(window.t('karmaSelectGood', {}, lang) || 'Спасибо')} (+1.5)</span>
+                        <span class="karma-dist-pool-val">${pools.thanksAvailable} из ${pools.thanksMax} доступно</span>
+                    </div>
+                    <div class="karma-dist-pool-item">
+                        <span class="karma-dist-pool-title">💡 ${window.escapeHTML(window.t('karmaSelectBug', {}, lang) || 'Особый вклад')} (+3.0)</span>
+                        <span class="karma-dist-pool-val">${pools.specialAvailable} из ${pools.specialMax} доступно</span>
+                    </div>
+                </div>
+                <div class="karma-dist-rules-list">
+                    <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesWeek1', {}, lang) || '1-я неделя: 2 Спасибо (+1.5) и 1 Особый вклад (+3.0)')}</div>
+                    <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesWeek2', {}, lang) || 'Со 2-й недели: ещё 2 Спасибо и 1 Особый вклад (всего 4 и 2)')}</div>
+                    <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesBoth', {}, lang) || 'Один тестер может получить оба типа наград')}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="karma-dist-list">
+            ${rowsHtml}
+        </div>
+
+        <button type="button" class="btn btn-secondary karma-dist-footer-btn" onclick="closeKarmaDistribution()">${window.escapeHTML(t.inviteClose)}</button>
     `;
 }
 
@@ -7264,6 +7677,7 @@ function switchTab(tabId, navElement) {
     if (finalTab === 'tests') {
         renderEvents(true);
         renderIncomingOffers(true);
+        if (typeof renderBountyApplications === 'function') renderBountyApplications(true);
         renderTests(true);
     }
 
@@ -7277,6 +7691,9 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'projects') {
+        if (typeof window.syncHomeScreenUi === 'function') {
+            window.syncHomeScreenUi();
+        }
         var projectsList = document.getElementById('projects-list');
         var hasRenderedProjects = projectsList && projectsList.querySelector('.card, .developer-widget, .empty-state');
         if (!hasRenderedProjects) {
@@ -7304,6 +7721,9 @@ function switchTab(tabId, navElement) {
         }
         if (window.loadIncomingOffers) {
             window.loadIncomingOffers({ background: true }).catch(function() {});
+        }
+        if (window.loadBountyApplications) {
+            window.loadBountyApplications({ background: true }).catch(function() {});
         }
         if (window.loadReliabilitySummary) {
             window.loadReliabilitySummary(true).catch(function() {});
@@ -7386,7 +7806,315 @@ function getProjectModeText(mode) {
     return window.t('modeMutual', {}, lang);
 }
 
-function openTesterOwnedProjectFromDossier(testerId, projectId) {
+function getDossierRecruitModeLabel(mode) {
+    var normalized = String(mode || 'mutual').toLowerCase();
+    if (normalized === 'bounty') return window.t('dossierRecruitModeContract', {}, lang);
+    if (normalized === 'hybrid') return window.t('dossierRecruitModeCombo', {}, lang);
+    return window.t('dossierRecruitModeMutual', {}, lang);
+}
+
+function _buildDossierRecruitModeChip(ownedProject) {
+    if (!ownedProject) return '';
+    var status = String(ownedProject.status || '').toLowerCase();
+    if (status === 'completed' || status === 'archived') return '';
+    var mode = String(ownedProject.mode || 'mutual').toLowerCase();
+    var chipClass = 'dossier-project-meta-chip dossier-project-meta-chip-recruit';
+    if (mode === 'bounty') chipClass += ' is-contract';
+    else if (mode === 'hybrid') chipClass += ' is-combo';
+    else chipClass += ' is-mutual';
+    return '<span class="' + chipClass + '">' + window.escapeHTML(getDossierRecruitModeLabel(mode)) + '</span>';
+}
+
+function _isDossierProjectJoinAvailable(ownedProject) {
+    if (!ownedProject) return false;
+    var status = String(ownedProject.status || '').toLowerCase();
+    if (status === 'completed' || status === 'archived' || status === 'deleted') return false;
+    if (_isDossierProjectJoinBlocked(ownedProject)) return false;
+    if (String(ownedProject.link_type || 'none').toLowerCase() !== 'none') return false;
+    var visibility = _normalizeDossierVisibilityProject(ownedProject);
+    if (visibility.visibility_mode === 'full_isolation') return false;
+    if (visibility.visibility_mode === 'hidden_from_showcase') return false;
+    if (ownedProject.is_accepting_new_testers === false) return false;
+    var appId = Number(ownedProject.app_id || 0);
+    if (appId <= 0) return false;
+    if ((myTests || []).some(function(item) { return Number(item.id) === appId; })) return false;
+    if (ownedProject.has_pending_bounty_application) return false;
+    return true;
+}
+
+function openDossierHybridJoinChooser(appId, ownerId, project) {
+    var numericAppId = Number(appId || 0);
+    var numericOwnerId = Number(ownerId || 0);
+    if (numericAppId <= 0 || numericOwnerId <= 0) return;
+
+    var projectName = String((project && project.name) || '').trim() || window.t('unknownLabel', {}, lang);
+    var bountyAmount = Number((project && project.bounty_per_tester) || 0);
+    var bountyTag = window.t('dossierJoinHybridContractTag', {}, lang);
+    if (bountyAmount > 0) {
+        var possibleTotal = bountyAmount;
+        if (typeof getContractPossibleTotalReward === 'function') {
+            var possible = getContractPossibleTotalReward(bountyAmount);
+            possibleTotal = Math.max(0, Number(possible && possible.total || bountyAmount));
+        } else if (typeof getGrantEstimateData === 'function') {
+            var grant = getGrantEstimateData({ skips_count: 0, daily_timeline: '' });
+            possibleTotal = bountyAmount + Math.max(0, Number(grant && grant.total || 0));
+        }
+        var formattedTotal = typeof formatBustAmount === 'function'
+            ? formatBustAmount(possibleTotal)
+            : (String(possibleTotal) + ' $BUST');
+        // Owner bounty + platform grant estimate; details live in join-bounty confirm modal.
+        bountyTag = '~' + formattedTotal;
+    }
+
+    function startMutual() {
+        if (typeof createMutualOffer === 'function') {
+            createMutualOffer(numericAppId, numericOwnerId);
+        }
+    }
+    function startContract() {
+        if (typeof window.registerJoinBountyContext === 'function') {
+            window.registerJoinBountyContext(project || { app_id: numericAppId });
+        }
+        if (typeof joinBounty === 'function') {
+            joinBounty(numericAppId);
+        }
+    }
+
+    ensureDossierHybridJoinChooser();
+    var overlay = document.getElementById('dossier-hybrid-join-overlay');
+    if (!overlay) {
+        startMutual();
+        return;
+    }
+
+    var titleEl = overlay.querySelector('.dossier-hybrid-join-title');
+    if (titleEl) titleEl.textContent = window.t('dossierJoinHybridTitle', {}, lang);
+    var subtitleEl = document.getElementById('dossier-hybrid-join-subtitle');
+    if (subtitleEl) {
+        subtitleEl.textContent = window.t('dossierJoinHybridSubtitle', { project: projectName }, lang);
+    }
+    var closeBtn = overlay.querySelector('.dossier-hybrid-join-close');
+    if (closeBtn) closeBtn.setAttribute('aria-label', window.t('dossierJoinHybridClose', {}, lang));
+
+    var modesTitleEl = document.getElementById('dossier-hybrid-join-modes-title');
+    if (modesTitleEl) modesTitleEl.textContent = window.t('dossierJoinHybridModesTitle', {}, lang);
+
+    var mutualTitle = overlay.querySelector('.dossier-hybrid-join-option.is-mutual .dossier-hybrid-join-option-title');
+    var mutualTag = overlay.querySelector('.dossier-hybrid-join-option.is-mutual .dossier-hybrid-join-option-tag');
+    var mutualDesc = overlay.querySelector('.dossier-hybrid-join-option.is-mutual .dossier-hybrid-join-option-desc');
+    if (mutualTitle) mutualTitle.textContent = window.t('dossierJoinHybridMutualTitle', {}, lang);
+    if (mutualTag) mutualTag.textContent = window.t('dossierJoinHybridMutualTag', {}, lang);
+    if (mutualDesc) mutualDesc.textContent = window.t('dossierJoinHybridMutualDesc', {}, lang);
+
+    var contractTitle = overlay.querySelector('.dossier-hybrid-join-option.is-contract .dossier-hybrid-join-option-title');
+    var contractDesc = overlay.querySelector('.dossier-hybrid-join-option.is-contract .dossier-hybrid-join-option-desc');
+    if (contractTitle) contractTitle.textContent = window.t('dossierJoinHybridContractTitle', {}, lang);
+    if (contractDesc) contractDesc.textContent = window.t('dossierJoinHybridContractDesc', {}, lang);
+
+    var projectEl = document.getElementById('dossier-hybrid-join-project');
+    if (projectEl) {
+        var packageName = String((project && project.package_name) || '').trim();
+        var iconHtml = typeof renderIcon === 'function'
+            ? renderIcon(projectName, (project && project.icon_url) || '')
+            : '';
+        projectEl.innerHTML = iconHtml +
+            '<div class="dossier-hybrid-join-project-info">' +
+                '<div class="dossier-hybrid-join-project-name notranslate">' + window.escapeHTML(projectName) + '</div>' +
+                (packageName
+                    ? '<div class="dossier-hybrid-join-project-package notranslate">' + window.escapeHTML(packageName) + '</div>'
+                    : '') +
+                '<div class="dossier-hybrid-join-project-mode">' + window.escapeHTML(window.t('dossierRecruitModeCombo', {}, lang)) + '</div>' +
+            '</div>';
+    }
+    var contractTagEl = document.getElementById('dossier-hybrid-join-contract-tag');
+    if (contractTagEl) {
+        contractTagEl.textContent = bountyTag;
+    }
+
+    overlay._dossierHybridStartMutual = startMutual;
+    overlay._dossierHybridStartContract = startContract;
+
+    overlay.style.display = 'flex';
+    overlay.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(function() {
+        overlay.classList.add('is-active');
+    });
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+function ensureDossierHybridJoinChooser() {
+    var existing = document.getElementById('dossier-hybrid-join-overlay');
+    if (existing && existing.getAttribute('data-sheet') === 'v2') return existing;
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+    var mutualIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<polyline points="17 1 21 5 17 9"></polyline>' +
+            '<path d="M3 11V9a4 4 0 0 1 4-4h14"></path>' +
+            '<polyline points="7 23 3 19 7 15"></polyline>' +
+            '<path d="M21 13v2a4 4 0 0 1-4 4H3"></path>' +
+        '</svg>';
+    var contractIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M12 2v20"></path>' +
+            '<path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>' +
+        '</svg>';
+    var chevron =
+        '<svg class="dossier-hybrid-join-option-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<polyline points="9 18 15 12 9 6"></polyline>' +
+        '</svg>';
+
+    var wrap = document.createElement('div');
+    wrap.innerHTML =
+        '<div id="dossier-hybrid-join-overlay" class="dossier-hybrid-join-overlay" style="display:none;" data-sheet="v2" role="dialog" aria-modal="true" aria-hidden="true">' +
+            '<div class="dossier-hybrid-join-sheet" onclick="event.stopPropagation()">' +
+                '<div class="dossier-hybrid-join-handle" aria-hidden="true"></div>' +
+                '<div class="dossier-hybrid-join-header">' +
+                    '<div>' +
+                        '<h3 class="dossier-hybrid-join-title">' + window.escapeHTML(window.t('dossierJoinHybridTitle', {}, lang)) + '</h3>' +
+                        '<p id="dossier-hybrid-join-subtitle" class="dossier-hybrid-join-subtitle"></p>' +
+                    '</div>' +
+                    '<button type="button" class="dossier-hybrid-join-close" aria-label="' + window.escapeHTML(window.t('dossierJoinHybridClose', {}, lang)) + '">×</button>' +
+                '</div>' +
+                '<div class="dossier-hybrid-join-project-wrap">' +
+                    '<div id="dossier-hybrid-join-project" class="dossier-hybrid-join-project" aria-hidden="true"></div>' +
+                '</div>' +
+                '<div class="dossier-hybrid-join-modes">' +
+                    '<div id="dossier-hybrid-join-modes-title" class="dossier-hybrid-join-modes-title">' +
+                        window.escapeHTML(window.t('dossierJoinHybridModesTitle', {}, lang)) +
+                    '</div>' +
+                    '<div class="dossier-hybrid-join-options">' +
+                        '<button type="button" class="dossier-hybrid-join-option is-mutual" data-join-mode="mutual">' +
+                            '<span class="dossier-hybrid-join-option-icon is-mutual">' + mutualIcon + '</span>' +
+                            '<span class="dossier-hybrid-join-option-body">' +
+                                '<span class="dossier-hybrid-join-option-head">' +
+                                    '<span class="dossier-hybrid-join-option-title">' + window.escapeHTML(window.t('dossierJoinHybridMutualTitle', {}, lang)) + '</span>' +
+                                    '<span class="dossier-hybrid-join-option-tag is-mutual">' + window.escapeHTML(window.t('dossierJoinHybridMutualTag', {}, lang)) + '</span>' +
+                                '</span>' +
+                                '<span class="dossier-hybrid-join-option-desc">' + window.escapeHTML(window.t('dossierJoinHybridMutualDesc', {}, lang)) + '</span>' +
+                            '</span>' +
+                            chevron +
+                        '</button>' +
+                        '<button type="button" class="dossier-hybrid-join-option is-contract" data-join-mode="bounty">' +
+                            '<span class="dossier-hybrid-join-option-icon is-contract">' + contractIcon + '</span>' +
+                            '<span class="dossier-hybrid-join-option-body">' +
+                                '<span class="dossier-hybrid-join-option-head">' +
+                                    '<span class="dossier-hybrid-join-option-title">' + window.escapeHTML(window.t('dossierJoinHybridContractTitle', {}, lang)) + '</span>' +
+                                    '<span id="dossier-hybrid-join-contract-tag" class="dossier-hybrid-join-option-tag is-contract">' + window.escapeHTML(window.t('dossierJoinHybridContractTag', {}, lang)) + '</span>' +
+                                '</span>' +
+                                '<span class="dossier-hybrid-join-option-desc">' + window.escapeHTML(window.t('dossierJoinHybridContractDesc', {}, lang)) + '</span>' +
+                            '</span>' +
+                            chevron +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(wrap.firstElementChild);
+
+    var overlay = document.getElementById('dossier-hybrid-join-overlay');
+    if (!overlay) return null;
+
+    overlay.addEventListener('click', function(event) {
+        if (event.target === overlay) closeDossierHybridJoinChooser();
+    });
+    var closeBtn = overlay.querySelector('.dossier-hybrid-join-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() { closeDossierHybridJoinChooser(); });
+    }
+    var mutualBtn = overlay.querySelector('[data-join-mode="mutual"]');
+    if (mutualBtn) {
+        mutualBtn.addEventListener('click', function() {
+            var start = overlay._dossierHybridStartMutual;
+            closeDossierHybridJoinChooser(function() {
+                if (typeof start === 'function') start();
+            });
+        });
+    }
+    var contractBtn = overlay.querySelector('[data-join-mode="bounty"]');
+    if (contractBtn) {
+        contractBtn.addEventListener('click', function() {
+            var start = overlay._dossierHybridStartContract;
+            closeDossierHybridJoinChooser(function() {
+                if (typeof start === 'function') start();
+            });
+        });
+    }
+    return overlay;
+}
+
+function closeDossierHybridJoinChooser(afterClose) {
+    var overlay = document.getElementById('dossier-hybrid-join-overlay');
+    if (!overlay || overlay.style.display === 'none') {
+        if (typeof afterClose === 'function') afterClose();
+        return;
+    }
+    overlay.classList.remove('is-active');
+    overlay.setAttribute('aria-hidden', 'true');
+    setTimeout(function() {
+        overlay.style.display = 'none';
+        if (typeof afterClose === 'function') afterClose();
+    }, 240);
+}
+
+function joinTesterOwnedProjectFromDossier(testerId, project, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (!project) return;
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        return;
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+    var appId = Number(project.app_id || 0);
+    var ownerId = Number(testerId || project.owner_id || 0);
+    var mode = String(project.mode || 'mutual').toLowerCase();
+    if (appId <= 0 || ownerId <= 0) {
+        showToast(window.t('loadError', {}, lang));
+        return;
+    }
+
+    var targetIsEmailList = String(project.test_mode || '') === 'email_list'
+        || (typeof _isDossierEmailTestProject === 'function' && _isDossierEmailTestProject(project));
+    var currentEmail = (typeof getCurrentUserEmail === 'function')
+        ? getCurrentUserEmail()
+        : String((window.App && window.App.userEmail) || '').trim();
+    if (targetIsEmailList && !currentEmail && typeof window.openEmailCollectModal === 'function') {
+        window.openEmailCollectModal({
+            title: window.t('emailGateOfferTitle', {}, lang),
+            text: window.t('emailGateOfferText', {}, lang),
+            primaryLabel: window.t('emailGateSaveContinue', {}, lang),
+            onSave: function() { joinTesterOwnedProjectFromDossier(testerId, project); },
+        });
+        return;
+    }
+
+    closeDossierModal();
+    setTimeout(function() {
+        if (mode === 'bounty') {
+            if (typeof window.registerJoinBountyContext === 'function') {
+                window.registerJoinBountyContext(project);
+            }
+            if (typeof joinBounty === 'function') joinBounty(appId);
+            return;
+        }
+        if (mode === 'hybrid') {
+            openDossierHybridJoinChooser(appId, ownerId, project);
+            return;
+        }
+        if (typeof createMutualOffer === 'function') {
+            createMutualOffer(appId, ownerId);
+        }
+    }, 40);
+}
+
+function openTesterOwnedProjectFromDossier(testerId, projectId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
     var numericProjectId = Number(projectId || 0);
     if (numericProjectId <= 0) return;
 
@@ -7394,24 +8122,32 @@ function openTesterOwnedProjectFromDossier(testerId, projectId) {
         return Number(item.id) === numericProjectId;
     });
 
-    closeDossierModal();
+    var cacheKey = String(testerId || '');
+    var project = (_dossierProjectsCache[cacheKey] || []).find(function(item) {
+        return Number(item.app_id) === numericProjectId;
+    });
+    var profile = _dossierProfilesCache[cacheKey] || {};
+
     if (existingTest) {
+        closeDossierModal();
         setTimeout(function() {
             openProjectDetailsModal(numericProjectId);
         }, 40);
         return;
     }
 
-    var cacheKey = String(testerId || '');
-    var project = (_dossierProjectsCache[cacheKey] || []).find(function(item) {
-        return Number(item.app_id) === numericProjectId;
-    });
-    var profile = _dossierProfilesCache[cacheKey] || {};
     if (!project) {
         showToast(window.t('loadError', {}, lang));
         return;
     }
 
+    // Available-for-test cards on showcase: join like market CTA.
+    if (_isDossierProjectJoinAvailable(project)) {
+        joinTesterOwnedProjectFromDossier(testerId, project, event);
+        return;
+    }
+
+    closeDossierModal();
     setTimeout(function() {
         openTesterOwnedProjectPreviewModal(project, profile, testerId);
     }, 40);
@@ -7459,13 +8195,35 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         ? window.t('dossierOwnerReliability', { pct: reliabilityState.reliabilityPct, status: reliabilityState.reliabilityText }, lang)
         : window.t('dossierOwnerReliabilityNewbie', {}, lang);
     var joinBlocked = _isDossierProjectJoinBlocked(project);
-    var isBountyProject = String(project.mode || 'mutual').toLowerCase() === 'bounty';
-    if (isBountyProject && typeof window.registerJoinBountyContext === 'function') {
+    var projectMode = String(project.mode || 'mutual').toLowerCase();
+    var isBountyProject = projectMode === 'bounty';
+    var isHybridProject = projectMode === 'hybrid';
+    var hasPendingBountyApp = (isBountyProject || isHybridProject) && !!(
+        project.has_pending_bounty_application
+        || (typeof bountyContracts !== 'undefined' && (bountyContracts || []).some(function(card) {
+            return Number(card && card.app_id) === Number(project.app_id || 0) && !!card.has_pending_bounty_application;
+        }))
+    );
+    var alreadyTestingLabel = getBountyAlreadyTestingBtnLabel(project.app_id);
+    var alreadyTestingThisProject = !!alreadyTestingLabel;
+    if ((isBountyProject || isHybridProject) && !hasPendingBountyApp && !alreadyTestingThisProject && typeof window.registerJoinBountyContext === 'function') {
         window.registerJoinBountyContext(project);
     }
-    var takeAction = isBountyProject
-        ? 'closeProjectDetailsModal(); joinBounty(' + Number(project.app_id) + ')'
-        : 'closeProjectDetailsModal(); joinMutual(' + Number(project.app_id) + ', false)';
+    var ownerIdForJoin = Number(project.owner_id || testerId || 0);
+    window._dossierJoinPreviewProject = project;
+    var takeAction;
+    if (isBountyProject) {
+        takeAction = 'closeProjectDetailsModal(); joinBounty(' + Number(project.app_id) + ')';
+    } else if (isHybridProject) {
+        takeAction = 'closeProjectDetailsModal(); openDossierHybridJoinChooser(' + Number(project.app_id) + ', ' + ownerIdForJoin + ', window._dossierJoinPreviewProject)';
+    } else {
+        takeAction = 'closeProjectDetailsModal(); createMutualOffer(' + Number(project.app_id) + ', ' + ownerIdForJoin + ')';
+    }
+    var takeBtnLabel = alreadyTestingThisProject
+        ? alreadyTestingLabel
+        : (hasPendingBountyApp
+            ? window.t('bountyAppPendingBtn', {}, lang)
+            : window.t('dossierBtnTakeTest', {}, lang));
     var dossierMetaChipsHtml = _buildDossierProjectMetaChips(project);
     var contactButtonHtml = safeOwnerUsername
         ? '<button class="btn" style="background:var(--button-color);color:var(--button-text-color);" onclick="closeProjectDetailsModal(); openTelegramProfile(\'' + safeOwnerUsername + '\')">' + window.escapeHTML(window.t('detail_contact_btn', {}, lang)) + '</button>'
@@ -7541,7 +8299,9 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'' + escapeInlineJsString(project.package_name || '') + '\')">' + window.escapeHTML(window.t('openGooglePlay', {}, lang)) + '</button>' +
             (joinBlocked
                 ? '<button class="btn disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(window.t('dossierBtnTakeTestBlocked', {}, lang)) + '</button>'
-                : '<button class="btn" style="background:rgba(0,122,255,0.16);color:var(--button-color);" onclick="' + takeAction + '">' + window.escapeHTML(window.t('dossierBtnTakeTest', {}, lang)) + '</button>') +
+                : ((hasPendingBountyApp || alreadyTestingThisProject)
+                    ? '<button class="btn pending disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(takeBtnLabel) + '</button>'
+                    : '<button class="btn" style="background:rgba(0,122,255,0.16);color:var(--button-color);" onclick="' + takeAction + '">' + window.escapeHTML(takeBtnLabel) + '</button>')) +
         '</div>';
 
     var modal = document.getElementById('project-details-modal');
@@ -7594,6 +8354,9 @@ function _buildDossierProjectMetaChips(ownedProject) {
     
     const visibilitySnapshot = _normalizeDossierVisibilityProject(ownedProject);
     const chips = [];
+
+    const recruitChip = _buildDossierRecruitModeChip(ownedProject);
+    if (recruitChip) chips.push(recruitChip);
     
     if (isArchivedLike) {
         chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-completed" style="background: rgba(52, 199, 89, 0.14); color: #30d158;">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</span>');
@@ -7649,6 +8412,12 @@ function _normalizeDossierOwnedProjectRow(raw) {
         direction: direction,
         linked_my_app_name: String(raw.linked_my_app_name || '').trim(),
         days_left: daysLeft,
+        has_pending_bounty_application: !!(
+            raw.has_pending_bounty_application
+            || (typeof bountyContracts !== 'undefined' && (bountyContracts || []).some(function(card) {
+                return Number(card && card.app_id) === appId && !!card.has_pending_bounty_application;
+            }))
+        ),
     };
 }
 
@@ -7698,6 +8467,456 @@ function _getDossierProjectDisplayName(ownedProject) {
     return String(
         ownedProject && (ownedProject.name || ownedProject.package_name) || window.t('unknownLabel', {}, lang)
     ).trim() || window.t('unknownLabel', {}, lang);
+}
+
+function _resolveDossierRelationPair(rel, options) {
+    options = options || {};
+    const myName = String(rel && rel.my_app || '').trim();
+    const theirName = String(rel && rel.their_app || '').trim();
+    const contextAppId = Number(options.contextAppId || 0);
+    const contextProject = options.contextProject || null;
+    const testerProjects = Array.isArray(options.testerProjects) ? options.testerProjects : [];
+
+    let myAppId = Number(rel && rel.my_app_id || 0);
+    let theirAppId = Number(rel && rel.their_app_id || 0);
+    let myIcon = String(rel && rel.my_app_icon_url || '');
+    let theirIcon = String(rel && rel.their_app_icon_url || '');
+
+    let myProject = null;
+    if (myAppId > 0 && Array.isArray(myProjects)) {
+        myProject = myProjects.find(function(item) {
+            return Number(item.id) === myAppId;
+        }) || null;
+    }
+    if (!myProject && contextProject && myName && String(contextProject.name || '') === myName) {
+        myProject = contextProject;
+    }
+    if (!myProject && contextAppId > 0 && Array.isArray(myProjects)) {
+        myProject = myProjects.find(function(item) {
+            return Number(item.id) === contextAppId;
+        }) || null;
+    }
+    if (!myProject && myName && Array.isArray(myProjects)) {
+        myProject = myProjects.find(function(item) {
+            return String(item.name || '') === myName;
+        }) || null;
+    }
+    if (myProject) {
+        myAppId = Number(myProject.id || myProject.app_id || myAppId || 0);
+        if (!myIcon) myIcon = myProject.icon_url || '';
+    }
+
+    let theirProject = null;
+    if (theirAppId > 0) {
+        theirProject = testerProjects.find(function(item) {
+            return Number(item.app_id) === theirAppId;
+        }) || null;
+    }
+    if (!theirProject && theirName) {
+        theirProject = testerProjects.find(function(item) {
+            return _getDossierProjectDisplayName(item) === theirName
+                || String(item.name || '') === theirName;
+        }) || null;
+    }
+    if (theirProject) {
+        theirAppId = Number(theirProject.app_id || theirAppId || 0);
+        if (!theirIcon) theirIcon = theirProject.icon_url || '';
+    }
+
+    if (!(myAppId > 0) && contextAppId > 0) {
+        myAppId = contextAppId;
+    }
+    const isPrimary = contextAppId > 0 && myAppId > 0 && myAppId === contextAppId;
+
+    return {
+        myAppId: myAppId,
+        theirAppId: theirAppId,
+        myName: myName || window.t('unknownLabel', {}, lang),
+        theirName: theirName || window.t('unknownLabel', {}, lang),
+        myIcon: myIcon,
+        theirIcon: theirIcon,
+        isPrimary: isPrimary,
+    };
+}
+
+function _isDossierRelationPrimary(rel, options) {
+    options = options || {};
+    const contextAppId = Number(options.contextAppId || 0);
+    if (!(contextAppId > 0) || !rel) return false;
+    const type = String(rel.type || '');
+    if (type === 'mutual' || type === 'mutual_they_test_me') {
+        const pair = _resolveDossierRelationPair(rel, options);
+        return !!pair.isPrimary;
+    }
+    if (type.indexOf('they_test_me') !== -1) {
+        return Number(rel.my_app_id || 0) === contextAppId;
+    }
+    if (type.indexOf('i_test_them') !== -1) {
+        // Opened from their project context is rare; still mark if ids match.
+        return Number(rel.their_app_id || 0) === contextAppId;
+    }
+    return false;
+}
+
+function _partitionDossierRelations(relations, options) {
+    const list = Array.isArray(relations) ? relations.slice() : [];
+    if (!list.length) return { primary: [], secondary: [] };
+
+    const primary = [];
+    const secondary = [];
+    list.forEach(function(rel) {
+        if (_isDossierRelationPrimary(rel, options)) primary.push(rel);
+        else secondary.push(rel);
+    });
+
+    // No context match: elevate first mutual, else first relation.
+    if (!primary.length && list.length) {
+        const mutualIdx = list.findIndex(function(rel) {
+            return String(rel && rel.type || '') === 'mutual';
+        });
+        const pickIdx = mutualIdx >= 0 ? mutualIdx : 0;
+        primary.push(list[pickIdx]);
+        secondary.length = 0;
+        list.forEach(function(rel, idx) {
+            if (idx !== pickIdx) secondary.push(rel);
+        });
+    }
+
+    return { primary: primary, secondary: secondary };
+}
+
+function _renderDossierLinkedRelationCard(rel, options) {
+    if (rel && String(rel.type || '') === 'mutual' && Number(rel.their_app_id || 0) > 0) {
+        return _renderDossierLinkedExchangeCard(rel, options);
+    }
+    return _renderDossierLinkedSimpleCard(rel, options);
+}
+
+function _resolveDossierLinkedContractReward(rel, options) {
+    options = options || {};
+    const type = String(rel && rel.type || '');
+    if (type.indexOf('contract') !== 0) return null;
+
+    let bounty = Number(rel && rel.bounty_per_tester || 0);
+    const appId = type.indexOf('i_test_them') !== -1
+        ? Number(rel && rel.their_app_id || 0)
+        : Number(rel && rel.my_app_id || 0);
+
+    if (!(bounty > 0) && appId > 0) {
+        if (type.indexOf('i_test_them') !== -1) {
+            const owned = (Array.isArray(options.testerProjects) ? options.testerProjects : []).find(function(item) {
+                return Number(item && item.app_id || 0) === appId;
+            });
+            bounty = Number(owned && owned.bounty_per_tester || 0);
+            if (!(bounty > 0) && Array.isArray(myTests)) {
+                const mine = myTests.find(function(item) {
+                    return Number(item.id || item.app_id || 0) === appId;
+                });
+                bounty = Number(mine && mine.bounty_per_tester || 0);
+            }
+        } else if (Array.isArray(myProjects)) {
+            const mine = myProjects.find(function(item) {
+                return Number(item.id || item.app_id || 0) === appId;
+            });
+            bounty = Number(mine && mine.bounty_per_tester || 0);
+        }
+    }
+    if (!(bounty > 0)) return null;
+
+    let skips = rel && rel.skips_count != null ? Number(rel.skips_count) : NaN;
+    if (!Number.isFinite(skips) && type.indexOf('i_test_them') !== -1 && appId > 0 && Array.isArray(myTests)) {
+        const mine = myTests.find(function(item) {
+            return Number(item.id || item.app_id || 0) === appId;
+        });
+        if (mine) skips = Number(mine.skips_count || 0);
+    }
+    if (!Number.isFinite(skips)) {
+        const tester = options.tester || null;
+        if (tester && Number(options.contextAppId || 0) === appId) {
+            skips = Number(tester.skips_count != null ? tester.skips_count : 0);
+        } else {
+            skips = 0;
+        }
+    }
+
+    const grantBurned = skips > 3;
+    let amount = bounty;
+    if (!grantBurned && typeof getContractPossibleTotalReward === 'function') {
+        const possible = getContractPossibleTotalReward(bounty);
+        amount = Math.max(bounty, Number(possible && possible.total || bounty));
+    } else if (!grantBurned && typeof getGrantEstimateData === 'function') {
+        const grant = getGrantEstimateData({ skips_count: 0, daily_timeline: '' });
+        amount = bounty + Math.max(0, Number(grant && grant.total || 0));
+    }
+
+    const amountLabel = typeof formatAmountValue === 'function'
+        ? formatAmountValue(amount, 1)
+        : String(Math.round(Number(amount || 0)));
+    return {
+        bounty: bounty,
+        amount: amount,
+        grantBurned: grantBurned,
+        label: (grantBurned ? '' : '~') + amountLabel + ' $BUST',
+    };
+}
+
+function _renderDossierLinkedExchangeCard(rel, options) {
+    options = options || {};
+    const pair = _resolveDossierRelationPair(rel, options);
+    const testerId = Number(options.testerId || 0);
+    const tester = options.tester || null;
+    const isPrimary = options.forcePrimary === true
+        || (options.forcePrimary !== false && (pair.isPrimary || _isDossierRelationPrimary(rel, options)));
+    const canOpenBalance = pair.myAppId > 0 && testerId > 0 && typeof openMutualBalanceModal === 'function';
+    const safeMy = window.escapeHTML(pair.myName);
+    const safeTheir = window.escapeHTML(pair.theirName);
+
+    const myStatus = String(rel && rel.my_app_status || '').trim().toLowerCase();
+    const theirStatus = String(rel && rel.their_app_status || '').trim().toLowerCase();
+    const myDone = myStatus === 'completed' || myStatus === 'archived';
+    const theirDone = theirStatus === 'completed' || theirStatus === 'archived';
+    const hasDebt = (myDone && !theirDone) || (theirDone && !myDone);
+
+    const isBroken = !!(rel && rel.is_broken);
+    const cardClass = 'linked-project-card is-mutual'
+        + (isPrimary ? ' is-primary-link' : '')
+        + (options.isSecondary ? ' is-secondary-link' : '')
+        + (isBroken ? ' is-broken' : '')
+        + (hasDebt ? ' has-debt' : '');
+
+    let theirDays = 0;
+    let theirSkips = 0;
+    if (tester) {
+        theirDays = tester.start_date && typeof getUserTestingDay === 'function'
+            ? getUserTestingDay(tester.start_date)
+            : Number(tester.testing_days || 0);
+        theirSkips = Number(tester.skips_count != null ? tester.skips_count : 0);
+    }
+    let myDays = 0;
+    let mySkips = 0;
+    if (Array.isArray(myTests)) {
+        const reciprocalTest = myTests.find(function(item) {
+            return Number(item.id || item.app_id || 0) === Number(pair.theirAppId || 0);
+        });
+        if (reciprocalTest) {
+            myDays = Number(reciprocalTest.testing_days || 0);
+            mySkips = Number(reciprocalTest.skips_count || 0);
+            if (!pair.theirIcon && reciprocalTest.icon_url) {
+                pair.theirIcon = reciprocalTest.icon_url;
+            }
+        }
+    }
+
+    const skipsFmt = typeof formatSkipsLabel === 'function'
+        ? formatSkipsLabel
+        : function(n) { return String(n); };
+    const openAttrs = canOpenBalance
+        ? ` onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${pair.myAppId}, ${testerId}, event)"`
+        : '';
+    const tag = canOpenBalance ? 'button' : 'div';
+    const typeAttr = canOpenBalance ? ' type="button"' : '';
+    const dayValue = theirDays || myDays || 0;
+    const skipValue = theirSkips || mySkips || 0;
+    const skipWarn = skipValue >= 3;
+    const completedBadge = `<span class="linked-side-done">${window.escapeHTML(window.t('linkedSideCompleted', {}, lang))}</span>`;
+    const statsParts = [];
+    if (dayValue > 0) {
+        statsParts.push(window.escapeHTML(window.t('parityDayChip', { day: dayValue, total: 14 }, lang)));
+    }
+    statsParts.push(
+        `<span${skipWarn ? ' class="is-warn"' : ''}>${window.escapeHTML(skipsFmt(skipValue))}</span>`
+    );
+    const statsHtml = statsParts.length
+        ? `<span class="linked-card-stats">${statsParts.join('<span class="linked-card-stats-dot" aria-hidden="true">•</span>')}</span>`
+        : '';
+
+    let brokenNoticeHtml = '';
+    let theirBrokenTag = '';
+    let myBrokenTag = '';
+    if (isBroken) {
+        let isViewerBroken = rel && (rel.broken_by === 'viewer' || rel.viewer_leg_status === 'abandoned' || rel.viewer_leg_status === 'justified_exit' || rel.viewer_leg_status === 'dropped');
+        let isTesterBroken = rel && (rel.broken_by === 'tester' || rel.tester_leg_status === 'abandoned' || rel.tester_leg_status === 'justified_exit' || rel.tester_leg_status === 'dropped' || rel.tester_leg_status === 'kicked_by_owner');
+        if (!isViewerBroken && !isTesterBroken) {
+            isViewerBroken = true; // default fallback
+        }
+        const brokenTagHtml = `<div class="linked-side-broken-tag" style="color:#ff453a;font-size:11px;font-weight:600;margin-top:2px;">${window.escapeHTML(window.t('mutualBalanceSideBrokenText', {}, lang) || 'Связь разорвана')}</div>`;
+        if (isViewerBroken) theirBrokenTag = brokenTagHtml;
+        if (isTesterBroken) myBrokenTag = brokenTagHtml;
+
+        let brokenMsg = isViewerBroken
+            ? (window.t('dossierRelationBrokenViewer', {}, lang) || 'Вы вышли из тестирования')
+            : (window.t('dossierRelationBrokenTester', {}, lang) || 'Партнёр вышел из тестирования');
+        brokenNoticeHtml = `<span class="linked-card-direction is-debt" style="color: #ff453a;">${window.escapeHTML(brokenMsg)}</span>`;
+    } else if (hasDebt) {
+        brokenNoticeHtml = `<span class="linked-card-direction is-debt">${window.escapeHTML(window.t('linkedMutualDebtNotice', {}, lang))}</span>`;
+    }
+
+    const badgeHtml = isBroken
+        ? `<span class="linked-badge is-broken" style="background: rgba(255, 59, 48, 0.15); color: #ff453a; border-color: rgba(255, 59, 48, 0.3);">${window.escapeHTML(window.t('barterChipBroken', {}, lang) || '💔 Взаимка')}</span>`
+        : `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>`;
+
+    return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +
+        `<div class="linked-card-meta">` +
+            badgeHtml +
+            brokenNoticeHtml +
+        `</div>` +
+        `<div class="linked-mutual-strip">` +
+            `<div class="linked-mutual-app is-start${theirDone ? ' is-done' : ''}">` +
+                renderIcon(pair.theirName, pair.theirIcon) +
+                `<div class="linked-mutual-app-text">` +
+                    `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideTheirs', {}, lang))}</span>` +
+                    `<div class="linked-mutual-name notranslate">${safeTheir}</div>` +
+                    theirBrokenTag +
+                    (theirDone ? completedBadge : '') +
+                `</div>` +
+            `</div>` +
+            `<div class="linked-mutual-swap" aria-hidden="true">${isBroken ? '⇥' : '⇄'}</div>` +
+            `<div class="linked-mutual-app is-end${myDone ? ' is-done' : ''}">` +
+                renderIcon(pair.myName, pair.myIcon) +
+                `<div class="linked-mutual-app-text">` +
+                    `<span class="linked-side-label">${window.escapeHTML(window.t('linkedSideYours', {}, lang))}</span>` +
+                    `<div class="linked-mutual-name notranslate">${safeMy}</div>` +
+                    myBrokenTag +
+                    (myDone ? completedBadge : '') +
+                `</div>` +
+            `</div>` +
+        `</div>` +
+        `<div class="linked-card-footer">` +
+            `<div class="linked-card-footer-copy">` +
+                (canOpenBalance
+                    ? `<span class="linked-card-cta">${window.escapeHTML(window.t('mutualBalanceShort', {}, lang))}</span>`
+                    : '') +
+                statsHtml +
+            `</div>` +
+            (canOpenBalance ? `<span class="linked-card-chevron">›</span>` : '') +
+        `</div>` +
+    `</${tag}>`;
+}
+
+function _renderDossierLinkedSimpleCard(rel, options) {
+    options = options || {};
+    const type = String(rel && rel.type || '');
+    const iTestThem = type.indexOf('i_test_them') !== -1
+        || String(rel && rel.direction || '') === 'i_test_them';
+    const isContract = type.indexOf('contract') === 0;
+    const isGuest = type.indexOf('guest') === 0;
+    const isPrimary = options.forcePrimary === true
+        || (options.forcePrimary !== false && _isDossierRelationPrimary(rel, options));
+
+    const isMutualOneSided = type === 'mutual_they_test_me'
+        || (type === 'mutual' && !(Number(rel.their_app_id || 0) > 0));
+    let badgeKey = 'linkedBadgeDirect';
+    let badgeClass = 'is-direct';
+    if (isMutualOneSided) {
+        badgeKey = 'linkedBadgeMutual';
+        badgeClass = 'is-mutual';
+    } else if (isContract) {
+        badgeKey = 'linkedBadgeBounty';
+        badgeClass = 'is-bounty';
+    } else if (isGuest) {
+        badgeKey = 'linkedBadgeGuest';
+        badgeClass = 'is-guest';
+    }
+
+    let appName = '';
+    let iconUrl = '';
+    let appId = 0;
+    if (iTestThem) {
+        appName = String(rel.their_app || '');
+        appId = Number(rel.their_app_id || 0);
+        iconUrl = String(rel.their_app_icon_url || '');
+        if ((!iconUrl || !appName) && Array.isArray(options.testerProjects) && appId > 0) {
+            const owned = options.testerProjects.find(function(item) {
+                return Number(item && item.app_id || 0) === appId;
+            });
+            if (owned) {
+                if (!appName) appName = _getDossierProjectDisplayName(owned);
+                if (!iconUrl) iconUrl = String(owned.icon_url || '');
+            }
+        }
+        if ((!iconUrl || !appName) && appId > 0 && Array.isArray(myTests)) {
+            const mine = myTests.find(function(item) {
+                return Number(item.id || item.app_id || 0) === appId;
+            });
+            if (mine) {
+                if (!appName) appName = String(mine.name || '');
+                if (!iconUrl) iconUrl = String(mine.icon_url || '');
+            }
+        }
+    } else {
+        appName = String(rel.my_app || rel.their_app || '');
+        appId = Number(rel.my_app_id || rel.their_app_id || 0);
+        iconUrl = String(rel.my_app_icon_url || rel.their_app_icon_url || '');
+        if ((!iconUrl || !appName) && appId > 0 && Array.isArray(myProjects)) {
+            const mine = myProjects.find(function(item) {
+                return Number(item.id || item.app_id || 0) === appId;
+            });
+            if (mine) {
+                if (!appName) appName = String(mine.name || '');
+                if (!iconUrl) iconUrl = String(mine.icon_url || '');
+            }
+        }
+    }
+    if (!appName) appName = window.t('unknownLabel', {}, lang);
+
+    const directionKey = iTestThem ? 'linkedDirectionITestThem' : 'linkedDirectionTheyTestMe';
+    const reward = isContract ? _resolveDossierLinkedContractReward(rel, options) : null;
+
+    let days = 0;
+    let checkins = Number(rel && rel.checkins_count || 0);
+    const startDate = rel && rel.start_date;
+    if (startDate && typeof getUserTestingDay === 'function') {
+        days = getUserTestingDay(startDate);
+    }
+    const tester = options.tester || null;
+    if (tester && Number(options.contextAppId || 0) === appId) {
+        if (!(days > 0)) {
+            days = tester.start_date && typeof getUserTestingDay === 'function'
+                ? getUserTestingDay(tester.start_date)
+                : Number(tester.testing_days || 0);
+        }
+        if (!(checkins > 0)) checkins = Number(tester.checkins_count || 0);
+    } else if (iTestThem && appId > 0 && Array.isArray(myTests) && !(days > 0)) {
+        const mine = myTests.find(function(item) {
+            return Number(item.id || item.app_id || 0) === appId;
+        });
+        if (mine) {
+            days = Number(mine.testing_days || 0);
+            if (!(checkins > 0)) checkins = Number(mine.checkins_count || 0);
+        }
+    }
+
+    let badgeText = window.t(badgeKey, {}, lang);
+    let badgeTitle = '';
+    if (isContract && reward) {
+        badgeText = window.t('linkedBadgeBounty', {}, lang) + ' ' + reward.label;
+        badgeTitle = window.t(
+            reward.grantBurned ? 'linkedRewardOwnerOnlyHint' : 'bountyPossibleTotalChipHint',
+            {},
+            lang
+        );
+    }
+
+    return `<div class="linked-project-card is-static${isContract ? ' is-bounty' : ' is-direct'}${isPrimary ? ' is-primary-link' : ''}${options.isSecondary ? ' is-secondary-link' : ''}">` +
+        `<div class="linked-card-meta">` +
+            `<span class="linked-badge ${badgeClass}${reward ? ' has-reward' : ''}"${badgeTitle ? ` title="${window.escapeHTML(badgeTitle)}"` : ''}>${window.escapeHTML(badgeText)}</span>` +
+            `<span class="linked-card-direction">${window.escapeHTML(window.t(directionKey, {}, lang))}</span>` +
+        `</div>` +
+        `<div class="linked-simple-row">` +
+            renderIcon(appName, iconUrl) +
+            `<div class="linked-simple-body">` +
+                `<div class="linked-simple-name notranslate">${window.escapeHTML(appName)}</div>` +
+                `<div class="linked-card-chips linked-card-chips--start">` +
+                    (days > 0
+                        ? `<span class="parity-chip">📅 ${window.escapeHTML(window.t('parityDayChip', { day: days, total: 14 }, lang))}</span>`
+                        : '') +
+                    (checkins > 0 || days > 0
+                        ? `<span class="parity-chip">✅ ${window.escapeHTML(window.t('linkedCheckinsChip', { count: checkins }, lang))}</span>`
+                        : '') +
+                `</div>` +
+            `</div>` +
+        `</div>` +
+    `</div>`;
 }
 
 function _resolveDossierOwnedProjects(tester, testerProjects) {
@@ -7769,6 +8988,9 @@ function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProje
     if (isArchivedLike) {
         cardClass += ' is-archived';
     }
+    if (isLinkedProject) {
+        cardClass += ' is-primary-link';
+    }
     const innerOpen = isArchivedLike
         ? '<div class="' + cardClass + '" style="cursor:default;">'
         : '<button type="button" class="' + cardClass + '" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ')">';
@@ -7807,14 +9029,18 @@ function _renderDossierOtherProjectMiniCard(ownedProject, testerId) {
     const status = String(ownedProject.status || 'active').toLowerCase();
     const isArchivedLike = status === 'completed' || status === 'archived';
     const isJoinBlocked = _isDossierProjectJoinBlocked(ownedProject);
+    const canJoinNow = !isArchivedLike && !isJoinBlocked && _isDossierProjectJoinAvailable(ownedProject);
     const metaChipsHtml = _buildDossierProjectMetaChips(ownedProject);
     let cardStyle = '';
     if (isArchivedLike) {
         cardStyle = ' style="opacity: 0.6; pointer-events: none;"';
     }
+    const cardClassExtras = (isArchivedLike ? ' is-archived' : '')
+        + (isJoinBlocked ? ' is-join-blocked' : '')
+        + (canJoinNow ? ' is-joinable' : '');
     const cardTag = (isArchivedLike || isJoinBlocked)
-        ? '<div class="dossier-other-mini-card' + (isArchivedLike ? ' is-archived' : '') + (isJoinBlocked ? ' is-join-blocked' : '') + '"' + cardStyle + '>'
-        : '<button type="button" class="dossier-other-mini-card" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ')">';
+        ? '<div class="dossier-other-mini-card' + cardClassExtras + '"' + cardStyle + '>'
+        : '<button type="button" class="dossier-other-mini-card' + cardClassExtras + '" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ', event)">';
 
     return cardTag +
         '<div class="dossier-other-mini-inner">' +
@@ -7835,35 +9061,248 @@ function renderDossierHeader(fullName, username, avatarUrl, fallbackId) {
             .trim().replace('@', '').substring(0, 2).toUpperCase()
     );
     const avatarHue = ((Number(fallbackId || 0) * 73 + 17) % 360);
-    const avatarHtml = `<div class="dossier-avatar" style="--av-hue:${avatarHue}; overflow: hidden; position: relative; width: 52px; height: 52px; border-radius: 50%; background: hsl(var(--av-hue, 220), 55%, 38%); color: rgb(255, 255, 255); font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; user-select: none;">
-        ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="display:block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` : ''}
-        <span class="dossier-avatar-initials" style="${avatarUrl ? 'display:none;' : 'display:flex; justify-content:center; align-items:center; width:100%; height:100%;'}">${initials}</span>
+    const avatarHtml = `<div class="dossier-avatar" style="--av-hue:${avatarHue}">
+        ${avatarUrl ? `<img src="${window.escapeHTML(avatarUrl)}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+        <span class="dossier-avatar-initials" style="${avatarUrl ? 'display:none;' : ''}">${initials}</span>
     </div>`;
-    
+
     const cleanUsername = String(username || '').replace('@', '');
     const dispName = fullName || (username ? '@' + cleanUsername : '');
     const mainName = dispName || window.t('idLabel', { id: fallbackId || 0 }, lang);
     const subName = (fullName && username) ? `@${cleanUsername}` : '';
-    const subNameHtml = subName 
-        ? `<div style="font-size: 13px; color: var(--tg-theme-link-color, var(--link-color, #3390ec)); font-weight: 500;">${window.escapeHTML(subName)}</div>` 
+    const subNameHtml = subName
+        ? `<div class="dossier-profile-username notranslate">${window.escapeHTML(subName)}</div>`
         : '';
-        
-    return `
-        <div class="dossier-header-layout" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-            ${avatarHtml}
-            <div style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">
-                <div style="font-size: 18px; font-weight: 700; color: #ffffff; line-height: 1.2; word-break: break-word;">${window.escapeHTML(mainName)}</div>
-                ${subNameHtml}
-            </div>
+
+    return `<div class="dossier-profile-identity">
+        ${avatarHtml}
+        <div class="dossier-profile-names">
+            <div class="dossier-profile-name notranslate">${window.escapeHTML(mainName)}</div>
+            ${subNameHtml}
         </div>
-    `;
+    </div>`;
 }
+
+function toggleDossierFold(btn) {
+    if (!btn) return;
+    const expanded = btn.getAttribute('aria-expanded') === 'true';
+    const next = !expanded;
+    btn.setAttribute('aria-expanded', next ? 'true' : 'false');
+    const root = btn.closest ? btn.closest('.dossier-fold') : btn.parentElement;
+    const panel = root && root.querySelector
+        ? root.querySelector('.dossier-fold-panel')
+        : (btn.nextElementSibling || null);
+    if (panel) {
+        if (next) panel.removeAttribute('hidden');
+        else panel.setAttribute('hidden', '');
+    }
+    const hint = btn.querySelector ? btn.querySelector('.dossier-fold-hint') : null;
+    if (hint) {
+        hint.textContent = window.t(next ? 'dossierOtherProjectsCollapseHint' : 'dossierOtherProjectsExpandHint', {}, lang);
+    }
+    if (typeof tg !== 'undefined' && tg && tg.HapticFeedback && typeof tg.HapticFeedback.selectionChanged === 'function') {
+        tg.HapticFeedback.selectionChanged();
+    }
+}
+
+function _renderDossierFold(title, count, panelHtml, options) {
+    options = options || {};
+    const countNum = Math.max(0, Number(count || 0));
+    const variant = String(options.variant || 'default');
+    const foldClass = 'dossier-fold'
+        + (variant === 'quiet' ? ' dossier-fold--quiet' : '')
+        + (variant === 'inline' ? ' dossier-fold--inline' : '');
+
+    let mainInner = '';
+    let endInner = `<span class="dossier-fold-chevron" aria-hidden="true"></span>`;
+    if (variant === 'quiet') {
+        mainInner = '';
+        endInner = `<span class="dossier-fold-title">${window.escapeHTML(window.t('dossierLinkedMoreTitle', { count: countNum }, lang))}</span>`
+            + `<span class="dossier-fold-chevron" aria-hidden="true"></span>`;
+    } else if (variant === 'inline') {
+        mainInner = `<span class="dossier-fold-ico" aria-hidden="true">📱</span>`
+            + `<span class="dossier-fold-title">${window.escapeHTML(window.t('dossierOtherProjectsTitle', {}, lang))}</span>`
+            + `<span class="dossier-fold-count">${countNum}</span>`;
+        endInner = `<span class="dossier-fold-hint">${window.escapeHTML(window.t('dossierOtherProjectsExpandHint', {}, lang))}</span>`
+            + `<span class="dossier-fold-chevron" aria-hidden="true"></span>`;
+    } else {
+        mainInner = `<span class="dossier-fold-title">${window.escapeHTML(title)}</span>`
+            + `<span class="dossier-fold-count">${countNum}</span>`;
+    }
+
+    return `<div class="${foldClass}">` +
+        `<button type="button" class="dossier-fold-trigger" aria-expanded="false" onclick="toggleDossierFold(this)">` +
+            `<span class="dossier-fold-main">${mainInner}</span>` +
+            `<span class="dossier-fold-end">${endInner}</span>` +
+        `</button>` +
+        `<div class="dossier-fold-panel" hidden>${panelHtml || ''}</div>` +
+    `</div>`;
+}
+
+function _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml, reliabilityState) {
+    const karmaRaw = Number(profile && profile.karma || 0);
+    const karmaValue = typeof formatUiAmount === 'function'
+        ? formatUiAmount(karmaRaw, 1)
+        : String(karmaRaw);
+    const experienceValue = Number(profile && profile.completed_tests || 0);
+    const reliabilityValue = reliabilityState && reliabilityState.isNewbie
+        ? window.t('dossierMetricNewbieShort', {}, lang)
+        : (String((reliabilityState && reliabilityState.reliabilityPct) || 0) + '%');
+    const reliabilityTone = reliabilityState && reliabilityState.isNewbie
+        ? 'is-muted'
+        : (Number(reliabilityState && reliabilityState.reliabilityPct || 0) >= 80
+            ? 'is-good'
+            : (Number(reliabilityState && reliabilityState.reliabilityPct || 0) >= 65 ? 'is-warn' : 'is-bad'));
+
+    const acceptanceRateRaw = profile && profile.acceptance_rate_pct;
+    const acceptanceRateNum = acceptanceRateRaw == null || acceptanceRateRaw === ''
+        ? null
+        : Number(acceptanceRateRaw);
+    const acceptanceLabel = (acceptanceRateNum != null && Number.isFinite(acceptanceRateNum))
+        ? ((Number.isInteger(acceptanceRateNum)
+            ? String(acceptanceRateNum)
+            : acceptanceRateNum.toFixed(1).replace(/\.0$/, '')) + '%')
+        : '—';
+
+    const slaHoursLabel = (profile && profile.has_owned_apps)
+        ? formatAvgHandleHoursLabel(profile.avg_handle_hours)
+        : null;
+    const slaSlow = slaHoursLabel != null && Number(profile.avg_handle_hours) > 72;
+    const slaText = slaHoursLabel != null
+        ? ('~' + slaHoursLabel + ' ' + window.t('dossierMetricHoursShort', {}, lang))
+        : null;
+
+    const bugs = Number(profile && profile.bugs_count || 0);
+    const ideas = Number(profile && profile.ideas_count || 0);
+    const reviews = Number(profile && profile.play_reviews_count || 0);
+    const golden = Number(profile && profile.golden_count || 0);
+
+    const feedbackChips = [];
+    feedbackChips.push(
+        `<span class="dossier-fb-chip" title="${window.escapeHTML(window.t('dossierFeedbackAcceptHint', {}, lang))}">` +
+            `<span class="dossier-fb-chip-label">${window.escapeHTML(window.t('dossierFeedbackAcceptShort', {}, lang))}</span>` +
+            `<span class="dossier-fb-chip-value">${window.escapeHTML(acceptanceLabel)}</span>` +
+        `</span>`
+    );
+    if (slaText) {
+        feedbackChips.push(
+            `<span class="dossier-fb-chip${slaSlow ? ' is-warn' : ''}" title="${window.escapeHTML(window.t('feedbackSlaChipToast', {}, lang))}">` +
+                `<span class="dossier-fb-chip-label">${window.escapeHTML(window.t('dossierFeedbackSpeedShort', {}, lang))}</span>` +
+                `<span class="dossier-fb-chip-value">${window.escapeHTML(slaText)}</span>` +
+            `</span>`
+        );
+    }
+    feedbackChips.push(
+        `<span class="dossier-fb-chip notranslate" title="${window.escapeHTML(window.t('detailOwnerBugsShort', { count: bugs }, lang))}">` +
+            `<span class="dossier-fb-chip-ico" aria-hidden="true">🐞</span>` +
+            `<span class="dossier-fb-chip-value">${bugs}</span>` +
+        `</span>`
+    );
+    feedbackChips.push(
+        `<span class="dossier-fb-chip notranslate" title="${window.escapeHTML(window.t('detailOwnerIdeasShort', { count: ideas }, lang))}">` +
+            `<span class="dossier-fb-chip-ico" aria-hidden="true">💡</span>` +
+            `<span class="dossier-fb-chip-value">${ideas}</span>` +
+        `</span>`
+    );
+    feedbackChips.push(
+        `<span class="dossier-fb-chip notranslate" title="${window.escapeHTML(window.t('detailOwnerReviewsShort', { count: reviews }, lang))}">` +
+            `<span class="dossier-fb-chip-ico" aria-hidden="true">⭐</span>` +
+            `<span class="dossier-fb-chip-value">${reviews}</span>` +
+        `</span>`
+    );
+    if (golden > 0) {
+        feedbackChips.push(
+            `<span class="dossier-fb-chip is-gold notranslate" title="${window.escapeHTML(window.t('dossierMetricGoldenShort', {}, lang))}">` +
+                `<span class="dossier-fb-chip-ico" aria-hidden="true">🏆</span>` +
+                `<span class="dossier-fb-chip-value">${golden}</span>` +
+            `</span>`
+        );
+    }
+
+    return `<header class="dossier-profile-hero">` +
+        identityHtml +
+        `<div class="dossier-stat-strip" role="group" aria-label="${window.escapeHTML(window.t('dossierGlobalTitle', {}, lang))}">` +
+            `<div class="dossier-stat">` +
+                `<div class="dossier-stat-value notranslate">${window.escapeHTML(String(karmaValue))}</div>` +
+                `<div class="dossier-stat-label">${window.escapeHTML(window.t('dossierMetricKarma', {}, lang))}</div>` +
+            `</div>` +
+            `<div class="dossier-stat-sep" aria-hidden="true"></div>` +
+            `<div class="dossier-stat ${reliabilityTone}">` +
+                `<div class="dossier-stat-value notranslate" title="${window.escapeHTML((reliabilityState && reliabilityState.reliabilityText) || '')}">${window.escapeHTML(reliabilityValue)}</div>` +
+                `<div class="dossier-stat-label">${window.escapeHTML(window.t('dossierMetricReliability', {}, lang))}</div>` +
+            `</div>` +
+            `<div class="dossier-stat-sep" aria-hidden="true"></div>` +
+            `<div class="dossier-stat" title="${window.escapeHTML(window.t('dossierMetricTestsHint', {}, lang))}">` +
+                `<div class="dossier-stat-value notranslate">${window.escapeHTML(String(experienceValue))}</div>` +
+                `<div class="dossier-stat-label">${window.escapeHTML(window.t('dossierMetricTests', {}, lang))}</div>` +
+            `</div>` +
+        `</div>` +
+        `<div class="dossier-feedback-block">` +
+            `<div class="dossier-feedback-label">${window.escapeHTML(window.t('dossierFeedbackBlockTitle', {}, lang))}</div>` +
+            `<div class="dossier-feedback-chips">${feedbackChips.join('')}</div>` +
+        `</div>` +
+        (projectsFoldHtml || '') +
+    `</header>`;
+}
+
+function _renderDossierLoadingSkeleton(identityHtml) {
+    return `<div class="dossier-loading" aria-busy="true" aria-live="polite">` +
+        `<header class="dossier-profile-hero dossier-profile-hero--loading">` +
+            (identityHtml || (
+                `<div class="dossier-profile-identity">` +
+                    `<div class="skeleton skeleton-avatar" style="margin-right:0;width:48px;height:48px;"></div>` +
+                    `<div class="dossier-profile-names" style="flex:1;">` +
+                        `<div class="skeleton skeleton-line medium" style="margin-bottom:6px;"></div>` +
+                        `<div class="skeleton skeleton-line short" style="margin-bottom:0;"></div>` +
+                    `</div>` +
+                `</div>`
+            )) +
+            `<div class="dossier-stat-strip">` +
+                `<div class="dossier-stat"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:48%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:62%;"></div></div>` +
+                `<div class="dossier-stat-sep" aria-hidden="true"></div>` +
+                `<div class="dossier-stat"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:48%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:62%;"></div></div>` +
+                `<div class="dossier-stat-sep" aria-hidden="true"></div>` +
+                `<div class="dossier-stat"><div class="skeleton skeleton-line short" style="margin:0 auto 6px;height:16px;width:48%;"></div><div class="skeleton skeleton-line short" style="margin:0 auto;height:8px;width:62%;"></div></div>` +
+            `</div>` +
+            `<div class="dossier-feedback-block">` +
+                `<div class="skeleton skeleton-line short" style="margin-bottom:8px;height:10px;width:22%;"></div>` +
+                `<div class="skeleton skeleton-line medium" style="margin:0;height:28px;width:100%;border-radius:10px;"></div>` +
+            `</div>` +
+            `<div class="skeleton skeleton-line medium" style="margin-top:10px;height:36px;width:100%;border-radius:12px;"></div>` +
+        `</header>` +
+        `<section class="dossier-links-section dossier-links-section--loading">` +
+            `<div class="skeleton skeleton-line short" style="margin-bottom:10px;height:12px;width:28%;"></div>` +
+            `<div class="linked-project-card is-static dossier-link-skeleton">` +
+                `<div class="skeleton skeleton-line short" style="margin-bottom:10px;height:18px;width:46%;"></div>` +
+                `<div style="display:flex;gap:10px;align-items:flex-start;">` +
+                    `<div class="skeleton" style="width:40px;height:40px;border-radius:10px;flex-shrink:0;"></div>` +
+                    `<div style="flex:1;min-width:0;">` +
+                        `<div class="skeleton skeleton-line medium" style="margin-bottom:8px;"></div>` +
+                        `<div class="skeleton skeleton-line short" style="margin-bottom:0;width:55%;"></div>` +
+                    `</div>` +
+                `</div>` +
+            `</div>` +
+        `</section>` +
+        `<div class="dossier-actions-section dossier-actions-section--loading">` +
+            `<div class="skeleton skeleton-line short" style="margin-bottom:10px;height:12px;width:24%;"></div>` +
+            `<div class="skeleton skeleton-btn" style="margin-top:0;"></div>` +
+            `<div class="skeleton skeleton-btn"></div>` +
+        `</div>` +
+        `<p class="dossier-loading-caption">${window.escapeHTML(window.t('dossierLoading', {}, lang) || t.dossierLoading || '…')}</p>` +
+    `</div>`;
+}
+
+var _dossierOpenSeq = 0;
 
 async function openDossierModal(username, testerId, appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     const modal = document.getElementById('dossier-modal');
-    document.getElementById('dossier-modal-title').innerHTML = '';
-    document.getElementById('dossier-body').innerHTML = `<p style="text-align:center; color: var(--hint-color);">${t.dossierLoading}</p>`;
+    const bodyEl = document.getElementById('dossier-body');
+    const titleEl = document.getElementById('dossier-modal-title');
+    if (titleEl) titleEl.innerHTML = '';
+    if (!modal || !bodyEl) return;
+
+    const openSeq = ++_dossierOpenSeq;
     modal.classList.add('active');
 
     const project = myProjects.find((item) => Number(item.id) === Number(appId));
@@ -7898,33 +9337,106 @@ async function openDossierModal(username, testerId, appId) {
     const tgName = username || '';
     const safeTelegramUsername = escapeInlineJsString(tgName);
     const dossierOwnerProfile = _resolveDossierOwnerProfile(testerId, appId, tgName, tester, marketCandidate);
+    const cachedProfile = _dossierProfilesCache[String(testerId)] || null;
 
-    // Render initial header
-    document.getElementById('dossier-modal-title').innerHTML = renderDossierHeader(
-        dossierOwnerProfile.owner_full_name,
-        dossierOwnerProfile.owner_username,
-        dossierOwnerProfile.owner_avatar_url,
+    // Paint shell immediately: known identity + skeleton while network work runs.
+    const earlyIdentityHtml = renderDossierHeader(
+        (cachedProfile && cachedProfile.full_name) || dossierOwnerProfile.owner_full_name,
+        (cachedProfile && cachedProfile.username) || dossierOwnerProfile.owner_username,
+        (cachedProfile && cachedProfile.avatar_url) || dossierOwnerProfile.owner_avatar_url,
         testerId
     );
+    bodyEl.innerHTML = _renderDossierLoadingSkeleton(earlyIdentityHtml);
 
-    let profile = { karma: 0, completed_tests: 0, total_expected_checkins: 0, total_actual_checkins: 0 };
-    try {
-        const resp = await fetch(`${API_BASE}/users/${testerId}/profile`);
-        if (resp.ok) {
-            profile = await resp.json();
-            // Re-render header with exact profile data
-            document.getElementById('dossier-modal-title').innerHTML = renderDossierHeader(
-                profile.full_name || dossierOwnerProfile.owner_full_name,
-                profile.username || dossierOwnerProfile.owner_username,
-                profile.avatar_url,
-                testerId
-            );
+    const needsIncomingOffers = !!appId && (
+        !!project
+        || !!(marketCandidate && (String(marketCandidate.mode || '').toLowerCase() === 'bounty'
+            || String(marketCandidate.mode || '').toLowerCase() === 'hybrid'
+            || marketCandidate.market_kind === 'bounty'))
+    );
+
+    const offersTask = (async function() {
+        if (!needsIncomingOffers) return;
+        try {
+            if (typeof loadIncomingOffers === 'function') {
+                await loadIncomingOffers({ background: true });
+            } else if (typeof loadBountyApplications === 'function') {
+                await loadBountyApplications({ background: true });
+            }
+        } catch (preloadError) {
+            console.warn('Dossier preload incoming applications failed:', preloadError);
         }
-    } catch (error) {
-        console.error('Dossier fetch error:', error);
-    }
+    })();
+
+    const profileTask = (async function() {
+        let nextProfile = cachedProfile
+            ? Object.assign({
+                karma: 0,
+                completed_tests: 0,
+                total_expected_checkins: 0,
+                total_actual_checkins: 0,
+            }, cachedProfile)
+            : { karma: 0, completed_tests: 0, total_expected_checkins: 0, total_actual_checkins: 0 };
+        try {
+            const resp = await fetch(`${API_BASE}/users/${testerId}/profile`);
+            if (resp.ok) {
+                nextProfile = await resp.json();
+            }
+        } catch (error) {
+            console.error('Dossier fetch error:', error);
+        }
+        return nextProfile;
+    })();
 
     const reciprocalOwnedProjectId = Number(tester && tester.reciprocal_app_id || 0);
+    const projectsTask = (async function() {
+        let testerProjects = [];
+        let relations = [];
+        try {
+            const projectsParams = new URLSearchParams();
+            if (Number(userId || 0) > 0) {
+                projectsParams.set('viewer_id', String(userId));
+            }
+            if (reciprocalOwnedProjectId > 0) {
+                projectsParams.set('focus_app_id', String(reciprocalOwnedProjectId));
+            }
+            if (Number(appId || 0) > 0) {
+                projectsParams.set('context_app_id', String(appId));
+            }
+            projectsParams.set('init_data', getTelegramInitDataRaw());
+            const projectsQuery = projectsParams.toString();
+            const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (projectsQuery ? `?${projectsQuery}` : '');
+            const resp = await fetch(projectsUrl);
+            let data = {};
+            try {
+                data = await resp.json();
+            } catch (parseError) {
+                console.error('Dossier projects JSON parse error:', parseError);
+            }
+            if (resp.ok) {
+                if (Array.isArray(data)) {
+                    testerProjects = data;
+                } else if (data && typeof data === 'object') {
+                    testerProjects = Array.isArray(data.projects) ? data.projects : [];
+                    relations = Array.isArray(data.relations) ? data.relations : [];
+                }
+            } else {
+                console.warn('[DOSSIER] projects request failed:', resp.status, projectsUrl);
+            }
+        } catch (error) {
+            console.error('Dossier projects fetch error:', error);
+        }
+        return { testerProjects: testerProjects, relations: relations };
+    })();
+
+    const settled = await Promise.all([offersTask, profileTask, projectsTask]);
+    if (openSeq !== _dossierOpenSeq) return;
+
+    const profile = settled[1] || {};
+    const projectsPayload = settled[2] || { testerProjects: [], relations: [] };
+    let testerProjects = projectsPayload.testerProjects || [];
+    let relations = projectsPayload.relations || [];
+
     const dossierContextTester = tester || (reciprocalOwnedProjectId > 0
         ? {
             reciprocal_app_id: reciprocalOwnedProjectId,
@@ -7935,46 +9447,7 @@ async function openDossierModal(username, testerId, appId) {
         : (marketCandidate && marketCandidate.market_kind === 'mutual-return'
             ? { join_type: marketCandidate.join_type || 'invite' }
             : null));
-    let testerProjects = [];
-    let relations = [];
-    try {
-        const projectsParams = new URLSearchParams();
-        if (Number(userId || 0) > 0) {
-            projectsParams.set('viewer_id', String(userId));
-        }
-        if (reciprocalOwnedProjectId > 0) {
-            projectsParams.set('focus_app_id', String(reciprocalOwnedProjectId));
-        }
-        if (Number(appId || 0) > 0) {
-            projectsParams.set('context_app_id', String(appId));
-        }
-        projectsParams.set('init_data', getTelegramInitDataRaw());
-        const projectsQuery = projectsParams.toString();
-        const projectsUrl = `${API_BASE}/users/${testerId}/projects` + (projectsQuery ? `?${projectsQuery}` : '');
-        const resp = await fetch(projectsUrl);
-        let data = {};
-        try {
-            data = await resp.json();
-        } catch (parseError) {
-            console.error('Dossier projects JSON parse error:', parseError);
-        }
-        console.log('[DOSSIER DIAGNOSTICS] RAW API RESPONSE:', resp.status, data);
-        if (resp.ok) {
-            if (Array.isArray(data)) {
-                testerProjects = data;
-            } else if (data && typeof data === 'object') {
-                testerProjects = Array.isArray(data.projects) ? data.projects : [];
-                relations = Array.isArray(data.relations) ? data.relations : [];
-            } else {
-                testerProjects = [];
-                console.warn('[DOSSIER DIAGNOSTICS] Unexpected projects payload shape:', data);
-            }
-        } else {
-            console.warn('[DOSSIER DIAGNOSTICS] projects request failed:', resp.status, projectsUrl);
-        }
-    } catch (error) {
-        console.error('Dossier projects fetch error:', error);
-    }
+
     testerProjects = testerProjects.map(function(item) {
         return Object.assign({}, item, dossierOwnerProfile);
     });
@@ -7984,160 +9457,135 @@ async function openDossierModal(username, testerId, appId) {
     });
     const linkedOwnedProjectId = Number(ownedProjectsResolved.reciprocalOwnedProjectId || 0);
     const dossierBlocks = _resolveDossierProjectBlocks(dossierContextTester, marketCandidate, relevantTesterProjects, linkedOwnedProjectId > 0 ? linkedOwnedProjectId : 0);
-    console.log('[DOSSIER DIAGNOSTICS] PROCESSED BLOCKS:', {
-        rawCount: testerProjects.length,
-        otherCount: dossierBlocks.otherProjects.length,
-        linkedState: dossierBlocks.linkedState,
-    });
     _dossierProjectsCache[String(testerId)] = relevantTesterProjects;
     _dossierProfilesCache[String(testerId)] = Object.assign({}, profile, dossierOwnerProfile);
 
     const reliabilityState = getDossierReliabilityState(profile);
-    const reliabilityLine = reliabilityState.isNewbie
-        ? `${t.disciplineLabel} ${reliabilityState.reliabilityText}`
-        : `${t.dossierReliability.replace('{pct}', String(reliabilityState.reliabilityPct))} (${reliabilityState.reliabilityText})`;
 
-    const likesAvailable = project ? (project.likes_max - project.likes_used) : 0;
-    const alreadyLiked = project ? (project.likes || []).some((like) => like.tester_id === testerId) : true;
-    const canReward = likesAvailable > 0 && !alreadyLiked;
-    const canDeleteFromProject = !!tester && !!project && !!appId && testingDay > 0 && testingDay <= 7;
+    const karmaPools = project ? getProjectKarmaPools(project, testerId) : { canReward: false };
+    const canReward = !!karmaPools.canReward;
+    const canDeleteFromProject = !!tester && !!project && !!appId && testingDay > 0;
     const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project
         && marketCandidate.market_kind !== 'mutual-return';
     const takeFromShowcaseDisabled = !!(marketCandidate && marketCandidate.has_pending_offer);
     const takeFromShowcaseIsPrelaunch = !!(marketCandidate && marketCandidate.market_kind === 'mutual-prelaunch');
+    const pendingBountyApplication = (typeof findPendingBountyApplicationForTester === 'function')
+        ? findPendingBountyApplicationForTester(testerId, appId)
+        : null;
+    const pendingBountyApplicationId = Number(pendingBountyApplication && pendingBountyApplication.application_id || 0);
+    const canDecideBountyApplication = pendingBountyApplicationId > 0;
 
-    let html = '';
-    const goldenCountText = (profile.golden_count || 0) > 0
-        ? window.t('dossierGoldenCount', { count: profile.golden_count })
-        : '';
-    const acceptanceRateRaw = profile.acceptance_rate_pct;
-    const acceptanceRateNum = acceptanceRateRaw == null || acceptanceRateRaw === ''
-        ? null
-        : Number(acceptanceRateRaw);
-    const qualityLine = (acceptanceRateNum != null && Number.isFinite(acceptanceRateNum))
-        ? window.t('dossierReportQuality', {
-            pct: Number.isInteger(acceptanceRateNum)
-                ? String(acceptanceRateNum)
-                : acceptanceRateNum.toFixed(1).replace(/\.0$/, ''),
-        }, lang)
-        : '';
-    const hasOwnedApps = !!profile.has_owned_apps;
-    const slaHoursLabel = formatAvgHandleHoursLabel(profile.avg_handle_hours);
-    let ownerSlaLine = '';
-    if (hasOwnedApps && slaHoursLabel != null) {
-        ownerSlaLine = window.t('dossierOwnerSla', { hours: slaHoursLabel }, lang);
-        if (Number(profile.avg_handle_hours) > 72) {
-            ownerSlaLine += ' · ' + window.t('dossierOwnerSlaRare', {}, lang);
-        }
-    }
-    html += `<div style="margin-bottom: 16px;">
-        <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierGlobalTitle}</div>
-        <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
-            ${t.dossierExperience.replace('{count}', profile.completed_tests)}
-            <br>${t.dossierKarma.replace('{karma}', profile.karma)}
-            <br>${window.escapeHTML(reliabilityLine)}
-            ${qualityLine ? '<br>' + window.escapeHTML(qualityLine) : ''}
-            ${ownerSlaLine ? '<br>' + window.escapeHTML(ownerSlaLine) : ''}
-            ${goldenCountText ? '<br><span class="golden-badge">' + window.escapeHTML(goldenCountText) + '</span>' : ''}
-        </div>
-    </div>`;
+    const identityHtml = renderDossierHeader(
+        profile.full_name || dossierOwnerProfile.owner_full_name,
+        profile.username || dossierOwnerProfile.owner_username,
+        profile.avatar_url || dossierOwnerProfile.owner_avatar_url,
+        testerId
+    );
 
-    let relationsHtml = '';
-    if (relations.length > 0) {
-        relationsHtml = '<div class="dossier-relations-list" style="display:flex; flex-direction:column; gap:8px;">';
-        relations.forEach(function(rel) {
-            let relText = '';
-            function formatRelationAppName(name, status) {
-                const escapedName = window.escapeHTML(name);
-                if (status === 'completed' || status === 'archived') {
-                    const tagText = lang === 'ru' ? 'Завершен' : 'Completed';
-                    return escapedName + ' <span style="color:#ff9800; font-weight:bold;">(' + tagText + ')</span>';
-                }
-                return escapedName;
-            }
-            const myAppFormatted = rel.my_app ? formatRelationAppName(rel.my_app, rel.my_app_status) : '';
-            const theirAppFormatted = rel.their_app ? formatRelationAppName(rel.their_app, rel.their_app_status) : '';
-
-            if (rel.type === 'mutual') {
-                relText = window.t('dossierRelationMutual', { my_app: myAppFormatted, their_app: theirAppFormatted }, lang);
-            } else if (rel.type === 'direct_they_test_me') {
-                relText = window.t('dossierRelationTheyTestMe', { my_app: myAppFormatted }, lang);
-            } else if (rel.type === 'direct_i_test_them') {
-                relText = window.t('dossierRelationITestThem', { their_app: theirAppFormatted }, lang);
-            } else if (rel.type === 'contract_they_test_me') {
-                relText = window.t('dossierRelationContractTheyTestMe', { my_app: myAppFormatted }, lang);
-            } else if (rel.type === 'contract_i_test_them') {
-                relText = window.t('dossierRelationContractITestThem', { their_app: theirAppFormatted }, lang);
-            }
-            if (relText) {
-                relationsHtml += '<div class="dossier-relation-item" style="padding:10px 12px; background:var(--secondary-bg-color); border-radius:10px; font-size:13px; font-weight:500; line-height:1.4;">' + relText + '</div>';
-            }
-        });
-        relationsHtml += '</div>';
-    } else {
-        relationsHtml = '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierRelationsEmpty', {}, lang)) + '</div>';
-    }
-
-    const otherProjectsHtml = dossierBlocks.otherProjects.length
+    const projectsCount = dossierBlocks.otherProjects.length;
+    const projectsPanelHtml = projectsCount
         ? '<div class="dossier-other-projects-carousel">' + dossierBlocks.otherProjects.map(function(ownedProject) {
             return _renderDossierOtherProjectMiniCard(ownedProject, testerId);
         }).join('') + '</div>'
         : '<div class="dossier-owned-project-empty">' + window.escapeHTML(window.t('dossierOtherProjectsEmpty', {}, lang)) + '</div>';
+    const projectsFoldHtml = _renderDossierFold(
+        window.t('dossierOtherProjectsShort', { count: projectsCount }, lang),
+        projectsCount,
+        projectsPanelHtml,
+        { variant: 'inline' }
+    );
 
-    html += '<div style="margin-bottom: 16px;">' +
-        '<div style="font-weight: 600; margin-bottom: 8px;">' + window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) + '</div>' +
-        relationsHtml +
-        '<div style="font-weight: 600; margin: 14px 0 8px;">' + window.escapeHTML(window.t('dossierOtherProjectsTitle', {}, lang)) + '</div>' +
-        otherProjectsHtml +
-    '</div>';
+    let html = _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml, reliabilityState);
 
-    if (tester) {
-        const sourceMeta = getTesterSourceMeta(tester.join_type);
-        const sourceText = window.escapeHTML(sourceMeta.icon + ' ' + sourceMeta.label);
-        const actualSkips = Math.max(0, Math.max(0, testingDay - 1) - Number(tester.checkins_count || 0));
-        html += `<div style="margin-bottom: 16px;">
-            <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierProjectTitle}</div>
-            <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
-                ${window.t('dossierDaysInTest', { count: testingDay }, lang)}
-                <br>${t.dossierTestingDay.replace('{day}', Math.min(testingDay, 14))}
-                <br>${window.t('dossierCheckins', { count: tester.checkins_count || 0 }, lang)}
-                <br>${t.dossierMissedDays.replace('{count}', actualSkips)}
-                ${startDateStr ? '<br>' + t.dossierStartDate.replace('{date}', startDateStr) : ''}
-                ${expectedFinish ? '<br>' + t.dossierExpectedFinish.replace('{date}', expectedFinish) : ''}
-                <br>${t.dossierLastCheck.replace('{status}', lastCheckStatus)}
-                <br>${t.dossierSource.replace('{source}', sourceText)}
-            </div>
-        </div>`;
-    } else if (marketCandidate && marketCandidate.market_kind === 'mutual-return') {
-        const sourceMeta = getTesterSourceMeta(marketCandidate.join_type);
-        const sourceText = window.escapeHTML(sourceMeta.icon + ' ' + sourceMeta.label);
-        const contextText = window.escapeHTML(window.t('mutualReturnContext', { project: marketCandidate.my_project_name || '' }, lang));
-        html += `<div style="margin-bottom: 16px;">
-            <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierProjectTitle}</div>
-            <div style="padding: 10px 12px; background: var(--secondary-bg-color); border-radius: 10px; font-size: 13px; line-height: 1.8;">
-                ${window.escapeHTML(window.t('mutualReturnsSectionTitle', {}, lang))}
-                <br>${contextText}
-                <br>${t.dossierSource.replace('{source}', sourceText)}
-            </div>
-        </div>`;
+    const relationOptionsBase = {
+        testerId: testerId,
+        contextAppId: appId,
+        contextProject: project,
+        testerProjects: relevantTesterProjects,
+        tester: tester,
+    };
+    const partitioned = relations.length
+        ? _partitionDossierRelations(relations, relationOptionsBase)
+        : { primary: [], secondary: [] };
+    const linkedTotal = partitioned.primary.length + partitioned.secondary.length;
+
+    html += '<section class="dossier-links-section">';
+
+    if (linkedTotal > 0) {
+        html += '<div class="dossier-section-title dossier-section-title--links">' +
+            window.escapeHTML(window.t('dossierLinkedProjectTitle', {}, lang)) +
+        '</div>';
     }
+
+    if (linkedTotal > 0) {
+        html += '<div class="dossier-relations-block">';
+
+        if (partitioned.primary.length) {
+            html += '<div class="dossier-relations-list dossier-relations-list--primary">';
+            partitioned.primary.forEach(function(rel) {
+                html += _renderDossierLinkedRelationCard(rel, Object.assign({}, relationOptionsBase, {
+                    forcePrimary: true,
+                    isSecondary: false,
+                }));
+            });
+            html += '</div>';
+        }
+
+        if (partitioned.secondary.length) {
+            let secondaryCards = '<div class="dossier-relations-list dossier-relations-list--secondary">';
+            partitioned.secondary.forEach(function(rel) {
+                secondaryCards += _renderDossierLinkedRelationCard(rel, Object.assign({}, relationOptionsBase, {
+                    forcePrimary: false,
+                    isSecondary: true,
+                }));
+            });
+            secondaryCards += '</div>';
+            html += _renderDossierFold(
+                window.t('dossierLinkedSecondaryTitle', {}, lang),
+                partitioned.secondary.length,
+                secondaryCards,
+                { variant: 'quiet' }
+            );
+        }
+
+        html += '</div>';
+    } else {
+        html += '<div class="dossier-links-empty">' +
+            window.escapeHTML(window.t('dossierRelationsEmpty', {}, lang)) +
+        '</div>';
+    }
+
+    html += '</section>';
 
     var isAdmin = Boolean(window.App && (window.App.isAdmin || (window.currentUser && window.currentUser.is_admin)));
     var currentUserId = Number((window.App && window.App.userId) || (window.currentUser && window.currentUser.user_id) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user && window.Telegram.WebApp.initDataUnsafe.user.id) || 0);
     var canAdminBan = isAdmin && Number(testerId || 0) > 0 && Number(testerId || 0) !== currentUserId;
 
-    html += `<div>
-        <div style="font-weight: 600; margin-bottom: 8px;">${t.dossierActionsTitle}</div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${tgName ? `<button class="btn" style="width: 100%; background: var(--secondary-bg-color); color: var(--link-color); border: none; font-weight: 600; padding: 10px;" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
-            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" style="width: 100%; border: none; font-weight: 600; padding: 10px;" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest', {}, lang))}</button>` : ''}
-            ${canReward ? `<button class="btn" style="width: 100%; background: rgba(255,204,0,0.15); color: #ffcc00; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
-            ${canDeleteFromProject ? `<button class="btn" style="width: 100%; background: rgba(255,59,48,0.1); color: #ff3b30; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); openKickTesterModal(${appId}, ${testerId})">${t.dossierBtnDelete}</button>` : ''}
-            ${canAdminBan ? `<button class="btn" style="width: 100%; background: #ff3b30; color: #ffffff; border: none; font-weight: 600; padding: 10px;" onclick="closeDossierModal(); openBanUserModal(${testerId}, '${safeTelegramUsername}')">${t.dossierBtnBan || '🛑 Заблокировать'}</button>` : ''}
+    html += `<div class="dossier-actions-section">
+        <div class="dossier-section-title">${t.dossierActionsTitle}</div>
+        <div class="dossier-actions-list">
+            ${canDecideBountyApplication ? `<div class="dossier-bounty-app-block">
+                <div class="dossier-bounty-app-hint">${window.escapeHTML(window.t('dossierBountyApplicationHint', {
+                app: (pendingBountyApplication && pendingBountyApplication.app_name) || window.t('unknownLabel', {}, lang),
+                bust: pendingBountyApplication && pendingBountyApplication.bounty_per_tester != null
+                    ? pendingBountyApplication.bounty_per_tester
+                    : 0,
+            }, lang))}</div>
+                <div class="action-row dossier-bounty-app-actions">
+                    <button class="btn bounty-app-accept-btn" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'accept', event)">${window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang))}</button>
+                    <button class="btn bounty-app-reject-btn" onclick="closeDossierModal(); decideBountyApplication(${pendingBountyApplicationId}, 'reject', event)">${window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang))}</button>
+                </div>
+            </div>` : ''}
+            ${tgName ? `<button class="btn btn-accent-soft" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
+            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest', {}, lang))}</button>` : ''}
+            ${canReward ? `<button class="btn btn-karma-soft" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
+            ${canDeleteFromProject ? `<div class="dossier-action-danger-zone"><button class="btn btn-danger-soft" onclick="closeDossierModal(); openKickTesterModal(${appId}, ${testerId})">${t.dossierBtnDelete}</button></div>` : ''}
+            ${canAdminBan ? `<div class="dossier-action-danger-zone"><button class="btn btn-danger" onclick="closeDossierModal(); openBanUserModal(${testerId}, '${safeTelegramUsername}')">${t.dossierBtnBan || '🛑 Заблокировать'}</button></div>` : ''}
         </div>
     </div>`;
 
-    document.getElementById('dossier-body').innerHTML = html;
+    if (openSeq !== _dossierOpenSeq) return;
+    bodyEl.innerHTML = html;
 }
 
 function closeDossierModal(event) {
@@ -8345,7 +9793,31 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         await proceed();
     };
     if (footerEl) {
-        footerEl.innerHTML = `<button class="btn btn-secondary project-select-direct-btn" style="width: 100%;" onclick="closeProjectSelectModal(); joinDirect(${targetAppId});">${window.escapeHTML(window.t('takeWithoutMutualBtn', {}, lang))}</button>`;
+        var flags = (window.__offerSelectFlags && typeof window.__offerSelectFlags === 'object')
+            ? window.__offerSelectFlags
+            : {};
+        window.__offerSelectFlags = null;
+        var showAddProjectCta = !!(options && options.showAddProjectCta) || !!flags.showAddProjectCta;
+        var hideDirectJoin = !!(options && options.hideDirectJoin) || !!flags.hideDirectJoin;
+        var footerParts = [];
+        if (showAddProjectCta) {
+            footerParts.push(
+                '<button class="btn btn-primary project-select-add-btn" style="width: 100%; margin-bottom: 8px;" ' +
+                'onclick="closeProjectSelectModal(); if (typeof openAddProjectChooser === \'function\') openAddProjectChooser(); else if (typeof openModal === \'function\') openModal();">' +
+                window.escapeHTML(window.t('termDropPreserveAddAppBtn', {}, lang)) +
+                '</button>'
+            );
+        }
+        if (!hideDirectJoin) {
+            footerParts.push(
+                '<button class="btn btn-secondary project-select-direct-btn" style="width: 100%;" onclick="closeProjectSelectModal(); joinDirect(' +
+                targetAppId +
+                ');">' +
+                window.escapeHTML(window.t('takeWithoutMutualBtn', {}, lang)) +
+                '</button>'
+            );
+        }
+        footerEl.innerHTML = footerParts.join('');
     }
     modal.classList.add('active');
 }
@@ -8403,6 +9875,66 @@ function openKarmaSelectPopup(appId, testerId) {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     _karmaAppId = appId;
     _karmaTesterId = testerId;
+    const project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function(item) {
+        return Number(item.id) === Number(appId);
+    });
+    const tester = project && Array.isArray(project.testers)
+        ? project.testers.find(function(t) { return Number(t.tester_id) === Number(testerId); })
+        : null;
+    const pools = getProjectKarmaPools(project, testerId);
+
+    const testerMetaEl = document.getElementById('karma-select-tester-meta');
+    if (testerMetaEl) {
+        if (tester) {
+            const name = tester.username
+                ? '@' + tester.username.replace('@', '')
+                : tester.full_name || (window.t('idLabel', { id: tester.tester_id }, lang) || ('ID: ' + tester.tester_id));
+            testerMetaEl.textContent = name;
+        } else {
+            testerMetaEl.textContent = 'ID: ' + testerId;
+        }
+    }
+
+    const goodBtn = document.getElementById('karma-btn-good') || document.querySelector('#karma-select-popup .popup-btn.good');
+    const bugBtn = document.getElementById('karma-btn-bug') || document.querySelector('#karma-select-popup .popup-btn.bug');
+    const goodStatus = document.getElementById('karma-status-good');
+    const bugStatus = document.getElementById('karma-status-bug');
+
+    if (goodBtn) {
+        goodBtn.disabled = !pools.canGiveThanks;
+        goodBtn.classList.toggle('is-disabled', !pools.canGiveThanks);
+    }
+    if (bugBtn) {
+        bugBtn.disabled = !pools.canGiveSpecial;
+        bugBtn.classList.toggle('is-disabled', !pools.canGiveSpecial);
+    }
+
+    if (goodStatus) {
+        if (pools.hasThanks) {
+            goodStatus.textContent = window.t('karmaRewardAlreadyGiven', {}, lang) || 'Уже выдано этому тестеру';
+            goodStatus.className = 'karma-option-status is-given';
+        } else if (pools.thanksAvailable <= 0) {
+            goodStatus.textContent = window.t('karmaPoolExhausted', {}, lang) || 'Лимит наград исчерпан';
+            goodStatus.className = 'karma-option-status is-exhausted';
+        } else {
+            goodStatus.textContent = (window.t('karmaDistributionGuideStatusThanks', { available: pools.thanksAvailable, max: pools.thanksMax }, lang) || `Доступно: ${pools.thanksAvailable} из ${pools.thanksMax}`);
+            goodStatus.className = 'karma-option-status is-available';
+        }
+    }
+
+    if (bugStatus) {
+        if (pools.hasSpecial) {
+            bugStatus.textContent = window.t('karmaRewardAlreadyGiven', {}, lang) || 'Уже выдано этому тестеру';
+            bugStatus.className = 'karma-option-status is-given';
+        } else if (pools.specialAvailable <= 0) {
+            bugStatus.textContent = window.t('karmaPoolExhausted', {}, lang) || 'Лимит наград исчерпан';
+            bugStatus.className = 'karma-option-status is-exhausted';
+        } else {
+            bugStatus.textContent = (window.t('karmaDistributionGuideStatusSpecial', { available: pools.specialAvailable, max: pools.specialMax }, lang) || `Доступно: ${pools.specialAvailable} из ${pools.specialMax}`);
+            bugStatus.className = 'karma-option-status is-available';
+        }
+    }
+
     document.getElementById('karma-select-popup').classList.add('active');
 }
 
@@ -8415,6 +9947,12 @@ function closeKarmaSelectPopup(event) {
 
 function confirmKarmaSelect(type) {
     if (_karmaAppId === null || _karmaTesterId === null) return;
+    const project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function(item) {
+        return Number(item.id) === Number(_karmaAppId);
+    });
+    const pools = getProjectKarmaPools(project, _karmaTesterId);
+    if (type === 'good' && !pools.canGiveThanks) return;
+    if (type === 'bug' && !pools.canGiveSpecial) return;
     document.getElementById('karma-select-popup').classList.remove('active');
     sendKarmaReward(_karmaAppId, _karmaTesterId, type);
     _karmaAppId = null;
@@ -8736,6 +10274,10 @@ Object.assign(window, {
     openReportModal,
     closeReportModal,
     setReportMessageLanguage,
+    toggleReportTextExpand,
+    insertReportChip,
+    reportModalSendBug,
+    reportModalSendIdea,
     openScreenshotGuardModal,
     closeScreenshotGuardModal,
     confirmScreenshotGuard,
@@ -8748,9 +10290,9 @@ Object.assign(window, {
     previousIssueReportStep,
     openIssueChecklistGoogleGroup,
     openIssueChecklistGooglePlay,
-    insertReportChip,
     openCheckinOptionsModal,
     closeCheckinOptionsModal,
+    syncCheckinOptionsJustConfirmTimer,
     renderCheckinReviewOptions,
     checkinOptionsScreenshot,
     checkinOptionsBug,
@@ -8773,6 +10315,12 @@ Object.assign(window, {
     openLeaveMutualModal,
     closeLeaveMutualModal,
     toggleLeaveReasonOther,
+    selectLeaveReason,
+    resetLeaveReasonChips,
+    confirmLeaveMutualAdaptive,
+    requestLeaveMutualConfirm,
+    cancelLeaveMutualConfirm,
+    toggleLeaveMyStats,
     closeEarnBustModal,
     openSocialModal,
     closeSocialModal,
@@ -8856,7 +10404,12 @@ Object.assign(window, {
     closeGuestTesterDetailsModal,
     openDossierModal,
     closeDossierModal,
+    toggleDossierFold,
     openTesterOwnedProjectFromDossier,
+    joinTesterOwnedProjectFromDossier,
+    openDossierHybridJoinChooser,
+    closeDossierHybridJoinChooser,
+    getDossierRecruitModeLabel,
     resetManualExternalAddForm,
     updateManualExternalTestingDayValue,
     normalizeManualExternalOwnerNicknameInput,

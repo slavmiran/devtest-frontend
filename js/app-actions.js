@@ -2,11 +2,28 @@
 /* checkin/timer flow, UI control, offers decisions, karma, feedback actions */
 /* Depends on globals from js/app-config.js and js/app-api.js. */
 function countGrantSkips(app) {
+    if (app && app.skips_count != null && app.skips_count !== '') {
+        var fromApi = Number(app.skips_count);
+        if (Number.isFinite(fromApi)) return Math.max(0, Math.floor(fromApi));
+    }
     var timeline = String(app && app.daily_timeline || '');
     if (timeline) {
         return Math.max(0, (timeline.substring(0, 14).match(/[03]/g) || []).length);
     }
-    return Math.max(0, Number(app && app.skips_count || 0));
+    return 0;
+}
+
+function countEarlyFinishCheckins(app) {
+    var fromApi = Number(app && app.checkins_count);
+    if (Number.isFinite(fromApi)) return Math.max(0, Math.floor(fromApi));
+    return 0;
+}
+
+function qualifiesEarlyFinishGrant(app, testingDays, skipsCount) {
+    return countEarlyFinishCheckins(app) >= 3
+        && Number(skipsCount || 0) <= 3
+        && Number(testingDays || 0) < 14
+        && Number(testingDays || 0) > 0;
 }
 
 function buildCheckpointTestLink(appId) {
@@ -137,13 +154,21 @@ function openOwnerCheckpointChat(ownerUsername, text) {
 
 function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(appId, ownerUsername);
-    confirmStart(appId);
+    confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
     openOwnerCheckpointChat(resolvedOwnerUsername, buildCheckpointReportPrefill(appId));
 }
 
 function _isAutoAcceptMutualAvailable() {
     if (typeof _autoAcceptMutualAvailable === 'undefined') return true;
     return !!_autoAcceptMutualAvailable;
+}
+
+function _isAutoAcceptSectionAvailable() {
+    var mutualOk = _isAutoAcceptMutualAvailable();
+    var bountyOk = (typeof _isAutoAcceptBountyAvailable === 'function')
+        ? _isAutoAcceptBountyAvailable()
+        : (typeof window._autoAcceptBountyAvailable === 'undefined' ? true : !!window._autoAcceptBountyAvailable);
+    return mutualOk && bountyOk;
 }
 
 function _showAutoAcceptLockedFeedback() {
@@ -156,13 +181,28 @@ function _showAutoAcceptLockedFeedback() {
     }
 }
 
+function syncAutoAcceptSectionUi() {
+    var sectionLabel = document.getElementById('auto-accept-section-label');
+    var sectionMeta = document.getElementById('auto-accept-section-meta');
+    var available = _isAutoAcceptSectionAvailable();
+    if (sectionMeta) {
+        sectionMeta.textContent = window.t(
+            available ? 'autoAcceptSectionMeta' : 'autoAcceptSectionLockedMeta',
+            {},
+            lang
+        );
+    }
+    if (sectionLabel) {
+        var baseLabel = window.t('autoAcceptSectionLabel', {}, lang);
+        // Lock icon only on the section title — do not repeat on meta/subrows.
+        sectionLabel.textContent = available ? baseLabel : ('🔒 ' + baseLabel);
+    }
+}
+
 function syncAutoAcceptToggleUi() {
     var toggle = document.getElementById('auto-accept-mutual-toggle');
     if (!toggle) return;
     var available = _isAutoAcceptMutualAvailable();
-    var row = document.getElementById('auto-accept-mutual-row');
-    var meta = document.getElementById('auto-accept-mutual-meta')
-        || document.querySelector('#auto-accept-mutual-row [data-i18n="autoAcceptMutualMeta"]');
     var label = document.getElementById('auto-accept-mutual-label');
 
     // Keep input clickable when locked — disabled checkboxes swallow taps and show no feedback.
@@ -170,16 +210,19 @@ function syncAutoAcceptToggleUi() {
     toggle.checked = !!_autoAcceptMutualEnabled && available;
     toggle.setAttribute('aria-disabled', available ? 'false' : 'true');
 
-    if (row) {
-        row.classList.toggle('system-setting-row--locked', !available);
-    }
-    if (meta) {
-        meta.textContent = window.t(available ? 'autoAcceptMutualMeta' : 'autoAcceptMutualLockedMeta', {}, lang);
-    }
     if (label) {
-        var baseLabel = window.t('autoAcceptMutualLabel', {}, lang);
-        label.textContent = available ? baseLabel : ('🔒 ' + baseLabel);
+        label.textContent = window.t('autoAcceptMutualLabel', {}, lang);
     }
+    syncAutoAcceptSectionUi();
+}
+
+function showAutoAcceptSectionInfo() {
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    if (!_isAutoAcceptSectionAvailable()) {
+        _showAutoAcceptLockedFeedback();
+        return;
+    }
+    showToast(window.t('autoAcceptSectionInfoToast', {}, lang));
 }
 
 function showAutoAcceptMutualInfo() {
@@ -189,6 +232,300 @@ function showAutoAcceptMutualInfo() {
         return;
     }
     showToast(window.t('autoAcceptMutualInfoToast', {}, lang));
+}
+
+function isDefaultGoogleGroupUrl(url) {
+    var candidate = String(url || '').trim();
+    if (!candidate) return true;
+    if (window.AccessSetupManager && typeof window.AccessSetupManager.isDefaultGroup === 'function') {
+        return !!window.AccessSetupManager.isDefaultGroup(candidate);
+    }
+    var normalize = function(value) {
+        return String(value || '').trim().replace(/\/+$/, '').toLowerCase();
+    };
+    var defaultUrl = normalize(window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test');
+    return normalize(candidate) === defaultUrl;
+}
+
+function _persistDefaultGroupJoined() {
+    try {
+        localStorage.setItem(_defaultGroupJoinedStorageKey, JSON.stringify({
+            userId: Number(userId) || 0,
+            joined: !!_defaultGroupJoined,
+            updatedAt: Date.now(),
+        }));
+        _defaultGroupJoinedReady = true;
+        window.App.defaultGroupJoined = !!_defaultGroupJoined;
+    } catch (error) {}
+}
+
+function _hydrateDefaultGroupJoinedFromCache() {
+    try {
+        var raw = localStorage.getItem(_defaultGroupJoinedStorageKey);
+        if (!raw) return false;
+        var payload = JSON.parse(raw);
+        if (!payload || Number(payload.userId || 0) !== Number(userId || 0)) return false;
+        _defaultGroupJoined = !!payload.joined;
+        _defaultGroupJoinedReady = true;
+        window.App.defaultGroupJoined = _defaultGroupJoined;
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+function syncDefaultGroupJoinedUi() {
+    var statusBtn = document.getElementById('settings-default-group-status');
+    if (statusBtn) {
+        var connected = !!_defaultGroupJoined;
+        statusBtn.textContent = connected
+            ? window.t('settingsDefaultGroupConnected', {}, lang)
+            : window.t('settingsDefaultGroupNotConnected', {}, lang);
+        statusBtn.classList.toggle('is-connected', connected);
+        statusBtn.classList.toggle('is-missing', !connected);
+    }
+    var label = document.getElementById('settings-default-group-label');
+    if (label) {
+        label.textContent = window.t('settingsDefaultGroupLabel', {}, lang);
+    }
+    var confirmCheckbox = document.getElementById('default-group-confirm-checkbox');
+    if (confirmCheckbox) {
+        confirmCheckbox.checked = !!_defaultGroupJoined;
+        confirmCheckbox.disabled = !!_defaultGroupJoinedInFlight;
+    }
+}
+
+_hydrateDefaultGroupJoinedFromCache();
+if (typeof window !== 'undefined') {
+    window._hydrateDefaultGroupJoinedFromCache = _hydrateDefaultGroupJoinedFromCache;
+    window._persistDefaultGroupJoined = _persistDefaultGroupJoined;
+}
+
+async function markDefaultGroupJoined(options) {
+    var settings = options || {};
+    if (_defaultGroupJoined && !settings.force) {
+        syncDefaultGroupJoinedUi();
+        return true;
+    }
+    if (_defaultGroupJoinedInFlight) return false;
+
+    var previousValue = !!_defaultGroupJoined;
+    _defaultGroupJoinedInFlight = true;
+    _defaultGroupJoined = true;
+    window.App.defaultGroupJoined = true;
+    _persistDefaultGroupJoined();
+    syncDefaultGroupJoinedUi();
+
+    try {
+        var response = await fetch(API_BASE + '/users/me/default-group-joined', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(withInitData({ joined: true })),
+        });
+        var result = await response.json();
+        if (!response.ok || !result || result.status !== 'success') {
+            _defaultGroupJoined = previousValue;
+            window.App.defaultGroupJoined = previousValue;
+            _persistDefaultGroupJoined();
+            syncDefaultGroupJoinedUi();
+            if (!settings.silent) {
+                handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            }
+            return false;
+        }
+        _defaultGroupJoined = !!result.default_group_joined;
+        window.App.defaultGroupJoined = _defaultGroupJoined;
+        _persistDefaultGroupJoined();
+        syncDefaultGroupJoinedUi();
+        if (settings.rerender !== false && typeof window.renderTests === 'function') {
+            window.renderTests(true);
+        }
+        return true;
+    } catch (error) {
+        console.error('default_group_joined update error:', error);
+        _defaultGroupJoined = previousValue;
+        window.App.defaultGroupJoined = previousValue;
+        _persistDefaultGroupJoined();
+        syncDefaultGroupJoinedUi();
+        if (!settings.silent) {
+            handleApiError('network_error');
+        }
+        return false;
+    } finally {
+        _defaultGroupJoinedInFlight = false;
+        syncDefaultGroupJoinedUi();
+    }
+}
+
+function openDefaultGoogleGroupLink() {
+    var groupUrl = String(window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    try {
+        if (tg && typeof tg.openLink === 'function') {
+            tg.openLink(groupUrl, { try_browser: 'chrome' });
+        } else {
+            window.open(groupUrl, '_blank', 'noopener');
+        }
+    } catch (err) {
+        console.error('Failed to open default Google Group:', err);
+        window.open(groupUrl, '_blank', 'noopener');
+    }
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function handleJoinGoogleGroupClick(appId, groupUrl, options) {
+    var settings = options || {};
+    var resolvedUrl = String(groupUrl || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    try {
+        if (tg && typeof tg.openLink === 'function') {
+            tg.openLink(resolvedUrl, { try_browser: 'chrome' });
+        } else {
+            window.open(resolvedUrl, '_blank', 'noopener');
+        }
+    } catch (err) {
+        console.error('Failed to open Google Group link:', err);
+        window.open(resolvedUrl, '_blank', 'noopener');
+    }
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    if (isDefaultGoogleGroupUrl(resolvedUrl)) {
+        // Keep accordion open across re-render after marking the default group joined.
+        markDefaultGroupJoined({
+            silent: true,
+            rerender: settings.rerender !== false,
+        });
+        return;
+    }
+    // Custom groups have no server-side membership flag, so completion is tracked locally.
+    markCustomGroupJoined(appId);
+    startCustomGroupAccessWait(appId);
+    if (settings.rerender !== false && typeof renderTests === 'function') {
+        renderTests(true);
+    }
+}
+
+function handleGroupStatusChipClick(appId, groupUrl) {
+    var resolvedUrl = String(groupUrl || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    handleJoinGoogleGroupClick(appId, resolvedUrl);
+}
+
+function openDefaultGroupSettingsModal() {
+    var modal = document.getElementById('default-group-modal');
+    if (!modal) return;
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    var title = document.getElementById('t-defaultGroupModalTitle');
+    var subtitle = document.getElementById('t-defaultGroupModalSubtitle');
+    var joinBtn = document.getElementById('t-defaultGroupModalJoin');
+    var confirmLabel = document.getElementById('t-defaultGroupModalConfirm');
+    var linkText = document.getElementById('default-group-modal-link-text');
+    var groupUrl = String(window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    if (title) title.textContent = window.t('defaultGroupModalTitle', {}, lang);
+    if (subtitle) subtitle.textContent = window.t('defaultGroupModalSubtitle', {}, lang);
+    if (joinBtn) joinBtn.textContent = window.t('defaultGroupModalJoinBtn', {}, lang);
+    if (confirmLabel) confirmLabel.textContent = window.t('defaultGroupModalConfirm', {}, lang);
+    if (linkText) linkText.textContent = groupUrl;
+    syncDefaultGroupJoinedUi();
+    modal.classList.add('active');
+}
+
+function closeDefaultGroupSettingsModal(event) {
+    if (event && event.target && event.currentTarget && event.target !== event.currentTarget) {
+        return;
+    }
+    var modal = document.getElementById('default-group-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function copyDefaultGroupModalLink() {
+    var groupUrl = String(window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    var done = function() {
+        showToast(window.t('copied', {}, lang));
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(groupUrl).then(done).catch(function() {
+            showToast(groupUrl);
+        });
+        return;
+    }
+    showToast(groupUrl);
+}
+
+function handleDefaultGroupModalJoin() {
+    openDefaultGoogleGroupLink();
+    markDefaultGroupJoined({ silent: true, rerender: true });
+}
+
+async function handleDefaultGroupConfirmCheckbox(input) {
+    if (!input) return;
+    if (!input.checked) {
+        // Flag is one-way confirmation; unchecking does not revoke membership.
+        input.checked = !!_defaultGroupJoined;
+        syncDefaultGroupJoinedUi();
+        return;
+    }
+    var ok = await markDefaultGroupJoined({ silent: false, rerender: true });
+    if (!ok) {
+        input.checked = !!_defaultGroupJoined;
+    } else if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred('success');
+    }
+}
+
+function setAccessProblemAccordionOpen(appId, isOpen) {
+    var id = Number(appId || 0);
+    if (!id) return;
+    if (!(_openAccessProblemAppIds instanceof Set)) {
+        _openAccessProblemAppIds = new Set();
+    }
+    if (isOpen) {
+        _openAccessProblemAppIds.add(id);
+    } else {
+        _openAccessProblemAppIds.delete(id);
+    }
+    var panel = document.getElementById('access-problem-panel-' + id);
+    var toggle = document.getElementById('access-problem-toggle-' + id);
+    if (panel) {
+        panel.classList.toggle('is-open', !!isOpen);
+        panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+    }
+    if (toggle) {
+        toggle.classList.toggle('is-open', !!isOpen);
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+    if (typeof syncCustomGroupAccessWaitUi === 'function') {
+        syncCustomGroupAccessWaitUi();
+    }
+}
+
+function isAccessProblemAccordionOpen(appId) {
+    var id = Number(appId || 0);
+    return !!id && (_openAccessProblemAppIds instanceof Set) && _openAccessProblemAppIds.has(id);
+}
+
+function toggleAccessProblemAccordion(appId) {
+    var nextOpen = !isAccessProblemAccordionOpen(appId);
+    setAccessProblemAccordionOpen(appId, nextOpen);
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function restoreAccessProblemAccordions() {
+    if ((_openAccessProblemAppIds instanceof Set) && _openAccessProblemAppIds.size) {
+        _openAccessProblemAppIds.forEach(function(id) {
+            setAccessProblemAccordionOpen(id, true);
+        });
+    }
+    if (typeof syncCustomGroupAccessWaitUi === 'function') {
+        syncCustomGroupAccessWaitUi();
+    }
+}
+
+function openAccessProblemGroupLink(appId) {
+    // Persist open state before leave/re-render so accordion stays expanded on return.
+    setAccessProblemAccordionOpen(appId, true);
+    var test = (typeof myTests !== 'undefined' ? myTests : []).find(function(item) {
+        return Number(item.id) === Number(appId);
+    });
+    var groupUrl = String((test && (test.google_group_url || test.group_url)) || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test').trim();
+    handleJoinGoogleGroupClick(appId, groupUrl, { rerender: true });
 }
 
 async function handleAutoAcceptMutualToggle(input) {
@@ -300,6 +637,9 @@ function _highlightTestCardWhenReady(appId, attemptsLeft) {
     }, 180);
 }
 
+window._highlightTestCard = _highlightTestCard;
+window._highlightTestCardWhenReady = _highlightTestCardWhenReady;
+
 function _expandProjectCardWhenReady(projectId, attemptsLeft) {
     var normalizedId = Number(projectId || 0);
     if (normalizedId <= 0) return false;
@@ -337,6 +677,9 @@ function toggleSystemMenu() {
         if (willOpen && typeof window.populateDeviceInfoSettings === 'function') {
             window.populateDeviceInfoSettings();
         }
+        if (willOpen && typeof window.refreshHomeScreenStatus === 'function') {
+            window.refreshHomeScreenStatus({ force: true });
+        }
         if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     }
 }
@@ -354,6 +697,159 @@ function sendFeedback(type) {
     }
     openFeedbackModal(typeKeyMap[_feedbackType]);
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+/** Writes a confirm-button caption without destroying step-row markup. */
+function _setConfirmButtonLabel(btn, text) {
+    if (!btn) return;
+    var label = btn.querySelector('.tstep__label');
+    if (label) {
+        label.textContent = text;
+        return;
+    }
+    btn.innerText = text;
+}
+
+function _setAccessProblemStepLabel(btn, text) {
+    if (!btn) return;
+    var label = btn.querySelector('.apstep__label');
+    if (label) {
+        label.textContent = text;
+        return;
+    }
+    btn.textContent = text;
+}
+
+function _loadCustomGroupJoinedState() {
+    try {
+        var raw = localStorage.getItem(_customGroupJoinedStateKey);
+        var parsed = raw ? JSON.parse(raw) : null;
+        _customGroupJoinedState = parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        _customGroupJoinedState = {};
+    }
+}
+
+function markCustomGroupJoined(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return;
+    _customGroupJoinedState[key] = true;
+    try {
+        localStorage.setItem(_customGroupJoinedStateKey, JSON.stringify(_customGroupJoinedState));
+    } catch (error) {}
+}
+
+function isCustomGroupJoined(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return false;
+    return !!(_customGroupJoinedState && _customGroupJoinedState[key]);
+}
+
+function _loadCustomGroupWaitState() {
+    try {
+        var raw = localStorage.getItem(_customGroupWaitStateKey);
+        var parsed = raw ? JSON.parse(raw) : null;
+        _customGroupWaitState = parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        _customGroupWaitState = {};
+    }
+    var waitMs = Number(CUSTOM_GROUP_ACCESS_WAIT_MS) || (15 * 60 * 1000);
+    var now = Date.now();
+    var cleaned = {};
+    Object.keys(_customGroupWaitState || {}).forEach(function(key) {
+        var startedAt = Number(_customGroupWaitState[key] || 0);
+        if (startedAt > 0 && (now - startedAt) < waitMs) {
+            cleaned[key] = startedAt;
+        }
+    });
+    _customGroupWaitState = cleaned;
+}
+
+function _persistCustomGroupWaitState() {
+    try {
+        localStorage.setItem(_customGroupWaitStateKey, JSON.stringify(_customGroupWaitState || {}));
+    } catch (error) {}
+}
+
+function startCustomGroupAccessWait(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return;
+    var waitMs = Number(CUSTOM_GROUP_ACCESS_WAIT_MS) || (15 * 60 * 1000);
+    var existing = Number((_customGroupWaitState && _customGroupWaitState[key]) || 0);
+    if (existing > 0 && (Date.now() - existing) < waitMs) {
+        if (typeof syncCustomGroupAccessWaitUi === 'function') syncCustomGroupAccessWaitUi();
+        return;
+    }
+    if (!_customGroupWaitState || typeof _customGroupWaitState !== 'object') {
+        _customGroupWaitState = {};
+    }
+    _customGroupWaitState[key] = Date.now();
+    _persistCustomGroupWaitState();
+    if (typeof syncCustomGroupAccessWaitUi === 'function') syncCustomGroupAccessWaitUi();
+}
+
+function getCustomGroupAccessWaitRemainingMs(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return 0;
+    var startedAt = Number((_customGroupWaitState && _customGroupWaitState[key]) || 0);
+    if (startedAt <= 0) return 0;
+    var waitMs = Number(CUSTOM_GROUP_ACCESS_WAIT_MS) || (15 * 60 * 1000);
+    return Math.max(0, waitMs - (Date.now() - startedAt));
+}
+
+function formatCustomGroupAccessWaitClock(remainingMs) {
+    var totalSeconds = Math.max(0, Math.ceil(Number(remainingMs || 0) / 1000));
+    var minutes = Math.floor(totalSeconds / 60);
+    var seconds = totalSeconds % 60;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+}
+
+function _clearCustomGroupWaitTicker() {
+    if (_customGroupWaitTimerId) {
+        clearInterval(_customGroupWaitTimerId);
+        _customGroupWaitTimerId = null;
+    }
+}
+
+function syncCustomGroupAccessWaitUi() {
+    var anyActive = false;
+
+    var panelNodes = document.querySelectorAll('[data-custom-group-wait]');
+    Array.prototype.forEach.call(panelNodes, function(wrap) {
+        var appId = Number(wrap.getAttribute('data-custom-group-wait') || 0);
+        var remaining = getCustomGroupAccessWaitRemainingMs(appId);
+        var clock = wrap.querySelector('[data-custom-group-wait-clock]');
+        if (remaining <= 0) {
+            wrap.hidden = true;
+            return;
+        }
+        wrap.hidden = false;
+        anyActive = true;
+        if (clock) clock.textContent = formatCustomGroupAccessWaitClock(remaining);
+    });
+
+    var toggleNodes = document.querySelectorAll('[data-custom-group-wait-toggle]');
+    Array.prototype.forEach.call(toggleNodes, function(inlineWrap) {
+        var appId = Number(inlineWrap.getAttribute('data-custom-group-wait-toggle') || 0);
+        var remaining = getCustomGroupAccessWaitRemainingMs(appId);
+        var clock = inlineWrap.querySelector('[data-custom-group-wait-toggle-clock]');
+        var panel = document.getElementById('access-problem-panel-' + appId);
+        var panelOpen = !!(panel && panel.classList.contains('is-open'));
+        if (remaining <= 0 || panelOpen) {
+            inlineWrap.hidden = true;
+            return;
+        }
+        inlineWrap.hidden = false;
+        anyActive = true;
+        if (clock) clock.textContent = formatCustomGroupAccessWaitClock(remaining);
+    });
+
+    if (!anyActive) {
+        _clearCustomGroupWaitTicker();
+        return;
+    }
+    if (_customGroupWaitTimerId) return;
+    _customGroupWaitTimerId = setInterval(syncCustomGroupAccessWaitUi, 1000);
 }
 
 function _loadFirstDayScreenshotState() {
@@ -430,7 +926,20 @@ function _loadTimerReadyState() {
                     isScreenshot: !!payload.isScreenshot,
                     ownerUsername: String(payload.ownerUsername || ''),
                     localDate: today,
+                    openToken: String(payload.openToken || ''),
+                    readyAtMs: Number(payload.readyAtMs || 0) || 0,
+                    expiresAtMs: Number(payload.expiresAtMs || 0) || 0,
+                    progressId: Number(payload.progressId || 0) || 0,
                 };
+                if (nextState[key].openToken) {
+                    _checkinOpenTokenState[key] = {
+                        token: nextState[key].openToken,
+                        readyAtMs: nextState[key].readyAtMs,
+                        expiresAtMs: nextState[key].expiresAtMs,
+                        progressId: nextState[key].progressId,
+                        localDate: today,
+                    };
+                }
             });
         }
         _timerReadyState = nextState;
@@ -449,13 +958,19 @@ function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername) {
     var key = String(Number(appId) || 0);
     if (key === '0') return;
     if (isReady) {
+        var openMeta = (_checkinOpenTokenState && _checkinOpenTokenState[key]) || {};
         _timerReadyState[key] = {
             isScreenshot: !!isScreenshot,
             ownerUsername: String(ownerUsername || ''),
             localDate: getLocalDate(),
+            openToken: String(openMeta.token || ''),
+            readyAtMs: Number(openMeta.readyAtMs || 0) || 0,
+            expiresAtMs: Number(openMeta.expiresAtMs || 0) || 0,
+            progressId: Number(openMeta.progressId || 0) || 0,
         };
     } else {
         delete _timerReadyState[key];
+        if (_checkinOpenTokenState) delete _checkinOpenTokenState[key];
     }
     _persistTimerReadyState();
     _syncExternalTimerReadyVisual(appId, isReady);
@@ -497,8 +1012,10 @@ function _applyPersistedReadyTimerButtons() {
             applyTestFeedbackCheckinPendingUi(appId);
             return;
         }
-        var payload = _timerReadyState[key];
-        _setTimerButtonReady(appId, !!(payload && payload.isScreenshot), (payload && payload.ownerUsername) || '');
+        // Revalidate localDate on every render — prevents Confirm lighting up after midnight.
+        var payload = _getTimerReadyPayload(appId);
+        if (!payload) return;
+        _setTimerButtonReady(appId, !!payload.isScreenshot, payload.ownerUsername || '');
     });
 }
 
@@ -510,6 +1027,23 @@ function _clearPersistedActiveTimer() {
         console.warn('Failed to clear active timer state:', error);
     }
 }
+
+function clearActiveTimerForApp(appId) {
+    if (!appId || Number(activeTimerAppId) !== Number(appId)) return false;
+    if (_timerIntervalId) clearInterval(_timerIntervalId);
+    _timerIntervalId = null;
+    _timerEndTimestamp = null;
+    activeTimerAppId = null;
+    _timerIsScreenshot = false;
+    _timerOwnerUsername = '';
+    _timerLocalDate = '';
+    _clearPersistedActiveTimer();
+    if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
+        window.syncCheckinOptionsJustConfirmTimer(appId, 0);
+    }
+    return true;
+}
+window.clearActiveTimerForApp = clearActiveTimerForApp;
 
 function _resolveCheckpointOwnerUsername(appId, ownerUsername) {
     var normalized = String(ownerUsername || '').trim().replace(/^@+/, '');
@@ -554,14 +1088,16 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     }
 
     btn.disabled = false;
-    btn.style.backgroundColor = 'var(--success-color)';
-    btn.style.color = '#fff';
+    btn.style.backgroundColor = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
     btn.style.cursor = 'pointer';
+    btn.classList.add('btn-success', 'btn-confirm-ready');
     if (isScreenshot) {
         if (isExternalTest) {
             btn.innerText = isFirstDayScreenshot
                 ? window.t('screenshotBtn', {}, lang)
-                : '✅ ' + window.t('completeControlDayBtn', {}, lang);
+                : window.t('completeControlDayBtn', {}, lang);
             btn.onclick = function(event) {
                 if (event) {
                     event.preventDefault();
@@ -581,7 +1117,7 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         }
         btn.innerText = isFirstDayScreenshot
             ? window.t('screenshotBtn', {}, lang)
-            : '✅ ' + window.t('completeControlDayBtn', {}, lang);
+            : window.t('completeControlDayBtn', {}, lang);
         btn.onclick = function() {
             if (isFirstDayScreenshot) {
                 handleScreenshotAndConfirm(finishedId, resolvedOwnerUsername || '');
@@ -612,7 +1148,10 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
                     }
                 };
             } else {
-                btn.className = 'btn btn-success split-btn-main';
+                btn.className = 'btn btn-success btn-confirm-ready split-btn-main';
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
                 btn.textContent = window.t('confirmTest', {}, lang);
                 btn.onclick = function() {
                     confirmStart(finishedId);
@@ -652,7 +1191,7 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         splitWrapper.className = isExternalTest ? 'split-btn-group external-tests-confirm-group' : 'split-btn-group';
         splitWrapper.style.flex = '2';
         splitWrapper.innerHTML =
-            '<button id="btn-confirm-' + finishedId + '" class="' + (isExternalTest ? 'btn btn-success split-btn-main external-tests-confirm-btn external-tests-confirm-ready' : 'btn btn-success split-btn-main') + '" onclick="' + (isExternalTest
+            '<button id="btn-confirm-' + finishedId + '" class="' + (isExternalTest ? 'btn btn-success btn-confirm-ready split-btn-main external-tests-confirm-btn external-tests-confirm-ready' : 'btn btn-success btn-confirm-ready split-btn-main') + '" onclick="' + (isExternalTest
                 ? 'sendExternalDailyCheckinFromUi(' + finishedId + ', event)'
                 : 'confirmStart(' + finishedId + ')') + '">' +
             window.escapeHTML(window.t(isExternalTest ? 'externalProjectCheckinBtn' : 'confirmTest', {}, lang)) +
@@ -664,6 +1203,83 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             '</button>';
         btn.parentNode.replaceChild(splitWrapper, btn);
     }
+    return true;
+}
+
+function isCheckinTimerActiveForApp(appId) {
+    return !!(activeTimerAppId
+        && Number(activeTimerAppId) === Number(appId)
+        && _timerEndTimestamp
+        && Date.now() < _timerEndTimestamp);
+}
+
+function getCheckinTimerRemainingSeconds(appId) {
+    if (!isCheckinTimerActiveForApp(appId)) return 0;
+    return Math.max(0, Math.ceil((_timerEndTimestamp - Date.now()) / 1000));
+}
+
+function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
+    if (isTestFeedbackCheckinPending(appId)) return false;
+    var btn = document.getElementById('btn-confirm-' + appId);
+    if (!btn) return false;
+
+    var test = myTests.find(function(item) { return Number(item.id) === Number(appId); });
+    if (test && test.is_external) return false;
+    if (test && test.issue_reported_at && !test.issue_fixed_at) return false;
+
+    var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(appId, ownerUsername);
+    var safeOwner = window.escapeInlineJsString
+        ? window.escapeInlineJsString(resolvedOwnerUsername || '')
+        : String(resolvedOwnerUsername || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    var optionsTitle = window.t('checkinOptionsTitle', {}, lang);
+    var optionsTitleSafe = window.escapeHTML(optionsTitle);
+    var timerLabel = btn.innerText || '';
+
+    var existingSplitGroup = btn.parentNode && btn.parentNode.classList
+        && btn.parentNode.classList.contains('split-btn-group')
+        ? btn.parentNode
+        : null;
+
+    if (existingSplitGroup) {
+        btn.disabled = true;
+        btn.className = 'btn split-btn-main';
+        btn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
+        btn.style.color = 'var(--hint-color)';
+        btn.style.cursor = 'not-allowed';
+        btn.onclick = null;
+
+        var optionsBtn = existingSplitGroup.querySelector('.split-btn-options');
+        if (!optionsBtn) {
+            optionsBtn = document.createElement('button');
+            existingSplitGroup.appendChild(optionsBtn);
+        }
+        optionsBtn.disabled = false;
+        optionsBtn.className = 'btn btn-success split-btn-options';
+        optionsBtn.textContent = '📎';
+        optionsBtn.title = optionsTitle;
+        optionsBtn.setAttribute('aria-label', optionsTitle);
+        optionsBtn.onclick = function(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            openCheckinOptionsModal(appId, resolvedOwnerUsername || '');
+        };
+        existingSplitGroup.style.flex = '2';
+        return true;
+    }
+
+    var splitWrapper = document.createElement('div');
+    splitWrapper.className = 'split-btn-group';
+    splitWrapper.style.flex = '2';
+    splitWrapper.innerHTML =
+        '<button id="btn-confirm-' + appId + '" class="btn split-btn-main" disabled ' +
+        'style="background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;">' +
+        window.escapeHTML(timerLabel) +
+        '</button>' +
+        '<button class="btn btn-success split-btn-options" onclick="openCheckinOptionsModal(' + appId + ', \'' + safeOwner + '\')" ' +
+        'title="' + optionsTitleSafe + '" aria-label="' + optionsTitleSafe + '">📎</button>';
+    btn.parentNode.replaceChild(splitWrapper, btn);
     return true;
 }
 
@@ -682,6 +1298,9 @@ function _startActiveTimerInterval(id) {
         }
         if (liveBtn && !liveBtn.getAttribute('data-feedback-pending')) {
             liveBtn.innerText = t.timerRemaining.replace('{sec}', remaining);
+        }
+        if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
+            window.syncCheckinOptionsJustConfirmTimer(id, remaining);
         }
     }, 1000);
 }
@@ -724,8 +1343,29 @@ function _syncActiveTimerState() {
     _timerLocalDate = '';
 
     _clearPersistedActiveTimer();
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
+        window.syncCheckinOptionsJustConfirmTimer(finishedId, 0);
+    }
+    notifyCheckinTimerFinished();
     return true;
+}
+
+/**
+ * Timer-finished feedback. Telegram's HapticFeedback is missing on some clients
+ * (older Android builds, desktop), so fall back to the Vibration API.
+ */
+function notifyCheckinTimerFinished() {
+    try {
+        if (tg && tg.HapticFeedback && typeof tg.HapticFeedback.notificationOccurred === 'function') {
+            tg.HapticFeedback.notificationOccurred('success');
+            return;
+        }
+    } catch (error) {}
+    try {
+        if (navigator && typeof navigator.vibrate === 'function') {
+            navigator.vibrate([18, 55, 28]);
+        }
+    } catch (error) {}
 }
 
 function _loadPersistedActiveTimer() {
@@ -901,11 +1541,10 @@ function recomputeLocalTestState(test) {
 
     var isAppClosed = !isExternal && (appStatus !== 'active' && !isPendingCompletion);
     var isTestClosed = !isExternal && (progressStatus !== 'active');
-    var actualCheckins = testingDays - skipsCount;
 
     test.isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
     test.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
-    test.isEarlyFinish = !!((isAppClosed || isTestClosed) && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && testingDays < 14 && actualCheckins >= 3 && skipsCount <= 3);
+    test.isEarlyFinish = !!((isAppClosed || isTestClosed) && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && qualifiesEarlyFinishGrant(test, testingDays, skipsCount));
     test.is_pending_completion = isPendingCompletion;
     test.external_control_day_due = !!(isExternal && isMandatoryScreenshotDay(testingDays));
 
@@ -918,8 +1557,10 @@ function recomputeLocalTestState(test) {
 }
 
 function getMyTestById(appId) {
+    var targetId = Number(appId || 0);
+    if (targetId <= 0) return null;
     return (myTests || []).find(function(item) {
-        return Number(item.id) === Number(appId);
+        return Number(item && item.id) === targetId || Number(item && item.app_id) === targetId;
     }) || null;
 }
 
@@ -1109,11 +1750,28 @@ function _onStoreLinkClickedForIssueFlow(id) {
     if (!test) return;
     test.has_clicked_store = true;
 
+    var issueWrap = document.getElementById('access-problem-wrap-' + id);
+    if (issueWrap) {
+        issueWrap.style.display = 'block';
+    }
     var issueBtn = document.getElementById('btn-issue-' + id);
     if (issueBtn) {
         issueBtn.style.display = 'inline-flex';
         issueBtn.disabled = !!test.issue_reported_at && !test.issue_fixed_at;
         issueBtn.style.opacity = issueBtn.disabled ? '0.55' : '1';
+    }
+    var freezeBtn = document.getElementById('access-problem-freeze-' + id);
+    if (freezeBtn) {
+            freezeBtn.disabled = !!test.issue_reported_at && !test.issue_fixed_at;
+            freezeBtn.style.opacity = freezeBtn.disabled ? '0.55' : '1';
+            if (freezeBtn.disabled) {
+                _setAccessProblemStepLabel(
+                    freezeBtn,
+                    typeof window.getIssueAwaitingFixLabel === 'function'
+                        ? window.getIssueAwaitingFixLabel(test)
+                        : window.t('issueAwaitingFix', {}, lang)
+                );
+        }
     }
 
     persistTestsCacheSnapshot();
@@ -1332,7 +1990,67 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
     }
 }
 
+function _getCheckinOpenToken(appId) {
+    var key = String(Number(appId) || 0);
+    if (key === '0') return '';
+    var readyPayload = _timerReadyState[key];
+    if (readyPayload && String(readyPayload.localDate || '') === getLocalDate() && readyPayload.openToken) {
+        return String(readyPayload.openToken || '');
+    }
+    var live = _checkinOpenTokenState[key];
+    if (live && String(live.localDate || '') === getLocalDate() && live.token) {
+        return String(live.token || '');
+    }
+    return '';
+}
+
+async function _requestCheckinOpenToken(appId) {
+    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id) === Number(appId);
+    });
+    var response = await fetch(API_BASE + '/checkin/open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(withInitData({
+            app_id: Number(appId) || 0,
+            progress_id: Number(test && test.progress_id || 0) || 0,
+        })),
+    });
+    var result = null;
+    try {
+        result = await response.json();
+    } catch (e) {
+        result = null;
+    }
+    if (!response.ok || !result || result.status !== 'success') {
+        var code = getBackendErrorCode(result) || 'database_error';
+        handleApiError(code, (result && result.details) || {});
+        return null;
+    }
+    var key = String(Number(appId) || 0);
+    if (result.required === false) {
+        if (_checkinOpenTokenState) delete _checkinOpenTokenState[key];
+        return result;
+    }
+    _checkinOpenTokenState[key] = {
+        token: String(result.token || ''),
+        readyAtMs: Number(result.ready_at_ms || 0) || 0,
+        expiresAtMs: Number(result.expires_at_ms || 0) || 0,
+        progressId: Number(result.progress_id || 0) || 0,
+        localDate: getLocalDate(),
+        serverNowMs: Number(result.server_now_ms || 0) || Date.now(),
+    };
+    return result;
+}
+
 function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '', durationSeconds = 15) {
+    _startTimerAsync(id, pkg, isScreenshotDay, ownerUsername, durationSeconds).catch(function(err) {
+        console.error('startTimer failed:', err);
+        handleApiError('network_error');
+    });
+}
+
+async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername = '', durationSeconds = 15) {
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(id, ownerUsername);
     var resolvedDurationSeconds = Number(durationSeconds || 15);
     if (!Number.isFinite(resolvedDurationSeconds) || resolvedDurationSeconds < 1) {
@@ -1375,6 +2093,26 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '', durati
         showCustomAlert(t.antiFraudAlert);
         return;
     }
+
+    var openPayload = await _requestCheckinOpenToken(id);
+    if (!openPayload) {
+        return;
+    }
+    if (openPayload.required === false) {
+        // Day 15+ should not use Open timer, but if we got here — unlock Confirm.
+        setTimerReadyForConfirm(id, true, isScreenshotDay, resolvedOwnerUsername);
+        _setTimerButtonReady(id, !!isScreenshotDay, resolvedOwnerUsername);
+        tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
+        _onStoreLinkClickedForIssueFlow(id);
+        return;
+    }
+
+    var serverWaitMs = Math.max(
+        1000,
+        Number(openPayload.ready_at_ms || 0) - Number(openPayload.server_now_ms || Date.now())
+    );
+    resolvedDurationSeconds = Math.max(1, Math.ceil(serverWaitMs / 1000));
+
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
     _onStoreLinkClickedForIssueFlow(id);
@@ -1389,6 +2127,10 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '', durati
     _timerLocalDate = getLocalDate();
     _persistActiveTimer();
     btn.innerText = t.timerRemaining.replace('{sec}', resolvedDurationSeconds);
+    // Normal days: show green active 📎 immediately while confirm stays on the countdown.
+    if (!isScreenshotDay) {
+        _ensureEarlyPaperclipSplit(id, resolvedOwnerUsername);
+    }
     _startActiveTimerInterval(id);
 }
 
@@ -1403,11 +2145,16 @@ function _restoreActiveTimer() {
         _syncActiveTimerState();
     } else {
         btn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
+        if (!_timerIsScreenshot) {
+            _ensureEarlyPaperclipSplit(activeTimerAppId, _timerOwnerUsername || '');
+        }
         _persistActiveTimer();
         _startActiveTimerInterval(activeTimerAppId);
     }
 }
 window._restoreActiveTimer = _restoreActiveTimer;
+window.isCheckinTimerActiveForApp = isCheckinTimerActiveForApp;
+window.getCheckinTimerRemainingSeconds = getCheckinTimerRemainingSeconds;
 
 function openPlay(id, pkg) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
@@ -1420,24 +2167,45 @@ function openPlay(id, pkg) {
     }
 }
 
+function advanceFirstDayStepsAfterDownload(id) {
+    const flow = document.getElementById(`tstep-flow-${id}`);
+    if (!flow) return;
+    const downloadStep = flow.querySelector('[data-step-key="download"]');
+    if (downloadStep) {
+        downloadStep.classList.remove('is-current', 'is-next');
+        downloadStep.classList.add('is-done');
+    }
+    const screenshotStep = flow.querySelector('[data-step-key="screenshot"]');
+    if (screenshotStep) {
+        screenshotStep.classList.remove('is-locked', 'is-next');
+        screenshotStep.classList.add('is-current');
+    }
+    const confirmBtn = document.getElementById(`btn-confirm-${id}`);
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.removeAttribute('aria-disabled');
+    }
+}
+
 function handleFirstDownload(id, pkg) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     setFirstDayScreenshotVisible(id, true);
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
     _onStoreLinkClickedForIssueFlow(id);
     setTimeout(() => {
-        const screenshotBox = document.getElementById(`new-screenshot-box-${id}`);
-        if (screenshotBox) screenshotBox.style.display = 'block';
-    }, 1000);
+        advanceFirstDayStepsAfterDownload(id);
+    }, 600);
 }
 
 async function handleScreenshotAndConfirm(id, ownerUsername) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    if (window.openScreenshotGuardModal) {
-        window.openScreenshotGuardModal(id, ownerUsername);
+    if (typeof openReportModal === 'function') {
+        openReportModal(id, ownerUsername);
         return;
     }
-    openReportModal(id, ownerUsername);
+    if (window.openReportModal) {
+        window.openReportModal(id, ownerUsername);
+    }
 }
 
 async function submitIssueReport(appId) {
@@ -1498,6 +2266,17 @@ async function submitIssueReport(appId) {
                 ? window.getIssueAwaitingFixLabel(test)
                 : window.t('issueAwaitingFix', {}, lang);
         }
+        var freezeBtn = document.getElementById('access-problem-freeze-' + appId);
+        if (freezeBtn) {
+            freezeBtn.disabled = true;
+            freezeBtn.style.opacity = '0.55';
+            _setAccessProblemStepLabel(
+                freezeBtn,
+                typeof window.getIssueAwaitingFixLabel === 'function'
+                    ? window.getIssueAwaitingFixLabel(test)
+                    : window.t('issueAwaitingFix', {}, lang)
+            );
+        }
 
         persistTestsCacheSnapshot();
         if (typeof window.renderTests === 'function') {
@@ -1521,7 +2300,7 @@ async function sendReport() {
     document.getElementById('report-modal').classList.remove('active');
 
     if (appId) {
-        confirmStart(appId);
+        confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
     }
     if (ownerUsername) {
         openOwnerCheckpointChat(ownerUsername, text);
@@ -1658,8 +2437,41 @@ function markTestFeedbackCheckinPending(appId) {
     try {
         localStorage.setItem('pending_feedback_checkins_v1', JSON.stringify(_pendingFeedbackCheckinAppIds));
     } catch (e) {}
+    // Stop the visible countdown, but KEEP open_token / Confirm-ready state.
+    // If bot auto-checkin fails or wait-state is lost, the tester must not be forced
+    // through Open → timer again with no explanation.
+    clearActiveTimerForApp(normalizedId);
     applyTestFeedbackCheckinPendingUi(normalizedId);
 }
+
+function restoreCheckinReadyAfterFeedbackPending(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return false;
+    var card = document.getElementById('test-card-' + normalizedId);
+    if (card) {
+        card.classList.remove('card-feedback-pending');
+        var splitBtn = card.querySelector('.split-btn-options');
+        if (splitBtn) {
+            splitBtn.disabled = false;
+            splitBtn.style.pointerEvents = '';
+            splitBtn.style.opacity = '';
+        }
+    }
+    var payload = typeof _getTimerReadyPayload === 'function' ? _getTimerReadyPayload(normalizedId) : null;
+    var hasOpenToken = !!(typeof _getCheckinOpenToken === 'function' && _getCheckinOpenToken(normalizedId));
+    if (payload || hasOpenToken) {
+        var isScreenshot = !!(payload && payload.isScreenshot);
+        var ownerUsername = (payload && payload.ownerUsername) || '';
+        if (typeof _setTimerButtonReady === 'function') {
+            _setTimerButtonReady(normalizedId, isScreenshot, ownerUsername);
+        } else if (typeof setTimerReadyForConfirm === 'function') {
+            setTimerReadyForConfirm(normalizedId, true, isScreenshot, ownerUsername);
+        }
+        return true;
+    }
+    return false;
+}
+window.restoreCheckinReadyAfterFeedbackPending = restoreCheckinReadyAfterFeedbackPending;
 
 function clearTestFeedbackCheckinPending(appId) {
     var normalizedId = Number(appId || 0);
@@ -1698,7 +2510,7 @@ function applyTestFeedbackCheckinPendingUi(appId) {
         confirmBtn.style.color = 'var(--hint-color)';
         confirmBtn.style.cursor = 'not-allowed';
         confirmBtn.classList.remove('btn-success', 'external-tests-confirm-ready');
-        confirmBtn.textContent = pendingLabel;
+        _setConfirmButtonLabel(confirmBtn, pendingLabel);
         confirmBtn.onclick = null;
         confirmBtn.removeAttribute('onclick');
     }
@@ -1717,6 +2529,91 @@ function reapplyAllFeedbackCheckinPendingUi() {
         applyTestFeedbackCheckinPendingUi(Number(key));
     });
 }
+
+/**
+ * Sync MiniApp "waiting for bot feedback" buttons with server wait-state.
+ * Clears stuck pending UI after user cancels via bot inline Cancel (or wait TTL expires / server restart).
+ */
+async function syncPendingFeedbackCheckinsFromServer() {
+    if (!hasPendingFeedbackCheckins()) {
+        return false;
+    }
+    var apiBase = (typeof API_BASE !== 'undefined' && API_BASE) || (window.App && window.App.API_BASE) || '';
+    if (!apiBase) {
+        return false;
+    }
+    var initData = (typeof getTelegramInitDataRaw === 'function')
+        ? getTelegramInitDataRaw()
+        : ((typeof tg !== 'undefined' && tg && tg.initData) || '');
+    if (!initData) {
+        return false;
+    }
+
+    try {
+        var response = await fetch(
+            apiBase + '/feedback/waiting?init_data=' + encodeURIComponent(initData),
+            { method: 'GET' }
+        );
+        if (!response.ok) {
+            return false;
+        }
+        var data = await response.json();
+        if (!data || data.status !== 'success') {
+            return false;
+        }
+
+        var waitingAppId = data.waiting ? Number(data.app_id || 0) : 0;
+        var clearedIds = [];
+        var today = typeof getLocalDate === 'function' ? getLocalDate() : '';
+        Object.keys(_pendingFeedbackCheckinAppIds || {}).forEach(function(key) {
+            var appId = Number(key);
+            if (appId > 0 && appId !== waitingAppId) {
+                clearTestFeedbackCheckinPending(appId);
+                clearedIds.push(appId);
+            }
+        });
+        if (!clearedIds.length) {
+            return false;
+        }
+
+        var restoredReady = false;
+        var unfinishedCleared = false;
+        clearedIds.forEach(function(appId) {
+            var test = (myTests || []).find(function(item) {
+                return Number(item.id) === appId;
+            });
+            var doneToday = !!(test && test.status === 'done' && String(test.last_check_date || '') === today);
+            if (!doneToday) {
+                unfinishedCleared = true;
+                if (restoreCheckinReadyAfterFeedbackPending(appId)) {
+                    restoredReady = true;
+                }
+            }
+        });
+
+        if (typeof renderTests === 'function') {
+            renderTests(true);
+        }
+        if (typeof window.renderShowcaseActiveTests === 'function') {
+            window.renderShowcaseActiveTests(true);
+        }
+        if (typeof _applyPersistedReadyTimerButtons === 'function') {
+            _applyPersistedReadyTimerButtons();
+        }
+        if (unfinishedCleared) {
+            showToast(window.t(
+                restoredReady ? 'feedbackCheckinPendingRestoredToast' : 'feedbackCheckinPendingClearedToast',
+                {},
+                lang
+            ));
+        }
+        return true;
+    } catch (error) {
+        console.warn('syncPendingFeedbackCheckinsFromServer failed:', error);
+        return false;
+    }
+}
+window.syncPendingFeedbackCheckinsFromServer = syncPendingFeedbackCheckinsFromServer;
 
 function clearCompletedPendingFeedbackCheckins() {
     if (!hasPendingFeedbackCheckins()) return false;
@@ -1749,7 +2646,7 @@ function clearCompletedPendingFeedbackCheckins() {
         if (test) {
             var testingDay = Number(test.testing_days || 0);
             var isOvertime = testingDay >= 15;
-            var earnedKarma = isOvertime ? 0.5 : 0.1;
+            var earnedKarma = isOvertime ? 0.5 : 0;
             var earnedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : (test.join_type === 'bounty' ? test.bounty_per_tester * 0.65 / 14 : 0);
             
             if (earnedBust > 0 && earnedKarma > 0) {
@@ -1868,28 +2765,38 @@ function setFeedbackRewardBust(amount) {
 
 function setFeedbackRewardKarma(amount) {
     var item = getFeedbackRewardItem();
-    var isKarmaAvailable = item ? (item.project_karma_available !== false) : true;
-    var isTesterAlreadyRewarded = item ? !!item.tester_already_rewarded_karma : false;
-    var isKarmaLocked = !isKarmaAvailable || isTesterAlreadyRewarded;
+    var thanksAvailable = item ? (item.thanks_available !== false) : true;
+    var specialAvailable = item ? (item.special_available !== false) : true;
+    if (item && item.thanks_available == null && item.special_available == null) {
+        thanksAvailable = item.project_karma_available !== false;
+        specialAvailable = thanksAvailable;
+    }
+    var alreadyThanked = item ? !!item.tester_already_thanked : false;
+    var alreadySpecial = item ? !!item.tester_already_special : false;
+    if (!item || (item.tester_already_thanked == null && item.tester_already_special == null && item.tester_already_rewarded_karma)) {
+        alreadyThanked = !!item && !!item.tester_already_rewarded_karma;
+        alreadySpecial = alreadyThanked;
+    }
 
-    if (isKarmaLocked) {
+    if ((Number(amount) === 1.5 && (!thanksAvailable || alreadyThanked)) ||
+        (Number(amount) === 3 && (!specialAvailable || alreadySpecial))) {
         amount = 0;
     }
 
     _feedbackRewardKarma = Number(amount || 0);
-    var project = getFeedbackRewardProject();
-    var likesUsed = (project && project.likes_used) || 0;
-    var likesMax = (project && project.likes_max) || 1;
-    var remaining = Math.max(0, likesMax - likesUsed);
     var mapping = { 0: '0', 1.5: '15', 3: '30' };
     ['0', '15', '30'].forEach(function(code) {
         var chip = document.getElementById('feedback-karma-chip-' + code);
         if (chip) {
             chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
-            if (code !== '0') {
-                var disabled = isKarmaLocked || (remaining <= 0);
-                chip.classList.toggle('is-disabled', disabled);
-                chip.disabled = disabled;
+            if (code === '15') {
+                var disabledThanks = !thanksAvailable || alreadyThanked;
+                chip.classList.toggle('is-disabled', disabledThanks);
+                chip.disabled = disabledThanks;
+            } else if (code === '30') {
+                var disabledSpecial = !specialAvailable || alreadySpecial;
+                chip.classList.toggle('is-disabled', disabledSpecial);
+                chip.disabled = disabledSpecial;
             } else {
                 chip.classList.remove('is-disabled');
                 chip.disabled = false;
@@ -2489,6 +3396,11 @@ async function sendKarmaReward(appId, testerId, rewardType) {
             if (project) {
                 if (project.likes) project.likes.push({ tester_id: testerId, type: rewardType });
                 project.likes_used = (project.likes_used || 0) + 1;
+                if (rewardType === 'good') {
+                    project.thanks_used = (project.thanks_used || 0) + 1;
+                } else if (rewardType === 'bug') {
+                    project.special_used = (project.special_used || 0) + 1;
+                }
             }
             renderProjects();
             if (window._karmaDistributionProjectId === appId && window.openKarmaDistribution) {
@@ -2566,8 +3478,12 @@ function showCheckinRewardToasts(result) {
     }
 }
 
-async function confirmStart(id) {
+async function confirmStart(id, options) {
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    var proofKind = String((options && options.proofKind) || 'open_token').trim().toLowerCase();
+    if (proofKind !== 'checkpoint_screenshot') {
+        proofKind = 'open_token';
+    }
 
     const actionKey = 'checkin_' + id;
     if (_pendingActions.has(actionKey)) return false;
@@ -2598,9 +3514,8 @@ async function confirmStart(id) {
     const btn = document.getElementById(`btn-confirm-${id}`);
 
     if (btn) {
-        btn.innerText = t.confirmed;
-        btn.style.backgroundColor = '#2e7d32';
-        btn.style.color = '#ffffff';
+        _setConfirmButtonLabel(btn, t.confirmed);
+        btn.classList.add('is-confirming');
         btn.disabled = true;
     }
 
@@ -2616,6 +3531,8 @@ async function confirmStart(id) {
                 app_id: id,
                 local_date: getLocalDate(),
                 play_feedback_submitted: shouldSubmitPlayFeedback,
+                open_token: _getCheckinOpenToken(id),
+                proof_kind: proofKind,
             }))
         });
 
@@ -2629,8 +3546,16 @@ async function confirmStart(id) {
         if (!response.ok || !result || result.status !== 'success') {
             card.classList.remove('removing');
             if (btn) {
-                btn.innerText = t.confirmStart;
-                btn.style.backgroundColor = 'var(--success-color)';
+                btn.classList.remove('is-confirming');
+                if (btn.classList.contains('tstep__row')) {
+                    // Step rows keep their own caption; only the busy state is undone.
+                    _setConfirmButtonLabel(btn, window.t('stepSendScreenshot', {}, lang));
+                } else {
+                    _setConfirmButtonLabel(btn, t.confirmStart);
+                    btn.style.backgroundColor = '';
+                    btn.style.color = '';
+                    btn.classList.add('btn-success', 'btn-confirm-ready');
+                }
                 btn.disabled = false;
             }
 
@@ -2641,6 +3566,23 @@ async function confirmStart(id) {
                     || errorCode === 'test_or_app_not_found'
                     || errorCode === 'project_pending_completion') {
                     _handleInactiveCheckinCard(id, errorCode);
+                } else if (
+                    errorCode === 'open_required'
+                    || errorCode === 'open_invalid'
+                    || errorCode === 'open_mismatch'
+                    || errorCode === 'open_expired'
+                    || errorCode === 'open_not_ready'
+                    || errorCode === 'day_boundary_moved'
+                ) {
+                    // Screenshot-during-timer must not wipe the Open session.
+                    if (!(proofKind === 'checkpoint_screenshot' && errorCode === 'open_not_ready')) {
+                        setTimerReadyForConfirm(id, false);
+                        clearActiveTimerForApp(id);
+                        if (typeof window.renderTests === 'function') {
+                            window.renderTests(true);
+                        }
+                    }
+                    handleApiError(errorCode, result.details || {});
                 } else {
                     handleApiError(errorCode, result.details || {});
                 }
@@ -2655,6 +3597,7 @@ async function confirmStart(id) {
         const sourceType = String(result.source_type || '').toLowerCase();
         setFirstDayScreenshotVisible(id, false);
         setTimerReadyForConfirm(id, false, false, '');
+        clearActiveTimerForApp(id);
         const rewardBust = Number(result.reward_bust || result.earned_bust || 0);
         if (result.already_checked_today) {
             showToast(t.checkinAlreadyDone);
@@ -2689,6 +3632,8 @@ async function confirmStart(id) {
             return Number(test.id) === Number(id);
         });
         if (updatedTest) {
+            var wasFirstCheckin = Number(updatedTest.checkins_count || 0) <= 0
+                || String(updatedTest.status || '') === 'new';
             updatedTest.last_check_date = result.last_check_date || getLocalDate();
             updatedTest.checkins_count = Math.max(0, Number(result.checkins_count || updatedTest.checkins_count || 0));
             updatedTest.skips_count = Math.max(0, Number(result.skips_count || 0));
@@ -2707,6 +3652,9 @@ async function confirmStart(id) {
                 updatedTest.isGrantAvailableTomorrow = true;
                 window.tg.showAlert(window.t('grantAvailableTomorrowAlert', {}, lang));
             }
+            if (wasFirstCheckin && !result.already_checked_today) {
+                markDefaultGroupJoined({ silent: true, rerender: false });
+            }
         }
 
         setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
@@ -2723,7 +3671,9 @@ async function confirmStart(id) {
         card.classList.remove('removing');
         if (btn) {
             btn.innerText = t.confirmStart;
-            btn.style.backgroundColor = 'var(--success-color)';
+            btn.style.backgroundColor = '';
+            btn.style.color = '';
+            btn.classList.add('btn-success', 'btn-confirm-ready');
             btn.disabled = false;
         }
         handleApiError('network_error');
@@ -3018,11 +3968,18 @@ function updateIconPreview(inputId, previewId) {
     var input = document.getElementById(inputId);
     var preview = document.getElementById(previewId);
     if (!input || !preview) return;
+    var picker = inputId.indexOf('edit-') === 0 ? document.getElementById('edit-icon-picker') : document.getElementById('app-icon-picker');
     var url = (input.value || '').trim();
-    if (!url) { preview.style.display = 'none'; preview.src = ''; return; }
+    if (!url) {
+        preview.style.display = 'none';
+        preview.src = '';
+        if (picker) picker.classList.remove('has-icon');
+        return;
+    }
     if (typeof resolveIconUrl === 'function') url = resolveIconUrl(url);
     preview.src = url;
     preview.style.display = 'block';
+    if (picker) picker.classList.add('has-icon');
 }
 
 let _feedbackAcceptLongPressTimeout = null;

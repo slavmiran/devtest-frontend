@@ -53,6 +53,20 @@ function getIssueAwaitingFixLabel(test) {
     }, lang);
 }
 
+function accessProblemMaterialIcon(name) {
+    if (name === 'groups') {
+        return '<svg class="apstep__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+            + '<path fill="currentColor" d="M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37.14-.72.31-1.04.53C3.41 15.04 3 16.01 3 17.09V18h1.02v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-.89 1.63c-.32-.22-.67-.4-1.04-.53.4.68.63 1.46.63 2.29V18H21v-.91c0-1.08-.41-2.05-1.09-2.47zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/>'
+            + '</svg>';
+    }
+    if (name === 'ac_unit') {
+        return '<svg class="apstep__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+            + '<path fill="currentColor" d="M22 11h-4.17l3.24-3.24-1.41-1.41L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.41L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.41L17.83 13H22z"/>'
+            + '</svg>';
+    }
+    return '';
+}
+
 function getResolvedTestingDay(test) {
     if (test && test.is_external && typeof isExternalContinueModeEnabled === 'function' && isExternalContinueModeEnabled(test)) {
         return 14;
@@ -321,18 +335,20 @@ function getCurrentUserKarmaValue() {
 }
 
 function getFinalizedGrantSkips(test) {
-    // Count skips from daily_timeline (days 1-14 only) as source of truth
+    // Prefer live API skips_count — same source as backend claim_grant / card copy.
+    // Counting daily_timeline[0:14] over-counts incomplete timelines and showed grant ~0
+    // while "пропусков 1/3 · грант ещё доступен" still looked correct.
+    if (test && test.skips_count != null && test.skips_count !== '') {
+        const fromApi = Number(test.skips_count);
+        if (Number.isFinite(fromApi)) return Math.max(0, Math.floor(fromApi));
+    }
     if (test && test.daily_timeline) {
         const timeline = String(test.daily_timeline || '');
-        // Only count baseline period (days 1-14)
         const baselinePeriod = timeline.substring(0, 14);
-        // '0' = standard skip, '3' = overtime skip (but shouldn't exist in days 1-14)
-        // Count occurrences of skip characters
         const skipCount = (baselinePeriod.match(/[03]/g) || []).length;
         return Math.max(0, skipCount);
     }
-    // Fallback to skips_count if no timeline
-    return Math.max(0, Number(test && test.skips_count || 0));
+    return 0;
 }
 
 function getGrantEstimateData(test) {
@@ -350,6 +366,52 @@ function getGrantEstimateData(test) {
         skips,
         eligible,
         total: eligible ? Math.min(base + karmaBonus + perfectBonus, 200) : 0,
+    };
+}
+
+function buildGrantSkipDots(skipsCount) {
+    const skips = Math.max(0, Number(skipsCount || 0));
+    return Array.from({ length: 3 }, function(_, index) {
+        if (index === 0) {
+            return skips > 0
+                ? '<span class="skip-dot used"></span>'
+                : '<span class="skip-dot available"></span>';
+        }
+        if (index === 1) {
+            return skips > 1
+                ? '<span class="skip-dot used"></span>'
+                : '<span class="skip-dot available"></span>';
+        }
+        if (skips === 3) {
+            return '<span class="skip-dot warning" title="3-й пропуск">⚠️</span>';
+        }
+        if (skips >= 4) {
+            return '<span class="skip-dot used"></span>';
+        }
+        return '<span class="skip-dot available"></span>';
+    }).join('');
+}
+
+function getActiveContractPossibleTotal(test) {
+    const bounty = Math.max(0, Number(test && test.bounty_per_tester || 0));
+    const grant = getGrantEstimateData(test);
+    const grantTotal = Math.max(0, Number(grant && grant.total || 0));
+    return {
+        bounty: bounty,
+        grant: grantTotal,
+        grantData: grant,
+        total: bounty + grantTotal,
+    };
+}
+
+function getContractPossibleTotalReward(bountyPerTester) {
+    const bounty = Math.max(0, Number(bountyPerTester || 0));
+    const grant = getGrantEstimateData({ skips_count: 0, daily_timeline: '' });
+    const grantTotal = Math.max(0, Number(grant && grant.total || 0));
+    return {
+        bounty: bounty,
+        grant: grantTotal,
+        total: bounty + grantTotal,
     };
 }
 
@@ -384,6 +446,71 @@ function showGrantBreakdownAlertById(appId, event) {
     }
 }
 
+function getProjectProtectionDays(test) {
+    return Math.max(0, Number(test && (test.paid_protection_days || test.purchased_protection_days) || 0) || 0);
+}
+
+function getProjectCycleLimitDays(test) {
+    return 14 + getProjectProtectionDays(test);
+}
+
+function getProjectLifecycleDay(test) {
+    var platformDay = typeof getProjectPlatformDay === 'function'
+        ? getProjectPlatformDay(test && test.created_at)
+        : 1;
+    platformDay = Number.isFinite(platformDay) && platformDay > 0 ? platformDay : 1;
+    if (!isProjectSynced(test)) {
+        return platformDay;
+    }
+    var googleDay = getProjectCurrentGoogleDay(test, platformDay);
+    // Match backend enter_project_pending_completion: max(cycle_day, platform_day).
+    return Math.max(platformDay, Number(googleDay) || 0, 1);
+}
+
+function isSameLocalCalendarDay(a, b) {
+    if (!(a instanceof Date) || !(b instanceof Date)) return false;
+    if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return false;
+    return a.getFullYear() === b.getFullYear()
+        && a.getMonth() === b.getMonth()
+        && a.getDate() === b.getDate();
+}
+
+function getProjectCompletionDate(test, today) {
+    var todayDate = today instanceof Date && !Number.isNaN(today.getTime())
+        ? today
+        : (parseLocalDateOnly(getLocalDate()) || new Date());
+    var BUFFER_MS = 48 * 60 * 60 * 1000;
+    var DAY_MS = 24 * 60 * 60 * 1000;
+    var appStatus = String(test && (test.app_status || test.status) || '').toLowerCase();
+    var isPendingCompletion = appStatus === 'pending_completion' || !!(test && test.is_pending_completion);
+    var pendingStartedAt = test && test.pending_completion_started_at
+        ? new Date(test.pending_completion_started_at).getTime()
+        : NaN;
+
+    // In Safety Buffer the archive deadline is fixed: started_at + 48h.
+    if (isPendingCompletion && Number.isFinite(pendingStartedAt)) {
+        return new Date(pendingStartedAt + BUFFER_MS);
+    }
+
+    var cycleLimit = getProjectCycleLimitDays(test);
+    var lifecycleDay = getProjectLifecycleDay(test);
+    // Backend enters pending when lifecycle_day > cycle_limit (next calendar day after the limit).
+    var daysUntilBufferStart = Math.max(0, (cycleLimit + 1) - lifecycleDay);
+    var todayStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
+    var bufferStart = new Date(todayStart.getTime() + (daysUntilBufferStart * DAY_MS));
+
+    // Prefer the created_at-based wall clock when it is earlier/equal — same formula as owner PPC.
+    var createdMs = test && test.created_at ? new Date(test.created_at).getTime() : NaN;
+    if (Number.isFinite(createdMs)) {
+        var createdBasedBufferStart = createdMs + (cycleLimit * DAY_MS);
+        if (createdBasedBufferStart < bufferStart.getTime()) {
+            bufferStart = new Date(createdBasedBufferStart);
+        }
+    }
+
+    return new Date(bufferStart.getTime() + BUFFER_MS);
+}
+
 function getTestingTimelineMeta(test) {
     var today = parseLocalDateOnly(getLocalDate()) || new Date();
     var userTestingDayRaw = getResolvedTestingDay(test);
@@ -402,6 +529,10 @@ function getTestingTimelineMeta(test) {
     }
 
     var finishDate = new Date(today.getTime() + (projectDaysLeft * 24 * 60 * 60 * 1000));
+    var completionDate = getProjectCompletionDate(test, today);
+    // "Last day!" = calendar day when the project actually ends (14 + paid protection + 48h buffer),
+    // not merely Google 14/14.
+    var isLastDay = isSameLocalCalendarDay(today, completionDate);
     return {
         today: today,
         userTestingDay: userTestingDay,
@@ -411,7 +542,8 @@ function getTestingTimelineMeta(test) {
         overtimeDays: overtimeDays,
         isSynced: isSynced,
         finishDate: finishDate,
-        isLastDay: isSynced && projectDaysLeft === 0,
+        completionDate: completionDate,
+        isLastDay: isLastDay,
     };
 }
 
@@ -424,6 +556,21 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
     var currentDay = null;
     var currentDayState = '';
     var hasCheckedToday = isTestedToday(test);  // ← Use normalized date comparison
+    var checkinsCount = Math.max(0, Number(test.checkins_count || 0));
+    var skipsCount = Math.max(0, Number(test.skips_count || 0));
+    // Fresh / rejoined cycle: counters are zero but an old daily_timeline may linger.
+    // Never paint a previous run's markers onto a brand-new personal cycle.
+    if (!test.last_check_date && checkinsCount === 0 && skipsCount === 0) {
+        timeline = '';
+        renderTimeline = '';
+    } else {
+        var realizedThrough = hasCheckedToday
+            ? Math.max(0, userTestingDay || 0)
+            : Math.max(0, (userTestingDay || 0) - 1);
+        if (renderTimeline.length > realizedThrough) {
+            renderTimeline = renderTimeline.slice(0, realizedThrough);
+        }
+    }
 
     if (!hasCheckedToday && userTestingDay > 0 && renderTimeline.length >= userTestingDay) {
         var unresolvedMarker = renderTimeline[userTestingDay - 1] || '';
@@ -440,7 +587,11 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
     function getDayState(dayNum) {
         const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
         const isBufferDay = dayNum > 14 + extraPaid;
-        var ch = renderTimeline[dayNum - 1] || '';
+        var ch = '';
+        // Future personal days must stay empty even if a stale timeline string is longer.
+        if (dayNum <= (hasCheckedToday ? userTestingDay : Math.max(0, userTestingDay - 1))) {
+            ch = renderTimeline[dayNum - 1] || '';
+        }
         
         // Fallback: if user is on Day 15+, ensure all days 1-14 are colored
         if (dayNum <= 14 && userTestingDay > 14) {
@@ -505,24 +656,24 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
     }
 
     const isPendingCompletion = String(test.app_status || test.status || '').toLowerCase() === 'pending_completion';
-    const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+    const isKickedSoft = !!(test.is_kicked_soft || String(test.progress_status || '').toLowerCase() === 'kicked_by_owner');
+    const isInSafetyBuffer = !isKickedSoft && (
+        isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid)
+    );
 
-    const createdTime = test.created_at ? new Date(test.created_at).getTime() : Date.now();
     const pendingStartedAt = test.pending_completion_started_at ? new Date(test.pending_completion_started_at).getTime() : null;
-    const bufferStart = (isPendingCompletion && pendingStartedAt)
-        ? new Date(pendingStartedAt)
-        : new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
-    const bufferEndTime = bufferStart.getTime() + (48 * 60 * 60 * 1000);
-    const remainingMs = Math.max(0, bufferEndTime - Date.now());
-    const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
-    const remainingHours = Math.floor(remainingTotalMinutes / 60);
-    const remainingMinutes = remainingTotalMinutes % 60;
-
+    const MAX_BUFFER_MS = 48 * 60 * 60 * 1000;
     let bufferBadgeHtml = '';
-    if (isProjectSynced(test) || userTestingDay >= 15 || extraPaid > 0) {
-        if (isInSafetyBuffer) {
-            const timeText = lang === 'ru' 
-                ? `⏳ Осталось ${remainingHours}ч ${remainingMinutes}м` 
+    if (!isKickedSoft && (isProjectSynced(test) || userTestingDay >= 15 || extraPaid > 0 || isPendingCompletion)) {
+        // Active countdown only when the project is truly in pending_completion
+        // with a real started_at. Never invent "113h left" from created_at+14d.
+        if (isPendingCompletion && pendingStartedAt && Number.isFinite(pendingStartedAt)) {
+            const remainingMs = Math.min(MAX_BUFFER_MS, Math.max(0, pendingStartedAt + MAX_BUFFER_MS - Date.now()));
+            const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
+            const remainingHours = Math.floor(remainingTotalMinutes / 60);
+            const remainingMinutes = remainingTotalMinutes % 60;
+            const timeText = lang === 'ru'
+                ? `⏳ Осталось ${remainingHours}ч ${remainingMinutes}м`
                 : `⏳ Remaining ${remainingHours}h ${remainingMinutes}m`;
             bufferBadgeHtml = '<span class="timeline-buffer-badge active">' + timeText + '</span>';
         } else {
@@ -532,7 +683,9 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
     }
 
     var remainingDays = Math.max(0, totalDays - renderTimeline.length);
-    const showOvertimeRow = !options.hideOvertimeRow && (extraPaid > 0 || isInSafetyBuffer || userTestingDay >= 15 || isProjectSynced(test));
+    const showOvertimeRow = !options.hideOvertimeRow
+        && !isKickedSoft
+        && (extraPaid > 0 || isInSafetyBuffer || userTestingDay >= 15 || isProjectSynced(test));
     const rangeText = lastPaidDay > 14 ? '15-' + lastPaidDay : '15+';
 
     const noteText = extraPaid > 0
@@ -755,6 +908,8 @@ function hasMeaningfulProjectSync(test) {
 function isProjectSynced(test) {
     return hasMeaningfulProjectSync(test);
 }
+window.isProjectSynced = isProjectSynced;
+window.hasMeaningfulProjectSync = hasMeaningfulProjectSync;
 
 function buildTestOwnerSubtitle(test) {
     if (!test || typeof test !== 'object') return '';
@@ -774,6 +929,19 @@ function getProjectCurrentGoogleDay(test, fallbackDay) {
     if (!syncDay) {
         var fallback = Number(fallbackDay || 0);
         return Number.isFinite(fallback) ? Math.max(0, fallback) : 0;
+    }
+
+    // Match backend `_calculate_project_cycle_day`: a day-1 sync does not tick from
+    // last_sync_date — use platform age since created_at instead. Only sync_day > 1
+    // advances as syncDay + calendar days since last_sync.
+    if (syncDay <= 1) {
+        var platformDay = typeof getProjectPlatformDay === 'function'
+            ? getProjectPlatformDay(test && test.created_at)
+            : Number(fallbackDay || 0);
+        if (Number.isFinite(platformDay) && platformDay > 0) {
+            return Math.max(1, platformDay);
+        }
+        return 1;
     }
 
     var syncDiffDays = test && test.last_sync_date ? getDayDiffFromToday(test.last_sync_date) : 0;
@@ -835,6 +1003,12 @@ function getScreenshotReminderHtml(test) {
     `;
 }
 
+/** Tags a chip as the card's "testing type" anchor so styling can lift it above the rest. */
+function markSourceChip(chipHtml) {
+    if (!chipHtml) return '';
+    return chipHtml.replace('class="meta-chip', 'class="meta-chip meta-chip--source');
+}
+
 function getTestSourceChip(test) {
     const chips = [];
 
@@ -845,14 +1019,28 @@ function getTestSourceChip(test) {
 
     const joinType = String(test && test.join_type || '').toLowerCase();
     if (joinType === 'bounty') {
-        const bountyVal = test && test.bounty_per_tester ? Number(test.bounty_per_tester) : 0;
-        chips.push(`<span class="meta-chip accent-purple" style="cursor: pointer;" onclick="openBountyInfoModal(${test.id}, event)">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))} +${bountyVal}</span>`);
-    } else if (joinType === 'prelaunch') {
-        chips.push(`<span class="meta-chip accent-blue">🚀 ${window.escapeHTML(window.t('testSourcePrelaunch', {}, lang))}</span>`);
+        const possible = typeof getActiveContractPossibleTotal === 'function'
+            ? getActiveContractPossibleTotal(test)
+            : { total: Number(test && test.bounty_per_tester || 0) };
+        const amountLabel = typeof formatAmountValue === 'function'
+            ? formatAmountValue(possible.total, 1)
+            : String(Number(possible.total || 0));
+        const chipTitle = window.escapeHTML(window.t('bountyPossibleTotalChipHint', {}, lang));
+        chips.push(markSourceChip(`<span class="meta-chip accent-purple notranslate" style="cursor: pointer;" title="${chipTitle}" onclick="openBountyInfoModal(${test.id}, event)">💎 ${window.escapeHTML(window.t('testSourceBounty', {}, lang))} ~${amountLabel}</span>`));
     } else if (joinType === 'mutual') {
-        chips.push(`<span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('testSourceMutual', {}, lang))}</span>`);
+        if (typeof buildBarterChipHtml === 'function') {
+            chips.push(markSourceChip(buildBarterChipHtml(test)));
+        } else {
+            chips.push(markSourceChip(`<span class="meta-chip accent-green">🤝 ${window.escapeHTML(window.t('testSourceMutual', {}, lang))}</span>`));
+        }
+    } else if (joinType === 'prelaunch') {
+        if (typeof buildBarterChipHtml === 'function') {
+            chips.push(markSourceChip(buildBarterChipHtml(test)));
+        } else {
+            chips.push(markSourceChip(`<span class="meta-chip accent-blue">🚀 ${window.escapeHTML(window.t('testSourcePrelaunch', {}, lang))}</span>`));
+        }
     } else if (joinType === 'direct' || joinType === 'invite') {
-        chips.push(`<span class="meta-chip">🔗 ${window.escapeHTML(window.t('testSourceInvite', {}, lang))}</span>`);
+        chips.push(markSourceChip(`<span class="meta-chip">🔗 ${window.escapeHTML(window.t('testSourceInvite', {}, lang))}</span>`));
     }
 
     return chips.join('');
@@ -934,7 +1122,8 @@ function canProposeMutualFromTest(test) {
     if (!targetOwnerId || targetOwnerId === Number(userId || 0)) {
         return false;
     }
-    if (joinType === 'mutual' || appStatus === 'archived') {
+    // Contract/bounty tests are paid slots — no mutual-offer chip on those cards.
+    if (joinType === 'mutual' || joinType === 'bounty' || appStatus === 'archived') {
         return false;
     }
     if (Number(test && test.reciprocal_app_id || 0) > 0) {
@@ -989,10 +1178,6 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         if (proposeMutualChip) {
             parts.push(proposeMutualChip);
         }
-        const runIterationChip = buildRunIterationChip(test);
-        if (runIterationChip) {
-            parts.push(runIterationChip);
-        }
         if (test.app_status === 'archived') {
             var archiveLabel = test.archive_reason === 'afk' ? t.archivedAfkBadge : t.archivedBadge;
             var archiveToast = test.archive_reason === 'afk' ? (t.archivedAfkToast || '').replace(/'/g, "\\'") : '';
@@ -1011,11 +1196,11 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         parts.push(`<button class="meta-chip" onclick="event.stopPropagation(); showToast('${tooltip.replace(/'/g, "\\'")}')">${testerLabel}</button>`);
     }
     if (typeof userTestingDay === 'number' && userTestingDay > 0) {
-        const dayText = t.myTestDayShort.replace('{days}', userTestingDay);
         const isScreenshot = isMandatoryScreenshotDay(userTestingDay);
-        const screenshotIcon = isScreenshot ? ' 📸' : '';
-        const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip accent-blue';
-        parts.push(`<button class="${chipClass}" onclick="event.stopPropagation(); showTestDayPopup(${userTestingDay})">${dayText}${screenshotIcon}</button>`);
+        // Only control days carry an icon; regular days stay plain to reduce visual noise.
+        const dayText = (isScreenshot ? '📸 ' : '') + t.myTestDayShort.replace('{days}', userTestingDay);
+        const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip';
+        parts.push(`<button class="${chipClass}" onclick="event.stopPropagation(); showTestDayPopup(${userTestingDay})">${dayText}</button>`);
     }
     if (isNew) {
         parts.unshift(`<button class="meta-chip accent-green">${t.newBadge}</button>`);
@@ -1043,12 +1228,6 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
                 reviewClass = 'meta-chip accent-red';
             }
             parts.push(`<button class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${window.escapeHTML(reviewLabel)}</button>`);
-        }
-        const rewardsSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : null;
-        const rewardChipLabel = getRewardsChipLabel(rewardsSummary);
-        if (rewardChipLabel) {
-            const rewardLabel = window.escapeHTML(rewardChipLabel);
-            parts.push(`<button class="meta-chip accent-green notranslate" onclick="event.stopPropagation(); openProjectDetailsModal(${Number(test.id)})">${rewardLabel}</button>`);
         }
         if (isProjectSynced(test)) {
             const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
@@ -1097,7 +1276,104 @@ function isRegularTestingPhaseCard(test) {
 
 function renderTestCardDetailsButton(testId) {
     const ariaLabel = window.escapeHTML(window.t('testCardDetailsBtnAria', {}, lang));
-    return `<button type="button" class="btn-icon test-card-details-btn" aria-label="${ariaLabel}" onclick="openProjectDetailsModal(${Number(testId)}); event.stopPropagation();">🔍</button>`;
+    return `<button type="button" class="btn-icon test-card-details-btn" aria-label="${ariaLabel}" onclick="openProjectDetailsModal(${Number(testId)}); event.stopPropagation();">`
+        + '<svg class="test-card-details-btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+        + '<circle cx="12" cy="5" r="1.9"></circle>'
+        + '<circle cx="12" cy="12" r="1.9"></circle>'
+        + '<circle cx="12" cy="19" r="1.9"></circle>'
+        + '</svg></button>';
+}
+
+function isFirstDayGroupStepDone(test) {
+    if (!test) return false;
+    if (String(test.test_mode || '') === 'email_list') return true;
+    const groupUrl = test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || '';
+    const isDefaultGroup = typeof isDefaultGoogleGroupUrl === 'function'
+        ? isDefaultGoogleGroupUrl(groupUrl)
+        : true;
+    if (isDefaultGroup) {
+        // Unknown status on boot is treated as joined to avoid a "not joined" flash.
+        return !!_defaultGroupJoined || !_defaultGroupJoinedReady;
+    }
+    return typeof window.isCustomGroupJoined === 'function' && !!window.isCustomGroupJoined(test.id);
+}
+
+/**
+ * First-day onboarding as a connected 3-step checklist.
+ * Every step stays visible; completed ones collapse into a muted "done" row.
+ */
+function renderFirstDaySteps(test, safePackage, safeOwnerUsername) {
+    const testId = Number(test.id);
+    const groupUrl = test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || 'https://groups.google.com/g/google-play-dev-test';
+    const safeGroupUrl = escapeInlineJsString(groupUrl);
+    const isEmailMode = String(test.test_mode || '') === 'email_list';
+    const groupDone = isFirstDayGroupStepDone(test);
+    const downloadDone = window.isFirstDayScreenshotVisible
+        ? !!window.isFirstDayScreenshotVisible(testId)
+        : false;
+
+    const steps = [];
+    if (!isEmailMode) {
+        steps.push({
+            key: 'group',
+            done: groupDone,
+            label: window.t('stepJoinGroup', {}, lang),
+            onclick: `handleJoinGoogleGroupClick(${testId}, '${safeGroupUrl}', { rerender: true })`,
+            side: `<button type="button" class="tstep__side" aria-label="${window.escapeHTML(window.t('stepCopyGroupAria', {}, lang))}" onclick="event.stopPropagation(); copyGroupUrl('${safeGroupUrl}')">📋</button>`,
+        });
+    }
+    steps.push({
+        key: 'download',
+        done: downloadDone,
+        locked: !isEmailMode && !groupDone,
+        label: window.t('stepDownloadPlay', {}, lang),
+        onclick: `handleFirstDownload(${testId}, '${safePackage}')`,
+    });
+    steps.push({
+        key: 'screenshot',
+        done: false,
+        locked: !downloadDone,
+        buttonId: `btn-confirm-${testId}`,
+        label: window.t('stepSendScreenshot', {}, lang),
+        onclick: `handleScreenshotAndConfirm(${testId}, '${safeOwnerUsername}')`,
+    });
+
+    const currentIndex = steps.findIndex(function(step) {
+        return !step.done && !step.locked;
+    });
+
+    const rowsHtml = steps.map(function(step, index) {
+        const stateClass = step.done
+            ? 'is-done'
+            : (step.locked ? 'is-locked' : (index === currentIndex ? 'is-current' : 'is-next'));
+        const disabledAttrs = step.locked ? ' disabled aria-disabled="true"' : '';
+        const buttonIdAttr = step.buttonId ? ` id="${step.buttonId}"` : '';
+        return `
+            <div class="tstep ${stateClass}" data-step-key="${step.key}">
+                <button type="button"${buttonIdAttr} class="tstep__row" onclick="${step.onclick}"${disabledAttrs}>
+                    <span class="tstep__marker" aria-hidden="true">
+                        <span class="tstep__num">${index + 1}</span>
+                        <svg class="tstep__check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l3 3 6-6.4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="tstep__label">${window.escapeHTML(step.label)}</span>
+                    <span class="tstep__arrow" aria-hidden="true">›</span>
+                </button>
+                ${step.side || ''}
+            </div>
+        `;
+    }).join('');
+
+    const emailNoteHtml = isEmailMode
+        ? `<div class="tstep-note">
+                <div class="tstep-note__title">${window.escapeHTML(window.t('emailStepNoteTitle', {}, lang))}</div>
+                <div class="tstep-note__text">${window.escapeHTML(window.t('emailStepNoteText', {}, lang))}</div>
+           </div>`
+        : '';
+
+    return `
+        ${emailNoteHtml}
+        <div class="tstep-flow" id="tstep-flow-${testId}">${rowsHtml}</div>
+    `;
 }
 
 function openTelegramProfile(username, event) {
@@ -1131,9 +1407,8 @@ function renderIncomingOffers() {
         return;
     }
     const section = document.getElementById('offers-section');
-    const countEl = document.getElementById('offers-count');
     const carousel = document.getElementById('offers-carousel');
-    if (!section || !countEl || !carousel) return;
+    if (!section || !carousel) return;
 
     if (_offersTimerId) {
         clearInterval(_offersTimerId);
@@ -1142,53 +1417,148 @@ function renderIncomingOffers() {
 
     const pending = (incomingOffers || []).filter((offer) => !!offer && offer.status === 'pending');
     const isLoading = !!_offersInFlight;
-    countEl.innerText = t.offersCount.replace('{count}', pending.length);
 
     if (!pending.length) {
         if (isLoading && !_offersLoadedOnce) {
-            section.style.display = '';
             showSkeleton('offers-carousel');
+            if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
             return;
         }
         if (_offersLoadError && !_offersLoadedOnce) {
-            section.style.display = '';
             showRetry('offers-carousel', 'loadIncomingOffers()');
+            if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
             return;
         }
-        section.style.display = 'none';
         carousel.innerHTML = '';
+        if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
         return;
     }
 
-    section.style.display = '';
     carousel.innerHTML = pending.map((offer) => {
         const username = (offer.proposer_username || '').replace(/@/g, '');
         const safeUsername = escapeInlineJsString(username);
-        const displayName = window.escapeHTML(username
-            ? `@${username}`
-            : (offer.proposer_full_name || window.t('idLabel', { id: offer.proposer_id }, lang)));
+        const fullName = String(offer.proposer_full_name || '').trim();
+        const handle = username ? ('@' + username) : '';
+        const primaryName = window.escapeHTML(fullName || handle || window.t('idLabel', { id: offer.proposer_id }, lang));
+        const secondaryName = (fullName && handle)
+            ? ('<div class="bounty-app-handle notranslate">' + window.escapeHTML(handle) + '</div>')
+            : '';
         const remain = formatOfferRemaining(offer.created_at);
         const leftTimeText = window.t('offerTimeLeftValue', { hours: remain ? remain.hours : 0, minutes: remain ? remain.minutes : 0 }, lang);
-        const expireText = remain ? window.t('offerTimeLeft', { time: leftTimeText }, lang) : window.t('offerTimeUnknown', {}, lang);
+        const expireText = remain ? window.t('bountyAppTimeLeftShort', { time: leftTimeText }, lang) : window.t('offerTimeUnknown', {}, lang);
         const targetAppName = offer.target_app_name || window.t('unknownLabel', {}, lang);
         const proposerAppName = offer.proposer_app_name || window.t('unknownLabel', {}, lang);
 
-        return `
-            <div class="offer-card" data-offer-id="${offer.offer_id}">
-                <div class="offer-top">
-                    <button class="offer-user" onclick="openTesterDossier('${safeUsername}', ${offer.proposer_id}, ${offer.target_app_id}); event.stopPropagation();">${displayName}</button>
-                    <span class="meta-chip accent-yellow">☯️ ${offer.proposer_karma || 0}</span>
-                </div>
-                <div class="offer-sub">${window.escapeHTML(window.t('offerForApp', { target_app: targetAppName }, lang))}</div>
-                <div class="offer-sub">${window.escapeHTML(window.t('offerWithApp', { proposer_app: proposerAppName }, lang))}</div>
-                <div class="offer-expire">${expireText}</div>
-                <div class="action-row" style="margin-top: 10px;">
-                    <button class="btn btn-success" style="flex: 1;" onclick="decideOffer(${offer.offer_id}, 'accept', event)">${window.t('offerAcceptBtn', {}, lang)}</button>
-                    <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.12); color: #ff3b30;" onclick="decideOffer(${offer.offer_id}, 'reject', event)">${window.t('offerRejectBtn', {}, lang)}</button>
-                </div>
-            </div>
-        `;
+        // Reliability tone (reuses bounty logic with proposer_ fields)
+        const relStatus = String(offer.proposer_reliability_status || 'newbie').toLowerCase();
+        const relIndex = offer.proposer_reliability_index;
+        let tone = 'neutral';
+        if (relStatus !== 'newbie' && relIndex != null && relIndex !== '') {
+            const relVal = Number(relIndex);
+            if (Number.isFinite(relVal)) {
+                if (relStatus === 'expert' || relStatus === 'active' || relVal >= 85) tone = 'good';
+                else if (relStatus === 'basic' || relStatus === 'minimal' || relVal >= 65) tone = 'warn';
+                else tone = 'bad';
+            }
+        }
+
+        // Reliability label
+        let reliabilityLabel;
+        if (relStatus === 'newbie' || relIndex == null || relIndex === '') {
+            reliabilityLabel = window.t('bountyAppReliabilityNewbieShort', {}, lang);
+        } else {
+            const relVal = Number(relIndex);
+            if (!Number.isFinite(relVal)) {
+                reliabilityLabel = window.t('bountyAppReliabilityNewbieShort', {}, lang);
+            } else {
+                const statusKey = 'reliabilityDashStatus_' + relStatus;
+                let statusLabel = window.t(statusKey, {}, lang);
+                if (!statusLabel || statusLabel === statusKey) statusLabel = relStatus;
+                reliabilityLabel = window.t('bountyAppReliabilityCompact', { pct: Math.round(relVal), status: statusLabel }, lang);
+            }
+        }
+
+        // Avatar
+        const avatarName = String(fullName || handle || ('#' + (offer.proposer_id || 0))).trim();
+        const avatarUrl = offer.proposer_avatar_url || '';
+        const avatarHtml = typeof renderIcon === 'function'
+            ? renderIcon(avatarName, avatarUrl)
+            : (typeof getAvatar === 'function' ? getAvatar(avatarName) : '<div class="avatar">' + window.escapeHTML(avatarName.charAt(0).toUpperCase() || '?') + '</div>');
+
+        // Metrics
+        const karmaVal = typeof formatAmountValue === 'function'
+            ? formatAmountValue(offer.proposer_karma || 0, 1)
+            : String(offer.proposer_karma || 0);
+        const fullCycles = Number(offer.proposer_completed_full_cycles || 0);
+        const skipRate = offer.proposer_skip_rate_pct;
+        const skipLabel = (skipRate == null || skipRate === '')
+            ? '—'
+            : (String(Math.round(Number(skipRate))) + '%');
+
+        const dossierLabel = window.escapeHTML(window.t('bountyAppOpenDossier', {}, lang));
+        const dossierSvg = typeof _bountyDossierIconSvg === 'function' ? _bountyDossierIconSvg() : '';
+
+        return '' +
+            '<div class="offer-card bounty-app-card mutual-offer-card" data-offer-id="' + offer.offer_id + '">' +
+                '<div class="bounty-app-head">' +
+                    '<div class="bounty-app-badge">' +
+                        '<span class="bounty-app-badge-label">' + window.escapeHTML(window.t('mutualOfferChip', {}, lang)) + '</span>' +
+                    '</div>' +
+                    '<div class="bounty-app-ttl offer-expire">' + window.escapeHTML(expireText) + '</div>' +
+                '</div>' +
+                '<div class="bounty-app-identity">' +
+                    '<div class="bounty-app-avatar-wrap" role="button" tabindex="0" aria-label="' + dossierLabel + '" ' +
+                        'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(offer.proposer_id || 0) + ', ' + Number(offer.target_app_id || 0) + '); event.stopPropagation();">' +
+                        avatarHtml +
+                    '</div>' +
+                    '<div class="bounty-app-identity-main" role="button" tabindex="0" ' +
+                        'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(offer.proposer_id || 0) + ', ' + Number(offer.target_app_id || 0) + '); event.stopPropagation();">' +
+                        '<div class="bounty-app-name notranslate">' + primaryName + '</div>' +
+                        secondaryName +
+                        '<div class="bounty-app-signal bounty-app-signal--' + tone + '">' +
+                            '<span class="bounty-app-signal-dot" aria-hidden="true"></span>' +
+                            '<span>' + window.escapeHTML(reliabilityLabel) + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<button type="button" class="bounty-app-dossier-btn" title="' + dossierLabel + '" aria-label="' + dossierLabel + '" ' +
+                        'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(offer.proposer_id || 0) + ', ' + Number(offer.target_app_id || 0) + '); event.stopPropagation();">' +
+                        dossierSvg +
+                    '</button>' +
+                '</div>' +
+                '<div class="bounty-app-metrics">' +
+                    '<div class="bounty-app-metric">' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricKarma', {}, lang)) + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + window.escapeHTML(karmaVal) + '</div>' +
+                    '</div>' +
+                    '<div class="bounty-app-metric">' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricTests', {}, lang)) + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + fullCycles + '</div>' +
+                    '</div>' +
+                    '<div class="bounty-app-metric">' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricSkips', {}, lang)) + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + window.escapeHTML(skipLabel) + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="bounty-app-project-row">' +
+                    '<span class="bounty-app-project-label">' + window.escapeHTML(window.t('mutualOfferTargetProject', {}, lang)) + '</span>' +
+                    '<span class="bounty-app-project-name notranslate">' + window.escapeHTML(targetAppName) + '</span>' +
+                '</div>' +
+                '<div class="bounty-app-project-row">' +
+                    '<span class="bounty-app-project-label">' + window.escapeHTML(window.t('mutualOfferSwapProject', {}, lang)) + '</span>' +
+                    '<span class="bounty-app-project-name notranslate">' + window.escapeHTML(proposerAppName) + '</span>' +
+                '</div>' +
+                '<div class="action-row bounty-app-actions">' +
+                    '<button type="button" class="btn bounty-app-accept-btn" onclick="decideOffer(' + offer.offer_id + ', \'accept\', event)">' +
+                        window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang)) +
+                    '</button>' +
+                    '<button type="button" class="btn bounty-app-reject-btn" onclick="decideOffer(' + offer.offer_id + ', \'reject\', event)">' +
+                        window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
+                    '</button>' +
+                '</div>' +
+            '</div>';
     }).join('');
+
+    if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
 
     _offersTimerId = setInterval(() => {
         const section = document.getElementById('offers-section');
@@ -1413,6 +1783,9 @@ function getExternalStatusPresentation(test) {
     var lastCheckDate = String(test && test.last_check_date || '').trim();
     var statusText = '';
     var substatusText = '';
+    var lastCheckinText = lastCheckDate
+        ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
+        : '';
 
     if (isDoneToday) {
         statusText = window.t('externalProjectCheckedTodayBtn', {}, lang);
@@ -1421,25 +1794,17 @@ function getExternalStatusPresentation(test) {
             : window.t('externalTestsAllControlsDone', {}, lang);
     } else if (test && isExternalControlDayDue(test)) {
         statusText = window.t('externalTestsControlDayDue', { day: meta.currentDay }, lang);
-        substatusText = lastCheckDate
-            ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
-            : '';
     } else if (meta.nextControlDay) {
         statusText = window.t('externalTestsNextControlDay', { day: meta.nextControlDay, count: meta.daysLeft }, lang);
-        substatusText = lastCheckDate
-            ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
-            : '';
     } else {
         statusText = window.t('externalTestsAllControlsDone', {}, lang);
-        substatusText = lastCheckDate
-            ? window.t('externalTestsLastCheckin', { date: formatDdMmYyyy(lastCheckDate) }, lang)
-            : '';
     }
 
     return {
         meta: meta,
         statusText: statusText,
         substatusText: substatusText,
+        lastCheckinText: lastCheckinText,
         isDoneToday: isDoneToday,
         isPostControlWindow: !meta.nextControlDay,
     };
@@ -1521,6 +1886,13 @@ function renderExternalGuestTestsSection() {
 
     section.style.display = 'block';
     countNode.textContent = String(externalTests.length);
+    var guestHeader = section.querySelector('.external-tests-section__header');
+    if (guestHeader) {
+        guestHeader.setAttribute(
+            'aria-expanded',
+            section.classList.contains('is-collapsed') ? 'false' : 'true'
+        );
+    }
     list.classList.toggle('single-row', externalTests.length <= 2);
     list.classList.toggle('single-card', externalTests.length === 1);
     if (scrollWrap) {
@@ -1541,12 +1913,15 @@ function renderExternalGuestTestsSection() {
         var ownerLabel = ownerUsername
             ? '@' + ownerUsername
             : window.t('guestInviteOwnerMissing', {}, lang);
-        var ownerLabelHtml = ownerUsername
-            ? `<button type="button" class="external-tests-owner external-tests-owner-link notranslate" onclick="return openTelegramProfile('${safeOwnerUsernameInline}', event)">${window.escapeHTML(ownerLabel)}</button>`
-            : `<div class="external-tests-owner">${window.escapeHTML(ownerLabel)}</div>`;
+        var ownerSubtitleHtml = ownerUsername
+            ? `<button type="button" class="card-subtitle external-tests-owner-subtitle external-tests-owner-link notranslate" onclick="event.stopPropagation(); return openTelegramProfile('${safeOwnerUsernameInline}', event)">${window.escapeHTML(ownerLabel)}</button>`
+            : `<div class="card-subtitle external-tests-owner-subtitle">${window.escapeHTML(ownerLabel)}</div>`;
         var dayChipHtml = `<span class="meta-chip">${window.escapeHTML(window.t('externalTrackDayLabel', { day: displayDay }, lang))}</span>`;
         var originChipHtml = (!!test.is_external && !!String(test.external_source || '').trim())
             ? renderGuestOriginChip(test.external_source)
+            : '';
+        var chipsHtml = (originChipHtml || dayChipHtml)
+            ? `<div class="external-tests-chips">${originChipHtml}${dayChipHtml}</div>`
             : '';
         var primaryActionLabel = statusMeta.isPostControlWindow && !isContinuedExternal
             ? window.t('externalProjectContinueBtn', {}, lang)
@@ -1554,6 +1929,12 @@ function renderExternalGuestTestsSection() {
         var primaryActionClick = statusMeta.isPostControlWindow && !isContinuedExternal
             ? `activateExternalContinueModeFromUi(${Number(test.id || 0)}, event)`
             : `sendExternalDailyCheckinFromUi(${Number(test.id || 0)}, event)`;
+        var phaseDoneNotice = !meta.nextControlDay;
+        var statusExtraClass = (phaseDoneNotice && !isDoneToday) ? ' external-tests-status--phase-done' : '';
+        var substatusExtraClass = (phaseDoneNotice && isDoneToday) ? ' external-tests-status--phase-done' : '';
+        var lastCheckinHtml = statusMeta.lastCheckinText
+            ? `<div class="external-tests-last-checkin">${window.escapeHTML(statusMeta.lastCheckinText)}</div>`
+            : '';
         var actionsHtml = '';
         if (!isDoneToday) {
             if (showPost14Choice) {
@@ -1585,20 +1966,18 @@ function renderExternalGuestTestsSection() {
                         ${renderTestAvatarWithPhaseBadge(test, lang)}
                         <div class="card-info" onclick="openProjectDetailsModal(${test.id}); event.stopPropagation();" style="cursor: pointer;">
                             <div class="card-title notranslate">${safeName}</div>
-                            <div class="card-subtitle notranslate">${safePackage}</div>
+                            ${ownerSubtitleHtml}
                         </div>
                     </div>
                     <div onclick="event.stopPropagation();" style="display: flex; align-items: center;">
                         ${renderTestCardDetailsButton(test.id)}
                     </div>
                 </div>
-                <div class="external-tests-topline">
-                    ${ownerLabelHtml}
-                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${originChipHtml}${dayChipHtml}</div>
-                </div>
-                ${showPost14Choice ? '' : `<div class="external-tests-status">${window.escapeHTML(statusMeta.statusText)}</div>`}
-                ${showPost14Choice ? '' : `<div class="external-tests-substatus">${window.escapeHTML(statusMeta.substatusText)}</div>`}
+                ${chipsHtml}
+                ${showPost14Choice ? '' : `<div class="external-tests-status${statusExtraClass}">${window.escapeHTML(statusMeta.statusText)}</div>`}
+                ${showPost14Choice || !statusMeta.substatusText ? '' : `<div class="external-tests-substatus${substatusExtraClass}">${window.escapeHTML(statusMeta.substatusText)}</div>`}
                 ${actionsHtml}
+                ${lastCheckinHtml}
             </div>
         `;
     }).join('');
@@ -1625,6 +2004,8 @@ function renderTests(force) {
     let activeCount = 0;
     let doneCount = 0;
     let pendingCount = 0;
+    let pendingGrantCount = 0;
+    let pendingActionCount = 0;
     const externalGuestTestsCount = renderExternalGuestTestsSection();
 
     myTests.forEach((test) => {
@@ -1635,13 +2016,21 @@ function renderTests(force) {
         
         const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
         const userTestingDay = getResolvedTestingDay(test);
-        const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+        // Soft-kick cards need an explicit archive action — keep them visible even
+        // when the linked project is no longer in an "active buffer" state.
+        // Day>=15 alone must NOT park kicked leftovers from a previous cycle here.
+        const isInSafetyBuffer = (test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail)
+            ? true
+            : (isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid));
         
         const isPendingForTester = isInSafetyBuffer;
         const isArchivedOrCompleted = !isExternal && String(test.app_status || 'active').toLowerCase() !== 'active' && !isInSafetyBuffer;
         // Skip archived cards with no actionable state (no grant, no early finish bonus).
         // This prevents cards from hanging in My Tests when neither reward applies.
         const isArchivedWithNoAction = isArchivedOrCompleted
+            && !test.is_kicked_soft
+            && !test.is_unlinked_soft
+            && !test.is_soft_tail
             && !test.isReadyToClaim
             && !test.isGrantAvailableTomorrow
             && !test.isEarlyFinish;
@@ -1659,8 +2048,14 @@ function renderTests(force) {
         // - Else if status='done': go to done list
         // - Else: go to active list
         const shouldShowInPendingList = isInSafetyBuffer;
-        const shouldShowInActiveList = !shouldShowInPendingList && (test.isReadyToClaim || test.isEarlyFinish || (test.status !== 'done' && !test.isGrantAvailableTomorrow));
-        const shouldShowInDoneList = !shouldShowInPendingList && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
+        const isSoftTailCard = !!(test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail);
+        const shouldShowInActiveList = !shouldShowInPendingList && (
+            isSoftTailCard
+            || test.isReadyToClaim
+            || test.isEarlyFinish
+            || (test.status !== 'done' && !test.isGrantAvailableTomorrow)
+        );
+        const shouldShowInDoneList = !shouldShowInPendingList && !isSoftTailCard && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
         
         if (shouldShowInPendingList) {
             card.className = 'card card-pending-release pending-release-carousel-card horizontal-card';
@@ -1683,10 +2078,72 @@ function renderTests(force) {
         const safeOwnerSubtitle = window.escapeHTML(buildTestOwnerSubtitle(test));
         const langBadge = (test.target_lang && test.target_lang !== 'ALL') ? getLangBadge(test.target_lang) : '';
         const shouldShowIssueOnCard = test.status === 'new' && !!test.has_clicked_store;
-        const issueBtnDisplay = shouldShowIssueOnCard ? 'inline-flex' : 'none';
+        const issueBtnDisplay = shouldShowIssueOnCard ? 'block' : 'none';
         const isIssueBlocked = !!test.issue_reported_at && !test.issue_fixed_at;
-        const issueBtnText = isIssueBlocked ? getIssueAwaitingFixLabel(test) : ('🚨 ' + window.t('reportIssueBtnLabel', {}, lang));
-        const issueBtnHtml = `<button id="btn-issue-${test.id}" class="btn" style="display:${issueBtnDisplay}; width:100%; margin-top:8px; background:rgba(255,59,48,0.12); color:#ff6b63; border:1px solid rgba(255,59,48,0.35);" onclick="openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>${issueBtnText}</button>`;
+        const issueToggleText = '🚨 ' + window.t('accessProblemToggle', {}, lang);
+        const freezeBtnText = isIssueBlocked
+            ? getIssueAwaitingFixLabel(test)
+            : window.t('accessProblemFreezeBtn', {}, lang);
+        const recheckGroupText = window.t('accessProblemRecheckGroupBtn', {}, lang);
+        const groupUrlForIssue = String(test.google_group_url || window.DEFAULT_GOOGLE_GROUP_URL || '');
+        const isCustomGroupForIssue = String(test.test_mode || '') !== 'email_list'
+            && typeof isDefaultGoogleGroupUrl === 'function'
+            && !isDefaultGoogleGroupUrl(groupUrlForIssue);
+        const waitRemainingMs = isCustomGroupForIssue && typeof getCustomGroupAccessWaitRemainingMs === 'function'
+            ? getCustomGroupAccessWaitRemainingMs(test.id)
+            : 0;
+        const waitClockText = typeof formatCustomGroupAccessWaitClock === 'function'
+            ? formatCustomGroupAccessWaitClock(waitRemainingMs || (15 * 60 * 1000))
+            : '15:00';
+        const waitHintHtml = isCustomGroupForIssue
+            ? `<div class="access-problem-wait" data-custom-group-wait="${test.id}"${waitRemainingMs > 0 ? '' : ' hidden'}>`
+                + `<div class="access-problem-wait__clock" data-custom-group-wait-clock="${test.id}">${waitClockText}</div>`
+                + `<div class="access-problem-wait__copy">`
+                + `<strong>${window.escapeHTML(window.t('accessProblemWaitTitle', {}, lang))}</strong>`
+                + `<span>${window.escapeHTML(window.t('accessProblemWaitText', {}, lang))}</span>`
+                + `</div></div>`
+            : '';
+        const isAccessAccordionOpen = typeof isAccessProblemAccordionOpen === 'function'
+            && isAccessProblemAccordionOpen(test.id);
+        const accessAccordionExpanded = isAccessAccordionOpen ? 'true' : 'false';
+        const accessAccordionOpenClass = isAccessAccordionOpen ? ' is-open' : '';
+        const showInlineWait = isCustomGroupForIssue && waitRemainingMs > 0 && !isAccessAccordionOpen;
+        const inlineWaitHtml = isCustomGroupForIssue
+            ? `<span class="access-problem-toggle__inline-wait" data-custom-group-wait-toggle="${test.id}"${showInlineWait ? '' : ' hidden'}>`
+                + `• <span class="access-problem-toggle__inline-wait-clock" data-custom-group-wait-toggle-clock="${test.id}">${waitClockText}</span>`
+                + `</span>`
+            : '';
+        const issueBtnHtml = `
+            <div id="access-problem-wrap-${test.id}" class="access-problem-wrap" style="display:${issueBtnDisplay};">
+                <button type="button" id="access-problem-toggle-${test.id}" class="access-problem-toggle${accessAccordionOpenClass}" onclick="event.stopPropagation(); toggleAccessProblemAccordion(${test.id})" aria-expanded="${accessAccordionExpanded}">
+                    <span class="access-problem-toggle__label">${window.escapeHTML(issueToggleText)}</span>${inlineWaitHtml}
+                </button>
+                <div id="access-problem-panel-${test.id}" class="access-problem-panel${accessAccordionOpenClass}" aria-hidden="${isAccessAccordionOpen ? 'false' : 'true'}">
+                    <img class="access-problem-panel__image" src="./images/SomethingWentWrong.jpg" alt="">
+                    <div class="access-problem-panel__body">
+                        ${waitHintHtml}
+                        <div class="access-problem-panel__title">${window.escapeHTML(window.t('accessProblemTitle', {}, lang))}</div>
+                        <div class="access-problem-panel__hint">${window.escapeHTML(window.t('accessProblemHint', {}, lang))}</div>
+                        <div class="apstep-flow">
+                            <div class="apstep">
+                                <button type="button" class="apstep__row apstep__row--group" onclick="event.stopPropagation(); openAccessProblemGroupLink(${test.id})">
+                                    <span class="apstep__num">1</span>
+                                    <span class="apstep__glyph" aria-hidden="true">${accessProblemMaterialIcon('groups')}</span>
+                                    <span class="apstep__label">${window.escapeHTML(recheckGroupText)}</span>
+                                </button>
+                            </div>
+                            <div class="apstep">
+                                <button type="button" id="access-problem-freeze-${test.id}" class="apstep__row apstep__row--freeze" onclick="event.stopPropagation(); openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>
+                                    <span class="apstep__num">2</span>
+                                    <span class="apstep__glyph" aria-hidden="true">${accessProblemMaterialIcon('ac_unit')}</span>
+                                    <span class="apstep__label">${window.escapeHTML(freezeBtnText)}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
         const pendingReleaseButtonHtml = `
             <button type="button" class="btn btn-secondary pending-release-chip" style="width: 100%; margin-bottom: 12px;" onclick="showPendingReleaseInfo()">
                 ${window.escapeHTML(window.t('pendingReleaseChip', {}, lang))}
@@ -1698,8 +2155,64 @@ function renderTests(force) {
         const isFeedbackCheckinPending = typeof isTestFeedbackCheckinPending === 'function' && isTestFeedbackCheckinPending(test.id);
         const feedbackPendingBtnLabel = (typeof getFeedbackCheckinPendingLabel === 'function' ? getFeedbackCheckinPendingLabel() : window.t('feedbackCheckinPendingBtn', {}, lang));
         const feedbackPendingBtnStyle = 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;';
-        
-        if (isExternal) {
+
+        if (test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail) {
+            const leaveReasonRaw = String(test.leave_reason || '').trim();
+            const isUnlinkedSoft = !!(test.is_unlinked_soft || String(test.progress_status || '').toLowerCase() === 'canceled_neutral');
+            const isSafeBreakKick = !isUnlinkedSoft && /safe_break_kick/i.test(leaveReasonRaw);
+            const isDisputedKick = !isUnlinkedSoft && !isSafeBreakKick && /disputed_active_kick/i.test(leaveReasonRaw);
+            const isJustifiedKick = !isUnlinkedSoft && !isSafeBreakKick && /justified_inactive_kick/i.test(leaveReasonRaw);
+            let reasonDisplay = formatKickLeaveReason(leaveReasonRaw, lang);
+            if (!reasonDisplay && leaveReasonRaw && !isUnlinkedSoft) {
+                reasonDisplay = leaveReasonRaw;
+            }
+            const bannerTitle = isUnlinkedSoft
+                ? window.t('unlinkedSoftBannerTitle', {}, lang)
+                : window.t('kickedSoftBannerTitle', {}, lang);
+            const bannerDesc = isUnlinkedSoft
+                ? window.t('unlinkedSoftBannerDesc', {}, lang)
+                : window.t('kickedSoftBannerDesc', {}, lang);
+            const penaltyHtml = isUnlinkedSoft
+                ? ''
+                : (isSafeBreakKick
+                    ? `<div class="kicked-soft-penalty is-safe" onclick="showKickPenaltyDetailsModal(${Number(test.id)}, 'tester')" role="button" tabindex="0" title="Нажмите для анализа метрик">
+                        <span class="kicked-soft-penalty-icon">🛡</span>
+                        <span>${window.escapeHTML(window.t('kickedSoftPenaltySafeBreak', {}, lang) || 'Безопасное окно • Без списаний')}</span>
+                        <span class="kicked-soft-penalty-info">ℹ</span>
+                      </div>`
+                    : (isDisputedKick
+                        ? `<div class="kicked-soft-penalty is-disputed" onclick="showKickPenaltyDetailsModal(${Number(test.id)}, 'tester')" role="button" tabindex="0" title="Нажмите для анализа метрик">
+                            <span class="kicked-soft-penalty-icon">⚖️</span>
+                            <span>${window.escapeHTML(window.t('kickedSoftPenaltyDisputed', {}, lang))}</span>
+                            <span class="kicked-soft-penalty-info">ℹ</span>
+                          </div>`
+                        : (isJustifiedKick
+                            ? `<div class="kicked-soft-penalty is-justified" onclick="showKickPenaltyDetailsModal(${Number(test.id)}, 'tester')" role="button" tabindex="0" title="Нажмите для анализа метрик">
+                                <span class="kicked-soft-penalty-icon">📋</span>
+                                <span>${window.escapeHTML(window.t('kickedSoftPenaltyNone', {}, lang))}</span>
+                                <span class="kicked-soft-penalty-info">ℹ</span>
+                              </div>`
+                            : '')));
+            const reasonHtml = (!isUnlinkedSoft && reasonDisplay)
+                ? `<div class="kicked-soft-reason">${window.escapeHTML(window.t('kickedSoftReasonLabel', { reason: reasonDisplay }, lang))}</div>`
+                : '';
+            actionsHtml = `
+                <div class="kicked-soft-banner">
+                    <div class="kicked-soft-title">${window.escapeHTML(bannerTitle)}</div>
+                    <div class="kicked-soft-desc">${window.escapeHTML(bannerDesc)}</div>
+                    ${reasonHtml}
+                    ${penaltyHtml}
+                </div>
+                <div class="kicked-soft-actions">
+                    <button type="button" class="btn btn-kicked-uninstall" onclick="openKickedTestPlayStore(${Number(test.id)})">
+                        ${window.escapeHTML(window.t('kickedSoftUninstallBtn', {}, lang))}
+                    </button>
+                    <button type="button" class="btn btn-kicked-archive" onclick="dismissKickedTestCard(${Number(test.id)}, ${Number(test.progress_id || 0)})">
+                        ${window.escapeHTML(window.t('kickedSoftArchiveBtn', {}, lang))}
+                    </button>
+                </div>
+            `;
+        } else if (isExternal) {
             var isContinuedExternal = isExternalContinueModeEnabled(test);
             if (isContinuedExternal) {
                 actionsHtml = renderExternalContinuedActions(test, safePackage, safeOwnerUsername);
@@ -1708,8 +2221,8 @@ function renderTests(force) {
                 var isExternalScreenshotOnlyDay = isScreenshotOnlyControlDay(externalTestingDay);
                 var externalConfirmLabel = isExternalScreenshotOnlyDay
                     ? window.t('screenshotBtn', {}, lang)
-                    : '✅ ' + window.t('completeControlDayBtn', {}, lang);
-                var externalWarningText = window.t(isExternalScreenshotOnlyDay ? 'firstDayScreenshotWarning' : 'screenshotWarning', {}, lang);
+                    : window.t('completeControlDayBtn', {}, lang);
+                var externalWarningText = '';
                 actionsHtml = `
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}', 10)">
@@ -1718,9 +2231,9 @@ function renderTests(force) {
                         <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
                             ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : window.escapeHTML(externalConfirmLabel)}
                         </button>
-                        <div style="color: #ff3b30; font-size: 13px; text-align: center;">
+                        ${externalWarningText ? `<div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             ${window.escapeHTML(externalWarningText)}
-                        </div>
+                        </div>` : ''}
                     </div>
                 `;
             }
@@ -1745,7 +2258,7 @@ function renderTests(force) {
                 if (isScreenshotDay) {
                     secondaryActions += `
                         <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
-                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : '✅ ' + window.t('completeControlDayBtn', {}, lang)}
+                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : window.t('completeControlDayBtn', {}, lang)}
                         </button>
                     `;
                 } else {
@@ -1781,8 +2294,12 @@ function renderTests(force) {
         } else if (test.isEarlyFinish) {
             const efDays = Number(test.testing_days || 0);
             const efSkips = Number(test.skips_count || 0);
-            const actualCheckins = efDays - efSkips;
-            const qualifies = actualCheckins >= 3 && efSkips <= 3;
+            const actualCheckins = typeof countEarlyFinishCheckins === 'function'
+                ? countEarlyFinishCheckins(test)
+                : Math.max(0, Number(test.checkins_count || 0));
+            const qualifies = typeof qualifiesEarlyFinishGrant === 'function'
+                ? qualifiesEarlyFinishGrant(test, efDays, efSkips)
+                : (actualCheckins >= 3 && efSkips <= 3 && efDays < 14);
 
             if (!qualifies) {
                 // Тестер не квалифицируется — карточка не отображается совсем
@@ -1801,28 +2318,25 @@ function renderTests(force) {
                 }
 
                 actionsHtml = `
-                    <div class="early-finish-banner" style="gap: 10px;">
-                        <!-- HEADER: big icon | title+subtitle | reliability number -->
-                        <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255, 149, 0, 0.15); padding-bottom: 10px;">
-                            <span style="font-size: 36px; line-height: 1; flex-shrink: 0;">🏁</span>
-                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;">
-                                <span style="font-size: 15px; font-weight: 700; color: #ff9500; line-height: 1.2;">${window.t('earlyFinishCardTitle', {}, lang)}</span>
-                                <span style="font-size: 11px; color: var(--hint-color); font-weight: 500; line-height: 1.3;">${lang === 'ru' ? 'Индекс надёжности разработчика' : 'Developer Reliability Index'}</span>
+                    <div class="early-finish-banner">
+                        <div class="early-finish-header-row">
+                            <div class="early-finish-title-block">
+                                <span class="early-finish-icon" aria-hidden="true">🏁</span>
+                                <span class="early-finish-title">${window.escapeHTML(window.t('earlyFinishCardTitle', {}, lang))}</span>
                             </div>
-                            <span style="font-size: 26px; font-weight: 800; color: ${devReliabilityColor}; flex-shrink: 0; line-height: 1;">${devReliability}</span>
+                            <div class="early-finish-reliability" title="${window.escapeHTML(window.t('earlyFinishReliabilityLabel', {}, lang))}">
+                                <span class="early-finish-reliability__label">${window.escapeHTML(window.t('earlyFinishReliabilityLabel', {}, lang))}</span>
+                                <span class="early-finish-reliability__value" style="color: ${devReliabilityColor};">${devReliability}</span>
+                            </div>
                         </div>
-                        <!-- DESCRIPTION -->
-                        <div class="early-finish-desc" style="font-size: 13px; color: var(--text-color); line-height: 1.5;">
+                        <div class="early-finish-desc">
                             ${window.t('earlyFinishCardDesc', {}, lang)}
                         </div>
-                        <!-- BUTTON + stats as subtitle -->
-                        <div style="display: flex; flex-direction: column; align-items: stretch; gap: 4px;">
+                        <div class="early-finish-actions">
                             <button id="btn-early-finish-${test.id}" class="btn btn-early-finish" onclick="claimEarlyFinishBonus(${test.progress_id}, ${test.id})">
-                                ${window.t('earlyFinishClaimBtn', {}, lang)}
+                                ${window.escapeHTML(window.t('earlyFinishClaimBtn', {}, lang))}
                             </button>
-                            <div style="text-align: center; font-size: 11px; font-weight: 400; color: var(--hint-color); line-height: 1.4;">
-                                ${efMetaLabel}
-                            </div>
+                            <div class="early-finish-meta">${window.escapeHTML(efMetaLabel)}</div>
                         </div>
                     </div>
                 `;
@@ -1830,47 +2344,9 @@ function renderTests(force) {
         }
         // State B: status = 'new' OR status = 'daily'/'opened' without ready to claim
         else if (test.status === 'new') {
-            const groupUrl = test.google_group_url || 'https://groups.google.com/g/google-play-dev-test';
-            const safeGroupUrl = escapeInlineJsString(groupUrl);
-            const shouldShowScreenshotAction = window.isFirstDayScreenshotVisible ? window.isFirstDayScreenshotVisible(test.id) : false;
             const hintHtml = renderCheckinRewardHint(test, 1, lang);
-
-            let groupActionHtml = '';
-            if (test.test_mode === 'email_list') {
-                const badgeTitle = lang === 'ru' ? '📧 Тестирование по Email' : '📧 Testing by Email';
-                const badgeSubtitle = lang === 'ru'
-                    ? 'Разработчик должен был уже добавить ваш email в Play Console. Просто скачайте приложение.'
-                    : 'The developer should have already added your email in the Play Console. Just download the app.';
-                groupActionHtml = `
-                    <div class="email-testing-badge" style="background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.2); border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: center;">
-                        <div style="font-weight: bold; color: var(--accent-color, #007aff); font-size: 14px; margin-bottom: 4px;">${badgeTitle}</div>
-                        <div style="font-size: 12px; color: var(--hint-color, #8e8e93); line-height: 1.3;">${badgeSubtitle}</div>
-                    </div>
-                `;
-            } else {
-                groupActionHtml = `
-                    <div class="first-day-row">
-                        <button class="btn first-day-btn" style="flex: 1;" onclick="try { tg.openLink('${safeGroupUrl}', { try_browser: 'chrome' }); } catch(err) { console.error('Failed to open group link:', err); } if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged();">${t.joinGroup}</button>
-                        <button class="btn-icon first-day-copy" style="width: 44px; min-height: 44px; font-size: 18px;" onclick="copyGroupUrl('${safeGroupUrl}')">📋</button>
-                    </div>
-                `;
-            }
-
             actionsHtml = `
-                <div class="first-day-actions">
-                    ${groupActionHtml}
-                    <button class="btn first-day-btn" style="width: 100%;" onclick="handleFirstDownload(${test.id}, '${safePackage}')">
-                        ${t.downloadPlay}
-                    </button>
-                    <div id="new-screenshot-box-${test.id}" style="display: ${shouldShowScreenshotAction ? 'block' : 'none'};">
-                        <button id="btn-confirm-${test.id}" class="btn btn-success first-day-btn" style="width: 100%;" onclick="handleScreenshotAndConfirm(${test.id}, '${safeOwnerUsername}')">
-                            ${window.escapeHTML(window.t('screenshotBtn', {}, lang))}
-                        </button>
-                        <div style="color: #ff3b30; font-size: 13px; margin-top: 8px; text-align: center;">
-                            ${window.escapeHTML(window.t('firstDayScreenshotWarning', {}, lang))}
-                        </div>
-                    </div>
-                </div>
+                ${renderFirstDaySteps(test, safePackage, safeOwnerUsername)}
                 ${issueBtnHtml}
                 ${hintHtml}
             `;
@@ -1899,33 +2375,33 @@ function renderTests(force) {
                 const isScreenshotOnlyDay = isScreenshotOnlyControlDay(testingDay);
                 const screenshotBtnText = isScreenshotOnlyDay
                     ? window.t('screenshotBtn', {}, lang)
-                    : '✅ ' + window.t('completeControlDayBtn', {}, lang);
-                const screenshotWarningText = window.t(isScreenshotOnlyDay ? 'firstDayScreenshotWarning' : 'screenshotWarning', {}, lang);
+                    : window.t('completeControlDayBtn', {}, lang);
+                const screenshotWarningText = '';
 
                 if (isScreenshotDay) {
                     const confirmLabel = isFeedbackCheckinPending
                         ? feedbackPendingBtnLabel
                         : (isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText);
                     actionsHtml = `
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <button class="btn btn-secondary" style="width: 100%; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
+                        <div class="checkin-actions checkin-actions--stacked">
+                            <button class="btn btn-secondary checkin-open-btn" style="width: 100%;" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
-                            <button id="btn-confirm-${test.id}" class="btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
+                            <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
                                 ${window.escapeHTML(confirmLabel)}
                             </button>
-                            <div style="color: #ff3b30; font-size: 13px; text-align: center;">
+                            ${screenshotWarningText ? `<div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${window.escapeHTML(screenshotWarningText)}
-                            </div>
+                            </div>` : ''}
                         </div>
                     `;
                 } else if (isFeedbackCheckinPending) {
                     actionsHtml = `
                         <div class="action-row">
-                            <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
+                            <button class="btn btn-secondary checkin-open-btn" style="flex: 1;" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
-                            <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; ${feedbackPendingBtnStyle}" disabled data-feedback-pending="1">
+                            <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="flex: 2; ${feedbackPendingBtnStyle}" disabled data-feedback-pending="1">
                                 ${window.escapeHTML(feedbackPendingBtnLabel)}
                             </button>
                         </div>
@@ -1933,10 +2409,10 @@ function renderTests(force) {
                 } else {
                     actionsHtml = `
                         <div class="action-row">
-                            <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
+                            <button class="btn btn-secondary checkin-open-btn" style="flex: 1;" onclick="startTimer(${test.id}, '${safePackage}', false, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
-                            <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
+                            <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="flex: 2;" disabled>
                                 ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : t.confirmStart}
                             </button>
                         </div>
@@ -1964,8 +2440,8 @@ function renderTests(force) {
             ? `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;" onclick="event.stopPropagation();">${headerActions.join('')}</div>`
             : '';
 
-        const doneBadgeHtml = test.status === 'done' && !test.isReadyToClaim
-            ? '<div class="done-status-pill">' + window.escapeHTML(t.doneTodayText) + '</div><div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
+        const doneBadgeHtml = test.status === 'done' && !test.isReadyToClaim && !test.is_kicked_soft
+            ? '<div class="done-watermark">' + window.escapeHTML(window.t('doneWatermarkText', {}, lang)) + '</div>'
             : '';
         const externalMetaChips = [];
         if (isExternal) {
@@ -2004,8 +2480,16 @@ function renderTests(force) {
             card.innerHTML = cardContent;
             doneList.appendChild(card);
             doneCount++;
-        } else if (shouldShowInPendingList) {
+        } else         if (shouldShowInPendingList) {
             card.innerHTML = cardContent;
+            if (test.isReadyToClaim) {
+                card.dataset.grantReady = '1';
+                pendingGrantCount++;
+            }
+            if (test.is_kicked_soft || test.isReadyToClaim) {
+                card.dataset.actionRequired = '1';
+                pendingActionCount++;
+            }
             if (pendingList) pendingList.appendChild(card);
             pendingCount++;
         } else if (shouldShowInActiveList) {
@@ -2015,8 +2499,39 @@ function renderTests(force) {
         }
     });
 
-    if (pendingCountNode) pendingCountNode.innerText = pendingCount;
-    if (pendingSection) pendingSection.style.display = pendingCount > 0 ? 'block' : 'none';
+    if (pendingList && pendingList.children.length > 1) {
+        const pendingCards = Array.from(pendingList.children);
+        pendingCards.sort(function(a, b) {
+            const actionDelta = Number(b.dataset.actionRequired || 0) - Number(a.dataset.actionRequired || 0);
+            if (actionDelta !== 0) return actionDelta;
+            return Number(b.dataset.grantReady || 0) - Number(a.dataset.grantReady || 0);
+        });
+        pendingCards.forEach(function(card) {
+            pendingList.appendChild(card);
+        });
+    }
+
+    const pendingNeedsAttention = pendingActionCount > 0;
+    if (pendingCountNode) {
+        pendingCountNode.innerText = pendingCount;
+        pendingCountNode.classList.toggle('has-grant-attention', pendingNeedsAttention);
+    }
+    if (pendingSection) {
+        pendingSection.style.display = pendingCount > 0 ? 'block' : 'none';
+        pendingSection.classList.toggle('has-grant-attention', pendingNeedsAttention);
+        pendingSection.classList.toggle('has-action-attention', pendingNeedsAttention);
+        const pendingHeader = pendingSection.querySelector('.pending-release-section__header');
+        if (pendingHeader) {
+            pendingHeader.setAttribute(
+                'aria-expanded',
+                pendingSection.classList.contains('is-collapsed') ? 'false' : 'true'
+            );
+        }
+        const pendingDesc = document.getElementById('t-pendingReleaseSectionDesc');
+        if (pendingDesc) {
+            refreshPendingReleaseSectionDesc(pendingNeedsAttention);
+        }
+    }
     if (pendingScrollWrap) pendingScrollWrap.classList.toggle('is-single', pendingCount <= 1);
 
     _updateDoneSectionVisibility(doneCount);
@@ -2033,6 +2548,99 @@ function renderTests(force) {
 
     if (window._restoreActiveTimer) window._restoreActiveTimer();
     if (typeof reapplyAllFeedbackCheckinPendingUi === 'function') reapplyAllFeedbackCheckinPendingUi();
+    if (typeof restoreAccessProblemAccordions === 'function') restoreAccessProblemAccordions();
+    refreshMyTestsSectionHandoffs();
+}
+
+function _isMyTestsSectionVisible(el) {
+    if (!el) return false;
+    if (el.hidden) return false;
+    if (String(el.style && el.style.display || '').toLowerCase() === 'none') return false;
+    try {
+        var cs = window.getComputedStyle(el);
+        if (!cs) return true;
+        return cs.display !== 'none' && cs.visibility !== 'hidden';
+    } catch (e) {
+        return true;
+    }
+}
+
+function refreshMyTestsSectionHandoffs() {
+    var tab = document.getElementById('tab-tests');
+    if (!tab) return;
+
+    tab.querySelectorAll('.ts-handoff-glow').forEach(function(node) {
+        node.classList.remove('ts-handoff-glow');
+        node.style.removeProperty('--ts-handoff-accent');
+    });
+
+    var zones = [
+        {
+            id: 'my-tests-list',
+            accent: null,
+            isVisible: function() {
+                return !!(
+                    document.querySelector('#tests-list > .card') ||
+                    document.querySelector('#tests-list > .empty-state')
+                );
+            },
+            getTrail: function() {
+                var cards = document.querySelectorAll('#tests-list > .card');
+                if (cards.length) return cards[cards.length - 1];
+                return document.querySelector('#tests-list > .empty-state');
+            },
+        },
+        {
+            id: 'external-tests-section',
+            accent: 'var(--guest-surface-accent, #3eb9cd)',
+            isVisible: function() {
+                return _isMyTestsSectionVisible(document.getElementById('external-tests-section'));
+            },
+            getTrail: function() {
+                var section = document.getElementById('external-tests-section');
+                if (section && section.classList.contains('is-collapsed')) {
+                    return section.querySelector('.external-tests-section__header') || section;
+                }
+                return document.getElementById('external-tests-scroll-wrap') || section;
+            },
+        },
+        {
+            id: 'pending-release-section',
+            accent: '#ffb84d',
+            isVisible: function() {
+                return _isMyTestsSectionVisible(document.getElementById('pending-release-section'));
+            },
+            getTrail: function() {
+                var section = document.getElementById('pending-release-section');
+                if (section && section.classList.contains('is-collapsed')) {
+                    return section.querySelector('.pending-release-section__header') || section;
+                }
+                return document.getElementById('pending-release-scroll-wrap') || section;
+            },
+        },
+        {
+            id: 'done-section',
+            accent: '#34c759',
+            isVisible: function() {
+                return _isMyTestsSectionVisible(document.getElementById('done-section'));
+            },
+            getTrail: function() { return null; },
+        },
+    ];
+
+    var visible = zones.filter(function(zone) {
+        return typeof zone.isVisible === 'function' && zone.isVisible();
+    });
+
+    for (var i = 1; i < visible.length; i++) {
+        var nextZone = visible[i];
+        var prevZone = visible[i - 1];
+        if (!nextZone.accent || typeof prevZone.getTrail !== 'function') continue;
+        var trail = prevZone.getTrail();
+        if (!trail) continue;
+        trail.classList.add('ts-handoff-glow');
+        trail.style.setProperty('--ts-handoff-accent', nextZone.accent);
+    }
 }
 
 function renderCompletedTests(completedTests) {
@@ -2059,7 +2667,7 @@ function renderCompletedTests(completedTests) {
         if (isRegularTestingPhaseCard(test)) {
             headerActions.push(renderTestCardDetailsButton(test.id));
         }
-        headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="${isMutualExitFlow(test) ? `openLeaveMutualModal(${test.id}, event)` : `openDropTestModal(${test.id}, event)`}">🗑️</button>`);
+        headerActions.push(`<button class="btn-icon" style="width: 36px; height: 36px; font-size: 16px; border: none; background: transparent; color: #ff3b30;" onclick="openLeaveOrDropFromTest(${test.id}, event)">🗑️</button>`);
         const ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;" onclick="event.stopPropagation();">${headerActions.join('')}</div>`;
 
         let devInfoHtml = '';
@@ -2073,7 +2681,6 @@ function renderCompletedTests(completedTests) {
         }
 
         let cardContent = `
-            <div class="done-status-pill">${window.escapeHTML(t.doneTodayText)}</div>
             <div class="done-watermark">${window.escapeHTML(window.t('doneWatermarkText', {}, lang))}</div>
             <div class="card-header" onclick="openProjectDetailsModal(${test.id})" style="cursor: pointer; user-select: none;">
                 <div class="card-header-main">
@@ -2113,10 +2720,114 @@ function _updateDoneSectionVisibility(doneCount) {
     var testsTab = document.getElementById('tab-tests');
     var isTestsActive = !!(testsTab && testsTab.classList.contains('active'));
     doneSection.style.display = (isTestsActive && doneCount > 0) ? 'block' : 'none';
+    refreshMyTestsSectionHandoffs();
+}
+
+function toggleExternalTestsSection() {
+    var section = document.getElementById('external-tests-section');
+    if (!section) return;
+    var collapsed = section.classList.toggle('is-collapsed');
+    var header = section.querySelector('.external-tests-section__header');
+    if (header) header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    refreshMyTestsSectionHandoffs();
+}
+
+function refreshPendingReleaseSectionDesc(needsAttentionOverride) {
+    var section = document.getElementById('pending-release-section');
+    var pendingDesc = document.getElementById('t-pendingReleaseSectionDesc');
+    if (!section || !pendingDesc) return;
+    var needsAttention = typeof needsAttentionOverride === 'boolean'
+        ? needsAttentionOverride
+        : section.classList.contains('has-action-attention');
+    var collapsed = section.classList.contains('is-collapsed');
+    pendingDesc.textContent = (needsAttention && collapsed)
+        ? window.t('pendingReleaseSectionActionDesc', {}, lang)
+        : window.t('pendingReleaseSectionDesc', {}, lang);
+}
+
+function togglePendingReleaseSection() {
+    var section = document.getElementById('pending-release-section');
+    if (!section) return;
+    var collapsed = section.classList.toggle('is-collapsed');
+    var header = section.querySelector('.pending-release-section__header');
+    if (header) header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    refreshPendingReleaseSectionDesc();
+    if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    refreshMyTestsSectionHandoffs();
+}
+
+function resolveTestPlayStoreUrl(test) {
+    if (!test) return '';
+    var explicit = String(test.play_store_url || '').trim();
+    if (/^https?:\/\//i.test(explicit)) return explicit;
+    var pkg = String(test.package || test.package_name || test.external_package_name || '').trim();
+    if (!pkg) return '';
+    return 'https://play.google.com/store/apps/details?id=' + encodeURIComponent(pkg);
+}
+
+function openKickedTestPlayStore(appId) {
+    var safeAppId = Number(appId || 0);
+    var test = (typeof myTests !== 'undefined' && Array.isArray(myTests))
+        ? myTests.find(function(item) { return Number(item.id) === safeAppId; })
+        : null;
+    var url = resolveTestPlayStoreUrl(test);
+    if (!url) {
+        showToast(window.t('kickedSoftUninstallMissing', {}, lang));
+        return;
+    }
+    if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    try {
+        if (typeof tg !== 'undefined' && typeof tg.openLink === 'function') {
+            tg.openLink(url);
+            return;
+        }
+    } catch (e) {}
+    window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+async function dismissKickedTestCard(appId, progressId) {
+    var safeAppId = Number(appId || 0);
+    if (safeAppId <= 0) return;
+    try {
+        var response = await fetch(API_BASE + '/tests/' + safeAppId + '/dismiss_kicked', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(withInitData({})),
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+        if (typeof _removeLocalTest === 'function') {
+            _removeLocalTest(safeAppId);
+        } else {
+            myTests = (myTests || []).filter(function(test) {
+                return Number(test.id) !== safeAppId;
+            });
+        }
+        if (typeof persistTestsCacheSnapshot === 'function') {
+            persistTestsCacheSnapshot();
+        }
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        }
+        showToast(window.t('kickedSoftArchiveDone', {}, lang));
+        if (typeof window.renderTests === 'function') {
+            window.renderTests(true);
+        }
+    } catch (error) {
+        console.error('Dismiss kicked test error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
 }
 
 Object.assign(window, {
     renderEditCreatedAtMeta,
+    dismissKickedTestCard,
+    openKickedTestPlayStore,
+    resolveTestPlayStoreUrl,
     renderEvents,
     toggleEventsExpanded,
     getUserTestingDay,
@@ -2124,6 +2835,10 @@ Object.assign(window, {
     getOwnerActiveStatus,
     isProjectSynced,
     showGrantBreakdownAlertById,
+    getGrantEstimateData,
+    buildGrantSkipDots,
+    getActiveContractPossibleTotal,
+    getContractPossibleTotalReward,
     getScreenshotReminderHtml,
     dismissProjectUpdateTip,
     renderCompactMeta,
@@ -2131,18 +2846,21 @@ Object.assign(window, {
     renderIncomingOffers,
     renderTests,
     renderCompletedTests,
+    refreshMyTestsSectionHandoffs,
     activateExternalContinueModeFromUi,
     showOwnerLastSeenToast,
     getAvailableMutualProjectsForOwner,
     getMutualOfferProjectChoicesForOwner,
     isExternalNormalCheckinDay,
     getExternalConfirmButtonClasses,
+    togglePendingReleaseSection,
+    toggleExternalTestsSection,
 });
 
 function renderCheckinRewardHint(test, testingDay, lang) {
     const isBounty = test.join_type === 'bounty';
     const isOvertime = testingDay >= 15;
-    const karmaVal = isOvertime ? '0.5' : '0.1';
+    const karmaVal = isOvertime ? '0.5' : '0';
     const holdAmount = isBounty && Number(test.bounty_per_tester || 0) > 0
         ? Math.round(Number(test.bounty_per_tester) * 0.35)
         : 0;
@@ -2166,7 +2884,7 @@ function renderCheckinRewardHint(test, testingDay, lang) {
         if (isBounty && test.bounty_per_tester > 0) {
             const calculatedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : (test.bounty_per_tester * 0.65 / 14);
             const calculatedBustFormatted = typeof formatUiAmount === 'function' ? formatUiAmount(calculatedBust, 1) : calculatedBust.toFixed(1);
-            html += `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('testerCheckinHintBoth', { bust: calculatedBustFormatted, karma: karmaVal }, lang))}</div>`;
+            html += `<div class="notranslate" style="text-align:center;margin-top:6px;font-size:12px;color:var(--hint-color);">${window.escapeHTML(window.t('testerCheckinHintBust', { bust: calculatedBustFormatted }, lang))}</div>`;
             if (testingDay === 14 && holdAmount > 0 && test.status !== 'done') {
                 html += `<div class="notranslate" style="text-align:center;margin-top:4px;font-size:11px;color:var(--hint-color);">${window.escapeHTML(window.t('holdBonusTodayHint', { amount: holdAmountFormatted }, lang))}</div>`;
             }
@@ -2180,29 +2898,100 @@ function openBountyInfoModal(testId, event) {
         event.stopPropagation();
         event.preventDefault();
     }
-    const test = myTests.find(item => item.id === testId);
+    const test = myTests.find(item => Number(item.id) === Number(testId));
     if (!test) return;
-    
+
     const bounty = Number(test.bounty_per_tester || 0);
     const checkinsReward = Math.round(bounty * 0.65);
     const holdReward = Math.round(bounty * 0.35);
-
+    const formatAmount = typeof formatBustAmount === 'function'
+        ? formatBustAmount
+        : function(value) { return String(value) + ' $BUST'; };
     const T = (key, vars) => window.t(key, vars || {}, lang) || key;
+    const grant = typeof getGrantEstimateData === 'function'
+        ? getGrantEstimateData(test)
+        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, eligible: true, total: 100 };
+    const grantTotal = Math.max(0, Number(grant.total || 0));
+    const grandTotal = bounty + grantTotal;
 
-    // Update title
-    const titleText = T('bountyModalTitle', { total: bounty });
-    const titleTextEl = document.getElementById('bounty-modal-title-text');
-    if (titleTextEl) titleTextEl.textContent = titleText;
+    const projectEl = document.getElementById('bounty-info-project');
+    if (projectEl) {
+        const safeName = window.escapeHTML(test.name || T('unknownLabel'));
+        const safePackage = window.escapeHTML(test.package_name || '');
+        const iconHtml = typeof renderIcon === 'function'
+            ? renderIcon(test.name || '', test.icon_url)
+            : '';
+        projectEl.innerHTML = iconHtml +
+            '<div class="card-info">' +
+                '<div class="card-title notranslate">' + safeName + '</div>' +
+                (safePackage ? '<div class="card-subtitle notranslate">' + safePackage + '</div>' : '') +
+            '</div>';
+    }
 
-    // Update checkins reward
-    const checkinsValEl = document.getElementById('bounty-modal-checkins-value');
-    if (checkinsValEl) checkinsValEl.textContent = `${checkinsReward} $BUST`;
+    const setText = function(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+    setText('bounty-info-title', T('activeContractRewardTitle'));
+    setText('bounty-info-intro', T('activeContractRewardIntro'));
+    setText('bounty-info-owner-total', formatAmount(bounty));
+    setText('bounty-info-owner-compact', formatAmount(bounty));
+    setText('bounty-info-checkins', formatAmount(checkinsReward));
+    setText('bounty-info-hold', formatAmount(holdReward));
+    setText('bounty-info-grand-total', '~' + formatAmount(grandTotal));
+    setText('bounty-info-grant-compact', grant.eligible === false
+        ? formatAmount(0)
+        : ('~' + formatAmount(grantTotal)));
 
-    // Update hold reward
-    const holdValEl = document.getElementById('bounty-modal-hold-value');
-    if (holdValEl) holdValEl.textContent = `${holdReward} $BUST`;
+    const setKeyText = function(selector, key) {
+        const el = document.querySelector(selector);
+        if (el) el.textContent = T(key);
+    };
+    setKeyText('#bounty-info-modal .jb-total-label', 'joinBountyTotalLabel');
+    setKeyText('#bounty-info-owner-accordion .jb-accordion-title', 'joinBountyOwnerBlockTitle');
+    setKeyText('#bounty-info-owner-accordion .jb-accordion-sub', 'joinBountyOwnerCompactSub');
+    setKeyText('#bounty-info-grant-accordion .jb-accordion-title', 'joinBountyGrantBlockTitle');
+    setKeyText('#bounty-info-grant-accordion .jb-accordion-sub', 'joinBountyGrantCompactSub');
+    setKeyText('#bounty-info-modal .join-bounty-reward-title', 'joinBountyRewardLabel');
+    setKeyText('#bounty-info-modal .join-bounty-reward-row span[data-i18n="joinBountyCheckinsLabel"]', 'joinBountyCheckinsLabel');
+    setKeyText('#bounty-info-modal .join-bounty-reward-row span[data-i18n="joinBountyHoldLabel"]', 'joinBountyHoldLabel');
+    setKeyText('#bounty-info-modal .join-bounty-reward-hint', 'joinBountyHoldAutoHint');
+    setKeyText('#bounty-info-modal .join-bounty-confirm-warning span', 'bountyModalWarningText');
+    setKeyText('#bounty-info-modal .btn.btn-primary', 'ppcModalBufferOk');
 
-    // Show modal
+    const breakdownEl = document.getElementById('bounty-info-total-breakdown');
+    if (breakdownEl) {
+        breakdownEl.innerHTML =
+            T('joinBountyContractPart') + ' <span class="jb-total-part notranslate">' + formatAmount(bounty) + '</span>' +
+            ' + ' +
+            T('joinBountyGrantPart') + ' <span class="jb-total-part notranslate">' +
+            (grant.eligible === false ? formatAmount(0) : ('~' + formatAmount(grantTotal))) +
+            '</span>';
+    }
+
+    const grantEl = document.getElementById('bounty-info-grant');
+    if (grantEl) {
+        if (typeof window._buildJoinBountyGrantPreviewHtml === 'function') {
+            grantEl.innerHTML = window._buildJoinBountyGrantPreviewHtml(grant);
+        } else if (typeof _buildJoinBountyGrantPreviewHtml === 'function') {
+            grantEl.innerHTML = _buildJoinBountyGrantPreviewHtml(grant);
+        } else {
+            grantEl.innerHTML = '';
+        }
+    }
+
+    const ownerAccordion = document.getElementById('bounty-info-owner-accordion');
+    if (ownerAccordion) ownerAccordion.open = false;
+    const grantAccordion = document.getElementById('bounty-info-grant-accordion');
+    if (grantAccordion) grantAccordion.open = false;
+    [ownerAccordion, grantAccordion].forEach(function(el) {
+        if (!el || el.dataset.jbBound) return;
+        el.dataset.jbBound = '1';
+        el.addEventListener('toggle', function() {
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        });
+    });
+
     const modal = document.getElementById('bounty-info-modal');
     if (modal) {
         modal.classList.add('active');
@@ -2372,7 +3161,11 @@ function ppcPhaseModalLeave(event) {
     closePhaseInfoModal();
     if (!test) return;
     
-    // Call the original leave modal trigger
+    // Call the unified termination sheet
+    if (typeof openLeaveOrDropFromTest === 'function') {
+        openLeaveOrDropFromTest(test.id, event);
+        return;
+    }
     if (typeof isMutualExitFlow === 'function' && isMutualExitFlow(test)) {
         if (typeof openLeaveMutualModal === 'function') openLeaveMutualModal(test.id, event);
     } else {
@@ -2380,7 +3173,186 @@ function ppcPhaseModalLeave(event) {
     }
 }
 
+function formatKickLeaveReason(leaveReasonRaw, lang) {
+    if (!leaveReasonRaw) return '';
+    let reasonDisplay = String(leaveReasonRaw || '').trim();
+    // 1. Strip all system prefixes
+    reasonDisplay = reasonDisplay
+        .replace(/^(safe_break_kick|justified_inactive_kick|disputed_active_kick|safe_exit|justified_exit|costly_exit|mutual_debt_abandoned|abandoned|dropped|kicked_by_owner|reciprocal_unlinked_(kick|leave|drop)):\s*/gi, '')
+        .replace(/^(safe_break_kick|justified_inactive_kick|disputed_active_kick|safe_exit|justified_exit|costly_exit|mutual_debt_abandoned|abandoned|dropped|kicked_by_owner|reciprocal_unlinked_(kick|leave|drop))$/gi, '')
+        .trim();
+
+    const reasonCodeMap = {
+        no_response: window.t('kickReasonNoResponse', {}, lang) || 'Нет связи',
+        inactive: window.t('kickReasonInactivity', {}, lang) || 'Не выполняет чекины',
+        inactive_partner: window.t('kickReasonInactivity', {}, lang) || 'Неактивность партнёра',
+        violation: window.t('kickReasonViolation', {}, lang) || 'Нарушение договорённостей',
+        took_by_mistake: window.t('leaveReasonMistake', {}, lang) || 'Взял проект по ошибке',
+        not_suitable: window.t('leaveReasonNotSuitable', {}, lang) || 'Не подходит',
+        other: window.t('kickReasonOther', {}, lang) || 'Другое',
+        'другое': window.t('kickReasonOther', {}, lang) || 'Другое',
+    };
+
+    const codeMatch = reasonDisplay.match(/^(no_response|inactive_partner|inactive|violation|took_by_mistake|not_suitable|other|другое)(?:\s*:\s*(.*))?$/i);
+    if (codeMatch) {
+        const key = String(codeMatch[1] || '').toLowerCase();
+        const mapped = reasonCodeMap[key] || codeMatch[1];
+        const note = String(codeMatch[2] || '').trim();
+        if (note) {
+            const cleanNote = note.replace(/^(other|другое):\s*/i, '').trim();
+            if (key === 'other' || key === 'другое') {
+                return cleanNote ? (mapped + ': ' + cleanNote) : mapped;
+            }
+            return cleanNote ? (mapped + ' (' + cleanNote + ')') : mapped;
+        }
+        return mapped;
+    }
+    return reasonDisplay;
+}
+window.formatKickLeaveReason = formatKickLeaveReason;
+
+function showKickPenaltyDetailsModal(testId, role) {
+    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+    var test = null;
+    if (Array.isArray(window.myTests)) {
+        test = window.myTests.find(function(t) { return Number(t.id || t.app_id || 0) === Number(testId); });
+    }
+    if (!test) return;
+
+    var leaveReason = String(test.leave_reason || '').trim();
+    var isSafeBreak = /safe_break_kick/i.test(leaveReason);
+    var isDisputed = !isSafeBreak && /disputed_active_kick/i.test(leaveReason);
+    var checkins = Number(test.checkins_count != null ? test.checkins_count : (test.checkins || 0));
+    var skips = Number(test.skips_count != null ? test.skips_count : 0);
+
+    var statusText = isSafeBreak
+        ? (window.t('kickDetailsTesterStatusSafeBreak', {}, lang) || 'Безопасный период (<24ч от старта)')
+        : (isDisputed
+            ? window.t('kickDetailsTesterStatusActive', {}, lang)
+            : window.t('kickDetailsTesterStatusInactive', {}, lang));
+    var statusClass = isSafeBreak ? 'safe' : (isDisputed ? 'active' : 'inactive');
+
+    var skipsValueText = isSafeBreak
+        ? (window.t('kickDetailsSkipsValueSafeBreak', { skips: skips }, lang) || (skips + ' (в пределах безопасного окна)'))
+        : (isDisputed
+            ? window.t('kickDetailsSkipsValueDisputed', { skips: skips }, lang)
+            : window.t('kickDetailsSkipsValueJustified', { skips: skips }, lang));
+
+    var riPenalty = Number(test.ri_penalty || (test.bad_periods_count && test.bad_periods_count >= 1 ? 15 : 8));
+    if (!(riPenalty > 0)) riPenalty = 8;
+
+    // Tester metrics
+    var testerBadgeText = isSafeBreak
+        ? (window.t('kickDetailsStatusSafe', {}, lang) || 'Безопасно')
+        : (isDisputed
+            ? window.t('kickDetailsStatusProtected', {}, lang)
+            : window.t('kickDetailsStatusInactivity', {}, lang));
+    var testerBadgeClass = (isSafeBreak || isDisputed) ? 'safe' : 'warning';
+
+    var testerKarmaVal = (isSafeBreak || isDisputed)
+        ? window.t('kickDetailsKarmaProtected', {}, lang)
+        : window.t('kickDetailsKarmaJustifiedTester', {}, lang);
+    var testerKarmaClass = (isSafeBreak || isDisputed) ? 'neutral' : 'danger';
+
+    var testerRiVal = isSafeBreak
+        ? (window.t('kickDetailsRiSafeBreak', {}, lang) || 'Без штрафа (безопасный период)')
+        : (isDisputed
+            ? window.t('kickDetailsRiProtectedTester', {}, lang)
+            : window.t('kickDetailsRiInactiveTester', {}, lang));
+    var testerRiClass = (isSafeBreak || isDisputed) ? 'safe' : 'danger';
+
+    // Owner metrics
+    var ownerBadgeText = isSafeBreak
+        ? (window.t('kickDetailsStatusSafe', {}, lang) || 'Безопасно')
+        : (isDisputed
+            ? window.t('kickDetailsStatusPenalty', {}, lang)
+            : window.t('kickDetailsStatusJustified', {}, lang));
+    var ownerBadgeClass = isSafeBreak ? 'safe' : (isDisputed ? 'danger' : 'safe');
+
+    var ownerKarmaVal = isSafeBreak
+        ? window.t('kickDetailsKarmaJustifiedOwner', {}, lang)
+        : (isDisputed
+            ? (window.t('kickDetailsKarmaPenaltyOwner', {}, lang) || '-3.0 (списание за спорный кик)')
+            : window.t('kickDetailsKarmaJustifiedOwner', {}, lang));
+    var ownerKarmaClass = isDisputed ? 'danger' : 'neutral';
+
+    var ownerRiVal = isSafeBreak
+        ? (window.t('kickDetailsRiSafeBreak', {}, lang) || 'Без штрафа (безопасный период)')
+        : (isDisputed
+            ? window.t('kickDetailsRiDisputedOwner', { ri_penalty: String(riPenalty) }, lang)
+            : window.t('kickDetailsRiJustifiedOwner', {}, lang));
+    var ownerRiClass = isDisputed ? 'danger' : 'safe';
+
+    var html = '' +
+        '<div class="kick-analytics-modal">' +
+            '<div class="kick-analytics-header">' +
+                '<div class="kick-analytics-title">' + window.escapeHTML(window.t('kickDetailsTitle', {}, lang)) + '</div>' +
+                '<div class="kick-analytics-subtitle">' + window.escapeHTML(window.t('kickDetailsSubtitle', {}, lang)) + '</div>' +
+            '</div>' +
+
+            '<div class="kick-analytics-card">' +
+                '<div class="kick-analytics-row">' +
+                    '<span class="kick-analytics-label">' + window.escapeHTML(window.t('kickDetailsStatusLabel', {}, lang)) + '</span>' +
+                    '<span class="kick-analytics-value ' + statusClass + '">' + window.escapeHTML(statusText) + '</span>' +
+                '</div>' +
+                '<div class="kick-analytics-row">' +
+                    '<span class="kick-analytics-label">' + window.escapeHTML(window.t('kickDetailsCheckinsLabel', {}, lang)) + '</span>' +
+                    '<span class="kick-analytics-value">' + window.escapeHTML(window.t('kickDetailsCheckinsValue', { checkins: checkins }, lang)) + '</span>' +
+                '</div>' +
+                '<div class="kick-analytics-row">' +
+                    '<span class="kick-analytics-label">' + window.escapeHTML(window.t('kickDetailsSkipsLabel', {}, lang)) + '</span>' +
+                    '<span class="kick-analytics-value">' + window.escapeHTML(skipsValueText) + '</span>' +
+                '</div>' +
+            '</div>' +
+
+            '<div class="kick-analytics-section-title">' + window.escapeHTML(window.t('kickDetailsImpactSectionTitle', {}, lang)) + '</div>' +
+
+            '<!-- Tester Box -->' +
+            '<div class="kick-analytics-box">' +
+                '<div class="kick-analytics-box-header">' +
+                    '<span class="kick-analytics-role">' + window.escapeHTML(window.t('kickDetailsRoleTester', {}, lang)) + '</span>' +
+                    '<span class="kick-analytics-badge ' + testerBadgeClass + '">' + window.escapeHTML(testerBadgeText) + '</span>' +
+                '</div>' +
+                '<div class="kick-analytics-grid">' +
+                    '<div class="kick-analytics-cell">' +
+                        '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsKarmaTitle', {}, lang)) + '</div>' +
+                        '<div class="kick-analytics-cell-val ' + testerKarmaClass + '">' + window.escapeHTML(testerKarmaVal) + '</div>' +
+                    '</div>' +
+                    '<div class="kick-analytics-cell">' +
+                        '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsRiTitle', {}, lang)) + '</div>' +
+                        '<div class="kick-analytics-cell-val ' + testerRiClass + '">' + window.escapeHTML(testerRiVal) + '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+
+            '<!-- Owner Box -->' +
+            '<div class="kick-analytics-box">' +
+                '<div class="kick-analytics-box-header">' +
+                    '<span class="kick-analytics-role">' + window.escapeHTML(window.t('kickDetailsRoleOwner', {}, lang)) + '</span>' +
+                    '<span class="kick-analytics-badge ' + ownerBadgeClass + '">' + window.escapeHTML(ownerBadgeText) + '</span>' +
+                '</div>' +
+                '<div class="kick-analytics-grid">' +
+                    '<div class="kick-analytics-cell">' +
+                        '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsKarmaTitle', {}, lang)) + '</div>' +
+                        '<div class="kick-analytics-cell-val ' + ownerKarmaClass + '">' + window.escapeHTML(ownerKarmaVal) + '</div>' +
+                    '</div>' +
+                    '<div class="kick-analytics-cell">' +
+                        '<div class="kick-analytics-cell-title">' + window.escapeHTML(window.t('kickDetailsRiTitle', {}, lang)) + '</div>' +
+                        '<div class="kick-analytics-cell-val ' + ownerRiClass + '">' + window.escapeHTML(ownerRiVal) + '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+
+    if (typeof showCustomAlert === 'function') {
+        showCustomAlert(html, { html: true });
+    } else {
+        alert(statusText);
+    }
+}
+
 // Expose functions globally
+window.showKickPenaltyDetailsModal = showKickPenaltyDetailsModal;
 window.openPhaseInfoModal = openPhaseInfoModal;
 window.closePhaseInfoModal = closePhaseInfoModal;
 window.ppcPhaseModalLeave = ppcPhaseModalLeave;

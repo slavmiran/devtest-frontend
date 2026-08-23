@@ -40,6 +40,7 @@ var _guestTesterProjectId = 0;
 var _guestTesterProgressId = 0;
 var _guestLinkRemoveState = null;
 var _reportMessageLang = null;
+var _reportTextExpanded = false;
 function showSkeleton(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -504,3 +505,19 @@ function formatLastActiveLabel(rawValue) {
         minute: '2-digit'
     });
 }
+
+/**
+ * Safe sync check for project/test cards.
+ * Defined early (ui-helpers loads first). ui-tests.js replaces with richer logic.
+ */
+function isProjectSynced(test) {
+    if (typeof window.hasMeaningfulProjectSync === 'function') {
+        return !!window.hasMeaningfulProjectSync(test);
+    }
+    var syncDay = Number(test && test.google_sync_day || 0);
+    if (!Number.isFinite(syncDay) || syncDay < 1) {
+        return false;
+    }
+    return !!(test && test.last_sync_date);
+}
+window.isProjectSynced = isProjectSynced;
