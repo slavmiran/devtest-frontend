@@ -1147,11 +1147,6 @@ function renderGuestProjectsSection(force) {
         return;
     }
 
-    const rawGuestProjects = Array.isArray(guestProjects) ? guestProjects : [];
-    const availableItems = typeof window.getFilteredGuestProjects === 'function'
-        ? window.getFilteredGuestProjects()
-        : rawGuestProjects;
-
     if (!rawGuestProjects.length) {
         const emptyKey = _guestProjectsLoadError ? 'guestProjectsLoadError' : 'guestProjectsEmpty';
         list.innerHTML = `<p class="no-testers">${window.escapeHTML(window.t(emptyKey, {}, lang))}</p>`;
