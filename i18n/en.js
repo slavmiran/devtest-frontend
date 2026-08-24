@@ -2558,6 +2558,7 @@
             termCompletionTitleLeft: "You left the project",
             termCompletionKeptReciprocal: "Your testing of project \"{name}\" continues normally, the relation chip on the project card changed to",
             termCompletionUnlinkedDesc: "Link broken. You can uninstall the app from your phone",
+            termCompletionKickedSolo: "Tester has been removed from the project. Mutual connection is completely closed.",
             termCompletionUninstallBtn: "🗑 Uninstall App",
             termCompletionUninstallDone: "🗑 Uninstall App",
             termCompletionCloseBtn: "Got it",

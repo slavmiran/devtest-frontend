@@ -2565,6 +2565,7 @@
             termCompletionTitleLeft: "Вы вышли из проекта",
             termCompletionKeptReciprocal: "Ваше тестирование проекта «{name}» продолжается в обычном режиме, чип взаимосвязи на карточке проекта сменился на",
             termCompletionUnlinkedDesc: "Связь разорвана. Можете удалить приложение с телефона",
+            termCompletionKickedSolo: "Тестировщик исключен из проекта. Взаимная связь с ним полностью завершена.",
             termCompletionUninstallBtn: "🗑 Удалить Приложение",
             termCompletionUninstallDone: "🗑 Удалить Приложение",
             termCompletionCloseBtn: "Понятно",

@@ -604,6 +604,30 @@ button.external-tests-owner-subtitle.external-tests-owner-link:hover {
     text-align: left;
 }
 
+.guest-projects-toggle-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.guest-projects-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    background: var(--ts-count-bg, rgba(62, 185, 205, 0.2));
+    color: var(--guest-surface-accent, #3eb9cd);
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
 .guest-projects-toggle-icon {
     display: inline-flex;
     align-items: center;

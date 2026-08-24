@@ -3608,6 +3608,7 @@ async function confirmKickTester(explicitAppId, explicitTesterId) {
                 appId: target.appId,
                 testerId: target.testerId,
                 unlinkReciprocal: unlinkReciprocal,
+                isReciprocalActive: !!(_termState && _termState.isReciprocalActive),
                 data: data,
                 reciprocalTest: reciprocalTest,
             });

@@ -1636,14 +1636,25 @@
                     : '') +
             '</div>';
 
-            if (!unlinkReciprocal) {
-                // Owner keeps counter-testing partner's app voluntarily
-                var appNameDisplay = reciprocalAppName || _t('partnerProjectFallback');
-                bodyHtml = '<div class="term-completion-notice">' +
-                    _esc(_t('termCompletionKeptReciprocal', { name: appNameDisplay })) + ' ' +
-                    '<span class="meta-chip meta-chip--source accent-danger" style="display:inline-flex;vertical-align:middle;margin:0 2px;">💔 ' + _esc(_t('testSourceMutual') || 'Бартер') + '</span>.' +
-                '</div>';
-            } else {
+            var isReciprocalActive = !!((_termState && _termState.isReciprocalActive) || opts.isReciprocalActive);
+            if (!isReciprocalActive && reciprocalTest) {
+                var rStatus = String(reciprocalTest.status || 'active').toLowerCase();
+                var partnerProgressStatus = String(
+                    reciprocalTest.partner_progress_status ||
+                    (data && data.reciprocal_partner_progress_status) || ''
+                ).toLowerCase();
+                var isPartnerLeft = partnerProgressStatus === 'abandoned'
+                    || partnerProgressStatus === 'justified_exit'
+                    || partnerProgressStatus === 'kicked_by_owner'
+                    || partnerProgressStatus === 'canceled_neutral'
+                    || partnerProgressStatus === 'dropped';
+                if (rStatus === 'active' && !reciprocalTest.is_broken_reciprocal && !isPartnerLeft) {
+                    isReciprocalActive = true;
+                }
+            }
+            var reciprocalDropped = !!(data && data.reciprocal_dropped);
+
+            if (reciprocalDropped) {
                 // Mutual link broken both ways — show app card to uninstall
                 bodyHtml = '<div class="term-completion-notice">' + _esc(_t('termCompletionUnlinkedDesc')) + '</div>';
                 if (reciprocalAppId > 0 || reciprocalAppName) {
@@ -1655,6 +1666,16 @@
                         isSoftTail: true,
                     });
                 }
+            } else if (!unlinkReciprocal && isReciprocalActive) {
+                // Owner keeps counter-testing partner's app voluntarily
+                var appNameDisplay = reciprocalAppName || _t('partnerProjectFallback');
+                bodyHtml = '<div class="term-completion-notice">' +
+                    _esc(_t('termCompletionKeptReciprocal', { name: appNameDisplay })) + ' ' +
+                    '<span class="meta-chip meta-chip--source accent-danger" style="display:inline-flex;vertical-align:middle;margin:0 2px;">💔 ' + _esc(_t('testSourceMutual') || 'Бартер') + '</span>.' +
+                '</div>';
+            } else {
+                // No active counter-test (already left earlier, non-mutual, or no reciprocal test)
+                bodyHtml = '<div class="term-completion-notice">' + _esc(_t('termCompletionKickedSolo')) + '</div>';
             }
         } else {
             // --- LEAVE / DROP completion ---

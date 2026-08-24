@@ -1104,6 +1104,7 @@ function renderGuestProjectsSection(force) {
     const toggleBtn = document.getElementById('guest-projects-toggle');
     const toggleText = document.getElementById('guest-projects-toggle-text');
     const toggleIcon = document.getElementById('guest-projects-toggle-icon');
+    const countBadge = document.getElementById('guest-projects-count-badge');
     const langLabel = document.getElementById('guest-filter-lang-label');
     const categoryLabel = document.getElementById('guest-filter-category-label');
     const langSelect = document.getElementById('guest-filter-lang');
@@ -1119,6 +1120,15 @@ function renderGuestProjectsSection(force) {
     toggleBtn.setAttribute('aria-expanded', _guestProjectsExpanded ? 'true' : 'false');
     toggleIcon.textContent = _guestProjectsExpanded ? '−' : '+';
     section.classList.toggle('expanded', !!_guestProjectsExpanded);
+
+    const rawGuestProjects = Array.isArray(guestProjects) ? guestProjects : [];
+    const availableItems = typeof window.getFilteredGuestProjects === 'function'
+        ? window.getFilteredGuestProjects()
+        : rawGuestProjects;
+
+    if (countBadge) {
+        countBadge.textContent = String(availableItems.length);
+    }
 
     if (langLabel) langLabel.textContent = window.t('guestFilterLangLabel', {}, lang);
     if (categoryLabel) categoryLabel.textContent = window.t('guestFilterCategoryLabel', {}, lang);
