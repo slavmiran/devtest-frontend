@@ -234,6 +234,7 @@
             fillFields: "Please fill in all fields.",
             appNameTooLong: "App name must be 30 characters or less.",
             bannerText: "Get rid of chat chaos! Control daily check-ins for 12 testers in one place and find new apps for mutual testing.",
+            bannerGuaranteedTestBtn: "🛡 Guaranteed closed testing ($20)",
             activeTesters: "Active testers",
             contactOwner: "Contact owner",
             inviteLink: "Get Testers",
