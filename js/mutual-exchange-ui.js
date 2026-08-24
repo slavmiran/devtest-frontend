@@ -292,12 +292,19 @@
         }
 
         var partnerProgressStatus = String(tester.reciprocal_partner_progress_status || '').toLowerCase();
-        var isPartnerLeft = partnerProgressStatus === 'abandoned'
+        var isViewerLeft = partnerProgressStatus === 'abandoned'
             || partnerProgressStatus === 'justified_exit'
             || partnerProgressStatus === 'kicked_by_owner'
             || partnerProgressStatus === 'canceled_neutral'
             || partnerProgressStatus === 'dropped';
-        var isBroken = !!options.leftSoft || !!tester.is_left_soft || !!tester.is_broken_reciprocal || isPartnerLeft;
+        var testerProgressStatus = String(tester.status || '').toLowerCase();
+        var isTesterLeft = !!options.leftSoft || !!tester.is_left_soft
+            || testerProgressStatus === 'abandoned'
+            || testerProgressStatus === 'justified_exit'
+            || testerProgressStatus === 'kicked_by_owner'
+            || testerProgressStatus === 'canceled_neutral'
+            || testerProgressStatus === 'dropped';
+        var isBroken = isViewerLeft || isTesterLeft || !!tester.is_broken_reciprocal;
 
         openMutualBalanceModal(safeProjectId, null, {
             context: 'projects',
@@ -314,7 +321,10 @@
             theirIconUrl: theirIconUrl,
             testerSnapshot: tester,
             isMutualDebt: !!tester.is_mutual_debt,
-            leftSoft: isBroken,
+            leftSoft: isTesterLeft,
+            isTesterLeft: isTesterLeft,
+            isViewerLeft: isViewerLeft,
+            isBroken: isBroken,
             reciprocalAppId: reciprocalAppId,
         });
     }
@@ -537,6 +547,14 @@
             theirConsec = Number(test && test.partner_consecutive_skips || 0);
             theirCheckins = Number(test && test.checkins_count || 0);
         }
+        var isOwnerView = options.context === 'projects';
+        var isTesterLeft = isOwnerView
+            ? !!(options.isTesterLeft || (tester && (tester.is_left_soft || ['abandoned','justified_exit','kicked_by_owner','canceled_neutral','dropped'].includes(String(tester.status || '').toLowerCase()))))
+            : !!(test && test.partner_progress_status && test.partner_progress_status !== 'active' && test.partner_progress_status !== 'completed');
+        var isViewerLeft = isOwnerView
+            ? !!(options.isViewerLeft || (tester && ['abandoned','justified_exit','kicked_by_owner','canceled_neutral','dropped'].includes(String(tester.reciprocal_partner_progress_status || '').toLowerCase())))
+            : (['abandoned','kicked_by_owner','canceled_neutral','justified_exit','dropped'].includes(String(test && test.progress_status || '').toLowerCase()));
+
         return _renderBalanceColumns({
             person: person,
             myAppName: options.context === 'projects'
@@ -557,14 +575,14 @@
                 : Number(test && test.partner_consecutive_skips || 0),
             partnerUsername: person.username,
             partnerId: person.userId,
-            partnerLeft: options.context === 'projects'
-                ? !!(options.testerSnapshot && options.testerSnapshot.is_left_soft)
-                : !!(test && test.partner_progress_status && test.partner_progress_status !== 'active' && test.partner_progress_status !== 'completed'),
+            partnerLeft: isTesterLeft,
+            isTesterLeft: isTesterLeft,
+            isViewerLeft: isViewerLeft,
             myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
             isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
-            leftSoft: !!(options.leftSoft || (_balanceState && _balanceState.leftSoft)),
+            leftSoft: isTesterLeft,
         });
     }
 
@@ -590,6 +608,13 @@
             }
         }
         var isOwnerView = options.context === 'projects';
+        var isTesterLeft = isOwnerView
+            ? !!(options.isTesterLeft || (options.testerSnapshot && (options.testerSnapshot.is_left_soft || ['abandoned','justified_exit','kicked_by_owner','canceled_neutral','dropped'].includes(String(options.testerSnapshot.status || '').toLowerCase()))))
+            : !!stats.partner_left;
+        var isViewerLeft = isOwnerView
+            ? !!(options.isViewerLeft || stats.partner_left)
+            : (['abandoned','kicked_by_owner','canceled_neutral','justified_exit','dropped'].includes(String(test && test.progress_status || '').toLowerCase()));
+
         return _renderBalanceColumns({
             person: person,
             myAppName: myAppName,
@@ -612,15 +637,14 @@
             ),
             partnerUsername: person.username,
             partnerId: person.userId,
-            partnerLeft: options.context === 'projects'
-                ? !!(options.testerSnapshot && options.testerSnapshot.is_left_soft)
-                : !!stats.partner_left,
+            partnerLeft: isTesterLeft,
+            isTesterLeft: isTesterLeft,
+            isViewerLeft: isViewerLeft,
             myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
             isMutualDebt: !!(options.isMutualDebt || stats.is_mutual_debt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
-            leftSoft: !!(options.leftSoft || (_balanceState && _balanceState.leftSoft)
-                || (options.testerSnapshot && options.testerSnapshot.is_left_soft)),
+            leftSoft: isTesterLeft,
         });
     }
 
@@ -749,13 +773,18 @@
             var themAtYouIcon = data.myIcon || '';
             var themAtYouDays = isOwnerView ? data.theirDays : data.myDays;
             var themAtYouSkips = isOwnerView ? data.theirSkips : data.mySkips;
-            // One-sided link: partner left / was kicked / unlinked — mark their side broken.
-            var themBroken = !isDebt && (!!data.partnerLeft || !!data.leftSoft
-                || !!(_balanceState && _balanceState.leftSoft));
-            var youBroken = false;
-            if (!isDebt && data.context === 'tests') {
+            // One-sided link:
+            // For Owner view:
+            //   themAtYou is your project. Broken if the tester left your project (isTesterLeft).
+            //   youAtThem is the tester's app. Broken if you left their reciprocal project (isViewerLeft).
+            // For Tester view (My Tests):
+            //   themAtYou is your reciprocal app. Broken if partner left it (partnerLeft).
+            //   youAtThem is the app you are testing. Broken if you left or were kicked from it.
+            var themBroken = !isDebt && (isOwnerView ? !!data.isTesterLeft : !!data.partnerLeft);
+            var youBroken = !isDebt && (isOwnerView ? !!data.isViewerLeft : !!data.isViewerLeft);
+            if (!isDebt && !isOwnerView && data.context === 'tests') {
                 var myProgress = String(data.myProgressStatus || '').toLowerCase();
-                youBroken = myProgress === 'kicked_by_owner' || myProgress === 'canceled_neutral';
+                youBroken = youBroken || myProgress === 'kicked_by_owner' || myProgress === 'canceled_neutral' || myProgress === 'abandoned' || myProgress === 'justified_exit' || myProgress === 'dropped';
             }
             var themPartnerDebt = isPartnerDebt;
             var youSideDone = isPartnerDebt;
@@ -793,7 +822,9 @@
         var breakLabel = isSelfDebt
             ? _t('mutualBalanceDebtExitBtn')
             : (isOwnerView ? _t('linkStatusKickBtn') : (isMutual ? _t('mutualBalanceBreakBtn') : _t('linkStatusKickBtn')));
-        var isLeftSoftView = !!(data.leftSoft || (_balanceState && _balanceState.leftSoft));
+        var isLeftSoftView = isOwnerView
+            ? !!data.isTesterLeft
+            : !!(data.leftSoft || (_balanceState && _balanceState.leftSoft));
         var actionsHtml = '<div class="parity-actions">';
         if (isLeftSoftView) {
             actionsHtml += '' +
