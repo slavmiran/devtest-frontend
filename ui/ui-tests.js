@@ -1462,21 +1462,24 @@ function renderIncomingOffers() {
             }
         }
 
-        // Reliability label
-        let reliabilityLabel;
+        // Reliability metric value for 3rd card
+        let relMetricVal;
         if (relStatus === 'newbie' || relIndex == null || relIndex === '') {
-            reliabilityLabel = window.t('bountyAppReliabilityNewbieShort', {}, lang);
+            relMetricVal = window.t('bountyAppReliabilityNewbieShort', {}, lang) || (lang === 'ru' ? 'Новичок' : 'Newbie');
         } else {
             const relVal = Number(relIndex);
-            if (!Number.isFinite(relVal)) {
-                reliabilityLabel = window.t('bountyAppReliabilityNewbieShort', {}, lang);
-            } else {
-                const statusKey = 'reliabilityDashStatus_' + relStatus;
-                let statusLabel = window.t(statusKey, {}, lang);
-                if (!statusLabel || statusLabel === statusKey) statusLabel = relStatus;
-                reliabilityLabel = window.t('bountyAppReliabilityCompact', { pct: Math.round(relVal), status: statusLabel }, lang);
-            }
+            relMetricVal = Number.isFinite(relVal) ? (Math.round(relVal) + '%') : (window.t('bountyAppReliabilityNewbieShort', {}, lang) || 'Новичок');
         }
+
+        // Contribution breakdown line under username
+        const bugsCount = Number(offer.proposer_bugs_count || 0);
+        const ideasCount = Number(offer.proposer_ideas_count || 0);
+        const reviewsCount = Number(offer.proposer_play_reviews_count || 0);
+        const contribLine = window.t('bountyAppContribBreakdown', {
+            bugs: bugsCount,
+            ideas: ideasCount,
+            reviews: reviewsCount,
+        }, lang) || (`🐞 ${bugsCount} багов | 💡 ${ideasCount} реком. | 📝 ${reviewsCount} отзывов`);
 
         // Avatar
         const avatarName = String(fullName || handle || ('#' + (offer.proposer_id || 0))).trim();
@@ -1490,10 +1493,6 @@ function renderIncomingOffers() {
             ? formatAmountValue(offer.proposer_karma || 0, 1)
             : String(offer.proposer_karma || 0);
         const fullCycles = Number(offer.proposer_completed_full_cycles || 0);
-        const skipRate = offer.proposer_skip_rate_pct;
-        const skipLabel = (skipRate == null || skipRate === '')
-            ? '—'
-            : (String(Math.round(Number(skipRate))) + '%');
 
         const dossierLabel = window.escapeHTML(window.t('bountyAppOpenDossier', {}, lang));
         const dossierSvg = typeof _bountyDossierIconSvg === 'function' ? _bountyDossierIconSvg() : '';
@@ -1515,9 +1514,8 @@ function renderIncomingOffers() {
                         'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(offer.proposer_id || 0) + ', ' + Number(offer.target_app_id || 0) + '); event.stopPropagation();">' +
                         '<div class="bounty-app-name notranslate">' + primaryName + '</div>' +
                         secondaryName +
-                        '<div class="bounty-app-signal bounty-app-signal--' + tone + '">' +
-                            '<span class="bounty-app-signal-dot" aria-hidden="true"></span>' +
-                            '<span>' + window.escapeHTML(reliabilityLabel) + '</span>' +
+                        '<div class="bounty-app-signal bounty-app-signal--neutral">' +
+                            '<span>' + window.escapeHTML(contribLine) + '</span>' +
                         '</div>' +
                     '</div>' +
                     '<button type="button" class="bounty-app-dossier-btn" title="' + dossierLabel + '" aria-label="' + dossierLabel + '" ' +
@@ -1535,8 +1533,8 @@ function renderIncomingOffers() {
                         '<div class="bounty-app-metric-value notranslate">' + fullCycles + '</div>' +
                     '</div>' +
                     '<div class="bounty-app-metric">' +
-                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricSkips', {}, lang)) + '</div>' +
-                        '<div class="bounty-app-metric-value notranslate">' + window.escapeHTML(skipLabel) + '</div>' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricReliability', {}, lang) || 'Надёжность') + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + window.escapeHTML(relMetricVal) + '</div>' +
                     '</div>' +
                 '</div>' +
                 '<div class="bounty-app-project-row">' +

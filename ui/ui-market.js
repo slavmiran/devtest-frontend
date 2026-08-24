@@ -7003,10 +7003,10 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
         const feedbackCount = Number((feedbackCountByTester && feedbackCountByTester[Number(tester.tester_id)]) || 0);
 
         const statsParts = [];
-        if (testerDay > 0) statsParts.push(`День ${testerDay}`);
-        if (actualSkips > 0) statsParts.push(`Пропуски: ${actualSkips}`);
-        if (feedbackCount > 0) statsParts.push(`Фидбэки: ${feedbackCount}`);
-        const metaStr = statsParts.length ? statsParts.join(' · ') : `День ${testerDay || 1}`;
+        if (testerDay > 0) statsParts.push(lang === 'ru' ? `День ${testerDay}` : `Day ${testerDay}`);
+        if (actualSkips > 0) statsParts.push(lang === 'ru' ? `Пропуски: ${actualSkips}` : `Skips: ${actualSkips}`);
+        if (feedbackCount > 0) statsParts.push(lang === 'ru' ? `Фидбэки: ${feedbackCount}` : `Feedback: ${feedbackCount}`);
+        const metaStr = statsParts.length ? statsParts.join(' · ') : (lang === 'ru' ? `День ${testerDay || 1}` : `Day ${testerDay || 1}`);
 
         const usedBadges = [];
         if (testerPools.hasThanks) usedBadges.push(`<span class="karma-awarded-pill">👍 +1.5</span>`);
@@ -7109,11 +7109,36 @@ async function openKarmaDistribution(projectId) {
         const data = await response.json();
         if (response.ok && data.status === 'success' && Array.isArray(data.feedback)) {
             const feedbackCountByTester = {};
+            const testerMap = {};
+            (project.testers || []).forEach(function(t) {
+                const tid = Number(t.tester_id || 0);
+                if (tid > 0) testerMap[tid] = t;
+            });
+
             data.feedback.forEach(function(item) {
                 const testerId = Number(item.tester_id || 0);
-                if (testerId > 0) {
-                    feedbackCountByTester[testerId] = (feedbackCountByTester[testerId] || 0) + 1;
+                if (testerId <= 0) return;
+                const tester = testerMap[testerId];
+                if (!tester) return; // Only count active testers belonging to this project
+
+                const status = String(item.status || '').trim().lower();
+                if (status === 'rejected' || status === 'spam' || status === 'google_play_review_rejected') {
+                    return; // Ignore rejected or spam tickets
                 }
+
+                // Check timeframe: only count feedback left during tester's current run
+                if (tester.start_date && item.created_at) {
+                    try {
+                        const testerStart = new Date(tester.start_date).getTime();
+                        const feedbackDate = new Date(item.created_at).getTime();
+                        // 1 hour grace buffer for clock skew on test start day
+                        if (feedbackDate < testerStart - 3600000) {
+                            return; // Belongs to an earlier cycle / previous run
+                        }
+                    } catch (e) {}
+                }
+
+                feedbackCountByTester[testerId] = (feedbackCountByTester[testerId] || 0) + 1;
             });
             if (window._karmaDistributionProjectId === projectId) {
                 renderKarmaDistributionModal(project, feedbackCountByTester);

@@ -240,12 +240,25 @@ function renderBountyApplications(force) {
             ? formatAmountValue(app.applicant_karma || 0, 1)
             : String(app.applicant_karma || 0);
         var fullCycles = Number(app.applicant_completed_full_cycles || 0);
-        var skipRate = app.applicant_skip_rate_pct;
-        var skipLabel = (skipRate == null || skipRate === '')
-            ? '—'
-            : (String(Math.round(Number(skipRate))) + '%');
-        var tone = _bountyReliabilityTone(app);
-        var reliabilityLabel = _formatBountyReliabilityLabel(app);
+        var relStatus = String(app.applicant_reliability_status || 'newbie').toLowerCase();
+        var relIndex = app.applicant_reliability_index;
+        var relMetricVal;
+        if (relStatus === 'newbie' || relIndex == null || relIndex === '') {
+            relMetricVal = window.t('bountyAppReliabilityNewbieShort', {}, lang) || (lang === 'ru' ? 'Новичок' : 'Newbie');
+        } else {
+            var relVal = Number(relIndex);
+            relMetricVal = Number.isFinite(relVal) ? (Math.round(relVal) + '%') : (window.t('bountyAppReliabilityNewbieShort', {}, lang) || 'Новичок');
+        }
+
+        var bugsCount = Number(app.applicant_bugs_count || 0);
+        var ideasCount = Number(app.applicant_ideas_count || 0);
+        var reviewsCount = Number(app.applicant_play_reviews_count || 0);
+        var contribLine = window.t('bountyAppContribBreakdown', {
+            bugs: bugsCount,
+            ideas: ideasCount,
+            reviews: reviewsCount,
+        }, lang) || ('🐞 ' + bugsCount + ' багов | 💡 ' + ideasCount + ' реком. | 📝 ' + reviewsCount + ' отзывов');
+
         var dossierLabel = window.escapeHTML(window.t('bountyAppOpenDossier', {}, lang));
 
         return '' +
@@ -269,9 +282,8 @@ function renderBountyApplications(force) {
                         'onclick="openTesterDossier(\'' + safeUsername + '\', ' + Number(app.applicant_id || 0) + ', ' + Number(app.app_id || 0) + '); event.stopPropagation();">' +
                         '<div class="bounty-app-name notranslate">' + primaryName + '</div>' +
                         secondaryName +
-                        '<div class="bounty-app-signal bounty-app-signal--' + tone + '">' +
-                            '<span class="bounty-app-signal-dot" aria-hidden="true"></span>' +
-                            '<span>' + window.escapeHTML(reliabilityLabel) + '</span>' +
+                        '<div class="bounty-app-signal bounty-app-signal--neutral">' +
+                            '<span>' + window.escapeHTML(contribLine) + '</span>' +
                         '</div>' +
                     '</div>' +
                     '<button type="button" class="bounty-app-dossier-btn" title="' + dossierLabel + '" aria-label="' + dossierLabel + '" ' +
@@ -289,8 +301,8 @@ function renderBountyApplications(force) {
                         '<div class="bounty-app-metric-value notranslate">' + fullCycles + '</div>' +
                     '</div>' +
                     '<div class="bounty-app-metric">' +
-                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricSkips', {}, lang)) + '</div>' +
-                        '<div class="bounty-app-metric-value notranslate">' + window.escapeHTML(skipLabel) + '</div>' +
+                        '<div class="bounty-app-metric-label">' + window.escapeHTML(window.t('bountyAppMetricReliability', {}, lang) || 'Надёжность') + '</div>' +
+                        '<div class="bounty-app-metric-value notranslate">' + window.escapeHTML(relMetricVal) + '</div>' +
                     '</div>' +
                 '</div>' +
                 '<div class="bounty-app-project-row">' +

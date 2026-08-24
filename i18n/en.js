@@ -2264,6 +2264,8 @@
             bountyAppMetricKarma: "Karma",
             bountyAppMetricTests: "Tests",
             bountyAppMetricSkips: "Skips",
+            bountyAppMetricReliability: "Reliability",
+            bountyAppContribBreakdown: "🐞 {bugs} bugs | 💡 {ideas} recs | 📝 {reviews} reviews",
             bountyAppTimeLeft: "⏳ Time left: {time}",
             bountyAppTimeLeftShort: "{time}",
             bountyAppOpenDossier: "Open tester dossier",

@@ -249,7 +249,7 @@
             </div>
             <div class="system-feedback-buttons">
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('bug')" data-i18n="feedbackBug">🐛 Сообщить о баге</button>
-                <button class="btn btn-secondary system-btn" onclick="sendFeedback('idea')" data-i18n="feedbackIdea">💡 Идея / Нашли баг?</button>
+                <button class="btn btn-secondary system-btn" onclick="sendFeedback('idea')" data-i18n="feedbackIdea">💡 Рекомендация / Баг?</button>
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('question')" data-i18n="feedbackQuestion">❓ Задать вопрос</button>
             </div>
         </div>
@@ -1543,9 +1543,9 @@
                 <div class="report-path-label report-path-label--alt" id="t-reportAltLabel" data-i18n="reportAltLabel">или отправить как отзыв</div>
                 <div class="report-feedback-actions">
                     <button type="button" class="btn report-feedback-btn" id="t-reportBtnBug" onclick="reportModalSendBug()" data-i18n="reportBtnSendBug">🐞 Send bug</button>
-                    <button type="button" class="btn report-feedback-btn" id="t-reportBtnIdea" onclick="reportModalSendIdea()" data-i18n="reportBtnSendIdea">💡 Send idea</button>
+                    <button type="button" class="btn report-feedback-btn" id="t-reportBtnIdea" onclick="reportModalSendIdea()" data-i18n="reportBtnSendIdea">💡 Send recommendation</button>
                 </div>
-                <p class="report-feedback-note" id="t-reportFeedbackScreenshotNote" data-i18n="reportFeedbackScreenshotNote">Для бага или идеи бот попросит описание и скриншот из приложения. День тоже будет засчитан.</p>
+                <p class="report-feedback-note" id="t-reportFeedbackScreenshotNote" data-i18n="reportFeedbackScreenshotNote">Для бага или рекомендации бот попросит описание и скриншот из приложения. День тоже будет засчитан.</p>
             </div>
         </div>
     </div>
@@ -1816,7 +1816,7 @@
                                 <span id="contribution-bugs-count" class="contribution-score-row-value">0</span>
                             </div>
                             <div class="contribution-score-row">
-                                <span class="contribution-score-row-label" data-i18n="contributionIdeasLabel">💡 Предложено идей</span>
+                                <span class="contribution-score-row-label" data-i18n="contributionIdeasLabel">💡 Предложено рекомендаций</span>
                                 <span id="contribution-ideas-count" class="contribution-score-row-value">0</span>
                             </div>
                             <div class="contribution-score-row">
@@ -2264,7 +2264,7 @@
             <div class="card" style="margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                     <span style="font-size: 20px;">🐞</span>
-                    <span style="font-weight: 700; font-size: 15px;" data-i18n="earnFeedbackTitle">Баг-репорты и Идеи</span>
+                    <span style="font-weight: 700; font-size: 15px;" data-i18n="earnFeedbackTitle">Баг-репорты и Рекомендации</span>
                 </div>
                 <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnFeedbackDesc">Отправляйте полезный фидбэк разработчикам. После благодарности вы получаете $BUST и иногда Карму.</p>
                 <div id="earn-feedback-status" class="earn-chip-row"></div>

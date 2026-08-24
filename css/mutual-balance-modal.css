@@ -898,6 +898,8 @@
 .leave-my-drawer {
     display: grid;
     grid-template-rows: 0fr;
+    overflow: hidden;
+    min-height: 0;
     transition: grid-template-rows 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1363,6 +1365,8 @@
 .term-impact-drawer {
     display: grid;
     grid-template-rows: 0fr;
+    overflow: hidden;
+    min-height: 0;
     transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1372,10 +1376,23 @@
 
 .term-impact-drawer-inner {
     overflow: hidden;
-    padding: 0 8px 8px 8px;
+    min-height: 0;
+    padding: 0 8px;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition:
+        opacity 0.25s ease,
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+.term-impact-accordion.is-open .term-impact-drawer-inner {
+    padding: 6px 8px 8px 8px;
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .term-impact-drawer-inner .term-impact-status-banner {
