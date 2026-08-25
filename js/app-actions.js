@@ -974,7 +974,6 @@ function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername) {
         };
     } else {
         delete _timerReadyState[key];
-        if (_checkinOpenTokenState) delete _checkinOpenTokenState[key];
     }
     _persistTimerReadyState();
     _syncExternalTimerReadyVisual(appId, isReady);
@@ -3561,11 +3560,9 @@ function showCheckinRewardToasts(result) {
 }
 
 /**
- * Animate a test-card exit with an instant success flash + smooth collapse.
- * Returns a Promise that resolves once the animation finishes.
- *
- *  Phase 1 (0 → 260ms):  Green glowing overlay with animated ✅ + "Успешно" pop-in.
- *  Phase 2 (260 → 560ms): Card height, padding, margin smoothly collapse to 0.
+ * Smooth, calm, professional card exit animation.
+ * Optimized for high-frequency daily usage (e.g. processing 40 cards).
+ * Duration: ~320ms, silky cubic-bezier curve, no loud flashing overlays.
  */
 function animateTestCardOut(cardEl) {
     return new Promise(function(resolve) {
@@ -3575,45 +3572,27 @@ function animateTestCardOut(cardEl) {
         cardEl.style.overflow = 'hidden';
         cardEl.style.pointerEvents = 'none';
 
-        var overlay = document.createElement('div');
-        overlay.className = 'card-exit-overlay';
-        overlay.style.cssText = 'position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(52,199,89,0.22);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-radius:inherit;opacity:0;transition:opacity 0.18s ease;pointer-events:none;';
-        var okText = (window.t && window.t('confirmed')) || 'Успешно';
-        overlay.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;transform:scale(0.5);transition:transform 0.22s cubic-bezier(0.34,1.56,0.64,1);"><span style="font-size:32px;line-height:1;filter:drop-shadow(0 2px 10px rgba(52,199,89,0.6));">✅</span><span style="font-size:12px;font-weight:700;color:#34c759;letter-spacing:0.4px;text-transform:uppercase;">' + okText + '</span></div>';
-        cardEl.appendChild(overlay);
-
-        requestAnimationFrame(function() {
-            overlay.style.opacity = '1';
-            var inner = overlay.firstElementChild;
-            if (inner) inner.style.transform = 'scale(1)';
-        });
-
-        if (window.tg && window.tg.HapticFeedback) {
-            window.tg.HapticFeedback.notificationOccurred('success');
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.impactOccurred === 'function') {
+            window.tg.HapticFeedback.impactOccurred('light');
         }
 
+        var fullHeight = cardEl.offsetHeight || cardEl.scrollHeight;
+        cardEl.style.maxHeight = fullHeight + 'px';
+        cardEl.style.transition = 'max-height 0.32s cubic-bezier(0.2, 0, 0, 1), opacity 0.28s ease, transform 0.32s cubic-bezier(0.2, 0, 0, 1), margin-bottom 0.32s cubic-bezier(0.2, 0, 0, 1), padding 0.32s cubic-bezier(0.2, 0, 0, 1), border-width 0.32s cubic-bezier(0.2, 0, 0, 1)';
+
+        requestAnimationFrame(function() {
+            cardEl.style.maxHeight = '0px';
+            cardEl.style.opacity = '0';
+            cardEl.style.transform = 'scale(0.97) translateY(-4px)';
+            cardEl.style.marginBottom = '0px';
+            cardEl.style.paddingTop = '0px';
+            cardEl.style.paddingBottom = '0px';
+            cardEl.style.borderWidth = '0px';
+        });
+
         setTimeout(function() {
-            var fullHeight = cardEl.offsetHeight || cardEl.scrollHeight;
-            cardEl.style.maxHeight = fullHeight + 'px';
-            cardEl.style.transition = 'max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.28s cubic-bezier(0.4, 0, 0.2, 1), border-width 0.28s cubic-bezier(0.4, 0, 0.2, 1)';
-
-            requestAnimationFrame(function() {
-                cardEl.style.maxHeight = '0px';
-                cardEl.style.opacity = '0';
-                cardEl.style.transform = 'scale(0.94) translateY(-4px)';
-                cardEl.style.marginBottom = '0px';
-                cardEl.style.paddingTop = '0px';
-                cardEl.style.paddingBottom = '0px';
-                cardEl.style.borderWidth = '0px';
-            });
-
-            setTimeout(function() {
-                try {
-                    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-                } catch (_) {}
-                resolve();
-            }, 300);
-        }, 260);
+            resolve();
+        }, 320);
     });
 }
 window.animateTestCardOut = animateTestCardOut;
@@ -3663,6 +3642,9 @@ async function confirmStart(id, options) {
         return false;
     }
 
+    // Read the token before clearing timer UI state
+    var token = _getCheckinOpenToken(id);
+
     // --- 1. INSTANT OPTIMISTIC UI: Save rollback snapshot & mark test done immediately ---
     var prevTestSnapshot = test ? JSON.parse(JSON.stringify(test)) : null;
     if (test) {
@@ -3689,7 +3671,6 @@ async function confirmStart(id, options) {
     // --- 3. BACKGROUND NETWORK REQUEST & ROLLBACK ON ERROR ---
     (async function() {
         try {
-            var token = _getCheckinOpenToken(id);
             if (!token && proofKind === 'open_token') {
                 try {
                     var autoToken = await _requestCheckinOpenToken(id);

@@ -84,47 +84,26 @@
 
 /* Let the removal / exit transitions own the transform. */
 #tab-tests .card.removing,
-#tab-tests .card.card-exit-success,
 #tab-tests .card.card-exit-collapsing,
 #tab-tests .card.card-exit-collapsed {
     animation: none !important;
 }
 
-#tab-tests .card.card-exit-success {
-    pointer-events: none !important;
-    position: relative !important;
-    overflow: hidden !important;
-}
-
-#tab-tests .card .card-exit-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(52, 199, 89, 0.18);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    border-radius: inherit;
-    pointer-events: none;
-}
-
 #tab-tests .card.card-exit-collapsing {
     pointer-events: none !important;
     overflow: hidden !important;
-    transition: max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.35s ease,
-                transform 0.38s cubic-bezier(0.4, 0, 0.2, 1),
-                margin-bottom 0.38s cubic-bezier(0.4, 0, 0.2, 1),
-                padding-top 0.38s cubic-bezier(0.4, 0, 0.2, 1),
-                padding-bottom 0.38s cubic-bezier(0.4, 0, 0.2, 1),
-                border-width 0.38s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: max-height 0.32s cubic-bezier(0.2, 0, 0, 1),
+                opacity 0.28s ease,
+                transform 0.32s cubic-bezier(0.2, 0, 0, 1),
+                margin-bottom 0.32s cubic-bezier(0.2, 0, 0, 1),
+                padding-top 0.32s cubic-bezier(0.2, 0, 0, 1),
+                padding-bottom 0.32s cubic-bezier(0.2, 0, 0, 1),
+                border-width 0.32s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 
 #tab-tests .card.card-exit-collapsed {
     opacity: 0 !important;
-    transform: scale(0.92) translateY(-6px) !important;
+    transform: scale(0.97) translateY(-4px) !important;
     max-height: 0 !important;
     margin-bottom: 0 !important;
     padding-top: 0 !important;
