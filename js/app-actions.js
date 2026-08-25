@@ -4158,7 +4158,7 @@ let _feedbackAcceptLongPressStart = 0;
 let _feedbackAcceptLongPressPulse = null;
 let _feedbackAcceptTouchStartX = 0;
 let _feedbackAcceptTouchStartY = 0;
-const FEEDBACK_ACCEPT_HOLD_DURATION_MS = 5000;
+const FEEDBACK_ACCEPT_HOLD_DURATION_MS = 3500;
 
 function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
     if (_feedbackAcceptLongPressActive) return;
