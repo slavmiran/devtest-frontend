@@ -1558,6 +1558,7 @@ function recomputeLocalTestState(test) {
     test.status = nextStatus;
     return test;
 }
+window.recomputeLocalTestState = recomputeLocalTestState;
 
 function getMyTestById(appId) {
     var targetId = Number(appId || 0);

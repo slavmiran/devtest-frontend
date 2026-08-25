@@ -442,12 +442,64 @@ function setOffersCache(items) {
     } catch (e) {}
 }
 
+function _normalizeCachedTests(tests) {
+    if (!Array.isArray(tests)) return [];
+    var today = getLocalDate();
+    return tests.map(function(test) {
+        if (!test || typeof test !== 'object') return test;
+        var t = Object.assign({}, test);
+        var isExternal = !!t.is_external;
+
+        // Recalculate testing_days from start_date for current date
+        if (t.start_date) {
+            var calculatedDay = (typeof getUserTestingDay === 'function')
+                ? getUserTestingDay(t.start_date)
+                : null;
+            if (Number.isFinite(calculatedDay) && calculatedDay > 0) {
+                t.testing_days = Math.max(Number(t.testing_days || 0), calculatedDay);
+            }
+        }
+
+        // Recalculate status for current date (if checked in yesterday, today it needs testing)
+        if (t.last_check_date === today) {
+            t.status = 'done';
+        } else if (t.last_check_date && t.last_check_date < today) {
+            t.status = (Number(t.checkins_count || 0) <= 0) ? 'new' : 'daily';
+        } else if (!t.last_check_date) {
+            t.status = 'new';
+        }
+
+        var isTestedToday = t.status === 'done';
+        var testingDays = Number(t.testing_days || 0);
+        var skipsCount = (typeof countGrantSkips === 'function') ? countGrantSkips(t) : Number(t.skips_count || 0);
+        var canEverClaim = !isExternal && !t.grant_claimed && skipsCount <= 3 && t.progress_id;
+        var progressStatus = String(t.progress_status || 'active').toLowerCase();
+        var appStatus = String(t.app_status || 'active').toLowerCase();
+        var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
+        var isArchivedOrCompleted = !isExternal && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
+
+        t.isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
+        t.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
+        t.is_pending_completion = isPendingCompletion;
+        t.external_control_day_due = !!(isExternal && typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(testingDays));
+
+        if (typeof window.recomputeLocalTestState === 'function') {
+            try { window.recomputeLocalTestState(t); } catch (e) {}
+        }
+        return t;
+    });
+}
+
 function getTestsCache() {
     if (myTestsCache) return myTestsCache;
     try {
         var raw = localStorage.getItem(TESTS_CACHE_KEY);
         if (!raw) return null;
-        myTestsCache = JSON.parse(raw);
+        var parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.tests)) {
+            parsed.tests = _normalizeCachedTests(parsed.tests);
+        }
+        myTestsCache = parsed;
         return myTestsCache;
     } catch (e) {
         myTestsCache = null;
