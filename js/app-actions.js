@@ -1138,6 +1138,7 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             btn.style.borderColor = '';
         }
         if (existingSplitGroup) {
+            existingSplitGroup.classList.remove('split-timer-running');
             if (isExternalTest) {
                 btn.className = 'btn btn-success split-btn-main external-tests-confirm-btn external-tests-confirm-ready';
                 btn.textContent = window.t('externalProjectCheckinBtn', {}, lang);
@@ -1244,6 +1245,7 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
         : null;
 
     if (existingSplitGroup) {
+        existingSplitGroup.classList.add('split-timer-running');
         btn.disabled = true;
         btn.className = 'btn split-btn-main';
         btn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
@@ -1273,7 +1275,7 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
     }
 
     var splitWrapper = document.createElement('div');
-    splitWrapper.className = 'split-btn-group';
+    splitWrapper.className = 'split-btn-group split-timer-running';
     splitWrapper.style.flex = '2';
     splitWrapper.innerHTML =
         '<button id="btn-confirm-' + appId + '" class="btn split-btn-main" disabled ' +

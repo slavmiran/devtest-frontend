@@ -434,12 +434,29 @@
 }
 
 #tab-tests .split-btn-group .split-btn-main.btn-success:not([disabled]) {
-    border-right: 1px solid rgba(76, 141, 255, 0.42) !important;
+    border-right: none !important;
 }
 
-/* Paperclip keeps section primary — do not inherit white from btn-success. */
+/* Paperclip keeps section primary when ready — do not inherit white from btn-success. */
 #tab-tests .split-btn-group .split-btn-options.btn-success:not([disabled]) {
     color: var(--accent-primary, #4c8dff) !important;
+    border-left: 1px solid rgba(76, 141, 255, 0.35) !important;
+}
+
+/* While checkin timer is counting down: keep paperclip subtle and unbordered (no neon glow/border) */
+#tab-tests .split-btn-group:has(.split-btn-main[disabled]) .split-btn-options,
+#tab-tests .split-btn-group.split-timer-running .split-btn-options {
+    background: rgba(142, 142, 147, 0.16) !important;
+    border: 1px solid transparent !important;
+    border-left: 1px solid rgba(142, 142, 147, 0.18) !important;
+    box-shadow: none !important;
+    color: var(--hint-color, #8e8e93) !important;
+}
+
+#tab-tests .split-btn-group:has(.split-btn-main[disabled]) .split-btn-options:active,
+#tab-tests .split-btn-group.split-timer-running .split-btn-options:active {
+    background: rgba(142, 142, 147, 0.26) !important;
+    color: var(--text-color, #fff) !important;
 }
 
 #tab-tests .action-row .btn,
