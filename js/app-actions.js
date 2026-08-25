@@ -3560,6 +3560,55 @@ function showCheckinRewardToasts(result) {
     }
 }
 
+/**
+ * Animate a test-card exit with a success flash + smooth collapse.
+ * Returns a Promise that resolves once the animation finishes.
+ *
+ *  Phase 1 (0 → 500ms):  Green overlay appears with a ✅ pop-in.
+ *  Phase 2 (500 → 900ms): Card fades, scales down, and height collapses to 0.
+ */
+function animateTestCardOut(cardEl) {
+    return new Promise(function(resolve) {
+        if (!cardEl || !cardEl.parentNode) { resolve(); return; }
+
+        // Phase 1: success overlay
+        cardEl.classList.add('card-exit-success');
+        var overlay = document.createElement('div');
+        overlay.className = 'card-exit-overlay';
+        overlay.innerHTML = '<span class="card-exit-check">✅</span>';
+        cardEl.appendChild(overlay);
+
+        // Haptic pulse
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        // After brief flash, start collapse
+        setTimeout(function() {
+            // Measure actual height before collapse
+            var fullHeight = cardEl.scrollHeight || cardEl.offsetHeight;
+            cardEl.style.maxHeight = fullHeight + 'px';
+            cardEl.style.overflow = 'hidden';
+
+            // Force layout so maxHeight is painted
+            cardEl.getBoundingClientRect();
+
+            // Phase 2: collapse
+            cardEl.classList.add('card-exit-collapsing');
+
+            // Force another layout before adding collapsed class
+            cardEl.getBoundingClientRect();
+
+            cardEl.classList.add('card-exit-collapsed');
+
+            // Wait for collapse transition to finish
+            setTimeout(function() {
+                resolve();
+            }, 420);
+        }, 500);
+    });
+}
+
 async function confirmStart(id, options) {
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     var proofKind = String((options && options.proofKind) || 'open_token').trim().toLowerCase();
@@ -3751,6 +3800,13 @@ async function confirmStart(id, options) {
         }
 
         setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
+
+        // Animate the card out with success flash + smooth collapse,
+        // then re-render the list cleanly after the animation finishes.
+        if (card && card.parentNode) {
+            card.classList.remove('removing');
+            await animateTestCardOut(card);
+        }
         renderTests(true);
         refreshOpenModals();
 

@@ -82,8 +82,10 @@
     animation: tests-card-in 0.26s cubic-bezier(0.25, 0.8, 0.25, 1) both;
 }
 
-/* Let the removal transition own the transform again. */
-#tab-tests .card.removing {
+/* Let the removal / exit transitions own the transform. */
+#tab-tests .card.removing,
+#tab-tests .card.card-exit-success,
+#tab-tests .card.card-exit-collapsing {
     animation: none;
 }
 
