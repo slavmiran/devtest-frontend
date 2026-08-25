@@ -3561,53 +3561,62 @@ function showCheckinRewardToasts(result) {
 }
 
 /**
- * Animate a test-card exit with a success flash + smooth collapse.
+ * Animate a test-card exit with an instant success flash + smooth collapse.
  * Returns a Promise that resolves once the animation finishes.
  *
- *  Phase 1 (0 → 500ms):  Green overlay appears with a ✅ pop-in.
- *  Phase 2 (500 → 900ms): Card fades, scales down, and height collapses to 0.
+ *  Phase 1 (0 → 260ms):  Green glowing overlay with animated ✅ + "Успешно" pop-in.
+ *  Phase 2 (260 → 560ms): Card height, padding, margin smoothly collapse to 0.
  */
 function animateTestCardOut(cardEl) {
     return new Promise(function(resolve) {
         if (!cardEl || !cardEl.parentNode) { resolve(); return; }
 
-        // Phase 1: success overlay
-        cardEl.classList.add('card-exit-success');
+        cardEl.style.position = 'relative';
+        cardEl.style.overflow = 'hidden';
+        cardEl.style.pointerEvents = 'none';
+
         var overlay = document.createElement('div');
         overlay.className = 'card-exit-overlay';
-        overlay.innerHTML = '<span class="card-exit-check">✅</span>';
+        overlay.style.cssText = 'position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(52,199,89,0.22);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-radius:inherit;opacity:0;transition:opacity 0.18s ease;pointer-events:none;';
+        var okText = (window.t && window.t('confirmed')) || 'Успешно';
+        overlay.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;transform:scale(0.5);transition:transform 0.22s cubic-bezier(0.34,1.56,0.64,1);"><span style="font-size:32px;line-height:1;filter:drop-shadow(0 2px 10px rgba(52,199,89,0.6));">✅</span><span style="font-size:12px;font-weight:700;color:#34c759;letter-spacing:0.4px;text-transform:uppercase;">' + okText + '</span></div>';
         cardEl.appendChild(overlay);
 
-        // Haptic pulse
+        requestAnimationFrame(function() {
+            overlay.style.opacity = '1';
+            var inner = overlay.firstElementChild;
+            if (inner) inner.style.transform = 'scale(1)';
+        });
+
         if (window.tg && window.tg.HapticFeedback) {
             window.tg.HapticFeedback.notificationOccurred('success');
         }
 
-        // After brief flash, start collapse
         setTimeout(function() {
-            // Measure actual height before collapse
-            var fullHeight = cardEl.scrollHeight || cardEl.offsetHeight;
+            var fullHeight = cardEl.offsetHeight || cardEl.scrollHeight;
             cardEl.style.maxHeight = fullHeight + 'px';
-            cardEl.style.overflow = 'hidden';
+            cardEl.style.transition = 'max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.28s cubic-bezier(0.4, 0, 0.2, 1), border-width 0.28s cubic-bezier(0.4, 0, 0.2, 1)';
 
-            // Force layout so maxHeight is painted
-            cardEl.getBoundingClientRect();
+            requestAnimationFrame(function() {
+                cardEl.style.maxHeight = '0px';
+                cardEl.style.opacity = '0';
+                cardEl.style.transform = 'scale(0.94) translateY(-4px)';
+                cardEl.style.marginBottom = '0px';
+                cardEl.style.paddingTop = '0px';
+                cardEl.style.paddingBottom = '0px';
+                cardEl.style.borderWidth = '0px';
+            });
 
-            // Phase 2: collapse
-            cardEl.classList.add('card-exit-collapsing');
-
-            // Force another layout before adding collapsed class
-            cardEl.getBoundingClientRect();
-
-            cardEl.classList.add('card-exit-collapsed');
-
-            // Wait for collapse transition to finish
             setTimeout(function() {
+                try {
+                    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                } catch (_) {}
                 resolve();
-            }, 420);
-        }, 500);
+            }, 300);
+        }, 260);
     });
 }
+window.animateTestCardOut = animateTestCardOut;
 
 async function confirmStart(id, options) {
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -3633,7 +3642,6 @@ async function confirmStart(id, options) {
             return false;
         }
         if (isArchivedOrCompleted) {
-            // Grant-tomorrow state is invalid for archived/completed projects and can keep stale active cards.
             test.isGrantAvailableTomorrow = false;
             _pendingActions.delete(actionKey);
             _handleInactiveCheckinCard(id, 'app_not_found');
@@ -3641,7 +3649,7 @@ async function confirmStart(id, options) {
         }
     }
 
-    const card = document.getElementById(`test-card-${id}`);
+    const card = document.getElementById(`test-card-${id}`) || document.getElementById(`external-test-card-${id}`);
     const btn = document.getElementById(`btn-confirm-${id}`);
 
     if (btn) {
@@ -3650,186 +3658,207 @@ async function confirmStart(id, options) {
         btn.disabled = true;
     }
 
-    if (!card) return false;
-    card.classList.add('removing');
+    if (!card) {
+        _pendingActions.delete(actionKey);
+        return false;
+    }
 
-    try {
-        var token = _getCheckinOpenToken(id);
-        if (!token && proofKind === 'open_token') {
-            try {
-                var autoToken = await _requestCheckinOpenToken(id);
-                if (autoToken && autoToken.token) {
-                    token = String(autoToken.token);
-                    setTimerReadyForConfirm(id, true, false, '');
-                }
-            } catch (e) {}
+    // --- 1. INSTANT OPTIMISTIC UI: Save rollback snapshot & mark test done immediately ---
+    var prevTestSnapshot = test ? JSON.parse(JSON.stringify(test)) : null;
+    if (test) {
+        test.status = 'done';
+        test.last_check_date = getLocalDate();
+        test.checkins_count = Math.max(0, Number(test.checkins_count || 0)) + 1;
+        test.testing_days = Math.max(1, Number(test.testing_days || 0) + 1);
+        if (shouldSubmitPlayFeedback) {
+            test.play_feedback_submitted = true;
+            test.play_feedback_submitted_pending = true;
         }
+    }
+    setFirstDayScreenshotVisible(id, false);
+    setTimerReadyForConfirm(id, false, false, '');
+    clearActiveTimerForApp(id);
 
-        const response = await fetch(`${API_BASE}/checkin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({
-                tester_id: userId,
-                app_id: id,
-                local_date: getLocalDate(),
-                play_feedback_submitted: shouldSubmitPlayFeedback,
-                open_token: token,
-                proof_kind: proofKind,
-            }))
-        });
-
-        let result = null;
-        try {
-            result = await response.json();
-        } catch (parseError) {
-            result = null;
-        }
-
-        if (!response.ok || !result || result.status !== 'success') {
-            card.classList.remove('removing');
-            if (btn) {
-                btn.classList.remove('is-confirming');
-                if (btn.classList.contains('tstep__row')) {
-                    // Step rows keep their own caption; only the busy state is undone.
-                    _setConfirmButtonLabel(btn, window.t('stepSendScreenshot', {}, lang));
-                } else {
-                    _setConfirmButtonLabel(btn, t.confirmStart);
-                    btn.style.backgroundColor = '';
-                    btn.style.color = '';
-                    btn.classList.add('btn-success', 'btn-confirm-ready');
-                }
-                btn.disabled = false;
-            }
-
-            if (result && typeof result === 'object') {
-                var errorCode = getBackendErrorCode(result);
-                if (errorCode === 'testing_not_found'
-                    || errorCode === 'app_not_found'
-                    || errorCode === 'test_or_app_not_found'
-                    || errorCode === 'project_pending_completion') {
-                    _handleInactiveCheckinCard(id, errorCode);
-                } else if (
-                    errorCode === 'open_required'
-                    || errorCode === 'open_invalid'
-                    || errorCode === 'open_mismatch'
-                    || errorCode === 'open_expired'
-                    || errorCode === 'open_not_ready'
-                    || errorCode === 'day_boundary_moved'
-                ) {
-                    // Screenshot-during-timer must not wipe the Open session.
-                    if (!(proofKind === 'checkpoint_screenshot' && errorCode === 'open_not_ready')) {
-                        setTimerReadyForConfirm(id, false);
-                        clearActiveTimerForApp(id);
-                        if (typeof window.renderTests === 'function') {
-                            window.renderTests(true);
-                        }
-                    }
-                    handleApiError(errorCode, result.details || {});
-                } else {
-                    handleApiError(errorCode, result.details || {});
-                }
-            } else {
-                handleApiError('network_error');
-            }
-            return false;
-        }
-
-        const earnedBust = Number(result.earned_bust || 0);
-        const earnedKarma = Number(result.earned_karma || 0);
-        const sourceType = String(result.source_type || '').toLowerCase();
-        setFirstDayScreenshotVisible(id, false);
-        setTimerReadyForConfirm(id, false, false, '');
-        clearActiveTimerForApp(id);
-        const rewardBust = Number(result.reward_bust || result.earned_bust || 0);
-        if (result.already_checked_today) {
-            showToast(t.checkinAlreadyDone);
-        } else {
-            if (typeof showCheckinRewardToasts === 'function') {
-                showCheckinRewardToasts(result);
-            } else if (sourceType === 'overtime_checkin' && rewardBust > 0) {
-                const karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
-                const bustVal = formatAmountValue(rewardBust, 1);
-                if (lang === 'ru') {
-                    showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
-                } else {
-                    showToast(`Check-in successful! +${karmaVal} ☯️ Karma and +${bustVal}💎$BUST`);
-                }
-            } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
-                showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
-            } else if (earnedBust > 0 && earnedKarma > 0) {
-                showToast(window.t('checkinEarnBustAndKarma', {
-                    bust: formatAmountValue(earnedBust, 1),
-                    karma: formatAmountValue(earnedKarma, 1)
-                }, lang));
-            } else if (earnedBust > 0) {
-                showToast(t.checkinEarnBust.replace('{amount}', formatAmountValue(earnedBust, 1)));
-            } else if (earnedKarma > 0) {
-                showToast(t.checkinEarnKarma.replace('{amount}', formatAmountValue(earnedKarma, 1)));
-            } else {
-                showToast(t.successCheckin);
-            }
-        }
-
-        var updatedTest = myTests.find(function(test) {
-            return Number(test.id) === Number(id);
-        });
-        if (updatedTest) {
-            var wasFirstCheckin = Number(updatedTest.checkins_count || 0) <= 0
-                || String(updatedTest.status || '') === 'new';
-            updatedTest.last_check_date = result.last_check_date || getLocalDate();
-            updatedTest.checkins_count = Math.max(0, Number(result.checkins_count || updatedTest.checkins_count || 0));
-            updatedTest.skips_count = Math.max(0, Number(result.skips_count || 0));
-            updatedTest.daily_timeline = result.daily_timeline || updatedTest.daily_timeline || '';
-            updatedTest.testing_days = Math.max(Number(updatedTest.testing_days || 0), Number(result.testing_day || 0));
-            updatedTest.status = 'done';
-            updatedTest.play_feedback_submitted = Object.prototype.hasOwnProperty.call(result, 'play_feedback_submitted')
-                ? !!result.play_feedback_submitted
-                : (!!updatedTest.play_feedback_submitted || shouldSubmitPlayFeedback);
-            updatedTest.play_feedback_submitted_pending = !!updatedTest.play_feedback_submitted;
-
-            // Recalculate isGrantAvailableTomorrow after optimistic update
-            var skipsAfter = countGrantSkips(updatedTest);
-            var canEverClaim = !updatedTest.grant_claimed && skipsAfter <= 3 && updatedTest.progress_id;
-            if (canEverClaim && updatedTest.testing_days === 14) {
-                updatedTest.isGrantAvailableTomorrow = true;
-                window.tg.showAlert(window.t('grantAvailableTomorrowAlert', {}, lang));
-            }
-            if (wasFirstCheckin && !result.already_checked_today) {
-                markDefaultGroupJoined({ silent: true, rerender: false });
-            }
-        }
-
+    // --- 2. INSTANT ANIMATION: Launch exit animation right now (0ms wait) ---
+    var animPromise = animateTestCardOut(card).then(function() {
         setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
-
-        // Animate the card out with success flash + smooth collapse,
-        // then re-render the list cleanly after the animation finishes.
-        if (card && card.parentNode) {
-            card.classList.remove('removing');
-            await animateTestCardOut(card);
-        }
         renderTests(true);
         refreshOpenModals();
+    });
 
-        setTimeout(() => {
-            loadTasks(true).catch(function() {});
-            loadProjects(true).catch(function() {});
-        }, 250);
-        return true;
-    } catch (error) {
-        console.error('Checkin error:', error);
-        card.classList.remove('removing');
-        if (btn) {
-            btn.innerText = t.confirmStart;
-            btn.style.backgroundColor = '';
-            btn.style.color = '';
-            btn.classList.add('btn-success', 'btn-confirm-ready');
-            btn.disabled = false;
+    // --- 3. BACKGROUND NETWORK REQUEST & ROLLBACK ON ERROR ---
+    (async function() {
+        try {
+            var token = _getCheckinOpenToken(id);
+            if (!token && proofKind === 'open_token') {
+                try {
+                    var autoToken = await _requestCheckinOpenToken(id);
+                    if (autoToken && autoToken.token) {
+                        token = String(autoToken.token);
+                    }
+                } catch (e) {}
+            }
+
+            const response = await fetch(`${API_BASE}/checkin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(withInitData({
+                    tester_id: userId,
+                    app_id: id,
+                    local_date: getLocalDate(),
+                    play_feedback_submitted: shouldSubmitPlayFeedback,
+                    open_token: token,
+                    proof_kind: proofKind,
+                }))
+            });
+
+            let result = null;
+            try {
+                result = await response.json();
+            } catch (parseError) {
+                result = null;
+            }
+
+            // Wait for animation to finish before applying final server merge or rollback
+            await animPromise;
+
+            if (!response.ok || !result || result.status !== 'success') {
+                // --- ROLLBACK ON ERROR ---
+                if (test && prevTestSnapshot) {
+                    Object.assign(test, prevTestSnapshot);
+                }
+                setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
+                renderTests(true);
+                if (typeof _highlightTestCard === 'function') {
+                    _highlightTestCard(id);
+                }
+                if (tg && tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                }
+
+                if (result && typeof result === 'object') {
+                    var errorCode = getBackendErrorCode(result);
+                    if (errorCode === 'testing_not_found'
+                        || errorCode === 'app_not_found'
+                        || errorCode === 'test_or_app_not_found'
+                        || errorCode === 'project_pending_completion') {
+                        _handleInactiveCheckinCard(id, errorCode);
+                    } else if (
+                        errorCode === 'open_required'
+                        || errorCode === 'open_invalid'
+                        || errorCode === 'open_mismatch'
+                        || errorCode === 'open_expired'
+                        || errorCode === 'open_not_ready'
+                        || errorCode === 'day_boundary_moved'
+                    ) {
+                        if (!(proofKind === 'checkpoint_screenshot' && errorCode === 'open_not_ready')) {
+                            setTimerReadyForConfirm(id, false);
+                            clearActiveTimerForApp(id);
+                            if (typeof window.renderTests === 'function') {
+                                window.renderTests(true);
+                            }
+                        }
+                        handleApiError(errorCode, result.details || {});
+                    } else {
+                        handleApiError(errorCode, result.details || {});
+                    }
+                } else {
+                    handleApiError('network_error');
+                }
+                return false;
+            }
+
+            // --- SUCCESS: Merge authoritative server data & show rewards ---
+            const earnedBust = Number(result.earned_bust || 0);
+            const earnedKarma = Number(result.earned_karma || 0);
+            const sourceType = String(result.source_type || '').toLowerCase();
+            const rewardBust = Number(result.reward_bust || result.earned_bust || 0);
+
+            if (result.already_checked_today) {
+                showToast(t.checkinAlreadyDone);
+            } else {
+                if (typeof showCheckinRewardToasts === 'function') {
+                    showCheckinRewardToasts(result);
+                } else if (sourceType === 'overtime_checkin' && rewardBust > 0) {
+                    const karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
+                    const bustVal = formatAmountValue(rewardBust, 1);
+                    if (lang === 'ru') {
+                        showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
+                    } else {
+                        showToast(`Check-in successful! +${karmaVal} ☯️ Karma and +${bustVal}💎$BUST`);
+                    }
+                } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
+                    showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+                } else if (earnedBust > 0 && earnedKarma > 0) {
+                    showToast(window.t('checkinEarnBustAndKarma', {
+                        bust: formatAmountValue(earnedBust, 1),
+                        karma: formatAmountValue(earnedKarma, 1)
+                    }, lang));
+                } else if (earnedBust > 0) {
+                    showToast(t.checkinEarnBust.replace('{amount}', formatAmountValue(earnedBust, 1)));
+                } else if (earnedKarma > 0) {
+                    showToast(t.checkinEarnKarma.replace('{amount}', formatAmountValue(earnedKarma, 1)));
+                } else {
+                    showToast(t.successCheckin);
+                }
+            }
+
+            var updatedTest = myTests.find(function(item) {
+                return Number(item.id) === Number(id);
+            });
+            if (updatedTest) {
+                var wasFirstCheckin = Number(prevTestSnapshot && prevTestSnapshot.checkins_count || 0) <= 0
+                    || String(prevTestSnapshot && prevTestSnapshot.status || '') === 'new';
+                updatedTest.last_check_date = result.last_check_date || getLocalDate();
+                updatedTest.checkins_count = Math.max(0, Number(result.checkins_count || updatedTest.checkins_count || 0));
+                updatedTest.skips_count = Math.max(0, Number(result.skips_count || 0));
+                updatedTest.daily_timeline = result.daily_timeline || updatedTest.daily_timeline || '';
+                updatedTest.testing_days = Math.max(Number(updatedTest.testing_days || 0), Number(result.testing_day || 0));
+                updatedTest.status = 'done';
+                updatedTest.play_feedback_submitted = Object.prototype.hasOwnProperty.call(result, 'play_feedback_submitted')
+                    ? !!result.play_feedback_submitted
+                    : (!!updatedTest.play_feedback_submitted || shouldSubmitPlayFeedback);
+                updatedTest.play_feedback_submitted_pending = !!updatedTest.play_feedback_submitted;
+
+                var skipsAfter = countGrantSkips(updatedTest);
+                var canEverClaim = !updatedTest.grant_claimed && skipsAfter <= 3 && updatedTest.progress_id;
+                if (canEverClaim && updatedTest.testing_days === 14) {
+                    updatedTest.isGrantAvailableTomorrow = true;
+                    window.tg.showAlert(window.t('grantAvailableTomorrowAlert', {}, lang));
+                }
+                if (wasFirstCheckin && !result.already_checked_today) {
+                    markDefaultGroupJoined({ silent: true, rerender: false });
+                }
+            }
+
+            setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
+            renderTests(true);
+            refreshOpenModals();
+
+            setTimeout(() => {
+                loadTasks(true).catch(function() {});
+                loadProjects(true).catch(function() {});
+            }, 250);
+            return true;
+        } catch (error) {
+            console.error('Checkin background error:', error);
+            await animPromise;
+            if (test && prevTestSnapshot) {
+                Object.assign(test, prevTestSnapshot);
+            }
+            setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
+            renderTests(true);
+            if (typeof _highlightTestCard === 'function') {
+                _highlightTestCard(id);
+            }
+            handleApiError('network_error');
+            return false;
+        } finally {
+            _pendingActions.delete(actionKey);
         }
-        handleApiError('network_error');
-        return false;
-    } finally {
-        _pendingActions.delete(actionKey);
-    }
+    })();
+
+    return true;
 }
 
 function handleClaimGrantClick(progressId, appId) {
@@ -3884,6 +3913,10 @@ async function claimGrant(progressId, appId) {
         }
         if (btn) btn.style.display = 'none';
         persistTestsCacheSnapshot();
+        const grantCard = document.getElementById('test-card-' + appId) || document.getElementById('external-test-card-' + appId);
+        if (grantCard && grantCard.parentNode) {
+            await animateTestCardOut(grantCard);
+        }
         if (window.renderTests) window.renderTests(true);
         loadProjects(true);
     } catch (error) {
@@ -3929,6 +3962,10 @@ async function claimEarlyFinishBonus(progressId, appId) {
             }
         } else {
             showToast(window.t('earlyFinishNoBonus', {}, lang));
+        }
+        const finishCard = document.getElementById('test-card-' + appId) || document.getElementById('external-test-card-' + appId);
+        if (finishCard && finishCard.parentNode) {
+            await animateTestCardOut(finishCard);
         }
         if (window.renderTests) window.renderTests(true);
     } catch (error) {
