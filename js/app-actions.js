@@ -4079,12 +4079,18 @@ let _feedbackAcceptLongPressTimeout = null;
 let _feedbackAcceptLongPressActive = false;
 let _feedbackAcceptLongPressStart = 0;
 let _feedbackAcceptLongPressPulse = null;
-const FEEDBACK_ACCEPT_HOLD_DURATION_MS = 2800;
+let _feedbackAcceptTouchStartX = 0;
+let _feedbackAcceptTouchStartY = 0;
+const FEEDBACK_ACCEPT_HOLD_DURATION_MS = 5000;
 
 function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
     if (_feedbackAcceptLongPressActive) return;
-    if (event && event.type === 'touchstart') {
-        // Keep scroll possible until hold engages; do not preventDefault here.
+    if (event && event.touches && event.touches[0]) {
+        _feedbackAcceptTouchStartX = event.touches[0].clientX;
+        _feedbackAcceptTouchStartY = event.touches[0].clientY;
+    } else {
+        _feedbackAcceptTouchStartX = 0;
+        _feedbackAcceptTouchStartY = 0;
     }
 
     _feedbackAcceptLongPressActive = true;
@@ -4099,15 +4105,13 @@ function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
     }
 
     if (window.tg && window.tg.HapticFeedback) {
-        window.tg.HapticFeedback.impactOccurred('medium');
-    } else if (navigator.vibrate) {
-        navigator.vibrate(30);
+        window.tg.HapticFeedback.impactOccurred('light');
     }
 
     if (_feedbackAcceptLongPressPulse) clearInterval(_feedbackAcceptLongPressPulse);
     _feedbackAcceptLongPressPulse = setInterval(function() {
-        if (navigator.vibrate) navigator.vibrate(12);
-    }, 250);
+        if (navigator.vibrate) navigator.vibrate(10);
+    }, 400);
 
     _feedbackAcceptLongPressTimeout = setTimeout(async function() {
         _feedbackAcceptLongPressActive = false;
@@ -4129,6 +4133,17 @@ function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
             progressEl.style.width = '0';
         }
     }, FEEDBACK_ACCEPT_HOLD_DURATION_MS);
+}
+
+function handleFeedbackAcceptTouchMove(btnEl, event) {
+    if (!_feedbackAcceptLongPressActive) return;
+    if (event && event.touches && event.touches[0]) {
+        const dx = Math.abs(event.touches[0].clientX - _feedbackAcceptTouchStartX);
+        const dy = Math.abs(event.touches[0].clientY - _feedbackAcceptTouchStartY);
+        if (dx > 8 || dy > 8) {
+            cancelFeedbackAcceptLongPress(btnEl, event);
+        }
+    }
 }
 
 function cancelFeedbackAcceptLongPress(btnEl, event) {

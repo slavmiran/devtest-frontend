@@ -5125,6 +5125,7 @@ function renderProjectFeedbackCards(project, items) {
                             onmouseup="cancelFeedbackAcceptLongPress(this, event)"
                             onmouseleave="cancelFeedbackAcceptLongPress(this, event)"
                             ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
+                            ontouchmove="handleFeedbackAcceptTouchMove(this, event)"
                             ontouchend="cancelFeedbackAcceptLongPress(this, event)"
                             ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
                         <span class="fb-btn-accept-progress"></span>
@@ -5139,6 +5140,7 @@ function renderProjectFeedbackCards(project, items) {
                             onmouseup="cancelFeedbackAcceptLongPress(this, event)"
                             onmouseleave="cancelFeedbackAcceptLongPress(this, event)"
                             ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
+                            ontouchmove="handleFeedbackAcceptTouchMove(this, event)"
                             ontouchend="cancelFeedbackAcceptLongPress(this, event)"
                             ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
                         <span class="fb-btn-accept-progress"></span>
