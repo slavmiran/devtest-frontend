@@ -1999,6 +1999,10 @@ function renderTests(force) {
     doneList.innerHTML = '';
     if (pendingList) pendingList.innerHTML = '';
 
+    const activeFrag = document.createDocumentFragment();
+    const doneFrag = document.createDocumentFragment();
+    const pendingFrag = document.createDocumentFragment();
+
     let activeCount = 0;
     let doneCount = 0;
     let pendingCount = 0;
@@ -2476,9 +2480,9 @@ function renderTests(force) {
                 cardContent += reminderHtml;
             }
             card.innerHTML = cardContent;
-            doneList.appendChild(card);
+            doneFrag.appendChild(card);
             doneCount++;
-        } else         if (shouldShowInPendingList) {
+        } else if (shouldShowInPendingList) {
             card.innerHTML = cardContent;
             if (test.isReadyToClaim) {
                 card.dataset.grantReady = '1';
@@ -2488,25 +2492,31 @@ function renderTests(force) {
                 card.dataset.actionRequired = '1';
                 pendingActionCount++;
             }
-            if (pendingList) pendingList.appendChild(card);
+            pendingFrag.appendChild(card);
             pendingCount++;
         } else if (shouldShowInActiveList) {
             card.innerHTML = cardContent;
-            activeList.appendChild(card);
+            activeFrag.appendChild(card);
             activeCount++;
         }
     });
 
-    if (pendingList && pendingList.children.length > 1) {
-        const pendingCards = Array.from(pendingList.children);
-        pendingCards.sort(function(a, b) {
-            const actionDelta = Number(b.dataset.actionRequired || 0) - Number(a.dataset.actionRequired || 0);
-            if (actionDelta !== 0) return actionDelta;
-            return Number(b.dataset.grantReady || 0) - Number(a.dataset.grantReady || 0);
-        });
-        pendingCards.forEach(function(card) {
-            pendingList.appendChild(card);
-        });
+    if (activeList) activeList.appendChild(activeFrag);
+    if (doneList) doneList.appendChild(doneFrag);
+
+    if (pendingList) {
+        if (pendingFrag.children.length > 1) {
+            const pendingCards = Array.from(pendingFrag.children);
+            pendingCards.sort(function(a, b) {
+                const actionDelta = Number(b.dataset.actionRequired || 0) - Number(a.dataset.actionRequired || 0);
+                if (actionDelta !== 0) return actionDelta;
+                return Number(b.dataset.grantReady || 0) - Number(a.dataset.grantReady || 0);
+            });
+            pendingCards.forEach(function(card) {
+                pendingFrag.appendChild(card);
+            });
+        }
+        pendingList.appendChild(pendingFrag);
     }
 
     const pendingNeedsAttention = pendingActionCount > 0;
@@ -2553,14 +2563,8 @@ function renderTests(force) {
 function _isMyTestsSectionVisible(el) {
     if (!el) return false;
     if (el.hidden) return false;
-    if (String(el.style && el.style.display || '').toLowerCase() === 'none') return false;
-    try {
-        var cs = window.getComputedStyle(el);
-        if (!cs) return true;
-        return cs.display !== 'none' && cs.visibility !== 'hidden';
-    } catch (e) {
-        return true;
-    }
+    if (el.style && el.style.display === 'none') return false;
+    return !!(el.offsetWidth > 0 || el.offsetHeight > 0 || (el.getClientRects && el.getClientRects().length > 0));
 }
 
 function refreshMyTestsSectionHandoffs() {

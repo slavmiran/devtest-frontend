@@ -3367,15 +3367,26 @@ function _handleInactiveCheckinCard(appId, errorCode) {
 }
 
 function _removeLocalTesterFromProject(appId, testerId) {
+    var safeAppId = Number(appId || 0);
+    var safeTesterId = Number(testerId || 0);
+    if (safeAppId <= 0 || safeTesterId <= 0) return;
+
     var project = (myProjects || []).find(function(item) {
-        return Number(item.id) === Number(appId);
+        return Number(item && item.id) === safeAppId || Number(item && item.app_id) === safeAppId;
     });
     if (!project || !Array.isArray(project.testers)) {
         return;
     }
     project.testers = project.testers.filter(function(item) {
-        return Number(item.tester_id) !== Number(testerId);
+        return Number(item && item.tester_id) !== safeTesterId;
     });
+    if (typeof setProjectsCache === 'function' && typeof myProjects !== 'undefined') {
+        setProjectsCache({
+            projects: myProjects,
+            visibilityStats: (typeof visibilityStats !== 'undefined') ? visibilityStats : {},
+            ts: Date.now()
+        });
+    }
 }
 
 async function confirmLeaveMutual(isJustified, explicitAppId) {
@@ -3582,6 +3593,22 @@ async function confirmKickTester(explicitAppId, explicitTesterId) {
             var errorCode = typeof getBackendErrorCode === 'function'
                 ? getBackendErrorCode(data)
                 : String((data && (data.code || data.error_code || data.message)) || '');
+            if (errorCode === 'testing_not_found') {
+                _removeLocalTesterFromProject(target.appId, target.testerId);
+                if (typeof window.renderProjects === 'function') {
+                    window.renderProjects(true);
+                }
+                if (typeof window.endTerminationSubmit === 'function') {
+                    window.endTerminationSubmit({ reopenSheet: false });
+                }
+                if (typeof closeTerminationSheet === 'function') {
+                    closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+                }
+                closeDossierModal();
+                showToast(window.t('testerAlreadyKicked', {}, lang) || 'Тестировщик уже исключен из проекта');
+                await loadProjects(true, true);
+                return;
+            }
             if (errorCode === 'kick_blocked_active_tester') {
                 if (typeof showKickBlockedDialog === 'function') {
                     showKickBlockedDialog((data && data.details) || data);
@@ -3623,8 +3650,8 @@ async function confirmKickTester(explicitAppId, explicitTesterId) {
             }
             closeDossierModal();
         }
-        await loadProjects(true);
-        loadTasks(true).catch(function() {});
+        await loadProjects(true, true);
+        loadTasks(true, true).catch(function() {});
     } catch (error) {
         console.error('Kick tester error:', error);
         if (project && previousTesters) {

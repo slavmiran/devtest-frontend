@@ -2166,25 +2166,7 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
         return;
     }
 
-    var openPayload = await _requestCheckinOpenToken(id);
-    if (!openPayload) {
-        return;
-    }
-    if (openPayload.required === false) {
-        // Day 15+ should not use Open timer, but if we got here — unlock Confirm.
-        setTimerReadyForConfirm(id, true, isScreenshotDay, resolvedOwnerUsername);
-        _setTimerButtonReady(id, !!isScreenshotDay, resolvedOwnerUsername);
-        tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
-        _onStoreLinkClickedForIssueFlow(id);
-        return;
-    }
-
-    var serverWaitMs = Math.max(
-        1000,
-        Number(openPayload.ready_at_ms || 0) - Number(openPayload.server_now_ms || Date.now())
-    );
-    resolvedDurationSeconds = Math.max(1, Math.ceil(serverWaitMs / 1000));
-
+    // 1. Instant store opening & haptics (zero delay, avoids mobile browser popup block)
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
     _onStoreLinkClickedForIssueFlow(id);
@@ -2192,6 +2174,7 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
     const btn = document.getElementById(`btn-confirm-${id}`);
     if (!btn || !btn.disabled) return;
 
+    // 2. Start timer countdown immediately
     activeTimerAppId = id;
     _timerEndTimestamp = Date.now() + (resolvedDurationSeconds * 1000);
     _timerIsScreenshot = isScreenshotDay;
@@ -2204,6 +2187,27 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
         _ensureEarlyPaperclipSplit(id, resolvedOwnerUsername);
     }
     _startActiveTimerInterval(id);
+
+    // 3. Request open token asynchronously in background while user is in the app
+    _requestCheckinOpenToken(id).then(function(openPayload) {
+        if (!openPayload) return;
+        if (openPayload.required === false) {
+            setTimerReadyForConfirm(id, true, isScreenshotDay, resolvedOwnerUsername);
+            _setTimerButtonReady(id, !!isScreenshotDay, resolvedOwnerUsername);
+            return;
+        }
+        var serverWaitMs = Math.max(
+            1000,
+            Number(openPayload.ready_at_ms || 0) - Number(openPayload.server_now_ms || Date.now())
+        );
+        var updatedDuration = Math.max(1, Math.ceil(serverWaitMs / 1000));
+        if (activeTimerAppId === id && _timerEndTimestamp) {
+            _timerEndTimestamp = Math.max(_timerEndTimestamp, Date.now() + (updatedDuration * 1000));
+            _persistActiveTimer();
+        }
+    }).catch(function(err) {
+        console.warn('Background checkin open token error:', err);
+    });
 }
 
 function _restoreActiveTimer() {
@@ -3030,14 +3034,20 @@ function openFeedbackRewardModal(appId, feedbackId) {
     }
 
     // Evaluate limits
-    var isKarmaAvailable = item ? (item.project_karma_available !== false) : true;
-    var isTesterAlreadyRewarded = item ? !!item.tester_already_rewarded_karma : false;
+    var thanksAvailable = item ? (item.thanks_available !== false) : true;
+    var specialAvailable = item ? (item.special_available !== false) : true;
+    var isKarmaAvailable = item ? (item.project_karma_available !== false && (thanksAvailable || specialAvailable)) : true;
+    var alreadyThanked = item ? !!item.tester_already_thanked : false;
+    var alreadySpecial = item ? !!item.tester_already_special : false;
+    var isTesterFullyRewarded = (alreadyThanked && alreadySpecial) || (item && item.tester_already_rewarded_karma && item.tester_already_thanked == null && item.tester_already_special == null);
+    var hasAnyKarmaOption = (thanksAvailable && !alreadyThanked) || (specialAvailable && !alreadySpecial);
+
     var warningEl = document.getElementById('feedback-reward-karma-warning');
     if (warningEl) {
         if (!isKarmaAvailable) {
             warningEl.textContent = window.t('feedbackRewardKarmaLimitReachedWarning', {}, lang);
             warningEl.style.display = 'block';
-        } else if (isTesterAlreadyRewarded) {
+        } else if (isTesterFullyRewarded || !hasAnyKarmaOption) {
             warningEl.textContent = window.t('feedbackRewardTesterAlreadyRewardedWarning', {}, lang);
             warningEl.style.display = 'block';
         } else {
@@ -3595,6 +3605,17 @@ async function confirmStart(id, options) {
     card.classList.add('removing');
 
     try {
+        var token = _getCheckinOpenToken(id);
+        if (!token && proofKind === 'open_token') {
+            try {
+                var autoToken = await _requestCheckinOpenToken(id);
+                if (autoToken && autoToken.token) {
+                    token = String(autoToken.token);
+                    setTimerReadyForConfirm(id, true, false, '');
+                }
+            } catch (e) {}
+        }
+
         const response = await fetch(`${API_BASE}/checkin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3603,7 +3624,7 @@ async function confirmStart(id, options) {
                 app_id: id,
                 local_date: getLocalDate(),
                 play_feedback_submitted: shouldSubmitPlayFeedback,
-                open_token: _getCheckinOpenToken(id),
+                open_token: token,
                 proof_kind: proofKind,
             }))
         });
@@ -4058,6 +4079,7 @@ let _feedbackAcceptLongPressTimeout = null;
 let _feedbackAcceptLongPressActive = false;
 let _feedbackAcceptLongPressStart = 0;
 let _feedbackAcceptLongPressPulse = null;
+const FEEDBACK_ACCEPT_HOLD_DURATION_MS = 2800;
 
 function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
     if (_feedbackAcceptLongPressActive) return;
@@ -4071,7 +4093,7 @@ function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
 
     const progressEl = btnEl && btnEl.querySelector('.fb-btn-accept-progress');
     if (progressEl) {
-        progressEl.style.transition = 'width 0.8s linear';
+        progressEl.style.transition = `width ${FEEDBACK_ACCEPT_HOLD_DURATION_MS / 1000}s linear`;
         progressEl.getBoundingClientRect();
         progressEl.style.width = '100%';
     }
@@ -4085,7 +4107,7 @@ function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
     if (_feedbackAcceptLongPressPulse) clearInterval(_feedbackAcceptLongPressPulse);
     _feedbackAcceptLongPressPulse = setInterval(function() {
         if (navigator.vibrate) navigator.vibrate(12);
-    }, 220);
+    }, 250);
 
     _feedbackAcceptLongPressTimeout = setTimeout(async function() {
         _feedbackAcceptLongPressActive = false;
@@ -4106,7 +4128,7 @@ function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
             progressEl.style.transition = 'none';
             progressEl.style.width = '0';
         }
-    }, 800);
+    }, FEEDBACK_ACCEPT_HOLD_DURATION_MS);
 }
 
 function cancelFeedbackAcceptLongPress(btnEl, event) {
@@ -4122,14 +4144,14 @@ function cancelFeedbackAcceptLongPress(btnEl, event) {
 
     const progressEl = btnEl && btnEl.querySelector('.fb-btn-accept-progress');
     if (progressEl) {
-        progressEl.style.transition = 'width 0.15s ease-out';
+        progressEl.style.transition = 'width 0.2s ease-out';
         progressEl.style.width = '0';
     }
 }
 
 function handleFeedbackAcceptClick(projectId, feedbackId, btnEl, event) {
     const duration = Date.now() - _feedbackAcceptLongPressStart;
-    if (duration >= 800) {
+    if (duration >= FEEDBACK_ACCEPT_HOLD_DURATION_MS) {
         if (event) {
             event.stopPropagation();
             event.preventDefault();

@@ -1859,8 +1859,8 @@
             closeDossierModal();
         }
 
-        if (typeof loadProjects === 'function') loadProjects(true).catch(function() {});
-        if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
+        if (typeof loadProjects === 'function') loadProjects(true, true).catch(function() {});
+        if (typeof loadTasks === 'function') loadTasks(true, true).catch(function() {});
     }
 
     function cancelTerminationConfirm(event) {
