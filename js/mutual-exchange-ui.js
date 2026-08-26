@@ -395,7 +395,7 @@
         if (titleEl) {
             titleEl.textContent = _linkStatusTitle(joinType, {
                 isDebt: !!_balanceState.isMutualDebt,
-                isBroken: !!_balanceState.leftSoft,
+                isBroken: !!_balanceState.leftSoft || !!options.isBroken || !!options.leftSoft,
             });
         }
 

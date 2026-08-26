@@ -8602,11 +8602,6 @@ function _resolveDossierRelationPair(rel, options) {
     if (!myProject && contextProject && myName && String(contextProject.name || '') === myName) {
         myProject = contextProject;
     }
-    if (!myProject && contextAppId > 0 && Array.isArray(myProjects)) {
-        myProject = myProjects.find(function(item) {
-            return Number(item.id) === contextAppId;
-        }) || null;
-    }
     if (!myProject && myName && Array.isArray(myProjects)) {
         myProject = myProjects.find(function(item) {
             return String(item.name || '') === myName;
@@ -8656,14 +8651,13 @@ function _isDossierRelationPrimary(rel, options) {
     if (!(contextAppId > 0) || !rel) return false;
     const type = String(rel.type || '');
     if (type === 'mutual' || type === 'mutual_they_test_me') {
-        const pair = _resolveDossierRelationPair(rel, options);
-        return !!pair.isPrimary;
+        const myAppId = Number(rel.my_app_id || 0);
+        return myAppId > 0 && myAppId === contextAppId;
     }
     if (type.indexOf('they_test_me') !== -1) {
         return Number(rel.my_app_id || 0) === contextAppId;
     }
     if (type.indexOf('i_test_them') !== -1) {
-        // Opened from their project context is rare; still mark if ids match.
         return Number(rel.their_app_id || 0) === contextAppId;
     }
     return false;
@@ -8825,7 +8819,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         ? formatSkipsLabel
         : function(n) { return String(n); };
     const openAttrs = canOpenBalance
-        ? ` onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${pair.myAppId}, ${testerId}, event)"`
+        ? ` onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${pair.myAppId}, ${testerId}, event, { reciprocalAppId: ${pair.theirAppId}, isBroken: ${isBroken ? 'true' : 'false'}, isMutualDebt: ${isMutualDebt ? 'true' : 'false'} })"`
         : '';
     const tag = canOpenBalance ? 'button' : 'div';
     const typeAttr = canOpenBalance ? ' type="button"' : '';
