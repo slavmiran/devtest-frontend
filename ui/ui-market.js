@@ -912,7 +912,7 @@ function renderFeedCard(item, kind) {
         } else {
             buttonText = window.t('bountyTakeBtn', {}, lang);
             clickAction = `joinBounty(${item.app_id})`;
-            buttonExtraAttrs = '';
+            buttonExtraAttrs = ` data-bounty-app-id="${item.app_id}"`;
             if (typeof window.registerJoinBountyContext === 'function') {
                 window.registerJoinBountyContext(item);
             }

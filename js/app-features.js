@@ -3195,10 +3195,19 @@ async function confirmJoinBounty() {
                 if (Number(card && card.app_id) !== appId) return card;
                 return Object.assign({}, card, { has_pending_bounty_application: true });
             });
-            renderBountyFeed();
+            var cached = typeof getMarketCache === 'function' ? getMarketCache() : null;
+            if (cached && cached.bounty) {
+                cached.bounty.contracts = bountyContracts;
+                cached.ts = Date.now();
+                if (typeof setMarketCache === 'function') setMarketCache(cached);
+            }
+            if (typeof markBountyApplicationPendingUi === 'function') {
+                markBountyApplicationPendingUi(appId);
+            }
+            renderBountyFeed(true);
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             showToast(window.t('bountyAppSubmittedToast', {}, lang));
-            loadBountyFeed();
+            if (window._lastFetchTimes) window._lastFetchTimes.bounty = 0;
             return;
         }
 

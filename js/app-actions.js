@@ -1916,6 +1916,17 @@ function markMutualOfferPendingUi(targetAppId, targetOwnerId, sourceButton) {
     });
 }
 
+function markBountyApplicationPendingUi(appId) {
+    var selector = 'button[data-bounty-app-id="' + appId + '"], .market-card[data-app-id="' + appId + '"] .btn';
+    var relatedButtons = document.querySelectorAll(selector);
+    relatedButtons.forEach(function(button) {
+        button.textContent = window.t('bountyAppPendingBtn', {}, lang);
+        button.className = 'btn pending disabled';
+        button.disabled = true;
+        button.removeAttribute('onclick');
+    });
+}
+
 async function createMutualOffer(targetAppId, targetOwnerId, event) {
     if (event) {
         event.preventDefault();

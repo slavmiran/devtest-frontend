@@ -1813,10 +1813,10 @@ async function _loadBountyFeedImpl(options) {
     const shouldShowSkeleton = !!(options && options.forceSkeleton);
     const hadVisibleData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
 
-    if (hasBountyCache) {
+    if (hasBountyCache && !hadVisibleData) {
         bountyContracts = cached.bounty.contracts || [];
         renderBountyFeed();
-    } else if (shouldShowSkeleton) {
+    } else if (shouldShowSkeleton && !hadVisibleData) {
         showSkeleton('bounty-list');
     }
 

@@ -156,6 +156,7 @@ Object.assign(window, {
     bootstrapInterfaceLanguage,
     fetchWithRetry,
     markMutualOfferPendingUi,
+    markBountyApplicationPendingUi,
     loadAllData,
     hasMarketCache,
     hydrateMarketFromCache,
