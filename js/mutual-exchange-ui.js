@@ -279,13 +279,17 @@
         var tester = project && Array.isArray(project.testers)
             ? project.testers.find(function (item) { return Number(item.tester_id) === safeTesterId; })
             : null;
-        if (!project || !tester) return;
+        if (!tester && project && Array.isArray(project.left_testers)) {
+            tester = project.left_testers.find(function (item) { return Number(item.tester_id) === safeTesterId; }) || null;
+        }
 
-        var theirAppName = String(tester.reciprocal_app_name || '').trim();
-        var theirIconUrl = String(tester.reciprocal_app_icon_url || '').trim();
+        var myAppName = (project && project.name) || options.myAppName || '';
+        var myIconUrl = (project && project.icon_url) || options.myIconUrl || '';
+        var theirAppName = (tester && tester.reciprocal_app_name) || options.theirAppName || '';
+        var theirIconUrl = (tester && tester.reciprocal_app_icon_url) || options.theirIconUrl || '';
         var reciprocalAppId = Number(
             options.reciprocalAppId
-            || tester.reciprocal_app_id
+            || (tester && tester.reciprocal_app_id)
             || 0
         );
         if (Array.isArray(myTests) && reciprocalAppId > 0) {
@@ -298,36 +302,36 @@
             }
         }
 
-        var partnerProgressStatus = String(tester.reciprocal_partner_progress_status || '').toLowerCase();
+        var partnerProgressStatus = String((tester && tester.reciprocal_partner_progress_status) || '').toLowerCase();
         var isViewerLeft = partnerProgressStatus === 'abandoned'
             || partnerProgressStatus === 'justified_exit'
             || partnerProgressStatus === 'kicked_by_owner'
             || partnerProgressStatus === 'canceled_neutral'
             || partnerProgressStatus === 'dropped';
-        var testerProgressStatus = String(tester.status || '').toLowerCase();
-        var isTesterLeft = !!options.leftSoft || !!tester.is_left_soft
+        var testerProgressStatus = String((tester && tester.status) || '').toLowerCase();
+        var isTesterLeft = !!options.leftSoft || !!(tester && tester.is_left_soft)
             || testerProgressStatus === 'abandoned'
             || testerProgressStatus === 'justified_exit'
             || testerProgressStatus === 'kicked_by_owner'
             || testerProgressStatus === 'canceled_neutral'
             || testerProgressStatus === 'dropped';
-        var isBroken = isViewerLeft || isTesterLeft || !!tester.is_broken_reciprocal;
+        var isBroken = options.isBroken != null ? !!options.isBroken : (isViewerLeft || isTesterLeft || !!(tester && tester.is_broken_reciprocal));
 
         openMutualBalanceModal(safeProjectId, null, {
             context: 'projects',
             projectId: safeProjectId,
             testerId: safeTesterId,
-            joinType: tester.join_type || 'invite',
-            testerUsername: String(tester.username || '').replace(/^@+/, ''),
-            testerFullName: String(tester.full_name || '').trim(),
-            testerAvatarUrl: String(tester.avatar_url || '').trim(),
-            testerLanguage: String(tester.language || '').trim(),
-            myAppName: project.name || '',
+            joinType: (tester && tester.join_type) || 'invite',
+            testerUsername: String((tester && tester.username) || '').replace(/^@+/, ''),
+            testerFullName: String((tester && tester.full_name) || '').trim(),
+            testerAvatarUrl: String((tester && tester.avatar_url) || '').trim(),
+            testerLanguage: String((tester && tester.language) || '').trim(),
+            myAppName: myAppName,
             theirAppName: theirAppName,
-            myIconUrl: project.icon_url || '',
+            myIconUrl: myIconUrl,
             theirIconUrl: theirIconUrl,
             testerSnapshot: tester,
-            isMutualDebt: !!tester.is_mutual_debt,
+            isMutualDebt: options.isMutualDebt != null ? !!options.isMutualDebt : !!(tester && tester.is_mutual_debt),
             leftSoft: isTesterLeft,
             isTesterLeft: isTesterLeft,
             isViewerLeft: isViewerLeft,

@@ -8781,8 +8781,8 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const viewerLeg = String(rel && rel.viewer_leg_status || '').trim().toLowerCase();
     const testerLeg = String(rel && rel.tester_leg_status || '').trim().toLowerCase();
 
-    const myDone = myStatus === 'completed' || myStatus === 'archived' || viewerLeg === 'completed';
-    const theirDone = theirStatus === 'completed' || theirStatus === 'archived' || testerLeg === 'completed';
+    const myDone = myStatus === 'completed' || myStatus === 'archived' || testerLeg === 'completed';
+    const theirDone = theirStatus === 'completed' || theirStatus === 'archived' || viewerLeg === 'completed';
     const isBroken = !!(rel && rel.is_broken);
     const isMutualDebt = !isBroken && (!!(rel && rel.is_mutual_debt) || (myDone && !theirDone) || (theirDone && !myDone));
 
@@ -8819,7 +8819,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         ? formatSkipsLabel
         : function(n) { return String(n); };
     const openAttrs = canOpenBalance
-        ? ` onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${pair.myAppId}, ${testerId}, event, { reciprocalAppId: ${pair.theirAppId}, isBroken: ${isBroken ? 'true' : 'false'}, isMutualDebt: ${isMutualDebt ? 'true' : 'false'} })"`
+        ? ` onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${pair.myAppId}, ${testerId}, event, { reciprocalAppId: ${pair.theirAppId}, isBroken: ${isBroken ? 'true' : 'false'}, isMutualDebt: ${isMutualDebt ? 'true' : 'false'}, myAppName: '${escapeInlineJsString(pair.myName)}', theirAppName: '${escapeInlineJsString(pair.theirName)}' })"`
         : '';
     const tag = canOpenBalance ? 'button' : 'div';
     const typeAttr = canOpenBalance ? ' type="button"' : '';
@@ -8842,18 +8842,26 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     let theirBrokenTag = '';
     let myBrokenTag = '';
     if (isBroken) {
-        let isViewerBroken = rel && (rel.broken_by === 'viewer' || rel.viewer_leg_status === 'abandoned' || rel.viewer_leg_status === 'justified_exit' || rel.viewer_leg_status === 'dropped');
-        let isTesterBroken = rel && (rel.broken_by === 'tester' || rel.tester_leg_status === 'abandoned' || rel.tester_leg_status === 'justified_exit' || rel.tester_leg_status === 'dropped' || rel.tester_leg_status === 'kicked_by_owner');
-        if (!isViewerBroken && !isTesterBroken) {
-            isViewerBroken = true; // default fallback
-        }
-        const brokenTagHtml = `<div class="linked-side-broken-tag" style="color:#ff453a;font-size:11px;font-weight:600;margin-top:2px;">${window.escapeHTML(window.t('mutualBalanceSideBrokenText', {}, lang) || 'Связь разорвана')}</div>`;
-        if (isViewerBroken) theirBrokenTag = brokenTagHtml;
-        if (isTesterBroken) myBrokenTag = brokenTagHtml;
+        const brokenStatuses = ['abandoned', 'justified_exit', 'kicked_by_owner', 'canceled_neutral', 'dropped'];
+        const isTheirLegBroken = brokenStatuses.includes(viewerLeg);
+        const isMyLegBroken = brokenStatuses.includes(testerLeg);
 
-        let brokenMsg = isViewerBroken
-            ? (window.t('dossierRelationBrokenViewer', {}, lang) || 'Вы вышли из тестирования')
-            : (window.t('dossierRelationBrokenTester', {}, lang) || 'Партнёр вышел из тестирования');
+        const brokenTagHtml = `<div class="linked-side-broken-tag" style="color:#ff453a;font-size:11px;font-weight:600;margin-top:2px;">${window.escapeHTML(window.t('mutualBalanceSideBrokenText', {}, lang) || 'Связь разорвана')}</div>`;
+        if (isTheirLegBroken) theirBrokenTag = brokenTagHtml;
+        if (isMyLegBroken) myBrokenTag = brokenTagHtml;
+
+        let brokenMsg = '';
+        if (viewerLeg === 'kicked_by_owner') {
+            brokenMsg = window.t('dossierRelationKickedViewer', {}, lang) || 'Партнёр исключил вас из проекта';
+        } else if (isTheirLegBroken) {
+            brokenMsg = window.t('dossierRelationBrokenViewer', {}, lang) || 'Вы вышли из тестирования';
+        } else if (testerLeg === 'kicked_by_owner') {
+            brokenMsg = window.t('dossierRelationKickedTester', {}, lang) || 'Вы исключили тестера из проекта';
+        } else if (isMyLegBroken) {
+            brokenMsg = window.t('dossierRelationBrokenTester', {}, lang) || 'Партнёр вышел из тестирования';
+        } else {
+            brokenMsg = window.t('mutualBalanceSideBrokenText', {}, lang) || 'Связь разорвана';
+        }
         brokenNoticeHtml = `<span class="linked-card-direction is-debt" style="color: #ff453a;">${window.escapeHTML(brokenMsg)}</span>`;
     } else if (isMutualDebt) {
         brokenNoticeHtml = `<span class="linked-card-direction is-debt">${window.escapeHTML(window.t('linkedMutualDebtNotice', {}, lang))}</span>`;

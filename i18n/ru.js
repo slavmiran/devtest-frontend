@@ -1497,6 +1497,8 @@
             dossierRelationBroken: "💔 Связь разорвана: {my_app} ↔ {their_app}",
             dossierRelationBrokenViewer: "Вы вышли из тестирования",
             dossierRelationBrokenTester: "Партнёр вышел из тестирования",
+            dossierRelationKickedViewer: "Партнёр исключил вас из проекта",
+            dossierRelationKickedTester: "Вы исключили тестера из проекта",
             dossierRelationTheyTestMe: "🔗 Тестирует ваш проект по инвайту: {my_app}",
             dossierRelationITestThem: "🔗 Вы тестируете по инвайту: {their_app}",
             dossierRelationContractTheyTestMe: "💎 Тестирует по контракту: {my_app}",
