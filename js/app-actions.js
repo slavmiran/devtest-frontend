@@ -1558,6 +1558,12 @@ function recomputeLocalTestState(test) {
     }
 
     var isTestedToday = nextStatus === 'done';
+    if (test.start_date && typeof getUserTestingDay === 'function' && (!isExternal || (typeof isExternalContinueModeEnabled === 'function' && !isExternalContinueModeEnabled(test)))) {
+        var computedCalDay = getUserTestingDay(test.start_date);
+        if (Number.isFinite(computedCalDay) && computedCalDay > 0) {
+            test.testing_days = computedCalDay;
+        }
+    }
     var testingDays = Number(test.testing_days || 0);
     var skipsCount = countGrantSkips(test);
     var canEverClaim = !isExternal && !test.grant_claimed && skipsCount <= 3 && test.progress_id;
@@ -3672,10 +3678,15 @@ async function confirmStart(id, options) {
         test.status = 'done';
         test.last_check_date = getLocalDate();
         test.checkins_count = Math.max(0, Number(test.checkins_count || 0)) + 1;
-        test.testing_days = Math.max(1, Number(test.testing_days || 0) + 1);
+        test.testing_days = (test.start_date && typeof getUserTestingDay === 'function')
+            ? (getUserTestingDay(test.start_date) || Number(test.testing_days || 1))
+            : Number(test.testing_days || 1);
         if (shouldSubmitPlayFeedback) {
             test.play_feedback_submitted = true;
             test.play_feedback_submitted_pending = true;
+        }
+        if (typeof window.recomputeLocalTestState === 'function') {
+            try { window.recomputeLocalTestState(test); } catch (e) {}
         }
     }
     setFirstDayScreenshotVisible(id, false);
@@ -3815,12 +3826,21 @@ async function confirmStart(id, options) {
                 updatedTest.checkins_count = Math.max(0, Number(result.checkins_count || updatedTest.checkins_count || 0));
                 updatedTest.skips_count = Math.max(0, Number(result.skips_count || 0));
                 updatedTest.daily_timeline = result.daily_timeline || updatedTest.daily_timeline || '';
-                updatedTest.testing_days = Math.max(Number(updatedTest.testing_days || 0), Number(result.testing_day || 0));
+                var serverDay = Number(result.testing_day || 0);
+                if (serverDay > 0) {
+                    updatedTest.testing_days = serverDay;
+                } else if (updatedTest.start_date && typeof getUserTestingDay === 'function') {
+                    updatedTest.testing_days = getUserTestingDay(updatedTest.start_date) || Number(updatedTest.testing_days || 1);
+                }
                 updatedTest.status = 'done';
                 updatedTest.play_feedback_submitted = Object.prototype.hasOwnProperty.call(result, 'play_feedback_submitted')
                     ? !!result.play_feedback_submitted
                     : (!!updatedTest.play_feedback_submitted || shouldSubmitPlayFeedback);
                 updatedTest.play_feedback_submitted_pending = !!updatedTest.play_feedback_submitted;
+
+                if (typeof window.recomputeLocalTestState === 'function') {
+                    try { window.recomputeLocalTestState(updatedTest); } catch (e) {}
+                }
 
                 var skipsAfter = countGrantSkips(updatedTest);
                 var canEverClaim = !updatedTest.grant_claimed && skipsAfter <= 3 && updatedTest.progress_id;

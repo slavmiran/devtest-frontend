@@ -456,7 +456,7 @@ function _normalizeCachedTests(tests) {
                 ? getUserTestingDay(t.start_date)
                 : null;
             if (Number.isFinite(calculatedDay) && calculatedDay > 0) {
-                t.testing_days = Math.max(Number(t.testing_days || 0), calculatedDay);
+                t.testing_days = calculatedDay;
             }
         }
 
@@ -1402,12 +1402,12 @@ function _mapTestsFromApi(data) {
         // computed field `external_control_day_due` to oscillate between API and local state
         // on every loadTasks() poll (which would force renderTests() on every poll).
         var apiTestingDays = Number(app.testing_days || 0);
-        var testingDays = isExternal && existingTest
-            ? Math.max(apiTestingDays, Number(existingTest.testing_days || 0))
-            : apiTestingDays;
-        if (shouldPreserveLocalDoneToday) {
-            testingDays = Math.max(testingDays, Number(existingTest.testing_days || 0));
-        }
+        var calTestingDay = (app.start_date && typeof getUserTestingDay === 'function')
+            ? getUserTestingDay(app.start_date)
+            : null;
+        var testingDays = (Number.isFinite(calTestingDay) && calTestingDay > 0)
+            ? calTestingDay
+            : (isExternal && existingTest ? Math.max(apiTestingDays, Number(existingTest.testing_days || 0)) : apiTestingDays);
         var skipsCount = countGrantSkips(app);
         if (shouldPreserveLocalDoneToday) {
             skipsCount = Math.max(skipsCount, Number(existingTest.skips_count || 0));
