@@ -1381,6 +1381,8 @@
             bellRemindNoUsername: "У тестера нет @username — нельзя открыть ЛС",
             bellRemindSentToast: "✉️ Текст скопирован, открываем диалог...",
             parityDayChip: "День {day}/{total}",
+            mutualBalanceConsecutiveChip: "Подряд {count}/3",
+            mutualBalanceTotalSkipsChip: "Всего {count}",
             paritySkipsChip: "{skips}",
             linkedBadgeBounty: "💎 Контракт",
             linkedBadgeDirect: "🔗 Прямая ссылка",

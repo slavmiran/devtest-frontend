@@ -478,8 +478,10 @@ function _normalizeCachedTests(tests) {
         var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
         var isArchivedOrCompleted = !isExternal && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
 
-        t.isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
-        t.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
+        var hasCompletedFull14Days = (testingDays >= 15) || (testingDays === 14 && isTestedToday);
+        t.isGrantAvailableTomorrow = !!(canEverClaim && !isPendingCompletion && testingDays === 14 && isTestedToday);
+        t.isReadyToClaim = !!(canEverClaim && testingDays >= 15);
+        t.isEarlyFinish = !!((isArchivedOrCompleted) && !t.grant_claimed && !hasCompletedFull14Days && (typeof qualifiesEarlyFinishGrant === 'function' ? qualifiesEarlyFinishGrant(t, testingDays, skipsCount) : Number(t.checkins_count || 0) >= 3 && skipsCount <= 3));
         t.is_pending_completion = isPendingCompletion;
         t.external_control_day_due = !!(isExternal && typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(testingDays));
 
@@ -1428,16 +1430,17 @@ function _mapTestsFromApi(data) {
         var isTestClosed = !isExternal && (progressStatus !== 'active') && !isSoftTail;
         var canEverClaim = !isExternal && !isSoftTail && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
 
-        var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
-        var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
+        var hasCompletedFull14Days = (testingDays >= 15) || (testingDays === 14 && isTestedToday);
+        var isGrantAvailableTomorrow = !!(canEverClaim && !isPendingCompletion && testingDays === 14 && isTestedToday);
+        var isReadyToClaim = !!(canEverClaim && testingDays >= 15);
         var earlyFinishCheckinsSource = { checkins_count: resolvedCheckinsCount };
-        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !isSoftTail && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && (typeof qualifiesEarlyFinishGrant === 'function'
+        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !isSoftTail && !app.grant_claimed && !hasCompletedFull14Days && (typeof qualifiesEarlyFinishGrant === 'function'
             ? qualifiesEarlyFinishGrant(earlyFinishCheckinsSource, testingDays, skipsCount)
-            : (resolvedCheckinsCount >= 3 && skipsCount <= 3 && testingDays < 14)));
+            : (resolvedCheckinsCount >= 3 && skipsCount <= 3)));
 
         if (isSoftTail) {
             status = 'done';
-        } else if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow) {
+        } else if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow && !isEarlyFinish) {
             status = 'done';
         }        
         return {

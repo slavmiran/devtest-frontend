@@ -1380,6 +1380,8 @@
             bellRemindNoUsername: "Tester has no @username — cannot open DM",
             bellRemindSentToast: "✉️ Text copied, opening chat...",
             parityDayChip: "Day {day}/{total}",
+            mutualBalanceConsecutiveChip: "{count}/3 in a row",
+            mutualBalanceTotalSkipsChip: "{count} total",
             paritySkipsChip: "{skips}",
             linkedBadgeBounty: "💎 Contract",
             linkedBadgeDirect: "🔗 Direct link",

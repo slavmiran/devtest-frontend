@@ -569,6 +569,12 @@
             theirDays: theirDays,
             mySkips: Number(test && test.partner_skips || 0),
             theirSkips: theirSkips,
+            myConsecutive: Number(test && test.partner_consecutive_skips || 0),
+            theirConsecutive: Number(
+                options.context === 'projects' && tester
+                    ? (tester.consecutive_skips != null ? tester.consecutive_skips : calculateConsecutiveSkips(tester))
+                    : (test && typeof calculateConsecutiveSkips === 'function' ? calculateConsecutiveSkips(test) : (test && test.consecutive_skips || 0))
+            ),
             theirCheckins: theirCheckins,
             partnerConsecutive: options.context === 'projects'
                 ? theirConsec
@@ -629,6 +635,12 @@
             theirDays: Number(stats.my_testing_days || (test && test.testing_days) || 0),
             mySkips: Number(stats.partner_skips || 0),
             theirSkips: Number(stats.my_skips || (test && test.skips_count) || 0),
+            myConsecutive: Number(stats.partner_consecutive_skips || 0),
+            theirConsecutive: Number(
+                options.context === 'projects'
+                    ? (stats.my_consecutive_skips || 0)
+                    : (stats.my_consecutive_skips || (test && typeof calculateConsecutiveSkips === 'function' ? calculateConsecutiveSkips(test) : 0))
+            ),
             theirCheckins: Number(stats.my_checkins || (test && test.checkins_count) || 0),
             partnerConsecutive: Number(
                 options.context === 'projects'
@@ -650,7 +662,10 @@
 
     function _paritySideCard(label, appName, iconUrl, day, skips, options) {
         options = options || {};
-        var skipWarn = Number(skips || 0) >= 3;
+        var consec = Number(options.consecutiveSkips != null ? options.consecutiveSkips : 0);
+        var totalSkips = Number(skips || 0);
+        var consecWarn = consec >= 3;
+        var totalWarn = totalSkips >= 3;
         var isBroken = !!options.broken;
         var isDebtDone = !!options.debtDone;
         var isDebtActive = !!options.debtActive;
@@ -666,6 +681,16 @@
         } else if (isDebtActive) {
             stateBadge = '<div class="parity-side-debt-active">' + _esc(_t('mutualBalanceSideDebtActive')) + '</div>';
         }
+
+        var consecText = _t('mutualBalanceConsecutiveChip', { count: consec });
+        if (!consecText || consecText === 'mutualBalanceConsecutiveChip') {
+            consecText = (lang === 'ru' ? 'Подряд ' : 'In a row ') + consec + '/3';
+        }
+        var totalText = _t('mutualBalanceTotalSkipsChip', { count: totalSkips });
+        if (!totalText || totalText === 'mutualBalanceTotalSkipsChip') {
+            totalText = (lang === 'ru' ? 'Всего ' : 'Total: ') + totalSkips;
+        }
+
         return '' +
             '<div class="parity-side-card' + stateClass + '">' +
                 '<div class="parity-side-label">' + _esc(label) + '</div>' +
@@ -674,8 +699,11 @@
                 stateBadge +
                 '<div class="parity-chip-row">' +
                     '<span class="parity-chip">📅 ' + _esc(_t('parityDayChip', { day: day, total: 14 })) + '</span>' +
-                    '<span class="parity-chip' + (skipWarn ? ' is-warn' : '') + '">⚠️ ' +
-                        _esc(formatSkipsLabel(skips)) +
+                    '<span class="parity-chip' + (consecWarn ? ' is-warn' : (consec > 0 ? ' is-caution' : '')) + '">🔁 ' +
+                        _esc(consecText) +
+                    '</span>' +
+                    '<span class="parity-chip' + (totalWarn ? ' is-warn' : '') + '">⚠️ ' +
+                        _esc(totalText) +
                     '</span>' +
                 '</div>' +
             '</div>';
@@ -769,10 +797,12 @@
             var youAtThemIcon = data.theirIcon || '';
             var youAtThemDays = isOwnerView ? data.myDays : data.theirDays;
             var youAtThemSkips = isOwnerView ? data.mySkips : data.theirSkips;
+            var youAtThemConsecutive = isOwnerView ? data.myConsecutive : data.theirConsecutive;
             var themAtYouName = data.myAppName || _t('mutualBalanceYourProject');
             var themAtYouIcon = data.myIcon || '';
             var themAtYouDays = isOwnerView ? data.theirDays : data.myDays;
             var themAtYouSkips = isOwnerView ? data.theirSkips : data.mySkips;
+            var themAtYouConsecutive = isOwnerView ? data.theirConsecutive : data.myConsecutive;
             // One-sided link:
             // For Owner view:
             //   themAtYou is your project. Broken if the tester left your project (isTesterLeft).
@@ -795,11 +825,13 @@
                     broken: themBroken,
                     debtDone: themDebtDone,
                     partnerDebt: themPartnerDebt,
+                    consecutiveSkips: themAtYouConsecutive,
                 }) +
                 _paritySideCard(_t('mutualBalanceYouAtThem'), youAtThemName, youAtThemIcon, youAtThemDays, youAtThemSkips, {
                     broken: youBroken,
                     debtActive: youDebtActive,
                     debtDone: youSideDone,
+                    consecutiveSkips: youAtThemConsecutive,
                 }) +
             '</div>';
             if (isPartnerDebt) {

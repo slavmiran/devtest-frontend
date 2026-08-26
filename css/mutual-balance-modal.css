@@ -474,6 +474,12 @@
     border-color: var(--warning-border);
 }
 
+.parity-chip.is-caution {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
 .parity-info-banner {
     margin: 0 0 14px;
     padding: 12px 14px;

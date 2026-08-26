@@ -2110,9 +2110,13 @@ function renderTests(force) {
             isSoftTailCard
             || test.isReadyToClaim
             || test.isEarlyFinish
-            || (test.status !== 'done' && !test.isGrantAvailableTomorrow)
+            || (test.status !== 'done' && !test.isGrantAvailableTomorrow && !isArchivedOrCompleted)
         );
-        const shouldShowInDoneList = !shouldShowInPendingList && !isSoftTailCard && !test.isEarlyFinish && (test.isGrantAvailableTomorrow || (test.status === 'done' && !test.isReadyToClaim));
+        const shouldShowInDoneList = !shouldShowInPendingList && !isSoftTailCard && !test.isEarlyFinish && (
+            test.isGrantAvailableTomorrow
+            || (test.status === 'done' && !test.isReadyToClaim)
+            || isArchivedOrCompleted
+        );
         
         if (shouldShowInPendingList) {
             card.className = 'card card-pending-release pending-release-carousel-card horizontal-card';
@@ -2356,7 +2360,7 @@ function renderTests(force) {
                 : Math.max(0, Number(test.checkins_count || 0));
             const qualifies = typeof qualifiesEarlyFinishGrant === 'function'
                 ? qualifiesEarlyFinishGrant(test, efDays, efSkips)
-                : (actualCheckins >= 3 && efSkips <= 3 && efDays < 14);
+                : (actualCheckins >= 3 && efSkips <= 3);
 
             if (!qualifies) {
                 // Тестер не квалифицируется — карточка не отображается совсем

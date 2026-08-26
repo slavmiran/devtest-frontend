@@ -21,9 +21,7 @@ function countEarlyFinishCheckins(app) {
 
 function qualifiesEarlyFinishGrant(app, testingDays, skipsCount) {
     return countEarlyFinishCheckins(app) >= 3
-        && Number(skipsCount || 0) <= 3
-        && Number(testingDays || 0) < 14
-        && Number(testingDays || 0) > 0;
+        && Number(skipsCount || 0) <= 3;
 }
 
 function buildCheckpointTestLink(appId) {
@@ -1568,16 +1566,14 @@ function recomputeLocalTestState(test) {
     var skipsCount = countGrantSkips(test);
     var canEverClaim = !isExternal && !test.grant_claimed && skipsCount <= 3 && test.progress_id;
 
-    var isAppClosed = !isExternal && (appStatus !== 'active' && !isPendingCompletion);
-    var isTestClosed = !isExternal && (progressStatus !== 'active');
-
-    test.isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
-    test.isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
-    test.isEarlyFinish = !!((isAppClosed || isTestClosed) && !test.grant_claimed && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && qualifiesEarlyFinishGrant(test, testingDays, skipsCount));
+    var hasCompletedFull14Days = (testingDays >= 15) || (testingDays === 14 && isTestedToday);
+    test.isGrantAvailableTomorrow = !!(canEverClaim && !isPendingCompletion && testingDays === 14 && isTestedToday);
+    test.isReadyToClaim = !!(canEverClaim && testingDays >= 15);
+    test.isEarlyFinish = !!((isAppClosed || isTestClosed) && !test.grant_claimed && !hasCompletedFull14Days && qualifiesEarlyFinishGrant(test, testingDays, skipsCount));
     test.is_pending_completion = isPendingCompletion;
     test.external_control_day_due = !!(isExternal && isMandatoryScreenshotDay(testingDays));
 
-    if (isArchivedOrCompleted && !test.isReadyToClaim && !test.isGrantAvailableTomorrow) {
+    if (isArchivedOrCompleted && !test.isReadyToClaim && !test.isGrantAvailableTomorrow && !test.isEarlyFinish) {
         nextStatus = 'done';
     }
 
