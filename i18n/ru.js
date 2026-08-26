@@ -625,7 +625,7 @@
             reportLanguageDefaultMark: "Язык по умолчанию",
             reportTextExpand: "Развернуть текст",
             reportTextCollapse: "Свернуть текст",
-            reportPrefill: "Привет! 👋 Это отчёт за контрольный день тестирования. Скриншот прикрепил ниже.\n\n",
+            reportPrefill: "Привет! 👋 Это отчёт за контрольный день {day} тестирования. Скриншот прикрепил ниже.\n\n",
             reportPrefillTestedAppLine: "Тестировал: {app_name}",
             reportPrefillMyAppLinkLine: "Мой проект для ответного теста: {app_name}\n{app_link}",
             reportPrefillSourceLine: "Формат теста: {source}",

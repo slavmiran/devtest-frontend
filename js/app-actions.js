@@ -89,10 +89,28 @@ function buildCheckpointReportPrefill(appId, messageLang) {
     var resolvedLang = typeof normalizeGuestInviteLanguage === 'function'
         ? normalizeGuestInviteLanguage(messageLang, getDefaultCheckpointReportLanguage(appId))
         : getDefaultCheckpointReportLanguage(appId);
-    var prefill = window.t('reportPrefill', {}, resolvedLang);
-    var test = myTests.find(function(item) {
-        return Number(item.id) === Number(appId);
+    var list = Array.isArray(myTests) ? myTests : [];
+    var test = list.find(function(item) {
+        return Number(item && item.id) === Number(appId);
     });
+    var day = 1;
+    if (test) {
+        if (test.is_external || test.is_guest) {
+            if (typeof window.getExternalCurrentTestingDay === 'function') {
+                day = window.getExternalCurrentTestingDay(test);
+            } else if (typeof getExternalCurrentTestingDay === 'function') {
+                day = getExternalCurrentTestingDay(test);
+            } else {
+                day = Number(test.external_last_completed_control_day || 0) || 1;
+            }
+        } else if (test.start_date && (typeof window.getUserTestingDay === 'function' || typeof getUserTestingDay === 'function')) {
+            var fn = typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay : getUserTestingDay;
+            day = fn(test.start_date, test.testing_days) || 1;
+        } else if (test.testing_days || test.day) {
+            day = Number(test.testing_days || test.day || 1);
+        }
+    }
+    var prefill = window.t('reportPrefill', { day: day }, resolvedLang);
     if (!test) {
         return prefill;
     }

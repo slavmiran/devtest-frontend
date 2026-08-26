@@ -2833,6 +2833,7 @@ Object.assign(window, {
     renderEvents,
     toggleEventsExpanded,
     getUserTestingDay,
+    getExternalCurrentTestingDay,
     isMandatoryScreenshotDay,
     getOwnerActiveStatus,
     isProjectSynced,

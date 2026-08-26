@@ -626,7 +626,7 @@
             reportLanguageDefaultMark: "Default language",
             reportTextExpand: "Expand text",
             reportTextCollapse: "Collapse text",
-            reportPrefill: "Hi! 👋 This is a report for a checkpoint testing day. Screenshot attached below.\n\n",
+            reportPrefill: "Hi! 👋 This is a report for checkpoint testing day {day}. Screenshot attached below.\n\n",
             reportPrefillTestedAppLine: "Tested app: {app_name}",
             reportPrefillMyAppLinkLine: "My app for the return test: {app_name}\n{app_link}",
             reportPrefillSourceLine: "Test type: {source}",
