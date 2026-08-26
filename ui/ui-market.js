@@ -8784,16 +8784,19 @@ function _renderDossierLinkedExchangeCard(rel, options) {
 
     const myStatus = String(rel && rel.my_app_status || '').trim().toLowerCase();
     const theirStatus = String(rel && rel.their_app_status || '').trim().toLowerCase();
-    const myDone = myStatus === 'completed' || myStatus === 'archived';
-    const theirDone = theirStatus === 'completed' || theirStatus === 'archived';
-    const hasDebt = (myDone && !theirDone) || (theirDone && !myDone);
+    const viewerLeg = String(rel && rel.viewer_leg_status || '').trim().toLowerCase();
+    const testerLeg = String(rel && rel.tester_leg_status || '').trim().toLowerCase();
 
+    const myDone = myStatus === 'completed' || myStatus === 'archived' || viewerLeg === 'completed';
+    const theirDone = theirStatus === 'completed' || theirStatus === 'archived' || testerLeg === 'completed';
     const isBroken = !!(rel && rel.is_broken);
+    const isMutualDebt = !isBroken && (!!(rel && rel.is_mutual_debt) || (myDone && !theirDone) || (theirDone && !myDone));
+
     const cardClass = 'linked-project-card is-mutual'
         + (isPrimary ? ' is-primary-link' : '')
         + (options.isSecondary ? ' is-secondary-link' : '')
         + (isBroken ? ' is-broken' : '')
-        + (hasDebt ? ' has-debt' : '');
+        + (isMutualDebt ? ' has-debt' : '');
 
     let theirDays = 0;
     let theirSkips = 0;
@@ -8858,13 +8861,22 @@ function _renderDossierLinkedExchangeCard(rel, options) {
             ? (window.t('dossierRelationBrokenViewer', {}, lang) || 'Вы вышли из тестирования')
             : (window.t('dossierRelationBrokenTester', {}, lang) || 'Партнёр вышел из тестирования');
         brokenNoticeHtml = `<span class="linked-card-direction is-debt" style="color: #ff453a;">${window.escapeHTML(brokenMsg)}</span>`;
-    } else if (hasDebt) {
+    } else if (isMutualDebt) {
         brokenNoticeHtml = `<span class="linked-card-direction is-debt">${window.escapeHTML(window.t('linkedMutualDebtNotice', {}, lang))}</span>`;
     }
 
     const badgeHtml = isBroken
         ? `<span class="linked-badge is-broken" style="background: rgba(255, 59, 48, 0.15); color: #ff453a; border-color: rgba(255, 59, 48, 0.3);">${window.escapeHTML(window.t('barterChipBroken', {}, lang) || '💔 Взаимка')}</span>`
-        : `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>`;
+        : (isMutualDebt
+            ? `<span class="linked-badge is-debt">${window.escapeHTML(window.t('linkedBadgeDebt', {}, lang) || '🫵 Долг')}</span>`
+            : `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>`);
+
+    let swapArrow = '⇄';
+    if (isBroken) {
+        swapArrow = '✕';
+    } else if (isMutualDebt) {
+        swapArrow = theirDone ? '➔' : '←';
+    }
 
     return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +
         `<div class="linked-card-meta">` +
@@ -8881,7 +8893,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
                     (theirDone ? completedBadge : '') +
                 `</div>` +
             `</div>` +
-            `<div class="linked-mutual-swap" aria-hidden="true">${isBroken ? '⇥' : '⇄'}</div>` +
+            `<div class="linked-mutual-swap" aria-hidden="true">${swapArrow}</div>` +
             `<div class="linked-mutual-app is-end${myDone ? ' is-done' : ''}">` +
                 renderIcon(pair.myName, pair.myIcon) +
                 `<div class="linked-mutual-app-text">` +

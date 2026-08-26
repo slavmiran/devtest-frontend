@@ -2344,17 +2344,16 @@
 
 .linked-mutual-swap {
     flex-shrink: 0;
-    width: 26px;
-    height: 26px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 999px;
-    font-size: 12px;
+    font-size: 16px;
     font-weight: 700;
-    color: var(--text-tertiary);
-    background: color-mix(in srgb, var(--bg-surface-muted) 80%, transparent);
-    border: 1px solid var(--border-subtle);
+    line-height: 1;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    padding: 0 4px;
 }
 
 /* legacy mutual pair kept for safety */
@@ -2575,6 +2574,12 @@
     color: var(--security);
     background: var(--security-surface, var(--bg-surface-muted));
     border-color: var(--security-border);
+}
+
+.linked-badge.is-debt {
+    color: #60a5fa;
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.35);
 }
 
 .linked-reward-chip {

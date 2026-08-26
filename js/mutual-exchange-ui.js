@@ -66,6 +66,13 @@
         return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
     }
 
+    function _formatDateShort(value) {
+        var d = _parseIsoDateOnly(value);
+        if (!d || isNaN(d.getTime())) return '';
+        var activeLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
+        return d.toLocaleDateString(activeLang === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'short' });
+    }
+
     function calculateConsecutiveSkips(progressLike) {
         var row = progressLike || {};
         var todayIso = (typeof getLocalDateIso === 'function')
@@ -584,6 +591,10 @@
             partnerLeft: isTesterLeft,
             isTesterLeft: isTesterLeft,
             isViewerLeft: isViewerLeft,
+            partnerLastActive: tester ? tester.last_check_date : (test && test.partner_last_check_date),
+            myLastActive: test ? test.last_check_date : null,
+            partnerDoneDate: tester ? tester.last_check_date : (test && test.partner_last_check_date),
+            myDoneDate: test ? test.last_check_date : null,
             myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
@@ -652,6 +663,10 @@
             partnerLeft: isTesterLeft,
             isTesterLeft: isTesterLeft,
             isViewerLeft: isViewerLeft,
+            partnerLastActive: stats.partner_last_active || stats.partner_last_check_date || null,
+            myLastActive: stats.my_last_check_date || (test && test.last_check_date) || null,
+            partnerDoneDate: stats.partner_last_active || stats.partner_last_check_date || null,
+            myDoneDate: stats.my_last_check_date || (test && test.last_check_date) || null,
             myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
@@ -673,9 +688,11 @@
         var stateClass = isBroken ? ' is-broken' : (isDebtDone ? ' is-debt-done' : (isDebtActive || isPartnerDebt ? ' is-debt-active' : ''));
         var stateBadge = '';
         if (isBroken) {
-            stateBadge = '<div class="parity-side-broken">' + _esc(_t('mutualBalanceSideBroken')) + '</div>';
+            var breakDateText = options.breakDate ? (' • ' + _esc(_formatDateShort(options.breakDate))) : '';
+            stateBadge = '<div class="parity-side-broken">' + _esc(_t('mutualBalanceSideBroken')) + breakDateText + '</div>';
         } else if (isDebtDone) {
-            stateBadge = '<div class="parity-side-debt-done">' + _esc(_t('mutualBalanceSideDebtDone')) + '</div>';
+            var doneDateText = options.doneDate ? (' • ' + _esc(_formatDateShort(options.doneDate))) : '';
+            stateBadge = '<div class="parity-side-debt-done">✅ ' + _esc(_t('linkedSideCompleted')) + doneDateText + '</div>';
         } else if (isPartnerDebt) {
             stateBadge = '<div class="parity-side-debt-active">' + _esc(_t('mutualBalanceSidePartnerDebt')) + '</div>';
         } else if (isDebtActive) {
@@ -820,18 +837,24 @@
             var youSideDone = isPartnerDebt;
             var themDebtDone = isSelfDebt;
             var youDebtActive = isSelfDebt;
+            var themDoneDate = isOwnerView ? (data.theirDoneDate || data.theirLastActive) : (data.partnerDoneDate || data.partnerLastActive);
+            var youDoneDate = isOwnerView ? (data.partnerDoneDate || data.partnerLastActive) : (data.myDoneDate || data.myLastActive);
             bodyHtml = '<div class="parity-comparison-grid">' +
                 _paritySideCard(_t('mutualBalanceThemAtYou'), themAtYouName, themAtYouIcon, themAtYouDays, themAtYouSkips, {
                     broken: themBroken,
                     debtDone: themDebtDone,
                     partnerDebt: themPartnerDebt,
                     consecutiveSkips: themAtYouConsecutive,
+                    doneDate: themDoneDate,
+                    breakDate: themBroken ? themDoneDate : null,
                 }) +
                 _paritySideCard(_t('mutualBalanceYouAtThem'), youAtThemName, youAtThemIcon, youAtThemDays, youAtThemSkips, {
                     broken: youBroken,
                     debtActive: youDebtActive,
                     debtDone: youSideDone,
                     consecutiveSkips: youAtThemConsecutive,
+                    doneDate: youDoneDate,
+                    breakDate: youBroken ? youDoneDate : null,
                 }) +
             '</div>';
             if (isPartnerDebt) {
