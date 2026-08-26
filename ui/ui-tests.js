@@ -1010,7 +1010,6 @@ function getScreenshotReminderHtml(test) {
 
     const currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
     const accTitle = (typeof window.t === 'function' ? window.t('checkpointAccordionTitle', {}, currentLang) : null) || 'Контрольный день';
-    const accGuide = (typeof window.t === 'function' ? window.t('checkpointAccordionGuide', {}, currentLang) : null) || 'Обучение';
     const dayText = (typeof window.t === 'function' ? window.t('checkpointTestingDayText', { day: testingDay }, currentLang) : null) || `Вы тестируете это приложение ${testingDay}-й день из 14.`;
     const schedText = (typeof window.t === 'function' ? window.t('checkpointScheduleText', {}, currentLang) : null) || 'Контрольные дни: 1, 4, 7, 10 и 14.\nВ эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).';
     const doneTitle = (typeof window.t === 'function' ? window.t('checkpointCheckinDoneTitle', {}, currentLang) : null) || 'Чекин уже выполнен';
@@ -1032,7 +1031,6 @@ function getScreenshotReminderHtml(test) {
                         <svg class="checkpoint-accordion__info-icon" viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
                         </svg>
-                        <span>${window.escapeHTML(accGuide)}</span>
                     </span>
                 </div>
                 <div class="checkpoint-accordion__header-right">
@@ -1238,29 +1236,29 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         if (test.app_status === 'archived') {
             var archiveLabel = test.archive_reason === 'afk' ? t.archivedAfkBadge : t.archivedBadge;
             var archiveToast = test.archive_reason === 'afk' ? (t.archivedAfkToast || '').replace(/'/g, "\\'") : '';
-            var archiveOnclick = archiveToast ? "event.stopPropagation(); showToast('" + archiveToast + "')" : 'event.stopPropagation()';
-            parts.push('<button class="meta-chip accent-red" onclick="' + archiveOnclick + '">' + archiveLabel + '</button>');
+            var archiveOnclick = archiveToast ? "event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showToast('" + archiveToast + "'); return false;" : 'event.stopPropagation()';
+            parts.push('<button type="button" class="meta-chip accent-red" onclick="' + archiveOnclick + '">' + archiveLabel + '</button>');
         }
     }
     if (typeof daysSincePublish === 'number' && daysSincePublish >= 0) {
         const dayLabel = t.daysShort.replace('{days}', daysSincePublish);
         const tooltip = t.chipTooltipDays.replace('{days}', daysSincePublish);
-        parts.push(`<button class="meta-chip" onclick="event.stopPropagation(); showToast('${tooltip.replace(/'/g, "\\'")}')">${dayLabel}</button>`);
+        parts.push(`<button type="button" class="meta-chip" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showToast('${tooltip.replace(/'/g, "\\'")}'); return false;">${dayLabel}</button>`);
     }
     if (showTestersCount && typeof activeTestersCount === 'number') {
         const testerLabel = t.testersShort.replace('{count}', activeTestersCount);
         const tooltip = t.chipTooltipTesters.replace('{count}', activeTestersCount);
-        parts.push(`<button class="meta-chip" onclick="event.stopPropagation(); showToast('${tooltip.replace(/'/g, "\\'")}')">${testerLabel}</button>`);
+        parts.push(`<button type="button" class="meta-chip" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showToast('${tooltip.replace(/'/g, "\\'")}'); return false;">${testerLabel}</button>`);
     }
     if (typeof userTestingDay === 'number' && userTestingDay > 0) {
         const isScreenshot = isMandatoryScreenshotDay(userTestingDay);
         // Only control days carry an icon; regular days stay plain to reduce visual noise.
         const dayText = (isScreenshot ? '📸 ' : '') + t.myTestDayShort.replace('{days}', userTestingDay);
         const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip';
-        parts.push(`<button class="${chipClass}" onclick="event.stopPropagation(); showTestDayPopup(${userTestingDay})">${dayText}</button>`);
+        parts.push(`<button type="button" class="${chipClass}" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showTestDayPopup(${userTestingDay}); return false;">${dayText}</button>`);
     }
     if (isNew) {
-        parts.unshift(`<button class="meta-chip accent-green">${t.newBadge}</button>`);
+        parts.unshift(`<button type="button" class="meta-chip accent-green">${t.newBadge}</button>`);
     }
     if (test) {
         const reviewStatus = typeof window.getPlayReviewStatus === 'function'
@@ -1284,7 +1282,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
                 reviewLabel = '⭐️ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
                 reviewClass = 'meta-chip accent-red';
             }
-            parts.push(`<button class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${window.escapeHTML(reviewLabel)}</button>`);
+            parts.push(`<button type="button" class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${window.escapeHTML(reviewLabel)}</button>`);
         }
         if (isProjectSynced(test)) {
             const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
@@ -1298,7 +1296,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
                     const protectedText = extraPaid > 0
                         ? window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang)
                         : window.t('ppcProtectedBadge', {}, lang);
-                    parts.push(`<button class="meta-chip accent-protection" onclick="event.stopPropagation(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}')">${window.escapeHTML(protectedText)}</button>`);
+                    parts.push(`<button type="button" class="meta-chip accent-protection" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}'); return false;">${window.escapeHTML(protectedText)}</button>`);
                 }
             }
         }

@@ -6958,7 +6958,9 @@ function showTestDayPopup(day) {
         if (iconEl) iconEl.innerText = icon;
         titleEl.innerText = title;
         bodyEl.innerHTML = contentHtml;
-        modal.classList.add('active');
+        requestAnimationFrame(function() {
+            modal.classList.add('active');
+        });
     } else if (typeof showCustomAlert === 'function') {
         const fallbackMsg = window.t('testDayExplain', { days: numDay }, currentLang);
         showCustomAlert(fallbackMsg);

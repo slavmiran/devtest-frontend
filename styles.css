@@ -323,8 +323,11 @@
     align-items: flex-end;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s;
+    transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     z-index: 200;
+    will-change: opacity;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 
 #email-testing-modal,
@@ -345,7 +348,7 @@
     width: 100%;
     border-radius: 24px 24px 0 0;
     padding: 24px 16px;
-    transform: translateY(100%);
+    transform: translateY(100%) translateZ(0);
     transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     max-height: 80vh;
     overflow-x: hidden;
@@ -353,9 +356,12 @@
     overscroll-behavior: contain;
     padding-bottom: calc(80px + env(safe-area-inset-bottom));
     isolation: isolate;
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 
-.modal-overlay.active .modal-content { transform: translateY(0); }
+.modal-overlay.active .modal-content { transform: translateY(0) translateZ(0); }
 
 /* Shared bottom-sheet drag handle for sliding modals */
 .sheet-handle,

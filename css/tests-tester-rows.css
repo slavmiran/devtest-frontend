@@ -100,20 +100,19 @@
 .checkpoint-accordion__badge {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    font-size: 11px;
-    font-weight: 600;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
     color: #ff9500;
     background: rgba(255, 149, 0, 0.14);
-    border: 1px solid rgba(255, 149, 0, 0.25);
-    padding: 2px 7px;
-    border-radius: 20px;
+    border: 1px solid rgba(255, 149, 0, 0.28);
+    border-radius: 50%;
     flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .checkpoint-accordion__info-icon {
-    display: inline-block;
-    vertical-align: middle;
+    display: block;
     flex-shrink: 0;
 }
 
