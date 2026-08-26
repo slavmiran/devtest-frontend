@@ -2774,6 +2774,14 @@
     margin-bottom: 8px;
 }
 
+.guaranteed-order-card__badges {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
 .guaranteed-order-card__name {
     margin: 0;
     min-width: 0;
@@ -2807,6 +2815,20 @@
     height: 6px;
     border-radius: 50%;
     background: currentColor;
+}
+
+.guaranteed-order-card__coordinator-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border: 1px solid var(--accent-primary-surface, rgba(76, 141, 255, 0.28));
+    border-radius: 100px;
+    background: var(--accent-primary-surface, rgba(76, 141, 255, 0.12));
+    color: var(--accent-primary, #4C8DFF);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    white-space: nowrap;
 }
 
 .guaranteed-order-card--pending .guaranteed-order-card__badge {

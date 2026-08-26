@@ -6099,11 +6099,23 @@ function buildGuaranteedOrderCardHtml(order, options) {
         publicCode = 'GT-' + (24766 + id * 41);
     }
 
+    var isCoordinator = !!(order && order.is_coordinator);
+    var ownerName = String((order && order.owner_name) || '').trim();
+    var ownerUsername = String((order && order.owner_username) || '').trim().replace(/^@+/, '');
+    var ownerLabel = [ownerName, ownerUsername ? '@' + ownerUsername : ''].filter(Boolean).join(' ')
+        || getProjectUiText('gtContactOwnerFallback', 'Contact owner');
+    var coordinatorChip = isCoordinator
+        ? '<span class="guaranteed-order-card__coordinator-chip">' +
+            window.escapeHTML(getProjectUiText('gtManagedBadge', '🛡 In management')) +
+          '</span>'
+        : '';
+
     var actions =
-        '<button type="button" class="btn btn-secondary guaranteed-order-action" onclick="openGuaranteedOrderSupport(' + id + ')">' +
-            window.escapeHTML(getProjectUiText('gtContactManager', 'Contact manager')) +
+        '<button type="button" class="btn btn-secondary guaranteed-order-action" onclick="' +
+            (isCoordinator ? 'openGuaranteedOrderOwnerChat(' : 'openGuaranteedOrderSupport(') + id + ')">' +
+            window.escapeHTML(isCoordinator ? ownerLabel : getProjectUiText('gtContactManager', 'Contact manager')) +
         '</button>';
-    if (isCompleted && !isArchivedView) {
+    if (isCompleted && !isArchivedView && !isCoordinator) {
         actions +=
             '<button type="button" class="btn btn-primary guaranteed-order-action" onclick="archiveGuaranteedTestOrder(' + id + ')">' +
                 window.escapeHTML(getProjectUiText('gtArchive', 'Archive')) +
@@ -6130,13 +6142,17 @@ function buildGuaranteedOrderCardHtml(order, options) {
           '</p>')
         : '';
 
-    var actionsClass = 'guaranteed-order-card__actions' + (isCompleted && !isArchivedView ? '' : ' guaranteed-order-card__actions--single');
+    var hasArchiveAction = isCompleted && !isArchivedView && !isCoordinator;
+    var actionsClass = 'guaranteed-order-card__actions' + (hasArchiveAction ? '' : ' guaranteed-order-card__actions--single');
 
     return (
         '<article class="guaranteed-order-card guaranteed-order-card--' + (meta.variant || 'pending') + (isArchivedView ? ' guaranteed-order-card--archived' : '') + '" data-gt-order-id="' + id + '">' +
             '<div class="guaranteed-order-card__top">' +
                 '<h3 class="guaranteed-order-card__name">' + window.escapeHTML(String(order.app_name || getProjectUiText('unknownLabel', 'Unknown app'))) + '</h3>' +
-                '<span class="guaranteed-order-card__badge">' + window.escapeHTML(meta.badge) + '</span>' +
+                '<div class="guaranteed-order-card__badges">' +
+                    coordinatorChip +
+                    '<span class="guaranteed-order-card__badge">' + window.escapeHTML(meta.badge) + '</span>' +
+                '</div>' +
             '</div>' +
             codeRow +
             '<p class="guaranteed-order-card__hint">' + window.escapeHTML(meta.hint) + '</p>' +
@@ -6242,6 +6258,31 @@ function openGuaranteedOrderSupport(orderId) {
     }
 }
 window.openGuaranteedOrderSupport = openGuaranteedOrderSupport;
+
+function openGuaranteedOrderOwnerChat(orderId) {
+    var order = getGuaranteedOrderById(orderId);
+    if (!order || !order.is_coordinator) return;
+
+    var username = String(order.owner_username || '').trim().replace(/^@+/, '');
+    var ownerId = Number(order.user_id);
+    var targetUrl = username
+        ? 'https://t.me/' + encodeURIComponent(username)
+        : (Number.isFinite(ownerId) && ownerId > 0 ? 'tg://user?id=' + ownerId : '');
+    if (!targetUrl) return;
+
+    try {
+        if (targetUrl.indexOf('https://') === 0 && window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+            window.Telegram.WebApp.openTelegramLink(targetUrl);
+        } else if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
+            window.Telegram.WebApp.openLink(targetUrl);
+        } else {
+            window.open(targetUrl, '_blank');
+        }
+    } catch (error) {
+        window.open(targetUrl, '_blank');
+    }
+}
+window.openGuaranteedOrderOwnerChat = openGuaranteedOrderOwnerChat;
 
 async function archiveGuaranteedTestOrder(orderId) {
     var id = Number(orderId);

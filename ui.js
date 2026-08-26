@@ -82,6 +82,8 @@ Object.assign(window, {
     copyEmail,
     openProjectDetailsModal,
     closeProjectDetailsModal,
+    toggleCheckpointAccordion: typeof toggleCheckpointAccordion !== 'undefined' ? toggleCheckpointAccordion : undefined,
+    closeTestDayInfoModal: typeof closeTestDayInfoModal !== 'undefined' ? closeTestDayInfoModal : undefined,
 });
 
 Object.assign(window.ui, {

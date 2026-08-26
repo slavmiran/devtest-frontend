@@ -6881,24 +6881,98 @@ function showRankPopup() {
 }
 
 function showTestDayPopup(day) {
-    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-    let msg = t.testDayExplain.replace('{days}', day);
+    if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+        window.tg.HapticFeedback.selectionChanged();
+    }
+    const currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
     const projectId = window._karmaDistributionProjectId;
+    const modal = document.getElementById('test-day-info-modal');
+    const iconEl = document.getElementById('test-day-modal-icon');
+    const titleEl = document.getElementById('test-day-modal-title');
+    const bodyEl = document.getElementById('test-day-modal-body');
+
     if (projectId) {
-        const project = myProjects.find((item) => item.id === projectId);
+        const project = (typeof myProjects !== 'undefined' && Array.isArray(myProjects))
+            ? myProjects.find((item) => item.id === projectId)
+            : null;
         const tester = project ? (project.testers || []).find((item) => item.tester_id === day) : null;
+        let statsMsg = '';
         if (tester) {
             const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
             const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
-            msg = window.t('karmaDistributionTesterStats', {
+            statsMsg = window.t('karmaDistributionTesterStats', {
                 day: testerDay,
                 checkins: tester.checkins_count || 0,
                 skips: actualSkips,
-            });
+            }, currentLang);
+        } else {
+            statsMsg = window.t('karmaDistributionTesterStatsTitle', {}, currentLang) || 'Статистика';
+        }
+
+        if (modal && titleEl && bodyEl) {
+            if (iconEl) iconEl.innerText = '📊';
+            titleEl.innerText = window.t('karmaStatsTitle', {}, currentLang) || 'Статистика тестера';
+            bodyEl.innerHTML = `<div class="card" style="margin-bottom: 0; background: var(--secondary-bg-color); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 12px 14px;"><p style="margin: 0; white-space: pre-line;">${window.escapeHTML(statsMsg)}</p></div>`;
+            modal.classList.add('active');
+            return;
+        } else if (typeof showCustomAlert === 'function') {
+            showCustomAlert(statsMsg);
+            return;
+        } else {
+            alert(statsMsg);
+            return;
         }
     }
-    if (tg.showAlert) tg.showAlert(msg);
-    else alert(msg);
+
+    const numDay = Number(day) || 1;
+    const isControl = typeof isMandatoryScreenshotDay === 'function'
+        ? isMandatoryScreenshotDay(numDay)
+        : [1, 4, 7, 10, 14].indexOf(numDay) !== -1;
+
+    const title = isControl
+        ? (window.t('testDayModalTitleControl', {}, currentLang) || 'Контрольный день')
+        : (window.t('testDayModalTitleRegular', {}, currentLang) || 'День тестирования');
+    const icon = isControl ? '📸' : '📅';
+    const dayProgress = window.t('testDayModalTestingProgress', { day: numDay }, currentLang)
+        || `Вы тестируете это приложение <b>${numDay}-й день из 14</b>.`;
+    const scheduleDesc = isControl
+        ? (window.t('testDayModalControlSchedule', {}, currentLang) || 'Контрольные дни: <b>1, 4, 7, 10 и 14</b>.<br>В эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).')
+        : (window.t('testDayModalRegularSchedule', {}, currentLang) || 'Сегодня обычный день тестирования. Достаточно открыть приложение и выполнить ежедневный чекин.<br><br>Контрольные дни со скриншотом в ЛС: <b>1, 4, 7, 10 и 14</b>.');
+    const tipText = isControl
+        ? (window.t('testDayModalControlTip', {}, currentLang) || '💡 Своевременная отправка подтверждений гарантирует сохранение наград и защиту от блокировок за неактивность.')
+        : '';
+
+    const contentHtml = `
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="card" style="margin-bottom: 0; background: var(--secondary-bg-color); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 12px 14px;">
+                ${dayProgress}
+            </div>
+            <div class="card" style="margin-bottom: 0; background: var(--secondary-bg-color); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 12px 14px;">
+                ${scheduleDesc}
+            </div>
+            ${tipText ? `<div style="font-size: 13px; color: var(--hint-color); padding: 0 4px; line-height: 1.45;">${tipText}</div>` : ''}
+        </div>
+    `;
+
+    if (modal && titleEl && bodyEl) {
+        if (iconEl) iconEl.innerText = icon;
+        titleEl.innerText = title;
+        bodyEl.innerHTML = contentHtml;
+        modal.classList.add('active');
+    } else if (typeof showCustomAlert === 'function') {
+        const fallbackMsg = window.t('testDayExplain', { days: numDay }, currentLang);
+        showCustomAlert(fallbackMsg);
+    } else {
+        const fallbackMsg = window.t('testDayExplain', { days: numDay }, currentLang);
+        alert(fallbackMsg);
+    }
+}
+
+function closeTestDayInfoModal(event) {
+    const modal = document.getElementById('test-day-info-modal');
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
 }
 
 function showNewBadgeToast() {
@@ -10393,6 +10467,7 @@ Object.assign(window, {
     closeReliabilityInfo,
     showRankPopup,
     showTestDayPopup,
+    closeTestDayInfoModal,
     showNewBadgeToast,
     insertChip,
     showKarmaPopup,

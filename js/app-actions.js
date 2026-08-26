@@ -3822,7 +3822,11 @@ async function confirmStart(id, options) {
             if (updatedTest) {
                 var wasFirstCheckin = Number(prevTestSnapshot && prevTestSnapshot.checkins_count || 0) <= 0
                     || String(prevTestSnapshot && prevTestSnapshot.status || '') === 'new';
-                updatedTest.last_check_date = result.last_check_date || getLocalDate();
+                if (result.already_checked_today) {
+                    updatedTest.last_check_date = getLocalDate();
+                } else {
+                    updatedTest.last_check_date = result.last_check_date || getLocalDate();
+                }
                 updatedTest.checkins_count = Math.max(0, Number(result.checkins_count || updatedTest.checkins_count || 0));
                 updatedTest.skips_count = Math.max(0, Number(result.skips_count || 0));
                 updatedTest.daily_timeline = result.daily_timeline || updatedTest.daily_timeline || '';

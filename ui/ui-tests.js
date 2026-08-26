@@ -984,21 +984,78 @@ function dismissProjectUpdateTip(appId, event) {
     return false;
 }
 
+function toggleCheckpointAccordion(element, event) {
+    if (event) {
+        event.stopPropagation();
+        if (typeof event.preventDefault === 'function') {
+            event.preventDefault();
+        }
+    }
+    const root = element ? element.closest('.checkpoint-accordion') : null;
+    if (!root) return;
+    const wasOpen = root.classList.contains('is-open');
+    root.classList.toggle('is-open', !wasOpen);
+    try {
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+            window.tg.HapticFeedback.selectionChanged();
+        }
+    } catch (e) {}
+}
+
 function getScreenshotReminderHtml(test) {
     const testingDay = getResolvedTestingDay(test);
     if (!isMandatoryScreenshotDay(testingDay)) {
         return '';
     }
 
-    const safeReminderText = (t.screenshotReminderText || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const dmButton = test.owner_username
-        ? `<button class="btn btn-secondary" style="width: 100%; background-color: var(--button-color, #007aff); color: var(--button-text-color, #fff); border: none;" onclick="return openTelegramProfile('${test.owner_username}', event)">${t.screenshotReminderBtn}</button>`
+    const currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
+    const accTitle = (typeof window.t === 'function' ? window.t('checkpointAccordionTitle', {}, currentLang) : null) || 'Контрольный день';
+    const accGuide = (typeof window.t === 'function' ? window.t('checkpointAccordionGuide', {}, currentLang) : null) || 'Обучение';
+    const dayText = (typeof window.t === 'function' ? window.t('checkpointTestingDayText', { day: testingDay }, currentLang) : null) || `Вы тестируете это приложение ${testingDay}-й день из 14.`;
+    const schedText = (typeof window.t === 'function' ? window.t('checkpointScheduleText', {}, currentLang) : null) || 'Контрольные дни: 1, 4, 7, 10 и 14.\nВ эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).';
+    const doneTitle = (typeof window.t === 'function' ? window.t('checkpointCheckinDoneTitle', {}, currentLang) : null) || 'Чекин уже выполнен';
+    const doneHint = (typeof window.t === 'function' ? window.t('checkpointCheckinDoneHint', {}, currentLang) : null) || 'Если по какой-то причине скриншот ещё не отправляли, его необходимо отправить сейчас!';
+    const btnLabel = (typeof window.t === 'function' ? window.t('screenshotReminderBtn', {}, currentLang) : null) || '💬 Отправить скриншот';
+
+    const safeOwner = test && test.owner_username ? escapeInlineJsString(test.owner_username) : '';
+    const dmButton = safeOwner
+        ? `<button type="button" class="btn btn-primary checkpoint-accordion__dm-btn" onclick="openTelegramProfile('${safeOwner}', event)"><span class="checkpoint-accordion__btn-icon">💬</span> ${window.escapeHTML(btnLabel.replace(/^💬\s*/, ''))}</button>`
         : '';
 
     return `
-        <div class="screenshot-reminder">
-            <div class="screenshot-reminder-title" style="cursor: pointer;" onclick="event.stopPropagation(); showToast('${safeReminderText}')">${t.screenshotReminderTitle}</div>
-            ${dmButton}
+        <div class="checkpoint-accordion" onclick="event.stopPropagation()">
+            <div class="checkpoint-accordion__header" onclick="toggleCheckpointAccordion(this, event)" role="button" tabindex="0">
+                <div class="checkpoint-accordion__header-left">
+                    <span class="checkpoint-accordion__icon">📸</span>
+                    <span class="checkpoint-accordion__title">${window.escapeHTML(accTitle)}</span>
+                    <span class="checkpoint-accordion__badge">
+                        <svg class="checkpoint-accordion__info-icon" viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                        </svg>
+                        <span>${window.escapeHTML(accGuide)}</span>
+                    </span>
+                </div>
+                <div class="checkpoint-accordion__header-right">
+                    <svg class="checkpoint-accordion__arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+            </div>
+            <div class="checkpoint-accordion__content">
+                <div class="checkpoint-accordion__body">
+                    <div class="checkpoint-accordion__progress">
+                        ${window.escapeHTML(dayText)}
+                    </div>
+                    <div class="checkpoint-accordion__rules">
+                        ${window.escapeHTML(schedText).replace(/\n/g, '<br>')}
+                    </div>
+                    <div class="checkpoint-accordion__status-box">
+                        <div class="checkpoint-accordion__status-title">✅ <strong>${window.escapeHTML(doneTitle)}</strong></div>
+                        <div class="checkpoint-accordion__status-desc">${window.escapeHTML(doneHint)}</div>
+                    </div>
+                    ${dmButton}
+                </div>
+            </div>
         </div>
     `;
 }
@@ -3368,3 +3425,4 @@ window.closeBufferInfoModal = closePhaseInfoModal;
 window.renderTestAvatarWithPhaseBadge = renderTestAvatarWithPhaseBadge;
 window.openBountyInfoModal = openBountyInfoModal;
 window.closeBountyInfoModal = closeBountyInfoModal;
+window.toggleCheckpointAccordion = toggleCheckpointAccordion;

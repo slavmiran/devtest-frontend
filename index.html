@@ -35,22 +35,22 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260826-day-fix-v5"></script>
-    <script src="./i18n/en.js?v=20260826-day-fix-v5"></script>
+<script src="./i18n/ru.js?v=20260826-stale-checkin-v6"></script>
+    <script src="./i18n/en.js?v=20260826-stale-checkin-v6"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260817-group-wait-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260820-report-modal-v1"></script>
-    <script src="./ui/ui-tests.js?v=20260826-day-fix-v5"></script>
+    <script src="./ui/ui-tests.js?v=20260826-stale-checkin-v6"></script>
     <script src="./ui/ui-projects.js?v=20260825-fresh-v1"></script>
     <script src="./ui/ui-market.js?v=20260825-fresh-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
     <script src="./js/app-config.js?v=20260822-recip-highlight-v1"></script>
-    <script src="./js/app-api.js?v=20260826-day-fix-v5"></script>
+    <script src="./js/app-api.js?v=20260826-stale-checkin-v6"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260826-day-fix-v5"></script>
+    <script src="./js/app-actions.js?v=20260826-stale-checkin-v6"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
 <script src="./js/app-features.js?v=20260822-term-result-v2"></script>
 <script src="./js/mutual-exchange-ui.js?v=20260824-remind-fix-v11"></script>
@@ -1710,6 +1710,19 @@
             <p id="t-screenshotCompleteText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 16px;"></p>
             <div id="screenshot-complete-action"></div>
             <button class="btn btn-secondary" style="width: 100%; margin-top: 8px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142,142,147,0.2);" onclick="closeScreenshotCompleteModal()" id="t-screenshotCompleteClose"></button>
+        </div>
+    </div>
+
+    <!-- Test Day Info Modal (Bottom Sheet) -->
+    <div id="test-day-info-modal" class="modal-overlay" onclick="closeTestDayInfoModal(event)">
+        <div class="modal-content test-day-modal-content" onclick="event.stopPropagation()">
+            <div class="sheet-handle"></div>
+            <div class="test-day-modal-header" style="text-align: center; margin-bottom: 16px;">
+                <div style="font-size: 32px; margin-bottom: 6px;" id="test-day-modal-icon">📸</div>
+                <h3 style="font-size: 18px; font-weight: 700; margin: 0;" id="test-day-modal-title"></h3>
+            </div>
+            <div id="test-day-modal-body" style="font-size: 14px; line-height: 1.5; color: var(--text-color);"></div>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 18px; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142,142,147,0.2);" onclick="closeTestDayInfoModal()" id="t-testDayClose" data-i18n="btnClose">Понятно</button>
         </div>
     </div>
 
