@@ -360,7 +360,7 @@ function renderProjects(force) {
                 let cleanUsername = '';
                 const isContractTester = joinType === 'bounty';
                 const isInviteLikeTester = joinType === 'direct' || joinType === 'invite';
-                const isMutualDebt = !!tester.is_mutual_debt;
+                const isMutualDebt = isMutualLike && !!tester.is_mutual_debt;
                 let testerPrefixHtml = '';
                 if (isMutualDebt) {
                     testerPrefixHtml = '<span class="tester-debt-prefix" title="' + window.escapeHTML(window.t('linkedBadgeDebt', {}, lang)) + '">🫵</span>';
