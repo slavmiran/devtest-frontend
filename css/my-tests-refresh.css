@@ -449,7 +449,8 @@
 
 /* While checkin timer is counting down: keep paperclip subtle and unbordered (no neon glow/border) */
 #tab-tests .split-btn-group:has(.split-btn-main[disabled]) .split-btn-options,
-#tab-tests .split-btn-group.split-timer-running .split-btn-options {
+#tab-tests .split-btn-group.split-timer-running .split-btn-options,
+#tab-tests .split-btn-options--timer {
     background: rgba(142, 142, 147, 0.16) !important;
     border: 1px solid transparent !important;
     border-left: 1px solid rgba(142, 142, 147, 0.18) !important;
@@ -458,7 +459,8 @@
 }
 
 #tab-tests .split-btn-group:has(.split-btn-main[disabled]) .split-btn-options:active,
-#tab-tests .split-btn-group.split-timer-running .split-btn-options:active {
+#tab-tests .split-btn-group.split-timer-running .split-btn-options:active,
+#tab-tests .split-btn-options--timer:active {
     background: rgba(142, 142, 147, 0.26) !important;
     color: var(--text-color, #fff) !important;
 }

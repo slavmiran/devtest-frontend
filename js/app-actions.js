@@ -1275,7 +1275,7 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
             existingSplitGroup.appendChild(optionsBtn);
         }
         optionsBtn.disabled = false;
-        optionsBtn.className = 'btn btn-success split-btn-options';
+        optionsBtn.className = 'btn split-btn-options split-btn-options--timer';
         optionsBtn.textContent = '📎';
         optionsBtn.title = optionsTitle;
         optionsBtn.setAttribute('aria-label', optionsTitle);
@@ -1298,7 +1298,7 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
         'style="background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;">' +
         window.escapeHTML(timerLabel) +
         '</button>' +
-        '<button class="btn btn-success split-btn-options" onclick="openCheckinOptionsModal(' + appId + ', \'' + safeOwner + '\')" ' +
+        '<button class="btn split-btn-options split-btn-options--timer" onclick="openCheckinOptionsModal(' + appId + ', \'' + safeOwner + '\')" ' +
         'title="' + optionsTitleSafe + '" aria-label="' + optionsTitleSafe + '">📎</button>';
     btn.parentNode.replaceChild(splitWrapper, btn);
     return true;

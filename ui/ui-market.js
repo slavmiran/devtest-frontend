@@ -8865,11 +8865,13 @@ function _renderDossierLinkedExchangeCard(rel, options) {
             ? `<span class="linked-badge is-debt">${window.escapeHTML(window.t('linkedBadgeDebt', {}, lang) || '🫵 Долг')}</span>`
             : `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>`);
 
-    let swapArrow = '⇄';
+    let swapArrow = '<svg class="linked-swap-svg is-mutual" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="8" x2="5" y2="8"></line><polyline points="9 4 5 8 9 12"></polyline><line x1="5" y1="16" x2="19" y2="16"></line><polyline points="15 12 19 16 15 20"></polyline></svg>';
     if (isBroken) {
-        swapArrow = '✕';
+        swapArrow = '<svg class="linked-swap-svg is-broken" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ff453a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
     } else if (isMutualDebt) {
-        swapArrow = theirDone ? '➔' : '←';
+        swapArrow = theirDone
+            ? '<svg class="linked-swap-svg is-debt" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="12" x2="20" y2="12"></line><polyline points="14 6 20 12 14 18"></polyline></svg>'
+            : '<svg class="linked-swap-svg is-debt" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="20" y1="12" x2="4" y2="12"></line><polyline points="10 6 4 12 10 18"></polyline></svg>';
     }
 
     return `<${tag}${typeAttr} class="${cardClass}${canOpenBalance ? '' : ' is-static'}"${openAttrs}>` +

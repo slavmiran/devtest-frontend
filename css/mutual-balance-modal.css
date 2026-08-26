@@ -2347,13 +2347,27 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
-    font-weight: 700;
-    line-height: 1;
     color: var(--text-secondary);
     background: transparent;
     border: none;
     padding: 0 4px;
+}
+
+.linked-swap-svg {
+    display: block;
+    color: var(--text-secondary);
+}
+
+.linked-swap-svg.is-mutual {
+    color: var(--text-secondary);
+}
+
+.linked-swap-svg.is-debt {
+    color: #60a5fa;
+}
+
+.linked-swap-svg.is-broken {
+    color: #ff453a;
 }
 
 /* legacy mutual pair kept for safety */
