@@ -878,14 +878,17 @@
             bodyHtml = _renderSingleSideStats(data);
         }
 
+        var isLeftBroken = themBroken || youBroken || !!data.partnerLeft;
         var breakLabel = isSelfDebt
             ? _t('mutualBalanceDebtExitBtn')
-            : (isOwnerView ? _t('linkStatusKickBtn') : (isMutual ? _t('mutualBalanceBreakBtn') : _t('linkStatusKickBtn')));
-        var isLeftSoftView = isOwnerView
-            ? !!data.isTesterLeft
-            : !!(data.leftSoft || (_balanceState && _balanceState.leftSoft));
+            : (isOwnerView
+                ? _t('linkStatusKickBtn')
+                : (isLeftBroken ? (_t('detail_leave_btn') || _t('mutualBalanceBreakBtn')) : (isMutual ? _t('mutualBalanceBreakBtn') : _t('detail_leave_btn'))));
+
+        // "Скрыть тестера" / "Открыть карточку" are ONLY for Project Owner view (context === 'projects') when a tester left the owner's project.
+        var isLeftSoftOwnerView = isOwnerView && !!data.isTesterLeft;
         var actionsHtml = '<div class="parity-actions">';
-        if (isLeftSoftView) {
+        if (isLeftSoftOwnerView) {
             actionsHtml += '' +
                 '<button type="button" class="btn btn-outline-tg" onclick="openLeftTesterReciprocalCard()">' +
                     _esc(_t('leftTesterOpenCardBtn')) +
@@ -894,7 +897,7 @@
                     _esc(_t('leftTesterHideBtn')) +
                 '</button>';
         } else {
-            if (!isSelfDebt) {
+            if (!isSelfDebt && !isLeftBroken) {
                 actionsHtml += '' +
                     '<button type="button" class="btn btn-outline-tg" onclick="openBellRemindPreview()">' +
                         _esc(_t('mutualBalanceBellBtn')) +
@@ -1196,6 +1199,8 @@
                 joinType: joinType || 'mutual',
                 unlinkReciprocal: false,
             });
+        } else if (typeof window.openLeaveOrDropFromTest === 'function') {
+            window.openLeaveOrDropFromTest(appId);
         } else if (typeof showToast === 'function') {
             showToast(_t('loadError'));
         }
