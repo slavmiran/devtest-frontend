@@ -1,0 +1,1663 @@
+/* ==========================================================================
+   My Tests — visual refresh
+   ========================================================================== */
+
+/* Shared surface tokens (cards + matching section headers) */
+#tab-tests {
+    --mytests-surface-top: rgba(46, 46, 50, 0.98);
+    --mytests-surface-bottom: rgba(32, 32, 36, 0.96);
+    --mytests-surface-glow: rgba(255, 255, 255, 0.09);
+    --mytests-surface-border: rgba(255, 255, 255, 0.11);
+    --mytests-surface-accent: #c8ccd4;
+
+    --guest-surface-top: rgba(20, 27, 38, 0.98);
+    --guest-surface-bottom: rgba(14, 18, 26, 0.96);
+    --guest-surface-glow: rgba(77, 163, 255, 0.12);
+    --guest-surface-border: rgba(77, 163, 255, 0.16);
+    --guest-surface-accent: #3eb9cd;
+
+    overflow: visible;
+}
+
+/* --------------------------------------------------------------------------
+   1. Cards: short corner glow + flat base (same recipe as guest cards)
+   -------------------------------------------------------------------------- */
+#tab-tests .card:not(.external-tests-card) {
+    padding: 14px;
+    margin-bottom: 10px;
+    border-radius: 18px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--mytests-surface-border);
+    background:
+        radial-gradient(ellipse 90% 73% at 100% 0%, var(--mytests-surface-glow), transparent 75%),
+        linear-gradient(225deg, rgba(46, 46, 50, 0.34) 0%, transparent 58%);
+}
+
+#tab-tests .card.test-card-highlight-pulse {
+    transition: none !important;
+    animation: testCardHighlightPulse 3.6s ease-out;
+    z-index: 4;
+    position: relative;
+    outline: none;
+}
+
+#tab-tests .card.card-done,
+#tab-tests .card.card-done.done-today-card {
+    border-color: rgba(52, 199, 89, 0.22);
+    background:
+        radial-gradient(ellipse 72% 58% at 100% 0%, rgba(52, 199, 89, 0.084), transparent 68%),
+        linear-gradient(225deg, rgba(38, 46, 42, 0.2) 0%, transparent 52%);
+}
+
+#tab-tests .card.card-pending-release,
+#tab-tests .card.pending-release-carousel-card {
+    border-color: rgba(255, 149, 0, 0.22);
+    background:
+        radial-gradient(ellipse 72% 58% at 100% 0%, rgba(255, 149, 0, 0.084), transparent 68%),
+        linear-gradient(225deg, rgba(50, 42, 34, 0.2) 0%, transparent 52%);
+}
+
+#tab-tests .card > .card-header {
+    background: transparent;
+    padding: 0;
+    margin-bottom: 12px;
+}
+
+#tab-tests .card-title {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+#tab-tests .card-subtitle {
+    font-size: 12.5px;
+}
+
+/* Let the removal / exit transitions own the transform. */
+#tab-tests .card.removing,
+#tab-tests .card.card-exit-collapsing,
+#tab-tests .card.card-exit-collapsed {
+    animation: none !important;
+}
+
+#tab-tests .card.card-exit-collapsing {
+    pointer-events: none !important;
+    overflow: hidden !important;
+    transition: max-height 0.32s cubic-bezier(0.2, 0, 0, 1),
+                opacity 0.28s ease,
+                transform 0.32s cubic-bezier(0.2, 0, 0, 1),
+                margin-bottom 0.32s cubic-bezier(0.2, 0, 0, 1),
+                padding-top 0.32s cubic-bezier(0.2, 0, 0, 1),
+                padding-bottom 0.32s cubic-bezier(0.2, 0, 0, 1),
+                border-width 0.32s cubic-bezier(0.2, 0, 0, 1) !important;
+}
+
+#tab-tests .card.card-exit-collapsed {
+    opacity: 0 !important;
+    transform: scale(0.97) translateY(-4px) !important;
+    max-height: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-width: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. Meta chips: one neutral pill, colour only where it means something
+   -------------------------------------------------------------------------- */
+#tab-tests .meta-chip {
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--hint-color);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    -webkit-tap-highlight-color: transparent !important;
+    outline: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#tab-tests .meta-chip.accent-green { color: var(--success, #34c759); }
+#tab-tests .meta-chip.accent-blue { color: var(--link-color, #3390ec); }
+#tab-tests .meta-chip.accent-yellow { color: #e0b341; }
+#tab-tests .meta-chip.accent-purple { color: var(--reward, #b07cff); }
+#tab-tests .meta-chip.accent-cyan { color: #4fd1c5; }
+#tab-tests .meta-chip.accent-protection { color: var(--stage-protection, #7ea8ff); }
+#tab-tests .meta-chip.accent-buffer { color: var(--stage-buffer, #ffb84d); }
+
+/* Chips that ask for an action keep a soft wash so they stay findable. */
+#tab-tests .meta-chip.accent-orange,
+#tab-tests .meta-chip.accent-danger {
+    background: rgba(255, 149, 0, 0.11);
+    color: #ffab3d;
+    border-color: rgba(255, 149, 0, 0.2);
+}
+
+#tab-tests .meta-chip.accent-red {
+    background: rgba(255, 59, 48, 0.11);
+    color: var(--danger, #ff5a5f);
+    border-color: rgba(255, 59, 48, 0.2);
+}
+
+/* Testing type is the anchor chip of a card — slightly stronger, still quiet. */
+#tab-tests .meta-chip--source {
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.075);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --------------------------------------------------------------------------
+   3. Details button: vertical ellipsis
+   -------------------------------------------------------------------------- */
+#tab-tests .test-card-details-btn {
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--hint-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+#tab-tests .test-card-details-btn:active {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-color);
+}
+
+.test-card-details-btn__icon {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    display: block;
+}
+
+/* --------------------------------------------------------------------------
+   4. First-day checklist: numbered steps joined by a rail
+   -------------------------------------------------------------------------- */
+.tstep-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tstep {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+/* Rail segment bridging one step to the next. */
+.tstep:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 26px;
+    top: 100%;
+    width: 2px;
+    height: 10px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.12);
+    transition: background-color 0.25s ease;
+    pointer-events: none;
+}
+
+.tstep.is-done:not(:last-child)::after {
+    background: rgba(48, 209, 88, 0.35);
+}
+
+.tstep__row {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.22s ease, border-color 0.22s ease,
+        color 0.22s ease, opacity 0.22s ease, min-height 0.22s ease,
+        transform 0.12s ease;
+}
+
+.tstep__row:active:not([disabled]) {
+    transform: scale(0.985);
+}
+
+.tstep__label {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.tstep__arrow {
+    margin-left: auto;
+    font-size: 19px;
+    line-height: 1;
+    color: var(--hint-color);
+    opacity: 0.45;
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.tstep__marker {
+    position: relative;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--hint-color);
+    transition: background-color 0.22s ease, color 0.22s ease;
+}
+
+.tstep__check {
+    display: none;
+    width: 15px;
+    height: 15px;
+}
+
+.tstep__side {
+    flex-shrink: 0;
+    width: 50px;
+    padding: 0;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.12s ease, opacity 0.22s ease;
+}
+
+.tstep__side:active {
+    transform: scale(0.94);
+}
+
+/* --- current step: same soft neon CTA language as Confirm --- */
+.tstep.is-current .tstep__row {
+    border-color: rgba(76, 141, 255, 0.42);
+    background: rgba(76, 141, 255, 0.16);
+    color: #fff;
+    box-shadow: 0 0 14px rgba(76, 141, 255, 0.17);
+}
+
+.tstep.is-current .tstep__marker {
+    background: var(--accent-primary, #4c8dff);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(76, 141, 255, 0.3);
+}
+
+.tstep.is-current .tstep__arrow {
+    color: #fff;
+    opacity: 0.85;
+}
+
+.tstep.is-current .tstep__side {
+    border-color: rgba(76, 141, 255, 0.42);
+    background: rgba(76, 141, 255, 0.16);
+    color: var(--accent-primary, #4c8dff);
+    box-shadow: 0 0 12px rgba(76, 141, 255, 0.15);
+}
+
+/* --- completed step --- */
+.tstep.is-done .tstep__row {
+    min-height: 44px;
+    background: transparent;
+    border-color: transparent;
+    color: var(--hint-color);
+    font-weight: 500;
+}
+
+.tstep.is-done .tstep__num { display: none; }
+.tstep.is-done .tstep__check { display: block; }
+
+.tstep.is-done .tstep__marker {
+    background: rgba(48, 209, 88, 0.16);
+    color: #34c759;
+}
+
+.tstep.is-done .tstep__arrow { opacity: 0; }
+.tstep.is-done .tstep__side { opacity: 0.5; }
+
+@keyframes tstep-check-pop {
+    0% { transform: scale(0.5); opacity: 0.2; }
+    65% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.tstep.is-done .tstep__check {
+    animation: tstep-check-pop 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* --- upcoming / locked steps share the same muted look --- */
+.tstep.is-next .tstep__row,
+.tstep.is-locked .tstep__row {
+    background: transparent;
+    border-style: dashed;
+    border-color: rgba(255, 255, 255, 0.09);
+    color: var(--hint-color);
+    opacity: 0.6;
+}
+
+.tstep.is-locked .tstep__row {
+    cursor: not-allowed;
+}
+
+.tstep.is-next .tstep__arrow,
+.tstep.is-locked .tstep__arrow { opacity: 0; }
+
+/* --- confirming (server round-trip) --- */
+#tab-tests .tstep__row.is-confirming,
+#tab-tests .btn.is-confirming {
+    background: rgba(48, 209, 88, 0.16) !important;
+    border-color: rgba(48, 209, 88, 0.3) !important;
+    color: #34c759 !important;
+}
+
+.tstep-note {
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tstep-note__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 2px;
+}
+
+.tstep-note__text {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--hint-color);
+}
+
+/* --------------------------------------------------------------------------
+   5. Daily check-in row
+   -------------------------------------------------------------------------- */
+#tab-tests .action-row {
+    gap: 8px;
+}
+
+#tab-tests .checkin-actions--stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#tab-tests .checkin-open-btn {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-color);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+}
+
+#tab-tests .checkin-confirm-btn[disabled] {
+    background: rgba(142, 142, 147, 0.16);
+    color: var(--hint-color);
+    border: 1px solid transparent;
+    cursor: not-allowed;
+}
+
+/* Confirm CTA (My Tests): soft primary + light neon + white label. */
+#tab-tests .action-row .btn-success:not([disabled]),
+#tab-tests .split-btn-group .btn-success:not([disabled]),
+#tab-tests .checkin-confirm-btn.btn-success:not([disabled]),
+#tab-tests .btn-confirm-ready:not([disabled]),
+#tab-tests .first-day-btn.btn-success:not([disabled]),
+#tab-tests .first-day-btn.btn-confirm-ready:not([disabled]) {
+    background: rgba(76, 141, 255, 0.16) !important;
+    color: #fff !important;
+    border: 1px solid rgba(76, 141, 255, 0.42) !important;
+    box-shadow: 0 0 14px rgba(76, 141, 255, 0.17) !important;
+}
+
+#tab-tests .split-btn-group .split-btn-main.btn-success:not([disabled]) {
+    border-right: none !important;
+}
+
+/* Paperclip keeps section primary when ready — do not inherit white from btn-success. */
+#tab-tests .split-btn-group .split-btn-options.btn-success:not([disabled]) {
+    color: var(--accent-primary, #4c8dff) !important;
+    border-left: 1px solid rgba(76, 141, 255, 0.35) !important;
+}
+
+/* While checkin timer is counting down: keep paperclip subtle and unbordered (no neon glow/border) */
+#tab-tests .split-btn-group:has(.split-btn-main[disabled]) .split-btn-options,
+#tab-tests .split-btn-group.split-timer-running .split-btn-options,
+#tab-tests .split-btn-options--timer {
+    background: rgba(142, 142, 147, 0.16) !important;
+    border: 1px solid transparent !important;
+    border-left: 1px solid rgba(142, 142, 147, 0.18) !important;
+    box-shadow: none !important;
+    color: var(--hint-color, #8e8e93) !important;
+}
+
+#tab-tests .split-btn-group:has(.split-btn-main[disabled]) .split-btn-options:active,
+#tab-tests .split-btn-group.split-timer-running .split-btn-options:active,
+#tab-tests .split-btn-options--timer:active {
+    background: rgba(142, 142, 147, 0.26) !important;
+    color: var(--text-color, #fff) !important;
+}
+
+#tab-tests .action-row .btn,
+#tab-tests .split-btn-group .btn {
+    min-height: 46px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.22s ease, color 0.22s ease,
+        border-color 0.22s ease, transform 0.12s ease;
+}
+
+#tab-tests .action-row .btn:active:not([disabled]),
+#tab-tests .split-btn-group .btn:active:not([disabled]) {
+    transform: scale(0.98);
+}
+
+#tab-tests .split-btn-group .split-btn-main {
+    border-radius: 14px 0 0 14px;
+}
+
+#tab-tests .split-btn-group .split-btn-options {
+    border-radius: 0 14px 14px 0;
+}
+
+/* Stroke paperclip (even thickness) — primary accent, not white. */
+#tab-tests .split-btn-options {
+    position: relative;
+    font-size: 0 !important;
+    line-height: 0;
+    overflow: visible !important;
+    color: var(--accent-primary, #4c8dff) !important;
+}
+
+#tab-tests .split-btn-options::before {
+    content: '';
+    width: 22px;
+    height: 22px;
+    display: block;
+    flex-shrink: 0;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E") center / 20px 20px no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E") center / 20px 20px no-repeat;
+}
+
+/* Material info-circle icon before guest help link text. */
+.external-tests-section .external-tests-info-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--guest-surface-accent, #3eb9cd);
+}
+
+.external-tests-section .external-tests-info-link::before {
+    content: 'i';
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 1.6px solid currentColor;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* --------------------------------------------------------------------------
+   6. Section headers: one clear, colour-coded system for every zone
+      on My Tests (active / guest / buffer / done). Each zone gets its own
+      accent so switching between them reads as a deliberate transition,
+      not just another card.
+   -------------------------------------------------------------------------- */
+.ts-section-block {
+    position: relative;
+    margin-top: 30px;
+    padding-top: 22px;
+    overflow: visible;
+}
+
+/* Subtle neon seam — thin accent line + soft glow, tightly bound to card width */
+.ts-section-block::before {
+    content: none;
+}
+
+.ts-section-block::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 4%;
+    right: 4%;
+    height: 1px;
+    pointer-events: none;
+    z-index: 3;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--ts-accent, #fff) 45%, transparent) 50%,
+        transparent 100%
+    );
+    /* No box-shadow — prevents glow bleeding beyond card boundaries */
+    opacity: 0.6;
+}
+
+/* Previous card/zone: subtle tint on bottom border only */
+#tab-tests .ts-handoff-glow {
+    position: relative;
+    z-index: 1;
+    border-bottom-color: color-mix(
+        in srgb,
+        var(--ts-handoff-accent, rgba(255, 255, 255, 0.3)) 25%,
+        var(--mytests-surface-border, rgba(255, 255, 255, 0.11))
+    ) !important;
+    /* No box-shadow — prevents glow extending beyond card boundaries */
+}
+
+#tab-tests .ts-handoff-glow::after {
+    content: '';
+    position: absolute;
+    left: 4%;
+    right: 4%;
+    bottom: -1px;
+    height: 1px;
+    border-radius: 999px;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--ts-handoff-accent, #fff) 35%, transparent);
+    /* No box-shadow — prevents glow bleeding beyond card boundaries */
+    opacity: 0.5;
+}
+
+/* Suppress handoff glow on collapsed buffer header — prevents green strip artifact */
+#tab-tests .pending-release-section.is-collapsed .pending-release-section__header.ts-handoff-glow {
+    border-bottom-color: rgba(255, 149, 0, 0.22) !important;
+}
+
+#tab-tests .pending-release-section.is-collapsed .pending-release-section__header.ts-handoff-glow::after {
+    display: none;
+}
+
+/* Horizontal section trails (guest / buffer wraps) keep rounded bottom lit */
+#tab-tests .pending-release-scroll-wrap.ts-handoff-glow,
+#tab-tests #external-tests-scroll-wrap.ts-handoff-glow {
+    border-radius: 0 0 16px 16px;
+    padding-bottom: 2px;
+    /* Handoff glow is subtle border-tint only on wraps — no pseudo or shadow */
+}
+
+#tab-tests .pending-release-scroll-wrap.ts-handoff-glow::after,
+#tab-tests #external-tests-scroll-wrap.ts-handoff-glow::after {
+    display: none;
+}
+
+.ts-section-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.22s ease, border-color 0.22s ease, border-radius 0.22s ease;
+}
+
+button.ts-section-head {
+    cursor: pointer;
+}
+
+.ts-section-head--clickable:active {
+    opacity: 0.88;
+}
+
+.ts-section-head__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    line-height: 1;
+    background: var(--ts-icon-bg, rgba(255, 255, 255, 0.06));
+    box-shadow: inset 0 0 0 1px var(--ts-icon-border, rgba(255, 255, 255, 0.08));
+}
+
+.ts-section-head__titles {
+    flex: 1;
+    min-width: 0;
+}
+
+.ts-section-head__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text-color);
+}
+
+.ts-section-head__desc {
+    margin: 3px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--hint-color);
+}
+
+.external-tests-section .external-tests-info-link {
+    margin-top: 3px;
+}
+
+.ts-section-head__count {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+    background: var(--ts-count-bg, rgba(255, 255, 255, 0.08));
+    color: var(--ts-accent, var(--hint-color));
+}
+
+.ts-section-head__meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.ts-section-head__title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.ts-section-head__count--inline {
+    margin-top: 1px;
+}
+
+.ts-section-head__chevron {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: var(--ts-accent, var(--hint-color));
+    opacity: 0.85;
+    transition: transform 0.22s ease, background-color 0.18s ease;
+}
+
+.ts-section-head__chevron-icon {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.ts-section-head--clickable:active .ts-section-head__chevron {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* --- theme: Мои тесты (active) — same gray surface as the cards below --- */
+/* "Мои тесты" — always expanded, clean heading style (no box) */
+.ts-section-head--active {
+    --ts-accent: var(--mytests-surface-accent, #c8ccd4);
+    --ts-icon-bg: rgba(255, 255, 255, 0.1);
+    --ts-icon-border: rgba(255, 255, 255, 0.14);
+    --ts-count-bg: rgba(255, 255, 255, 0.1);
+    /* No border, no background — pure heading */
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
+}
+
+/* --- theme: Гостевые проекты — blue from guest card gradient (#4da3ff) --- */
+.ts-section-block--guest {
+    --ts-accent: var(--guest-surface-accent, #3eb9cd);
+}
+
+/* "Гостевые проекты" — expanded by default; collapsible like buffer */
+.ts-section-head--guest {
+    --ts-accent: var(--guest-surface-accent, #3eb9cd);
+    --ts-icon-bg: rgba(62, 185, 205, 0.18);
+    --ts-icon-border: rgba(62, 185, 205, 0.34);
+    --ts-count-bg: rgba(62, 185, 205, 0.24);
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
+}
+
+.external-tests-section.is-collapsed .ts-section-head--guest {
+    border: 1px solid rgba(62, 185, 205, 0.22);
+    background: linear-gradient(135deg, rgba(62, 185, 205, 0.09), rgba(62, 185, 205, 0) 65%);
+    border-radius: 16px;
+    padding-left: 14px;
+}
+
+.external-tests-section:not(.is-collapsed) .ts-section-head--guest {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
+    box-shadow: none;
+}
+
+.external-tests-section.is-collapsed .external-tests-section__info-link,
+.external-tests-section.is-collapsed #external-tests-scroll-wrap {
+    display: none;
+}
+
+.external-tests-section.is-collapsed .external-tests-section__header {
+    margin-bottom: 0;
+}
+
+.external-tests-section:not(.is-collapsed) .external-tests-section__chevron {
+    transform: rotate(180deg);
+}
+
+#tab-tests .external-tests-section:not(.is-collapsed) .external-tests-section__header.ts-handoff-glow {
+    border: none !important;
+}
+
+#tab-tests .external-tests-section:not(.is-collapsed) .external-tests-section__header.ts-handoff-glow::after {
+    display: none;
+}
+
+#tab-tests .external-tests-section.is-collapsed .external-tests-section__header.ts-handoff-glow::after {
+    display: none;
+}
+
+/* Guest confirm: guest primary + soft neon; label white, paperclip guest primary. */
+#tab-tests .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) {
+    box-shadow: none !important;
+}
+
+#tab-tests .external-tests-card .external-tests-confirm-btn.external-tests-confirm-ready {
+    background: rgba(62, 185, 205, 0.16) !important;
+    background-image: none !important;
+    color: #fff !important;
+    border: 1px solid rgba(62, 185, 205, 0.42) !important;
+    box-shadow: 0 0 14px rgba(62, 185, 205, 0.187) !important;
+}
+
+#tab-tests .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-attach-btn,
+#tab-tests .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .split-btn-options {
+    background: rgba(62, 185, 205, 0.16) !important;
+    background-image: none !important;
+    color: var(--guest-surface-accent, #3eb9cd) !important;
+    border: 1px solid rgba(62, 185, 205, 0.42) !important;
+    box-shadow: 0 0 14px rgba(62, 185, 205, 0.187) !important;
+}
+
+#tab-tests .external-tests-card .external-tests-confirm-group:has(.external-tests-confirm-ready) .external-tests-confirm-btn.split-btn-main {
+    border-right: 1px solid rgba(62, 185, 205, 0.42) !important;
+}
+
+/* --- theme: Буфер безопасности (buffer) --- */
+.ts-section-block--buffer {
+    --ts-accent: #ffb84d;
+}
+
+/* Buffer header: clean heading by default (expanded) */
+.ts-section-head--buffer {
+    --ts-accent: #ffb84d;
+    --ts-icon-bg: rgba(255, 149, 0, 0.15);
+    --ts-icon-border: rgba(255, 149, 0, 0.32);
+    --ts-count-bg: rgba(255, 149, 0, 0.16);
+    /* Expanded: no box */
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
+}
+
+/* Buffer header: compact box when collapsed */
+.pending-release-section.is-collapsed .ts-section-head--buffer {
+    border: 1px solid rgba(255, 149, 0, 0.22);
+    background: linear-gradient(135deg, rgba(255, 149, 0, 0.09), rgba(255, 149, 0, 0) 65%);
+    border-radius: 16px;
+    padding-left: 14px;
+}
+
+/* Expanded: clean heading, no box — same as «Выполнено сегодня» */
+.pending-release-section:not(.is-collapsed) .ts-section-head--buffer {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
+    box-shadow: none;
+}
+
+#tab-tests .pending-release-section:not(.is-collapsed) .pending-release-section__header.ts-handoff-glow {
+    border: none !important;
+}
+
+#tab-tests .pending-release-section:not(.is-collapsed) .pending-release-section__header.ts-handoff-glow::after {
+    display: none;
+}
+
+/* --- theme: Выполнено сегодня (done) --- */
+.ts-section-block--done {
+    --ts-accent: #34c759;
+    margin-top: 24px;
+}
+
+/* Done header: clean heading by default */
+.ts-section-head--done {
+    --ts-accent: #34c759;
+    --ts-icon-bg: rgba(52, 199, 89, 0.15);
+    --ts-icon-border: rgba(52, 199, 89, 0.32);
+    --ts-count-bg: rgba(52, 199, 89, 0.16);
+    /* Expanded: no box */
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
+    margin-bottom: 0;
+}
+
+.ts-section-head__icon--done {
+    color: #34c759;
+}
+
+.ts-section-head__done-icon {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+#done-section.accordion {
+    overflow: visible;
+    border: none;
+    background: transparent;
+    margin-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Collapsed: compact box style — rounded header acts as the whole section */
+#done-section.accordion:not(.active) .ts-section-head--done {
+    border: 1px solid rgba(52, 199, 89, 0.22);
+    background: linear-gradient(90deg, rgba(52, 199, 89, 0.11) 0%, rgba(52, 199, 89, 0) 100%);
+    border-radius: 16px;
+    padding-left: 14px;
+}
+
+#done-section .accordion-content.done-today-scroll {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+}
+
+/* Expanded: clean heading, no box — cards display freely below */
+#done-section.accordion.active .ts-section-head--done {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding-left: 4px;
+}
+
+#done-section.accordion.active .accordion-icon,
+.pending-release-section:not(.is-collapsed) .pending-release-section__chevron {
+    transform: rotate(180deg);
+}
+
+/* Grant-attention outline only when buffer section is collapsed */
+.pending-release-section.has-action-attention.is-collapsed .ts-section-head--buffer {
+    border: 1px solid rgba(255, 149, 0, 0.55);
+    border-radius: 16px;
+    box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.16);
+}
+
+/* Checkin options modal — neutral secondary actions; soft accent for Just Confirm. */
+#checkin-options-modal .modal-content .btn {
+    min-height: 46px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.22s ease, color 0.22s ease,
+        border-color 0.22s ease, box-shadow 0.22s ease, transform 0.12s ease;
+}
+
+#checkin-options-modal .modal-content .btn:active:not([disabled]) {
+    transform: scale(0.98);
+}
+
+#checkin-options-modal .modal-content .btn-secondary {
+    background: var(--secondary-bg-color, rgba(255, 255, 255, 0.08)) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16)) !important;
+    box-shadow: none !important;
+}
+
+#checkin-options-modal .modal-content .btn-success {
+    background: rgba(76, 141, 255, 0.12) !important;
+    color: #fff !important;
+    border: 1px solid rgba(76, 141, 255, 0.32) !important;
+    box-shadow: none !important;
+}
+
+/* Guest Open button — restore border (styles.css .btn { border:none } wins otherwise). */
+#tab-tests .external-tests-open-btn.btn-secondary,
+#tab-tests .external-tests-open-btn {
+    background: var(--secondary-bg-color, rgba(255, 255, 255, 0.08)) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16)) !important;
+    box-shadow: none !important;
+}
+
+/* Report modal: one process, standard screenshot + optional bug/idea. */
+#report-modal .report-modal-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+#report-modal #t-reportModalHint {
+    color: var(--hint-color);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    margin: 0;
+}
+
+#report-modal .report-path-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--hint-color);
+}
+
+#report-modal .report-path-label--alt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    text-align: center;
+}
+
+#report-modal .report-path-label--alt::before,
+#report-modal .report-path-label--alt::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+#report-modal .report-standard-block,
+#report-modal .report-screenshot-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#report-modal .report-standard-block .form-group {
+    margin: 0;
+}
+
+#report-modal .report-owner-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+#report-modal .report-owner-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    width: 100%;
+}
+
+#report-modal .report-owner-line {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-color);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#report-modal .report-owner-line .report-owner-sep {
+    font-weight: 500;
+    color: var(--hint-color);
+    margin: 0 0.28em;
+}
+
+#report-modal .report-owner-line .report-owner-nick {
+    font-weight: 500;
+    color: var(--hint-color);
+}
+
+#report-modal #report-language-toggle {
+    display: block;
+}
+
+#report-modal .report-lang-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+}
+
+#report-modal .report-lang-divider {
+    color: rgba(255, 255, 255, 0.22);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    user-select: none;
+}
+
+#report-modal .report-lang-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    padding: 2px 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+#report-modal .report-lang-link.is-active {
+    color: var(--text-color);
+    font-weight: 700;
+    opacity: 1;
+}
+
+#report-modal .report-lang-link.is-idle {
+    color: var(--hint-color);
+    font-weight: 500;
+    opacity: 0.72;
+}
+
+#report-modal .report-lang-link.is-idle:hover,
+#report-modal .report-lang-link.is-idle:focus-visible {
+    opacity: 1;
+    color: var(--text-color);
+    outline: none;
+}
+
+#report-modal .report-lang-link__label {
+    text-decoration: none;
+}
+
+#report-modal .report-lang-default-check {
+    display: inline-flex;
+    width: 12px;
+    height: 12px;
+    color: var(--hint-color);
+    opacity: 0.7;
+}
+
+#report-modal .report-lang-default-check svg {
+    width: 12px;
+    height: 12px;
+    display: block;
+}
+
+#report-modal .report-text-wrap {
+    position: relative;
+}
+
+#report-modal .report-modal-text {
+    width: 100%;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    resize: none;
+    box-sizing: border-box;
+    padding-bottom: 34px;
+    color: var(--hint-color);
+    color: color-mix(in srgb, var(--text-color) 78%, transparent);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+}
+
+#report-modal .report-modal-text.is-collapsed {
+    height: calc(1.45em * 5 + 28px);
+    max-height: calc(1.45em * 5 + 28px);
+    overflow-y: auto;
+}
+
+#report-modal .report-modal-text.is-expanded {
+    min-height: calc(1.45em * 5 + 28px);
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+#report-modal .report-text-expand-btn {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: rgba(20, 24, 32, 0.72);
+    color: var(--hint-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+}
+
+#report-modal .report-text-expand-btn:hover,
+#report-modal .report-text-expand-btn:focus-visible {
+    color: var(--text-color);
+    border-color: rgba(255, 255, 255, 0.24);
+    outline: none;
+}
+
+#report-modal .report-text-expand-icon {
+    width: 16px;
+    height: 16px;
+    display: none;
+}
+
+#report-modal .report-text-wrap:not(.is-expanded) .report-text-expand-icon--more,
+#report-modal .report-text-wrap.is-expanded .report-text-expand-icon--less {
+    display: block;
+}
+
+#report-modal .report-feedback-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+}
+
+#report-modal .report-feedback-actions {
+    display: flex;
+    gap: 10px;
+    margin: 0;
+}
+
+#report-modal .report-feedback-btn {
+    flex: 1;
+    min-height: 46px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--text-color) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    box-shadow: none !important;
+}
+
+#report-modal .report-feedback-note {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--hint-color);
+    text-align: center;
+    font-weight: 500;
+}
+
+#report-modal .btn-primary {
+    min-height: 46px;
+    margin-top: 2px;
+    border-radius: 14px;
+    font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   7. Motion preferences
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    #tests-list > .card,
+    #external-tests-list > .card,
+    .tstep.is-done .tstep__check {
+        animation: none;
+    }
+
+    .tstep__row,
+    .tstep__side,
+    #tab-tests .action-row .btn {
+        transition: none;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   8. Karma Distribution Modal & Sheet
+   -------------------------------------------------------------------------- */
+.karma-dist-sheet {
+    max-height: 88vh;
+    overflow-y: auto;
+    border-radius: 24px !important;
+    padding: 20px 18px 22px !important;
+    background: var(--card-bg, #1c1c1e) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45) !important;
+}
+
+.karma-dist-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    position: relative;
+}
+
+.karma-dist-icon-badge {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.karma-dist-header-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.karma-dist-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-color, #fff);
+    line-height: 1.25;
+}
+
+.karma-dist-subtitle {
+    font-size: 12.5px;
+    color: var(--hint-color, #8e8e93);
+    margin-top: 2px;
+    line-height: 1.35;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.karma-dist-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(142, 142, 147, 0.15);
+    color: var(--hint-color, #8e8e93);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+    flex-shrink: 0;
+}
+
+.karma-dist-close-btn:active {
+    transform: scale(0.92);
+    background: rgba(142, 142, 147, 0.28);
+}
+
+/* Unified Hero Container */
+.karma-dist-hero-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+
+.karma-dist-hero-desc {
+    font-size: 12.5px;
+    color: var(--hint-color, #8e8e93);
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+/* Pool status tiles */
+.karma-dist-pool-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.karma-dist-pool-card {
+    background: transparent;
+    border: none;
+    padding: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+}
+
+.karma-dist-pool-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.karma-dist-pool-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-color, #fff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.karma-dist-pool-count {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--hint-color, #8e8e93);
+    white-space: nowrap;
+}
+
+.karma-dist-pool-count .pool-rem {
+    color: var(--text-color, #fff);
+    font-weight: 700;
+}
+
+.karma-dist-pool-amount {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+}
+
+.karma-dist-pool-amount.good {
+    color: #34c759;
+}
+
+.karma-dist-pool-amount.special {
+    color: #0a84ff;
+}
+
+/* Collapsible limits accordion */
+.karma-dist-limits-box {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    margin-bottom: 14px;
+    overflow: hidden;
+}
+
+.karma-dist-limits-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 14px;
+    background: transparent;
+    border: none;
+    color: var(--text-color, #fff);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.karma-dist-limits-toggle:active {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.karma-dist-limits-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 1;
+    margin-right: 10px;
+    gap: 8px;
+}
+
+.karma-limit-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 10px;
+    background: rgba(10, 132, 255, 0.18);
+    color: #0a84ff;
+    border: 1px solid rgba(10, 132, 255, 0.3);
+}
+
+.karma-chevron-icon {
+    transition: transform 0.2s ease;
+    stroke: var(--hint-color, #8e8e93);
+    flex-shrink: 0;
+}
+
+.karma-dist-limits-body {
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 14px 14px;
+    font-size: 12.5px;
+    color: var(--hint-color, #8e8e93);
+    line-height: 1.45;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    margin-top: 2px;
+    padding-top: 12px;
+}
+
+.karma-dist-pool-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.karma-dist-pool-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.karma-dist-pool-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color, #fff);
+}
+
+.karma-dist-pool-val {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hint-color, #8e8e93);
+}
+
+.karma-dist-rules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+}
+
+.karma-dist-limit-item {
+    display: block;
+}
+
+/* Tester list rows */
+.karma-dist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.karma-dist-row {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    transition: background 0.15s ease;
+}
+
+.karma-dist-row:hover {
+    background: rgba(255, 255, 255, 0.045);
+}
+
+.karma-dist-row-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.karma-dist-tester-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color, #fff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    display: block;
+}
+
+.karma-dist-tester-name:active {
+    opacity: 0.7;
+}
+
+.karma-dist-tester-meta {
+    font-size: 12px;
+    color: var(--hint-color, #8e8e93);
+    margin-top: 2px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.karma-dist-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.karma-awarded-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--hint-color, #8e8e93);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
+}
+
+.karma-done-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: rgba(52, 199, 89, 0.08);
+    color: var(--success, #34c759);
+    border: 1px solid rgba(52, 199, 89, 0.2);
+    white-space: nowrap;
+}
+
+.karma-action-btn {
+    padding: 7px 14px;
+    border-radius: 10px;
+    border: none;
+    font-size: 12.5px;
+    font-weight: 600;
+    background: var(--link-color, #0a84ff);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(10, 132, 255, 0.25);
+}
+
+.karma-action-btn:active {
+    transform: scale(0.96);
+    opacity: 0.9;
+}
+
+.karma-action-btn:disabled,
+.karma-action-btn.is-disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: rgba(142, 142, 147, 0.08);
+    color: var(--hint-color, #8e8e93);
+    border-color: transparent;
+    transform: none;
+}
+
+.karma-dist-footer-btn {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    background: var(--secondary-bg-color, rgba(142, 142, 147, 0.12));
+    color: var(--text-color, #fff);
+    border: 1px solid rgba(142, 142, 147, 0.2);
+}

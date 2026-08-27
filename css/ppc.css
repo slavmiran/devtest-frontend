@@ -71,8 +71,11 @@
 /* ── Scrollable Body ── */
 .ppc-body {
     flex: 1;
-    overflow-y: auto;
+    /* Always reserve the vertical scrollbar so toggling the paid-zone
+       purchase block does not shrink the content width (no layout jump). */
+    overflow-y: scroll;
     overflow-x: hidden;
+    scrollbar-gutter: stable;
     padding: 16px;
     padding-bottom: 32px;
     -webkit-overflow-scrolling: touch;
@@ -283,6 +286,90 @@
     cursor: grab;
 }
 
+/* ── Track layers: base / green / amber buffer (tints over green, solid after) ──
+   Native track is transparent; layers sit under the thumb. Geometry uses the
+   thumb travel range (inset by half a thumb) so segments meet at the thumb. */
+.ppc-slider-track {
+    --ppc-thumb-size: 26px;
+    --ppc-track-origin: calc(var(--ppc-thumb-size) / 2);
+    --ppc-track-span: calc(100% - var(--ppc-thumb-size));
+    --ppc-buffer-reveal: 100%;
+    position: relative;
+    height: 6px;
+    margin: 18px 0 12px;
+}
+
+.ppc-slider-track > .ppc-slider {
+    display: block;
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    margin: 0;
+    background: transparent;
+}
+
+.ppc-slider-track-base,
+.ppc-slider-track-fill,
+.ppc-buffer-band {
+    position: absolute;
+    top: 0;
+    height: 6px;
+    pointer-events: none;
+}
+
+.ppc-slider-track-base {
+    left: 0;
+    right: 0;
+    z-index: 1;
+    border-radius: 3px;
+    background: var(--border-strong);
+}
+
+/* Green = selected Google day (ends at the thumb centre) */
+.ppc-slider-track-fill {
+    left: 0;
+    z-index: 2;
+    width: calc(var(--ppc-track-origin) + var(--ppc-slider-f, 0.5) * var(--ppc-track-span));
+    border-radius: 3px;
+    background: var(--success);
+    transition: width 0.08s linear;
+}
+
+/*
+ * Amber Safety Buffer:
+ *  - sits in its home slot (platformDay − remaining) at start, even under green
+ *  - left of the thumb: muted tint over green (buffer “under” progress)
+ *  - right of the thumb: solid amber (revealed gap)
+ *  - past home to the left: whole band solid, glued to the thumb (+48h tail)
+ */
+.ppc-buffer-band {
+    left: calc(var(--ppc-track-origin) + var(--ppc-buffer-start, 0) * var(--ppc-track-span));
+    width: calc((var(--ppc-buffer-end, 0) - var(--ppc-buffer-start, 0)) * var(--ppc-track-span));
+    z-index: 3;
+    border-radius: 3px;
+    background: linear-gradient(
+        to right,
+        rgba(255, 176, 32, 0.72) 0%,
+        rgba(255, 176, 32, 0.72) var(--ppc-buffer-reveal, 100%),
+        var(--stage-buffer) var(--ppc-buffer-reveal, 100%),
+        var(--stage-buffer) 100%
+    );
+    box-shadow: 0 0 10px rgba(255, 176, 32, 0.22);
+    opacity: 0;
+    visibility: hidden;
+    transition: left 0.08s linear, width 0.08s linear, opacity 0.15s ease, background 0.08s linear;
+}
+
+.ppc-buffer-band.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.ppc-buffer-band.is-attached {
+    border-radius: 0 3px 3px 0;
+    box-shadow: 0 0 12px rgba(255, 176, 32, 0.32);
+}
+
 .ppc-slider-tick-row {
     display: flex;
     justify-content: space-between;
@@ -291,6 +378,37 @@
     margin-top: 4px;
     padding: 0 1px;
     user-select: none;
+}
+
+.ppc-slider-buffer-legend {
+    margin-top: 9px;
+    user-select: none;
+}
+
+.ppc-slider-buffer-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    line-height: 1.25;
+    font-weight: 600;
+    color: var(--stage-buffer);
+}
+
+.ppc-slider-buffer-swatch {
+    flex-shrink: 0;
+    width: 14px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--stage-buffer);
+    box-shadow: 0 0 6px rgba(255, 176, 32, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ppc-buffer-band,
+    .ppc-slider-track-fill {
+        transition: none;
+    }
 }
 
 /* ── Gap / Cost Block ── */
@@ -1250,6 +1368,52 @@
     color: var(--reward);
     letter-spacing: -0.5px;
     line-height: 1.25;
+}
+
+/* Paid-zone cycle breakdown — footer of the status card, under a divider */
+.ppc-status-life {
+    margin: 10px -14px -14px;
+    padding: 12px 14px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 0 0 12px 12px;
+    background: rgba(0, 0, 0, 0.22);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.ppc-status-life-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.40);
+}
+.ppc-status-life-total {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+.ppc-status-life-total em {
+    font-style: normal;
+    color: var(--reward);
+}
+.ppc-status-life-unit {
+    font-weight: 600;
+    color: var(--text-tertiary);
+}
+.ppc-status-life-detail {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+.ppc-status-life-detail .ppc-life-buffer {
+    color: var(--stage-buffer);
+    font-weight: 600;
+}
+.ppc-status-life-detail .ppc-life-paid {
+    color: var(--reward);
+    font-weight: 600;
 }
 /* ── Split rewards presentation in details modal ── */
 .ppc-rewards-split-container {

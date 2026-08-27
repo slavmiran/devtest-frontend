@@ -113,12 +113,123 @@ const telegramUsername = DEBUG_BYPASS_USERNAME_GATE
     ? (String(initData.user?.username || '').trim().replace(/^@+/, '') || 'tester_no_name')
     : String(initData.user?.username || '').trim().replace(/^@+/, '');
 const API_BASE_OVERRIDE = String(window.__API_BASE__ || '').trim();
-let API_BASE = API_BASE_OVERRIDE || (window.location.hostname.includes('vercel.app')
-    ? 'https://usable-epidemic-askew.ngrok-free.dev/api'
-    : 'https://devtest-backend.onrender.com/api');
-const API_USES_NGROK = API_BASE.includes('ngrok');
-window.API_USES_NGROK = API_USES_NGROK;
+const PRODUCTION_API_BASE = 'https://devtest-backend.onrender.com/api';
+// Optional local hint from js/env-config.js. Vercel does NOT need redeploy on tunnel restart:
+// it discovers the live URL from staging Supabase (published by local backend on start).
+const TEST_API_BASE_HINT = String(window.__TEST_API_BASE__ || '').trim();
+// Staging publishable discovery (anon can only SELECT key=test_api_base).
+const TEST_API_DISCOVERY_URL = 'https://fksbrckitigxehxxfaru.supabase.co/rest/v1/dev_runtime_config?key=eq.test_api_base&select=value&limit=1';
+const TEST_API_DISCOVERY_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrc2JyY2tpdGlneGVoeHhmYXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODgxMjYsImV4cCI6MjA5NTQ2NDEyNn0.9VAo0mcz-PuRuNJn9bNYUOkMD42PfEM58puzY_n836g';
+
+function _isTestFrontendHost() {
+    var host = String(window.location.hostname || '').toLowerCase();
+    if (!host) return false;
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+    if (host.endsWith('.vercel.app') || host === 'vercel.app') return true;
+    if (String(window.__FRONTEND_ENV__ || '').trim().toLowerCase() === 'test') return true;
+    return false;
+}
+
+function _normalizeApiBase(value) {
+    var base = String(value || '').trim().replace(/\/+$/, '');
+    if (!base) return '';
+    return /\/api$/i.test(base) ? base : (base + '/api');
+}
+
+function _applyResolvedApiBase(nextBase) {
+    API_BASE = _normalizeApiBase(nextBase) || '';
+    window.API_BASE = API_BASE;
+    if (window.App) window.App.API_BASE = API_BASE;
+    window.API_USES_TUNNEL = /trycloudflare\.com|ngrok/i.test(API_BASE);
+    window.API_USES_NGROK = window.API_USES_TUNNEL;
+    console.info('[DevTest] API_BASE =', API_BASE || '(empty)', _isTestFrontendHost() ? '(test)' : '(production)');
+    return API_BASE;
+}
+
+function _resolveApiBaseSync() {
+    if (API_BASE_OVERRIDE) {
+        return _normalizeApiBase(API_BASE_OVERRIDE);
+    }
+    if (_isTestFrontendHost()) {
+        return _normalizeApiBase(TEST_API_BASE_HINT);
+    }
+    return PRODUCTION_API_BASE;
+}
+
+let API_BASE = _resolveApiBaseSync();
+window.API_USES_TUNNEL = /trycloudflare\.com|ngrok/i.test(API_BASE);
+window.API_USES_NGROK = window.API_USES_TUNNEL;
+window.API_BASE = API_BASE;
+if (window.App) window.App.API_BASE = API_BASE;
+console.info('[DevTest] API_BASE (initial) =', API_BASE || '(empty)', _isTestFrontendHost() ? '(test)' : '(production)');
 window.FEEDBACK_PUBLIC_LINK_BASE = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
+
+async function resolveTestApiBase() {
+    if (API_BASE_OVERRIDE) {
+        return _applyResolvedApiBase(API_BASE_OVERRIDE);
+    }
+    if (!_isTestFrontendHost()) {
+        return _applyResolvedApiBase(PRODUCTION_API_BASE);
+    }
+
+    var discovered = '';
+    try {
+        var response = await fetch(TEST_API_DISCOVERY_URL, {
+            method: 'GET',
+            headers: {
+                apikey: TEST_API_DISCOVERY_ANON_KEY,
+                Authorization: 'Bearer ' + TEST_API_DISCOVERY_ANON_KEY,
+                Accept: 'application/json',
+            },
+            cache: 'no-store',
+        });
+        if (response.ok) {
+            var rows = await response.json();
+            if (Array.isArray(rows) && rows[0] && rows[0].value) {
+                discovered = _normalizeApiBase(rows[0].value);
+            }
+        } else {
+            console.warn('[DevTest] test API discovery HTTP', response.status);
+        }
+    } catch (err) {
+        console.warn('[DevTest] test API discovery failed:', err && err.message ? err.message : err);
+    }
+
+    if (discovered) {
+        return _applyResolvedApiBase(discovered);
+    }
+
+    var fallback = _normalizeApiBase(TEST_API_BASE_HINT);
+    if (!fallback) {
+        console.error(
+            '[DevTest] No test API base. Start local backend with WEBHOOK_URL set '
+            + '(it publishes the tunnel pointer to staging).'
+        );
+    }
+    return _applyResolvedApiBase(fallback);
+}
+window.resolveTestApiBase = resolveTestApiBase;
+
+/** Signed Telegram WebApp initData for backend auth. Prefer over initDataUnsafe. */
+function getTelegramInitDataRaw() {
+    try {
+        var raw = (typeof tg !== 'undefined' && tg && tg.initData)
+            || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)
+            || '';
+        return String(raw || '').trim();
+    } catch (_) {
+        return '';
+    }
+}
+window.getTelegramInitDataRaw = getTelegramInitDataRaw;
+
+function withInitData(payload) {
+    var body = Object.assign({}, payload || {});
+    body.init_data = getTelegramInitDataRaw();
+    return body;
+}
+window.withInitData = withInitData;
+
 const _nativeFetch = window.fetch.bind(window);
 
 function _resolveFetchRequestUrl(input) {
@@ -133,7 +244,9 @@ function _resolveFetchRequestUrl(input) {
 
 window.fetch = function(input, init) {
     var requestUrl = _resolveFetchRequestUrl(input);
-    if (!API_USES_NGROK || requestUrl.indexOf(API_BASE) !== 0) {
+    // Legacy ngrok interstitial bypass only — Cloudflare Tunnel does not need it.
+    var usesNgrok = /ngrok/i.test(API_BASE || '');
+    if (!usesNgrok || !API_BASE || requestUrl.indexOf(API_BASE) !== 0) {
         return _nativeFetch(input, init);
     }
 
@@ -514,7 +627,7 @@ function sendLanguagePreferenceToServer(targetLanguage) {
     return fetch(request, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: safeLanguage })
+        body: JSON.stringify(withInitData({ language: safeLanguage }))
     }).catch(() => {});
 }
 
@@ -579,8 +692,15 @@ var _timerLocalDate = '';
 var _timerStorageKey = 'devtest_active_timer';
 var _timerReadyStateKey = 'devtest_timer_ready_state_v1';
 var _timerReadyState = {};
+var _checkinOpenTokenState = {};
 var _firstDayScreenshotStateKey = 'devtest_firstday_screenshot_state_v1';
 var _firstDayScreenshotState = {};
+var _customGroupJoinedStateKey = 'devtest_custom_group_joined_v1';
+var _customGroupJoinedState = {};
+var _customGroupWaitStateKey = 'devtest_custom_group_wait_v1';
+var _customGroupWaitState = {};
+var _customGroupWaitTimerId = null;
+var CUSTOM_GROUP_ACCESS_WAIT_MS = 15 * 60 * 1000;
 var pendingProjectData = null;
 var projectToEdit = null;
 var _transferProjectId = null;
@@ -641,8 +761,8 @@ try {
 var myProjectsLoadError = false;
 var marketCache = null;
 var MARKET_CACHE_KEY = 'market_cache_v1';
-var GUEST_PROJECTS_CACHE_KEY = 'guest_projects_cache_v1';
-var EXTERNAL_COUNTS_CACHE_KEY = 'external_counts_cache_v1';
+var GUEST_PROJECTS_CACHE_KEY = 'guest_projects_cache_v2';
+var EXTERNAL_COUNTS_CACHE_KEY = 'external_counts_cache_v2';
 var _lastFetchTimes = { mutual: 0, bounty: 0, tests: 0, projects: 0, offers: 0, archived: 0, reliabilitySummary: 0, reliabilityBreakdown: 0 };
 var MARKET_FETCH_THROTTLE_MS = 15000;
 var TESTS_FETCH_THROTTLE_MS = 20000;
@@ -685,7 +805,13 @@ var _reliabilityBreakdownLoadError = false;
 
 var _pendingActions = new Set();
 var _autoAcceptMutualEnabled = false;
+var _autoAcceptMutualAvailable = false;
 var _autoAcceptToggleInFlight = false;
+var _defaultGroupJoined = false;
+var _defaultGroupJoinedInFlight = false;
+var _defaultGroupJoinedReady = false;
+var _defaultGroupJoinedStorageKey = 'devtest_default_group_joined_v1';
+var _openAccessProblemAppIds = new Set();
 var _attachDeviceInfoToBugs = false;
 var _deviceInfo = '';
 var _deviceInfoIsManual = false;
@@ -709,7 +835,7 @@ var _marketRetryTimers = { mutual: null, bounty: null };
 var _marketForceSkeleton = false;
 var _guestProjectsInFlight = null;
 var _guestProjectsLoadedOnce = false;
-var _guestProjectsExpanded = false;
+var _guestProjectsExpanded = true;
 var _guestProjectsLoadError = false;
 var _externalCountsInFlight = null;
 var _externalCountsLoadedOnce = false;
@@ -748,6 +874,11 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_timerReadyState', function () { return _timerReadyState; }, function (value) { _timerReadyState = value; });
     window.App.bindStateProperty('_firstDayScreenshotStateKey', function () { return _firstDayScreenshotStateKey; }, function (value) { _firstDayScreenshotStateKey = value; });
     window.App.bindStateProperty('_firstDayScreenshotState', function () { return _firstDayScreenshotState; }, function (value) { _firstDayScreenshotState = value; });
+    window.App.bindStateProperty('_customGroupJoinedStateKey', function () { return _customGroupJoinedStateKey; }, function (value) { _customGroupJoinedStateKey = value; });
+    window.App.bindStateProperty('_customGroupJoinedState', function () { return _customGroupJoinedState; }, function (value) { _customGroupJoinedState = value; });
+    window.App.bindStateProperty('_customGroupWaitStateKey', function () { return _customGroupWaitStateKey; }, function (value) { _customGroupWaitStateKey = value; });
+    window.App.bindStateProperty('_customGroupWaitState', function () { return _customGroupWaitState; }, function (value) { _customGroupWaitState = value; });
+    window.App.bindStateProperty('_customGroupWaitTimerId', function () { return _customGroupWaitTimerId; }, function (value) { _customGroupWaitTimerId = value; });
     window.App.bindStateProperty('pendingProjectData', function () { return pendingProjectData; }, function (value) { pendingProjectData = value; });
     window.App.bindStateProperty('projectToEdit', function () { return projectToEdit; }, function (value) { projectToEdit = value; });
     window.App.bindStateProperty('_transferProjectId', function () { return _transferProjectId; }, function (value) { _transferProjectId = value; });
@@ -767,6 +898,26 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_leaveMutualAppId', function () { return _leaveMutualAppId; }, function (value) { _leaveMutualAppId = value; });
     window.App.bindStateProperty('_leaveMutualStats', function () { return _leaveMutualStats; }, function (value) { _leaveMutualStats = value; });
     window.App.bindStateProperty('_kickTarget', function () { return _kickTarget; }, function (value) { _kickTarget = value; });
+
+    // Canonical writers so IIFE modules (termination-sheet) update the same lexical vars
+    // that confirmDropTest / confirmLeaveMutual / confirmKickTester read.
+    function setLeaveMutualAppId(appId) {
+        _leaveMutualAppId = Number(appId || 0) || null;
+        window._leaveMutualAppId = _leaveMutualAppId;
+    }
+    function setDropTestAppId(appId) {
+        _dropTestAppId = Number(appId || 0) || null;
+        window._dropTestAppId = _dropTestAppId;
+    }
+    function setKickTarget(appId, testerId) {
+        var aid = Number(appId || 0);
+        var tid = Number(testerId || 0);
+        _kickTarget = (aid > 0 && tid > 0) ? { appId: aid, testerId: tid } : null;
+        window._kickTarget = _kickTarget;
+    }
+    window.setLeaveMutualAppId = setLeaveMutualAppId;
+    window.setDropTestAppId = setDropTestAppId;
+    window.setKickTarget = setKickTarget;
     window.App.bindStateProperty('_overtimeTest', function () { return _overtimeTest; }, function (value) { _overtimeTest = value; });
     window.App.bindStateProperty('_syncProjectId', function () { return _syncProjectId; }, function (value) { _syncProjectId = value; });
     window.App.bindStateProperty('_socialBonusStatus', function () { return _socialBonusStatus; }, function (value) { _socialBonusStatus = value; });
@@ -838,7 +989,12 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_reliabilityBreakdownLoadError', function () { return _reliabilityBreakdownLoadError; }, function (value) { _reliabilityBreakdownLoadError = value; });
     window.App.bindStateProperty('_pendingActions', function () { return _pendingActions; }, function (value) { _pendingActions = value; });
     window.App.bindStateProperty('_autoAcceptMutualEnabled', function () { return _autoAcceptMutualEnabled; }, function (value) { _autoAcceptMutualEnabled = value; });
+    window.App.bindStateProperty('_autoAcceptMutualAvailable', function () { return _autoAcceptMutualAvailable; }, function (value) { _autoAcceptMutualAvailable = value; });
     window.App.bindStateProperty('_autoAcceptToggleInFlight', function () { return _autoAcceptToggleInFlight; }, function (value) { _autoAcceptToggleInFlight = value; });
+    window.App.bindStateProperty('_defaultGroupJoined', function () { return _defaultGroupJoined; }, function (value) { _defaultGroupJoined = value; });
+    window.App.bindStateProperty('_defaultGroupJoinedInFlight', function () { return _defaultGroupJoinedInFlight; }, function (value) { _defaultGroupJoinedInFlight = value; });
+    window.App.bindStateProperty('_defaultGroupJoinedReady', function () { return _defaultGroupJoinedReady; }, function (value) { _defaultGroupJoinedReady = value; });
+    window.App.bindStateProperty('_openAccessProblemAppIds', function () { return _openAccessProblemAppIds; }, function (value) { _openAccessProblemAppIds = value; });
     window.App.bindStateProperty('_pendingInitialHighlightTestId', function () { return _pendingInitialHighlightTestId; }, function (value) { _pendingInitialHighlightTestId = value; });
     window.App.bindStateProperty('_highlightTestTimerId', function () { return _highlightTestTimerId; }, function (value) { _highlightTestTimerId = value; });
     window.App.bindStateProperty('_backgroundSyncState', function () { return _backgroundSyncState; }, function (value) { _backgroundSyncState = value; });
@@ -901,9 +1057,25 @@ function setMarketForceSkeleton(enabled) {
 window._marketForceSkeleton = _marketForceSkeleton;
 
 function _getStartappParam() {
-    var params = new URLSearchParams(window.location.search || '');
-    // Prefer explicit URL startapp over Telegram initData.start_param to avoid stale routing.
-    return String(params.get('startapp') || initData.start_param || '').trim();
+    var searchParams = new URLSearchParams(window.location.search || '');
+    var hashString = (window.location.hash || '').replace(/^#/, '');
+    var hashParams = new URLSearchParams(hashString.indexOf('?') !== -1 ? hashString.substring(hashString.indexOf('?') + 1) : hashString);
+    var tg = window.Telegram && window.Telegram.WebApp;
+
+    // dtview is our custom param name that Telegram won't intercept
+    var val = searchParams.get('dtview') ||
+              searchParams.get('startapp') ||
+              searchParams.get('tgWebAppStartParam') ||
+              searchParams.get('start_param') ||
+              hashParams.get('dtview') ||
+              hashParams.get('startapp') ||
+              hashParams.get('tgWebAppStartParam') ||
+              hashParams.get('start_param') ||
+              (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+              (typeof initData !== 'undefined' && initData && initData.start_param) ||
+              '';
+
+    return String(val).trim();
 }
 
 function showTgDeeplinkLoader(kind) {
@@ -1018,6 +1190,86 @@ function _clearStartappQueryParam() {
     } catch (error) {}
 }
 
+function _openGuaranteedTestOfferWhenReady(maxAttempts, intervalMs) {
+    var attemptsLeft = Number(maxAttempts || 0);
+    var waitMs = Number(intervalMs || 0);
+
+    if (attemptsLeft <= 0) attemptsLeft = 30;
+    if (waitMs <= 0) waitMs = 100;
+
+    function tryOpen() {
+        if (typeof window.showGuaranteedTestOfferModal === 'function') {
+            window.showGuaranteedTestOfferModal();
+            return true;
+        }
+        return false;
+    }
+
+    if (tryOpen()) {
+        return true;
+    }
+
+    var pollId = setInterval(function () {
+        attemptsLeft -= 1;
+        if (tryOpen()) {
+            clearInterval(pollId);
+            return;
+        }
+        if (attemptsLeft <= 0) {
+            clearInterval(pollId);
+            console.warn('Guaranteed test modal opener is not ready yet.');
+        }
+    }, waitMs);
+
+    return false;
+}
+
+function _openGuaranteedFiatUploadWhenReady(orderId, maxAttempts, intervalMs) {
+    var attemptsLeft = Number(maxAttempts || 0);
+    var waitMs = Number(intervalMs || 0);
+    var targetOrderId = Number(orderId || 0) || null;
+    var inFlight = false;
+
+    if (attemptsLeft <= 0) attemptsLeft = 40;
+    if (waitMs <= 0) waitMs = 100;
+
+    function tryOpen() {
+        if (inFlight) return;
+        if (typeof window.openGuaranteedFiatUploadFromOrder !== 'function') return;
+        inFlight = true;
+        Promise.resolve(window.openGuaranteedFiatUploadFromOrder(targetOrderId))
+            .then(function (ok) {
+                inFlight = false;
+                if (ok) {
+                    clearInterval(pollId);
+                    return;
+                }
+                attemptsLeft -= 1;
+                if (attemptsLeft <= 0) {
+                    clearInterval(pollId);
+                    console.warn('Guaranteed fiat upload deep link failed to open.');
+                }
+            })
+            .catch(function (error) {
+                inFlight = false;
+                attemptsLeft -= 1;
+                console.error('Guaranteed fiat upload deep link error:', error);
+                if (attemptsLeft <= 0) clearInterval(pollId);
+            });
+    }
+
+    tryOpen();
+    var pollId = setInterval(function () {
+        if (attemptsLeft <= 0) {
+            clearInterval(pollId);
+            return;
+        }
+        tryOpen();
+    }, waitMs);
+
+    return false;
+}
+
 function _parseInitialRouteTarget() {
     var params = new URLSearchParams(window.location.search || '');
     var startParam = _getStartappParam();
@@ -1029,6 +1281,7 @@ function _parseInitialRouteTarget() {
         0
     );
     var routeKind = '';
+    var routeExtraId = 0;
     var candidateValues = [
         startParam,
         params.get('route') || '',
@@ -1072,6 +1325,19 @@ function _parseInitialRouteTarget() {
             feedbackProjectId = Number(testsHighlightMatch[1] || 0);
             break;
         }
+        var bountyAppMatch = normalized.match(/^(?:bounty_app|bountyapp|incoming_bounty)[_:](\d+)$/);
+        if (bountyAppMatch) {
+            routeKind = 'bounty_app_highlight';
+            feedbackProjectId = Number(bountyAppMatch[1] || 0);
+            break;
+        }
+        var dossierMatch = normalized.match(/^dossier[_:](\d+)(?:[_:](\d+))?$/);
+        if (dossierMatch) {
+            routeKind = 'dossier';
+            feedbackProjectId = Number(dossierMatch[1] || 0);
+            routeExtraId = Number(dossierMatch[2] || 0);
+            break;
+        }
         var appFocusMatch = normalized.match(/^app_focus[_:](\d+)$/);
         if (appFocusMatch) {
             routeKind = 'app_focus';
@@ -1102,8 +1368,22 @@ function _parseInitialRouteTarget() {
         if (normalized === 'invite_links' || normalized === 'invitelinks') {
             routeKind = 'invite_links';
         }
+        if (normalized === 'contribution_history' || normalized === 'contribution-history' || normalized === 'contribution_claim' || normalized === 'contribution-claim') {
+            routeKind = 'contribution_history';
+            break;
+        }
         if (normalized === 'contribution' || normalized === 'sprint' || normalized === 'contribution_pool') {
             routeKind = 'contribution';
+            break;
+        }
+        if (normalized === 'guaranteed_test' || normalized === 'guaranteed-test' || normalized === 'guaranteed_pass' || normalized === 'guaranteed-pass' || normalized === 'closed_test_help' || normalized === 'guaranteed' || normalized === 'order_gt') {
+            routeKind = 'guaranteed_test';
+            break;
+        }
+        if (normalized.indexOf('gt_upload_') === 0 || normalized.indexOf('gt-upload-') === 0) {
+            routeKind = 'gt_upload';
+            var uploadRaw = normalized.replace('gt_upload_', '').replace('gt-upload-', '');
+            feedbackProjectId = parseInt(uploadRaw, 10) || 0;
             break;
         }
     }
@@ -1135,6 +1415,23 @@ function _parseInitialRouteTarget() {
             openFeedback: false,
             appId: null,
             highlightTestId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
+    if (routeKind === 'bounty_app_highlight') {
+        return {
+            tab: 'tests',
+            openFeedback: false,
+            appId: null,
+            highlightBountyApplicationId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
+    if (routeKind === 'dossier') {
+        return {
+            tab: 'tests',
+            openFeedback: false,
+            appId: routeExtraId > 0 ? routeExtraId : null,
+            openDossierUserId: feedbackProjectId > 0 ? feedbackProjectId : null,
+            openDossierAppId: routeExtraId > 0 ? routeExtraId : null,
         };
     }
     if (routeKind === 'app_focus') {
@@ -1181,6 +1478,16 @@ function _parseInitialRouteTarget() {
             tab: 'projects',
             openFeedback: false,
             openContribution: true,
+            contributionTab: 'current',
+            appId: null,
+        };
+    }
+    if (routeKind === 'contribution_history') {
+        return {
+            tab: 'projects',
+            openFeedback: false,
+            openContribution: true,
+            contributionTab: 'history',
             appId: null,
         };
     }
@@ -1211,6 +1518,20 @@ function _parseInitialRouteTarget() {
             expandProjectId: feedbackProjectId > 0 ? feedbackProjectId : null,
         };
     }
+    if (routeKind === 'guaranteed_test') {
+        return {
+            tab: 'market',
+            openGuaranteedTest: true,
+            appId: null,
+        };
+    }
+    if (routeKind === 'gt_upload') {
+        return {
+            tab: 'projects',
+            openGuaranteedUpload: true,
+            gtOrderId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
     return null;
 }
 
@@ -1220,6 +1541,27 @@ async function _handleInitialRoute() {
 
     var route = _parseInitialRouteTarget();
     if (!route) return;
+
+    if (route.openGuaranteedTest) {
+        try {
+            // Open offer immediately (no async API gate) — mirrors openAdd → openModal().
+            _openGuaranteedTestOfferWhenReady(40, 100);
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial guaranteed test route error:', error);
+        }
+        return;
+    }
+
+    if (route.openGuaranteedUpload) {
+        try {
+            _openGuaranteedFiatUploadWhenReady(route.gtOrderId, 40, 100);
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial guaranteed upload route error:', error);
+        }
+        return;
+    }
 
     if (route.openAppFocus && route.appId) {
         try {
@@ -1240,11 +1582,55 @@ async function _handleInitialRoute() {
         if (route.highlightTestId) {
             try {
                 _pendingInitialHighlightTestId = Number(route.highlightTestId || 0) || null;
-                await loadTasks(true);
-                _highlightTestCardWhenReady(_pendingInitialHighlightTestId);
+                await loadTasks(false);
+                _highlightTestCardWhenReady(_pendingInitialHighlightTestId, 24);
                 _clearStartappQueryParam();
             } catch (error) {
                 console.error('Initial tests highlight route error:', error);
+            }
+            return;
+        }
+        if (route.highlightBountyApplicationId) {
+            try {
+                if (typeof focusIncomingBountyApplication === 'function') {
+                    await focusIncomingBountyApplication(route.highlightBountyApplicationId);
+                } else {
+                    switchTab('tests');
+                    if (typeof loadBountyApplications === 'function') {
+                        await loadBountyApplications();
+                    }
+                    if (typeof highlightBountyApplicationWhenReady === 'function') {
+                        highlightBountyApplicationWhenReady(route.highlightBountyApplicationId, 16);
+                    }
+                }
+                _clearStartappQueryParam();
+            } catch (error) {
+                console.error('Initial bounty application highlight route error:', error);
+            }
+            return;
+        }
+        if (route.openDossierUserId) {
+            try {
+                switchTab('tests');
+                var dossierUserId = Number(route.openDossierUserId || 0);
+                var dossierAppId = Number(route.openDossierAppId || route.appId || 0);
+                try {
+                    if (typeof loadIncomingOffers === 'function') {
+                        await loadIncomingOffers({ background: false });
+                    } else if (typeof loadBountyApplications === 'function') {
+                        await loadBountyApplications({ background: false });
+                    }
+                } catch (preloadError) {
+                    console.warn('Dossier route preload failed:', preloadError);
+                }
+                if (typeof openTesterDossier === 'function') {
+                    openTesterDossier('', dossierUserId, dossierAppId);
+                } else if (typeof openDossierModal === 'function') {
+                    openDossierModal('', dossierUserId, dossierAppId);
+                }
+                _clearStartappQueryParam();
+            } catch (error) {
+                console.error('Initial dossier route error:', error);
             }
             return;
         }
@@ -1359,11 +1745,14 @@ async function _handleInitialRoute() {
             showTgDeeplinkLoader('contribution');
             switchTab('projects');
             if (typeof window.showContributionInfo === 'function') {
-                await window.showContributionInfo();
+                await window.showContributionInfo({
+                    tab: route.contributionTab === 'history' ? 'history' : 'current',
+                });
             }
             _clearStartappQueryParam();
         } catch (error) {
             console.error('Initial contribution route error:', error);
+        } finally {
             hideTgDeeplinkLoader('contribution');
         }
         return;

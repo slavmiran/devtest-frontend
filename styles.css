@@ -17,10 +17,30 @@
 }
 
 .card.removing {
-    opacity: 0;
-    transform: scale(0.9) translateY(-10px);
-    margin-bottom: -100px;
     pointer-events: none;
+}
+
+/* ── Clean, smooth card exit ── */
+.card.card-exit-collapsing {
+    pointer-events: none;
+    overflow: hidden;
+    transition: max-height 0.32s cubic-bezier(0.2, 0, 0, 1),
+                opacity 0.28s ease,
+                transform 0.32s cubic-bezier(0.2, 0, 0, 1),
+                margin-bottom 0.32s cubic-bezier(0.2, 0, 0, 1),
+                padding-top 0.32s cubic-bezier(0.2, 0, 0, 1),
+                padding-bottom 0.32s cubic-bezier(0.2, 0, 0, 1),
+                border-width 0.32s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.card.card-exit-collapsed {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+    max-height: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-width: 0 !important;
 }
 
 .card-header {
@@ -241,11 +261,18 @@
     padding: 0 0 8px 0;
 }
 
+/* Done-today can have many tall cards; 5000px was clipping ~17–18th item. */
+#done-section.accordion.active {
+    overflow: visible;
+}
+
 #done-section.accordion.active .accordion-content.done-today-scroll {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 12px;
+    padding: 0 0 calc(24px + env(safe-area-inset-bottom, 0px));
+    max-height: none;
+    overflow: visible;
 }
 
 .accordion-icon {
@@ -296,8 +323,11 @@
     align-items: flex-end;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s;
+    transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     z-index: 200;
+    will-change: opacity;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 
 #email-testing-modal,
@@ -318,7 +348,7 @@
     width: 100%;
     border-radius: 24px 24px 0 0;
     padding: 24px 16px;
-    transform: translateY(100%);
+    transform: translateY(100%) translateZ(0);
     transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     max-height: 80vh;
     overflow-x: hidden;
@@ -326,9 +356,46 @@
     overscroll-behavior: contain;
     padding-bottom: calc(80px + env(safe-area-inset-bottom));
     isolation: isolate;
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 
-.modal-overlay.active .modal-content { transform: translateY(0); }
+.modal-overlay.active .modal-content { transform: translateY(0) translateZ(0); }
+
+/* Shared bottom-sheet drag handle for sliding modals */
+.sheet-handle,
+.dossier-sheet-handle,
+.icon-picker-sheet__handle,
+.package-conflict-modal__handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.22);
+    margin: 0 auto 14px;
+    flex-shrink: 0;
+}
+
+.modal-content:not(:has(> .sheet-handle)):not(:has(> .dossier-sheet-handle)):not(:has(> .icon-picker-sheet__handle)):not(:has(> .package-conflict-modal__handle))::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.22);
+    margin: 0 auto 14px;
+    flex-shrink: 0;
+}
+
+/* Non-bottom-sheet overlays should not get a handle */
+.centered-popup-overlay .modal-content::before,
+.image-zoom-overlay .modal-content::before,
+#image-zoom-modal .modal-content::before,
+#karma-select-popup .modal-content::before,
+.guest-claim-status-modal .modal-content::before {
+    content: none;
+    display: none;
+}
 
 .no-username-overlay__desc,
     z-index: 260;
@@ -337,7 +404,7 @@
 .guest-tester-status-chip.is-late,
 
 
-.form-group { margin-bottom: 16px; }
+.form-group { margin-bottom: 20px; }
 
 .form-label {
     display: block;
@@ -1977,6 +2044,21 @@ input::placeholder,
     font-size: 13px;
 }
 
+/* Soft archive/stop confirm button (delete modal) */
+.btn.btn-confirm-archive {
+    flex: 1;
+    background: rgba(90, 28, 28, 0.38);
+    color: #e2a8a3;
+    border: 1px solid rgba(200, 110, 105, 0.42);
+    box-shadow: none;
+}
+.btn.btn-confirm-archive:active {
+    opacity: 0.88;
+}
+.btn.btn-confirm-archive:disabled {
+    opacity: 0.55;
+}
+
 #custom-alert-overlay {
     display: none;
     position: fixed;
@@ -2334,6 +2416,37 @@ input::placeholder,
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
+}
+.metric-sprint-timer {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--hint-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.85;
+}
+
+.metric-bust-body {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.metric-bust-body .metric-value {
+    margin-top: 0;
+}
+
+.metric-bust-reserved {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--hint-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.85;
 }
 .showcase-active-test-owner:active { opacity: 0.6; }
 
@@ -3569,6 +3682,12 @@ input::placeholder,
     margin-bottom: 5px;
     font-weight: 500;
 }
+.energy-bar-fraction {
+    margin-left: 4px;
+    font-weight: 400;
+    opacity: 0.45;
+    font-variant-numeric: tabular-nums;
+}
 .energy-bar-value {
     font-weight: 600;
 }
@@ -4637,17 +4756,26 @@ a.contribution-lb-name:active {
     margin: 0 0 12px;
     padding: 10px 12px;
     border-radius: 12px;
-    background: rgba(76, 175, 80, 0.16);
-    border: 1px solid rgba(76, 175, 80, 0.35);
-    color: var(--text-color);
+    background: rgba(99, 161, 255, 0.16);
+    border: 1px solid rgba(99, 161, 255, 0.35);
+    color: #63a1ff;
     font-size: 13px;
     font-weight: 700;
     text-align: center;
 }
 
+.btn-bust,
 .contribution-claim-btn {
     width: 100%;
     margin-top: 2px;
+    background: rgba(99, 161, 255, 0.22);
+    color: #63a1ff;
+    border: 1px solid rgba(99, 161, 255, 0.45);
+}
+
+.btn-bust:active,
+.contribution-claim-btn:active {
+    opacity: 0.85;
 }
 
 .contribution-claimed-badge,

@@ -35,16 +35,8 @@
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
 }
 
-.system-drop-content::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    bottom: -1px;
-    width: calc(var(--system-tab-width) + 16px);
-    height: 2px;
-    background: var(--system-drawer-bg);
-    pointer-events: none;
-}
+/* Seam mask lives on the tab container (not inside scrollable content),
+   otherwise the 2px bar overlays mid-menu rows while scrolling. */
 
 .system-drop-title {
     font-size: 16px;
@@ -267,6 +259,130 @@
     border: 1px solid var(--border-strong);
 }
 
+.system-setting-row[hidden] {
+    display: none !important;
+}
+
+.homescreen-shortcut-action {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    background: rgba(37, 99, 235, 0.14);
+    color: var(--button-color, #2481cc);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.homescreen-shortcut-action:active {
+    opacity: 0.75;
+    transform: scale(0.96);
+}
+
+.homescreen-shortcut-action[hidden] {
+    display: none !important;
+}
+
+.homescreen-shortcut-action__icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    display: block;
+}
+
+.system-setting-row--homescreen {
+    padding: 10px 12px;
+    gap: 10px;
+}
+
+.system-setting-row--homescreen .system-setting-copy-wrap {
+    gap: 2px;
+}
+
+.system-setting-row--homescreen #homescreen-shortcut-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
+}
+
+.homescreen-shortcut-status {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #34c759;
+    line-height: 1;
+}
+
+.homescreen-shortcut-status[hidden] {
+    display: none !important;
+}
+
+.homescreen-shortcut-status__icon {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+    flex-shrink: 0;
+}
+
+.homescreen-promo-banner {
+    display: none;
+    position: relative;
+    margin-bottom: 16px;
+    padding: 16px;
+    border-radius: 16px;
+    background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.16), rgba(14, 165, 233, 0.10)),
+        var(--secondary-bg-color);
+    border: 1px solid rgba(37, 99, 235, 0.28);
+}
+
+.homescreen-promo-banner.is-visible,
+.homescreen-promo-banner:not([hidden]) {
+    display: block;
+}
+
+.homescreen-promo-banner[hidden] {
+    display: none !important;
+}
+
+.homescreen-promo-banner__close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: var(--hint-color);
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+}
+
+.homescreen-promo-banner__text {
+    margin: 0 28px 12px 0;
+    color: var(--text-color);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.homescreen-promo-banner__btn {
+    width: 100%;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
 .system-setting-copy-wrap {
     display: flex;
     flex-direction: column;
@@ -284,12 +400,56 @@
     font-weight: 600;
     text-align: left;
     cursor: pointer;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
 }
 
 .system-setting-meta {
     color: var(--hint-color);
     font-size: 12px;
     line-height: 1.4;
+}
+
+.system-setting-row--auto-accept {
+    align-items: stretch;
+}
+
+.system-setting-row--auto-accept .system-setting-copy-wrap {
+    gap: 6px;
+}
+
+.auto-accept-subrows {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 4px;
+    border-top: 1px solid var(--border-strong);
+}
+
+.auto-accept-subrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 40px;
+    padding: 4px 0;
+}
+
+.auto-accept-subrow + .auto-accept-subrow {
+    border-top: 1px solid var(--border-strong);
+}
+
+.auto-accept-subrow-label {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    line-height: 1.35;
+    min-width: 0;
 }
 
 .system-btn {
@@ -300,10 +460,23 @@
 }
 
 .system-drop-tab-container {
+    position: relative;
     display: flex;
     justify-content: flex-end;
     width: 100%;
     margin-top: -1px;
+}
+
+.system-drop-tab-container::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: -1px;
+    width: calc(var(--system-tab-width) + 16px);
+    height: 2px;
+    background: var(--system-drawer-bg);
+    pointer-events: none;
+    z-index: 1;
 }
 
 .system-drop-tab {
@@ -371,13 +544,13 @@ html[dir="rtl"] .system-drop-content {
     border-radius: 0 0 20px 0;
 }
 
-html[dir="rtl"] .system-drop-content::after {
-    right: auto;
-    left: 0;
-}
-
 html[dir="rtl"] .system-drop-tab-container {
     justify-content: flex-start;
+}
+
+html[dir="rtl"] .system-drop-tab-container::before {
+    right: auto;
+    left: 0;
 }
 
 html[dir="rtl"] .system-language-select {
@@ -388,16 +561,145 @@ html[dir="rtl"] .system-language-select {
         21px calc(50% + 1px);
 }
 
-/* Settings: tester email card */
-.system-email-card {
-    background: var(--secondary-bg-color);
-    border-radius: 16px;
-    padding: 14px;
-    margin: 12px 0;
+/* Settings: compact tester email row */
+.system-setting-row--email {
+    align-items: flex-start;
 }
-.system-email-card .email-input-wrap {
-    margin: 10px 0;
+
+.system-setting-copy-wrap--email {
+    gap: 6px;
 }
-.system-email-save {
+
+.settings-email-preview {
+    width: auto;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.settings-email-preview-text {
+    display: inline-block;
+    max-width: 100%;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--link-color);
+    word-break: break-word;
+}
+
+.settings-email-preview-text.is-set {
+    font-weight: 500;
+    font-size: 12px;
+    color: var(--hint-color);
+}
+
+.settings-email-preview-text.is-missing {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 149, 0, 0.28);
+    background: rgba(255, 149, 0, 0.14);
+    color: #ff9500;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.settings-email-edit-btn {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: rgba(37, 99, 235, 0.14);
+    color: var(--button-color, #2481cc);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.settings-email-edit-btn[hidden] {
+    display: none !important;
+}
+
+.settings-email-edit-btn:active {
+    opacity: 0.75;
+    transform: scale(0.96);
+}
+
+.settings-email-edit-btn__icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+#settings-email-modal.modal-overlay {
+    z-index: 10050;
+    align-items: flex-end;
+}
+
+#settings-email-modal .settings-email-modal-content {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-radius: 24px 24px 0 0;
+    overflow-x: hidden;
+}
+
+.settings-email-modal-hint {
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--hint-color);
+}
+
+.settings-email-modal-content .email-input-wrap {
+    margin: 0 0 14px;
+}
+
+.settings-email-modal-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+}
+
+/* Override global `.btn { width: 100% }` so Delete doesn't push Save off-screen. */
+.settings-email-modal-actions .btn {
+    width: auto;
+    min-width: 0;
+}
+
+.settings-email-modal-actions .settings-email-delete {
+    flex: 0 1 auto;
+    padding-left: 14px;
+    padding-right: 14px;
+    background-color: var(--secondary-bg-color);
+    color: var(--text-color);
+    border: 1px solid rgba(142, 142, 147, 0.2);
+}
+
+.settings-email-modal-actions .settings-email-delete[hidden] {
+    display: none !important;
+}
+
+.settings-email-modal-actions .settings-email-save {
+    flex: 1 1 auto;
+}
+
+.settings-email-modal-actions .settings-email-save:only-child {
     width: 100%;
 }

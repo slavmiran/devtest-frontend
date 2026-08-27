@@ -538,8 +538,8 @@
    5. GRANTS
    ========================================================================== */
 .ri-grants-tiles {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     margin-bottom: 12px;
     max-height: 125px;
@@ -563,13 +563,17 @@
 .ri-grant-tile {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 10px 6px 6px;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 6px 6px 6px 4px;
     background: var(--bg-surface-2);
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
     color: var(--text-secondary);
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
     transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -653,12 +657,17 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    min-width: 0;
     white-space: nowrap;
 }
 
 .ri-grant-amount-val {
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
 }
 
 .ri-grant-bust-ico {
@@ -983,6 +992,119 @@
     flex-wrap: wrap;
     gap: 6px;
     margin-bottom: 2px;
+}
+
+.ri-project-owner-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+}
+
+.ri-project-owner-pair {
+    position: relative;
+    width: 38px;
+    height: 30px;
+    flex-shrink: 0;
+}
+
+.ri-project-owner-app,
+.ri-project-owner-avatar {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1.5px solid var(--bg-surface-2);
+    box-sizing: border-box;
+    background: var(--bg-surface-3);
+}
+
+.ri-project-owner-app {
+    left: 0;
+    top: 0;
+    z-index: 1;
+}
+
+.ri-project-owner-avatar {
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    border-radius: 50%;
+}
+
+.ri-project-owner-app .avatar,
+.ri-project-owner-avatar .avatar {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border-radius: inherit !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.ri-project-owner-app img.avatar,
+.ri-project-owner-avatar img.avatar {
+    object-fit: cover;
+}
+
+.ri-project-owner-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ri-project-owner-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ri-project-owner-nick-row {
+    line-height: 1.2;
+}
+
+.ri-project-owner-nick {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--link-color, var(--accent-primary));
+    text-decoration: none;
+}
+
+.ri-project-owner-nick:active {
+    opacity: 0.75;
+}
+
+.ri-project-dates {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    white-space: normal;
+    overflow: visible;
+    line-height: 1.35;
+}
+
+.ri-project-date-line {
+    display: block;
+    white-space: normal;
+    overflow: visible;
+    word-break: break-word;
 }
 
 .ri-chip {

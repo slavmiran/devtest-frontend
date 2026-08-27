@@ -78,7 +78,6 @@
 }
 
 .review-step.is-locked {
-    opacity: 0.35;
     pointer-events: none;
 }
 
@@ -200,7 +199,6 @@
 }
 
 .play-review-upload-zone.is-locked {
-    opacity: 0.4;
     cursor: not-allowed;
     pointer-events: none;
 }

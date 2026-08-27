@@ -1,4 +1,15 @@
 /* Phase 4.3 — ui/ui-projects.js (structural split from ui.js) */
+
+function _isProjectSyncedSafe(project) {
+    try {
+        if (typeof window.isProjectSynced === 'function') {
+            return !!window.isProjectSynced(project);
+        }
+    } catch (e) {}
+    var syncDay = Number(project && project.google_sync_day || 0);
+    return Number.isFinite(syncDay) && syncDay >= 1 && !!(project && project.last_sync_date);
+}
+
 function getProjectVisibilityMeta(project) {
     var mode = typeof window.getProjectVisibilityMode === 'function'
         ? window.getProjectVisibilityMode(project)
@@ -57,6 +68,9 @@ function buildEmailTestModeChip(project) {
 
 function renderProjects(force) {
     if (!force && !isTabVisible('projects')) return;
+    if (typeof window.syncHomeScreenUi === 'function') {
+        window.syncHomeScreenUi();
+    }
     const container = document.getElementById('projects-list');
     container.innerHTML = '';
 
@@ -110,6 +124,21 @@ function renderProjects(force) {
         const balanceAmount = (typeof formatUiAmount === 'function')
             ? formatUiAmount(visibilityStats.balance_bust || 0, 1)
             : String(Math.round(Number(visibilityStats.balance_bust || 0) * 10) / 10);
+        const projectsList = (typeof myProjects !== 'undefined' && Array.isArray(myProjects)) ? myProjects : ((visibilityStats && visibilityStats.projects) || []);
+        const reservedBust = projectsList.reduce(function(acc, p) {
+            if (!p) return acc;
+            const status = String(p.status || p.app_status || 'active').toLowerCase();
+            if (status === 'completed' || status === 'archived') return acc;
+            const mode = String(p.mode || 'mutual').toLowerCase();
+            if (mode !== 'bounty' && mode !== 'hybrid') return acc + Number(p.protection_bust_pool || 0);
+            const limit = Number(p.limit_bounty || 0);
+            const rate = Number(p.bounty_per_tester || 0);
+            const protection = Number(p.protection_bust_pool || 0);
+            return acc + (limit * rate) + protection;
+        }, 0);
+        const reservedBustFormatted = (typeof formatUiAmount === 'function')
+            ? formatUiAmount(reservedBust, 1)
+            : String(Math.round(Number(reservedBust || 0) * 10) / 10);
         const achievementsLine = window.escapeHTML(
             formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
         );
@@ -154,7 +183,10 @@ function renderProjects(force) {
                             <span class="metric-label">${window.t('metricBalanceBust', {}, lang) || 'Баланс'} $BUST</span>
                             <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${window.escapeHTML(balanceAmount)} <span class="metric-value-mark">💎</span></div>
+                        <div class="metric-bust-body">
+                            <div class="metric-value">${window.escapeHTML(balanceAmount)} <span class="metric-value-mark">💎</span></div>
+                            ${reservedBust > 0 ? `<div class="metric-bust-reserved">${window.escapeHTML(reservedBustFormatted)} ${window.t('metricBustReservedLabel', {}, lang) || 'в резерве'}</div>` : ''}
+                        </div>
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-neutral metric-card-sprint" onclick="showContributionInfo()">
                         <div class="metric-card-top">
@@ -216,6 +248,10 @@ function renderProjects(force) {
         return phase === 'moderation';
     });
 
+
+    renderGuaranteedOrdersSection(container);
+    renderGuaranteedDraftBanner(container);
+
     if (myProjects.length === 0 && !hasModerationInArchive) {
         container.insertAdjacentHTML('beforeend', `
             <div class="empty-state">
@@ -226,6 +262,13 @@ function renderProjects(force) {
         if (typeof updatePipelineHeader === 'function') updatePipelineHeader();
         return;
     }
+
+    container.insertAdjacentHTML(
+        'beforeend',
+        '<h2 class="guaranteed-orders-section__title projects-mutual-section-title">' +
+            window.escapeHTML(getProjectUiText('mutualOrdersSectionTitle', 'Mutual testing')) +
+        '</h2>'
+    );
 
     if (localStorage.getItem('hideDeleteReminder') !== 'true') {
         const reminder = document.createElement('div');
@@ -371,7 +414,7 @@ function renderProjects(force) {
         const platformDays = getProjectPlatformDay(project.created_at);
         const syncDay = Number(project.google_sync_day || 0);
         const normalizedSyncDay = Number.isFinite(syncDay) ? syncDay : 0;
-        const rawGoogleDay = isProjectSynced(project)
+        const rawGoogleDay = _isProjectSyncedSafe(project)
             ? getProjectCurrentGoogleDay(project, platformDays)
             : platformDays;
         const currentGoogleDay = Math.max(1, Number.isFinite(rawGoogleDay) ? rawGoogleDay : 1);
@@ -411,28 +454,62 @@ function renderProjects(force) {
         const regularTesters = allProjectTesters.filter(function(tester) {
             return !tester.is_guest_tester && !tester.is_external;
         });
+        const activeRegularTesters = regularTesters.filter(function(tester) {
+            return !tester.is_left_soft;
+        });
+        const leftSoftCount = regularTesters.filter(function(tester) {
+            return !!tester.is_left_soft;
+        }).length;
         const guestTesterCount = Math.max(Number(project.guest_testers_count || 0), guestTesters.length);
 
         let testersHtml = '';
         let testerRowsHtml = '';
         if (regularTesters.length > 0) {
             regularTesters.forEach((tester) => {
+                const joinType = String(tester.join_type || 'invite').toLowerCase();
+                const reciprocalAppId = Number(tester.reciprocal_app_id || 0);
+                const isMutualLike = joinType === 'mutual' || joinType === 'prelaunch';
+                const partnerProgressStatus = String(tester.reciprocal_partner_progress_status || '').toLowerCase();
+                const isPartnerLeft = partnerProgressStatus === 'abandoned'
+                    || partnerProgressStatus === 'justified_exit'
+                    || partnerProgressStatus === 'kicked_by_owner'
+                    || partnerProgressStatus === 'canceled_neutral'
+                    || partnerProgressStatus === 'dropped';
+                const isBrokenReciprocal = isMutualLike && (reciprocalAppId <= 0 || !!tester.is_broken_reciprocal || isPartnerLeft);
+                const isLeftSoft = !!tester.is_left_soft;
+                if (isBrokenReciprocal
+                    && !isLeftSoft
+                    && typeof isBrokenTesterDismissed === 'function'
+                    && isBrokenTesterDismissed(project.id, tester.tester_id)) {
+                    return;
+                }
+
                 let nameHtml = '';
                 let cleanUsername = '';
-                const joinType = String(tester.join_type || 'invite').toLowerCase();
                 const isContractTester = joinType === 'bounty';
                 const isInviteLikeTester = joinType === 'direct' || joinType === 'invite';
+                const isMutualDebt = isMutualLike && !!tester.is_mutual_debt;
                 let testerPrefixHtml = '';
-                if (isContractTester) {
+                if (isMutualDebt) {
+                    testerPrefixHtml = '<span class="tester-debt-prefix" title="' + window.escapeHTML(window.t('linkedBadgeDebt', {}, lang)) + '">🫵</span>';
+                } else if (isBrokenReciprocal) {
+                    testerPrefixHtml = '<span class="tester-broken-prefix" style="margin-right:2px;" title="' + window.escapeHTML(window.t('barterChipBroken', {}, lang) || '💔 Взаимка') + '">💔</span>';
+                } else if (isContractTester) {
                     testerPrefixHtml = '<span class="tester-contract-prefix">💎</span>';
                 } else if (isInviteLikeTester) {
                     testerPrefixHtml = '<span class="tester-invite-prefix">🔗</span>';
                 }
                 let testerDay = 0;
-                if (tester.start_date) {
-                    const startDt = new Date(tester.start_date);
-                    if (!Number.isNaN(startDt.getTime())) {
-                        testerDay = Math.max(1, Math.floor((todayDate - startDt) / (1000 * 60 * 60 * 24)) + 1);
+                if (tester.testing_days != null && Number(tester.testing_days) > 0) {
+                    testerDay = Number(tester.testing_days);
+                } else if (tester.start_date) {
+                    if (typeof getUserTestingDay === 'function') {
+                        testerDay = getUserTestingDay(tester.start_date, tester.testing_days);
+                    } else {
+                        const startDt = new Date(tester.start_date);
+                        if (!Number.isNaN(startDt.getTime())) {
+                            testerDay = Math.max(1, Math.floor((todayDate - startDt) / (1000 * 60 * 60 * 24)) + 1);
+                        }
                     }
                 }
                 const testerDayHtml = testerDay > 0
@@ -448,73 +525,108 @@ function renderProjects(force) {
                 }
 
                 let statusHtml = '';
-                let showBell = false;
-                let testerStatusClass = 'is-red';
-                let testerStatusIcon = '🔴';
-                let testerStatusText = t.statusNotOpened;
-                if (!tester.last_check_date) {
-                    showBell = true;
-                } else if (tester.last_check_date === today) {
-                    testerStatusClass = 'is-green';
-                    testerStatusIcon = '🟢';
-                    testerStatusText = t.statusToday;
+                if (isLeftSoft) {
+                    statusHtml = `<span class="tester-status is-left-soft">${window.escapeHTML(window.t('testerLeftSoftStatus', {}, lang))}</span>`;
                 } else {
-                    const daysDiff = getDaysDiff(tester.last_check_date);
-                    if (daysDiff === 1) {
-                        testerStatusClass = 'is-yellow';
-                        testerStatusIcon = '🟡';
-                        testerStatusText = t.statusYesterday;
-                    } else if (daysDiff >= 2 && daysDiff <= 3) {
-                        testerStatusClass = 'is-orange';
-                        testerStatusIcon = '🟠';
-                        testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
-                        showBell = false;
+                    let testerStatusClass = 'is-red';
+                    let testerStatusIcon = '🔴';
+                    let testerStatusText = t.statusNotOpened;
+                    if (!tester.last_check_date) {
+                        // keep default red / not opened
+                    } else if (tester.last_check_date === today) {
+                        testerStatusClass = 'is-green';
+                        testerStatusIcon = '🟢';
+                        testerStatusText = t.statusToday;
                     } else {
-                        testerStatusClass = 'is-red';
-                        testerStatusIcon = '🔴';
-                        testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
-                        showBell = true;
+                        const daysDiff = getDaysDiff(tester.last_check_date);
+                        if (daysDiff === 1) {
+                            testerStatusClass = 'is-yellow';
+                            testerStatusIcon = '🟡';
+                            testerStatusText = t.statusYesterday;
+                        } else if (daysDiff >= 2 && daysDiff <= 3) {
+                            testerStatusClass = 'is-orange';
+                            testerStatusIcon = '🟠';
+                            testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
+                        } else {
+                            testerStatusClass = 'is-red';
+                            testerStatusIcon = '🔴';
+                            testerStatusText = `${daysDiff} ${t.statusDaysAgo}`;
+                        }
                     }
+                    statusHtml = `<span class="tester-status ${testerStatusClass}">${testerStatusIcon} ${window.escapeHTML(testerStatusText)}</span>`;
                 }
-                statusHtml = `<span class="tester-status ${testerStatusClass}">${testerStatusIcon} ${window.escapeHTML(testerStatusText)}</span>`;
 
-                let bellHtml = '';
-                if (showBell && cleanUsername) {
-                    const deepLink = buildTesterReminderDeepLink(project.id);
-                    const msg = window.t('bellNotifyMsg', {
-                        app_name: project.name || window.t('unknownLabel', {}, lang),
-                        deep_link: deepLink,
-                    }, lang);
-                    bellHtml = `<a href="javascript:void(0);" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${escapeInlineJsString(cleanUsername)}?text=${escapeInlineJsString(encodeURIComponent(msg))}'); return false;" class="tester-icon-action">🔔</a>`;
+                const consecutiveSkips = (typeof calculateConsecutiveSkips === 'function')
+                    ? calculateConsecutiveSkips(tester)
+                    : 0;
+                let warningHtml = '';
+                if (!isLeftSoft && consecutiveSkips >= 3) {
+                    warningHtml = `<span class="tester-icon-action tester-warn-action" role="button" tabindex="0" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${Number(project.id)}, ${Number(tester.tester_id)}, event)">⚠️</span>`;
                 }
+
+                let brokenHtml = '';
 
                 let screenshotDayHtml = '';
-                if (isMandatoryScreenshotDay(testerDay)) {
+                if (!isLeftSoft && isMandatoryScreenshotDay(testerDay)) {
                     screenshotDayHtml = `<span class="tester-icon-action" onclick="event.stopPropagation(); showScreenshotDayAlert()">📸</span>`;
                 }
 
                 let karmaHtml = '';
                 const alreadyLiked = (project.likes || []).some((like) => like.tester_id === tester.tester_id);
-                if (alreadyLiked) {
+                if (!isLeftSoft && alreadyLiked) {
                     karmaHtml = '<span class="tester-icon-action tester-icon-muted" title="☯️">+☯️</span>';
                 }
 
-                const chevronHtml = '<span class="tester-chevron">›</span>';
+                const joinTypeLabel = isMutualDebt
+                    ? window.t('linkedBadgeDebt', {}, lang)
+                    : (isContractTester
+                    ? window.t('linkedBadgeBounty', {}, lang)
+                    : (isInviteLikeTester
+                        ? window.t('linkedBadgeDirect', {}, lang)
+                        : (isMutualLike ? window.t('linkedBadgeMutual', {}, lang) : '')));
 
-                testerRowsHtml += `
-                    <li onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;">
+                let rowHtml = '';
+                if (isLeftSoft) {
+                    const leftLabel = tester.username
+                        ? `@${window.escapeHTML(String(tester.username).replace(/^@+/, ''))}`
+                        : (tester.full_name
+                            ? window.escapeHTML(tester.full_name)
+                            : window.escapeHTML(window.t('idLabel', { id: tester.tester_id }, lang)));
+                    const leftDayHtml = testerDay > 0
+                        ? `<span class="tester-day-badge">[${window.escapeHTML(String(testerDay))}]</span>`
+                        : '';
+                    rowHtml = `
+                    <li class="tester-row-left-soft">
+                        <div class="tester-row-main">
+                            <span class="tester-name">${leftDayHtml}<span class="tester-left-prefix" aria-hidden="true">💔</span><span class="tester-primary-label notranslate">${leftLabel}</span></span>
+                        </div>
+                        <div class="tester-row-meta">
+                            <button type="button" class="tester-leave-chip" onclick="event.stopPropagation(); openLeftTesterLinkStatus(${Number(project.id)}, ${Number(tester.tester_id)}, event)">${window.escapeHTML(window.t('testerLeftChip', {}, lang))}</button>
+                        </div>
+                    </li>
+                    `;
+                } else {
+                    const archiveBtnHtml = '';
+                    const chevronHtml = '<span class="tester-chevron">›</span>';
+                    const rowClick = `onclick="openDossierModal('${escapeInlineJsString(cleanUsername)}', ${tester.tester_id}, ${project.id})" style="cursor: pointer;"`;
+                    rowHtml = `
+                    <li ${rowClick}>
                         <div class="tester-row-main">
                             ${nameHtml}
                             ${screenshotDayHtml}
-                            ${bellHtml}
+                            ${warningHtml}
+                            ${brokenHtml}
                             ${karmaHtml}
                         </div>
                         <div class="tester-row-meta">
                             ${statusHtml}
+                            ${archiveBtnHtml}
                             ${chevronHtml}
                         </div>
                     </li>
                 `;
+                }
+                testerRowsHtml += rowHtml;
             });
         }
 
@@ -651,7 +763,7 @@ function renderProjects(force) {
             if (project.target_lang && project.target_lang !== 'ALL') {
                 badges += getLangBadge(project.target_lang);
             }
-            if (isProjectSynced(project)) {
+            if (_isProjectSyncedSafe(project)) {
                 // Fallback for legacy projects that may use purchased_protection_days instead of paid_protection_days
                 const extraPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0);
                 const protectedText = extraPaid > 0
@@ -664,7 +776,7 @@ function renderProjects(force) {
         })();
 
         const projectProgressHtml = (() => {
-            if (!isProjectSynced(project)) {
+            if (!_isProjectSyncedSafe(project)) {
                 const day = Math.min(platformDays, 14);
                 const pct = Math.min(100, Math.round((day / 14) * 100));
                 return `
@@ -692,7 +804,7 @@ function renderProjects(force) {
 
         const quotaSummaryHtml = (() => {
             const chips = [];
-            const testers = regularTesters;
+            const testers = activeRegularTesters;
             const mutualCount = testers.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
             const bountyCount = testers.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
             if (project.mode === 'mutual' || project.mode === 'hybrid') {
@@ -709,11 +821,11 @@ function renderProjects(force) {
         })();
 
         const karmaBonusChipHtml = (() => {
-            if (platformDays < 14 || regularTesters.length < 5) return '';
+            if (platformDays < 14 || activeRegularTesters.length < 5) return '';
             return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
         })();
 
-        const hasSync = isProjectSynced(project);
+        const hasSync = _isProjectSyncedSafe(project);
         const syncBtnStyle = needsSyncAttention
             ? 'flex: 1; background-color: rgba(255, 149, 0, 0.2); color: #ff9500; border: 1px solid rgba(255, 149, 0, 0.4); animation: pulse-attention 2s infinite;'
             : 'flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);';
@@ -740,6 +852,9 @@ function renderProjects(force) {
         let count_done = 0;
         let count_waiting = 0;
         allProjectTesters.forEach((tester) => {
+            if (tester.is_left_soft) {
+                return;
+            }
             if (tester.is_guest_tester || tester.is_external) {
                 var controlMeta = getExternalTesterControlMeta(tester);
                 if (controlMeta.tone === 'green') {
@@ -756,7 +871,7 @@ function renderProjects(force) {
             }
         });
 
-        const totalTesters = allProjectTesters.length;
+        const totalTesters = activeRegularTesters.length + guestTesters.length;
         const targetCheckins = Math.min(totalTesters, 12);
         const hasEnergyBar = totalTesters > 0;
         
@@ -778,7 +893,7 @@ function renderProjects(force) {
             const commonBarHtml = (className) => `
                 <div class="energy-bar-wrapper ${className}">
                     <div class="energy-bar-label">
-                        <span>${window.escapeHTML(window.t('dailyProgressLabel', {}, lang))}</span>
+                        <span>${window.escapeHTML(window.t('dailyProgressLabel', {}, lang))}<span class="energy-bar-fraction">(${count_done}/${targetCheckins})</span></span>
                         <span class="energy-bar-value ${isOverachieved ? 'is-overcharged' : ''}">${window.escapeHTML(percentText)}</span>
                     </div>
                     <div class="energy-bar-container ${isOverachieved ? 'overachieved' : ''}">
@@ -873,7 +988,7 @@ function renderProjects(force) {
                     ${updateTipHtml}
                     <div class="testers-section">
                         <div class="testers-title-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                            <div class="testers-title">${t.testersList} (${allProjectTesters.length})${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(regularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
+                            <div class="testers-title">${window.escapeHTML(t.testersList)} <span class="testers-count-pill">${window.escapeHTML(String(activeRegularTesters.length + guestTesters.length))}</span>${leftSoftCount > 0 ? `<span class="testers-count-delta" title="${window.escapeHTML(window.t('testerLeftSoftCountHint', { count: leftSoftCount }, lang))}">−${window.escapeHTML(String(leftSoftCount))}</span>` : ''}${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(activeRegularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
                             ${karmaRewardsChipHtml}
                         </div>
                         ${energyBarTopHtml}
@@ -955,7 +1070,7 @@ function openOvertimeModal(appId, event) {
     const timelineMeta = getTestingTimelineMeta(test);
     const finishDateText = timelineMeta.finishDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US');
 
-    const isSynced = isProjectSynced(test);
+    const isSynced = _isProjectSyncedSafe(test);
     const message = isSynced
         ? t.overtimeScenarioB
             .replace('{day}', String(test.google_sync_day || 0))
@@ -982,167 +1097,51 @@ function overtimeContactOwner() {
     openTelegramProfile(_overtimeTest.owner_username);
 }
 
-function openKickTesterModal(appId, testerId, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    const modal = document.getElementById('kick-modal');
-    const body = document.getElementById('kick-modal-body');
-    const reasonSelect = document.getElementById('kick-reason-select');
-    const reasonOther = document.getElementById('kick-reason-other');
-    if (!modal || !body) return;
-
-    const project = myProjects.find(function(item) { return Number(item.id) === Number(appId); });
-    const tester = project ? (project.testers || []).find(function(candidate) { return Number(candidate.tester_id) === Number(testerId); }) : null;
-    if (!project || !tester) return;
-
-    const testingDays = tester.start_date ? getUserTestingDay(tester.start_date) : 0;
-    const skipsCount = Math.max(0, Number(tester.skips_count || 0));
-    const joinType = String(tester.join_type || 'invite').toLowerCase();
-    if (testingDays > 7) {
-        if (tg.showAlert) tg.showAlert(window.t('kickBlockedDesc', {}, lang));
-        else showToast(window.t('kickBlockedDesc', {}, lang));
-        return;
-    }
-
-    const bountyPerTester = Number(project.bounty_per_tester || 0);
-    const holdBonus = bountyPerTester > 0 ? bountyPerTester * 0.35 : 0;
-    const dailyPool = bountyPerTester > 0 ? bountyPerTester * 0.65 : 0;
-    const rewardPerCheckin = dailyPool > 0 ? dailyPool / 14 : 0;
-    const dailyBurn = Math.max(0, dailyPool - (Number(tester.checkins_count || 0) * rewardPerCheckin));
-    const isDisciplinaryKick = skipsCount >= 3;
-    const isBountyJoin = joinType === 'bounty' && bountyPerTester > 0;
-    const joinTypeLabelKey = joinType === 'bounty'
-        ? 'kickJoinTypeBounty'
-        : joinType === 'mutual'
-            ? 'kickJoinTypeMutual'
-            : 'kickJoinTypeInvite';
-
-    // Grace period: 24h from join date, 0 checkins
-    const checkinCount = Number(tester.checkins_count || 0);
-    let graceTimerHtml = '';
-    let _kickGraceEnd = 0;
-    if (checkinCount === 0 && tester.start_date) {
-        const joinDate = new Date(tester.start_date + 'T00:00:00');
-        _kickGraceEnd = joinDate.getTime() + 24 * 60 * 60 * 1000;
-        const graceRemainingMs = Math.max(0, _kickGraceEnd - Date.now());
-        if (graceRemainingMs > 0) {
-            const hours = Math.floor(graceRemainingMs / 3600000);
-            const minutes = Math.floor((graceRemainingMs % 3600000) / 60000);
-            const timeStr = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
-            graceTimerHtml =
-                `<div class="details-block" style="border-color: rgba(52,199,89,0.3); text-align: center;">` +
-                    `<div id="kick-grace-timer" style="font-size: 18px; font-weight: 700; color: #34c759;">` +
-                        `⏳ ${window.escapeHTML(window.t('kickGraceTimer', { time: timeStr }, lang))}` +
-                    `</div>` +
-                    `<div style="font-size: 11px; line-height: 1.5; color: var(--hint-color); margin-top: 8px;">` +
-                        `${window.escapeHTML(window.t('kickGraceExplanation', {}, lang))}` +
-                    `</div>` +
-                `</div>`;
+function openKickTesterModal(appId, testerId, event, options) {
+    if (typeof window.openTerminationSheet === 'function') {
+        if (event && typeof event === 'object' && !event.preventDefault && (event.forceUnlink != null || event.unlinkReciprocal != null)) {
+            options = event;
+            event = null;
         }
+        options = options || {};
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        var project = (myProjects || []).find(function(item) { return Number(item.id) === Number(appId); });
+        var tester = project ? (project.testers || []).find(function(candidate) { return Number(candidate.tester_id) === Number(testerId); }) : null;
+        return window.openTerminationSheet({
+            mode: 'kick',
+            appId: Number(appId || 0),
+            projectId: Number(appId || 0),
+            testerId: Number(testerId || 0),
+            joinType: (tester && tester.join_type) || options.joinType || 'invite',
+            testerUsername: (tester && tester.username) || options.testerUsername || '',
+            testerFullName: (tester && tester.full_name) || options.testerFullName || '',
+            forceUnlink: options.forceUnlink === true,
+            unlinkReciprocal: options.unlinkReciprocal,
+        });
     }
-
-    const verdictBodyKey = isBountyJoin
-        ? (isDisciplinaryKick ? 'kickVerdictBountySafe' : 'kickVerdictBountyUnsafe')
-        : (isDisciplinaryKick ? 'kickVerdictNonBountySafe' : 'kickVerdictNonBountyUnsafe');
-    const verdictTone = isDisciplinaryKick ? 'rgba(52,199,89,0.22)' : 'rgba(255,149,0,0.24)';
-    const verdictHtml = `<div class="details-block" style="border-color: ${verdictTone};">
-            <div class="detail-section-title">${window.escapeHTML(window.t('kickVerdictTitle', {}, lang))}</div>
-            <div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t(verdictBodyKey, {}, lang))}</div>
-        </div>`;
-
-    const ownerEffects = [];
-    if (isBountyJoin) {
-        ownerEffects.push(window.t(isDisciplinaryKick ? 'kickOwnerBountyHoldReturned' : 'kickOwnerBountyHoldBurned', { amount: formatUiAmount(holdBonus, 1) }, lang));
-        ownerEffects.push(window.t('kickOwnerBountyDailyBurn', { amount: formatUiAmount(dailyBurn, 1) }, lang));
-    } else {
-        ownerEffects.push(window.t(joinType === 'mutual' ? 'kickOwnerNoMoneyMutual' : 'kickOwnerNoMoneyInvite', {}, lang));
-    }
-    ownerEffects.push(window.t(isDisciplinaryKick ? 'kickOwnerReliabilitySafe' : 'kickOwnerReliabilityRisk', {}, lang));
-
-    const testerEffects = [
-        window.t('kickTesterEffectAccess', {}, lang),
-        window.t(isDisciplinaryKick ? 'kickTesterEffectJustified' : 'kickTesterEffectNeutral', {}, lang)
-    ];
-
-    const scenarioHtml = `<div class="details-block">
-            <div class="detail-section-title">${window.escapeHTML(window.t('kickScenarioTitle', {}, lang))}</div>
-            <div style="font-size:13px; line-height:1.6; color: var(--text-color);">${window.escapeHTML(window.t(joinTypeLabelKey, {}, lang))}</div>
-        </div>`;
-
-    const ownerEffectsHtml = `<div class="details-block">
-            <div class="detail-section-title">${window.escapeHTML(window.t('kickOwnerEffectsTitle', {}, lang))}</div>
-            <div style="font-size:13px; line-height:1.6; color: var(--text-color); display:flex; flex-direction:column; gap:8px;">${ownerEffects.map(function(line) {
-                return `<div>• ${window.escapeHTML(line)}</div>`;
-            }).join('')}</div>
-        </div>`;
-
-    const testerEffectsHtml = `<div class="details-block">
-            <div class="detail-section-title">${window.escapeHTML(window.t('kickTesterEffectsTitle', {}, lang))}</div>
-            <div style="font-size:13px; line-height:1.6; color: var(--text-color); display:flex; flex-direction:column; gap:8px;">${testerEffects.map(function(line) {
-                return `<div>• ${window.escapeHTML(line)}</div>`;
-            }).join('')}</div>
-        </div>`;
-
-    _kickTarget = { appId: appId, testerId: testerId };
-    if (reasonSelect) reasonSelect.value = 'no_response';
-    if (reasonOther) {
-        reasonOther.value = '';
-        reasonOther.style.display = 'none';
-    }
-    body.innerHTML = '' +
-        graceTimerHtml +
-        verdictHtml +
-        scenarioHtml +
-        ownerEffectsHtml +
-        testerEffectsHtml +
-        `<div class="details-block">` +
-            `<div class="detail-section-title">${window.escapeHTML(window.t('kickTesterStats', {}, lang))}</div>` +
-            `<div style="font-size:13px; line-height:1.7; color: var(--text-color);">` +
-                `<div>${window.escapeHTML(window.t('kickTesterDays', { days: testingDays }, lang))}</div>` +
-                `<div>${window.escapeHTML(window.t('kickTesterSkips', { skips: skipsCount }, lang))}</div>` +
-                `<div>${window.escapeHTML(window.t('kickTesterCheckins', { checkins: checkinCount }, lang))}</div>` +
-            `</div>` +
-        `</div>`;
-    modal.classList.add('active');
-
-    // Live countdown for grace period
-    if (_kickGraceEnd > Date.now()) {
-        var _kickGraceInterval = setInterval(function() {
-            var el = document.getElementById('kick-grace-timer');
-            if (!el || !modal.classList.contains('active')) {
-                clearInterval(_kickGraceInterval);
-                return;
-            }
-            var rem = Math.max(0, _kickGraceEnd - Date.now());
-            if (rem <= 0) {
-                clearInterval(_kickGraceInterval);
-                el.textContent = '⏳ ' + window.t('kickGraceExpired', {}, lang);
-                return;
-            }
-            var h = Math.floor(rem / 3600000);
-            var m = Math.floor((rem % 3600000) / 60000);
-            el.textContent = '⏳ ' + window.t('kickGraceTimer', { time: String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') }, lang);
-        }, 60000);
-    }
+    console.warn('openTerminationSheet is not available');
 }
 
 function closeKickTesterModal(event) {
-    const modal = document.getElementById('kick-modal');
-    if (!modal) return;
-    if (event && event.target !== modal) return;
-    modal.classList.remove('active');
-    _kickTarget = null;
+    if (typeof window.closeTerminationSheet === 'function') {
+        return window.closeTerminationSheet(event);
+    }
 }
 
 function toggleKickReasonOther() {
-    const select = document.getElementById('kick-reason-select');
-    const other = document.getElementById('kick-reason-other');
-    if (!select || !other) return;
-    other.style.display = select.value === 'other' ? 'block' : 'none';
-    if (select.value !== 'other') {
-        other.value = '';
+    if (typeof window.toggleTermUnlinkHint === 'function') {
+        // reason note always visible in unified sheet
+    }
+    var other = document.getElementById('term-reason-other') || document.getElementById('kick-reason-other');
+    if (other) other.style.display = 'block';
+}
+
+function toggleKickUnlinkHint() {
+    if (typeof window.toggleTermUnlinkHint === 'function') {
+        return window.toggleTermUnlinkHint();
     }
 }
 
@@ -1243,6 +1242,103 @@ function _calcProtectionCost(gapDays, alreadyPaidDays) {
     return _PPC_PRICING[targetLevel] - _PPC_PRICING[currentLevel];
 }
 
+/**
+ * Geometry of the free Safety Buffer on the PPC slider.
+ * Home slot = [platformDay − remainingDays … platformDay].
+ * - thumb left of home: solid amber tail glued to the thumb
+ * - thumb inside home: muted under green / solid after thumb
+ * - thumb right of platform day: muted amber rides under the green tip
+ */
+function _ppcBufferGeometry(googleDay, platformDay, remainingBufferHours, sliderMin, sliderMax) {
+    const sliderRange = sliderMax - sliderMin;
+    const dayToFraction = (day) => sliderRange > 0
+        ? Math.max(0, Math.min(1, (day - sliderMin) / sliderRange))
+        : 1;
+
+    const remainingDays = Math.max(0, remainingBufferHours / 24);
+    if (remainingDays < 0.001 || sliderRange <= 0) {
+        return { visible: false, attached: false, startF: 0, endF: 0, revealPct: 100 };
+    }
+
+    const homeStart = platformDay - remainingDays;
+    const homeEnd = platformDay;
+    let bandStart;
+    let bandEnd;
+    let revealPct;
+    let attached = false;
+
+    if (googleDay + 1e-9 >= homeEnd) {
+        // Past platform day to the right — muted buffer follows the thumb
+        bandStart = googleDay - remainingDays;
+        bandEnd = googleDay;
+        revealPct = 100;
+    } else if (googleDay + 1e-9 >= homeStart) {
+        bandStart = homeStart;
+        bandEnd = homeEnd;
+        const span = bandEnd - bandStart;
+        const covered = Math.max(0, Math.min(span, googleDay - bandStart));
+        revealPct = span > 0 ? (covered / span) * 100 : 100;
+    } else {
+        attached = true;
+        bandStart = googleDay;
+        bandEnd = googleDay + remainingDays;
+        revealPct = 0;
+    }
+
+    const startF = dayToFraction(bandStart);
+    const endF = dayToFraction(bandEnd);
+    return {
+        visible: (endF - startF) > 0.001,
+        attached,
+        startF,
+        endF,
+        revealPct: Math.max(0, Math.min(100, revealPct))
+    };
+}
+
+/** Paints the Safety Buffer band from current slider geometry. */
+function _ppcUpdateBufferBand(slider, track, googleDay, platformDay, remainingBufferHours) {
+    if (!slider || !track) return;
+    const band = track.querySelector('.ppc-buffer-band');
+    if (!band) return;
+
+    const geo = _ppcBufferGeometry(
+        googleDay,
+        platformDay,
+        remainingBufferHours,
+        Number(slider.min),
+        Number(slider.max)
+    );
+
+    band.style.setProperty('--ppc-buffer-start', geo.startF.toFixed(4));
+    band.style.setProperty('--ppc-buffer-end', geo.endF.toFixed(4));
+    track.style.setProperty('--ppc-buffer-reveal', geo.revealPct.toFixed(2) + '%');
+    band.classList.toggle('is-visible', geo.visible);
+    band.classList.toggle('is-attached', geo.visible && geo.attached);
+    band.setAttribute('aria-hidden', geo.visible ? 'false' : 'true');
+}
+
+/**
+ * Preview copy for the buffer legend — models the gap, does not spend buffer.
+ * @returns {{ main: string, modeledHours: number, attached: boolean }}
+ */
+function _ppcBufferPreviewCopy(T, gapDays, remainingBufferHours) {
+    const remainingDays = remainingBufferHours / 24;
+    const usedHours = Math.min(gapDays * 24, remainingBufferHours);
+    const modeledHours = Math.max(0, Math.round(remainingBufferHours - usedHours));
+    const attached = gapDays > remainingDays + 1e-9;
+
+    let main;
+    if (gapDays <= 0) {
+        main = T('ppcBufferPreviewFull', { hours: remainingBufferHours });
+    } else if (!attached) {
+        main = T('ppcBufferPreviewInside', { hours: modeledHours, total: remainingBufferHours });
+    } else {
+        main = T('ppcBufferPreviewAttached', { hours: remainingBufferHours });
+    }
+    return { main, modeledHours, attached };
+}
+
 /** Updates all live-calculation UI elements in State #1 after slider/tip changes. */
 function _ppcUpdateCalculations() {
     const slider = document.getElementById('ppc-slider');
@@ -1267,6 +1363,11 @@ function _ppcUpdateCalculations() {
     const sliderRange = sliderMax - sliderMin;
     const sliderPct = sliderRange > 0 ? ((googleDay - sliderMin) / sliderRange) * 100 : 0;
     slider.style.setProperty('--ppc-slider-pct', sliderPct.toFixed(1) + '%');
+    const sliderTrack = slider.closest('.ppc-slider-track');
+    if (sliderTrack) {
+        sliderTrack.style.setProperty('--ppc-slider-pct', sliderPct.toFixed(1) + '%');
+        sliderTrack.style.setProperty('--ppc-slider-f', (sliderPct / 100).toFixed(4));
+    }
 
     // Update big day display
     const dayDisplay = document.getElementById('ppc-slider-day-value');
@@ -1274,7 +1375,14 @@ function _ppcUpdateCalculations() {
 
     // Math Logic for States
     const remainingBuffer = Math.max(0, 48 - consumedPendingHours);
+    _ppcUpdateBufferBand(slider, sliderTrack, googleDay, platformDay, remainingBuffer);
     const requiredBuffer = gap * 24;
+    const T = (key, vars) => window.t(key, vars || {}, lang) || key;
+    const preview = _ppcBufferPreviewCopy(T, gap, remainingBuffer);
+
+    // Live buffer legend (preview — does not spend buffer)
+    const legendMain = document.getElementById('ppc-buffer-legend-main');
+    if (legendMain) legendMain.textContent = preview.main;
 
     let state = 'A';
     if (gap > 2) {
@@ -1285,17 +1393,16 @@ function _ppcUpdateCalculations() {
 
     // Update Smart Status Block
     const statusBlock = document.getElementById('ppc-status-block');
-    const T = (key, vars) => window.t(key, vars || {}, lang) || key;
     if (statusBlock) {
         let html = '';
         if (state === 'A') {
             statusBlock.className = 'ppc-status-block state-safe';
-            const fillPct = Math.round((remainingBuffer / 48) * 100);
+            const fillPct = Math.round((preview.modeledHours / 48) * 100);
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateASafeTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateASafeText'))}</div>
                 <div class="ppc-status-buffer">
-                    <div class="ppc-status-buffer-text">${window.escapeHTML(T('ppcStateASafeBuffer', { hours: remainingBuffer }))}</div>
+                    <div class="ppc-status-buffer-text">${window.escapeHTML(T('ppcStateASafeBuffer', { hours: preview.modeledHours }))}</div>
                     <div class="ppc-status-progress-bar">
                         <div class="ppc-status-progress-fill" style="width: ${fillPct}%;"></div>
                     </div>
@@ -1303,12 +1410,12 @@ function _ppcUpdateCalculations() {
             `;
         } else if (state === 'B') {
             statusBlock.className = 'ppc-status-block state-warning';
-            const fillPct = Math.round((remainingBuffer / 48) * 100);
+            const fillPct = Math.round((preview.modeledHours / 48) * 100);
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateBWarningTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateBWarningText'))}</div>
                 <div class="ppc-status-buffer">
-                    <div class="ppc-status-buffer-text">${window.escapeHTML(T('ppcStateBWarningBuffer', { hours: remainingBuffer }))}</div>
+                    <div class="ppc-status-buffer-text">${window.escapeHTML(T('ppcStateBWarningBuffer', { hours: preview.modeledHours }))}</div>
                     <div class="ppc-status-progress-bar">
                         <div class="ppc-status-progress-fill" style="width: ${fillPct}%;"></div>
                     </div>
@@ -1317,12 +1424,24 @@ function _ppcUpdateCalculations() {
         } else {
             statusBlock.className = 'ppc-status-block state-required';
             const extraDays = Math.max(0, gap - 2);
+            const bufferDays = remainingBuffer / 24;
+            const totalLife = Math.round((14 + bufferDays + extraDays) * 10) / 10;
+            const lifeDetailHtml = [
+                window.escapeHTML(T('ppcStateCLifeBase', { days: 14 })),
+                `<span class="ppc-life-buffer">${window.escapeHTML(T('ppcStateCLifeBuffer', { hours: remainingBuffer }))}</span>`,
+                `<span class="ppc-life-paid">${window.escapeHTML(T('ppcStateCLifePaid', { days: extraDays }))}</span>`
+            ].join(' + ');
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateCRequiredTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateCRequiredText'))}</div>
                 <div class="ppc-status-cost-block">
                     <div class="ppc-status-cost-days">${window.escapeHTML(T('ppcGapCostLabel', { days: extraDays }))}</div>
                     <div class="ppc-status-cost-amount">${totalCost} $BUST</div>
+                </div>
+                <div class="ppc-status-life">
+                    <div class="ppc-status-life-label">${window.escapeHTML(T('ppcStateCLifeLabel'))}</div>
+                    <div class="ppc-status-life-total"><em>${window.escapeHTML(String(totalLife))}</em> <span class="ppc-status-life-unit">${window.escapeHTML(T('ppcStateCLifeTotalUnit'))}</span></div>
+                    <div class="ppc-status-life-detail">${lifeDetailHtml}</div>
                 </div>
             `;
         }
@@ -1406,7 +1525,7 @@ function _renderProtectionCenterState1(project, platformDay) {
     const sliderMin = Math.min(14, Math.max(1, platformDay - 10));
     
     // Default to current synced Google Day or platformDay
-    const hasExistingSync = isProjectSynced(project);
+    const hasExistingSync = _isProjectSyncedSafe(project);
     const currentGoogleDay = hasExistingSync ? getProjectCurrentGoogleDay(project, platformDay) : Math.min(14, platformDay);
     const sliderDefault = Math.max(sliderMin, Math.min(sliderMax, currentGoogleDay));
 
@@ -1424,8 +1543,21 @@ function _renderProtectionCenterState1(project, platformDay) {
     // Compute pct for initial render
     const sliderRange = sliderMax - sliderMin;
     const initPct = sliderRange > 0 ? ((sliderDefault - sliderMin) / sliderRange) * 100 : 100;
+    const initFraction = sliderRange > 0 ? (sliderDefault - sliderMin) / sliderRange : 1;
 
+    // Initial Safety Buffer band (home slot under green, revealed as thumb moves left)
+    const consumedBufferHours = Math.max(0, Number(project.consumed_pending_hours || 0));
+    const remainingBufferHours = Math.max(0, Math.min(48, 48 - consumedBufferHours));
     const initGap = Math.max(0, platformDay - sliderDefault);
+    const initBufferGeo = _ppcBufferGeometry(
+        sliderDefault,
+        platformDay,
+        remainingBufferHours,
+        sliderMin,
+        sliderMax
+    );
+    const initPreview = _ppcBufferPreviewCopy(T, initGap, remainingBufferHours);
+
     const initCost = _calcProtectionCost(initGap, alreadyPaid);
     const initIsFree = initCost === 0;
 
@@ -1457,23 +1589,41 @@ function _renderProtectionCenterState1(project, platformDay) {
                     </div>
                     <div class="ppc-platform-badge">${window.escapeHTML(T('ppcPlatformDayLabel', { day: platformDay }))}</div>
                 </div>
-                <input
-                    type="range"
-                    id="ppc-slider"
-                    class="ppc-slider"
-                    min="${sliderMin}"
-                    max="${sliderMax}"
-                    step="1"
-                    value="${sliderDefault}"
-                    data-platform-day="${platformDay}"
-                    data-already-paid="${alreadyPaid}"
-                    data-balance="${balance}"
-                    data-consumed-pending-hours="${project.consumed_pending_hours || 0}"
-                    style="--ppc-slider-pct: ${initPct.toFixed(1)}%;"
-                    oninput="_ppcUpdateCalculations()"
-                />
+                <div
+                    class="ppc-slider-track"
+                    id="ppc-slider-track"
+                    style="--ppc-slider-pct: ${initPct.toFixed(1)}%; --ppc-slider-f: ${initFraction.toFixed(4)}; --ppc-buffer-reveal: ${initBufferGeo.revealPct.toFixed(2)}%;"
+                >
+                    <div class="ppc-slider-track-base"></div>
+                    <div class="ppc-slider-track-fill"></div>
+                    <div
+                        class="ppc-buffer-band${initBufferGeo.visible ? ' is-visible' : ''}${initBufferGeo.attached ? ' is-attached' : ''}"
+                        style="--ppc-buffer-start: ${initBufferGeo.startF.toFixed(4)}; --ppc-buffer-end: ${initBufferGeo.endF.toFixed(4)};"
+                        aria-hidden="${initBufferGeo.visible ? 'false' : 'true'}"
+                    ></div>
+                    <input
+                        type="range"
+                        id="ppc-slider"
+                        class="ppc-slider"
+                        min="${sliderMin}"
+                        max="${sliderMax}"
+                        step="1"
+                        value="${sliderDefault}"
+                        data-platform-day="${platformDay}"
+                        data-already-paid="${alreadyPaid}"
+                        data-balance="${balance}"
+                        data-consumed-pending-hours="${project.consumed_pending_hours || 0}"
+                        oninput="_ppcUpdateCalculations()"
+                    />
+                </div>
                 <div class="ppc-slider-tick-row">
                     ${tickLabels.join('')}
+                </div>
+                <div class="ppc-slider-buffer-legend">
+                    <div class="ppc-slider-buffer-legend-row">
+                        <span class="ppc-slider-buffer-swatch"></span>
+                        <span id="ppc-buffer-legend-main">${window.escapeHTML(initPreview.main)}</span>
+                    </div>
                 </div>
             </div>
 
@@ -1503,8 +1653,8 @@ function _renderProtectionCenterState1(project, platformDay) {
                 <!-- Finance Summary -->
                 <div class="ppc-finance-block">
                     <div class="ppc-balance-row">
-                        <span>${window.escapeHTML(T('ppcBalanceLabel', { amount: '' })).replace('{amount}', '')}</span>
-                        <span class="ppc-balance-value">${window.escapeHTML(formatBustAmount ? formatBustAmount(balance) : String(balance))} $BUST</span>
+                        <span>${window.escapeHTML(T('ppcBalanceCaption'))}</span>
+                        <span class="ppc-balance-value">${window.escapeHTML(formatBustAmount ? formatBustAmount(balance) : (String(balance) + ' $BUST'))}</span>
                     </div>
                     <div class="ppc-total-row">
                         <span>${window.escapeHTML(T('ppcTotalCostLabel'))}</span>
@@ -2039,7 +2189,7 @@ function openProtectionCenter(projectId) {
     // Compute platform day
     const platformDay = getProjectPlatformDay(project.created_at);
 
-    const isSynced = isProjectSynced(project);
+    const isSynced = _isProjectSyncedSafe(project);
     const googleDay = isSynced ? getProjectCurrentGoogleDay(project, platformDay) : 0;
 
     // Show loading spinner briefly then render
@@ -2113,73 +2263,99 @@ function renderArchivedProjects(force) {
         const packageName = String(project.package_name || '').trim().toLowerCase();
         return !packageName || !activePackages.has(packageName);
     });
-    if (visibleArchivedProjects.length === 0) {
-        section.innerHTML = `
-            <div class="archive-shell is-empty">
-                <button type="button" class="archive-toggle" onclick="toggleArchive()">
-                    <span class="archive-toggle-label">${t.archiveTitle} (0)</span>
+
+    function paintArchive(gtArchivedOrders) {
+        const gtOrders = Array.isArray(gtArchivedOrders) ? gtArchivedOrders : [];
+        const totalCount = visibleArchivedProjects.length + gtOrders.length;
+        if (totalCount === 0) {
+            section.innerHTML = `
+                <div class="archive-shell is-empty">
+                    <button type="button" class="archive-toggle" onclick="toggleArchive()">
+                        <span class="archive-toggle-label">${t.archiveTitle} (0)</span>
+                        <span class="archive-toggle-arrow">▼</span>
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        let html = `
+            <div class="archive-shell">
+                <button type="button" class="archive-toggle" onclick="toggleArchive()" id="archive-toggle">
+                    <span class="archive-toggle-label">${t.archiveTitle} (${totalCount})</span>
                     <span class="archive-toggle-arrow">▼</span>
                 </button>
+                <div id="archive-list" class="archive-list is-collapsed">
+        `;
+        if (gtOrders.length) {
+            html +=
+                '<div class="guaranteed-orders-section archive-gt-orders">' +
+                    '<h3 class="guaranteed-orders-section__title">' +
+                        window.escapeHTML(getProjectUiText('gtOrdersSectionTitle', 'Private Testing')) +
+                    '</h3>' +
+                    '<div class="guaranteed-orders-section__list">' +
+                        gtOrders.map(function (order) {
+                            return buildGuaranteedOrderCardHtml(order, { archived: true });
+                        }).join('') +
+                    '</div>' +
+                '</div>';
+        }
+        visibleArchivedProjects.forEach((project) => {
+            const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
+            const archiveName = project.name || window.t('unknownLabel', {}, lang);
+            const safeArchiveName = window.escapeHTML(archiveName);
+            const safeArchivePackage = window.escapeHTML(project.package_name || '');
+            const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
+            const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
+            const runIterationChip = buildRunIterationChip(project, 'archive-meta-chip');
+            html += `
+                <div class="card archive-card" id="archive-card-${project.app_id}" data-archive-project-id="${project.app_id}">
+                    <div class="card-header archive-card-header">
+                        ${renderIcon(archiveName, project.icon_url)}
+                        <div class="card-info">
+                            <div class="card-title notranslate">${safeArchiveName}</div>
+                            <div class="card-subtitle notranslate">${safeArchivePackage}</div>
+                        </div>
+                        ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
+                    </div>
+                    <div class="archive-meta-row">
+                        <span class="archive-meta-chip">${modeLabel}</span>
+                        ${runIterationChip}
+                        ${afkChip}
+                        <span class="archive-meta-chip">👥 ${project.total_testers}</span>
+                        <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
+                        <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
+                    </div>
+                    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                        <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="openRestartArchivedModal(${project.app_id})">
+                            ${window.escapeHTML(t.archiveRestartBtn)}
+                        </button>
+                        <button class="btn btn-secondary archive-transfer-btn" style="width: 100%;" onclick="openProjectTransferModal(${project.app_id})">
+                            ${window.escapeHTML(t.transferOwnershipBtn)}
+                        </button>
+                        <div class="action-row" style="margin-top: 0;">
+                            <div style="flex: 1;">${buildProjectFeedbackButton(project.app_id, project.feedback_total_count || 0, project.feedback_new_count || 0, true)}</div>
+                            <button class="btn archive-delete-btn" style="flex: 1;"
+                                onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
+                                ${t.archiveDeletePermanent}
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        html += `
+                </div>
             </div>
         `;
-        return;
+        section.innerHTML = html;
     }
-    let html = `
-        <div class="archive-shell">
-            <button type="button" class="archive-toggle" onclick="toggleArchive()" id="archive-toggle">
-                <span class="archive-toggle-label">${t.archiveTitle} (${visibleArchivedProjects.length})</span>
-                <span class="archive-toggle-arrow">▼</span>
-            </button>
-            <div id="archive-list" class="archive-list is-collapsed">
-    `;
-    visibleArchivedProjects.forEach((project) => {
-        const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
-        const archiveName = project.name || window.t('unknownLabel', {}, lang);
-        const safeArchiveName = window.escapeHTML(archiveName);
-        const safeArchivePackage = window.escapeHTML(project.package_name || '');
-        const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
-        const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
-        const runIterationChip = buildRunIterationChip(project, 'archive-meta-chip');
-        html += `
-            <div class="card archive-card" id="archive-card-${project.app_id}" data-archive-project-id="${project.app_id}">
-                <div class="card-header archive-card-header">
-                    ${renderIcon(archiveName, project.icon_url)}
-                    <div class="card-info">
-                        <div class="card-title notranslate">${safeArchiveName}</div>
-                        <div class="card-subtitle notranslate">${safeArchivePackage}</div>
-                    </div>
-                    ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
-                </div>
-                <div class="archive-meta-row">
-                    <span class="archive-meta-chip">${modeLabel}</span>
-                    ${runIterationChip}
-                    ${afkChip}
-                    <span class="archive-meta-chip">👥 ${project.total_testers}</span>
-                    <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
-                    <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
-                </div>
-                <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="restartArchivedProject(${project.app_id})">
-                        ${window.escapeHTML(t.archiveRestartBtn)}
-                    </button>
-                    <button class="btn btn-secondary archive-transfer-btn" style="width: 100%;" onclick="openProjectTransferModal(${project.app_id})">
-                        ${window.escapeHTML(t.transferOwnershipBtn)}
-                    </button>
-                    <div class="action-row" style="margin-top: 0;">
-                        <div style="flex: 1;">${buildProjectFeedbackButton(project.app_id, project.feedback_total_count || 0, project.feedback_new_count || 0, true)}</div>
-                        <button class="btn archive-delete-btn" style="flex: 1;"
-                            onclick="confirmHardDelete(${project.app_id}, '${escapeInlineJsString(archiveName)}')">
-                            ${t.archiveDeletePermanent}
-                        </button>
-                    </div>
-                </div>
-            </div>`;
+
+    paintArchive(_gtArchivedOrdersCache || []);
+    loadArchivedGuaranteedOrders(!!force).then(function (orders) {
+        if (!document.getElementById('archive-section')) return;
+        paintArchive(orders);
+    }).catch(function () {
+        paintArchive(_gtArchivedOrdersCache || []);
     });
-    html += `
-            </div>
-        </div>
-    `;
-    section.innerHTML = html;
 }
 
 function toggleArchive() {
@@ -2555,6 +2731,10 @@ function openDeleteModal(id) {
     projectToDelete = id;
     const project = myProjects.find(p => p.id === id);
     const infoEl = document.getElementById('delete-dynamic-info');
+    const titleEl = document.getElementById('t-deleteModalTitle');
+    const labelEl = document.getElementById('t-deleteMessageLabel');
+    const messageEl = document.getElementById('delete-message');
+    const confirmBtnEl = document.getElementById('t-confirmDeleteBtn');
     let infoHtml = '';
 
     if (project) {
@@ -2562,16 +2742,39 @@ function openDeleteModal(id) {
         const daysOnPlatform = project.created_at
             ? Math.floor((todayDate.getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60 * 24))
             : 0;
+        const platformDays = typeof getProjectPlatformDay === 'function'
+            ? getProjectPlatformDay(project.created_at)
+            : Math.max(1, daysOnPlatform + 1);
+        const rawGoogleDay = (_isProjectSyncedSafe(project)
+            && typeof getProjectCurrentGoogleDay === 'function')
+            ? getProjectCurrentGoogleDay(project, platformDays)
+            : platformDays;
+        const currentProjectDay = Math.max(1, Number.isFinite(Number(rawGoogleDay)) ? Number(rawGoogleDay) : 1);
+        const isEarlyStop = currentProjectDay < 14;
         const testers = project.testers || [];
         const uniqueTestersCount = new Set(testers.map((tr) => tr.tester_id)).size;
         const projectLikes = project.likes || [];
         const canGetOwnerBonus = daysOnPlatform >= 14 && uniqueTestersCount >= 5;
 
+        if (titleEl) {
+            titleEl.textContent = window.t(isEarlyStop ? 'deleteModalTitleEarly' : 'deleteModalTitleFinal', {}, lang);
+        }
+        if (labelEl) {
+            labelEl.textContent = window.t(isEarlyStop ? 'deleteMessageLabelEarly' : 'deleteMessageLabelFinal', {}, lang);
+        }
+        if (messageEl) {
+            // Field hint lives in the label; clear placeholder to avoid duplicate text.
+            messageEl.placeholder = '';
+        }
+        if (confirmBtnEl) {
+            confirmBtnEl.textContent = window.t(isEarlyStop ? 'confirmDeleteBtnEarly' : 'confirmDeleteBtnFinal', {}, lang);
+        }
+
+        infoHtml += '<div class="delete-info-block">' + window.escapeHTML(
+            window.t(isEarlyStop ? 'deleteModalDescEarly' : 'deleteModalDescFinal', {}, lang)
+        ) + '</div>';
         if (canGetOwnerBonus) {
-            infoHtml += '<div class="delete-info-block bonus">' + window.escapeHTML(t.deleteCongratsTitle) + '</div>';
             infoHtml += '<div class="delete-chip-row"><span class="meta-chip accent-green">' + window.escapeHTML(t.deleteBonusChip) + '</span></div>';
-        } else {
-            infoHtml += '<div class="delete-info-block">' + window.escapeHTML(t.deleteThanksOnly) + '</div>';
         }
 
         const overtimeTesters = testers.map((tr) => {
@@ -2979,16 +3182,31 @@ function _updateAddPlayLinkValidationUi() {
     const input = document.getElementById('app-package');
     if (!input) return;
     const value = (input.value || '').trim();
+    const currentPackage = typeof _extractPackageNameFromPlayInput === 'function'
+        ? String(_extractPackageNameFromPlayInput() || '').trim()
+        : value;
 
     if (!value) {
         input.classList.remove('field-error');
         if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+        if (typeof _clearPackageConflictState === 'function') _clearPackageConflictState();
         return;
+    }
+
+    if (typeof _packageConflictState === 'object' && _packageConflictState && _packageConflictState.packageName) {
+        if (currentPackage !== _packageConflictState.packageName) {
+            if (typeof _clearPackageConflictState === 'function') _clearPackageConflictState();
+        } else if (typeof _setPackageConflictReopenVisible === 'function') {
+            _setPackageConflictReopenVisible(true);
+        }
     }
 
     if (isAddPlayLinkValid()) {
         input.classList.remove('field-error');
-        if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+        // Keep conflict reopen chip if this package still conflicts; only clear invalid-link errors.
+        if (!_packageConflictState || !_packageConflictState.packageName || currentPackage !== _packageConflictState.packageName) {
+            if (typeof _clearProjectPackageError === 'function') _clearProjectPackageError();
+        }
         return;
     }
 
@@ -3276,6 +3494,22 @@ function onAddAppNameInput() {
     evaluateAddStages();
 }
 
+function togglePlayLinkHelpAccordion() {
+    const btn = document.getElementById('play-link-help-btn');
+    const accordion = document.getElementById('play-link-help-accordion');
+    if (!accordion || !btn) return;
+    const isHidden = accordion.style.display === 'none' || !accordion.style.display;
+    if (isHidden) {
+        accordion.style.display = 'block';
+        btn.setAttribute('aria-expanded', 'true');
+        btn.classList.add('is-open');
+    } else {
+        accordion.style.display = 'none';
+        btn.setAttribute('aria-expanded', 'false');
+        btn.classList.remove('is-open');
+    }
+}
+
 function openModal() {
     window.addWizardState.focusStep = 1;
     window.addWizardState.unlockedStep = 1;
@@ -3297,6 +3531,212 @@ function openModal() {
     document.getElementById('app-name').focus();
 }
 
+function getProjectUiText(key, fallback, params) {
+    var activeLang = (typeof lang !== 'undefined' && lang)
+        ? lang
+        : (window.currentLang || 'en');
+    if (typeof window.t === 'function') {
+        var translated = window.t(key, params || {}, activeLang);
+        if (translated && translated !== key) return translated;
+    }
+    return fallback;
+}
+
+function refreshAddProjectChooserTexts(overlay) {
+    if (!overlay) return;
+    var closeBtn = overlay.querySelector('.add-project-chooser-close');
+    if (closeBtn) {
+        closeBtn.setAttribute('aria-label', getProjectUiText('addProjectChooserClose', 'Close'));
+    }
+    var titleEl = overlay.querySelector('.add-project-chooser-title');
+    if (titleEl) {
+        titleEl.textContent = getProjectUiText('addProjectChooserTitle', 'Testing format');
+    }
+
+    var sec1Header = overlay.querySelector('.add-project-chooser-section--closed .add-project-chooser-section-title');
+    if (sec1Header) {
+        sec1Header.textContent = getProjectUiText('section_closed_testing', 'ЗАКРЫТОЕ ТЕСТИРОВАНИЕ (14 ДНЕЙ)');
+    }
+
+    var sec2Header = overlay.querySelector('.add-project-chooser-section--growth .add-project-chooser-section-title');
+    if (sec2Header) {
+        sec2Header.textContent = getProjectUiText('section_growth', 'МАСШТАБИРОВАНИЕ И РОСТ');
+    }
+
+    var mutual = overlay.querySelector('.add-project-chooser-option--mutual');
+    if (mutual) {
+        var mutualTitle = mutual.querySelector('.add-project-chooser-option-title');
+        var mutualTag = mutual.querySelector('.add-project-chooser-option-tag');
+        var mutualDesc = mutual.querySelector('.add-project-chooser-option-desc');
+        if (mutualTitle) mutualTitle.textContent = getProjectUiText('addProjectChooserMutualTitle', 'Mutual exchange');
+        if (mutualTag) mutualTag.textContent = getProjectUiText('addProjectChooserMutualTag', 'Free');
+        if (mutualDesc) mutualDesc.textContent = getProjectUiText('addProjectChooserMutualDesc', 'Test other apps and get tests in return.');
+    }
+
+    var privateOpt = overlay.querySelector('.add-project-chooser-option--private');
+    if (privateOpt) {
+        var privateTitle = privateOpt.querySelector('.add-project-chooser-option-title');
+        var privateTag = privateOpt.querySelector('.add-project-chooser-option-tag');
+        var privateDesc = privateOpt.querySelector('.add-project-chooser-option-desc');
+        if (privateTitle) privateTitle.textContent = getProjectUiText('addProjectChooserPrivateTitle', 'Private Testing');
+        if (privateTag) privateTag.textContent = getProjectUiText('addProjectChooserPrivateTag', '$20');
+        if (privateDesc) privateDesc.textContent = getProjectUiText('addProjectChooserPrivateDesc', '12+ devices for 14 days without your involvement. Result guarantee.');
+    }
+
+    var boostOpt = overlay.querySelector('.add-project-chooser-option--boost');
+    if (boostOpt) {
+        var boostTitle = boostOpt.querySelector('.add-project-chooser-option-title');
+        var boostBadge = boostOpt.querySelector('.add-project-chooser-option-tag');
+        var boostDesc = boostOpt.querySelector('.add-project-chooser-option-desc');
+        if (boostTitle) boostTitle.textContent = getProjectUiText('promo_card_title', 'Буст в Google Play');
+        if (boostBadge) boostBadge.textContent = getProjectUiText('promo_card_badge', 'Скоро');
+        if (boostDesc) boostDesc.textContent = getProjectUiText('promo_card_desc', 'Привлекайте пользователей, улучшайте позиции и развивайте опубликованный проект.');
+    }
+}
+
+function ensureAddProjectChooser() {
+    var overlay = document.getElementById('add-project-chooser-overlay');
+    if (overlay && overlay.getAttribute('data-chooser') === 'v5') {
+        refreshAddProjectChooserTexts(overlay);
+        return overlay;
+    }
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+
+    var mutualIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<polyline points="17 1 21 5 17 9"></polyline>' +
+            '<path d="M3 11V9a4 4 0 0 1 4-4h14"></path>' +
+            '<polyline points="7 23 3 19 7 15"></polyline>' +
+            '<path d="M21 13v2a4 4 0 0 1-4 4H3"></path>' +
+        '</svg>';
+    var privateIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>' +
+            '<polyline points="9 12 11 14 15 10"></polyline>' +
+        '</svg>';
+    var trendingIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>' +
+            '<polyline points="17 6 23 6 23 12"></polyline>' +
+        '</svg>';
+    var chevron =
+        '<svg class="add-project-chooser-option-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<polyline points="9 18 15 12 9 6"></polyline>' +
+        '</svg>';
+
+    function optionHtml(variant, icon, titleKey, tagKey, descKey) {
+        return '<button type="button" class="add-project-chooser-option add-project-chooser-option--' + variant + '">' +
+            '<span class="add-project-chooser-option-icon">' + icon + '</span>' +
+            '<span class="add-project-chooser-option-body">' +
+                '<span class="add-project-chooser-option-head">' +
+                    '<span class="add-project-chooser-option-title" data-i18n="' + titleKey + '"></span>' +
+                    '<span class="add-project-chooser-option-tag" data-i18n="' + tagKey + '"></span>' +
+                '</span>' +
+                '<span class="add-project-chooser-option-desc" data-i18n="' + descKey + '"></span>' +
+            '</span>' +
+            chevron +
+        '</button>';
+    }
+
+    var div = document.createElement('div');
+    div.innerHTML =
+        '<div id="add-project-chooser-overlay" class="add-project-chooser-overlay" style="display:none;" data-chooser="v5" role="dialog" aria-modal="true">' +
+            '<div class="add-project-chooser-card">' +
+                '<button type="button" class="add-project-chooser-close" data-i18n-aria-label="addProjectChooserClose" aria-label="">×</button>' +
+                '<h3 class="add-project-chooser-title" data-i18n="addProjectChooserTitle"></h3>' +
+                '<div class="add-project-chooser-content">' +
+                    '<div class="add-project-chooser-section add-project-chooser-section--closed">' +
+                        '<div class="add-project-chooser-section-title" data-i18n="section_closed_testing">ЗАКРЫТОЕ ТЕСТИРОВАНИЕ (14 ДНЕЙ)</div>' +
+                        '<div class="add-project-chooser-options">' +
+                            optionHtml(
+                                'mutual', mutualIcon,
+                                'addProjectChooserMutualTitle',
+                                'addProjectChooserMutualTag',
+                                'addProjectChooserMutualDesc'
+                            ) +
+                            optionHtml(
+                                'private', privateIcon,
+                                'addProjectChooserPrivateTitle',
+                                'addProjectChooserPrivateTag',
+                                'addProjectChooserPrivateDesc'
+                            ) +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="add-project-chooser-section add-project-chooser-section--growth">' +
+                        '<div class="add-project-chooser-section-title" data-i18n="section_growth">МАСШТАБИРОВАНИЕ И РОСТ</div>' +
+                        '<div class="add-project-chooser-options">' +
+                            optionHtml(
+                                'boost', trendingIcon,
+                                'promo_card_title',
+                                'promo_card_badge',
+                                'promo_card_desc'
+                            ) +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(div.firstElementChild);
+    overlay = document.getElementById('add-project-chooser-overlay');
+    if (!overlay) return null;
+
+    refreshAddProjectChooserTexts(overlay);
+
+    overlay.addEventListener('click', function (event) {
+        if (event.target === overlay) closeAddProjectChooser();
+    });
+    overlay.querySelector('.add-project-chooser-close').addEventListener('click', closeAddProjectChooser);
+    overlay.querySelector('.add-project-chooser-option--mutual').addEventListener('click', function () {
+        closeAddProjectChooser(function () { openModal(); });
+    });
+    overlay.querySelector('.add-project-chooser-option--private').addEventListener('click', function () {
+        closeAddProjectChooser(function () {
+            if (typeof window.showGuaranteedTestOfferModal === 'function') {
+                window.showGuaranteedTestOfferModal();
+            }
+        });
+    });
+    var boostBtn = overlay.querySelector('.add-project-chooser-option--boost');
+    if (boostBtn) {
+        boostBtn.addEventListener('click', function () {
+            if (typeof tg !== 'undefined' && tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+            if (typeof showToast === 'function') {
+                showToast(getProjectUiText('promo_card_toast', 'App promotion and growth features are under development and will be available soon!'));
+            }
+        });
+    }
+    return overlay;
+}
+
+function openAddProjectChooser() {
+    var overlay = ensureAddProjectChooser();
+    if (!overlay) return;
+    refreshAddProjectChooserTexts(overlay);
+    overlay.style.display = 'flex';
+    overlay.classList.remove('is-closing');
+    requestAnimationFrame(function () { overlay.classList.add('is-open'); });
+}
+window.openAddProjectChooser = openAddProjectChooser;
+
+function closeAddProjectChooser(afterClose) {
+    var overlay = document.getElementById('add-project-chooser-overlay');
+    if (!overlay || overlay.style.display === 'none') {
+        if (typeof afterClose === 'function') afterClose();
+        return;
+    }
+    overlay.classList.remove('is-open');
+    overlay.classList.add('is-closing');
+    setTimeout(function () {
+        if (!overlay.classList.contains('is-closing')) return;
+        overlay.style.display = 'none';
+        overlay.classList.remove('is-closing');
+        if (typeof afterClose === 'function') afterClose();
+    }, 180);
+}
+window.closeAddProjectChooser = closeAddProjectChooser;
+
 function closeModal(event) {
     if (event && event.target !== document.getElementById('add-modal')) return;
     closeIconPickerSheet();
@@ -3312,6 +3752,11 @@ function closeModal(event) {
         document.getElementById('app-instructions').value = '';
         document.getElementById('package-error').innerHTML = '';
         document.getElementById('package-error').style.display = 'none';
+        if (typeof _clearPackageConflictState === 'function') _clearPackageConflictState();
+        if (typeof closePackageConflictModal === 'function') {
+            var conflictModal = document.getElementById('package-conflict-modal');
+            if (conflictModal) conflictModal.classList.remove('active');
+        }
         window.addWizardState.focusStep = 1;
         window.addWizardState.unlockedStep = 1;
         _revokeAppIconBlobUrl();
@@ -3340,6 +3785,10 @@ function resetAddFlow() {
 
     const nameHint = document.getElementById('app-name-hint');
     if (nameHint) { nameHint.style.display = 'none'; nameHint.textContent = ''; }
+    const helpAccordion = document.getElementById('play-link-help-accordion');
+    const helpBtn = document.getElementById('play-link-help-btn');
+    if (helpAccordion) helpAccordion.style.display = 'none';
+    if (helpBtn) { helpBtn.setAttribute('aria-expanded', 'false'); helpBtn.classList.remove('is-open'); }
     const validIcon = document.getElementById('tester-email-valid-icon');
     if (validIcon) validIcon.classList.remove('is-valid');
     const testerEmailInput = document.getElementById('app-tester-email');
@@ -3762,6 +4211,76 @@ function showReadonlyAlert() {
 
 var _editModalSnapshot = null;
 var _editSaveAndCloseRequested = false;
+var _editModalRestartMode = false;
+
+function isEditModalRestartMode() {
+    return !!_editModalRestartMode;
+}
+
+function _mapArchivedProjectForEdit(archived) {
+    if (!archived) return null;
+    return {
+        id: Number(archived.app_id || 0),
+        name: archived.name || '',
+        package: archived.package_name || '',
+        instructions: archived.instructions || '',
+        icon_url: archived.icon_url || '',
+        google_group_url: archived.google_group_url || '',
+        mode: archived.mode || 'mutual',
+        target_lang: archived.target_lang || 'ALL',
+        limit_mutual: archived.limit_mutual || 12,
+        limit_bounty: archived.limit_bounty || 12,
+        bounty_per_tester: archived.bounty_per_tester || 100,
+        request_reviews: archived.request_reviews !== false,
+        test_mode: archived.test_mode || 'google_group',
+        accepts_email_testers: !!archived.accepts_email_testers,
+        is_setup_completed: true,
+    };
+}
+
+function _applyEditModalRestartChrome(isRestart) {
+    var titleEl = document.getElementById('t-editProjectTitle');
+    var hintEl = document.getElementById('t-editModeHint');
+    var saveBtn = document.getElementById('t-editSave');
+    var transferBtn = document.querySelector('#edit-project-modal .transfer-trigger-btn');
+    var createdAtEl = document.getElementById('edit-created-at');
+
+    if (titleEl) {
+        titleEl.textContent = isRestart
+            ? window.t('archiveRestartSettingsTitle', {}, lang)
+            : window.t('editProjectTitle', {}, lang);
+    }
+    if (hintEl) {
+        hintEl.textContent = isRestart
+            ? window.t('archiveRestartModeHint', {}, lang)
+            : window.t('editModeHint', {}, lang);
+    }
+    if (saveBtn) {
+        saveBtn.textContent = isRestart
+            ? window.t('archiveRestartConfirmBtn', {}, lang)
+            : window.t('save', {}, lang);
+    }
+    if (transferBtn) {
+        transferBtn.style.display = isRestart ? 'none' : '';
+    }
+    if (createdAtEl && isRestart) {
+        createdAtEl.textContent = window.t('archiveRestartSettingsIntro', {}, lang);
+        createdAtEl.style.opacity = '1';
+    }
+}
+
+function openRestartArchivedModal(appId) {
+    var archived = (archivedProjects || []).find(function(item) {
+        return Number(item.app_id) === Number(appId);
+    });
+    if (!archived) {
+        showToast(window.t('app_not_found', {}, lang));
+        return;
+    }
+    var project = _mapArchivedProjectForEdit(archived);
+    if (!project || !project.id) return;
+    openEditModal(project.id, { restartMode: true, project: project });
+}
 
 function _captureEditModalSnapshot() {
     return {
@@ -3825,8 +4344,10 @@ function discardEditAndClose() {
 }
 
 function openEditModal(projectId, options) {
-    const project = myProjects.find((item) => item.id === projectId);
+    options = options || {};
+    const project = options.project || myProjects.find((item) => item.id === projectId);
     if (!project) return;
+    _editModalRestartMode = !!options.restartMode;
     projectToEdit = projectId;
     document.getElementById('edit-name').value = project.name || '';
     document.getElementById('edit-description').value = project.instructions || '';
@@ -3857,11 +4378,16 @@ function openEditModal(projectId, options) {
     }
     onEditAcceptsEmailTestersChange();
 
+    syncEditAppIconPreview();
+    updateEditNameCounter();
     setProjectMode('edit', project.mode || 'mutual');
     setProjectTargetLang('edit', project.target_lang || 'ALL');
     renderEditAccessSetup();
     updateProjectPricing('edit');
-    renderEditCreatedAtMeta();
+    if (!_editModalRestartMode) {
+        renderEditCreatedAtMeta();
+    }
+    _applyEditModalRestartChrome(_editModalRestartMode);
     _editSaveAndCloseRequested = false;
     markEditModalSavedState();
     document.getElementById('edit-project-modal').classList.add('active');
@@ -3913,12 +4439,68 @@ function closeEditModal(event) {
         projectToEdit = null;
         _editModalSnapshot = null;
         _editSaveAndCloseRequested = false;
+        _editModalRestartMode = false;
+        _applyEditModalRestartChrome(false);
         if (window.editProjectFlow) window.editProjectFlow.emailMode = false;
         renderEditAccessSetup();
         resetProjectForms();
         renderEditCreatedAtMeta();
     }, 300);
 }
+
+function syncEditAppIconPreview() {
+    var iconInput = document.getElementById('edit-icon');
+    var preview = document.getElementById('edit-icon-preview');
+    var picker = document.getElementById('edit-icon-picker');
+    if (!iconInput || !preview || !picker) return;
+    var url = (iconInput.value || '').trim();
+    if (url) {
+        if (typeof resolveIconUrl === 'function') url = resolveIconUrl(url);
+        preview.src = url;
+        preview.style.display = 'block';
+        picker.classList.add('has-icon');
+    } else {
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+        picker.classList.remove('has-icon');
+    }
+}
+
+function onEditIconPreviewError() {
+    var preview = document.getElementById('edit-icon-preview');
+    if (preview) {
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+    }
+    var picker = document.getElementById('edit-icon-picker');
+    if (picker) picker.classList.remove('has-icon');
+}
+
+function updateEditNameCounter() {
+    var nameInput = document.getElementById('edit-name');
+    var counter = document.getElementById('edit-name-counter');
+    if (!nameInput || !counter) return;
+    counter.textContent = (nameInput.value || '').length + '/30';
+}
+
+function copyEditPackageName() {
+    var pkgInput = document.getElementById('edit-package');
+    if (!pkgInput) return;
+    var val = (pkgInput.value || '').trim();
+    if (!val) return;
+    try {
+        navigator.clipboard.writeText(val).then(function() {
+            if (typeof window.showToast === 'function') {
+                window.showToast(window.t('packageCopiedToast', {}, lang) || 'Пакет скопирован');
+            }
+        }).catch(function() {});
+    } catch (e) {}
+}
+
+window.syncEditAppIconPreview = syncEditAppIconPreview;
+window.onEditIconPreviewError = onEditIconPreviewError;
+window.updateEditNameCounter = updateEditNameCounter;
+window.copyEditPackageName = copyEditPackageName;
 
 function resetEditGoogleGroupToDefault() {
     if (window.editAccessFlow) {
@@ -4720,7 +5302,7 @@ function openProjectDetailsModal(appId) {
     const skips = Number(test.skips_count || 0);
     const totalCheckins = Number(test.checkins_count || 0);
     const daysSinceCreated = Number(test.days_since_publish || 0);
-    const left = isProjectSynced(test)
+    const left = _isProjectSyncedSafe(test)
         ? Math.max(0, 14 - getProjectSyncStartDay(test))
         : Math.max(0, 14 - daysSinceCreated);
     const potential = totalCheckins + left;
@@ -4757,24 +5339,38 @@ function openProjectDetailsModal(appId) {
         const finishDateText = window.escapeHTML(formatDdMmYyyy(timelineMeta.finishDate));
         
         const isPendingCompletion = String(test.app_status || test.status || '').toLowerCase() === 'pending_completion';
+        const isKickedSoft = !!(test.is_kicked_soft || String(test.progress_status || '').toLowerCase() === 'kicked_by_owner');
         const createdTime = test.created_at ? new Date(test.created_at).getTime() : Date.now();
         const pendingStartedAt = test.pending_completion_started_at ? new Date(test.pending_completion_started_at).getTime() : null;
-        
-        const bufferStart = (isPendingCompletion && pendingStartedAt)
-            ? new Date(pendingStartedAt)
-            : new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
-        
-        const bufferEndTime = bufferStart.getTime() + (48 * 60 * 60 * 1000);
-        const remainingMs = Math.min(48 * 60 * 60 * 1000, Math.max(0, bufferEndTime - Date.now()));
+        const MAX_BUFFER_MS = 48 * 60 * 60 * 1000;
+
+        // Active countdown only with a real pending_completion_started_at.
+        // Never invent multi-day "remaining" from created_at + 14d.
+        let remainingMs = 0;
+        let bufferStart;
+        let bufferEndTime;
+        if (isPendingCompletion && pendingStartedAt && Number.isFinite(pendingStartedAt)) {
+            bufferStart = new Date(pendingStartedAt);
+            bufferEndTime = pendingStartedAt + MAX_BUFFER_MS;
+            remainingMs = Math.min(MAX_BUFFER_MS, Math.max(0, bufferEndTime - Date.now()));
+        } else {
+            bufferStart = new Date(createdTime + (14 * 24 * 60 * 60 * 1000) + (extraPaid * 24 * 60 * 60 * 1000));
+            bufferEndTime = bufferStart.getTime() + MAX_BUFFER_MS;
+            remainingMs = 0;
+        }
         const remainingTotalMinutes = Math.floor(remainingMs / (60 * 1000));
         const remainingHours = Math.floor(remainingTotalMinutes / 60);
         const remainingMinutes = remainingTotalMinutes % 60;
         
         const consumedMs = Math.max(0, Date.now() - bufferStart.getTime());
         const consumedHours = consumedMs / (60 * 60 * 1000);
-        const bufferFillPercent = Math.min(100, Math.max(0, (consumedHours / 48) * 100));
+        const bufferFillPercent = isPendingCompletion && pendingStartedAt
+            ? Math.min(100, Math.max(0, (consumedHours / 48) * 100))
+            : 0;
 
-        const isInSafetyBuffer = isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid);
+        const isInSafetyBuffer = !isKickedSoft && (
+            isPendingCompletion || (userTestingDay >= 15 && userTestingDay > 14 + extraPaid)
+        );
 
         // Helper formatters
         const formatBufferTimeWithDayOfWeek = (dateVal) => {
@@ -4878,9 +5474,12 @@ function openProjectDetailsModal(appId) {
             archive: { cls: 'stage-archive', icon: '🏁', title: window.t('ppcTimelineArchive', {}, lang) },
         };
 
-        const bufferActiveStatus = (remainingHours <= 0 && remainingMinutes <= 0)
-            ? window.t('ppcBufferAwaitingArchiving', {}, lang)
-            : (lang === 'ru' ? `${remainingHours}ч ${remainingMinutes}м` : `${remainingHours}h ${remainingMinutes}m`);
+        const hasLiveBufferCountdown = !!(isPendingCompletion && pendingStartedAt && Number.isFinite(pendingStartedAt));
+        const bufferActiveStatus = hasLiveBufferCountdown
+            ? ((remainingHours <= 0 && remainingMinutes <= 0)
+                ? window.t('ppcBufferAwaitingArchiving', {}, lang)
+                : (lang === 'ru' ? `${remainingHours}ч ${remainingMinutes}м` : `${remainingHours}h ${remainingMinutes}m`))
+            : window.t('lifecycleBuffer48', {}, lang);
 
         const stageStatusText = (name) => {
             const st = stageState(name);
@@ -4902,10 +5501,12 @@ function openProjectDetailsModal(appId) {
             return window.t('lifecycleArchiveAuto', {}, lang);
         };
 
-        const bufferRemainingText = (remainingHours <= 0 && remainingMinutes <= 0)
-            ? window.t('ppcBufferAwaitingArchiving', {}, lang)
-            : (lang === 'ru' ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` : `Remaining: ${remainingHours}h ${remainingMinutes}m`);
-        const bufferProgressHtml = isInSafetyBuffer
+        const bufferRemainingText = hasLiveBufferCountdown
+            ? ((remainingHours <= 0 && remainingMinutes <= 0)
+                ? window.t('ppcBufferAwaitingArchiving', {}, lang)
+                : (lang === 'ru' ? `Осталось: ${remainingHours} ч. ${remainingMinutes} мин.` : `Remaining: ${remainingHours}h ${remainingMinutes}m`))
+            : window.t('lifecycleBuffer48', {}, lang);
+        const bufferProgressHtml = (isInSafetyBuffer && hasLiveBufferCountdown)
             ? '<div class="lifecycle-buffer-progress">' +
                 '<div class="lifecycle-buffer-progress-head">' +
                     '<span>' + window.escapeHTML(lang === 'ru' ? 'Прогресс буфера' : 'Buffer progress') + '</span>' +
@@ -5032,8 +5633,12 @@ function openProjectDetailsModal(appId) {
         '</details>';
     })();
 
+    const detailRunIterationChip = typeof buildRunIterationChip === 'function'
+        ? buildRunIterationChip(test, 'meta-chip')
+        : '';
     const progressFooterHtml = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hint-color);margin-top:10px;">' +
         '<span>' + window.escapeHTML(window.t('grantProgressText', { day: userTestingDay }, lang)) + '</span>' +
+        detailRunIterationChip +
         (!timelineMeta.isSynced
             ? (progressData.remainingDays > 0
                 ? '<span>' + window.escapeHTML(window.t('timelineApproxRemaining', { count: progressData.remainingDays }, lang)) + '</span>'
@@ -5155,11 +5760,15 @@ function openProjectDetailsModal(appId) {
 
     const grant = getGrantEstimateData(test);
     const currentSkips = Math.max(0, Number(grant.skips || 0));
-    const skipIndicator = Array.from({ length: 3 }, function(_, index) {
-        return index < currentSkips
-            ? '<span class="skip-dot used"></span>'
-            : '<span class="skip-dot available"></span>';
-    }).join('');
+    const skipIndicator = typeof buildGrantSkipDots === 'function'
+        ? buildGrantSkipDots(currentSkips)
+        : Array.from({ length: 3 }, function(_, index) {
+            if (index === 0) return currentSkips > 0 ? '<span class="skip-dot used"></span>' : '<span class="skip-dot available"></span>';
+            if (index === 1) return currentSkips > 1 ? '<span class="skip-dot used"></span>' : '<span class="skip-dot available"></span>';
+            if (currentSkips === 3) return '<span class="skip-dot warning" title="3-й пропуск">⚠️</span>';
+            if (currentSkips >= 4) return '<span class="skip-dot used"></span>';
+            return '<span class="skip-dot available"></span>';
+        }).join('');
     const perfectCardClass = currentSkips > 0 ? ' grant-reward-card-burned' : '';
     const perfectValueLabel = window.t('grantPerfectValue', { amount: formatBustAmount(50) }, lang);
     const perfectValue = currentSkips > 0 ? '<span class="grant-burned-text">' + window.escapeHTML(perfectValueLabel) + '</span>' : window.escapeHTML(perfectValueLabel);
@@ -5209,6 +5818,10 @@ function openProjectDetailsModal(appId) {
             '</summary>' +
             '<div class="grant-dashboard-lost-body">' +
                 '<div class="grant-dashboard-subtitle">' + window.escapeHTML(window.t('grantLostLabel', {}, lang)) + '</div>' +
+                '<div class="grant-dashboard-skips-row">' +
+                    '<span class="grant-skip-text">' + window.escapeHTML(window.t('grantSkipsLabel', { used: currentSkips, max: 3 }, lang)) + '</span>' +
+                    '<span class="grant-dashboard-skips">' + skipIndicator + '</span>' +
+                '</div>' +
                 '<div class="grant-reward-grid grant-reward-grid-lost">' +
                     '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantBaseLabel', {}, lang)) + '</div><div class="grant-reward-value notranslate"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantBaseValue', { amount: formatBustAmount(50) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
                     '<div class="grant-reward-card grant-reward-card-burned"><div class="grant-reward-label">' + window.escapeHTML(window.t('grantPerfectLabel', {}, lang)) + '</div><div class="grant-reward-value notranslate"><span class="grant-burned-text">' + window.escapeHTML(window.t('grantPerfectValue', { amount: formatBustAmount(50) }, lang)) + '</span></div><div class="grant-reward-status is-burned">' + window.escapeHTML(window.t('grantCardBurned', {}, lang)) + '</div></div>' +
@@ -5280,7 +5893,7 @@ function openProjectDetailsModal(appId) {
                 ? '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="closeProjectDetailsModal(); openOvertimeModal(' + test.id + ')">' + window.t('finish_project', {}, lang) + '</button>'
                 : (hasGuestOrigin
                     ? '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="openGuestLinkRemoveModalFromTest(' + test.id + ', event)">' + window.t('guestLinkRemoveBtn', {}, lang) + '</button>'
-                    : '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); ' + (isMutualExitFlow(test) ? 'openLeaveMutualModal(' + test.id + ')' : 'openDropTestModal(' + test.id + ')') + '">' + window.t('detail_leave_btn', {}, lang) + '</button>')) +
+                    : '<button class="btn" style="background:rgba(255,59,48,0.14);color:#ff4d4f;" onclick="closeProjectDetailsModal(); openLeaveOrDropFromTest(' + test.id + ')">' + window.t('detail_leave_btn', {}, lang) + '</button>')) +
         '</div>';
 
     var modal = document.getElementById('project-details-modal');
@@ -5479,7 +6092,489 @@ window.toggleProjectVisibility = toggleProjectVisibility;
 window.toggleProjectSettingsDrawer = toggleProjectSettingsDrawer;
 
 // --- Attract Testers Bottom Sheet Helper Functions ---
-function openAttractTestersSheet(projectId) {
+var _gtActiveOrdersCache = null;
+var _gtActiveOrdersCacheAt = 0;
+var _gtArchivedOrdersCache = null;
+var _gtArchivedOrdersCacheAt = 0;
+var _gtStatusModalOrder = null;
+
+function invalidateGuaranteedOrdersCache() {
+    _gtActiveOrdersCache = null;
+    _gtActiveOrdersCacheAt = 0;
+    _gtArchivedOrdersCache = null;
+    _gtArchivedOrdersCacheAt = 0;
+}
+window.invalidateGuaranteedOrdersCache = invalidateGuaranteedOrdersCache;
+
+function formatGuaranteedOrderDate(value) {
+    var timestamp = Date.parse(String(value || ''));
+    if (!Number.isFinite(timestamp)) return '—';
+    try {
+        return new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }).format(new Date(timestamp));
+    } catch (_) {
+        return new Date(timestamp).toLocaleDateString();
+    }
+}
+
+function getGuaranteedOrderCardMeta(order) {
+    var status = String((order && order.status) || '').toLowerCase();
+    var startedAt = Date.parse(String((order && order.started_at) || ''));
+    var completionDate = formatGuaranteedOrderDate(order && order.completion_date);
+    var now = Date.now();
+
+    if (status === 'awaiting_payment') {
+        return {
+            variant: 'pending',
+            badge: getProjectUiText('gtStatusAwaitingPayment', 'Awaiting payment details'),
+            hint: getProjectUiText('gtHintAwaitingPayment', 'Payment details were requested. After you pay, attach the receipt and submit the order.')
+        };
+    }
+    if (status === 'pending') {
+        return {
+            variant: 'pending',
+            badge: getProjectUiText('gtStatusPending', 'Payment verification'),
+            hint: getProjectUiText('gtHintPending', 'Your request was received. Please wait while payment and access settings are verified.')
+        };
+    }
+    if (status === 'paid') {
+        return {
+            variant: 'pending',
+            badge: getProjectUiText('gtStatusPaid', 'Preparing the team'),
+            hint: getProjectUiText('gtHintPaid', 'Payment and settings are verified. We are forming your tester group.')
+        };
+    }
+    if (status === 'completed') {
+        return {
+            variant: 'done',
+            day: 14,
+            badge: getProjectUiText('gtStatusCompleted', 'Completed'),
+            hint: getProjectUiText('gtHintCompleted', 'Your private testing cycle has been completed.')
+        };
+    }
+    if (status === 'in_progress' && Number.isFinite(startedAt) && (now - startedAt) >= 43200000) {
+        var day = Math.min(14, Math.max(1, Math.floor((now - startedAt) / 86400000) + 1));
+        return {
+            variant: 'active',
+            day: day,
+            badge: getProjectUiText('gtStatusTestingDay', 'Day {day} of 14', { day: day }),
+            hint: getProjectUiText('gtHintTesting', 'Testing is underway. Estimated completion: {completion_date}.', { completion_date: completionDate })
+        };
+    }
+    if (status === 'in_progress') {
+        return {
+            variant: 'active',
+            badge: getProjectUiText('gtStatusCollecting', 'Collecting testers'),
+            hint: getProjectUiText('gtHintCollecting', 'We are collecting the team of testers for your app.')
+        };
+    }
+    return {
+        variant: 'pending',
+        badge: getProjectUiText('gtStatusProcessing', 'Processing order'),
+        hint: getProjectUiText('gtHintProcessing', 'We are checking the details of your private testing order.')
+    };
+}
+
+function renderGuaranteedDraftBanner(container) {
+    if (!container) return;
+    var existing = container.querySelector('.gt-draft-banner');
+    if (existing) existing.remove();
+
+    var draft = null;
+    if (typeof window.getGuaranteedTestWizardDraft === 'function') {
+        draft = window.getGuaranteedTestWizardDraft();
+    }
+    if (!draft || !String(draft.app_name || '').trim()) return;
+
+    var step = Number(draft.step || 1);
+    var isPayment = step >= 3;
+    var banner = document.createElement('div');
+    banner.className = 'gt-draft-banner';
+    banner.setAttribute('role', 'status');
+    banner.innerHTML =
+        '<div class="gt-draft-banner__body">' +
+            '<p class="gt-draft-banner__text">' +
+                window.escapeHTML(getProjectUiText(
+                    isPayment ? 'gtDraftBannerPayment' : 'gtDraftBannerSetup',
+                    isPayment
+                        ? 'You have an unfinished paid testing order'
+                        : 'You have an unfinished private testing setup'
+                )) +
+            '</p>' +
+            '<div class="gt-draft-banner__actions">' +
+                '<button type="button" class="gt-draft-banner__resume">' +
+                    window.escapeHTML(getProjectUiText(
+                        isPayment ? 'gtDraftBannerFinishPayment' : 'gtDraftBannerContinue',
+                        isPayment ? 'Finish payment' : 'Continue setup'
+                    )) +
+                '</button>' +
+                '<button type="button" class="gt-draft-banner__dismiss">' +
+                    window.escapeHTML(getProjectUiText('gtDraftBannerDismiss', '✖ Reset')) +
+                '</button>' +
+            '</div>' +
+        '</div>';
+
+    var resumeBtn = banner.querySelector('.gt-draft-banner__resume');
+    var dismissBtn = banner.querySelector('.gt-draft-banner__dismiss');
+    if (resumeBtn) {
+        resumeBtn.addEventListener('click', function () {
+            if (typeof window.resumeGuaranteedTestWizardFromDraft === 'function') {
+                window.resumeGuaranteedTestWizardFromDraft();
+            }
+        });
+    }
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', function () {
+            if (typeof window.clearGuaranteedTestWizardDraft === 'function') {
+                window.clearGuaranteedTestWizardDraft();
+            }
+            banner.remove();
+        });
+    }
+
+    container.insertBefore(banner, container.firstChild);
+}
+window.renderGuaranteedDraftBanner = renderGuaranteedDraftBanner;
+
+function buildGuaranteedOrderCardHtml(order, options) {
+    options = options || {};
+    var meta = getGuaranteedOrderCardMeta(order);
+    var id = Number(order && order.id);
+    if (!Number.isFinite(id) || id <= 0) return '';
+    var isCompleted = String(order.status || '').toLowerCase() === 'completed';
+    var isArchivedView = !!options.archived;
+    var publicCode = String((order && order.public_code) || '').trim();
+    if (!publicCode && id > 0) {
+        // Must stay in sync with backend format_guaranteed_order_public_code
+        publicCode = 'GT-' + (24766 + id * 41);
+    }
+
+    var isCoordinator = !!(order && order.is_coordinator);
+    var ownerName = String((order && order.owner_name) || '').trim();
+    var ownerUsername = String((order && order.owner_username) || '').trim().replace(/^@+/, '');
+    var ownerLabel = [ownerName, ownerUsername ? '@' + ownerUsername : ''].filter(Boolean).join(' ')
+        || getProjectUiText('gtContactOwnerFallback', 'Contact owner');
+    var coordinatorChip = isCoordinator
+        ? '<span class="guaranteed-order-card__coordinator-chip">' +
+            window.escapeHTML(getProjectUiText('gtManagedBadge', '🛡 In management')) +
+          '</span>'
+        : '';
+
+    var actions =
+        '<button type="button" class="btn btn-secondary guaranteed-order-action" onclick="' +
+            (isCoordinator ? 'openGuaranteedOrderOwnerChat(' : 'openGuaranteedOrderSupport(') + id + ')">' +
+            window.escapeHTML(isCoordinator ? ownerLabel : getProjectUiText('gtContactManager', 'Contact manager')) +
+        '</button>';
+    if (isCompleted && !isArchivedView && !isCoordinator) {
+        actions +=
+            '<button type="button" class="btn btn-primary guaranteed-order-action" onclick="archiveGuaranteedTestOrder(' + id + ')">' +
+                window.escapeHTML(getProjectUiText('gtArchive', 'Archive')) +
+            '</button>';
+    }
+
+    var progress = '';
+    if (Number.isFinite(meta.day) && meta.day > 0) {
+        var percent = Math.max(4, Math.min(100, Math.round((meta.day / 14) * 100)));
+        progress =
+            '<div class="guaranteed-order-card__progress">' +
+                '<div class="guaranteed-order-card__progress-track">' +
+                    '<div class="guaranteed-order-card__progress-fill" style="width: ' + percent + '%;"></div>' +
+                '</div>' +
+                '<span class="guaranteed-order-card__progress-label">' +
+                    window.escapeHTML(getProjectUiText('gtProgressLabel', 'Day {day} of 14', { day: meta.day })) +
+                '</span>' +
+            '</div>';
+    }
+
+    var codeRow = publicCode
+        ? ('<p class="guaranteed-order-card__code">' +
+            window.escapeHTML(getProjectUiText('gtOrderCode', 'Order ' + publicCode, { code: publicCode })) +
+          '</p>')
+        : '';
+
+    var hasArchiveAction = isCompleted && !isArchivedView && !isCoordinator;
+    var actionsClass = 'guaranteed-order-card__actions' + (hasArchiveAction ? '' : ' guaranteed-order-card__actions--single');
+
+    return (
+        '<article class="guaranteed-order-card guaranteed-order-card--' + (meta.variant || 'pending') + (isArchivedView ? ' guaranteed-order-card--archived' : '') + '" data-gt-order-id="' + id + '">' +
+            '<div class="guaranteed-order-card__top">' +
+                '<h3 class="guaranteed-order-card__name">' + window.escapeHTML(String(order.app_name || getProjectUiText('unknownLabel', 'Unknown app'))) + '</h3>' +
+                '<div class="guaranteed-order-card__badges">' +
+                    coordinatorChip +
+                    '<span class="guaranteed-order-card__badge">' + window.escapeHTML(meta.badge) + '</span>' +
+                '</div>' +
+            '</div>' +
+            codeRow +
+            '<p class="guaranteed-order-card__hint">' + window.escapeHTML(meta.hint) + '</p>' +
+            progress +
+            '<dl class="guaranteed-order-card__dates">' +
+                '<div><dt>' + window.escapeHTML(getProjectUiText('gtStartDate', 'Start')) + '</dt><dd>' + window.escapeHTML(formatGuaranteedOrderDate(order.started_at)) + '</dd></div>' +
+                '<div><dt>' + window.escapeHTML(getProjectUiText('gtEstimatedEnd', 'Estimated end')) + '</dt><dd>' + window.escapeHTML(formatGuaranteedOrderDate(order.completion_date)) + '</dd></div>' +
+            '</dl>' +
+            '<div class="' + actionsClass + '">' + actions + '</div>' +
+        '</article>'
+    );
+}
+
+function renderGuaranteedOrdersSection(container) {
+    if (!container) return;
+    var section = document.createElement('section');
+    section.className = 'guaranteed-orders-section';
+    section.setAttribute('aria-live', 'polite');
+    container.appendChild(section);
+
+    loadVisibleGuaranteedOrders(false).then(function (orders) {
+        if (!container.contains(section) || !Array.isArray(orders) || !orders.length) {
+            section.remove();
+            return;
+        }
+        var cards = orders.map(function (order) {
+            return buildGuaranteedOrderCardHtml(order, { archived: false });
+        }).join('');
+        if (!cards) {
+            section.remove();
+            return;
+        }
+        section.innerHTML =
+            '<h2 class="guaranteed-orders-section__title">' +
+                window.escapeHTML(getProjectUiText('gtOrdersSectionTitle', 'Private Testing')) +
+            '</h2>' +
+            '<div class="guaranteed-orders-section__list">' + cards + '</div>';
+    }).catch(function () {
+        section.remove();
+    });
+}
+
+async function loadVisibleGuaranteedOrders(forceRefresh) {
+    var now = Date.now();
+    if (!forceRefresh && _gtActiveOrdersCache && (now - _gtActiveOrdersCacheAt) < 30000) {
+        return _gtActiveOrdersCache;
+    }
+    try {
+        var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
+        var initData = (typeof getTelegramInitDataRaw === 'function')
+            ? getTelegramInitDataRaw()
+            : ((window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '');
+        var resp = await fetch(apiBase + '/guaranteed-test-orders/mine?init_data=' + encodeURIComponent(initData));
+        var data = await resp.json();
+        if (data && data.status === 'success' && Array.isArray(data.orders)) {
+            _gtActiveOrdersCache = data.orders;
+            _gtActiveOrdersCacheAt = now;
+            return _gtActiveOrdersCache;
+        }
+    } catch (e) {
+        console.warn('Failed to load guaranteed orders:', e);
+    }
+    return _gtActiveOrdersCache || [];
+}
+
+async function loadArchivedGuaranteedOrders(forceRefresh) {
+    var now = Date.now();
+    if (!forceRefresh && _gtArchivedOrdersCache && (now - _gtArchivedOrdersCacheAt) < 30000) {
+        return _gtArchivedOrdersCache;
+    }
+    try {
+        var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
+        var initData = (typeof getTelegramInitDataRaw === 'function')
+            ? getTelegramInitDataRaw()
+            : ((window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '');
+        var resp = await fetch(apiBase + '/guaranteed-test-orders/archived?init_data=' + encodeURIComponent(initData));
+        var data = await resp.json();
+        if (data && data.status === 'success' && Array.isArray(data.orders)) {
+            _gtArchivedOrdersCache = data.orders;
+            _gtArchivedOrdersCacheAt = now;
+            return _gtArchivedOrdersCache;
+        }
+    } catch (e) {
+        console.warn('Failed to load archived guaranteed orders:', e);
+    }
+    return _gtArchivedOrdersCache || [];
+}
+
+// Compatibility for existing project-level private-testing actions.
+var fetchActiveGuaranteedOrders = loadVisibleGuaranteedOrders;
+
+function getGuaranteedOrderById(orderId) {
+    var active = Array.isArray(_gtActiveOrdersCache) ? _gtActiveOrdersCache : [];
+    var archived = Array.isArray(_gtArchivedOrdersCache) ? _gtArchivedOrdersCache : [];
+    var all = active.concat(archived);
+    return all.find(function (order) { return Number(order && order.id) === Number(orderId); }) || null;
+}
+
+function openGuaranteedOrderSupport(orderId) {
+    _gtStatusModalOrder = getGuaranteedOrderById(orderId);
+    if (typeof window.openHandsFreeSupportChat === 'function') {
+        window.openHandsFreeSupportChat();
+    }
+}
+window.openGuaranteedOrderSupport = openGuaranteedOrderSupport;
+
+function openGuaranteedOrderOwnerChat(orderId) {
+    var order = getGuaranteedOrderById(orderId);
+    if (!order || !order.is_coordinator) return;
+
+    var username = String(order.owner_username || '').trim().replace(/^@+/, '');
+    var ownerId = Number(order.user_id);
+    var targetUrl = username
+        ? 'https://t.me/' + encodeURIComponent(username)
+        : (Number.isFinite(ownerId) && ownerId > 0 ? 'tg://user?id=' + ownerId : '');
+    if (!targetUrl) return;
+
+    try {
+        if (targetUrl.indexOf('https://') === 0 && window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+            window.Telegram.WebApp.openTelegramLink(targetUrl);
+        } else if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
+            window.Telegram.WebApp.openLink(targetUrl);
+        } else {
+            window.open(targetUrl, '_blank');
+        }
+    } catch (error) {
+        window.open(targetUrl, '_blank');
+    }
+}
+window.openGuaranteedOrderOwnerChat = openGuaranteedOrderOwnerChat;
+
+async function archiveGuaranteedTestOrder(orderId) {
+    var id = Number(orderId);
+    if (!Number.isFinite(id) || id <= 0) return;
+    var initData = (typeof getTelegramInitDataRaw === 'function')
+        ? getTelegramInitDataRaw()
+        : ((window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '');
+    if (!initData) {
+        if (typeof showToast === 'function') showToast(getProjectUiText('gtArchiveFailed', 'Could not archive the order. Please reopen the app and try again.'));
+        return;
+    }
+    try {
+        var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
+        var response = await fetch(apiBase + '/guaranteed-test-orders/' + id + '/archive', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ init_data: initData })
+        });
+        var payload = {};
+        try { payload = await response.json(); } catch (_) {}
+        if (!response.ok || (payload && payload.status === 'error')) {
+            throw new Error('guaranteed_order_archive_failed');
+        }
+        invalidateGuaranteedOrdersCache();
+        if (typeof showToast === 'function') showToast(getProjectUiText('gtArchiveSuccess', 'Order moved to archive.'));
+        renderProjects(true);
+        try { renderArchivedProjects(true); } catch (_) { /* ignore */ }
+    } catch (error) {
+        console.warn('Failed to archive guaranteed order:', error);
+        if (typeof showToast === 'function') showToast(getProjectUiText('gtArchiveFailed', 'Could not archive the order. Please try again.'));
+    }
+}
+window.archiveGuaranteedTestOrder = archiveGuaranteedTestOrder;
+
+function findActiveGuaranteedOrderForProject(project, orders) {
+    if (!project || !Array.isArray(orders) || !orders.length) return null;
+    var projectId = String(project.id || '');
+    var pkg = String(project.package || project.package_name || '').trim().toLowerCase();
+    var name = String(project.name || '').trim().toLowerCase();
+
+    for (var i = 0; i < orders.length; i++) {
+        var order = orders[i] || {};
+        var status = String(order.status || '').toLowerCase();
+        // `/mine` now includes completed non-archived orders for the dashboard;
+        // they must not block a new private-testing order for the same app.
+        if (status === 'completed' || status === 'archived') continue;
+        var notes = String(order.notes || '');
+        var link = String(order.testing_link || '').toLowerCase();
+        var orderName = String(order.app_name || '').trim().toLowerCase();
+        if (projectId && notes.indexOf('app_id=' + projectId) !== -1) return order;
+        if (pkg && (link.indexOf(pkg) !== -1 || notes.toLowerCase().indexOf('package=' + pkg) !== -1)) return order;
+        if (name && orderName === name) return order;
+    }
+    return null;
+}
+
+function getGuaranteedOrderStatusLabel(order) {
+    var status = String((order && order.status) || '').toLowerCase();
+    if (status === 'in_progress') {
+        return lang === 'ru' ? 'В работе' : 'In progress';
+    }
+    if (status === 'paid') {
+        return lang === 'ru' ? 'Оплата получена' : 'Paid';
+    }
+    return lang === 'ru' ? 'На исполнении' : 'Processing';
+}
+
+function openHandsFreeOrderStatusModal(order) {
+    _gtStatusModalOrder = order || null;
+    ensureHandsFreeStatusModal();
+    var overlay = document.getElementById('gtw-order-status-overlay');
+    if (!overlay || !order) return;
+
+    var code = String(order.public_code || ('GT-' + (10000 + Number(order.id || 0))));
+    var statusLabel = getGuaranteedOrderStatusLabel(order);
+    var titleEl = document.getElementById('gtw-order-status-title');
+    var codeEl = document.getElementById('gtw-order-status-code');
+    var appEl = document.getElementById('gtw-order-status-app');
+    var statusEl = document.getElementById('gtw-order-status-value');
+    var linkEl = document.getElementById('gtw-order-status-link');
+
+    if (titleEl) titleEl.textContent = lang === 'ru' ? 'Заявка на исполнении' : 'Order in progress';
+    if (codeEl) codeEl.textContent = '#' + code;
+    if (appEl) appEl.textContent = String(order.app_name || '—');
+    if (statusEl) statusEl.textContent = statusLabel;
+    if (linkEl) linkEl.textContent = String(order.testing_link || '—');
+
+    overlay.style.display = 'flex';
+}
+window.openHandsFreeOrderStatusModal = openHandsFreeOrderStatusModal;
+
+function closeHandsFreeOrderStatusModal(event) {
+    var overlay = document.getElementById('gtw-order-status-overlay');
+    if (!overlay) return;
+    if (event && event.target && event.target !== overlay && event.target.id !== 'gtw-order-status-close') return;
+    overlay.style.display = 'none';
+}
+window.closeHandsFreeOrderStatusModal = closeHandsFreeOrderStatusModal;
+
+function openHandsFreeSupportChat() {
+    var order = _gtStatusModalOrder || {};
+    var code = String(order.public_code || '');
+    var text = code
+        ? ('Support request for order #' + code)
+        : 'Support request for Private Testing order';
+    var targetUrl = 'https://t.me/garantXchange?text=' + encodeURIComponent(text);
+    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+        window.Telegram.WebApp.openTelegramLink(targetUrl);
+    } else {
+        window.open(targetUrl, '_blank');
+    }
+}
+window.openHandsFreeSupportChat = openHandsFreeSupportChat;
+
+function ensureHandsFreeStatusModal() {
+    if (document.getElementById('gtw-order-status-overlay')) return;
+    var note = (typeof lang !== 'undefined' && lang === 'ru')
+        ? 'Повторная заявка недоступна, пока текущая в работе. По вопросам — напишите в поддержку.'
+        : 'A new order cannot be placed while this one is active. Contact support if you need help.';
+    var supportLabel = (typeof lang !== 'undefined' && lang === 'ru') ? 'СВЯЗАТЬСЯ С ПОДДЕРЖКОЙ' : 'CONTACT SUPPORT';
+    var closeLabel = (typeof lang !== 'undefined' && lang === 'ru') ? 'Закрыть' : 'Close';
+    var div = document.createElement('div');
+    div.innerHTML =
+        '<div id="gtw-order-status-overlay" class="gtw-order-status-overlay" style="display:none;" onclick="closeHandsFreeOrderStatusModal(event)">' +
+            '<div class="gtw-order-status-card" onclick="event.stopPropagation()">' +
+                '<h3 id="gtw-order-status-title" class="gtw-order-status-title">Order in progress</h3>' +
+                '<div class="gtw-order-status-row"><span>Order</span><strong id="gtw-order-status-code">—</strong></div>' +
+                '<div class="gtw-order-status-row"><span>App</span><strong id="gtw-order-status-app">—</strong></div>' +
+                '<div class="gtw-order-status-row"><span>Status</span><strong id="gtw-order-status-value">—</strong></div>' +
+                '<div class="gtw-order-status-link" id="gtw-order-status-link">—</div>' +
+                '<p class="gtw-order-status-note">' + note + '</p>' +
+                '<button type="button" class="gtw-continue-btn" onclick="openHandsFreeSupportChat()">' + supportLabel + '</button>' +
+                '<button type="button" class="gtw-payment-flow-cancel" id="gtw-order-status-close" onclick="closeHandsFreeOrderStatusModal(event)">' + closeLabel + '</button>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(div.firstElementChild);
+}
+
+async function openAttractTestersSheet(projectId) {
     const project = myProjects.find((p) => p.id === projectId);
     if (!project) return;
 
@@ -5492,6 +6587,40 @@ function openAttractTestersSheet(projectId) {
     const leadsCount = getLeadsRadarCount();
     const testersList = Array.isArray(project.testers) ? project.testers : [];
     const manualCount = testersList.filter(t => t.join_type === 'manual').length;
+
+    const activeOrders = await fetchActiveGuaranteedOrders(false);
+    const activeGtOrder = findActiveGuaranteedOrderForProject(project, activeOrders);
+    let handsFreeItemHtml = '';
+    if (activeGtOrder) {
+        const orderPayload = encodeURIComponent(JSON.stringify(activeGtOrder));
+        const statusLabel = window.escapeHTML(getGuaranteedOrderStatusLabel(activeGtOrder));
+        const code = window.escapeHTML(String(activeGtOrder.public_code || ''));
+        const subtitle = lang === 'ru'
+            ? ('Заявка #' + code + ' уже в работе. Повторная отправка недоступна.')
+            : ('Order #' + code + ' is already in progress. Resubmit is locked.');
+        handsFreeItemHtml =
+            '<div class="attract-sheet-item attract-sheet-item--gt-active" onclick="closeAttractTestersSheet(); openHandsFreeOrderStatusModal(JSON.parse(decodeURIComponent(\'' + orderPayload + '\')));">' +
+                '<div class="attract-sheet-item-icon">🛡️</div>' +
+                '<div class="attract-sheet-item-info">' +
+                    '<div class="attract-sheet-item-title-row">' +
+                        '<div class="attract-sheet-item-title">' + window.escapeHTML(window.t('attractHandsFreeTitle', {}, lang)) + '</div>' +
+                        '<span class="attract-sheet-item-badge accent-yellow">' + statusLabel + '</span>' +
+                    '</div>' +
+                    '<div class="attract-sheet-item-subtitle">' + window.escapeHTML(subtitle) + '</div>' +
+                '</div>' +
+                '<span class="attract-sheet-item-chevron">›</span>' +
+            '</div>';
+    } else {
+        handsFreeItemHtml =
+            '<div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openHandsFreeTestingWizard(' + projectId + ');">' +
+                '<div class="attract-sheet-item-icon">🛡️</div>' +
+                '<div class="attract-sheet-item-info">' +
+                    '<div class="attract-sheet-item-title">' + window.escapeHTML(window.t('attractHandsFreeTitle', {}, lang)) + '</div>' +
+                    '<div class="attract-sheet-item-subtitle">' + window.escapeHTML(window.t('attractHandsFreeSubtitle', {}, lang)) + '</div>' +
+                '</div>' +
+                '<span class="attract-sheet-item-chevron">›</span>' +
+            '</div>';
+    }
 
     content.innerHTML = `
         <!-- Item 1: Mass Invite -->
@@ -5555,6 +6684,9 @@ function openAttractTestersSheet(projectId) {
             </div>
             <span class="attract-sheet-item-chevron">›</span>
         </div>
+
+        <!-- Item 6: Private Testing -->
+        ${handsFreeItemHtml}
     `;
 
     overlay.classList.add('is-active');
@@ -5579,6 +6711,24 @@ function handleLeadsRadarAction() {
     } else {
         alert('Leads radar action (/leads) triggered.');
     }
+}
+
+function openHandsFreeTestingWizard(projectId) {
+    var project = myProjects.find(function (item) { return item.id === projectId; });
+    fetchActiveGuaranteedOrders(false).then(function (orders) {
+        var active = findActiveGuaranteedOrderForProject(project, orders);
+        if (active) {
+            openHandsFreeOrderStatusModal(active);
+            return;
+        }
+        if (typeof window.showGuaranteedTestWizardStep1 === 'function') {
+            window.showGuaranteedTestWizardStep1({ projectId: projectId });
+            return;
+        }
+        if (typeof window.showGuaranteedTestOfferModal === 'function') {
+            window.showGuaranteedTestOfferModal();
+        }
+    });
 }
 
 let _massInviteProjectId = null;
@@ -5628,10 +6778,15 @@ function openMassInviteModal(projectId) {
     
     renderMassInviteModalContent();
     modal.classList.add('active');
-    
-    // Start interval to update cooldown timer live
+
+    // Refresh offer statuses from server, then re-render once.
+    refreshMassInviteSessionQuietly(projectId).then(function() {
+        if (_massInviteProjectId === projectId) renderMassInviteModalContent();
+    }).catch(function() {});
+
+    // Tick only timers — do not remount candidate cards every second.
     if (_massInviteInterval) clearInterval(_massInviteInterval);
-    _massInviteInterval = setInterval(renderMassInviteModalContent, 1000);
+    _massInviteInterval = setInterval(updateMassInviteModalTimers, 1000);
 }
 
 function closeMassInviteModal(event) {
@@ -5645,20 +6800,76 @@ function closeMassInviteModal(event) {
     _massInviteProjectId = null;
 }
 
+function _getMassInviteSessionForProject(projectId, project) {
+    var session = null;
+    if (typeof MassInviteSession !== 'undefined' && MassInviteSession.load) {
+        session = MassInviteSession.load(projectId);
+    }
+    if (session && Array.isArray(session.candidates) && session.candidates.length) {
+        return session;
+    }
+    // Soft fallback: project may know sent_count but not candidate list (pre-WOW blasts).
+    var fallbackCount = Math.max(0, Number(project && project.last_mass_invite_sent_count || 0));
+    if (!session && fallbackCount > 0 && project && project.last_mass_invite_at) {
+        return {
+            app_id: Number(projectId),
+            sent_at: project.last_mass_invite_at,
+            sent_count: fallbackCount,
+            candidates: [],
+            stats: { sent: fallbackCount, accepted: 0, rejected: 0, pending: 0, expired: 0, failed: 0 },
+        };
+    }
+    return session;
+}
+
+function updateMassInviteModalTimers() {
+    if (!_massInviteProjectId) return;
+    var project = myProjects.find(function(p) { return p.id === _massInviteProjectId; });
+    if (!project) return;
+    var meta = getProjectMassInviteMeta(project);
+
+    var cooldownTimeEl = document.getElementById('mi-cooldown-time');
+    if (cooldownTimeEl && meta.isCooldownActive) {
+        cooldownTimeEl.textContent = formatMassInviteRemaining(meta.remainingMs);
+    }
+
+    var session = _getMassInviteSessionForProject(_massInviteProjectId, project);
+    var responseEl = document.getElementById('mi-session-response-timer');
+    if (responseEl && typeof MassInviteCards !== 'undefined' && MassInviteCards.formatResponseTimerText) {
+        var text = MassInviteCards.formatResponseTimerText(session, lang);
+        responseEl.textContent = text;
+        var closed = window.t && text === window.t('massInviteSessionWindowClosed', {}, lang);
+        responseEl.classList.toggle('is-done', !!closed || !text);
+    }
+}
+
+async function refreshMassInviteSessionQuietly(projectId) {
+    if (!projectId) return null;
+    if (typeof MassInviteSession === 'undefined' || !MassInviteSession.refreshFromServer) return null;
+    if (typeof API_BASE === 'undefined' || typeof userId === 'undefined') return null;
+    try {
+        return await MassInviteSession.refreshFromServer(projectId, userId, API_BASE);
+    } catch (e) {
+        console.warn('Mass invite session refresh failed', e);
+        return null;
+    }
+}
+
 function renderMassInviteModalContent() {
     const modalBody = document.getElementById('mass-invite-modal-body');
     if (!modalBody || !_massInviteProjectId) return;
-    
+
     const project = myProjects.find((p) => p.id === _massInviteProjectId);
     if (!project) return;
-    
+
     const isIsolated = getProjectVisibilityMeta(project).mode === 'isolated';
     const massInviteMeta = getProjectMassInviteMeta(project);
-    
+    const session = _getMassInviteSessionForProject(project.id, project);
+
     let launchBtnLabel = window.t('massInviteLaunchBtn', {}, lang);
     let launchBtnClass = 'btn btn-primary mass-invite-btn';
     let launchBtnAttrs = `onclick="handleMassInviteAction(${project.id})"`;
-    
+
     if (isIsolated) {
         launchBtnLabel = window.t('inviteIsolationDisabledBtn', {}, lang);
         launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
@@ -5671,47 +6882,52 @@ function renderMassInviteModalContent() {
         launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
         launchBtnAttrs = 'disabled';
     }
-    
+
+    let sessionBlockHtml = '';
+    if (!isIsolated && typeof MassInviteCards !== 'undefined' && MassInviteCards.renderSessionBlock) {
+        sessionBlockHtml = MassInviteCards.renderSessionBlock(session, {
+            sourceAppId: project.id,
+            lang: lang,
+            fallbackSentCount: massInviteMeta.lastSentCount,
+        });
+    }
+
     let cooldownBlockHtml = '';
     if (!isIsolated && massInviteMeta.isCooldownActive) {
         const remainingTime = formatMassInviteRemaining(massInviteMeta.remainingMs);
-        const sentSummaryHtml = massInviteMeta.lastSentCount > 0
-            ? `<div class="mass-invite-sent-summary" style="font-size: 22px; font-weight: 800; color: #34c759; margin-bottom: 14px; padding: 14px 12px; background: rgba(52,199,89,0.14); border-radius: 12px; border: 1px solid rgba(52,199,89,0.35); line-height: 1.3;">
-                    ✅ ${window.escapeHTML(window.t('massInviteLastSentSummary', { count: massInviteMeta.lastSentCount }, lang))}
-                </div>`
-            : '';
         cooldownBlockHtml = `
-            <div class="mass-invite-cooldown-container" style="margin-top: 14px; text-align: center;">
-                ${sentSummaryHtml}
-                <div class="mass-invite-timer" style="font-size: 16px; font-weight: 700; color: #ff9500; margin-bottom: 8px;">
-                    ⏳ ${window.t('massInviteCooldownRemaining', { time: remainingTime }, lang)}
+            <div class="mass-invite-cooldown-container">
+                <div class="mass-invite-timer" id="mi-cooldown-timer">
+                    <span class="mass-invite-cooldown-label">${window.escapeHTML(window.t('massInviteCooldownRemainingLabel', {}, lang))}</span>
+                    <span class="mass-invite-cooldown-time" id="mi-cooldown-time">${window.escapeHTML(remainingTime)}</span>
                 </div>
                 <div class="mass-invite-hint" style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">
-                    ${window.t('massInviteCooldownManualHint', {}, lang)}
+                    ${window.escapeHTML(window.t('massInviteCooldownManualHint', {}, lang))}
                 </div>
                 <button type="button" class="btn mass-invite-btn is-locked" style="width: 100%;" onclick="triggerResetCooldown(${project.id})">
-                    🔄 ${window.t('massInviteResetCostHint', {}, lang)}
+                    ${window.escapeHTML(window.t('massInviteResetCostHint', {}, lang))}
                 </button>
             </div>
         `;
     }
-    
+
     const limitHintHtml = !isIsolated && massInviteMeta.isAvailable
         ? `<div class="mass-invite-hint" style="text-align:center; margin-top: 8px; font-size: 12px; color: var(--hint-color);">${window.escapeHTML(window.t('massInviteLimitHint', { count: massInviteMeta.maxRecipients }, lang))}</div>`
         : '';
-        
+
     const infoDesc = !isIsolated && !massInviteMeta.isAvailable
         ? window.t('massInviteUnavailableNote', {}, lang)
         : window.t('massInviteBlockDesc', {}, lang);
-        
+
     modalBody.innerHTML = `
         <div class="mass-invite-card" style="background: var(--secondary-bg-color); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
             <div class="mass-invite-title" style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">${window.escapeHTML(window.t('massInviteBlockTitle', {}, lang))}</div>
             <div class="mass-invite-desc" style="font-size: 13px; color: var(--hint-color); margin-bottom: 16px; line-height: 1.4;">${window.escapeHTML(infoDesc)}</div>
-            
+
             <button id="mass-invite-btn" class="${launchBtnClass}" style="width: 100%;" ${launchBtnAttrs}>${window.escapeHTML(launchBtnLabel)}</button>
             ${limitHintHtml}
-            
+
+            ${sessionBlockHtml}
             ${cooldownBlockHtml}
         </div>
     `;
@@ -5744,7 +6960,49 @@ window.openMassInviteModal = openMassInviteModal;
 window.closeMassInviteModal = closeMassInviteModal;
 window.triggerResetCooldown = triggerResetCooldown;
 window.renderMassInviteModalContent = renderMassInviteModalContent;
+window.updateMassInviteModalTimers = updateMassInviteModalTimers;
 window.toggleTestingDayInstructions = toggleTestingDayInstructions;
+
+async function dismissLeftTesterRow(appId, testerId) {
+    var safeAppId = Number(appId || 0);
+    var safeTesterId = Number(testerId || 0);
+    if (safeAppId <= 0 || safeTesterId <= 0) return;
+    try {
+        var response = await fetch(API_BASE + '/projects/' + safeAppId + '/testers/' + safeTesterId + '/dismiss_left', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(withInitData({})),
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+        if (typeof _removeLocalTesterFromProject === 'function') {
+            _removeLocalTesterFromProject(safeAppId, safeTesterId);
+        } else {
+            var project = (myProjects || []).find(function(item) {
+                return Number(item.id) === safeAppId;
+            });
+            if (project && Array.isArray(project.testers)) {
+                project.testers = project.testers.filter(function(item) {
+                    return Number(item.tester_id) !== safeTesterId;
+                });
+            }
+        }
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        }
+        showToast(window.t('testerLeftSoftArchiveDone', {}, lang));
+        if (typeof window.renderProjects === 'function') {
+            window.renderProjects(true);
+        }
+    } catch (error) {
+        console.error('Dismiss left tester error:', error);
+        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+window.dismissLeftTesterRow = dismissLeftTesterRow;
 
 (function initProjectsScrollPerf() {
     var scrollEndTimer = null;

@@ -442,12 +442,66 @@ function setOffersCache(items) {
     } catch (e) {}
 }
 
+function _normalizeCachedTests(tests) {
+    if (!Array.isArray(tests)) return [];
+    var today = getLocalDate();
+    return tests.map(function(test) {
+        if (!test || typeof test !== 'object') return test;
+        var t = Object.assign({}, test);
+        var isExternal = !!t.is_external;
+
+        // Recalculate testing_days from start_date for current date
+        if (t.start_date) {
+            var calculatedDay = (typeof getUserTestingDay === 'function')
+                ? getUserTestingDay(t.start_date)
+                : null;
+            if (Number.isFinite(calculatedDay) && calculatedDay > 0) {
+                t.testing_days = calculatedDay;
+            }
+        }
+
+        // Recalculate status for current date (if checked in yesterday, today it needs testing)
+        if (t.last_check_date === today) {
+            t.status = 'done';
+        } else if (t.last_check_date && t.last_check_date < today) {
+            t.status = (Number(t.checkins_count || 0) <= 0) ? 'new' : 'daily';
+        } else if (!t.last_check_date) {
+            t.status = 'new';
+        }
+
+        var isTestedToday = t.status === 'done';
+        var testingDays = Number(t.testing_days || 0);
+        var skipsCount = (typeof countGrantSkips === 'function') ? countGrantSkips(t) : Number(t.skips_count || 0);
+        var canEverClaim = !isExternal && !t.grant_claimed && skipsCount <= 3 && t.progress_id;
+        var progressStatus = String(t.progress_status || 'active').toLowerCase();
+        var appStatus = String(t.app_status || 'active').toLowerCase();
+        var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
+        var isArchivedOrCompleted = !isExternal && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
+
+        var hasCompletedFull14Days = (testingDays >= 15) || (testingDays === 14 && isTestedToday);
+        t.isGrantAvailableTomorrow = !!(canEverClaim && !isPendingCompletion && testingDays === 14 && isTestedToday);
+        t.isReadyToClaim = !!(canEverClaim && testingDays >= 15);
+        t.isEarlyFinish = !!((isArchivedOrCompleted) && !t.grant_claimed && !hasCompletedFull14Days && (typeof qualifiesEarlyFinishGrant === 'function' ? qualifiesEarlyFinishGrant(t, testingDays, skipsCount) : Number(t.checkins_count || 0) >= 3 && skipsCount <= 3));
+        t.is_pending_completion = isPendingCompletion;
+        t.external_control_day_due = !!(isExternal && typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(testingDays));
+
+        if (typeof window.recomputeLocalTestState === 'function') {
+            try { window.recomputeLocalTestState(t); } catch (e) {}
+        }
+        return t;
+    });
+}
+
 function getTestsCache() {
     if (myTestsCache) return myTestsCache;
     try {
         var raw = localStorage.getItem(TESTS_CACHE_KEY);
         if (!raw) return null;
-        myTestsCache = JSON.parse(raw);
+        var parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.tests)) {
+            parsed.tests = _normalizeCachedTests(parsed.tests);
+        }
+        myTestsCache = parsed;
         return myTestsCache;
     } catch (e) {
         myTestsCache = null;
@@ -729,7 +783,18 @@ async function loadIncomingOffers(options) {
             _offersLoadedOnce = true;
             _offersLoadError = false;
             _lastFetchTimes.offers = Date.now();
+
+            // Contract applications ride along with mutual offers (same proven GET path).
+            if (Array.isArray(data.bounty_applications) && typeof applyIncomingBountyApplications === 'function') {
+                applyIncomingBountyApplications(data.bounty_applications, { forceRender: true });
+            }
+
             renderIncomingOffers();
+            if (typeof renderBountyApplications === 'function') {
+                renderBountyApplications(true);
+            } else if (typeof syncIncomingApplicationsSection === 'function') {
+                syncIncomingApplicationsSection();
+            }
         } catch (error) {
             console.error('Error loading incoming offers:', error);
             if (!Array.isArray(incomingOffers) || incomingOffers.length === 0) {
@@ -799,7 +864,7 @@ async function fetchBlockedOfferProjects(targetOwnerId, forceRefresh) {
 async function fetchWithRetry(url, options, maxRetries) {
     var retries = (typeof maxRetries === 'number') ? maxRetries : 2;
     var retryableStatuses = [408, 425, 429, 500, 502, 503, 504, 520, 522, 524];
-    var timeoutMs = options && typeof options.timeoutMs === 'number' ? options.timeoutMs : 15000;
+    var timeoutMs = options && typeof options.timeoutMs === 'number' ? options.timeoutMs : 25000;
     var baseOptions = Object.assign({}, options || {});
     delete baseOptions.timeoutMs;
     var lastError;
@@ -852,6 +917,7 @@ function loadAllData() {
     _lastFetchTimes.mutual = 0;
     _lastFetchTimes.bounty = 0;
     _lastFetchTimes.offers = 0;
+    _lastFetchTimes.bountyApps = 0;
     _lastFetchTimes.archived = 0;
     _lastFetchTimes.reliabilitySummary = 0;
     _lastFetchTimes.reliabilityBreakdown = 0;
@@ -859,6 +925,9 @@ function loadAllData() {
     loadReliabilitySummary().catch(function() {});
     loadReliabilityBreakdown().catch(function() {});
     loadIncomingOffers().catch(function() {});
+    if (typeof loadBountyApplications === 'function') {
+        loadBountyApplications().catch(function() {});
+    }
     loadProjects().catch(function() {});
     loadArchivedProjects({ silent: true }).catch(function() {});
     loadMutualFeed().catch(function() {});
@@ -942,6 +1011,30 @@ function getBackendErrorCode(payload) {
     return String(payload.code || payload.error_code || payload.message || '').trim();
 }
 
+async function readApiErrorPayload(response) {
+    if (!response) return null;
+    try {
+        return await response.clone().json();
+    } catch (_) {
+        return null;
+    }
+}
+
+async function buildHttpStatusError(response, fallbackKey) {
+    var payload = await readApiErrorPayload(response);
+    var code = getBackendErrorCode(payload);
+    if (code === 'invalid_init_data') {
+        return new Error(window.t ? window.t('guestClaimAuthErrorToast') : 'invalid_init_data');
+    }
+    if (code === 'username_required') {
+        return new Error(window.t ? window.t('noUsernameTitle') : 'username_required');
+    }
+    if (payload && (payload.detail || payload.message)) {
+        return new Error(String(payload.detail || payload.message));
+    }
+    return new Error('HTTP ' + (response && response.status ? response.status : 'error'));
+}
+
 function handleApiError(code, details = {}) {
     var keyMap = {
         ALREADY_OWNED: 'ALREADY_OWNED',
@@ -954,6 +1047,12 @@ function handleApiError(code, details = {}) {
         grant_not_ready: 'err_grant_not_ready',
         grant_too_many_skips: 'err_grant_too_many_skips',
         grant_already_claimed: 'err_grant_already_claimed',
+        open_required: 'err_open_required',
+        open_invalid: 'err_open_invalid',
+        open_mismatch: 'err_open_mismatch',
+        open_expired: 'err_open_expired',
+        open_not_ready: 'err_open_not_ready',
+        day_boundary_moved: 'err_day_boundary_moved',
         app_not_archived: 'err_app_not_archived_early_finish',
         invalid_start_date: 'err_grant_unavailable',
         invalid_google_group_url: 'invalid_google_group_url',
@@ -993,6 +1092,16 @@ function handleApiError(code, details = {}) {
         offer_no_available_apps: 'err_offer_no_available_apps',
         offer_accept_failed: 'err_offer_accept_failed',
         offer_create_failed: 'err_offer_create_failed',
+        bounty_application_already_pending: 'err_bounty_application_already_pending',
+        bounty_application_not_found: 'err_bounty_application_not_found',
+        bounty_application_forbidden: 'err_bounty_application_forbidden',
+        bounty_application_not_pending: 'err_bounty_application_not_pending',
+        bounty_application_expired: 'err_bounty_application_expired',
+        bounty_application_create_failed: 'err_bounty_application_create_failed',
+        bounty_application_accept_failed: 'err_bounty_application_accept_failed',
+        bounty_application_failed: 'err_bounty_application_failed',
+        bounty_applications_unavailable: 'err_bounty_applications_unavailable',
+        bounty_applications_load_failed: 'err_bounty_applications_load_failed',
         user_not_found: 'err_user_not_found',
         transfer_self_forbidden: 'err_transfer_self_forbidden',
         transfer_generate_failed: 'err_transfer_generate_failed',
@@ -1011,8 +1120,10 @@ function handleApiError(code, details = {}) {
         invalid_email_spaces: 'invalidEmailSpaces',
         invalid_email_format: 'invalidEmail',
         owner_has_access_issue: 'ownerAccessIssueBlockToast',
+        target_owner_has_access_issue: 'targetOwnerAccessIssueBlockToast',
         email_required: 'reportIssueEmailRequired',
         access_checklist_required: 'reportIssueChecklistIncomplete',
+        auto_accept_reliability_required: 'auto_accept_reliability_required',
     };
 
     var normalizedCode = String(code || '').trim();
@@ -1082,8 +1193,11 @@ function _findFeedItemForOptimisticJoin(appId) {
 
 function _buildOptimisticMyTestFromFeedItem(feedItem, options) {
     options = options || {};
-    var appId = Number((feedItem && feedItem.app_id) || options.appId || 0);
+    var appId = Number((feedItem && (feedItem.app_id || feedItem.id)) || options.appId || 0);
     if (appId <= 0) return null;
+    var name = (feedItem && (feedItem.name || feedItem.title || feedItem.app_name)) || '';
+    var pkg = (feedItem && (feedItem.package_name || feedItem.package || feedItem.external_package_name)) || '';
+    if (!name && !pkg) return null;
     var today = getLocalDate();
     var isBounty = !!options.isBounty;
     var joinType = String(options.join_type || (isBounty ? 'bounty' : 'mutual')).toLowerCase();
@@ -1163,7 +1277,8 @@ function _buildOptimisticMyTestFromFeedItem(feedItem, options) {
 function applyOptimisticMyTestJoin(appId, options) {
     var normalizedId = Number(appId || 0);
     if (normalizedId <= 0) return;
-    var feedItem = _findFeedItemForOptimisticJoin(normalizedId) || { app_id: normalizedId };
+    var feedItem = _findFeedItemForOptimisticJoin(normalizedId);
+    if (!feedItem) return;
     var optimisticRow = _buildOptimisticMyTestFromFeedItem(feedItem, Object.assign({ appId: normalizedId }, options || {}));
     if (!optimisticRow) return;
     var alreadyExists = (myTests || []).some(function(test) {
@@ -1261,9 +1376,12 @@ function _mapTestsFromApi(data) {
             status = 'done';
         }
         var progressStatus = String(app.progress_status || 'active').toLowerCase();
+        var isKickedSoft = !isExternal && progressStatus === 'kicked_by_owner';
+        var isUnlinkedSoft = !isExternal && progressStatus === 'canceled_neutral';
+        var isSoftTail = isKickedSoft || isUnlinkedSoft;
         var appStatus = String(app.app_status || 'active').toLowerCase();
         var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
-        var isArchivedOrCompleted = !isExternal && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
+        var isArchivedOrCompleted = !isExternal && !isSoftTail && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
         var existingTest = myTests.find(function(test) { return Number(test.id) === Number(mappedId); });
         var shouldPreserveLocalDoneToday = !!(
             existingTest
@@ -1286,12 +1404,12 @@ function _mapTestsFromApi(data) {
         // computed field `external_control_day_due` to oscillate between API and local state
         // on every loadTasks() poll (which would force renderTests() on every poll).
         var apiTestingDays = Number(app.testing_days || 0);
-        var testingDays = isExternal && existingTest
-            ? Math.max(apiTestingDays, Number(existingTest.testing_days || 0))
-            : apiTestingDays;
-        if (shouldPreserveLocalDoneToday) {
-            testingDays = Math.max(testingDays, Number(existingTest.testing_days || 0));
-        }
+        var calTestingDay = (app.start_date && typeof getUserTestingDay === 'function')
+            ? getUserTestingDay(app.start_date)
+            : null;
+        var testingDays = (Number.isFinite(calTestingDay) && calTestingDay > 0)
+            ? calTestingDay
+            : (isExternal && existingTest ? Math.max(apiTestingDays, Number(existingTest.testing_days || 0)) : apiTestingDays);
         var skipsCount = countGrantSkips(app);
         if (shouldPreserveLocalDoneToday) {
             skipsCount = Math.max(skipsCount, Number(existingTest.skips_count || 0));
@@ -1309,15 +1427,20 @@ function _mapTestsFromApi(data) {
             ? (existingTest.last_check_date || today)
             : (shouldTreatFastTrackFirstDayAsDone ? today : (app.last_check_date || null));
         var isAppClosed = !isExternal && (appStatus !== 'active' && !isPendingCompletion);
-        var isTestClosed = !isExternal && (progressStatus !== 'active');
-        var actualCheckins = testingDays - skipsCount;
-        var canEverClaim = !isExternal && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
+        var isTestClosed = !isExternal && (progressStatus !== 'active') && !isSoftTail;
+        var canEverClaim = !isExternal && !isSoftTail && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
 
-        var isGrantAvailableTomorrow = !!(canEverClaim && !isArchivedOrCompleted && !isPendingCompletion && testingDays === 14 && isTestedToday);
-        var isReadyToClaim = !!(canEverClaim && (testingDays >= 15 || (isArchivedOrCompleted && testingDays >= 14)));
-        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !app.grant_claimed && !isReadyToClaim && !isGrantAvailableTomorrow && testingDays < 14 && actualCheckins >= 3 && skipsCount <= 3);
+        var hasCompletedFull14Days = (testingDays >= 15) || (testingDays === 14 && isTestedToday);
+        var isGrantAvailableTomorrow = !!(canEverClaim && !isPendingCompletion && testingDays === 14 && isTestedToday);
+        var isReadyToClaim = !!(canEverClaim && testingDays >= 15);
+        var earlyFinishCheckinsSource = { checkins_count: resolvedCheckinsCount };
+        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !isSoftTail && !app.grant_claimed && !hasCompletedFull14Days && (typeof qualifiesEarlyFinishGrant === 'function'
+            ? qualifiesEarlyFinishGrant(earlyFinishCheckinsSource, testingDays, skipsCount)
+            : (resolvedCheckinsCount >= 3 && skipsCount <= 3)));
 
-        if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow) {
+        if (isSoftTail) {
+            status = 'done';
+        } else if (isArchivedOrCompleted && !isReadyToClaim && !isGrantAvailableTomorrow && !isEarlyFinish) {
             status = 'done';
         }        
         return {
@@ -1351,11 +1474,23 @@ function _mapTestsFromApi(data) {
             last_owner_activity: app.last_owner_activity || null,
             checkins_count: resolvedCheckinsCount,
             skips_count: resolvedSkipsCount,
+            consecutive_skips: Number(app.consecutive_skips != null ? app.consecutive_skips : 0),
+            is_mutual_debt: !!app.is_mutual_debt,
+            partner_testing_days: Number(app.partner_testing_days || 0),
+            partner_skips: Number(app.partner_skips || 0),
+            partner_consecutive_skips: Number(app.partner_consecutive_skips || 0),
+            partner_checkins: Number(app.partner_checkins || 0),
+            partner_active: app.partner_active === true,
+            partner_progress_status: app.partner_progress_status || '',
             last_sync_date: app.last_sync_date || null,
             testing_days: testingDays,
             exact_daily_reward: typeof app.exact_daily_reward !== 'undefined' ? Number(app.exact_daily_reward) : 0,
             grant_claimed: !!app.grant_claimed,
             progress_status: app.progress_status || 'active',
+            is_kicked_soft: isKickedSoft,
+            is_unlinked_soft: isUnlinkedSoft,
+            is_soft_tail: isSoftTail,
+            leave_reason: app.leave_reason || '',
             app_status: app.app_status || 'active',
             is_pending_completion: isPendingCompletion,
             join_type: app.join_type || 'invite',
@@ -1467,12 +1602,18 @@ async function _loadTasksImpl(options) {
     }
     _apiStart();
     try {
-        var response = await fetchWithRetry(API_BASE + '/tasks/' + userId);
-        if (!response.ok) throw new Error('HTTP ' + response.status);
+        var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        var response = await fetchWithRetry(API_BASE + '/tasks/' + userId + '?' + initQ);
+        if (!response.ok) throw await buildHttpStatusError(response, 'networkError');
         var data = await response.json();
         _userEmail = String(data.user_email || '').trim();
         window.App.userEmail = _userEmail;
+        if (typeof syncSettingsEmailRowUi === 'function') {
+            try { syncSettingsEmailRowUi(); } catch (e) {}
+        }
         var nextTests = _mapTestsFromApi(data);
+        // Offers live on GET /api/offers/incoming (bootstrap + 30s poll).
+        // /api/tasks no longer embeds incoming_offers; missing key must not wipe the inbox.
         var nextOffers = Array.isArray(data.incoming_offers) ? data.incoming_offers : null;
 
         // Diff: only re-render if changed
@@ -1485,6 +1626,7 @@ async function _loadTasksImpl(options) {
                 renderTests();
                 if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
             }
+            if (typeof renderBountyFeed === 'function') renderBountyFeed(true);
         } else if (typeof clearCompletedPendingFeedbackCheckins === 'function') {
             clearCompletedPendingFeedbackCheckins();
         }
@@ -1671,10 +1813,10 @@ async function _loadBountyFeedImpl(options) {
     const shouldShowSkeleton = !!(options && options.forceSkeleton);
     const hadVisibleData = Array.isArray(bountyContracts) && bountyContracts.length > 0;
 
-    if (hasBountyCache) {
+    if (hasBountyCache && !hadVisibleData) {
         bountyContracts = cached.bounty.contracts || [];
         renderBountyFeed();
-    } else if (shouldShowSkeleton) {
+    } else if (shouldShowSkeleton && !hadVisibleData) {
         showSkeleton('bounty-list');
     }
 
@@ -1741,7 +1883,11 @@ async function forceRefreshMarket() {
         showSkeleton('bounty-list');
     }
     try {
-        await Promise.all([loadMutualFeed(), loadBountyFeed()]);
+        var refreshJobs = [loadMutualFeed(), loadBountyFeed()];
+        if (typeof loadGuestApps === 'function' && _guestProjectsExpanded) {
+            refreshJobs.push(loadGuestApps({ force: true }));
+        }
+        await Promise.all(refreshJobs);
     } catch (error) {
         console.error('Force refresh market error:', error);
     } finally {
@@ -1823,7 +1969,10 @@ async function publishProjectToMarket(projectId) {
         var response = await fetch(`${API_BASE}/projects/${projectId}/publish_to_market`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId })
+            body: JSON.stringify({
+                owner_id: userId,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+            })
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -1872,6 +2021,11 @@ function _mapProjectsFromApi(data) {
                 tester_avatar_url: tester.avatar_url || null,
                 checkins_count: Number(tester.checkins_count || 0),
                 skips_count: Number(tester.skips_count || 0),
+                consecutive_skips: Number(tester.consecutive_skips != null
+                    ? tester.consecutive_skips
+                    : (typeof calculateConsecutiveSkips === 'function'
+                        ? calculateConsecutiveSkips(tester)
+                        : 0)),
                 is_external: !!tester.is_external,
                 is_guest_tester: !!tester.is_guest_tester,
                 external_source: tester.external_source || '',
@@ -1903,7 +2057,11 @@ function _mapProjectsFromApi(data) {
             created_at: project.created_at || null,
             likes: project.likes || [],
             likes_used: project.likes_used || 0,
-            likes_max: project.likes_max || 1,
+            likes_max: project.likes_max || 3,
+            thanks_used: project.thanks_used || 0,
+            thanks_max: project.thanks_max || 2,
+            special_used: project.special_used || 0,
+            special_max: project.special_max || 1,
             mode: project.mode || 'mutual',
             test_mode: project.test_mode === 'email_list' ? 'email_list' : 'google_group',
             accepts_email_testers: !!project.accepts_email_testers,
@@ -2000,7 +2158,8 @@ async function _confirmProjectSyncPersistence(appId, expectedDay, expectedMessag
     });
 
     try {
-        var response = await fetchWithRetry(API_BASE + '/projects/' + userId, { timeoutMs: 12000 }, 1);
+        var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        var response = await fetchWithRetry(API_BASE + '/projects/' + userId + '?' + initQ, { timeoutMs: 12000 }, 1);
         if (!response.ok) {
             throw new Error('HTTP ' + response.status);
         }
@@ -2052,7 +2211,8 @@ async function _loadProjectsImpl(options) {
     }
     _apiStart();
     try {
-        var response = await fetchWithRetry(API_BASE + '/projects/' + userId);
+        var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        var response = await fetchWithRetry(API_BASE + '/projects/' + userId + '?' + initQ);
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var data = await response.json();
         var nextProjects = _mapProjectsFromApi(data);
@@ -2162,6 +2322,7 @@ async function setProjectVisibilityMode(appId, nextMode) {
             body: JSON.stringify({
                 owner_id: userId,
                 visibility_mode: normalizedMode,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
             })
         });
         const result = await _readJsonResponseSafely(response, 'Project visibility update');
@@ -2258,6 +2419,7 @@ async function saveProjectSync() {
                     body: JSON.stringify({
                         owner_id: Number(userId),
                         tip_amount: tipAmount,
+                        init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
                     })
                 });
             } else {
@@ -2265,10 +2427,12 @@ async function saveProjectSync() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        owner_id: Number(userId),
                         google_sync_day: day,
                         sync_message: message,
                         protection_cost: protectionCost,
                         tip_amount: tipAmount,
+                        init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
                     })
                 });
             }
@@ -2438,7 +2602,11 @@ async function savePpcTopUp() {
         var response = await fetch(API_BASE + '/projects/' + syncProjectId + '/topup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: Number(userId), tip_amount: tipAmount })
+            body: JSON.stringify({
+                owner_id: Number(userId),
+                tip_amount: tipAmount,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+            })
         });
 
         var data = null;
@@ -2506,7 +2674,8 @@ async function loadArchivedProjects(options) {
         if (shouldMarkBackgroundSync) {
             beginBackgroundSync('projects');
         }
-        const response = await fetch(`${API_BASE}/projects/${userId}/archived`);
+        const initDataRaw = (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || '');
+        const response = await fetch(`${API_BASE}/projects/${userId}/archived?init_data=${encodeURIComponent(initDataRaw)}`);
         if (!response.ok) return;
         const data = await response.json();
         archivedProjects = (data.archived || []).map(function(project) {
@@ -2549,7 +2718,13 @@ async function confirmHardDelete(appId, appName) {
     });
     if (!confirmed) return;
     try {
-        const response = await fetch(`${API_BASE}/projects/${appId}/permanent`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/projects/${appId}/permanent`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+            }),
+        });
         const data = await response.json();
         if (data.status === 'success') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -2566,14 +2741,57 @@ async function confirmHardDelete(appId, appName) {
 async function confirmDeleteProject() {
     if (!projectToDelete) return;
 
-    const message = document.getElementById('delete-message').value.trim();
     const id = projectToDelete;
+    if (!window._projectDeleteInFlight) window._projectDeleteInFlight = {};
+    if (window._projectDeleteInFlight[id]) return;
+
+    const messageEl = document.getElementById('delete-message');
+    const message = messageEl ? messageEl.value.trim() : '';
     const overtimeSelectedInput = document.querySelector('input[name="delete-overtime-tester"]:checked');
     const selectedOvertimeTester = overtimeSelectedInput ? overtimeSelectedInput.value : '';
-    const btn = document.getElementById('t-confirmDeleteBtn');
-    const originalText = btn.innerText;
-    btn.innerText = '...';
-    btn.disabled = true;
+    const deletedProject = myProjects.find(function(p) { return p.id === id; });
+    const card = document.getElementById('project-card-' + id);
+
+    window._projectDeleteInFlight[id] = true;
+
+    // Instant UX: close modal and fade the card out before the server responds
+    closeDeleteModal();
+    if (card) {
+        card.classList.add('removing');
+    }
+
+    if (deletedProject) {
+        myProjects = myProjects.filter(function(p) { return p.id !== id; });
+        archivedProjects.unshift({
+            app_id: deletedProject.id,
+            name: deletedProject.name,
+            package_name: deletedProject.package,
+            icon_url: deletedProject.icon_url,
+            target_lang: deletedProject.target_lang || 'ALL',
+            feedback_new_count: deletedProject.feedback_new_count || 0,
+            feedback_total_count: deletedProject.feedback_total_count || 0,
+            archive_reason: null,
+        });
+    }
+
+    const applyOptimisticRender = function() {
+        if (typeof renderProjects === 'function') renderProjects();
+        if (typeof renderArchivedProjects === 'function') renderArchivedProjects();
+    };
+    if (card) {
+        setTimeout(applyOptimisticRender, 400);
+    } else {
+        applyOptimisticRender();
+    }
+
+    const refreshListsAfterError = function() {
+        if (typeof loadProjects === 'function') {
+            loadProjects(true).catch(function() {});
+        }
+        if (typeof loadArchivedProjects === 'function') {
+            loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+        }
+    };
 
     try {
         const response = await fetch(`${API_BASE}/projects/${id}/delete`, {
@@ -2582,11 +2800,12 @@ async function confirmDeleteProject() {
             body: JSON.stringify({
                 message,
                 overtime_reward_user_id: selectedOvertimeTester ? Number(selectedOvertimeTester) : null,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
             })
         });
         const result = await response.json();
         if (result.status === 'success') {
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
             // Immediately remove from the active list so the card vanishes right
             // away without waiting for the server round-trip.
@@ -2604,15 +2823,17 @@ async function confirmDeleteProject() {
             loadProjects(true).catch(function() {});
         } else {
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            refreshListsAfterError();
         }
     } catch (error) {
         console.error('Delete project error:', error);
-        const errorMessage = getApiErrorMessage(error && error.message, 'networkError');
-        if (tg.showAlert) tg.showAlert(errorMessage);
+        const errorMessage = getApiErrorMessage(error && error.message, 'deleteProjectError');
+        if (typeof showToast === 'function') showToast(errorMessage);
+        else if (tg && tg.showAlert) tg.showAlert(errorMessage);
         else alert(errorMessage);
+        refreshListsAfterError();
     } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
+        delete window._projectDeleteInFlight[id];
     }
 }
 
@@ -2786,7 +3007,8 @@ async function _confirmProjectCreationPersistence(projectData) {
     if (!userId || !normalizedPackage) return null;
 
     try {
-        var response = await fetchWithRetry(`${API_BASE}/projects/${userId}`, {
+        var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+        var response = await fetchWithRetry(`${API_BASE}/projects/${userId}?${initQ}`, {
             timeoutMs: 10000
         }, 1);
         if (!response.ok) return null;
@@ -2889,6 +3111,9 @@ async function doSaveProject(projectData) {
 
 async function saveProjectEdit() {
     if (!projectToEdit) return;
+    if (typeof window.isEditModalRestartMode === 'function' && window.isEditModalRestartMode()) {
+        return confirmRestartFromSettings();
+    }
     const name = document.getElementById('edit-name').value.trim();
     const instructions = document.getElementById('edit-description').value.trim();
     const iconUrl = document.getElementById('edit-icon').value.trim();
@@ -2992,6 +3217,7 @@ async function saveProjectEdit() {
                 accepts_email_testers: acceptsEmailTesters,
                 tester_email: acceptsEmailTesters ? testerEmailInput : null,
                 is_setup_completed: isSetupCompleted,
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
                 ...pricingPayload
             })
         });
@@ -3101,3 +3327,119 @@ async function apiPipelineDeleteProject(appId) {
 window.apiPipelineRequestLive   = apiPipelineRequestLive;
 window.apiPipelineRequestRetest = apiPipelineRequestRetest;
 window.apiPipelineDeleteProject = apiPipelineDeleteProject;
+
+function _buildRestartSettingsPayload() {
+    const name = document.getElementById('edit-name').value.trim();
+    const instructions = document.getElementById('edit-description').value.trim();
+    const iconUrl = document.getElementById('edit-icon').value.trim();
+    const accessPayload = (window.AccessSetupManager && typeof window.AccessSetupManager.getEditPayload === 'function')
+        ? window.AccessSetupManager.getEditPayload()
+        : null;
+    const accessMode = accessPayload ? String(accessPayload.mode || '') : '';
+    const fallbackEditEmailMode = !!(window.editProjectFlow && window.editProjectFlow.emailMode);
+    const fallbackGroupUrl = fallbackEditEmailMode ? '' : document.getElementById('edit-group').value.trim();
+    const editEmailMode = accessPayload ? (String(accessPayload.test_mode || '') === 'email_list') : fallbackEditEmailMode;
+    const googleGroupUrl = accessPayload
+        ? String(accessPayload.google_group_url || '').trim()
+        : fallbackGroupUrl;
+    const targetLang = (document.getElementById('edit-target-lang').value || 'ALL').toUpperCase();
+    const requestReviews = !!(document.getElementById('edit-request-reviews') && document.getElementById('edit-request-reviews').checked);
+    const pricingPayload = buildProjectPricingPayload('edit');
+    if (!pricingPayload) return null;
+
+    if (!name) {
+        if (tg.showAlert) tg.showAlert(t.fillFields);
+        else alert(t.fillFields);
+        return null;
+    }
+
+    if (accessPayload && !accessPayload.canSave) {
+        _saveProjectAlert(window.t('completeChecklistError', {}, lang));
+        if (typeof window.updateEditSaveButtonState === 'function') {
+            window.updateEditSaveButtonState();
+        }
+        return null;
+    }
+
+    if (accessMode === 'custom_group' && !googleGroupUrl) {
+        _saveProjectAlert(window.t('customGroupRequired', {}, lang));
+        return null;
+    }
+
+    if (!editEmailMode && googleGroupUrl && !isValidGoogleGroupUrl(googleGroupUrl)) {
+        handleApiError('invalid_google_group_url');
+        return null;
+    }
+
+    const resolvedGoogleGroupUrl = editEmailMode
+        ? null
+        : (accessMode === 'custom_group'
+            ? googleGroupUrl
+            : (window.DEFAULT_GOOGLE_GROUP_URL || googleGroupUrl));
+
+    const pricingState = getProjectPricingState('edit');
+    const totalCost = (pricingState.mode === 'bounty' || pricingState.mode === 'hybrid')
+        ? (pricingState.limitBounty * pricingState.bountyPerTester)
+        : 0;
+    const currentBalance = visibilityStats && typeof visibilityStats.balance_bust !== 'undefined'
+        ? Number(visibilityStats.balance_bust || 0)
+        : 0;
+    if (totalCost > 0 && currentBalance < totalCost) {
+        handleApiError('insufficient_bust_balance', {
+            balance: currentBalance,
+            balance_bust: currentBalance,
+            required: totalCost,
+            missing: Math.max(0, totalCost - currentBalance),
+        });
+        return null;
+    }
+
+    return {
+        name,
+        instructions: instructions || null,
+        icon_url: iconUrl || null,
+        google_group_url: resolvedGoogleGroupUrl,
+        test_mode: editEmailMode ? 'email_list' : 'google_group',
+        target_lang: targetLang,
+        request_reviews: requestReviews,
+        ...pricingPayload,
+    };
+}
+
+async function confirmRestartFromSettings() {
+    if (!projectToEdit) return null;
+    const settingsPayload = _buildRestartSettingsPayload();
+    if (!settingsPayload) return null;
+
+    const editBtn = document.getElementById('t-editSave');
+    const originalText = editBtn ? editBtn.innerText : '';
+    if (editBtn) {
+        editBtn.innerText = '...';
+        editBtn.disabled = true;
+    }
+
+    try {
+        const result = await restartArchivedProject(projectToEdit, settingsPayload);
+        if (result && result.status === 'success') {
+            if (typeof window.markEditModalSavedState === 'function') {
+                window.markEditModalSavedState();
+            }
+            if (typeof window.closeEditUnsavedModal === 'function') {
+                window.closeEditUnsavedModal();
+            }
+            if (typeof window.consumeEditSaveAndCloseRequest === 'function') {
+                window.consumeEditSaveAndCloseRequest();
+            }
+            closeEditModal(null, { force: true });
+        }
+        return result;
+    } finally {
+        if (editBtn) {
+            editBtn.innerText = originalText || window.t('archiveRestartConfirmBtn', {}, lang);
+            editBtn.disabled = false;
+            if (typeof window.updateEditSaveButtonState === 'function') {
+                window.updateEditSaveButtonState();
+            }
+        }
+    }
+}

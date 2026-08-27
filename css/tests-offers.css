@@ -92,7 +92,25 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 8px;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pending-release-section__header:active {
+    opacity: 0.85;
+}
+
+.pending-release-section__titles {
+    min-width: 0;
+    flex: 1;
 }
 
 .pending-release-section__header h3 {
@@ -102,10 +120,88 @@
     color: var(--text-color);
 }
 
-.pending-release-section__header p {
+.pending-release-section__desc {
     margin: 4px 0 0;
     font-size: 12px;
     color: var(--hint-color);
+}
+
+.pending-release-section__meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.pending-release-count {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1.5px solid transparent;
+    line-height: 1.3;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.pending-release-count.has-grant-attention {
+    color: #ffb84d;
+    border-color: rgba(255, 149, 0, 0.85);
+    box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.45);
+    animation: pending-release-count-pulse 1.4s ease-in-out infinite;
+}
+
+.pending-release-section.has-action-attention.is-collapsed .pending-release-section__header {
+    position: relative;
+}
+
+.pending-release-section.has-action-attention.is-collapsed .pending-release-section__header::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 149, 0, 0.05), rgba(255, 149, 0, 0.85), rgba(255, 149, 0, 0.05));
+}
+
+.pending-release-section.has-action-attention.is-collapsed h3 {
+    color: #ffb84d;
+}
+
+.pending-release-section__chevron {
+    font-size: 11px;
+    color: var(--hint-color);
+    line-height: 1;
+    transition: transform 0.2s ease;
+}
+
+.pending-release-section.is-collapsed .pending-release-section__header {
+    margin-bottom: 0;
+}
+
+.pending-release-section.is-collapsed .pending-release-section__desc,
+.pending-release-section.is-collapsed .pending-release-scroll-wrap {
+    display: none;
+}
+
+.pending-release-section:not(.is-collapsed) .pending-release-section__chevron {
+    transform: rotate(180deg);
+}
+
+@keyframes pending-release-count-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.35);
+        border-color: rgba(255, 149, 0, 0.55);
+    }
+    50% {
+        box-shadow: 0 0 0 5px rgba(255, 149, 0, 0);
+        border-color: rgba(255, 184, 77, 1);
+    }
 }
 
 .pending-release-section__hint {
@@ -210,6 +306,300 @@
     font-weight: 600;
 }
 
+.bounty-apps-section .offers-header h3 {
+    color: var(--text-color);
+}
+
+.bounty-apps-carousel:not(:empty) {
+    margin-top: 10px;
+}
+
+.bounty-app-card {
+    border-color: var(--reward-border);
+    background: linear-gradient(165deg, var(--reward-surface) 0%, rgba(160, 123, 255, 0.03) 42%, transparent 72%);
+    padding: 14px;
+}
+
+.bounty-app-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.bounty-app-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+}
+
+.bounty-app-badge-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--reward);
+}
+
+.bounty-app-badge-reward {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.bounty-app-ttl.offer-expire {
+    flex-shrink: 0;
+    margin: 0;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--hint-color);
+    opacity: 0.9;
+}
+
+.bounty-app-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.bounty-app-avatar-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: rgba(142, 142, 147, 0.18);
+    box-shadow: 0 0 0 1px var(--reward-border);
+}
+
+.bounty-app-avatar-wrap .avatar,
+.bounty-app-avatar-wrap img.avatar {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border-radius: 50% !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    object-fit: cover;
+}
+
+.bounty-app-identity-main {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.bounty-app-name {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bounty-app-handle {
+    margin-top: 1px;
+    font-size: 12px;
+    color: var(--hint-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bounty-app-signal {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hint-color);
+}
+
+.bounty-app-signal-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(142, 142, 147, 0.85);
+    flex-shrink: 0;
+}
+
+.bounty-app-signal--good {
+    color: #34c759;
+}
+
+.bounty-app-signal--good .bounty-app-signal-dot {
+    background: #34c759;
+}
+
+.bounty-app-signal--warn {
+    color: #ff9f0a;
+}
+
+.bounty-app-signal--warn .bounty-app-signal-dot {
+    background: #ff9f0a;
+}
+
+.bounty-app-signal--bad {
+    color: #ff453a;
+}
+
+.bounty-app-signal--bad .bounty-app-signal-dot {
+    background: #ff453a;
+}
+
+.bounty-app-signal--neutral {
+    color: var(--hint-color);
+}
+
+.bounty-app-dossier-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--reward-border);
+    background: var(--reward-surface);
+    color: var(--reward);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.bounty-app-dossier-btn:active {
+    transform: scale(0.96);
+    background: rgba(160, 123, 255, 0.18);
+}
+
+.bounty-app-dossier-icon {
+    width: 22px;
+    height: 22px;
+    display: block;
+}
+
+.bounty-app-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.bounty-app-metric {
+    padding: 8px 6px;
+    border-radius: 10px;
+    background: rgba(142, 142, 147, 0.1);
+    text-align: center;
+    min-width: 0;
+}
+
+.bounty-app-metric-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--hint-color);
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bounty-app-metric-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.bounty-app-project-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    line-height: 1.35;
+    min-width: 0;
+}
+
+.bounty-app-project-label {
+    color: var(--hint-color);
+    flex-shrink: 0;
+}
+
+.bounty-app-project-name {
+    color: var(--text-color);
+    opacity: 0.88;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.bounty-app-actions {
+    margin-top: 0;
+    gap: 8px;
+}
+
+.bounty-app-accept-btn,
+.bounty-app-reject-btn {
+    flex: 1;
+    border: none;
+    font-weight: 600;
+    min-height: 42px;
+    border-radius: 12px;
+}
+
+.bounty-app-accept-btn {
+    background: var(--reward) !important;
+    color: #fff !important;
+}
+
+.bounty-app-accept-btn:active {
+    background: var(--reward-hover) !important;
+}
+
+.bounty-app-reject-btn {
+    background: transparent !important;
+    color: var(--hint-color) !important;
+    border: 1px solid rgba(142, 142, 147, 0.35) !important;
+}
+
+.dossier-bounty-app-block {
+    padding: 10px 12px;
+    background: var(--reward-surface);
+    border: 1px solid var(--reward-border);
+    border-radius: 10px;
+}
+
+.dossier-bounty-app-hint {
+    font-size: 13px;
+    line-height: 1.45;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.dossier-bounty-app-actions {
+    gap: 8px;
+    margin: 0;
+}
+
 .own-project-chip {
     background: rgba(100, 149, 237, 0.14);
     border: 1px solid rgba(100, 149, 237, 0.26);
@@ -223,4 +613,37 @@
     background: var(--stage-buffer-surface) !important;
     color: var(--stage-buffer) !important;
     border-color: var(--stage-buffer-border) !important;
+}
+
+/* ── Mutual Offer Card (reuses bounty-app-* layout with teal/blue accent) ── */
+.mutual-offer-card {
+    border-color: rgba(100, 210, 255, 0.28);
+    background: linear-gradient(165deg, rgba(100, 210, 255, 0.08) 0%, rgba(51, 144, 236, 0.03) 42%, transparent 72%);
+}
+
+.mutual-offer-card .bounty-app-badge-label {
+    color: #64d2ff;
+}
+
+.mutual-offer-card .bounty-app-avatar-wrap {
+    box-shadow: 0 0 0 1px rgba(100, 210, 255, 0.35);
+}
+
+.mutual-offer-card .bounty-app-dossier-btn {
+    border-color: rgba(100, 210, 255, 0.28);
+    background: rgba(100, 210, 255, 0.10);
+    color: #64d2ff;
+}
+
+.mutual-offer-card .bounty-app-dossier-btn:active {
+    background: rgba(100, 210, 255, 0.20);
+}
+
+.mutual-offer-card .bounty-app-accept-btn {
+    background: #3390ec !important;
+    color: #fff !important;
+}
+
+.mutual-offer-card .bounty-app-accept-btn:active {
+    background: #2b7ecf !important;
 }

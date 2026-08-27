@@ -39,6 +39,7 @@ Object.assign(window, {
     openKickTesterModal,
     closeKickTesterModal,
     toggleKickReasonOther,
+    toggleKickUnlinkHint,
     openSyncModal,
     closeSyncModal,
     openProtectionCenter,
@@ -72,6 +73,8 @@ Object.assign(window, {
     closeEmailWarningModal,
     showReadonlyAlert,
     openEditModal,
+    openRestartArchivedModal,
+    isEditModalRestartMode,
     closeEditModal,
     openImageZoom,
     closeImageZoom,
@@ -79,6 +82,8 @@ Object.assign(window, {
     copyEmail,
     openProjectDetailsModal,
     closeProjectDetailsModal,
+    toggleCheckpointAccordion: typeof toggleCheckpointAccordion !== 'undefined' ? toggleCheckpointAccordion : undefined,
+    closeTestDayInfoModal: typeof closeTestDayInfoModal !== 'undefined' ? closeTestDayInfoModal : undefined,
 });
 
 Object.assign(window.ui, {

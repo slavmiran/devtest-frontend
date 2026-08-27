@@ -35,20 +35,159 @@ function _highlightArchivedProjectCard(appId) {
 }
 
 function openProjectDuplicateSupport() {
-    var addModal = document.getElementById('add-modal');
-    if (addModal) {
-        addModal.classList.remove('active');
-    }
-    sendFeedback('question');
+    openPackageConflictSupport();
 }
+
+var _packageConflictState = {
+    code: '',
+    packageName: '',
+};
+
+function _getCurrentAddPackageName() {
+    if (typeof _extractPackageNameFromPlayInput === 'function') {
+        return String(_extractPackageNameFromPlayInput() || '').trim();
+    }
+    var input = document.getElementById('app-package');
+    return String((input && input.value) || '').trim();
+}
+
+function _setPackageConflictReopenVisible(visible) {
+    var reopenBtn = document.getElementById('package-conflict-reopen-btn');
+    if (!reopenBtn) return;
+    reopenBtn.textContent = window.t('packageConflictReopenBtn', {}, lang);
+    reopenBtn.classList.toggle('is-visible', !!visible);
+    reopenBtn.style.display = visible ? 'block' : 'none';
+}
+
+function _clearPackageConflictState() {
+    _packageConflictState.code = '';
+    _packageConflictState.packageName = '';
+    _setPackageConflictReopenVisible(false);
+}
+
+function _syncPackageConflictModalI18n() {
+    var modal = document.getElementById('package-conflict-modal');
+    if (!modal) return;
+    var title = modal.querySelector('[data-i18n="packageConflictTitle"]');
+    var intro = modal.querySelector('[data-i18n="packageConflictIntro"]');
+    var pointArchive = modal.querySelector('[data-i18n="packageConflictPointArchive"]');
+    var pointTransfer = modal.querySelector('[data-i18n="packageConflictPointTransfer"]');
+    var pointSupport = modal.querySelector('[data-i18n="packageConflictPointSupport"]');
+    var supportBtn = modal.querySelector('[data-i18n="packageConflictSupportBtn"]');
+    var closeBtn = modal.querySelector('[data-i18n="packageConflictCloseBtn"]');
+    if (title) title.textContent = window.t('packageConflictTitle', {}, lang);
+    if (intro) intro.textContent = window.t('packageConflictIntro', {}, lang);
+    if (pointArchive) pointArchive.textContent = window.t('packageConflictPointArchive', {}, lang);
+    if (pointTransfer) pointTransfer.textContent = window.t('packageConflictPointTransfer', {}, lang);
+    if (pointSupport) pointSupport.textContent = window.t('packageConflictPointSupport', {}, lang);
+    if (supportBtn) supportBtn.textContent = window.t('packageConflictSupportBtn', {}, lang);
+    if (closeBtn) closeBtn.textContent = window.t('packageConflictCloseBtn', {}, lang);
+}
+
+function openPackageConflictModal(code, packageName) {
+    var modal = document.getElementById('package-conflict-modal');
+    if (!modal) return;
+    _packageConflictState.code = String(code || '').trim();
+    _packageConflictState.packageName = String(packageName || _getCurrentAddPackageName() || '').trim();
+    _syncPackageConflictModalI18n();
+    modal.classList.add('active');
+    _setPackageConflictReopenVisible(true);
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+}
+
+function closePackageConflictModal(event) {
+    if (event && event.target && event.target.id !== 'package-conflict-modal') return;
+    var modal = document.getElementById('package-conflict-modal');
+    if (modal) modal.classList.remove('active');
+    var currentPackage = _getCurrentAddPackageName();
+    var keepReopen = !!(_packageConflictState.packageName && currentPackage && currentPackage === _packageConflictState.packageName);
+    _setPackageConflictReopenVisible(keepReopen);
+}
+
+function reopenPackageConflictModal() {
+    if (!_packageConflictState.packageName) return;
+    var currentPackage = _getCurrentAddPackageName();
+    if (!currentPackage || currentPackage !== _packageConflictState.packageName) {
+        _clearPackageConflictState();
+        return;
+    }
+    openPackageConflictModal(_packageConflictState.code, _packageConflictState.packageName);
+}
+
+function openPackageConflictSupport() {
+    var packageName = _packageConflictState.packageName || _getCurrentAddPackageName();
+    var text = window.t('packageConflictSupportPrefill', { package: packageName || '—' }, lang);
+    var targetUrl = 'https://t.me/garantXchange?text=' + encodeURIComponent(text);
+    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+        window.Telegram.WebApp.openTelegramLink(targetUrl);
+    } else if (tg && typeof tg.openTelegramLink === 'function') {
+        tg.openTelegramLink(targetUrl);
+    } else {
+        window.open(targetUrl, '_blank');
+    }
+}
+
+function _clearProjectPackageError() {
+    var errorEl = document.getElementById('package-error');
+    if (!errorEl) return;
+    errorEl.innerHTML = '';
+    errorEl.style.display = 'none';
+}
+
+function _showProjectPackageError(messageKey, options) {
+    var errorEl = document.getElementById('package-error');
+    if (!errorEl) return;
+
+    var opts = options || {};
+    var message = window.t(messageKey, {}, lang);
+    var html = '<div>' + window.escapeHTML(message) + '</div>';
+    if (opts.actionLabelKey) {
+        html += '<button type="button" id="package-error-action-btn" class="btn btn-secondary" style="width:100%; margin-top:10px; background: rgba(255,255,255,0.08); color: var(--text-color); border: 1px solid rgba(255,255,255,0.14);">' + window.escapeHTML(window.t(opts.actionLabelKey, {}, lang)) + '</button>';
+    }
+    errorEl.innerHTML = html;
+    errorEl.style.display = 'block';
+
+    if (opts.actionLabelKey && typeof opts.onAction === 'function') {
+        var actionBtn = document.getElementById('package-error-action-btn');
+        if (actionBtn) {
+            actionBtn.onclick = function(event) {
+                event.preventDefault();
+                opts.onAction();
+            };
+        }
+    }
+}
+
+function _handleProjectCreateConflict(code) {
+    var normalizedCode = String(code || '').trim();
+    if (normalizedCode === 'ALREADY_OWNED' || normalizedCode === 'ALREADY_ACTIVE' || normalizedCode === 'NEEDS_RESTART') {
+        openPackageConflictModal(normalizedCode, _getCurrentAddPackageName());
+        // Keep a short field hint so the form still shows why Continue is blocked.
+        _showProjectPackageError(normalizedCode);
+        return true;
+    }
+    return false;
+}
+
+window.openPackageConflictModal = openPackageConflictModal;
+window.closePackageConflictModal = closePackageConflictModal;
+window.reopenPackageConflictModal = reopenPackageConflictModal;
+window.openPackageConflictSupport = openPackageConflictSupport;
 
 async function _focusAppInMiniApp(appId) {
     var normalizedId = Number(appId || 0);
     if (!normalizedId) return false;
 
     switchTab('tests');
-    await loadTasks(true);
-    _highlightTestCardWhenReady(normalizedId, 10);
+    // Force a real refresh (background throttle can skip render and miss the card).
+    try {
+        await loadTasks(false);
+    } catch (e) { /* ignore */ }
+    if (typeof window._highlightTestCardWhenReady === 'function') {
+        window._highlightTestCardWhenReady(normalizedId, 16);
+    } else {
+        _highlightTestCardWhenReady(normalizedId, 16);
+    }
 
     await new Promise(function(resolve) { setTimeout(resolve, 520); });
     if (_highlightTestCard(normalizedId)) {
@@ -94,6 +233,8 @@ async function _focusAppInMiniApp(appId) {
     }
     return false;
 }
+
+window._focusAppInMiniApp = _focusAppInMiniApp;
 
 const GUEST_CLAIM_COMMUNITY_URL = (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers';
 
@@ -410,6 +551,9 @@ function scheduleDeferredBootstrap() {
                 loadMutualFeed().catch(function() {});
                 loadBountyFeed().catch(function() {});
             }
+            if (typeof loadGuestApps === 'function' && _guestProjectsExpanded && !_guestProjectsLoadedOnce) {
+                loadGuestApps().catch(function() {});
+            }
         }, 1600);
     }, 700);
 }
@@ -608,7 +752,7 @@ async function submitManualExternalTrack(event) {
         var response = await fetchWithRetry(`${API_BASE}/external-tracks/manual`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 tester_id: userId,
                 source_app_id: sourceProjectId,
                 app_name: appName || null,
@@ -618,7 +762,7 @@ async function submitManualExternalTrack(event) {
                 google_group_url: groupUrl || null,
                 testing_day: testingDay,
                 is_mutual: isMutual,
-            })
+            }))
         }, 1);
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {
@@ -776,13 +920,13 @@ async function submitEditGuestProject(event) {
         var response = await fetchWithRetry(`${API_BASE}/guest-apps/${encodeURIComponent(packageName)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 tester_id: userId,
                 app_name: appName || null,
                 owner_username: ownerUsername,
                 google_group_url: groupUrl || null,
                 play_store_url: playUrl,
-            })
+            }))
         }, 1);
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {
@@ -818,7 +962,7 @@ async function startExternalTrackingSession(payload) {
     const response = await fetchWithRetry(`${API_BASE}/external-tests/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(withInitData(payload))
     }, 1);
     const result = await response.json();
     if (!response.ok || !result || result.status !== 'success') {
@@ -849,7 +993,7 @@ async function submitExternalTrackingProof(progressId, testId) {
     const response = await fetchWithRetry(`${API_BASE}/external-tests/${progressId}/proof`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tester_id: userId, local_date: getLocalDate() })
+        body: JSON.stringify(withInitData({ tester_id: userId, local_date: getLocalDate() }))
     }, 1);
     const result = await response.json();
     if (!response.ok || !result || result.status !== 'success') {
@@ -876,7 +1020,7 @@ async function submitExternalDailyCheckin(progressId, testId) {
     const response = await fetchWithRetry(`${API_BASE}/external-tests/${progressId}/checkin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tester_id: userId, local_date: getLocalDate() })
+        body: JSON.stringify(withInitData({ tester_id: userId, local_date: getLocalDate() }))
     }, 1);
     const result = await response.json();
     if (!response.ok || !result || result.status !== 'success') {
@@ -901,7 +1045,7 @@ async function cancelExternalTracking(progressId, testId) {
     const response = await fetchWithRetry(`${API_BASE}/external-tests/${progressId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tester_id: userId })
+        body: JSON.stringify(withInitData({ tester_id: userId }))
     }, 1);
     const result = await response.json();
     if (!response.ok || !result || result.status !== 'success') {
@@ -944,12 +1088,12 @@ async function unlinkGuestRelationship(progressId, options) {
         return null;
     }
 
-    var requestBody = {
+    var requestBody = withInitData({
         user_id: userId,
         remove_from_my_tests: options.removeFromMyTests !== false,
         remove_from_my_testers: options.removeFromMyTesters !== false,
         source_app_id: Number(options.sourceAppId || 0) || null,
-    };
+    });
 
     const response = await fetchWithRetry(`${API_BASE}/guest-links/${safeProgressId}/unlink`, {
         method: 'POST',
@@ -1403,6 +1547,16 @@ function refreshLanguageUi() {
         window.updateTranslations(lang);
     }
 
+    if (typeof syncAutoAcceptToggleUi === 'function') {
+        syncAutoAcceptToggleUi();
+    }
+    if (typeof syncDefaultGroupJoinedUi === 'function') {
+        syncDefaultGroupJoinedUi();
+    }
+    if (typeof syncHomeScreenUi === 'function') {
+        syncHomeScreenUi();
+    }
+
     renderAutoTranslateLanguageOptions();
 
     updateProjectPricing('add');
@@ -1448,6 +1602,15 @@ function refreshLanguageUi() {
     }
 
     syncAutoAcceptToggleUi();
+    if (typeof syncAutoAcceptBountyToggleUi === 'function') {
+        syncAutoAcceptBountyToggleUi();
+    }
+    if (typeof syncDefaultGroupJoinedUi === 'function') {
+        syncDefaultGroupJoinedUi();
+    }
+    if (typeof syncHomeScreenUi === 'function') {
+        syncHomeScreenUi();
+    }
     if (typeof syncDeviceProfileUi === 'function') {
         syncDeviceProfileUi();
     }
@@ -1461,9 +1624,40 @@ async function loadUserProfilePreferences() {
         var response = await fetchWithRetry(API_BASE + '/users/' + userId + '/profile');
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var profile = await response.json();
+        if (profile && profile.is_banned) {
+            showBanScreen(profile);
+            return;
+        }
         _autoAcceptMutualEnabled = !!profile.auto_accept_mutual;
+        _autoAcceptMutualAvailable = (typeof profile.auto_accept_available === 'undefined')
+            ? true
+            : !!profile.auto_accept_available;
+        if (!_autoAcceptMutualAvailable) {
+            _autoAcceptMutualEnabled = false;
+        }
+        window._autoAcceptBountyEnabled = !!profile.auto_accept_bounty;
+        window._autoAcceptBountyAvailable = (typeof profile.auto_accept_bounty_available === 'undefined')
+            ? true
+            : !!profile.auto_accept_bounty_available;
+        if (!window._autoAcceptBountyAvailable) {
+            window._autoAcceptBountyEnabled = false;
+        }
+        var previousJoined = !!_defaultGroupJoined;
+        var wasReady = !!_defaultGroupJoinedReady;
+        _defaultGroupJoined = !!profile.default_group_joined;
+        _defaultGroupJoinedReady = true;
+        if (typeof _persistDefaultGroupJoined === 'function') {
+            _persistDefaultGroupJoined();
+        }
         syncAutoAcceptToggleUi();
+        if (typeof syncAutoAcceptBountyToggleUi === 'function') syncAutoAcceptBountyToggleUi();
+        if (typeof syncDefaultGroupJoinedUi === 'function') syncDefaultGroupJoinedUi();
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
+        window.App.autoAcceptBounty = !!window._autoAcceptBountyEnabled;
+        window.App.defaultGroupJoined = _defaultGroupJoined;
+        if ((!wasReady || previousJoined !== _defaultGroupJoined) && typeof window.renderTests === 'function') {
+            window.renderTests(true);
+        }
         if (typeof applyDeviceInfoFromProfile === 'function') {
             applyDeviceInfoFromProfile(profile);
         } else {
@@ -1473,6 +1667,8 @@ async function loadUserProfilePreferences() {
     } catch (error) {
         console.error('Profile preferences load error:', error);
         syncAutoAcceptToggleUi();
+        if (typeof syncAutoAcceptBountyToggleUi === 'function') syncAutoAcceptBountyToggleUi();
+        if (typeof syncDefaultGroupJoinedUi === 'function') syncDefaultGroupJoinedUi();
         _deviceProfileBannerReady = true;
         if (typeof syncDeviceProfileBanner === 'function') syncDeviceProfileBanner();
     }
@@ -1543,7 +1739,7 @@ async function syncUserTimezone(force) {
         const response = await fetch(`${API_BASE}/users/${userId}/timezone`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ timezone: detectedTimezone })
+            body: JSON.stringify(withInitData({ timezone: detectedTimezone }))
         });
         if (!response.ok) {
             return;
@@ -1580,9 +1776,37 @@ async function syncTelegramProfile() {
             return { ok: false };
         }
 
+        window.currentUser = {
+            user_id: result.user_id,
+            username: result.username,
+            full_name: result.full_name,
+            is_admin: Boolean(result.is_admin),
+            is_banned: Boolean(result.is_banned),
+            ban_reason: result.ban_reason || '',
+            banned_at: result.banned_at || '',
+            appeal_status: result.appeal_status || 'none',
+            appeal_text: result.appeal_text || '',
+        };
+        if (window.App) {
+            window.App.isAdmin = Boolean(result.is_admin);
+            window.App.isBanned = Boolean(result.is_banned);
+            window.App.banReason = result.ban_reason || '';
+            window.App.appealStatus = result.appeal_status || 'none';
+            window.App.appealText = result.appeal_text || '';
+        }
+
         return {
             ok: true,
             interface_language: normalizeNativeLanguageCode(result.interface_language) || '',
+            user_id: result.user_id,
+            username: result.username,
+            full_name: result.full_name,
+            is_admin: Boolean(result.is_admin),
+            is_banned: Boolean(result.is_banned),
+            ban_reason: result.ban_reason || '',
+            banned_at: result.banned_at || '',
+            appeal_status: result.appeal_status || 'none',
+            appeal_text: result.appeal_text || '',
         };
     } catch (error) {
         console.warn('Telegram profile sync failed:', error);
@@ -1673,12 +1897,62 @@ function onSettingsEmailInput() {
     _updateSettingsEmailValidIcon();
 }
 
+function syncSettingsEmailRowUi() {
+    var previewText = document.getElementById('settings-email-preview-text');
+    var editBtn = document.getElementById('settings-email-edit-btn');
+    var deleteBtn = document.getElementById('settings-email-delete');
+    var current = getCurrentUserEmail();
+    var hasEmail = !!current;
+
+    if (previewText) {
+        previewText.classList.toggle('is-set', hasEmail);
+        previewText.classList.toggle('is-missing', !hasEmail);
+        if (hasEmail) {
+            previewText.textContent = current;
+            previewText.removeAttribute('data-i18n');
+        } else {
+            previewText.setAttribute('data-i18n', 'settingsEmailNotSet');
+            previewText.textContent = window.t('settingsEmailNotSet', {}, lang);
+        }
+    }
+    if (editBtn) {
+        editBtn.setAttribute('aria-label', window.t('settingsEmailEditAria', {}, lang));
+        if (hasEmail) editBtn.removeAttribute('hidden');
+        else editBtn.setAttribute('hidden', '');
+    }
+    if (deleteBtn) {
+        if (hasEmail) deleteBtn.removeAttribute('hidden');
+        else deleteBtn.setAttribute('hidden', '');
+    }
+}
+
 function populateSettingsEmail() {
+    syncSettingsEmailRowUi();
     var input = document.getElementById('settings-tester-email');
     if (!input) return;
     var current = getCurrentUserEmail();
-    if (current && !input.value) input.value = current;
+    input.value = current || '';
     _updateSettingsEmailValidIcon();
+}
+
+function openSettingsEmailModal() {
+    var modal = document.getElementById('settings-email-modal');
+    if (!modal) return;
+    populateSettingsEmail();
+    modal.classList.add('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    var input = document.getElementById('settings-tester-email');
+    if (input) {
+        try { setTimeout(function() { input.focus(); input.select && input.select(); }, 50); } catch (e) {}
+    }
+}
+
+function closeSettingsEmailModal(event) {
+    if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+    var modal = document.getElementById('settings-email-modal');
+    if (modal) modal.classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
 async function saveSettingsEmail() {
@@ -1687,7 +1961,7 @@ async function saveSettingsEmail() {
     if (!input) return;
     var value = sanitizeSingleEmailInputValue(input.value);
     input.value = value;
-    var validationCode = getEmailValidationErrorCode(value, false);
+    var validationCode = getEmailValidationErrorCode(value, true);
     if (validationCode) {
         if (typeof window.showToast === 'function') window.showToast(getEmailValidationMessage(validationCode));
         try { input.focus(); } catch (e) {}
@@ -1697,7 +1971,9 @@ async function saveSettingsEmail() {
     var res = await saveTesterEmail(value);
     if (btn) btn.classList.remove('is-loading');
     if (res && res.ok) {
+        syncSettingsEmailRowUi();
         _updateSettingsEmailValidIcon();
+        closeSettingsEmailModal();
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         if (typeof window.showToast === 'function') window.showToast(window.t('settingsEmailSaved', {}, lang));
     } else {
@@ -1705,6 +1981,32 @@ async function saveSettingsEmail() {
         if (!errorMessage) {
             errorMessage = getEmailValidationMessage(res && res.code);
         }
+        if (!errorMessage) {
+            errorMessage = window.t('emailSaveFailed', {}, lang);
+        }
+        if (typeof window.showToast === 'function') window.showToast(errorMessage);
+    }
+}
+
+async function deleteSettingsEmail() {
+    var btn = document.getElementById('settings-email-delete');
+    var input = document.getElementById('settings-tester-email');
+    if (!getCurrentUserEmail()) {
+        syncSettingsEmailRowUi();
+        return;
+    }
+    if (btn) btn.classList.add('is-loading');
+    var res = await saveTesterEmail('');
+    if (btn) btn.classList.remove('is-loading');
+    if (res && res.ok) {
+        if (input) input.value = '';
+        syncSettingsEmailRowUi();
+        _updateSettingsEmailValidIcon();
+        closeSettingsEmailModal();
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (typeof window.showToast === 'function') window.showToast(window.t('settingsEmailDeleted', {}, lang));
+    } else {
+        var errorMessage = String(res && res.message || '').trim();
         if (!errorMessage) {
             errorMessage = window.t('emailSaveFailed', {}, lang);
         }
@@ -1755,6 +2057,28 @@ async function fetchOfferEmailPreview(targetAppId, proposerAppId) {
         return { ok: true, emails: Array.isArray(result.emails) ? result.emails.filter(Boolean) : [] };
     } catch (error) {
         console.warn('Offer email preview failed:', error);
+        return { ok: false, emails: [], code: 'network_error' };
+    }
+}
+
+async function fetchBountyApplicationEmailPreview(applicationId) {
+    try {
+        var payload = typeof withInitData === 'function'
+            ? withInitData({ user_id: Number(userId || 0) || 0 })
+            : { user_id: Number(userId || 0) || 0, init_data: (tg && tg.initData) || '' };
+        var response = await fetch(`${API_BASE}/bounty-applications/${Number(applicationId)}/email-preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        var result = null;
+        try { result = await response.json(); } catch (e) { result = null; }
+        if (!response.ok || !result || result.status !== 'success') {
+            return { ok: false, emails: [], code: getBackendErrorCode(result) || 'database_error' };
+        }
+        return { ok: true, emails: Array.isArray(result.emails) ? result.emails.filter(Boolean) : [] };
+    } catch (error) {
+        console.warn('Bounty application email preview failed:', error);
         return { ok: false, emails: [], code: 'network_error' };
     }
 }
@@ -1810,116 +2134,344 @@ function refreshMarketAfterMassInvite() {
 var MassInviteProgressOverlay = (function () {
     var _rotateInterval = null;
     var _longTimer = null;
+    var _returnTimer = null;
+    var _autoCloseInterval = null;
+    var _autoCloseEndsAt = 0;
     var _currentIndex = 0;
-    var STATUS_KEYS = [
+    var _phase = 'collecting';
+    var _sourceAppId = 0;
+    var RESULT_AUTO_CLOSE_MS = 120000;
+    var COLLECT_STATUS_KEYS = [
         'massInviteProgressStatus1',
         'massInviteProgressStatus2',
         'massInviteProgressStatus3',
-        'massInviteProgressStatus4',
-        'massInviteProgressStatus5',
     ];
 
-    function _setStatus(text) {
+    function _t(key, params, currentLang) {
+        if (window.t) return window.t(key, params || {}, currentLang || lang);
+        return key;
+    }
+
+    function _formatAutoClose(ms) {
+        var totalSec = Math.max(0, Math.ceil(ms / 1000));
+        var mins = Math.floor(totalSec / 60);
+        var secs = totalSec % 60;
+        return mins + ':' + (secs < 10 ? '0' : '') + secs;
+    }
+
+    function _setAutoCloseVisible(visible, currentLang) {
+        var box = document.getElementById('mi-auto-close');
+        var labelEl = document.getElementById('mi-auto-close-label');
+        var timeEl = document.getElementById('mi-auto-close-time');
+        if (!box) return;
+        if (!visible) {
+            box.hidden = true;
+            if (timeEl) timeEl.textContent = '';
+            return;
+        }
+        box.hidden = false;
+        if (labelEl) labelEl.textContent = _t('massInviteAutoCloseHint', {}, currentLang);
+        if (timeEl) timeEl.textContent = _formatAutoClose(_autoCloseEndsAt - Date.now());
+    }
+
+    function _clearAutoClose() {
+        if (_autoCloseInterval !== null) {
+            clearInterval(_autoCloseInterval);
+            _autoCloseInterval = null;
+        }
+        _autoCloseEndsAt = 0;
+        _setAutoCloseVisible(false);
+    }
+
+    function _startAutoClose(currentLang) {
+        _clearAutoClose();
+        _autoCloseEndsAt = Date.now() + RESULT_AUTO_CLOSE_MS;
+        _setAutoCloseVisible(true, currentLang);
+        _autoCloseInterval = setInterval(function () {
+            var remaining = _autoCloseEndsAt - Date.now();
+            var timeEl = document.getElementById('mi-auto-close-time');
+            if (timeEl) timeEl.textContent = _formatAutoClose(remaining);
+            if (remaining <= 0) {
+                finishAndReturn();
+            }
+        }, 250);
+    }
+
+    function _clearTimers() {
+        if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
+        if (_longTimer !== null) { clearTimeout(_longTimer); _longTimer = null; }
+        if (_returnTimer !== null) { clearTimeout(_returnTimer); _returnTimer = null; }
+        _clearAutoClose();
+    }
+
+    function _setStatus(text, fade) {
         var el = document.getElementById('mi-progress-status');
         if (!el) return;
+        if (fade === false) {
+            el.textContent = text;
+            el.classList.remove('mi-progress-status--fade');
+            return;
+        }
         el.classList.add('mi-progress-status--fade');
         setTimeout(function () {
             el.textContent = text;
             el.classList.remove('mi-progress-status--fade');
-        }, 300);
+        }, 220);
     }
 
-    function show(lang) {
+    function _setResultHero(visible, payload) {
+        var hero = document.getElementById('mi-result-hero');
+        if (!hero) return;
+        if (!visible) {
+            hero.hidden = true;
+            hero.classList.remove('is-visible', 'is-empty');
+            return;
+        }
+        var data = payload || {};
+        var countEl = document.getElementById('mi-result-count');
+        var labelEl = document.getElementById('mi-result-label');
+        var metaEl = document.getElementById('mi-result-meta');
+        var isEmpty = !!data.empty;
+        hero.hidden = false;
+        hero.classList.add('is-visible');
+        hero.classList.toggle('is-empty', isEmpty);
+        if (countEl) countEl.textContent = isEmpty ? '—' : String(data.sentCount != null ? data.sentCount : 0);
+        if (labelEl) {
+            labelEl.textContent = isEmpty
+                ? _t('massInviteResultEmpty', {}, data.lang)
+                : _t('massInviteResultSentLabel', {}, data.lang);
+        }
+        if (metaEl) {
+            if (!isEmpty && Number(data.failedCount || 0) > 0) {
+                metaEl.textContent = _t('massInviteResultFailedMeta', { count: data.failedCount }, data.lang);
+            } else if (!isEmpty) {
+                metaEl.textContent = _t('massInvitePhaseResultSubtitle', {}, data.lang);
+            } else {
+                metaEl.textContent = '';
+            }
+        }
+    }
+
+    function setPhase(phase, currentLang) {
+        var next = String(phase || 'collecting');
+        _phase = next;
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (overlay) overlay.setAttribute('data-phase', next);
+
+        var titleEl = document.getElementById('t-miProgressTitle');
+        var subEl = document.getElementById('t-miProgressSubtitle');
+        var spinner = document.querySelector('#mass-invite-progress-overlay .mi-progress-spinner');
+        var closeBtn = document.getElementById('mi-progress-close-btn');
+
+        if (next === 'collecting') {
+            if (titleEl) titleEl.textContent = _t('massInvitePhaseCollectTitle', {}, currentLang);
+            if (subEl) subEl.textContent = _t('massInvitePhaseCollectSubtitle', {}, currentLang);
+            if (spinner) spinner.style.display = 'block';
+            _setResultHero(false);
+            if (closeBtn) closeBtn.style.display = 'none';
+            enableCandidateInteraction(false);
+        } else if (next === 'sending') {
+            if (titleEl) titleEl.textContent = _t('massInvitePhaseSendTitle', {}, currentLang);
+            if (subEl) subEl.textContent = _t('massInvitePhaseSendSubtitle', {}, currentLang);
+            if (spinner) spinner.style.display = 'none';
+            _setResultHero(false);
+            if (closeBtn) closeBtn.style.display = 'none';
+            enableCandidateInteraction(false);
+            if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
+            if (_longTimer !== null) { clearTimeout(_longTimer); _longTimer = null; }
+            var longNotice = document.getElementById('mi-progress-long-notice');
+            if (longNotice) longNotice.classList.remove('mi-progress-long-notice--visible');
+        } else if (next === 'result') {
+            if (titleEl) titleEl.textContent = _t('massInvitePhaseResultTitle', {}, currentLang);
+            if (subEl) subEl.textContent = _t('massInvitePhaseResultSubtitle', {}, currentLang);
+            if (spinner) spinner.style.display = 'none';
+            if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
+            if (_longTimer !== null) { clearTimeout(_longTimer); _longTimer = null; }
+            var longNotice2 = document.getElementById('mi-progress-long-notice');
+            if (longNotice2) longNotice2.classList.remove('mi-progress-long-notice--visible');
+        }
+    }
+
+    function show(currentLang) {
         var overlay = document.getElementById('mass-invite-progress-overlay');
         if (!overlay) return;
+        _clearTimers();
         _currentIndex = 0;
+        _sourceAppId = 0;
 
-        var spinner = document.querySelector('.mi-progress-spinner');
-        if (spinner) spinner.style.display = 'block';
-
-        var closeBtn = document.getElementById('mi-progress-close-btn');
-        if (closeBtn) closeBtn.style.display = 'none';
-
-        // Update static localised labels
-        var titleEl        = document.getElementById('t-miProgressTitle');
-        var subEl          = document.getElementById('t-miProgressSubtitle');
-        var noticeEl       = document.getElementById('t-miProgressLongNotice');
+        var noticeEl = document.getElementById('t-miProgressLongNotice');
         var noticeDetailEl = document.getElementById('t-miProgressLongNoticeDetail');
-        if (titleEl)        titleEl.textContent        = window.t('massInviteProgressTitle', {}, lang);
-        if (subEl)          subEl.textContent          = window.t('massInviteProgressSubtitle', {}, lang);
-        if (noticeEl)       noticeEl.textContent       = window.t('massInviteProgressLongNotice', {}, lang);
-        if (noticeDetailEl) noticeDetailEl.textContent = window.t('massInviteProgressLongNoticeDetail', {}, lang);
+        if (noticeEl) noticeEl.textContent = _t('massInviteProgressLongNotice', {}, currentLang);
+        if (noticeDetailEl) noticeDetailEl.textContent = _t('massInviteProgressLongNoticeDetail', {}, currentLang);
 
-        // Reset long-running notice
         var longNotice = document.getElementById('mi-progress-long-notice');
         if (longNotice) longNotice.classList.remove('mi-progress-long-notice--visible');
 
-        // Show first status immediately
-        var statusEl = document.getElementById('mi-progress-status');
-        if (statusEl) statusEl.textContent = window.t(STATUS_KEYS[0], {}, lang);
+        clearCandidates();
+        setPhase('collecting', currentLang);
+        _setStatus(_t(COLLECT_STATUS_KEYS[0], {}, currentLang), false);
 
-        // Activate overlay
         overlay.classList.add('active');
+        overlay.setAttribute('aria-busy', 'true');
 
-        // Rotate status messages every 2 s
         _rotateInterval = setInterval(function () {
-            _currentIndex = (_currentIndex + 1) % STATUS_KEYS.length;
-            _setStatus(window.t(STATUS_KEYS[_currentIndex], {}, lang));
-        }, 2000);
+            if (_phase !== 'collecting') return;
+            _currentIndex = (_currentIndex + 1) % COLLECT_STATUS_KEYS.length;
+            _setStatus(_t(COLLECT_STATUS_KEYS[_currentIndex], {}, currentLang));
+        }, 1800);
 
-        // Show long-running notice after 10 s
         _longTimer = setTimeout(function () {
+            if (_phase !== 'collecting') return;
             if (longNotice) longNotice.classList.add('mi-progress-long-notice--visible');
         }, 10000);
     }
 
     function hide() {
-        if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
-        if (_longTimer !== null)      { clearTimeout(_longTimer);       _longTimer = null; }
+        _clearTimers();
         var overlay = document.getElementById('mass-invite-progress-overlay');
-        if (overlay) overlay.classList.remove('active');
-        _currentIndex = 0;
-    }
-
-    function updateProgress(current, total, lang) {
-        if (_rotateInterval !== null) {
-            clearInterval(_rotateInterval);
-            _rotateInterval = null;
+        if (overlay) {
+            overlay.classList.remove('active');
+            overlay.setAttribute('aria-busy', 'true');
+            overlay.setAttribute('data-phase', 'collecting');
         }
-        var el = document.getElementById('mi-progress-status');
-        if (!el) return;
-        var text = lang === 'ru'
-            ? 'Отправка: ' + current + ' из ' + total + '...'
-            : 'Sending: ' + current + ' of ' + total + '...';
-        el.textContent = text;
+        clearCandidates();
+        _setResultHero(false);
+        var closeBtn = document.getElementById('mi-progress-close-btn');
+        if (closeBtn) closeBtn.style.display = 'none';
+        _currentIndex = 0;
+        _phase = 'collecting';
+        _sourceAppId = 0;
     }
 
-    function showFinalState(statusText, lang) {
-        if (_rotateInterval !== null) { clearInterval(_rotateInterval); _rotateInterval = null; }
-        if (_longTimer !== null)      { clearTimeout(_longTimer);       _longTimer = null; }
+    function scrollToOwner(ownerId) {
+        var strip = document.getElementById('mi-candidates-strip');
+        if (!strip) return;
+        strip.querySelectorAll('.mi-candidate-card.is-active-send').forEach(function (el) {
+            el.classList.remove('is-active-send');
+        });
+        var card = strip.querySelector('.mi-candidate-card[data-owner-id="' + String(ownerId) + '"]');
+        if (!card) return;
+        card.classList.add('is-active-send');
+        try {
+            card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        } catch (e) {
+            card.scrollIntoView();
+        }
+    }
 
-        var spinner = document.querySelector('.mi-progress-spinner');
-        if (spinner) spinner.style.display = 'none';
+    function updateProgress(current, total, currentLang) {
+        if (_phase !== 'sending') setPhase('sending', currentLang);
+        var text = _t('massInviteProgressSending', {
+            current: current,
+            total: total,
+        }, currentLang);
+        _setStatus(text, false);
+    }
 
-        var longNotice = document.getElementById('mi-progress-long-notice');
-        if (longNotice) longNotice.classList.remove('mi-progress-long-notice--visible');
-
-        var el = document.getElementById('mi-progress-status');
-        if (el) el.textContent = statusText;
-
-        var subEl = document.getElementById('t-miProgressSubtitle');
-        if (subEl) subEl.textContent = lang === 'ru' ? 'Выполнение завершено' : 'Process completed';
+    function showFinalState(statusText, currentLang, details) {
+        var info = details || {};
+        if (info.sourceAppId) _sourceAppId = Number(info.sourceAppId) || _sourceAppId;
+        setPhase('result', currentLang);
+        _setResultHero(true, {
+            sentCount: info.sentCount != null ? info.sentCount : 0,
+            failedCount: info.failedCount || 0,
+            empty: !!info.empty,
+            lang: currentLang,
+        });
+        _setStatus(statusText || _t('massInviteReturnHint', {}, currentLang), false);
+        enableCandidateInteraction(true);
 
         var closeBtn = document.getElementById('mi-progress-close-btn');
         if (closeBtn) {
             closeBtn.style.display = 'block';
-            closeBtn.textContent = lang === 'ru' ? 'Закрыть' : 'Close';
+            closeBtn.textContent = _t('inviteClose', {}, currentLang);
+        }
+
+        // Keep result phase open with a clear 2-minute auto-close countdown.
+        // Waiting is optional — blast is already finished.
+        if (info.autoReturn !== false) {
+            _startAutoClose(currentLang);
         }
     }
 
-    return { show: show, hide: hide, updateProgress: updateProgress, showFinalState: showFinalState };
+    function finishAndReturn() {
+        if (_returnTimer !== null) {
+            clearTimeout(_returnTimer);
+            _returnTimer = null;
+        }
+        _clearAutoClose();
+        var projectId = _sourceAppId;
+        hide();
+        // Prefer refreshing the mass-invite modal if it is still open.
+        var modal = document.getElementById('mass-invite-modal');
+        if (modal && modal.classList.contains('active') && typeof renderMassInviteModalContent === 'function') {
+            renderMassInviteModalContent();
+            return;
+        }
+        if (projectId && typeof openMassInviteModal === 'function') {
+            openMassInviteModal(projectId);
+        }
+    }
+
+    function clearCandidates() {
+        var strip = document.getElementById('mi-candidates-strip');
+        if (typeof MassInviteCards !== 'undefined' && MassInviteCards.mountStrip) {
+            MassInviteCards.mountStrip(strip, [], {});
+        } else if (strip) {
+            strip.innerHTML = '';
+            strip.hidden = true;
+            strip.classList.remove('is-visible');
+        }
+        var card = document.querySelector('#mass-invite-progress-overlay .mi-progress-card');
+        if (card) card.classList.remove('has-candidates');
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (overlay) overlay.setAttribute('aria-busy', 'true');
+    }
+
+    function setCandidates(candidates, sourceAppId, options) {
+        var opts = options || {};
+        _sourceAppId = Number(sourceAppId || 0);
+        var strip = document.getElementById('mi-candidates-strip');
+        if (!strip || typeof MassInviteCards === 'undefined') return;
+        var list = candidates || [];
+        if (list.length && _phase === 'collecting') setPhase('sending', opts.lang || lang);
+        MassInviteCards.mountStrip(strip, list, {
+            sourceAppId: sourceAppId,
+            interactive: !!opts.interactive,
+            lang: opts.lang || lang,
+        });
+    }
+
+    function setCandidateStatus(ownerId, status) {
+        var strip = document.getElementById('mi-candidates-strip');
+        if (!strip || typeof MassInviteCards === 'undefined') return false;
+        var ok = MassInviteCards.updateCardStatus(strip, ownerId, status);
+        if (String(status) === 'sending') scrollToOwner(ownerId);
+        return ok;
+    }
+
+    function enableCandidateInteraction(enabled) {
+        var strip = document.getElementById('mi-candidates-strip');
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (overlay) overlay.setAttribute('aria-busy', enabled ? 'false' : 'true');
+        if (!strip || typeof MassInviteCards === 'undefined') return;
+        MassInviteCards.setInteractive(strip, !!enabled);
+    }
+
+    return {
+        show: show,
+        hide: hide,
+        setPhase: setPhase,
+        updateProgress: updateProgress,
+        showFinalState: showFinalState,
+        setCandidates: setCandidates,
+        setCandidateStatus: setCandidateStatus,
+        clearCandidates: clearCandidates,
+        enableCandidateInteraction: enableCandidateInteraction,
+        finishAndReturn: finishAndReturn,
+        scrollToOwner: scrollToOwner,
+    };
 }());
-// ──────────────────────────────────────────────────────────────
 
 async function startMassInvite(projectId) {
     if (!projectId) return null;
@@ -1945,7 +2497,7 @@ async function startMassInvite(projectId) {
         var planResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/plan`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: Number(userId) })
+            body: JSON.stringify(withInitData({ owner_id: Number(userId) }))
         });
         var planData = await planResponse.json();
         if (!planResponse.ok || planData.status !== 'success') {
@@ -1958,11 +2510,22 @@ async function startMassInvite(projectId) {
         var candidates = planData.candidates || [];
         var totalCount = candidates.length;
 
+        if (typeof MassInviteSession !== 'undefined') {
+            MassInviteSession.createFromPlan(projectId, candidates);
+        }
+
         if (totalCount === 0) {
-            var noCandidatesText = lang === 'ru' ? 'Кандидатов не найдено' : 'No candidates found';
-            MassInviteProgressOverlay.showFinalState(noCandidatesText, lang);
+            var noCandidatesText = (window.t ? window.t('massInviteNoCandidates', {}, lang) : 'No candidates found');
+            MassInviteProgressOverlay.showFinalState(noCandidatesText, lang, { empty: true, sentCount: 0, failedCount: 0, sourceAppId: projectId });
             await loadProjects(true);
             return planData;
+        }
+
+        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidates) {
+            MassInviteProgressOverlay.setCandidates(candidates, projectId, { interactive: false, lang: lang });
+        }
+        if (typeof MassInviteProgressOverlay.setPhase === 'function') {
+            MassInviteProgressOverlay.setPhase('sending', lang);
         }
 
         var successCount = 0;
@@ -1971,27 +2534,83 @@ async function startMassInvite(projectId) {
         for (var i = 0; i < totalCount; i++) {
             var candidate = candidates[i];
             MassInviteProgressOverlay.updateProgress(i + 1, totalCount, lang);
+            if (typeof MassInviteSession !== 'undefined') {
+                MassInviteSession.markSending(projectId, candidate.owner_id);
+            }
+            if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'sending');
+            }
             await new Promise(function(resolve) { setTimeout(resolve, 150); });
 
             try {
                 var sendResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/send_one`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: JSON.stringify(withInitData({
                         owner_id: Number(userId),
                         target_app_id: Number(candidate.app_id),
                         target_owner_id: Number(candidate.owner_id)
-                    })
+                    }))
                 });
                 var sendData = await sendResponse.json();
                 if (sendResponse.ok && sendData.status === 'success' && sendData.sent) {
                     successCount++;
+                    if (typeof MassInviteSession !== 'undefined') {
+                        MassInviteSession.markSent(projectId, candidate.owner_id, {
+                            offer_id: sendData.offer_id,
+                            outcome: sendData.outcome || 'pending'
+                        });
+                    }
+                    if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                        if (sendData.outcome === 'auto_accepted') {
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'accepted');
+                        } else {
+                            // Brief green "delivered" flash, then yellow waiting ring.
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'delivered');
+                            (function (ownerId) {
+                                setTimeout(function () {
+                                    MassInviteProgressOverlay.setCandidateStatus(ownerId, 'sent');
+                                }, 700);
+                            })(candidate.owner_id);
+                        }
+                    }
                 } else {
-                    failedCount++;
+                    var skipCode = String((sendData && sendData.code) || (sendData && sendData.outcome) || '');
+                    var isAccessIssue = skipCode === 'owner_has_access_issue'
+                        || skipCode === 'target_owner_has_access_issue'
+                        || skipCode === 'access_issue'
+                        || (sendData && sendData.outcome === 'access_issue');
+                    if (isAccessIssue) {
+                        // Soft skip: warn in UI, keep blast running.
+                        if (typeof MassInviteSession !== 'undefined') {
+                            if (MassInviteSession.markAccessIssue) {
+                                MassInviteSession.markAccessIssue(projectId, candidate.owner_id, skipCode || 'access_issue');
+                            } else {
+                                MassInviteSession.markFailed(projectId, candidate.owner_id, skipCode || 'access_issue');
+                            }
+                        }
+                        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'access_issue');
+                        }
+                    } else {
+                        failedCount++;
+                        if (typeof MassInviteSession !== 'undefined') {
+                            MassInviteSession.markFailed(projectId, candidate.owner_id, sendData && sendData.code);
+                        }
+                        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
+                        }
+                    }
                 }
             } catch (err) {
                 console.error('Failed sending single mass invite:', err);
                 failedCount++;
+                if (typeof MassInviteSession !== 'undefined') {
+                    MassInviteSession.markFailed(projectId, candidate.owner_id, 'network_error');
+                }
+                if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                    MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
+                }
             }
         }
 
@@ -2002,10 +2621,10 @@ async function startMassInvite(projectId) {
                 var finResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/finalize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: JSON.stringify(withInitData({
                         owner_id: Number(userId),
                         sent_count: Number(successCount)
-                    })
+                    }))
                 });
                 var finData = await finResponse.json();
                 if (finResponse.ok && finData.status === 'success') {
@@ -2013,6 +2632,12 @@ async function startMassInvite(projectId) {
                 }
             } catch (err) {
                 console.error('Failed finalising mass invite stats:', err);
+            }
+            if (typeof MassInviteSession !== 'undefined') {
+                MassInviteSession.finalize(projectId, {
+                    sent_at: lastMassInviteAt || new Date().toISOString(),
+                    sent_count: successCount
+                });
             }
         }
 
@@ -2026,20 +2651,19 @@ async function startMassInvite(projectId) {
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
-        var finalStatusText = '';
-        if (lang === 'ru') {
-            finalStatusText = 'Отправлено: ' + successCount;
-            if (failedCount > 0) {
-                finalStatusText += ' • Ошибок: ' + failedCount;
-            }
-        } else {
-            finalStatusText = 'Sent: ' + successCount;
-            if (failedCount > 0) {
-                finalStatusText += ' • Failed: ' + failedCount;
-            }
+        var finalStatusText = window.t
+            ? window.t('massInviteLaunchSuccess', { count: successCount }, lang)
+            : ('Sent: ' + successCount);
+        if (failedCount > 0 && window.t) {
+            finalStatusText += ' · ' + window.t('massInviteResultFailedMeta', { count: failedCount }, lang);
         }
-
-        MassInviteProgressOverlay.showFinalState(finalStatusText, lang);
+        MassInviteProgressOverlay.showFinalState(finalStatusText, lang, {
+            sentCount: successCount,
+            failedCount: failedCount,
+            empty: successCount <= 0,
+            autoReturn: true,
+            sourceAppId: projectId
+        });
 
         if (successCount > 0) {
             renderProjects(true);
@@ -2086,7 +2710,7 @@ async function resetMassInviteCooldown(projectId) {
         var response = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/reset_cooldown`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId })
+            body: JSON.stringify(withInitData({ owner_id: userId }))
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2143,7 +2767,7 @@ async function joinDirect(appId) {
         const response = await fetch(`${API_BASE}/feed/mutual/${appId}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId, allow_over_limit: false, join_type: 'direct' })
+            body: JSON.stringify(withInitData({ tester_id: userId, allow_over_limit: false, join_type: 'direct' }))
         });
         const result = await response.json();
         if (result.status !== 'success') {
@@ -2196,7 +2820,7 @@ async function joinMutual(appId, allowOverLimit = false) {
         const response = await fetch(`${API_BASE}/feed/mutual/${appId}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId, allow_over_limit: allowOverLimit })
+            body: JSON.stringify(withInitData({ tester_id: userId, allow_over_limit: allowOverLimit }))
         });
         const result = await response.json();
         if (result.status !== 'success') {
@@ -2231,70 +2855,456 @@ async function joinMutual(appId, allowOverLimit = false) {
     }
 }
 
-async function joinBounty(appId) {
+var _pendingJoinBountyAppId = null;
+var _joinBountyContextByApp = {};
+
+function registerJoinBountyContext(item) {
+    if (!item) return;
+    var appId = Number(item.app_id != null ? item.app_id : item.id) || 0;
+    if (appId <= 0) return;
+    _joinBountyContextByApp[appId] = {
+        app_id: appId,
+        name: item.name || '',
+        package_name: item.package_name || item.package || '',
+        icon_url: item.icon_url || '',
+        bounty_per_tester: Number(item.bounty_per_tester || 0),
+        test_mode: item.test_mode || item.testing_mode || '',
+        is_email_test: !!item.is_email_test,
+    };
+}
+
+function _findJoinBountyContract(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return null;
+    var candidate = null;
+    if (typeof _findFeedItemForOptimisticJoin === 'function') {
+        candidate = _findFeedItemForOptimisticJoin(normalizedId);
+    }
+    if ((!candidate || !Number(candidate.bounty_per_tester)) && Array.isArray(bountyContracts)) {
+        var fromPool = bountyContracts.find(function(item) {
+            return Number(item && item.app_id) === normalizedId;
+        });
+        if (fromPool) candidate = fromPool;
+    }
+    var ctx = _joinBountyContextByApp[normalizedId];
+    if (ctx) {
+        if (!candidate) {
+            candidate = ctx;
+        } else {
+            candidate = Object.assign({}, candidate, {
+                bounty_per_tester: Number(candidate.bounty_per_tester) || Number(ctx.bounty_per_tester) || 0,
+                name: candidate.name || ctx.name,
+                package_name: candidate.package_name || ctx.package_name,
+                icon_url: candidate.icon_url || ctx.icon_url,
+                test_mode: candidate.test_mode || ctx.test_mode,
+                is_email_test: !!(candidate.is_email_test || ctx.is_email_test),
+            });
+        }
+    }
+    return candidate;
+}
+
+function _buildJoinBountyGrantPreviewHtml(grant) {
+    grant = grant || (typeof getGrantEstimateData === 'function'
+        ? getGrantEstimateData({ skips_count: 0, daily_timeline: '' })
+        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, eligible: true, total: 100 });
+    var formatAmount = typeof formatBustAmount === 'function'
+        ? formatBustAmount
+        : function(value) { return String(value) + ' $BUST'; };
+    var currentSkips = Math.max(0, Number(grant.skips || 0));
+    var eligible = grant.eligible !== false && currentSkips <= 3;
+    var skipIndicator = typeof buildGrantSkipDots === 'function'
+        ? buildGrantSkipDots(currentSkips)
+        : Array.from({ length: 3 }, function(_, index) {
+            if (index === 0) return currentSkips > 0 ? '<span class="skip-dot used"></span>' : '<span class="skip-dot available"></span>';
+            if (index === 1) return currentSkips > 1 ? '<span class="skip-dot used"></span>' : '<span class="skip-dot available"></span>';
+            if (currentSkips === 3) return '<span class="skip-dot warning" title="3-й пропуск">⚠️</span>';
+            if (currentSkips >= 4) return '<span class="skip-dot used"></span>';
+            return '<span class="skip-dot available"></span>';
+        }).join('');
+    var T = function(key, vars) {
+        return window.t(key, vars || {}, lang) || key;
+    };
+    var esc = function(value) {
+        return typeof window.escapeHTML === 'function' ? window.escapeHTML(value) : String(value || '');
+    };
+
+    if (!eligible) {
+        return '<div class="grant-dashboard-block grant-dashboard-block-lost">' +
+            '<div class="grant-dashboard-header">' +
+                '<div class="grant-dashboard-heading">' +
+                    '<div class="grant-dashboard-title">' + esc(T('grantGoldTesterTitle')) + '</div>' +
+                    '<div class="grant-dashboard-subtitle">' + esc(T('grantLostLabel')) + '</div>' +
+                '</div>' +
+                '<div class="grant-dashboard-total notranslate">' + esc(T('grantTotalEstimateValue', { amount: formatAmount(0) })) + '</div>' +
+            '</div>' +
+            '<div class="grant-dashboard-skips-row">' +
+                '<span class="grant-skip-text">' + esc(T('grantSkipsLabel', { used: currentSkips, max: 3 })) + '</span>' +
+                '<span class="grant-dashboard-skips">' + skipIndicator + '</span>' +
+            '</div>' +
+            '<div class="grant-reward-grid grant-reward-grid-lost">' +
+                '<div class="grant-reward-card grant-reward-card-burned">' +
+                    '<div class="grant-reward-label">' + esc(T('grantBaseLabel')) + '</div>' +
+                    '<div class="grant-reward-value notranslate"><span class="grant-burned-text">' + esc(T('grantBaseValue', { amount: formatAmount(grant.base || 50) })) + '</span></div>' +
+                    '<div class="grant-reward-status is-burned">' + esc(T('grantCardBurned')) + '</div>' +
+                '</div>' +
+                '<div class="grant-reward-card grant-reward-card-burned">' +
+                    '<div class="grant-reward-label">' + esc(T('grantPerfectLabel')) + '</div>' +
+                    '<div class="grant-reward-value notranslate"><span class="grant-burned-text">' + esc(T('grantPerfectValue', { amount: formatAmount(50) })) + '</span></div>' +
+                    '<div class="grant-reward-status is-burned">' + esc(T('grantCardBurned')) + '</div>' +
+                '</div>' +
+                '<div class="grant-reward-card grant-reward-card-burned">' +
+                    '<div class="grant-reward-label">' + esc(T('grantKarmaBonusLabel')) + '</div>' +
+                    '<div class="grant-reward-value notranslate"><span class="grant-burned-text">' + esc(T('grantKarmaValue', { amount: formatAmount(grant.karmaBonus || 0) })) + '</span></div>' +
+                    '<div class="grant-reward-status is-burned">' + esc(T('grantCardBurned')) + '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="join-bounty-confirm-grant-note">' + esc(T('joinBountyGrantNote')) + '</div>' +
+        '</div>';
+    }
+
+    var perfectBurned = currentSkips > 0;
+    var perfectValueLabel = T('grantPerfectValue', { amount: formatAmount(50) });
+    var perfectValueHtml = perfectBurned
+        ? '<span class="grant-burned-text">' + esc(perfectValueLabel) + '</span>'
+        : esc(perfectValueLabel);
+
+    return '<div class="grant-dashboard-block">' +
+        '<div class="grant-dashboard-header">' +
+            '<div class="grant-dashboard-heading">' +
+                '<div class="grant-dashboard-title">' + esc(T('grantGoldTesterTitle')) + '</div>' +
+                '<div class="grant-dashboard-subtitle">' + esc(T('joinBountyGrantSubtitle')) + '</div>' +
+            '</div>' +
+            '<div class="grant-dashboard-total notranslate">' + esc(T('grantTotalEstimateValue', { amount: formatAmount(grant.total) })) + '</div>' +
+        '</div>' +
+        '<div class="grant-dashboard-skips-row">' +
+            '<span class="grant-skip-text">' + esc(T('grantSkipsLabel', { used: currentSkips, max: 3 })) + '</span>' +
+            '<span class="grant-dashboard-skips">' + skipIndicator + '</span>' +
+        '</div>' +
+        '<div class="grant-reward-grid">' +
+            '<div class="grant-reward-card">' +
+                '<div class="grant-reward-label">' + esc(T('grantBaseLabel')) + '</div>' +
+                '<div class="grant-reward-value notranslate">' + esc(T('grantBaseValue', { amount: formatAmount(grant.base || 50) })) + '</div>' +
+                '<div class="grant-reward-status is-active">' + esc(T('grantCardActive')) + '</div>' +
+            '</div>' +
+            '<div class="grant-reward-card' + (perfectBurned ? ' grant-reward-card-burned' : '') + '">' +
+                '<div class="grant-reward-label">' + esc(T('grantPerfectLabel')) + '</div>' +
+                '<div class="grant-reward-value notranslate">' + perfectValueHtml + '</div>' +
+                '<div class="grant-reward-status ' + (perfectBurned ? 'is-burned' : 'is-active') + '">' +
+                    esc(T(perfectBurned ? 'grantCardBurned' : 'grantCardActive')) +
+                '</div>' +
+            '</div>' +
+            '<div class="grant-reward-card">' +
+                '<div class="grant-reward-label">' + esc(T('grantKarmaBonusLabel')) + '</div>' +
+                '<div class="grant-reward-value notranslate">' + esc(T('grantKarmaValue', { amount: formatAmount(grant.karmaBonus || 0) })) + '</div>' +
+                '<div class="grant-reward-status is-active">' + esc(T('grantCardActive')) + '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="join-bounty-confirm-grant-note">' + esc(T('joinBountyGrantNote')) + '</div>' +
+    '</div>';
+}
+window._buildJoinBountyGrantPreviewHtml = _buildJoinBountyGrantPreviewHtml;
+
+function openJoinBountyConfirmModal(appId) {
     if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
         return;
     }
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0) return;
+
+    var contract = _findJoinBountyContract(normalizedId) || { app_id: normalizedId };
+    var bounty = Number(contract.bounty_per_tester || 0);
+    var checkinsReward = Math.round(bounty * 0.65);
+    var holdReward = Math.round(bounty * 0.35);
+    var formatAmount = typeof formatBustAmount === 'function'
+        ? formatBustAmount
+        : function(value) { return String(value) + ' $BUST'; };
+    var T = function(key, vars) {
+        return window.t(key, vars || {}, lang) || key;
+    };
+
+    _pendingJoinBountyAppId = normalizedId;
+
+    var projectEl = document.getElementById('join-bounty-confirm-project');
+    if (projectEl) {
+        var safeName = (typeof window.escapeHTML === 'function'
+            ? window.escapeHTML(contract.name || T('unknownLabel'))
+            : String(contract.name || ''));
+        var safePackage = (typeof window.escapeHTML === 'function'
+            ? window.escapeHTML(contract.package_name || '')
+            : String(contract.package_name || ''));
+        var iconHtml = typeof renderIcon === 'function'
+            ? renderIcon(contract.name || '', contract.icon_url)
+            : '';
+        projectEl.innerHTML = iconHtml +
+            '<div class="card-info">' +
+                '<div class="card-title notranslate">' + safeName + '</div>' +
+                (safePackage ? '<div class="card-subtitle notranslate">' + safePackage + '</div>' : '') +
+            '</div>';
+    }
+
+    var totalEl = document.getElementById('join-bounty-confirm-total');
+    if (totalEl) totalEl.textContent = formatAmount(bounty);
+    var totalCompactEl = document.getElementById('join-bounty-confirm-total-compact');
+    if (totalCompactEl) totalCompactEl.textContent = formatAmount(bounty);
+    var checkinsEl = document.getElementById('join-bounty-confirm-checkins');
+    if (checkinsEl) checkinsEl.textContent = formatAmount(checkinsReward);
+    var holdEl = document.getElementById('join-bounty-confirm-hold');
+    if (holdEl) holdEl.textContent = formatAmount(holdReward);
+
+    var grant = typeof getGrantEstimateData === 'function'
+        ? getGrantEstimateData({ skips_count: 0, daily_timeline: '' })
+        : { base: 50, karmaBonus: 0, perfectBonus: 50, skips: 0, total: 100 };
+    var grantTotal = Number(grant.total || 0);
+    var grandTotal = bounty + grantTotal;
+
+    var grantEl = document.getElementById('join-bounty-confirm-grant');
+    if (grantEl) grantEl.innerHTML = _buildJoinBountyGrantPreviewHtml(grant);
+    var grantCompactEl = document.getElementById('join-bounty-confirm-grant-compact');
+    if (grantCompactEl) grantCompactEl.textContent = '~' + formatAmount(grantTotal);
+
+    var grandTotalEl = document.getElementById('join-bounty-confirm-grand-total');
+    if (grandTotalEl) grandTotalEl.textContent = '~' + formatAmount(grandTotal);
+    var breakdownEl = document.getElementById('join-bounty-confirm-total-breakdown');
+    if (breakdownEl) {
+        breakdownEl.innerHTML =
+            T('joinBountyContractPart') + ' <span class="jb-total-part notranslate">' + formatAmount(bounty) + '</span>' +
+            ' + ' +
+            T('joinBountyGrantPart') + ' <span class="jb-total-part notranslate">~' + formatAmount(grantTotal) + '</span>';
+    }
+
+    var ownerAccordion = document.getElementById('jb-owner-accordion');
+    if (ownerAccordion) ownerAccordion.open = false;
+    var grantAccordion = document.getElementById('jb-grant-accordion');
+    if (grantAccordion) grantAccordion.open = false;
+    [ownerAccordion, grantAccordion].forEach(function(el) {
+        if (!el || el.dataset.jbBound) return;
+        el.dataset.jbBound = '1';
+        el.addEventListener('toggle', function() {
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        });
+    });
+
+    var setText = function(selector, key) {
+        var el = document.querySelector(selector);
+        if (el) el.textContent = T(key);
+    };
+    setText('#join-bounty-confirm-title', 'joinBountyConfirmTitle');
+    setText('#join-bounty-confirm-intro', 'joinBountyConfirmIntro');
+    setText('#join-bounty-confirm-modal .jb-total-label', 'joinBountyTotalLabel');
+    setText('#jb-owner-accordion .jb-accordion-title', 'joinBountyOwnerBlockTitle');
+    setText('#jb-owner-accordion .jb-accordion-sub', 'joinBountyOwnerCompactSub');
+    setText('#jb-grant-accordion .jb-accordion-title', 'joinBountyGrantBlockTitle');
+    setText('#jb-grant-accordion .jb-accordion-sub', 'joinBountyGrantCompactSub');
+    setText('#join-bounty-confirm-modal .join-bounty-reward-title', 'joinBountyRewardLabel');
+    setText('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyCheckinsLabel"]', 'joinBountyCheckinsLabel');
+    setText('#join-bounty-confirm-modal .join-bounty-reward-row span[data-i18n="joinBountyHoldLabel"]', 'joinBountyHoldLabel');
+    setText('#join-bounty-confirm-modal .join-bounty-reward-hint', 'joinBountyHoldAutoHint');
+    setText('#join-bounty-confirm-modal .join-bounty-confirm-warning span', 'bountyModalWarningText');
+    setText('#join-bounty-confirm-btn', 'joinBountyConfirmBtn');
+    setText('#join-bounty-confirm-cancel', 'btnCancel');
+
+    var modal = document.getElementById('join-bounty-confirm-modal');
+    if (modal) {
+        modal.classList.add('active');
+        if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    }
+}
+
+function closeJoinBountyConfirmModal(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    _pendingJoinBountyAppId = null;
+    var modal = document.getElementById('join-bounty-confirm-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function joinBounty(appId) {
+    var alreadyLabel = typeof getBountyAlreadyTestingBtnLabel === 'function'
+        ? getBountyAlreadyTestingBtnLabel(appId)
+        : '';
+    if (alreadyLabel) {
+        if (typeof showToast === 'function') showToast(alreadyLabel);
+        if (typeof renderBountyFeed === 'function') renderBountyFeed(true);
+        return;
+    }
+    var target = typeof _findJoinBountyContract === 'function' ? _findJoinBountyContract(appId) : null;
+    var targetIsEmailList = typeof _isDossierEmailTestProject === 'function'
+        ? _isDossierEmailTestProject(target)
+        : !!(target && String(target.test_mode || '').toLowerCase() === 'email_list');
+    var currentEmail = (typeof getCurrentUserEmail === 'function')
+        ? getCurrentUserEmail()
+        : String((window.App && window.App.userEmail) || '').trim();
+    if (targetIsEmailList && !currentEmail && typeof window.openEmailCollectModal === 'function') {
+        window.openEmailCollectModal({
+            title: window.t('emailGateOfferTitle', {}, lang),
+            text: window.t('emailGateOfferText', {}, lang),
+            primaryLabel: window.t('emailGateSaveContinue', {}, lang),
+            onSave: function() { joinBounty(appId); },
+        });
+        return;
+    }
+    openJoinBountyConfirmModal(appId);
+}
+
+async function confirmJoinBounty() {
+    var appId = Number(_pendingJoinBountyAppId || 0);
+    if (appId <= 0) return;
+    if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
+        closeJoinBountyConfirmModal();
+        return;
+    }
+
     var actionKey = 'joinBounty_' + appId;
     if (_pendingActions.has(actionKey)) return;
     _pendingActions.add(actionKey);
-    // Optimistic UI: remove card immediately, rollback on error
-    const rollback = [...bountyContracts];
-    bountyContracts = bountyContracts.filter(c => c.app_id !== appId);
-    renderBountyFeed();
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    if (typeof applyOptimisticMyTestJoin === 'function') {
-        applyOptimisticMyTestJoin(appId, { join_type: 'bounty', isBounty: true });
-    }
-    switchTab('tests');
+
+    closeJoinBountyConfirmModal();
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
     try {
         const response = await fetch(`${API_BASE}/feed/bounty/${appId}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId })
+            body: JSON.stringify(withInitData({ tester_id: userId }))
         });
         const result = await response.json();
         if (result.status !== 'success') {
-            bountyContracts = rollback;
-            renderBountyFeed();
-            if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
-            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            var joinCode = typeof getBackendErrorCode === 'function' ? getBackendErrorCode(result) : '';
+            if (joinCode === 'email_required' && typeof window.openEmailCollectModal === 'function') {
+                window.openEmailCollectModal({
+                    title: window.t('emailGateOfferTitle', {}, lang),
+                    text: window.t('emailGateOfferText', {}, lang),
+                    primaryLabel: window.t('emailGateSaveContinue', {}, lang),
+                    onSave: function() {
+                        _pendingJoinBountyAppId = appId;
+                        confirmJoinBounty();
+                    },
+                });
+                return;
+            }
+            handleApiError(joinCode, result && result.details ? result.details : {});
             return;
         }
+
+        // Owner must approve — application created, not yet joined.
+        if (result.pending_approval) {
+            bountyContracts = (bountyContracts || []).map(function(card) {
+                if (Number(card && card.app_id) !== appId) return card;
+                return Object.assign({}, card, { has_pending_bounty_application: true });
+            });
+            var cached = typeof getMarketCache === 'function' ? getMarketCache() : null;
+            if (cached && cached.bounty) {
+                cached.bounty.contracts = bountyContracts;
+                cached.ts = Date.now();
+                if (typeof setMarketCache === 'function') setMarketCache(cached);
+            }
+            if (typeof markBountyApplicationPendingUi === 'function') {
+                markBountyApplicationPendingUi(appId);
+            }
+            renderBountyFeed(true);
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            showToast(window.t('bountyAppSubmittedToast', {}, lang));
+            if (window._lastFetchTimes) window._lastFetchTimes.bounty = 0;
+            return;
+        }
+
+        // Auto-accepted or legacy instant join.
+        bountyContracts = (bountyContracts || []).filter(function(card) {
+            return Number(card && card.app_id) !== appId;
+        });
+        renderBountyFeed();
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        if (typeof applyOptimisticMyTestJoin === 'function') {
+            applyOptimisticMyTestJoin(appId, { join_type: 'bounty', isBounty: true });
+        }
+        if (result.auto_accepted) {
+            showToast(window.t('bountyAppAutoAcceptedToast', {}, lang));
+        }
+        switchTab('tests');
         if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
         else loadTasks(false);
         loadBountyFeed();
         loadProjects(true);
     } catch (error) {
         console.error('Join bounty error:', error);
-        bountyContracts = rollback;
-        renderBountyFeed();
-        if (typeof removeOptimisticMyTest === 'function') removeOptimisticMyTest(appId);
         if (tg.showAlert) tg.showAlert(t.networkError);
     } finally {
         _pendingActions.delete(actionKey);
     }
 }
 
-async function confirmDropTest() {
-    if (!_dropTestAppId) return;
+async function confirmDropTest(explicitAppId) {
+    var appId = Number(
+        explicitAppId ||
+        _dropTestAppId ||
+        (window._terminationState && window._terminationState.appId) ||
+        window._dropTestAppId ||
+        0
+    );
+    if (appId > 0) {
+        _dropTestAppId = appId;
+        window._dropTestAppId = appId;
+    }
+    if (!appId) {
+        console.warn('confirmDropTest: missing app id');
+        if (typeof showToast === 'function') showToast(window.t ? window.t('loadError', {}, lang) : 'Error');
+        return;
+    }
     try {
-        const response = await fetch(`${API_BASE}/tests/${_dropTestAppId}/drop`, {
+        const unlinkReciprocal = false;
+        const reasonCode = (typeof getTermReasonCode === 'function') ? getTermReasonCode() : '';
+        const reasonNote = (typeof getTermReasonNote === 'function') ? getTermReasonNote() : '';
+        const leaveReason = _buildLeaveReasonPayload(reasonCode, reasonNote);
+        const response = await fetch(`${API_BASE}/tests/${appId}/drop`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId })
+            body: JSON.stringify(withInitData({
+                tester_id: userId,
+                unlink_reciprocal: !!unlinkReciprocal,
+                leave_reason: leaveReason,
+            }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
             showToast(getApiErrorMessage(data, 'loadError'));
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: true });
+            }
             return;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        closeDropTestModal({ target: document.getElementById('drop-test-modal') });
+        const exitKind = String((data && data.exit_kind) || '');
+        const successKey = exitKind === 'invite_safe_exit'
+            ? 'termDropSuccessSafe'
+            : (exitKind === 'invite_costly_exit' ? 'termDropSuccessCostly' : 'termDropSuccess');
+        showToast(window.t(successKey, {}, lang));
+        if (typeof window.showTerminationResult === 'function') {
+            window.showTerminationResult({
+                mode: 'drop',
+                appId: appId,
+                unlinkReciprocal: false,
+                data: data,
+                test: (Array.isArray(myTests) ? myTests.find(function(t) { return Number(t.id || t.app_id || 0) === Number(appId); }) : null),
+            });
+        } else {
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: false });
+            }
+            if (typeof closeTerminationSheet === 'function') {
+                closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+            } else {
+                closeDropTestModal({ target: document.getElementById('drop-test-modal') });
+            }
+        }
         await Promise.all([loadTasks(), loadProjects(true)]);
     } catch (error) {
         console.error('Drop test error:', error);
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: true });
+        }
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }
@@ -2308,10 +3318,30 @@ function _buildLeaveReasonPayload(prefix, freeformText) {
     return safePrefix || safeFreeform;
 }
 
+function _formatKickReasonForNotify(prefix, freeformText) {
+    var safePrefix = String(prefix || '').trim();
+    var safeFreeform = String(freeformText || '').trim();
+    var labelKeyByCode = {
+        no_response: 'kickReasonNoResponse',
+        inactive: 'kickReasonInactivity',
+        violation: 'kickReasonViolation',
+        other: 'kickReasonOther',
+    };
+    var labelKey = labelKeyByCode[safePrefix] || '';
+    var label = labelKey ? window.t(labelKey, {}, lang) : safePrefix;
+    if (label && safeFreeform) {
+        return label + ': ' + safeFreeform;
+    }
+    return label || safeFreeform;
+}
+
 function _removeLocalTest(appId) {
     myTests = (myTests || []).filter(function(test) {
         return Number(test.id) !== Number(appId);
     });
+    if (typeof persistTestsCacheSnapshot === 'function') {
+        persistTestsCacheSnapshot();
+    }
 }
 
 function _handleInactiveCheckinCard(appId, errorCode) {
@@ -2346,26 +3376,59 @@ function _handleInactiveCheckinCard(appId, errorCode) {
 }
 
 function _removeLocalTesterFromProject(appId, testerId) {
+    var safeAppId = Number(appId || 0);
+    var safeTesterId = Number(testerId || 0);
+    if (safeAppId <= 0 || safeTesterId <= 0) return;
+
     var project = (myProjects || []).find(function(item) {
-        return Number(item.id) === Number(appId);
+        return Number(item && item.id) === safeAppId || Number(item && item.app_id) === safeAppId;
     });
     if (!project || !Array.isArray(project.testers)) {
         return;
     }
     project.testers = project.testers.filter(function(item) {
-        return Number(item.tester_id) !== Number(testerId);
+        return Number(item && item.tester_id) !== safeTesterId;
     });
+    if (typeof setProjectsCache === 'function' && typeof myProjects !== 'undefined') {
+        setProjectsCache({
+            projects: myProjects,
+            visibilityStats: (typeof visibilityStats !== 'undefined') ? visibilityStats : {},
+            ts: Date.now()
+        });
+    }
 }
 
-async function confirmLeaveMutual(isJustified) {
-    if (!_leaveMutualAppId) return;
+async function confirmLeaveMutual(isJustified, explicitAppId) {
+    var appId = Number(
+        explicitAppId ||
+        _leaveMutualAppId ||
+        (window._terminationState && window._terminationState.appId) ||
+        window._leaveMutualAppId ||
+        0
+    );
+    if (appId > 0) {
+        _leaveMutualAppId = appId;
+        window._leaveMutualAppId = appId;
+    }
+    if (!appId) {
+        console.warn('confirmLeaveMutual: missing app id');
+        if (typeof showToast === 'function') showToast(window.t ? window.t('loadError', {}, lang) : 'Error');
+        return;
+    }
 
-    var reasonSelect = document.getElementById('leave-reason-select');
-    var reasonOther = document.getElementById('leave-reason-other');
-    var reasonText = reasonSelect ? reasonSelect.value : '';
-    var reasonPayload = _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
-    var appId = _leaveMutualAppId;
+    var reasonCode = (typeof getTermReasonCode === 'function')
+        ? getTermReasonCode()
+        : '';
+    var reasonNote = (typeof getTermReasonNote === 'function')
+        ? getTermReasonNote()
+        : '';
+    var reasonSelect = document.getElementById('term-reason-select') || document.getElementById('leave-reason-select');
+    var reasonOther = document.getElementById('term-reason-other') || document.getElementById('leave-reason-other');
+    if (!reasonCode && reasonSelect) reasonCode = reasonSelect.value;
+    if (!reasonNote && reasonOther) reasonNote = reasonOther.value;
+    var reasonPayload = _buildLeaveReasonPayload(reasonCode, reasonNote);
     var previousTests = Array.isArray(myTests) ? myTests.slice() : [];
+    var unlinkReciprocal = false;
 
     try {
         _removeLocalTest(appId);
@@ -2376,17 +3439,25 @@ async function confirmLeaveMutual(isJustified) {
         var response = await fetch(`${API_BASE}/tests/${appId}/leave_mutual`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 tester_id: userId,
                 leave_reason: reasonPayload,
                 is_justified: !!isJustified,
-            })
+                unlink_reciprocal: unlinkReciprocal,
+            }))
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
             var errorCode = getBackendErrorCode(data);
             if (errorCode === 'testing_not_found' || errorCode === 'app_not_found' || errorCode === 'project_pending_completion') {
-                closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+                if (typeof window.endTerminationSubmit === 'function') {
+                    window.endTerminationSubmit({ reopenSheet: false });
+                }
+                if (typeof closeTerminationSheet === 'function') {
+                    closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+                } else {
+                    closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+                }
                 loadTasks(true).catch(function() {});
                 loadProjects(true).catch(function() {});
                 return;
@@ -2395,20 +3466,43 @@ async function confirmLeaveMutual(isJustified) {
             if (typeof window.renderTests === 'function') {
                 window.renderTests(true);
             }
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: true });
+            }
             showToast(getApiErrorMessage(data, 'loadError'));
             return;
         }
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        if (data.exit_status === 'abandoned') {
+        var karmaBurned = Number(data.karma_burned || 0);
+        if (karmaBurned > 0) {
             showToast(window.t('leaveSuccessAbandoned', {
-                karma: formatUiAmount(data.karma_burned || 0, 1)
+                karma: formatUiAmount(karmaBurned, 1)
             }, lang));
-        } else {
+        } else if (data.exit_status === 'justified_exit' || isJustified) {
             showToast(window.t('leaveSuccessJustified', {}, lang));
+        } else {
+            showToast(window.t('leaveSuccessSafe', {}, lang));
         }
 
-        closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+        if (typeof window.showTerminationResult === 'function') {
+            window.showTerminationResult({
+                mode: 'leave',
+                appId: appId,
+                unlinkReciprocal: false,
+                data: data,
+                test: previousTests.find(function(t) { return Number(t.id || t.app_id || 0) === Number(appId); }),
+            });
+        } else {
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: false });
+            }
+            if (typeof closeTerminationSheet === 'function') {
+                closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+            } else {
+                closeLeaveMutualModal({ target: document.getElementById('leave-mutual-modal') });
+            }
+        }
         await Promise.all([loadTasks(true), loadProjects(true)]);
     } catch (error) {
         console.error('Leave mutual error:', error);
@@ -2416,17 +3510,51 @@ async function confirmLeaveMutual(isJustified) {
         if (typeof window.renderTests === 'function') {
             window.renderTests(true);
         }
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: true });
+        }
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }
 
-async function confirmKickTester() {
-    if (!_kickTarget || !_kickTarget.appId || !_kickTarget.testerId) return;
+async function confirmKickTester(explicitAppId, explicitTesterId) {
+    var appId = Number(
+        explicitAppId ||
+        (_kickTarget && _kickTarget.appId) ||
+        (window._terminationState && window._terminationState.projectId) ||
+        (window._kickTarget && window._kickTarget.appId) ||
+        0
+    );
+    var testerId = Number(
+        explicitTesterId ||
+        (_kickTarget && _kickTarget.testerId) ||
+        (window._terminationState && window._terminationState.testerId) ||
+        (window._kickTarget && window._kickTarget.testerId) ||
+        0
+    );
+    if (appId > 0 && testerId > 0) {
+        _kickTarget = { appId: appId, testerId: testerId };
+        window._kickTarget = _kickTarget;
+    }
+    if (!appId || !testerId) {
+        console.warn('confirmKickTester: missing target');
+        if (typeof showToast === 'function') showToast(window.t ? window.t('loadError', {}, lang) : 'Error');
+        return;
+    }
 
-    var reasonSelect = document.getElementById('kick-reason-select');
-    var reasonOther = document.getElementById('kick-reason-other');
-    var reasonText = reasonSelect ? reasonSelect.value : '';
-    var reasonPayload = _buildLeaveReasonPayload(reasonText, reasonOther ? reasonOther.value : '');
+    var reasonCode = (typeof getTermReasonCode === 'function')
+        ? getTermReasonCode()
+        : '';
+    var reasonNote = (typeof getTermReasonNote === 'function')
+        ? getTermReasonNote()
+        : '';
+    var reasonSelect = document.getElementById('term-reason-select') || document.getElementById('kick-reason-select');
+    var reasonOther = document.getElementById('term-reason-other') || document.getElementById('kick-reason-other');
+    if (!reasonCode && reasonSelect) reasonCode = reasonSelect.value;
+    if (!reasonNote && reasonOther) reasonNote = reasonOther.value;
+    // Human-readable note for tester notification + soft-archive card.
+    var reasonPayload = _formatKickReasonForNotify(reasonCode, reasonNote)
+        || _buildLeaveReasonPayload(reasonCode, reasonNote);
     var target = {
         appId: _kickTarget.appId,
         testerId: _kickTarget.testerId,
@@ -2434,7 +3562,19 @@ async function confirmKickTester() {
     var project = (myProjects || []).find(function(item) {
         return Number(item.id) === Number(target.appId);
     });
+    var currentTesterObj = project && Array.isArray(project.testers)
+        ? project.testers.find(function(t) { return Number(t.tester_id) === Number(target.testerId); })
+        : null;
+    var reciprocalAppId = Number((currentTesterObj && currentTesterObj.reciprocal_app_id) || 0);
+    var reciprocalTest = (reciprocalAppId > 0 && Array.isArray(myTests))
+        ? myTests.find(function(t) { return Number(t.id || t.app_id || 0) === reciprocalAppId; })
+        : null;
     var previousTesters = project && Array.isArray(project.testers) ? project.testers.slice() : null;
+    var unlinkReciprocal = (typeof getTermUnlinkReciprocal === 'function')
+        ? !!getTermUnlinkReciprocal()
+        : ((typeof getKickUnlinkReciprocal === 'function')
+            ? !!getKickUnlinkReciprocal()
+            : true);
 
     try {
         _removeLocalTesterFromProject(target.appId, target.testerId);
@@ -2445,10 +3585,11 @@ async function confirmKickTester() {
         var response = await fetch(`${API_BASE}/projects/${target.appId}/kick/${target.testerId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(withInitData({
                 owner_id: userId,
                 leave_reason: reasonPayload,
-            })
+                unlink_reciprocal: unlinkReciprocal,
+            }))
         });
         var data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2458,15 +3599,68 @@ async function confirmKickTester() {
             if (typeof window.renderProjects === 'function') {
                 window.renderProjects(true);
             }
+            var errorCode = typeof getBackendErrorCode === 'function'
+                ? getBackendErrorCode(data)
+                : String((data && (data.code || data.error_code || data.message)) || '');
+            if (errorCode === 'testing_not_found') {
+                _removeLocalTesterFromProject(target.appId, target.testerId);
+                if (typeof window.renderProjects === 'function') {
+                    window.renderProjects(true);
+                }
+                if (typeof window.endTerminationSubmit === 'function') {
+                    window.endTerminationSubmit({ reopenSheet: false });
+                }
+                if (typeof closeTerminationSheet === 'function') {
+                    closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+                }
+                closeDossierModal();
+                showToast(window.t('testerAlreadyKicked', {}, lang) || 'Тестировщик уже исключен из проекта');
+                await loadProjects(true, true);
+                return;
+            }
+            if (errorCode === 'kick_blocked_active_tester') {
+                if (typeof showKickBlockedDialog === 'function') {
+                    showKickBlockedDialog((data && data.details) || data);
+                } else {
+                    showToast(window.t('kickBlockedActiveTester', {}, lang));
+                }
+                if (typeof window.endTerminationSubmit === 'function') {
+                    window.endTerminationSubmit({ reopenSheet: true });
+                }
+                return;
+            }
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: true });
+            }
             showToast(getApiErrorMessage(data, 'loadError'));
             return;
         }
 
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t('kickSuccessMsg', {}, lang));
-        closeKickTesterModal({ target: document.getElementById('kick-modal') });
-        closeDossierModal();
-        await loadProjects(true);
+        if (typeof window.showTerminationResult === 'function') {
+            window.showTerminationResult({
+                mode: 'kick',
+                appId: target.appId,
+                testerId: target.testerId,
+                unlinkReciprocal: unlinkReciprocal,
+                isReciprocalActive: !!(_termState && _termState.isReciprocalActive),
+                data: data,
+                reciprocalTest: reciprocalTest,
+            });
+        } else {
+            if (typeof window.endTerminationSubmit === 'function') {
+                window.endTerminationSubmit({ reopenSheet: false });
+            }
+            if (typeof closeTerminationSheet === 'function') {
+                closeTerminationSheet({ target: document.getElementById('termination-sheet') });
+            } else {
+                closeKickTesterModal({ target: document.getElementById('kick-modal') });
+            }
+            closeDossierModal();
+        }
+        await loadProjects(true, true);
+        loadTasks(true, true).catch(function() {});
     } catch (error) {
         console.error('Kick tester error:', error);
         if (project && previousTesters) {
@@ -2474,6 +3668,9 @@ async function confirmKickTester() {
         }
         if (typeof window.renderProjects === 'function') {
             window.renderProjects(true);
+        }
+        if (typeof window.endTerminationSubmit === 'function') {
+            window.endTerminationSubmit({ reopenSheet: true });
         }
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
@@ -2485,7 +3682,7 @@ async function confirmOvertimeLeave() {
         const response = await fetch(`${API_BASE}/tests/${_overtimeTest.id}/leave`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tester_id: userId })
+            body: JSON.stringify(withInitData({ tester_id: userId }))
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
@@ -2508,7 +3705,7 @@ async function submitSocialLink() {
         const response = await fetch(`${API_BASE}/social-bonus/submit`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, url })
+            body: JSON.stringify(withInitData({ user_id: userId, url }))
         });
         const data = await response.json();
         if (response.ok) {
@@ -2523,53 +3720,6 @@ async function submitSocialLink() {
         console.error('Social bonus submit error:', error);
         showToast(getApiErrorMessage(error && error.message, 'socialSubmitError'));
     }
-}
-
-function _clearProjectPackageError() {
-    var errorEl = document.getElementById('package-error');
-    if (!errorEl) return;
-    errorEl.innerHTML = '';
-    errorEl.style.display = 'none';
-}
-
-function _showProjectPackageError(messageKey, options) {
-    var errorEl = document.getElementById('package-error');
-    if (!errorEl) return;
-
-    var opts = options || {};
-    var message = window.t(messageKey, {}, lang);
-    var html = '<div>' + window.escapeHTML(message) + '</div>';
-    if (opts.actionLabelKey) {
-        html += '<button type="button" id="package-error-action-btn" class="btn btn-secondary" style="width:100%; margin-top:10px; background: rgba(255,255,255,0.08); color: var(--text-color); border: 1px solid rgba(255,255,255,0.14);">' + window.escapeHTML(window.t(opts.actionLabelKey, {}, lang)) + '</button>';
-    }
-    errorEl.innerHTML = html;
-    errorEl.style.display = 'block';
-
-    if (opts.actionLabelKey && typeof opts.onAction === 'function') {
-        var actionBtn = document.getElementById('package-error-action-btn');
-        if (actionBtn) {
-            actionBtn.onclick = function(event) {
-                event.preventDefault();
-                opts.onAction();
-            };
-        }
-    }
-}
-
-function _handleProjectCreateConflict(code) {
-    var normalizedCode = String(code || '').trim();
-    if (normalizedCode === 'ALREADY_OWNED') {
-        _showProjectPackageError('ALREADY_OWNED', {
-            actionLabelKey: 'projectPackageContactSupportBtn',
-            onAction: openProjectDuplicateSupport,
-        });
-        return true;
-    }
-    if (normalizedCode === 'ALREADY_ACTIVE' || normalizedCode === 'NEEDS_RESTART') {
-        _showProjectPackageError(normalizedCode);
-        return true;
-    }
-    return false;
 }
 
 function _findTransferProject(projectId) {
@@ -2842,7 +3992,7 @@ async function generateProjectTransferLink() {
     }
 }
 
-async function restartArchivedProject(appId) {
+async function restartArchivedProject(appId, settingsPayload) {
     var normalizedAppId = Number(appId || 0);
     if (!normalizedAppId || !userId) return null;
 
@@ -2850,12 +4000,17 @@ async function restartArchivedProject(appId) {
     if (_pendingActions.has(actionKey)) return null;
     _pendingActions.add(actionKey);
 
+    var requestBody = Object.assign({
+        owner_id: userId,
+        init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+    }, settingsPayload || {});
+
     _apiStart();
     try {
         const response = await fetch(`${API_BASE}/apps/${normalizedAppId}/restart`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId })
+            body: JSON.stringify(requestBody)
         });
         const result = await response.json();
         if (!response.ok || result.status !== 'success') {
@@ -2898,7 +4053,13 @@ async function deleteTester(appId, testerId, testerName) {
     });
     if (!confirmed) return;
     try {
-        const response = await fetch(`${API_BASE}/projects/${appId}/testers/${testerId}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/projects/${appId}/testers/${testerId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
+            }),
+        });
         const result = await response.json();
         if (result.status === 'ok') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -2918,7 +4079,7 @@ async function _postResolveAccessError(projectId, progressId) {
     var response = await fetch(`${API_BASE}/projects/${projectId}/resolve_access_issue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ owner_id: userId, progress_id: progressId })
+        body: JSON.stringify(withInitData({ owner_id: userId, progress_id: progressId }))
     });
     var result = await response.json();
     return {
@@ -3214,7 +4375,7 @@ async function deleteAccessTester(projectId, progressId, testerLabel) {
         var response = await fetch(`${API_BASE}/projects/${projectId}/delete_access_tester`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner_id: userId, progress_id: safeProgressId })
+            body: JSON.stringify(withInitData({ owner_id: userId, progress_id: safeProgressId }))
         });
         var result = await response.json();
         if (!response.ok || result.status !== 'success') {
@@ -3243,4 +4404,203 @@ async function deleteAccessTester(projectId, progressId, testerLabel) {
         _pendingActions.delete(actionKey);
     }
 }
+
+
+function showBanScreen(banData) {
+    var data = banData || (window.currentUser || {});
+    var banScreen = document.getElementById('ban-screen');
+    if (!banScreen) return;
+
+    var lang = (typeof getActiveLanguage === 'function' ? getActiveLanguage() : (window.selectedLanguage || 'ru'));
+    var banReason = (data.ban_reason || '').trim() || (window.t ? window.t('banScreenDefaultReason', {}, lang) : 'Нарушение правил сообщества');
+    var appealStatus = (data.appeal_status || 'none').toLowerCase();
+
+    var reasonEl = document.getElementById('ban-screen-reason');
+    if (reasonEl) {
+        reasonEl.textContent = banReason;
+    }
+
+    var formState = document.getElementById('ban-appeal-form-state');
+    var pendingState = document.getElementById('ban-appeal-pending-state');
+    var rejectedState = document.getElementById('ban-appeal-rejected-state');
+
+    if (formState) formState.style.display = (appealStatus === 'none') ? 'block' : 'none';
+    if (pendingState) pendingState.style.display = (appealStatus === 'pending') ? 'flex' : 'none';
+    if (rejectedState) rejectedState.style.display = (appealStatus === 'rejected') ? 'flex' : 'none';
+
+    banScreen.style.display = 'flex';
+    banScreen.classList.add('active');
+    banScreen.setAttribute('aria-hidden', 'false');
+
+    // Hide main containers
+    var appContainer = document.querySelector('.container');
+    if (appContainer) appContainer.style.display = 'none';
+    var bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) bottomNav.style.display = 'none';
+    var dropMenu = document.getElementById('system-drop-menu');
+    if (dropMenu) dropMenu.style.display = 'none';
+    var mainBanner = document.getElementById('main-banner');
+    if (mainBanner) mainBanner.style.display = 'none';
+}
+
+async function submitBanAppeal() {
+    var textarea = document.getElementById('ban-appeal-textarea');
+    var submitBtn = document.getElementById('ban-appeal-submit-btn');
+    if (!textarea) return;
+
+    var text = textarea.value.trim();
+    var lang = (typeof getActiveLanguage === 'function' ? getActiveLanguage() : (window.selectedLanguage || 'ru'));
+    if (text.length < 5) {
+        if (typeof showToast === 'function') {
+            showToast(window.t ? window.t('banScreenAppealEmptyToast', {}, lang) : 'Пожалуйста, опишите причину в поле апелляции');
+        }
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '...';
+    }
+
+    try {
+        var response = await fetch(`${API_BASE}/user/appeal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: text,
+                init_data: (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || (tg && tg.initData) || '',
+            }),
+        });
+        var result = await response.json();
+        if (response.ok && result && result.status === 'success') {
+            if (window.currentUser) {
+                window.currentUser.appeal_status = 'pending';
+            }
+            if (window.App) {
+                window.App.appealStatus = 'pending';
+            }
+            showBanScreen({ ban_reason: (window.currentUser && window.currentUser.ban_reason) || '', appeal_status: 'pending' });
+            if (typeof showToast === 'function') {
+                showToast(window.t ? window.t('banScreenAppealSentToast', {}, lang) : 'Апелляция успешно отправлена на рассмотрение!');
+            }
+        } else {
+            var errCode = (result && result.detail) || (result && result.error) || 'error';
+            if (typeof showToast === 'function') {
+                showToast(`❌ ${errCode}`);
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = window.t ? window.t('banScreenAppealSubmitBtn', {}, lang) : '📨 Отправить апелляцию';
+            }
+        }
+    } catch (err) {
+        console.error('Failed to submit ban appeal:', err);
+        if (typeof showToast === 'function') {
+            showToast('❌ Ошибка отправки апелляции');
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = window.t ? window.t('banScreenAppealSubmitBtn', {}, lang) : '📨 Отправить апелляцию';
+        }
+    }
+}
+
+var _currentBanTargetUserId = 0;
+var _currentBanTargetUsername = '';
+
+function openBanUserModal(userId, username) {
+    _currentBanTargetUserId = Number(userId || 0);
+    _currentBanTargetUsername = String(username || '').trim();
+    var modal = document.getElementById('ban-confirm-modal');
+    var targetEl = document.getElementById('ban-modal-target');
+    var inputEl = document.getElementById('ban-modal-reason-input');
+
+    if (targetEl) {
+        var nameDisplay = _currentBanTargetUsername ? `@${_currentBanTargetUsername}` : `ID ${_currentBanTargetUserId}`;
+        targetEl.textContent = `👤 ${nameDisplay}`;
+    }
+    if (inputEl) {
+        inputEl.value = '';
+    }
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function closeBanUserModal(event) {
+    if (event && event.target && event.target.id !== 'ban-confirm-modal') return;
+    var modal = document.getElementById('ban-confirm-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    _currentBanTargetUserId = 0;
+    _currentBanTargetUsername = '';
+}
+
+async function submitBanUser() {
+    var userId = _currentBanTargetUserId;
+    if (!userId) return;
+    var inputEl = document.getElementById('ban-modal-reason-input');
+    var reason = inputEl ? inputEl.value.trim() : '';
+    var lang = (typeof getActiveLanguage === 'function' ? getActiveLanguage() : (window.selectedLanguage || 'ru'));
+    if (!reason) {
+        if (typeof showToast === 'function') {
+            showToast(window.t ? window.t('banReasonRequiredToast', {}, lang) : 'Пожалуйста, укажите причину блокировки');
+        }
+        return;
+    }
+
+    var confirmBtn = document.getElementById('ban-modal-confirm-btn');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = '...';
+    }
+
+    try {
+        var response = await fetch(`${API_BASE}/admin/users/${userId}/ban`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                reason: reason,
+                init_data: (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || (tg && tg.initData) || '',
+            }),
+        });
+        var result = await response.json();
+        if (response.ok && result && result.status === 'success') {
+            closeBanUserModal();
+            if (typeof showToast === 'function') {
+                showToast(window.t ? window.t('banSuccessToast', {}, lang) : 'Пользователь успешно заблокирован');
+            }
+            if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
+            if (typeof loadProjects === 'function') loadProjects().catch(function() {});
+        } else {
+            var errCode = (result && result.detail) || (result && result.error) || 'error';
+            var localizedErr = (window.t && window.t(errCode, {}, lang)) || errCode;
+            if (typeof showToast === 'function') {
+                showToast(`❌ ${localizedErr}`);
+            }
+        }
+    } catch (err) {
+        console.error('Failed to ban user:', err);
+        if (typeof showToast === 'function') {
+            showToast('❌ Ошибка выполнения блокировки');
+        }
+    } finally {
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = window.t ? window.t('banModalConfirmBtn', {}, lang) : '🛑 Заблокировать';
+        }
+    }
+}
+
+// Explicit globals for termination-sheet (onclick / IIFE resolve against window).
+window.confirmDropTest = confirmDropTest;
+window.confirmLeaveMutual = confirmLeaveMutual;
+window.confirmKickTester = confirmKickTester;
+window.confirmOvertimeLeave = confirmOvertimeLeave;
+window.showBanScreen = showBanScreen;
+window.submitBanAppeal = submitBanAppeal;
+window.openBanUserModal = openBanUserModal;
+window.closeBanUserModal = closeBanUserModal;
+window.submitBanUser = submitBanUser;
 
