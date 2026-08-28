@@ -86,11 +86,7 @@ function _syncCheckinProofControls() {
     if (replace) replace.disabled = _checkinProofUploadState.inFlight || _checkinProofUploadState.completed;
     if (cancel) {
         cancel.disabled = false;
-        cancel.textContent = window.t(
-            _checkinProofUploadState.completed ? 'checkinProofDone' : 'checkinProofCancel',
-            {},
-            lang
-        );
+        cancel.textContent = window.t('checkinProofCancel', {}, lang);
     }
     var label = document.getElementById('t-checkinProofSubmit');
     if (label) {
@@ -293,9 +289,14 @@ async function submitCheckinProofScreenshot() {
             if (code === 'checkin_already_proved') {
                 _checkinProofUploadState.completed = true;
                 _clearCheckinProofKey(progressId);
+                closeCheckinProofUploadModal();
+                if (typeof showToast === 'function') {
+                    showToast(window.t('checkinProofAlreadyReceived', {}, lang));
+                }
                 setTimeout(function() {
                     if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
                 }, 150);
+                return;
             }
             if (code === 'proof_source_conflict' || code === 'invalid_idempotency_key') {
                 _clearCheckinProofKey(progressId);
@@ -306,8 +307,11 @@ async function submitCheckinProofScreenshot() {
 
         _checkinProofUploadState.completed = true;
         _clearCheckinProofKey(progressId);
-        _setCheckinProofStatus(window.t('checkinProofSuccess', {}, lang), 'success');
+        closeCheckinProofUploadModal();
         _applyScreenshotCheckinResult(appId, result);
+        if (typeof showToast === 'function') {
+            showToast(window.t('checkinProofSuccess', {}, lang));
+        }
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } catch (error) {
         if (error && error.name === 'AbortError') return;
