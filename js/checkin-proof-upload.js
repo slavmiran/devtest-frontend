@@ -11,6 +11,7 @@ var _checkinProofUploadState = {
     backgrounded: false,
     completed: false,
 };
+var _checkinProofPendingAppIds = {};
 
 function isScreenshotProofUploadEnabled() {
     return !!(window.App && window.App.screenshotProofUploadEnabled === true);
@@ -108,9 +109,6 @@ function _revokeCheckinProofPreview() {
 
 function openCheckinProofUploadModal(appId) {
     if (_checkinProofUploadState.inFlight) {
-        if (typeof showToast === 'function') {
-            showToast(window.t('checkinProofBackgroundStarted', {}, lang));
-        }
         return false;
     }
     var test = _checkinProofTest(appId);
@@ -166,13 +164,26 @@ function closeCheckinProofUploadModal(event) {
 function _backgroundCheckinProofUpload() {
     var modal = document.getElementById('checkin-proof-upload-modal');
     _checkinProofUploadState.backgrounded = true;
+    _setCheckinProofBackgroundCard(_checkinProofUploadState.appId, true);
     _revokeCheckinProofPreview();
     _checkinProofUploadState.file = null;
     if (modal) modal.classList.remove('active');
     if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
-    if (typeof showToast === 'function') {
-        showToast(window.t('checkinProofBackgroundStarted', {}, lang));
+}
+
+function _setCheckinProofBackgroundCard(appId, isPending) {
+    var safeAppId = Number(appId || 0);
+    if (safeAppId <= 0) return;
+    if (isPending) {
+        _checkinProofPendingAppIds[safeAppId] = true;
+    } else {
+        delete _checkinProofPendingAppIds[safeAppId];
     }
+    if (typeof renderTests === 'function') renderTests(true);
+}
+
+function isScreenshotProofUploadPending(appId) {
+    return !!_checkinProofPendingAppIds[Number(appId || 0)];
 }
 
 function chooseCheckinProofFile() {
@@ -231,6 +242,7 @@ function _applyScreenshotCheckinResult(appId, result) {
     var wasFirstCheckin = Number(test && test.checkins_count || 0) <= 0
         || String(test && test.status || '') === 'new';
     if (test) {
+        delete _checkinProofPendingAppIds[Number(appId || 0)];
         test.status = 'done';
         test.last_check_date = checkin.last_check_date || (typeof getLocalDate === 'function' ? getLocalDate() : '');
         test.checkins_count = Math.max(0, Number(checkin.checkins_count || test.checkins_count || 0));
@@ -314,6 +326,7 @@ async function submitCheckinProofScreenshot() {
             if (code === 'checkin_already_proved') {
                 _checkinProofUploadState.completed = true;
                 _clearCheckinProofKey(progressId);
+                _setCheckinProofBackgroundCard(appId, false);
                 closeCheckinProofUploadModal();
                 if (typeof showToast === 'function') {
                     showToast(window.t('checkinProofAlreadyReceived', {}, lang));
@@ -338,8 +351,11 @@ async function submitCheckinProofScreenshot() {
         if (error && error.name === 'AbortError') return;
         var payload = error && error.isApiError ? error.payload : { code: 'network_error' };
         var errorMessage = _checkinProofErrorMessage(payload);
-        if (continuedInBackground && typeof showToast === 'function') {
-            showToast(errorMessage + '\n' + window.t('checkinProofBackgroundRetry', {}, lang), 5000);
+        if (continuedInBackground) {
+            _setCheckinProofBackgroundCard(appId, false);
+            if (typeof showToast === 'function') {
+                showToast(errorMessage + '\n' + window.t('checkinProofBackgroundRetry', {}, lang), 5000);
+            }
             setTimeout(function() {
                 if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
             }, 300);
@@ -361,3 +377,4 @@ window.closeCheckinProofUploadModal = closeCheckinProofUploadModal;
 window.chooseCheckinProofFile = chooseCheckinProofFile;
 window.handleCheckinProofFileSelected = handleCheckinProofFileSelected;
 window.submitCheckinProofScreenshot = submitCheckinProofScreenshot;
+window.isScreenshotProofUploadPending = isScreenshotProofUploadPending;

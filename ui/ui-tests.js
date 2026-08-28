@@ -2132,6 +2132,13 @@ function renderTests(force) {
                 card.className += ' card-feedback-pending';
             }
         }
+        const isScreenshotProofUploadPending = !!(
+            typeof window.isScreenshotProofUploadPending === 'function'
+            && window.isScreenshotProofUploadPending(test.id)
+        ) && shouldShowInActiveList;
+        if (isScreenshotProofUploadPending) {
+            card.className += ' card-screenshot-proof-upload-pending';
+        }
         card.id = `test-card-${test.id}`;
         const safePackage = escapeInlineJsString(test.package || test.external_package_name || '');
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
@@ -2520,7 +2527,22 @@ function renderTests(force) {
                 </div>
             </div>`;
 
-        let cardContent = `
+        const screenshotProofUploadPendingHtml = `
+            <div class="card-header card-screenshot-proof-upload-pending__header">
+                <div class="card-header-main">
+                    ${renderTestAvatarWithPhaseBadge(test, lang)}
+                    <div class="card-info">
+                        <div class="card-title notranslate">${safeName}</div>
+                        <div class="card-subtitle notranslate">${safeOwnerSubtitle}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="screenshot-proof-upload-pending__status" role="status" aria-live="polite">
+                <span class="screenshot-proof-upload-pending__spinner" aria-hidden="true"></span>
+                <span>${window.escapeHTML(window.t('checkinProofCardUploading', {}, lang))}</span>
+            </div>
+        `;
+        let cardContent = isScreenshotProofUploadPending ? screenshotProofUploadPendingHtml : `
             ${doneBadgeHtml}
             <div class="card-header" onclick="openProjectDetailsModal(${test.id})" style="cursor: pointer; user-select: none;">
                 ${cardHeaderMainHtml}

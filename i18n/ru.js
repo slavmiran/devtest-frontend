@@ -647,7 +647,7 @@
             checkinProofSubmit: "Отправить и выполнить чекин",
             checkinProofUploading: "Отправляем…",
             checkinProofUploadingHint: "Загружаем скриншот и подтверждаем тестирование. Не закрывайте окно.",
-            checkinProofBackgroundStarted: "Скриншот отправляется в фоне. Можно продолжать работу.",
+            checkinProofCardUploading: "Отправляем скриншот…",
             checkinProofBackgroundRetry: "Карточка останется доступной — повторите отправку.",
             checkinProofReady: "Изображение готово к отправке.",
             checkinProofSuccess: "📸 Скриншот отправлен\n✅ Тестирование подтверждено",

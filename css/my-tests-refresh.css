@@ -49,6 +49,50 @@
         linear-gradient(225deg, rgba(38, 46, 42, 0.2) 0%, transparent 52%);
 }
 
+#tab-tests .card.card-screenshot-proof-upload-pending {
+    padding: 12px 14px;
+    border-color: rgba(10, 132, 255, 0.24);
+    background:
+        radial-gradient(ellipse 70% 100% at 100% 0%, rgba(10, 132, 255, 0.11), transparent 72%),
+        linear-gradient(225deg, rgba(26, 35, 48, 0.35) 0%, transparent 58%);
+    pointer-events: none;
+}
+
+#tab-tests .card-screenshot-proof-upload-pending > .card-header {
+    margin-bottom: 8px;
+}
+
+.screenshot-proof-upload-pending__status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    color: var(--hint-color);
+    background: rgba(10, 132, 255, 0.07);
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.screenshot-proof-upload-pending__spinner {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    border: 2px solid rgba(10, 132, 255, 0.22);
+    border-top-color: rgba(10, 132, 255, 0.9);
+    border-radius: 50%;
+    animation: screenshotProofUploadSpin 0.9s linear infinite;
+}
+
+@keyframes screenshotProofUploadSpin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .screenshot-proof-upload-pending__spinner { animation: none; }
+}
+
 #tab-tests .card.card-pending-release,
 #tab-tests .card.pending-release-carousel-card {
     border-color: rgba(255, 149, 0, 0.22);
