@@ -2345,7 +2345,7 @@ function renderTests(force) {
             actionsHtml = pendingReleaseButtonHtml;
         } else if (test.isGrantAvailableTomorrow) {
             actionsHtml = `
-                <button id="btn-claim-${test.id}" class="btn btn-claim-grant" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
+                <button id="btn-claim-${test.id}" class="btn btn-claim-grant btn-grant-tomorrow" style="width: 100%; margin-bottom: 12px; font-size: 16px; padding: 14px 16px; gap: 8px;" onclick="handleGrantTomorrowClick(event, ${test.id})">
                     ${window.t('claimGrantTomorrowBtn', {}, lang)}
                 </button>
             `;
@@ -3413,6 +3413,130 @@ function showKickPenaltyDetailsModal(testId, role) {
     }
 }
 
+// ── Easter Egg: Grant Tomorrow Triple-Click ──
+let _grantTomorrowClickState = {
+    count: 0,
+    lastClickTime: 0,
+    inFlight: false,
+};
+
+async function handleGrantTomorrowClick(event, testId) {
+    if (event) {
+        event.stopPropagation();
+        if (event.preventDefault) event.preventDefault();
+    }
+
+    const btn = (event && event.currentTarget) || (testId ? document.getElementById(`btn-claim-${testId}`) : null);
+    const now = Date.now();
+    const currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
+
+    // 1000ms window between consecutive clicks
+    if (now - _grantTomorrowClickState.lastClickTime > 1000) {
+        _grantTomorrowClickState.count = 1;
+    } else {
+        _grantTomorrowClickState.count += 1;
+    }
+    _grantTomorrowClickState.lastClickTime = now;
+
+    const clickNum = _grantTomorrowClickState.count;
+
+    if (clickNum === 1) {
+        // 1st click: light haptic feedback + calm toast
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.impactOccurred === 'function') {
+            window.tg.HapticFeedback.impactOccurred('light');
+        }
+        const normalMsg = (typeof window.t === 'function' ? window.t('grantTomorrowNormalToast', {}, currentLang) : null)
+            || 'Грант уже заслужен. Забрать его можно действительно завтра ☕';
+        if (typeof showToast === 'function') {
+            showToast(normalMsg, 3000);
+        }
+    } else if (clickNum === 2) {
+        // 2nd click: medium haptic feedback + micro-animation (shake/nudge), no new toast
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.impactOccurred === 'function') {
+            window.tg.HapticFeedback.impactOccurred('medium');
+        }
+        if (btn) {
+            btn.classList.remove('is-shaking', 'is-sparkling');
+            void btn.offsetWidth; // trigger reflow
+            btn.classList.add('is-shaking');
+            setTimeout(() => {
+                btn.classList.remove('is-shaking');
+            }, 360);
+        }
+    } else if (clickNum >= 3) {
+        // 3rd click: success haptic feedback + golden sparkle flash + Easter egg claim
+        _grantTomorrowClickState.count = 0; // reset sequence counter
+
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.notificationOccurred === 'function') {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        }
+        if (btn) {
+            btn.classList.remove('is-shaking', 'is-sparkling');
+            void btn.offsetWidth; // trigger reflow
+            btn.classList.add('is-sparkling');
+            setTimeout(() => {
+                btn.classList.remove('is-sparkling');
+            }, 720);
+        }
+
+        if (_grantTomorrowClickState.inFlight) return;
+        _grantTomorrowClickState.inFlight = true;
+
+        try {
+            const initData = (window.tg && window.tg.initData) || '';
+            const userId = (window.App && window.App.userId) || window.userId || 0;
+
+            const res = await fetch(API_BASE + '/api/easter-egg/claim', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    easter_egg_code: 'grant_tomorrow_triple_tap',
+                    user_id: userId,
+                    init_data: initData,
+                }),
+            });
+
+            const data = await res.json();
+            if (data && data.already_claimed) {
+                const alreadyMsg = (typeof window.t === 'function' ? window.t('grantTomorrowEasterEggAlreadyClaimedToast', {}, currentLang) : null)
+                    || 'Эту пасхалку вы уже нашли ✨';
+                if (typeof showToast === 'function') {
+                    showToast(alreadyMsg, 3500);
+                }
+            } else if (data && data.success) {
+                const rewardMsg = (typeof window.t === 'function' ? window.t('grantTomorrowEasterEggRewardToast', {}, currentLang) : null)
+                    || 'Да, мы проверили — завтра всё ещё завтра 🙂\nНо за вашу дисциплину и упорство — заслуженно +1 к Карме ✨';
+                if (typeof showToast === 'function') {
+                    showToast(rewardMsg, 5500);
+                }
+
+                // Update local karma state if available
+                if (typeof window.userKarma === 'number') {
+                    window.userKarma = Math.round((window.userKarma + 1.0) * 10) / 10;
+                }
+                if (window.App && typeof window.App.updateKarmaDisplay === 'function') {
+                    window.App.updateKarmaDisplay();
+                }
+            } else {
+                const fallbackMsg = (typeof window.t === 'function' ? window.t('grantTomorrowNormalToast', {}, currentLang) : null)
+                    || 'Грант уже заслужен. Забрать его можно действительно завтра ☕';
+                if (typeof showToast === 'function') {
+                    showToast(fallbackMsg, 3000);
+                }
+            }
+        } catch (e) {
+            console.error('Easter egg claim request failed:', e);
+            const fallbackMsg = (typeof window.t === 'function' ? window.t('grantTomorrowNormalToast', {}, currentLang) : null)
+                || 'Грант уже заслужен. Забрать его можно действительно завтра ☕';
+            if (typeof showToast === 'function') {
+                showToast(fallbackMsg, 3000);
+            }
+        } finally {
+            _grantTomorrowClickState.inFlight = false;
+        }
+    }
+}
+
 // Expose functions globally
 window.showKickPenaltyDetailsModal = showKickPenaltyDetailsModal;
 window.openPhaseInfoModal = openPhaseInfoModal;
@@ -3428,3 +3552,5 @@ window.renderTestAvatarWithPhaseBadge = renderTestAvatarWithPhaseBadge;
 window.openBountyInfoModal = openBountyInfoModal;
 window.closeBountyInfoModal = closeBountyInfoModal;
 window.toggleCheckpointAccordion = toggleCheckpointAccordion;
+window.handleGrantTomorrowClick = handleGrantTomorrowClick;
+

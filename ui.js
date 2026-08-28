@@ -84,6 +84,7 @@ Object.assign(window, {
     closeProjectDetailsModal,
     toggleCheckpointAccordion: typeof toggleCheckpointAccordion !== 'undefined' ? toggleCheckpointAccordion : undefined,
     closeTestDayInfoModal: typeof closeTestDayInfoModal !== 'undefined' ? closeTestDayInfoModal : undefined,
+    handleGrantTomorrowClick: typeof handleGrantTomorrowClick !== 'undefined' ? handleGrantTomorrowClick : undefined,
 });
 
 Object.assign(window.ui, {

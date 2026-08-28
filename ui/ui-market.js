@@ -7741,12 +7741,12 @@ function handleGuestClaimWelcomeGoToDashboard() {
     }
 }
 
-function showToast(message) {
+function showToast(message, duration) {
     let toast = document.getElementById('custom-toast');
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'custom-toast';
-        toast.style.cssText = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translate3d(0,0,0); background: var(--text-color); color: var(--bg-color); padding: 10px 20px; border-radius: 12px; font-size: 14px; z-index: 9999; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; text-align: center; max-width: 85%;';
+        toast.style.cssText = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translate3d(0,0,0); background: var(--text-color); color: var(--bg-color); padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 500; z-index: 9999; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; text-align: center; max-width: 85%; white-space: pre-line; line-height: 1.4; box-shadow: 0 8px 24px rgba(0,0,0,0.3);';
         document.body.appendChild(toast);
     }
     toast.innerText = message;
@@ -7754,7 +7754,7 @@ function showToast(message) {
     clearTimeout(toast._timeout);
     toast._timeout = setTimeout(() => {
         toast.style.opacity = '0';
-    }, 3000);
+    }, duration || 3000);
 }
 
 function switchTab(tabId, navElement) {
