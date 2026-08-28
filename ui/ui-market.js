@@ -4179,12 +4179,24 @@ function openReportModal(appId, ownerUsername) {
     _reportMessageLang = typeof window.getDefaultCheckpointReportLanguage === 'function'
         ? window.getDefaultCheckpointReportLanguage(appId)
         : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
-    renderReportOwnerHeader(appId, ownerUsername);
-    renderReportLanguageToggle();
-    updateReportModalPrefill();
-    document.getElementById('t-reportModalTitle').innerText = t.reportModalTitle;
-    document.getElementById('t-reportModalHint').innerText = t.reportModalHint;
-    document.getElementById('t-reportBtnSend').innerText = t.reportBtnSend;
+    var usesProofUpload = typeof window.isScreenshotProofUploadEnabled === 'function'
+        && window.isScreenshotProofUploadEnabled();
+    var reportModal = document.getElementById('report-modal');
+    if (reportModal) reportModal.classList.toggle('is-proof-upload', usesProofUpload);
+    if (!usesProofUpload) {
+        renderReportOwnerHeader(appId, ownerUsername);
+        renderReportLanguageToggle();
+        updateReportModalPrefill();
+    }
+    document.getElementById('t-reportModalTitle').innerText = window.t(
+        usesProofUpload ? 'reportProofModalTitle' : 'reportModalTitle', {}, lang
+    );
+    document.getElementById('t-reportModalHint').innerText = window.t(
+        usesProofUpload ? 'reportProofModalHint' : 'reportModalHint', {}, lang
+    );
+    document.getElementById('t-reportBtnSend').innerText = window.t(
+        usesProofUpload ? 'reportProofBtnUpload' : 'reportBtnSend', {}, lang
+    );
     var altLabel = document.getElementById('t-reportAltLabel');
     if (altLabel) altLabel.textContent = window.t('reportAltLabel', {}, lang);
 
@@ -4215,8 +4227,8 @@ function openReportModal(appId, ownerUsername) {
         noteEl.textContent = window.t(noteKey, {}, lang);
     }
 
-    document.getElementById('report-modal').classList.add('active');
-    setTimeout(_syncReportTextareaLayout, 40);
+    reportModal.classList.add('active');
+    if (!usesProofUpload) setTimeout(_syncReportTextareaLayout, 40);
 }
 
 function closeReportModal(event) {

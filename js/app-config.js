@@ -2,6 +2,8 @@
 /* TG init, constants, language system, state vars, route parsing */
 
 window.App = window.App || {};
+window.App.checkinProofMode = window.App.checkinProofMode || 'off';
+window.App.screenshotProofUploadEnabled = window.App.screenshotProofUploadEnabled === true;
 
 var tg = window.Telegram.WebApp;
 tg.expand();
@@ -31,6 +33,13 @@ function _closeTopTelegramBackTarget() {
     var activeModals = document.querySelectorAll('.modal-overlay.active');
     if (activeModals.length) {
         var topModal = activeModals[activeModals.length - 1];
+        if (
+            topModal.id === 'checkin-proof-upload-modal'
+            && typeof window.closeCheckinProofUploadModal === 'function'
+        ) {
+            window.closeCheckinProofUploadModal();
+            return true;
+        }
         topModal.classList.remove('active');
         return true;
     }
@@ -288,6 +297,8 @@ async function loadRuntimeConfig() {
         if (runtimeGroupId) {
             window.App.frontendGroupId = runtimeGroupId;
         }
+        window.App.checkinProofMode = String((payload && payload.checkin_proof_mode) || 'off').trim().toLowerCase();
+        window.App.screenshotProofUploadEnabled = !!(payload && payload.screenshot_proof_upload_enabled === true);
     } catch (error) {
         console.warn('Runtime config fetch failed:', error);
     }

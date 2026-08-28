@@ -173,6 +173,14 @@ function openOwnerCheckpointChat(ownerUsername, text, options) {
 }
 
 function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
+    if (
+        typeof window.isScreenshotProofUploadEnabled === 'function'
+        && window.isScreenshotProofUploadEnabled()
+        && typeof window.openCheckinProofUploadModal === 'function'
+    ) {
+        window.openCheckinProofUploadModal(appId);
+        return;
+    }
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(appId, ownerUsername);
     confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
     openOwnerCheckpointChat(resolvedOwnerUsername, buildCheckpointReportPrefill(appId));
@@ -2409,6 +2417,14 @@ async function sendReport() {
     document.getElementById('report-modal').classList.remove('active');
 
     if (appId) {
+        if (
+            typeof window.isScreenshotProofUploadEnabled === 'function'
+            && window.isScreenshotProofUploadEnabled()
+            && typeof window.openCheckinProofUploadModal === 'function'
+        ) {
+            window.openCheckinProofUploadModal(appId);
+            return;
+        }
         confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
     }
     if (ownerUsername) {

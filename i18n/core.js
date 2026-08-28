@@ -100,5 +100,9 @@
         document.querySelectorAll('[data-i18n-aria-label]').forEach((element) => {
             element.setAttribute('aria-label', window.t(element.dataset.i18nAriaLabel, {}, window.currentLang));
         });
+
+        document.querySelectorAll('[data-i18n-alt]').forEach((element) => {
+            element.setAttribute('alt', window.t(element.dataset.i18nAlt, {}, window.currentLang));
+        });
     };
 })();
