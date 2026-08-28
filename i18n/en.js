@@ -648,6 +648,8 @@
             checkinProofSubmit: "Send and complete check-in",
             checkinProofUploading: "Sending…",
             checkinProofUploadingHint: "Uploading the screenshot and confirming the test. Keep this window open.",
+            checkinProofBackgroundStarted: "The screenshot is uploading in the background. You can keep working.",
+            checkinProofBackgroundRetry: "The card will remain available — try sending it again.",
             checkinProofReady: "Image is ready to send.",
             checkinProofSuccess: "📸 Screenshot sent\n✅ Testing confirmed",
             checkinProofUploadFailed: "Could not send the screenshot. Try again — a duplicate check-in will not be created.",

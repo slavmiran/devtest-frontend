@@ -8,6 +8,7 @@ var _checkinProofUploadState = {
     idempotencyKey: '',
     controller: null,
     inFlight: false,
+    backgrounded: false,
     completed: false,
 };
 
@@ -106,6 +107,12 @@ function _revokeCheckinProofPreview() {
 }
 
 function openCheckinProofUploadModal(appId) {
+    if (_checkinProofUploadState.inFlight) {
+        if (typeof showToast === 'function') {
+            showToast(window.t('checkinProofBackgroundStarted', {}, lang));
+        }
+        return false;
+    }
     var test = _checkinProofTest(appId);
     var progressId = Number(test && test.progress_id || 0);
     if (!test || progressId <= 0) {
@@ -120,6 +127,7 @@ function openCheckinProofUploadModal(appId) {
     _checkinProofUploadState.idempotencyKey = _loadOrCreateCheckinProofKey(progressId);
     _checkinProofUploadState.controller = null;
     _checkinProofUploadState.inFlight = false;
+    _checkinProofUploadState.backgrounded = false;
     _checkinProofUploadState.completed = false;
 
     var fileInput = document.getElementById('checkin-proof-file-input');
@@ -148,10 +156,23 @@ function closeCheckinProofUploadModal(event) {
     }
     _checkinProofUploadState.controller = null;
     _checkinProofUploadState.inFlight = false;
+    _checkinProofUploadState.backgrounded = false;
     _revokeCheckinProofPreview();
     _checkinProofUploadState.file = null;
     modal.classList.remove('active');
     if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
+}
+
+function _backgroundCheckinProofUpload() {
+    var modal = document.getElementById('checkin-proof-upload-modal');
+    _checkinProofUploadState.backgrounded = true;
+    _revokeCheckinProofPreview();
+    _checkinProofUploadState.file = null;
+    if (modal) modal.classList.remove('active');
+    if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
+    if (typeof showToast === 'function') {
+        showToast(window.t('checkinProofBackgroundStarted', {}, lang));
+    }
 }
 
 function chooseCheckinProofFile() {
@@ -259,6 +280,7 @@ async function submitCheckinProofScreenshot() {
     _checkinProofUploadState.controller = new AbortController();
     _setCheckinProofStatus(window.t('checkinProofUploadingHint', {}, lang), '');
     _syncCheckinProofControls();
+    var continuedInBackground = false;
 
     try {
         var openToken = typeof _getCheckinOpenToken === 'function' ? _getCheckinOpenToken(appId) : '';
@@ -277,11 +299,14 @@ async function submitCheckinProofScreenshot() {
         form.append('idempotency_key', _checkinProofUploadState.idempotencyKey);
         form.append('file', _checkinProofUploadState.file, _checkinProofUploadState.file.name || 'checkin-proof');
 
-        var response = await fetch(API_BASE + '/testing/' + progressId + '/checkin-proof/screenshot', {
+        var uploadRequest = fetch(API_BASE + '/testing/' + progressId + '/checkin-proof/screenshot', {
             method: 'POST',
             body: form,
             signal: _checkinProofUploadState.controller.signal,
         });
+        continuedInBackground = true;
+        _backgroundCheckinProofUpload();
+        var response = await uploadRequest;
         var result = null;
         try { result = await response.json(); } catch (error) {}
         if (!response.ok || !result || result.status !== 'success' || !result.proof || result.proof.state !== 'attached') {
@@ -307,20 +332,25 @@ async function submitCheckinProofScreenshot() {
 
         _checkinProofUploadState.completed = true;
         _clearCheckinProofKey(progressId);
-        closeCheckinProofUploadModal();
         _applyScreenshotCheckinResult(appId, result);
-        if (typeof showToast === 'function') {
-            showToast(window.t('checkinProofSuccess', {}, lang));
-        }
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } catch (error) {
         if (error && error.name === 'AbortError') return;
         var payload = error && error.isApiError ? error.payload : { code: 'network_error' };
-        _setCheckinProofStatus(_checkinProofErrorMessage(payload), 'error');
+        var errorMessage = _checkinProofErrorMessage(payload);
+        if (continuedInBackground && typeof showToast === 'function') {
+            showToast(errorMessage + '\n' + window.t('checkinProofBackgroundRetry', {}, lang), 5000);
+            setTimeout(function() {
+                if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
+            }, 300);
+        } else {
+            _setCheckinProofStatus(errorMessage, 'error');
+        }
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
     } finally {
         _checkinProofUploadState.controller = null;
         _checkinProofUploadState.inFlight = false;
+        _checkinProofUploadState.backgrounded = false;
         _syncCheckinProofControls();
     }
 }
