@@ -40,6 +40,17 @@
     font-size: 22px;
 }
 
+.checkin-proof-visibility-note {
+    margin: -6px 0 12px;
+    padding: 9px 11px;
+    color: var(--hint-color);
+    background: rgba(255, 159, 10, 0.08);
+    border: 1px solid rgba(255, 159, 10, 0.2);
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 .checkin-proof-picker {
     display: flex;
     width: 100%;

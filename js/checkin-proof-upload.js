@@ -137,6 +137,7 @@ function openCheckinProofUploadModal(appId) {
 
     document.getElementById('t-checkinProofUploadTitle').textContent = window.t('checkinProofUploadTitle', {}, lang);
     document.getElementById('t-checkinProofUploadHint').textContent = window.t('checkinProofUploadHint', {}, lang);
+    document.getElementById('t-checkinProofVisibilityNote').textContent = window.t('checkinProofVisibilityNote', {}, lang);
     _setCheckinProofStatus('', '');
     _syncCheckinProofControls();
     var modal = document.getElementById('checkin-proof-upload-modal');

@@ -639,6 +639,7 @@
             reportProofBtnUpload: "📸 Upload screenshot",
             checkinProofUploadTitle: "Confirm testing",
             checkinProofUploadHint: "Upload one screenshot of the running app.",
+            checkinProofVisibilityNote: "The screenshot is posted to the Testing Proofs topic. Make sure it contains no personal data.",
             checkinProofChoose: "Choose image",
             checkinProofLimits: "JPEG, PNG or WebP · up to 5 MB",
             checkinProofPreviewAlt: "Screenshot preview",

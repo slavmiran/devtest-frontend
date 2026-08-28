@@ -638,6 +638,7 @@
             reportProofBtnUpload: "📸 Загрузить скриншот",
             checkinProofUploadTitle: "Подтвердите тестирование",
             checkinProofUploadHint: "Загрузите один скриншот запущенного приложения.",
+            checkinProofVisibilityNote: "Скриншот публикуется в теме Testing Proofs. Убедитесь, что на нём нет личных данных.",
             checkinProofChoose: "Выбрать изображение",
             checkinProofLimits: "JPEG, PNG или WebP · до 5 МБ",
             checkinProofPreviewAlt: "Предпросмотр скриншота",
