@@ -3230,6 +3230,45 @@ function focusProjectFeedbackCard(feedbackId) {
     return true;
 }
 
+async function fetchProjectFeedbackPayload(appId, statusScope) {
+    var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+    var scope = String(statusScope || 'all').trim().toLowerCase() || 'all';
+    var statusQ = (scope && scope !== 'all') ? ('&status=' + encodeURIComponent(scope)) : '';
+    var response = await fetch(API_BASE + '/projects/' + appId + '/feedback?owner_id=' + userId + '&' + initQ + statusQ);
+    var data = await response.json();
+    if (!response.ok || data.status !== 'success') {
+        var err = new Error((data && (data.message || data.code)) || 'loadError');
+        err.payload = data;
+        err.httpStatus = response.status;
+        throw err;
+    }
+    return {
+        feedback: Array.isArray(data.feedback) ? data.feedback : [],
+        scope: String(data.scope || scope || 'all')
+    };
+}
+
+function _isProjectFeedbackModalOpenFor(appId) {
+    var modal = document.getElementById('project-feedback-modal');
+    if (!modal || !modal.classList.contains('active')) return false;
+    return Number(_activeProjectFeedbackAppId || 0) === Number(appId || 0);
+}
+
+async function ensureFullProjectFeedbackLoaded(options) {
+    options = options || {};
+    if (_activeProjectFeedbackFullLoaded) return _activeProjectFeedbackItems || [];
+    var appId = Number(_activeProjectFeedbackAppId || options.appId || 0);
+    if (!appId) return _activeProjectFeedbackItems || [];
+    var loadSeq = Number(options.loadSeq || _activeProjectFeedbackLoadSeq || 0);
+    var payload = await fetchProjectFeedbackPayload(appId, 'all');
+    if (loadSeq && loadSeq !== _activeProjectFeedbackLoadSeq) return _activeProjectFeedbackItems || [];
+    if (Number(_activeProjectFeedbackAppId || 0) !== appId) return _activeProjectFeedbackItems || [];
+    _activeProjectFeedbackItems = payload.feedback || [];
+    _activeProjectFeedbackFullLoaded = true;
+    _activeProjectFeedbackPartial = false;
+    return _activeProjectFeedbackItems;
+}
+
 async function openProjectFeedback(appId, isArchived, options) {
     options = options || {};
     const project = (isArchived ? archivedProjects : myProjects).find(function(item) {
@@ -3240,37 +3279,100 @@ async function openProjectFeedback(appId, isArchived, options) {
     _activeProjectFeedbackAppId = Number(appId);
     _activeProjectFeedbackArchived = !!isArchived;
     _activeProjectFeedbackItems = [];
+    _activeProjectFeedbackFullLoaded = false;
+    _activeProjectFeedbackPartial = false;
+    var loadSeq = ++_activeProjectFeedbackLoadSeq;
 
     if (window.showProjectFeedbackModalLoading) {
         window.showProjectFeedbackModalLoading(project);
     }
 
+    var reportedOpen = Number(project.feedback_new_count || 0);
+    var focusId = Number(options.focusFeedbackId || 0);
+    // Fast path: open queue first when owner likely has work. Deep-link focus needs full list.
+    var preferOpenFirst = reportedOpen > 0 && focusId <= 0;
+
     try {
-        const initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
-        const response = await fetch(`${API_BASE}/projects/${appId}/feedback?owner_id=${userId}&${initQ}`);
-        const data = await response.json();
-        if (!response.ok || data.status !== 'success') {
-            if (window.showProjectFeedbackModalError) {
-                window.showProjectFeedbackModalError(project);
+        var stageItems = [];
+        var preferUnprocessed = false;
+
+        if (preferOpenFirst) {
+            var openPayload = await fetchProjectFeedbackPayload(appId, 'open');
+            if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+            stageItems = (openPayload.feedback || []).filter(function(item) {
+                return typeof isOpenFeedbackStatus === 'function'
+                    ? isOpenFeedbackStatus(item && item.status)
+                    : true;
+            });
+            if (stageItems.length > 0) {
+                preferUnprocessed = true;
+                _activeProjectFeedbackItems = stageItems;
+                _activeProjectFeedbackPartial = true;
+                _activeProjectFeedbackFullLoaded = false;
+                if (window.showProjectFeedbackModal) {
+                    window.showProjectFeedbackModal(project, stageItems, {
+                        preferUnprocessed: true,
+                        partialLoad: true
+                    });
+                }
+                // Stage 2: hydrate processed tickets in background for instant "show all".
+                fetchProjectFeedbackPayload(appId, 'all').then(function(fullPayload) {
+                    if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+                    if (Number(_activeProjectFeedbackAppId || 0) !== Number(appId)) return;
+                    _activeProjectFeedbackItems = fullPayload.feedback || [];
+                    _activeProjectFeedbackFullLoaded = true;
+                    _activeProjectFeedbackPartial = false;
+                    if (!_isProjectFeedbackModalOpenFor(appId)) return;
+                    var wantUnprocessed = (_projectFeedbackStatusFilter === 'new' ||
+                        _projectFeedbackStatusFilter === 'pending' ||
+                        _projectFeedbackStatusFilter === 'open');
+                    if (wantUnprocessed) {
+                        // Keep currently visible open cards intact; only refresh header stats.
+                        if (typeof refreshProjectFeedbackHeader === 'function') {
+                            refreshProjectFeedbackHeader(project, _activeProjectFeedbackItems, { partialLoad: false });
+                        }
+                        return;
+                    }
+                    if (window.showProjectFeedbackModal) {
+                        window.showProjectFeedbackModal(project, _activeProjectFeedbackItems, {
+                            preferUnprocessed: false,
+                            partialLoad: false
+                        });
+                    }
+                }).catch(function(bgError) {
+                    console.warn('Background full feedback load failed:', bgError);
+                });
+                return;
             }
-            showToast(getApiErrorMessage(data, 'loadError'));
-            return;
+            // Stale new_count or empty open queue → fall through to full list, checkbox off.
         }
-        _activeProjectFeedbackItems = data.feedback || [];
+
+        var fullPayload = await fetchProjectFeedbackPayload(appId, 'all');
+        if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+        stageItems = fullPayload.feedback || [];
+        _activeProjectFeedbackItems = stageItems;
+        _activeProjectFeedbackFullLoaded = true;
+        _activeProjectFeedbackPartial = false;
+        // Deep-link focus must keep target visible → do not force unprocessed filter.
+        preferUnprocessed = false;
         if (window.showProjectFeedbackModal) {
-            window.showProjectFeedbackModal(project, _activeProjectFeedbackItems);
+            window.showProjectFeedbackModal(project, stageItems, {
+                preferUnprocessed: preferUnprocessed,
+                partialLoad: false
+            });
         }
-        if (Number(options.focusFeedbackId || 0) > 0) {
+        if (focusId > 0) {
             setTimeout(function () {
-                focusProjectFeedbackCard(options.focusFeedbackId);
+                focusProjectFeedbackCard(focusId);
             }, 80);
         }
     } catch (error) {
+        if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
         console.error('Load project feedback error:', error);
         if (window.showProjectFeedbackModalError) {
             window.showProjectFeedbackModalError(project);
         }
-        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        showToast(getApiErrorMessage((error && error.payload) || (error && error.message), error && error.payload ? 'loadError' : 'networkError'));
     }
 }
 

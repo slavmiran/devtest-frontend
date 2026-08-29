@@ -4662,9 +4662,12 @@ function getFeedbackTypeChip(item) {
     return `<span class="fb-type-chip type-bug">${window.escapeHTML(window.t('feedbackChipBug', {}, lang))}</span>`;
 }
 
-function getProjectFeedbackHeader(project, items) {
+function getProjectFeedbackHeader(project, items, meta) {
+    meta = meta || {};
     const safeName = window.escapeHTML((project && (project.name || project.package_name)) || window.t('unknownLabel', {}, lang));
     const newCount = Number(project && project.feedback_new_count || 0);
+    const totalReported = Number(project && project.feedback_total_count || 0);
+    const partialLoad = !!(meta.partialLoad || (typeof _activeProjectFeedbackPartial !== 'undefined' && _activeProjectFeedbackPartial));
 
     let googlePlayCount = 0;
     let bugCount = 0;
@@ -4688,10 +4691,20 @@ function getProjectFeedbackHeader(project, items) {
         });
     }
 
+    // While only open tickets are loaded, keep dashboard totals from project counters.
+    if (partialLoad) {
+        openCount = Math.max(openCount, newCount);
+        if (totalReported > 0) {
+            processedCount = Math.max(0, totalReported - openCount);
+        }
+    }
+
     const totalCount = openCount + processedCount;
     const donePct = totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
-    const avgResponseMs = getFeedbackAvgResponseMs(items);
-    const avgResponseText = formatFeedbackAvgResponseHours(avgResponseMs);
+    const avgResponseMs = partialLoad ? null : getFeedbackAvgResponseMs(items);
+    const avgResponseText = partialLoad
+        ? '…'
+        : formatFeedbackAvgResponseHours(avgResponseMs);
     const typeFilter = _projectFeedbackTypeFilter || 'all';
     const statusFilter = _projectFeedbackStatusFilter || 'all';
     const onlyUnprocessed = statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open';
@@ -4700,7 +4713,7 @@ function getProjectFeedbackHeader(project, items) {
     const speedLabel = window.t('feedbackResponseSpeedLabel', {}, lang) || (lang === 'ru' ? 'Скорость обработки' : 'Processing speed');
     const unprocessedLabel = window.t('feedbackOnlyUnprocessedLabel', {}, lang) || (lang === 'ru' ? 'Только необработанные' : 'Unprocessed only');
     const allClearLabel = lang === 'ru' ? 'Очередь пуста 🎉' : 'Inbox zero 🎉';
-    const slaToneClass = getFeedbackSlaToneClass(avgResponseMs);
+    const slaToneClass = partialLoad ? '' : getFeedbackSlaToneClass(avgResponseMs);
     const slaIconHtml = getMaterialAcuteIconSvg('feedback-sla-icon');
 
     return `
@@ -4785,18 +4798,65 @@ var _projectFeedbackTypeFilter = 'all';
 var _projectFeedbackStatusFilter = 'all';
 var _projectFeedbackCardNodes = null;
 
-function resetProjectFeedbackFilters() {
+function resetProjectFeedbackFilters(preferUnprocessed) {
     _projectFeedbackTypeFilter = 'all';
-    _projectFeedbackStatusFilter = 'all';
+    _projectFeedbackStatusFilter = preferUnprocessed ? 'new' : 'all';
     _projectFeedbackCardNodes = null;
 }
 
 function toggleFeedbackUnprocessedOnly(checked) {
     _projectFeedbackStatusFilter = checked ? 'new' : 'all';
+    if (!checked && typeof _activeProjectFeedbackFullLoaded !== 'undefined' && !_activeProjectFeedbackFullLoaded) {
+        var project = null;
+        if (typeof getFeedbackRewardProject === 'function') {
+            project = getFeedbackRewardProject();
+        }
+        if (!project && Number(_activeProjectFeedbackAppId || 0) > 0) {
+            var appId = Number(_activeProjectFeedbackAppId);
+            project = (myProjects || []).find(function(item) {
+                return Number(item.app_id || item.id) === appId;
+            }) || (archivedProjects || []).find(function(item) {
+                return Number(item.app_id || item.id) === appId;
+            }) || null;
+        }
+        var toggleEl = document.querySelector('#project-feedback-body .feedback-unprocessed-toggle input');
+        if (toggleEl) toggleEl.disabled = true;
+        var loadPromise = (typeof ensureFullProjectFeedbackLoaded === 'function')
+            ? ensureFullProjectFeedbackLoaded()
+            : Promise.resolve(_activeProjectFeedbackItems || []);
+        loadPromise.then(function(items) {
+            if (toggleEl) toggleEl.disabled = false;
+            if (!_isProjectFeedbackModalOpenSafe()) return;
+            if (window.showProjectFeedbackModal && project) {
+                window.showProjectFeedbackModal(project, items || _activeProjectFeedbackItems || [], {
+                    preferUnprocessed: false,
+                    partialLoad: false
+                });
+            } else {
+                applyProjectFeedbackFilters();
+            }
+        }).catch(function(error) {
+            if (toggleEl) toggleEl.disabled = false;
+            console.error('Full feedback load on uncheck failed:', error);
+            _projectFeedbackStatusFilter = 'new';
+            if (toggleEl) toggleEl.checked = true;
+            applyProjectFeedbackFilters();
+            if (typeof showToast === 'function') {
+                showToast(window.t('networkError', {}, lang) || 'Network error');
+            }
+        });
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+        return;
+    }
     applyProjectFeedbackFilters();
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
 }
 window.toggleFeedbackUnprocessedOnly = toggleFeedbackUnprocessedOnly;
+
+function _isProjectFeedbackModalOpenSafe() {
+    var modal = document.getElementById('project-feedback-modal');
+    return !!(modal && modal.classList.contains('active'));
+}
 
 function normalizeFeedbackStatus(status) {
     return String(status || '').trim().toLowerCase();
@@ -5758,18 +5818,33 @@ function showProjectFeedbackModalError(project) {
     }
 }
 
-function showProjectFeedbackModal(project, items) {
-    resetProjectFeedbackFilters();
+function showProjectFeedbackModal(project, items, options) {
+    options = options || {};
+    resetProjectFeedbackFilters(!!options.preferUnprocessed);
     const body = document.getElementById('project-feedback-body');
     if (!body) return;
-    body.innerHTML = getProjectFeedbackHeader(project, items) + renderProjectFeedbackCards(project, items);
+    body.innerHTML = getProjectFeedbackHeader(project, items, {
+        partialLoad: !!options.partialLoad
+    }) + renderProjectFeedbackCards(project, items);
     document.getElementById('project-feedback-modal').classList.add('active');
     cacheProjectFeedbackCards();
+    applyProjectFeedbackFilters();
     feedbackScheduleClampMeasure();
     if (typeof window.hideTgDeeplinkLoader === 'function') {
         window.hideTgDeeplinkLoader('feedback');
     }
 }
+
+function refreshProjectFeedbackHeader(project, items, meta) {
+    const headerContainer = document.querySelector('#project-feedback-body .feedback-sticky-header') ||
+        document.querySelector('.feedback-sticky-header');
+    if (!headerContainer || typeof getProjectFeedbackHeader !== 'function') return;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = getProjectFeedbackHeader(project, items, meta || {});
+    const newHeader = tempDiv.querySelector('.feedback-sticky-header');
+    if (newHeader) headerContainer.replaceWith(newHeader);
+}
+window.refreshProjectFeedbackHeader = refreshProjectFeedbackHeader;
 
 function closeProjectFeedbackModal(event) {
     if (event && event.target !== document.getElementById('project-feedback-modal')) return;
