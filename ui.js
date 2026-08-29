@@ -85,6 +85,9 @@ Object.assign(window, {
     toggleCheckpointAccordion: typeof toggleCheckpointAccordion !== 'undefined' ? toggleCheckpointAccordion : undefined,
     closeTestDayInfoModal: typeof closeTestDayInfoModal !== 'undefined' ? closeTestDayInfoModal : undefined,
     handleGrantTomorrowClick: typeof handleGrantTomorrowClick !== 'undefined' ? handleGrantTomorrowClick : undefined,
+    openActiveTimerSwitchModal: typeof openActiveTimerSwitchModal !== 'undefined' ? openActiveTimerSwitchModal : undefined,
+    closeActiveTimerSwitchModal: typeof closeActiveTimerSwitchModal !== 'undefined' ? closeActiveTimerSwitchModal : undefined,
+    handleReturnToActiveTimerClick: typeof handleReturnToActiveTimerClick !== 'undefined' ? handleReturnToActiveTimerClick : undefined,
 });
 
 Object.assign(window.ui, {

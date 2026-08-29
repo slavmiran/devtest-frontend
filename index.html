@@ -1767,6 +1767,21 @@
         </div>
     </div>
 
+    <!-- Active Timer Switch Bottom Sheet (Educational Tip) -->
+    <div id="active-timer-switch-modal" class="modal-overlay" onclick="closeActiveTimerSwitchModal(event)">
+        <div class="modal-content active-timer-switch-modal-content" onclick="event.stopPropagation()">
+            <div class="sheet-handle"></div>
+            <div class="active-timer-switch-modal-header" style="text-align: center; margin-bottom: 16px;">
+                <div style="font-size: 34px; margin-bottom: 8px;">🏎️</div>
+                <h3 style="font-size: 19px; font-weight: 700; margin: 0;" id="active-timer-switch-title">Слишком быстро</h3>
+            </div>
+            <div id="active-timer-switch-body" style="font-size: 14px; line-height: 1.55; color: var(--text-color); display: flex; flex-direction: column; gap: 12px;"></div>
+            <button id="btn-return-to-active-timer" class="btn btn-primary" style="width: 100%; margin-top: 18px; font-size: 15px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="handleReturnToActiveTimerClick()">
+                ↗ Вернуться к тесту
+            </button>
+        </div>
+    </div>
+
     <div id="reliability-info-modal" class="modal-overlay" onclick="closeReliabilityInfo(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-reliabilityInfoTitle"></h3>

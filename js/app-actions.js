@@ -1331,6 +1331,9 @@ function _startActiveTimerInterval(id) {
         if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
             window.syncCheckinOptionsJustConfirmTimer(id, remaining);
         }
+        if (typeof window.syncActiveTimerSwitchModalButton === 'function') {
+            window.syncActiveTimerSwitchModalButton(remaining);
+        }
     }, 1000);
 }
 
@@ -1341,9 +1344,13 @@ function _syncActiveTimerState() {
         _timerIntervalId = null;
         _timerEndTimestamp = null;
         activeTimerAppId = null;
+        _activeTimerSwitchAttempts = 0;
         _timerIsScreenshot = false;
         _timerOwnerUsername = '';
         _clearPersistedActiveTimer();
+        if (typeof closeActiveTimerSwitchModal === 'function') {
+            closeActiveTimerSwitchModal();
+        }
         return false;
     }
     if (Date.now() < _timerEndTimestamp) {
@@ -1367,6 +1374,7 @@ function _syncActiveTimerState() {
     _timerIntervalId = null;
     _timerEndTimestamp = null;
     activeTimerAppId = null;
+    _activeTimerSwitchAttempts = 0;
     _timerIsScreenshot = false;
     _timerOwnerUsername = '';
     _timerLocalDate = '';
@@ -1374,6 +1382,9 @@ function _syncActiveTimerState() {
     _clearPersistedActiveTimer();
     if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
         window.syncCheckinOptionsJustConfirmTimer(finishedId, 0);
+    }
+    if (typeof closeActiveTimerSwitchModal === 'function') {
+        closeActiveTimerSwitchModal();
     }
     notifyCheckinTimerFinished();
     return true;
@@ -2156,6 +2167,214 @@ async function _requestCheckinOpenToken(appId) {
     return result;
 }
 
+let _activeTimerSwitchAttempts = 0;
+let _activeTimerSwitchModalState = {
+    appId: null,
+    appName: '',
+    pkg: '',
+};
+const ACTIVE_TIMER_SWITCH_TIP_KEY = 'last_active_timer_switch_tip_at';
+
+function _getActiveTimerDetails() {
+    if (!activeTimerAppId) return null;
+    var activeTest = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id) === Number(activeTimerAppId);
+    });
+    var rawName = (activeTest && (activeTest.name || activeTest.package_name)) || 'App';
+    var activeAppName = (typeof _cleanDisplayName === 'function' ? _cleanDisplayName(rawName) : rawName) || 'App';
+    var activePkg = (activeTest && (activeTest.package_name || activeTest.pkg)) || '';
+    var remainingSec = Math.max(1, Math.ceil((_timerEndTimestamp - Date.now()) / 1000));
+    return {
+        appId: activeTimerAppId,
+        appName: activeAppName,
+        pkg: activePkg,
+        remainingSec: remainingSec,
+        isScreenshot: !!_timerIsScreenshot,
+    };
+}
+
+function handleActiveTimerSwitchAttempt(attemptedAppId) {
+    var details = _getActiveTimerDetails();
+    if (!details) return;
+
+    var currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
+    var lastShown = Number(localStorage.getItem(ACTIVE_TIMER_SWITCH_TIP_KEY) || 0);
+    var isFirstIn24h = !lastShown || (Date.now() - lastShown > 24 * 60 * 60 * 1000);
+
+    if (isFirstIn24h) {
+        openActiveTimerSwitchModal(details);
+        return;
+    }
+
+    _activeTimerSwitchAttempts = (_activeTimerSwitchAttempts || 0) + 1;
+
+    // 1. Haptic feedback
+    if (window.tg && window.tg.HapticFeedback) {
+        try {
+            window.tg.HapticFeedback.impactOccurred('medium');
+        } catch (e) {}
+    }
+
+    // 2. Shake clicked foreign button
+    if (attemptedAppId) {
+        var clickedBtn = document.getElementById('btn-confirm-' + attemptedAppId);
+        if (!clickedBtn) {
+            clickedBtn = document.querySelector(`[onclick*="startTimer(${attemptedAppId}"]`);
+        }
+        if (clickedBtn) {
+            clickedBtn.classList.remove('is-shaking');
+            void clickedBtn.offsetWidth;
+            clickedBtn.classList.add('is-shaking');
+            setTimeout(function() {
+                clickedBtn.classList.remove('is-shaking');
+            }, 400);
+        }
+    }
+
+    // 3. Highlight current active test card
+    var activeConfirmBtn = document.getElementById('btn-confirm-' + details.appId);
+    var activeCard = activeConfirmBtn ? activeConfirmBtn.closest('.card') : null;
+    if (activeCard) {
+        activeCard.classList.remove('active-timer-card-highlight');
+        void activeCard.offsetWidth;
+        activeCard.classList.add('active-timer-card-highlight');
+        setTimeout(function() {
+            activeCard.classList.remove('active-timer-card-highlight');
+        }, 1200);
+    }
+
+    // 4. Select toast text based on attempt count
+    var toastMessage = '';
+    if (_activeTimerSwitchAttempts === 1) {
+        var msgTpl1 = (typeof window.t === 'function' ? window.t('activeTimerSwitchToastP1', {}, currentLang) : null)
+            || 'Многозадачность впечатляет, но тестируем по одному 🙂\n{appName} · ещё {sec} сек';
+        toastMessage = msgTpl1.replace('{appName}', details.appName).replace('{sec}', details.remainingSec);
+    } else if (_activeTimerSwitchAttempts === 2) {
+        var msgTpl2 = (typeof window.t === 'function' ? window.t('activeTimerSwitchToastP2', {}, currentLang) : null)
+            || '👀 Мы тоже проверили. Таймер настоящий 🙂\n{appName} · ещё {sec} сек';
+        toastMessage = msgTpl2.replace('{appName}', details.appName).replace('{sec}', details.remainingSec);
+    } else {
+        var msgTpl3 = (typeof window.t === 'function' ? window.t('activeTimerSwitchToastP3', {}, currentLang) : null)
+            || '{appName} · ещё {sec} сек';
+        toastMessage = msgTpl3.replace('{appName}', details.appName).replace('{sec}', details.remainingSec);
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(toastMessage, 1200);
+    }
+
+    // 5. Automatically redirect to active project's Google Play after short delay (~950ms)
+    setTimeout(function() {
+        if (activeTimerAppId && details.pkg) {
+            tg.openLink('https://play.google.com/store/apps/details?id=' + details.pkg);
+            _onStoreLinkClickedForIssueFlow(details.appId);
+        }
+    }, 950);
+}
+
+function openActiveTimerSwitchModal(details) {
+    if (!details) {
+        details = _getActiveTimerDetails();
+    }
+    if (!details) return;
+
+    _activeTimerSwitchModalState = {
+        appId: details.appId,
+        appName: details.appName,
+        pkg: details.pkg,
+    };
+
+    var modal = document.getElementById('active-timer-switch-modal');
+    var titleEl = document.getElementById('active-timer-switch-title');
+    var bodyEl = document.getElementById('active-timer-switch-body');
+    var btnEl = document.getElementById('btn-return-to-active-timer');
+    var currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
+
+    if (titleEl) {
+        titleEl.innerText = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalTitle', {}, currentLang) : null) || 'Слишком быстро';
+    }
+
+    if (bodyEl) {
+        var p1 = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalP1', {}, currentLang) : null)
+            || 'Google Play вряд ли поверит в тест за пару секунд — мы тоже 🙂';
+        var p2 = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalP2', { appName: details.appName }, currentLang) : null)
+            || ('Сейчас идёт сессия ' + details.appName + '. Дайте приложению хотя бы 15 секунд: откройте пару экранов, попробуйте основную функцию или оцените интерфейс.');
+        var p3 = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalP3', {}, currentLang) : null)
+            || '15 секунд — это время на реальный тест, а не ожидание.';
+
+        bodyEl.innerHTML = '<div style="font-size: 15px; font-weight: 600; color: var(--text-color);">' + window.escapeHTML(p1) + '</div>'
+            + '<div style="font-size: 14px; line-height: 1.5; color: var(--text-color); background: var(--secondary-bg-color); border: 1px solid rgba(142, 142, 147, 0.18); border-radius: 12px; padding: 12px 14px;">'
+            + window.escapeHTML(p2)
+            + '</div>'
+            + '<div style="font-size: 13px; color: var(--hint-color); padding: 0 4px; line-height: 1.45;">'
+            + '💡 ' + window.escapeHTML(p3)
+            + '</div>';
+    }
+
+    if (btnEl) {
+        var btnTextTpl = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalBtn', { appName: details.appName, sec: details.remainingSec }, currentLang) : null)
+            || ('↗ Вернуться к ' + details.appName + ' · ещё ' + details.remainingSec + ' сек');
+        btnEl.innerText = btnTextTpl;
+    }
+
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function syncActiveTimerSwitchModalButton(remainingSec) {
+    var modal = document.getElementById('active-timer-switch-modal');
+    if (!modal || !modal.classList.contains('active')) return;
+    var btnEl = document.getElementById('btn-return-to-active-timer');
+    if (!btnEl) return;
+    var currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
+    var appName = _activeTimerSwitchModalState.appName || 'App';
+    if (remainingSec > 0) {
+        var btnTextTpl = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalBtn', { appName: appName, sec: remainingSec }, currentLang) : null)
+            || ('↗ Вернуться к ' + appName + ' · ещё ' + remainingSec + ' сек');
+        btnEl.innerText = btnTextTpl;
+    } else {
+        var readyTpl = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalBtnReady', { appName: appName }, currentLang) : null)
+            || ('↗ Вернуться к ' + appName + ' · можно подтверждать');
+        btnEl.innerText = readyTpl;
+    }
+}
+
+function handleReturnToActiveTimerClick() {
+    var pkg = _activeTimerSwitchModalState.pkg;
+    var appId = _activeTimerSwitchModalState.appId || activeTimerAppId;
+    closeActiveTimerSwitchModal();
+
+    localStorage.setItem(ACTIVE_TIMER_SWITCH_TIP_KEY, String(Date.now()));
+
+    if (pkg) {
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+            window.tg.HapticFeedback.selectionChanged();
+        }
+        tg.openLink('https://play.google.com/store/apps/details?id=' + pkg);
+        if (appId) {
+            _onStoreLinkClickedForIssueFlow(appId);
+        }
+    }
+}
+
+function closeActiveTimerSwitchModal(event) {
+    if (event && event.target && event.target.closest && event.target.closest('.modal-content')) {
+        return;
+    }
+    var modal = document.getElementById('active-timer-switch-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    localStorage.setItem(ACTIVE_TIMER_SWITCH_TIP_KEY, String(Date.now()));
+}
+
+window.openActiveTimerSwitchModal = openActiveTimerSwitchModal;
+window.closeActiveTimerSwitchModal = closeActiveTimerSwitchModal;
+window.handleReturnToActiveTimerClick = handleReturnToActiveTimerClick;
+window.syncActiveTimerSwitchModalButton = syncActiveTimerSwitchModalButton;
+window.handleActiveTimerSwitchAttempt = handleActiveTimerSwitchAttempt;
+
 function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '', durationSeconds = 15) {
     _startTimerAsync(id, pkg, isScreenshotDay, ownerUsername, durationSeconds).catch(function(err) {
         console.error('startTimer failed:', err);
@@ -2175,6 +2394,7 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
         _timerIntervalId = null;
         _timerEndTimestamp = null;
         activeTimerAppId = null;
+        _activeTimerSwitchAttempts = 0;
         _timerIsScreenshot = false;
         _timerOwnerUsername = '';
         _clearPersistedActiveTimer();
@@ -2183,6 +2403,7 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
         _timerIntervalId = null;
         _timerEndTimestamp = null;
         activeTimerAppId = null;
+        _activeTimerSwitchAttempts = 0;
         _timerIsScreenshot = false;
         _timerOwnerUsername = '';
         _clearPersistedActiveTimer();
@@ -2203,7 +2424,7 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
     }
 
     if (activeTimerAppId !== null && activeTimerAppId !== id) {
-        showCustomAlert(t.antiFraudAlert);
+        handleActiveTimerSwitchAttempt(id);
         return;
     }
 
@@ -2217,6 +2438,7 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
 
     // 2. Start timer countdown immediately
     activeTimerAppId = id;
+    _activeTimerSwitchAttempts = 0;
     _timerEndTimestamp = Date.now() + (resolvedDurationSeconds * 1000);
     _timerIsScreenshot = isScreenshotDay;
     _timerOwnerUsername = resolvedOwnerUsername;
