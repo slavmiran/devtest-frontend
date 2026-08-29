@@ -1,6 +1,7 @@
 /* Phase 3: Developer dossier modal (extracted from styles.css). */
 
 #dossier-modal.modal-overlay {
+    z-index: 260;
     background: rgba(14, 17, 22, 0.72);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);

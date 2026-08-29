@@ -9456,6 +9456,7 @@ async function openDossierModal(username, testerId, appId) {
 
     const openSeq = ++_dossierOpenSeq;
     modal.classList.add('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 
     const project = myProjects.find((item) => Number(item.id) === Number(appId));
     const tester = project ? (project.testers || []).find((candidate) => Number(candidate.tester_id) === Number(testerId)) : null;
@@ -9743,6 +9744,7 @@ async function openDossierModal(username, testerId, appId) {
 function closeDossierModal(event) {
     if (event && event.target && event.target.id !== 'dossier-modal') return;
     document.getElementById('dossier-modal').classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
 function openTimelineStatsSheet(appId) {

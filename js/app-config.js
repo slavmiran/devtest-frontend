@@ -11,6 +11,16 @@ tg.expand();
 tg.ready();
 
 function _closeTopTelegramBackTarget() {
+    var dossierModal = document.getElementById('dossier-modal');
+    if (dossierModal && dossierModal.classList.contains('active')) {
+        if (typeof closeDossierModal === 'function') {
+            closeDossierModal();
+        } else {
+            dossierModal.classList.remove('active');
+        }
+        return true;
+    }
+
     var protectionCenter = document.getElementById('protection-center');
     if (protectionCenter && protectionCenter.classList.contains('active')) {
         if (typeof closeProtectionCenter === 'function') {

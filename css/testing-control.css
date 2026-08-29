@@ -1,13 +1,27 @@
-.testing-control-modal-content {
-    width: min(100%, 760px);
-    max-height: min(92vh, 920px);
-    padding: 0;
+#testing-control-modal {
+    align-items: stretch;
     overflow: hidden;
     background: #0d1118;
 }
 
+.testing-control-modal-content {
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 0;
+    background: #0d1118;
+}
+
 #testing-control-body {
-    max-height: min(92vh, 920px);
+    width: min(100%, 760px);
+    height: 100%;
+    max-height: none;
+    margin: 0 auto;
+    box-sizing: border-box;
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 0 14px calc(18px + env(safe-area-inset-bottom));
@@ -20,9 +34,9 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 70px;
+    min-height: calc(70px + env(safe-area-inset-top));
     margin: 0 -14px 12px;
-    padding: 10px 14px;
+    padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
     background: rgba(13, 17, 24, 0.94);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(18px);
@@ -99,9 +113,8 @@
 @keyframes testing-control-pulse { 0%, 100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
 
 @media (max-width: 520px) {
-    #testing-control-modal { align-items: flex-end; }
-    .testing-control-modal-content { width: 100%; max-height: calc(94vh - env(safe-area-inset-top)); border-radius: 20px 20px 0 0; }
-    #testing-control-body { max-height: calc(94vh - env(safe-area-inset-top)); }
+    .testing-control-modal-content { width: 100%; height: 100dvh; max-height: none; border-radius: 0; }
+    #testing-control-body { width: 100%; max-height: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
