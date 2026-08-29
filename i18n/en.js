@@ -2791,6 +2791,19 @@
             testingControlProofLegacy: "Proof was not recorded",
             testingControlProofUnavailable: "Proof unavailable",
             testingControlScreenshotPhase5: "Image preview will be available in Gallery.",
+            testingControlGalleryTab: "Gallery",
+            testingControlGalleryEmpty: "There are no screenshots in this run yet.",
+            testingControlGalleryLoadError: "Could not load screenshots.",
+            testingControlGalleryImageLoading: "Loading preview…",
+            testingControlFilterDay: "Day",
+            testingControlFilterBrand: "Brand",
+            testingControlFilterModel: "Model",
+            testingControlFilterAndroid: "Android",
+            testingControlAllDays: "All days",
+            testingControlAllBrands: "All brands",
+            testingControlAllModels: "All models",
+            testingControlAllAndroid: "All Android versions",
+            testingControlMediaUnavailable: "The image is temporarily unavailable.",
         
     };
     window.I18N_EN = window.I18NEN;

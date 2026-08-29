@@ -2798,6 +2798,19 @@
             testingControlProofLegacy: "Доказательство не записывалось",
             testingControlProofUnavailable: "Доказательство недоступно",
             testingControlScreenshotPhase5: "Просмотр изображения появится в Галерее.",
+            testingControlGalleryTab: "Галерея",
+            testingControlGalleryEmpty: "В этом запуске пока нет скриншотов.",
+            testingControlGalleryLoadError: "Не удалось загрузить скриншоты.",
+            testingControlGalleryImageLoading: "Загрузка превью…",
+            testingControlFilterDay: "День",
+            testingControlFilterBrand: "Бренд",
+            testingControlFilterModel: "Модель",
+            testingControlFilterAndroid: "Android",
+            testingControlAllDays: "Все дни",
+            testingControlAllBrands: "Все бренды",
+            testingControlAllModels: "Все модели",
+            testingControlAllAndroid: "Все версии Android",
+            testingControlMediaUnavailable: "Изображение временно недоступно.",
         
     };
     window.I18N_RU = window.I18NRU;

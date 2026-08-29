@@ -1,4 +1,4 @@
-/* Phase 4 — owner Testing Control (tester timeline only; no media requests). */
+/* Phase 5 — owner Testing Control, lazy screenshot Gallery, secure preview. */
 
 (function () {
     'use strict';
@@ -11,10 +11,22 @@
         nextCursor: null,
         loading: false,
         focusProgressId: 0,
+        activeTab: 'testers',
+        galleryItems: [],
+        galleryNextCursor: null,
+        galleryLoading: false,
+        galleryFilters: { days: [], brands: [], models: [], android_versions: [] },
+        gallerySelected: { day: '', brand: '', model: '', android_version: '' },
+        thumbnailObserver: null,
+        previewProofId: 0,
     };
 
     function enabled() {
         return !!(window.App && window.App.testingControlEnabled === true);
+    }
+
+    function galleryEnabled() {
+        return !!(enabled() && window.App && window.App.checkinProofGalleryEnabled === true);
     }
 
     function text(key, fallback, params) {
@@ -27,6 +39,35 @@
 
     function escape(value) {
         return window.escapeHTML ? window.escapeHTML(String(value == null ? '' : value)) : String(value == null ? '' : value);
+    }
+
+    function secureMediaUrl(path) {
+        var value = String(path || '').trim();
+        if (!value) return '';
+        if (/^https:\/\//i.test(value)) return value;
+        var base = String(API_BASE || '').replace(/\/api\/?$/i, '').replace(/\/$/, '');
+        return base + (value.charAt(0) === '/' ? value : '/' + value);
+    }
+
+    function renderTabs() {
+        if (!galleryEnabled()) return '';
+        return '<div class="testing-control-tabs" role="tablist">' +
+            '<button type="button" class="testing-control-tab' + (state.activeTab === 'testers' ? ' is-active' : '') + '" onclick="setTestingControlTab(\'testers\')">' + escape(text('testingControlTestersTab', 'Testers')) + '</button>' +
+            '<button type="button" class="testing-control-tab' + (state.activeTab === 'gallery' ? ' is-active' : '') + '" onclick="setTestingControlTab(\'gallery\')">' + escape(text('testingControlGalleryTab', 'Gallery')) + '</button>' +
+        '</div>';
+    }
+
+    function renderHeader() {
+        var project = state.project || {};
+        var appName = String(project.name || '').trim() || text('unknownLabel', 'Project');
+        return '<div class="testing-control-header">' +
+                '<button type="button" class="testing-control-back" onclick="closeTestingControl()" aria-label="' + escape(text('back', 'Back')) + '">‹</button>' +
+                '<div class="testing-control-heading">' +
+                    '<div class="testing-control-title">' + escape(appName) + '</div>' +
+                    '<div class="testing-control-subtitle">' + escape(text('testingControlTitle', 'Testing Control')) + '</div>' +
+                '</div>' +
+                '<span class="testing-control-run">R' + Number(project.run_iteration || 1) + '</span>' +
+            '</div>' + renderTabs();
     }
 
     function projectFromCache(appId) {
@@ -156,51 +197,247 @@
         '</article>';
     }
 
-    function render() {
+    function renderTesters() {
         var body = document.getElementById('testing-control-body');
         if (!body) return;
-        var project = state.project || {};
-        var appName = String(project.name || '').trim() || text('unknownLabel', 'Project');
         var itemsHtml = state.items.length
             ? state.items.map(renderTester).join('')
             : '<div class="testing-control-empty">' + escape(text('testingControlEmpty', 'No testers in this run yet.')) + '</div>';
         var loadMore = state.nextCursor
             ? '<button type="button" class="btn btn-secondary testing-control-more" onclick="loadMoreTestingControl()">' + escape(text('testingControlLoadMore', 'Load more')) + '</button>'
             : '';
-        body.innerHTML = '<div class="testing-control-header">' +
-                '<button type="button" class="testing-control-back" onclick="closeTestingControl()" aria-label="' + escape(text('back', 'Back')) + '">‹</button>' +
-                '<div class="testing-control-heading">' +
-                    '<div class="testing-control-title">' + escape(appName) + '</div>' +
-                    '<div class="testing-control-subtitle">' + escape(text('testingControlTitle', 'Testing Control')) + ' · ' + escape(text('testingControlTestersTab', 'Testers')) + '</div>' +
-                '</div>' +
-                '<span class="testing-control-run">R' + Number(project.run_iteration || 1) + '</span>' +
-            '</div>' +
+        body.innerHTML = renderHeader() +
             '<div id="testing-control-proof-meta" class="testing-control-proof-meta" hidden></div>' +
             '<div class="testing-control-list">' + itemsHtml + '</div>' +
             loadMore;
     }
 
+    function render() {
+        if (state.activeTab === 'gallery' && galleryEnabled()) {
+            renderGallery();
+            return;
+        }
+        renderTesters();
+    }
+
     function renderLoading() {
         var body = document.getElementById('testing-control-body');
         if (!body) return;
-        body.innerHTML = '<div class="testing-control-header">' +
-                '<button type="button" class="testing-control-back" onclick="closeTestingControl()" aria-label="Back">‹</button>' +
-                '<div class="testing-control-heading"><div class="testing-control-title">' + escape(text('testingControlTitle', 'Testing Control')) + '</div></div>' +
-            '</div>' +
+        body.innerHTML = renderHeader() +
             '<div class="testing-control-loading" role="status"><span></span><span></span><span></span></div>';
     }
 
     function renderError() {
         var body = document.getElementById('testing-control-body');
         if (!body) return;
-        body.innerHTML = '<div class="testing-control-header">' +
-                '<button type="button" class="testing-control-back" onclick="closeTestingControl()" aria-label="Back">‹</button>' +
-                '<div class="testing-control-heading"><div class="testing-control-title">' + escape(text('testingControlTitle', 'Testing Control')) + '</div></div>' +
-            '</div>' +
+        body.innerHTML = renderHeader() +
             '<div class="testing-control-error">' +
                 '<div>' + escape(text('testingControlLoadError', 'Could not load testing progress.')) + '</div>' +
                 '<button type="button" class="btn btn-secondary" onclick="retryTestingControl()">' + escape(text('retry', 'Retry')) + '</button>' +
             '</div>';
+    }
+
+    function filterOptions(values, selected, emptyLabel) {
+        var options = '<option value="">' + escape(emptyLabel) + '</option>';
+        (values || []).forEach(function (value) {
+            var normalized = String(value == null ? '' : value);
+            options += '<option value="' + escape(normalized) + '"' + (normalized === String(selected || '') ? ' selected' : '') + '>' + escape(normalized) + '</option>';
+        });
+        return options;
+    }
+
+    function galleryTesterLabel(item) {
+        var tester = item && item.tester || {};
+        var name = String(tester.name || '').trim();
+        var username = String(tester.username || '').trim().replace(/^@+/, '');
+        return name || (username ? '@' + username : text('idLabel', 'ID {id}', { id: Number(tester.id || 0) }));
+    }
+
+    function galleryDateLabel(value) {
+        var date = new Date(String(value || ''));
+        if (!Number.isFinite(date.getTime())) return '';
+        try {
+            return date.toLocaleString(typeof lang !== 'undefined' && lang === 'ru' ? 'ru-RU' : 'en-US', {
+                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+            });
+        } catch (_) {
+            return String(value || '').slice(0, 16).replace('T', ' ');
+        }
+    }
+
+    function renderGalleryCard(item) {
+        var proofId = Number(item && item.proof_id || 0);
+        var media = item && item.media || {};
+        var device = deviceLine(item && item.device);
+        var dimensions = media.width && media.height ? media.width + '×' + media.height : '';
+        var detail = [device, dimensions, galleryDateLabel(item && item.created_at)].filter(Boolean).join(' • ');
+        return '<article class="testing-control-gallery-card" data-proof-id="' + proofId + '">' +
+            '<button type="button" class="testing-control-gallery-image" onclick="openCheckinProofPreview(' + proofId + ')">' +
+                '<span class="testing-control-gallery-placeholder">' + escape(text('testingControlGalleryImageLoading', 'Loading preview…')) + '</span>' +
+                '<img alt="" data-proof-thumb="' + proofId + '" data-src="' + escape(secureMediaUrl(item.thumbnail_url)) + '" onload="this.closest(\'.testing-control-gallery-card\').classList.add(\'is-loaded\')" onerror="this.closest(\'.testing-control-gallery-card\').classList.add(\'is-error\')">' +
+            '</button>' +
+            '<button type="button" class="testing-control-gallery-retry" onclick="retryTestingControlThumbnail(' + proofId + '); event.stopPropagation();">' + escape(text('retry', 'Retry')) + '</button>' +
+            '<div class="testing-control-gallery-meta">' +
+                '<strong>' + escape(galleryTesterLabel(item)) + '</strong>' +
+                '<span>' + escape(text('testingControlCurrentDay', 'Day {day}', { day: Number(item.testing_day || 0) })) + '</span>' +
+                (detail ? '<small>' + escape(detail) + '</small>' : '') +
+            '</div>' +
+        '</article>';
+    }
+
+    function renderGalleryFilters() {
+        var filters = state.galleryFilters || {};
+        var selected = state.gallerySelected || {};
+        var controls = [];
+        if ((filters.days || []).length) {
+            controls.push('<select aria-label="' + escape(text('testingControlFilterDay', 'Day')) + '" onchange="setTestingControlGalleryFilter(\'day\', this.value)">' +
+                filterOptions(filters.days, selected.day, text('testingControlAllDays', 'All days')) + '</select>');
+        }
+        if ((filters.brands || []).length) {
+            controls.push('<select aria-label="' + escape(text('testingControlFilterBrand', 'Brand')) + '" onchange="setTestingControlGalleryFilter(\'brand\', this.value)">' +
+                filterOptions(filters.brands, selected.brand, text('testingControlAllBrands', 'All brands')) + '</select>');
+        }
+        if ((filters.models || []).length) {
+            controls.push('<select aria-label="' + escape(text('testingControlFilterModel', 'Model')) + '" onchange="setTestingControlGalleryFilter(\'model\', this.value)">' +
+                filterOptions(filters.models, selected.model, text('testingControlAllModels', 'All models')) + '</select>');
+        }
+        if ((filters.android_versions || []).length) {
+            controls.push('<select aria-label="' + escape(text('testingControlFilterAndroid', 'Android')) + '" onchange="setTestingControlGalleryFilter(\'android_version\', this.value)">' +
+                filterOptions(filters.android_versions, selected.android_version, text('testingControlAllAndroid', 'All Android versions')) + '</select>');
+        }
+        return controls.length ? '<div class="testing-control-gallery-filters">' + controls.join('') + '</div>' : '';
+    }
+
+    function disconnectThumbnailObserver() {
+        if (state.thumbnailObserver) state.thumbnailObserver.disconnect();
+        state.thumbnailObserver = null;
+    }
+
+    function observeThumbnails() {
+        disconnectThumbnailObserver();
+        var images = Array.prototype.slice.call(document.querySelectorAll('#testing-control-body img[data-proof-thumb]'));
+        function loadImage(image) {
+            if (!image || image.src) return;
+            var source = String(image.dataset.src || '');
+            if (source) image.src = source;
+        }
+        if (!('IntersectionObserver' in window)) {
+            images.forEach(loadImage);
+            return;
+        }
+        state.thumbnailObserver = new IntersectionObserver(function (entries, observer) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                observer.unobserve(entry.target);
+                loadImage(entry.target);
+            });
+        }, { root: document.getElementById('testing-control-body'), rootMargin: '160px 0px' });
+        images.forEach(function (image) { state.thumbnailObserver.observe(image); });
+    }
+
+    function renderGallery() {
+        var body = document.getElementById('testing-control-body');
+        if (!body) return;
+        var itemsHtml = state.galleryItems.length
+            ? state.galleryItems.map(renderGalleryCard).join('')
+            : '<div class="testing-control-empty">' + escape(text('testingControlGalleryEmpty', 'No screenshots in this run yet.')) + '</div>';
+        var loadMore = state.galleryNextCursor
+            ? '<button type="button" class="btn btn-secondary testing-control-more" onclick="loadMoreTestingControlGallery()">' + escape(text('testingControlLoadMore', 'Load more')) + '</button>'
+            : '';
+        body.innerHTML = renderHeader() + renderGalleryFilters() +
+            '<div class="testing-control-gallery-grid">' + itemsHtml + '</div>' + loadMore;
+        observeThumbnails();
+    }
+
+    async function requestGalleryPage(cursor) {
+        var selected = state.gallerySelected || {};
+        var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
+        var params = [
+            'limit=24',
+            'init_data=' + encodeURIComponent(initData),
+        ];
+        ['day', 'brand', 'model', 'android_version'].forEach(function (key) {
+            if (selected[key]) params.push(encodeURIComponent(key) + '=' + encodeURIComponent(selected[key]));
+        });
+        if (cursor) params.push('cursor=' + encodeURIComponent(cursor));
+        var url = API_BASE + '/projects/' + Number(state.appId) + '/testing-control/screenshots?' + params.join('&');
+        var response = await fetchWithRetry(url, { timeoutMs: 25000 }, 1);
+        var payload = await response.json().catch(function () { return {}; });
+        if (!response.ok || payload.status !== 'success') {
+            throw new Error((payload && (payload.code || payload.message)) || ('HTTP ' + response.status));
+        }
+        return payload;
+    }
+
+    async function loadGalleryPage(options) {
+        options = options || {};
+        if (state.galleryLoading) return;
+        state.galleryLoading = true;
+        if (!options.append) renderLoading();
+        try {
+            var payload = await requestGalleryPage(options.append ? state.galleryNextCursor : '');
+            state.project = payload.project || state.project;
+            state.galleryItems = options.append ? state.galleryItems.concat(payload.items || []) : (payload.items || []);
+            state.galleryNextCursor = payload.next_cursor || null;
+            if (!options.append && payload.filters) state.galleryFilters = payload.filters;
+            renderGallery();
+        } catch (error) {
+            console.error('Testing Control gallery load failed:', error);
+            if (!options.append) renderError();
+            else if (typeof showToast === 'function') showToast(text('testingControlGalleryLoadError', 'Could not load screenshots.'));
+        } finally {
+            state.galleryLoading = false;
+        }
+    }
+
+    async function requestMediaTicket(proofId, variant) {
+        var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
+        var response = await fetchWithRetry(API_BASE + '/checkin-proofs/' + Number(proofId || 0) + '/media-ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ init_data: initData, variant: variant }),
+            timeoutMs: 20000,
+        }, 1);
+        var payload = await response.json().catch(function () { return {}; });
+        if (!response.ok || payload.status !== 'success' || !payload.url) {
+            throw new Error((payload && (payload.code || payload.message)) || ('HTTP ' + response.status));
+        }
+        return secureMediaUrl(payload.url);
+    }
+
+    async function setTestingControlTab(tab) {
+        var target = tab === 'gallery' && galleryEnabled() ? 'gallery' : 'testers';
+        if (state.activeTab === target) return;
+        state.activeTab = target;
+        closeTestingControlProofMeta();
+        if (target === 'gallery' && !state.galleryItems.length) {
+            await loadGalleryPage({ append: false });
+        } else {
+            render();
+        }
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    }
+
+    async function setTestingControlGalleryFilter(key, value) {
+        if (!Object.prototype.hasOwnProperty.call(state.gallerySelected, key)) return;
+        state.gallerySelected[key] = String(value || '');
+        state.galleryItems = [];
+        state.galleryNextCursor = null;
+        await loadGalleryPage({ append: false });
+    }
+
+    async function retryTestingControlThumbnail(proofId) {
+        var card = document.querySelector('.testing-control-gallery-card[data-proof-id="' + Number(proofId || 0) + '"]');
+        var image = card && card.querySelector('img[data-proof-thumb]');
+        if (!card || !image) return;
+        card.classList.remove('is-error', 'is-loaded');
+        image.removeAttribute('src');
+        try {
+            image.dataset.src = await requestMediaTicket(proofId, 'thumbnail');
+            image.src = image.dataset.src;
+        } catch (error) {
+            card.classList.add('is-error');
+        }
     }
 
     async function requestPage(cursor) {
@@ -274,12 +511,18 @@
         state.items = [];
         state.nextCursor = null;
         state.focusProgressId = Number(options.focusProgressId || 0);
+        state.activeTab = options.tab === 'gallery' && galleryEnabled() ? 'gallery' : 'testers';
+        state.galleryItems = [];
+        state.galleryNextCursor = null;
+        state.galleryFilters = { days: [], brands: [], models: [], android_versions: [] };
+        state.gallerySelected = { day: '', brand: '', model: '', android_version: '' };
         var modal = document.getElementById('testing-control-modal');
         if (!modal) return false;
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
-        await loadPage({ append: false });
+        if (state.activeTab === 'gallery') await loadGalleryPage({ append: false });
+        else await loadPage({ append: false });
         return true;
     }
 
@@ -287,6 +530,8 @@
         var modal = document.getElementById('testing-control-modal');
         if (event && event.target !== modal) return;
         if (modal) modal.classList.remove('active');
+        closeCheckinProofPreview();
+        disconnectThumbnailObserver();
         state.focusProgressId = 0;
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     }
@@ -305,12 +550,94 @@
         return null;
     }
 
+    function findGalleryProof(proofId) {
+        var safeId = Number(proofId || 0);
+        return state.galleryItems.find(function (item) {
+            return Number(item && item.proof_id || 0) === safeId;
+        }) || null;
+    }
+
+    function previewMeta(proofId) {
+        var galleryItem = findGalleryProof(proofId);
+        if (galleryItem) {
+            return {
+                title: galleryTesterLabel(galleryItem),
+                subtitle: [
+                    text('testingControlCurrentDay', 'Day {day}', { day: Number(galleryItem.testing_day || 0) }),
+                    deviceLine(galleryItem.device),
+                ].filter(Boolean).join(' • '),
+            };
+        }
+        var found = findProof(proofId);
+        return found ? {
+            title: testerLabel(found.item),
+            subtitle: [
+                text('testingControlCurrentDay', 'Day {day}', { day: Number(found.day || 0) }),
+                deviceLine(found.item && found.item.device),
+            ].filter(Boolean).join(' • '),
+        } : { title: proofLabel('screenshot'), subtitle: '' };
+    }
+
+    async function openCheckinProofPreview(proofId) {
+        var safeProofId = Number(proofId || 0);
+        if (!galleryEnabled() || safeProofId <= 0) return;
+        var modal = document.getElementById('checkin-proof-preview-modal');
+        var body = document.getElementById('checkin-proof-preview-body');
+        if (!modal || !body) return;
+        state.previewProofId = safeProofId;
+        var meta = previewMeta(safeProofId);
+        body.innerHTML = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
+        var title = document.getElementById('checkin-proof-preview-title');
+        var subtitle = document.getElementById('checkin-proof-preview-subtitle');
+        if (title) title.textContent = meta.title;
+        if (subtitle) subtitle.textContent = meta.subtitle;
+        modal.classList.add('active');
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        try {
+            var source = await requestMediaTicket(safeProofId, 'full');
+            if (state.previewProofId !== safeProofId || !modal.classList.contains('active')) return;
+            body.innerHTML = '<img class="checkin-proof-preview-image" alt="" src="' + escape(source) + '">';
+            var image = body.querySelector('img');
+            if (image) image.onerror = function () { renderPreviewError(safeProofId); };
+        } catch (error) {
+            renderPreviewError(safeProofId);
+        }
+    }
+
+    function renderPreviewError(proofId) {
+        if (Number(state.previewProofId) !== Number(proofId)) return;
+        var body = document.getElementById('checkin-proof-preview-body');
+        if (!body) return;
+        body.innerHTML = '<div class="checkin-proof-preview-error">' +
+            '<span>' + escape(text('testingControlMediaUnavailable', 'Image is temporarily unavailable.')) + '</span>' +
+            '<button type="button" class="btn btn-secondary" onclick="openCheckinProofPreview(' + Number(proofId || 0) + ')">' + escape(text('retry', 'Retry')) + '</button>' +
+        '</div>';
+    }
+
+    function closeCheckinProofPreview(event) {
+        var modal = document.getElementById('checkin-proof-preview-modal');
+        if (event && event.target !== modal) return;
+        var body = document.getElementById('checkin-proof-preview-body');
+        if (body) {
+            var image = body.querySelector('img');
+            if (image) image.removeAttribute('src');
+            body.innerHTML = '';
+        }
+        if (modal) modal.classList.remove('active');
+        state.previewProofId = 0;
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    }
+
     function openTestingControlProof(appId, proofId) {
         var found = findProof(proofId);
         if (!found) return;
         var proof = found.proof || {};
         var type = String(proof.type || 'unavailable');
         var feedbackId = Number(proof.source_feedback_id || 0);
+        if (type === 'screenshot' && Number(proof.id || 0) > 0 && galleryEnabled()) {
+            openCheckinProofPreview(Number(proof.id));
+            return;
+        }
         if ((type === 'bug' || type === 'idea' || type === 'play_review') && feedbackId > 0) {
             closeTestingControl();
             if (typeof openProjectFeedback === 'function') {
@@ -343,8 +670,16 @@
     window.buildTestingControlEntryButton = buildTestingControlEntryButton;
     window.openTestingControl = openTestingControl;
     window.closeTestingControl = closeTestingControl;
-    window.retryTestingControl = function () { return loadPage({ append: false }); };
+    window.retryTestingControl = function () {
+        return state.activeTab === 'gallery' ? loadGalleryPage({ append: false }) : loadPage({ append: false });
+    };
     window.loadMoreTestingControl = function () { return loadPage({ append: true }); };
+    window.loadMoreTestingControlGallery = function () { return loadGalleryPage({ append: true }); };
+    window.setTestingControlTab = setTestingControlTab;
+    window.setTestingControlGalleryFilter = setTestingControlGalleryFilter;
+    window.retryTestingControlThumbnail = retryTestingControlThumbnail;
     window.openTestingControlProof = openTestingControlProof;
     window.closeTestingControlProofMeta = closeTestingControlProofMeta;
+    window.openCheckinProofPreview = openCheckinProofPreview;
+    window.closeCheckinProofPreview = closeCheckinProofPreview;
 })();

@@ -5,12 +5,20 @@ window.App = window.App || {};
 window.App.checkinProofMode = window.App.checkinProofMode || 'off';
 window.App.screenshotProofUploadEnabled = window.App.screenshotProofUploadEnabled === true;
 window.App.testingControlEnabled = window.App.testingControlEnabled === true;
+window.App.checkinProofGalleryEnabled = window.App.checkinProofGalleryEnabled === true;
 
 var tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
 
 function _closeTopTelegramBackTarget() {
+    var proofPreviewModal = document.getElementById('checkin-proof-preview-modal');
+    if (proofPreviewModal && proofPreviewModal.classList.contains('active')) {
+        if (typeof closeCheckinProofPreview === 'function') closeCheckinProofPreview();
+        else proofPreviewModal.classList.remove('active');
+        return true;
+    }
+
     var dossierModal = document.getElementById('dossier-modal');
     if (dossierModal && dossierModal.classList.contains('active')) {
         if (typeof closeDossierModal === 'function') {
@@ -311,6 +319,7 @@ async function loadRuntimeConfig() {
         window.App.checkinProofMode = String((payload && payload.checkin_proof_mode) || 'off').trim().toLowerCase();
         window.App.screenshotProofUploadEnabled = !!(payload && payload.screenshot_proof_upload_enabled === true);
         window.App.testingControlEnabled = !!(payload && payload.testing_control_enabled === true);
+        window.App.checkinProofGalleryEnabled = !!(payload && payload.checkin_proof_gallery_enabled === true);
     } catch (error) {
         console.warn('Runtime config fetch failed:', error);
     }
