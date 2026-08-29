@@ -2994,7 +2994,22 @@ function showFeedbackRewardKarmaInfo() {
     showToast(karmaEl.dataset.toast || window.t('feedbackRewardKarmaLimitToast', {}, lang));
 }
 
-async function openProjectFeedback(appId, isArchived) {
+function focusProjectFeedbackCard(feedbackId) {
+    var safeId = Number(feedbackId || 0);
+    if (safeId <= 0) return false;
+    var card = document.querySelector('.fb-card[data-feedback-id="' + safeId + '"]');
+    if (!card) return false;
+    if (typeof toggleFeedbackCardCollapse === 'function' && !card.classList.contains('fb-card--expanded')) {
+        toggleFeedbackCardCollapse(card, { target: card, currentTarget: card });
+    }
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('fb-card--focused');
+    setTimeout(function () { card.classList.remove('fb-card--focused'); }, 2200);
+    return true;
+}
+
+async function openProjectFeedback(appId, isArchived, options) {
+    options = options || {};
     const project = (isArchived ? archivedProjects : myProjects).find(function(item) {
         return Number(item.app_id || item.id) === Number(appId);
     });
@@ -3022,6 +3037,11 @@ async function openProjectFeedback(appId, isArchived) {
         _activeProjectFeedbackItems = data.feedback || [];
         if (window.showProjectFeedbackModal) {
             window.showProjectFeedbackModal(project, _activeProjectFeedbackItems);
+        }
+        if (Number(options.focusFeedbackId || 0) > 0) {
+            setTimeout(function () {
+                focusProjectFeedbackCard(options.focusFeedbackId);
+            }, 80);
         }
     } catch (error) {
         console.error('Load project feedback error:', error);

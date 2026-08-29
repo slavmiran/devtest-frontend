@@ -2774,6 +2774,30 @@
             cannot_ban_self: "Вы не можете заблокировать собственный аккаунт",
             cannot_ban_admin: "Нельзя заблокировать администратора платформы",
             user_banned_toast: "Ваш аккаунт заблокирован",
+
+            // Testing Control
+            testingControlEntry: "Контроль тестирования",
+            testingControlTitle: "Контроль тестирования",
+            testingControlTestersTab: "Тестировщики",
+            testingControlEmpty: "В этом запуске пока нет тестировщиков.",
+            testingControlLoadMore: "Показать ещё",
+            testingControlLoadError: "Не удалось загрузить прогресс тестирования.",
+            testingControlStarted: "Начало: {date}",
+            testingControlCurrentDay: "День {day}",
+            testingControlTimeline: "История check-in",
+            testingControlDayAria: "День {day}: {state}",
+            testingControlStateChecked: "Check-in выполнен",
+            testingControlStateSkipped: "Пропущено",
+            testingControlStatePending: "Ожидается",
+            testingControlStatePaused: "Пауза",
+            testingControlStateFuture: "Впереди",
+            testingControlProofScreenshot: "Скриншот",
+            testingControlProofBug: "Баг",
+            testingControlProofIdea: "Идея",
+            testingControlProofReview: "Play Review",
+            testingControlProofLegacy: "Доказательство не записывалось",
+            testingControlProofUnavailable: "Доказательство недоступно",
+            testingControlScreenshotPhase5: "Просмотр изображения появится в Галерее.",
         
     };
     window.I18N_RU = window.I18NRU;

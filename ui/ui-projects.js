@@ -867,6 +867,7 @@ function renderProjects(force) {
                         ${testersHtml}
                     </div>
                     <div class="card-actions-grid">
+                        ${typeof window.buildTestingControlEntryButton === 'function' ? window.buildTestingControlEntryButton(project.id, false) : ''}
                         <button type="button" class="btn btn-primary card-action-full" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
                             🚀 ${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}
                         </button>
@@ -2173,6 +2174,7 @@ function renderArchivedProjects(force) {
                         <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
                     </div>
                     <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                        ${typeof window.buildTestingControlEntryButton === 'function' ? window.buildTestingControlEntryButton(project.app_id, true) : ''}
                         <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="openRestartArchivedModal(${project.app_id})">
                             ${window.escapeHTML(t.archiveRestartBtn)}
                         </button>

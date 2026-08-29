@@ -2767,6 +2767,30 @@
             cannot_ban_self: "You cannot ban your own account",
             cannot_ban_admin: "You cannot ban a platform administrator",
             user_banned_toast: "Your account has been banned",
+
+            // Testing Control
+            testingControlEntry: "Testing Control",
+            testingControlTitle: "Testing Control",
+            testingControlTestersTab: "Testers",
+            testingControlEmpty: "There are no testers in this run yet.",
+            testingControlLoadMore: "Load more",
+            testingControlLoadError: "Could not load testing progress.",
+            testingControlStarted: "Started: {date}",
+            testingControlCurrentDay: "Day {day}",
+            testingControlTimeline: "Check-in timeline",
+            testingControlDayAria: "Day {day}: {state}",
+            testingControlStateChecked: "Checked in",
+            testingControlStateSkipped: "Skipped",
+            testingControlStatePending: "Pending",
+            testingControlStatePaused: "Paused",
+            testingControlStateFuture: "Upcoming",
+            testingControlProofScreenshot: "Screenshot",
+            testingControlProofBug: "Bug",
+            testingControlProofIdea: "Idea",
+            testingControlProofReview: "Play Review",
+            testingControlProofLegacy: "Proof was not recorded",
+            testingControlProofUnavailable: "Proof unavailable",
+            testingControlScreenshotPhase5: "Image preview will be available in Gallery.",
         
     };
     window.I18N_EN = window.I18NEN;

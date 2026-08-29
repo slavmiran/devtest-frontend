@@ -1545,6 +1545,12 @@
     transition: background-color 0.2s ease, opacity 0.25s ease;
 }
 
+#project-feedback-body .fb-card.fb-card--focused {
+    background: rgba(10, 132, 255, 0.09) !important;
+    border-left: 3px solid rgba(10, 132, 255, 0.82) !important;
+    box-shadow: inset 0 0 0 1px rgba(10, 132, 255, 0.18) !important;
+}
+
 #project-feedback-body .feedback-section-header {
     flex: 0 0 auto;
 }

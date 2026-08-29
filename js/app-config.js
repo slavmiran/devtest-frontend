@@ -4,6 +4,7 @@
 window.App = window.App || {};
 window.App.checkinProofMode = window.App.checkinProofMode || 'off';
 window.App.screenshotProofUploadEnabled = window.App.screenshotProofUploadEnabled === true;
+window.App.testingControlEnabled = window.App.testingControlEnabled === true;
 
 var tg = window.Telegram.WebApp;
 tg.expand();
@@ -299,6 +300,7 @@ async function loadRuntimeConfig() {
         }
         window.App.checkinProofMode = String((payload && payload.checkin_proof_mode) || 'off').trim().toLowerCase();
         window.App.screenshotProofUploadEnabled = !!(payload && payload.screenshot_proof_upload_enabled === true);
+        window.App.testingControlEnabled = !!(payload && payload.testing_control_enabled === true);
     } catch (error) {
         console.warn('Runtime config fetch failed:', error);
     }
@@ -1301,6 +1303,20 @@ function _parseInitialRouteTarget() {
         var raw = String(candidateValues[index] || '').trim();
         if (!raw) continue;
         var normalized = raw.toLowerCase();
+        var controlMatch = normalized.match(/^control[_:](\d+)(?:[_:](\d+))?$/);
+        if (controlMatch) {
+            routeKind = 'control';
+            feedbackProjectId = Number(controlMatch[1] || 0);
+            routeExtraId = Number(controlMatch[2] || 0);
+            break;
+        }
+        var feedbackExactMatch = normalized.match(/^feedback[_:](\d+)(?:[_:](\d+))?$/);
+        if (feedbackExactMatch) {
+            routeKind = 'feedback';
+            feedbackProjectId = Number(feedbackExactMatch[1] || 0);
+            routeExtraId = Number(feedbackExactMatch[2] || 0);
+            break;
+        }
         var feedbackMatch = normalized.match(/(?:project_feedback|feedback|owner_feedback|feedback_project)[_:=.-]?(\d+)?/);
         if (feedbackMatch) {
             routeKind = 'feedback';
@@ -1401,6 +1417,15 @@ function _parseInitialRouteTarget() {
             tab: 'projects',
             openFeedback: true,
             appId: feedbackProjectId > 0 ? feedbackProjectId : null,
+            focusFeedbackId: routeExtraId > 0 ? routeExtraId : null,
+        };
+    }
+    if (routeKind === 'control') {
+        return {
+            tab: 'projects',
+            openTestingControl: true,
+            appId: feedbackProjectId > 0 ? feedbackProjectId : null,
+            focusProgressId: routeExtraId > 0 ? routeExtraId : null,
         };
     }
     if (routeKind === 'projects') {
@@ -1586,6 +1611,32 @@ async function _handleInitialRoute() {
     }
     if (route.tab === 'tests') {
         switchTab('tests');
+    }
+    if (route.openTestingControl && route.appId) {
+        try {
+            showTgDeeplinkLoader('control');
+            await Promise.allSettled([
+                loadProjects(true),
+                loadArchivedProjects({ silent: true })
+            ]);
+            if (window.App && window.App.testingControlEnabled && typeof window.openTestingControl === 'function') {
+                var isArchivedControlProject = !(myProjects || []).some(function(project) {
+                    return Number(project.id) === Number(route.appId);
+                }) && (archivedProjects || []).some(function(project) {
+                    return Number(project.app_id) === Number(route.appId);
+                });
+                await window.openTestingControl(route.appId, {
+                    archived: isArchivedControlProject,
+                    focusProgressId: route.focusProgressId,
+                });
+            }
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial Testing Control route error:', error);
+        } finally {
+            hideTgDeeplinkLoader('control');
+        }
+        return;
     }
         if (route.highlightTestId) {
             try {
@@ -1786,7 +1837,7 @@ async function _handleInitialRoute() {
             return Number(project.app_id) === Number(route.appId);
         });
 
-        await openProjectFeedback(route.appId, isArchived);
+        await openProjectFeedback(route.appId, isArchived, { focusFeedbackId: route.focusFeedbackId });
     } catch (error) {
         console.error('Initial feedback route error:', error);
         hideTgDeeplinkLoader('feedback');
