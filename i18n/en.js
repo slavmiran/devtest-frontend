@@ -2793,6 +2793,7 @@
             testingControlScreenshotPhase5: "Image preview will be available in Gallery.",
             testingControlGalleryTab: "Gallery",
             testingControlGalleryEmpty: "There are no screenshots in this run yet.",
+            testingControlGalleryEmptyHint: "Screenshot proofs will appear here after testers send them.",
             testingControlGalleryLoadError: "Could not load screenshots.",
             testingControlGalleryImageLoading: "Loading preview…",
             testingControlFilterDay: "Day",
@@ -2804,6 +2805,12 @@
             testingControlAllModels: "All models",
             testingControlAllAndroid: "All Android versions",
             testingControlMediaUnavailable: "The image is temporarily unavailable.",
+            testingControlFeedbackOpen: "Open feedback",
+            testingControlFeedbackNoMessage: "No text description was added.",
+            testingControlFeedbackStatusPending: "Pending review",
+            testingControlFeedbackStatusProcessing: "Processing",
+            testingControlFeedbackStatusAccepted: "Accepted",
+            testingControlFeedbackStatusRejected: "Rejected",
         
     };
     window.I18N_EN = window.I18NEN;

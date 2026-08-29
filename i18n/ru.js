@@ -2800,6 +2800,7 @@
             testingControlScreenshotPhase5: "Просмотр изображения появится в Галерее.",
             testingControlGalleryTab: "Галерея",
             testingControlGalleryEmpty: "В этом запуске пока нет скриншотов.",
+            testingControlGalleryEmptyHint: "Скриншоты появятся здесь после отправки тестировщиками.",
             testingControlGalleryLoadError: "Не удалось загрузить скриншоты.",
             testingControlGalleryImageLoading: "Загрузка превью…",
             testingControlFilterDay: "День",
@@ -2811,6 +2812,12 @@
             testingControlAllModels: "Все модели",
             testingControlAllAndroid: "Все версии Android",
             testingControlMediaUnavailable: "Изображение временно недоступно.",
+            testingControlFeedbackOpen: "Открыть фидбэк",
+            testingControlFeedbackNoMessage: "Текстовое описание не добавлено.",
+            testingControlFeedbackStatusPending: "Ожидает решения",
+            testingControlFeedbackStatusProcessing: "В обработке",
+            testingControlFeedbackStatusAccepted: "Принят",
+            testingControlFeedbackStatusRejected: "Отклонён",
         
     };
     window.I18N_RU = window.I18NRU;
