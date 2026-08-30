@@ -245,7 +245,7 @@
     function buildRow(item, thumbnailByProofId) {
         var entry = todayEntryFor(item);
         var state = String(entry && entry.state || '');
-        var checked = state === 'checked' || state === 'checked_overtime';
+        var checked = state === 'checked' || state === 'checked_overtime' || state === 'external_checked';
         var proof = checked && entry.proof && entry.proof.type !== 'legacy' ? entry.proof : null;
         var totalImages = String(proof && proof.type || '') === 'screenshot'
             ? Math.max(1, Math.min(5, Number(proof.image_count || 1)))
@@ -336,7 +336,7 @@
                 return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
             });
 
-            await attachFeedbackStatuses(control);
+            await attachFeedbackStatuses(control.concat(others));
             cache.set(safeAppId, { loadedAt: Date.now(), loading: false, error: false, control: control, others: others });
         } catch (error) {
             console.warn('Project today hydration failed:', error);
