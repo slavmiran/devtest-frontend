@@ -2420,8 +2420,8 @@ function renderTests(force) {
                 `;
             }
         }
-        // State B: status = 'new' OR status = 'daily'/'opened' without ready to claim
-        else if (test.status === 'new') {
+        // State B: status = 'new' OR Day 1 active test without ready to claim
+        else if (test.status === 'new' || (userTestingDay === 1 && !isArchivedOrCompleted && test.status !== 'done')) {
             const hintHtml = renderCheckinRewardHint(test, 1, lang);
             actionsHtml = `
                 ${renderFirstDaySteps(test, safePackage, safeOwnerUsername)}

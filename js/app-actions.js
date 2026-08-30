@@ -1039,6 +1039,18 @@ function _applyPersistedReadyTimerButtons() {
             applyTestFeedbackCheckinPendingUi(appId);
             return;
         }
+        var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+        var testingDay = test && typeof window.getUserTestingDay === 'function'
+            ? window.getUserTestingDay(test.start_date, test.testing_days)
+            : null;
+        if ((test && test.status === 'new') || Number(testingDay || 0) === 1) {
+            var isDownloadDone = typeof window.isFirstDayScreenshotVisible === 'function'
+                ? !!window.isFirstDayScreenshotVisible(appId)
+                : false;
+            if (!isDownloadDone) {
+                return;
+            }
+        }
         // Revalidate localDate on every render — prevents Confirm lighting up after midnight.
         var payload = _getTimerReadyPayload(appId);
         if (!payload) return;
@@ -1048,11 +1060,15 @@ function _applyPersistedReadyTimerButtons() {
 
 function _clearPersistedActiveTimer() {
     _timerLocalDate = '';
-    try {
-        localStorage.removeItem(_timerStorageKey);
-    } catch (error) {
-        console.warn('Failed to clear active timer state:', error);
+    _timerEndTimestamp = 0;
+    _timerIsScreenshot = false;
+    _timerOwnerUsername = '';
+    activeTimerAppId = null;
+    if (_timerIntervalId) {
+        clearInterval(_timerIntervalId);
+        _timerIntervalId = null;
     }
+    _persistActiveTimer();
 }
 
 function clearActiveTimerForApp(appId) {
@@ -1073,9 +1089,9 @@ function clearActiveTimerForApp(appId) {
 window.clearActiveTimerForApp = clearActiveTimerForApp;
 
 function _resolveCheckpointOwnerUsername(appId, ownerUsername) {
-    var normalized = String(ownerUsername || '').trim().replace(/^@+/, '');
-    if (normalized) {
-        return normalized;
+    var explicit = String(ownerUsername || '').trim().replace(/^@+/, '');
+    if (explicit) {
+        return explicit;
     }
 
     var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
@@ -1108,9 +1124,48 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         btn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
         btn.style.color = 'var(--hint-color)';
         btn.style.cursor = 'not-allowed';
-        btn.innerText = typeof window.getIssueAwaitingFixLabel === 'function'
+        var issueText = typeof window.getIssueAwaitingFixLabel === 'function'
             ? window.getIssueAwaitingFixLabel(test)
             : window.t('issueAwaitingFix', {}, lang);
+        _setConfirmButtonLabel(btn, issueText);
+        return true;
+    }
+
+    var isTstepRow = btn.classList.contains('tstep__row') || !!btn.closest('.tstep-flow');
+    if (isTstepRow) {
+        var isDownloadStepDone = typeof window.isFirstDayScreenshotVisible === 'function'
+            ? !!window.isFirstDayScreenshotVisible(finishedId)
+            : false;
+
+        if (!isDownloadStepDone) {
+            btn.disabled = true;
+            btn.setAttribute('aria-disabled', 'true');
+            var tstepParent = btn.closest('.tstep');
+            if (tstepParent) {
+                tstepParent.classList.remove('is-current', 'is-done');
+                tstepParent.classList.add('is-locked');
+            }
+            return true;
+        }
+
+        btn.disabled = false;
+        btn.removeAttribute('aria-disabled');
+        btn.style.backgroundColor = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+        btn.style.cursor = 'pointer';
+
+        var tstepParent = btn.closest('.tstep');
+        if (tstepParent) {
+            tstepParent.classList.remove('is-locked', 'is-next');
+            tstepParent.classList.add('is-current');
+        }
+
+        var labelText = window.t('stepSendScreenshot', {}, lang) || 'Отправить скриншот подтверждения';
+        _setConfirmButtonLabel(btn, labelText);
+        btn.onclick = function() {
+            handleScreenshotAndConfirm(finishedId, resolvedOwnerUsername || '');
+        };
         return true;
     }
 
@@ -1250,6 +1305,9 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
     if (isTestFeedbackCheckinPending(appId)) return false;
     var btn = document.getElementById('btn-confirm-' + appId);
     if (!btn) return false;
+    if (btn.classList.contains('tstep__row') || !!btn.closest('.tstep-flow')) {
+        return false;
+    }
 
     var test = myTests.find(function(item) { return Number(item.id) === Number(appId); });
     if (test && test.is_external) return false;
@@ -1326,7 +1384,12 @@ function _startActiveTimerInterval(id) {
             return;
         }
         if (liveBtn && !liveBtn.getAttribute('data-feedback-pending')) {
-            liveBtn.innerText = t.timerRemaining.replace('{sec}', remaining);
+            var timerText = t.timerRemaining.replace('{sec}', remaining);
+            if (liveBtn.classList.contains('tstep__row') || !!liveBtn.closest('.tstep-flow')) {
+                _setConfirmButtonLabel(liveBtn, timerText);
+            } else {
+                liveBtn.innerText = timerText;
+            }
         }
         if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
             window.syncCheckinOptionsJustConfirmTimer(id, remaining);
@@ -2452,10 +2515,16 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
     _timerOwnerUsername = resolvedOwnerUsername;
     _timerLocalDate = getLocalDate();
     _persistActiveTimer();
-    btn.innerText = t.timerRemaining.replace('{sec}', resolvedDurationSeconds);
-    // Normal days: show green active 📎 immediately while confirm stays on the countdown.
-    if (!isScreenshotDay) {
-        _ensureEarlyPaperclipSplit(id, resolvedOwnerUsername);
+    var timerCountdownText = t.timerRemaining.replace('{sec}', resolvedDurationSeconds);
+    var isTstepBtn = btn.classList.contains('tstep__row') || !!btn.closest('.tstep-flow');
+    if (isTstepBtn) {
+        _setConfirmButtonLabel(btn, timerCountdownText);
+    } else {
+        btn.innerText = timerCountdownText;
+        // Normal days: show green active 📎 immediately while confirm stays on the countdown.
+        if (!isScreenshotDay) {
+            _ensureEarlyPaperclipSplit(id, resolvedOwnerUsername);
+        }
     }
     _startActiveTimerInterval(id);
 
@@ -2491,9 +2560,15 @@ function _restoreActiveTimer() {
     if (remaining <= 0) {
         _syncActiveTimerState();
     } else {
-        btn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
-        if (!_timerIsScreenshot) {
-            _ensureEarlyPaperclipSplit(activeTimerAppId, _timerOwnerUsername || '');
+        var timerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
+        var isTstep = btn.classList.contains('tstep__row') || !!btn.closest('.tstep-flow');
+        if (isTstep) {
+            _setConfirmButtonLabel(btn, timerText);
+        } else {
+            btn.innerText = timerText;
+            if (!_timerIsScreenshot) {
+                _ensureEarlyPaperclipSplit(activeTimerAppId, _timerOwnerUsername || '');
+            }
         }
         _persistActiveTimer();
         _startActiveTimerInterval(activeTimerAppId);
@@ -2521,13 +2596,18 @@ function advanceFirstDayStepsAfterDownload(id) {
     if (downloadStep) {
         downloadStep.classList.remove('is-current', 'is-next');
         downloadStep.classList.add('is-done');
+        const downloadBtn = downloadStep.querySelector('.tstep__row');
+        if (downloadBtn) {
+            downloadBtn.disabled = false;
+            downloadBtn.removeAttribute('aria-disabled');
+        }
     }
     const screenshotStep = flow.querySelector('[data-step-key="screenshot"]');
     if (screenshotStep) {
         screenshotStep.classList.remove('is-locked', 'is-next');
         screenshotStep.classList.add('is-current');
     }
-    const confirmBtn = document.getElementById(`btn-confirm-${id}`);
+    const confirmBtn = document.getElementById(`btn-confirm-${id}`) || (screenshotStep ? screenshotStep.querySelector('.tstep__row') : null);
     if (confirmBtn) {
         confirmBtn.disabled = false;
         confirmBtn.removeAttribute('aria-disabled');
