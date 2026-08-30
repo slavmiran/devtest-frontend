@@ -2238,21 +2238,32 @@
         </div>
     </div>
 
-    <div id="bell-remind-overlay" class="modal-overlay leave-confirm-overlay" onclick="closeBellRemindOverlay(event)">
-        <div class="modal-content leave-confirm-sheet" onclick="event.stopPropagation()">
+    <!-- Bell Remind Modal -->
+    <div id="bell-remind-overlay" class="modal-overlay" onclick="closeBellRemindOverlay(event)">
+        <div class="modal-content report-modal-sheet" onclick="event.stopPropagation()">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h3 data-i18n="bellRemindTitle">🔔 Напомнить в Telegram</h3>
-            <div id="bell-remind-person" class="link-status-person bell-remind-person"></div>
-            <div class="bell-remind-lang-row" role="group" aria-label="Language">
-                <button type="button" id="bell-remind-lang-ru" class="reason-chip is-selected" onclick="setBellRemindLang('ru')">RU</button>
-                <button type="button" id="bell-remind-lang-en" class="reason-chip" onclick="setBellRemindLang('en')">EN</button>
+            <h3 id="t-bellRemindTitle" data-i18n="bellRemindTitle">🔔 Напоминание тестеру</h3>
+            <p id="t-bellRemindHint" data-i18n="bellRemindHint">Отправьте вежливое напоминание в личные сообщения или в общий топик чата.</p>
+            <div class="report-standard-block report-screenshot-card">
+                <div class="report-owner-row" id="bell-remind-owner-row">
+                    <div class="report-owner-meta">
+                        <span class="report-owner-line notranslate" id="bell-remind-owner-line"></span>
+                    </div>
+                </div>
+                <div id="bell-remind-language-toggle"></div>
+                <div class="form-group report-text-wrap">
+                    <textarea id="bell-remind-text" class="form-input report-modal-text is-collapsed" rows="5"></textarea>
+                    <button type="button" class="report-text-expand-btn" id="bell-remind-text-expand-btn" onclick="toggleBellRemindTextExpand()" aria-expanded="false" title="Expand">
+                        <svg class="report-text-expand-icon report-text-expand-icon--more" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 5.83L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z"/></svg>
+                        <svg class="report-text-expand-icon report-text-expand-icon--less" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.41 18.59L8.83 20 12 16.83 15.17 20l1.41-1.41L12 14l-4.59 4.59zm9.18-13.18L15.17 4 12 7.17 8.83 4 7.41 5.41 12 10l4.59-4.59z"/></svg>
+                    </button>
+                </div>
+                <div class="bell-remind-actions">
+                    <button type="button" class="btn btn-primary bell-remind-btn-dm" id="t-bellRemindBtnDm" onclick="confirmBellRemindSend('dm')" data-i18n="bellRemindBtnDm">💬 Отправить в ЛС</button>
+                    <button type="button" class="btn btn-secondary bell-remind-btn-topic" id="t-bellRemindBtnTopic" onclick="confirmBellRemindSend('topic')" data-i18n="bellRemindBtnTopic">📢 Отправить в топик</button>
+                </div>
             </div>
-            <label id="bell-remind-lang-label" class="form-label" data-i18n="bellRemindPreviewLabel">Текст сообщения</label>
-            <textarea id="bell-remind-text" class="form-input bell-remind-text" rows="5" readonly></textarea>
-            <div class="leave-modal-actions" style="margin-top: 12px;">
-                <button type="button" class="btn leave-cta leave-cta--safe" onclick="confirmBellRemindSend()" data-i18n="bellRemindSendBtn">Далее — открыть ЛС</button>
-                <button type="button" class="btn btn-secondary" onclick="closeBellRemindOverlay()" data-i18n="leaveConfirmBackBtn">Назад</button>
-            </div>
+            <button type="button" class="btn btn-ghost bell-remind-cancel-btn" onclick="closeBellRemindOverlay()" data-i18n="btnCancel">Отмена</button>
         </div>
     </div>
 

@@ -1014,107 +1014,274 @@
         return (_lang().indexOf('en') === 0) ? 'en' : 'ru';
     }
 
-    function _buildBellMessage(messageLang) {
+    function _buildBellMessage(messageLang, mode) {
         var state = _bellRemindState || _balanceState || {};
-        var appName = state.remindAppName || state.appName || _t('unknownLabel');
+        var appName = state.remindAppName || state.appName || (typeof _cleanDisplayName === 'function' ? _cleanDisplayName(state.name) : state.name) || _t('unknownLabel');
         var appId = Number(state.remindAppId || state.appId || state.projectId || 0);
+        var username = String(state.username || state.testerUsername || '').replace(/^@+/, '');
+        var fullName = String(state.fullName || state.testerFullName || '').trim();
+        var userTag = username ? ('@' + username) : (fullName ? ('@' + fullName) : '');
+
         var deepLink = (typeof buildTesterReminderDeepLink === 'function')
             ? buildTesterReminderDeepLink(appId)
             : ('https://t.me/Android12TestersBot/app?startapp=test_' + appId);
-        return window.t
-            ? window.t('bellNotifyMsg', { app_name: appName, deep_link: deepLink }, messageLang)
-            : ('check-in: ' + deepLink);
+
+        var langKey = messageLang === 'en' ? 'en' : 'ru';
+
+        if (mode === 'topic') {
+            if (window.t) {
+                return window.t('bellNotifyTopicMsg', {
+                    user_tag: userTag,
+                    app_name: appName,
+                    deep_link: deepLink,
+                }, langKey);
+            }
+            return (userTag ? (userTag + ' ') : '') + 'Hi! Reminder for ' + appName + ': ' + deepLink + '\n\n#reminder #alarm #devtest';
+        }
+
+        if (window.t) {
+            return window.t('bellNotifyDmMsg', {
+                app_name: appName,
+                deep_link: deepLink,
+            }, langKey);
+        }
+        return 'Hi! Reminder for ' + appName + ': ' + deepLink;
     }
 
-    function openBellRemindPreview() {
-        if (!_balanceState) return;
-        var username = String(_balanceState.testerUsername || '').replace(/^@+/, '');
-        if (!username && !_balanceState.testerId) {
-            if (typeof showToast === 'function') {
-                showToast(_t('bellRemindNoUsername'));
-            }
+    function getGeneralTopicUrl() {
+        var base = (
+            window.FEEDBACK_PUBLIC_LINK_BASE ||
+            (window.App && window.App.publicGroupUrl) ||
+            'https://t.me/googleplay_console_12testers'
+        ).replace(/\/+$/, '');
+
+        if (/\/c\/\d+\/\d+/.test(base)) {
+            return base;
+        }
+        if (/\/\d+$/.test(base)) {
+            return base.replace(/\/\d+$/, '/1');
+        }
+        return base + '/1';
+    }
+
+    function openGeneralTopic() {
+        var topicUrl = getGeneralTopicUrl();
+        if (window.tg && typeof window.tg.openTelegramLink === 'function' && String(topicUrl).indexOf('t.me') !== -1) {
+            window.tg.openTelegramLink(topicUrl);
+            return;
+        }
+        window.open(topicUrl, '_blank');
+    }
+
+    function _renderBellRemindOwnerHeader() {
+        var lineEl = document.getElementById('bell-remind-owner-line');
+        if (!lineEl || !_bellRemindState) return;
+
+        var fullName = String(_bellRemindState.fullName || '').trim();
+        var username = String(_bellRemindState.username || '').trim().replace(/^@+/, '');
+
+        if (fullName && username) {
+            lineEl.innerHTML = _esc(fullName)
+                + '<span class="report-owner-sep">•</span>'
+                + '<span class="report-owner-nick">'
+                + _esc('@' + username)
+                + '</span>';
+        } else if (username) {
+            lineEl.innerHTML = '<span class="report-owner-nick">' + _esc('@' + username) + '</span>';
+        } else if (fullName) {
+            lineEl.innerHTML = _esc(fullName);
+        } else {
+            lineEl.innerHTML = _esc(_t('unknownLabel') || 'Tester');
+        }
+    }
+
+    function _renderBellRemindLanguageToggle() {
+        var toggle = document.getElementById('bell-remind-language-toggle');
+        if (!toggle || !_bellRemindState) return;
+
+        var selectedLang = _bellRemindState.messageLang === 'en' ? 'en' : 'ru';
+        var defaultLang = _bellRemindState.defaultLang === 'en' ? 'en' : 'ru';
+        var currentUiLang = _lang();
+
+        var defaultMarkTitle = _esc(window.t ? window.t('reportLanguageDefaultMark', {}, currentUiLang) : 'Default');
+        var defaultMarkHtml = '<span class="report-lang-default-check" title="' + defaultMarkTitle + '" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>';
+
+        function renderOption(code) {
+            var isSelected = selectedLang === code;
+            var isDefault = defaultLang === code;
+            var label = _esc(code.toUpperCase());
+            return '<button type="button" class="report-lang-link ' + (isSelected ? 'is-active' : 'is-idle') + '" onclick="setBellRemindLang(\'' + code + '\')" aria-pressed="' + (isSelected ? 'true' : 'false') + '">'
+                + '<span class="report-lang-link__label">' + label + '</span>'
+                + (isDefault ? defaultMarkHtml : '')
+                + '</button>';
+        }
+
+        toggle.innerHTML = '<div class="report-lang-inline" role="group" aria-label="Language">'
+            + renderOption('ru')
+            + '<span class="report-lang-divider" aria-hidden="true">|</span>'
+            + renderOption('en')
+            + '</div>';
+    }
+
+    function _syncBellRemindTextareaLayout() {
+        var textarea = document.getElementById('bell-remind-text');
+        var expandBtn = document.getElementById('bell-remind-text-expand-btn');
+        if (!textarea) return;
+
+        var isExpanded = !!(_bellRemindState && _bellRemindState.isExpanded);
+        textarea.classList.toggle('is-expanded', isExpanded);
+        textarea.classList.toggle('is-collapsed', !isExpanded);
+
+        if (expandBtn) {
+            expandBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+        }
+
+        if (!isExpanded) {
+            textarea.style.height = '';
             return;
         }
 
-        _bellRemindState = {
-            username: username,
-            testerId: Number(_balanceState.testerId || 0),
-            fullName: _balanceState.testerFullName || '',
-            avatarUrl: _balanceState.testerAvatarUrl || '',
-            remindAppId: Number(_balanceState.remindAppId || _balanceState.appId || 0),
-            remindAppName: _balanceState.remindAppName || _balanceState.appName || '',
-            messageLang: _guessRemindLang(_balanceState.testerLanguage),
-        };
+        textarea.style.height = 'auto';
+        var nextHeight = Math.min(Math.max(textarea.scrollHeight + 2, 140), 380);
+        textarea.style.height = nextHeight + 'px';
+    }
 
-        var overlay = document.getElementById('bell-remind-overlay');
-        if (!overlay) {
-            confirmBellRemindSend();
-            return;
+    function toggleBellRemindTextExpand() {
+        if (!_bellRemindState) return;
+        _bellRemindState.isExpanded = !_bellRemindState.isExpanded;
+        _syncBellRemindTextareaLayout();
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+            window.tg.HapticFeedback.selectionChanged();
         }
-        _syncBellRemindPreviewUi();
-        overlay.classList.add('active');
     }
 
     function _syncBellRemindPreviewUi() {
         if (!_bellRemindState) return;
-        var langLabel = document.getElementById('bell-remind-lang-label');
         var textEl = document.getElementById('bell-remind-text');
-        var personEl = document.getElementById('bell-remind-person');
-        var ruBtn = document.getElementById('bell-remind-lang-ru');
-        var enBtn = document.getElementById('bell-remind-lang-en');
         var msgLang = _bellRemindState.messageLang === 'en' ? 'en' : 'ru';
 
-        if (personEl) {
-            var nick = _bellRemindState.username ? ('@' + _bellRemindState.username) : '';
-            var name = _bellRemindState.fullName || nick || _t('unknownLabel');
-            personEl.innerHTML = '' +
-                '<div class="link-status-avatar">' +
-                    _renderPersonAvatar(_bellRemindState.fullName, _bellRemindState.username, _bellRemindState.avatarUrl) +
-                '</div>' +
-                '<div class="link-status-person-copy">' +
-                    '<div class="link-status-fullname notranslate">' + _esc(name) + '</div>' +
-                    (nick && _bellRemindState.fullName
-                        ? '<div class="link-status-username notranslate">' + _esc(nick) + '</div>'
-                        : '') +
-                    '<div class="bell-remind-lang-hint">' +
-                        _esc(_t('bellRemindRecipientLang', {
-                            lang: msgLang === 'en' ? 'EN' : 'RU',
-                        })) +
-                    '</div>' +
-                '</div>';
-        }
-        if (langLabel) {
-            langLabel.textContent = _t('bellRemindPreviewLabel');
-        }
+        _renderBellRemindOwnerHeader();
+        _renderBellRemindLanguageToggle();
+
         if (textEl) {
-            textEl.value = _buildBellMessage(msgLang);
+            textEl.value = _buildBellMessage(msgLang, 'dm');
         }
-        if (ruBtn) ruBtn.classList.toggle('is-selected', msgLang === 'ru');
-        if (enBtn) enBtn.classList.toggle('is-selected', msgLang === 'en');
+        _syncBellRemindTextareaLayout();
     }
 
     function setBellRemindLang(nextLang) {
         if (!_bellRemindState) return;
         _bellRemindState.messageLang = String(nextLang || 'ru').toLowerCase().indexOf('en') === 0 ? 'en' : 'ru';
         _syncBellRemindPreviewUi();
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+            window.tg.HapticFeedback.selectionChanged();
+        }
+    }
+
+    function openBellRemindPreview(customData) {
+        var source = customData || _balanceState || {};
+        var username = String(source.username || source.testerUsername || '').replace(/^@+/, '');
+        var fullName = String(source.fullName || source.testerFullName || '').trim();
+        var avatarUrl = source.avatarUrl || source.testerAvatarUrl || '';
+        var appId = Number(source.remindAppId || source.appId || source.projectId || 0);
+        var appName = source.remindAppName || source.appName || (typeof _cleanDisplayName === 'function' ? _cleanDisplayName(source.name) : source.name) || '';
+        var preferredLang = source.messageLang || source.testerLanguage || source.language || '';
+
+        var detectedLang = _guessRemindLang(preferredLang);
+
+        _bellRemindState = {
+            username: username,
+            testerId: Number(source.testerId || 0),
+            fullName: fullName,
+            avatarUrl: avatarUrl,
+            remindAppId: appId,
+            remindAppName: appName,
+            messageLang: detectedLang,
+            defaultLang: detectedLang,
+            isExpanded: false,
+        };
+
+        var overlay = document.getElementById('bell-remind-overlay');
+        if (!overlay) {
+            confirmBellRemindSend('dm');
+            return;
+        }
+
+        var titleEl = document.getElementById('t-bellRemindTitle');
+        var hintEl = document.getElementById('t-bellRemindHint');
+        var btnDmEl = document.getElementById('t-bellRemindBtnDm');
+        var btnTopicEl = document.getElementById('t-bellRemindBtnTopic');
+
+        if (titleEl) titleEl.innerText = _t('bellRemindTitle');
+        if (hintEl) hintEl.innerText = _t('bellRemindHint');
+        if (btnDmEl) btnDmEl.innerText = _t('bellRemindBtnDm');
+        if (btnTopicEl) btnTopicEl.innerText = _t('bellRemindBtnTopic');
+
+        _syncBellRemindPreviewUi();
+        overlay.classList.add('active');
     }
 
     function closeBellRemindOverlay(event) {
         var overlay = document.getElementById('bell-remind-overlay');
         if (!overlay) return;
-        if (event && event.target !== overlay) return;
+        if (event && event.target && event.target.closest && event.target.closest('.modal-content')) return;
         overlay.classList.remove('active');
         _bellRemindState = null;
     }
 
-    function confirmBellRemindSend() {
+    function confirmBellRemindSend(target) {
         var state = _bellRemindState || _balanceState;
         if (!state) return;
         var username = String(state.username || state.testerUsername || '').replace(/^@+/, '');
-        var messageLang = (state.messageLang || _guessRemindLang(state.testerLanguage));
-        var text = _buildBellMessage(messageLang === 'en' ? 'en' : 'ru');
+        var fullName = String(state.fullName || state.testerFullName || '').trim();
+        var messageLang = state.messageLang === 'en' ? 'en' : 'ru';
+
+        var textEl = document.getElementById('bell-remind-text');
+        var enteredText = textEl ? String(textEl.value || '').trim() : '';
+
         var overlay = document.getElementById('bell-remind-overlay');
         if (overlay) overlay.classList.remove('active');
+
+        if (target === 'topic') {
+            var userTag = username ? ('@' + username) : (fullName ? ('@' + fullName) : '');
+            var topicText = '';
+            if (enteredText) {
+                if (enteredText.indexOf('#напоминание') !== -1 || enteredText.indexOf('#reminder') !== -1 || (userTag && enteredText.indexOf(userTag) !== -1)) {
+                    topicText = enteredText;
+                } else {
+                    var prefix = userTag ? (userTag + ' ') : '';
+                    var suffix = messageLang === 'en' ? '\n\n#reminder #alarm #devtest' : '\n\n#напоминание #alarm #devtest';
+                    topicText = prefix + enteredText + suffix;
+                }
+            } else {
+                topicText = _buildBellMessage(messageLang, 'topic');
+            }
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(topicText);
+                }
+            } catch (e) {
+                console.warn('Clipboard write error:', e);
+            }
+
+            _bellRemindState = null;
+            if (typeof showToast === 'function') {
+                showToast(_t('bellRemindSentTopicToast'));
+            }
+            openGeneralTopic();
+            return;
+        }
+
+        // Default: DM
+        var dmText = enteredText || _buildBellMessage(messageLang, 'dm');
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(dmText);
+            }
+        } catch (e) {
+            console.warn('Clipboard write error:', e);
+        }
 
         if (!username) {
             if (typeof showToast === 'function') {
@@ -1124,21 +1291,17 @@
             return;
         }
 
+        if (typeof showToast === 'function') {
+            showToast(_t('bellRemindSentDmToast'));
+        }
+
         if (typeof openOwnerCheckpointChat === 'function') {
-            openOwnerCheckpointChat(username, text, {
+            openOwnerCheckpointChat(username, dmText, {
                 trackScreenshotReminder: false,
                 showCopyToast: false,
             });
-            if (typeof showToast === 'function') {
-                showToast(_t('bellRemindSentToast', {}, 'ru') || '✉️ Текст скопирован, открываем диалог...');
-            }
         } else {
-            try {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text);
-                }
-            } catch (e) {}
-            openMutualBalanceTelegram('https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text));
+            openMutualBalanceTelegram('https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(dmText));
         }
         _bellRemindState = null;
     }
@@ -1315,6 +1478,8 @@
     window.setBellRemindLang = setBellRemindLang;
     window.closeBellRemindOverlay = closeBellRemindOverlay;
     window.confirmBellRemindSend = confirmBellRemindSend;
+    window.toggleBellRemindTextExpand = toggleBellRemindTextExpand;
+    window.openGeneralTopic = openGeneralTopic;
     window.startMutualBreakFromBalance = startMutualBreakFromBalance;
     window.archiveBrokenMutualTest = archiveBrokenMutualTest;
     window.isBrokenTesterDismissed = isBrokenTesterDismissed;

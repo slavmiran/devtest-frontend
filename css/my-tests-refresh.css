@@ -1028,14 +1028,16 @@ button.ts-section-head {
     box-shadow: none !important;
 }
 
-/* Report modal: one process, standard screenshot + optional bug/idea. */
-#report-modal .report-modal-sheet {
+/* Report & Remind modals: standard sheet, clean owner header, lang toggle & expandable textarea */
+#report-modal .report-modal-sheet,
+#bell-remind-overlay .report-modal-sheet {
     display: flex;
     flex-direction: column;
     gap: 14px;
 }
 
-#report-modal #t-reportModalHint {
+#report-modal #t-reportModalHint,
+#bell-remind-overlay #t-bellRemindHint {
     color: var(--hint-color);
     font-size: 14px;
     font-weight: 500;
@@ -1043,7 +1045,8 @@ button.ts-section-head {
     margin: 0;
 }
 
-#report-modal .report-path-label {
+#report-modal .report-path-label,
+#bell-remind-overlay .report-path-label {
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -1051,7 +1054,8 @@ button.ts-section-head {
     color: var(--hint-color);
 }
 
-#report-modal .report-path-label--alt {
+#report-modal .report-path-label--alt,
+#bell-remind-overlay .report-path-label--alt {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -1062,7 +1066,9 @@ button.ts-section-head {
 }
 
 #report-modal .report-path-label--alt::before,
-#report-modal .report-path-label--alt::after {
+#report-modal .report-path-label--alt::after,
+#bell-remind-overlay .report-path-label--alt::before,
+#bell-remind-overlay .report-path-label--alt::after {
     content: '';
     flex: 1;
     height: 1px;
@@ -1070,7 +1076,9 @@ button.ts-section-head {
 }
 
 #report-modal .report-standard-block,
-#report-modal .report-screenshot-card {
+#report-modal .report-screenshot-card,
+#bell-remind-overlay .report-standard-block,
+#bell-remind-overlay .report-screenshot-card {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -1080,18 +1088,21 @@ button.ts-section-head {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-#report-modal .report-standard-block .form-group {
+#report-modal .report-standard-block .form-group,
+#bell-remind-overlay .report-standard-block .form-group {
     margin: 0;
 }
 
-#report-modal .report-owner-row {
+#report-modal .report-owner-row,
+#bell-remind-overlay .report-owner-row {
     display: flex;
     align-items: center;
     gap: 10px;
     min-width: 0;
 }
 
-#report-modal .report-owner-meta {
+#report-modal .report-owner-meta,
+#bell-remind-overlay .report-owner-meta {
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -1099,7 +1110,8 @@ button.ts-section-head {
     width: 100%;
 }
 
-#report-modal .report-owner-line {
+#report-modal .report-owner-line,
+#bell-remind-overlay .report-owner-line {
     font-size: 15px;
     font-weight: 600;
     color: var(--text-color);
@@ -1109,29 +1121,34 @@ button.ts-section-head {
     white-space: nowrap;
 }
 
-#report-modal .report-owner-line .report-owner-sep {
+#report-modal .report-owner-line .report-owner-sep,
+#bell-remind-overlay .report-owner-line .report-owner-sep {
     font-weight: 500;
     color: var(--hint-color);
     margin: 0 0.28em;
 }
 
-#report-modal .report-owner-line .report-owner-nick {
+#report-modal .report-owner-line .report-owner-nick,
+#bell-remind-overlay .report-owner-line .report-owner-nick {
     font-weight: 500;
     color: var(--hint-color);
 }
 
-#report-modal #report-language-toggle {
+#report-modal #report-language-toggle,
+#bell-remind-overlay #bell-remind-language-toggle {
     display: block;
 }
 
-#report-modal .report-lang-inline {
+#report-modal .report-lang-inline,
+#bell-remind-overlay .report-lang-inline {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     min-height: 28px;
 }
 
-#report-modal .report-lang-divider {
+#report-modal .report-lang-divider,
+#bell-remind-overlay .report-lang-divider {
     color: rgba(255, 255, 255, 0.22);
     font-size: 13px;
     font-weight: 500;
@@ -1139,7 +1156,8 @@ button.ts-section-head {
     user-select: none;
 }
 
-#report-modal .report-lang-link {
+#report-modal .report-lang-link,
+#bell-remind-overlay .report-lang-link {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -1155,30 +1173,36 @@ button.ts-section-head {
     transition: color 0.15s ease, opacity 0.15s ease;
 }
 
-#report-modal .report-lang-link.is-active {
+#report-modal .report-lang-link.is-active,
+#bell-remind-overlay .report-lang-link.is-active {
     color: var(--text-color);
     font-weight: 700;
     opacity: 1;
 }
 
-#report-modal .report-lang-link.is-idle {
+#report-modal .report-lang-link.is-idle,
+#bell-remind-overlay .report-lang-link.is-idle {
     color: var(--hint-color);
     font-weight: 500;
     opacity: 0.72;
 }
 
 #report-modal .report-lang-link.is-idle:hover,
-#report-modal .report-lang-link.is-idle:focus-visible {
+#report-modal .report-lang-link.is-idle:focus-visible,
+#bell-remind-overlay .report-lang-link.is-idle:hover,
+#bell-remind-overlay .report-lang-link.is-idle:focus-visible {
     opacity: 1;
     color: var(--text-color);
     outline: none;
 }
 
-#report-modal .report-lang-link__label {
+#report-modal .report-lang-link__label,
+#bell-remind-overlay .report-lang-link__label {
     text-decoration: none;
 }
 
-#report-modal .report-lang-default-check {
+#report-modal .report-lang-default-check,
+#bell-remind-overlay .report-lang-default-check {
     display: inline-flex;
     width: 12px;
     height: 12px;
@@ -1186,17 +1210,20 @@ button.ts-section-head {
     opacity: 0.7;
 }
 
-#report-modal .report-lang-default-check svg {
+#report-modal .report-lang-default-check svg,
+#bell-remind-overlay .report-lang-default-check svg {
     width: 12px;
     height: 12px;
     display: block;
 }
 
-#report-modal .report-text-wrap {
+#report-modal .report-text-wrap,
+#bell-remind-overlay .report-text-wrap {
     position: relative;
 }
 
-#report-modal .report-modal-text {
+#report-modal .report-modal-text,
+#bell-remind-overlay .report-modal-text {
     width: 100%;
     line-height: 1.45;
     white-space: pre-wrap;
@@ -1210,19 +1237,22 @@ button.ts-section-head {
     touch-action: pan-y;
 }
 
-#report-modal .report-modal-text.is-collapsed {
+#report-modal .report-modal-text.is-collapsed,
+#bell-remind-overlay .report-modal-text.is-collapsed {
     height: calc(1.45em * 5 + 28px);
     max-height: calc(1.45em * 5 + 28px);
     overflow-y: auto;
 }
 
-#report-modal .report-modal-text.is-expanded {
+#report-modal .report-modal-text.is-expanded,
+#bell-remind-overlay .report-modal-text.is-expanded {
     min-height: calc(1.45em * 5 + 28px);
     max-height: 420px;
     overflow-y: auto;
 }
 
-#report-modal .report-text-expand-btn {
+#report-modal .report-text-expand-btn,
+#bell-remind-overlay .report-text-expand-btn {
     position: absolute;
     right: 8px;
     bottom: 8px;
@@ -1241,21 +1271,70 @@ button.ts-section-head {
 }
 
 #report-modal .report-text-expand-btn:hover,
-#report-modal .report-text-expand-btn:focus-visible {
+#report-modal .report-text-expand-btn:focus-visible,
+#bell-remind-overlay .report-text-expand-btn:hover,
+#bell-remind-overlay .report-text-expand-btn:focus-visible {
     color: var(--text-color);
     border-color: rgba(255, 255, 255, 0.24);
     outline: none;
 }
 
-#report-modal .report-text-expand-icon {
+#report-modal .report-text-expand-icon,
+#bell-remind-overlay .report-text-expand-icon {
     width: 16px;
     height: 16px;
     display: none;
 }
 
 #report-modal .report-text-wrap:not(.is-expanded) .report-text-expand-icon--more,
-#report-modal .report-text-wrap.is-expanded .report-text-expand-icon--less {
+#report-modal .report-text-wrap.is-expanded .report-text-expand-icon--less,
+#bell-remind-overlay .report-text-wrap:not(.is-expanded) .report-text-expand-icon--more,
+#bell-remind-overlay .report-text-wrap.is-expanded .report-text-expand-icon--less {
     display: block;
+}
+
+.bell-remind-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.bell-remind-btn-dm {
+    width: 100%;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 13px 16px;
+}
+
+.bell-remind-btn-topic {
+    width: 100%;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 13px 16px;
+    background-color: var(--secondary-bg-color);
+    color: var(--text-color);
+    border: 1px solid rgba(142, 142, 147, 0.25);
+}
+
+.bell-remind-btn-topic:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.bell-remind-cancel-btn {
+    width: 100%;
+    margin-top: 4px;
+    color: var(--hint-color);
+    background: transparent;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.bell-remind-cancel-btn:hover {
+    color: var(--text-color);
 }
 
 #report-modal .report-feedback-block {
