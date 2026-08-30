@@ -647,13 +647,20 @@ function renderProjects(force) {
             <svg class="pc-cal__icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.11-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7H5V6h14v2z"/>
             </svg>`;
-        const showBufferBadge = isPendingCompletion && bufferHoursLeft > 0;
-        const configureLabel = hasSync
-            ? window.t('pcConfigureSyncedBtn', {}, lang)
-            : window.t('pcConfigureBtn', {}, lang);
-        const configureClass = hasSync
-            ? 'pc-config-btn is-synced'
-            : (needsSyncAttention ? 'pc-config-btn needs-attention' : 'pc-config-btn');
+        const shieldGlyphHtml = `
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1.2 15L7 12.2l1.4-1.4 2.4 2.4 5-5L17.2 9.6 10.8 16z"/>
+            </svg>`;
+        const clockIconHtml = `
+            <svg class="pc-buffer-link__glyph" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+            </svg>`;
+        // The "Configure" text link disappears once protection is set up; from then on the
+        // calendar tile is the way back into the lifecycle sheet.
+        const configureBtnHtml = hasSync ? '' : `
+            <button type="button" class="pc-config-btn${needsSyncAttention ? ' needs-attention' : ''}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">
+                ${window.escapeHTML(window.t('pcConfigureBtn', {}, lang))}
+            </button>`;
 
         let count_done = 0;
         let count_waiting = 0;
@@ -684,41 +691,41 @@ function renderProjects(force) {
         const isOverachieved = dailyPercentage > 100;
         const ringDegrees = Math.round(Math.min(dailyPercentage, 100) * 3.6);
 
-        const stateFootHtml = (isPendingCompletion || hasSync || extraPaidDays > 0) ? `
+        const bufferHoursLabel = isPendingCompletion && bufferHoursLeft > 0
+            ? window.t('pcBufferHoursShort', { hours: bufferHoursLeft }, lang)
+            : window.t('pcBufferBadge', {}, lang);
+        const stateFootHtml = `
             <div class="pc-state-foot">
-                <button type="button" class="pc-buffer-link" onclick="event.stopPropagation(); openPcBufferInfoModal(${project.id});">
-                    <span class="pc-buffer-link__icon" aria-hidden="true">🛡</span>
-                    <span>${window.escapeHTML(isPendingCompletion && bufferHoursLeft > 0
-                        ? window.t('pcBufferChip', { hours: bufferHoursLeft }, lang)
-                        : window.t('pcBufferInfoLabel', {}, lang))}</span>
+                <button type="button" class="pc-buffer-link" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id});">
+                    ${clockIconHtml}
+                    <span>${window.escapeHTML(window.t('pcBufferInfoLabel', {}, lang))}</span>
+                    <span class="pc-buffer-link__hours">${window.escapeHTML(bufferHoursLabel)}</span>
                     <span class="pc-buffer-link__info" aria-hidden="true">i</span>
                 </button>
             </div>
-        ` : '';
+        `;
 
         const stateBlockHtml = `
             <div class="pc-state-unified">
                 <div class="pc-state-top">
                     <div class="pc-state-day">
-                        <button type="button" class="pc-cal" aria-label="${window.escapeHTML(window.t('pcBufferModalTitle', {}, lang))}" onclick="event.stopPropagation(); openPcBufferInfoModal(${project.id});">
+                        <button type="button" class="pc-cal" aria-label="${window.escapeHTML(window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id});">
                             ${calendarIconHtml}
-                            ${showBufferBadge ? `<span class="pc-cal__badge">${window.escapeHTML(window.t('pcBufferBadge', {}, lang))}</span>` : ''}
+                            <span class="pc-cal__dot${hasSync ? ' is-shield' : ''}" aria-hidden="true">${hasSync ? shieldGlyphHtml : '+'}</span>
                         </button>
                         <div class="pc-state-day__copy">
                             <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: currentGoogleDay, total: 14 }, lang))}">
                                 <span class="pc-day-word">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</span><span class="pc-day-num">${window.escapeHTML(String(currentGoogleDay))}</span><span class="pc-day-total">/&nbsp;14</span>
                             </span>
-                            <div class="pc-day-actions">
+                            ${extraPaidDays > 0 || configureBtnHtml ? `<div class="pc-day-actions">
                                 ${extraPaidDays > 0 ? `<span class="pc-day-extra">${window.escapeHTML(window.t('pcExtraDaysLong', { days: extraPaidDays }, lang))}</span>` : ''}
-                                <button type="button" class="${configureClass}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${window.escapeHTML(configureLabel)}</button>
-                            </div>
+                                ${configureBtnHtml}
+                            </div>` : ''}
                         </div>
                     </div>
-                    <div class="pc-state-divider" aria-hidden="true"></div>
                     <div class="pc-state-progress">
                         <div class="pc-progress-head">
                             <span class="pc-progress-label">${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))}</span>
-                            <span class="pc-progress-pct${isOverachieved ? ' is-over' : ''}">${displayPercentage}%</span>
                         </div>
                         <div class="pc-progress-body">
                             <span class="pc-ratio" aria-label="${window.escapeHTML(window.t('pcTestersRatioAria', { total: totalTesters, active: count_done }, lang))}">
@@ -5878,43 +5885,132 @@ function toggleProjectTestersList(projectId, event) {
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
 
-function openPcBufferInfoModal(projectId, event) {
+/**
+ * Explains the whole project lifecycle: main test → paid extension → safety
+ * buffer → archive. Rendered as a timeline so the owner can see where the
+ * project currently stands instead of reading a wall of text.
+ */
+function openProjectLifecycleModal(projectId, event) {
     if (event) {
         event.stopPropagation();
     }
     const project = (myProjects || []).find((item) => Number(item.id) === Number(projectId));
-    const modal = document.getElementById('pc-buffer-info-modal');
-    const titleEl = document.getElementById('pc-buffer-info-title');
-    const bodyEl = document.getElementById('pc-buffer-info-body');
-    const actionBtn = document.getElementById('pc-buffer-info-action');
+    const modal = document.getElementById('project-lifecycle-modal');
+    const titleEl = document.getElementById('project-lifecycle-title');
+    const bodyEl = document.getElementById('project-lifecycle-body');
+    const actionBtn = document.getElementById('project-lifecycle-action');
     if (!modal || !titleEl || !bodyEl || !actionBtn || !project) return;
 
+    const platformDay = typeof getProjectPlatformDay === 'function' ? getProjectPlatformDay(project.created_at) : 0;
+    const hasSync = _isProjectSyncedSafe(project);
+    const currentDay = hasSync && typeof getProjectCurrentGoogleDay === 'function'
+        ? getProjectCurrentGoogleDay(project, platformDay)
+        : platformDay;
     const extraPaidDays = Number(project.paid_protection_days || project.purchased_protection_days || 0);
-    const bufferHoursLeft = String(project.status || '').toLowerCase() === 'pending_completion'
+    const isPending = String(project.status || '').toLowerCase() === 'pending_completion';
+    const bufferHoursLeft = isPending
         ? Math.min(48, Math.max(0, 48 - Number(project.consumed_pending_hours || 0)))
         : 0;
-    const hasSync = _isProjectSyncedSafe(project);
+    const lastMainDay = 14 + extraPaidDays;
 
-    titleEl.textContent = window.t('pcBufferModalTitle', {}, lang);
-    const parts = [
-        window.t('pcBufferModalIntro', {}, lang),
-        bufferHoursLeft > 0
-            ? window.t('pcBufferModalActive', { hours: bufferHoursLeft }, lang)
-            : window.t('pcBufferModalPending', {}, lang),
+    const esc = window.escapeHTML;
+    const tr = (key, params) => window.t(key, params || {}, lang);
+
+    let stage = 'main';
+    if (isPending) stage = 'buffer';
+    else if (extraPaidDays > 0 && currentDay > 14) stage = 'extended';
+
+    const order = ['main', 'extended', 'buffer', 'archive'];
+    const stageIndex = order.indexOf(stage);
+
+    const stages = [
+        {
+            id: 'main',
+            glyph: '🧪',
+            title: tr('pcLifecycleMainTitle'),
+            meta: tr('pcLifecycleMainMeta', { day: Math.min(currentDay, 14), total: 14 }),
+            desc: tr('pcLifecycleMainDesc'),
+        },
+        {
+            id: 'extended',
+            glyph: '🛡',
+            title: tr('pcLifecycleExtendedTitle'),
+            meta: extraPaidDays > 0
+                ? tr('pcLifecycleExtendedMetaPaid', { days: extraPaidDays })
+                : tr('pcLifecycleExtendedMetaEmpty'),
+            desc: tr('pcLifecycleExtendedDesc'),
+            chips: extraPaidDays > 0
+                ? Array.from({ length: extraPaidDays }, (_, i) => tr('pcLifecycleDayChip', { day: 15 + i }))
+                : [],
+            muted: extraPaidDays === 0,
+        },
+        {
+            id: 'buffer',
+            glyph: '⏳',
+            title: tr('pcLifecycleBufferTitle'),
+            meta: bufferHoursLeft > 0 ? tr('pcBufferHoursShort', { hours: bufferHoursLeft }) : tr('pcBufferBadge'),
+            desc: tr('pcLifecycleBufferDesc'),
+        },
+        {
+            id: 'archive',
+            glyph: '🏁',
+            title: tr('pcLifecycleArchiveTitle'),
+            meta: tr('pcLifecycleArchiveMeta'),
+            desc: tr('pcLifecycleArchiveDesc'),
+        },
     ];
-    if (extraPaidDays > 0) {
-        parts.push(window.t('pcBufferModalExtraDays', { days: extraPaidDays }, lang));
+
+    const dots = [];
+    for (let day = 1; day <= lastMainDay; day += 1) {
+        let cls = 'pc-lc-dot';
+        if (day <= currentDay) cls += ' is-done';
+        if (day === currentDay) cls += ' is-current';
+        if (day > 14) cls += ' is-paid';
+        dots.push(`<span class="${cls}"></span>`);
     }
-    if (hasSync) {
-        parts.push(window.t('pcBufferModalSynced', {}, lang));
-    } else {
-        parts.push(window.t('pcBufferModalUnsynced', {}, lang));
-    }
-    bodyEl.innerHTML = parts.map((part) => `<p>${window.escapeHTML(part)}</p>`).join('');
-    actionBtn.textContent = window.t('pcBufferModalAction', {}, lang);
+
+    titleEl.textContent = tr('pcLifecycleTitle');
+
+    bodyEl.innerHTML = `
+        <p class="pc-lc-intro">${esc(tr('pcLifecycleIntro'))}</p>
+        <div class="pc-lc-track" role="img" aria-label="${esc(tr('pcLifecycleMainMeta', { day: currentDay, total: 14 }))}">
+            <div class="pc-lc-track__head">
+                <span class="pc-lc-track__label">${esc(tr('pcLifecycleTrackLabel'))}</span>
+                <span class="pc-lc-track__value">${esc(tr('pcLifecycleMainMeta', { day: Math.min(currentDay, lastMainDay), total: lastMainDay }))}</span>
+            </div>
+            <div class="pc-lc-dots">${dots.join('')}</div>
+            <div class="pc-lc-legend">
+                <span><i class="pc-lc-key is-done"></i>${esc(tr('pcLifecycleLegendDone'))}</span>
+                <span><i class="pc-lc-key is-paid"></i>${esc(tr('pcLifecycleLegendPaid'))}</span>
+                <span><i class="pc-lc-key"></i>${esc(tr('pcLifecycleLegendLeft'))}</span>
+            </div>
+        </div>
+        <ol class="pc-lc-steps">
+            ${stages.map((item, index) => {
+                const state = index < stageIndex ? 'is-past' : (index === stageIndex ? 'is-active' : 'is-future');
+                return `
+                <li class="pc-lc-step ${state}${item.muted ? ' is-muted' : ''}">
+                    <span class="pc-lc-step__glyph" aria-hidden="true">${item.glyph}</span>
+                    <div class="pc-lc-step__body">
+                        <div class="pc-lc-step__head">
+                            <span class="pc-lc-step__title">${esc(item.title)}</span>
+                            <span class="pc-lc-step__meta">${esc(item.meta)}</span>
+                        </div>
+                        ${item.chips && item.chips.length
+                            ? `<div class="pc-lc-step__chips">${item.chips.map((chip) => `<span class="pc-lc-chip">${esc(chip)}</span>`).join('')}</div>`
+                            : ''}
+                        <p class="pc-lc-step__desc">${esc(item.desc)}</p>
+                    </div>
+                </li>`;
+            }).join('')}
+        </ol>
+        <div class="pc-lc-note">${esc(hasSync ? tr('pcLifecycleSyncedNote') : tr('pcLifecycleUnsyncedNote'))}</div>
+    `;
+
+    actionBtn.textContent = hasSync ? tr('pcLifecycleActionSynced') : tr('pcLifecycleActionUnsynced');
     actionBtn.onclick = function (clickEvent) {
         clickEvent.stopPropagation();
-        closePcBufferInfoModal();
+        closeProjectLifecycleModal();
         openProtectionCenter(projectId);
     };
     modal.dataset.projectId = String(projectId);
@@ -5922,9 +6018,9 @@ function openPcBufferInfoModal(projectId, event) {
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
 
-function closePcBufferInfoModal(event) {
+function closeProjectLifecycleModal(event) {
     if (event && event.target !== event.currentTarget) return;
-    const modal = document.getElementById('pc-buffer-info-modal');
+    const modal = document.getElementById('project-lifecycle-modal');
     if (modal) {
         modal.classList.remove('active');
         modal.dataset.projectId = '';
