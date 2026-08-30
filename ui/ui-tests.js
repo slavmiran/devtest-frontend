@@ -7,7 +7,10 @@ function renderEditCreatedAtMeta() {
         return;
     }
     const project = myProjects.find((item) => item.id === projectToEdit);
-    metaEl.textContent = formatEditProjectCreatedAt(project);
+    // The run chip lives here rather than on the project card, which stays a daily dashboard.
+    const runChip = buildRunIterationChip(project, 'edit-created-at-run-chip');
+    metaEl.innerHTML = window.escapeHTML(formatEditProjectCreatedAt(project)) +
+        (runChip ? ' <span class="edit-created-at-dot">·</span> ' + runChip : '');
 }
 
 function getIssueRemovalDeadline(issueReportedAt) {

@@ -294,7 +294,6 @@ function renderProjects(force) {
             ? getProjectCurrentGoogleDay(project, platformDays)
             : platformDays;
         const currentGoogleDay = Math.max(1, Number.isFinite(rawGoogleDay) ? rawGoogleDay : 1);
-        const likesAvailable = project.likes_max - project.likes_used;
 
         const isOvertime = platformDays > 14;
         const needsSyncAttention = isPendingCompletion || (platformDays >= 7 && normalizedSyncDay < 1);
@@ -308,7 +307,9 @@ function renderProjects(force) {
         const hasAccessOverlay = project.status === 'access_error' && pendingIssueTesters.length > 0;
 
         const collapsedVal = localStorage.getItem('project_card_collapsed_' + project.id);
-        const isCollapsed = collapsedVal !== null ? (collapsedVal === 'true') : (index !== 0);
+        // The dashboard is always visible now; expanding only reveals the full tester roster,
+        // which the redesign keeps hidden until asked for.
+        const isCollapsed = collapsedVal !== null ? (collapsedVal === 'true') : true;
         if (isCollapsed) cardClass += ' card-collapsed';
 
         card.className = cardClass + (hasAccessOverlay ? ' card-has-access-issue' : '');
@@ -336,6 +337,10 @@ function renderProjects(force) {
 
         let testersHtml = '';
         let testerRowsHtml = '';
+        // Roster signals surfaced in the collapsed "All testers" summary.
+        let attentionCount = 0;
+        let mutualDebtCount = 0;
+        let brokenLinkCount = 0;
         if (regularTesters.length > 0) {
             regularTesters.forEach((tester) => {
                 const joinType = String(tester.join_type || 'invite').toLowerCase();
@@ -431,6 +436,11 @@ function renderProjects(force) {
                 const consecutiveSkips = (typeof calculateConsecutiveSkips === 'function')
                     ? calculateConsecutiveSkips(tester)
                     : 0;
+                if (!isLeftSoft) {
+                    if (consecutiveSkips >= 3) attentionCount++;
+                    if (isMutualDebt) mutualDebtCount++;
+                    if (isBrokenReciprocal) brokenLinkCount++;
+                }
                 let warningHtml = '';
                 if (!isLeftSoft && consecutiveSkips >= 3) {
                     warningHtml = `<span class="tester-icon-action tester-warn-action" role="button" tabindex="0" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${Number(project.id)}, ${Number(tester.tester_id)}, event)">⚠️</span>`;
@@ -624,103 +634,43 @@ function renderProjects(force) {
             </div>
         ` : '';
 
-        const visibilityBadge = (() => {
-            let badges = '';
+        const hasSync = _isProjectSyncedSafe(project);
+        const extraPaidDays = Number(project.paid_protection_days || project.purchased_protection_days || 0);
+        const bufferHoursLeft = isPendingCompletion
+            ? Math.min(48, Math.max(0, 48 - Number(project.consumed_pending_hours || 0)))
+            : 0;
 
-            badges += buildEmailTestModeChip(project);
-
-            const runIterationChip = buildRunIterationChip(project);
-            if (runIterationChip) badges += runIterationChip;
-
-            if (project.target_lang && project.target_lang !== 'ALL') {
-                badges += getLangBadge(project.target_lang);
+        /* ── Block 1: current testing day + protection entry point ── */
+        const dayTileHtml = (() => {
+            const metaChips = [];
+            if (isPendingCompletion) {
+                metaChips.push(bufferHoursLeft > 0
+                    ? `<span class="pc-meta-chip">🛡 ${window.escapeHTML(window.t('pcBufferChip', { hours: bufferHoursLeft }, lang))}</span>`
+                    : `<span class="pc-meta-chip">🛡 ${window.escapeHTML(window.t('ppcBufferAwaitingArchiving', {}, lang))}</span>`);
             }
-            if (_isProjectSyncedSafe(project)) {
-                // Fallback for legacy projects that may use purchased_protection_days instead of paid_protection_days
-                const extraPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0);
-                const protectedText = extraPaid > 0
-                    ? window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang)
-                    : window.t('ppcProtectedBadge', {}, lang);
-                badges += `<span class="meta-chip accent-protection">${window.escapeHTML(protectedText)}</span>`;
+            if (extraPaidDays > 0) {
+                metaChips.push(`<span class="pc-meta-chip">${window.escapeHTML(window.t('pcExtraDaysChip', { days: extraPaidDays }, lang))}</span>`);
             }
-
-            return badges;
-        })();
-
-        const projectProgressHtml = (() => {
-            if (!_isProjectSyncedSafe(project)) {
-                const day = Math.min(platformDays, 14);
-                const pct = Math.min(100, Math.round((day / 14) * 100));
-                return `
-                    <div class="progress-container" style="margin-bottom: 12px;">
-                        <div class="progress-bar"><div class="progress-fill" style="width: ${pct}%;"></div></div>
-                        <span>${t.progressLabel.replace('{day}', day)}</span>
-                    </div>
-                `;
+            if (!hasSync) {
+                metaChips.push(`<span class="pc-meta-chip">${window.escapeHTML(window.t('syncBtnTitleBefore', {}, lang))}</span>`);
             }
-
-            const segments = [];
-            for (let index = 1; index <= 14; index++) {
-                segments.push(`<div class="grant-segment ${index <= Math.min(currentGoogleDay, 14) ? 'filled' : ''}"></div>`);
-            }
+            const protectionLabel = window.escapeHTML(window.t('pcProtectionAria', {}, lang));
             return `
-                <div style="margin-bottom: 12px;">
-                    <div class="grant-progress-container">${segments.join('')}</div>
-                    <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:12px;">
-                        <span>${window.t('projectGoogleDayLabel', { day: currentGoogleDay })}</span>
-                        <span onclick="window.showCustomAlert(window.t('platformDaysInfo'))" style="color:var(--hint-color); cursor:pointer;">[${platformDays}]</span>
+                <div class="pc-tile pc-tile--day">
+                    <span class="pc-tile__label">${window.escapeHTML(window.t('pcDayTileLabel', {}, lang))}</span>
+                    <div class="pc-day-row">
+                        <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: currentGoogleDay, total: 14 }, lang))}">
+                            <span class="pc-day-word">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</span><span class="pc-day-num">${window.escapeHTML(String(currentGoogleDay))}</span><span class="pc-day-total">/&nbsp;14</span>
+                        </span>
+                        <button type="button" class="pc-day-plus${needsSyncAttention ? ' needs-attention' : ''}" title="${protectionLabel}" aria-label="${protectionLabel}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">+</button>
                     </div>
+                    <div class="pc-day-meta">${metaChips.join('')}</div>
                 </div>
             `;
         })();
 
-        const quotaSummaryHtml = (() => {
-            const chips = [];
-            const testers = activeRegularTesters;
-            const mutualCount = testers.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
-            const bountyCount = testers.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
-            if (project.mode === 'mutual' || project.mode === 'hybrid') {
-                chips.push(`<span class="card-summary-chip">${window.escapeHTML(window.t('mutualChipLabel', { current: mutualCount, target: project.limit_mutual || 0 }, lang))}</span>`);
-            }
-            if (project.mode === 'bounty' || project.mode === 'hybrid') {
-                chips.push(`<span class="card-summary-chip accent-purple" style="cursor: pointer;" onclick="openContractEconomyModal(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('contractChipLabel', { current: bountyCount, target: project.limit_bounty || 0, price: formatUiAmount(project.bounty_per_tester || 0, 1) }, lang))}</span>`);
-            }
-            if (guestTesterCount > 0) {
-                chips.push(`<span class="card-summary-chip accent-blue">👽 ${window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang))}</span>`);
-            }
-            if (!chips.length) return '';
-            return `<div class="card-summary-chips" onclick="event.stopPropagation();">${chips.join('')}</div>`;
-        })();
-
-        const karmaBonusChipHtml = (() => {
-            if (platformDays < 14 || activeRegularTesters.length < 5) return '';
-            return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
-        })();
-
-        const hasSync = _isProjectSyncedSafe(project);
-        const syncBtnStyle = needsSyncAttention
-            ? 'flex: 1; background-color: rgba(255, 149, 0, 0.2); color: #ff9500; border: 1px solid rgba(255, 149, 0, 0.4); animation: pulse-attention 2s infinite;'
-            : 'flex: 1; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.22);';
-        
-        let syncBtnTitle = '';
-        const syncSubtitle = (() => {
-            if (!hasSync) {
-                syncBtnTitle = window.t('syncBtnTitleBefore', {}, lang) || '🛡 Setup Protection';
-                return window.t('syncBtnSubtitleBefore', {}, lang) || 'Play Console Data';
-            }
-            const extraPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0);
-            syncBtnTitle = extraPaid > 0 
-                ? window.t('syncBtnTitleAfterDays', { days: extraPaid }, lang) || `🛡 Protected +${extraPaid}d`
-                : window.t('syncBtnTitleAfter', {}, lang) || '🛡 Protected';
-            
-            const consumedPendingHours = Number(project.consumed_pending_hours || 0);
-            const hoursLeft = Math.min(48, Math.max(0, 48 - consumedPendingHours));
-            if (hoursLeft <= 0) {
-                return window.t('ppcBufferAwaitingArchiving', {}, lang) || 'Awaiting archiving...';
-            }
-            return window.t('ppcBufferHoursLeft', { hours: hoursLeft }, lang) || `⏳ Safety Buffer: ${hoursLeft}h left`;
-        })();
-
+        /* ── Block 2: team size, today's activity, daily progress ring ──
+           Same Daily Progress math as before; only the visualisation changed. */
         let count_done = 0;
         let count_waiting = 0;
         allProjectTesters.forEach((tester) => {
@@ -745,40 +695,115 @@ function renderProjects(force) {
 
         const totalTesters = activeRegularTesters.length + guestTesters.length;
         const targetCheckins = Math.min(totalTesters, 12);
-        const hasEnergyBar = totalTesters > 0;
-        
-        let energyBarBottomHtml = '';
-        let energyBarTopHtml = '';
-        
-        if (hasEnergyBar) {
-            const percentage = targetCheckins > 0 ? (count_done / targetCheckins) * 100 : 0;
-            const displayPercentage = Math.round(percentage);
-            const barWidthPercentage = Math.min(percentage, 100);
-            const isOverachieved = percentage > 100;
-            
-            let percentText = `${displayPercentage}%`;
-            if (isOverachieved) {
-                const overchargeLabel = lang === 'ru' ? '⚡ Перевыполнение' : '⚡ Overcharge';
-                percentText = `${overchargeLabel} ${displayPercentage}%!`;
-            }
-            
-            const commonBarHtml = (className) => `
-                <div class="energy-bar-wrapper ${className}">
-                    <div class="energy-bar-label">
-                        <span>${window.escapeHTML(window.t('dailyProgressLabel', {}, lang))}<span class="energy-bar-fraction">(${count_done}/${targetCheckins})</span></span>
-                        <span class="energy-bar-value ${isOverachieved ? 'is-overcharged' : ''}">${window.escapeHTML(percentText)}</span>
+        const dailyPercentage = targetCheckins > 0 ? (count_done / targetCheckins) * 100 : 0;
+        const displayPercentage = Math.round(dailyPercentage);
+        const isOverachieved = dailyPercentage > 100;
+        const ringDegrees = Math.round(Math.min(dailyPercentage, 100) * 3.6);
+
+        const activityTileHtml = `
+            <div class="pc-tile pc-tile--activity">
+                <span class="pc-tile__label">${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))}</span>
+                <div class="pc-activity">
+                    <div class="pc-activity__nums">
+                        <span class="pc-stat pc-stat--major">
+                            <span class="pc-stat__value">${window.escapeHTML(String(totalTesters))}</span>
+                            <span class="pc-stat__label">${window.escapeHTML(window.t('pcTestersLabel', {}, lang))}</span>
+                        </span>
+                        <span class="pc-stat pc-stat--minor">
+                            <span class="pc-stat__value">${window.escapeHTML(String(count_done))}</span>
+                            <span class="pc-stat__label">${window.escapeHTML(window.t('pcActiveTodayLabel', {}, lang))}</span>
+                        </span>
                     </div>
-                    <div class="energy-bar-container ${isOverachieved ? 'overachieved' : ''}">
-                        <div class="energy-bar-fill" style="width: ${barWidthPercentage}%">
-                            <div class="energy-bar-shimmer"></div>
-                        </div>
+                    <div class="pc-ring${isOverachieved ? ' is-over' : ''}${displayPercentage === 0 ? ' is-zero' : ''}" style="--pc-ring-deg: ${ringDegrees}deg;" role="img" aria-label="${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))} ${displayPercentage}%">
+                        <span class="pc-ring__value">${displayPercentage}%</span>
+                        ${isOverachieved ? `<span class="pc-ring__caption">${window.escapeHTML(window.t('pcOverchargeLabel', {}, lang))}</span>` : ''}
                     </div>
                 </div>
+            </div>
+        `;
+
+        const stateBlockHtml = `<div class="pc-state">${dayTileHtml}${activityTileHtml}</div>`;
+
+        /* ── Block 4: collapsed summary of the full tester roster ── */
+        const allTestersRowHtml = (() => {
+            if (!allProjectTesters.length) return '';
+            const parts = [];
+            if (count_done > 0) {
+                parts.push(`<span class="is-ok">${window.escapeHTML(window.t('pcSummaryActiveToday', { count: count_done }, lang))}</span>`);
+            }
+            if (attentionCount > 0) {
+                parts.push(`<span class="is-warn">${window.escapeHTML(window.t('pcSummaryNeedsAttention', { count: attentionCount }, lang))}</span>`);
+            }
+            if (mutualDebtCount > 0) {
+                parts.push(`<span class="is-debt">${window.escapeHTML(window.t('pcSummaryMutualDebt', { count: mutualDebtCount }, lang))}</span>`);
+            }
+            if (brokenLinkCount > 0) {
+                parts.push(`<span class="is-broken">${window.escapeHTML(window.t('pcSummaryBrokenLinks', { count: brokenLinkCount }, lang))}</span>`);
+            }
+            const summary = parts.length
+                ? `<span class="pc-alltesters__summary">${parts.join(' · ')}</span>`
+                : `<span class="pc-alltesters__summary">${window.escapeHTML(window.t('pcAllTestersHint', {}, lang))}</span>`;
+            return `
+                <button type="button" class="pc-alltesters" onclick="toggleProjectCard(${project.id}, event)">
+                    <span class="pc-alltesters__mark" aria-hidden="true">👥</span>
+                    <span class="pc-alltesters__body">
+                        <span class="pc-alltesters__title">${window.escapeHTML(window.t('pcAllTestersTitle', {}, lang))}<span class="pc-alltesters__count">${window.escapeHTML(String(totalTesters))}</span></span>
+                        ${summary}
+                    </span>
+                    <span class="pc-alltesters__chev" aria-hidden="true">›</span>
+                </button>
             `;
-            
-            energyBarBottomHtml = commonBarHtml('bottom-bar');
-            energyBarTopHtml = commonBarHtml('top-bar');
-        }
+        })();
+
+        /* ── Block 5: primary actions. Attracting testers stays the bright CTA
+              only while the project is below the 12-tester Google quota. ── */
+        const attractIsPrimary = totalTesters < 12;
+        const actionsHtml = `
+            <div class="pc-actions">
+                <button type="button" class="pc-cta ${attractIsPrimary ? 'pc-cta--primary' : 'pc-cta--neutral'}" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
+                    🚀 ${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}
+                </button>
+                ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'margin: 0; min-height: 46px; border-radius: 13px; font-size: 13.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; background: var(--bg-surface-2); color: var(--text-secondary); border: 1px solid var(--border-subtle);')}
+            </div>
+        `;
+
+        /* ── Block 6: minimal-weight configuration chips ── */
+        const footerChipsHtml = (() => {
+            const chips = [];
+            const mutualCount = activeRegularTesters.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
+            const bountyCount = activeRegularTesters.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
+            if (project.mode === 'mutual' || project.mode === 'hybrid') {
+                chips.push(`<span class="pc-fchip">${window.escapeHTML(window.t('mutualChipLabel', { current: mutualCount, target: project.limit_mutual || 0 }, lang))}</span>`);
+            }
+            if (project.mode === 'bounty' || project.mode === 'hybrid') {
+                chips.push(`<button type="button" class="pc-fchip pc-fchip--action" onclick="openContractEconomyModal(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('contractChipLabel', { current: bountyCount, target: project.limit_bounty || 0, price: formatUiAmount(project.bounty_per_tester || 0, 1) }, lang))}</button>`);
+            }
+            if (guestTesterCount > 0) {
+                chips.push(`<span class="pc-fchip">👽 ${window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang))}</span>`);
+            }
+            if (String(project.test_mode || 'google_group') === 'email_list') {
+                chips.push(`<button type="button" class="pc-fchip pc-fchip--action pc-fchip--warn" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('emailTestModeChipToast', {}, lang))}')">⚠️ ${window.escapeHTML(window.t('emailTestModeChip', {}, lang))}</button>`);
+            }
+            if (project.target_lang && project.target_lang !== 'ALL') {
+                chips.push(getLangBadge(project.target_lang));
+            }
+            if (hasSync) {
+                chips.push(`<span class="pc-fchip pc-fchip--synced">✓ ${window.escapeHTML(window.t('pcSyncedChip', {}, lang))}</span>`);
+            }
+            if (!chips.length) return '';
+            return `<div class="pc-footer" onclick="event.stopPropagation();">${chips.join('')}</div>`;
+        })();
+
+        const todaySectionHtml = (typeof window.ProjectToday !== 'undefined' && window.ProjectToday)
+            ? window.ProjectToday.buildSection(project)
+            : '';
+
+        const controlPendingToday = activeRegularTesters.filter((tester) => {
+            return !tester.is_left_soft
+                && isMandatoryScreenshotDay(Number(tester.testing_days || 0))
+                && tester.last_check_date !== today;
+        }).length;
+        const cardRequiresAttention = requiresAttention || controlPendingToday > 0;
 
         const visibilityMeta = getProjectVisibilityMeta(project);
         const visibilitySubText = (() => {
@@ -786,10 +811,6 @@ function renderProjects(force) {
             if (visibilityMeta.mode === 'hidden_manual') return window.t('settingsVisibilityPrivate', {}, lang) || 'Скрыто из витрины';
             return window.t('settingsVisibilityPublic', {}, lang) || 'Публичный';
         })();
-
-        const karmaRewardsChipHtml = likesAvailable > 0
-            ? `<button type="button" class="meta-chip accent-yellow" onclick="openKarmaDistribution(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('karmaRewards', { count: likesAvailable }, lang))}</button>`
-            : '';
 
         card.innerHTML = `
             <div class="card-header" onclick="toggleProjectSettingsDrawer(${project.id}, event)" style="cursor: pointer; user-select: none;">
@@ -842,55 +863,36 @@ function renderProjects(force) {
             </div>
 
             ${accessOverlayHtml}
-            
-            <!-- COLLAPSED ZONE (Always visible) -->
+
+            <!-- TODAY DASHBOARD (always visible: current state, control day, reports) -->
             <div class="card-collapsed-zone">
-                <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                    ${visibilityBadge}
-                </div>
-                ${projectProgressHtml}
-                ${quotaSummaryHtml}
-                <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">${karmaBonusChipHtml}</div>
+                ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
+                ${updateTipHtml}
+                ${stateBlockHtml}
+                ${todaySectionHtml}
+                ${allTestersRowHtml}
             </div>
-            
-            <!-- EXPANDED ZONE (Visible only when expanded) -->
+
+            <!-- FULL TESTER ROSTER (revealed by the "All testers" row) -->
             <div class="card-expanded-zone" id="expanded-${project.id}">
                 <div class="card-expanded-inner">
-                    ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
-                    ${updateTipHtml}
                     <div class="testers-section">
-                        <div class="testers-title-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                            <div class="testers-title">${window.escapeHTML(t.testersList)} <span class="testers-count-pill">${window.escapeHTML(String(activeRegularTesters.length + guestTesters.length))}</span>${leftSoftCount > 0 ? `<span class="testers-count-delta" title="${window.escapeHTML(window.t('testerLeftSoftCountHint', { count: leftSoftCount }, lang))}">−${window.escapeHTML(String(leftSoftCount))}</span>` : ''}${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(activeRegularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
-                            ${karmaRewardsChipHtml}
-                        </div>
-                        ${energyBarTopHtml}
+                        ${leftSoftCount > 0 || guestTesters.length > 0 ? `<div class="testers-title-row" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                            <div class="testers-title">${window.escapeHTML(t.testersList)}${leftSoftCount > 0 ? `<span class="testers-count-delta" title="${window.escapeHTML(window.t('testerLeftSoftCountHint', { count: leftSoftCount }, lang))}">−${window.escapeHTML(String(leftSoftCount))}</span>` : ''}${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(activeRegularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
+                        </div>` : ''}
                         ${testersHtml}
-                    </div>
-                    <div class="card-actions-grid">
-                        ${typeof window.buildTestingControlEntryButton === 'function' ? window.buildTestingControlEntryButton(project.id, false) : ''}
-                        <button type="button" class="btn btn-primary card-action-full" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
-                            🚀 ${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}
-                        </button>
-                        <div class="card-action-half-row">
-                            <button type="button" class="btn btn-secondary card-action-half" style="${syncBtnStyle}" onclick="openProtectionCenter(${project.id}); event.stopPropagation();">
-                                <div class="sync-btn-content">
-                                    <span class="sync-btn-title">${window.escapeHTML(syncBtnTitle)}</span>
-                                    <span class="sync-btn-subtitle">${window.escapeHTML(syncSubtitle)}</span>
-                                </div>
-                            </button>
-                            ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22); flex: 1; margin-bottom: 0; min-height: 44px; display: flex; align-items: center; justify-content: center;')}
-                        </div>
-                        ${platformDays >= 12 ? `
-                            <button type="button" class="btn btn-archive-neon card-action-full" onclick="openDeleteModal(${project.id}); event.stopPropagation();">
-                                🗑️ ${window.escapeHTML(window.t('kebabArchive', {}, lang))}
-                            </button>
-                        ` : ''}
                     </div>
                 </div>
             </div>
-            
-            ${energyBarBottomHtml}
-            
+
+            ${actionsHtml}
+            ${platformDays >= 12 ? `
+                <button type="button" class="btn btn-archive-neon pc-archive" onclick="openDeleteModal(${project.id}); event.stopPropagation();">
+                    🗑️ ${window.escapeHTML(window.t('kebabArchive', {}, lang))}
+                </button>
+            ` : ''}
+            ${footerChipsHtml}
+
             <div class="card-footer" onclick="toggleProjectCard(${project.id}, event)">
                 <div class="card-expand-handle-circle">
                     <span class="card-expand-chevron ${isCollapsed ? 'is-collapsed' : ''}">
@@ -898,11 +900,12 @@ function renderProjects(force) {
                             <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </span>
-                    ${requiresAttention ? `<div class="footer-notification-dot"></div>` : ''}
+                    ${cardRequiresAttention ? `<div class="footer-notification-dot"></div>` : ''}
                 </div>
             </div>
         `;
         container.appendChild(card);
+        if (window.ProjectToday) window.ProjectToday.mount(card, project);
         } catch (e) {
             console.error('Project card render error:', e);
             if (window.reportSystemError) window.reportSystemError('renderProjects: ' + e.message, e.stack);

@@ -24,6 +24,9 @@
         previewMediaCache: new Map(),
         previewMediaCacheBytes: 0,
         previewMediaLoading: new Map(),
+        // Set when the viewer is opened outside Testing Control (e.g. from a project card),
+        // where local timeline/gallery state cannot describe the proof.
+        previewFallback: null,
     };
 
     var PREVIEW_CACHE_MAX_ITEMS = 5;
@@ -784,25 +787,50 @@
             };
         }
         var found = findProof(proofId);
-        return found ? {
-            title: testerLabel(found.item),
-            subtitle: [
-                text('testingControlCurrentDay', 'Day {day}', { day: Number(found.day || 0) }),
-                deviceLine(found.item && found.item.device),
-            ].filter(Boolean).join(' • '),
-        } : { title: proofLabel('screenshot'), subtitle: '' };
+        if (found) {
+            return {
+                title: testerLabel(found.item),
+                subtitle: [
+                    text('testingControlCurrentDay', 'Day {day}', { day: Number(found.day || 0) }),
+                    deviceLine(found.item && found.item.device),
+                ].filter(Boolean).join(' • '),
+            };
+        }
+        var fallback = state.previewFallback;
+        if (fallback && Number(fallback.proofId) === Number(proofId)) {
+            return {
+                title: String(fallback.title || '') || proofLabel('screenshot'),
+                subtitle: String(fallback.subtitle || ''),
+            };
+        }
+        return { title: proofLabel('screenshot'), subtitle: '' };
     }
 
     function proofImageCount(proofId) {
         var galleryItem = findGalleryProof(proofId);
         if (galleryItem) return Math.max(1, Math.min(5, Number(galleryItem.image_count || 1)));
         var found = findProof(proofId);
-        return Math.max(1, Math.min(5, Number(found && found.proof && found.proof.image_count || 1)));
+        if (found) return Math.max(1, Math.min(5, Number(found.proof && found.proof.image_count || 1)));
+        var fallback = state.previewFallback;
+        if (fallback && Number(fallback.proofId) === Number(proofId)) {
+            return Math.max(1, Math.min(5, Number(fallback.imageCount || 1)));
+        }
+        return 1;
     }
 
-    async function openCheckinProofPreview(proofId, mediaIndex) {
+    async function openCheckinProofPreview(proofId, mediaIndex, options) {
         var safeProofId = Number(proofId || 0);
         if (!galleryEnabled() || safeProofId <= 0) return;
+        if (options) {
+            state.previewFallback = {
+                proofId: safeProofId,
+                imageCount: Number(options.imageCount || 1),
+                title: String(options.title || ''),
+                subtitle: String(options.subtitle || ''),
+            };
+        } else if (state.previewFallback && Number(state.previewFallback.proofId) !== safeProofId) {
+            state.previewFallback = null;
+        }
         var imageCount = proofImageCount(safeProofId);
         var safeIndex = Math.max(0, Math.min(imageCount - 1, Number(mediaIndex || 0)));
         var modal = document.getElementById('checkin-proof-preview-modal');
@@ -957,6 +985,7 @@
         state.previewProofId = 0;
         state.previewMediaIndex = 0;
         state.previewMode = '';
+        state.previewFallback = null;
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     }
 
