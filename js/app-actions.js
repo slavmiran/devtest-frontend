@@ -2199,14 +2199,26 @@ function handleActiveTimerSwitchAttempt(attemptedAppId) {
 
     var currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
     var lastShown = Number(localStorage.getItem(ACTIVE_TIMER_SWITCH_TIP_KEY) || 0);
-    var isFirstIn24h = !lastShown || (Date.now() - lastShown > 24 * 60 * 60 * 1000);
+    var isFirstIn1h = !lastShown || (Date.now() - lastShown > 1 * 60 * 60 * 1000);
 
-    if (isFirstIn24h) {
+    if (isFirstIn1h) {
         openActiveTimerSwitchModal(details);
         return;
     }
 
     _activeTimerSwitchAttempts = (_activeTimerSwitchAttempts || 0) + 1;
+
+    // Direct opening of active project's Google Play for attempt >= 3 (as if clicking OPEN on the active card)
+    if (_activeTimerSwitchAttempts >= 3) {
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+            window.tg.HapticFeedback.selectionChanged();
+        }
+        if (details.pkg) {
+            tg.openLink('https://play.google.com/store/apps/details?id=' + details.pkg);
+            _onStoreLinkClickedForIssueFlow(details.appId);
+        }
+        return;
+    }
 
     // 1. Haptic feedback
     if (window.tg && window.tg.HapticFeedback) {
@@ -2253,13 +2265,9 @@ function handleActiveTimerSwitchAttempt(attemptedAppId) {
         var msgTpl2 = (typeof window.t === 'function' ? window.t('activeTimerSwitchToastP2', {}, currentLang) : null)
             || '👀 Мы тоже проверили. Таймер настоящий 🙂\n{appName} · ещё {sec} сек';
         toastMessage = msgTpl2.replace('{appName}', details.appName).replace('{sec}', details.remainingSec);
-    } else {
-        var msgTpl3 = (typeof window.t === 'function' ? window.t('activeTimerSwitchToastP3', {}, currentLang) : null)
-            || '{appName} · ещё {sec} сек';
-        toastMessage = msgTpl3.replace('{appName}', details.appName).replace('{sec}', details.remainingSec);
     }
 
-    if (typeof showToast === 'function') {
+    if (toastMessage && typeof showToast === 'function') {
         showToast(toastMessage, 1200);
     }
 
