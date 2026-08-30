@@ -503,10 +503,9 @@
                 '<span class="pc-control__mark" aria-hidden="true">🛡</span>' +
                 '<span class="pc-control__titles">' +
                     '<span class="pc-control__title">' + esc(text('pcControlTitle', 'Control day today')) + '</span>' +
-                    '<span class="pc-control__sub">' + esc(text('pcControlSubtitle', 'Proof is required')) + '</span>' +
-                '</span>' +
-                '<span class="pc-control__count' + (done >= rows.length ? ' is-complete' : '') + '">' +
-                    esc(text('pcControlCount', '{done} of {total}', { done: done, total: rows.length })) +
+                    '<span class="pc-control__sub' + (done >= rows.length ? ' is-complete' : '') + '">' +
+                        esc(text('pcControlReportsSubtitle', '{done} of {total} reports', { done: done, total: rows.length })) +
+                    '</span>' +
                 '</span>' +
                 rewardChip +
             '</header>' +

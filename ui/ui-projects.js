@@ -690,6 +690,14 @@ function renderProjects(force) {
         const displayPercentage = Math.round(dailyPercentage);
         const isOverachieved = dailyPercentage > 100;
         const ringDegrees = Math.round(Math.min(dailyPercentage, 100) * 3.6);
+        const ringGradientMid = Math.round(ringDegrees * 0.55);
+        const ringOverMidA = Math.round(ringDegrees * 0.45);
+        const ringOverMidB = Math.round(ringDegrees * 0.78);
+        const ringStyle = displayPercentage <= 0
+            ? '--pc-ring-deg: 0deg;'
+            : isOverachieved
+                ? `--pc-ring-deg: ${ringDegrees}deg; --pc-ring-bg: conic-gradient(from -90deg, #af52de 0deg, #ff9500 ${ringOverMidA}deg, #ff2d55 ${ringDegrees}deg, rgba(255,255,255,0.07) ${ringDegrees}deg 360deg);`
+                : `--pc-ring-deg: ${ringDegrees}deg; --pc-ring-bg: conic-gradient(from -90deg, #34c759 0deg, #30b0c7 ${ringGradientMid}deg, #2ecbd6 ${ringDegrees}deg, rgba(255,255,255,0.07) ${ringDegrees}deg 360deg);`;
 
         const bufferHoursLabel = isPendingCompletion && bufferHoursLeft > 0
             ? window.t('pcBufferHoursShort', { hours: bufferHoursLeft }, lang)
@@ -715,12 +723,9 @@ function renderProjects(force) {
                         </button>
                         <div class="pc-state-day__copy">
                             <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: currentGoogleDay, total: 14 }, lang))}">
-                                <span class="pc-day-word">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</span><span class="pc-day-num">${window.escapeHTML(String(currentGoogleDay))}</span><span class="pc-day-total">/&nbsp;14</span>
+                                <span class="pc-day-word">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</span><span class="pc-day-num">${window.escapeHTML(String(currentGoogleDay))}</span><span class="pc-day-total">/&nbsp;14</span>${extraPaidDays > 0 ? `<span class="pc-day-extra">${window.escapeHTML(window.t('pcExtraDaysLong', { days: extraPaidDays }, lang))}</span>` : ''}
                             </span>
-                            ${extraPaidDays > 0 || configureBtnHtml ? `<div class="pc-day-actions">
-                                ${extraPaidDays > 0 ? `<span class="pc-day-extra">${window.escapeHTML(window.t('pcExtraDaysLong', { days: extraPaidDays }, lang))}</span>` : ''}
-                                ${configureBtnHtml}
-                            </div>` : ''}
+                            ${configureBtnHtml ? `<div class="pc-day-actions">${configureBtnHtml}</div>` : ''}
                         </div>
                     </div>
                     <div class="pc-state-progress">
@@ -729,9 +734,9 @@ function renderProjects(force) {
                         </div>
                         <div class="pc-progress-body">
                             <span class="pc-ratio" aria-label="${window.escapeHTML(window.t('pcTestersRatioAria', { total: totalTesters, active: count_done }, lang))}">
-                                <span class="pc-ratio__total">${window.escapeHTML(String(totalTesters))}</span><span class="pc-ratio__slash">/</span><span class="pc-ratio__active">${window.escapeHTML(String(count_done))}</span>
+                                <span class="pc-ratio__active">${window.escapeHTML(String(count_done))}</span><span class="pc-ratio__slash">/</span><span class="pc-ratio__total">${window.escapeHTML(String(totalTesters))}</span>
                             </span>
-                            <div class="pc-ring${isOverachieved ? ' is-over' : ''}${displayPercentage === 0 ? ' is-zero' : ''}" style="--pc-ring-deg: ${ringDegrees}deg;" role="img" aria-label="${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))} ${displayPercentage}%">
+                            <div class="pc-ring${isOverachieved ? ' is-over' : ''}${displayPercentage === 0 ? ' is-zero' : ''}" style="${ringStyle}" role="img" aria-label="${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))} ${displayPercentage}%">
                                 <span class="pc-ring__value">${displayPercentage}%</span>
                                 ${isOverachieved ? `<span class="pc-ring__caption">${window.escapeHTML(window.t('pcOverchargeLabel', {}, lang))}</span>` : ''}
                             </div>
@@ -747,16 +752,16 @@ function renderProjects(force) {
             if (!allProjectTesters.length) return '';
             const parts = [];
             if (count_done > 0) {
-                parts.push(`<span class="is-ok">${window.escapeHTML(window.t('pcSummaryActiveToday', { count: count_done }, lang))}</span>`);
+                parts.push(`<span><span class="is-ok">${window.escapeHTML(String(count_done))}</span> ${window.escapeHTML(window.t('pcSummaryTodaySuffix', {}, lang))}</span>`);
             }
             if (attentionCount > 0) {
-                parts.push(`<span class="is-warn">${window.escapeHTML(window.t('pcSummaryNeedsAttention', { count: attentionCount }, lang))}</span>`);
+                parts.push(`<span><span class="is-warn">${window.escapeHTML(String(attentionCount))}</span> ${window.escapeHTML(window.t('pcSummaryNeedsAttentionSuffix', {}, lang))}</span>`);
             }
             if (mutualDebtCount > 0) {
-                parts.push(`<span class="is-debt">${window.escapeHTML(window.t('pcSummaryMutualDebt', { count: mutualDebtCount }, lang))}</span>`);
+                parts.push(`<span><span class="is-debt">${window.escapeHTML(String(mutualDebtCount))}</span> ${window.escapeHTML(window.t('pcSummaryMutualDebtSuffix', {}, lang))}</span>`);
             }
             if (brokenLinkCount > 0) {
-                parts.push(`<span class="is-broken">${window.escapeHTML(window.t('pcSummaryBrokenLinks', { count: brokenLinkCount }, lang))}</span>`);
+                parts.push(`<span><span class="is-broken">${window.escapeHTML(String(brokenLinkCount))}</span> ${window.escapeHTML(window.t('pcSummaryBrokenLinksSuffix', {}, lang))}</span>`);
             }
             const summary = parts.length
                 ? `<span class="pc-alltesters__summary">${parts.join(' · ')}</span>`
@@ -804,9 +809,6 @@ function renderProjects(force) {
             }
             if (project.target_lang && project.target_lang !== 'ALL') {
                 chips.push(getLangBadge(project.target_lang));
-            }
-            if (hasSync) {
-                chips.push(`<span class="pc-fchip pc-fchip--synced">✓ ${window.escapeHTML(window.t('pcSyncedChip', {}, lang))}</span>`);
             }
             if (!chips.length) return '';
             return `<div class="pc-footer" onclick="event.stopPropagation();">${chips.join('')}</div>`;
