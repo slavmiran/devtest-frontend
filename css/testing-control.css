@@ -149,12 +149,20 @@
 .testing-control-gallery-meta strong { color: #eef4fb; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .testing-control-gallery-meta span { color: #8dbbff; font-size: 10px; font-weight: 750; }
 .testing-control-gallery-meta small { color: #8793a2; font-size: 9px; line-height: 1.35; overflow-wrap: anywhere; }
+.testing-control-gallery-count { position: absolute; right: 7px; top: 7px; padding: 3px 7px; border-radius: 999px; color: #fff; background: rgba(8, 11, 16, .78); font-size: 10px; font-weight: 800; }
 
 #checkin-proof-preview-modal { z-index: 280; align-items: stretch; background: #080b10; }
 .checkin-proof-preview-shell { width: 100%; height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto 1fr; background: #080b10; }
 .checkin-proof-preview-header { z-index: 2; display: flex; align-items: center; gap: 10px; min-height: calc(66px + env(safe-area-inset-top)); padding: calc(8px + env(safe-area-inset-top)) 14px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: rgba(8, 11, 16, 0.94); }
 .checkin-proof-preview-body { min-height: 0; display: grid; place-items: center; overflow: auto; padding: 12px 10px calc(12px + env(safe-area-inset-bottom)); }
 .checkin-proof-preview-image { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.checkin-proof-preview-album { position: relative; width: 100%; height: 100%; display: grid; place-items: center; }
+.checkin-proof-preview-album .checkin-proof-preview-image { width: 100%; height: 100%; }
+.checkin-proof-preview-nav { position: absolute; top: 50%; width: 42px; height: 52px; transform: translateY(-50%); border: 0; border-radius: 14px; color: #fff; background: rgba(8, 11, 16, .72); font-size: 34px; line-height: 1; }
+.checkin-proof-preview-nav.is-prev { left: 8px; }
+.checkin-proof-preview-nav.is-next { right: 8px; }
+.checkin-proof-preview-nav:disabled { opacity: .22; }
+.checkin-proof-preview-counter { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); padding: 5px 10px; border-radius: 999px; color: #fff; background: rgba(8, 11, 16, .75); font-size: 12px; font-weight: 750; }
 .checkin-proof-preview-loading { display: flex; gap: 7px; }
 .checkin-proof-preview-loading span { width: 8px; height: 8px; border-radius: 50%; background: #4ea0ff; animation: testing-control-pulse 1s ease-in-out infinite; }
 .checkin-proof-preview-loading span:nth-child(2) { animation-delay: .12s; }

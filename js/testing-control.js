@@ -19,13 +19,14 @@
         gallerySelected: { day: '', brand: '', model: '', android_version: '' },
         thumbnailObserver: null,
         previewProofId: 0,
+        previewMediaIndex: 0,
         previewMode: '',
         previewMediaCache: new Map(),
         previewMediaCacheBytes: 0,
     };
 
-    var PREVIEW_CACHE_MAX_ITEMS = 3;
-    var PREVIEW_CACHE_MAX_BYTES = 12 * 1024 * 1024;
+    var PREVIEW_CACHE_MAX_ITEMS = 5;
+    var PREVIEW_CACHE_MAX_BYTES = 25 * 1024 * 1024;
 
     function enabled() {
         return !!(window.App && window.App.testingControlEnabled === true);
@@ -63,8 +64,8 @@
         state.previewMediaCacheBytes = 0;
     }
 
-    function previewMediaCacheGet(proofId) {
-        var key = Number(proofId || 0);
+    function previewMediaCacheGet(proofId, mediaIndex) {
+        var key = Number(proofId || 0) + ':' + Number(mediaIndex || 0);
         var item = state.previewMediaCache.get(key);
         if (!item) return '';
         if (item.expiresAt && item.expiresAt <= Date.now()) {
@@ -78,10 +79,11 @@
         return item.url;
     }
 
-    function previewMediaCachePut(proofId, blob, expiresAt) {
-        var key = Number(proofId || 0);
+    function previewMediaCachePut(proofId, mediaIndex, blob, expiresAt) {
+        var safeProofId = Number(proofId || 0);
+        var key = safeProofId + ':' + Number(mediaIndex || 0);
         var bytes = Number(blob && blob.size || 0);
-        if (key <= 0 || !blob || bytes <= 0 || bytes > PREVIEW_CACHE_MAX_BYTES) return '';
+        if (safeProofId <= 0 || !blob || bytes <= 0 || bytes > PREVIEW_CACHE_MAX_BYTES) return '';
         var existing = state.previewMediaCache.get(key);
         if (existing) {
             state.previewMediaCacheBytes -= Number(existing.bytes || 0);
@@ -323,6 +325,7 @@
 
     function renderGalleryCard(item) {
         var proofId = Number(item && item.proof_id || 0);
+        var imageCount = Math.max(1, Math.min(5, Number(item && item.image_count || 1)));
         var media = item && item.media || {};
         var device = deviceLine(item && item.device);
         var dimensions = media.width && media.height ? media.width + '×' + media.height : '';
@@ -331,6 +334,7 @@
             '<button type="button" class="testing-control-gallery-image" onclick="openCheckinProofPreview(' + proofId + ')">' +
                 '<span class="testing-control-gallery-placeholder">' + escape(text('testingControlGalleryImageLoading', 'Loading preview…')) + '</span>' +
                 '<img alt="" data-proof-thumb="' + proofId + '" data-src="' + escape(secureMediaUrl(item.thumbnail_url)) + '" onload="this.closest(\'.testing-control-gallery-card\').classList.add(\'is-loaded\')" onerror="this.closest(\'.testing-control-gallery-card\').classList.add(\'is-error\')">' +
+                (imageCount > 1 ? '<span class="testing-control-gallery-count">' + imageCount + '</span>' : '') +
             '</button>' +
             '<button type="button" class="testing-control-gallery-retry" onclick="retryTestingControlThumbnail(' + proofId + '); event.stopPropagation();">' + escape(text('retry', 'Retry')) + '</button>' +
             '<div class="testing-control-gallery-meta">' +
@@ -450,12 +454,12 @@
         }
     }
 
-    async function requestMediaTicket(proofId, variant) {
+    async function requestMediaTicket(proofId, variant, mediaIndex) {
         var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
         var response = await fetchWithRetry(API_BASE + '/checkin-proofs/' + Number(proofId || 0) + '/media-ticket', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ init_data: initData, variant: variant }),
+            body: JSON.stringify({ init_data: initData, variant: variant, media_index: Number(mediaIndex || 0) }),
             timeoutMs: 20000,
         }, 1);
         var payload = await response.json().catch(function () { return {}; });
@@ -482,17 +486,18 @@
         return payload.proof;
     }
 
-    async function loadPreviewMediaSource(proofId) {
-        var cached = previewMediaCacheGet(proofId);
+    async function loadPreviewMediaSource(proofId, mediaIndex) {
+        var safeIndex = Number(mediaIndex || 0);
+        var cached = previewMediaCacheGet(proofId, safeIndex);
         if (cached) return cached;
-        var ticket = await requestMediaTicket(proofId, 'full');
+        var ticket = await requestMediaTicket(proofId, 'full', safeIndex);
         var response = await fetchWithRetry(ticket.url, { timeoutMs: 25000, cache: 'force-cache' }, 1);
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var mediaType = String(response.headers.get('content-type') || '').toLowerCase();
         if (mediaType.indexOf('image/') !== 0) throw new Error('invalid_media_type');
         var blob = await response.blob();
         if (!blob.size || blob.size > PREVIEW_CACHE_MAX_BYTES) throw new Error('invalid_media_size');
-        var source = previewMediaCachePut(proofId, blob, ticket.expiresAt);
+        var source = previewMediaCachePut(proofId, safeIndex, blob, ticket.expiresAt);
         if (!source) throw new Error('media_cache_failed');
         return source;
     }
@@ -672,13 +677,23 @@
         } : { title: proofLabel('screenshot'), subtitle: '' };
     }
 
-    async function openCheckinProofPreview(proofId) {
+    function proofImageCount(proofId) {
+        var galleryItem = findGalleryProof(proofId);
+        if (galleryItem) return Math.max(1, Math.min(5, Number(galleryItem.image_count || 1)));
+        var found = findProof(proofId);
+        return Math.max(1, Math.min(5, Number(found && found.proof && found.proof.image_count || 1)));
+    }
+
+    async function openCheckinProofPreview(proofId, mediaIndex) {
         var safeProofId = Number(proofId || 0);
         if (!galleryEnabled() || safeProofId <= 0) return;
+        var imageCount = proofImageCount(safeProofId);
+        var safeIndex = Math.max(0, Math.min(imageCount - 1, Number(mediaIndex || 0)));
         var modal = document.getElementById('checkin-proof-preview-modal');
         var body = document.getElementById('checkin-proof-preview-body');
         if (!modal || !body) return;
         state.previewProofId = safeProofId;
+        state.previewMediaIndex = safeIndex;
         state.previewMode = 'screenshot';
         var meta = previewMeta(safeProofId);
         body.innerHTML = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
@@ -689,17 +704,22 @@
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
         try {
-            var source = await loadPreviewMediaSource(safeProofId);
-            if (state.previewProofId !== safeProofId || !modal.classList.contains('active')) return;
-            body.innerHTML = '<img class="checkin-proof-preview-image" alt="" src="' + escape(source) + '">';
+            var source = await loadPreviewMediaSource(safeProofId, safeIndex);
+            if (state.previewProofId !== safeProofId || state.previewMediaIndex !== safeIndex || !modal.classList.contains('active')) return;
+            var navigation = imageCount > 1
+                ? '<button type="button" class="checkin-proof-preview-nav is-prev" onclick="openCheckinProofPreview(' + safeProofId + ',' + Math.max(0, safeIndex - 1) + ')"' + (safeIndex <= 0 ? ' disabled' : '') + '>‹</button>' +
+                  '<span class="checkin-proof-preview-counter">' + (safeIndex + 1) + ' / ' + imageCount + '</span>' +
+                  '<button type="button" class="checkin-proof-preview-nav is-next" onclick="openCheckinProofPreview(' + safeProofId + ',' + Math.min(imageCount - 1, safeIndex + 1) + ')"' + (safeIndex >= imageCount - 1 ? ' disabled' : '') + '>›</button>'
+                : '';
+            body.innerHTML = '<div class="checkin-proof-preview-album"><img class="checkin-proof-preview-image" alt="" src="' + escape(source) + '">' + navigation + '</div>';
             var image = body.querySelector('img');
-            if (image) image.onerror = function () { renderPreviewError(safeProofId); };
+            if (image) image.onerror = function () { renderPreviewError(safeProofId, safeIndex); };
         } catch (error) {
-            renderPreviewError(safeProofId);
+            renderPreviewError(safeProofId, safeIndex);
         }
     }
 
-    function renderPreviewError(proofId) {
+    function renderPreviewError(proofId, mediaIndex) {
         if (Number(state.previewProofId) !== Number(proofId)) return;
         var body = document.getElementById('checkin-proof-preview-body');
         if (!body) return;
@@ -707,7 +727,7 @@
             '<span>' + escape(text('testingControlMediaUnavailable', 'Image is temporarily unavailable.')) + '</span>' +
             '<button type="button" class="btn btn-secondary" onclick="' +
                 (state.previewMode === 'feedback' ? 'openTestingControlFeedbackPreview' : 'openCheckinProofPreview') +
-                '(' + Number(proofId || 0) + ')">' + escape(text('retry', 'Retry')) + '</button>' +
+                '(' + Number(proofId || 0) + (state.previewMode === 'feedback' ? '' : ',' + Number(mediaIndex || 0)) + ')">' + escape(text('retry', 'Retry')) + '</button>' +
         '</div>';
     }
 
@@ -803,6 +823,7 @@
         }
         if (modal) modal.classList.remove('active');
         state.previewProofId = 0;
+        state.previewMediaIndex = 0;
         state.previewMode = '';
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     }

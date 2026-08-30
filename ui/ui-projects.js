@@ -2230,8 +2230,11 @@ function copyGroupUrl(url) {
 }
 
 function showScreenshotDayAlert() {
-    if (tg.showAlert) tg.showAlert(t.screenshotDayOwnerAlert);
-    else alert(t.screenshotDayOwnerAlert);
+    var message = typeof window.tInternalCheckinCopy === 'function'
+        ? window.tInternalCheckinCopy('screenshotDayOwnerAlert', 'screenshotDayOwnerAlertProof')
+        : t.screenshotDayOwnerAlert;
+    if (tg.showAlert) tg.showAlert(message);
+    else alert(message);
 }
 
 function showVisibilityToast() {

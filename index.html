@@ -52,8 +52,8 @@
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20260829-feedback-fast-open-v1"></script>
-    <script src="./js/checkin-proof-upload.js?v=20260829-phase3-bg4"></script>
-    <script src="./js/testing-control.js?v=20260829-control-preview-v1"></script>
+    <script src="./js/checkin-proof-upload.js?v=20260830-multi-proof-v1"></script>
+    <script src="./js/testing-control.js?v=20260830-multi-proof-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
 <script src="./js/app-features.js?v=20260827-balance-actions-v17"></script>
 <script src="./js/mutual-exchange-ui.js?v=20260827-balance-actions-v17"></script>
@@ -68,8 +68,8 @@
     <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260806-ui-polish-v2">
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20260802-grants-3cols">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20260829-phase3-ux2">
-    <link rel="stylesheet" href="./css/testing-control.css?v=20260829-control-preview-v1">
+    <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20260830-multi-proof-v1">
+    <link rel="stylesheet" href="./css/testing-control.css?v=20260830-multi-proof-v1">
     <link rel="stylesheet" href="./css/wizard.css?v=20260821-edit-modal-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/kick-tester-modal.css?v=20260822-recip-highlight-v1">
@@ -1563,22 +1563,21 @@
                 <div class="checkin-proof-upload-icon" aria-hidden="true">📸</div>
                 <div>
                     <h3 id="t-checkinProofUploadTitle" data-i18n="checkinProofUploadTitle">Подтвердите тестирование</h3>
-                    <p id="t-checkinProofUploadHint" data-i18n="checkinProofUploadHint">Загрузите скриншот запущенного приложения.</p>
+                    <p id="t-checkinProofUploadHint" data-i18n="checkinProofUploadHint">Одного скрина достаточно. Но хороший тест редко заканчивается на одном экране 🙂</p>
                 </div>
             </div>
 
             <p class="checkin-proof-visibility-note" id="t-checkinProofVisibilityNote" data-i18n="checkinProofVisibilityNote">Скриншот публикуется в теме Testing Proofs. Убедитесь, что на нём нет личных данных.</p>
 
-            <input id="checkin-proof-file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="handleCheckinProofFileSelected(event)">
+            <input id="checkin-proof-file-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onchange="handleCheckinProofFileSelected(event)">
             <button type="button" id="checkin-proof-picker" class="checkin-proof-picker" onclick="chooseCheckinProofFile()">
                 <span class="checkin-proof-picker__icon" aria-hidden="true">＋</span>
-                <strong id="t-checkinProofChoose" data-i18n="checkinProofChoose">Выбрать изображение</strong>
-                <span id="t-checkinProofLimits" data-i18n="checkinProofLimits">JPEG, PNG или WebP · до 5 МБ</span>
+                <strong id="t-checkinProofChoose" data-i18n="checkinProofChoose">Выбрать изображения</strong>
+                <span id="t-checkinProofLimits" data-i18n="checkinProofLimits">1–5 · JPEG, PNG или WebP · до 5 МБ каждый</span>
             </button>
 
             <div id="checkin-proof-preview-wrap" class="checkin-proof-preview" hidden>
-                <img id="checkin-proof-preview" alt="" data-i18n-alt="checkinProofPreviewAlt">
-                <button type="button" class="checkin-proof-replace" onclick="chooseCheckinProofFile()" id="t-checkinProofReplace" data-i18n="checkinProofReplace">Заменить</button>
+                <div id="checkin-proof-preview-grid" class="checkin-proof-preview-grid"></div>
             </div>
 
             <div id="checkin-proof-upload-status" class="checkin-proof-upload-status" role="status" aria-live="polite"></div>
@@ -1587,17 +1586,6 @@
                 <button type="button" class="btn btn-primary" id="checkin-proof-submit" onclick="submitCheckinProofScreenshot()" disabled>
                     <span id="t-checkinProofSubmit" data-i18n="checkinProofSubmit">Отправить и выполнить чекин</span>
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Screenshot Guard Modal -->
-    <div id="screenshot-guard-modal" class="modal-overlay" onclick="closeScreenshotGuardModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-screenshotGuardTitle" data-i18n="screenshotGuardTitle">Вы уже подготовили скриншоты для подтверждения?</h3>
-            <div class="action-row">
-                <button class="btn btn-primary" id="t-screenshotGuardYes" onclick="confirmScreenshotGuard()" data-i18n="screenshotGuardYes">✅ Да, отправить</button>
-                <button class="btn btn-secondary" id="t-screenshotGuardCancel" onclick="closeScreenshotGuardModal()" data-i18n="screenshotGuardCancel">❌ Отмена</button>
             </div>
         </div>
     </div>

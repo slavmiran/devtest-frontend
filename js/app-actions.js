@@ -4123,6 +4123,16 @@ async function confirmStart(id, options) {
                         || errorCode === 'test_or_app_not_found'
                         || errorCode === 'project_pending_completion') {
                         _handleInactiveCheckinCard(id, errorCode);
+                    } else if (errorCode === 'screenshot_upload_required') {
+                        if (
+                            typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+                            && window.isInternalScreenshotProofUploadEnabled()
+                            && typeof window.openCheckinProofUploadModal === 'function'
+                        ) {
+                            window.openCheckinProofUploadModal(id);
+                            return false;
+                        }
+                        handleApiError(errorCode, result.details || {});
                     } else if (
                         errorCode === 'open_required'
                         || errorCode === 'open_invalid'

@@ -1010,14 +1010,21 @@ function getScreenshotReminderHtml(test) {
 
     const currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
     const accTitle = (typeof window.t === 'function' ? window.t('checkpointAccordionTitle', {}, currentLang) : null) || 'Контрольный день';
+    const usesProofUpload = typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+        ? window.isInternalScreenshotProofUploadEnabled(test)
+        : false;
     const dayText = (typeof window.t === 'function' ? window.t('checkpointTestingDayText', { day: testingDay }, currentLang) : null) || `Вы тестируете это приложение ${testingDay}-й день из 14.`;
-    const schedText = (typeof window.t === 'function' ? window.t('checkpointScheduleText', {}, currentLang) : null) || 'Контрольные дни: 1, 4, 7, 10 и 14.\nВ эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).';
+    const schedKey = usesProofUpload ? 'checkpointScheduleTextProof' : 'checkpointScheduleText';
+    const schedText = (typeof window.t === 'function' ? window.t(schedKey, {}, currentLang) : null)
+        || 'Контрольные дни: 1, 4, 7, 10 и 14.\nВ эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).';
     const doneTitle = (typeof window.t === 'function' ? window.t('checkpointCheckinDoneTitle', {}, currentLang) : null) || 'Чекин уже выполнен';
-    const doneHint = (typeof window.t === 'function' ? window.t('checkpointCheckinDoneHint', {}, currentLang) : null) || 'Если по какой-то причине скриншот ещё не отправляли, его необходимо отправить сейчас!';
+    const doneHintKey = usesProofUpload ? 'checkpointCheckinDoneHintProof' : 'checkpointCheckinDoneHint';
+    const doneHint = (typeof window.t === 'function' ? window.t(doneHintKey, {}, currentLang) : null)
+        || 'Если по какой-то причине скриншот ещё не отправляли, его необходимо отправить сейчас!';
     const btnLabel = (typeof window.t === 'function' ? window.t('screenshotReminderBtn', {}, currentLang) : null) || '💬 Отправить скриншот';
 
     const safeOwner = test && test.owner_username ? escapeInlineJsString(test.owner_username) : '';
-    const dmButton = safeOwner
+    const dmButton = (!usesProofUpload && safeOwner)
         ? `<button type="button" class="btn btn-primary checkpoint-accordion__dm-btn" onclick="openTelegramProfile('${safeOwner}', event)"><span class="checkpoint-accordion__btn-icon">💬</span> ${window.escapeHTML(btnLabel.replace(/^💬\s*/, ''))}</button>`
         : '';
 
@@ -1255,7 +1262,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         // Only control days carry an icon; regular days stay plain to reduce visual noise.
         const dayText = (isScreenshot ? '📸 ' : '') + t.myTestDayShort.replace('{days}', userTestingDay);
         const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip';
-        parts.push(`<button type="button" class="${chipClass}" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showTestDayPopup(${userTestingDay}); return false;">${dayText}</button>`);
+        parts.push(`<button type="button" class="${chipClass}" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showTestDayPopup(${userTestingDay}, ${test && test.is_external ? 'true' : 'false'}); return false;">${dayText}</button>`);
     }
     if (isNew) {
         parts.unshift(`<button type="button" class="meta-chip accent-green">${t.newBadge}</button>`);

@@ -2834,12 +2834,16 @@ function showScreenshotCompleteModal(ownerUsername) {
         titleEl.innerText = t.screenshotCompleteTitle || t.screenshotReminderTitle;
     }
     if (textEl) {
-        textEl.innerText = t.screenshotCompleteText || t.screenshotReminderText;
+        textEl.innerText = (typeof window.tInternalCheckinCopy === 'function'
+            ? window.tInternalCheckinCopy('screenshotCompleteText', 'screenshotCompleteTextProof')
+            : (t.screenshotCompleteText || t.screenshotReminderText));
     }
     if (closeEl) {
         closeEl.innerText = t.screenshotCompleteClose || t.btnClose;
     }
-    if (ownerUsername) {
+    var hideOwnerDm = typeof window.isScreenshotProofUploadEnabled === 'function'
+        && window.isScreenshotProofUploadEnabled();
+    if (ownerUsername && !hideOwnerDm) {
         const safe = escapeInlineJsString(ownerUsername || '');
         actionEl.innerHTML = `<button class="btn" style="width: 100%; background-color: var(--button-color, #007aff); color: var(--button-text-color, #fff); border: none; margin-bottom: 8px;" onclick="openTelegramProfile('${safe}', event); closeScreenshotCompleteModal();">${t.screenshotReminderBtn}</button>`;
     } else {
@@ -3238,7 +3242,12 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     const ideaBtn = document.getElementById('t-checkinOptionsSendIdea');
     const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
     if (titleEl) titleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinTitle' : 'checkinOptionsTitle', {}, lang);
-    if (subtitleEl) subtitleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
+    if (subtitleEl) subtitleEl.innerText = window.tInternalCheckinCopy
+        ? window.tInternalCheckinCopy(
+            _checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle',
+            _checkinOptionsIsControlDay ? 'controlDayCheckinSubtitleProof' : 'checkinOptionsSubtitle'
+        )
+        : window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
     if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
     if (bugBtn) bugBtn.innerText = window.t('checkinOptionsSendBug', {}, lang);
     if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
@@ -6967,7 +6976,7 @@ function showRankPopup() {
     else alert(msg);
 }
 
-function showTestDayPopup(day) {
+function showTestDayPopup(day, isExternal) {
     if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
         window.tg.HapticFeedback.selectionChanged();
     }
@@ -7022,9 +7031,13 @@ function showTestDayPopup(day) {
     const icon = isControl ? '📸' : '📅';
     const dayProgress = window.t('testDayModalTestingProgress', { day: numDay }, currentLang)
         || `Вы тестируете это приложение <b>${numDay}-й день из 14</b>.`;
+    const useProofCopy = !isExternal && typeof window.isScreenshotProofUploadEnabled === 'function'
+        && window.isScreenshotProofUploadEnabled();
     const scheduleDesc = isControl
-        ? (window.t('testDayModalControlSchedule', {}, currentLang) || 'Контрольные дни: <b>1, 4, 7, 10 и 14</b>.<br>В эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).')
-        : (window.t('testDayModalRegularSchedule', {}, currentLang) || 'Сегодня обычный день тестирования. Достаточно открыть приложение и выполнить ежедневный чекин.<br><br>Контрольные дни со скриншотом в ЛС: <b>1, 4, 7, 10 и 14</b>.');
+        ? (window.t(useProofCopy ? 'testDayModalControlScheduleProof' : 'testDayModalControlSchedule', {}, currentLang)
+            || 'Контрольные дни: <b>1, 4, 7, 10 и 14</b>.<br>В эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).')
+        : (window.t(useProofCopy ? 'testDayModalRegularScheduleProof' : 'testDayModalRegularSchedule', {}, currentLang)
+            || 'Сегодня обычный день тестирования. Достаточно открыть приложение и выполнить ежедневный чекин.<br><br>Контрольные дни со скриншотом в ЛС: <b>1, 4, 7, 10 и 14</b>.');
     const tipText = isControl
         ? (window.t('testDayModalControlTip', {}, currentLang) || '💡 Своевременная отправка подтверждений гарантирует сохранение наград и защиту от блокировок за неактивность.')
         : '';
@@ -7049,10 +7062,10 @@ function showTestDayPopup(day) {
             modal.classList.add('active');
         });
     } else if (typeof showCustomAlert === 'function') {
-        const fallbackMsg = window.t('testDayExplain', { days: numDay }, currentLang);
+        const fallbackMsg = window.t(useProofCopy ? 'testDayExplainProof' : 'testDayExplain', { days: numDay }, currentLang);
         showCustomAlert(fallbackMsg);
     } else {
-        const fallbackMsg = window.t('testDayExplain', { days: numDay }, currentLang);
+        const fallbackMsg = window.t(useProofCopy ? 'testDayExplainProof' : 'testDayExplain', { days: numDay }, currentLang);
         alert(fallbackMsg);
     }
 }

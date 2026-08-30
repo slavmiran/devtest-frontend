@@ -1052,6 +1052,7 @@ function handleApiError(code, details = {}) {
         open_mismatch: 'err_open_mismatch',
         open_expired: 'err_open_expired',
         open_not_ready: 'err_open_not_ready',
+        screenshot_upload_required: 'err_screenshot_upload_required',
         day_boundary_moved: 'err_day_boundary_moved',
         app_not_archived: 'err_app_not_archived_early_finish',
         invalid_start_date: 'err_grant_unavailable',
