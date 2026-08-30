@@ -24,6 +24,8 @@
         previewMediaCache: new Map(),
         previewMediaCacheBytes: 0,
         previewMediaLoading: new Map(),
+        previewThumbnailCache: new Map(),
+        previewThumbnailLoading: new Map(),
         // Set when the viewer is opened outside Testing Control (e.g. from a project card),
         // where local timeline/gallery state cannot describe the proof.
         previewFallback: null,
@@ -67,6 +69,25 @@
         state.previewMediaCache.clear();
         state.previewMediaCacheBytes = 0;
         state.previewMediaLoading.clear();
+        state.previewThumbnailCache.clear();
+        state.previewThumbnailLoading.clear();
+    }
+
+    function previewThumbnailCacheGet(proofId, mediaIndex) {
+        var key = Number(proofId || 0) + ':' + Number(mediaIndex || 0);
+        var item = state.previewThumbnailCache.get(key);
+        if (!item) return '';
+        if (item.expiresAt && item.expiresAt <= Date.now()) {
+            state.previewThumbnailCache.delete(key);
+            return '';
+        }
+        return item.url || '';
+    }
+
+    function previewThumbnailCachePut(proofId, mediaIndex, url, expiresAt) {
+        var key = Number(proofId || 0) + ':' + Number(mediaIndex || 0);
+        state.previewThumbnailCache.set(key, { url: url, expiresAt: Number(expiresAt || 0) });
+        return url;
     }
 
     function previewMediaCacheGet(proofId, mediaIndex) {
@@ -522,53 +543,28 @@
         }
     }
 
-    function preloadPreviewMedia(proofId, mediaIndex) {
-        var safeIndex = Number(mediaIndex || 0);
-        if (safeIndex < 0 || previewMediaCacheGet(proofId, safeIndex)) return;
-        loadPreviewMediaSource(proofId, safeIndex).then(decodePreviewImage).catch(function () {
-            // Preloading is an optional optimization; the visible viewer retains retry behavior.
-        });
-    }
-
-    function preloadAlbumNeighbors(proofId, mediaIndex, imageCount) {
-        if (imageCount <= 1) return;
-        if (mediaIndex > 0) preloadPreviewMedia(proofId, mediaIndex - 1);
-        if (mediaIndex + 1 < imageCount) preloadPreviewMedia(proofId, mediaIndex + 1);
-    }
-
-    function previewThumbnailUrl(proofId) {
+    function previewThumbnailUrl(proofId, mediaIndex) {
+        if (Number(mediaIndex || 0) !== 0) return '';
         var item = findGalleryProof(proofId);
         return item ? secureMediaUrl(item.thumbnail_url) : '';
     }
 
-    function renderPreviewLoading(body, thumbnailUrl) {
-        var loader = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
-        body.innerHTML = '<div class="checkin-proof-preview-album is-preview-loading">' +
-            (thumbnailUrl ? '<img class="checkin-proof-preview-image checkin-proof-preview-image--thumbnail" alt="" src="' + escape(thumbnailUrl) + '">' : '') +
-            loader +
-        '</div>';
-    }
-
-    async function showPreviewThumbnail(proofId, mediaIndex, body) {
+    async function loadPreviewThumbnailSource(proofId, mediaIndex) {
+        var safeIndex = Number(mediaIndex || 0);
+        var cached = previewThumbnailCacheGet(proofId, safeIndex);
+        if (cached) return cached;
+        var key = Number(proofId || 0) + ':' + safeIndex;
+        var pending = state.previewThumbnailLoading.get(key);
+        if (pending) return pending;
+        var task = (async function () {
+            var ticket = await requestMediaTicket(proofId, 'thumbnail', safeIndex);
+            return previewThumbnailCachePut(proofId, safeIndex, ticket.url, ticket.expiresAt);
+        })();
+        state.previewThumbnailLoading.set(key, task);
         try {
-            var ticket = await requestMediaTicket(proofId, 'thumbnail', mediaIndex);
-            if (
-                Number(state.previewProofId) !== Number(proofId) ||
-                Number(state.previewMediaIndex) !== Number(mediaIndex) ||
-                !body || !body.classList.contains('is-proof-album')
-            ) return;
-            var album = body.querySelector('.checkin-proof-preview-album.is-preview-loading');
-            if (!album) return;
-            var image = album.querySelector('img');
-            if (!image) {
-                image = document.createElement('img');
-                image.className = 'checkin-proof-preview-image checkin-proof-preview-image--thumbnail';
-                image.alt = '';
-                album.insertBefore(image, album.firstChild);
-            }
-            image.src = ticket.url;
-        } catch (_) {
-            // The full-size request remains authoritative and retains its normal error state.
+            return await task;
+        } finally {
+            if (state.previewThumbnailLoading.get(key) === task) state.previewThumbnailLoading.delete(key);
         }
     }
 
@@ -591,34 +587,141 @@
         for (var index = 0; index < imageCount; index += 1) {
             indicators.push('<button type="button" class="checkin-proof-preview-indicator' + (index === mediaIndex ? ' is-active' : '') + '" aria-label="' + escape(text('testingControlAlbumImage', 'Image {current} of {total}', { current: index + 1, total: imageCount })) + '" onclick="openCheckinProofPreview(' + proofId + ',' + index + ')"></button>');
         }
-        return '<button type="button" class="checkin-proof-preview-nav is-prev" onclick="openCheckinProofPreview(' + proofId + ',' + Math.max(0, mediaIndex - 1) + ')"' + (mediaIndex <= 0 ? ' disabled' : '') + '>‹</button>' +
+        return '<button type="button" class="checkin-proof-preview-nav is-prev" onclick="stepCheckinProofPreview(-1)"' + (mediaIndex <= 0 ? ' disabled' : '') + '>‹</button>' +
             '<div class="checkin-proof-preview-album-meta">' +
                 '<span class="checkin-proof-preview-counter">' + escape(text('testingControlAlbumImage', 'Image {current} of {total}', { current: mediaIndex + 1, total: imageCount })) + '</span>' +
                 '<span class="checkin-proof-preview-swipe-hint">' + escape(text('testingControlAlbumSwipeHint', 'Swipe to view the rest')) + '</span>' +
                 '<span class="checkin-proof-preview-indicators" role="tablist">' + indicators.join('') + '</span>' +
             '</div>' +
-            '<button type="button" class="checkin-proof-preview-nav is-next" onclick="openCheckinProofPreview(' + proofId + ',' + Math.min(imageCount - 1, mediaIndex + 1) + ')"' + (mediaIndex >= imageCount - 1 ? ' disabled' : '') + '>›</button>';
+            '<button type="button" class="checkin-proof-preview-nav is-next" onclick="stepCheckinProofPreview(1)"' + (mediaIndex >= imageCount - 1 ? ' disabled' : '') + '>›</button>';
     }
 
-    function bindAlbumSwipe(album, proofId, mediaIndex, imageCount) {
+    function albumSlide(proofId, mediaIndex) {
+        var fullSource = previewMediaCacheGet(proofId, mediaIndex);
+        var thumbnailSource = fullSource ? '' : (previewThumbnailCacheGet(proofId, mediaIndex) || previewThumbnailUrl(proofId, mediaIndex));
+        if (thumbnailSource && !previewThumbnailCacheGet(proofId, mediaIndex)) {
+            previewThumbnailCachePut(proofId, mediaIndex, thumbnailSource, Date.now() + 240000);
+        }
+        var source = fullSource || thumbnailSource;
+        var qualityClass = fullSource ? ' is-full' : ' is-thumbnail';
+        return '<section class="checkin-proof-preview-slide" data-media-index="' + mediaIndex + '">' +
+            '<img class="checkin-proof-preview-image' + qualityClass + '" alt="" data-quality="' + (fullSource ? 'full' : 'thumbnail') + '"' +
+                ' onload="this.closest(\'.checkin-proof-preview-slide\').classList.add(\'is-loaded\')"' +
+                ' onerror="this.closest(\'.checkin-proof-preview-slide\').classList.add(\'is-error\')"' +
+                (source ? ' src="' + escape(source) + '"' : '') + '>' +
+            '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>' +
+            '<button type="button" class="checkin-proof-preview-quality' + (fullSource ? ' is-loaded' : '') + '" onclick="loadCheckinProofFullQuality(' + proofId + ',' + mediaIndex + ',event)"' + (fullSource ? ' disabled' : '') + '>' +
+                escape(text(fullSource ? 'testingControlFullQualityLoaded' : 'testingControlLoadFullQuality', fullSource ? 'Full quality' : 'Load full quality')) +
+            '</button>' +
+        '</section>';
+    }
+
+    function renderPreviewAlbum(body, proofId, mediaIndex, imageCount) {
+        var slides = [];
+        for (var index = 0; index < imageCount; index += 1) slides.push(albumSlide(proofId, index));
+        body.innerHTML = '<div class="checkin-proof-preview-album" data-proof-id="' + proofId + '" data-image-count="' + imageCount + '" data-media-index="' + mediaIndex + '">' +
+            '<div class="checkin-proof-preview-track" style="transform:translate3d(-' + (mediaIndex * 100) + '%,0,0)">' + slides.join('') + '</div>' +
+            albumNavigation(proofId, mediaIndex, imageCount) +
+        '</div>';
+    }
+
+    async function hydrateAlbumThumbnail(proofId, mediaIndex) {
+        var body = document.getElementById('checkin-proof-preview-body');
+        var album = body && body.querySelector('.checkin-proof-preview-album[data-proof-id="' + Number(proofId || 0) + '"]');
+        var slide = album && album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex || 0) + '"]');
+        var image = slide && slide.querySelector('img');
+        if (!slide || !image || image.dataset.quality === 'full' || image.getAttribute('src')) return;
+        slide.classList.add('is-loading');
+        try {
+            var source = await loadPreviewThumbnailSource(proofId, mediaIndex);
+            if (!document.body.contains(slide) || image.dataset.quality === 'full') return;
+            image.onload = function () { slide.classList.remove('is-loading', 'is-error'); slide.classList.add('is-loaded'); };
+            image.onerror = function () { slide.classList.remove('is-loading'); slide.classList.add('is-error'); };
+            image.src = source;
+        } catch (_) {
+            if (document.body.contains(slide)) {
+                slide.classList.remove('is-loading');
+                slide.classList.add('is-error');
+            }
+        }
+    }
+
+    function hydrateAlbumThumbnails(proofId, mediaIndex, imageCount) {
+        var order = [mediaIndex];
+        if (mediaIndex + 1 < imageCount) order.push(mediaIndex + 1);
+        if (mediaIndex > 0) order.push(mediaIndex - 1);
+        for (var index = 0; index < imageCount; index += 1) {
+            if (order.indexOf(index) < 0) order.push(index);
+        }
+        order.forEach(function (index) { hydrateAlbumThumbnail(proofId, index); });
+    }
+
+    function setAlbumIndex(album, proofId, mediaIndex, imageCount, animate) {
+        if (!album) return;
+        var safeIndex = Math.max(0, Math.min(imageCount - 1, Number(mediaIndex || 0)));
+        var track = album.querySelector('.checkin-proof-preview-track');
+        if (track) {
+            track.classList.toggle('is-animated', animate !== false);
+            track.style.transform = 'translate3d(-' + (safeIndex * 100) + '%,0,0)';
+        }
+        album.dataset.mediaIndex = String(safeIndex);
+        state.previewMediaIndex = safeIndex;
+        var counter = album.querySelector('.checkin-proof-preview-counter');
+        if (counter) counter.textContent = text('testingControlAlbumImage', 'Image {current} of {total}', { current: safeIndex + 1, total: imageCount });
+        album.querySelectorAll('.checkin-proof-preview-indicator').forEach(function (indicator, index) {
+            indicator.classList.toggle('is-active', index === safeIndex);
+        });
+        var previous = album.querySelector('.checkin-proof-preview-nav.is-prev');
+        var next = album.querySelector('.checkin-proof-preview-nav.is-next');
+        if (previous) previous.disabled = safeIndex <= 0;
+        if (next) next.disabled = safeIndex >= imageCount - 1;
+        hydrateAlbumThumbnails(proofId, safeIndex, imageCount);
+    }
+
+    function bindAlbumSwipe(album, proofId, imageCount) {
         if (!album || imageCount <= 1) return;
         var start = null;
+        var axis = '';
+        var track = album.querySelector('.checkin-proof-preview-track');
         album.addEventListener('touchstart', function (event) {
             var touch = event.changedTouches && event.changedTouches[0];
-            if (touch) start = { x: touch.clientX, y: touch.clientY };
+            if (touch) {
+                start = { x: touch.clientX, y: touch.clientY, at: Date.now(), index: Number(album.dataset.mediaIndex || 0) };
+                axis = '';
+                if (track) track.classList.remove('is-animated');
+            }
         }, { passive: true });
-        album.addEventListener('touchend', function (event) {
+        album.addEventListener('touchmove', function (event) {
+            if (!start) return;
+            var touch = event.changedTouches && event.changedTouches[0];
+            if (!touch || !track) return;
+            var horizontal = touch.clientX - start.x;
+            var vertical = touch.clientY - start.y;
+            if (!axis && Math.max(Math.abs(horizontal), Math.abs(vertical)) > 7) axis = Math.abs(horizontal) > Math.abs(vertical) ? 'x' : 'y';
+            if (axis !== 'x') return;
+            event.preventDefault();
+            if ((start.index === 0 && horizontal > 0) || (start.index === imageCount - 1 && horizontal < 0)) horizontal *= .28;
+            track.style.transform = 'translate3d(calc(-' + (start.index * 100) + '% + ' + horizontal + 'px),0,0)';
+        }, { passive: false });
+        function finishSwipe(event) {
             if (!start) return;
             var touch = event.changedTouches && event.changedTouches[0];
             var origin = start;
             start = null;
-            if (!touch) return;
+            if (!touch || axis !== 'x') {
+                setAlbumIndex(album, proofId, origin.index, imageCount, true);
+                return;
+            }
             var horizontal = touch.clientX - origin.x;
-            var vertical = touch.clientY - origin.y;
-            if (Math.abs(horizontal) < 44 || Math.abs(horizontal) <= Math.abs(vertical)) return;
-            if (horizontal < 0 && mediaIndex + 1 < imageCount) openCheckinProofPreview(proofId, mediaIndex + 1);
-            if (horizontal > 0 && mediaIndex > 0) openCheckinProofPreview(proofId, mediaIndex - 1);
-        }, { passive: true });
+            var width = Math.max(1, album.clientWidth);
+            var velocity = Math.abs(horizontal) / Math.max(1, Date.now() - origin.at);
+            var target = origin.index;
+            if (Math.abs(horizontal) > Math.min(72, width * .2) || velocity > .45) target += horizontal < 0 ? 1 : -1;
+            setAlbumIndex(album, proofId, target, imageCount, true);
+            axis = '';
+        }
+        album.addEventListener('touchend', finishSwipe, { passive: true });
+        album.addEventListener('touchcancel', finishSwipe, { passive: true });
     }
 
     async function setTestingControlTab(tab) {
@@ -818,6 +921,59 @@
         return 1;
     }
 
+    function syncProofPreviewViewport() {
+        var modal = document.getElementById('checkin-proof-preview-modal');
+        if (!modal) return;
+        var height = window.visualViewport && window.visualViewport.height
+            ? window.visualViewport.height
+            : window.innerHeight;
+        if (height > 0) modal.style.setProperty('--checkin-proof-viewport-height', Math.floor(height) + 'px');
+    }
+
+    function stepCheckinProofPreview(direction) {
+        var body = document.getElementById('checkin-proof-preview-body');
+        var album = body && body.querySelector('.checkin-proof-preview-album');
+        if (!album) return;
+        var proofId = Number(album.dataset.proofId || 0);
+        var imageCount = Number(album.dataset.imageCount || 1);
+        var target = Number(album.dataset.mediaIndex || 0) + Number(direction || 0);
+        setAlbumIndex(album, proofId, target, imageCount, true);
+    }
+
+    async function loadCheckinProofFullQuality(proofId, mediaIndex, event) {
+        if (event) event.stopPropagation();
+        var body = document.getElementById('checkin-proof-preview-body');
+        var album = body && body.querySelector('.checkin-proof-preview-album[data-proof-id="' + Number(proofId || 0) + '"]');
+        var slide = album && album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex || 0) + '"]');
+        var button = slide && slide.querySelector('.checkin-proof-preview-quality');
+        var image = slide && slide.querySelector('img');
+        if (!slide || !button || !image || image.dataset.quality === 'full') return;
+        button.disabled = true;
+        button.classList.add('is-loading');
+        button.textContent = text('testingControlFullQualityLoading', 'Loading full quality…');
+        try {
+            var source = await loadPreviewMediaSource(proofId, mediaIndex);
+            await decodePreviewImage(source);
+            if (!document.body.contains(slide)) return;
+            image.onload = function () {
+                slide.classList.add('is-loaded');
+                slide.classList.remove('is-error');
+            };
+            image.src = source;
+            image.dataset.quality = 'full';
+            image.classList.remove('is-thumbnail');
+            image.classList.add('is-full');
+            button.classList.remove('is-loading');
+            button.classList.add('is-loaded');
+            button.textContent = text('testingControlFullQualityLoaded', 'Full quality');
+        } catch (_) {
+            if (!document.body.contains(slide)) return;
+            button.disabled = false;
+            button.classList.remove('is-loading');
+            button.textContent = text('testingControlFullQualityRetry', 'Retry full quality');
+        }
+    }
+
     async function openCheckinProofPreview(proofId, mediaIndex, options) {
         var safeProofId = Number(proofId || 0);
         if (!galleryEnabled() || safeProofId <= 0) return;
@@ -836,7 +992,6 @@
         var modal = document.getElementById('checkin-proof-preview-modal');
         var body = document.getElementById('checkin-proof-preview-body');
         if (!modal || !body) return;
-        var previousIndex = Number(state.previewMediaIndex || 0);
         var keepCurrentFrame = modal.classList.contains('active') &&
             state.previewMode === 'screenshot' &&
             Number(state.previewProofId) === safeProofId &&
@@ -847,34 +1002,19 @@
         body.classList.add('is-proof-album');
         var meta = previewMeta(safeProofId);
         if (keepCurrentFrame) {
-            body.querySelector('.checkin-proof-preview-album').classList.add('is-changing');
+            setAlbumIndex(body.querySelector('.checkin-proof-preview-album'), safeProofId, safeIndex, imageCount, true);
         } else {
-            var thumbnailUrl = previewThumbnailUrl(safeProofId);
-            renderPreviewLoading(body, thumbnailUrl);
-            if (!thumbnailUrl) showPreviewThumbnail(safeProofId, safeIndex, body);
+            renderPreviewAlbum(body, safeProofId, safeIndex, imageCount);
+            bindAlbumSwipe(body.querySelector('.checkin-proof-preview-album'), safeProofId, imageCount);
+            hydrateAlbumThumbnails(safeProofId, safeIndex, imageCount);
         }
         var title = document.getElementById('checkin-proof-preview-title');
         var subtitle = document.getElementById('checkin-proof-preview-subtitle');
         if (title) title.textContent = meta.title;
         if (subtitle) subtitle.textContent = meta.subtitle;
+        syncProofPreviewViewport();
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
-        try {
-            var source = await loadPreviewMediaSource(safeProofId, safeIndex);
-            await decodePreviewImage(source);
-            if (state.previewProofId !== safeProofId || state.previewMediaIndex !== safeIndex || !modal.classList.contains('active')) return;
-            var navigation = albumNavigation(safeProofId, safeIndex, imageCount);
-            var motionClass = keepCurrentFrame && previousIndex !== safeIndex
-                ? (safeIndex > previousIndex ? ' is-slide-next' : ' is-slide-prev')
-                : '';
-            body.innerHTML = '<div class="checkin-proof-preview-album' + motionClass + '"><img class="checkin-proof-preview-image" alt="" src="' + escape(source) + '">' + navigation + '</div>';
-            var image = body.querySelector('img');
-            if (image) image.onerror = function () { renderPreviewError(safeProofId, safeIndex); };
-            bindAlbumSwipe(body.querySelector('.checkin-proof-preview-album'), safeProofId, safeIndex, imageCount);
-            preloadAlbumNeighbors(safeProofId, safeIndex, imageCount);
-        } catch (error) {
-            renderPreviewError(safeProofId, safeIndex);
-        }
     }
 
     function renderPreviewError(proofId, mediaIndex) {
@@ -1039,7 +1179,11 @@
     window.openTestingControlProof = openTestingControlProof;
     window.closeTestingControlProofMeta = closeTestingControlProofMeta;
     window.openCheckinProofPreview = openCheckinProofPreview;
+    window.stepCheckinProofPreview = stepCheckinProofPreview;
+    window.loadCheckinProofFullQuality = loadCheckinProofFullQuality;
     window.openTestingControlFeedbackPreview = openTestingControlFeedbackPreview;
     window.openFeedbackFromProofPreview = openFeedbackFromProofPreview;
     window.closeCheckinProofPreview = closeCheckinProofPreview;
+    window.addEventListener('resize', syncProofPreviewViewport, { passive: true });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', syncProofPreviewViewport, { passive: true });
 })();
