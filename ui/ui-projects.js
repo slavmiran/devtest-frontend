@@ -5980,11 +5980,12 @@ function openProjectLifecycleModal(projectId, event) {
                 <span class="pc-lc-track__label">${esc(tr('pcLifecycleTrackLabel'))}</span>
                 <span class="pc-lc-track__value">${esc(tr('pcLifecycleMainMeta', { day: Math.min(currentDay, lastMainDay), total: lastMainDay }))}</span>
             </div>
-            <div class="pc-lc-dots">${dots.join('')}</div>
+            <div class="pc-lc-dots">${dots.join('')}<span class="pc-lc-buffer-cap" aria-hidden="true"></span></div>
             <div class="pc-lc-legend">
                 <span><i class="pc-lc-key is-done"></i>${esc(tr('pcLifecycleLegendDone'))}</span>
                 <span><i class="pc-lc-key is-paid"></i>${esc(tr('pcLifecycleLegendPaid'))}</span>
                 <span><i class="pc-lc-key"></i>${esc(tr('pcLifecycleLegendLeft'))}</span>
+                <span><i class="pc-lc-key is-buffer"></i>${esc(tr('pcLifecycleLegendBuffer'))}</span>
             </div>
         </div>
         <ol class="pc-lc-steps">
@@ -6005,6 +6006,18 @@ function openProjectLifecycleModal(projectId, event) {
                     </div>
                 </li>`;
             }).join('')}
+        </ol>
+        <ol class="pc-lc-steps pc-lc-steps--aside" aria-label="${esc(tr('pcLifecycleRestartTitle'))}">
+            <li class="pc-lc-step is-standalone is-future">
+                <span class="pc-lc-step__glyph" aria-hidden="true">🔄</span>
+                <div class="pc-lc-step__body">
+                    <div class="pc-lc-step__head">
+                        <span class="pc-lc-step__title">${esc(tr('pcLifecycleRestartTitle'))}</span>
+                        <span class="pc-lc-step__meta">${esc(tr('pcLifecycleRestartMeta'))}</span>
+                    </div>
+                    <p class="pc-lc-step__desc">${esc(tr('pcLifecycleRestartDesc'))}</p>
+                </div>
+            </li>
         </ol>
         <div class="pc-lc-note">${esc(hasSync ? tr('pcLifecycleSyncedNote') : tr('pcLifecycleUnsyncedNote'))}</div>
     `;

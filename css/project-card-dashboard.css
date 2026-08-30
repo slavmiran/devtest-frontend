@@ -58,10 +58,10 @@
 /* Corner affordance: "+" while unsynced, a shield once protection is configured. */
 .pc-cal__dot {
     position: absolute;
-    top: -5px;
-    right: -5px;
-    width: 17px;
-    height: 17px;
+    top: -7px;
+    right: -7px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
@@ -69,20 +69,19 @@
     background: var(--accent-primary);
     color: var(--text-on-accent, #fff);
     border: 2px solid var(--bg-surface-2);
-    font-size: 12px;
+    font-size: 16px;
     font-weight: 700;
     line-height: 1;
-    padding-bottom: 1px;
+    padding: 0;
 }
 
 .pc-cal__dot.is-shield {
     background: var(--success);
-    padding-bottom: 0;
 }
 
 .pc-cal__dot svg {
-    width: 10px;
-    height: 10px;
+    width: 14px;
+    height: 14px;
     display: block;
 }
 
@@ -459,14 +458,17 @@
 }
 
 .pc-lc-dots {
+    --pc-lc-dot-size: 13px;
+    --pc-lc-dot-gap: 8px;
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    align-items: center;
+    gap: var(--pc-lc-dot-gap);
 }
 
 .pc-lc-dot {
-    width: 13px;
-    height: 13px;
+    width: var(--pc-lc-dot-size);
+    height: var(--pc-lc-dot-size);
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -489,6 +491,16 @@
 
 .pc-lc-dot.is-current {
     box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.2);
+}
+
+/* 48h safety buffer ≈ two dot spans on the day track. */
+.pc-lc-buffer-cap {
+    width: calc(var(--pc-lc-dot-size) * 2 + var(--pc-lc-dot-gap));
+    height: var(--pc-lc-dot-size);
+    border-radius: 999px;
+    background: rgba(76, 141, 255, 0.28);
+    border: 1px solid rgba(76, 141, 255, 0.42);
+    flex: 0 0 auto;
 }
 
 .pc-lc-legend {
@@ -525,12 +537,30 @@
     border-color: transparent;
 }
 
+.pc-lc-key.is-buffer {
+    width: calc(8px * 2 + 4px);
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(76, 141, 255, 0.35);
+    border-color: rgba(76, 141, 255, 0.42);
+}
+
 /* Stage timeline */
 .pc-lc-steps {
     list-style: none;
     margin: 0;
     padding: 0;
     position: relative;
+}
+
+.pc-lc-steps--aside {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pc-lc-steps--aside .pc-lc-step {
+    padding-bottom: 0;
 }
 
 .pc-lc-step {
