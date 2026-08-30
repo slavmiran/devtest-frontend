@@ -2905,7 +2905,7 @@
             pcProofReview: "Review",
             pcMoreImages: "+{count}",
             pcOthersTitle: "Other reports today",
-            pcOthersSubtitle: "Outside the control day",
+            pcOthersSubtitle: "Extra reports from today",
             pcOthersShow: "Show",
             pcOthersHide: "Hide",
             pcOpenTestingControl: "Open Testing Control",

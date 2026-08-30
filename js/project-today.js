@@ -196,6 +196,26 @@
         return [];
     }
 
+    function buildProofRow(item, proof, thumbnailByProofId) {
+        var totalImages = String(proof && proof.type || '') === 'screenshot'
+            ? Math.max(1, Math.min(5, Number(proof.image_count || 1)))
+            : (proof ? 1 : 0);
+        return {
+            progressId: Number(item.progress_id || 0),
+            testerId: Number(item.tester && item.tester.id || 0),
+            tester: item.tester || {},
+            day: Number(item.current_day || 0),
+            received: true,
+            proofId: Number(proof && proof.id || 0),
+            proofType: String(proof && proof.type || ''),
+            createdAt: String(proof && proof.created_at || ''),
+            imageCount: totalImages,
+            feedbackId: Number(proof && proof.source_feedback_id || 0),
+            feedbackStatus: '',
+            slots: buildSlots(proof, thumbnailByProofId),
+        };
+    }
+
     function buildRow(item, thumbnailByProofId) {
         var entry = todayEntryFor(item);
         var state = String(entry && entry.state || '');
@@ -265,13 +285,26 @@
 
             var control = [];
             var others = [];
+            var seenOtherProofIds = {};
             var project = projectById(safeAppId);
             (results[0].items || []).forEach(function (item) {
                 if (isExcludedControlTester(project, item)) return;
                 var row = buildRow(item, thumbnailByProofId);
                 if (row.day <= 0) return;
                 if (isControlDay(row.day)) control.push(row);
-                else if (row.proofId > 0) others.push(row);
+                else if (row.proofId > 0) {
+                    others.push(row);
+                    seenOtherProofIds[row.proofId] = true;
+                }
+                (item.extra_proofs || []).forEach(function (proof) {
+                    var extra = buildProofRow(item, proof, thumbnailByProofId);
+                    if (extra.proofId <= 0 || seenOtherProofIds[extra.proofId]) return;
+                    seenOtherProofIds[extra.proofId] = true;
+                    others.push(extra);
+                });
+            });
+            others.sort(function (left, right) {
+                return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
             });
 
             await attachFeedbackStatuses(control);
@@ -478,7 +511,7 @@
                 '<span class="pc-others__mark" aria-hidden="true">🗂</span>' +
                 '<span class="pc-others__titles">' +
                     '<span class="pc-others__title">' + esc(text('pcOthersTitle', 'Other reports today')) + ' · ' + rows.length + '</span>' +
-                    '<span class="pc-others__sub">' + esc(text('pcOthersSubtitle', 'Outside the control day')) + '</span>' +
+                    '<span class="pc-others__sub">' + esc(text('pcOthersSubtitle', 'Extra reports from today')) + '</span>' +
                 '</span>' +
                 '<span class="pc-others__toggle">' + esc(expanded ? text('pcOthersHide', 'Hide') : text('pcOthersShow', 'Show')) + '</span>' +
             '</button>' +

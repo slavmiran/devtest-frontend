@@ -2911,7 +2911,7 @@
             pcProofReview: "Ревью",
             pcMoreImages: "+{count}",
             pcOthersTitle: "Другие отчёты сегодня",
-            pcOthersSubtitle: "Вне контрольного дня",
+            pcOthersSubtitle: "Дополнительные отчёты за сегодня",
             pcOthersShow: "Показать",
             pcOthersHide: "Скрыть",
             pcOpenTestingControl: "Открыть контроль тестирования",
