@@ -23,6 +23,7 @@
         previewMode: '',
         previewMediaCache: new Map(),
         previewMediaCacheBytes: 0,
+        previewMediaLoading: new Map(),
     };
 
     var PREVIEW_CACHE_MAX_ITEMS = 5;
@@ -62,6 +63,7 @@
         });
         state.previewMediaCache.clear();
         state.previewMediaCacheBytes = 0;
+        state.previewMediaLoading.clear();
     }
 
     function previewMediaCacheGet(proofId, mediaIndex) {
@@ -184,12 +186,16 @@
             state: stateLabel(day),
         });
         var action = '';
+        var imageCount = proofType === 'screenshot'
+            ? Math.max(1, Math.min(5, Number(proof && proof.image_count || 1)))
+            : 1;
         if (proof && proofType !== 'legacy') {
             action = ' onclick="openTestingControlProof(' + Number(appId || 0) + ', ' + Number(proof.id || 0) + ')"';
         }
         return '<button type="button" class="' + classes + '" title="' + escape(title) + '"' + action + '>' +
             '<span class="testing-control-day__number">' + Number(day && day.day || 0) + '</span>' +
             (proofType ? '<span class="testing-control-day__proof" aria-label="' + escape(proofLabel(proofType)) + '">' + escape(proofGlyph(proofType)) + '</span>' : '') +
+            (imageCount > 1 ? '<span class="testing-control-day__album-count" aria-label="' + escape(text('testingControlAlbumCount', '{count} images', { count: imageCount })) + '">' + imageCount + '</span>' : '') +
         '</button>';
     }
 
@@ -334,7 +340,7 @@
             '<button type="button" class="testing-control-gallery-image" onclick="openCheckinProofPreview(' + proofId + ')">' +
                 '<span class="testing-control-gallery-placeholder">' + escape(text('testingControlGalleryImageLoading', 'Loading preview…')) + '</span>' +
                 '<img alt="" data-proof-thumb="' + proofId + '" data-src="' + escape(secureMediaUrl(item.thumbnail_url)) + '" onload="this.closest(\'.testing-control-gallery-card\').classList.add(\'is-loaded\')" onerror="this.closest(\'.testing-control-gallery-card\').classList.add(\'is-error\')">' +
-                (imageCount > 1 ? '<span class="testing-control-gallery-count">' + imageCount + '</span>' : '') +
+                (imageCount > 1 ? '<span class="testing-control-gallery-count" aria-label="' + escape(text('testingControlAlbumCount', '{count} images', { count: imageCount })) + '">▣ ' + imageCount + '</span>' : '') +
             '</button>' +
             '<button type="button" class="testing-control-gallery-retry" onclick="retryTestingControlThumbnail(' + proofId + '); event.stopPropagation();">' + escape(text('retry', 'Retry')) + '</button>' +
             '<div class="testing-control-gallery-meta">' +
@@ -490,16 +496,89 @@
         var safeIndex = Number(mediaIndex || 0);
         var cached = previewMediaCacheGet(proofId, safeIndex);
         if (cached) return cached;
-        var ticket = await requestMediaTicket(proofId, 'full', safeIndex);
-        var response = await fetchWithRetry(ticket.url, { timeoutMs: 25000, cache: 'force-cache' }, 1);
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        var mediaType = String(response.headers.get('content-type') || '').toLowerCase();
-        if (mediaType.indexOf('image/') !== 0) throw new Error('invalid_media_type');
-        var blob = await response.blob();
-        if (!blob.size || blob.size > PREVIEW_CACHE_MAX_BYTES) throw new Error('invalid_media_size');
-        var source = previewMediaCachePut(proofId, safeIndex, blob, ticket.expiresAt);
-        if (!source) throw new Error('media_cache_failed');
-        return source;
+        var key = Number(proofId || 0) + ':' + safeIndex;
+        var pending = state.previewMediaLoading.get(key);
+        if (pending) return pending;
+        var task = (async function () {
+            var ticket = await requestMediaTicket(proofId, 'full', safeIndex);
+            var response = await fetchWithRetry(ticket.url, { timeoutMs: 25000, cache: 'force-cache' }, 1);
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var mediaType = String(response.headers.get('content-type') || '').toLowerCase();
+            if (mediaType.indexOf('image/') !== 0) throw new Error('invalid_media_type');
+            var blob = await response.blob();
+            if (!blob.size || blob.size > PREVIEW_CACHE_MAX_BYTES) throw new Error('invalid_media_size');
+            var source = previewMediaCachePut(proofId, safeIndex, blob, ticket.expiresAt);
+            if (!source) throw new Error('media_cache_failed');
+            return source;
+        })();
+        state.previewMediaLoading.set(key, task);
+        try {
+            return await task;
+        } finally {
+            if (state.previewMediaLoading.get(key) === task) state.previewMediaLoading.delete(key);
+        }
+    }
+
+    function preloadPreviewMedia(proofId, mediaIndex) {
+        var safeIndex = Number(mediaIndex || 0);
+        if (safeIndex < 0 || previewMediaCacheGet(proofId, safeIndex)) return;
+        loadPreviewMediaSource(proofId, safeIndex).catch(function () {
+            // Preloading is an optional optimization; the visible viewer retains retry behavior.
+        });
+    }
+
+    function preloadAlbumNeighbors(proofId, mediaIndex, imageCount) {
+        if (imageCount <= 1) return;
+        if (mediaIndex > 0) preloadPreviewMedia(proofId, mediaIndex - 1);
+        if (mediaIndex + 1 < imageCount) preloadPreviewMedia(proofId, mediaIndex + 1);
+    }
+
+    function previewThumbnailUrl(proofId) {
+        var item = findGalleryProof(proofId);
+        return item ? secureMediaUrl(item.thumbnail_url) : '';
+    }
+
+    function renderPreviewLoading(body, thumbnailUrl) {
+        var loader = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
+        body.innerHTML = thumbnailUrl
+            ? '<div class="checkin-proof-preview-album is-preview-loading"><img class="checkin-proof-preview-image checkin-proof-preview-image--thumbnail" alt="" src="' + escape(thumbnailUrl) + '">' + loader + '</div>'
+            : loader;
+    }
+
+    function albumNavigation(proofId, mediaIndex, imageCount) {
+        if (imageCount <= 1) return '';
+        var indicators = [];
+        for (var index = 0; index < imageCount; index += 1) {
+            indicators.push('<button type="button" class="checkin-proof-preview-indicator' + (index === mediaIndex ? ' is-active' : '') + '" aria-label="' + escape(text('testingControlAlbumImage', 'Image {current} of {total}', { current: index + 1, total: imageCount })) + '" onclick="openCheckinProofPreview(' + proofId + ',' + index + ')"></button>');
+        }
+        return '<button type="button" class="checkin-proof-preview-nav is-prev" onclick="openCheckinProofPreview(' + proofId + ',' + Math.max(0, mediaIndex - 1) + ')"' + (mediaIndex <= 0 ? ' disabled' : '') + '>‹</button>' +
+            '<div class="checkin-proof-preview-album-meta">' +
+                '<span class="checkin-proof-preview-counter">' + escape(text('testingControlAlbumImage', 'Image {current} of {total}', { current: mediaIndex + 1, total: imageCount })) + '</span>' +
+                '<span class="checkin-proof-preview-swipe-hint">' + escape(text('testingControlAlbumSwipeHint', 'Swipe to view the rest')) + '</span>' +
+                '<span class="checkin-proof-preview-indicators" role="tablist">' + indicators.join('') + '</span>' +
+            '</div>' +
+            '<button type="button" class="checkin-proof-preview-nav is-next" onclick="openCheckinProofPreview(' + proofId + ',' + Math.min(imageCount - 1, mediaIndex + 1) + ')"' + (mediaIndex >= imageCount - 1 ? ' disabled' : '') + '>›</button>';
+    }
+
+    function bindAlbumSwipe(album, proofId, mediaIndex, imageCount) {
+        if (!album || imageCount <= 1) return;
+        var start = null;
+        album.addEventListener('touchstart', function (event) {
+            var touch = event.changedTouches && event.changedTouches[0];
+            if (touch) start = { x: touch.clientX, y: touch.clientY };
+        }, { passive: true });
+        album.addEventListener('touchend', function (event) {
+            if (!start) return;
+            var touch = event.changedTouches && event.changedTouches[0];
+            var origin = start;
+            start = null;
+            if (!touch) return;
+            var horizontal = touch.clientX - origin.x;
+            var vertical = touch.clientY - origin.y;
+            if (Math.abs(horizontal) < 44 || Math.abs(horizontal) <= Math.abs(vertical)) return;
+            if (horizontal < 0 && mediaIndex + 1 < imageCount) openCheckinProofPreview(proofId, mediaIndex + 1);
+            if (horizontal > 0 && mediaIndex > 0) openCheckinProofPreview(proofId, mediaIndex - 1);
+        }, { passive: true });
     }
 
     async function setTestingControlTab(tab) {
@@ -692,11 +771,19 @@
         var modal = document.getElementById('checkin-proof-preview-modal');
         var body = document.getElementById('checkin-proof-preview-body');
         if (!modal || !body) return;
+        var keepCurrentFrame = modal.classList.contains('active') &&
+            state.previewMode === 'screenshot' &&
+            Number(state.previewProofId) === safeProofId &&
+            !!body.querySelector('.checkin-proof-preview-album');
         state.previewProofId = safeProofId;
         state.previewMediaIndex = safeIndex;
         state.previewMode = 'screenshot';
         var meta = previewMeta(safeProofId);
-        body.innerHTML = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
+        if (keepCurrentFrame) {
+            body.querySelector('.checkin-proof-preview-album').classList.add('is-changing');
+        } else {
+            renderPreviewLoading(body, previewThumbnailUrl(safeProofId));
+        }
         var title = document.getElementById('checkin-proof-preview-title');
         var subtitle = document.getElementById('checkin-proof-preview-subtitle');
         if (title) title.textContent = meta.title;
@@ -706,14 +793,12 @@
         try {
             var source = await loadPreviewMediaSource(safeProofId, safeIndex);
             if (state.previewProofId !== safeProofId || state.previewMediaIndex !== safeIndex || !modal.classList.contains('active')) return;
-            var navigation = imageCount > 1
-                ? '<button type="button" class="checkin-proof-preview-nav is-prev" onclick="openCheckinProofPreview(' + safeProofId + ',' + Math.max(0, safeIndex - 1) + ')"' + (safeIndex <= 0 ? ' disabled' : '') + '>‹</button>' +
-                  '<span class="checkin-proof-preview-counter">' + (safeIndex + 1) + ' / ' + imageCount + '</span>' +
-                  '<button type="button" class="checkin-proof-preview-nav is-next" onclick="openCheckinProofPreview(' + safeProofId + ',' + Math.min(imageCount - 1, safeIndex + 1) + ')"' + (safeIndex >= imageCount - 1 ? ' disabled' : '') + '>›</button>'
-                : '';
+            var navigation = albumNavigation(safeProofId, safeIndex, imageCount);
             body.innerHTML = '<div class="checkin-proof-preview-album"><img class="checkin-proof-preview-image" alt="" src="' + escape(source) + '">' + navigation + '</div>';
             var image = body.querySelector('img');
             if (image) image.onerror = function () { renderPreviewError(safeProofId, safeIndex); };
+            bindAlbumSwipe(body.querySelector('.checkin-proof-preview-album'), safeProofId, safeIndex, imageCount);
+            preloadAlbumNeighbors(safeProofId, safeIndex, imageCount);
         } catch (error) {
             renderPreviewError(safeProofId, safeIndex);
         }
