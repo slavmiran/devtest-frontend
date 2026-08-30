@@ -5736,6 +5736,9 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
             .then(function() { return loadProjects(true); })
             .catch(function() { /* ignore */ });
     }
+    if (typeof window.rememberProjectFeedbackSession === 'function') {
+        window.rememberProjectFeedbackSession();
+    }
 }
 
 window.removeFeedbackCardOptimistic = removeFeedbackCardOptimistic;
@@ -5829,7 +5832,11 @@ function showProjectFeedbackModalError(project) {
 
 function showProjectFeedbackModal(project, items, options) {
     options = options || {};
-    resetProjectFeedbackFilters(!!options.preferUnprocessed);
+    if (options.preserveFilters) {
+        _projectFeedbackCardNodes = null;
+    } else {
+        resetProjectFeedbackFilters(!!options.preferUnprocessed);
+    }
     const body = document.getElementById('project-feedback-body');
     if (!body) return;
     body.innerHTML = getProjectFeedbackHeader(project, items, {
@@ -5857,6 +5864,9 @@ window.refreshProjectFeedbackHeader = refreshProjectFeedbackHeader;
 
 function closeProjectFeedbackModal(event) {
     if (event && event.target !== document.getElementById('project-feedback-modal')) return;
+    if (typeof window.rememberProjectFeedbackSession === 'function') {
+        window.rememberProjectFeedbackSession();
+    }
     document.getElementById('project-feedback-modal').classList.remove('active');
 }
 

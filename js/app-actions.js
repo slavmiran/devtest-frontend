@@ -3342,6 +3342,74 @@ function _isProjectFeedbackModalOpenFor(appId) {
     return Number(_activeProjectFeedbackAppId || 0) === Number(appId || 0);
 }
 
+var _projectFeedbackSessionCache = Object.create(null);
+
+function feedbackItemsSignature(items) {
+    return (items || []).map(function (item) {
+        return String(item && item.id || 0) + ':' + String(item && item.status || '');
+    }).join('|');
+}
+
+function rememberProjectFeedbackSession(appId) {
+    var safeId = Number(appId || _activeProjectFeedbackAppId || 0);
+    if (safeId <= 0) return;
+    _projectFeedbackSessionCache[safeId] = {
+        items: Array.isArray(_activeProjectFeedbackItems) ? _activeProjectFeedbackItems.slice() : [],
+        fullLoaded: !!_activeProjectFeedbackFullLoaded,
+        partial: !!_activeProjectFeedbackPartial,
+        archived: !!_activeProjectFeedbackArchived,
+        loadedAt: Date.now()
+    };
+}
+window.rememberProjectFeedbackSession = rememberProjectFeedbackSession;
+
+function getProjectFeedbackSession(appId) {
+    var cached = _projectFeedbackSessionCache[Number(appId || 0)];
+    if (!cached || !Array.isArray(cached.items) || !cached.items.length) return null;
+    return cached;
+}
+
+function isUnprocessedFeedbackFilter(value) {
+    var filter = String(value == null ? _projectFeedbackStatusFilter : value).toLowerCase();
+    return filter === 'new' || filter === 'pending' || filter === 'open';
+}
+
+function refreshProjectFeedbackInBackground(project, loadSeq, options) {
+    options = options || {};
+    var appId = Number((project && (project.id || project.app_id)) || 0);
+    if (!appId) return;
+    fetchProjectFeedbackPayload(appId, 'all').then(function (fullPayload) {
+        if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+        if (Number(_activeProjectFeedbackAppId || 0) !== appId) return;
+        var items = fullPayload.feedback || [];
+        var previousSig = feedbackItemsSignature(_activeProjectFeedbackItems);
+        var nextSig = feedbackItemsSignature(items);
+        _activeProjectFeedbackItems = items;
+        _activeProjectFeedbackFullLoaded = true;
+        _activeProjectFeedbackPartial = false;
+        rememberProjectFeedbackSession(appId);
+        if (!_isProjectFeedbackModalOpenFor(appId)) return;
+        if (previousSig === nextSig) {
+            if (typeof refreshProjectFeedbackHeader === 'function') {
+                refreshProjectFeedbackHeader(project, items, { partialLoad: false });
+            }
+            return;
+        }
+        if (window.showProjectFeedbackModal) {
+            window.showProjectFeedbackModal(project, items, {
+                preferUnprocessed: isUnprocessedFeedbackFilter(),
+                partialLoad: false,
+                preserveFilters: true
+            });
+        }
+        if (Number(options.focusId || 0) > 0) {
+            setTimeout(function () { focusProjectFeedbackCard(options.focusId); }, 50);
+        }
+    }).catch(function (error) {
+        console.warn('Background feedback refresh failed:', error);
+    });
+}
+
 async function ensureFullProjectFeedbackLoaded(options) {
     options = options || {};
     if (_activeProjectFeedbackFullLoaded) return _activeProjectFeedbackItems || [];
@@ -3364,25 +3432,48 @@ async function openProjectFeedback(appId, isArchived, options) {
     });
     if (!project) return;
 
+    var forceUnprocessed = options.preferUnprocessed === true;
+    var focusId = Number(options.focusFeedbackId || 0);
+    var reportedOpen = Number(project.feedback_new_count || 0);
+    var preferUnprocessed = forceUnprocessed || (focusId <= 0 && reportedOpen > 0);
+    var cached = getProjectFeedbackSession(appId);
+
     _activeProjectFeedbackAppId = Number(appId);
     _activeProjectFeedbackArchived = !!isArchived;
+    var loadSeq = ++_activeProjectFeedbackLoadSeq;
+
+    if (cached) {
+        _activeProjectFeedbackItems = cached.items;
+        _activeProjectFeedbackFullLoaded = !!cached.fullLoaded;
+        _activeProjectFeedbackPartial = !!cached.partial && !cached.fullLoaded;
+        if (window.showProjectFeedbackModal) {
+            window.showProjectFeedbackModal(project, cached.items, {
+                preferUnprocessed: preferUnprocessed,
+                partialLoad: !!_activeProjectFeedbackPartial
+            });
+        }
+        if (focusId > 0) {
+            setTimeout(function () { focusProjectFeedbackCard(focusId); }, 80);
+        }
+        refreshProjectFeedbackInBackground(project, loadSeq, {
+            preferUnprocessed: preferUnprocessed,
+            focusId: focusId
+        });
+        return;
+    }
+
     _activeProjectFeedbackItems = [];
     _activeProjectFeedbackFullLoaded = false;
     _activeProjectFeedbackPartial = false;
-    var loadSeq = ++_activeProjectFeedbackLoadSeq;
 
     if (window.showProjectFeedbackModalLoading) {
         window.showProjectFeedbackModalLoading(project);
     }
 
-    var reportedOpen = Number(project.feedback_new_count || 0);
-    var focusId = Number(options.focusFeedbackId || 0);
-    // Fast path: open queue first when owner likely has work. Deep-link focus needs full list.
-    var preferOpenFirst = reportedOpen > 0 && focusId <= 0;
+    var preferOpenFirst = preferUnprocessed;
 
     try {
         var stageItems = [];
-        var preferUnprocessed = false;
 
         if (preferOpenFirst) {
             var openPayload = await fetchProjectFeedbackPayload(appId, 'open');
@@ -3393,29 +3484,28 @@ async function openProjectFeedback(appId, isArchived, options) {
                     : true;
             });
             if (stageItems.length > 0) {
-                preferUnprocessed = true;
                 _activeProjectFeedbackItems = stageItems;
                 _activeProjectFeedbackPartial = true;
                 _activeProjectFeedbackFullLoaded = false;
+                rememberProjectFeedbackSession(appId);
                 if (window.showProjectFeedbackModal) {
                     window.showProjectFeedbackModal(project, stageItems, {
                         preferUnprocessed: true,
                         partialLoad: true
                     });
                 }
-                // Stage 2: hydrate processed tickets in background for instant "show all".
+                if (focusId > 0) {
+                    setTimeout(function () { focusProjectFeedbackCard(focusId); }, 80);
+                }
                 fetchProjectFeedbackPayload(appId, 'all').then(function(fullPayload) {
                     if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
                     if (Number(_activeProjectFeedbackAppId || 0) !== Number(appId)) return;
                     _activeProjectFeedbackItems = fullPayload.feedback || [];
                     _activeProjectFeedbackFullLoaded = true;
                     _activeProjectFeedbackPartial = false;
+                    rememberProjectFeedbackSession(appId);
                     if (!_isProjectFeedbackModalOpenFor(appId)) return;
-                    var wantUnprocessed = (_projectFeedbackStatusFilter === 'new' ||
-                        _projectFeedbackStatusFilter === 'pending' ||
-                        _projectFeedbackStatusFilter === 'open');
-                    if (wantUnprocessed) {
-                        // Keep currently visible open cards intact; only refresh header stats.
+                    if (isUnprocessedFeedbackFilter()) {
                         if (typeof refreshProjectFeedbackHeader === 'function') {
                             refreshProjectFeedbackHeader(project, _activeProjectFeedbackItems, { partialLoad: false });
                         }
@@ -3424,7 +3514,8 @@ async function openProjectFeedback(appId, isArchived, options) {
                     if (window.showProjectFeedbackModal) {
                         window.showProjectFeedbackModal(project, _activeProjectFeedbackItems, {
                             preferUnprocessed: false,
-                            partialLoad: false
+                            partialLoad: false,
+                            preserveFilters: true
                         });
                     }
                 }).catch(function(bgError) {
@@ -3432,7 +3523,6 @@ async function openProjectFeedback(appId, isArchived, options) {
                 });
                 return;
             }
-            // Stale new_count or empty open queue → fall through to full list, checkbox off.
         }
 
         var fullPayload = await fetchProjectFeedbackPayload(appId, 'all');
@@ -3441,11 +3531,10 @@ async function openProjectFeedback(appId, isArchived, options) {
         _activeProjectFeedbackItems = stageItems;
         _activeProjectFeedbackFullLoaded = true;
         _activeProjectFeedbackPartial = false;
-        // Deep-link focus must keep target visible → do not force unprocessed filter.
-        preferUnprocessed = false;
+        rememberProjectFeedbackSession(appId);
         if (window.showProjectFeedbackModal) {
             window.showProjectFeedbackModal(project, stageItems, {
-                preferUnprocessed: preferUnprocessed,
+                preferUnprocessed: forceUnprocessed,
                 partialLoad: false
             });
         }

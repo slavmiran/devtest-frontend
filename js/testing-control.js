@@ -26,6 +26,8 @@
         previewMediaLoading: new Map(),
         previewThumbnailCache: new Map(),
         previewThumbnailLoading: new Map(),
+        previewMediumCache: new Map(),
+        previewMediumLoading: new Map(),
         // Set when the viewer is opened outside Testing Control (e.g. from a project card),
         // where local timeline/gallery state cannot describe the proof.
         previewFallback: null,
@@ -71,6 +73,8 @@
         state.previewMediaLoading.clear();
         state.previewThumbnailCache.clear();
         state.previewThumbnailLoading.clear();
+        state.previewMediumCache.clear();
+        state.previewMediumLoading.clear();
     }
 
     function previewThumbnailCacheGet(proofId, mediaIndex) {
@@ -87,6 +91,23 @@
     function previewThumbnailCachePut(proofId, mediaIndex, url, expiresAt) {
         var key = Number(proofId || 0) + ':' + Number(mediaIndex || 0);
         state.previewThumbnailCache.set(key, { url: url, expiresAt: Number(expiresAt || 0) });
+        return url;
+    }
+
+    function previewMediumCacheGet(proofId, mediaIndex) {
+        var key = Number(proofId || 0) + ':' + Number(mediaIndex || 0);
+        var item = state.previewMediumCache.get(key);
+        if (!item) return '';
+        if (item.expiresAt && item.expiresAt <= Date.now()) {
+            state.previewMediumCache.delete(key);
+            return '';
+        }
+        return item.url || '';
+    }
+
+    function previewMediumCachePut(proofId, mediaIndex, url, expiresAt) {
+        var key = Number(proofId || 0) + ':' + Number(mediaIndex || 0);
+        state.previewMediumCache.set(key, { url: url, expiresAt: Number(expiresAt || 0) });
         return url;
     }
 
@@ -568,6 +589,25 @@
         }
     }
 
+    async function loadPreviewMediumSource(proofId, mediaIndex) {
+        var safeIndex = Number(mediaIndex || 0);
+        var cached = previewMediumCacheGet(proofId, safeIndex);
+        if (cached) return cached;
+        var key = Number(proofId || 0) + ':' + safeIndex;
+        var pending = state.previewMediumLoading.get(key);
+        if (pending) return pending;
+        var task = (async function () {
+            var ticket = await requestMediaTicket(proofId, 'medium', safeIndex);
+            return previewMediumCachePut(proofId, safeIndex, ticket.url, ticket.expiresAt);
+        })();
+        state.previewMediumLoading.set(key, task);
+        try {
+            return await task;
+        } finally {
+            if (state.previewMediumLoading.get(key) === task) state.previewMediumLoading.delete(key);
+        }
+    }
+
     async function decodePreviewImage(source) {
         if (!source || typeof Image === 'undefined') return;
         var image = new Image();
@@ -597,21 +637,21 @@
     }
 
     function albumSlide(proofId, mediaIndex) {
-        var fullSource = previewMediaCacheGet(proofId, mediaIndex);
-        var thumbnailSource = fullSource ? '' : (previewThumbnailCacheGet(proofId, mediaIndex) || previewThumbnailUrl(proofId, mediaIndex));
+        var mediumSource = previewMediumCacheGet(proofId, mediaIndex);
+        var thumbnailSource = mediumSource ? '' : (previewThumbnailCacheGet(proofId, mediaIndex) || previewThumbnailUrl(proofId, mediaIndex));
         if (thumbnailSource && !previewThumbnailCacheGet(proofId, mediaIndex)) {
             previewThumbnailCachePut(proofId, mediaIndex, thumbnailSource, Date.now() + 240000);
         }
-        var source = fullSource || thumbnailSource;
-        var qualityClass = fullSource ? ' is-full' : ' is-thumbnail';
+        var source = mediumSource || thumbnailSource;
+        var qualityClass = mediumSource ? ' is-medium' : ' is-thumbnail';
         return '<section class="checkin-proof-preview-slide" data-media-index="' + mediaIndex + '">' +
-            '<img class="checkin-proof-preview-image' + qualityClass + '" alt="" data-quality="' + (fullSource ? 'full' : 'thumbnail') + '"' +
+            '<img class="checkin-proof-preview-image' + qualityClass + '" alt="" data-quality="' + (mediumSource ? 'medium' : 'thumbnail') + '"' +
                 ' onload="this.closest(\'.checkin-proof-preview-slide\').classList.add(\'is-loaded\')"' +
                 ' onerror="this.closest(\'.checkin-proof-preview-slide\').classList.add(\'is-error\')"' +
                 (source ? ' src="' + escape(source) + '"' : '') + '>' +
             '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>' +
-            '<button type="button" class="checkin-proof-preview-quality' + (fullSource ? ' is-loaded' : '') + '" onclick="loadCheckinProofFullQuality(' + proofId + ',' + mediaIndex + ',event)"' + (fullSource ? ' disabled' : '') + '>' +
-                escape(text(fullSource ? 'testingControlFullQualityLoaded' : 'testingControlLoadFullQuality', fullSource ? 'Full quality' : 'Load full quality')) +
+            '<button type="button" class="checkin-proof-preview-quality" onclick="openCheckinProofOriginal(' + proofId + ',' + mediaIndex + ',event)">' +
+                escape(text('testingControlOpenOriginal', 'Open original in Telegram')) +
             '</button>' +
         '</section>';
     }
@@ -634,7 +674,7 @@
         slide.classList.add('is-loading');
         try {
             var source = await loadPreviewThumbnailSource(proofId, mediaIndex);
-            if (!document.body.contains(slide) || image.dataset.quality === 'full') return;
+            if (!document.body.contains(slide) || image.dataset.quality !== 'thumbnail') return;
             image.onload = function () { slide.classList.remove('is-loading', 'is-error'); slide.classList.add('is-loaded'); };
             image.onerror = function () { slide.classList.remove('is-loading'); slide.classList.add('is-error'); };
             image.src = source;
@@ -646,14 +686,34 @@
         }
     }
 
+    async function hydrateAlbumMedium(proofId, mediaIndex) {
+        var body = document.getElementById('checkin-proof-preview-body');
+        var album = body && body.querySelector('.checkin-proof-preview-album[data-proof-id="' + Number(proofId || 0) + '"]');
+        var slide = album && album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex || 0) + '"]');
+        var image = slide && slide.querySelector('img');
+        if (!slide || !image || image.dataset.quality === 'medium') return;
+        try {
+            var source = await loadPreviewMediumSource(proofId, mediaIndex);
+            if (!document.body.contains(slide) || image.dataset.quality === 'medium') return;
+            image.onload = function () { slide.classList.remove('is-error'); slide.classList.add('is-loaded'); };
+            image.onerror = function () { slide.classList.add('is-error'); };
+            image.src = source;
+            image.dataset.quality = 'medium';
+            image.classList.remove('is-thumbnail');
+            image.classList.add('is-medium');
+        } catch (_) {
+            // The preview remains usable. The user can still open the original in Telegram.
+        }
+    }
+
     function hydrateAlbumThumbnails(proofId, mediaIndex, imageCount) {
         var order = [mediaIndex];
         if (mediaIndex + 1 < imageCount) order.push(mediaIndex + 1);
         if (mediaIndex > 0) order.push(mediaIndex - 1);
-        for (var index = 0; index < imageCount; index += 1) {
-            if (order.indexOf(index) < 0) order.push(index);
-        }
-        order.forEach(function (index) { hydrateAlbumThumbnail(proofId, index); });
+        order.forEach(function (index) {
+            hydrateAlbumThumbnail(proofId, index);
+            hydrateAlbumMedium(proofId, index);
+        });
     }
 
     function setAlbumIndex(album, proofId, mediaIndex, imageCount, animate) {
@@ -940,37 +1000,24 @@
         setAlbumIndex(album, proofId, target, imageCount, true);
     }
 
-    async function loadCheckinProofFullQuality(proofId, mediaIndex, event) {
+    async function openCheckinProofOriginal(proofId, mediaIndex, event) {
         if (event) event.stopPropagation();
-        var body = document.getElementById('checkin-proof-preview-body');
-        var album = body && body.querySelector('.checkin-proof-preview-album[data-proof-id="' + Number(proofId || 0) + '"]');
-        var slide = album && album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex || 0) + '"]');
-        var button = slide && slide.querySelector('.checkin-proof-preview-quality');
-        var image = slide && slide.querySelector('img');
-        if (!slide || !button || !image || image.dataset.quality === 'full') return;
-        button.disabled = true;
-        button.classList.add('is-loading');
-        button.textContent = text('testingControlFullQualityLoading', 'Loading full quality…');
         try {
-            var source = await loadPreviewMediaSource(proofId, mediaIndex);
-            await decodePreviewImage(source);
-            if (!document.body.contains(slide)) return;
-            image.onload = function () {
-                slide.classList.add('is-loaded');
-                slide.classList.remove('is-error');
-            };
-            image.src = source;
-            image.dataset.quality = 'full';
-            image.classList.remove('is-thumbnail');
-            image.classList.add('is-full');
-            button.classList.remove('is-loading');
-            button.classList.add('is-loaded');
-            button.textContent = text('testingControlFullQualityLoaded', 'Full quality');
+            var details = await requestProofDetails(proofId);
+            var urls = details && details.original_message_urls;
+            var targetUrl = Array.isArray(urls) ? String(urls[Number(mediaIndex || 0)] || '') : '';
+            if (!/^https:\/\/t\.me\//i.test(targetUrl)) throw new Error('original_message_unavailable');
+            if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+                window.Telegram.WebApp.openTelegramLink(targetUrl);
+            } else if (window.tg && typeof window.tg.openTelegramLink === 'function') {
+                window.tg.openTelegramLink(targetUrl);
+            } else {
+                window.open(targetUrl, '_blank', 'noopener');
+            }
         } catch (_) {
-            if (!document.body.contains(slide)) return;
-            button.disabled = false;
-            button.classList.remove('is-loading');
-            button.textContent = text('testingControlFullQualityRetry', 'Retry full quality');
+            if (typeof showToast === 'function') {
+                showToast(text('testingControlOriginalUnavailable', 'The original is unavailable outside the proofs topic.'));
+            }
         }
     }
 
@@ -1180,7 +1227,7 @@
     window.closeTestingControlProofMeta = closeTestingControlProofMeta;
     window.openCheckinProofPreview = openCheckinProofPreview;
     window.stepCheckinProofPreview = stepCheckinProofPreview;
-    window.loadCheckinProofFullQuality = loadCheckinProofFullQuality;
+    window.openCheckinProofOriginal = openCheckinProofOriginal;
     window.openTestingControlFeedbackPreview = openTestingControlFeedbackPreview;
     window.openFeedbackFromProofPreview = openFeedbackFromProofPreview;
     window.closeCheckinProofPreview = closeCheckinProofPreview;

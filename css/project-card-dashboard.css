@@ -1115,6 +1115,14 @@
     padding: 4px 10px;
 }
 
+.pc-others__body {
+    display: none;
+}
+
+.pc-others.is-open .pc-others__body {
+    display: block;
+}
+
 .pc-others.is-open .pc-others__toggle {
     color: var(--accent-primary);
     background: var(--accent-primary-surface);

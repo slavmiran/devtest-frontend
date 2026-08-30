@@ -14,6 +14,7 @@
 
     /* appId -> { loadedAt, loading, error, control[], others[] } */
     var cache = new Map();
+    var thumbnailCache = new Map();
     var observer = null;
     var expandedOthers = new Set();
 
@@ -172,6 +173,31 @@
         return null;
     }
 
+    function thumbKey(proofId, mediaIndex) {
+        return Number(proofId || 0) + ':' + Number(mediaIndex || 0);
+    }
+
+    function cachedThumb(proofId, mediaIndex) {
+        return thumbnailCache.get(thumbKey(proofId, mediaIndex)) || '';
+    }
+
+    function rememberThumb(proofId, mediaIndex, url, appId) {
+        var value = String(url || '').trim();
+        if (!value) return;
+        thumbnailCache.set(thumbKey(proofId, mediaIndex), value);
+        var entry = cache.get(Number(appId || 0));
+        if (!entry) return;
+        [entry.control, entry.others].forEach(function (rows) {
+            (rows || []).forEach(function (row) {
+                (row.slots || []).forEach(function (slot) {
+                    if (Number(slot.proofId) === Number(proofId) && Number(slot.mediaIndex) === Number(mediaIndex)) {
+                        slot.url = value;
+                    }
+                });
+            });
+        });
+    }
+
     function buildSlots(proof, thumbnailByProofId) {
         var proofId = Number(proof && proof.id || 0);
         if (proofId <= 0) return [];
@@ -184,14 +210,14 @@
                 slots.push({
                     proofId: proofId,
                     mediaIndex: index,
-                    url: index === 0 ? (thumbnailByProofId[proofId] || '') : '',
+                    url: (index === 0 ? (thumbnailByProofId[proofId] || '') : '') || cachedThumb(proofId, index),
                     overflow: (index === visible - 1 && total > visible) ? (total - visible) : 0,
                 });
             }
             return slots;
         }
         if (FEEDBACK_PROOF_TYPES.indexOf(type) !== -1) {
-            return [{ proofId: proofId, mediaIndex: 0, url: '', overflow: 0 }];
+            return [{ proofId: proofId, mediaIndex: 0, url: cachedThumb(proofId, 0), overflow: 0 }];
         }
         return [];
     }
@@ -280,7 +306,10 @@
             var results = await Promise.all([testersPromise, screenshotsPromise]);
             var thumbnailByProofId = {};
             (results[1].items || []).forEach(function (shot) {
-                thumbnailByProofId[Number(shot.proof_id || 0)] = mediaUrl(shot.thumbnail_url);
+                var proofId = Number(shot.proof_id || 0);
+                var url = mediaUrl(shot.thumbnail_url);
+                thumbnailByProofId[proofId] = url;
+                if (url) thumbnailCache.set(thumbKey(proofId, 0), url);
             });
 
             var control = [];
@@ -326,20 +355,29 @@
 
     /* ─────────────────────────── thumbnail delivery ────────────────────────── */
 
-    async function loadPendingThumbnails(appId) {
+    async function loadPendingThumbnails(appId, options) {
         var root = document.getElementById('pc-today-' + Number(appId || 0));
         if (!root || !galleryEnabled()) return;
-        Array.prototype.slice.call(root.querySelectorAll('img[data-pc-src]')).forEach(function (image) {
+        var scope = (options && options.scope) ? (root.querySelector(options.scope) || root) : root;
+        Array.prototype.slice.call(scope.querySelectorAll('img[data-pc-src]')).forEach(function (image) {
             if (image.getAttribute('src')) return;
             image.setAttribute('src', image.getAttribute('data-pc-src'));
         });
-        var pending = Array.prototype.slice.call(root.querySelectorAll('img[data-pc-ticket]')).slice(0, MAX_TICKET_REQUESTS);
+        var pending = Array.prototype.slice.call(scope.querySelectorAll('img[data-pc-ticket]')).filter(function (image) {
+            if (image.getAttribute('src')) return false;
+            var others = image.closest('.pc-others');
+            if (others && !others.classList.contains('is-open') && !(options && options.scope === '.pc-others')) {
+                return false;
+            }
+            return true;
+        }).slice(0, MAX_TICKET_REQUESTS);
         for (var index = 0; index < pending.length; index += 1) {
             var image = pending[index];
             if (image.getAttribute('src')) continue;
             var parts = String(image.getAttribute('data-pc-ticket') || '').split(':');
             try {
                 var url = await requestThumbnailTicket(Number(parts[0]), Number(parts[1]));
+                rememberThumb(Number(parts[0]), Number(parts[1]), url, appId);
                 if (!image.isConnected) continue;
                 image.setAttribute('src', url);
             } catch (_) {
@@ -352,8 +390,9 @@
     /* ───────────────────────────── row rendering ───────────────────────────── */
 
     function slotHtml(appId, slot, overflow) {
-        var source = slot.url
-            ? ' data-pc-src="' + esc(slot.url) + '"'
+        var cached = String(slot.url || cachedThumb(slot.proofId, slot.mediaIndex) || '').trim();
+        var source = cached
+            ? ' src="' + esc(cached) + '"'
             : ' data-pc-ticket="' + Number(slot.proofId) + ':' + Number(slot.mediaIndex) + '"';
         var overflowHtml = overflow > 0
             ? '<span class="pc-slot__more">' + esc(text('pcMoreImages', '+{count}', { count: overflow })) + '</span>'
@@ -500,12 +539,6 @@
         var rows = (entry && entry.others) || [];
         if (!rows.length) return '';
         var expanded = expandedOthers.has(Number(project.id));
-        var body = expanded
-            ? '<div class="pc-others__grid">' + rows.map(function (row) { return gridCardHtml(project.id, row); }).join('') + '</div>' +
-              '<button type="button" class="pc-others__deep" onclick="event.stopPropagation(); openTestingControl(' + Number(project.id) + ', { archived: false });">' +
-                  esc(text('pcOpenTestingControl', 'Open Testing Control')) + '<span class="pc-others__deep-arrow" aria-hidden="true">→</span>' +
-              '</button>'
-            : '';
         return '<section class="pc-others' + (expanded ? ' is-open' : '') + '">' +
             '<button type="button" class="pc-others__head" onclick="event.stopPropagation(); pcToggleOthers(' + Number(project.id) + ')">' +
                 '<span class="pc-others__mark" aria-hidden="true">🗂</span>' +
@@ -515,7 +548,12 @@
                 '</span>' +
                 '<span class="pc-others__toggle">' + esc(expanded ? text('pcOthersHide', 'Hide') : text('pcOthersShow', 'Show')) + '</span>' +
             '</button>' +
-            body +
+            '<div class="pc-others__body">' +
+                '<div class="pc-others__grid">' + rows.map(function (row) { return gridCardHtml(project.id, row); }).join('') + '</div>' +
+                '<button type="button" class="pc-others__deep" onclick="event.stopPropagation(); openTestingControl(' + Number(project.id) + ', { archived: false });">' +
+                    esc(text('pcOpenTestingControl', 'Open Testing Control')) + '<span class="pc-others__deep-arrow" aria-hidden="true">→</span>' +
+                '</button>' +
+            '</div>' +
         '</section>';
     }
 
@@ -592,10 +630,20 @@
 
     window.pcToggleOthers = function (appId) {
         var safeAppId = Number(appId || 0);
-        if (expandedOthers.has(safeAppId)) expandedOthers.delete(safeAppId);
-        else expandedOthers.add(safeAppId);
-        paint(safeAppId);
-        loadPendingThumbnails(safeAppId);
+        var opening = !expandedOthers.has(safeAppId);
+        if (opening) expandedOthers.add(safeAppId);
+        else expandedOthers.delete(safeAppId);
+        var root = document.getElementById('pc-today-' + safeAppId);
+        var section = root && root.querySelector('.pc-others');
+        if (section) {
+            section.classList.toggle('is-open', opening);
+            var toggle = section.querySelector('.pc-others__toggle');
+            if (toggle) toggle.textContent = opening ? text('pcOthersHide', 'Hide') : text('pcOthersShow', 'Show');
+            if (opening) loadPendingThumbnails(safeAppId, { scope: '.pc-others' });
+        } else {
+            paint(safeAppId);
+            if (opening) loadPendingThumbnails(safeAppId, { scope: '.pc-others' });
+        }
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
@@ -606,7 +654,10 @@
 
     window.pcOpenFeedback = function (appId, feedbackId) {
         if (typeof openProjectFeedback !== 'function' || Number(feedbackId || 0) <= 0) return;
-        openProjectFeedback(Number(appId || 0), false, { focusFeedbackId: Number(feedbackId) });
+        openProjectFeedback(Number(appId || 0), false, {
+            focusFeedbackId: Number(feedbackId),
+            preferUnprocessed: true,
+        });
     };
 
     window.pcRewardTester = function (appId, testerId) {
@@ -630,15 +681,10 @@
         });
     };
 
-    window.pcOpenProof = function (appId, proofId) {
+    window.pcOpenProof = function (appId, proofId, mediaIndex) {
         var row = findRow(appId, proofId);
-        var type = String(row && row.proofType || '');
-        if (FEEDBACK_PROOF_TYPES.indexOf(type) !== -1 && Number(row && row.feedbackId || 0) > 0) {
-            window.pcOpenFeedback(appId, row.feedbackId);
-            return;
-        }
         if (typeof openCheckinProofPreview !== 'function') return;
-        openCheckinProofPreview(Number(proofId || 0), 0, {
+        openCheckinProofPreview(Number(proofId || 0), Number(mediaIndex || 0), {
             imageCount: Number(row && row.imageCount || 1),
             title: row ? handleOf(row.tester) : '',
             subtitle: row ? text('pcDayOf', 'Day {day} / {total}', { day: row.day, total: 14 }) : '',
