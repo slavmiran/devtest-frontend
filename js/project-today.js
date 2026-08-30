@@ -53,6 +53,15 @@
         return typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
     }
 
+    function projectById(appId) {
+        var list = (typeof myProjects !== 'undefined' && Array.isArray(myProjects)) ? myProjects : [];
+        var safeId = Number(appId || 0);
+        for (var index = 0; index < list.length; index += 1) {
+            if (Number(list[index] && list[index].id) === safeId) return list[index];
+        }
+        return null;
+    }
+
     function isExcludedControlTester(project, item) {
         if (!project || !item) return true;
         var testerId = Number(item.tester && item.tester.id || 0);
@@ -232,7 +241,11 @@
         if (current && current.loading) return;
         if (current && !current.error && (Date.now() - current.loadedAt) < CACHE_TTL_MS) return;
         cache.set(safeAppId, { loadedAt: 0, loading: true, error: false, control: [], others: [] });
-        paint(safeAppId);
+        try {
+            paint(safeAppId);
+        } catch (error) {
+            console.warn('Project today paint failed:', error);
+        }
 
         try {
             var testersPromise = requestJson(
