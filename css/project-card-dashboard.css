@@ -4,69 +4,100 @@
                 → actions → footer chips
    ========================================================================== */
 
-/* ─────────────────────────── 1. Current state ─────────────────────────── */
+/* ─────────────────────────── 1. Unified state strip ─────────────────────── */
 
-.pc-state {
-    display: grid;
-    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
-    gap: 8px;
-    margin-bottom: 10px;
-}
-
-.pc-tile {
+.pc-state-unified {
     background: var(--bg-surface-2);
     border: 1px solid var(--border-subtle);
     border-radius: 14px;
-    padding: 11px 11px 10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.pc-state-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1.05fr);
+    align-items: stretch;
+    gap: 0;
+    padding: 12px 12px 11px;
+}
+
+.pc-state-divider {
+    width: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 2px 10px;
+}
+
+.pc-state-day {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
     min-width: 0;
 }
 
-.pc-tile__label {
-    display: flex;
+.pc-cal {
+    position: relative;
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    border: 1px solid rgba(76, 141, 255, 0.22);
+    background: linear-gradient(180deg, rgba(76, 141, 255, 0.16), rgba(76, 141, 255, 0.06));
+    color: #8cb8ff;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+.pc-cal__icon {
+    width: 22px;
+    height: 22px;
+    display: block;
+}
+
+.pc-cal__badge {
+    position: absolute;
+    top: -5px;
+    right: -6px;
+    min-width: 28px;
+    padding: 1px 4px;
+    border-radius: 999px;
+    background: rgba(12, 14, 18, 0.92);
+    border: 1px solid rgba(76, 141, 255, 0.28);
+    color: #8cb8ff;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.pc-state-day__copy {
+    display: flex;
+    flex-direction: column;
     gap: 5px;
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--text-tertiary);
-    margin-bottom: 7px;
-    white-space: nowrap;
-    overflow: hidden;
-}
-
-.pc-tile__label > span {
-    flex: 0 1 auto;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Day tile */
-
-.pc-day-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    min-width: 0;
 }
 
 .pc-day-value {
     display: flex;
     align-items: baseline;
-    gap: 4px;
-    flex: 1;
+    gap: 3px;
     min-width: 0;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
 
 .pc-day-word {
-    font-size: 11.5px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-tertiary);
 }
 
 .pc-day-num {
-    font-size: 25px;
+    font-size: 24px;
     font-weight: 800;
     line-height: 1;
     color: var(--text-primary);
@@ -74,111 +105,161 @@
 }
 
 .pc-day-total {
-    font-size: 11.5px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-tertiary);
 }
 
-.pc-day-plus {
-    flex: 0 0 auto;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 19px;
-    font-weight: 400;
-    line-height: 1;
-    padding: 0 0 2px;
-    cursor: pointer;
-    color: var(--accent-primary);
-    background: var(--accent-primary-surface);
-    border: 1px solid var(--accent-primary-border);
-    transition: transform 0.15s ease, background-color 0.15s ease;
-}
-
-.pc-day-plus:active {
-    transform: scale(0.92);
-}
-
-.pc-day-plus.needs-attention {
-    color: var(--warning);
-    background: var(--warning-surface);
-    border-color: var(--warning-border);
-}
-
-.pc-day-meta {
+.pc-day-actions {
     display: flex;
     align-items: center;
     gap: 6px;
     flex-wrap: wrap;
-    margin-top: 8px;
-    min-height: 16px;
 }
 
-.pc-meta-chip {
+.pc-day-extra {
     font-size: 10.5px;
     font-weight: 600;
     color: var(--text-tertiary);
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
+}
+
+.pc-config-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.pc-config-btn.is-synced {
+    color: #7bd4a8;
+    text-decoration: none;
+}
+
+.pc-config-btn.is-synced::before {
+    content: '✓ ';
+    font-size: 10px;
+}
+
+.pc-config-btn.needs-attention {
+    color: var(--warning);
+}
+
+.pc-state-progress {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.pc-progress-head {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+}
+
+.pc-progress-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
     white-space: nowrap;
 }
 
-.pc-meta-chip + .pc-meta-chip::before {
-    content: '·';
-    margin-right: 3px;
-    opacity: 0.5;
+.pc-progress-pct {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
 }
 
-/* Activity tile */
+.pc-progress-pct.is-over {
+    color: var(--warning);
+}
 
-.pc-activity {
+.pc-progress-body {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
 }
 
-.pc-activity__nums {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex: 1;
-    min-width: 0;
-}
-
-.pc-stat {
-    display: flex;
+.pc-ratio {
+    display: inline-flex;
     align-items: baseline;
-    gap: 4px;
-    min-width: 0;
-}
-
-.pc-stat__value {
-    flex: 0 0 auto;
-    font-weight: 800;
+    gap: 1px;
     font-variant-numeric: tabular-nums;
-    line-height: 1;
-}
-
-.pc-stat__label {
-    font-size: 9.5px;
-    line-height: 1.15;
-    color: var(--text-tertiary);
     min-width: 0;
 }
 
-.pc-stat--major .pc-stat__value {
+.pc-ratio__total {
     font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
     color: var(--text-primary);
     letter-spacing: -0.02em;
 }
 
-.pc-stat--minor .pc-stat__value {
+.pc-ratio__slash {
     font-size: 13px;
-    color: var(--text-secondary);
+    font-weight: 600;
+    color: var(--text-tertiary);
+    margin: 0 1px;
+}
+
+.pc-ratio__active {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-tertiary);
+}
+
+.pc-state-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pc-buffer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    cursor: pointer;
+}
+
+.pc-buffer-link__info {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    line-height: 1;
+}
+
+.pc-foot-extra {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    white-space: nowrap;
 }
 
 /* Circular daily progress */
@@ -187,8 +268,8 @@
     --pc-ring-deg: 0deg;
     --pc-ring-color: var(--success);
     flex: 0 0 auto;
-    width: 54px;
-    height: 54px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
     position: relative;
     display: flex;
@@ -202,37 +283,40 @@
 .pc-ring::before {
     content: '';
     position: absolute;
-    inset: 5px;
+    inset: 4px;
     border-radius: 50%;
     background: var(--bg-surface-2);
 }
 
 .pc-ring__value {
     position: relative;
-    font-size: 12.5px;
+    font-size: 11.5px;
     font-weight: 800;
     line-height: 1;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
 }
 
-/* Overcharge stays green — the caption carries the meaning, not extra neon. */
 .pc-ring__caption {
     position: relative;
-    max-width: 44px;
-    margin-top: 2px;
-    font-size: 6px;
+    max-width: 38px;
+    margin-top: 1px;
+    font-size: 5.5px;
     font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: 0.04em;
+    line-height: 1.05;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
     text-align: center;
-    color: var(--success);
+    color: var(--warning);
+}
+
+.pc-ring.is-over {
+    --pc-ring-color: var(--warning);
 }
 
 .pc-ring.is-over .pc-ring__value {
-    color: var(--success);
+    color: var(--warning);
 }
 
 .pc-ring.is-zero {
@@ -243,6 +327,65 @@
     color: var(--text-tertiary);
 }
 
+/* Card collapse: keep only the state strip visible */
+#tab-projects .card.card-collapsed .pc-dashboard-body {
+    display: none;
+}
+
+/* Tester roster has its own expand/collapse */
+#tab-projects .card.card-collapsed .card-expanded-zone {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    pointer-events: auto;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+#tab-projects .card.card-testers-collapsed .card-expanded-zone {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.pc-finish-link {
+    display: block;
+    width: 100%;
+    margin: 0 0 10px;
+    padding: 0;
+    background: none;
+    border: none;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.pc-finish-link:active {
+    color: var(--text-secondary);
+}
+
+/* Buffer info modal */
+.pc-buffer-modal__content {
+    max-width: 360px;
+}
+
+.pc-buffer-modal__body p {
+    margin: 0 0 10px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.pc-buffer-modal__body p:last-child {
+    margin-bottom: 0;
+}
 /* ──────────────────── 2. Control day today + reports ──────────────────── */
 
 .pc-today {
@@ -857,7 +1000,7 @@
     transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.card:not(.card-collapsed) .pc-alltesters__chev {
+.pc-alltesters__chev.is-open {
     transform: rotate(90deg);
 }
 
@@ -1007,13 +1150,22 @@
 /* Narrow phones: keep the two state tiles readable */
 
 @media (max-width: 359px) {
-    .pc-state {
+    .pc-state-top {
         grid-template-columns: minmax(0, 1fr);
     }
 
+    .pc-state-divider {
+        display: none;
+    }
+
+    .pc-state-progress {
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
     .pc-ring {
-        width: 48px;
-        height: 48px;
+        width: 42px;
+        height: 42px;
     }
 
     .pc-slots {

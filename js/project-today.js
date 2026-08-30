@@ -53,13 +53,41 @@
         return typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
     }
 
-    function projectById(appId) {
-        return (typeof myProjects !== 'undefined' ? myProjects : []).find(function (item) {
-            return Number(item && item.id) === Number(appId || 0);
-        }) || null;
+    function isExcludedControlTester(project, item) {
+        if (!project || !item) return true;
+        var testerId = Number(item.tester && item.tester.id || 0);
+        var progressId = Number(item.progress_id || 0);
+        var roster = project.testers || [];
+        for (var index = 0; index < roster.length; index += 1) {
+            var rosterTester = roster[index];
+            if (Number(rosterTester.tester_id || 0) !== testerId && Number(rosterTester.progress_id || 0) !== progressId) {
+                continue;
+            }
+            if (rosterTester.is_left_soft) return true;
+            if (rosterTester.is_guest_tester || rosterTester.is_external) return true;
+            return false;
+        }
+        return false;
     }
 
-    /* ─────────────────────────── identity helpers ─────────────────────────── */
+    function filterControlRows(project, rows) {
+        if (!project || !rows || !rows.length) return rows || [];
+        return rows.filter(function (row) {
+            var roster = project.testers || [];
+            for (var index = 0; index < roster.length; index += 1) {
+                var rosterTester = roster[index];
+                if (Number(rosterTester.tester_id || 0) !== Number(row.testerId || 0)
+                    && Number(rosterTester.progress_id || 0) !== Number(row.progressId || 0)) {
+                    continue;
+                }
+                return !rosterTester.is_left_soft
+                    && !rosterTester.is_guest_tester
+                    && !rosterTester.is_external;
+            }
+            return true;
+        });
+    }
+
 
     function handleOf(source) {
         var username = String(source && source.username || '').trim().replace(/^@+/, '');
@@ -224,7 +252,9 @@
 
             var control = [];
             var others = [];
+            var project = projectById(safeAppId);
             (results[0].items || []).forEach(function (item) {
+                if (isExcludedControlTester(project, item)) return;
                 var row = buildRow(item, thumbnailByProofId);
                 if (row.day <= 0) return;
                 if (isControlDay(row.day)) control.push(row);
@@ -455,7 +485,7 @@
     function innerHtml(project) {
         var entry = cache.get(Number(project.id));
         var hydrated = !!(entry && !entry.loading && !entry.error && entry.loadedAt > 0);
-        var rows = hydrated ? entry.control : fallbackControlRows(project);
+        var rows = hydrated ? filterControlRows(project, entry.control) : fallbackControlRows(project);
         var errorHtml = entry && entry.error
             ? '<div class="pc-today__error">' + esc(text('pcTodayLoadError', "Could not load today's reports")) +
                 '<button type="button" onclick="event.stopPropagation(); pcRetryToday(' + Number(project.id) + ')">' +

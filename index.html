@@ -36,13 +36,13 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260830-card-dashboard-v1"></script>
-    <script src="./i18n/en.js?v=20260830-card-dashboard-v1"></script>
+<script src="./i18n/ru.js?v=20260830-card-dashboard-v2"></script>
+    <script src="./i18n/en.js?v=20260830-card-dashboard-v2"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260820-report-modal-v1"></script>
     <script src="./ui/ui-tests.js?v=20260830-card-dashboard-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260830-card-dashboard-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260830-card-dashboard-v2"></script>
     <script src="./ui/ui-market.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
@@ -54,7 +54,7 @@
     <script src="./js/app-actions.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20260830-multi-proof-v1"></script>
     <script src="./js/testing-control.js?v=20260830-card-dashboard-v1"></script>
-    <script src="./js/project-today.js?v=20260830-card-dashboard-v1"></script>
+    <script src="./js/project-today.js?v=20260830-card-dashboard-v2"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
 <script src="./js/app-features.js?v=20260827-balance-actions-v17"></script>
 <script src="./js/mutual-exchange-ui.js?v=20260827-balance-actions-v17"></script>
@@ -97,7 +97,7 @@
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260821-chooser-v6">
     <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260829-proof-pending-v2">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
-    <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260830-card-dashboard-v1">
+    <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260830-card-dashboard-v2">
 </head>
 <body>
 
@@ -851,6 +851,18 @@
                 <input type="url" id="icon-picker-link-input" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder">
                 <button type="button" class="btn btn-primary" style="margin-top: 12px;" onclick="iconPickerApplyLink()" data-i18n="iconPickerApplyBtn">Применить</button>
                 <button type="button" class="btn btn-secondary" style="margin-top: 8px;" onclick="iconPickerShowMenu()" data-i18n="iconPickerBackBtn">Назад</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project card: buffer / protection info -->
+    <div id="pc-buffer-info-modal" class="modal-overlay" onclick="closePcBufferInfoModal(event)">
+        <div class="modal-content pc-buffer-modal__content" onclick="event.stopPropagation()">
+            <h3 id="pc-buffer-info-title"></h3>
+            <div id="pc-buffer-info-body" class="pc-buffer-modal__body"></div>
+            <div class="action-row" style="margin-top: 16px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closePcBufferInfoModal()" data-i18n="cancelDelete">Отмена</button>
+                <button type="button" class="btn btn-primary" style="flex: 1;" id="pc-buffer-info-action"></button>
             </div>
         </div>
     </div>

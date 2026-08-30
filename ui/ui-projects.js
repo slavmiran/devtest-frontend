@@ -307,10 +307,12 @@ function renderProjects(force) {
         const hasAccessOverlay = project.status === 'access_error' && pendingIssueTesters.length > 0;
 
         const collapsedVal = localStorage.getItem('project_card_collapsed_' + project.id);
-        // The dashboard is always visible now; expanding only reveals the full tester roster,
-        // which the redesign keeps hidden until asked for.
+        // Card collapse hides the dashboard below the state strip; tester roster has its own toggle.
         const isCollapsed = collapsedVal !== null ? (collapsedVal === 'true') : true;
         if (isCollapsed) cardClass += ' card-collapsed';
+        const testersCollapsedVal = localStorage.getItem('project_testers_collapsed_' + project.id);
+        const isTestersCollapsed = testersCollapsedVal !== null ? (testersCollapsedVal === 'true') : true;
+        if (isTestersCollapsed) cardClass += ' card-testers-collapsed';
 
         card.className = cardClass + (hasAccessOverlay ? ' card-has-access-issue' : '');
         card.id = `project-card-${project.id}`;
@@ -640,37 +642,19 @@ function renderProjects(force) {
             ? Math.min(48, Math.max(0, 48 - Number(project.consumed_pending_hours || 0)))
             : 0;
 
-        /* ── Block 1: current testing day + protection entry point ── */
-        const dayTileHtml = (() => {
-            const metaChips = [];
-            if (isPendingCompletion) {
-                metaChips.push(bufferHoursLeft > 0
-                    ? `<span class="pc-meta-chip">🛡 ${window.escapeHTML(window.t('pcBufferChip', { hours: bufferHoursLeft }, lang))}</span>`
-                    : `<span class="pc-meta-chip">🛡 ${window.escapeHTML(window.t('ppcBufferAwaitingArchiving', {}, lang))}</span>`);
-            }
-            if (extraPaidDays > 0) {
-                metaChips.push(`<span class="pc-meta-chip">${window.escapeHTML(window.t('pcExtraDaysChip', { days: extraPaidDays }, lang))}</span>`);
-            }
-            if (!hasSync) {
-                metaChips.push(`<span class="pc-meta-chip">${window.escapeHTML(window.t('syncBtnTitleBefore', {}, lang))}</span>`);
-            }
-            const protectionLabel = window.escapeHTML(window.t('pcProtectionAria', {}, lang));
-            return `
-                <div class="pc-tile pc-tile--day">
-                    <span class="pc-tile__label">${window.escapeHTML(window.t('pcDayTileLabel', {}, lang))}</span>
-                    <div class="pc-day-row">
-                        <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: currentGoogleDay, total: 14 }, lang))}">
-                            <span class="pc-day-word">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</span><span class="pc-day-num">${window.escapeHTML(String(currentGoogleDay))}</span><span class="pc-day-total">/&nbsp;14</span>
-                        </span>
-                        <button type="button" class="pc-day-plus${needsSyncAttention ? ' needs-attention' : ''}" title="${protectionLabel}" aria-label="${protectionLabel}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">+</button>
-                    </div>
-                    <div class="pc-day-meta">${metaChips.join('')}</div>
-                </div>
-            `;
-        })();
+        /* ── Unified state strip: current day + daily progress (reference layout) ── */
+        const calendarIconHtml = `
+            <svg class="pc-cal__icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.11-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7H5V6h14v2z"/>
+            </svg>`;
+        const showBufferBadge = isPendingCompletion && bufferHoursLeft > 0;
+        const configureLabel = hasSync
+            ? window.t('pcConfigureSyncedBtn', {}, lang)
+            : window.t('pcConfigureBtn', {}, lang);
+        const configureClass = hasSync
+            ? 'pc-config-btn is-synced'
+            : (needsSyncAttention ? 'pc-config-btn needs-attention' : 'pc-config-btn');
 
-        /* ── Block 2: team size, today's activity, daily progress ring ──
-           Same Daily Progress math as before; only the visualisation changed. */
         let count_done = 0;
         let count_waiting = 0;
         allProjectTesters.forEach((tester) => {
@@ -700,29 +684,56 @@ function renderProjects(force) {
         const isOverachieved = dailyPercentage > 100;
         const ringDegrees = Math.round(Math.min(dailyPercentage, 100) * 3.6);
 
-        const activityTileHtml = `
-            <div class="pc-tile pc-tile--activity">
-                <span class="pc-tile__label">${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))}</span>
-                <div class="pc-activity">
-                    <div class="pc-activity__nums">
-                        <span class="pc-stat pc-stat--major">
-                            <span class="pc-stat__value">${window.escapeHTML(String(totalTesters))}</span>
-                            <span class="pc-stat__label">${window.escapeHTML(window.t('pcTestersLabel', {}, lang))}</span>
-                        </span>
-                        <span class="pc-stat pc-stat--minor">
-                            <span class="pc-stat__value">${window.escapeHTML(String(count_done))}</span>
-                            <span class="pc-stat__label">${window.escapeHTML(window.t('pcActiveTodayLabel', {}, lang))}</span>
-                        </span>
+        const stateFootHtml = (isPendingCompletion || hasSync || extraPaidDays > 0) ? `
+            <div class="pc-state-foot">
+                <button type="button" class="pc-buffer-link" onclick="event.stopPropagation(); openPcBufferInfoModal(${project.id});">
+                    <span class="pc-buffer-link__icon" aria-hidden="true">🛡</span>
+                    <span>${window.escapeHTML(isPendingCompletion && bufferHoursLeft > 0
+                        ? window.t('pcBufferChip', { hours: bufferHoursLeft }, lang)
+                        : window.t('pcBufferInfoLabel', {}, lang))}</span>
+                    <span class="pc-buffer-link__info" aria-hidden="true">i</span>
+                </button>
+            </div>
+        ` : '';
+
+        const stateBlockHtml = `
+            <div class="pc-state-unified">
+                <div class="pc-state-top">
+                    <div class="pc-state-day">
+                        <button type="button" class="pc-cal" aria-label="${window.escapeHTML(window.t('pcBufferModalTitle', {}, lang))}" onclick="event.stopPropagation(); openPcBufferInfoModal(${project.id});">
+                            ${calendarIconHtml}
+                            ${showBufferBadge ? `<span class="pc-cal__badge">${window.escapeHTML(window.t('pcBufferBadge', {}, lang))}</span>` : ''}
+                        </button>
+                        <div class="pc-state-day__copy">
+                            <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: currentGoogleDay, total: 14 }, lang))}">
+                                <span class="pc-day-word">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</span><span class="pc-day-num">${window.escapeHTML(String(currentGoogleDay))}</span><span class="pc-day-total">/&nbsp;14</span>
+                            </span>
+                            <div class="pc-day-actions">
+                                ${extraPaidDays > 0 ? `<span class="pc-day-extra">${window.escapeHTML(window.t('pcExtraDaysLong', { days: extraPaidDays }, lang))}</span>` : ''}
+                                <button type="button" class="${configureClass}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${window.escapeHTML(configureLabel)}</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="pc-ring${isOverachieved ? ' is-over' : ''}${displayPercentage === 0 ? ' is-zero' : ''}" style="--pc-ring-deg: ${ringDegrees}deg;" role="img" aria-label="${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))} ${displayPercentage}%">
-                        <span class="pc-ring__value">${displayPercentage}%</span>
-                        ${isOverachieved ? `<span class="pc-ring__caption">${window.escapeHTML(window.t('pcOverchargeLabel', {}, lang))}</span>` : ''}
+                    <div class="pc-state-divider" aria-hidden="true"></div>
+                    <div class="pc-state-progress">
+                        <div class="pc-progress-head">
+                            <span class="pc-progress-label">${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))}</span>
+                            <span class="pc-progress-pct${isOverachieved ? ' is-over' : ''}">${displayPercentage}%</span>
+                        </div>
+                        <div class="pc-progress-body">
+                            <span class="pc-ratio" aria-label="${window.escapeHTML(window.t('pcTestersRatioAria', { total: totalTesters, active: count_done }, lang))}">
+                                <span class="pc-ratio__total">${window.escapeHTML(String(totalTesters))}</span><span class="pc-ratio__slash">/</span><span class="pc-ratio__active">${window.escapeHTML(String(count_done))}</span>
+                            </span>
+                            <div class="pc-ring${isOverachieved ? ' is-over' : ''}${displayPercentage === 0 ? ' is-zero' : ''}" style="--pc-ring-deg: ${ringDegrees}deg;" role="img" aria-label="${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))} ${displayPercentage}%">
+                                <span class="pc-ring__value">${displayPercentage}%</span>
+                                ${isOverachieved ? `<span class="pc-ring__caption">${window.escapeHTML(window.t('pcOverchargeLabel', {}, lang))}</span>` : ''}
+                            </div>
+                        </div>
                     </div>
                 </div>
+                ${stateFootHtml}
             </div>
         `;
-
-        const stateBlockHtml = `<div class="pc-state">${dayTileHtml}${activityTileHtml}</div>`;
 
         /* ── Block 4: collapsed summary of the full tester roster ── */
         const allTestersRowHtml = (() => {
@@ -744,13 +755,13 @@ function renderProjects(force) {
                 ? `<span class="pc-alltesters__summary">${parts.join(' · ')}</span>`
                 : `<span class="pc-alltesters__summary">${window.escapeHTML(window.t('pcAllTestersHint', {}, lang))}</span>`;
             return `
-                <button type="button" class="pc-alltesters" onclick="toggleProjectCard(${project.id}, event)">
+                <button type="button" class="pc-alltesters" onclick="toggleProjectTestersList(${project.id}, event)">
                     <span class="pc-alltesters__mark" aria-hidden="true">👥</span>
                     <span class="pc-alltesters__body">
                         <span class="pc-alltesters__title">${window.escapeHTML(window.t('pcAllTestersTitle', {}, lang))}<span class="pc-alltesters__count">${window.escapeHTML(String(totalTesters))}</span></span>
                         ${summary}
                     </span>
-                    <span class="pc-alltesters__chev" aria-hidden="true">›</span>
+                    <span class="pc-alltesters__chev${isTestersCollapsed ? '' : ' is-open'}" aria-hidden="true">›</span>
                 </button>
             `;
         })();
@@ -864,34 +875,37 @@ function renderProjects(force) {
 
             ${accessOverlayHtml}
 
-            <!-- TODAY DASHBOARD (always visible: current state, control day, reports) -->
+            <!-- STATE STRIP (always visible, even when card is collapsed) -->
             <div class="card-collapsed-zone">
                 ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
                 ${updateTipHtml}
                 ${stateBlockHtml}
+            </div>
+
+            <!-- DASHBOARD BODY (hidden when card is collapsed) -->
+            <div class="pc-dashboard-body">
                 ${todaySectionHtml}
                 ${allTestersRowHtml}
-            </div>
 
-            <!-- FULL TESTER ROSTER (revealed by the "All testers" row) -->
-            <div class="card-expanded-zone" id="expanded-${project.id}">
-                <div class="card-expanded-inner">
-                    <div class="testers-section">
-                        ${leftSoftCount > 0 || guestTesters.length > 0 ? `<div class="testers-title-row" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
-                            <div class="testers-title">${window.escapeHTML(t.testersList)}${leftSoftCount > 0 ? `<span class="testers-count-delta" title="${window.escapeHTML(window.t('testerLeftSoftCountHint', { count: leftSoftCount }, lang))}">−${window.escapeHTML(String(leftSoftCount))}</span>` : ''}${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(activeRegularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
-                        </div>` : ''}
-                        ${testersHtml}
+                <div class="card-expanded-zone" id="expanded-${project.id}">
+                    <div class="card-expanded-inner">
+                        <div class="testers-section">
+                            ${leftSoftCount > 0 || guestTesters.length > 0 ? `<div class="testers-title-row" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                <div class="testers-title">${window.escapeHTML(t.testersList)}${leftSoftCount > 0 ? `<span class="testers-count-delta" title="${window.escapeHTML(window.t('testerLeftSoftCountHint', { count: leftSoftCount }, lang))}">−${window.escapeHTML(String(leftSoftCount))}</span>` : ''}${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(activeRegularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
+                            </div>` : ''}
+                            ${testersHtml}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            ${actionsHtml}
-            ${platformDays >= 12 ? `
-                <button type="button" class="btn btn-archive-neon pc-archive" onclick="openDeleteModal(${project.id}); event.stopPropagation();">
-                    🗑️ ${window.escapeHTML(window.t('kebabArchive', {}, lang))}
-                </button>
-            ` : ''}
-            ${footerChipsHtml}
+                ${actionsHtml}
+                ${platformDays >= 15 ? `
+                    <button type="button" class="pc-finish-link" onclick="openDeleteModal(${project.id}); event.stopPropagation();">
+                        ${window.escapeHTML(window.t('pcFinishTestingLink', {}, lang))}
+                    </button>
+                ` : ''}
+                ${footerChipsHtml}
+            </div>
 
             <div class="card-footer" onclick="toggleProjectCard(${project.id}, event)">
                 <div class="card-expand-handle-circle">
@@ -5842,6 +5856,79 @@ function toggleProjectCard(projectId, event) {
         if (chevron) chevron.classList.add('is-collapsed');
     }
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+}
+
+function toggleProjectTestersList(projectId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    const card = document.getElementById('project-card-' + projectId);
+    if (!card) return;
+    const isCollapsed = card.classList.contains('card-testers-collapsed');
+    const chevron = card.querySelector('.pc-alltesters__chev');
+    if (isCollapsed) {
+        card.classList.remove('card-testers-collapsed');
+        localStorage.setItem('project_testers_collapsed_' + projectId, 'false');
+        if (chevron) chevron.classList.add('is-open');
+    } else {
+        card.classList.add('card-testers-collapsed');
+        localStorage.setItem('project_testers_collapsed_' + projectId, 'true');
+        if (chevron) chevron.classList.remove('is-open');
+    }
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+}
+
+function openPcBufferInfoModal(projectId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    const project = (myProjects || []).find((item) => Number(item.id) === Number(projectId));
+    const modal = document.getElementById('pc-buffer-info-modal');
+    const titleEl = document.getElementById('pc-buffer-info-title');
+    const bodyEl = document.getElementById('pc-buffer-info-body');
+    const actionBtn = document.getElementById('pc-buffer-info-action');
+    if (!modal || !titleEl || !bodyEl || !actionBtn || !project) return;
+
+    const extraPaidDays = Number(project.paid_protection_days || project.purchased_protection_days || 0);
+    const bufferHoursLeft = String(project.status || '').toLowerCase() === 'pending_completion'
+        ? Math.min(48, Math.max(0, 48 - Number(project.consumed_pending_hours || 0)))
+        : 0;
+    const hasSync = _isProjectSyncedSafe(project);
+
+    titleEl.textContent = window.t('pcBufferModalTitle', {}, lang);
+    const parts = [
+        window.t('pcBufferModalIntro', {}, lang),
+        bufferHoursLeft > 0
+            ? window.t('pcBufferModalActive', { hours: bufferHoursLeft }, lang)
+            : window.t('pcBufferModalPending', {}, lang),
+    ];
+    if (extraPaidDays > 0) {
+        parts.push(window.t('pcBufferModalExtraDays', { days: extraPaidDays }, lang));
+    }
+    if (hasSync) {
+        parts.push(window.t('pcBufferModalSynced', {}, lang));
+    } else {
+        parts.push(window.t('pcBufferModalUnsynced', {}, lang));
+    }
+    bodyEl.innerHTML = parts.map((part) => `<p>${window.escapeHTML(part)}</p>`).join('');
+    actionBtn.textContent = window.t('pcBufferModalAction', {}, lang);
+    actionBtn.onclick = function (clickEvent) {
+        clickEvent.stopPropagation();
+        closePcBufferInfoModal();
+        openProtectionCenter(projectId);
+    };
+    modal.dataset.projectId = String(projectId);
+    modal.classList.add('active');
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+}
+
+function closePcBufferInfoModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('pc-buffer-info-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.dataset.projectId = '';
+    }
 }
 
 function toggleProjectSettingsDrawer(projectId, event) {
