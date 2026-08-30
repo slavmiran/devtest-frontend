@@ -522,7 +522,7 @@
     function preloadPreviewMedia(proofId, mediaIndex) {
         var safeIndex = Number(mediaIndex || 0);
         if (safeIndex < 0 || previewMediaCacheGet(proofId, safeIndex)) return;
-        loadPreviewMediaSource(proofId, safeIndex).catch(function () {
+        loadPreviewMediaSource(proofId, safeIndex).then(decodePreviewImage).catch(function () {
             // Preloading is an optional optimization; the visible viewer retains retry behavior.
         });
     }
@@ -540,9 +540,46 @@
 
     function renderPreviewLoading(body, thumbnailUrl) {
         var loader = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
-        body.innerHTML = thumbnailUrl
-            ? '<div class="checkin-proof-preview-album is-preview-loading"><img class="checkin-proof-preview-image checkin-proof-preview-image--thumbnail" alt="" src="' + escape(thumbnailUrl) + '">' + loader + '</div>'
-            : loader;
+        body.innerHTML = '<div class="checkin-proof-preview-album is-preview-loading">' +
+            (thumbnailUrl ? '<img class="checkin-proof-preview-image checkin-proof-preview-image--thumbnail" alt="" src="' + escape(thumbnailUrl) + '">' : '') +
+            loader +
+        '</div>';
+    }
+
+    async function showPreviewThumbnail(proofId, mediaIndex, body) {
+        try {
+            var ticket = await requestMediaTicket(proofId, 'thumbnail', mediaIndex);
+            if (
+                Number(state.previewProofId) !== Number(proofId) ||
+                Number(state.previewMediaIndex) !== Number(mediaIndex) ||
+                !body || !body.classList.contains('is-proof-album')
+            ) return;
+            var album = body.querySelector('.checkin-proof-preview-album.is-preview-loading');
+            if (!album) return;
+            var image = album.querySelector('img');
+            if (!image) {
+                image = document.createElement('img');
+                image.className = 'checkin-proof-preview-image checkin-proof-preview-image--thumbnail';
+                image.alt = '';
+                album.insertBefore(image, album.firstChild);
+            }
+            image.src = ticket.url;
+        } catch (_) {
+            // The full-size request remains authoritative and retains its normal error state.
+        }
+    }
+
+    async function decodePreviewImage(source) {
+        if (!source || typeof Image === 'undefined') return;
+        var image = new Image();
+        image.src = source;
+        if (typeof image.decode === 'function') {
+            try {
+                await image.decode();
+            } catch (_) {
+                // Browsers that cannot decode ahead of time still render the loaded image normally.
+            }
+        }
     }
 
     function albumNavigation(proofId, mediaIndex, imageCount) {
@@ -771,6 +808,7 @@
         var modal = document.getElementById('checkin-proof-preview-modal');
         var body = document.getElementById('checkin-proof-preview-body');
         if (!modal || !body) return;
+        var previousIndex = Number(state.previewMediaIndex || 0);
         var keepCurrentFrame = modal.classList.contains('active') &&
             state.previewMode === 'screenshot' &&
             Number(state.previewProofId) === safeProofId &&
@@ -778,11 +816,14 @@
         state.previewProofId = safeProofId;
         state.previewMediaIndex = safeIndex;
         state.previewMode = 'screenshot';
+        body.classList.add('is-proof-album');
         var meta = previewMeta(safeProofId);
         if (keepCurrentFrame) {
             body.querySelector('.checkin-proof-preview-album').classList.add('is-changing');
         } else {
-            renderPreviewLoading(body, previewThumbnailUrl(safeProofId));
+            var thumbnailUrl = previewThumbnailUrl(safeProofId);
+            renderPreviewLoading(body, thumbnailUrl);
+            if (!thumbnailUrl) showPreviewThumbnail(safeProofId, safeIndex, body);
         }
         var title = document.getElementById('checkin-proof-preview-title');
         var subtitle = document.getElementById('checkin-proof-preview-subtitle');
@@ -792,9 +833,13 @@
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
         try {
             var source = await loadPreviewMediaSource(safeProofId, safeIndex);
+            await decodePreviewImage(source);
             if (state.previewProofId !== safeProofId || state.previewMediaIndex !== safeIndex || !modal.classList.contains('active')) return;
             var navigation = albumNavigation(safeProofId, safeIndex, imageCount);
-            body.innerHTML = '<div class="checkin-proof-preview-album"><img class="checkin-proof-preview-image" alt="" src="' + escape(source) + '">' + navigation + '</div>';
+            var motionClass = keepCurrentFrame && previousIndex !== safeIndex
+                ? (safeIndex > previousIndex ? ' is-slide-next' : ' is-slide-prev')
+                : '';
+            body.innerHTML = '<div class="checkin-proof-preview-album' + motionClass + '"><img class="checkin-proof-preview-image" alt="" src="' + escape(source) + '">' + navigation + '</div>';
             var image = body.querySelector('img');
             if (image) image.onerror = function () { renderPreviewError(safeProofId, safeIndex); };
             bindAlbumSwipe(body.querySelector('.checkin-proof-preview-album'), safeProofId, safeIndex, imageCount);
@@ -861,6 +906,7 @@
         var meta = previewMeta(safeProofId);
         state.previewProofId = safeProofId;
         state.previewMode = 'feedback';
+        body.classList.remove('is-proof-album');
         body.innerHTML = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
         var title = document.getElementById('checkin-proof-preview-title');
         var subtitle = document.getElementById('checkin-proof-preview-subtitle');
@@ -902,6 +948,7 @@
         if (event && event.target !== modal) return;
         var body = document.getElementById('checkin-proof-preview-body');
         if (body) {
+            body.classList.remove('is-proof-album');
             var image = body.querySelector('img');
             if (image) image.removeAttribute('src');
             body.innerHTML = '';
