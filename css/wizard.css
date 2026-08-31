@@ -1655,3 +1655,30 @@ body.wizard-open .bottom-nav {
     transform: scale(0.97);
     background: rgba(255, 149, 0, 0.2);
 }
+
+#edit-project-modal .edit-play-reviews-card {
+    padding: 14px 16px;
+}
+
+#edit-project-modal .edit-play-reviews-row {
+    padding: 0;
+    margin: 0;
+}
+
+#edit-project-modal #edit-add-email-testers-box {
+    margin-bottom: 0;
+    padding: 14px 16px;
+}
+
+#edit-project-modal #edit-add-email-testers-box .add-email-testers-box__toggle {
+    margin: 0;
+}
+
+#edit-project-modal #edit-add-email-testers-box .review-checkbox-row span strong {
+    font-size: 14px;
+    line-height: 1.35;
+}
+
+#edit-project-modal #edit-add-email-testers-box.is-expanded .add-email-testers-expand {
+    max-height: 220px;
+}

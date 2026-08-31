@@ -42,7 +42,7 @@
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260820-report-modal-v1"></script>
     <script src="./ui/ui-tests.js?v=20260830-card-dashboard-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260830-lifecycle-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260831-edit-settings-v1"></script>
     <script src="./ui/ui-market.js?v=20260830-feedback-cache-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
@@ -71,7 +71,7 @@
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20260830-multi-proof-v1">
     <link rel="stylesheet" href="./css/testing-control.css?v=20260830-medium-proof-v1">
-    <link rel="stylesheet" href="./css/wizard.css?v=20260821-edit-modal-v1">
+    <link rel="stylesheet" href="./css/wizard.css?v=20260831-edit-settings-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/kick-tester-modal.css?v=20260822-recip-highlight-v1">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260827-dossier-layout-v15">
@@ -1389,7 +1389,18 @@
                     </div>
                 </div>
 
-                <!-- Card 4: Optional Settings -->
+                <!-- Card 4: Google Play reviews -->
+                <div class="wizard-section-card edit-play-reviews-card">
+                    <label class="review-checkbox-row project-setting-checkbox edit-play-reviews-row">
+                        <input type="checkbox" id="edit-request-reviews" checked>
+                        <span>
+                            <strong data-i18n="requestReviewsLabel">Запрашивать Google Play отзывы</strong>
+                            <small data-i18n="requestReviewsHint">После 7 дней теста покажем тестеру мягкий запрос оставить отзыв в Google Play.</small>
+                        </span>
+                    </label>
+                </div>
+
+                <!-- Card 5: Optional Settings -->
                 <div class="wizard-optional-card is-expanded" id="edit-wizard-optional-card">
                     <div class="wizard-optional-card__head" style="cursor: default;">
                         <span data-i18n="optionalSettings">⚙️ Дополнительные настройки</span>
@@ -1406,16 +1417,6 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label class="review-checkbox-row project-setting-checkbox">
-                                <input type="checkbox" id="edit-request-reviews" checked>
-                                <span>
-                                    <strong data-i18n="requestReviewsLabel">Запрашивать Google Play отзывы</strong>
-                                    <small data-i18n="requestReviewsHint">После 7 дней теста покажем тестеру мягкий запрос оставить отзыв в Google Play.</small>
-                                </span>
-                            </label>
-                        </div>
-
                         <div class="form-group" style="margin-bottom: 0;">
                             <label class="form-label" id="t-editDescription" data-i18n="instructions">Инструкции для тестеров</label>
                             <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000" data-i18n-placeholder="instPlaceholder"></textarea>
@@ -1424,8 +1425,8 @@
                     </div>
                 </div>
 
-                <!-- Card 5: Email Testers Outreach -->
-                <div class="wizard-outreach-card project-setting-checkbox add-email-testers-box" id="edit-add-email-testers-box">
+                <!-- Card 6: Email Testers Outreach -->
+                <div class="wizard-outreach-card add-email-testers-box" id="edit-add-email-testers-box">
                     <label class="review-checkbox-row add-email-testers-box__toggle">
                         <input type="checkbox" id="edit-app-accepts-email-testers" onchange="onEditAcceptsEmailTestersChange()">
                         <span>
@@ -1443,7 +1444,7 @@
                     </div>
                 </div>
 
-                <!-- Card 6: Project Meta & Management -->
+                <!-- Card 7: Project Meta & Management -->
                 <div class="edit-project-meta-card">
                     <div class="edit-project-meta-info">
                         <div id="edit-created-at"></div>

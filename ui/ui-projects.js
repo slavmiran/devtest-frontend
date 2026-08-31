@@ -2986,6 +2986,28 @@ function _getSavedUserTesterEmail() {
     return String(fromHelper || fromApp || fromState || '').trim();
 }
 
+function _syncEditEmailTestersBoxVisibility() {
+    const editEmailBox = document.getElementById('edit-add-email-testers-box');
+    if (!editEmailBox) return;
+    const savedEmail = _getSavedUserTesterEmail();
+    const acceptsBox = document.getElementById('edit-app-accepts-email-testers');
+    const testerEmail = document.getElementById('edit-app-tester-email');
+
+    if (savedEmail) {
+        editEmailBox.style.display = 'none';
+        editEmailBox.classList.remove('is-expanded');
+        if (acceptsBox) acceptsBox.checked = true;
+        if (testerEmail) testerEmail.value = savedEmail;
+        return;
+    }
+
+    editEmailBox.style.removeProperty('display');
+    if (acceptsBox) acceptsBox.checked = true;
+    if (testerEmail) testerEmail.value = '';
+    editEmailBox.classList.add('is-expanded');
+    _updateEditTesterEmailValidIcon();
+}
+
 function _syncAddEmailTestersBoxVisibility() {
     const addEmailBox = document.getElementById('add-email-testers-box');
     if (!addEmailBox) return;
@@ -4239,21 +4261,7 @@ function openEditModal(projectId, options) {
     document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
     document.getElementById('edit-request-reviews').checked = project.request_reviews !== false;
 
-    // Prefill email opt-in and tester email fields, and hide the selector box if email already exists
-    const acceptsBox = document.getElementById('edit-app-accepts-email-testers');
-    const testerEmail = document.getElementById('edit-app-tester-email');
-    const editEmailBox = document.getElementById('edit-add-email-testers-box');
-    
-    const savedEmail = (typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : '') || (window.App && window.App.userEmail) || '';
-    if (savedEmail) {
-        if (editEmailBox) editEmailBox.style.display = 'none';
-        if (acceptsBox) acceptsBox.checked = true;
-        if (testerEmail) testerEmail.value = savedEmail;
-    } else {
-        if (editEmailBox) editEmailBox.style.display = '';
-        if (acceptsBox) acceptsBox.checked = !!project.accepts_email_testers;
-        if (testerEmail) testerEmail.value = '';
-    }
+    _syncEditEmailTestersBoxVisibility();
     onEditAcceptsEmailTestersChange();
 
     syncEditAppIconPreview();
