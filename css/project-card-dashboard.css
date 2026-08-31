@@ -1523,3 +1523,59 @@
         margin-left: 0;
     }
 }
+
+/* ───────────── 9. Expanded project: drop the outer card chrome ───────────
+   Collapsed projects stay cards. Expanded ones keep the same wrapper and
+   page gutter, but stop looking like a second nested card so inner sections
+   can use the full project width. */
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    overflow: visible;
+    border-radius: 0;
+}
+
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-collapse-handle {
+    width: 100%;
+    height: 40px;
+    margin: 6px 0 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    gap: 10px;
+}
+
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-collapse-handle:hover {
+    background: transparent;
+}
+
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-collapse-handle::before,
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-collapse-handle::after {
+    content: '';
+    width: 52px;
+    height: 1px;
+    flex: 0 0 52px;
+    border-radius: 1px;
+    background: var(--border-subtle);
+    opacity: 0.9;
+}
+
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-collapse-handle .card-expand-handle-circle {
+    position: relative;
+    top: auto;
+    transform: none;
+    width: 30px;
+    height: 30px;
+    background: var(--bg-color, var(--secondary-bg-color));
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+}
+
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-collapse-handle:hover .card-expand-handle-circle,
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-collapse-handle:active .card-expand-handle-circle {
+    border-color: rgba(255, 255, 255, 0.22);
+    transform: scale(1.08);
+}

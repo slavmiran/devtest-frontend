@@ -1000,7 +1000,7 @@ function renderProjects(force) {
                 ${footerChipsHtml}
             </div>
 
-            <div class="card-footer" onclick="toggleProjectCard(${project.id}, event)">
+            <div class="card-footer pc-collapse-handle" onclick="toggleProjectCard(${project.id}, event)">
                 <div class="card-expand-handle-circle">
                     <span class="card-expand-chevron ${isCollapsed ? 'is-collapsed' : ''}">
                         <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
