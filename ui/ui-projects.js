@@ -58,10 +58,27 @@ function buildProjectModeChip(project) {
     return `<button class="meta-chip accent-green" onclick="void(0)">${window.escapeHTML(t.modeMutual)}</button>`;
 }
 
-function buildEmailTestModeChip(project) {
-    if (!project || String(project.test_mode || 'google_group') !== 'email_list') return '';
-    const label = window.t('emailTestModeChip', {}, lang);
-    return `<button type="button" class="meta-chip accent-orange" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('emailTestModeChipToast', {}, lang))}')">⚠️ ${window.escapeHTML(label)}</button>`;
+function buildProjectCardSubtitle(project) {
+    if (!project) return '<div class="card-subtitle notranslate"></div>';
+    const isEmail = String(project.test_mode || 'google_group') === 'email_list';
+    const hasReviews = project.request_reviews !== false;
+    const packageName = project.package || project.package_name || '';
+    const chips = [];
+
+    if (isEmail) {
+        chips.push(`<span class="pc-subtitle-chip">${window.escapeHTML(window.t('emailTestModeChip', {}, lang))}</span>`);
+    }
+    if (hasReviews) {
+        chips.push(`<span class="pc-subtitle-chip">${window.escapeHTML(window.t('pcCardSubtitleReviews', {}, lang))}</span>`);
+    }
+
+    if (chips.length) {
+        return `<div class="card-subtitle card-subtitle--chips notranslate">${chips.join('')}</div>`;
+    }
+    if (packageName) {
+        return `<div class="card-subtitle notranslate">${window.escapeHTML(packageName)}</div>`;
+    }
+    return '<div class="card-subtitle notranslate"></div>';
 }
 
 
@@ -285,7 +302,7 @@ function renderProjects(force) {
         const projectStatus = String(project.app_status || project.status || 'active').toLowerCase();
         const isPendingCompletion = projectStatus === 'pending_completion';
         const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
-        const safeProjectPackage = window.escapeHTML(project.package || '');
+        const projectCardSubtitleHtml = buildProjectCardSubtitle(project);
 
         const platformDays = getProjectPlatformDay(project.created_at);
         const syncDay = Number(project.google_sync_day || 0);
@@ -627,8 +644,6 @@ function renderProjects(force) {
         const visibilityBadge = (() => {
             let badges = '';
 
-            badges += buildEmailTestModeChip(project);
-
             const runIterationChip = buildRunIterationChip(project);
             if (runIterationChip) badges += runIterationChip;
 
@@ -801,7 +816,7 @@ function renderProjects(force) {
                 </div>
                 <div class="card-info">
                     <div class="card-title notranslate">${safeProjectName}</div>
-                    <div class="card-subtitle notranslate">${safeProjectPackage}</div>
+                    ${projectCardSubtitleHtml}
                 </div>
                 <div class="project-header-actions">
                     <button type="button" class="project-icon-btn" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">⚙️</button>
@@ -2150,9 +2165,13 @@ function renderArchivedProjects(force) {
             const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
             const archiveName = project.name || window.t('unknownLabel', {}, lang);
             const safeArchiveName = window.escapeHTML(archiveName);
-            const safeArchivePackage = window.escapeHTML(project.package_name || '');
+            const archiveSubtitleHtml = buildProjectCardSubtitle(project);
             const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
             const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
+            const isBlocked = !!(project.is_blocked || project.blocked_at || project.archive_reason === 'policy_blocked');
+            const blockedChip = isBlocked
+                ? '<span class="archive-meta-chip archive-meta-chip-blocked">' + window.escapeHTML(window.t('appRemovedFromPublication', {}, lang)) + '</span>'
+                : '';
             const runIterationChip = buildRunIterationChip(project, 'archive-meta-chip');
             html += `
                 <div class="card archive-card" id="archive-card-${project.app_id}" data-archive-project-id="${project.app_id}">
@@ -2160,7 +2179,7 @@ function renderArchivedProjects(force) {
                         ${renderIcon(archiveName, project.icon_url)}
                         <div class="card-info">
                             <div class="card-title notranslate">${safeArchiveName}</div>
-                            <div class="card-subtitle notranslate">${safeArchivePackage}</div>
+                            ${archiveSubtitleHtml}
                         </div>
                         ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
                     </div>
@@ -2168,10 +2187,15 @@ function renderArchivedProjects(force) {
                         <span class="archive-meta-chip">${modeLabel}</span>
                         ${runIterationChip}
                         ${afkChip}
+                        ${blockedChip}
                         <span class="archive-meta-chip">👥 ${project.total_testers}</span>
                         <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
                         <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
                     </div>
+                    ${isBlocked ? `
+                    <div class="archive-blocked-note">${window.escapeHTML(window.t('blockedAppActionForbidden', {}, lang))}</div>
+                    <div style="margin-top: 10px;">${buildProjectFeedbackButton(project.app_id, project.feedback_total_count || 0, project.feedback_new_count || 0, true)}</div>
+                    ` : `
                     <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
                         <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="openRestartArchivedModal(${project.app_id})">
                             ${window.escapeHTML(t.archiveRestartBtn)}
@@ -2187,6 +2211,7 @@ function renderArchivedProjects(force) {
                             </button>
                         </div>
                     </div>
+                    `}
                 </div>`;
         });
         html += `
@@ -4122,6 +4147,10 @@ function openRestartArchivedModal(appId) {
     });
     if (!archived) {
         showToast(window.t('app_not_found', {}, lang));
+        return;
+    }
+    if (archived.is_blocked || archived.blocked_at || archived.archive_reason === 'policy_blocked') {
+        showToast(window.t('blockedAppActionForbidden', {}, lang));
         return;
     }
     var project = _mapArchivedProjectForEdit(archived);

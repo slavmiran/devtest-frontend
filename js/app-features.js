@@ -160,6 +160,10 @@ function _showProjectPackageError(messageKey, options) {
 
 function _handleProjectCreateConflict(code) {
     var normalizedCode = String(code || '').trim();
+    if (normalizedCode === 'APP_BLOCKED') {
+        _showProjectPackageError('appRemovedFromPublication');
+        return true;
+    }
     if (normalizedCode === 'ALREADY_OWNED' || normalizedCode === 'ALREADY_ACTIVE' || normalizedCode === 'NEEDS_RESTART') {
         openPackageConflictModal(normalizedCode, _getCurrentAddPackageName());
         // Keep a short field hint so the form still shows why Continue is blocked.

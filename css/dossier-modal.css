@@ -605,6 +605,13 @@
     background: var(--border-subtle);
 }
 
+#dossier-modal .dossier-linked-archived-chip.is-blocked,
+#dossier-modal .dossier-project-meta-chip-blocked {
+    color: #ff6961;
+    background: rgba(255, 69, 58, 0.14);
+    border: 1px solid rgba(255, 69, 58, 0.24);
+}
+
 #dossier-modal .dossier-owned-project-card-inner {
     display: flex;
     align-items: flex-start;

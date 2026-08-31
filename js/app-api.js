@@ -1040,6 +1040,7 @@ function handleApiError(code, details = {}) {
         ALREADY_OWNED: 'ALREADY_OWNED',
         ALREADY_ACTIVE: 'ALREADY_ACTIVE',
         NEEDS_RESTART: 'NEEDS_RESTART',
+        APP_BLOCKED: 'appRemovedFromPublication',
         insufficient_bust_balance: 'err_insufficient_bust_balance',
         transaction_failed: 'err_transaction_failed',
         invalid_init_data: 'guestClaimAuthErrorToast',
@@ -2684,6 +2685,9 @@ async function loadArchivedProjects(options) {
                 feedback_new_count: project.feedback_new_count || 0,
                 feedback_total_count: project.feedback_total_count || 0,
                 archive_reason: project.archive_reason || null,
+                blocked_at: project.blocked_at || null,
+                blocked_by: project.blocked_by || null,
+                is_blocked: !!(project.is_blocked || project.blocked_at),
             });
         });
         _lastFetchTimes.archived = Date.now();

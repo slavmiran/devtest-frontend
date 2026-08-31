@@ -138,6 +138,29 @@
     margin-top: 2px;
 }
 
+.card-subtitle--chips {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+}
+
+.pc-subtitle-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-secondary, var(--hint-color));
+    background: transparent;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+}
+
 .progress-container {
     display: flex;
     align-items: center;
@@ -2035,6 +2058,22 @@ input::placeholder,
     color: var(--hint-color);
     font-size: 12px;
     line-height: 1.2;
+}
+
+.archive-meta-chip-blocked {
+    background: rgba(255, 69, 58, 0.14);
+    color: #ff6961;
+    border: 1px solid rgba(255, 69, 58, 0.28);
+}
+
+.archive-blocked-note {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 69, 58, 0.08);
+    color: var(--hint-color);
+    font-size: 12px;
+    line-height: 1.4;
 }
 
 .archive-delete-btn {
