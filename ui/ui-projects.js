@@ -59,20 +59,26 @@ function buildProjectModeChip(project) {
 }
 
 function buildProjectCardSubtitle(project) {
-    if (!project) return '';
+    if (!project) return '<div class="card-subtitle notranslate"></div>';
     const isEmail = String(project.test_mode || 'google_group') === 'email_list';
     const hasReviews = project.request_reviews !== false;
     const packageName = project.package || project.package_name || '';
-    const parts = [];
+    const chips = [];
+
     if (isEmail) {
-        parts.push(window.t('emailTestModeChip', {}, lang));
-    } else if (!hasReviews && packageName) {
-        parts.push(packageName);
+        chips.push(`<span class="pc-subtitle-chip">${window.escapeHTML(window.t('emailTestModeChip', {}, lang))}</span>`);
     }
     if (hasReviews) {
-        parts.push(window.t('pcCardSubtitleReviews', {}, lang));
+        chips.push(`<span class="pc-subtitle-chip">${window.escapeHTML(window.t('pcCardSubtitleReviews', {}, lang))}</span>`);
     }
-    return window.escapeHTML(parts.join(' • '));
+
+    if (chips.length) {
+        return `<div class="card-subtitle card-subtitle--chips notranslate">${chips.join('')}</div>`;
+    }
+    if (packageName) {
+        return `<div class="card-subtitle notranslate">${window.escapeHTML(packageName)}</div>`;
+    }
+    return '<div class="card-subtitle notranslate"></div>';
 }
 
 
@@ -296,7 +302,7 @@ function renderProjects(force) {
         const projectStatus = String(project.app_status || project.status || 'active').toLowerCase();
         const isPendingCompletion = projectStatus === 'pending_completion';
         const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
-        const safeProjectSubtitle = buildProjectCardSubtitle(project);
+        const projectCardSubtitleHtml = buildProjectCardSubtitle(project);
 
         const platformDays = getProjectPlatformDay(project.created_at);
         const syncDay = Number(project.google_sync_day || 0);
@@ -647,6 +653,76 @@ function renderProjects(force) {
             </div>
         ` : '';
 
+        const visibilityBadge = (() => {
+            let badges = '';
+
+            const runIterationChip = buildRunIterationChip(project);
+            if (runIterationChip) badges += runIterationChip;
+
+            if (project.target_lang && project.target_lang !== 'ALL') {
+                badges += getLangBadge(project.target_lang);
+            }
+            if (_isProjectSyncedSafe(project)) {
+                // Fallback for legacy projects that may use purchased_protection_days instead of paid_protection_days
+                const extraPaid = Number(project.paid_protection_days || project.purchased_protection_days || 0);
+                const protectedText = extraPaid > 0
+                    ? window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang)
+                    : window.t('ppcProtectedBadge', {}, lang);
+                badges += `<span class="meta-chip accent-protection">${window.escapeHTML(protectedText)}</span>`;
+            }
+
+            return badges;
+        })();
+
+        const projectProgressHtml = (() => {
+            if (!_isProjectSyncedSafe(project)) {
+                const day = Math.min(platformDays, 14);
+                const pct = Math.min(100, Math.round((day / 14) * 100));
+                return `
+                    <div class="progress-container" style="margin-bottom: 12px;">
+                        <div class="progress-bar"><div class="progress-fill" style="width: ${pct}%;"></div></div>
+                        <span>${t.progressLabel.replace('{day}', day)}</span>
+                    </div>
+                `;
+            }
+
+            const segments = [];
+            for (let index = 1; index <= 14; index++) {
+                segments.push(`<div class="grant-segment ${index <= Math.min(currentGoogleDay, 14) ? 'filled' : ''}"></div>`);
+            }
+            return `
+                <div style="margin-bottom: 12px;">
+                    <div class="grant-progress-container">${segments.join('')}</div>
+                    <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:12px;">
+                        <span>${window.t('projectGoogleDayLabel', { day: currentGoogleDay })}</span>
+                        <span onclick="window.showCustomAlert(window.t('platformDaysInfo'))" style="color:var(--hint-color); cursor:pointer;">[${platformDays}]</span>
+                    </div>
+                </div>
+            `;
+        })();
+
+        const quotaSummaryHtml = (() => {
+            const chips = [];
+            const testers = activeRegularTesters;
+            const mutualCount = testers.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
+            const bountyCount = testers.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
+            if (project.mode === 'mutual' || project.mode === 'hybrid') {
+                chips.push(`<span class="card-summary-chip">${window.escapeHTML(window.t('mutualChipLabel', { current: mutualCount, target: project.limit_mutual || 0 }, lang))}</span>`);
+            }
+            if (project.mode === 'bounty' || project.mode === 'hybrid') {
+                chips.push(`<span class="card-summary-chip accent-purple" style="cursor: pointer;" onclick="openContractEconomyModal(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('contractChipLabel', { current: bountyCount, target: project.limit_bounty || 0, price: formatUiAmount(project.bounty_per_tester || 0, 1) }, lang))}</span>`);
+            }
+            if (guestTesterCount > 0) {
+                chips.push(`<span class="card-summary-chip accent-blue">👽 ${window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang))}</span>`);
+            }
+            if (!chips.length) return '';
+            return `<div class="card-summary-chips" onclick="event.stopPropagation();">${chips.join('')}</div>`;
+        })();
+
+        const karmaBonusChipHtml = (() => {
+            if (platformDays < 14 || activeRegularTesters.length < 5) return '';
+            return `<button class="meta-chip accent-green" onclick="showToast('${escapeInlineJsString(t.deleteKarmaBonus)}')">${t.deleteKarmaBonusChip}</button>`;
+        })();
         const hasSync = _isProjectSyncedSafe(project);
         const extraPaidDays = Number(project.paid_protection_days || project.purchased_protection_days || 0);
         const bufferHoursLeft = isPendingCompletion
@@ -850,7 +926,7 @@ function renderProjects(force) {
                 </div>
                 <div class="card-info">
                     <div class="card-title notranslate">${safeProjectName}</div>
-                    <div class="card-subtitle notranslate">${safeProjectSubtitle}</div>
+                    ${projectCardSubtitleHtml}
                 </div>
                 <div class="project-header-actions">
                     <button type="button" class="project-icon-btn" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">⚙️</button>
@@ -2185,9 +2261,13 @@ function renderArchivedProjects(force) {
             const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
             const archiveName = project.name || window.t('unknownLabel', {}, lang);
             const safeArchiveName = window.escapeHTML(archiveName);
-            const safeArchiveSubtitle = buildProjectCardSubtitle(project);
+            const archiveSubtitleHtml = buildProjectCardSubtitle(project);
             const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
             const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
+            const isBlocked = !!(project.is_blocked || project.blocked_at || project.archive_reason === 'policy_blocked');
+            const blockedChip = isBlocked
+                ? '<span class="archive-meta-chip archive-meta-chip-blocked">' + window.escapeHTML(window.t('appRemovedFromPublication', {}, lang)) + '</span>'
+                : '';
             const runIterationChip = buildRunIterationChip(project, 'archive-meta-chip');
             html += `
                 <div class="card archive-card" id="archive-card-${project.app_id}" data-archive-project-id="${project.app_id}">
@@ -2195,7 +2275,7 @@ function renderArchivedProjects(force) {
                         ${renderIcon(archiveName, project.icon_url)}
                         <div class="card-info">
                             <div class="card-title notranslate">${safeArchiveName}</div>
-                            <div class="card-subtitle notranslate">${safeArchiveSubtitle}</div>
+                            ${archiveSubtitleHtml}
                         </div>
                         ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
                     </div>
@@ -2203,10 +2283,15 @@ function renderArchivedProjects(force) {
                         <span class="archive-meta-chip">${modeLabel}</span>
                         ${runIterationChip}
                         ${afkChip}
+                        ${blockedChip}
                         <span class="archive-meta-chip">👥 ${project.total_testers}</span>
                         <span class="archive-meta-chip">✅ ${project.total_checkins}</span>
                         <span class="archive-meta-chip">🆕 ${project.feedback_new_count || 0}</span>
                     </div>
+                    ${isBlocked ? `
+                    <div class="archive-blocked-note">${window.escapeHTML(window.t('blockedAppActionForbidden', {}, lang))}</div>
+                    <div style="margin-top: 10px;">${buildProjectFeedbackButton(project.app_id, project.feedback_total_count || 0, project.feedback_new_count || 0, true)}</div>
+                    ` : `
                     <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
                         ${typeof window.buildTestingControlEntryButton === 'function' ? window.buildTestingControlEntryButton(project.app_id, true) : ''}
                         <button class="btn btn-secondary" style="width: 100%; background-color: rgba(52, 199, 89, 0.12); color: var(--text-color); border: 1px solid rgba(52, 199, 89, 0.24);" onclick="openRestartArchivedModal(${project.app_id})">
@@ -2223,6 +2308,7 @@ function renderArchivedProjects(force) {
                             </button>
                         </div>
                     </div>
+                    `}
                 </div>`;
         });
         html += `
@@ -4183,6 +4269,10 @@ function openRestartArchivedModal(appId) {
     });
     if (!archived) {
         showToast(window.t('app_not_found', {}, lang));
+        return;
+    }
+    if (archived.is_blocked || archived.blocked_at || archived.archive_reason === 'policy_blocked') {
+        showToast(window.t('blockedAppActionForbidden', {}, lang));
         return;
     }
     var project = _mapArchivedProjectForEdit(archived);

@@ -8572,6 +8572,7 @@ function _buildDossierProjectMetaChips(ownedProject) {
     if (!ownedProject) return '';
     const status = String(ownedProject.status || '').toLowerCase();
     const isArchivedLike = status === 'completed' || status === 'archived';
+    const isBlocked = !!(ownedProject.is_blocked || ownedProject.blocked_at);
     
     const visibilitySnapshot = _normalizeDossierVisibilityProject(ownedProject);
     const chips = [];
@@ -8579,7 +8580,9 @@ function _buildDossierProjectMetaChips(ownedProject) {
     const recruitChip = _buildDossierRecruitModeChip(ownedProject);
     if (recruitChip) chips.push(recruitChip);
     
-    if (isArchivedLike) {
+    if (isBlocked) {
+        chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-blocked">' + window.escapeHTML(window.t('dossierOwnedProjectBlocked', {}, lang)) + '</span>');
+    } else if (isArchivedLike) {
         chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-completed" style="background: rgba(52, 199, 89, 0.14); color: #30d158;">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</span>');
     }
     if (visibilitySnapshot.visibility_mode === 'hidden_from_showcase') {
@@ -8595,7 +8598,8 @@ function _buildDossierProjectMetaChips(ownedProject) {
 }
 
 function _isDossierProjectJoinBlocked(ownedProject) {
-    return _normalizeDossierVisibilityProject(ownedProject).visibility_mode === 'full_isolation';
+    return !!(ownedProject && (ownedProject.is_blocked || ownedProject.blocked_at))
+        || _normalizeDossierVisibilityProject(ownedProject).visibility_mode === 'full_isolation';
 }
 
 function _normalizeDossierOwnedProjectRow(raw) {
@@ -8616,6 +8620,8 @@ function _normalizeDossierOwnedProjectRow(raw) {
         icon_url: raw.icon_url || '',
         instructions: raw.instructions || '',
         status: status,
+        blocked_at: raw.blocked_at || null,
+        is_blocked: !!(raw.is_blocked || raw.blocked_at),
         mode: String(raw.mode || 'mutual').toLowerCase() || 'mutual',
         created_at: raw.created_at || null,
         finished_at: raw.finished_at || null,
@@ -8662,6 +8668,7 @@ function _buildDossierProjectLinkSubtitle(ownedProject, options) {
     ).trim();
 
     const isArchivedLike = status === 'completed' || status === 'archived';
+    const isBlocked = !!(ownedProject.is_blocked || ownedProject.blocked_at);
 
     if (linkType === 'mutual') {
         if (linkedName) {
@@ -9245,7 +9252,7 @@ function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProje
         ? '<div class="' + cardClass + '" style="cursor:default;">'
         : '<button type="button" class="' + cardClass + '" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ')">';
     const archivedChipHtml = isArchivedLike
-        ? '<div class="dossier-linked-archived-chip">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</div>'
+        ? '<div class="dossier-linked-archived-chip' + (isBlocked ? ' is-blocked' : '') + '">' + window.escapeHTML(window.t(isBlocked ? 'dossierOwnedProjectBlocked' : 'dossierOwnedProjectCompleted', {}, lang)) + '</div>'
         : '';
 
     return innerOpen +
