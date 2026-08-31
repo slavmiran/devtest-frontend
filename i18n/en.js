@@ -492,6 +492,7 @@
             settingsEmailSaved: "Email saved!",
             settingsEmailDeleted: "Email removed",
             emailTestModeChip: "Email",
+            pcCardSubtitleReviews: "Reviews",
             emailTestBadge: "Email",
             emailTestModeChipToast: "This project uses Email-list testing. Testers must be added to Play Console manually.",
             emailGateOfferTitle: "Your email is required",

@@ -491,6 +491,7 @@
             settingsEmailSaved: "Email сохранён!",
             settingsEmailDeleted: "Email удалён",
             emailTestModeChip: "Email",
+            pcCardSubtitleReviews: "Отзывы",
             emailTestBadge: "Email",
             emailTestModeChipToast: "Этот проект использует тестирование по Email-списку. Тестеров нужно добавлять в Play Console вручную.",
             emailGateOfferTitle: "Нужен ваш Email",

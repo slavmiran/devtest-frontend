@@ -58,10 +58,21 @@ function buildProjectModeChip(project) {
     return `<button class="meta-chip accent-green" onclick="void(0)">${window.escapeHTML(t.modeMutual)}</button>`;
 }
 
-function buildEmailTestModeChip(project) {
-    if (!project || String(project.test_mode || 'google_group') !== 'email_list') return '';
-    const label = window.t('emailTestModeChip', {}, lang);
-    return `<button type="button" class="meta-chip accent-orange" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('emailTestModeChipToast', {}, lang))}')">⚠️ ${window.escapeHTML(label)}</button>`;
+function buildProjectCardSubtitle(project) {
+    if (!project) return '';
+    const isEmail = String(project.test_mode || 'google_group') === 'email_list';
+    const hasReviews = project.request_reviews !== false;
+    const packageName = project.package || project.package_name || '';
+    const parts = [];
+    if (isEmail) {
+        parts.push(window.t('emailTestModeChip', {}, lang));
+    } else if (!hasReviews && packageName) {
+        parts.push(packageName);
+    }
+    if (hasReviews) {
+        parts.push(window.t('pcCardSubtitleReviews', {}, lang));
+    }
+    return window.escapeHTML(parts.join(' • '));
 }
 
 
@@ -285,7 +296,7 @@ function renderProjects(force) {
         const projectStatus = String(project.app_status || project.status || 'active').toLowerCase();
         const isPendingCompletion = projectStatus === 'pending_completion';
         const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
-        const safeProjectPackage = window.escapeHTML(project.package || '');
+        const safeProjectSubtitle = buildProjectCardSubtitle(project);
 
         const platformDays = getProjectPlatformDay(project.created_at);
         const syncDay = Number(project.google_sync_day || 0);
@@ -804,9 +815,6 @@ function renderProjects(force) {
             if (guestTesterCount > 0) {
                 chips.push(`<span class="pc-fchip">👽 ${window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang))}</span>`);
             }
-            if (String(project.test_mode || 'google_group') === 'email_list') {
-                chips.push(`<button type="button" class="pc-fchip pc-fchip--action pc-fchip--warn" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('emailTestModeChipToast', {}, lang))}')">⚠️ ${window.escapeHTML(window.t('emailTestModeChip', {}, lang))}</button>`);
-            }
             if (project.target_lang && project.target_lang !== 'ALL') {
                 chips.push(getLangBadge(project.target_lang));
             }
@@ -842,7 +850,7 @@ function renderProjects(force) {
                 </div>
                 <div class="card-info">
                     <div class="card-title notranslate">${safeProjectName}</div>
-                    <div class="card-subtitle notranslate">${safeProjectPackage}</div>
+                    <div class="card-subtitle notranslate">${safeProjectSubtitle}</div>
                 </div>
                 <div class="project-header-actions">
                     <button type="button" class="project-icon-btn" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">⚙️</button>
@@ -2177,7 +2185,7 @@ function renderArchivedProjects(force) {
             const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
             const archiveName = project.name || window.t('unknownLabel', {}, lang);
             const safeArchiveName = window.escapeHTML(archiveName);
-            const safeArchivePackage = window.escapeHTML(project.package_name || '');
+            const safeArchiveSubtitle = buildProjectCardSubtitle(project);
             const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
             const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
             const runIterationChip = buildRunIterationChip(project, 'archive-meta-chip');
@@ -2187,7 +2195,7 @@ function renderArchivedProjects(force) {
                         ${renderIcon(archiveName, project.icon_url)}
                         <div class="card-info">
                             <div class="card-title notranslate">${safeArchiveName}</div>
-                            <div class="card-subtitle notranslate">${safeArchivePackage}</div>
+                            <div class="card-subtitle notranslate">${safeArchiveSubtitle}</div>
                         </div>
                         ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;">${langBadge}</div>` : ''}
                     </div>
