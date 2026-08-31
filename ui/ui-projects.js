@@ -10,6 +10,60 @@ function _isProjectSyncedSafe(project) {
     return Number.isFinite(syncDay) && syncDay >= 1 && !!(project && project.last_sync_date);
 }
 
+var GOOGLE_CLOSED_TEST_QUOTA = 12;
+
+function getProjectDailyProgressMeta(project) {
+    const today = typeof getLocalDate === 'function' ? getLocalDate() : '';
+    const testers = Array.isArray(project && project.testers) ? project.testers : [];
+    let countDone = 0;
+    testers.forEach(function (tester) {
+        if (tester.is_left_soft) return;
+        if (tester.is_guest_tester || tester.is_external) {
+            var controlMeta = typeof getExternalTesterControlMeta === 'function'
+                ? getExternalTesterControlMeta(tester)
+                : { tone: '' };
+            if (controlMeta.tone === 'green') countDone += 1;
+            return;
+        }
+        if (tester.last_check_date === today) countDone += 1;
+    });
+    const presentCount = testers.filter(function (tester) {
+        return !tester.is_left_soft;
+    }).length;
+    const targetCheckins = Math.min(presentCount, GOOGLE_CLOSED_TEST_QUOTA);
+    const dailyPercentage = targetCheckins > 0 ? (countDone / targetCheckins) * 100 : 0;
+    const displayPercentage = Math.round(dailyPercentage);
+    const isOverachieved = dailyPercentage > 100;
+    const ringDegrees = Math.round(Math.min(dailyPercentage, 100) * 3.6);
+    const ringGradientMid = Math.round(ringDegrees * 0.55);
+    const ringOverMidA = Math.round(ringDegrees * 0.45);
+    const ringStyle = displayPercentage <= 0
+        ? '--pc-ring-deg: 0deg;'
+        : isOverachieved
+            ? `--pc-ring-deg: ${ringDegrees}deg; --pc-ring-bg: conic-gradient(from -90deg, #af52de 0deg, #ff9500 ${ringOverMidA}deg, #ff2d55 ${ringDegrees}deg, rgba(255,255,255,0.07) ${ringDegrees}deg 360deg);`
+            : `--pc-ring-deg: ${ringDegrees}deg; --pc-ring-bg: conic-gradient(from -90deg, #34c759 0deg, #30b0c7 ${ringGradientMid}deg, #2ecbd6 ${ringDegrees}deg, rgba(255,255,255,0.07) ${ringDegrees}deg 360deg);`;
+    return {
+        countDone: countDone,
+        presentCount: presentCount,
+        targetCheckins: targetCheckins,
+        displayPercentage: displayPercentage,
+        isOverachieved: isOverachieved,
+        ringStyle: ringStyle,
+    };
+}
+
+function buildProjectDailyProgressRingHtml(project) {
+    const meta = getProjectDailyProgressMeta(project);
+    const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
+    return `<div class="pc-ring${meta.isOverachieved ? ' is-over' : ''}${meta.displayPercentage === 0 ? ' is-zero' : ''}" style="${meta.ringStyle}" role="img" aria-label="${window.escapeHTML(window.t('pcDayProgressLabel', {}, uiLang))} ${meta.displayPercentage}%">
+        <span class="pc-ring__value">${meta.displayPercentage}%</span>
+        ${meta.isOverachieved ? `<span class="pc-ring__caption">${window.escapeHTML(window.t('pcOverchargeLabel', {}, uiLang))}</span>` : ''}
+    </div>`;
+}
+
+window.getProjectDailyProgressMeta = getProjectDailyProgressMeta;
+window.buildProjectDailyProgressRingHtml = buildProjectDailyProgressRingHtml;
+
 function getProjectVisibilityMeta(project) {
     var mode = typeof window.getProjectVisibilityMode === 'function'
         ? window.getProjectVisibilityMode(project)
@@ -729,25 +783,19 @@ function renderProjects(force) {
             ? Math.min(48, Math.max(0, 48 - Number(project.consumed_pending_hours || 0)))
             : 0;
 
-        /* ── Unified state strip: current day + daily progress (reference layout) ── */
+        /* ── Closed test block: day + testers + recruitment ── */
         const calendarIconHtml = `
             <svg class="pc-cal__icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.11-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7H5V6h14v2z"/>
             </svg>`;
-        const shieldGlyphHtml = `
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="currentColor" d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1.2 15L7 12.2l1.4-1.4 2.4 2.4 5-5L17.2 9.6 10.8 16z"/>
+        const closedTestChartIconHtml = `
+            <svg class="pc-closed__glyph" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 17l5.5-6 3.5 3.5L20 6"/>
             </svg>`;
-        const clockIconHtml = `
-            <svg class="pc-buffer-link__glyph" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+        const attractPeopleIconHtml = `
+            <svg class="pc-cta__glyph" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
             </svg>`;
-        // The "Configure" text link disappears once protection is set up; from then on the
-        // calendar tile is the way back into the lifecycle sheet.
-        const configureBtnHtml = hasSync ? '' : `
-            <button type="button" class="pc-config-btn${needsSyncAttention ? ' needs-attention' : ''}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">
-                ${window.escapeHTML(window.t('pcConfigureBtn', {}, lang))}
-            </button>`;
 
         let count_done = 0;
         let count_waiting = 0;
@@ -772,66 +820,118 @@ function renderProjects(force) {
         });
 
         const totalTesters = activeRegularTesters.length + guestTesters.length;
-        const targetCheckins = Math.min(totalTesters, 12);
-        const dailyPercentage = targetCheckins > 0 ? (count_done / targetCheckins) * 100 : 0;
-        const displayPercentage = Math.round(dailyPercentage);
-        const isOverachieved = dailyPercentage > 100;
-        const ringDegrees = Math.round(Math.min(dailyPercentage, 100) * 3.6);
-        const ringGradientMid = Math.round(ringDegrees * 0.55);
-        const ringOverMidA = Math.round(ringDegrees * 0.45);
-        const ringOverMidB = Math.round(ringDegrees * 0.78);
-        const ringStyle = displayPercentage <= 0
-            ? '--pc-ring-deg: 0deg;'
-            : isOverachieved
-                ? `--pc-ring-deg: ${ringDegrees}deg; --pc-ring-bg: conic-gradient(from -90deg, #af52de 0deg, #ff9500 ${ringOverMidA}deg, #ff2d55 ${ringDegrees}deg, rgba(255,255,255,0.07) ${ringDegrees}deg 360deg);`
-                : `--pc-ring-deg: ${ringDegrees}deg; --pc-ring-bg: conic-gradient(from -90deg, #34c759 0deg, #30b0c7 ${ringGradientMid}deg, #2ecbd6 ${ringDegrees}deg, rgba(255,255,255,0.07) ${ringDegrees}deg 360deg);`;
+        const googleQuota = GOOGLE_CLOSED_TEST_QUOTA;
+        const regularTesterCount = activeRegularTesters.length;
+        const testersNeeded = Math.max(0, googleQuota - regularTesterCount);
+        const testersReserve = Math.max(0, regularTesterCount - googleQuota);
+        const testersNote = regularTesterCount < googleQuota
+            ? window.t('pcTestersNeedMore', { count: testersNeeded }, lang)
+            : regularTesterCount === googleQuota
+                ? window.t('pcTestersMinimumReached', {}, lang)
+                : window.t('pcTestersReserve', { count: testersReserve }, lang);
+        const testersNoteKind = regularTesterCount < googleQuota ? 'need' : (regularTesterCount === googleQuota ? 'ok' : 'reserve');
 
-        const bufferHoursLabel = isPendingCompletion && bufferHoursLeft > 0
-            ? window.t('pcBufferHoursShort', { hours: bufferHoursLeft }, lang)
-            : window.t('pcBufferBadge', {}, lang);
-        const stateFootHtml = `
-            <div class="pc-state-foot">
-                <button type="button" class="pc-buffer-link" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id});">
-                    ${clockIconHtml}
-                    <span>${window.escapeHTML(window.t('pcBufferInfoLabel', {}, lang))}</span>
-                    <span class="pc-buffer-link__hours">${window.escapeHTML(bufferHoursLabel)}</span>
-                    <span class="pc-buffer-link__info" aria-hidden="true">i</span>
-                </button>
-            </div>
-        `;
+        const extraDaysRunning = extraPaidDays > 0 && (hasSync ? currentGoogleDay > 14 : platformDays > 14);
+        const closedTestStage = isPendingCompletion
+            ? 'buffer'
+            : extraDaysRunning
+                ? 'extension'
+                : hasSync
+                    ? 'active'
+                    : (regularTesterCount >= googleQuota ? 'need_sync' : 'recruiting');
+        const closedTestStageLabel = closedTestStage === 'buffer'
+            ? window.t('pcStatusBuffer', {}, lang)
+            : closedTestStage === 'extension'
+                ? window.t('pcStatusExtension', {}, lang)
+                : closedTestStage === 'active'
+                    ? window.t('pcStatusActiveTest', {}, lang)
+                    : closedTestStage === 'need_sync'
+                        ? window.t('pcStatusNeedSync', {}, lang)
+                        : window.t('pcStatusRecruiting', {}, lang);
+
+        const dayMain = hasSync ? currentGoogleDay : platformDays;
+        const dayKicker = hasSync
+            ? window.t('pcGooglePlayLabel', {}, lang)
+            : window.t('pcDayWord', {}, lang);
+        const emphasizeSync = !hasSync && platformDays >= 7 && regularTesterCount < googleQuota;
+        const daySecondaryHtml = !hasSync
+            ? `<button type="button" class="pc-day-sync${emphasizeSync ? ' is-emphasis' : ''}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${window.escapeHTML(window.t('pcSyncNotConfigured', {}, lang))}</button>`
+            : Number(currentGoogleDay) !== Number(platformDays)
+                ? `<span class="pc-day-hub">${window.escapeHTML(window.t('pcHubDay', { day: platformDays }, lang))}</span>`
+                : `<span class="pc-day-ok">${window.escapeHTML(window.t('pcSyncConfigured', {}, lang))}</span>`;
+        const bufferLineParts = [
+            isPendingCompletion && bufferHoursLeft > 0
+                ? window.t('pcBufferLineHours', { hours: bufferHoursLeft }, lang)
+                : window.t('pcBufferLine', {}, lang),
+        ];
+        if (extraPaidDays > 0) {
+            bufferLineParts.push(window.t('pcExtensionLine', { days: extraPaidDays }, lang));
+        }
+
+        const mutualCount = activeRegularTesters.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
+        const bountyCount = activeRegularTesters.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
+        const recruitParts = [];
+        if (project.mode === 'mutual' || project.mode === 'hybrid') {
+            const mutualTarget = Number(project.limit_mutual || 0);
+            const mutualFilled = mutualTarget > 0 && mutualCount >= mutualTarget;
+            recruitParts.push(window.t('pcRecruitMutual', { current: mutualCount, target: mutualTarget }, lang) + (mutualFilled ? ' ✓' : ''));
+        }
+        if (project.mode === 'bounty' || project.mode === 'hybrid') {
+            const bountyTarget = Number(project.limit_bounty || 0);
+            const bountyFilled = bountyTarget > 0 && bountyCount >= bountyTarget;
+            recruitParts.push(window.t('pcRecruitContracts', { current: bountyCount, target: bountyTarget }, lang) + (bountyFilled ? ' ✓' : ''));
+        }
+        const recruitRowHtml = recruitParts.length
+            ? `<button type="button" class="pc-recruit" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();">
+                    <span class="pc-recruit__label">${window.escapeHTML(window.t('pcRecruitLabel', {}, lang))}</span>
+                    <span class="pc-recruit__items">${window.escapeHTML(recruitParts.join(' · '))}</span>
+                    <span class="pc-recruit__chev" aria-hidden="true">›</span>
+                </button>`
+            : '';
+
+        const attractIsPrimary = regularTesterCount < 15;
+        const attractBtnHtml = `
+            <button type="button" class="pc-cta ${attractIsPrimary ? 'pc-cta--primary' : 'pc-cta--neutral'} pc-cta--testers" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
+                ${attractPeopleIconHtml}
+                ${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}
+            </button>`;
 
         const stateBlockHtml = `
-            <div class="pc-state-unified">
+            <section class="pc-state-unified">
+                <div class="pc-closed-head">
+                    <div class="pc-closed-head__title">
+                        ${closedTestChartIconHtml}
+                        <span>${window.escapeHTML(window.t('pcClosedTestTitle', {}, lang))}</span>
+                    </div>
+                    <span class="pc-stage-badge pc-stage-badge--${closedTestStage}">${window.escapeHTML(closedTestStageLabel)}</span>
+                </div>
                 <div class="pc-state-top">
                     <div class="pc-state-day">
                         <button type="button" class="pc-cal" aria-label="${window.escapeHTML(window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id});">
                             ${calendarIconHtml}
-                            <span class="pc-cal__dot${hasSync ? ' is-shield' : ''}" aria-hidden="true">${hasSync ? shieldGlyphHtml : '+'}</span>
+                            <span class="pc-cal__dot" aria-hidden="true">+</span>
                         </button>
                         <div class="pc-state-day__copy">
-                            <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: currentGoogleDay, total: 14 }, lang))}">
-                                <span class="pc-day-word">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</span><span class="pc-day-num">${window.escapeHTML(String(currentGoogleDay))}</span><span class="pc-day-total">/&nbsp;14</span>${extraPaidDays > 0 ? `<span class="pc-day-extra">${window.escapeHTML(window.t('pcExtraDaysLong', { days: extraPaidDays }, lang))}</span>` : ''}
+                            <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: dayMain, total: 14 }, lang))}">
+                                <span class="pc-day-word">${window.escapeHTML(dayKicker)}</span><span class="pc-day-num">${window.escapeHTML(String(dayMain))}</span><span class="pc-day-total">&nbsp;/&nbsp;14</span>
                             </span>
-                            ${configureBtnHtml ? `<div class="pc-day-actions">${configureBtnHtml}</div>` : ''}
+                            ${daySecondaryHtml}
+                            <button type="button" class="pc-day-meta" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id});">${window.escapeHTML(bufferLineParts.join(' · '))}</button>
                         </div>
                     </div>
-                    <div class="pc-state-progress">
-                        <div class="pc-progress-head">
-                            <span class="pc-progress-label">${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))}</span>
-                        </div>
-                        <div class="pc-progress-body">
-                            <span class="pc-ratio" aria-label="${window.escapeHTML(window.t('pcTestersRatioAria', { total: totalTesters, active: count_done }, lang))}">
-                                <span class="pc-ratio__active">${window.escapeHTML(String(count_done))}</span><span class="pc-ratio__slash">/</span><span class="pc-ratio__total">${window.escapeHTML(String(totalTesters))}</span>
+                    <div class="pc-state-testers">
+                        <span class="pc-testers-label">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</span>
+                        <div class="pc-testers-metric">
+                            <span class="pc-tester-ratio" aria-label="${window.escapeHTML(String(regularTesterCount) + ' / ' + String(googleQuota))}">
+                                <span class="pc-tester-ratio__current">${window.escapeHTML(String(regularTesterCount))}</span><span class="pc-tester-ratio__slash">&nbsp;/&nbsp;</span><span class="pc-tester-ratio__quota">${window.escapeHTML(String(googleQuota))}</span>
                             </span>
-                            <div class="pc-ring${isOverachieved ? ' is-over' : ''}${displayPercentage === 0 ? ' is-zero' : ''}" style="${ringStyle}" role="img" aria-label="${window.escapeHTML(window.t('pcDayProgressLabel', {}, lang))} ${displayPercentage}%">
-                                <span class="pc-ring__value">${displayPercentage}%</span>
-                                ${isOverachieved ? `<span class="pc-ring__caption">${window.escapeHTML(window.t('pcOverchargeLabel', {}, lang))}</span>` : ''}
-                            </div>
+                            <span class="pc-tester-note pc-tester-note--${testersNoteKind}">${window.escapeHTML(testersNote)}</span>
                         </div>
+                        ${attractBtnHtml}
                     </div>
                 </div>
-                ${stateFootHtml}
-            </div>
+                ${recruitRowHtml}
+            </section>
         `;
 
         /* ── Block 4: collapsed summary of the full tester roster ── */
@@ -865,29 +965,16 @@ function renderProjects(force) {
             `;
         })();
 
-        /* ── Block 5: primary actions. Attracting testers stays the bright CTA
-              only while the project is below the 12-tester Google quota. ── */
-        const attractIsPrimary = totalTesters < 12;
+        /* ── Remaining actions: feedback stays here after attract moved into testers ── */
         const actionsHtml = `
             <div class="pc-actions">
-                <button type="button" class="pc-cta ${attractIsPrimary ? 'pc-cta--primary' : 'pc-cta--neutral'}" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
-                    🚀 ${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}
-                </button>
                 ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'margin: 0; min-height: 46px; border-radius: 13px; font-size: 13.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; background: var(--bg-surface-2); color: var(--text-secondary); border: 1px solid var(--border-subtle);')}
             </div>
         `;
 
-        /* ── Block 6: minimal-weight configuration chips ── */
+        /* ── Footer chips: Guest and language stay here; recruitment moved up ── */
         const footerChipsHtml = (() => {
             const chips = [];
-            const mutualCount = activeRegularTesters.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
-            const bountyCount = activeRegularTesters.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
-            if (project.mode === 'mutual' || project.mode === 'hybrid') {
-                chips.push(`<span class="pc-fchip">${window.escapeHTML(window.t('mutualChipLabel', { current: mutualCount, target: project.limit_mutual || 0 }, lang))}</span>`);
-            }
-            if (project.mode === 'bounty' || project.mode === 'hybrid') {
-                chips.push(`<button type="button" class="pc-fchip pc-fchip--action" onclick="openContractEconomyModal(${project.id}); event.stopPropagation();">${window.escapeHTML(window.t('contractChipLabel', { current: bountyCount, target: project.limit_bounty || 0, price: formatUiAmount(project.bounty_per_tester || 0, 1) }, lang))}</button>`);
-            }
             if (guestTesterCount > 0) {
                 chips.push(`<span class="pc-fchip">👽 ${window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang))}</span>`);
             }
@@ -4387,6 +4474,17 @@ function openEditModal(projectId, options) {
                     viewCard.classList.remove('highlight-pulse');
                 }, 4000);
             }
+        }, 300);
+    }
+    if (options && options.focusRecruitment) {
+        setTimeout(function() {
+            var recruitCard = document.getElementById('edit-recruitment-card');
+            if (!recruitCard) return;
+            recruitCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            recruitCard.classList.add('highlight-pulse');
+            setTimeout(function() {
+                recruitCard.classList.remove('highlight-pulse');
+            }, 4000);
         }, 300);
     }
 }

@@ -498,6 +498,9 @@
             ? '<button type="button" class="pc-reward-chip" onclick="event.stopPropagation(); openKarmaDistribution(' +
                 Number(project.id) + ');">' + esc(text('karmaRewards', '☯️ Rewards: {count}', { count: context.rewardsLeft })) + '</button>'
             : '';
+        var ringHtml = typeof window.buildProjectDailyProgressRingHtml === 'function'
+            ? window.buildProjectDailyProgressRingHtml(project)
+            : '';
         return '<section class="pc-control' + (entry && entry.loading ? ' is-hydrating' : '') + '">' +
             '<header class="pc-control__head">' +
                 '<span class="pc-control__mark" aria-hidden="true">🛡</span>' +
@@ -508,6 +511,7 @@
                     '</span>' +
                 '</span>' +
                 rewardChip +
+                ringHtml +
             '</header>' +
             '<ul class="pc-control__rows">' +
                 rows.map(function (row) { return controlRowHtml(project.id, row, context); }).join('') +
@@ -574,7 +578,18 @@
                 '<button type="button" onclick="event.stopPropagation(); pcRetryToday(' + Number(project.id) + ')">' +
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
-        return controlSectionHtml(project, rows, contextFor(project), entry) +
+        var controlHtml = controlSectionHtml(project, rows, contextFor(project), entry);
+        if (!controlHtml && typeof window.buildProjectDailyProgressRingHtml === 'function') {
+            controlHtml = '<section class="pc-control pc-control--ring-only">' +
+                '<header class="pc-control__head">' +
+                    '<span class="pc-control__titles">' +
+                        '<span class="pc-control__title">' + esc(text('pcDayProgressLabel', 'Daily progress')) + '</span>' +
+                    '</span>' +
+                    window.buildProjectDailyProgressRingHtml(project) +
+                '</header>' +
+            '</section>';
+        }
+        return controlHtml +
             (hydrated ? othersSectionHtml(project, entry) : '') +
             errorHtml;
     }
