@@ -29,7 +29,7 @@
     min-width: 0;
     font-size: 13px;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--text-secondary);
 }
 
 .pc-closed__glyph {
@@ -104,10 +104,18 @@
 
 .pc-state-day {
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+    padding-right: 11px;
+}
+
+.pc-state-day__row {
+    display: flex;
     align-items: center;
     gap: 10px;
     min-width: 0;
-    padding-right: 11px;
 }
 
 .pc-cal {
@@ -168,6 +176,13 @@
     flex-direction: column;
     justify-content: center;
     gap: 3px;
+    min-width: 0;
+}
+
+.pc-state-day__under {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     min-width: 0;
 }
 
@@ -276,17 +291,25 @@
 }
 
 .pc-testers-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-tertiary);
+    font-size: 15px;
+    font-weight: 750;
+    color: var(--text-primary);
 }
 
 .pc-testers-metric {
     display: flex;
     align-items: baseline;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+}
+
+.pc-testers-lead {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+    color: var(--text-primary);
 }
 
 .pc-tester-ratio {
@@ -296,33 +319,55 @@
     color: var(--text-primary);
 }
 
-.pc-tester-ratio__current,
-.pc-tester-ratio__quota {
-    font-size: 22px;
+.pc-tester-ratio__current {
+    font-size: 20px;
     font-weight: 800;
     line-height: 1;
     letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+
+.pc-tester-ratio__quota {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text-tertiary);
 }
 
 .pc-tester-ratio__slash {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-tertiary);
 }
 
 .pc-tester-note {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-tertiary);
+    display: none;
+}
+
+.pc-cta.pc-cta--testers {
+    --pc-cta-size: 12px;
+    width: 100%;
+    min-height: 32px;
+    height: 34px;
+    margin-top: 4px;
+    padding: 0 8px;
+    font-size: var(--pc-cta-size);
+    line-height: 1.15;
+    border-radius: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.pc-cta--testers .pc-cta__label {
+    min-width: 0;
+    overflow: hidden;
     white-space: nowrap;
 }
 
-.pc-cta--testers {
-    width: 100%;
-    min-height: 40px;
-    margin-top: 2px;
-    font-size: 12.5px;
-    border-radius: 12px;
+.pc-cta--testers .pc-cta__glyph {
+    width: 13px;
+    height: 13px;
 }
 
 .pc-cta__glyph {

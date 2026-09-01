@@ -64,6 +64,22 @@ function buildProjectDailyProgressRingHtml(project) {
 window.getProjectDailyProgressMeta = getProjectDailyProgressMeta;
 window.buildProjectDailyProgressRingHtml = buildProjectDailyProgressRingHtml;
 
+function fitClosedTestAttractButton(button) {
+    if (!button) return;
+    var maxSize = 12;
+    var minSize = 8;
+    var size = maxSize;
+    button.style.setProperty('--pc-cta-size', maxSize + 'px');
+    var guard = 0;
+    while (size > minSize && button.scrollWidth > button.clientWidth + 1 && guard < 16) {
+        size -= 0.5;
+        button.style.setProperty('--pc-cta-size', size + 'px');
+        guard += 1;
+    }
+}
+
+window.fitClosedTestAttractButton = fitClosedTestAttractButton;
+
 function getProjectVisibilityMeta(project) {
     var mode = typeof window.getProjectVisibilityMode === 'function'
         ? window.getProjectVisibilityMode(project)
@@ -822,14 +838,6 @@ function renderProjects(force) {
         const totalTesters = activeRegularTesters.length + guestTesters.length;
         const googleQuota = GOOGLE_CLOSED_TEST_QUOTA;
         const regularTesterCount = activeRegularTesters.length;
-        const testersNeeded = Math.max(0, googleQuota - regularTesterCount);
-        const testersReserve = Math.max(0, regularTesterCount - googleQuota);
-        const testersNote = regularTesterCount < googleQuota
-            ? window.t('pcTestersNeedMore', { count: testersNeeded }, lang)
-            : regularTesterCount === googleQuota
-                ? window.t('pcTestersMinimumReached', {}, lang)
-                : window.t('pcTestersReserve', { count: testersReserve }, lang);
-        const testersNoteKind = regularTesterCount < googleQuota ? 'need' : (regularTesterCount === googleQuota ? 'ok' : 'reserve');
 
         const extraDaysRunning = extraPaidDays > 0 && (hasSync ? currentGoogleDay > 14 : platformDays > 14);
         const closedTestStage = isPendingCompletion
@@ -850,9 +858,7 @@ function renderProjects(force) {
                         : window.t('pcStatusRecruiting', {}, lang);
 
         const dayMain = hasSync ? currentGoogleDay : platformDays;
-        const dayKicker = hasSync
-            ? window.t('pcGooglePlayLabel', {}, lang)
-            : window.t('pcDayWord', {}, lang);
+        const dayKicker = window.t('pcDayWord', {}, lang);
         const emphasizeSync = !hasSync && platformDays >= 7 && regularTesterCount < googleQuota;
         const daySecondaryHtml = !hasSync
             ? `<button type="button" class="pc-day-sync${emphasizeSync ? ' is-emphasis' : ''}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${window.escapeHTML(window.t('pcSyncNotConfigured', {}, lang))}</button>`
@@ -893,7 +899,7 @@ function renderProjects(force) {
         const attractBtnHtml = `
             <button type="button" class="pc-cta ${attractIsPrimary ? 'pc-cta--primary' : 'pc-cta--neutral'} pc-cta--testers" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
                 ${attractPeopleIconHtml}
-                ${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}
+                <span class="pc-cta__label">${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}</span>
             </button>`;
 
         const stateBlockHtml = `
@@ -907,25 +913,30 @@ function renderProjects(force) {
                 </div>
                 <div class="pc-state-top">
                     <div class="pc-state-day">
-                        <button type="button" class="pc-cal" aria-label="${window.escapeHTML(window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id});">
-                            ${calendarIconHtml}
-                            <span class="pc-cal__dot" aria-hidden="true">+</span>
-                        </button>
-                        <div class="pc-state-day__copy">
-                            <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: dayMain, total: 14 }, lang))}">
-                                <span class="pc-day-word">${window.escapeHTML(dayKicker)}</span><span class="pc-day-num">${window.escapeHTML(String(dayMain))}</span><span class="pc-day-total">&nbsp;/&nbsp;14</span>
-                            </span>
-                            ${daySecondaryHtml}
+                        <div class="pc-state-day__row">
+                            <button type="button" class="pc-cal" aria-label="${window.escapeHTML(window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id});">
+                                ${calendarIconHtml}
+                                <span class="pc-cal__dot" aria-hidden="true">+</span>
+                            </button>
+                            <div class="pc-state-day__copy">
+                                <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: dayMain, total: 14 }, lang))}">
+                                    <span class="pc-day-word">${window.escapeHTML(dayKicker)}</span><span class="pc-day-num">${window.escapeHTML(String(dayMain))}</span><span class="pc-day-total">&nbsp;/&nbsp;14</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="pc-state-day__under">
                             <button type="button" class="pc-day-meta" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id});">${window.escapeHTML(bufferLineParts.join(' · '))}</button>
+                            ${daySecondaryHtml}
                         </div>
                     </div>
                     <div class="pc-state-testers">
-                        <span class="pc-testers-label">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</span>
                         <div class="pc-testers-metric">
-                            <span class="pc-tester-ratio" aria-label="${window.escapeHTML(String(regularTesterCount) + ' / ' + String(googleQuota))}">
-                                <span class="pc-tester-ratio__current">${window.escapeHTML(String(regularTesterCount))}</span><span class="pc-tester-ratio__slash">&nbsp;/&nbsp;</span><span class="pc-tester-ratio__quota">${window.escapeHTML(String(googleQuota))}</span>
+                            <span class="pc-testers-lead" aria-label="${window.escapeHTML(String(regularTesterCount) + ' / ' + String(googleQuota))}">
+                                <span class="pc-testers-label">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</span>
+                                <span class="pc-tester-ratio__current">${window.escapeHTML(String(regularTesterCount))}</span>
                             </span>
-                            <span class="pc-tester-note pc-tester-note--${testersNoteKind}">${window.escapeHTML(testersNote)}</span>
+                            <span class="pc-tester-ratio__slash">&nbsp;/&nbsp;</span>
+                            <span class="pc-tester-ratio__quota">${window.escapeHTML(String(googleQuota))}</span>
                         </div>
                         ${attractBtnHtml}
                     </div>
@@ -1096,6 +1107,9 @@ function renderProjects(force) {
             </div>
         `;
         container.appendChild(card);
+        requestAnimationFrame(function () {
+            fitClosedTestAttractButton(card.querySelector('.pc-cta--testers'));
+        });
         if (window.ProjectToday) window.ProjectToday.mount(card, project);
         } catch (e) {
             console.error('Project card render error:', e);
