@@ -182,14 +182,38 @@
 .pc-state-day__under {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     min-width: 0;
+}
+
+.pc-state-day__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-width: 0;
+}
+
+.pc-day-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle);
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
 }
 
 .pc-day-sync,
 .pc-day-hub,
-.pc-day-ok,
-.pc-day-meta {
+.pc-day-ok {
     display: block;
     width: 100%;
     padding: 0;
@@ -206,8 +230,7 @@
     text-overflow: ellipsis;
 }
 
-.pc-day-sync,
-.pc-day-meta {
+.pc-day-sync {
     cursor: pointer;
 }
 
@@ -219,25 +242,32 @@
 .pc-day-value {
     display: flex;
     align-items: baseline;
-    gap: 3px;
+    gap: 4px;
     min-width: 0;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     font-variant-numeric: tabular-nums;
 }
 
+.pc-day-lead {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+    color: var(--text-primary);
+}
+
 .pc-day-word {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    margin-right: 4px;
+    font-size: 15px;
+    font-weight: 750;
+    color: var(--text-primary);
 }
 
 .pc-day-num {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 800;
     line-height: 1;
     color: var(--text-primary);
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
 }
 
 .pc-day-total {

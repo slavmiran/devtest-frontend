@@ -865,14 +865,20 @@ function renderProjects(force) {
             : Number(currentGoogleDay) !== Number(platformDays)
                 ? `<span class="pc-day-hub">${window.escapeHTML(window.t('pcHubDay', { day: platformDays }, lang))}</span>`
                 : `<span class="pc-day-ok">${window.escapeHTML(window.t('pcSyncConfigured', {}, lang))}</span>`;
-        const bufferLineParts = [
+        const bufferChipLabels = [
             isPendingCompletion && bufferHoursLeft > 0
                 ? window.t('pcBufferLineHours', { hours: bufferHoursLeft }, lang)
                 : window.t('pcBufferLine', {}, lang),
         ];
         if (extraPaidDays > 0) {
-            bufferLineParts.push(window.t('pcExtensionLine', { days: extraPaidDays }, lang));
+            bufferChipLabels.push(window.t('pcExtensionLine', { days: extraPaidDays }, lang));
         }
+        const bufferChipsHtml = bufferChipLabels.length
+            ? `<div class="pc-state-day__chips">${bufferChipLabels.map(function (label) {
+                return '<button type="button" class="pc-day-chip" onclick="event.stopPropagation(); openProjectLifecycleModal(' + Number(project.id) + ');">' +
+                    window.escapeHTML(label) + '</button>';
+            }).join('')}</div>`
+            : '';
 
         const mutualCount = activeRegularTesters.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
         const bountyCount = activeRegularTesters.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
@@ -920,12 +926,16 @@ function renderProjects(force) {
                             </button>
                             <div class="pc-state-day__copy">
                                 <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: dayMain, total: 14 }, lang))}">
-                                    <span class="pc-day-word">${window.escapeHTML(dayKicker)}</span><span class="pc-day-num">${window.escapeHTML(String(dayMain))}</span><span class="pc-day-total">&nbsp;/&nbsp;14</span>
+                                    <span class="pc-day-lead">
+                                        <span class="pc-day-word">${window.escapeHTML(dayKicker)}</span>
+                                        <span class="pc-day-num">${window.escapeHTML(String(dayMain))}</span>
+                                    </span>
+                                    <span class="pc-day-total">&nbsp;/&nbsp;14</span>
                                 </span>
                             </div>
                         </div>
                         <div class="pc-state-day__under">
-                            <button type="button" class="pc-day-meta" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id});">${window.escapeHTML(bufferLineParts.join(' · '))}</button>
+                            ${bufferChipsHtml}
                             ${daySecondaryHtml}
                         </div>
                     </div>
