@@ -13,7 +13,7 @@ function _isProjectSyncedSafe(project) {
 var GOOGLE_CLOSED_TEST_QUOTA = 12;
 
 function getProjectDailyProgressMeta(project) {
-    const today = typeof getLocalDate === 'function' ? getLocalDate() : '';
+    const today = typeof getLocalDate === 'function' ? getLocalDate() : new Date().toISOString().slice(0, 10);
     const testers = Array.isArray(project && project.testers) ? project.testers : [];
     let countDone = 0;
     testers.forEach(function (tester) {
@@ -27,42 +27,215 @@ function getProjectDailyProgressMeta(project) {
         }
         if (tester.last_check_date === today) countDone += 1;
     });
+
     const presentCount = testers.filter(function (tester) {
         return !tester.is_left_soft;
     }).length;
-    const targetCheckins = Math.min(presentCount, GOOGLE_CLOSED_TEST_QUOTA);
-    const dailyPercentage = targetCheckins > 0 ? (countDone / targetCheckins) * 100 : 0;
-    const displayPercentage = Math.round(dailyPercentage);
-    const isOverachieved = dailyPercentage > 100;
-    const ringDegrees = Math.round(Math.min(dailyPercentage, 100) * 3.6);
-    const ringGradientMid = Math.round(ringDegrees * 0.55);
-    const ringOverMidA = Math.round(ringDegrees * 0.45);
-    const ringStyle = displayPercentage <= 0
-        ? '--pc-ring-deg: 0deg;'
-        : isOverachieved
-            ? `--pc-ring-deg: ${ringDegrees}deg; --pc-ring-bg: conic-gradient(from -90deg, #af52de 0deg, #ff9500 ${ringOverMidA}deg, #ff2d55 ${ringDegrees}deg, rgba(255,255,255,0.07) ${ringDegrees}deg 360deg);`
-            : `--pc-ring-deg: ${ringDegrees}deg; --pc-ring-bg: conic-gradient(from -90deg, #34c759 0deg, #30b0c7 ${ringGradientMid}deg, #2ecbd6 ${ringDegrees}deg, rgba(255,255,255,0.07) ${ringDegrees}deg 360deg);`;
+
+    const totalTesters = Number(project && project.active_testers_count != null ? project.active_testers_count : presentCount);
+    const todayDone = Number(project && project.today_checkins_count != null ? project.today_checkins_count : countDone);
+
+    const baseMax = Math.max(totalTesters, 12);
+    // Google Pin angle in degrees (0 to 360)
+    const googlePinDeg = (12 / baseMax) * 360;
+    // Progress fill angle in degrees (0 to 360)
+    const fillProgressDeg = Math.min((todayDone / baseMax) * 360, 360);
+    // Team discipline percent (capped at 100%)
+    const teamPercent = totalTesters > 0 ? Math.min(Math.round((todayDone / totalTesters) * 100), 100) : 0;
+
+    // Center bottom label
+    let centerLabel = 'Чекины дня';
+    if (totalTesters < 12) {
+        centerLabel = 'Норма Google';
+    } else if (todayDone > 12) {
+        centerLabel = '⚡ Overcharge';
+    } else if (todayDone === 12) {
+        centerLabel = 'План закрыт';
+    } else {
+        centerLabel = 'Чекины дня';
+    }
+
+    // Subtext below the ring
+    let subtext = '';
+    if (totalTesters < 12) {
+        subtext = `Сегодня в сети: ${todayDone} из ${totalTesters} (${teamPercent}%)`;
+    } else if (todayDone >= 12) {
+        subtext = `Команда: ${todayDone} из ${totalTesters} (${teamPercent}%) • Норма Google закрыта`;
+    } else {
+        subtext = `Команда: ${todayDone} из ${totalTesters} (${teamPercent}%)`;
+    }
+
+    // Status chip badge
+    let statusChip = { text: '', kind: '', color: '' };
+    if (totalTesters < 12) {
+        statusChip = {
+            text: `⚠️ Недобор (-${12 - totalTesters})`,
+            kind: 'amber',
+            color: '#ff9500'
+        };
+    } else if (todayDone < 12) {
+        statusChip = {
+            text: `⏳ Сбор чекинов (${todayDone}/12)`,
+            kind: 'sky',
+            color: '#0a84ff'
+        };
+    } else if (todayDone === 12) {
+        statusChip = {
+            text: `✅ Норма Google выполнена`,
+            kind: 'emerald',
+            color: '#34c759'
+        };
+    } else { // todayDone > 12
+        statusChip = {
+            text: `🔥 Сверх нормы (+${todayDone - 12})`,
+            kind: 'purple',
+            color: '#af52de'
+        };
+    }
+
+    const isOverachieved = todayDone > 12;
+
     return {
-        countDone: countDone,
-        presentCount: presentCount,
-        targetCheckins: targetCheckins,
-        displayPercentage: displayPercentage,
+        totalTesters: totalTesters,
+        todayDone: todayDone,
+        countDone: todayDone,
+        presentCount: totalTesters,
+        baseMax: baseMax,
+        googlePinDeg: googlePinDeg,
+        googlePinAngle: googlePinDeg,
+        fillProgressDeg: fillProgressDeg,
+        progressAngle: fillProgressDeg,
+        teamPercent: teamPercent,
+        displayPercentage: teamPercent,
+        centerLabel: centerLabel,
+        subtext: subtext,
+        statusChip: statusChip,
         isOverachieved: isOverachieved,
-        ringStyle: ringStyle,
     };
 }
 
-function buildProjectDailyProgressRingHtml(project) {
+function buildProjectDailyProgressRingHtml(project, options) {
     const meta = getProjectDailyProgressMeta(project);
-    const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
-    return `<div class="pc-ring${meta.isOverachieved ? ' is-over' : ''}${meta.displayPercentage === 0 ? ' is-zero' : ''}" style="${meta.ringStyle}" role="img" aria-label="${window.escapeHTML(window.t('pcDayProgressLabel', {}, uiLang))} ${meta.displayPercentage}%">
-        <span class="pc-ring__value">${meta.displayPercentage}%</span>
-        ${meta.isOverachieved ? `<span class="pc-ring__caption">${window.escapeHTML(window.t('pcOverchargeLabel', {}, uiLang))}</span>` : ''}
-    </div>`;
+    const appId = Number(project && (project.id || project.app_id) || 0);
+    const gradId = `dpr-grad-${appId || Math.floor(Math.random() * 10000)}`;
+    const glowId = `dpr-glow-${appId || Math.floor(Math.random() * 10000)}`;
+
+    const totalTesters = meta.totalTesters;
+    const todayDone = meta.todayDone;
+    const googlePinDeg = meta.googlePinDeg;
+    const progressAngle = meta.fillProgressDeg;
+
+    // SVG coordinate math (Center 50, 50, Radius 40)
+    const cx = 50;
+    const cy = 50;
+    const r = 40;
+
+    // 1. Deficit arc (if totalTesters < 12)
+    let deficitPathHtml = '';
+    if (totalTesters < 12) {
+        if (totalTesters <= 0) {
+            deficitPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#3f3f46" stroke-width="6" stroke-dasharray="3 4" />`;
+        } else {
+            const startAngle = (totalTesters / 12) * 360;
+            // Arc from startAngle to 360 (top)
+            const rad1 = (startAngle - 90) * Math.PI / 180;
+            const x1 = cx + r * Math.cos(rad1);
+            const y1 = cy + r * Math.sin(rad1);
+            const x2 = cx;
+            const y2 = cy - r; // (50, 10)
+            const deltaAngle = 360 - startAngle;
+            const largeArc = deltaAngle > 180 ? 1 : 0;
+            deficitPathHtml = `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}" fill="none" stroke="#3f3f46" stroke-width="6" stroke-dasharray="3 4" stroke-linecap="butt" />`;
+        }
+    }
+
+    // 2. Progress fill arc
+    let progressPathHtml = '';
+    if (progressAngle >= 359.5) {
+        progressPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#${gradId})" stroke-width="6" stroke-linecap="round" />`;
+    } else if (progressAngle > 0) {
+        const radP = (progressAngle - 90) * Math.PI / 180;
+        const px = cx + r * Math.cos(radP);
+        const py = cy + r * Math.sin(radP);
+        const largeArcP = progressAngle > 180 ? 1 : 0;
+        progressPathHtml = `<path d="M ${cx} ${cy - r} A ${r} ${r} 0 ${largeArcP} 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#${gradId})" stroke-width="6" stroke-linecap="round" />`;
+    }
+
+    // 3. Google Pin
+    const pinRad = (googlePinDeg - 90) * Math.PI / 180;
+    const pinX = cx + r * Math.cos(pinRad);
+    const pinY = cy + r * Math.sin(pinRad);
+    let pinHtml = '';
+    if (todayDone >= 12) {
+        pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="3.5" fill="#34c759" stroke="#16141c" stroke-width="1.5" filter="url(#${glowId})" />`;
+    } else {
+        pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="3" fill="#a1a1aa" stroke="#16141c" stroke-width="1.5" />`;
+    }
+
+    // 4. Gradient definition
+    const gradStops = todayDone > 12
+        ? `<stop offset="0%" stop-color="#af52de" /><stop offset="100%" stop-color="#ff9500" />`
+        : `<stop offset="0%" stop-color="#34c759" /><stop offset="100%" stop-color="#30b0c7" />`;
+
+    const ringClasses = [
+        'pc-ring',
+        meta.isOverachieved ? 'is-over' : '',
+        todayDone === 12 ? 'is-done' : '',
+        todayDone === 0 ? 'is-zero' : '',
+    ].filter(Boolean).join(' ');
+
+    const ringSvgHtml = `
+        <div class="${ringClasses}" onclick="openDailyProgressDetailsModal(${appId}, event);" role="button" tabindex="0" aria-label="Суточный план чекинов ${todayDone} из 12">
+            <svg viewBox="0 0 100 100" class="pc-ring__svg" aria-hidden="true">
+                <defs>
+                    <linearGradient id="${gradId}" x1="0%" y1="0%" x2="100%" y2="100%">
+                        ${gradStops}
+                    </linearGradient>
+                    <filter id="${glowId}" x="-50%" y="-50%" width="200%" height="200%">
+                        <feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#34c759" flood-opacity="0.9"/>
+                    </filter>
+                </defs>
+                <!-- Background track -->
+                <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#27272a" stroke-width="6" />
+                <!-- Deficit arc (if needed) -->
+                ${deficitPathHtml}
+                <!-- Progress fill -->
+                ${progressPathHtml}
+                <!-- Google Pin -->
+                ${pinHtml}
+            </svg>
+            <div class="pc-ring__center">
+                <span class="pc-ring__count">${todayDone}&nbsp;/&nbsp;12</span>
+                <span class="pc-ring__label">${meta.centerLabel}</span>
+            </div>
+        </div>
+    `;
+
+    return ringSvgHtml;
+}
+
+function buildProjectDailyProgressBlockHtml(project) {
+    const meta = getProjectDailyProgressMeta(project);
+    const ringHtml = buildProjectDailyProgressRingHtml(project);
+    const appId = Number(project && (project.id || project.app_id) || 0);
+    return `
+        <div class="pc-ring-block" onclick="openDailyProgressDetailsModal(${appId}, event);">
+            ${ringHtml}
+            <div class="pc-ring-block__info">
+                <div class="status-chip status-chip--${meta.statusChip.kind}">
+                    ${meta.statusChip.text}
+                </div>
+                <div class="progress-subtext">
+                    ${meta.subtext}
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 window.getProjectDailyProgressMeta = getProjectDailyProgressMeta;
 window.buildProjectDailyProgressRingHtml = buildProjectDailyProgressRingHtml;
+window.buildProjectDailyProgressBlockHtml = buildProjectDailyProgressBlockHtml;
 
 function fitClosedTestAttractButton(button) {
     if (!button) return;
@@ -6266,6 +6439,97 @@ function closeProjectLifecycleModal(event) {
         modal.dataset.projectId = '';
     }
 }
+
+function openDailyProgressDetailsModal(projectId, event) {
+    if (event) event.stopPropagation();
+    if (window.tg && window.tg.HapticFeedback) {
+        window.tg.HapticFeedback.impactOccurred('light');
+    }
+    const project = (myProjects || []).find(item => Number(item.id) === Number(projectId))
+        || (typeof archivedProjects !== 'undefined' && (archivedProjects || []).find(item => Number(item.id || item.app_id) === Number(projectId)));
+    const modal = document.getElementById('daily-progress-modal');
+    const titleEl = document.getElementById('daily-progress-modal-title');
+    const bodyEl = document.getElementById('daily-progress-modal-body');
+    const actionsEl = document.getElementById('daily-progress-modal-actions');
+    if (!modal || !titleEl || !bodyEl || !actionsEl || !project) return;
+
+    const meta = getProjectDailyProgressMeta(project);
+    const totalTesters = meta.totalTesters;
+    const todayDone = meta.todayDone;
+    const teamPercent = meta.teamPercent;
+
+    titleEl.textContent = '🎯 Суточный план чекинов';
+
+    if (totalTesters < 12) {
+        const deficit = 12 - totalTesters;
+        bodyEl.innerHTML = `
+            <div class="dp-sheet__card">
+                <p class="dp-sheet__lead">Для непрерывного отсчёта Google Play Console требуется минимум 12 активных запусков в день.</p>
+                <div class="dp-sheet__metrics">
+                    <div class="dp-sheet__metric-row">
+                        <span class="dp-sheet__metric-label">• В вашей команде:</span>
+                        <strong class="dp-sheet__metric-val">${totalTesters} из 12 чел.</strong>
+                    </div>
+                    <div class="dp-sheet__metric-row">
+                        <span class="dp-sheet__metric-label">• Сегодня открыли:</span>
+                        <strong class="dp-sheet__metric-val">${todayDone} чел.</strong>
+                    </div>
+                    <div class="dp-sheet__metric-row">
+                        <span class="dp-sheet__metric-label">• Дефицит команды:</span>
+                        <strong class="dp-sheet__metric-val text-amber">${deficit} чел.</strong>
+                    </div>
+                </div>
+                <div class="dp-sheet__tip">
+                    <span class="dp-sheet__tip-icon">💡</span>
+                    <span class="dp-sheet__tip-text"><strong>Совет:</strong> Наберите ещё ${deficit} тестеров через взаимку или витрину, чтобы консоль запустила таймер 14 дней.</span>
+                </div>
+            </div>
+        `;
+        actionsEl.innerHTML = `
+            <button type="button" class="btn btn-secondary" onclick="closeDailyProgressDetailsModal()">Закрыть</button>
+            <button type="button" class="btn btn-primary" onclick="closeDailyProgressDetailsModal(); openAttractTestersSheet(${project.id});">🚀 Привлечь тестеров</button>
+        `;
+    } else {
+        const quotaDone = todayDone >= 12;
+        const leftCount = 12 - todayDone;
+        bodyEl.innerHTML = `
+            <div class="dp-sheet__card">
+                <p class="dp-sheet__lead">Норматив Google Play — 12 ежедневных запусков приложения.</p>
+                <div class="dp-sheet__metrics">
+                    <div class="dp-sheet__metric-row">
+                        <span class="dp-sheet__metric-label">• Выполнено сегодня:</span>
+                        <strong class="dp-sheet__metric-val">${todayDone} чекинов ${quotaDone ? '<span class="text-emerald">(Норматив 12 закрыт)</span>' : '<span class="text-sky">(Осталось: ' + leftCount + ')</span>'}</strong>
+                    </div>
+                    <div class="dp-sheet__metric-row">
+                        <span class="dp-sheet__metric-label">• Активность команды:</span>
+                        <strong class="dp-sheet__metric-val">${todayDone} из ${totalTesters} (${teamPercent}%)</strong>
+                    </div>
+                </div>
+                <div class="dp-sheet__status-box ${quotaDone ? 'is-success' : 'is-pending'}">
+                    <span>${quotaDone ? '🎉 Отличный темп! Сегодняшний день засчитан алгоритмами Google Play.' : '⏳ Чекины продолжают поступать в течение суток.'}</span>
+                </div>
+            </div>
+        `;
+        actionsEl.innerHTML = `
+            <button type="button" class="btn btn-primary" style="width: 100%;" onclick="closeDailyProgressDetailsModal()">Понятно</button>
+        `;
+    }
+
+    modal.classList.add('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+}
+
+function closeDailyProgressDetailsModal(event) {
+    if (event && event.target && event.target !== document.getElementById('daily-progress-modal') && !event.target.classList.contains('modal-overlay')) {
+        return;
+    }
+    const modal = document.getElementById('daily-progress-modal');
+    if (modal) modal.classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+}
+
+window.openDailyProgressDetailsModal = openDailyProgressDetailsModal;
+window.closeDailyProgressDetailsModal = closeDailyProgressDetailsModal;
 
 function toggleProjectSettingsDrawer(projectId, event) {
     if (event) {

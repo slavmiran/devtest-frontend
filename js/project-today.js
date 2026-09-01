@@ -1138,15 +1138,12 @@
             '<div class="pc-activity__hero">' +
                 ringHtml +
                 '<div class="pc-activity__hero-copy">' +
-                    '<div class="pc-activity__hero-label">' +
-                        esc(text('pcActivityActiveToday', 'Active today {done}/{total}', {
-                            done: Number(progress.countDone || 0),
-                            total: Number(progress.presentCount || 0),
-                        })) +
-                    '</div>' +
-                    (quotaReserve
-                        ? '<div class="pc-activity__hero-sub">' + esc(text('pcActivityQuotaReserve', 'Quota met with reserve')) + '</div>'
+                    (progress.statusChip && progress.statusChip.text
+                        ? '<div class="status-chip status-chip--' + esc(progress.statusChip.kind) + '">' + esc(progress.statusChip.text) + '</div>'
                         : '') +
+                    (progress.subtext
+                        ? '<div class="progress-subtext">' + esc(progress.subtext) + '</div>'
+                        : '<div class="pc-activity__hero-label">' + esc(text('pcActivityActiveToday', 'Active today {done}/{total}', { done: Number(progress.countDone || 0), total: Number(progress.presentCount || 0) })) + '</div>') +
                 '</div>' +
             '</div>' +
             filtersHtml(project.id, visibleFilters(data), filter) +

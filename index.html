@@ -867,6 +867,17 @@
         </div>
     </div>
 
+    <!-- Project card: daily progress details bottom-sheet -->
+    <div id="daily-progress-modal" class="modal-overlay" onclick="closeDailyProgressDetailsModal(event)">
+        <div class="modal-content pc-lc-sheet" onclick="event.stopPropagation()">
+            <h3 id="daily-progress-modal-title" class="pc-lc-sheet__title">🎯 Суточный план чекинов</h3>
+            <div id="daily-progress-modal-body"></div>
+            <div class="pc-lc-sheet__actions" id="daily-progress-modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeDailyProgressDetailsModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Delete Project Modal -->
     <div id="delete-modal" class="modal-overlay" onclick="closeDeleteModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
