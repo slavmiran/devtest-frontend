@@ -43,53 +43,64 @@ function getProjectDailyProgressMeta(project) {
     // Team discipline percent (capped at 100%)
     const teamPercent = totalTesters > 0 ? Math.min(Math.round((todayDone / totalTesters) * 100), 100) : 0;
 
+    const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
+    const tr = (k, p, def) => (typeof window.t === 'function' ? window.t(k, p || {}, uiLang) : (def || k));
+
+    // Material SVG Icons (13x13 sleek stroke)
+    const icons = {
+        warning: `<svg class="status-chip__icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+        time: `<svg class="status-chip__icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+        check: `<svg class="status-chip__icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+        bolt: `<svg class="status-chip__icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`
+    };
+
     // Center bottom label
-    let centerLabel = 'Чекины дня';
+    let centerLabel = tr('dprLabelDailyCheckins', {}, 'Чекины дня');
     if (totalTesters < 12) {
-        centerLabel = 'Норма Google';
+        centerLabel = tr('dprLabelGoogleNorm', {}, 'Норма Google');
     } else if (todayDone > 12) {
-        centerLabel = '⚡ Overcharge';
+        centerLabel = tr('dprLabelOvercharge', {}, 'Overcharge');
     } else if (todayDone === 12) {
-        centerLabel = 'План закрыт';
+        centerLabel = tr('dprLabelPlanClosed', {}, 'План закрыт');
     } else {
-        centerLabel = 'Чекины дня';
+        centerLabel = tr('dprLabelDailyCheckins', {}, 'Чекины дня');
     }
 
     // Subtext below the ring
     let subtext = '';
     if (totalTesters < 12) {
-        subtext = `Сегодня в сети: ${todayDone} из ${totalTesters} (${teamPercent}%)`;
+        subtext = tr('dprSubtextDeficit', { done: todayDone, total: totalTesters, percent: teamPercent }, `Протестировали сегодня: ${todayDone} из ${totalTesters} (${teamPercent}%)`);
     } else if (todayDone >= 12) {
-        subtext = `Команда: ${todayDone} из ${totalTesters} (${teamPercent}%) • Норма Google закрыта`;
+        subtext = tr('dprSubtextComplete', { done: todayDone, total: totalTesters, percent: teamPercent }, `Чекины команды: ${todayDone} из ${totalTesters} (${teamPercent}%) • Норма Google закрыта`);
     } else {
-        subtext = `Команда: ${todayDone} из ${totalTesters} (${teamPercent}%)`;
+        subtext = tr('dprSubtextGathering', { done: todayDone, total: totalTesters, percent: teamPercent }, `Чекины команды: ${todayDone} из ${totalTesters} (${teamPercent}%)`);
     }
 
-    // Status chip badge
-    let statusChip = { text: '', kind: '', color: '' };
+    // Status chip badge (Restrained, elegant palette with Material SVG icon)
+    let statusChip = { text: '', kind: '', iconHtml: '' };
     if (totalTesters < 12) {
         statusChip = {
-            text: `⚠️ Недобор (-${12 - totalTesters})`,
+            text: tr('dprChipDeficit', { count: 12 - totalTesters }, `Дефицит (-${12 - totalTesters})`),
             kind: 'amber',
-            color: '#ff9500'
+            iconHtml: icons.warning
         };
     } else if (todayDone < 12) {
         statusChip = {
-            text: `⏳ Сбор чекинов (${todayDone}/12)`,
+            text: tr('dprChipGathering', { done: todayDone }, `Сбор чекинов (${todayDone}/12)`),
             kind: 'sky',
-            color: '#0a84ff'
+            iconHtml: icons.time
         };
     } else if (todayDone === 12) {
         statusChip = {
-            text: `✅ Норма Google выполнена`,
+            text: tr('dprChipComplete', {}, 'Норма выполнена'),
             kind: 'emerald',
-            color: '#34c759'
+            iconHtml: icons.check
         };
     } else { // todayDone > 12
         statusChip = {
-            text: `🔥 Сверх нормы (+${todayDone - 12})`,
+            text: tr('dprChipOver', { count: todayDone - 12 }, `Сверх нормы (+${todayDone - 12})`),
             kind: 'purple',
-            color: '#af52de'
+            iconHtml: icons.bolt
         };
     }
 
@@ -125,16 +136,16 @@ function buildProjectDailyProgressRingHtml(project, options) {
     const googlePinDeg = meta.googlePinDeg;
     const progressAngle = meta.fillProgressDeg;
 
-    // SVG coordinate math (Center 50, 50, Radius 40)
+    // SVG coordinate math (Center 50, 50, Radius 39, Stroke 5)
     const cx = 50;
     const cy = 50;
-    const r = 40;
+    const r = 39;
 
-    // 1. Deficit arc (if totalTesters < 12)
+    // 1. Deficit smooth track (if totalTesters < 12)
     let deficitPathHtml = '';
     if (totalTesters < 12) {
         if (totalTesters <= 0) {
-            deficitPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#3f3f46" stroke-width="6" stroke-dasharray="3 4" />`;
+            deficitPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5" />`;
         } else {
             const startAngle = (totalTesters / 12) * 360;
             // Arc from startAngle to 360 (top)
@@ -142,23 +153,23 @@ function buildProjectDailyProgressRingHtml(project, options) {
             const x1 = cx + r * Math.cos(rad1);
             const y1 = cy + r * Math.sin(rad1);
             const x2 = cx;
-            const y2 = cy - r; // (50, 10)
+            const y2 = cy - r; // (50, 11)
             const deltaAngle = 360 - startAngle;
             const largeArc = deltaAngle > 180 ? 1 : 0;
-            deficitPathHtml = `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}" fill="none" stroke="#3f3f46" stroke-width="6" stroke-dasharray="3 4" stroke-linecap="butt" />`;
+            deficitPathHtml = `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5" stroke-linecap="round" />`;
         }
     }
 
-    // 2. Progress fill arc
+    // 2. Progress fill arc (smooth linecap)
     let progressPathHtml = '';
     if (progressAngle >= 359.5) {
-        progressPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#${gradId})" stroke-width="6" stroke-linecap="round" />`;
+        progressPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#${gradId})" stroke-width="5" stroke-linecap="round" />`;
     } else if (progressAngle > 0) {
         const radP = (progressAngle - 90) * Math.PI / 180;
         const px = cx + r * Math.cos(radP);
         const py = cy + r * Math.sin(radP);
         const largeArcP = progressAngle > 180 ? 1 : 0;
-        progressPathHtml = `<path d="M ${cx} ${cy - r} A ${r} ${r} 0 ${largeArcP} 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#${gradId})" stroke-width="6" stroke-linecap="round" />`;
+        progressPathHtml = `<path d="M ${cx} ${cy - r} A ${r} ${r} 0 ${largeArcP} 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#${gradId})" stroke-width="5" stroke-linecap="round" />`;
     }
 
     // 3. Google Pin
@@ -167,15 +178,15 @@ function buildProjectDailyProgressRingHtml(project, options) {
     const pinY = cy + r * Math.sin(pinRad);
     let pinHtml = '';
     if (todayDone >= 12) {
-        pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="3.5" fill="#34c759" stroke="#16141c" stroke-width="1.5" filter="url(#${glowId})" />`;
+        pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="3.2" fill="#30d158" stroke="#16141c" stroke-width="1.5" filter="url(#${glowId})" />`;
     } else {
-        pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="3" fill="#a1a1aa" stroke="#16141c" stroke-width="1.5" />`;
+        pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="2.8" fill="#8e8e93" stroke="#16141c" stroke-width="1.5" />`;
     }
 
-    // 4. Gradient definition
+    // 4. Gradient definition (Refined modern gradients)
     const gradStops = todayDone > 12
-        ? `<stop offset="0%" stop-color="#af52de" /><stop offset="100%" stop-color="#ff9500" />`
-        : `<stop offset="0%" stop-color="#34c759" /><stop offset="100%" stop-color="#30b0c7" />`;
+        ? `<stop offset="0%" stop-color="#bf5af2" /><stop offset="100%" stop-color="#ff9f0a" />`
+        : `<stop offset="0%" stop-color="#30d158" /><stop offset="100%" stop-color="#30b0c7" />`;
 
     const ringClasses = [
         'pc-ring',
@@ -192,12 +203,12 @@ function buildProjectDailyProgressRingHtml(project, options) {
                         ${gradStops}
                     </linearGradient>
                     <filter id="${glowId}" x="-50%" y="-50%" width="200%" height="200%">
-                        <feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#34c759" flood-opacity="0.9"/>
+                        <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#30d158" flood-opacity="0.8"/>
                     </filter>
                 </defs>
                 <!-- Background track -->
-                <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#27272a" stroke-width="6" />
-                <!-- Deficit arc (if needed) -->
+                <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#24232c" stroke-width="5" />
+                <!-- Deficit track (if needed) -->
                 ${deficitPathHtml}
                 <!-- Progress fill -->
                 ${progressPathHtml}
@@ -223,7 +234,8 @@ function buildProjectDailyProgressBlockHtml(project) {
             ${ringHtml}
             <div class="pc-ring-block__info">
                 <div class="status-chip status-chip--${meta.statusChip.kind}">
-                    ${meta.statusChip.text}
+                    ${meta.statusChip.iconHtml || ''}
+                    <span class="status-chip__text">${meta.statusChip.text}</span>
                 </div>
                 <div class="progress-subtext">
                     ${meta.subtext}
@@ -6455,60 +6467,78 @@ function openDailyProgressDetailsModal(projectId, event) {
     const todayDone = meta.todayDone;
     const teamPercent = meta.teamPercent;
 
-    titleEl.textContent = '🎯 Суточный план чекинов';
+    const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
+    const tr = (k, p, def) => (typeof window.t === 'function' ? window.t(k, p || {}, uiLang) : (def || k));
+
+    titleEl.textContent = tr('dprModalTitle', {}, 'Суточный план и рекомендации');
 
     if (totalTesters < 12) {
         const deficit = 12 - totalTesters;
         bodyEl.innerHTML = `
             <div class="dp-sheet__card">
-                <p class="dp-sheet__lead">Для непрерывного отсчёта Google Play Console требуется минимум 12 активных запусков в день.</p>
-                <div class="dp-sheet__metrics">
-                    <div class="dp-sheet__metric-row">
-                        <span class="dp-sheet__metric-label">• В вашей команде:</span>
-                        <strong class="dp-sheet__metric-val">${totalTesters} из 12 чел.</strong>
-                    </div>
-                    <div class="dp-sheet__metric-row">
-                        <span class="dp-sheet__metric-label">• Сегодня открыли:</span>
-                        <strong class="dp-sheet__metric-val">${todayDone} чел.</strong>
-                    </div>
-                    <div class="dp-sheet__metric-row">
-                        <span class="dp-sheet__metric-label">• Дефицит команды:</span>
-                        <strong class="dp-sheet__metric-val text-amber">${deficit} чел.</strong>
+                <div class="dp-sheet__alert dp-sheet__alert--warn">
+                    <svg class="dp-sheet__alert-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <div class="dp-sheet__alert-body">
+                        <strong class="dp-sheet__alert-title">${tr('dprModalDeficitLead')}</strong>
+                        <p class="dp-sheet__alert-desc">${tr('dprModalDeficitWarning')}</p>
                     </div>
                 </div>
                 <div class="dp-sheet__tip">
-                    <span class="dp-sheet__tip-icon">💡</span>
-                    <span class="dp-sheet__tip-text"><strong>Совет:</strong> Наберите ещё ${deficit} тестеров через взаимку или витрину, чтобы консоль запустила таймер 14 дней.</span>
+                    <svg class="dp-sheet__tip-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
+                    <div class="dp-sheet__tip-text">
+                        <strong>Совет:</strong> ${tr('dprModalDeficitAdvice')}
+                    </div>
+                </div>
+                <div class="dp-sheet__metrics-compact">
+                    <div class="dp-sheet__metric-item">
+                        <span class="dp-sheet__metric-k">${tr('dprModalDeficitTeam', { total: totalTesters, deficit: deficit })}</span>
+                    </div>
+                    <div class="dp-sheet__metric-item">
+                        <span class="dp-sheet__metric-k">${tr('dprModalDeficitTested', { done: todayDone })}</span>
+                    </div>
                 </div>
             </div>
         `;
         actionsEl.innerHTML = `
-            <button type="button" class="btn btn-secondary" onclick="closeDailyProgressDetailsModal()">Закрыть</button>
-            <button type="button" class="btn btn-primary" onclick="closeDailyProgressDetailsModal(); openAttractTestersSheet(${project.id});">🚀 Привлечь тестеров</button>
+            <button type="button" class="btn btn-secondary" onclick="closeDailyProgressDetailsModal()">${tr('pcLifecycleCloseBtn', {}, 'Закрыть')}</button>
+            <button type="button" class="btn btn-primary" onclick="closeDailyProgressDetailsModal(); openAttractTestersSheet(${project.id});">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:text-bottom; margin-right:6px;"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+                ${tr('attractTestersBtn', {}, 'Привлечь тестеров')}
+            </button>
         `;
     } else {
         const quotaDone = todayDone >= 12;
         const leftCount = 12 - todayDone;
         bodyEl.innerHTML = `
             <div class="dp-sheet__card">
-                <p class="dp-sheet__lead">Норматив Google Play — 12 ежедневных запусков приложения.</p>
-                <div class="dp-sheet__metrics">
-                    <div class="dp-sheet__metric-row">
-                        <span class="dp-sheet__metric-label">• Выполнено сегодня:</span>
-                        <strong class="dp-sheet__metric-val">${todayDone} чекинов ${quotaDone ? '<span class="text-emerald">(Норматив 12 закрыт)</span>' : '<span class="text-sky">(Осталось: ' + leftCount + ')</span>'}</strong>
-                    </div>
-                    <div class="dp-sheet__metric-row">
-                        <span class="dp-sheet__metric-label">• Активность команды:</span>
-                        <strong class="dp-sheet__metric-val">${todayDone} из ${totalTesters} (${teamPercent}%)</strong>
+                <div class="dp-sheet__status-badge ${quotaDone ? 'is-complete' : 'is-gathering'}">
+                    <svg class="dp-sheet__status-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        ${quotaDone
+                            ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+                            : '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
+                        }
+                    </svg>
+                    <div class="dp-sheet__status-text">
+                        ${quotaDone ? tr('dprModalCompleteStatus', { done: todayDone }) : tr('dprModalInProgressStatus', { done: todayDone, left: leftCount })}
                     </div>
                 </div>
-                <div class="dp-sheet__status-box ${quotaDone ? 'is-success' : 'is-pending'}">
-                    <span>${quotaDone ? '🎉 Отличный темп! Сегодняшний день засчитан алгоритмами Google Play.' : '⏳ Чекины продолжают поступать в течение суток.'}</span>
+                
+                <div class="dp-sheet__tip">
+                    <svg class="dp-sheet__tip-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
+                    <div class="dp-sheet__tip-text">
+                        <strong>Совет для успешного релиза:</strong> ${tr('dprModalCompleteUpdatesAdvice')}
+                    </div>
+                </div>
+
+                <div class="dp-sheet__metrics-compact">
+                    <div class="dp-sheet__metric-item">
+                        <span class="dp-sheet__metric-k">${tr('dprModalCompleteTeam', { done: todayDone, total: totalTesters, percent: teamPercent })}</span>
+                    </div>
                 </div>
             </div>
         `;
         actionsEl.innerHTML = `
-            <button type="button" class="btn btn-primary" style="width: 100%;" onclick="closeDailyProgressDetailsModal()">Понятно</button>
+            <button type="button" class="btn btn-primary" style="width: 100%;" onclick="closeDailyProgressDetailsModal()">${tr('pcLifecycleCloseBtn', {}, 'Понятно')}</button>
         `;
     }
 

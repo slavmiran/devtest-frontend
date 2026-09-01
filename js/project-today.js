@@ -1139,7 +1139,10 @@
                 ringHtml +
                 '<div class="pc-activity__hero-copy">' +
                     (progress.statusChip && progress.statusChip.text
-                        ? '<div class="status-chip status-chip--' + esc(progress.statusChip.kind) + '">' + esc(progress.statusChip.text) + '</div>'
+                        ? '<div class="status-chip status-chip--' + esc(progress.statusChip.kind) + '">' +
+                            (progress.statusChip.iconHtml || '') +
+                            '<span class="status-chip__text">' + esc(progress.statusChip.text) + '</span>' +
+                          '</div>'
                         : '') +
                     (progress.subtext
                         ? '<div class="progress-subtext">' + esc(progress.subtext) + '</div>'

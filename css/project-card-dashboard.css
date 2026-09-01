@@ -602,8 +602,8 @@
 
 .pc-ring {
     position: relative;
-    width: 58px;
-    height: 58px;
+    width: 68px;
+    height: 68px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -641,7 +641,7 @@
 }
 
 .pc-ring__count {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 800;
     line-height: 1.1;
     color: #ffffff;
@@ -655,59 +655,66 @@
     line-height: 1.1;
     color: var(--text-tertiary, #8e8e93);
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.03em;
     margin-top: 1.5px;
 }
 
 .pc-ring.is-over .pc-ring__label {
-    color: #ff9500;
+    color: #ff9f0a;
 }
 
 .pc-ring.is-done .pc-ring__label {
-    color: #34c759;
+    color: #30d158;
 }
 
 .pc-ring.is-zero .pc-ring__count {
     color: rgba(255, 255, 255, 0.45);
 }
 
-/* Status Chip & Progress Subtext */
+/* Status Chip & Progress Subtext (Restrained & Premium Dark UI) */
 
 .status-chip {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     padding: 3px 8px;
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 11.5px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.2;
     letter-spacing: -0.01em;
     width: fit-content;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+
+.status-chip__icon {
+    flex-shrink: 0;
 }
 
 .status-chip--amber {
-    background: rgba(255, 149, 0, 0.14);
-    color: #ff9f0a;
-    border: 1px solid rgba(255, 149, 0, 0.28);
+    background: rgba(255, 159, 10, 0.08);
+    color: #ffb340;
+    border-color: rgba(255, 159, 10, 0.22);
 }
 
 .status-chip--sky {
-    background: rgba(10, 132, 255, 0.14);
-    color: #0a84ff;
-    border: 1px solid rgba(10, 132, 255, 0.28);
+    background: rgba(10, 132, 255, 0.08);
+    color: #64d2ff;
+    border-color: rgba(10, 132, 255, 0.22);
 }
 
 .status-chip--emerald {
-    background: rgba(52, 199, 89, 0.14);
-    color: #34c759;
-    border: 1px solid rgba(52, 199, 89, 0.28);
+    background: rgba(48, 209, 88, 0.08);
+    color: #30d158;
+    border-color: rgba(48, 209, 88, 0.22);
 }
 
 .status-chip--purple {
-    background: rgba(175, 82, 222, 0.14);
-    color: #bf5af2;
-    border: 1px solid rgba(175, 82, 222, 0.28);
+    background: rgba(191, 90, 242, 0.08);
+    color: #d380ff;
+    border-color: rgba(191, 90, 242, 0.22);
 }
 
 .progress-subtext {
@@ -718,107 +725,131 @@
     margin-top: 3px;
 }
 
-/* Daily Progress Bottom Sheet */
+/* Daily Progress Bottom Sheet (Material Design 3 & Dark Glass) */
 
 .dp-sheet__card {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 4px 0 8px;
+    padding: 6px 0 10px;
 }
 
-.dp-sheet__lead {
-    font-size: 13.5px;
-    line-height: 1.45;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-.dp-sheet__metrics {
+.dp-sheet__alert {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-subtle);
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(255, 159, 10, 0.06);
+    border: 1px solid rgba(255, 159, 10, 0.2);
     border-radius: 12px;
     padding: 12px 14px;
 }
 
-.dp-sheet__metric-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 13px;
+.dp-sheet__alert--warn .dp-sheet__alert-icon {
+    color: #ffb340;
+    flex-shrink: 0;
+    margin-top: 1px;
 }
 
-.dp-sheet__metric-label {
-    color: var(--text-secondary);
+.dp-sheet__alert-body {
+    min-width: 0;
+    flex: 1;
 }
 
-.dp-sheet__metric-val {
-    color: var(--text-primary);
+.dp-sheet__alert-title {
+    display: block;
+    font-size: 13.5px;
     font-weight: 700;
-    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    line-height: 1.35;
+    margin-bottom: 4px;
+}
+
+.dp-sheet__alert-desc {
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    margin: 0;
 }
 
 .dp-sheet__tip {
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    background: rgba(255, 149, 0, 0.08);
-    border: 1px solid rgba(255, 149, 0, 0.2);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
     border-radius: 12px;
-    padding: 10px 12px;
-    font-size: 12.5px;
-    line-height: 1.4;
-    color: var(--text-secondary);
+    padding: 11px 13px;
 }
 
 .dp-sheet__tip-icon {
-    font-size: 15px;
-    line-height: 1;
+    color: #0a84ff;
     flex-shrink: 0;
     margin-top: 1px;
 }
 
-.dp-sheet__status-box {
+.dp-sheet__tip--subtle .dp-sheet__tip-icon {
+    color: #30d158;
+}
+
+.dp-sheet__tip-text {
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.dp-sheet__tip-text strong {
+    color: var(--text-primary);
+}
+
+.dp-sheet__status-badge {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 10px;
+    padding: 11px 13px;
     border-radius: 12px;
     font-size: 13px;
     line-height: 1.4;
     font-weight: 600;
 }
 
-.dp-sheet__status-box.is-success {
-    background: rgba(52, 199, 89, 0.1);
-    border: 1px solid rgba(52, 199, 89, 0.25);
-    color: #34c759;
+.dp-sheet__status-badge.is-complete {
+    background: rgba(48, 209, 88, 0.08);
+    border: 1px solid rgba(48, 209, 88, 0.22);
+    color: #30d158;
 }
 
-.dp-sheet__status-box.is-pending {
-    background: rgba(10, 132, 255, 0.1);
-    border: 1px solid rgba(10, 132, 255, 0.25);
-    color: #0a84ff;
+.dp-sheet__status-badge.is-gathering {
+    background: rgba(10, 132, 255, 0.08);
+    border: 1px solid rgba(10, 132, 255, 0.22);
+    color: #64d2ff;
 }
 
-.text-amber {
-    color: #ff9f0a !important;
+.dp-sheet__status-icon {
+    flex-shrink: 0;
 }
 
-.text-sky {
-    color: #0a84ff !important;
+.dp-sheet__status-text {
+    min-width: 0;
+    flex: 1;
 }
 
-.text-emerald {
-    color: #34c759 !important;
+.dp-sheet__metrics-compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 9px 12px;
 }
 
-.text-purple {
-    color: #bf5af2 !important;
+.dp-sheet__metric-item {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+}
+
+.dp-sheet__metric-k {
+    font-weight: 600;
 }
 
 /* Card collapse: keep only the state strip visible */
@@ -2095,18 +2126,21 @@
 .pc-activity__hero {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 4px 2px 10px;
+    gap: 14px;
+    padding: 6px 2px 10px;
 }
 
 .pc-activity .pc-ring {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
 }
 
 .pc-activity__hero-copy {
     min-width: 0;
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .pc-activity__hero-label {
