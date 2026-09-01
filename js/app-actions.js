@@ -2998,6 +2998,19 @@ async function syncPendingFeedbackCheckinsFromServer() {
         }
 
         var waitingAppId = data.waiting ? Number(data.app_id || 0) : 0;
+
+        // Ensure tasks are freshly loaded before deciding if a pending checkin completed or failed
+        if (typeof _testsInFlight !== 'undefined' && _testsInFlight) {
+            try { await _testsInFlight; } catch (e) {}
+        } else if (typeof loadTasks === 'function') {
+            try { await loadTasks(true); } catch (e) {}
+        }
+
+        // clearCompletedPendingFeedbackCheckins() in loadTasks may have already handled completed checkins
+        if (!hasPendingFeedbackCheckins()) {
+            return false;
+        }
+
         var clearedIds = [];
         var today = typeof getLocalDate === 'function' ? getLocalDate() : '';
         Object.keys(_pendingFeedbackCheckinAppIds || {}).forEach(function(key) {
@@ -3015,9 +3028,9 @@ async function syncPendingFeedbackCheckinsFromServer() {
         var unfinishedCleared = false;
         clearedIds.forEach(function(appId) {
             var test = (myTests || []).find(function(item) {
-                return Number(item.id) === appId;
+                return Number(item.id) === appId || Number(item.app_id) === appId;
             });
-            var doneToday = !!(test && test.status === 'done' && String(test.last_check_date || '') === today);
+            var doneToday = !!(test && (test.status === 'done' || String(test.last_check_date || '') === today));
             if (!doneToday) {
                 unfinishedCleared = true;
                 if (restoreCheckinReadyAfterFeedbackPending(appId)) {
