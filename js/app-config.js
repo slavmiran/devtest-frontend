@@ -49,6 +49,13 @@ function _closeTopTelegramBackTarget() {
         return true;
     }
 
+    var activitySheet = document.getElementById('pc-activity-sheet');
+    if (activitySheet && activitySheet.classList.contains('active')) {
+        if (typeof pcCloseActivitySheet === 'function') pcCloseActivitySheet();
+        else activitySheet.classList.remove('active');
+        return true;
+    }
+
     var activeModals = document.querySelectorAll('.modal-overlay.active');
     if (activeModals.length) {
         var topModal = activeModals[activeModals.length - 1];

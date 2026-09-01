@@ -17,6 +17,7 @@
     var thumbnailCache = new Map();
     var observer = null;
     var expandedOthers = new Set();
+    var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
 
     function text(key, fallback, params) {
         if (typeof window.t === 'function') {
@@ -40,6 +41,17 @@
 
     function todayString() {
         return typeof getLocalDate === 'function' ? getLocalDate() : new Date().toISOString().slice(0, 10);
+    }
+
+    function shiftDateString(iso, days) {
+        var match = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return '';
+        var date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+        if (!Number.isFinite(date.getTime())) return '';
+        date.setDate(date.getDate() + Number(days || 0));
+        var month = date.getMonth() + 1;
+        var day = date.getDate();
+        return date.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;
     }
 
     function mediaUrl(path) {
@@ -275,8 +287,12 @@
             try {
                 var proof = await requestProofDetails(row.proofId);
                 row.feedbackStatus = String(proof && proof.feedback && proof.feedback.status || '').toLowerCase();
+                row.feedbackTitle = String(
+                    (proof && proof.feedback && (proof.feedback.title || proof.feedback.summary || proof.feedback.text)) || ''
+                ).replace(/\s+/g, ' ').trim().slice(0, 80);
             } catch (_) {
                 row.feedbackStatus = '';
+                row.feedbackTitle = '';
             }
         }));
     }
@@ -560,6 +576,331 @@
         '</section>';
     }
 
+    /* ────────────────── activity block: contribution / attention ──────────── */
+
+    function testerDayNumber(tester) {
+        var day = Number(tester && tester.testing_days || 0);
+        if (day > 0) return day;
+        if (tester && tester.start_date && typeof getUserTestingDay === 'function') {
+            return Number(getUserTestingDay(tester.start_date, tester.testing_days) || 0);
+        }
+        return 0;
+    }
+
+    function dossierUsername(tester) {
+        return String(tester && tester.username || '').trim().replace(/^@+/, '');
+    }
+
+    function isValuableRow(row) {
+        var type = String(row && row.proofType || '');
+        if (FEEDBACK_PROOF_TYPES.indexOf(type) !== -1) return true;
+        return type === 'screenshot' && Number(row.imageCount || 0) >= 3;
+    }
+
+    function collectContribution(control, others) {
+        var byTester = {};
+        var order = [];
+        (control || []).concat(others || []).forEach(function (row) {
+            if (!isValuableRow(row)) return;
+            var testerId = Number(row.testerId || 0);
+            if (testerId <= 0) return;
+            if (!byTester[testerId]) {
+                byTester[testerId] = {
+                    testerId: testerId,
+                    tester: row.tester,
+                    screenshotCount: 0,
+                    screenshotRow: null,
+                    bug: null,
+                    idea: null,
+                    play_review: null,
+                };
+                order.push(testerId);
+            }
+            var item = byTester[testerId];
+            if (row.proofType === 'screenshot' && Number(row.imageCount || 0) > item.screenshotCount) {
+                item.screenshotCount = Number(row.imageCount || 0);
+                item.screenshotRow = row;
+            }
+            if (row.proofType === 'bug' && !item.bug) item.bug = row;
+            if (row.proofType === 'idea' && !item.idea) item.idea = row;
+            if (row.proofType === 'play_review' && !item.play_review) item.play_review = row;
+        });
+        return order.map(function (testerId) {
+            var item = byTester[testerId];
+            var reasons = [];
+            if (item.screenshotCount >= 3 && item.screenshotRow) {
+                reasons.push({
+                    kind: 'screenshots',
+                    label: text('pcContributionScreenshots', '{count} screenshots', { count: item.screenshotCount }),
+                    proofId: item.screenshotRow.proofId,
+                    feedbackId: 0,
+                });
+            }
+            if (item.bug) {
+                reasons.push({
+                    kind: 'bug',
+                    label: item.bug.feedbackTitle
+                        ? (text('pcProofBug', 'Bug') + ' · ' + item.bug.feedbackTitle)
+                        : text('pcProofBug', 'Bug'),
+                    proofId: item.bug.proofId,
+                    feedbackId: item.bug.feedbackId,
+                });
+            }
+            if (item.idea) {
+                reasons.push({
+                    kind: 'idea',
+                    label: text('pcContributionIdea', 'Recommendation'),
+                    proofId: item.idea.proofId,
+                    feedbackId: item.idea.feedbackId,
+                });
+            }
+            if (item.play_review) {
+                reasons.push({
+                    kind: 'play_review',
+                    label: text('pcProofReview', 'Review'),
+                    proofId: item.play_review.proofId,
+                    feedbackId: item.play_review.feedbackId,
+                });
+            }
+            item.reasons = reasons;
+            return item;
+        });
+    }
+
+    function collectAttention(project) {
+        var yesterday = shiftDateString(todayString(), -1);
+        var items = [];
+        (project && project.testers || []).forEach(function (tester) {
+            if (!tester || tester.is_left_soft || tester.is_guest_tester || tester.is_external) return;
+            var reasons = [];
+            var neverOpened = !tester.last_check_date;
+            if (neverOpened) {
+                reasons.push({
+                    code: 'not_opened',
+                    label: text('statusNotOpened', 'Not opened yet'),
+                });
+            } else {
+                var yesterdayDay = testerDayNumber(tester) - 1;
+                if (yesterday && isControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday) {
+                    reasons.push({
+                        code: 'missed_control',
+                        label: text('pcAttentionMissedControl', 'Control proof was not received yesterday'),
+                    });
+                }
+            }
+            var skips = (typeof calculateConsecutiveSkips === 'function')
+                ? Number(calculateConsecutiveSkips(tester) || 0)
+                : Number(tester.consecutive_skips || 0);
+            if (skips >= 3) {
+                reasons.push({
+                    code: 'skips',
+                    label: text('pcAttentionSkips', '{count} consecutive skips', { count: skips }),
+                });
+            }
+            var joinType = String(tester.join_type || '').toLowerCase();
+            if ((joinType === 'mutual' || joinType === 'prelaunch') && tester.is_mutual_debt) {
+                reasons.push({
+                    code: 'debt',
+                    label: text('pcAttentionDebt', 'Still owes finishing your project'),
+                });
+            }
+            if (!reasons.length) return;
+            items.push({ tester: tester, testerId: Number(tester.tester_id || 0), reasons: reasons });
+        });
+        return items;
+    }
+
+    function controlProofLabel(row) {
+        if (!row || !row.received) return text('pcControlPending', 'Pending');
+        if (row.proofType === 'screenshot') return text('testingControlProofScreenshot', 'Screenshot');
+        return proofTypeLabel(row.proofType) || text('pcControlReceivedMark', 'Received');
+    }
+
+    function emptySheetHtml(message) {
+        return '<div class="pc-activity-empty">' + esc(message) + '</div>';
+    }
+
+    function contributionSheetHtml(appId, items, context) {
+        if (!items.length) return emptySheetHtml(text('pcContributionEmpty', 'No extra contribution today'));
+        return '<ul class="pc-act-list">' + items.map(function (item) {
+            var reasonHtml = item.reasons.map(function (reason) {
+                var handler = reason.feedbackId > 0
+                    ? 'pcOpenFeedback(' + Number(appId) + ',' + Number(reason.feedbackId) + ')'
+                    : (reason.proofId > 0
+                        ? 'pcOpenProof(' + Number(appId) + ',' + Number(reason.proofId) + ',0)'
+                        : '');
+                if (!handler) return '<span class="pc-act-reason">' + esc(reason.label) + '</span>';
+                return '<button type="button" class="pc-act-reason" onclick="event.stopPropagation(); ' + handler + '">' +
+                    esc(reason.label) + '</button>';
+            }).join('<span class="pc-act-reason-sep"> · </span>');
+            var username = dossierUsername(item.tester);
+            var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
+            var rewarded = context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
+            var rewardHtml = rewarded
+                ? '<span class="pc-action pc-action--done">☯️ ' + esc(text('pcRewardedLabel', 'Rewarded')) + '</span>'
+                : (context.rewardsLeft > 0
+                    ? '<button type="button" class="pc-action pc-action--reward" onclick="event.stopPropagation(); pcRewardTester(' +
+                        Number(appId) + ',' + Number(item.testerId) + ')">' + esc(text('pcRewardBtn', 'Reward')) + '</button>'
+                    : '');
+            return '<li class="pc-act-item" onclick="openDossierModal(\'' + safeUser + '\', ' + Number(item.testerId) + ', ' + Number(appId) + ')">' +
+                '<div class="pc-act-item__main">' +
+                    '<span class="pc-act-item__name notranslate">' + esc(handleOf(item.tester)) + '</span>' +
+                    '<span class="pc-act-item__reasons">' + reasonHtml + '</span>' +
+                '</div>' +
+                rewardHtml +
+            '</li>';
+        }).join('') + '</ul>';
+    }
+
+    function attentionSheetHtml(appId, items) {
+        if (!items.length) return emptySheetHtml(text('pcAttentionEmpty', 'Nobody needs attention right now'));
+        return '<ul class="pc-act-list">' + items.map(function (item) {
+            var username = dossierUsername(item.tester);
+            var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
+            var hasDebt = item.reasons.some(function (reason) { return reason.code === 'debt'; });
+            var actions = '<button type="button" class="pc-action pc-action--remind" onclick="event.stopPropagation(); pcRemindTester(' +
+                Number(appId) + ',' + Number(item.testerId) + ')">' + esc(text('pcRemindBtn', 'Remind')) + '</button>';
+            if (hasDebt && typeof openTesterLinkStatusFromRow === 'function') {
+                actions += '<button type="button" class="pc-action pc-action--debt" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(' +
+                    Number(appId) + ',' + Number(item.testerId) + ', event)">' +
+                    esc(text('linkedBadgeDebt', 'Mutual debt')) + '</button>';
+            }
+            return '<li class="pc-act-item" onclick="openDossierModal(\'' + safeUser + '\', ' + Number(item.testerId) + ', ' + Number(appId) + ')">' +
+                '<div class="pc-act-item__main">' +
+                    '<span class="pc-act-item__name notranslate">' + esc(handleOf(item.tester)) + '</span>' +
+                    '<span class="pc-act-item__reasons">' + esc(item.reasons.map(function (reason) { return reason.label; }).join(' · ')) + '</span>' +
+                '</div>' +
+                '<div class="pc-act-item__actions">' + actions + '</div>' +
+            '</li>';
+        }).join('') + '</ul>';
+    }
+
+    function compactControlSheetHtml(appId, rows, context) {
+        if (!rows.length) return emptySheetHtml(text('pcControlEmpty', 'No control day today'));
+        return '<ul class="pc-act-list">' + rows.map(function (row) {
+            var username = dossierUsername(row.tester);
+            var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
+            var mark = row.received ? '✓' : '○';
+            var typeLabel = controlProofLabel(row);
+            var openProof = row.received && row.proofId > 0
+                ? 'pcOpenProof(' + Number(appId) + ',' + Number(row.proofId) + ',0)'
+                : '';
+            var nameClick = openProof || ('openDossierModal(\'' + safeUser + '\', ' + Number(row.testerId) + ', ' + Number(appId) + ')');
+            var extra = '';
+            if (row.received && row.feedbackId > 0 && !isProcessed(row)) {
+                extra = '<button type="button" class="pc-linkaction" onclick="event.stopPropagation(); pcOpenFeedback(' +
+                    Number(appId) + ',' + Number(row.feedbackId) + ')">' + esc(text('pcProcessBtn', 'Process')) + '</button>';
+            }
+            return '<li class="pc-act-item' + (row.received ? ' is-received' : ' is-waiting') + '">' +
+                '<button type="button" class="pc-act-item__main pc-act-item__main--btn" onclick="event.stopPropagation(); ' + nameClick + '">' +
+                    '<span class="pc-act-item__name notranslate"><span class="pc-act-mark" aria-hidden="true">' + mark + '</span> ' +
+                    esc(handleOf(row.tester)) + '</span>' +
+                    '<span class="pc-act-item__reasons">' + esc(typeLabel) + '</span>' +
+                '</button>' +
+                extra +
+                rewardActionHtml(appId, row, context) +
+            '</li>';
+        }).join('') + '</ul>';
+    }
+
+    function testersSheetHtml(project) {
+        var source = document.getElementById('pc-roster-source-' + Number(project.id));
+        var roster = source ? source.innerHTML : emptySheetHtml(text('pcAllTestersHint', 'No testers yet'));
+        return '<div id="pc-activity-state-pane" class="pc-activity-pane">' + roster + '</div>' +
+            '<div id="pc-activity-history" class="pc-activity-history" hidden></div>';
+    }
+
+    function activityCounts(project) {
+        var entry = cache.get(Number(project.id));
+        var hydrated = !!(entry && !entry.loading && !entry.error && entry.loadedAt > 0);
+        var controlRows = hydrated ? filterControlRows(project, entry.control) : fallbackControlRows(project);
+        return {
+            entry: entry,
+            hydrated: hydrated,
+            loading: !!(entry && entry.loading),
+            error: !!(entry && entry.error),
+            controlRows: controlRows,
+            controlDone: controlRows.filter(function (row) { return row.received; }).length,
+            contribution: collectContribution(
+                hydrated ? (entry.control || []) : [],
+                hydrated ? (entry.others || []) : []
+            ),
+            attention: collectAttention(project),
+        };
+    }
+
+    function sheetIsOpen() {
+        var overlay = document.getElementById('pc-activity-sheet');
+        return !!(overlay && overlay.classList.contains('active'));
+    }
+
+    function fillActivitySheet() {
+        var project = projectById(sheetState.appId);
+        var overlay = document.getElementById('pc-activity-sheet');
+        var titleEl = document.getElementById('pc-activity-sheet-title');
+        var tabsEl = document.getElementById('pc-activity-sheet-tabs');
+        var bodyEl = document.getElementById('pc-activity-sheet-body');
+        if (!project || !overlay || !bodyEl) return;
+        var data = activityCounts(project);
+        var context = contextFor(project);
+        var titles = {
+            contribution: text('pcContributionTitle', 'Valuable contribution'),
+            attention: text('pcAttentionTitle', 'Needs attention'),
+            control: text('pcControlTodayTitle', 'Control today'),
+            testers: text('pcAllTestersEntry', 'All testers'),
+        };
+        if (titleEl) titleEl.textContent = titles[sheetState.mode] || '';
+        if (tabsEl) tabsEl.hidden = sheetState.mode !== 'testers';
+        if (sheetState.mode === 'contribution') {
+            bodyEl.innerHTML = contributionSheetHtml(project.id, data.contribution, context);
+        } else if (sheetState.mode === 'attention') {
+            bodyEl.innerHTML = attentionSheetHtml(project.id, data.attention);
+        } else if (sheetState.mode === 'control') {
+            bodyEl.innerHTML = compactControlSheetHtml(project.id, data.controlRows, context);
+        } else if (sheetState.mode === 'testers') {
+            bodyEl.innerHTML = testersSheetHtml(project);
+            applyAllTestersTab(sheetState.testersTab || 'state');
+        }
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    }
+
+    function applyAllTestersTab(tab) {
+        sheetState.testersTab = tab === 'history' ? 'history' : 'state';
+        var stateBtn = document.getElementById('pc-activity-tab-state');
+        var historyBtn = document.getElementById('pc-activity-tab-history');
+        var statePane = document.getElementById('pc-activity-state-pane');
+        var historyPane = document.getElementById('pc-activity-history');
+        if (stateBtn) stateBtn.classList.toggle('is-active', sheetState.testersTab === 'state');
+        if (historyBtn) historyBtn.classList.toggle('is-active', sheetState.testersTab === 'history');
+        if (statePane) statePane.hidden = sheetState.testersTab !== 'state';
+        if (historyPane) historyPane.hidden = sheetState.testersTab !== 'history';
+        if (sheetState.testersTab === 'history' && historyPane && !sheetState.historyLoaded) {
+            sheetState.historyLoaded = true;
+            historyPane.innerHTML = '<div class="pc-activity-empty">' + esc(text('pcActivityHistoryLoading', 'Loading history…')) + '</div>';
+            if (typeof window.renderTestingControlHistoryInto === 'function') {
+                window.renderTestingControlHistoryInto(historyPane, sheetState.appId, { archived: false });
+            } else if (typeof openTestingControl === 'function') {
+                openTestingControl(sheetState.appId, { archived: false });
+            }
+        }
+        if (stateBtn) stateBtn.textContent = text('pcAllTestersStateTab', 'Status');
+        if (historyBtn) historyBtn.textContent = text('pcAllTestersHistoryTab', 'History');
+    }
+
+    function compactEntryHtml(appId, mode, title, meta, count, tone, extraClass) {
+        var countHtml = (count === '' || count == null)
+            ? ''
+            : '<span class="pc-act-row__count' + (tone ? ' is-' + tone : '') + '">' + esc(String(count)) + '</span>';
+        return '<button type="button" class="pc-act-row' + (extraClass ? ' ' + extraClass : '') + '" onclick="event.stopPropagation(); pcOpenActivitySheet(' +
+            Number(appId) + ', \'' + mode + '\')">' +
+            '<span class="pc-act-row__text">' +
+                '<span class="pc-act-row__title">' + esc(title) + (meta ? ' · ' + esc(meta) : '') + '</span>' +
+            '</span>' +
+            countHtml +
+            '<span class="pc-act-row__chev" aria-hidden="true">→</span>' +
+        '</button>';
+    }
+
     /* ───────────────────────────── public surface ──────────────────────────── */
 
     function contextFor(project) {
@@ -570,28 +911,59 @@
     }
 
     function innerHtml(project) {
-        var entry = cache.get(Number(project.id));
-        var hydrated = !!(entry && !entry.loading && !entry.error && entry.loadedAt > 0);
-        var rows = hydrated ? filterControlRows(project, entry.control) : fallbackControlRows(project);
-        var errorHtml = entry && entry.error
+        var data = activityCounts(project);
+        var progress = typeof window.getProjectDailyProgressMeta === 'function'
+            ? window.getProjectDailyProgressMeta(project)
+            : { countDone: 0, presentCount: 0 };
+        var ringHtml = typeof window.buildProjectDailyProgressRingHtml === 'function'
+            ? window.buildProjectDailyProgressRingHtml(project)
+            : '';
+        var quotaReserve = Number(progress.presentCount || 0) > 12 && Number(progress.countDone || 0) >= 12;
+        var contributionCount = data.loading ? '…' : (data.hydrated && data.contribution.length ? String(data.contribution.length) : '');
+        var attentionCount = data.attention.length;
+        var controlMeta = data.controlRows.length
+            ? (data.controlDone + '/' + data.controlRows.length)
+            : '';
+        var errorHtml = data.error
             ? '<div class="pc-today__error">' + esc(text('pcTodayLoadError', "Could not load today's reports")) +
                 '<button type="button" onclick="event.stopPropagation(); pcRetryToday(' + Number(project.id) + ')">' +
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
-        var controlHtml = controlSectionHtml(project, rows, contextFor(project), entry);
-        if (!controlHtml && typeof window.buildProjectDailyProgressRingHtml === 'function') {
-            controlHtml = '<section class="pc-control pc-control--ring-only">' +
-                '<header class="pc-control__head">' +
-                    '<span class="pc-control__titles">' +
-                        '<span class="pc-control__title">' + esc(text('pcDayProgressLabel', 'Daily progress')) + '</span>' +
-                    '</span>' +
-                    window.buildProjectDailyProgressRingHtml(project) +
-                '</header>' +
-            '</section>';
-        }
-        return controlHtml +
-            (hydrated ? othersSectionHtml(project, entry) : '') +
-            errorHtml;
+        return '<section class="pc-activity' + (data.loading ? ' is-hydrating' : '') + '">' +
+            '<header class="pc-activity__head">' +
+                '<h3 class="pc-activity__title">' + esc(text('pcActivityTitle', 'Activity and reciprocity')) + '</h3>' +
+            '</header>' +
+            '<div class="pc-activity__hero">' +
+                ringHtml +
+                '<div class="pc-activity__hero-copy">' +
+                    '<div class="pc-activity__hero-label">' +
+                        esc(text('pcActivityActiveToday', 'Active today {done}/{total}', {
+                            done: Number(progress.countDone || 0),
+                            total: Number(progress.presentCount || 0),
+                        })) +
+                    '</div>' +
+                    (quotaReserve
+                        ? '<div class="pc-activity__hero-sub">' + esc(text('pcActivityQuotaReserve', 'Quota met with reserve')) + '</div>'
+                        : '') +
+                '</div>' +
+            '</div>' +
+            '<div class="pc-activity__entries">' +
+                compactEntryHtml(project.id, 'contribution', text('pcContributionTitle', 'Valuable contribution'), '', contributionCount, '') +
+                compactEntryHtml(
+                    project.id,
+                    'attention',
+                    text('pcAttentionTitle', 'Needs attention'),
+                    '',
+                    attentionCount > 0 ? String(attentionCount) : '',
+                    attentionCount > 0 ? 'warn' : ''
+                ) +
+                (data.controlRows.length
+                    ? compactEntryHtml(project.id, 'control', text('pcControlTodayTitle', 'Control today'), controlMeta, '', data.controlDone >= data.controlRows.length ? 'ok' : '')
+                    : '') +
+            '</div>' +
+            compactEntryHtml(project.id, 'testers', text('pcAllTestersEntry', 'All testers'), '', '', '', 'pc-act-row--quiet') +
+            errorHtml +
+        '</section>';
     }
 
     function paint(appId) {
@@ -600,6 +972,9 @@
         var project = projectById(safeAppId);
         if (!root || !project) return;
         root.innerHTML = innerHtml(project);
+        if (sheetIsOpen() && Number(sheetState.appId) === safeAppId && sheetState.mode !== 'testers') {
+            fillActivitySheet();
+        }
     }
 
     function buildSection(project) {
@@ -640,6 +1015,35 @@
         mount: mount,
         isControlDay: isControlDay,
         invalidate: function (appId) { cache.delete(Number(appId || 0)); },
+    };
+
+    window.pcOpenActivitySheet = function (appId, mode) {
+        sheetState.appId = Number(appId || 0);
+        sheetState.mode = String(mode || 'testers');
+        sheetState.testersTab = 'state';
+        sheetState.historyLoaded = false;
+        var overlay = document.getElementById('pc-activity-sheet');
+        if (!overlay) return;
+        fillActivitySheet();
+        overlay.classList.add('active');
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    };
+
+    window.pcCloseActivitySheet = function (event) {
+        var overlay = document.getElementById('pc-activity-sheet');
+        if (event && event.target !== overlay) return;
+        if (overlay) overlay.classList.remove('active');
+        sheetState.historyLoaded = false;
+        if (typeof window.clearTestingControlHistoryEmbed === 'function') {
+            window.clearTestingControlHistoryEmbed();
+        }
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    };
+
+    window.pcSetAllTestersTab = function (tab) {
+        applyAllTestersTab(tab);
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
     window.pcToggleOthers = function (appId) {

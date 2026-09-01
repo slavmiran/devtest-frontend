@@ -31,6 +31,7 @@
         // Set when the viewer is opened outside Testing Control (e.g. from a project card),
         // where local timeline/gallery state cannot describe the proof.
         previewFallback: null,
+        embedTargetId: '',
     };
 
     var PREVIEW_CACHE_MAX_ITEMS = 5;
@@ -306,23 +307,35 @@
         '</article>';
     }
 
-    function renderTesters() {
-        var body = document.getElementById('testing-control-body');
-        if (!body) return;
+    function testersListHtml() {
         var itemsHtml = state.items.length
             ? state.items.map(renderTester).join('')
             : '<div class="testing-control-empty">' + escape(text('testingControlEmpty', 'No testers in this run yet.')) + '</div>';
         var loadMore = state.nextCursor
             ? '<button type="button" class="btn btn-secondary testing-control-more" onclick="loadMoreTestingControl()">' + escape(text('testingControlLoadMore', 'Load more')) + '</button>'
             : '';
+        return '<div class="testing-control-list">' + itemsHtml + '</div>' + loadMore;
+    }
+
+    function historyEmbedEl() {
+        return state.embedTargetId ? document.getElementById(state.embedTargetId) : null;
+    }
+
+    function renderTesters() {
+        var embed = historyEmbedEl();
+        if (embed) {
+            embed.innerHTML = testersListHtml();
+            return;
+        }
+        var body = document.getElementById('testing-control-body');
+        if (!body) return;
         body.innerHTML = renderHeader() +
             '<div id="testing-control-proof-meta" class="testing-control-proof-meta" hidden></div>' +
-            '<div class="testing-control-list">' + itemsHtml + '</div>' +
-            loadMore;
+            testersListHtml();
     }
 
     function render() {
-        if (state.activeTab === 'gallery' && galleryEnabled()) {
+        if (!state.embedTargetId && state.activeTab === 'gallery' && galleryEnabled()) {
             renderGallery();
             return;
         }
@@ -330,6 +343,11 @@
     }
 
     function renderLoading() {
+        var embed = historyEmbedEl();
+        if (embed) {
+            embed.innerHTML = '<div class="testing-control-loading" role="status"><span></span><span></span><span></span></div>';
+            return;
+        }
         var body = document.getElementById('testing-control-body');
         if (!body) return;
         body.innerHTML = renderHeader() +
@@ -337,6 +355,14 @@
     }
 
     function renderError() {
+        var embed = historyEmbedEl();
+        if (embed) {
+            embed.innerHTML = '<div class="testing-control-error">' +
+                '<div>' + escape(text('testingControlLoadError', 'Could not load testing progress.')) + '</div>' +
+                '<button type="button" class="btn btn-secondary" onclick="retryTestingControl()">' + escape(text('retry', 'Retry')) + '</button>' +
+            '</div>';
+            return;
+        }
         var body = document.getElementById('testing-control-body');
         if (!body) return;
         body.innerHTML = renderHeader() +
@@ -882,6 +908,7 @@
     async function openTestingControl(appId, options) {
         options = options || {};
         if (!enabled()) return false;
+        state.embedTargetId = '';
         var safeAppId = Number(appId || 0);
         if (safeAppId <= 0) return false;
         var cached = projectFromCache(safeAppId);
@@ -1215,6 +1242,27 @@
     window.buildTestingControlEntryButton = buildTestingControlEntryButton;
     window.openTestingControl = openTestingControl;
     window.closeTestingControl = closeTestingControl;
+    window.renderTestingControlHistoryInto = async function (container, appId, options) {
+        options = options || {};
+        if (!enabled() || !container) return false;
+        var safeAppId = Number(appId || 0);
+        if (safeAppId <= 0) return false;
+        if (!container.id) container.id = 'pc-activity-history';
+        var cached = projectFromCache(safeAppId);
+        state.appId = safeAppId;
+        state.archived = Object.prototype.hasOwnProperty.call(options, 'archived') ? !!options.archived : !!(cached && cached.archived);
+        state.project = cached && cached.project || { name: text('testingControlTitle', 'Testing Control') };
+        state.items = [];
+        state.nextCursor = null;
+        state.focusProgressId = Number(options.focusProgressId || 0);
+        state.activeTab = 'testers';
+        state.embedTargetId = container.id;
+        await loadPage({ append: false });
+        return true;
+    };
+    window.clearTestingControlHistoryEmbed = function () {
+        state.embedTargetId = '';
+    };
     window.retryTestingControl = function () {
         return state.activeTab === 'gallery' ? loadGalleryPage({ append: false }) : loadPage({ append: false });
     };
