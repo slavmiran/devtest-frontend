@@ -136,16 +136,16 @@ function buildProjectDailyProgressRingHtml(project, options) {
     const googlePinDeg = meta.googlePinDeg;
     const progressAngle = meta.fillProgressDeg;
 
-    // SVG coordinate math (Center 50, 50, Radius 39, Stroke 5)
+    // SVG coordinate math (Center 50, 50, Radius 37.5, Stroke 7.5 (+50% thicker))
     const cx = 50;
     const cy = 50;
-    const r = 39;
+    const r = 37.5;
 
     // 1. Deficit smooth track (if totalTesters < 12)
     let deficitPathHtml = '';
     if (totalTesters < 12) {
         if (totalTesters <= 0) {
-            deficitPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5" />`;
+            deficitPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7.5" />`;
         } else {
             const startAngle = (totalTesters / 12) * 360;
             // Arc from startAngle to 360 (top)
@@ -153,23 +153,23 @@ function buildProjectDailyProgressRingHtml(project, options) {
             const x1 = cx + r * Math.cos(rad1);
             const y1 = cy + r * Math.sin(rad1);
             const x2 = cx;
-            const y2 = cy - r; // (50, 11)
+            const y2 = cy - r; // (50, 12.5)
             const deltaAngle = 360 - startAngle;
             const largeArc = deltaAngle > 180 ? 1 : 0;
-            deficitPathHtml = `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5" stroke-linecap="round" />`;
+            deficitPathHtml = `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7.5" stroke-linecap="round" />`;
         }
     }
 
     // 2. Progress fill arc (smooth linecap)
     let progressPathHtml = '';
     if (progressAngle >= 359.5) {
-        progressPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#${gradId})" stroke-width="5" stroke-linecap="round" />`;
+        progressPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#${gradId})" stroke-width="7.5" stroke-linecap="round" />`;
     } else if (progressAngle > 0) {
         const radP = (progressAngle - 90) * Math.PI / 180;
         const px = cx + r * Math.cos(radP);
         const py = cy + r * Math.sin(radP);
         const largeArcP = progressAngle > 180 ? 1 : 0;
-        progressPathHtml = `<path d="M ${cx} ${cy - r} A ${r} ${r} 0 ${largeArcP} 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#${gradId})" stroke-width="5" stroke-linecap="round" />`;
+        progressPathHtml = `<path d="M ${cx} ${cy - r} A ${r} ${r} 0 ${largeArcP} 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#${gradId})" stroke-width="7.5" stroke-linecap="round" />`;
     }
 
     // 3. Google Pin
@@ -178,9 +178,9 @@ function buildProjectDailyProgressRingHtml(project, options) {
     const pinY = cy + r * Math.sin(pinRad);
     let pinHtml = '';
     if (todayDone >= 12) {
-        pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="3.2" fill="#30d158" stroke="#16141c" stroke-width="1.5" filter="url(#${glowId})" />`;
+        pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="3.5" fill="#30d158" stroke="#16141c" stroke-width="1.5" filter="url(#${glowId})" />`;
     } else {
-        pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="2.8" fill="#8e8e93" stroke="#16141c" stroke-width="1.5" />`;
+        pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="3" fill="#8e8e93" stroke="#16141c" stroke-width="1.5" />`;
     }
 
     // 4. Gradient definition (Refined modern gradients)
@@ -207,7 +207,7 @@ function buildProjectDailyProgressRingHtml(project, options) {
                     </filter>
                 </defs>
                 <!-- Background track -->
-                <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#24232c" stroke-width="5" />
+                <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#24232c" stroke-width="7.5" />
                 <!-- Deficit track (if needed) -->
                 ${deficitPathHtml}
                 <!-- Progress fill -->
@@ -6472,10 +6472,18 @@ function openDailyProgressDetailsModal(projectId, event) {
 
     titleEl.textContent = tr('dprModalTitle', {}, 'Суточный план и рекомендации');
 
+    const modalRingHtml = typeof buildProjectDailyProgressRingHtml === 'function'
+        ? buildProjectDailyProgressRingHtml(project)
+        : '';
+
     if (totalTesters < 12) {
         const deficit = 12 - totalTesters;
+        const recommended = Math.max(0, 20 - totalTesters);
         bodyEl.innerHTML = `
             <div class="dp-sheet__card">
+                <div class="dp-sheet__ring-hero">
+                    ${modalRingHtml}
+                </div>
                 <div class="dp-sheet__alert dp-sheet__alert--warn">
                     <svg class="dp-sheet__alert-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     <div class="dp-sheet__alert-body">
@@ -6491,7 +6499,10 @@ function openDailyProgressDetailsModal(projectId, event) {
                 </div>
                 <div class="dp-sheet__metrics-compact">
                     <div class="dp-sheet__metric-item">
-                        <span class="dp-sheet__metric-k">${tr('dprModalDeficitTeam', { total: totalTesters, deficit: deficit })}</span>
+                        <span class="dp-sheet__metric-k">${tr('dprModalDeficitTeam', { total: totalTesters })}</span>
+                    </div>
+                    <div class="dp-sheet__metric-item">
+                        <span class="dp-sheet__metric-k text-amber">${tr('dprModalDeficitBreakdown', { deficit: deficit, recommended: recommended })}</span>
                     </div>
                     <div class="dp-sheet__metric-item">
                         <span class="dp-sheet__metric-k">${tr('dprModalDeficitTested', { done: todayDone })}</span>
@@ -6503,14 +6514,18 @@ function openDailyProgressDetailsModal(projectId, event) {
             <button type="button" class="btn btn-secondary" onclick="closeDailyProgressDetailsModal()">${tr('pcLifecycleCloseBtn', {}, 'Закрыть')}</button>
             <button type="button" class="btn btn-primary" onclick="closeDailyProgressDetailsModal(); openAttractTestersSheet(${project.id});">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:text-bottom; margin-right:6px;"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-                ${tr('attractTestersBtn', {}, 'Привлечь тестеров')}
+                ${tr('attractTestersBtn', {}, '🚀 Привлечь тестеров')}
             </button>
         `;
     } else {
         const quotaDone = todayDone >= 12;
         const leftCount = 12 - todayDone;
+        const recommended = Math.max(0, 20 - totalTesters);
         bodyEl.innerHTML = `
             <div class="dp-sheet__card">
+                <div class="dp-sheet__ring-hero">
+                    ${modalRingHtml}
+                </div>
                 <div class="dp-sheet__status-badge ${quotaDone ? 'is-complete' : 'is-gathering'}">
                     <svg class="dp-sheet__status-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         ${quotaDone
@@ -6532,7 +6547,7 @@ function openDailyProgressDetailsModal(projectId, event) {
 
                 <div class="dp-sheet__metrics-compact">
                     <div class="dp-sheet__metric-item">
-                        <span class="dp-sheet__metric-k">${tr('dprModalCompleteTeam', { done: todayDone, total: totalTesters, percent: teamPercent })}</span>
+                        <span class="dp-sheet__metric-k">${tr('dprModalCompleteTeam', { done: todayDone, total: totalTesters, percent: teamPercent, recommended: recommended })}</span>
                     </div>
                 </div>
             </div>

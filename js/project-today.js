@@ -1147,12 +1147,12 @@
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
         return '<section class="pc-activity' + (data.loading ? ' is-hydrating' : '') + '">' +
-            '<header class="pc-activity__head">' +
-                '<h3 class="pc-activity__title">' + esc(text('pcActivityTitle', 'Activity and reciprocity')) + '</h3>' +
-            '</header>' +
             '<div class="pc-activity__hero">' +
                 ringHtml +
                 '<div class="pc-activity__hero-copy">' +
+                    '<div class="pc-activity__hero-top">' +
+                        '<h3 class="pc-activity__title">' + esc(text('pcActivityTitle', 'Testers activity')) + '</h3>' +
+                    '</div>' +
                     (progress.statusChip && progress.statusChip.text
                         ? '<div class="status-chip status-chip--' + esc(progress.statusChip.kind) + '">' +
                             (progress.statusChip.iconHtml || '') +

@@ -1905,9 +1905,11 @@ async function decideOffer(offerId, action, event) {
             b.style.cursor = 'not-allowed';
         });
         if (clickedBtn) {
+            var rawAccept = typeof window.t === 'function' ? window.t('acceptingOffer', {}, lang) : '';
+            var rawReject = typeof window.t === 'function' ? window.t('rejectingOffer', {}, lang) : '';
             var spinText = action === 'accept'
-                ? (window.t('acceptingOffer', {}, lang) || 'Принятие...')
-                : (window.t('rejectingOffer', {}, lang) || 'Отклонение...');
+                ? ((rawAccept && rawAccept !== 'acceptingOffer') ? rawAccept : 'Принятие...')
+                : ((rawReject && rawReject !== 'rejectingOffer') ? rawReject : 'Отклонение...');
             clickedBtn.innerHTML = '<span class="offer-btn-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px;"></span>' + window.escapeHTML(spinText);
         }
     }

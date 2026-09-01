@@ -676,8 +676,8 @@
 .status-chip {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 3px 8px;
+    gap: 6px;
+    padding: 3px 9px;
     border-radius: 6px;
     font-size: 11.5px;
     font-weight: 600;
@@ -685,36 +685,38 @@
     letter-spacing: -0.01em;
     width: fit-content;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    color: var(--text-secondary, #a1a1aa);
 }
 
 .status-chip__icon {
     flex-shrink: 0;
 }
 
-.status-chip--amber {
-    background: rgba(255, 159, 10, 0.08);
-    color: #ffb340;
-    border-color: rgba(255, 159, 10, 0.22);
-}
-
-.status-chip--sky {
-    background: rgba(10, 132, 255, 0.08);
-    color: #64d2ff;
-    border-color: rgba(10, 132, 255, 0.22);
-}
-
-.status-chip--emerald {
-    background: rgba(48, 209, 88, 0.08);
-    color: #30d158;
-    border-color: rgba(48, 209, 88, 0.22);
-}
-
+/* Neutral chips with status-tinted SVG icon highlights */
+.status-chip--amber,
+.status-chip--sky,
+.status-chip--emerald,
 .status-chip--purple {
-    background: rgba(191, 90, 242, 0.08);
-    color: #d380ff;
-    border-color: rgba(191, 90, 242, 0.22);
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border-subtle, rgba(255, 255, 255, 0.08));
+    color: var(--text-secondary, #a1a1aa);
+}
+
+.status-chip--amber .status-chip__icon {
+    color: #ff9f0a;
+}
+
+.status-chip--sky .status-chip__icon {
+    color: #64d2ff;
+}
+
+.status-chip--emerald .status-chip__icon {
+    color: #30d158;
+}
+
+.status-chip--purple .status-chip__icon {
+    color: #bf5af2;
 }
 
 .progress-subtext {
@@ -2112,27 +2114,37 @@
     padding: 10px 12px 8px;
 }
 
-.pc-activity__head {
-    margin-bottom: 8px;
-}
-
-.pc-activity__title {
-    margin: 0;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-primary);
+.pc-activity {
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    margin-bottom: 10px;
+    padding: 8px 12px 8px;
 }
 
 .pc-activity__hero {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 14px;
-    padding: 6px 2px 10px;
+    padding: 0 2px 8px;
 }
 
 .pc-activity .pc-ring {
-    width: 72px;
-    height: 72px;
+    width: 110px;
+    height: 110px;
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+.pc-activity .pc-ring__count {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.pc-activity .pc-ring__label {
+    font-size: 10px;
+    font-weight: 700;
+    margin-top: 2px;
 }
 
 .pc-activity__hero-copy {
@@ -2140,7 +2152,48 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
+    padding-top: 2px;
+}
+
+.pc-activity__hero-top {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100%;
+}
+
+.pc-activity__title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-align: right;
+}
+
+/* Modal Bottom Sheet Hero Ring */
+.dp-sheet__ring-hero {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 0 16px;
+    width: 100%;
+}
+
+.dp-sheet__ring-hero .pc-ring {
+    width: 124px;
+    height: 124px;
+}
+
+.dp-sheet__ring-hero .pc-ring__count {
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.dp-sheet__ring-hero .pc-ring__label {
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 2px;
 }
 
 .pc-activity__hero-label {
