@@ -18,7 +18,7 @@
     var observer = null;
     var expandedOthers = new Set();
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
-    var PREFS_PREFIX = 'pc_activity_prefs_v1_';
+    var PREFS_PREFIX = 'pc_activity_prefs_v2_';
     var ACTIVITY_FILTERS = ['contribution', 'attention', 'control', 'testers'];
 
     function text(key, fallback, params) {
@@ -854,21 +854,35 @@
         return { contribution: 'now', attention: 'now', control: 'now', testers: 'now' };
     }
 
+    function defaultActivityPrefs() {
+        return { filter: 'testers', modes: emptyModes(), touched: false };
+    }
+
     function readPrefs(appId) {
+        var key = PREFS_PREFIX + Number(appId || 0);
+        var raw = '';
+        try {
+            raw = localStorage.getItem(key) || '';
+        } catch (_) {
+            return defaultActivityPrefs();
+        }
+        if (!raw) return defaultActivityPrefs();
         var parsed = {};
         try {
-            parsed = JSON.parse(localStorage.getItem(PREFS_PREFIX + Number(appId || 0)) || '{}') || {};
+            parsed = JSON.parse(raw) || {};
         } catch (_) {
-            parsed = {};
+            return defaultActivityPrefs();
         }
+        if (parsed.touched !== true) return defaultActivityPrefs();
         var modes = emptyModes();
         var stored = parsed.modes && typeof parsed.modes === 'object' ? parsed.modes : {};
-        ACTIVITY_FILTERS.forEach(function (key) {
-            modes[key] = stored[key] === 'history' ? 'history' : 'now';
+        ACTIVITY_FILTERS.forEach(function (modeKey) {
+            modes[modeKey] = stored[modeKey] === 'history' ? 'history' : 'now';
         });
         return {
             filter: ACTIVITY_FILTERS.indexOf(parsed.filter) !== -1 ? parsed.filter : 'testers',
             modes: modes,
+            touched: true,
         };
     }
 
@@ -877,6 +891,7 @@
             localStorage.setItem(PREFS_PREFIX + Number(appId || 0), JSON.stringify({
                 filter: prefs.filter,
                 modes: prefs.modes,
+                touched: true,
             }));
         } catch (_) {}
     }
