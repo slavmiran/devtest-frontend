@@ -1660,25 +1660,80 @@ body.wizard-open .bottom-nav {
     padding: 14px 16px;
 }
 
-#edit-project-modal .edit-play-reviews-row {
+#edit-project-modal .edit-play-reviews-row,
+#edit-project-modal #edit-add-email-testers-box .add-email-testers-box__toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
     padding: 0;
     margin: 0;
+    cursor: pointer;
+}
+
+#edit-project-modal .edit-play-reviews-row input[type="checkbox"],
+#edit-project-modal #edit-add-email-testers-box .add-email-testers-box__toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 2px 0 0;
+    flex: 0 0 18px;
+    accent-color: #ffcc00;
+}
+
+#edit-project-modal .edit-play-reviews-row > span,
+#edit-project-modal #edit-add-email-testers-box .add-email-testers-box__toggle > span {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+#edit-project-modal .edit-play-reviews-row strong,
+#edit-project-modal #edit-add-email-testers-box .add-email-testers-box__toggle strong {
+    font-size: 14px;
+    line-height: 1.35;
+    font-weight: 650;
+    color: var(--text-color);
+}
+
+#edit-project-modal .edit-play-reviews-row small,
+#edit-project-modal #edit-add-email-testers-box .add-email-testers-box__toggle small {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--hint-color);
 }
 
 #edit-project-modal #edit-add-email-testers-box {
     margin-bottom: 0;
     padding: 14px 16px;
+    overflow: visible;
 }
 
 #edit-project-modal #edit-add-email-testers-box .add-email-testers-box__toggle {
     margin: 0;
 }
 
-#edit-project-modal #edit-add-email-testers-box .review-checkbox-row span strong {
-    font-size: 14px;
-    line-height: 1.35;
+#edit-project-modal #edit-add-email-testers-box.is-expanded .add-email-testers-expand {
+    max-height: 240px;
 }
 
-#edit-project-modal #edit-add-email-testers-box.is-expanded .add-email-testers-expand {
-    max-height: 220px;
+.edit-project-meta-info .edit-created-at-line {
+    line-height: 1.45;
+}
+
+.edit-project-meta-info .edit-created-at-run {
+    margin-top: 6px;
+}
+
+.edit-created-at-run-chip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--security);
+    background: var(--security-surface);
+    border: 1px solid var(--security-border);
+    border-radius: 7px;
+    padding: 1.5px 7px;
+    vertical-align: middle;
 }

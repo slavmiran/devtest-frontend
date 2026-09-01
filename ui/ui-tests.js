@@ -7,10 +7,10 @@ function renderEditCreatedAtMeta() {
         return;
     }
     const project = myProjects.find((item) => item.id === projectToEdit);
-    // The run chip lives here rather than on the project card, which stays a daily dashboard.
-    const runChip = buildRunIterationChip(project, 'edit-created-at-run-chip');
-    metaEl.innerHTML = window.escapeHTML(formatEditProjectCreatedAt(project)) +
-        (runChip ? ' <span class="edit-created-at-dot">·</span> ' + runChip : '');
+    const runChip = buildRunIterationChip(project, 'edit-created-at-run-chip', { ignoreSync: true });
+    metaEl.innerHTML = '<div class="edit-created-at-line">' + window.escapeHTML(formatEditProjectCreatedAt(project)) + '</div>' +
+        (runChip ? '<div class="edit-created-at-run">' + runChip + '</div>' : '');
+    metaEl.style.opacity = '1';
 }
 
 function getIssueRemovalDeadline(issueReportedAt) {
@@ -1128,12 +1128,13 @@ function getTesterSourceMeta(joinType) {
     return { icon: '🔗', label: window.t('testerSourceInviteNoMutualFull', {}, lang) };
 }
 
-function buildRunIterationChip(item, className) {
+function buildRunIterationChip(item, className, opts) {
     const normalizedIteration = Number((item && item.run_iteration) || 1);
     if (!Number.isFinite(normalizedIteration) || normalizedIteration <= 1) {
         return '';
     }
-    if (!item || typeof isProjectSynced !== 'function' || !isProjectSynced(item)) {
+    const ignoreSync = !!(opts && opts.ignoreSync);
+    if (!ignoreSync && (!item || typeof isProjectSynced !== 'function' || !isProjectSynced(item))) {
         return '';
     }
     return `<span class="${className || 'meta-chip accent-blue'}">${window.escapeHTML(window.t('projectRunIterationChip', { count: normalizedIteration }, lang))}</span>`;
