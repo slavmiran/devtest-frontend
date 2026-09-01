@@ -1082,7 +1082,6 @@ function renderProjects(force) {
             </button>`;
 
         const stateBlockHtml = `
-            <section class="pc-state-unified">
                 <div class="pc-closed-head">
                     <div class="pc-closed-head__title">
                         ${closedTestChartIconHtml}
@@ -1125,7 +1124,6 @@ function renderProjects(force) {
                     </div>
                 </div>
                 ${recruitRowHtml}
-            </section>
         `;
 
         /* ── Block 4: collapsed summary of the full tester roster ── */
@@ -1198,6 +1196,7 @@ function renderProjects(force) {
         })();
 
         card.innerHTML = `
+            <section class="pc-state-unified">
             <div class="card-header" onclick="toggleProjectSettingsDrawer(${project.id}, event)" style="cursor: pointer; user-select: none;">
                 <div class="project-avatar-container">
                     ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
@@ -1249,12 +1248,10 @@ function renderProjects(force) {
 
             ${accessOverlayHtml}
 
-            <!-- STATE STRIP (always visible, even when card is collapsed) -->
-            <div class="card-collapsed-zone">
-                ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
-                ${updateTipHtml}
-                ${stateBlockHtml}
-            </div>
+            ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
+            ${updateTipHtml}
+            ${stateBlockHtml}
+            </section>
 
             <!-- DASHBOARD BODY (hidden when card is collapsed) -->
             <div class="pc-dashboard-body">

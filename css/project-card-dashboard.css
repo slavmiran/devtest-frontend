@@ -13,6 +13,35 @@
     overflow: hidden;
 }
 
+#tab-projects .card[id^="project-card-"] .pc-state-unified > .card-header {
+    background: transparent;
+    margin-bottom: 0;
+    border-radius: 0;
+    padding: 10px 12px 8px;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-state-unified > .project-settings-drawer {
+    padding: 0 8px;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-state-unified > .project-settings-drawer.active {
+    margin-bottom: 8px;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-state-unified > .visibility-hint,
+#tab-projects .card[id^="project-card-"] .pc-state-unified > .project-update-tip {
+    margin-left: 12px;
+    margin-right: 12px;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-state-unified > .access-error-overlay {
+    padding: 0 12px 10px;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-state-unified > .pc-closed-head {
+    border-top: 1px solid var(--border-subtle);
+}
+
 .pc-closed-head {
     display: flex;
     align-items: center;
