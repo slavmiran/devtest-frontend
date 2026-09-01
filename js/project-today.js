@@ -18,6 +18,8 @@
     var observer = null;
     var expandedOthers = new Set();
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
+    var PREFS_PREFIX = 'pc_activity_prefs_v1_';
+    var ACTIVITY_FILTERS = ['contribution', 'attention', 'control', 'testers'];
 
     function text(key, fallback, params) {
         if (typeof window.t === 'function') {
@@ -478,7 +480,7 @@
                 '</span>' +
                 rewardActionHtml(appId, row, context) +
             '</div>' +
-            slotsHtml(appId, row) +
+            (row.received && row.slots && row.slots.length ? slotsHtml(appId, row) : '') +
         '</li>';
     }
 
@@ -803,6 +805,25 @@
         }).join('') + '</ul>';
     }
 
+    function testersNowHtml(project) {
+        var source = document.getElementById('pc-roster-source-' + Number(project.id));
+        return source ? source.innerHTML : emptySheetHtml(text('pcAllTestersHint', 'No testers yet'));
+    }
+
+    function controlNowHtml(appId, rows, context) {
+        if (!rows.length) return emptySheetHtml(text('pcControlEmpty', 'No control day today'));
+        return '<ul class="pc-control__rows pc-activity-control">' +
+            rows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
+            '</ul>';
+    }
+
+    function nowHtmlForFilter(project, filter, data, context) {
+        if (filter === 'contribution') return contributionSheetHtml(project.id, data.contribution, context);
+        if (filter === 'attention') return attentionSheetHtml(project.id, data.attention, context);
+        if (filter === 'control') return controlNowHtml(project.id, data.controlRows, context);
+        return testersNowHtml(project);
+    }
+
     function testersSheetHtml(project) {
         var source = document.getElementById('pc-roster-source-' + Number(project.id));
         var roster = source ? source.innerHTML : emptySheetHtml(text('pcAllTestersHint', 'No testers yet'));
@@ -827,6 +848,188 @@
             ),
             attention: collectAttention(project),
         };
+    }
+
+    function emptyModes() {
+        return { contribution: 'now', attention: 'now', control: 'now', testers: 'now' };
+    }
+
+    function readPrefs(appId) {
+        var parsed = {};
+        try {
+            parsed = JSON.parse(localStorage.getItem(PREFS_PREFIX + Number(appId || 0)) || '{}') || {};
+        } catch (_) {
+            parsed = {};
+        }
+        var modes = emptyModes();
+        var stored = parsed.modes && typeof parsed.modes === 'object' ? parsed.modes : {};
+        ACTIVITY_FILTERS.forEach(function (key) {
+            modes[key] = stored[key] === 'history' ? 'history' : 'now';
+        });
+        return {
+            filter: ACTIVITY_FILTERS.indexOf(parsed.filter) !== -1 ? parsed.filter : 'testers',
+            modes: modes,
+        };
+    }
+
+    function writePrefs(appId, prefs) {
+        try {
+            localStorage.setItem(PREFS_PREFIX + Number(appId || 0), JSON.stringify({
+                filter: prefs.filter,
+                modes: prefs.modes,
+            }));
+        } catch (_) {}
+    }
+
+    function visibleFilters(data) {
+        var list = [];
+        if (data.contribution && data.contribution.length) list.push('contribution');
+        if (data.attention && data.attention.length) list.push('attention');
+        if (data.controlRows && data.controlRows.length) list.push('control');
+        list.push('testers');
+        return list;
+    }
+
+    function resolvedFilter(prefs, data) {
+        var visible = visibleFilters(data);
+        if (visible.indexOf(prefs.filter) !== -1) return prefs.filter;
+        return 'testers';
+    }
+
+    function scopeForFilter(filter, data) {
+        if (filter === 'testers') return { testerIds: null, progressIds: null };
+        var rows = filter === 'contribution'
+            ? (data.contribution || [])
+            : (filter === 'attention' ? (data.attention || []) : (data.controlRows || []));
+        var testerIds = [];
+        var progressIds = [];
+        rows.forEach(function (item) {
+            var testerId = Number(item.testerId || (item.tester && (item.tester.tester_id || item.tester.id)) || 0);
+            var progressId = Number(item.progressId || (item.tester && item.tester.progress_id) || 0);
+            if (testerId > 0) testerIds.push(testerId);
+            if (progressId > 0) progressIds.push(progressId);
+        });
+        return { testerIds: testerIds, progressIds: progressIds };
+    }
+
+    function hintForFilter(filter) {
+        if (filter === 'contribution') {
+            return text('pcHintContribution', 'Today they did more than a regular check-in: reports, bugs, recommendations, or 3+ screenshots.');
+        }
+        if (filter === 'attention') {
+            return text('pcHintAttention', 'These testers may stall the test or need an action from you.');
+        }
+        if (filter === 'control') {
+            return text('pcHintControl', 'Today they must confirm testing with a control report.');
+        }
+        return text('pcHintAll', 'Everyone in the current test.');
+    }
+
+    function filtersHtml(appId, visible, active) {
+        var labels = {
+            contribution: text('pcFilterContribution', 'Contribution'),
+            attention: text('pcFilterAttention', 'Attention'),
+            control: text('pcFilterControl', 'Control'),
+            testers: text('pcFilterAll', 'All'),
+        };
+        return '<div class="pc-activity__filters" role="tablist">' +
+            visible.map(function (key) {
+                return '<button type="button" class="pc-activity__filter' + (key === active ? ' is-active' : '') +
+                    '" role="tab" aria-selected="' + (key === active ? 'true' : 'false') +
+                    '" onclick="event.stopPropagation(); pcSetActivityFilter(' + Number(appId) + ', \'' + key + '\')">' +
+                    esc(labels[key]) + '</button>';
+            }).join('') +
+        '</div>';
+    }
+
+    function captionHtml(appId, filter, mode) {
+        return '<div class="pc-activity__caption">' +
+            '<p class="pc-activity__hint">' + esc(hintForFilter(filter)) + '</p>' +
+            '<div class="pc-activity__mode" role="group" aria-label="' + esc(text('pcModeNow', 'Now') + ' / ' + text('pcModeHistory', 'History')) + '">' +
+                '<button type="button" class="pc-activity__mode-btn' + (mode === 'now' ? ' is-active' : '') +
+                    '" onclick="event.stopPropagation(); pcSetActivityMode(' + Number(appId) + ', \'now\')">' +
+                    esc(text('pcModeNow', 'Now')) + '</button>' +
+                '<button type="button" class="pc-activity__mode-btn' + (mode === 'history' ? ' is-active' : '') +
+                    '" onclick="event.stopPropagation(); pcSetActivityMode(' + Number(appId) + ', \'history\')">' +
+                    esc(text('pcModeHistory', 'History')) + '</button>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function workspaceListHtml(project, filter, mode, data, context) {
+        var safeId = Number(project.id);
+        return '<div class="pc-activity__list">' +
+            '<div class="pc-activity__now" id="pc-activity-now-' + safeId + '"' + (mode === 'now' ? '' : ' hidden') + '>' +
+                nowHtmlForFilter(project, filter, data, context) +
+            '</div>' +
+            '<div class="pc-activity-history" id="pc-activity-history-' + safeId + '"' + (mode === 'history' ? '' : ' hidden') + '></div>' +
+        '</div>';
+    }
+
+    function loadFilterHistory(appId, filter, data) {
+        var pane = document.getElementById('pc-activity-history-' + Number(appId));
+        if (!pane) return;
+        var scope = scopeForFilter(filter, data);
+        if (typeof window.renderTestingControlHistoryInto === 'function') {
+            window.renderTestingControlHistoryInto(pane, appId, {
+                archived: false,
+                testerIds: scope.testerIds,
+                progressIds: scope.progressIds,
+            });
+        }
+    }
+
+    function afterPaint(appId) {
+        var project = projectById(appId);
+        if (!project) return;
+        var data = activityCounts(project);
+        var prefs = readPrefs(appId);
+        var filter = resolvedFilter(prefs, data);
+        var mode = prefs.modes[filter] || 'now';
+        if (mode === 'history') {
+            loadFilterHistory(appId, filter, data);
+        } else if (filter === 'control') {
+            loadPendingThumbnails(Number(appId), { scope: '.pc-activity__list' });
+        }
+    }
+
+    function refreshActivityWorkspace(appId) {
+        var safeAppId = Number(appId || 0);
+        var root = document.getElementById('pc-today-' + safeAppId);
+        var project = projectById(safeAppId);
+        if (!root || !project) return;
+        var shell = root.querySelector('.pc-activity');
+        if (!shell) {
+            root.innerHTML = innerHtml(project);
+            afterPaint(safeAppId);
+            return;
+        }
+        var data = activityCounts(project);
+        var prefs = readPrefs(safeAppId);
+        var filter = resolvedFilter(prefs, data);
+        var mode = prefs.modes[filter] || 'now';
+        var context = contextFor(project);
+        var filtersEl = shell.querySelector('.pc-activity__filters');
+        var captionEl = shell.querySelector('.pc-activity__caption');
+        var nowEl = document.getElementById('pc-activity-now-' + safeAppId);
+        var histEl = document.getElementById('pc-activity-history-' + safeAppId);
+        shell.classList.toggle('is-hydrating', !!data.loading);
+        if (filtersEl) {
+            var nextFilters = document.createElement('div');
+            nextFilters.innerHTML = filtersHtml(safeAppId, visibleFilters(data), filter);
+            filtersEl.replaceWith(nextFilters.firstChild);
+        }
+        if (captionEl) {
+            var nextCaption = document.createElement('div');
+            nextCaption.innerHTML = captionHtml(safeAppId, filter, mode);
+            captionEl.replaceWith(nextCaption.firstChild);
+        }
+        if (nowEl) {
+            nowEl.hidden = mode !== 'now';
+            if (mode === 'now') nowEl.innerHTML = nowHtmlForFilter(project, filter, data, context);
+        }
+        if (histEl) histEl.hidden = mode !== 'history';
+        afterPaint(safeAppId);
     }
 
     function sheetIsOpen() {
@@ -912,6 +1115,10 @@
 
     function innerHtml(project) {
         var data = activityCounts(project);
+        var prefs = readPrefs(project.id);
+        var filter = resolvedFilter(prefs, data);
+        var mode = prefs.modes[filter] || 'now';
+        var context = contextFor(project);
         var progress = typeof window.getProjectDailyProgressMeta === 'function'
             ? window.getProjectDailyProgressMeta(project)
             : { countDone: 0, presentCount: 0 };
@@ -919,11 +1126,6 @@
             ? window.buildProjectDailyProgressRingHtml(project)
             : '';
         var quotaReserve = Number(progress.presentCount || 0) > 12 && Number(progress.countDone || 0) >= 12;
-        var contributionCount = data.loading ? '…' : (data.hydrated && data.contribution.length ? String(data.contribution.length) : '');
-        var attentionCount = data.attention.length;
-        var controlMeta = data.controlRows.length
-            ? (data.controlDone + '/' + data.controlRows.length)
-            : '';
         var errorHtml = data.error
             ? '<div class="pc-today__error">' + esc(text('pcTodayLoadError', "Could not load today's reports")) +
                 '<button type="button" onclick="event.stopPropagation(); pcRetryToday(' + Number(project.id) + ')">' +
@@ -947,21 +1149,9 @@
                         : '') +
                 '</div>' +
             '</div>' +
-            '<div class="pc-activity__entries">' +
-                compactEntryHtml(project.id, 'contribution', text('pcContributionTitle', 'Valuable contribution'), '', contributionCount, '') +
-                compactEntryHtml(
-                    project.id,
-                    'attention',
-                    text('pcAttentionTitle', 'Needs attention'),
-                    '',
-                    attentionCount > 0 ? String(attentionCount) : '',
-                    attentionCount > 0 ? 'warn' : ''
-                ) +
-                (data.controlRows.length
-                    ? compactEntryHtml(project.id, 'control', text('pcControlTodayTitle', 'Control today'), controlMeta, '', data.controlDone >= data.controlRows.length ? 'ok' : '')
-                    : '') +
-            '</div>' +
-            compactEntryHtml(project.id, 'testers', text('pcAllTestersEntry', 'All testers'), '', '', '', 'pc-act-row--quiet') +
+            filtersHtml(project.id, visibleFilters(data), filter) +
+            captionHtml(project.id, filter, mode) +
+            workspaceListHtml(project, filter, mode, data, context) +
             errorHtml +
         '</section>';
     }
@@ -971,7 +1161,12 @@
         var root = document.getElementById('pc-today-' + safeAppId);
         var project = projectById(safeAppId);
         if (!root || !project) return;
-        root.innerHTML = innerHtml(project);
+        if (root.querySelector('.pc-activity')) {
+            refreshActivityWorkspace(safeAppId);
+        } else {
+            root.innerHTML = innerHtml(project);
+            afterPaint(safeAppId);
+        }
         if (sheetIsOpen() && Number(sheetState.appId) === safeAppId && sheetState.mode !== 'testers') {
             fillActivitySheet();
         }
@@ -1000,9 +1195,10 @@
         if (status !== 'active' && status !== 'pending_completion') return;
         var root = cardEl && cardEl.querySelector('#pc-today-' + Number(project.id));
         if (!root) return;
+        afterPaint(Number(project.id));
         var entry = cache.get(Number(project.id));
         if (entry && !entry.loading && !entry.error && (Date.now() - entry.loadedAt) < CACHE_TTL_MS) {
-            loadPendingThumbnails(Number(project.id));
+            loadPendingThumbnails(Number(project.id), { scope: '.pc-activity__list' });
             return;
         }
         ensureObserver();
@@ -1015,6 +1211,24 @@
         mount: mount,
         isControlDay: isControlDay,
         invalidate: function (appId) { cache.delete(Number(appId || 0)); },
+    };
+
+    window.pcSetActivityFilter = function (appId, filter) {
+        var prefs = readPrefs(appId);
+        prefs.filter = ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers';
+        writePrefs(appId, prefs);
+        refreshActivityWorkspace(appId);
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    };
+
+    window.pcSetActivityMode = function (appId, mode) {
+        var project = projectById(appId);
+        var prefs = readPrefs(appId);
+        var filter = resolvedFilter(prefs, activityCounts(project || { testers: [] }));
+        prefs.modes[filter] = mode === 'history' ? 'history' : 'now';
+        writePrefs(appId, prefs);
+        refreshActivityWorkspace(appId);
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
     window.pcOpenActivitySheet = function (appId, mode) {
@@ -1035,7 +1249,8 @@
         if (event && event.target !== overlay) return;
         if (overlay) overlay.classList.remove('active');
         sheetState.historyLoaded = false;
-        if (typeof window.clearTestingControlHistoryEmbed === 'function') {
+        var liveHistory = document.querySelector('[id^="pc-activity-history-"]:not([hidden])');
+        if (!liveHistory && typeof window.clearTestingControlHistoryEmbed === 'function') {
             window.clearTestingControlHistoryEmbed();
         }
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();

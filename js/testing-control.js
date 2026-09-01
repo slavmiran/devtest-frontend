@@ -32,6 +32,8 @@
         // where local timeline/gallery state cannot describe the proof.
         previewFallback: null,
         embedTargetId: '',
+        embedTesterIds: null,
+        embedProgressIds: null,
     };
 
     var PREVIEW_CACHE_MAX_ITEMS = 5;
@@ -307,11 +309,26 @@
         '</article>';
     }
 
+    function embedScopedItems() {
+        var items = state.items || [];
+        if (!state.embedTesterIds && !state.embedProgressIds) return items;
+        var testers = {};
+        var progress = {};
+        (state.embedTesterIds || []).forEach(function (id) { testers[Number(id)] = true; });
+        (state.embedProgressIds || []).forEach(function (id) { progress[Number(id)] = true; });
+        return items.filter(function (item) {
+            var testerId = Number(item && item.tester && item.tester.id || 0);
+            var progressId = Number(item && item.progress_id || 0);
+            return (testerId > 0 && testers[testerId]) || (progressId > 0 && progress[progressId]);
+        });
+    }
+
     function testersListHtml() {
-        var itemsHtml = state.items.length
-            ? state.items.map(renderTester).join('')
+        var items = embedScopedItems();
+        var itemsHtml = items.length
+            ? items.map(renderTester).join('')
             : '<div class="testing-control-empty">' + escape(text('testingControlEmpty', 'No testers in this run yet.')) + '</div>';
-        var loadMore = state.nextCursor
+        var loadMore = state.nextCursor && !state.embedTesterIds && !state.embedProgressIds
             ? '<button type="button" class="btn btn-secondary testing-control-more" onclick="loadMoreTestingControl()">' + escape(text('testingControlLoadMore', 'Load more')) + '</button>'
             : '';
         return '<div class="testing-control-list">' + itemsHtml + '</div>' + loadMore;
@@ -909,6 +926,8 @@
         options = options || {};
         if (!enabled()) return false;
         state.embedTargetId = '';
+        state.embedTesterIds = null;
+        state.embedProgressIds = null;
         var safeAppId = Number(appId || 0);
         if (safeAppId <= 0) return false;
         var cached = projectFromCache(safeAppId);
@@ -1248,6 +1267,19 @@
         var safeAppId = Number(appId || 0);
         if (safeAppId <= 0) return false;
         if (!container.id) container.id = 'pc-activity-history';
+        var testerIds = Array.isArray(options.testerIds) ? options.testerIds.map(Number) : null;
+        var progressIds = Array.isArray(options.progressIds) ? options.progressIds.map(Number) : null;
+        var alreadyLoaded = Number(state.appId) === safeAppId
+            && state.embedTargetId === container.id
+            && !state.loading
+            && Array.isArray(state.items)
+            && state.items.length > 0;
+        state.embedTesterIds = testerIds;
+        state.embedProgressIds = progressIds;
+        if (alreadyLoaded) {
+            renderTesters();
+            return true;
+        }
         var cached = projectFromCache(safeAppId);
         state.appId = safeAppId;
         state.archived = Object.prototype.hasOwnProperty.call(options, 'archived') ? !!options.archived : !!(cached && cached.archived);
@@ -1262,6 +1294,8 @@
     };
     window.clearTestingControlHistoryEmbed = function () {
         state.embedTargetId = '';
+        state.embedTesterIds = null;
+        state.embedProgressIds = null;
     };
     window.retryTestingControl = function () {
         return state.activeTab === 'gallery' ? loadGalleryPage({ append: false }) : loadPage({ append: false });

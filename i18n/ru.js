@@ -2974,6 +2974,16 @@
             pcAttentionDebt: "Долг завершить ваш проект",
             pcControlReceivedMark: "Получен",
             pcActivityHistoryLoading: "Загружаю историю…",
+            pcFilterContribution: "Вклад",
+            pcFilterAttention: "Внимание",
+            pcFilterControl: "Контроль",
+            pcFilterAll: "Все",
+            pcModeNow: "Сейчас",
+            pcModeHistory: "История",
+            pcHintContribution: "Сегодня сделали больше обычного: отчёты, баги, рекомендации или 3+ скриншота.",
+            pcHintAttention: "Здесь тестеры, по которым тестирование может остановиться или требуется ваше действие.",
+            pcHintControl: "Сегодня должны подтвердить тестирование контрольным отчётом.",
+            pcHintAll: "Все участники текущего тестирования.",
 
     };
     window.I18N_RU = window.I18NRU;

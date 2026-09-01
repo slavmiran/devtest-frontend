@@ -1950,6 +1950,115 @@
     color: var(--text-tertiary);
 }
 
+.pc-activity__filters {
+    display: flex;
+    gap: 2px;
+    margin: 2px 0 0;
+    padding: 3px;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.045);
+}
+
+.pc-activity__filter {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 32px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.pc-activity__filter.is-active {
+    color: var(--text-primary);
+    background: rgba(10, 132, 255, 0.22);
+}
+
+.pc-activity__caption {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0 6px;
+}
+
+.pc-activity__hint {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-tertiary);
+}
+
+.pc-activity__mode {
+    display: inline-flex;
+    flex: 0 0 auto;
+    padding: 2px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.pc-activity__mode-btn {
+    min-height: 26px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.pc-activity__mode-btn.is-active {
+    color: var(--text-primary);
+    background: rgba(10, 132, 255, 0.22);
+}
+
+.pc-activity__list {
+    min-height: 72px;
+}
+
+.pc-activity__now {
+    min-width: 0;
+}
+
+.pc-activity__list .testers-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.pc-activity-control {
+    margin: 0;
+    padding: 0;
+}
+
+.pc-activity-control .pc-row {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.pc-activity-control .pc-slots {
+    grid-template-columns: repeat(3, minmax(0, 44px));
+    margin-left: 0;
+}
+
+.pc-activity.is-hydrating .pc-activity__list {
+    opacity: 0.72;
+    transition: opacity 0.2s ease;
+}
+
 .pc-activity__entries {
     display: flex;
     flex-direction: column;
@@ -2099,6 +2208,10 @@
     font-size: 13px;
 }
 
+.pc-activity__list .pc-activity-empty {
+    padding: 16px 4px;
+}
+
 .pc-act-list {
     list-style: none;
     margin: 0;
@@ -2183,11 +2296,15 @@ button.pc-act-reason {
 }
 
 .pc-activity-history {
-    min-height: 120px;
+    min-height: 72px;
 }
 
 .pc-activity-history .testing-control-list {
     gap: 8px;
+}
+
+.pc-activity-history .testing-control-tester {
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .pc-action--debt {

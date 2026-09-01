@@ -2968,6 +2968,16 @@
             pcAttentionDebt: "Still owes finishing your project",
             pcControlReceivedMark: "Received",
             pcActivityHistoryLoading: "Loading history…",
+            pcFilterContribution: "Value",
+            pcFilterAttention: "Attention",
+            pcFilterControl: "Control",
+            pcFilterAll: "All",
+            pcModeNow: "Now",
+            pcModeHistory: "History",
+            pcHintContribution: "Today they did more than a regular check-in: reports, bugs, recommendations, or 3+ screenshots.",
+            pcHintAttention: "These testers may stall the test or need an action from you.",
+            pcHintControl: "Today they must confirm testing with a control report.",
+            pcHintAll: "Everyone in the current test.",
 
     };
     window.I18N_EN = window.I18NEN;
