@@ -332,6 +332,7 @@
             theirIconUrl: theirIconUrl,
             testerSnapshot: tester,
             isMutualDebt: options.isMutualDebt != null ? !!options.isMutualDebt : !!(tester && tester.is_mutual_debt),
+            mutualDebtHolder: options.mutualDebtHolder || (tester && tester.mutual_debt_holder) || '',
             leftSoft: isTesterLeft,
             isTesterLeft: isTesterLeft,
             isViewerLeft: isViewerLeft,
@@ -385,6 +386,7 @@
             projectId: Number(options.projectId || (context === 'projects' ? safeAppId : 0)),
             joinType: joinType,
             isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt)),
+            mutualDebtHolder: String(options.mutualDebtHolder || (test && test.mutual_debt_holder) || ''),
             leftSoft: !!options.leftSoft,
             reciprocalAppId: Number(options.reciprocalAppId || 0),
             testerUsername: String(options.testerUsername || '').replace(/^@+/, ''),
@@ -539,11 +541,26 @@
             theirName = options.theirAppName || theirName;
         }
         var tester = options.testerSnapshot || null;
+        var localExchangeState = (
+            options.context === 'projects' && tester && tester.exchange_state
+            || test && test.exchange_state
+            || null
+        );
+        if (localExchangeState && Number(localExchangeState.version || 0) < 1) {
+            localExchangeState = null;
+        }
+        var localTesterMetrics = localExchangeState && localExchangeState.left && localExchangeState.left.metrics || null;
+        var localPartnerMetrics = localExchangeState && localExchangeState.right && localExchangeState.right.metrics || null;
         var theirDays = 0;
         var theirSkips = 0;
         var theirConsec = 0;
         var theirCheckins = 0;
-        if (options.context === 'projects' && tester) {
+        if (localTesterMetrics) {
+            theirDays = Number(localTesterMetrics.testing_days || 0);
+            theirSkips = Number(localTesterMetrics.skips || 0);
+            theirConsec = Number(localTesterMetrics.consecutive_skips || 0);
+            theirCheckins = Number(localTesterMetrics.checkins || 0);
+        } else if (options.context === 'projects' && tester) {
             theirDays = tester.start_date && typeof getUserTestingDay === 'function'
                 ? getUserTestingDay(tester.start_date)
                 : Number(tester.testing_days || 0);
@@ -576,13 +593,15 @@
                 : ((test && test.name) || theirName),
             myIcon: options.myIconUrl || (test && test.reciprocal_app_icon_url) || '',
             theirIcon: options.theirIconUrl || (test && test.icon_url) || '',
-            myDays: Number(test && test.partner_testing_days || 0),
+            myDays: Number(localPartnerMetrics ? localPartnerMetrics.testing_days : test && test.partner_testing_days || 0),
             theirDays: theirDays,
-            mySkips: Number(test && test.partner_skips || 0),
+            mySkips: Number(localPartnerMetrics ? localPartnerMetrics.skips : test && test.partner_skips || 0),
             theirSkips: theirSkips,
-            myConsecutive: Number(test && test.partner_consecutive_skips || 0),
+            myConsecutive: Number(localPartnerMetrics ? localPartnerMetrics.consecutive_skips : test && test.partner_consecutive_skips || 0),
             theirConsecutive: Number(
-                options.context === 'projects' && tester
+                localTesterMetrics
+                    ? localTesterMetrics.consecutive_skips
+                    : options.context === 'projects' && tester
                     ? (tester.consecutive_skips != null ? tester.consecutive_skips : calculateConsecutiveSkips(tester))
                     : (test && typeof calculateConsecutiveSkips === 'function' ? calculateConsecutiveSkips(test) : (test && test.consecutive_skips || 0))
             ),
@@ -602,13 +621,27 @@
             myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
-            isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            isMutualDebt: localExchangeState
+                ? !!localExchangeState.is_mutual_debt
+                : !!(options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            debtHolder: String(
+                localExchangeState && localExchangeState.debt_holder
+                || options.mutualDebtHolder
+                || (test && test.mutual_debt_holder)
+                || (_balanceState && _balanceState.mutualDebtHolder)
+                || ''
+            ),
             leftSoft: isTesterLeft,
         });
     }
 
     function _renderBalanceFromStats(stats, test, options) {
         options = options || {};
+        var exchangeState = stats && stats.exchange_state && Number(stats.exchange_state.version || 0) >= 1
+            ? stats.exchange_state
+            : null;
+        var testerMetrics = exchangeState && exchangeState.left && exchangeState.left.metrics || null;
+        var partnerMetrics = exchangeState && exchangeState.right && exchangeState.right.metrics || null;
         var person = _resolvePersonForRender(test, options, stats);
         var myAppName = stats.partner_app_name || (test && test.reciprocal_app_name) || _t('mutualBalanceYourProject');
         var theirAppName = stats.app_name || (test && test.name) || _t('unknownLabel');
@@ -646,19 +679,25 @@
             theirIcon: isOwnerView
                 ? (options.theirIconUrl || stats.partner_app_icon_url || '')
                 : (options.theirIconUrl || stats.app_icon_url || (test && test.icon_url) || ''),
-            myDays: Number(stats.partner_testing_days || 0),
-            theirDays: Number(stats.my_testing_days || (test && test.testing_days) || 0),
-            mySkips: Number(stats.partner_skips || 0),
-            theirSkips: Number(stats.my_skips || (test && test.skips_count) || 0),
-            myConsecutive: Number(stats.partner_consecutive_skips || 0),
+            myDays: Number(partnerMetrics ? partnerMetrics.testing_days : stats.partner_testing_days || 0),
+            theirDays: Number(testerMetrics ? testerMetrics.testing_days : stats.my_testing_days || (test && test.testing_days) || 0),
+            mySkips: Number(partnerMetrics ? partnerMetrics.skips : stats.partner_skips || 0),
+            theirSkips: Number(testerMetrics ? testerMetrics.skips : stats.my_skips || (test && test.skips_count) || 0),
+            myConsecutive: Number(partnerMetrics ? partnerMetrics.consecutive_skips : stats.partner_consecutive_skips || 0),
             theirConsecutive: Number(
-                options.context === 'projects'
+                testerMetrics
+                    ? testerMetrics.consecutive_skips
+                    : options.context === 'projects'
                     ? (stats.my_consecutive_skips || 0)
                     : (stats.my_consecutive_skips || (test && typeof calculateConsecutiveSkips === 'function' ? calculateConsecutiveSkips(test) : 0))
             ),
-            theirCheckins: Number(stats.my_checkins || (test && test.checkins_count) || 0),
+            theirCheckins: Number(testerMetrics ? testerMetrics.checkins : stats.my_checkins || (test && test.checkins_count) || 0),
             partnerConsecutive: Number(
-                options.context === 'projects'
+                exchangeState
+                    ? (options.context === 'projects'
+                        ? testerMetrics && testerMetrics.consecutive_skips
+                        : partnerMetrics && partnerMetrics.consecutive_skips)
+                    : options.context === 'projects'
                     ? (stats.my_consecutive_skips || stats.partner_consecutive_skips || 0)
                     : (stats.partner_consecutive_skips || 0)
             ),
@@ -671,10 +710,20 @@
             myLastActive: stats.my_last_check_date || (test && test.last_check_date) || null,
             partnerDoneDate: stats.partner_last_active || stats.partner_last_check_date || null,
             myDoneDate: stats.my_last_check_date || (test && test.last_check_date) || null,
-            myProgressStatus: String(test && test.progress_status || 'active'),
+            myProgressStatus: String(stats.my_progress_status || (test && test.progress_status) || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
-            isMutualDebt: !!(options.isMutualDebt || stats.is_mutual_debt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            isMutualDebt: exchangeState
+                ? !!exchangeState.is_mutual_debt
+                : !!(stats.is_mutual_debt || options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            debtHolder: String(
+                exchangeState && exchangeState.debt_holder
+                || stats.debt_holder
+                || options.mutualDebtHolder
+                || (test && test.mutual_debt_holder)
+                || (_balanceState && _balanceState.mutualDebtHolder)
+                || ''
+            ),
             leftSoft: isTesterLeft,
         });
     }
@@ -768,7 +817,9 @@
             userId: data.partnerId || 0,
             joinType: data.joinType || 'mutual',
         };
-        var isDebt = !!(data.isMutualDebt || (_balanceState && _balanceState.isMutualDebt));
+        var isDebt = data.isMutualDebt != null
+            ? !!data.isMutualDebt
+            : !!(_balanceState && _balanceState.isMutualDebt);
         person.isDebt = isDebt;
         if (_balanceState) {
             _balanceState.joinType = person.joinType || _balanceState.joinType;
@@ -808,8 +859,13 @@
         }
 
         var isMutual = _isMutualJoin(person.joinType);
-        var isPartnerDebt = isOwnerView && isDebt;
-        var isSelfDebt = !isOwnerView && isDebt;
+        var debtHolder = String(data.debtHolder || '').toLowerCase();
+        var isPartnerDebt = isDebt && (debtHolder
+            ? (isOwnerView ? debtHolder === 'tester' : debtHolder === 'partner')
+            : isOwnerView);
+        var isSelfDebt = isDebt && (debtHolder
+            ? (isOwnerView ? debtHolder === 'partner' : debtHolder === 'tester')
+            : !isOwnerView);
         var bodyHtml;
         if (isMutual) {
             // Owner: you→their reciprocal app; them→your project.
