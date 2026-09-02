@@ -283,6 +283,7 @@
         var myCheckins = Number(data.my_checkins != null ? data.my_checkins : 0);
         var karmaBurn = KARMA_ABANDONED_BURN;
         var mySkips = Number(data.my_skips || 0);
+        var myConsecutive = Number(data.my_consecutive_skips || 0);
         var waitCount = Math.max(0, 3 - partnerConsecutive);
         var grantStillAvailable = mySkips <= 3;
         var grantTotal = grantStillAvailable
@@ -379,8 +380,8 @@
                     '</div>' +
                     '<div class="leave-metric-list">' +
                         _metricRow('📅', _t('leaveMetricDays'), data.partner_testing_days || 0, false) +
-                        _metricRow('🔁', _t('leaveMetricConsecutiveSkips'), String(partnerConsecutive) + '/3', partnerConsecutive > 0) +
-                        _metricRow('⚠️', _t('leaveMetricTotalSkips'), String(partnerSkips), false) +
+                        _metricRow('⚠️', _t('leaveMetricConsecutiveSkips'), String(partnerConsecutive) + '/3', partnerConsecutive > 0) +
+                        _metricRow('📉', _t('leaveMetricTotalSkips'), String(partnerSkips), false) +
                         _metricRow('✅', _t('leaveMetricCheckins'), partnerCheckins, false) +
                     '</div>' +
                     (partnerMetaParts.length
@@ -403,7 +404,8 @@
                         '<div class="leave-my-drawer-inner">' +
                             '<div class="leave-metric-list">' +
                                 _metricRow('📅', _t('leaveMetricDays'), data.my_testing_days || 0, false) +
-                                _metricRow('⚠️', _t('leaveMetricSkips'), String(mySkips) + '/3', mySkips >= 3) +
+                                _metricRow('⚠️', _t('leaveMetricConsecutiveSkips'), String(myConsecutive) + '/3', myConsecutive > 0) +
+                                _metricRow('📉', _t('leaveMetricTotalSkips'), String(mySkips), false) +
                                 _metricRow('✅', _t('leaveMetricCheckins'), myCheckins, false) +
                             '</div>' +
                             grantRow +
@@ -443,6 +445,7 @@
         var dailyBurn = ctx.dailyBurn;
         var myDays = Number(ctx.myTestingDays || 0);
         var mySkips = Number(ctx.mySkips || 0);
+        var myConsecutive = Number(ctx.myConsecutive || 0);
         var myCheckins = Number(ctx.myCheckins || 0);
         var showMySide = (isMutualJoin || Number(ctx.reciprocalAppId || 0) > 0) && ctx.isReciprocalActive !== false;
         var grantStillAvailable = showMySide && mySkips <= 3;
@@ -535,7 +538,8 @@
                         '<div class="leave-my-drawer-inner">' +
                             '<div class="leave-metric-list">' +
                                 _metricRow('📅', _t('leaveMetricDays'), myDays, false) +
-                                _metricRow('⚠️', _t('leaveMetricSkips'), String(mySkips) + '/3', mySkips >= 3) +
+                                _metricRow('⚠️', _t('leaveMetricConsecutiveSkips'), String(myConsecutive) + '/3', myConsecutive > 0) +
+                                _metricRow('📉', _t('leaveMetricTotalSkips'), String(mySkips), false) +
                                 _metricRow('✅', _t('leaveMetricCheckins'), myCheckins, false) +
                             '</div>' +
                             grantRow +
@@ -570,8 +574,8 @@
                     '</div>' +
                     '<div class="leave-metric-list">' +
                         _metricRow('📅', _t('leaveMetricDays'), testingDays, false) +
-                        _metricRow('🔁', _t('leaveMetricConsecutiveSkips'), String(consecutiveSkips) + '/3', consecutiveSkips > 0) +
-                        _metricRow('⚠️', _t('leaveMetricTotalSkips'), String(skipsCount), false) +
+                        _metricRow('⚠️', _t('leaveMetricConsecutiveSkips'), String(consecutiveSkips) + '/3', consecutiveSkips > 0) +
+                        _metricRow('📉', _t('leaveMetricTotalSkips'), String(skipsCount), false) +
                         _metricRow('✅', _t('leaveMetricCheckins'), checkinCount, false) +
                     '</div>' +
                     joinNote +
@@ -1191,20 +1195,15 @@
             return;
         }
 
-        var testingDays = tester.start_date && typeof getUserTestingDay === 'function'
-            ? getUserTestingDay(tester.start_date)
-            : Number(tester.testing_days || 0);
-        var checkinCount = Number(tester.checkins_count || 0);
-        var lastCheck = String(tester.last_check_date || '').trim();
-        var todayIso = (typeof getLocalDateIso === 'function')
-            ? getLocalDateIso()
-            : new Date().toISOString().slice(0, 10);
-        var checkedToday = !!lastCheck && lastCheck === todayIso;
-        var realizedDays = checkedToday ? testingDays : Math.max(0, testingDays - 1);
-        var skipsCount = Math.max(0, Math.min(14, realizedDays) - Math.min(14, checkinCount));
-        var consecutiveSkips = (typeof calculateConsecutiveSkips === 'function')
-            ? calculateConsecutiveSkips(tester)
-            : Math.max(0, Number(tester.consecutive_skips || 0));
+        var exchangeState = tester.exchange_state && Number(tester.exchange_state.version || 0) >= 1
+            ? tester.exchange_state
+            : null;
+        var testerMetrics = exchangeState && exchangeState.left && exchangeState.left.metrics;
+        var ownerMetrics = exchangeState && exchangeState.right && exchangeState.right.metrics;
+        var testingDays = Number(testerMetrics ? testerMetrics.testing_days : tester.testing_days || 0);
+        var checkinCount = Number(testerMetrics ? testerMetrics.checkins : tester.checkins_count || 0);
+        var skipsCount = Number(testerMetrics ? testerMetrics.skips : tester.skips_count || 0);
+        var consecutiveSkips = Number(testerMetrics ? testerMetrics.consecutive_skips : tester.consecutive_skips || 0);
         var joinType = _normalizeJoinType(tester.join_type || options.joinType || 'invite');
         var bountyPerTester = Number(project.bounty_per_tester || 0);
         var holdBonus = bountyPerTester > 0 ? bountyPerTester * 0.35 : 0;
@@ -1218,7 +1217,14 @@
         var reciprocalAppName = '';
         var myTestingDays = 0;
         var mySkips = 0;
+        var myConsecutive = 0;
         var myCheckins = reciprocalOwnerCheckins;
+        if (ownerMetrics) {
+            myTestingDays = Number(ownerMetrics.testing_days || 0);
+            mySkips = Number(ownerMetrics.skips || 0);
+            myConsecutive = Number(ownerMetrics.consecutive_skips || 0);
+            myCheckins = Number(ownerMetrics.checkins || 0);
+        }
         var reciprocalTest = null;
         if (reciprocalAppId > 0 && Array.isArray(myTests)) {
             reciprocalTest = myTests.find(function (item) {
@@ -1226,12 +1232,13 @@
             });
             if (reciprocalTest) {
                 reciprocalAppName = reciprocalTest.name || reciprocalTest.app_name || '';
-                myTestingDays = reciprocalTest.start_date && typeof getUserTestingDay === 'function'
-                    ? getUserTestingDay(reciprocalTest.start_date)
-                    : Number(reciprocalTest.testing_days || 0);
-                mySkips = Number(reciprocalTest.skips_count || 0);
-                if (reciprocalTest.checkins_count != null && reciprocalTest.checkins_count !== '') {
-                    myCheckins = Number(reciprocalTest.checkins_count || 0);
+                if (!ownerMetrics) {
+                    myTestingDays = Number(reciprocalTest.testing_days || 0);
+                    mySkips = Number(reciprocalTest.skips_count || 0);
+                    myConsecutive = Number(reciprocalTest.consecutive_skips || 0);
+                    if (reciprocalTest.checkins_count != null && reciprocalTest.checkins_count !== '') {
+                        myCheckins = Number(reciprocalTest.checkins_count || 0);
+                    }
                 }
             }
         }
@@ -1287,6 +1294,7 @@
             isReciprocalActive: isReciprocalActive,
             myTestingDays: myTestingDays,
             mySkips: mySkips,
+            myConsecutive: myConsecutive,
             myCheckins: myCheckins,
             grantStillAvailable: grantStillAvailable,
             grantTotal: grantTotal,

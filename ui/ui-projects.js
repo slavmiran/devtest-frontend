@@ -760,9 +760,18 @@ function renderProjects(force) {
                     statusHtml = `<span class="tester-status ${testerStatusClass}">${testerStatusIcon} ${window.escapeHTML(testerStatusText)}</span>`;
                 }
 
-                const consecutiveSkips = (typeof calculateConsecutiveSkips === 'function')
-                    ? calculateConsecutiveSkips(tester)
-                    : 0;
+                // Backend already calculated this in the owner's local day and
+                // embedded the same value in exchange_state. Do not derive a
+                // second streak from dates in the browser.
+                const exchangeMetrics = tester.exchange_state
+                    && Number(tester.exchange_state.version || 0) >= 1
+                    && tester.exchange_state.left
+                    && tester.exchange_state.left.metrics;
+                const consecutiveSkips = Number(
+                    exchangeMetrics && exchangeMetrics.consecutive_skips != null
+                        ? exchangeMetrics.consecutive_skips
+                        : (tester.consecutive_skips || 0)
+                );
                 if (!isLeftSoft) {
                     if (consecutiveSkips >= 3) attentionCount++;
                     if (isMutualDebt) mutualDebtCount++;

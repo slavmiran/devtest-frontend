@@ -110,7 +110,19 @@
             return null;
         }
 
-        if (test && test.is_mutual_debt) {
+        var exchangeState = test && test.exchange_state && Number(test.exchange_state.version || 0) >= 1
+            ? test.exchange_state
+            : null;
+
+        if (exchangeState && exchangeState.is_broken) {
+            return {
+                kind: 'broken',
+                className: 'meta-chip accent-danger barter-chip',
+                label: _t('barterChipBroken'),
+            };
+        }
+
+        if ((exchangeState && exchangeState.is_mutual_debt) || (!exchangeState && test && test.is_mutual_debt)) {
             return {
                 kind: 'debt',
                 className: 'meta-chip accent-cyan barter-chip',
@@ -124,7 +136,7 @@
             : (partnerProgress === 'active');
         var hasReciprocal = Number(test && test.reciprocal_app_id || 0) > 0;
 
-        if (hasReciprocal && !partnerActive && partnerProgress && partnerProgress !== 'completed') {
+        if (!exchangeState && hasReciprocal && !partnerActive && partnerProgress && partnerProgress !== 'completed') {
             return {
                 kind: 'broken',
                 className: 'meta-chip accent-danger barter-chip',
@@ -132,7 +144,7 @@
             };
         }
 
-        if (!hasReciprocal && joinType === 'mutual') {
+        if (!exchangeState && !hasReciprocal && joinType === 'mutual') {
             // Voluntary / broken one-sided mutual still on My Tests
             return {
                 kind: 'broken',
@@ -141,15 +153,15 @@
             };
         }
 
-        var partnerHasDates = !!(test && (test.partner_last_check_date || test.partner_start_date));
-        var partnerConsecutive = partnerHasDates
-            ? calculateConsecutiveSkips({
-                last_check_date: test && test.partner_last_check_date,
-                start_date: test && test.partner_start_date,
-            })
-            : Number(test && test.partner_consecutive_skips != null
-                ? test.partner_consecutive_skips
-                : 0);
+        // Warning state must come from the same server snapshot as the balance
+        // modal. Recalculating from dates in the browser produced a different
+        // result around local midnight.
+        var partnerMetrics = exchangeState && exchangeState.right && exchangeState.right.metrics;
+        var partnerConsecutive = Number(
+            partnerMetrics && partnerMetrics.consecutive_skips != null
+                ? partnerMetrics.consecutive_skips
+                : (test && test.partner_consecutive_skips != null ? test.partner_consecutive_skips : 0)
+        );
         if (partnerConsecutive >= 3) {
             return {
                 kind: 'warning',
@@ -733,7 +745,6 @@
         var consec = Number(options.consecutiveSkips != null ? options.consecutiveSkips : 0);
         var totalSkips = Number(skips || 0);
         var consecWarn = consec >= 3;
-        var totalWarn = totalSkips >= 3;
         var isBroken = !!options.broken;
         var isDebtDone = !!options.debtDone;
         var isDebtActive = !!options.debtActive;
@@ -769,10 +780,10 @@
                 stateBadge +
                 '<div class="parity-chip-row">' +
                     '<span class="parity-chip">📅 ' + _esc(_t('parityDayChip', { day: day, total: 14 })) + '</span>' +
-                    '<span class="parity-chip' + (consecWarn ? ' is-warn' : (consec > 0 ? ' is-caution' : '')) + '">🔁 ' +
+                    '<span class="parity-chip' + (consecWarn ? ' is-warn' : '') + '">⚠️ ' +
                         _esc(consecText) +
                     '</span>' +
-                    '<span class="parity-chip' + (totalWarn ? ' is-warn' : '') + '">⚠️ ' +
+                    '<span class="parity-chip">📉 ' +
                         _esc(totalText) +
                     '</span>' +
                 '</div>' +
