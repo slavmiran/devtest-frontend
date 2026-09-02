@@ -7169,6 +7169,18 @@ function ensureHandsFreeStatusModal() {
     document.body.appendChild(div.firstElementChild);
 }
 
+function openMutualCatalogTesterSearch(projectId) {
+    closeAttractTestersSheet();
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    if (typeof window.switchTab === 'function') {
+        window.switchTab('market');
+    }
+    if (typeof window.switchMarketSubTab === 'function') {
+        window.switchMarketSubTab('seeking');
+    }
+}
+window.openMutualCatalogTesterSearch = openMutualCatalogTesterSearch;
+
 async function openAttractTestersSheet(projectId) {
     const project = myProjects.find((p) => p.id === projectId);
     if (!project) return;
@@ -7218,17 +7230,36 @@ async function openAttractTestersSheet(projectId) {
     }
 
     content.innerHTML = `
-        <!-- Item 1: Mass Invite -->
-        <div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openMassInviteModal(${projectId});">
-            <div class="attract-sheet-item-icon">📨</div>
-            <div class="attract-sheet-item-info">
-                <div class="attract-sheet-item-title-row">
-                    <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractMassInviteTitle', {}, lang))}</div>
-                    <span class="attract-sheet-item-badge accent-green">${window.escapeHTML(window.t('badgeAvailable', { count: massInviteMeta.maxRecipients }, lang))}</span>
+        <!-- Item 1: Mutual Testing Catalog & Mass Invite Hub -->
+        <div class="attract-sheet-hub-card">
+            <div class="attract-sheet-hub-header">
+                <div class="attract-sheet-hub-icon">👥</div>
+                <div class="attract-sheet-hub-info">
+                    <div class="attract-sheet-item-title-row">
+                        <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractMutualCatalogTitle', {}, lang))}</div>
+                        <span class="attract-sheet-item-badge accent-green">${window.escapeHTML(window.t('badgeAvailable', { count: massInviteMeta.maxRecipients }, lang))}</span>
+                    </div>
+                    <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractMutualCatalogSubtitle', {}, lang))}</div>
                 </div>
-                <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractMassInviteSubtitle', {}, lang))}</div>
             </div>
-            <span class="attract-sheet-item-chevron">›</span>
+            <div class="attract-sheet-hub-actions">
+                <button type="button" class="attract-sheet-hub-btn" onclick="openMutualCatalogTesterSearch(${projectId});">
+                    <span class="attract-sheet-hub-btn-icon">🔍</span>
+                    <span class="attract-sheet-hub-btn-content">
+                        <span class="attract-sheet-hub-btn-title">${window.escapeHTML(window.t('attractMutualCatalogActionManual', {}, lang))}</span>
+                        <span class="attract-sheet-hub-btn-desc">${window.escapeHTML(window.t('attractMutualCatalogActionManualDesc', {}, lang))}</span>
+                    </span>
+                    <span class="attract-sheet-hub-btn-chevron">›</span>
+                </button>
+                <button type="button" class="attract-sheet-hub-btn attract-sheet-hub-btn--accent" onclick="openMassInviteModal(${projectId});">
+                    <span class="attract-sheet-hub-btn-icon">⚡</span>
+                    <span class="attract-sheet-hub-btn-content">
+                        <span class="attract-sheet-hub-btn-title">${window.escapeHTML(window.t('attractMutualCatalogActionAuto', {}, lang))}</span>
+                        <span class="attract-sheet-hub-btn-desc">${window.escapeHTML(window.t('attractMutualCatalogActionAutoDesc', {}, lang))}</span>
+                    </span>
+                    <span class="attract-sheet-hub-btn-chevron">›</span>
+                </button>
+            </div>
         </div>
 
         <!-- Item 2: Guest Projects -->
@@ -7339,6 +7370,39 @@ function openMassInviteModal(projectId) {
     // Close Action Sheet first if open
     closeAttractTestersSheet();
     
+    // Device Profile check for mutual testing quality
+    if (typeof isDeviceProfileComplete === 'function' && !isDeviceProfileComplete()) {
+        const title = window.t ? window.t('massInviteDeviceProfileRequiredTitle', {}, lang) : 'Профиль тестового устройства';
+        const message = window.t ? window.t('massInviteDeviceProfileRequiredAlert', {}, lang) : 'Для запуска массовой рассылки заполните профиль вашего тестового устройства. Это необходимо для корректного взаимного тестирования.';
+        const btnFillText = window.t ? window.t('massInviteDeviceProfileRequiredBtn', {}, lang) : 'Заполнить профиль';
+        const btnCancelText = window.t ? window.t('btnCancel', {}, lang) : (lang === 'ru' ? 'Отмена' : 'Cancel');
+        
+        if (window.tg && window.tg.showPopup) {
+            window.tg.showPopup({
+                title: title,
+                message: message,
+                buttons: [
+                    { id: 'fill', type: 'default', text: btnFillText },
+                    { id: 'cancel', type: 'cancel', text: btnCancelText }
+                ]
+            }, function(buttonId) {
+                if (buttonId === 'fill') {
+                    if (typeof openDeviceInfoEditorModal === 'function') {
+                        openDeviceInfoEditorModal();
+                    }
+                }
+            });
+        } else {
+            const confirmed = confirm(message);
+            if (confirmed) {
+                if (typeof openDeviceInfoEditorModal === 'function') {
+                    openDeviceInfoEditorModal();
+                }
+            }
+        }
+        return;
+    }
+
     if (project.is_setup_completed === false) {
         const title = window.t ? window.t('massInviteSetupIncompleteTitle', {}, lang) : 'Настройка не завершена';
         const message = window.t ? window.t('massInviteSetupIncompleteAlert', {}, lang) : 'Настройка не завершена. Для запуска массовой рассылки необходимо настроить доступ для тестеров.';

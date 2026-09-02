@@ -3834,6 +3834,132 @@ input::placeholder,
     color: #ffcc00;
 }
 
+/* ── Attract Sheet Hub Card (Mutual Testing Pool) ── */
+.attract-sheet-hub-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--border-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 12px 14px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.attract-sheet-hub-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.attract-sheet-hub-icon {
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: var(--border-subtle);
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
+.attract-sheet-hub-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.attract-sheet-hub-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.attract-sheet-hub-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 9px 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.1s ease, background-color 0.15s, border-color 0.15s;
+    color: var(--text-color, #ffffff);
+    min-width: 0;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.attract-sheet-hub-btn:active {
+    transform: scale(0.97);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.attract-sheet-hub-btn--accent {
+    background: rgba(10, 132, 255, 0.1);
+    border-color: rgba(10, 132, 255, 0.25);
+}
+
+.attract-sheet-hub-btn--accent:active {
+    background: rgba(10, 132, 255, 0.2);
+}
+
+.attract-sheet-hub-btn-icon {
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.attract-sheet-hub-btn--accent .attract-sheet-hub-btn-icon {
+    background: rgba(10, 132, 255, 0.18);
+}
+
+.attract-sheet-hub-btn-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.attract-sheet-hub-btn-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-on-accent, #ffffff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attract-sheet-hub-btn-desc {
+    font-size: 10px;
+    color: var(--hint-color, #8e8e93);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attract-sheet-hub-btn-chevron {
+    font-size: 14px;
+    color: var(--hint-color, #8e8e93);
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+
 /* Prevent glow clipping on expanded cards */
 .card:not(.card-collapsed) .card-expanded-inner {
     overflow: visible;

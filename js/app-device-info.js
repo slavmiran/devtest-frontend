@@ -413,3 +413,5 @@ function copyFeedbackDeviceLine(btnEl) {
     return false;
 }
 window.copyFeedbackDeviceLine = copyFeedbackDeviceLine;
+window.isDeviceProfileComplete = isDeviceProfileComplete;
+window.openDeviceInfoEditorModal = openDeviceInfoEditorModal;
