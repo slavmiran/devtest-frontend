@@ -10,6 +10,53 @@ function _isProjectSyncedSafe(project) {
     return Number.isFinite(syncDay) && syncDay >= 1 && !!(project && project.last_sync_date);
 }
 
+function extraDaysUnitLabel(days) {
+    var n = Math.abs(Number(days || 0));
+    if (typeof lang !== 'undefined' && lang === 'ru') {
+        var mod100 = n % 100;
+        var mod10 = n % 10;
+        if (mod100 > 10 && mod100 < 20) return 'дней';
+        if (mod10 === 1) return 'день';
+        if (mod10 >= 2 && mod10 <= 4) return 'дня';
+        return 'дней';
+    }
+    return n === 1 ? 'day' : 'days';
+}
+
+function testersWhoCompletedTests(testers) {
+    return (Array.isArray(testers) ? testers : []).filter(function (tester) {
+        if (!tester || tester.is_left_soft) return false;
+        if (tester.is_guest_tester || tester.is_external) return false;
+        return Number(tester.testing_days || 0) >= 1 || !!tester.last_check_date;
+    });
+}
+
+function testerCompletedDayCount(tester) {
+    var days = Number(tester && tester.testing_days || 0);
+    if (days >= 1) return days;
+    if (!tester || !tester.last_check_date) return 0;
+    var today = typeof getLocalDate === 'function' ? getLocalDate() : '';
+    return tester.last_check_date === today ? 1 : 2;
+}
+
+function projectNeedsConsoleSync(project, options) {
+    options = options || {};
+    if (_isProjectSyncedSafe(project)) return false;
+    var testers = testersWhoCompletedTests(project && project.testers);
+    var platformDays = Number(
+        options.platformDays != null
+            ? options.platformDays
+            : (typeof getProjectPlatformDay === 'function' ? getProjectPlatformDay(project && project.created_at) : 0)
+    );
+    if (testers.length >= 12) {
+        var sorted = testers.slice().sort(function (a, b) {
+            return testerCompletedDayCount(b) - testerCompletedDayCount(a);
+        });
+        return testerCompletedDayCount(sorted[11]) >= 2;
+    }
+    return platformDays >= 7;
+}
+
 var GOOGLE_CLOSED_TEST_QUOTA = 12;
 
 function getProjectDailyProgressMeta(project) {
@@ -318,20 +365,17 @@ function buildProjectCardSubtitle(project) {
     const isEmail = String(project.test_mode || 'google_group') === 'email_list';
     const hasReviews = project.request_reviews !== false;
     const packageName = project.package || project.package_name || '';
-    const chips = [];
-
-    if (isEmail) {
-        chips.push(`<span class="pc-subtitle-chip">${window.escapeHTML(window.t('emailTestModeChip', {}, lang))}</span>`);
-    }
-    if (hasReviews) {
-        chips.push(`<span class="pc-subtitle-chip">${window.escapeHTML(window.t('pcCardSubtitleReviews', {}, lang))}</span>`);
-    }
-
-    if (chips.length) {
-        return `<div class="card-subtitle card-subtitle--chips notranslate">${chips.join('')}</div>`;
-    }
+    const flags = [];
+    if (isEmail) flags.push(window.escapeHTML(window.t('emailTestModeChip', {}, lang)));
+    if (hasReviews) flags.push(window.escapeHTML(window.t('pcCardSubtitleReviews', {}, lang)));
+    const flagsHtml = flags.length
+        ? '<span class="pc-subtitle-flags">' + (packageName ? ' · ' : '') + flags.join(' · ') + '</span>'
+        : '';
     if (packageName) {
-        return `<div class="card-subtitle notranslate">${window.escapeHTML(packageName)}</div>`;
+        return '<div class="card-subtitle notranslate">' + window.escapeHTML(packageName) + flagsHtml + '</div>';
+    }
+    if (flagsHtml) {
+        return '<div class="card-subtitle notranslate">' + flagsHtml + '</div>';
     }
     return '<div class="card-subtitle notranslate"></div>';
 }
@@ -560,15 +604,13 @@ function renderProjects(force) {
         const projectCardSubtitleHtml = buildProjectCardSubtitle(project);
 
         const platformDays = getProjectPlatformDay(project.created_at);
-        const syncDay = Number(project.google_sync_day || 0);
-        const normalizedSyncDay = Number.isFinite(syncDay) ? syncDay : 0;
         const rawGoogleDay = _isProjectSyncedSafe(project)
             ? getProjectCurrentGoogleDay(project, platformDays)
             : platformDays;
         const currentGoogleDay = Math.max(1, Number.isFinite(rawGoogleDay) ? rawGoogleDay : 1);
 
         const isOvertime = platformDays > 14;
-        const needsSyncAttention = isPendingCompletion || (platformDays >= 7 && normalizedSyncDay < 1);
+        const needsSyncAttention = isPendingCompletion || projectNeedsConsoleSync(project, { platformDays: platformDays });
         const hasNewFeedback = (project.feedback_new_count || 0) > 0;
         const requiresAttention = needsSyncAttention || hasNewFeedback;
         let cardClass = isInactive ? 'card card-inactive' : 'card';
@@ -1000,13 +1042,9 @@ function renderProjects(force) {
             <svg class="pc-cal__icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.11-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7H5V6h14v2z"/>
             </svg>`;
-        const closedTestChartIconHtml = `
-            <svg class="pc-closed__glyph" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 17l5.5-6 3.5 3.5L20 6"/>
-            </svg>`;
         const attractPeopleIconHtml = `
             <svg class="pc-cta__glyph" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zM6 10V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
             </svg>`;
 
         let count_done = 0;
@@ -1032,17 +1070,17 @@ function renderProjects(force) {
         });
 
         const totalTesters = activeRegularTesters.length + guestTesters.length;
-        const googleQuota = GOOGLE_CLOSED_TEST_QUOTA;
         const regularTesterCount = activeRegularTesters.length;
 
         const extraDaysRunning = extraPaidDays > 0 && (hasSync ? currentGoogleDay > 14 : platformDays > 14);
+        const needSyncPrompt = !hasSync && projectNeedsConsoleSync(project, { platformDays: platformDays });
         const closedTestStage = isPendingCompletion
             ? 'buffer'
             : extraDaysRunning
                 ? 'extension'
                 : hasSync
                     ? 'active'
-                    : (regularTesterCount >= googleQuota ? 'need_sync' : 'recruiting');
+                    : (needSyncPrompt ? 'need_sync' : 'recruiting');
         const closedTestStageLabel = closedTestStage === 'buffer'
             ? window.t('pcStatusBuffer', {}, lang)
             : closedTestStage === 'extension'
@@ -1055,26 +1093,46 @@ function renderProjects(force) {
 
         const dayMain = hasSync ? currentGoogleDay : platformDays;
         const dayKicker = window.t('pcDayWord', {}, lang);
-        const emphasizeSync = !hasSync && platformDays >= 7 && regularTesterCount < googleQuota;
-        const daySecondaryHtml = !hasSync
-            ? `<button type="button" class="pc-day-sync${emphasizeSync ? ' is-emphasis' : ''}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${window.escapeHTML(window.t('pcSyncNotConfigured', {}, lang))}</button>`
-            : Number(currentGoogleDay) !== Number(platformDays)
-                ? `<span class="pc-day-hub">${window.escapeHTML(window.t('pcHubDay', { day: platformDays }, lang))}</span>`
-                : `<span class="pc-day-ok">${window.escapeHTML(window.t('pcSyncConfigured', {}, lang))}</span>`;
-        const bufferChipLabels = [
-            isPendingCompletion && bufferHoursLeft > 0
-                ? window.t('pcBufferLineHours', { hours: bufferHoursLeft }, lang)
-                : window.t('pcBufferLine', {}, lang),
-        ];
-        if (extraPaidDays > 0) {
-            bufferChipLabels.push(window.t('pcExtensionLine', { days: extraPaidDays }, lang));
-        }
-        const bufferChipsHtml = bufferChipLabels.length
-            ? `<div class="pc-state-day__chips">${bufferChipLabels.map(function (label) {
-                return '<button type="button" class="pc-day-chip" onclick="event.stopPropagation(); openProjectLifecycleModal(' + Number(project.id) + ');">' +
-                    window.escapeHTML(label) + '</button>';
-            }).join('')}</div>`
+        const dayTotalHtml = hasSync
+            ? '<span class="pc-day-total">&nbsp;/&nbsp;14</span>'
             : '';
+        const calendarClick = needSyncPrompt
+            ? 'openProtectionCenter(' + Number(project.id) + ')'
+            : 'openProjectLifecycleModal(' + Number(project.id) + ')';
+        const extraDaysHtml = (hasSync || isPendingCompletion) && extraPaidDays > 0
+            ? '<div class="pc-day-extra-line">' + window.escapeHTML(window.t('pcExtraDaysNote', {
+                days: extraPaidDays,
+                unit: extraDaysUnitLabel(extraPaidDays),
+            }, lang)) + '</div>'
+            : '';
+        const bufferLineHtml = (hasSync || isPendingCompletion)
+            ? (isPendingCompletion && bufferHoursLeft > 0
+                ? '<button type="button" class="pc-day-buffer" onclick="event.stopPropagation(); openProjectLifecycleModal(' + Number(project.id) + ');">' +
+                    window.escapeHTML(window.t('pcBufferLineHours', { hours: bufferHoursLeft }, lang)) + '</button>'
+                : '<button type="button" class="pc-day-buffer" onclick="event.stopPropagation(); openProjectLifecycleModal(' + Number(project.id) + ');">' +
+                    window.escapeHTML(window.t('pcBufferLine', {}, lang)) + '</button>')
+            : '';
+        const totalDaysHtml = hasSync
+            ? '<div class="pc-day-hub-line">' + window.escapeHTML(window.t('pcTotalDays', { day: platformDays }, lang)) + '</div>'
+            : '';
+
+        const dailyMeta = getProjectDailyProgressMeta(project);
+        const showDailyStatus = !!(dailyMeta.statusChip && dailyMeta.statusChip.text && dailyMeta.statusChip.kind !== 'amber');
+        const dailyStatusHtml = showDailyStatus
+            ? '<div class="status-chip status-chip--' + window.escapeHTML(dailyMeta.statusChip.kind) + '">' +
+                (dailyMeta.statusChip.iconHtml || '') +
+                '<span class="status-chip__text">' + window.escapeHTML(dailyMeta.statusChip.text) + '</span>' +
+              '</div>'
+            : '';
+        const testersRingHtml = typeof buildProjectDailyProgressRingHtml === 'function'
+            ? buildProjectDailyProgressRingHtml(project)
+            : '';
+        const testersToneClass = dailyMeta.isOverachieved ? ' is-over' : (Number(dailyMeta.todayDone || 0) === 12 ? ' is-done' : '');
+        const testedTodayHtml =
+            '<div class="pc-tested-today">' +
+                '<span class="pc-tested-today__label">' + window.escapeHTML(window.t('pcTestedTodayLabel', {}, lang)) + '</span>' +
+                '<span class="pc-tested-pct">' + window.escapeHTML(String(Number(dailyMeta.teamPercent || 0))) + '%</span>' +
+            '</div>';
 
         const mutualCount = activeRegularTesters.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
         const bountyCount = activeRegularTesters.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
@@ -1093,7 +1151,6 @@ function renderProjects(force) {
             ? `<button type="button" class="pc-recruit" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();">
                     <span class="pc-recruit__label">${window.escapeHTML(window.t('pcRecruitLabel', {}, lang))}</span>
                     <span class="pc-recruit__items">${window.escapeHTML(recruitParts.join(' · '))}</span>
-                    <span class="pc-recruit__chev" aria-hidden="true">›</span>
                 </button>`
             : '';
 
@@ -1101,47 +1158,49 @@ function renderProjects(force) {
         const attractBtnHtml = `
             <button type="button" class="pc-cta ${attractIsPrimary ? 'pc-cta--primary' : 'pc-cta--neutral'} pc-cta--testers" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
                 ${attractPeopleIconHtml}
-                <span class="pc-cta__label">${window.escapeHTML(window.t('attractTestersTitle', {}, lang))}</span>
+                <span class="pc-cta__label">${window.escapeHTML(window.t('pcInviteCta', {}, lang))}</span>
             </button>`;
+
+        const stageBadgeHtml = needSyncPrompt
+            ? `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${window.escapeHTML(closedTestStageLabel)}</button>`
+            : `<span class="pc-stage-badge pc-stage-badge--${closedTestStage}">${window.escapeHTML(closedTestStageLabel)}</span>`;
 
         const stateBlockHtml = `
                 <div class="pc-closed-head">
-                    <div class="pc-closed-head__title">
-                        ${closedTestChartIconHtml}
-                        <span>${window.escapeHTML(window.t('pcClosedTestTitle', {}, lang))}</span>
-                    </div>
-                    <span class="pc-stage-badge pc-stage-badge--${closedTestStage}">${window.escapeHTML(closedTestStageLabel)}</span>
+                    ${stageBadgeHtml}
                 </div>
                 <div class="pc-state-top">
                     <div class="pc-state-day">
                         <div class="pc-state-day__row">
-                            <button type="button" class="pc-cal" aria-label="${window.escapeHTML(window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id});">
+                            <button type="button" class="pc-cal${needSyncPrompt ? ' is-need-sync' : ''}" aria-label="${window.escapeHTML(needSyncPrompt ? window.t('pcStatusNeedSync', {}, lang) : window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); ${calendarClick};">
                                 ${calendarIconHtml}
                                 <span class="pc-cal__dot" aria-hidden="true">+</span>
                             </button>
                             <div class="pc-state-day__copy">
-                                <span class="pc-day-value" aria-label="${window.escapeHTML(window.t('pcDayOf', { day: dayMain, total: 14 }, lang))}">
+                                <span class="pc-day-value" aria-label="${window.escapeHTML(hasSync ? window.t('pcDayOf', { day: dayMain, total: 14 }, lang) : (dayKicker + ' ' + dayMain))}">
                                     <span class="pc-day-lead">
                                         <span class="pc-day-word">${window.escapeHTML(dayKicker)}</span>
                                         <span class="pc-day-num">${window.escapeHTML(String(dayMain))}</span>
                                     </span>
-                                    <span class="pc-day-total">&nbsp;/&nbsp;14</span>
+                                    ${dayTotalHtml}
                                 </span>
+                                ${extraDaysHtml}
+                                ${bufferLineHtml}
+                                ${totalDaysHtml}
                             </div>
                         </div>
-                        <div class="pc-state-day__under">
-                            ${bufferChipsHtml}
-                            ${daySecondaryHtml}
-                        </div>
                     </div>
-                    <div class="pc-state-testers">
-                        <div class="pc-testers-metric">
-                            <span class="pc-testers-lead" aria-label="${window.escapeHTML(String(regularTesterCount) + ' / ' + String(googleQuota))}">
-                                <span class="pc-testers-label">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</span>
-                                <span class="pc-tester-ratio__current">${window.escapeHTML(String(regularTesterCount))}</span>
-                            </span>
-                            <span class="pc-tester-ratio__slash">&nbsp;/&nbsp;</span>
-                            <span class="pc-tester-ratio__quota">${window.escapeHTML(String(googleQuota))}</span>
+                    <div class="pc-state-testers${testersToneClass}">
+                        <div class="pc-testers-main">
+                            <div class="pc-testers-copy">
+                                <div class="pc-testers-metric">
+                                    <span class="pc-tester-ratio__current">${window.escapeHTML(String(regularTesterCount))}</span>
+                                    <span class="pc-testers-label">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</span>
+                                </div>
+                                ${dailyStatusHtml}
+                                ${testedTodayHtml}
+                            </div>
+                            ${testersRingHtml}
                         </div>
                         ${attractBtnHtml}
                     </div>

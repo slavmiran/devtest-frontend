@@ -45,27 +45,18 @@
 .pc-closed-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 8px;
-    padding: 10px 12px 8px;
+    padding: 10px 12px 6px;
     min-width: 0;
 }
 
 .pc-closed-head__title {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-secondary);
+    display: none;
 }
 
 .pc-closed__glyph {
-    width: 15px;
-    height: 15px;
-    color: var(--text-tertiary);
-    flex: 0 0 auto;
+    display: none;
 }
 
 .pc-stage-badge {
@@ -73,7 +64,7 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    max-width: 58%;
+    max-width: 100%;
     padding: 3px 8px;
     border-radius: 999px;
     font-size: 10.5px;
@@ -85,6 +76,14 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    cursor: default;
+}
+
+button.pc-stage-badge {
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
 }
 
 .pc-stage-badge::before {
@@ -102,9 +101,14 @@
 }
 
 .pc-stage-badge--need_sync {
-    color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.16);
+    color: #9bb6d9;
+    background: rgba(76, 141, 255, 0.08);
+    border-color: rgba(76, 141, 255, 0.22);
+}
+
+.pc-stage-badge--need_sync::before {
+    background: #7ea6e0;
+    opacity: 1;
 }
 
 .pc-stage-badge--active {
@@ -164,6 +168,24 @@
     overflow: visible;
 }
 
+.pc-cal.is-need-sync {
+    border-color: rgba(76, 141, 255, 0.42);
+    background: rgba(76, 141, 255, 0.1);
+    color: #9bb6d9;
+}
+
+.pc-cal.is-need-sync .pc-cal__dot {
+    background: rgba(76, 141, 255, 0.92);
+    color: #fff;
+    border-color: var(--bg-surface-2);
+    animation: pcCalCue 2.6s ease-in-out infinite;
+}
+
+@keyframes pcCalCue {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.82; }
+}
+
 .pc-cal__icon {
     width: 22px;
     height: 22px;
@@ -204,15 +226,49 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 3px;
+    gap: 2px;
     min-width: 0;
 }
 
+.pc-day-extra-line,
+.pc-day-buffer,
+.pc-day-hub-line {
+    display: block;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pc-day-extra-line {
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+.pc-day-buffer {
+    cursor: pointer;
+    font-weight: 500;
+    opacity: 0.82;
+}
+
+.pc-day-hub-line {
+    margin-top: 1px;
+    font-size: 10.5px;
+    font-weight: 500;
+    opacity: 0.62;
+}
+
 .pc-state-day__under {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
+    display: none;
 }
 
 .pc-state-day__chips {
@@ -342,62 +398,97 @@
 .pc-state-testers {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 6px;
+    justify-content: flex-start;
+    gap: 8px;
     min-width: 0;
     padding-left: 11px;
     border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.pc-testers-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+
+.pc-testers-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
 .pc-testers-label {
-    font-size: 15px;
-    font-weight: 750;
+    font-size: 13px;
+    font-weight: 700;
     color: var(--text-primary);
 }
 
 .pc-testers-metric {
     display: flex;
     align-items: baseline;
-    gap: 4px;
+    gap: 6px;
     min-width: 0;
     flex-wrap: nowrap;
 }
 
-.pc-testers-lead {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 5px;
-    min-width: 0;
-    color: var(--text-primary);
-}
-
-.pc-tester-ratio {
-    display: inline-flex;
-    align-items: baseline;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-primary);
-}
-
 .pc-tester-ratio__current {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 800;
     line-height: 1;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     color: var(--text-primary);
 }
 
-.pc-tester-ratio__quota {
-    font-size: 13px;
+.pc-state-testers .pc-ring {
+    width: 62px;
+    height: 62px;
+    margin-top: 0;
+}
+
+.pc-state-testers .pc-ring__count {
+    font-size: 12px;
+}
+
+.pc-state-testers .pc-ring__label {
+    font-size: 7px;
+}
+
+.pc-state-testers .status-chip {
+    padding: 2px 7px;
+    font-size: 10.5px;
+}
+
+.pc-tested-today {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-width: 0;
+    font-size: 11px;
     font-weight: 600;
-    line-height: 1;
-    letter-spacing: -0.02em;
+    line-height: 1.3;
     color: var(--text-tertiary);
 }
 
-.pc-tester-ratio__slash {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-tertiary);
+.pc-tested-pct {
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #30b0c7;
+}
+
+.pc-state-testers.is-done .pc-tested-pct,
+.pc-state-testers.is-over .pc-tested-pct {
+    color: #30d158;
+}
+
+.pc-state-testers.is-over .pc-tested-pct {
+    color: #ff9f0a;
 }
 
 .pc-tester-note {
@@ -405,12 +496,12 @@
 }
 
 .pc-cta.pc-cta--testers {
-    --pc-cta-size: 12px;
+    --pc-cta-size: 13px;
     width: 100%;
-    min-height: 32px;
-    height: 34px;
-    margin-top: 4px;
-    padding: 0 8px;
+    min-height: 34px;
+    height: 36px;
+    margin-top: 2px;
+    padding: 0 10px;
     font-size: var(--pc-cta-size);
     line-height: 1.15;
     border-radius: 10px;
@@ -425,8 +516,12 @@
 }
 
 .pc-cta--testers .pc-cta__glyph {
-    width: 13px;
-    height: 13px;
+    width: 16px;
+    height: 16px;
+}
+
+.pc-cta--primary .pc-cta__glyph {
+    color: inherit;
 }
 
 .pc-cta__glyph {
@@ -438,6 +533,7 @@
 .pc-recruit {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     width: 100%;
     padding: 8px 12px 10px;
@@ -445,7 +541,7 @@
     border: none;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     cursor: pointer;
-    text-align: left;
+    text-align: center;
     min-width: 0;
 }
 
@@ -457,7 +553,7 @@
 }
 
 .pc-recruit__items {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-width: 0;
     font-size: 11.5px;
     font-weight: 600;
@@ -2168,7 +2264,13 @@
     font-size: 13px;
     font-weight: 700;
     color: var(--text-secondary);
-    text-align: right;
+    text-align: left;
+}
+
+.pc-activity__head {
+    display: flex;
+    align-items: center;
+    padding: 2px 0 6px;
 }
 
 /* Modal Bottom Sheet Hero Ring */

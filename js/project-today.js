@@ -1134,36 +1134,15 @@
         var filter = resolvedFilter(prefs, data);
         var mode = prefs.modes[filter] || 'now';
         var context = contextFor(project);
-        var progress = typeof window.getProjectDailyProgressMeta === 'function'
-            ? window.getProjectDailyProgressMeta(project)
-            : { countDone: 0, presentCount: 0 };
-        var ringHtml = typeof window.buildProjectDailyProgressRingHtml === 'function'
-            ? window.buildProjectDailyProgressRingHtml(project)
-            : '';
-        var quotaReserve = Number(progress.presentCount || 0) > 12 && Number(progress.countDone || 0) >= 12;
         var errorHtml = data.error
             ? '<div class="pc-today__error">' + esc(text('pcTodayLoadError', "Could not load today's reports")) +
                 '<button type="button" onclick="event.stopPropagation(); pcRetryToday(' + Number(project.id) + ')">' +
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
         return '<section class="pc-activity' + (data.loading ? ' is-hydrating' : '') + '">' +
-            '<div class="pc-activity__hero">' +
-                ringHtml +
-                '<div class="pc-activity__hero-copy">' +
-                    '<div class="pc-activity__hero-top">' +
-                        '<h3 class="pc-activity__title">' + esc(text('pcActivityTitle', 'Testers activity')) + '</h3>' +
-                    '</div>' +
-                    (progress.statusChip && progress.statusChip.text
-                        ? '<div class="status-chip status-chip--' + esc(progress.statusChip.kind) + '">' +
-                            (progress.statusChip.iconHtml || '') +
-                            '<span class="status-chip__text">' + esc(progress.statusChip.text) + '</span>' +
-                          '</div>'
-                        : '') +
-                    (progress.subtext
-                        ? '<div class="progress-subtext">' + esc(progress.subtext) + '</div>'
-                        : '<div class="pc-activity__hero-label">' + esc(text('pcActivityActiveToday', 'Active today {done}/{total}', { done: Number(progress.countDone || 0), total: Number(progress.presentCount || 0) })) + '</div>') +
-                '</div>' +
-            '</div>' +
+            '<header class="pc-activity__head">' +
+                '<h3 class="pc-activity__title">' + esc(text('pcActivityTitle', 'Testers activity')) + '</h3>' +
+            '</header>' +
             filtersHtml(project.id, visibleFilters(data), filter) +
             captionHtml(project.id, filter, mode) +
             workspaceListHtml(project, filter, mode, data, context) +
