@@ -944,9 +944,24 @@
         <div class="modal-content device-info-modal-content" onclick="event.stopPropagation()">
             <h3 data-i18n="deviceProfileModalTitle">Профиль тестового устройства</h3>
             <p class="device-info-modal-hint" data-i18n="deviceProfileModalHint">Укажите версию Android, бренд и модель устройства. Эти данные будут прикрепляться к баг-репортам.</p>
+            <div id="device-info-detected-root"></div>
             <div id="device-info-fields-root" class="device-info-fields-root"></div>
-            <div class="action-row device-info-modal-actions">
-                <button type="button" class="btn btn-primary" onclick="saveDeviceInfoFromModal()" data-i18n="deviceInfoSaveBtn">Сохранить</button>
+            <div class="action-row device-info-modal-actions" style="display: flex; gap: 10px; margin-top: 16px;">
+                <button type="button" class="btn btn-secondary" onclick="clearDeviceInfoFromModal()" data-i18n="deviceInfoClearBtn" style="flex: 1;">Очистить</button>
+                <button type="button" class="btn btn-primary" onclick="saveDeviceInfoFromModal()" data-i18n="deviceInfoSaveBtn" style="flex: 1.3;">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Profile Required Modal (Native Dark Theme) -->
+    <div id="device-profile-required-modal" class="modal-overlay" onclick="closeDeviceProfileRequiredModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 360px; text-align: center;">
+            <div style="font-size: 36px; margin-bottom: 8px;">📱</div>
+            <h3 data-i18n="massInviteDeviceProfileRequiredTitle" style="margin-bottom: 8px;">Профиль тестового устройства</h3>
+            <p data-i18n="massInviteDeviceProfileRequiredAlert" style="font-size: 13px; line-height: 1.45; color: var(--hint-color, #8e8e93); margin-bottom: 20px;">Для запуска массовой рассылки заполните профиль вашего тестового устройства. Это необходимо для повышения качества взаимного тестирования.</p>
+            <div class="action-row" style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-secondary" onclick="closeDeviceProfileRequiredModal()" data-i18n="btnCancel" style="flex: 1;">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="proceedToDeviceProfileFromRequiredModal()" data-i18n="massInviteDeviceProfileRequiredBtn" style="flex: 1.3;">Заполнить профиль</button>
             </div>
         </div>
     </div>

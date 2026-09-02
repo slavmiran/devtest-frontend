@@ -1515,7 +1515,7 @@ body.wizard-open .bottom-nav {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-    margin-top: 2px;
+    margin-top: 4px;
 }
 
 .attract-sheet-hub-btn {
@@ -1525,7 +1525,7 @@ body.wizard-open .bottom-nav {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
-    padding: 9px 10px;
+    padding: 10px 8px;
     cursor: pointer;
     text-align: left;
     transition: transform 0.1s ease, background-color 0.15s, border-color 0.15s;
@@ -1550,12 +1550,12 @@ body.wizard-open .bottom-nav {
 }
 
 .attract-sheet-hub-btn-icon {
-    font-size: 15px;
+    font-size: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     background: rgba(255, 255, 255, 0.08);
     border-radius: 8px;
     flex-shrink: 0;
@@ -1574,28 +1574,116 @@ body.wizard-open .bottom-nav {
 }
 
 .attract-sheet-hub-btn-title {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     color: var(--text-on-accent, #ffffff);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.25;
 }
 
 .attract-sheet-hub-btn-desc {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--hint-color, #8e8e93);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.25;
 }
 
-.attract-sheet-hub-btn-chevron {
-    font-size: 14px;
-    color: var(--hint-color, #8e8e93);
-    opacity: 0.6;
-    flex-shrink: 0;
+/* ── Device Profile Detected Chips & Helpers ── */
+.device-detected-panel {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
 }
+
+.device-detected-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.device-detected-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-primary, #3b82f6);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.device-detected-apply-all {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-primary, #3b82f6);
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 6px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.device-detected-apply-all:active {
+    opacity: 0.7;
+}
+
+.device-detected-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.device-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--border-subtle);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 11px;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: transform 0.1s ease, background-color 0.15s, border-color 0.15s;
+    font-family: inherit;
+}
+
+.device-chip:active {
+    transform: scale(0.96);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.device-chip b {
+    color: var(--text-on-accent, #ffffff);
+}
+
+/* Shake animation for missing field feedback */
+@keyframes deviceFieldShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+}
+
+.device-info-field-row--shake {
+    animation: deviceFieldShake 0.4s ease-in-out;
+}
+
+.device-info-field-row--missing .form-input {
+    border-color: rgba(255, 69, 58, 0.8) !important;
+    background-color: rgba(255, 69, 58, 0.06);
+}
+
+.device-field-flash-success {
+    border-color: rgba(52, 199, 89, 0.8) !important;
+    background-color: rgba(52, 199, 89, 0.1) !important;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+#custom-toast {
+    z-index: 100000 !important;
+}
+
 /* ── Icon upload spinner ── */
 .icon-upload-spinner {
     display: inline-block;

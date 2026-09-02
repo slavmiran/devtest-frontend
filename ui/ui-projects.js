@@ -7249,7 +7249,6 @@ async function openAttractTestersSheet(projectId) {
                         <span class="attract-sheet-hub-btn-title">${window.escapeHTML(window.t('attractMutualCatalogActionManual', {}, lang))}</span>
                         <span class="attract-sheet-hub-btn-desc">${window.escapeHTML(window.t('attractMutualCatalogActionManualDesc', {}, lang))}</span>
                     </span>
-                    <span class="attract-sheet-hub-btn-chevron">›</span>
                 </button>
                 <button type="button" class="attract-sheet-hub-btn attract-sheet-hub-btn--accent" onclick="openMassInviteModal(${projectId});">
                     <span class="attract-sheet-hub-btn-icon">⚡</span>
@@ -7257,7 +7256,6 @@ async function openAttractTestersSheet(projectId) {
                         <span class="attract-sheet-hub-btn-title">${window.escapeHTML(window.t('attractMutualCatalogActionAuto', {}, lang))}</span>
                         <span class="attract-sheet-hub-btn-desc">${window.escapeHTML(window.t('attractMutualCatalogActionAutoDesc', {}, lang))}</span>
                     </span>
-                    <span class="attract-sheet-hub-btn-chevron">›</span>
                 </button>
             </div>
         </div>
@@ -7326,6 +7324,31 @@ function closeAttractTestersSheet(event) {
     overlay.classList.remove('is-active');
 }
 
+function openDeviceProfileRequiredModal() {
+    var modal = document.getElementById('device-profile-required-modal');
+    if (!modal) return;
+    modal.classList.add('active');
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+}
+window.openDeviceProfileRequiredModal = openDeviceProfileRequiredModal;
+
+function closeDeviceProfileRequiredModal(event) {
+    if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+    var modal = document.getElementById('device-profile-required-modal');
+    if (modal) modal.classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+}
+window.closeDeviceProfileRequiredModal = closeDeviceProfileRequiredModal;
+
+function proceedToDeviceProfileFromRequiredModal() {
+    closeDeviceProfileRequiredModal();
+    if (typeof openDeviceInfoEditorModal === 'function') {
+        openDeviceInfoEditorModal();
+    }
+}
+window.proceedToDeviceProfileFromRequiredModal = proceedToDeviceProfileFromRequiredModal;
+
 function handleLeadsRadarAction() {
     if (window.tg) {
         if (typeof window.tg.sendData === 'function') {
@@ -7372,34 +7395,7 @@ function openMassInviteModal(projectId) {
     
     // Device Profile check for mutual testing quality
     if (typeof isDeviceProfileComplete === 'function' && !isDeviceProfileComplete()) {
-        const title = window.t ? window.t('massInviteDeviceProfileRequiredTitle', {}, lang) : 'Профиль тестового устройства';
-        const message = window.t ? window.t('massInviteDeviceProfileRequiredAlert', {}, lang) : 'Для запуска массовой рассылки заполните профиль вашего тестового устройства. Это необходимо для корректного взаимного тестирования.';
-        const btnFillText = window.t ? window.t('massInviteDeviceProfileRequiredBtn', {}, lang) : 'Заполнить профиль';
-        const btnCancelText = window.t ? window.t('btnCancel', {}, lang) : (lang === 'ru' ? 'Отмена' : 'Cancel');
-        
-        if (window.tg && window.tg.showPopup) {
-            window.tg.showPopup({
-                title: title,
-                message: message,
-                buttons: [
-                    { id: 'fill', type: 'default', text: btnFillText },
-                    { id: 'cancel', type: 'cancel', text: btnCancelText }
-                ]
-            }, function(buttonId) {
-                if (buttonId === 'fill') {
-                    if (typeof openDeviceInfoEditorModal === 'function') {
-                        openDeviceInfoEditorModal();
-                    }
-                }
-            });
-        } else {
-            const confirmed = confirm(message);
-            if (confirmed) {
-                if (typeof openDeviceInfoEditorModal === 'function') {
-                    openDeviceInfoEditorModal();
-                }
-            }
-        }
+        openDeviceProfileRequiredModal();
         return;
     }
 

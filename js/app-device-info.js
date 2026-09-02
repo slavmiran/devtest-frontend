@@ -171,10 +171,130 @@ function openDeviceProfileFromPrompt() {
     openDeviceInfoEditorModal();
 }
 
+function parseTelegramAndBrowserDeviceInfo() {
+    var ua = String(navigator.userAgent || '');
+    var result = {
+        android_version: '',
+        brand: '',
+        model: '',
+        source: 'browser',
+    };
+
+    // 1. Check Telegram-Android pattern: Telegram-Android/{app_version} ({manufacturer} {model}; Android {android_version}; SDK {sdk_version}; {performance_class})
+    var tgMatch = ua.match(/Telegram-Android\/[\d\.]+\s*\(([^;]+);\s*Android\s*([^;]+);(?:\s*SDK\s*(\d+);?)?\s*([^)]*)\)/i);
+    if (tgMatch) {
+        result.source = 'telegram';
+        var devicePart = (tgMatch[1] || '').trim();
+        var osPart = (tgMatch[2] || '').trim();
+        if (osPart) {
+            result.android_version = normalizeAndroidVersion('Android ' + osPart);
+        }
+        if (devicePart) {
+            var spaceIdx = devicePart.indexOf(' ');
+            if (spaceIdx > 0) {
+                result.brand = devicePart.slice(0, spaceIdx).trim();
+                result.model = devicePart.slice(spaceIdx + 1).trim();
+            } else {
+                result.brand = devicePart;
+            }
+        }
+    }
+
+    // 2. Fallback to standard Android UA
+    if (!result.android_version) {
+        var androidMatch = ua.match(/Android\s+([\d\.]+)/i);
+        if (androidMatch) {
+            result.android_version = normalizeAndroidVersion('Android ' + androidMatch[1]);
+        }
+    }
+
+    if (!result.model) {
+        var modelMatch = ua.match(/\(Linux;\s*Android[^;]+;\s*([^;)]+)\s*Build/i);
+        if (modelMatch) {
+            var rawDevice = modelMatch[1].trim();
+            var mSpaceIdx = rawDevice.indexOf(' ');
+            if (mSpaceIdx > 0 && !result.brand) {
+                result.brand = rawDevice.slice(0, mSpaceIdx).trim();
+                result.model = rawDevice.slice(mSpaceIdx + 1).trim();
+            } else {
+                result.model = rawDevice;
+            }
+        }
+    }
+
+    return result;
+}
+
+function applyDetectedField(key, value) {
+    var input = document.getElementById('device-info-field-' + key);
+    if (!input) return;
+    input.value = value;
+    var row = input.closest('.device-info-field-row');
+    if (row) {
+        row.classList.remove('device-info-field-row--missing');
+        input.classList.add('device-field-flash-success');
+        setTimeout(function() { input.classList.remove('device-field-flash-success'); }, 600);
+    }
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    showToast(window.t('deviceDetectedAppliedToast', {}, lang), 1000);
+}
+window.applyDetectedField = applyDetectedField;
+
+function applyAllDetectedFields() {
+    var detected = parseTelegramAndBrowserDeviceInfo();
+    if (detected.android_version) {
+        var inputVer = document.getElementById('device-info-field-android_version');
+        if (inputVer) inputVer.value = detected.android_version;
+    }
+    if (detected.brand) {
+        var inputBrand = document.getElementById('device-info-field-brand');
+        if (inputBrand) inputBrand.value = detected.brand;
+    }
+    if (detected.model) {
+        var inputModel = document.getElementById('device-info-field-model');
+        if (inputModel) inputModel.value = detected.model;
+    }
+    DEVICE_FIELD_DEFS.forEach(function(def) {
+        var input = document.getElementById('device-info-field-' + def.key);
+        var row = input ? input.closest('.device-info-field-row') : null;
+        if (row && input && input.value) {
+            row.classList.remove('device-info-field-row--missing');
+            input.classList.add('device-field-flash-success');
+            setTimeout(function() { input.classList.remove('device-field-flash-success'); }, 600);
+        }
+    });
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.notificationOccurred('success');
+    showToast(window.t('deviceDetectedAppliedToast', {}, lang), 1500);
+}
+window.applyAllDetectedFields = applyAllDetectedFields;
+
 function renderDeviceInfoModalFields() {
     var root = document.getElementById('device-info-fields-root');
+    var detectedRoot = document.getElementById('device-info-detected-root');
     if (!root) return;
     var data = getStoredDeviceInfoData();
+    var detected = parseTelegramAndBrowserDeviceInfo();
+
+    if (detectedRoot) {
+        var hasDetected = detected.android_version || detected.brand || detected.model;
+        if (hasDetected) {
+            detectedRoot.innerHTML =
+                '<div class="device-detected-panel">' +
+                    '<div class="device-detected-head">' +
+                        '<span class="device-detected-badge">⚡ ' + window.escapeHTML(window.t('deviceDetectedTitle', {}, lang)) + '</span>' +
+                        '<button type="button" class="device-detected-apply-all" onclick="applyAllDetectedFields()">' + window.escapeHTML(window.t('deviceDetectedApplyAll', {}, lang)) + '</button>' +
+                    '</div>' +
+                    '<div class="device-detected-chips">' +
+                        (detected.android_version ? '<button type="button" class="device-chip" onclick="applyDetectedField(\'android_version\', \'' + window.escapeHTML(detected.android_version) + '\')">📱 <b>' + window.escapeHTML(detected.android_version) + '</b></button>' : '') +
+                        (detected.brand ? '<button type="button" class="device-chip" onclick="applyDetectedField(\'brand\', \'' + window.escapeHTML(detected.brand) + '\')">🏷️ <b>' + window.escapeHTML(detected.brand) + '</b></button>' : '') +
+                        (detected.model ? '<button type="button" class="device-chip" onclick="applyDetectedField(\'model\', \'' + window.escapeHTML(detected.model) + '\')">📟 <b>' + window.escapeHTML(detected.model) + '</b></button>' : '') +
+                    '</div>' +
+                '</div>';
+        } else {
+            detectedRoot.innerHTML = '';
+        }
+    }
+
     root.innerHTML = DEVICE_FIELD_DEFS.map(function(def) {
         var value = def.key === 'android_version'
             ? normalizeAndroidVersion(data[def.key])
@@ -189,10 +309,10 @@ function renderDeviceInfoModalFields() {
             : '';
         return '<div class="' + rowClass + '">' +
             '<div class="device-info-field-head">' +
-                '<label class="device-info-field-label" for="device-info-field-' + def.key + '">' + window.escapeHTML(label) + '</label>' +
+                '<label class="device-info-field-label" for="device-info-field-' + def.key + '">' + window.escapeHTML(label) + ' <span style="color:var(--danger,#ff453a);">*</span></label>' +
                 autoBtn +
             '</div>' +
-            '<input type="text" id="device-info-field-' + def.key + '" class="form-input device-info-field-input" data-device-field="' + def.key + '" maxlength="256" value="' + window.escapeHTML(value) + '" placeholder="' + window.escapeHTML(placeholder) + '">' +
+            '<input type="text" id="device-info-field-' + def.key + '" class="form-input device-info-field-input" data-device-field="' + def.key + '" maxlength="256" value="' + window.escapeHTML(value) + '" placeholder="' + window.escapeHTML(placeholder) + '" oninput="this.closest(\'.device-info-field-row\') && this.closest(\'.device-info-field-row\').classList.remove(\'device-info-field-row--missing\')">' +
         '</div>';
     }).join('');
 }
@@ -217,6 +337,8 @@ function detectAndroidVersionInModal() {
         return;
     }
     input.value = detected;
+    var row = input.closest('.device-info-field-row');
+    if (row) row.classList.remove('device-info-field-row--missing');
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     showToast(window.t('deviceInfoAndroidAutoDone', {}, lang));
 }
@@ -278,13 +400,59 @@ function closeDeviceInfoEditorModal(event) {
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
+async function clearDeviceInfoFromModal() {
+    if (_deviceInfoSaveInFlight) return;
+    _deviceInfoSaveInFlight = true;
+    syncDeviceProfileUi();
+
+    DEVICE_FIELD_DEFS.forEach(function(def) {
+        var input = document.getElementById('device-info-field-' + def.key);
+        if (input) input.value = '';
+    });
+
+    var result = await saveDeviceInfoSettings({
+        device_info: '',
+        device_info_is_manual: false,
+    });
+    _deviceInfoSaveInFlight = false;
+    syncDeviceProfileUi();
+    if (!result) return;
+    closeDeviceInfoEditorModal();
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    showToast(window.t('deviceInfoClearedToast', {}, lang));
+}
+window.clearDeviceInfoFromModal = clearDeviceInfoFromModal;
+
 async function saveDeviceInfoFromModal() {
     if (_deviceInfoSaveInFlight) return;
     var data = readDeviceInfoFromModal();
-    if (!isDeviceProfileComplete(data)) {
+
+    // Check all 3 fields strictly
+    var hasMissing = false;
+    DEVICE_FIELD_DEFS.forEach(function(def) {
+        var input = document.getElementById('device-info-field-' + def.key);
+        var row = input ? input.closest('.device-info-field-row') : null;
+        var value = def.key === 'android_version'
+            ? normalizeAndroidVersion(data[def.key])
+            : String(data[def.key] || '').trim();
+        var isMissing = !isKnownDeviceValue(value);
+        if (row) {
+            row.classList.toggle('device-info-field-row--missing', isMissing);
+            if (isMissing) {
+                row.classList.remove('device-info-field-row--shake');
+                void row.offsetWidth; // force reflow
+                row.classList.add('device-info-field-row--shake');
+            }
+        }
+        if (isMissing) hasMissing = true;
+    });
+
+    if (hasMissing) {
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
         showToast(window.t('deviceProfileIncompleteError', {}, lang));
         return;
     }
+
     _deviceInfoSaveInFlight = true;
     syncDeviceProfileUi();
     var result = await saveDeviceInfoSettings({
