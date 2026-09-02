@@ -20,6 +20,7 @@
     border-top: 0;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
+    padding-top: 10px;
 }
 
 /* ── Shared shell ───────────────────────────────────────────────────────── */
@@ -41,83 +42,66 @@
     left: 12px;
     right: 12px;
     height: 1px;
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.08);
+    pointer-events: none;
 }
 
 .pc-ping__glyph {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     display: block;
     flex: 0 0 auto;
 }
 
-.pc-ping__mark {
+/* Quiet Telegram text-link — the same glyph in all three states, no chrome. */
+.pc-ping__link {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    gap: 5px;
     flex: 0 0 auto;
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    color: #7fb0ff;
-    background: rgba(76, 141, 255, 0.12);
-    border: 1px solid rgba(76, 141, 255, 0.2);
-}
-
-.pc-ping__mark--sm {
-    width: 24px;
-    height: 24px;
-    border-radius: 8px;
-}
-
-.pc-ping__mark--sm .pc-ping__glyph {
-    width: 13px;
-    height: 13px;
-}
-
-/* ── Telegram CTA: the bridge across all three states ───────────────────── */
-
-.pc-ping__cta {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    flex: 0 0 auto;
-    min-height: 34px;
-    padding: 0 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(51, 144, 236, 0.34);
-    background: rgba(51, 144, 236, 0.14);
-    color: #7cc0ff;
-    font-size: 12.5px;
-    font-weight: 700;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
     line-height: 1;
     cursor: pointer;
     white-space: nowrap;
-    transition: background 0.16s ease, transform 0.16s ease;
 }
 
-.pc-ping__cta:active {
-    transform: scale(0.97);
-    background: rgba(51, 144, 236, 0.22);
+.pc-ping__link .pc-ping__glyph {
+    color: #7a93b0;
 }
 
-.pc-ping__cta--sm {
-    min-height: 28px;
-    padding: 0 9px;
+.pc-ping__link:active {
+    opacity: 0.72;
+}
+
+.pc-ping__link--sm {
     font-size: 11.5px;
-    border-radius: 9px;
 }
 
-.pc-ping__cta--sm .pc-ping__glyph {
-    width: 14px;
-    height: 14px;
-}
-
-.pc-ping__cta-label {
+.pc-ping__link-label {
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+}
+
+/* Muted steel toggle — matches the card, not the global acid-green switch. */
+.pc-ping .toggle-switch input:checked + .toggle-slider,
+.pc-ping-switch input:checked + .toggle-slider,
+.system-setting-row--proof-ping .toggle-switch input:checked + .toggle-slider,
+.proof-ping-sheet-card .toggle-switch input:checked + .toggle-slider {
+    background-color: #5c6f86;
+}
+
+.pc-ping .toggle-switch input:not(:checked) + .toggle-slider,
+.pc-ping-switch input:not(:checked) + .toggle-slider,
+.system-setting-row--proof-ping .toggle-switch input:not(:checked) + .toggle-slider,
+.proof-ping-sheet-card .toggle-switch input:not(:checked) + .toggle-slider {
+    background-color: rgba(255, 255, 255, 0.14);
 }
 
 /* ── State 1: expanded ──────────────────────────────────────────────────── */
@@ -125,7 +109,7 @@
 .pc-ping--expanded {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     padding: 12px;
     border-bottom-left-radius: 14px;
     border-bottom-right-radius: 14px;
@@ -136,18 +120,19 @@
 .pc-ping__head {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
     min-width: 0;
 }
 
 .pc-ping__titles {
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .pc-ping__title {
     margin: 0 0 3px;
     font-size: 13px;
-    font-weight: 750;
+    font-weight: 700;
     line-height: 1.25;
     color: var(--text-primary);
 }
@@ -160,34 +145,12 @@
     color: var(--text-tertiary);
 }
 
-.pc-ping__controls {
+.pc-ping__foot {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
     min-width: 0;
-}
-
-.pc-ping__switch-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex: 1 1 190px;
-    min-width: 0;
-    min-height: 34px;
-    padding: 0 10px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.035);
-    border: 1px solid var(--border-subtle);
-}
-
-.pc-ping__switch-label {
-    min-width: 0;
-    font-size: 12px;
-    font-weight: 650;
-    line-height: 1.25;
-    color: var(--text-secondary);
 }
 
 .pc-ping__note {
@@ -205,18 +168,30 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
+    padding: 9px 12px 10px;
     min-width: 0;
     transition: height 0.28s cubic-bezier(0.4, 0, 0.2, 1),
                 padding 0.28s cubic-bezier(0.4, 0, 0.2, 1),
                 opacity 0.2s ease;
 }
 
+/* Own bottom edge so the ✕ clearly belongs to this strip, not to Activity. */
+.pc-ping--compact::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    pointer-events: none;
+}
+
 .pc-ping__compact-label {
     flex: 1 1 auto;
     min-width: 0;
-    font-size: 11.5px;
-    font-weight: 650;
+    font-size: 12px;
+    font-weight: 600;
     line-height: 1.25;
     color: var(--text-secondary);
     white-space: nowrap;
@@ -226,30 +201,31 @@
 
 .pc-ping__close {
     flex: 0 0 auto;
-    width: 26px;
-    height: 26px;
+    width: 22px;
+    height: 22px;
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     background: transparent;
     color: var(--text-tertiary);
+    opacity: 0.7;
     cursor: pointer;
 }
 
 .pc-ping__close svg {
-    width: 13px;
-    height: 13px;
+    width: 11px;
+    height: 11px;
     display: block;
 }
 
 .pc-ping__close:active {
     background: rgba(255, 255, 255, 0.06);
+    opacity: 1;
 }
 
-/* Collapse animation: the bar folds away and the icon reappears in the row. */
 .pc-ping--compact.is-collapsing {
     padding-top: 0;
     padding-bottom: 0;
@@ -278,23 +254,23 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     padding: 0;
-    border-radius: 8px;
-    border: 1px solid rgba(51, 144, 236, 0.28);
-    background: rgba(51, 144, 236, 0.12);
-    color: #7cc0ff;
+    border: none;
+    border-radius: 0;
+    background: none;
+    color: #7a93b0;
     cursor: pointer;
 }
 
 .pc-ping-mini .pc-ping__glyph {
-    width: 13px;
-    height: 13px;
+    width: 15px;
+    height: 15px;
 }
 
 .pc-ping-mini:active {
-    transform: scale(0.94);
+    opacity: 0.72;
 }
 
 .pc-ping-mini.is-landing {

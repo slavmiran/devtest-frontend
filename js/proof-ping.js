@@ -105,12 +105,8 @@
         '<path fill="currentColor" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>' +
         '</svg>';
 
-    var BELL_ICON = '<svg class="pc-ping__glyph" viewBox="0 0 24 24" aria-hidden="true">' +
-        '<path fill="currentColor" d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.64 5.36 6 7.92 6 11v5l-1.71 1.71A1 1 0 0 0 5 19.4h14a1 1 0 0 0 .71-1.7L18 16z"/>' +
-        '</svg>';
-
     function switchHtml(appId, enabled, extraClass) {
-        return '<label class="toggle-switch' + (extraClass ? ' ' + extraClass : '') + '" onclick="event.stopPropagation();">' +
+        return '<label class="toggle-switch pc-ping-switch' + (extraClass ? ' ' + extraClass : '') + '" onclick="event.stopPropagation();">' +
             '<input type="checkbox"' + (enabled ? ' checked' : '') +
             ' aria-label="' + esc(text('pcPingToggleAria', 'Screenshot notifications')) + '"' +
             ' onchange="pcProofPingToggle(' + Number(appId) + ', this)">' +
@@ -122,11 +118,11 @@
         var label = modifier === 'sm'
             ? text('pcPingChatCtaShort', 'Community')
             : text('pcPingChatCta', 'Testing Proofs');
-        return '<button type="button" class="pc-ping__cta' + (modifier ? ' pc-ping__cta--' + modifier : '') + '"' +
+        return '<button type="button" class="pc-ping__link' + (modifier ? ' pc-ping__link--' + modifier : '') + '"' +
             ' aria-label="' + esc(text('pcPingOpenAria', 'Open the Testing Proofs topic')) + '"' +
             ' onclick="pcProofPingOpenChat(event)">' +
             TELEGRAM_ICON +
-            '<span class="pc-ping__cta-label">' + esc(label) + '</span>' +
+            '<span class="pc-ping__link-label">' + esc(label) + '</span>' +
         '</button>';
     }
 
@@ -136,27 +132,22 @@
         var appId = Number(project.id || project.app_id || 0);
         return '<section class="pc-ping pc-ping--expanded" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
             '<div class="pc-ping__head">' +
-                '<span class="pc-ping__mark">' + BELL_ICON + '</span>' +
                 '<div class="pc-ping__titles">' +
                     '<h3 class="pc-ping__title">' + esc(text('pcPingTitle', 'Proof ping in chat')) + '</h3>' +
                     '<p class="pc-ping__desc">' + esc(text('pcPingDesc', '')) + '</p>' +
                 '</div>' +
+                switchHtml(appId, isEnabled(project), 'toggle-switch--sm') +
             '</div>' +
-            '<div class="pc-ping__controls">' +
-                '<div class="pc-ping__switch-row">' +
-                    '<span class="pc-ping__switch-label">' + esc(text('pcPingToggleLabel', 'Screenshot notifications')) + '</span>' +
-                    switchHtml(appId, isEnabled(project)) +
-                '</div>' +
+            '<div class="pc-ping__foot">' +
                 ctaHtml('') +
+                '<p class="pc-ping__note">' + esc(text('pcPingNote', '')) + '</p>' +
             '</div>' +
-            '<p class="pc-ping__note">' + esc(text('pcPingNote', '')) + '</p>' +
         '</section>';
     }
 
     function compactHtml(project) {
         var appId = Number(project.id || project.app_id || 0);
         return '<section class="pc-ping pc-ping--compact" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
-            '<span class="pc-ping__mark pc-ping__mark--sm">' + BELL_ICON + '</span>' +
             '<span class="pc-ping__compact-label">' + esc(text('pcPingCompactLabel', 'Screenshot ping')) + '</span>' +
             switchHtml(appId, isEnabled(project), 'toggle-switch--sm') +
             ctaHtml('sm') +

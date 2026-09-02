@@ -298,7 +298,7 @@ window.buildProjectDailyProgressBlockHtml = buildProjectDailyProgressBlockHtml;
 
 function fitClosedTestAttractButton(button) {
     if (!button) return;
-    var maxSize = 13;
+    var maxSize = 12;
     var minSize = 9;
     var size = maxSize;
     button.style.setProperty('--pc-cta-size', maxSize + 'px');
@@ -1171,6 +1171,11 @@ function renderProjects(force) {
             </div>`;
 
         const attractIsPrimary = regularTesterCount < 15;
+        const calendarDotHtml = hasSync
+            ? `<span class="pc-cal__dot is-synced" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+               </span>`
+            : `<span class="pc-cal__dot" aria-hidden="true">+</span>`;
         const attractBtnHtml = `
             <button type="button" class="pc-cta ${attractIsPrimary ? 'pc-cta--primary' : 'pc-cta--neutral'} pc-cta--testers" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
                 ${attractPeopleIconHtml}
@@ -1187,9 +1192,9 @@ function renderProjects(force) {
                 </div>
                 <div class="pc-state-top">
                     <div class="pc-state-day">
-                        <button type="button" class="pc-cal${needSyncPrompt ? ' is-need-sync' : ''}" aria-label="${window.escapeHTML(needSyncPrompt ? window.t('pcStatusNeedSync', {}, lang) : window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); ${calendarClick};">
+                        <button type="button" class="pc-cal${needSyncPrompt ? ' is-need-sync' : ''}${hasSync ? ' is-synced' : ''}" aria-label="${window.escapeHTML(needSyncPrompt ? window.t('pcStatusNeedSync', {}, lang) : window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); ${calendarClick};">
                             ${calendarIconHtml}
-                            <span class="pc-cal__dot" aria-hidden="true">+</span>
+                            ${calendarDotHtml}
                         </button>
                         <div class="pc-state-day__copy">
                             <span class="pc-day-value" aria-label="${window.escapeHTML(hasSync ? window.t('pcDayOf', { day: dayMain, total: 14 }, lang) : (dayKicker + ' ' + dayMain))}">
@@ -1205,17 +1210,15 @@ function renderProjects(force) {
                         </div>
                     </div>
                     <div class="pc-state-testers${testersToneClass}">
-                        <div class="pc-testers-main">
-                            <div class="pc-testers-copy">
-                                <div class="pc-testers-metric">
-                                    <span class="pc-tester-ratio__current">${window.escapeHTML(String(regularTesterCount))}</span>
-                                    <span class="pc-testers-label">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</span>
-                                </div>
-                                ${dailyStatusHtml}
-                                ${testedTodayHtml}
+                        <div class="pc-testers-copy">
+                            <div class="pc-testers-metric">
+                                <span class="pc-tester-ratio__current">${window.escapeHTML(String(regularTesterCount))}</span>
+                                <span class="pc-testers-label">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</span>
                             </div>
-                            ${testersRingHtml}
+                            ${dailyStatusHtml}
+                            ${testedTodayHtml}
                         </div>
+                        ${testersRingHtml}
                         ${attractBtnHtml}
                     </div>
                 </div>
@@ -1318,6 +1321,7 @@ function renderProjects(force) {
             </div>
             
             <div id="settings-drawer-${project.id}" class="project-settings-drawer" onclick="event.stopPropagation();">
+                <div class="project-settings-drawer__inner">
                 <div class="drawer-item" onclick="openVisibilityModeModal(${project.id}, event)" style="cursor: pointer;">
                     <div class="drawer-item-left">
                         <div class="drawer-item-icon-box visibility">
@@ -1347,6 +1351,7 @@ function renderProjects(force) {
                         <span class="drawer-item-title">${window.escapeHTML(window.t('kebabArchive', {}, lang))}</span>
                     </div>
                     <span class="drawer-chevron">›</span>
+                </div>
                 </div>
             </div>
 

@@ -3504,22 +3504,32 @@ input::placeholder,
 }
 
 
-/* Seamless iOS style Settings Drawer */
+/* Seamless iOS style Settings Drawer.
+   Height-only accordion: fading opacity while max-height grows makes the
+   rows flash on first paint in Telegram WebView. */
 .project-settings-drawer {
-    max-height: 0;
+    display: grid;
+    grid-template-rows: 0fr;
     overflow: hidden;
-    opacity: 0;
-    transition: max-height 0.35s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease, margin-bottom 0.35s ease;
+    opacity: 1;
+    transition: grid-template-rows 0.28s cubic-bezier(0.25, 1, 0.5, 1),
+                margin-bottom 0.28s ease;
     background: none;
     border: none;
     box-shadow: none;
     margin-bottom: 0;
+    padding-top: 0;
+    max-height: none;
 }
 .project-settings-drawer.active {
-    max-height: 240px;
+    grid-template-rows: 1fr;
     opacity: 1;
-    margin-bottom: 16px;
-    padding-top: 4px;
+    margin-bottom: 8px;
+    padding-top: 0;
+}
+.project-settings-drawer__inner {
+    min-height: 0;
+    overflow: hidden;
 }
 .project-settings-drawer .drawer-item {
     display: flex;
@@ -3531,7 +3541,6 @@ input::placeholder,
     border-radius: 12px;
     margin-bottom: 8px;
     border: 1px solid rgba(255, 255, 255, 0.02);
-    transition: background-color 0.2s ease, transform 0.15s ease;
 }
 .project-settings-drawer .drawer-item:last-child {
     margin-bottom: 0;
@@ -3540,7 +3549,7 @@ input::placeholder,
     background: var(--border-subtle);
 }
 .project-settings-drawer .drawer-item:active {
-    transform: scale(0.98);
+    transform: none;
 }
 .project-settings-drawer .drawer-item-left {
     display: flex;
@@ -3558,9 +3567,7 @@ input::placeholder,
     flex-shrink: 0;
     background: var(--border-subtle);
     border: 1px solid var(--border-subtle);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
 }
 .project-settings-drawer .drawer-item-text-group {
     display: flex;
