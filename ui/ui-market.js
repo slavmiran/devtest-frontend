@@ -8783,15 +8783,36 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const safeMy = window.escapeHTML(pair.myName);
     const safeTheir = window.escapeHTML(pair.theirName);
 
-    const myStatus = String(rel && rel.my_app_status || '').trim().toLowerCase();
-    const theirStatus = String(rel && rel.their_app_status || '').trim().toLowerCase();
-    const viewerLeg = String(rel && rel.viewer_leg_status || '').trim().toLowerCase();
-    const testerLeg = String(rel && rel.tester_leg_status || '').trim().toLowerCase();
+    // Backend exchange_state is the sole calculator. Flat fields remain only
+    // as a compatibility projection for an older backend during deployment.
+    const exchangeState = rel && rel.exchange_state && Number(rel.exchange_state.version || 0) >= 1
+        ? rel.exchange_state
+        : null;
+    const viewerSide = exchangeState && exchangeState.left || null;
+    const testerSide = exchangeState && exchangeState.right || null;
+    const myStatus = String(viewerSide && viewerSide.app_status || rel && rel.my_app_status || '').trim().toLowerCase();
+    const theirStatus = String(testerSide && testerSide.app_status || rel && rel.their_app_status || '').trim().toLowerCase();
+    const viewerLeg = String(viewerSide && viewerSide.leg_status || rel && rel.viewer_leg_status || '').trim().toLowerCase();
+    const testerLeg = String(testerSide && testerSide.leg_status || rel && rel.tester_leg_status || '').trim().toLowerCase();
 
-    const myDone = myStatus === 'completed' || myStatus === 'archived' || testerLeg === 'completed';
-    const theirDone = theirStatus === 'completed' || theirStatus === 'archived' || viewerLeg === 'completed';
-    const isBroken = !!(rel && rel.is_broken);
-    const isMutualDebt = !isBroken && (!!(rel && rel.is_mutual_debt) || (myDone && !theirDone) || (theirDone && !myDone));
+    const myDone = viewerSide && typeof viewerSide.done === 'boolean'
+        ? viewerSide.done
+        : (myStatus === 'completed' || myStatus === 'archived' || testerLeg === 'completed');
+    const theirDone = testerSide && typeof testerSide.done === 'boolean'
+        ? testerSide.done
+        : (theirStatus === 'completed' || theirStatus === 'archived' || viewerLeg === 'completed');
+    const isBroken = exchangeState ? !!exchangeState.is_broken : !!(rel && rel.is_broken);
+    const isMutualDebt = !isBroken && (exchangeState
+        ? !!exchangeState.is_mutual_debt
+        : !!(rel && rel.is_mutual_debt));
+    const relationDebtHolder = String(
+        exchangeState && exchangeState.debt_holder || rel && rel.debt_holder || ''
+    ).trim().toLowerCase();
+    // openTesterLinkStatusFromRow opens the owner/project context where
+    // "partner" means the current viewer (project owner).
+    const modalDebtHolder = relationDebtHolder === 'viewer'
+        ? 'partner'
+        : (relationDebtHolder === 'tester' ? 'tester' : '');
 
     const cardClass = 'linked-project-card is-mutual'
         + (isPrimary ? ' is-primary-link' : '')
@@ -8799,17 +8820,34 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         + (isBroken ? ' is-broken' : '')
         + (isMutualDebt ? ' has-debt' : '');
 
-    let theirDays = 0;
-    let theirSkips = 0;
-    if (tester) {
+    const viewerMetrics = viewerSide && viewerSide.metrics || null;
+    const testerMetrics = testerSide && testerSide.metrics || null;
+    let theirDays = testerMetrics && testerMetrics.testing_days != null
+        ? Number(testerMetrics.testing_days || 0)
+        : (rel && rel.tester_testing_days != null
+            ? Number(rel.tester_testing_days || 0)
+            : 0);
+    let theirSkips = testerMetrics && testerMetrics.skips != null
+        ? Number(testerMetrics.skips || 0)
+        : (rel && rel.tester_skips != null
+            ? Number(rel.tester_skips || 0)
+            : 0);
+    if (tester && !testerMetrics && !(rel && rel.tester_testing_days != null)) {
         theirDays = tester.start_date && typeof getUserTestingDay === 'function'
             ? getUserTestingDay(tester.start_date)
             : Number(tester.testing_days || 0);
         theirSkips = Number(tester.skips_count != null ? tester.skips_count : 0);
     }
-    let myDays = 0;
-    let mySkips = 0;
-    if (Array.isArray(myTests)) {
+    let myDays = viewerMetrics && viewerMetrics.testing_days != null
+        ? Number(viewerMetrics.testing_days || 0)
+        : 0;
+    if (!viewerMetrics && rel && rel.viewer_testing_days != null) {
+        myDays = Number(rel.viewer_testing_days || 0);
+    }
+    let mySkips = viewerMetrics && viewerMetrics.skips != null
+        ? Number(viewerMetrics.skips || 0)
+        : (rel && rel.viewer_skips != null ? Number(rel.viewer_skips || 0) : 0);
+    if (Array.isArray(myTests) && !viewerMetrics && !(rel && rel.viewer_testing_days != null)) {
         const reciprocalTest = myTests.find(function(item) {
             return Number(item.id || item.app_id || 0) === Number(pair.theirAppId || 0);
         });
@@ -8826,12 +8864,16 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         ? formatSkipsLabel
         : function(n) { return String(n); };
     const openAttrs = canOpenBalance
-        ? ` onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${pair.myAppId}, ${testerId}, event, { reciprocalAppId: ${pair.theirAppId}, isBroken: ${isBroken ? 'true' : 'false'}, isMutualDebt: ${isMutualDebt ? 'true' : 'false'}, myAppName: '${escapeInlineJsString(pair.myName)}', theirAppName: '${escapeInlineJsString(pair.theirName)}' })"`
+        ? ` onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${pair.myAppId}, ${testerId}, event, { reciprocalAppId: ${pair.theirAppId}, isBroken: ${isBroken ? 'true' : 'false'}, isMutualDebt: ${isMutualDebt ? 'true' : 'false'}, mutualDebtHolder: '${modalDebtHolder}', myAppName: '${escapeInlineJsString(pair.myName)}', theirAppName: '${escapeInlineJsString(pair.theirName)}' })"`
         : '';
     const tag = canOpenBalance ? 'button' : 'div';
     const typeAttr = canOpenBalance ? ' type="button"' : '';
-    const dayValue = theirDays || myDays || 0;
-    const skipValue = theirSkips || mySkips || 0;
+    const dayValue = isMutualDebt && relationDebtHolder === 'viewer'
+        ? (myDays || 0)
+        : (theirDays || myDays || 0);
+    const skipValue = isMutualDebt && relationDebtHolder === 'viewer'
+        ? (mySkips || 0)
+        : (theirSkips || mySkips || 0);
     const skipWarn = skipValue >= 3;
     const completedBadge = `<span class="linked-side-done">${window.escapeHTML(window.t('linkedSideCompleted', {}, lang))}</span>`;
     const statsParts = [];

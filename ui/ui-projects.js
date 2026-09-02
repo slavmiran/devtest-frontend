@@ -358,13 +358,19 @@ function renderProjects(force) {
                 const joinType = String(tester.join_type || 'invite').toLowerCase();
                 const reciprocalAppId = Number(tester.reciprocal_app_id || 0);
                 const isMutualLike = joinType === 'mutual' || joinType === 'prelaunch';
+                const exchangeState = tester.exchange_state && Number(tester.exchange_state.version || 0) >= 1
+                    ? tester.exchange_state
+                    : null;
                 const partnerProgressStatus = String(tester.reciprocal_partner_progress_status || '').toLowerCase();
                 const isPartnerLeft = partnerProgressStatus === 'abandoned'
                     || partnerProgressStatus === 'justified_exit'
                     || partnerProgressStatus === 'kicked_by_owner'
                     || partnerProgressStatus === 'canceled_neutral'
                     || partnerProgressStatus === 'dropped';
-                const isBrokenReciprocal = isMutualLike && (reciprocalAppId <= 0 || !!tester.is_broken_reciprocal || isPartnerLeft);
+                const isBrokenReciprocal = isMutualLike && (
+                    reciprocalAppId <= 0
+                    || (exchangeState ? !!exchangeState.is_broken : !!tester.is_broken_reciprocal || isPartnerLeft)
+                );
                 const isLeftSoft = !!tester.is_left_soft;
                 if (isBrokenReciprocal
                     && !isLeftSoft
@@ -377,7 +383,9 @@ function renderProjects(force) {
                 let cleanUsername = '';
                 const isContractTester = joinType === 'bounty';
                 const isInviteLikeTester = joinType === 'direct' || joinType === 'invite';
-                const isMutualDebt = isMutualLike && !!tester.is_mutual_debt;
+                const isMutualDebt = isMutualLike && (
+                    exchangeState ? !!exchangeState.is_mutual_debt : !!tester.is_mutual_debt
+                );
                 let testerPrefixHtml = '';
                 if (isMutualDebt) {
                     testerPrefixHtml = '<span class="tester-debt-prefix" title="' + window.escapeHTML(window.t('linkedBadgeDebt', {}, lang)) + '">🫵</span>';
@@ -389,7 +397,10 @@ function renderProjects(force) {
                     testerPrefixHtml = '<span class="tester-invite-prefix">🔗</span>';
                 }
                 let testerDay = 0;
-                if (tester.testing_days != null && Number(tester.testing_days) > 0) {
+                const testerCycleMetrics = exchangeState && exchangeState.left && exchangeState.left.metrics || null;
+                if (testerCycleMetrics && Number(testerCycleMetrics.testing_days || 0) > 0) {
+                    testerDay = Number(testerCycleMetrics.testing_days || 0);
+                } else if (tester.testing_days != null && Number(tester.testing_days) > 0) {
                     testerDay = Number(tester.testing_days);
                 } else if (tester.start_date) {
                     if (typeof getUserTestingDay === 'function') {

@@ -1478,6 +1478,7 @@ function _mapTestsFromApi(data) {
             consecutive_skips: Number(app.consecutive_skips != null ? app.consecutive_skips : 0),
             is_mutual_debt: !!app.is_mutual_debt,
             mutual_debt_holder: app.mutual_debt_holder || '',
+            exchange_state: app.exchange_state || null,
             partner_testing_days: Number(app.partner_testing_days || 0),
             partner_start_date: app.partner_start_date || null,
             partner_skips: Number(app.partner_skips || 0),
