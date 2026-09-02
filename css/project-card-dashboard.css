@@ -127,38 +127,33 @@ button.pc-stage-badge {
 
 /* Two columns separated by a hairline. The rule lives on the right column as a
    border so it can never contribute extra track width and push the card wide. */
+/* Reference proportions: a narrow day rail on the left, a wider tester panel
+   on the right, separated by a hairline that lives on the right column. */
 .pc-state-top {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr);
-    align-items: start;
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+    align-items: stretch;
     gap: 0;
-    padding: 0 12px 12px;
+    padding: 2px 12px 12px;
 }
 
 .pc-state-day {
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
+    align-items: flex-start;
+    gap: 8px;
     min-width: 0;
-    padding-right: 11px;
-}
-
-.pc-state-day__row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
+    padding-right: 12px;
 }
 
 .pc-cal {
     position: relative;
     flex: 0 0 auto;
-    width: 44px;
-    height: 44px;
-    border-radius: 11px;
+    width: 46px;
+    height: 46px;
+    border-radius: 13px;
     border: 1px solid var(--border-subtle);
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.045);
     color: var(--text-secondary);
     display: inline-flex;
     align-items: center;
@@ -166,6 +161,7 @@ button.pc-stage-badge {
     cursor: pointer;
     padding: 0;
     overflow: visible;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
 .pc-cal.is-need-sync {
@@ -187,8 +183,8 @@ button.pc-stage-badge {
 }
 
 .pc-cal__icon {
-    width: 22px;
-    height: 22px;
+    width: 23px;
+    height: 23px;
     display: block;
 }
 
@@ -225,8 +221,9 @@ button.pc-stage-badge {
 .pc-state-day__copy {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    align-items: flex-start;
     gap: 2px;
+    width: 100%;
     min-width: 0;
 }
 
@@ -327,7 +324,8 @@ button.pc-stage-badge {
 .pc-day-value {
     display: flex;
     align-items: baseline;
-    gap: 4px;
+    gap: 3px;
+    margin-top: 1px;
     min-width: 0;
     flex-wrap: nowrap;
     font-variant-numeric: tabular-nums;
@@ -342,21 +340,22 @@ button.pc-stage-badge {
 }
 
 .pc-day-word {
-    font-size: 15px;
+    font-size: 14.5px;
     font-weight: 750;
+    letter-spacing: -0.01em;
     color: var(--text-primary);
 }
 
 .pc-day-num {
-    font-size: 20px;
+    font-size: 21px;
     font-weight: 800;
     line-height: 1;
     color: var(--text-primary);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
 }
 
 .pc-day-total {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-tertiary);
 }
@@ -398,18 +397,18 @@ button.pc-stage-badge {
 .pc-state-testers {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 10px;
     min-width: 0;
-    padding-left: 11px;
+    padding-left: 13px;
     border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .pc-testers-main {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
 }
 
@@ -417,15 +416,16 @@ button.pc-stage-badge {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: 5px;
     min-width: 0;
     flex: 1 1 auto;
 }
 
 .pc-testers-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-primary);
+    font-size: 12.5px;
+    font-weight: 650;
+    line-height: 1;
+    color: var(--text-secondary);
 }
 
 .pc-testers-metric {
@@ -437,17 +437,19 @@ button.pc-stage-badge {
 }
 
 .pc-tester-ratio__current {
-    font-size: 22px;
+    font-size: 28px;
     font-weight: 800;
     line-height: 1;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.04em;
     color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
 }
 
 .pc-state-testers .pc-ring {
-    width: 62px;
-    height: 62px;
+    width: 66px;
+    height: 66px;
     margin-top: 0;
+    flex: 0 0 auto;
 }
 
 .pc-state-testers .pc-ring__count {
@@ -475,8 +477,9 @@ button.pc-stage-badge {
     color: var(--text-tertiary);
 }
 
+/* Percentage picks up the ring's own accent so the two read as one metric. */
 .pc-tested-pct {
-    font-size: 13.5px;
+    font-size: 15px;
     font-weight: 800;
     letter-spacing: -0.02em;
     color: #30b0c7;
@@ -497,14 +500,19 @@ button.pc-stage-badge {
 
 .pc-cta.pc-cta--testers {
     --pc-cta-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
     width: 100%;
-    min-height: 34px;
-    height: 36px;
-    margin-top: 2px;
-    padding: 0 10px;
+    min-height: 36px;
+    height: 38px;
+    margin-top: 0;
+    padding: 0 12px;
     font-size: var(--pc-cta-size);
+    font-weight: 700;
     line-height: 1.15;
-    border-radius: 10px;
+    border-radius: 11px;
     white-space: nowrap;
     overflow: hidden;
 }
@@ -515,9 +523,10 @@ button.pc-stage-badge {
     white-space: nowrap;
 }
 
+/* The "+person" glyph carries the meaning; the label just confirms it. */
 .pc-cta--testers .pc-cta__glyph {
-    width: 16px;
-    height: 16px;
+    width: 19px;
+    height: 19px;
 }
 
 .pc-cta--primary .pc-cta__glyph {
@@ -530,19 +539,32 @@ button.pc-stage-badge {
     flex: 0 0 auto;
 }
 
+.pc-recruit-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 6px 12px 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    min-width: 0;
+}
+
 .pc-recruit {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    width: 100%;
-    padding: 8px 12px 10px;
+    flex: 1 1 auto;
+    padding: 0;
     background: none;
     border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
     cursor: pointer;
     text-align: center;
     min-width: 0;
+}
+
+.pc-recruit--empty {
+    padding: 0;
 }
 
 .pc-recruit__label {

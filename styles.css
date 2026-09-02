@@ -82,6 +82,19 @@
     background: transparent;
 }
 
+.project-icon-btn__glyph {
+    width: 20px;
+    height: 20px;
+    display: block;
+    color: var(--text-tertiary);
+    transition: color 0.16s ease, transform 0.16s ease;
+}
+
+.project-icon-btn:active .project-icon-btn__glyph {
+    color: var(--text-secondary);
+    transform: rotate(32deg);
+}
+
 .project-icon-btn.eye-on {
     background: var(--success-surface);
     color: var(--success);

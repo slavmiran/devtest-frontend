@@ -36,25 +36,26 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260902-closed-ref-v1"></script>
-    <script src="./i18n/en.js?v=20260902-closed-ref-v1"></script>
+<script src="./i18n/ru.js?v=20260903-ping-v1"></script>
+    <script src="./i18n/en.js?v=20260903-ping-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260820-report-modal-v1"></script>
     <script src="./ui/ui-tests.js?v=20260901-edit-modal-layout-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260902-closed-ref-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260903-ping-v1"></script>
     <script src="./ui/ui-market.js?v=20260831-app-block-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
-    <script src="./js/app-config.js?v=20260901-activity-v1"></script>
+    <script src="./js/app-config.js?v=20260903-ping-v1"></script>
     <script src="./js/app-api.js?v=20260831-app-block-v1"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20260830-feedback-cache-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20260830-multi-proof-v1"></script>
     <script src="./js/testing-control.js?v=20260901-activity-filters-v1"></script>
-    <script src="./js/project-today.js?v=20260902-closed-ref-v1"></script>
+    <script src="./js/project-today.js?v=20260903-ping-v1"></script>
+    <script src="./js/proof-ping.js?v=20260903-ping-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
 <script src="./js/app-features.js?v=20260827-balance-actions-v17"></script>
 <script src="./js/mutual-exchange-ui.js?v=20260827-balance-actions-v17"></script>
@@ -91,13 +92,14 @@
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260803-jb-accordion">
     <link rel="stylesheet" href="./css/access-issue.css?v=20260722-access-timer-v1">
     <link rel="stylesheet" href="./css/default-group.css?v=20260820-group-wait-inline-v1">
-    <link rel="stylesheet" href="./styles.css?v=20260902-closed-ref-v1">
+    <link rel="stylesheet" href="./styles.css?v=20260903-ping-v1">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260821-chooser-v6">
     <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260829-proof-pending-v2">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
-    <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260902-closed-ref-v1">
+    <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260903-ping-v1">
+    <link rel="stylesheet" href="./css/proof-ping.css?v=20260903-ping-v1">
 </head>
 <body>
 
@@ -227,6 +229,23 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="system-setting-row system-setting-row--proof-ping" id="proof-ping-settings-row">
+                <div class="system-setting-copy-wrap">
+                    <div class="proof-ping-setting-main">
+                        <button type="button" class="system-setting-copy" id="settings-proof-ping-label" onclick="openProofPingSettingsSheet(event)" data-i18n="settingsProofPingLabel">🔔 Уведомления о скриншотах (@пинг)</button>
+                        <button type="button" class="proof-ping-setting-open" onclick="openProofPingSettingsSheet(event)" aria-label="Per-project notifications">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path fill="currentColor" d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <label class="toggle-switch" aria-label="Screenshot notifications">
+                        <input type="checkbox" id="settings-proof-ping-toggle" checked onchange="pcProofPingMasterToggle(this)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="system-setting-meta" id="settings-proof-ping-meta" data-i18n="settingsProofPingMeta">Упоминание в топике Testing Proofs</div>
             </div>
             <div class="system-setting-row" id="default-group-joined-row">
                 <div class="system-setting-copy-wrap">
@@ -2515,6 +2534,23 @@
                 <button type="button" id="pc-activity-tab-history" class="pc-activity-tab" onclick="pcSetAllTestersTab('history')"></button>
             </div>
             <div id="pc-activity-sheet-body" class="pc-activity-sheet__body"></div>
+        </div>
+    </div>
+
+    <div id="proof-ping-sheet" class="modal-overlay proof-ping-overlay" onclick="closeProofPingSettingsSheet(event)">
+        <div class="modal-content proof-ping-sheet-card" onclick="event.stopPropagation()">
+            <header class="proof-ping-sheet__head">
+                <h3 id="proof-ping-sheet-title">Уведомления о скриншотах</h3>
+                <p class="proof-ping-sheet__hint" id="proof-ping-sheet-hint"></p>
+            </header>
+            <div class="proof-ping-sheet__master">
+                <span id="proof-ping-master-label">Все проекты</span>
+                <label class="toggle-switch" aria-label="All projects">
+                    <input type="checkbox" id="proof-ping-master-toggle" checked onchange="pcProofPingMasterToggle(this)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div id="proof-ping-sheet-body" class="proof-ping-sheet__body"></div>
         </div>
     </div>
 

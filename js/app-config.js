@@ -319,6 +319,10 @@ async function loadRuntimeConfig() {
             window.App.publicGroupUrl = runtimeGroupUrl;
             window.FEEDBACK_PUBLIC_LINK_BASE = runtimeGroupUrl;
         }
+        var runtimeProofsTopicUrl = String((payload && payload.proofs_topic_url) || '').trim().replace(/\/+$/, '');
+        if (runtimeProofsTopicUrl) {
+            window.App.proofsTopicUrl = runtimeProofsTopicUrl;
+        }
         var runtimeGroupId = String((payload && payload.frontend_group_id) || '').trim();
         if (runtimeGroupId) {
             window.App.frontendGroupId = runtimeGroupId;

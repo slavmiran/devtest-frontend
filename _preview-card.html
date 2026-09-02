@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card preview</title>
+<link rel="stylesheet" href="./css/tokens.css">
+<link rel="stylesheet" href="./css/base.css">
+<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./css/project-card-dashboard.css">
+<link rel="stylesheet" href="./css/proof-ping.css">
+<style>
+  body { background:#0b0b10; padding:14px; margin:0; }
+  #tab-projects, #projects-list { width: 392px !important; max-width: 392px !important; margin: 0 auto; }
+  .card { width:392px; box-sizing:border-box; background: var(--bg-surface-1, #16141c); border-radius:16px; padding:0; margin-bottom:22px; }
+</style>
+</head>
+<body>
+<div id="tab-projects">
+  <div id="projects-list"></div>
+</div>
+
+<script>
+const CAL = `<svg class="pc-cal__icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.11-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7H5V6h14v2z"/></svg>`;
+const PEOPLE = `<svg class="pc-cta__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zM6 10V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+const GEAR = `<svg class="project-icon-btn__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.48.48 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>`;
+const TG = `<svg class="pc-ping__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>`;
+const BELL = `<svg class="pc-ping__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.64 5.36 6 7.92 6 11v5l-1.71 1.71A1 1 0 0 0 5 19.4h14a1 1 0 0 0 .71-1.7L18 16z"/></svg>`;
+
+function ring(done, total) {
+  const baseMax = Math.max(total, 12);
+  const pin = (12 / baseMax) * 360;
+  const prog = Math.min((done / baseMax) * 360, 360);
+  const cx=50, cy=50, r=37.5;
+  let deficit='';
+  if (total < 12) {
+    const sa = (total/12)*360, rad=(sa-90)*Math.PI/180;
+    const x1=cx+r*Math.cos(rad), y1=cy+r*Math.sin(rad);
+    deficit = total<=0
+      ? `<circle cx="50" cy="50" r="37.5" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7.5"/>`
+      : `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A 37.5 37.5 0 ${360-sa>180?1:0} 1 50 12.5" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7.5" stroke-linecap="round"/>`;
+  }
+  let fill='';
+  if (prog>0) {
+    const rp=(prog-90)*Math.PI/180, px=cx+r*Math.cos(rp), py=cy+r*Math.sin(rp);
+    fill = prog>=359.5
+      ? `<circle cx="50" cy="50" r="37.5" fill="none" stroke="url(#g)" stroke-width="7.5" stroke-linecap="round"/>`
+      : `<path d="M 50 12.5 A 37.5 37.5 0 ${prog>180?1:0} 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#g)" stroke-width="7.5" stroke-linecap="round"/>`;
+  }
+  const pr=(pin-90)*Math.PI/180;
+  const pinHtml = `<circle cx="${(cx+r*Math.cos(pr)).toFixed(2)}" cy="${(cy+r*Math.sin(pr)).toFixed(2)}" r="3" fill="#8e8e93" stroke="#16141c" stroke-width="1.5"/>`;
+  return `<div class="pc-ring"><svg viewBox="0 0 100 100" class="pc-ring__svg"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#30d158"/><stop offset="100%" stop-color="#30b0c7"/></linearGradient></defs><circle cx="50" cy="50" r="37.5" fill="none" stroke="#24232c" stroke-width="7.5"/>${deficit}${fill}${pinHtml}</svg><div class="pc-ring__center"><span class="pc-ring__count">${done}&nbsp;/&nbsp;12</span><span class="pc-ring__label">Чекины дня</span></div></div>`;
+}
+
+function stateBlock(o) {
+  const statusChip = o.chip
+    ? `<div class="status-chip status-chip--${o.chip.kind}"><span class="status-chip__text">${o.chip.text}</span></div>` : '';
+  return `
+  <div class="pc-closed-head">
+    <span class="pc-stage-badge pc-stage-badge--${o.stage}">${o.stageLabel}</span>
+  </div>
+  <div class="pc-state-top">
+    <div class="pc-state-day">
+      <button type="button" class="pc-cal${o.needSync?' is-need-sync':''}">${CAL}<span class="pc-cal__dot">+</span></button>
+      <div class="pc-state-day__copy">
+        <span class="pc-day-value"><span class="pc-day-lead"><span class="pc-day-word">День</span><span class="pc-day-num">${o.day}</span></span>${o.total?'<span class="pc-day-total">&nbsp;/&nbsp;14</span>':''}</span>
+        ${o.extra?`<div class="pc-day-extra-line">+2 дня</div>`:''}
+        ${o.buffer?`<button type="button" class="pc-day-buffer">Буфер +48ч</button>`:''}
+        ${o.totalDays?`<div class="pc-day-hub-line">Всего дней ${o.totalDays}</div>`:''}
+      </div>
+    </div>
+    <div class="pc-state-testers">
+      <div class="pc-testers-main">
+        <div class="pc-testers-copy">
+          <div class="pc-testers-metric"><span class="pc-tester-ratio__current">${o.testers}</span><span class="pc-testers-label">Тестеры</span></div>
+          ${statusChip}
+          <div class="pc-tested-today"><span class="pc-tested-today__label">Протестировали сегодня</span><span class="pc-tested-pct">${o.pct}%</span></div>
+        </div>
+        ${ring(o.done, o.testers)}
+      </div>
+      <button type="button" class="pc-cta pc-cta--primary pc-cta--testers">${PEOPLE}<span class="pc-cta__label">Пригласить</span></button>
+    </div>
+  </div>
+  <div class="pc-recruit-row">
+    <button type="button" class="pc-recruit"><span class="pc-recruit__label">Набор:</span><span class="pc-recruit__items">Взаимка 4/7 · Контракты 3/5</span></button>
+    <span class="pc-ping-slot">${o.mini?`<button type="button" class="pc-ping-mini">${TG}</button>`:''}</span>
+  </div>`;
+}
+
+function pingExpanded() {
+  return `<section class="pc-ping pc-ping--expanded">
+    <div class="pc-ping__head">
+      <span class="pc-ping__mark">${BELL}</span>
+      <div class="pc-ping__titles">
+        <h3 class="pc-ping__title">Пинг о пруфах в чате</h3>
+        <p class="pc-ping__desc">Скриншот контрольного дня попадает в общий топик «Testing Proofs». Бот отметит вас @упоминанием, чтобы уведомление пришло сразу.</p>
+      </div>
+    </div>
+    <div class="pc-ping__controls">
+      <div class="pc-ping__switch-row"><span class="pc-ping__switch-label">Уведомления о скриншотах</span>
+        <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+      </div>
+      <button type="button" class="pc-ping__cta">${TG}<span class="pc-ping__cta-label">Testing Proofs</span></button>
+    </div>
+    <p class="pc-ping__note">Чтобы упоминание сработало, нужно состоять в сообществе.</p>
+  </section>`;
+}
+
+function pingCompact() {
+  return `<section class="pc-ping pc-ping--compact">
+    <span class="pc-ping__mark pc-ping__mark--sm">${BELL}</span>
+    <span class="pc-ping__compact-label">Пинг о скриншотах</span>
+    <label class="toggle-switch toggle-switch--sm"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    <button type="button" class="pc-ping__cta pc-ping__cta--sm">${TG}<span class="pc-ping__cta-label">Community</span></button>
+    <button type="button" class="pc-ping__close"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.3-6.3 6.29 1.42 1.42 6.29-6.3 6.3 6.3 1.41-1.42-6.3-6.29 6.3-6.3z"/></svg></button>
+  </section>`;
+}
+
+function header(sub) {
+  return `<div class="card-header">
+    <div class="project-avatar-container"><div class="avatar" style="width:48px;height:48px;border-radius:14px;background:#3b5bdb;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;">P</div></div>
+    <div class="card-info"><div class="card-title notranslate">RuPay</div><div class="card-subtitle notranslate">${sub}</div></div>
+    <div class="project-header-actions"><button type="button" class="project-icon-btn">${GEAR}</button></div>
+  </div>`;
+}
+
+function activityStub() {
+  return `<div class="pc-today"><section class="pc-activity"><header class="pc-activity__head"><h3 class="pc-activity__title">Активность тестировщиков</h3></header><div class="pc-activity__filters"><button class="pc-activity__filter is-active">Все</button></div><div class="pc-activity__caption"><p class="pc-activity__hint">Все, кто сейчас в тесте.</p></div><div class="pc-activity__list" style="min-height:44px"></div></section></div>`;
+}
+
+function card(id, opts) {
+  return `<div class="card" id="project-card-${id}">
+    <section class="pc-state-unified">${header(opts.sub)}${stateBlock(opts)}</section>
+    <div class="pc-dashboard-body">${opts.ping || ''}${opts.activity ? activityStub() : ''}</div>
+  </div>`;
+}
+
+document.getElementById('projects-list').innerHTML =
+  card(1, { sub:'<span class="pc-subtitle-flags">Запрашивать Google отзывы</span>', stage:'recruiting', stageLabel:'Идёт набор команды', day:3, total:false, extra:false, buffer:false, totalDays:0, testers:0, done:0, pct:0, chip:null, needSync:false, ping: pingExpanded(), activity:false })
++ card(2, { sub:'<span class="pc-subtitle-flags">Email · Запрашивать Google отзывы</span>', stage:'need_sync', stageLabel:'Нужна синхронизация', day:7, total:false, extra:false, buffer:false, totalDays:0, testers:9, done:7, pct:78, chip:null, needSync:true, ping: pingCompact(), activity:true })
++ card(3, { sub:'com.slavmiran.quickpaste6', stage:'active', stageLabel:'Активный тест', day:9, total:true, extra:true, buffer:true, totalDays:23, testers:16, done:14, pct:88, chip:{kind:'sky', text:'Сбор чекинов (14/12)'}, needSync:false, mini:true, ping:'', activity:true });
+</script>
+</body>
+</html>

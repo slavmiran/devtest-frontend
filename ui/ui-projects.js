@@ -298,8 +298,8 @@ window.buildProjectDailyProgressBlockHtml = buildProjectDailyProgressBlockHtml;
 
 function fitClosedTestAttractButton(button) {
     if (!button) return;
-    var maxSize = 12;
-    var minSize = 8;
+    var maxSize = 13;
+    var minSize = 9;
     var size = maxSize;
     button.style.setProperty('--pc-cta-size', maxSize + 'px');
     var guard = 0;
@@ -360,6 +360,9 @@ function buildProjectModeChip(project) {
     return `<button class="meta-chip accent-green" onclick="void(0)">${window.escapeHTML(t.modeMutual)}</button>`;
 }
 
+/* The header line carries one fact at a time: delivery flags when they exist,
+   otherwise the package name. Showing both made the subtitle compete with the
+   project title. */
 function buildProjectCardSubtitle(project) {
     if (!project) return '<div class="card-subtitle notranslate"></div>';
     const isEmail = String(project.test_mode || 'google_group') === 'email_list';
@@ -368,14 +371,11 @@ function buildProjectCardSubtitle(project) {
     const flags = [];
     if (isEmail) flags.push(window.escapeHTML(window.t('emailTestModeChip', {}, lang)));
     if (hasReviews) flags.push(window.escapeHTML(window.t('pcCardSubtitleReviews', {}, lang)));
-    const flagsHtml = flags.length
-        ? '<span class="pc-subtitle-flags">' + (packageName ? ' · ' : '') + flags.join(' · ') + '</span>'
-        : '';
-    if (packageName) {
-        return '<div class="card-subtitle notranslate">' + window.escapeHTML(packageName) + flagsHtml + '</div>';
+    if (flags.length) {
+        return '<div class="card-subtitle notranslate"><span class="pc-subtitle-flags">' + flags.join(' · ') + '</span></div>';
     }
-    if (flagsHtml) {
-        return '<div class="card-subtitle notranslate">' + flagsHtml + '</div>';
+    if (packageName) {
+        return '<div class="card-subtitle notranslate">' + window.escapeHTML(packageName) + '</div>';
     }
     return '<div class="card-subtitle notranslate"></div>';
 }
@@ -1046,6 +1046,7 @@ function renderProjects(force) {
             <svg class="pc-cta__glyph" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zM6 10V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
             </svg>`;
+        const pingSlotHtml = `<span class="pc-ping-slot" data-pc-ping-slot="${project.id}"></span>`;
 
         let count_done = 0;
         let count_waiting = 0;
@@ -1147,12 +1148,18 @@ function renderProjects(force) {
             const bountyFilled = bountyTarget > 0 && bountyCount >= bountyTarget;
             recruitParts.push(window.t('pcRecruitContracts', { current: bountyCount, target: bountyTarget }, lang) + (bountyFilled ? ' ✓' : ''));
         }
-        const recruitRowHtml = recruitParts.length
-            ? `<button type="button" class="pc-recruit" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();">
-                    <span class="pc-recruit__label">${window.escapeHTML(window.t('pcRecruitLabel', {}, lang))}</span>
-                    <span class="pc-recruit__items">${window.escapeHTML(recruitParts.join(' · '))}</span>
-                </button>`
-            : '';
+        // The status row always renders: it is the anchor for the collapsed
+        // Telegram icon even when a project has no recruitment quotas left.
+        const recruitRowHtml = `
+            <div class="pc-recruit-row" onclick="event.stopPropagation();">
+                ${recruitParts.length
+                    ? `<button type="button" class="pc-recruit" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();">
+                            <span class="pc-recruit__label">${window.escapeHTML(window.t('pcRecruitLabel', {}, lang))}</span>
+                            <span class="pc-recruit__items">${window.escapeHTML(recruitParts.join(' · '))}</span>
+                        </button>`
+                    : '<span class="pc-recruit pc-recruit--empty"></span>'}
+                ${pingSlotHtml}
+            </div>`;
 
         const attractIsPrimary = regularTesterCount < 15;
         const attractBtnHtml = `
@@ -1171,23 +1178,21 @@ function renderProjects(force) {
                 </div>
                 <div class="pc-state-top">
                     <div class="pc-state-day">
-                        <div class="pc-state-day__row">
-                            <button type="button" class="pc-cal${needSyncPrompt ? ' is-need-sync' : ''}" aria-label="${window.escapeHTML(needSyncPrompt ? window.t('pcStatusNeedSync', {}, lang) : window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); ${calendarClick};">
-                                ${calendarIconHtml}
-                                <span class="pc-cal__dot" aria-hidden="true">+</span>
-                            </button>
-                            <div class="pc-state-day__copy">
-                                <span class="pc-day-value" aria-label="${window.escapeHTML(hasSync ? window.t('pcDayOf', { day: dayMain, total: 14 }, lang) : (dayKicker + ' ' + dayMain))}">
-                                    <span class="pc-day-lead">
-                                        <span class="pc-day-word">${window.escapeHTML(dayKicker)}</span>
-                                        <span class="pc-day-num">${window.escapeHTML(String(dayMain))}</span>
-                                    </span>
-                                    ${dayTotalHtml}
+                        <button type="button" class="pc-cal${needSyncPrompt ? ' is-need-sync' : ''}" aria-label="${window.escapeHTML(needSyncPrompt ? window.t('pcStatusNeedSync', {}, lang) : window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); ${calendarClick};">
+                            ${calendarIconHtml}
+                            <span class="pc-cal__dot" aria-hidden="true">+</span>
+                        </button>
+                        <div class="pc-state-day__copy">
+                            <span class="pc-day-value" aria-label="${window.escapeHTML(hasSync ? window.t('pcDayOf', { day: dayMain, total: 14 }, lang) : (dayKicker + ' ' + dayMain))}">
+                                <span class="pc-day-lead">
+                                    <span class="pc-day-word">${window.escapeHTML(dayKicker)}</span>
+                                    <span class="pc-day-num">${window.escapeHTML(String(dayMain))}</span>
                                 </span>
-                                ${extraDaysHtml}
-                                ${bufferLineHtml}
-                                ${totalDaysHtml}
-                            </div>
+                                ${dayTotalHtml}
+                            </span>
+                            ${extraDaysHtml}
+                            ${bufferLineHtml}
+                            ${totalDaysHtml}
                         </div>
                     </div>
                     <div class="pc-state-testers${testersToneClass}">
@@ -1259,7 +1264,11 @@ function renderProjects(force) {
             return `<div class="pc-footer" onclick="event.stopPropagation();">${chips.join('')}</div>`;
         })();
 
-        const todaySectionHtml = (typeof window.ProjectToday !== 'undefined' && window.ProjectToday)
+        // With no testers yet the activity workspace has nothing to show, so the
+        // notification block takes its slot instead of rendering an empty section.
+        const proofPingState = (window.ProofPing && window.ProofPing.stateFor(project)) || 'mini';
+        const proofPingHtml = (window.ProofPing && window.ProofPing.blockHtml(project)) || '';
+        const todaySectionHtml = (proofPingState !== 'expanded' && typeof window.ProjectToday !== 'undefined' && window.ProjectToday)
             ? window.ProjectToday.buildSection(project)
             : '';
 
@@ -1291,7 +1300,11 @@ function renderProjects(force) {
                     ${projectCardSubtitleHtml}
                 </div>
                 <div class="project-header-actions">
-                    <button type="button" class="project-icon-btn" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">⚙️</button>
+                    <button type="button" class="project-icon-btn" aria-label="${window.escapeHTML(window.t('kebabEdit', {}, lang))}" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">
+                        <svg class="project-icon-btn__glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.48.48 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             
@@ -1337,6 +1350,7 @@ function renderProjects(force) {
 
             <!-- DASHBOARD BODY (hidden when card is collapsed) -->
             <div class="pc-dashboard-body">
+                ${proofPingHtml}
                 ${todaySectionHtml}
 
                 <div id="pc-roster-source-${project.id}" class="pc-roster-source" hidden>
@@ -1368,6 +1382,10 @@ function renderProjects(force) {
                 </div>
             </div>
         `;
+        if (proofPingState === 'mini' && window.ProofPing) {
+            const pingSlot = card.querySelector('[data-pc-ping-slot="' + project.id + '"]');
+            if (pingSlot) pingSlot.innerHTML = window.ProofPing.miniHtml(project);
+        }
         container.appendChild(card);
         requestAnimationFrame(function () {
             fitClosedTestAttractButton(card.querySelector('.pc-cta--testers'));
@@ -1378,6 +1396,8 @@ function renderProjects(force) {
             if (window.reportSystemError) window.reportSystemError('renderProjects: ' + e.message, e.stack);
         }
     });
+
+    if (window.ProofPing) window.ProofPing.syncMasterSwitch();
 }
 
 function openOvertimeModal(appId, event) {
