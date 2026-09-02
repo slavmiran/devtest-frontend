@@ -332,6 +332,7 @@
             theirIconUrl: theirIconUrl,
             testerSnapshot: tester,
             isMutualDebt: options.isMutualDebt != null ? !!options.isMutualDebt : !!(tester && tester.is_mutual_debt),
+            mutualDebtHolder: options.mutualDebtHolder || (tester && tester.mutual_debt_holder) || '',
             leftSoft: isTesterLeft,
             isTesterLeft: isTesterLeft,
             isViewerLeft: isViewerLeft,
@@ -385,6 +386,7 @@
             projectId: Number(options.projectId || (context === 'projects' ? safeAppId : 0)),
             joinType: joinType,
             isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt)),
+            mutualDebtHolder: String(options.mutualDebtHolder || (test && test.mutual_debt_holder) || ''),
             leftSoft: !!options.leftSoft,
             reciprocalAppId: Number(options.reciprocalAppId || 0),
             testerUsername: String(options.testerUsername || '').replace(/^@+/, ''),
@@ -603,6 +605,7 @@
             joinType: person.joinType,
             context: options.context || 'tests',
             isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            debtHolder: String(options.mutualDebtHolder || (test && test.mutual_debt_holder) || (_balanceState && _balanceState.mutualDebtHolder) || ''),
             leftSoft: isTesterLeft,
         });
     }
@@ -671,10 +674,11 @@
             myLastActive: stats.my_last_check_date || (test && test.last_check_date) || null,
             partnerDoneDate: stats.partner_last_active || stats.partner_last_check_date || null,
             myDoneDate: stats.my_last_check_date || (test && test.last_check_date) || null,
-            myProgressStatus: String(test && test.progress_status || 'active'),
+            myProgressStatus: String(stats.my_progress_status || (test && test.progress_status) || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
             isMutualDebt: !!(options.isMutualDebt || stats.is_mutual_debt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            debtHolder: String(stats.debt_holder || options.mutualDebtHolder || (test && test.mutual_debt_holder) || (_balanceState && _balanceState.mutualDebtHolder) || ''),
             leftSoft: isTesterLeft,
         });
     }
@@ -808,8 +812,13 @@
         }
 
         var isMutual = _isMutualJoin(person.joinType);
-        var isPartnerDebt = isOwnerView && isDebt;
-        var isSelfDebt = !isOwnerView && isDebt;
+        var debtHolder = String(data.debtHolder || '').toLowerCase();
+        var isPartnerDebt = isDebt && (debtHolder
+            ? (isOwnerView ? debtHolder === 'tester' : debtHolder === 'partner')
+            : isOwnerView);
+        var isSelfDebt = isDebt && (debtHolder
+            ? (isOwnerView ? debtHolder === 'partner' : debtHolder === 'tester')
+            : !isOwnerView);
         var bodyHtml;
         if (isMutual) {
             // Owner: you→their reciprocal app; them→your project.
