@@ -1680,6 +1680,85 @@ body.wizard-open .bottom-nav {
     transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
+.device-info-status-hint {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.35;
+    background: rgba(255, 204, 0, 0.08);
+    border: 1px solid rgba(255, 204, 0, 0.25);
+    color: #ffcc00;
+    transition: all 0.2s ease;
+}
+
+.device-info-status-hint.is-complete {
+    background: rgba(52, 199, 89, 0.1);
+    border-color: rgba(52, 199, 89, 0.3);
+    color: var(--success, #34c759);
+}
+
+/* Device Type Selector */
+.device-type-group {
+    margin-bottom: 12px;
+}
+
+.device-type-seg {
+    display: flex;
+    gap: 6px;
+    background: var(--bg-card, rgba(255, 255, 255, 0.05));
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.device-type-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 6px;
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    color: var(--hint-color, #8e8e93);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.device-type-btn:active {
+    transform: scale(0.97);
+}
+
+.device-type-btn.active {
+    background: var(--accent-gradient, #248bcf);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.device-type-icon {
+    display: inline-block;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+/* Android Version chip on Market Cards */
+.meta-chip--android {
+    background: rgba(36, 180, 126, 0.15) !important;
+    color: #2bd99b !important;
+    border: 1px solid rgba(43, 217, 155, 0.3) !important;
+    font-weight: 600;
+}
+
+.meta-chip-android-svg {
+    vertical-align: -1.5px;
+}
+
 #custom-toast {
     z-index: 100000 !important;
 }

@@ -2960,6 +2960,8 @@ async function saveProject() {
         } catch (e) { /* noop */ }
     }
 
+    const minAndroidVersion = parseInt((document.getElementById('app-min-android-version') || {}).value, 10) || 0;
+
     await doSaveProject({
         owner_id: userId,
         name: finalName,
@@ -2973,6 +2975,7 @@ async function saveProject() {
         is_setup_completed: (emailMode || (groupUrl && groupUrl !== 'https://groups.google.com/g/google-play-dev-test')) ? true : false,
         accepts_email_testers: acceptsEmailTesters,
         tester_email: acceptsEmailTesters ? testerEmailInput : null,
+        min_android_version: minAndroidVersion,
         ...pricingPayload
     });
 }
@@ -3195,6 +3198,8 @@ async function saveProjectEdit() {
         }
     }
 
+    const minAndroidVersion = parseInt((document.getElementById('edit-min-android-version') || {}).value, 10) || 0;
+
     try {
         const response = await fetch(`${API_BASE}/projects/${projectToEdit}`, {
             method: 'PUT',
@@ -3209,6 +3214,7 @@ async function saveProjectEdit() {
                 request_reviews: requestReviews,
                 accepts_email_testers: acceptsEmailTesters,
                 tester_email: acceptsEmailTesters ? testerEmailInput : null,
+                min_android_version: minAndroidVersion,
                 is_setup_completed: isSetupCompleted,
                 init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
                 ...pricingPayload

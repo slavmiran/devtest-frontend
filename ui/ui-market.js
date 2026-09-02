@@ -803,10 +803,16 @@ function getBountyAlreadyTestingBtnLabel(appId) {
     return window.t('bountyAlreadyTestingBtn', {}, lang);
 }
 
+const ANDROID_CHIP_LOGO_SVG = '<svg class="meta-chip-android-svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="display:inline-block; vertical-align:-1.5px; margin-right:3px;"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.996-3.4572c.1568-.2716.064-.6185-.2076-.7753-.2712-.1564-.618-.064-.7752.2076l-2.0236 3.505C15.3902 8.163 13.7388 7.8 12 7.8s-3.3902.363-4.8711 1.0015L5.1053 5.2965c-.1572-.2716-.504-.364-.7752-.2076-.2716.1568-.3644.5037-.2076.7753l1.996 3.4572C2.6813 11.233.3644 14.869.0004 19.2h23.9992c-.364-4.331-2.6809-7.967-6.1181-9.8786"/></svg>';
+
 function renderFeedCard(item, kind) {
     const ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(item.owner_full_name, item.owner_username, item.owner_id));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
     const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
+    const minAndroidVer = Number(item.min_android_version || 0);
+    const androidChip = minAndroidVer > 0
+        ? `<span class="meta-chip meta-chip--android accent-teal" title="Android ${minAndroidVer}+">${ANDROID_CHIP_LOGO_SVG}${minAndroidVer}+</span>`
+        : '';
     const syncChip = isProjectSynced(item)
         ? `<span class="meta-chip accent-green">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
         : '';
@@ -940,6 +946,7 @@ function renderFeedCard(item, kind) {
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
                 <span class="meta-chip">👥 ${testerChipCount}/${testerChipLimit || 12}</span>
+                ${androidChip}
                 ${kindChip}
                 ${emailChip}
                 ${bountyChip}

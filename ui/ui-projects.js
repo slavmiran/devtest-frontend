@@ -4593,6 +4593,7 @@ function _captureEditModalSnapshot() {
         limitBounty: String((document.getElementById('edit-limit-bounty') || {}).value || ''),
         bountyPerTester: String((document.getElementById('edit-bounty-per-tester') || {}).value || ''),
         requestReviews: !!(document.getElementById('edit-request-reviews') && document.getElementById('edit-request-reviews').checked),
+        minAndroidVersion: String((document.getElementById('edit-min-android-version') || {}).value || '0'),
         emailMode: !!(window.editProjectFlow && window.editProjectFlow.emailMode),
         accessSetup: (window.AccessSetupManager && typeof window.AccessSetupManager.serializeEdit === 'function')
             ? window.AccessSetupManager.serializeEdit()
@@ -4659,6 +4660,9 @@ function openEditModal(projectId, options) {
     document.getElementById('edit-limit-bounty').value = String(project.limit_bounty || 12);
     document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
     document.getElementById('edit-request-reviews').checked = project.request_reviews !== false;
+    if (document.getElementById('edit-min-android-version')) {
+        document.getElementById('edit-min-android-version').value = String(project.min_android_version || 0);
+    }
 
     _syncEditEmailTestersBoxVisibility();
     onEditAcceptsEmailTestersChange();
