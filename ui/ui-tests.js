@@ -570,6 +570,27 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
         if (renderTimeline.length > realizedThrough) {
             renderTimeline = renderTimeline.slice(0, realizedThrough);
         }
+
+        // The local calendar can advance before the server-side maintenance job
+        // materializes yesterday's marker. The API counters are already
+        // canonical at that point, so project the missing trailing markers for
+        // display instead of painting an elapsed day as neutral gray.
+        var knownSkips = (renderTimeline.match(/[03]/g) || []).length;
+        var knownCheckins = (renderTimeline.match(/[12]/g) || []).length;
+        while (renderTimeline.length < realizedThrough) {
+            var projectedDay = renderTimeline.length + 1;
+            var isProjectedToday = hasCheckedToday && projectedDay === userTestingDay;
+            var shouldProjectSkip = !isProjectedToday && knownSkips < skipsCount;
+            var marker;
+            if (shouldProjectSkip) {
+                marker = projectedDay > 14 ? '3' : '0';
+                knownSkips++;
+            } else {
+                marker = projectedDay > 14 ? '2' : '1';
+                knownCheckins++;
+            }
+            renderTimeline += marker;
+        }
     }
 
     if (!hasCheckedToday && userTestingDay > 0 && renderTimeline.length >= userTestingDay) {
