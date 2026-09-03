@@ -173,6 +173,10 @@
 
     /* ── icons ──────────────────────────────────────────────────────────── */
 
+    var NOTIFICATION_SVG_ICON = '<svg class="pc-ping-svg-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+        '<path d="M11 4H7.8C6.11984 4 5.27976 4 4.63803 4.32698C4.07354 4.6146 3.6146 5.07354 3.32698 5.63803C3 6.27976 3 7.11984 3 8.8V14C3 14.93 3 15.395 3.10222 15.7765C3.37962 16.8117 4.18827 17.6204 5.22354 17.8978C5.60504 18 6.07003 18 7 18V20.3355C7 20.8684 7 21.1348 7.10923 21.2716C7.20422 21.3906 7.34827 21.4599 7.50054 21.4597C7.67563 21.4595 7.88367 21.2931 8.29976 20.9602L10.6852 19.0518C11.1725 18.662 11.4162 18.4671 11.6875 18.3285C11.9282 18.2055 12.1844 18.1156 12.4492 18.0613C12.7477 18 13.0597 18 13.6837 18H15.2C16.8802 18 17.7202 18 18.362 17.673C18.9265 17.3854 19.3854 16.9265 19.673 16.362C20 15.7202 20 14.8802 20 13.2V13M20.1213 3.87868C21.2929 5.05025 21.2929 6.94975 20.1213 8.12132C18.9497 9.29289 17.0503 9.29289 15.8787 8.12132C14.7071 6.94975 14.7071 5.05025 15.8787 3.87868C17.0503 2.70711 18.9497 2.70711 20.1213 3.87868Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '</svg>';
+
     var TELEGRAM_ICON = '<svg class="pc-ping__glyph" viewBox="0 0 24 24" aria-hidden="true">' +
         '<path fill="currentColor" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>' +
         '</svg>';
@@ -258,8 +262,12 @@
         var enabled = isEnabled(project);
         return '<section class="pc-ping pc-ping--compact' + (enabled ? ' is-on' : ' is-off') +
             '" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
-            dotSwitchHtml(appId, enabled) +
-            '<span class="pc-ping__compact-label">' + esc(text('pcPingCompactLabel', 'Reports')) + '</span>' +
+            '<button type="button" class="pc-ping-icon-btn' + (enabled ? ' is-on' : ' is-off') + '"' +
+                ' aria-pressed="' + (enabled ? 'true' : 'false') + '"' +
+                ' aria-label="' + esc(text('pcPingToggleAria', 'Screenshot notifications')) + '"' +
+                ' onclick="event.stopPropagation(); pcProofPingToggleDot(' + Number(appId) + ', this)">' +
+                NOTIFICATION_SVG_ICON +
+            '</button>' +
             ctaHtml('sm') +
             '<button type="button" class="pc-ping__close" aria-label="' + esc(text('pcPingHide', 'Hide')) + '"' +
                 ' onclick="pcProofPingDismiss(' + appId + ', event)">' +
@@ -327,6 +335,7 @@
         var selectors = [
             '[data-pc-ping="' + safeId + '"] input[type="checkbox"]',
             '[data-pc-ping-row="' + safeId + '"] input[type="checkbox"]',
+            '#project-drawer-ping-' + safeId,
         ];
         selectors.forEach(function (selector) {
             Array.prototype.slice.call(document.querySelectorAll(selector)).forEach(function (input) {
@@ -336,8 +345,9 @@
         Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping="' + safeId + '"]')).forEach(function (block) {
             block.classList.toggle('is-on', on);
             block.classList.toggle('is-off', !on);
-            Array.prototype.slice.call(block.querySelectorAll('.pc-dotswitch')).forEach(function (btn) {
+            Array.prototype.slice.call(block.querySelectorAll('.pc-dotswitch, .pc-ping-icon-btn')).forEach(function (btn) {
                 btn.classList.toggle('is-on', on);
+                btn.classList.toggle('is-off', !on);
                 btn.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
         });
@@ -377,8 +387,13 @@
     }
 
     function syncSettingsRow() {
-        var label = document.getElementById('settings-proof-ping-label');
-        if (label) label.textContent = text('settingsProofPingLabel', '🔔 Notifications');
+        var labelText = document.getElementById('settings-proof-ping-label-text');
+        if (labelText) {
+            labelText.textContent = text('settingsProofPingLabelText', 'Notifications');
+        } else {
+            var label = document.getElementById('settings-proof-ping-label');
+            if (label) label.textContent = text('settingsProofPingLabel', 'Notifications');
+        }
         var meta = document.getElementById('settings-proof-ping-meta');
         if (meta) {
             meta.textContent = text(

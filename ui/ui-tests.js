@@ -1252,6 +1252,39 @@ function formatOwnerSlaDisplay(hoursRaw) {
 }
 window.formatOwnerSlaDisplay = formatOwnerSlaDisplay;
 
+function formatProtectionBadgeLabel(extraPaid, poolAmount, lang) {
+    if (extraPaid <= 0) {
+        return window.t('ppcProtectedBadge', {}, lang) || (lang === 'en' ? '🛡 Protected' : '🛡 Защищён');
+    }
+    const formattedBust = typeof formatBustAmount === 'function' ? formatBustAmount(poolAmount) : poolAmount;
+    if (poolAmount > 0) {
+        if (lang === 'en') {
+            const dayStr = extraPaid === 1 ? '1 day' : (extraPaid + ' days');
+            return '+' + dayStr + ' • ' + formattedBust + ' $BUST';
+        }
+        let dayWord = 'дней';
+        const lastDigit = extraPaid % 10;
+        const lastTwo = extraPaid % 100;
+        if (lastTwo < 11 || lastTwo > 14) {
+            if (lastDigit === 1) dayWord = 'день';
+            else if (lastDigit >= 2 && lastDigit <= 4) dayWord = 'дня';
+        }
+        return '+' + extraPaid + ' ' + dayWord + ' • ' + formattedBust + ' $BUST';
+    }
+    if (lang === 'en') {
+        return '+' + (extraPaid === 1 ? '1 day' : (extraPaid + ' days'));
+    }
+    let dayWord = 'дней';
+    const lastDigit = extraPaid % 10;
+    const lastTwo = extraPaid % 100;
+    if (lastTwo < 11 || lastTwo > 14) {
+        if (lastDigit === 1) dayWord = 'день';
+        else if (lastDigit >= 2 && lastDigit <= 4) dayWord = 'дня';
+    }
+    return '+' + extraPaid + ' ' + dayWord;
+}
+window.formatProtectionBadgeLabel = formatProtectionBadgeLabel;
+
 function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test, options) {
     options = options || {};
     var showTestersCount = options.showTestersCount !== false;
@@ -1318,6 +1351,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         }
         if (isProjectSynced(test)) {
             const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+            const poolAmount = Number(test.protection_bust_pool || 0);
             const userTestingDayRaw = getResolvedTestingDay(test);
             const userTestingDay = typeof userTestingDayRaw === 'number' && userTestingDayRaw > 0 ? userTestingDayRaw : 1;
             const isPendingCompletion = !!test.is_pending_completion;
@@ -1325,9 +1359,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
 
             if (userTestingDay >= 15) {
                 if (!isInSafetyBuffer) {
-                    const protectedText = extraPaid > 0
-                        ? window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang)
-                        : window.t('ppcProtectedBadge', {}, lang);
+                    const protectedText = formatProtectionBadgeLabel(extraPaid, poolAmount, lang);
                     parts.push(`<button type="button" class="meta-chip accent-protection" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}'); return false;">${window.escapeHTML(protectedText)}</button>`);
                 }
             }
