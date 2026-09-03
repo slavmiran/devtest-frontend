@@ -52,6 +52,11 @@
         });
     }
 
+    function _isBrokenProgressStatus(value) {
+        return ['abandoned', 'justified_exit', 'kicked_by_owner', 'canceled_neutral', 'dropped']
+            .includes(String(value || '').trim().toLowerCase());
+    }
+
     function _renderIconHtml(name, iconUrl) {
         if (typeof renderIcon === 'function') {
             return renderIcon(name || '?', iconUrl || '');
@@ -99,13 +104,6 @@
     function getBarterChipState(test) {
         var joinType = String(test && test.join_type || '').toLowerCase();
         var progressStatus = String(test && test.progress_status || 'active').toLowerCase();
-        if (progressStatus === 'kicked_by_owner' || progressStatus === 'canceled_neutral') {
-            return {
-                kind: 'broken',
-                className: 'meta-chip accent-danger barter-chip',
-                label: _t('barterChipBroken'),
-            };
-        }
         if (joinType !== 'mutual' && joinType !== 'prelaunch') {
             return null;
         }
@@ -115,6 +113,14 @@
             : null;
 
         if (exchangeState && exchangeState.is_broken) {
+            return {
+                kind: 'broken',
+                className: 'meta-chip accent-danger barter-chip',
+                label: _t('barterChipBroken'),
+            };
+        }
+
+        if (!exchangeState && _isBrokenProgressStatus(progressStatus)) {
             return {
                 kind: 'broken',
                 className: 'meta-chip accent-danger barter-chip',
@@ -314,20 +320,31 @@
             }
         }
 
+        var exchangeState = tester && tester.exchange_state && Number(tester.exchange_state.version || 0) >= 1
+            ? tester.exchange_state
+            : null;
         var partnerProgressStatus = String((tester && tester.reciprocal_partner_progress_status) || '').toLowerCase();
-        var isViewerLeft = partnerProgressStatus === 'abandoned'
-            || partnerProgressStatus === 'justified_exit'
-            || partnerProgressStatus === 'kicked_by_owner'
-            || partnerProgressStatus === 'canceled_neutral'
-            || partnerProgressStatus === 'dropped';
         var testerProgressStatus = String((tester && tester.status) || '').toLowerCase();
-        var isTesterLeft = !!options.leftSoft || !!(tester && tester.is_left_soft)
-            || testerProgressStatus === 'abandoned'
-            || testerProgressStatus === 'justified_exit'
-            || testerProgressStatus === 'kicked_by_owner'
-            || testerProgressStatus === 'canceled_neutral'
-            || testerProgressStatus === 'dropped';
-        var isBroken = options.isBroken != null ? !!options.isBroken : (isViewerLeft || isTesterLeft || !!(tester && tester.is_broken_reciprocal));
+        var leftLegStatus = exchangeState && exchangeState.left && exchangeState.left.leg_status;
+        var rightLegStatus = exchangeState && exchangeState.right && exchangeState.right.leg_status;
+        var isViewerLeft = exchangeState
+            ? _isBrokenProgressStatus(rightLegStatus)
+            : _isBrokenProgressStatus(partnerProgressStatus);
+        var isTesterLeft = exchangeState
+            ? _isBrokenProgressStatus(leftLegStatus)
+            : (!!options.leftSoft || !!(tester && tester.is_left_soft) || _isBrokenProgressStatus(testerProgressStatus));
+        var isBroken = exchangeState
+            ? !!exchangeState.is_broken
+            : (options.isBroken != null
+                ? !!options.isBroken
+                : (isViewerLeft || isTesterLeft || !!(tester && tester.is_broken_reciprocal)));
+        var isMutualDebt = exchangeState
+            ? !!exchangeState.is_mutual_debt
+            : (options.isMutualDebt != null ? !!options.isMutualDebt : !!(tester && tester.is_mutual_debt));
+        var mutualDebtHolder = (exchangeState && exchangeState.debt_holder)
+            || options.mutualDebtHolder
+            || (tester && tester.mutual_debt_holder)
+            || '';
 
         openMutualBalanceModal(safeProjectId, null, {
             context: 'projects',
@@ -343,8 +360,8 @@
             myIconUrl: myIconUrl,
             theirIconUrl: theirIconUrl,
             testerSnapshot: tester,
-            isMutualDebt: options.isMutualDebt != null ? !!options.isMutualDebt : !!(tester && tester.is_mutual_debt),
-            mutualDebtHolder: options.mutualDebtHolder || (tester && tester.mutual_debt_holder) || '',
+            isMutualDebt: isMutualDebt,
+            mutualDebtHolder: mutualDebtHolder,
             leftSoft: isTesterLeft,
             isTesterLeft: isTesterLeft,
             isViewerLeft: isViewerLeft,
@@ -588,12 +605,22 @@
             theirCheckins = Number(test && test.checkins_count || 0);
         }
         var isOwnerView = options.context === 'projects';
-        var isTesterLeft = isOwnerView
-            ? !!(options.isTesterLeft || (tester && (tester.is_left_soft || ['abandoned','justified_exit','kicked_by_owner','canceled_neutral','dropped'].includes(String(tester.status || '').toLowerCase()))))
-            : !!(test && test.partner_progress_status && test.partner_progress_status !== 'active' && test.partner_progress_status !== 'completed');
-        var isViewerLeft = isOwnerView
-            ? !!(options.isViewerLeft || (tester && ['abandoned','justified_exit','kicked_by_owner','canceled_neutral','dropped'].includes(String(tester.reciprocal_partner_progress_status || '').toLowerCase())))
-            : (['abandoned','kicked_by_owner','canceled_neutral','justified_exit','dropped'].includes(String(test && test.progress_status || '').toLowerCase()));
+        var leftLegBroken = localExchangeState
+            ? _isBrokenProgressStatus(localExchangeState.left && localExchangeState.left.leg_status)
+            : false;
+        var rightLegBroken = localExchangeState
+            ? _isBrokenProgressStatus(localExchangeState.right && localExchangeState.right.leg_status)
+            : false;
+        var isTesterLeft = localExchangeState
+            ? (isOwnerView ? leftLegBroken : rightLegBroken)
+            : (isOwnerView
+                ? !!(options.isTesterLeft || (tester && (tester.is_left_soft || _isBrokenProgressStatus(tester.status))))
+                : !!(test && _isBrokenProgressStatus(test.partner_progress_status)));
+        var isViewerLeft = localExchangeState
+            ? (isOwnerView ? rightLegBroken : leftLegBroken)
+            : (isOwnerView
+                ? !!(options.isViewerLeft || (tester && _isBrokenProgressStatus(tester.reciprocal_partner_progress_status)))
+                : _isBrokenProgressStatus(test && test.progress_status));
 
         return _renderBalanceColumns({
             person: person,
@@ -674,12 +701,22 @@
             }
         }
         var isOwnerView = options.context === 'projects';
-        var isTesterLeft = isOwnerView
-            ? !!(options.isTesterLeft || (options.testerSnapshot && (options.testerSnapshot.is_left_soft || ['abandoned','justified_exit','kicked_by_owner','canceled_neutral','dropped'].includes(String(options.testerSnapshot.status || '').toLowerCase()))))
-            : !!stats.partner_left;
-        var isViewerLeft = isOwnerView
-            ? !!(options.isViewerLeft || stats.partner_left)
-            : (['abandoned','kicked_by_owner','canceled_neutral','justified_exit','dropped'].includes(String(test && test.progress_status || '').toLowerCase()));
+        var leftLegBroken = exchangeState
+            ? _isBrokenProgressStatus(exchangeState.left && exchangeState.left.leg_status)
+            : false;
+        var rightLegBroken = exchangeState
+            ? _isBrokenProgressStatus(exchangeState.right && exchangeState.right.leg_status)
+            : false;
+        var isTesterLeft = exchangeState
+            ? (isOwnerView ? leftLegBroken : rightLegBroken)
+            : (isOwnerView
+                ? !!(options.isTesterLeft || (options.testerSnapshot && (options.testerSnapshot.is_left_soft || _isBrokenProgressStatus(options.testerSnapshot.status))))
+                : !!stats.partner_left);
+        var isViewerLeft = exchangeState
+            ? (isOwnerView ? rightLegBroken : leftLegBroken)
+            : (isOwnerView
+                ? !!(options.isViewerLeft || stats.partner_left)
+                : _isBrokenProgressStatus(test && test.progress_status));
 
         return _renderBalanceColumns({
             person: person,

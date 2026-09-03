@@ -773,8 +773,9 @@ function renderProjects(force) {
                     || partnerProgressStatus === 'canceled_neutral'
                     || partnerProgressStatus === 'dropped';
                 const isBrokenReciprocal = isMutualLike && (
-                    reciprocalAppId <= 0
-                    || (exchangeState ? !!exchangeState.is_broken : !!tester.is_broken_reciprocal || isPartnerLeft)
+                    exchangeState
+                        ? !!exchangeState.is_broken
+                        : (reciprocalAppId <= 0 || !!tester.is_broken_reciprocal || isPartnerLeft)
                 );
                 const isLeftSoft = !!tester.is_left_soft;
                 if (isBrokenReciprocal

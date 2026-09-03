@@ -34,6 +34,11 @@
         return _normalizeJoinType(joinType) === 'mutual';
     }
 
+    function _isBrokenProgressStatus(value) {
+        return ['abandoned', 'justified_exit', 'kicked_by_owner', 'canceled_neutral', 'dropped']
+            .includes(String(value || '').trim().toLowerCase());
+    }
+
     function _fmtAmount(value, digits) {
         if (typeof formatUiAmount === 'function') return formatUiAmount(value, digits);
         var n = Number(value || 0);
@@ -1243,14 +1248,13 @@
             }
         }
         var isReciprocalActive = false;
-        if (reciprocalTest) {
+        if (exchangeState) {
+            var ownerLegStatus = String(exchangeState.right && exchangeState.right.leg_status || '').toLowerCase();
+            isReciprocalActive = !exchangeState.is_broken && ownerLegStatus === 'active';
+        } else if (reciprocalTest) {
             var rStatus = String(reciprocalTest.status || 'active').toLowerCase();
             var partnerProgressStatus = String(tester.reciprocal_partner_progress_status || '').toLowerCase();
-            var isPartnerLeft = partnerProgressStatus === 'abandoned'
-                || partnerProgressStatus === 'justified_exit'
-                || partnerProgressStatus === 'kicked_by_owner'
-                || partnerProgressStatus === 'canceled_neutral'
-                || partnerProgressStatus === 'dropped';
+            var isPartnerLeft = _isBrokenProgressStatus(partnerProgressStatus);
             if (rStatus === 'active' && !tester.is_broken_reciprocal && !isPartnerLeft) {
                 isReciprocalActive = true;
             }
