@@ -3784,7 +3784,11 @@ async function submitFeedbackReward() {
         }
         if (typeof window.triggerFeedbackAutoAdvance === 'function') {
             window.triggerFeedbackAutoAdvance(processedFeedbackId);
-        } else if (typeof loadProjects === 'function') {
+        }
+        // Feedback karma is stored in the same project reward log as a direct
+        // "Наградить" action. Refresh the card so its compact award badge shows
+        // the accumulated issued types immediately.
+        if (typeof loadProjects === 'function') {
             Promise.resolve()
                 .then(function() { return loadProjects(true); })
                 .catch(function() { /* ignore */ });

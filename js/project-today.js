@@ -140,6 +140,13 @@
         done: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>',
     };
 
+    var CONTRIBUTION_ICONS = {
+        bug: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 8h-2.3a6.4 6.4 0 0 0-1.55-1.55L16.5 5.1 15.1 3.7l-1.45 1.45A6.4 6.4 0 0 0 12 5c-.57 0-1.12.08-1.65.22L8.9 3.7 7.5 5.1l1.35 1.35A6.4 6.4 0 0 0 7.3 8H5v2h1.42c-.16.63-.24 1.3-.24 2s.08 1.37.24 2H5v2h2.3a6.4 6.4 0 0 0 1.55 1.55L7.5 18.9l1.4 1.4 1.45-1.45c.53.14 1.08.22 1.65.22s1.12-.08 1.65-.22l1.45 1.45 1.4-1.4-1.35-1.35A6.4 6.4 0 0 0 16.7 16H19v-2h-1.42c.16-.63.24-1.3.24-2s-.08-1.37-.24-2H19V8Zm-7 9a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm-2-7h4v2h-4v-2Zm0 3h4v2h-4v-2Z"/></svg>',
+        idea: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1Zm3-19a7 7 0 0 0-4.5 12.36c.93.78 1.5 1.92 1.5 3.14V18h6v-.5c0-1.22.57-2.36 1.5-3.14A7 7 0 0 0 12 2Zm2.2 10.83c-.78.66-1.37 1.49-1.7 2.42h-1c-.33-.93-.92-1.76-1.7-2.42A4.98 4.98 0 1 1 14.2 12.83Z"/></svg>',
+        play_review: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2 2.83 5.74 6.34.92-4.59 4.47 1.08 6.31L12 16.47 6.34 19.44l1.08-6.31L2.83 8.66l6.34-.92L12 2Z"/></svg>',
+        screenshots: ICONS.image,
+    };
+
     function iconAct(kind, label, onclick, opts) {
         opts = opts || {};
         var title = opts.title || label || '';
@@ -164,11 +171,48 @@
             return '☯️';
         });
         if (!tokens.length) tokens.push('☯️');
-        var label = text('pcAwardBadgeLabel', 'Award');
-        return '<span class="pc-award-badge" title="' + esc(label + ': ' + tokens.join(' · ')) + '">' +
+        var label = text('pcAwardBadgeLabel', 'Award:');
+        return '<span class="pc-award-badge" title="' + esc(label + ' ' + tokens.join(' · ')) + '">' +
             '<span class="pc-award-badge__label">' + esc(label) + '</span>' +
             '<span class="pc-award-badge__value">' + esc(tokens.join(' · ')) + '</span>' +
         '</span>';
+    }
+
+    function contributionAvatarMarkerHtml(reasons) {
+        var items = Array.isArray(reasons) ? reasons : [];
+        var primary = items.some(function (reason) { return reason.kind === 'bug'; }) ? 'bug'
+            : items.some(function (reason) { return reason.kind === 'idea'; }) ? 'idea'
+                : items.some(function (reason) { return reason.kind === 'play_review'; }) ? 'play_review'
+                    : 'screenshots';
+        return '<span class="pc-contribution-marker is-' + esc(primary) + '" aria-hidden="true">' +
+            (CONTRIBUTION_ICONS[primary] || CONTRIBUTION_ICONS.screenshots) +
+            (items.length > 1 ? '<b>+</b>' : '') +
+        '</span>';
+    }
+
+    function contributionProcessActionHtml(appId, feedbackId) {
+        return '<button type="button" class="pc-iconact pc-iconact--process pc-iconact--feedback"' +
+            ' title="' + esc(text('pcProcessBtn', 'Process')) + '"' +
+            ' onclick="event.stopPropagation(); pcOpenFeedback(' + Number(appId) + ',' + Number(feedbackId) + ')">' +
+            '<img class="pc-iconact__img" src="./images/Icons/select-multiple-svgrepo-com.svg" alt="" aria-hidden="true">' +
+            '<span class="pc-iconact__label">' + esc(text('pcProcessBtn', 'Process')) + '</span>' +
+        '</button>';
+    }
+
+    function contributionScreenshotsLabel(count) {
+        var amount = Math.max(0, Number(count || 0));
+        var key = 'pcContributionScreenshotsMany';
+        if (typeof lang === 'undefined' || lang !== 'ru') {
+            key = amount === 1 ? 'pcContributionScreenshotsOne' : 'pcContributionScreenshotsMany';
+        } else {
+            var lastTwo = amount % 100;
+            var lastOne = amount % 10;
+            if (lastTwo < 11 || lastTwo > 14) {
+                if (lastOne === 1) key = 'pcContributionScreenshotsOne';
+                else if (lastOne >= 2 && lastOne <= 4) key = 'pcContributionScreenshotsFew';
+            }
+        }
+        return text(key, '{count} screenshots', { count: amount });
     }
 
     function dossierClick(appId, tester) {
@@ -195,6 +239,7 @@
         var tester = opts.tester || {};
         var tone = opts.tone || 'neutral';
         var extra = opts.extraHtml || '';
+        var avatarMarker = opts.avatarMarkerHtml || '<span class="pc-person__dot" aria-hidden="true"></span>';
         var stateCls = opts.received ? ' is-received' : (opts.waiting ? ' is-waiting' : '');
         var rowCls = opts.rowClass ? ' ' + String(opts.rowClass) : '';
         return '<li class="pc-person is-' + esc(tone) + stateCls + rowCls + '"' +
@@ -202,7 +247,7 @@
             '<div class="pc-person__top">' +
                 '<span class="pc-person__avatar">' +
                     avatarHtml(tester) +
-                    '<span class="pc-person__dot" aria-hidden="true"></span>' +
+                    avatarMarker +
                 '</span>' +
                 '<div class="pc-person__copy">' +
                     '<span class="pc-person__name notranslate">' + esc(handleOf(tester)) + '</span>' +
@@ -739,7 +784,7 @@
             if (item.screenshotCount >= 3 && item.screenshotRow) {
                 reasons.push({
                     kind: 'screenshots',
-                    label: text('pcContributionScreenshots', '{count} screenshots', { count: item.screenshotCount }),
+                    label: contributionScreenshotsLabel(item.screenshotCount),
                     proofId: item.screenshotRow.proofId,
                     feedbackId: 0,
                 });
@@ -752,6 +797,7 @@
                         : text('pcProofBug', 'Bug'),
                     proofId: item.bug.proofId,
                     feedbackId: item.bug.feedbackId,
+                    feedbackStatus: item.bug.feedbackStatus,
                 });
             }
             if (item.idea) {
@@ -760,6 +806,7 @@
                     label: text('pcContributionIdea', 'Recommendation'),
                     proofId: item.idea.proofId,
                     feedbackId: item.idea.feedbackId,
+                    feedbackStatus: item.idea.feedbackStatus,
                 });
             }
             if (item.play_review) {
@@ -768,6 +815,7 @@
                     label: text('pcProofReview', 'Review'),
                     proofId: item.play_review.proofId,
                     feedbackId: item.play_review.feedbackId,
+                    feedbackStatus: item.play_review.feedbackStatus,
                 });
             }
             item.reasons = reasons;
@@ -842,18 +890,33 @@
                     esc(reason.label) + '</button>';
             }).join('<span class="pc-act-reason-sep"> · </span>');
             var rewarded = context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
-            var rewardHtml = rewarded
-                ? awardedRewardBadgeHtml(context, item.testerId)
-                : (context.rewardsLeft > 0
-                    ? iconAct('reward', text('pcRewardBtn', 'Reward'),
-                        'pcRewardTester(' + Number(appId) + ',' + Number(item.testerId) + ')')
-                    : '');
+            var feedbackReasons = item.reasons.filter(function (reason) {
+                return ['bug', 'idea', 'play_review'].indexOf(reason.kind) !== -1;
+            });
+            var pendingFeedback = feedbackReasons.find(function (reason) {
+                return Number(reason.feedbackId || 0) > 0 && !isProcessed(reason);
+            });
+            // A feedback-only contribution is handled through its ticket. When there
+            // is another contribution too, its regular karma action remains available.
+            var mayRewardHere = !feedbackReasons.length || item.reasons.length > 1;
+            var actionsHtml = '';
+            if (pendingFeedback) {
+                actionsHtml += contributionProcessActionHtml(appId, pendingFeedback.feedbackId);
+            }
+            // Keep the reward (or its issued summary) to the right of ticket handling.
+            if (rewarded) {
+                actionsHtml += awardedRewardBadgeHtml(context, item.testerId);
+            } else if (mayRewardHere && context.rewardsLeft > 0) {
+                actionsHtml += iconAct('reward', text('pcRewardBtn', 'Reward'),
+                    'pcRewardTester(' + Number(appId) + ',' + Number(item.testerId) + ')');
+            }
             return personRowHtml({
                 appId: appId,
                 tester: item.tester,
                 tone: rewarded ? 'green' : 'sky',
                 metaHtml: reasonHtml,
-                actionsHtml: rewardHtml,
+                actionsHtml: actionsHtml,
+                avatarMarkerHtml: contributionAvatarMarkerHtml(item.reasons),
             });
         }).join('') + '</ul>';
     }

@@ -2894,6 +2894,67 @@ button.pc-act-reason {
     background: var(--success);
 }
 
+/* The contribution tab uses a readable source marker instead of a status dot. */
+.pc-contribution-marker {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    z-index: 1;
+    display: grid;
+    width: 19px;
+    height: 19px;
+    place-items: center;
+    border: 2px solid var(--bg-surface-2);
+    border-radius: 50%;
+    box-sizing: border-box;
+    color: #c5d4ed;
+    background: #26334a;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+.pc-contribution-marker svg {
+    display: block;
+    width: 11px;
+    height: 11px;
+}
+
+.pc-contribution-marker.is-bug {
+    color: #ffb2a4;
+    background: #4b2b35;
+}
+
+.pc-contribution-marker.is-idea {
+    color: #ffe09a;
+    background: #50442a;
+}
+
+.pc-contribution-marker.is-play_review {
+    color: #b7c9ff;
+    background: #303b64;
+}
+
+.pc-contribution-marker.is-screenshots {
+    color: #acd1ff;
+    background: #273d5b;
+}
+
+.pc-contribution-marker b {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    display: grid;
+    width: 11px;
+    height: 11px;
+    place-items: center;
+    border: 1.5px solid var(--bg-surface-2);
+    border-radius: 50%;
+    background: var(--accent-primary);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+}
+
 .pc-person__copy {
     min-width: 0;
     flex: 1;
@@ -2993,6 +3054,17 @@ button.pc-act-reason {
     width: 20px;
     height: 20px;
     display: block;
+}
+
+.pc-iconact__img {
+    display: block;
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.pc-iconact--feedback .pc-iconact__img {
+    filter: invert(66%) sepia(54%) saturate(581%) hue-rotate(177deg) brightness(101%) contrast(101%);
 }
 
 .pc-iconact__label {

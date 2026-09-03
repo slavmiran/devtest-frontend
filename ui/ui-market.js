@@ -7151,6 +7151,16 @@ function getProjectKarmaPools(project, testerId) {
     };
 }
 
+function getKarmaDistributionFeedbackCount(tester, feedbackCountByTester) {
+    const counts = feedbackCountByTester || {};
+    const ids = [tester && tester.tester_id, tester && tester.id, tester && tester.user_id];
+    for (const id of ids) {
+        const count = Number(counts[Number(id)] || 0);
+        if (count > 0) return count;
+    }
+    return 0;
+}
+
 function buildKarmaDistributionTesterStats(tester, feedbackCountByTester) {
     const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
     const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
@@ -7159,8 +7169,10 @@ function buildKarmaDistributionTesterStats(tester, feedbackCountByTester) {
         checkins: tester.checkins_count || 0,
         skips: actualSkips,
     }, lang);
-    const feedbackCount = Number(feedbackCountByTester[Number(tester.tester_id)] || 0);
-    stats += window.t('karmaDistributionTesterFeedback', { count: feedbackCount }, lang);
+    const feedbackCount = getKarmaDistributionFeedbackCount(tester, feedbackCountByTester);
+    if (feedbackCount > 0) {
+        stats += ' | ' + window.t('karmaDistributionTesterFeedback', { count: feedbackCount }, lang);
+    }
     return window.escapeHTML(stats);
 }
 
@@ -7200,17 +7212,17 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
 
         const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
         const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
-        const feedbackCount = Number((feedbackCountByTester && feedbackCountByTester[Number(tester.tester_id)]) || 0);
+        const feedbackCount = getKarmaDistributionFeedbackCount(tester, feedbackCountByTester);
 
         const statsParts = [];
         if (testerDay > 0) statsParts.push(lang === 'ru' ? `День ${testerDay}` : `Day ${testerDay}`);
         if (actualSkips > 0) statsParts.push(lang === 'ru' ? `Пропуски: ${actualSkips}` : `Skips: ${actualSkips}`);
-        if (feedbackCount > 0) statsParts.push(lang === 'ru' ? `Фидбэки: ${feedbackCount}` : `Feedback: ${feedbackCount}`);
+        if (feedbackCount > 0) statsParts.push(window.t('karmaDistributionTesterFeedback', { count: feedbackCount }, lang));
         const metaStr = statsParts.length ? statsParts.join(' · ') : (lang === 'ru' ? `День ${testerDay || 1}` : `Day ${testerDay || 1}`);
 
         const issuedRewards = [];
         if (testerPools.hasThanks) issuedRewards.push('👍 +1.5');
-        if (testerPools.hasSpecial) issuedRewards.push('💡 +3.0');
+        if (testerPools.hasSpecial) issuedRewards.push('💎 +3.0');
         const usedBadges = issuedRewards.map((reward) => `<span class="karma-awarded-pill">${reward}</span>`);
 
         let actionBtnHtml = '';
@@ -7312,34 +7324,26 @@ async function openKarmaDistribution(projectId) {
             const feedbackCountByTester = {};
             const testerMap = {};
             (project.testers || []).forEach(function(t) {
-                const tid = Number(t.tester_id || 0);
-                if (tid > 0) testerMap[tid] = t;
+                [t.tester_id, t.id, t.user_id].forEach(function(id) {
+                    const tid = Number(id || 0);
+                    if (tid > 0) testerMap[tid] = t;
+                });
             });
 
             data.feedback.forEach(function(item) {
-                const testerId = Number(item.tester_id || 0);
-                if (testerId <= 0) return;
-                const tester = testerMap[testerId];
+                const feedbackTesterId = Number(item.tester_id || item.user_id || (item.tester && item.tester.id) || 0);
+                if (feedbackTesterId <= 0) return;
+                const tester = testerMap[feedbackTesterId];
                 if (!tester) return; // Only count active testers belonging to this project
 
-                const status = String(item.status || '').trim().lower();
-                if (status === 'rejected' || status === 'spam' || status === 'google_play_review_rejected') {
-                    return; // Ignore rejected or spam tickets
-                }
+                const status = String(item.status || '').trim().toLowerCase();
+                if (status === 'spam') return;
 
-                // Check timeframe: only count feedback left during tester's current run
-                if (tester.start_date && item.created_at) {
-                    try {
-                        const testerStart = new Date(tester.start_date).getTime();
-                        const feedbackDate = new Date(item.created_at).getTime();
-                        // 1 hour grace buffer for clock skew on test start day
-                        if (feedbackDate < testerStart - 3600000) {
-                            return; // Belongs to an earlier cycle / previous run
-                        }
-                    } catch (e) {}
-                }
-
-                feedbackCountByTester[testerId] = (feedbackCountByTester[testerId] || 0) + 1;
+                // Show the total feedback actually sent in this project. We intentionally
+                // keep processed and rejected records: they are still useful context for
+                // the owner when distributing karma.
+                const canonicalTesterId = Number(tester.tester_id || tester.id || tester.user_id || feedbackTesterId);
+                feedbackCountByTester[canonicalTesterId] = (feedbackCountByTester[canonicalTesterId] || 0) + 1;
             });
             if (window._karmaDistributionProjectId === projectId) {
                 renderKarmaDistributionModal(project, feedbackCountByTester);
