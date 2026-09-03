@@ -1081,6 +1081,14 @@ function renderProjects(force) {
 
         const totalTesters = activeRegularTesters.length + guestTesters.length;
         const regularTesterCount = activeRegularTesters.length;
+        // The recruitment limits are already shown in the lower row. Reuse
+        // them beside the current team size, so the main metric is readable
+        // at a glance without changing quotas or their calculations.
+        const testerGoal = (project.mode === 'mutual' || project.mode === 'hybrid' ? Number(project.limit_mutual || 0) : 0)
+            + (project.mode === 'bounty' || project.mode === 'hybrid' ? Number(project.limit_bounty || 0) : 0);
+        const testerGoalHtml = testerGoal > 0
+            ? `<span class="pc-tester-ratio__goal">/ ${window.escapeHTML(String(testerGoal))}</span>`
+            : '';
 
         const extraDaysRunning = extraPaidDays > 0 && (hasSync ? currentGoogleDay > 14 : platformDays > 14);
         const needSyncPrompt = !hasSync && projectNeedsConsoleSync(project, { platformDays: platformDays });
@@ -1188,6 +1196,7 @@ function renderProjects(force) {
 
         const stateBlockHtml = `
                 <div class="pc-closed-head">
+                    <span class="pc-test-mode-badge"><svg class="pc-test-mode-badge__glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V6Zm3 9.73V17a1 1 0 0 1-2 0v-1.27a2 2 0 1 1 2 0Z"/></svg><span>${window.escapeHTML(window.t('pcClosedTestTitle', {}, lang))}</span></span>
                     ${stageBadgeHtml}
                 </div>
                 <div class="pc-state-top">
@@ -1213,6 +1222,7 @@ function renderProjects(force) {
                         <div class="pc-testers-copy">
                             <div class="pc-testers-metric">
                                 <span class="pc-tester-ratio__current">${window.escapeHTML(String(regularTesterCount))}</span>
+                                ${testerGoalHtml}
                                 <span class="pc-testers-label">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</span>
                             </div>
                             ${dailyStatusHtml}
