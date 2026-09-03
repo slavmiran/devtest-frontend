@@ -2072,6 +2072,7 @@ function _mapProjectsFromApi(data) {
             accepts_email_testers: !!project.accepts_email_testers,
             target_lang: project.target_lang || 'ALL',
             request_reviews: project.request_reviews !== false,
+            min_android_version: Number(project.min_android_version || 0),
             limit_mutual: project.limit_mutual || 0,
             limit_bounty: project.limit_bounty || 0,
             bounty_per_tester: project.bounty_per_tester || 0,
@@ -2960,7 +2961,9 @@ async function saveProject() {
         } catch (e) { /* noop */ }
     }
 
-    const minAndroidVersion = parseInt((document.getElementById('app-min-android-version') || {}).value, 10) || 0;
+    const minAndroidVersion = (typeof normalizeMinAndroidVersion === 'function')
+        ? normalizeMinAndroidVersion((document.getElementById('app-min-android-version') || {}).value)
+        : (parseInt((document.getElementById('app-min-android-version') || {}).value, 10) || 0);
 
     await doSaveProject({
         owner_id: userId,
@@ -3198,7 +3201,9 @@ async function saveProjectEdit() {
         }
     }
 
-    const minAndroidVersion = parseInt((document.getElementById('edit-min-android-version') || {}).value, 10) || 0;
+    const minAndroidVersion = (typeof normalizeMinAndroidVersion === 'function')
+        ? normalizeMinAndroidVersion((document.getElementById('edit-min-android-version') || {}).value)
+        : (parseInt((document.getElementById('edit-min-android-version') || {}).value, 10) || 0);
 
     try {
         const response = await fetch(`${API_BASE}/projects/${projectToEdit}`, {

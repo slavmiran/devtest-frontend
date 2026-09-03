@@ -168,17 +168,88 @@
     opacity: 0.62;
 }
 
+.pc-subtitle-chips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+}
+
 .pc-subtitle-chip {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
-    border-radius: 8px;
+    gap: 5px;
+    max-width: 100%;
+    padding: 3px 8px;
+    border-radius: 999px;
     font-size: 11px;
     font-weight: 600;
+    line-height: 1.25;
+    color: var(--text-secondary, #AEB7C2);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    white-space: nowrap;
+}
+
+.pc-subtitle-chip__label {
+    color: var(--text-tertiary, #717C89);
+    font-weight: 600;
+}
+
+.pc-subtitle-chip__state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.4em;
+    padding: 1px 7px;
+    margin: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #c9d3e3;
+    font: inherit;
+    font-weight: 750;
     line-height: 1.35;
-    color: var(--text-secondary, var(--hint-color));
-    background: transparent;
-    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+button.pc-subtitle-chip__state {
+    cursor: pointer;
+}
+
+button.pc-subtitle-chip__state:active {
+    transform: scale(0.97);
+}
+
+.pc-subtitle-chip--reviews.is-on {
+    border-color: rgba(76, 141, 255, 0.22);
+    background: rgba(76, 141, 255, 0.07);
+}
+
+.pc-subtitle-chip--reviews.is-on .pc-subtitle-chip__state {
+    color: #9fc0ff;
+    border-color: rgba(76, 141, 255, 0.34);
+    background: rgba(76, 141, 255, 0.16);
+}
+
+.pc-subtitle-chip--reviews.is-off .pc-subtitle-chip__state {
+    color: #8b95a5;
+    border-color: rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.pc-subtitle-chip--android {
+    border-color: rgba(48, 209, 88, 0.22);
+    background: rgba(48, 209, 88, 0.08);
+    color: #9fd9b0;
+}
+
+.pc-subtitle-chip--email {
+    border-color: rgba(255, 159, 10, 0.22);
+    background: rgba(255, 159, 10, 0.08);
+    color: #f0c48a;
 }
 
 .progress-container {

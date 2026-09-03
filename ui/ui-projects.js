@@ -23,6 +23,19 @@ function extraDaysUnitLabel(days) {
     return n === 1 ? 'day' : 'days';
 }
 
+function testerUnitLabel(count) {
+    var n = Math.abs(Number(count || 0));
+    if (typeof lang !== 'undefined' && lang === 'ru') {
+        var mod100 = n % 100;
+        var mod10 = n % 10;
+        if (mod100 > 10 && mod100 < 20) return 'тестеров';
+        if (mod10 === 1) return 'тестер';
+        if (mod10 >= 2 && mod10 <= 4) return 'тестера';
+        return 'тестеров';
+    }
+    return n === 1 ? 'tester' : 'testers';
+}
+
 function testersWhoCompletedTests(testers) {
     return (Array.isArray(testers) ? testers : []).filter(function (tester) {
         if (!tester || tester.is_left_soft) return false;
@@ -175,7 +188,9 @@ function getProjectDailyProgressMeta(project) {
 function buildProjectDailyProgressRingHtml(project, options) {
     const meta = getProjectDailyProgressMeta(project);
     const appId = Number(project && (project.id || project.app_id) || 0);
-    const gradId = `dpr-grad-${appId || Math.floor(Math.random() * 10000)}`;
+    const compactLabel = options && options.compactLabel
+        ? (typeof window.t === 'function' ? window.t('pcMetricCheckins', {}, typeof lang !== 'undefined' ? lang : 'ru') : 'Чекины')
+        : meta.centerLabel;
     const glowId = `dpr-glow-${appId || Math.floor(Math.random() * 10000)}`;
 
     const totalTesters = meta.totalTesters;
@@ -209,14 +224,15 @@ function buildProjectDailyProgressRingHtml(project, options) {
 
     // 2. Progress fill arc (smooth linecap)
     let progressPathHtml = '';
+    const progressStroke = todayDone > 12 ? '#b882ee' : '#49c99b';
     if (progressAngle >= 359.5) {
-        progressPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#${gradId})" stroke-width="7.5" stroke-linecap="round" />`;
+        progressPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${progressStroke}" stroke-width="7.5" stroke-linecap="round" />`;
     } else if (progressAngle > 0) {
         const radP = (progressAngle - 90) * Math.PI / 180;
         const px = cx + r * Math.cos(radP);
         const py = cy + r * Math.sin(radP);
         const largeArcP = progressAngle > 180 ? 1 : 0;
-        progressPathHtml = `<path d="M ${cx} ${cy - r} A ${r} ${r} 0 ${largeArcP} 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#${gradId})" stroke-width="7.5" stroke-linecap="round" />`;
+        progressPathHtml = `<path d="M ${cx} ${cy - r} A ${r} ${r} 0 ${largeArcP} 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="${progressStroke}" stroke-width="7.5" stroke-linecap="round" />`;
     }
 
     // 3. Google Pin
@@ -230,11 +246,6 @@ function buildProjectDailyProgressRingHtml(project, options) {
         pinHtml = `<circle cx="${pinX.toFixed(2)}" cy="${pinY.toFixed(2)}" r="3" fill="#8e8e93" stroke="#16141c" stroke-width="1.5" />`;
     }
 
-    // 4. Gradient definition (Refined modern gradients)
-    const gradStops = todayDone > 12
-        ? `<stop offset="0%" stop-color="#bf5af2" /><stop offset="100%" stop-color="#ff9f0a" />`
-        : `<stop offset="0%" stop-color="#30d158" /><stop offset="100%" stop-color="#30b0c7" />`;
-
     const ringClasses = [
         'pc-ring',
         meta.isOverachieved ? 'is-over' : '',
@@ -246,9 +257,6 @@ function buildProjectDailyProgressRingHtml(project, options) {
         <div class="${ringClasses}" onclick="openDailyProgressDetailsModal(${appId}, event);" role="button" tabindex="0" aria-label="Суточный план чекинов ${todayDone} из 12">
             <svg viewBox="0 0 100 100" class="pc-ring__svg" aria-hidden="true">
                 <defs>
-                    <linearGradient id="${gradId}" x1="0%" y1="0%" x2="100%" y2="100%">
-                        ${gradStops}
-                    </linearGradient>
                     <filter id="${glowId}" x="-50%" y="-50%" width="200%" height="200%">
                         <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#30d158" flood-opacity="0.8"/>
                     </filter>
@@ -264,7 +272,7 @@ function buildProjectDailyProgressRingHtml(project, options) {
             </svg>
             <div class="pc-ring__center">
                 <span class="pc-ring__count">${todayDone}&nbsp;/&nbsp;12</span>
-                <span class="pc-ring__label">${meta.centerLabel}</span>
+                <span class="pc-ring__label">${compactLabel}</span>
             </div>
         </div>
     `;
@@ -360,25 +368,125 @@ function buildProjectModeChip(project) {
     return `<button class="meta-chip accent-green" onclick="void(0)">${window.escapeHTML(t.modeMutual)}</button>`;
 }
 
-/* The header line carries one fact at a time: delivery flags when they exist,
-   otherwise the package name. Showing both made the subtitle compete with the
-   project title. */
-function buildProjectCardSubtitle(project) {
+/* Header chips under the title: reviews toggle (always), optional email + Android. */
+function buildProjectCardSubtitle(project, options) {
+    options = options || {};
     if (!project) return '<div class="card-subtitle notranslate"></div>';
+    const interactive = options.interactive !== false;
     const isEmail = String(project.test_mode || 'google_group') === 'email_list';
-    const hasReviews = project.request_reviews !== false;
+    const reviewsOn = project.request_reviews !== false;
+    const minAndroid = (typeof normalizeMinAndroidVersion === 'function')
+        ? normalizeMinAndroidVersion(project.min_android_version)
+        : Number(project.min_android_version || 0);
     const packageName = project.package || project.package_name || '';
-    const flags = [];
-    if (isEmail) flags.push(window.escapeHTML(window.t('emailTestModeChip', {}, lang)));
-    if (hasReviews) flags.push(window.escapeHTML(window.t('pcCardSubtitleReviews', {}, lang)));
-    if (flags.length) {
-        return '<div class="card-subtitle notranslate"><span class="pc-subtitle-flags">' + flags.join(' · ') + '</span></div>';
+    const chips = [];
+
+    const reviewsLabel = window.escapeHTML(window.t('pcCardReviewsLabel', {}, lang) || 'Отзывы Google');
+    const reviewsState = window.escapeHTML(
+        reviewsOn
+            ? (window.t('pcCardReviewsOn', {}, lang) || 'вкл')
+            : (window.t('pcCardReviewsOff', {}, lang) || 'откл')
+    );
+    const reviewsStateHtml = interactive
+        ? (
+            '<button type="button" class="pc-subtitle-chip__state' +
+                (reviewsOn ? ' is-on' : ' is-off') +
+                '" onclick="toggleProjectRequestReviews(' + Number(project.id || project.app_id || 0) + ', event)">' +
+                reviewsState +
+            '</button>'
+        )
+        : (
+            '<span class="pc-subtitle-chip__state' +
+                (reviewsOn ? ' is-on' : ' is-off') + '">' +
+                reviewsState +
+            '</span>'
+        );
+    chips.push(
+        '<span class="pc-subtitle-chip pc-subtitle-chip--reviews' +
+            (reviewsOn ? ' is-on' : ' is-off') + '">' +
+            '<span class="pc-subtitle-chip__label">' + reviewsLabel + ':</span>' +
+            reviewsStateHtml +
+        '</span>'
+    );
+
+    if (isEmail) {
+        chips.push(
+            '<span class="pc-subtitle-chip pc-subtitle-chip--email">' +
+                window.escapeHTML(window.t('emailTestModeChip', {}, lang) || 'Email') +
+            '</span>'
+        );
+    }
+
+    if (minAndroid > 0) {
+        const androidLabel = window.escapeHTML(
+            window.t('pcCardAndroidMinChip', { version: minAndroid }, lang) || ('Android ' + minAndroid + '+')
+        );
+        chips.push(
+            '<span class="pc-subtitle-chip pc-subtitle-chip--android" title="' + androidLabel + '">' +
+                androidLabel +
+            '</span>'
+        );
+    }
+
+    if (chips.length) {
+        return '<div class="card-subtitle notranslate"><span class="pc-subtitle-chips">' + chips.join('') + '</span></div>';
     }
     if (packageName) {
         return '<div class="card-subtitle notranslate">' + window.escapeHTML(packageName) + '</div>';
     }
     return '<div class="card-subtitle notranslate"></div>';
 }
+
+async function toggleProjectRequestReviews(appId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const safeId = Number(appId || 0);
+    if (safeId <= 0) return;
+    const project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function (item) {
+        return Number(item && (item.id || item.app_id)) === safeId;
+    });
+    if (!project) return;
+    const nextEnabled = project.request_reviews === false;
+    const prevEnabled = project.request_reviews !== false;
+    project.request_reviews = nextEnabled;
+    if (typeof renderProjects === 'function') renderProjects(true);
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+
+    try {
+        const apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
+        const initData = (typeof getTelegramInitDataRaw === 'function')
+            ? getTelegramInitDataRaw()
+            : ((window.tg && window.tg.initData) || '');
+        const response = await fetch(String(apiBase).replace(/\/+$/, '') + '/projects/' + safeId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                request_reviews: nextEnabled,
+                init_data: initData,
+            }),
+        });
+        const payload = await response.json().catch(function () { return {}; });
+        if (!response.ok || payload.status !== 'success') {
+            throw new Error((payload && (payload.code || payload.message)) || 'request_reviews_save_failed');
+        }
+        if (typeof setProjectsCache === 'function' && typeof myProjects !== 'undefined') {
+            setProjectsCache({
+                projects: myProjects,
+                visibilityStats: typeof visibilityStats !== 'undefined' ? visibilityStats : null,
+                ts: Date.now(),
+            });
+        }
+    } catch (err) {
+        project.request_reviews = prevEnabled;
+        if (typeof renderProjects === 'function') renderProjects(true);
+        if (typeof showToast === 'function') {
+            showToast(window.t('pcCardReviewsSaveError', {}, lang) || 'Не удалось сохранить настройку отзывов');
+        }
+    }
+}
+window.toggleProjectRequestReviews = toggleProjectRequestReviews;
 
 
 
@@ -1048,16 +1156,14 @@ function renderProjects(force) {
             ? Math.min(48, Math.max(0, 48 - Number(project.consumed_pending_hours || 0)))
             : 0;
 
-        /* ── Closed test block: day + testers + recruitment ── */
-        const calendarIconHtml = `
-            <svg class="pc-cal__icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.11-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7H5V6h14v2z"/>
-            </svg>`;
+        /* ── Closed test dashboard: time, team, Google check-ins ── */
         const attractPeopleIconHtml = `
             <svg class="pc-cta__glyph" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zM6 10V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
             </svg>`;
         const pingSlotHtml = `<span class="pc-ping-slot" data-pc-ping-slot="${project.id}"></span>`;
+        const actionTimeIconHtml = '<img class="pc-action-btn__icon" src="./images/Icons/time-add-svgrepo-com.svg" alt="" aria-hidden="true">';
+        const actionSyncIconHtml = '<img class="pc-action-btn__icon" src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" alt="" aria-hidden="true">';
 
         let count_done = 0;
         let count_waiting = 0;
@@ -1082,12 +1188,8 @@ function renderProjects(force) {
         });
 
         const totalTesters = activeRegularTesters.length + guestTesters.length;
-        const regularTesterCount = activeRegularTesters.length;
-        // The main card metric is the planned team size. Current recruitment
-        // progress remains visible in the dedicated "Набор" row below.
         const testerTargetCount = (project.mode === 'mutual' || project.mode === 'hybrid' ? Number(project.limit_mutual || 0) : 0)
             + (project.mode === 'bounty' || project.mode === 'hybrid' ? Number(project.limit_bounty || 0) : 0);
-        const testerHeadlineCount = testerTargetCount > 0 ? testerTargetCount : regularTesterCount;
 
         const extraDaysRunning = extraPaidDays > 0 && (hasSync ? currentGoogleDay > 14 : platformDays > 14);
         const needSyncPrompt = !hasSync && projectNeedsConsoleSync(project, { platformDays: platformDays });
@@ -1109,85 +1211,93 @@ function renderProjects(force) {
                         : window.t('pcStatusRecruiting', {}, lang);
 
         const dayMain = hasSync ? currentGoogleDay : platformDays;
-        const dayKicker = window.t('pcDayWord', {}, lang);
-        const dayTotalHtml = hasSync
-            ? '<span class="pc-day-total">&nbsp;/&nbsp;14</span>'
+        const dayValueHtml = '<span class="pc-metric-day__value">' + window.escapeHTML(String(dayMain)) + '</span>'
+            + (hasSync ? '<span class="pc-metric-day__total">/ 14</span>' : '');
+        const syncDotHtml = hasSync ? '<span class="pc-metric-title__dot" aria-label="Google Console синхронизирована"></span>' : '';
+        const bufferHoursText = isPendingCompletion && bufferHoursLeft > 0
+            ? String(bufferHoursLeft)
+            : '+48';
+        const termReserveHtml = hasSync && (extraPaidDays > 0 || isPendingCompletion)
+            ? '<span class="pc-metric-reserve pc-metric-reserve--time">' +
+                window.escapeHTML(window.t('pcMetricTimeReserve', { days: extraPaidDays, hours: bufferHoursText }, lang)) +
+              '</span>'
             : '';
-        const calendarClick = needSyncPrompt
-            ? 'openProtectionCenter(' + Number(project.id) + ')'
-            : 'openProjectLifecycleModal(' + Number(project.id) + ')';
-        const extraDaysHtml = (hasSync || isPendingCompletion) && extraPaidDays > 0
-            ? '<div class="pc-day-extra-line">' + window.escapeHTML(window.t('pcExtraDaysNote', {
-                days: extraPaidDays,
-                unit: extraDaysUnitLabel(extraPaidDays),
-            }, lang)) + '</div>'
-            : '';
-        const bufferLineHtml = (hasSync || isPendingCompletion)
-            ? (isPendingCompletion && bufferHoursLeft > 0
-                ? '<button type="button" class="pc-day-buffer" onclick="event.stopPropagation(); openProjectLifecycleModal(' + Number(project.id) + ');">' +
-                    window.escapeHTML(window.t('pcBufferLineHours', { hours: bufferHoursLeft }, lang)) + '</button>'
-                : '<button type="button" class="pc-day-buffer" onclick="event.stopPropagation(); openProjectLifecycleModal(' + Number(project.id) + ');">' +
-                    window.escapeHTML(window.t('pcBufferLine', {}, lang)) + '</button>')
-            : '';
-        const totalDaysHtml = hasSync
-            ? '<div class="pc-day-hub-line">' + window.escapeHTML(window.t('pcTotalDays', { day: platformDays }, lang)) + '</div>'
-            : '';
+        const termFooterHtml = hasSync
+            ? '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcMetricTotalDays', { day: platformDays }, lang)) + '</span>'
+            : '<span class="pc-metric-footer__line pc-metric-footer__line--buffer">' + actionTimeIconHtml + window.escapeHTML(window.t('pcBufferLine', {}, lang)) + '</span>';
 
         const dailyMeta = getProjectDailyProgressMeta(project);
-        const showDailyStatus = !!(dailyMeta.statusChip && dailyMeta.statusChip.text && dailyMeta.statusChip.kind !== 'amber');
-        const dailyStatusHtml = showDailyStatus
-            ? '<div class="status-chip status-chip--' + window.escapeHTML(dailyMeta.statusChip.kind) + '">' +
+        const teamTesterCount = Math.max(totalTesters, Number(dailyMeta.totalTesters || 0));
+        const teamDifference = teamTesterCount - 12;
+        const teamReserveHtml = teamDifference > 0
+            ? '<span class="pc-metric-reserve pc-metric-reserve--positive">' + window.escapeHTML(window.t('pcMetricTesterReserve', { count: teamDifference, unit: testerUnitLabel(teamDifference) }, lang)) + '</span>'
+            : teamDifference < 0
+                ? '<span class="pc-metric-reserve pc-metric-reserve--warning">' + window.escapeHTML(window.t('pcMetricTesterNeed', { count: Math.abs(teamDifference), unit: testerUnitLabel(Math.abs(teamDifference)) }, lang)) + '</span>'
+                : '<span class="pc-metric-reserve pc-metric-reserve--positive">' + window.escapeHTML(window.t('pcTestersMinimumReached', {}, lang)) + '</span>';
+        const dailyStatusHtml = dailyMeta.statusChip && dailyMeta.statusChip.text
+            ? '<div class="pc-daily-status status-chip status-chip--' + window.escapeHTML(dailyMeta.statusChip.kind) + '">' +
                 (dailyMeta.statusChip.iconHtml || '') +
                 '<span class="status-chip__text">' + window.escapeHTML(dailyMeta.statusChip.text) + '</span>' +
               '</div>'
             : '';
         const testersRingHtml = typeof buildProjectDailyProgressRingHtml === 'function'
-            ? buildProjectDailyProgressRingHtml(project)
+            ? buildProjectDailyProgressRingHtml(project, { compactLabel: true })
             : '';
-        const testersToneClass = dailyMeta.isOverachieved ? ' is-over' : (Number(dailyMeta.todayDone || 0) === 12 ? ' is-done' : '');
-        const testedTodayHtml =
-            '<div class="pc-tested-today">' +
-                '<span class="pc-tested-today__label">' + window.escapeHTML(window.t('pcTestedTodayLabel', {}, lang)) + '</span>' +
-                '<span class="pc-tested-pct">' + window.escapeHTML(String(Number(dailyMeta.teamPercent || 0))) + '%</span>' +
-            '</div>';
+        const dailyActivityTone = dailyMeta.isOverachieved
+            ? 'is-over'
+            : (Number(dailyMeta.todayDone || 0) >= 12 ? 'is-ok' : 'is-warning');
+        const dailyActivityHtml = '<span class="pc-daily-activity ' + dailyActivityTone + '">' +
+            '<span aria-hidden="true">⚡</span>' +
+            '<span>' + window.escapeHTML(window.t('pcMetricActivity', {}, lang)) + ' ' + window.escapeHTML(String(Number(dailyMeta.teamPercent || 0))) + '%</span>' +
+            '</span>';
 
         const mutualCount = activeRegularTesters.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
         const bountyCount = activeRegularTesters.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
-        const recruitParts = [];
+        const recruitPartsHtml = [];
         if (project.mode === 'mutual' || project.mode === 'hybrid') {
             const mutualTarget = Number(project.limit_mutual || 0);
             const mutualFilled = mutualTarget > 0 && mutualCount >= mutualTarget;
-            recruitParts.push(window.t('pcRecruitMutual', { current: mutualCount, target: mutualTarget }, lang) + (mutualFilled ? ' ✓' : ''));
+            recruitPartsHtml.push(
+                '<span class="pc-recruit__item">' +
+                    window.escapeHTML(window.t('pcRecruitMutualName', {}, lang) || 'Взаимка') +
+                    ' <span class="pc-recruit__count">' + window.escapeHTML(String(mutualCount) + '/' + String(mutualTarget)) + '</span>' +
+                    (mutualFilled ? ' ✓' : '') +
+                '</span>'
+            );
         }
         if (project.mode === 'bounty' || project.mode === 'hybrid') {
             const bountyTarget = Number(project.limit_bounty || 0);
             const bountyFilled = bountyTarget > 0 && bountyCount >= bountyTarget;
-            recruitParts.push(window.t('pcRecruitContracts', { current: bountyCount, target: bountyTarget }, lang) + (bountyFilled ? ' ✓' : ''));
+            recruitPartsHtml.push(
+                '<span class="pc-recruit__item">' +
+                    window.escapeHTML(window.t('pcRecruitContractsName', {}, lang) || 'Контракты') +
+                    ' <span class="pc-recruit__count">' + window.escapeHTML(String(bountyCount) + '/' + String(bountyTarget)) + '</span>' +
+                    (bountyFilled ? ' ✓' : '') +
+                '</span>'
+            );
         }
-        // The status row always renders: it is the anchor for the collapsed
-        // Telegram icon even when a project has no recruitment quotas left.
-        const recruitRowHtml = `
-            <div class="pc-recruit-row" onclick="event.stopPropagation();">
-                ${recruitParts.length
-                    ? `<button type="button" class="pc-recruit" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();">
-                            <span class="pc-recruit__label">${window.escapeHTML(window.t('pcRecruitLabel', {}, lang))}</span>
-                            <span class="pc-recruit__items">${window.escapeHTML(recruitParts.join(' · '))}</span>
-                        </button>`
-                    : '<span class="pc-recruit pc-recruit--empty"></span>'}
-                ${pingSlotHtml}
-            </div>`;
+        if (guestTesterCount > 0) {
+            recruitPartsHtml.push(
+                '<span class="pc-recruit__item is-guest">👽 ' +
+                window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang)) +
+                '</span>'
+            );
+        }
 
-        const attractIsPrimary = regularTesterCount < 15;
-        const calendarDotHtml = hasSync
-            ? `<span class="pc-cal__dot is-synced" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-               </span>`
-            : `<span class="pc-cal__dot" aria-hidden="true">+</span>`;
-        const attractBtnHtml = `
-            <button type="button" class="pc-cta ${attractIsPrimary ? 'pc-cta--primary' : 'pc-cta--neutral'} pc-cta--testers" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
-                ${attractPeopleIconHtml}
-                <span class="pc-cta__label">${window.escapeHTML(window.t('pcInviteCta', {}, lang))}</span>
-            </button>`;
+        const massInviteMeta = getProjectMassInviteMeta(project);
+        const availableOfferCount = Math.max(0, Number(massInviteMeta.maxRecipients || 0));
+        const inviteCtaLabel = availableOfferCount > 0
+            ? window.t('pcInviteTestersWithCount', { count: availableOfferCount }, lang)
+            : window.t('pcInviteTesters', {}, lang);
+        const actionSecondaryHtml = needSyncPrompt
+            ? `<button type="button" class="pc-action-btn pc-action-btn--sync" onclick="openProtectionCenter(${project.id}); event.stopPropagation();">
+                    ${actionSyncIconHtml}
+                    <span>${window.escapeHTML(window.t('pcSyncAction', {}, lang))}</span>
+               </button>`
+            : `<button type="button" class="pc-action-btn pc-action-btn--term" onclick="openProjectLifecycleModal(${project.id}); event.stopPropagation();">
+                    ${actionTimeIconHtml}
+                    <span>${window.escapeHTML(window.t('pcTermAction', {}, lang))}</span>
+               </button>`;
 
         const stageBadgeHtml = needSyncPrompt
             ? `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${window.escapeHTML(closedTestStageLabel)}</button>`
@@ -1198,39 +1308,39 @@ function renderProjects(force) {
                     <span class="pc-test-mode-badge"><svg class="pc-test-mode-badge__glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V6Zm3 9.73V17a1 1 0 0 1-2 0v-1.27a2 2 0 1 1 2 0Z"/></svg><span>${window.escapeHTML(window.t('pcClosedTestTitle', {}, lang))}</span></span>
                     ${stageBadgeHtml}
                 </div>
-                <div class="pc-state-top">
-                    <div class="pc-state-day">
-                        <button type="button" class="pc-cal${needSyncPrompt ? ' is-need-sync' : ''}${hasSync ? ' is-synced' : ''}" aria-label="${window.escapeHTML(needSyncPrompt ? window.t('pcStatusNeedSync', {}, lang) : window.t('pcLifecycleTitle', {}, lang))}" onclick="event.stopPropagation(); ${calendarClick};">
-                            ${calendarIconHtml}
-                            ${calendarDotHtml}
-                        </button>
-                        <div class="pc-state-day__copy">
-                            <span class="pc-day-value" aria-label="${window.escapeHTML(hasSync ? window.t('pcDayOf', { day: dayMain, total: 14 }, lang) : (dayKicker + ' ' + dayMain))}">
-                                <span class="pc-day-lead">
-                                    <span class="pc-day-word">${window.escapeHTML(dayKicker)}</span>
-                                    <span class="pc-day-num">${window.escapeHTML(String(dayMain))}</span>
-                                </span>
-                                ${dayTotalHtml}
-                            </span>
-                            ${extraDaysHtml}
-                            ${bufferLineHtml}
-                            ${totalDaysHtml}
-                        </div>
-                    </div>
-                    <div class="pc-state-testers${testersToneClass}">
-                        <div class="pc-testers-copy">
-                            <div class="pc-testers-metric">
-                                <span class="pc-tester-ratio__current">${window.escapeHTML(String(testerHeadlineCount))}</span>
-                                <span class="pc-testers-label">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</span>
-                            </div>
-                            ${dailyStatusHtml}
-                            ${testedTodayHtml}
-                        </div>
-                        ${testersRingHtml}
-                        ${attractBtnHtml}
-                    </div>
+                <div class="pc-metrics-grid">
+                    <section class="pc-metric-card pc-metric-card--term">
+                        <div class="pc-metric-title">${window.escapeHTML(window.t('pcDayWord', {}, lang))}${syncDotHtml}</div>
+                        <div class="pc-metric-main pc-metric-day">${dayValueHtml}</div>
+                        ${termReserveHtml}
+                        <div class="pc-metric-footer">${termFooterHtml}</div>
+                    </section>
+                    <section class="pc-metric-card pc-metric-card--testers">
+                        <div class="pc-metric-title">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</div>
+                        <div class="pc-metric-main pc-metric-team__value">${window.escapeHTML(String(teamTesterCount))}</div>
+                        ${teamReserveHtml}
+                        <div class="pc-metric-footer"><span class="pc-metric-footer__line">${window.escapeHTML(window.t('pcMetricRecruitmentTarget', { count: testerTargetCount }, lang))}</span></div>
+                    </section>
+                    <section class="pc-metric-card pc-metric-card--google">
+                        <div class="pc-metric-title">GOOGLE 12</div>
+                        <div class="pc-metric-ring">${testersRingHtml}</div>
+                        ${dailyActivityHtml}
+                        <div class="pc-metric-footer">${dailyStatusHtml}</div>
+                    </section>
                 </div>
-                ${recruitRowHtml}
+                <div class="pc-action-bar${needSyncPrompt ? ' is-sync-required' : ''}">
+                    <button type="button" class="pc-action-btn pc-action-btn--invite" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
+                        ${attractPeopleIconHtml}
+                        <span>${window.escapeHTML(inviteCtaLabel)}</span>
+                    </button>
+                    ${actionSecondaryHtml}
+                </div>
+                <div class="pc-action-footer" onclick="event.stopPropagation();">
+                    ${recruitPartsHtml.length
+                        ? `<button type="button" class="pc-action-footer__summary" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();">${recruitPartsHtml.join('<span class="pc-recruit__sep"> · </span>')}</button>`
+                        : '<span class="pc-action-footer__summary is-empty">—</span>'}
+                    ${pingSlotHtml}
+                </div>
         `;
 
         /* ── Block 4: collapsed summary of the full tester roster ── */
@@ -2663,7 +2773,7 @@ function renderArchivedProjects(force) {
             const modeLabel = project.mode === 'bounty' ? t.modeBounty : project.mode === 'hybrid' ? t.modeHybrid : t.modeMutual;
             const archiveName = project.name || window.t('unknownLabel', {}, lang);
             const safeArchiveName = window.escapeHTML(archiveName);
-            const archiveSubtitleHtml = buildProjectCardSubtitle(project);
+            const archiveSubtitleHtml = buildProjectCardSubtitle(project, { interactive: false });
             const langBadge = (project.target_lang && project.target_lang !== 'ALL') ? getLangBadge(project.target_lang) : '';
             const afkChip = project.archive_reason === 'afk' ? '<span class=\"meta-chip accent-red\">' + t.archivedAfkOwnerChip + '</span>' : '';
             const isBlocked = !!(project.is_blocked || project.blocked_at || project.archive_reason === 'policy_blocked');
@@ -3826,6 +3936,82 @@ function openIconPickerSheet() {
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
+var _androidVersionPickerScope = 'add';
+var ANDROID_VERSION_PICKER_VALUES = [0, 8, 9, 10, 11, 12, 13, 14, 15];
+
+function normalizeMinAndroidVersion(value) {
+    var n = parseInt(value, 10);
+    if (!Number.isFinite(n) || n <= 7) return 0;
+    if (n > 15) return 15;
+    return n;
+}
+
+function formatMinAndroidLabel(version) {
+    var v = normalizeMinAndroidVersion(version);
+    if (v <= 0) return window.t('androidVerAny', {}, lang) || 'Любая';
+    return window.t('androidVerPlus', { version: v }, lang) || ('Android ' + v + '+');
+}
+
+function setMinAndroidVersion(scope, value) {
+    var normalized = normalizeMinAndroidVersion(value);
+    var inputId = scope === 'edit' ? 'edit-min-android-version' : 'app-min-android-version';
+    var labelId = scope === 'edit' ? 'edit-min-android-label' : 'app-min-android-label';
+    var input = document.getElementById(inputId);
+    var label = document.getElementById(labelId);
+    if (input) input.value = String(normalized);
+    if (label) label.textContent = formatMinAndroidLabel(normalized);
+    return normalized;
+}
+
+function openAndroidVersionPicker(scope) {
+    _androidVersionPickerScope = scope === 'edit' ? 'edit' : 'add';
+    var overlay = document.getElementById('android-version-picker-overlay');
+    var list = document.getElementById('android-version-picker-list');
+    var title = document.getElementById('android-version-picker-title');
+    if (!overlay || !list) return;
+    var inputId = _androidVersionPickerScope === 'edit' ? 'edit-min-android-version' : 'app-min-android-version';
+    var current = normalizeMinAndroidVersion((document.getElementById(inputId) || {}).value || 0);
+    if (title) {
+        title.textContent = window.t('androidVersionPickerTitle', {}, lang) || 'Минимальная версия Android';
+    }
+    list.innerHTML = ANDROID_VERSION_PICKER_VALUES.map(function (version) {
+        var selected = version === current;
+        return (
+            '<button type="button" class="android-version-option' + (selected ? ' is-selected' : '') + '"' +
+                ' onclick="selectAndroidVersion(' + version + ')">' +
+                '<span>' + window.escapeHTML(formatMinAndroidLabel(version)) + '</span>' +
+                '<span class="android-version-option__mark" aria-hidden="true">' + (selected ? '✓' : '') + '</span>' +
+            '</button>'
+        );
+    }).join('');
+    overlay.classList.add('active');
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+}
+
+function closeAndroidVersionPicker(event) {
+    if (event && event.target !== document.getElementById('android-version-picker-overlay')) return;
+    var overlay = document.getElementById('android-version-picker-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+}
+
+function selectAndroidVersion(version) {
+    setMinAndroidVersion(_androidVersionPickerScope, version);
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    var overlay = document.getElementById('android-version-picker-overlay');
+    if (overlay) overlay.classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+}
+
+window.normalizeMinAndroidVersion = normalizeMinAndroidVersion;
+window.formatMinAndroidLabel = formatMinAndroidLabel;
+window.setMinAndroidVersion = setMinAndroidVersion;
+window.openAndroidVersionPicker = openAndroidVersionPicker;
+window.closeAndroidVersionPicker = closeAndroidVersionPicker;
+window.selectAndroidVersion = selectAndroidVersion;
+
 function closeIconPickerSheet(event) {
     if (event && event.target !== document.getElementById('icon-picker-overlay')) return;
     const overlay = document.getElementById('icon-picker-overlay');
@@ -4212,6 +4398,7 @@ function resetAddFlow() {
 
     _clearAddFieldErrors();
     syncStandardGroupUiState();
+    if (typeof setMinAndroidVersion === 'function') setMinAndroidVersion('add', 0);
 }
 
 function switchGroupTab(tab) {
@@ -4761,9 +4948,7 @@ function openEditModal(projectId, options) {
     document.getElementById('edit-limit-bounty').value = String(project.limit_bounty || 12);
     document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
     document.getElementById('edit-request-reviews').checked = project.request_reviews !== false;
-    if (document.getElementById('edit-min-android-version')) {
-        document.getElementById('edit-min-android-version').value = String(project.min_android_version || 0);
-    }
+    setMinAndroidVersion('edit', project.min_android_version || 0);
 
     _syncEditEmailTestersBoxVisibility();
     onEditAcceptsEmailTestersChange();

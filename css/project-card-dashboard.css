@@ -601,6 +601,17 @@ button.pc-stage-badge {
     text-overflow: ellipsis;
 }
 
+.pc-recruit__count {
+    color: rgba(154, 188, 255, 0.82);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.pc-recruit__sep {
+    color: var(--text-tertiary);
+    font-weight: 600;
+}
+
 .pc-recruit__chev {
     flex: 0 0 auto;
     color: var(--text-tertiary);
@@ -3350,6 +3361,10 @@ button.pc-act-reason {
     color: rgba(218, 228, 245, 0.78);
 }
 
+#tab-projects .card[id^="project-card-"] .pc-recruit__count {
+    color: rgba(154, 188, 255, 0.78);
+}
+
 @media (max-width: 359px) {
     #tab-projects .card[id^="project-card-"] .pc-state-top {
         grid-template-columns: 80px minmax(0, 1fr);
@@ -3380,5 +3395,464 @@ button.pc-act-reason {
 
     #tab-projects .card[id^="project-card-"] .pc-cta.pc-cta--testers {
         padding: 0 7px;
+    }
+}
+
+/* ─────────────── Three-column closed-test dashboard ───────────────
+   Each metric owns one concern: time, team size, or daily Google progress.
+   The action bar stays outside the metrics so numbers never compete with CTAs. */
+
+/* A running test is a quiet state indicator, not a second highlighted chip. */
+#tab-projects .card[id^="project-card-"] .pc-stage-badge.pc-stage-badge--active {
+    min-height: 0;
+    padding: 0;
+    color: rgba(210, 221, 238, 0.72);
+    background: transparent;
+    border-color: transparent;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 8px;
+    margin: 0 14px 12px;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-metric-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+    height: 206px;
+    box-sizing: border-box;
+    padding: 13px 10px 10px;
+    border: 1px solid rgba(188, 206, 238, 0.09);
+    border-radius: 16px;
+    background: rgba(7, 14, 25, 0.22);
+}
+
+.pc-metric-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 14px;
+    color: rgba(189, 205, 231, 0.58);
+    font-size: 9.5px;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: 0.055em;
+    text-align: center;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.pc-metric-title__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #55cf82;
+    box-shadow: 0 0 0 3px rgba(85, 207, 130, 0.08);
+    flex: 0 0 auto;
+}
+
+.pc-metric-main {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    min-height: 48px;
+    margin-top: 21px;
+    color: #f5f8ff;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.pc-metric-day__value,
+.pc-metric-team__value {
+    font-size: 31px;
+    font-weight: 820;
+    letter-spacing: -0.055em;
+    line-height: 1;
+}
+
+.pc-metric-day__total {
+    margin-left: 4px;
+    color: rgba(193, 210, 235, 0.62);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.pc-metric-card--testers .pc-metric-main {
+    margin-top: 20px;
+}
+
+.pc-metric-team__value {
+    font-size: 39px;
+}
+
+.pc-metric-reserve {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    min-height: 32px;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-top: 6px;
+    padding: 4px 7px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 760;
+    line-height: 1.25;
+    text-align: center;
+}
+
+.pc-metric-reserve--time,
+.pc-metric-reserve--positive {
+    color: #71d7ad;
+    background: rgba(48, 209, 143, 0.10);
+    border-color: rgba(48, 209, 143, 0.20);
+}
+
+.pc-metric-reserve--warning {
+    color: #ffc26b;
+    background: rgba(255, 159, 10, 0.10);
+    border-color: rgba(255, 159, 10, 0.22);
+}
+
+.pc-metric-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid rgba(188, 206, 238, 0.08);
+    text-align: center;
+}
+
+.pc-metric-footer__line {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: rgba(197, 211, 233, 0.60);
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.25;
+}
+
+.pc-metric-footer__line--buffer {
+    color: rgba(160, 194, 246, 0.74);
+}
+
+.pc-metric-footer__line--buffer .pc-action-btn__icon {
+    width: 12px;
+    height: 12px;
+    filter: invert(76%) sepia(23%) saturate(794%) hue-rotate(176deg) brightness(98%) contrast(94%);
+}
+
+.pc-metric-card--google {
+    padding-right: 7px;
+    padding-left: 7px;
+}
+
+.pc-metric-card--google .pc-metric-title {
+    letter-spacing: 0.035em;
+}
+
+.pc-metric-ring {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 94px;
+    margin: 3px 0 1px;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring {
+    width: 88px;
+    height: 88px;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count {
+    font-size: 15px;
+    color: #f8faff;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label {
+    margin-top: 2px;
+    font-size: 8px;
+    color: rgba(204, 216, 238, 0.62);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.pc-daily-activity {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    gap: 4px;
+    max-width: 100%;
+    min-height: 24px;
+    box-sizing: border-box;
+    padding: 3px 6px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    font-size: 9.5px;
+    font-weight: 780;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.pc-daily-activity.is-ok {
+    color: #70daa5;
+    background: rgba(48, 209, 88, 0.10);
+    border-color: rgba(48, 209, 88, 0.18);
+}
+
+.pc-daily-activity.is-over {
+    color: #d3b4ff;
+    background: rgba(191, 90, 242, 0.11);
+    border-color: rgba(191, 90, 242, 0.20);
+}
+
+.pc-daily-activity.is-warning {
+    color: #ffc06c;
+    background: rgba(255, 159, 10, 0.10);
+    border-color: rgba(255, 159, 10, 0.20);
+}
+
+.pc-metric-card--google .pc-metric-footer {
+    min-height: 25px;
+    padding-top: 7px;
+}
+
+.pc-metric-card--google .pc-daily-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    max-width: 100%;
+    min-height: 22px;
+    box-sizing: border-box;
+    padding: 3px 5px;
+    border-radius: 7px;
+    font-size: 8.5px;
+    font-weight: 720;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pc-metric-card--google .pc-daily-status .status-chip__icon {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 auto;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-action-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+    gap: 8px;
+    margin: 0 14px;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-action-bar.is-sync-required {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+#tab-projects .card[id^="project-card-"] .pc-action-bar.is-sync-required .pc-action-btn {
+    gap: 5px;
+    padding-right: 6px;
+    padding-left: 6px;
+    font-size: 10.5px;
+    white-space: nowrap;
+}
+
+.pc-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-width: 0;
+    min-height: 46px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: 13px;
+    color: #f8fbff;
+    font-size: 12.5px;
+    font-weight: 760;
+    line-height: 1.1;
+    text-align: center;
+    cursor: pointer;
+}
+
+.pc-action-btn--invite {
+    background: #3976cf;
+    border-color: rgba(154, 190, 255, 0.30);
+    box-shadow: 0 5px 12px rgba(28, 86, 175, 0.17);
+}
+
+.pc-action-btn--term {
+    color: rgba(221, 231, 247, 0.82);
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(184, 205, 237, 0.14);
+}
+
+.pc-action-btn--sync {
+    color: #d9e7ff;
+    background: #356fca;
+    border-color: rgba(145, 187, 255, 0.36);
+    box-shadow: 0 4px 10px rgba(27, 78, 162, 0.18);
+}
+
+.pc-action-btn__icon,
+.pc-action-btn .pc-cta__glyph {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 auto;
+}
+
+.pc-action-btn--term .pc-action-btn__icon {
+    filter: invert(77%) sepia(46%) saturate(624%) hue-rotate(119deg) brightness(93%) contrast(95%);
+}
+
+.pc-action-btn--sync .pc-action-btn__icon {
+    filter: invert(91%) sepia(29%) saturate(931%) hue-rotate(177deg) brightness(109%) contrast(96%);
+}
+
+.pc-action-btn:active {
+    transform: scale(0.98);
+}
+
+.pc-action-footer {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 39px;
+    margin: 11px 14px 0;
+    padding: 10px 0 11px;
+    border-top: 1px solid rgba(188, 206, 238, 0.08);
+}
+
+.pc-action-footer__summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(220, 229, 244, 0.78);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+    cursor: pointer;
+}
+
+.pc-action-footer__summary.is-empty {
+    color: rgba(190, 205, 229, 0.48);
+}
+
+.pc-action-footer .pc-recruit__item {
+    white-space: nowrap;
+}
+
+.pc-action-footer .pc-recruit__count {
+    color: #afc9f7;
+    font-variant-numeric: tabular-nums;
+}
+
+.pc-action-footer .pc-recruit__item.is-guest {
+    color: #b6c7e2;
+}
+
+.pc-action-footer .pc-recruit__sep {
+    margin: 0 5px;
+    color: rgba(188, 206, 238, 0.36);
+}
+
+.pc-action-footer .pc-ping-slot {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+@media (max-width: 359px) {
+    #tab-projects .card[id^="project-card-"] .pc-metrics-grid,
+    #tab-projects .card[id^="project-card-"] .pc-action-bar {
+        gap: 6px;
+        margin-right: 10px;
+        margin-left: 10px;
+    }
+
+    #tab-projects .card[id^="project-card-"] .pc-metric-card {
+        height: 190px;
+        padding: 11px 6px 8px;
+        border-radius: 14px;
+    }
+
+    .pc-metric-title { font-size: 8px; }
+    .pc-metric-day__value { font-size: 27px; }
+    .pc-metric-day__total { font-size: 13px; }
+    .pc-metric-team__value { font-size: 34px; }
+    .pc-metric-reserve { padding: 3px 4px; font-size: 8.5px; }
+    .pc-metric-footer__line { font-size: 8.5px; }
+
+    .pc-metric-ring {
+        min-height: 78px;
+        margin-top: 1px;
+    }
+
+    #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring {
+        width: 70px;
+        height: 70px;
+    }
+
+    #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count { font-size: 12px; }
+    #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label { font-size: 6.5px; }
+    .pc-daily-activity { padding: 3px 4px; font-size: 8px; }
+    .pc-metric-card--google .pc-daily-status { padding-right: 3px; padding-left: 3px; font-size: 7px; }
+
+    .pc-action-btn {
+        gap: 5px;
+        min-height: 42px;
+        padding-right: 6px;
+        padding-left: 6px;
+        font-size: 10.5px;
+    }
+
+    .pc-action-btn__icon,
+    .pc-action-btn .pc-cta__glyph {
+        width: 15px;
+        height: 15px;
+    }
+
+    #tab-projects .card[id^="project-card-"] .pc-action-bar.is-sync-required .pc-action-btn {
+        gap: 3px;
+        padding-right: 4px;
+        padding-left: 4px;
+        font-size: 8.8px;
+    }
+
+    #tab-projects .card[id^="project-card-"] .pc-action-bar.is-sync-required .pc-action-btn__icon,
+    #tab-projects .card[id^="project-card-"] .pc-action-bar.is-sync-required .pc-action-btn .pc-cta__glyph {
+        width: 13px;
+        height: 13px;
+    }
+
+    .pc-action-footer {
+        margin-right: 10px;
+        margin-left: 10px;
     }
 }

@@ -36,19 +36,19 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260903-reports-karma-v1"></script>
-    <script src="./i18n/en.js?v=20260903-reports-karma-v1"></script>
+<script src="./i18n/ru.js?v=20260903-card-columns-v1"></script>
+    <script src="./i18n/en.js?v=20260903-card-columns-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
     <script src="./ui/ui-tests.js?v=20260901-edit-modal-layout-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260903-reports-karma-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260903-card-columns-v1"></script>
     <script src="./ui/ui-market.js?v=20260903-reports-karma-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
     <script src="./js/app-config.js?v=20260903-card-polish-v1"></script>
-    <script src="./js/app-api.js?v=20260831-app-block-v1"></script>
+    <script src="./js/app-api.js?v=20260903-android-picker-v1"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20260903-reports-karma-v1"></script>
@@ -72,7 +72,7 @@
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20260830-multi-proof-v1">
     <link rel="stylesheet" href="./css/testing-control.css?v=20260903-history-badge-md-v1">
-    <link rel="stylesheet" href="./css/wizard.css?v=20260901-edit-modal-layout-v1">
+    <link rel="stylesheet" href="./css/wizard.css?v=20260903-android-picker-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/kick-tester-modal.css?v=20260822-recip-highlight-v1">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260827-dossier-layout-v15">
@@ -92,13 +92,13 @@
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260803-jb-accordion">
     <link rel="stylesheet" href="./css/access-issue.css?v=20260722-access-timer-v1">
     <link rel="stylesheet" href="./css/default-group.css?v=20260820-group-wait-inline-v1">
-    <link rel="stylesheet" href="./styles.css?v=20260903-reports-karma-v1">
+    <link rel="stylesheet" href="./styles.css?v=20260903-reviews-chip-v1">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260821-chooser-v6">
     <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260829-proof-pending-v2">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
-    <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260903-reports-karma-v1">
+    <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260903-card-columns-v1">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260903-reports-karma-v1">
 </head>
 <body>
@@ -805,23 +805,16 @@
                         <button type="button" class="seg-btn active" id="add-target-lang-all" onclick="setProjectTargetLang('add', 'ALL')" data-i18n="projectLanguageAll">🌐 ALL</button>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="form-group wizard-android-field">
                     <label class="form-label" data-i18n="projectMinAndroidLabel">Минимальная версия Android</label>
                     <div class="form-hint" data-i18n="projectMinAndroidHint">Тестеры с версией ниже указанной не получат массовую рассылку.</div>
-                    <select id="app-min-android-version" class="form-input form-select">
-                        <option value="0" data-i18n="androidVerAny" selected>Любая</option>
-                        <option value="7">Android 7+</option>
-                        <option value="8">Android 8+</option>
-                        <option value="9">Android 9+</option>
-                        <option value="10">Android 10+</option>
-                        <option value="11">Android 11+</option>
-                        <option value="12">Android 12+</option>
-                        <option value="13">Android 13+</option>
-                        <option value="14">Android 14+</option>
-                        <option value="15">Android 15+</option>
-                    </select>
+                    <input type="hidden" id="app-min-android-version" value="0">
+                    <button type="button" class="form-input android-version-trigger" id="app-min-android-trigger" onclick="openAndroidVersionPicker('add')">
+                        <span id="app-min-android-label" data-i18n="androidVerAny">Любая</span>
+                        <span class="android-version-trigger__chev" aria-hidden="true">▾</span>
+                    </button>
                 </div>
-                <div class="form-group">
+                <div class="form-group wizard-reviews-field">
                     <label class="review-checkbox-row project-setting-checkbox">
                         <input type="checkbox" id="app-request-reviews">
                         <span>
@@ -891,6 +884,15 @@
                 <button type="button" class="btn btn-primary" style="margin-top: 12px;" onclick="iconPickerApplyLink()" data-i18n="iconPickerApplyBtn">Применить</button>
                 <button type="button" class="btn btn-secondary" style="margin-top: 8px;" onclick="iconPickerShowMenu()" data-i18n="iconPickerBackBtn">Назад</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Android version picker (dark sheet instead of native white select) -->
+    <div id="android-version-picker-overlay" class="android-version-picker-overlay modal-overlay" onclick="closeAndroidVersionPicker(event)">
+        <div class="android-version-picker-sheet" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="android-version-picker-title">
+            <div class="android-version-picker-sheet__handle" aria-hidden="true"></div>
+            <div class="android-version-picker-sheet__title" id="android-version-picker-title" data-i18n="androidVersionPickerTitle">Минимальная версия Android</div>
+            <div class="android-version-picker-list" id="android-version-picker-list"></div>
         </div>
     </div>
 
@@ -1483,21 +1485,14 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group wizard-android-field">
                             <label class="form-label" data-i18n="projectMinAndroidLabel">Минимальная версия Android</label>
                             <div class="form-hint" data-i18n="projectMinAndroidHint">Тестеры с версией ниже указанной не получат массовую рассылку.</div>
-                            <select id="edit-min-android-version" class="form-input form-select">
-                                <option value="0" data-i18n="androidVerAny" selected>Любая</option>
-                                <option value="7">Android 7+</option>
-                                <option value="8">Android 8+</option>
-                                <option value="9">Android 9+</option>
-                                <option value="10">Android 10+</option>
-                                <option value="11">Android 11+</option>
-                                <option value="12">Android 12+</option>
-                                <option value="13">Android 13+</option>
-                                <option value="14">Android 14+</option>
-                                <option value="15">Android 15+</option>
-                            </select>
+                            <input type="hidden" id="edit-min-android-version" value="0">
+                            <button type="button" class="form-input android-version-trigger" id="edit-min-android-trigger" onclick="openAndroidVersionPicker('edit')">
+                                <span id="edit-min-android-label" data-i18n="androidVerAny">Любая</span>
+                                <span class="android-version-trigger__chev" aria-hidden="true">▾</span>
+                            </button>
                         </div>
 
                         <div class="form-group" style="margin-bottom: 0;">
