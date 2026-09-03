@@ -2882,6 +2882,35 @@ button.pc-act-reason {
     margin-left: 6px;
 }
 
+.pc-person--reasons .pc-person__top {
+    align-items: flex-start;
+}
+
+.pc-person--reasons .pc-person__actions,
+.pc-person--reasons .pc-person__chev {
+    margin-top: 4px;
+}
+
+.pc-person--reasons .pc-person__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    min-width: 0;
+}
+
+.pc-person__reason {
+    display: block;
+    max-width: 100%;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .pc-person__actions {
     display: flex;
     align-items: center;
@@ -2961,16 +2990,13 @@ button.pc-act-reason {
 
 #tab-projects .card[id^="project-card-"] {
     --pc-hero-line: rgba(148, 180, 255, 0.13);
-    --pc-hero-blue: #5a96ff;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-state-unified {
     margin-bottom: 12px;
     border-color: rgba(171, 194, 231, 0.12);
     border-radius: 18px;
-    background:
-        radial-gradient(110% 76% at 100% 0%, rgba(66, 125, 232, 0.10), transparent 54%),
-        linear-gradient(145deg, rgba(31, 40, 55, 0.98), rgba(20, 27, 38, 0.98));
+    background: #182332;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 12px 28px rgba(0, 0, 0, 0.16);
 }
 
@@ -3035,6 +3061,10 @@ button.pc-act-reason {
     border-top: 0;
 }
 
+#tab-projects .card[id^="project-card-"] .pc-state-unified > .pc-closed-head {
+    border-top: 0;
+}
+
 .pc-test-mode-badge,
 .pc-stage-badge {
     min-height: 25px;
@@ -3079,14 +3109,14 @@ button.pc-act-reason {
 .pc-stage-badge--recruiting::before { background: #8db3ee; }
 
 .pc-stage-badge--active {
-    color: #95dbac;
-    background: rgba(48, 209, 88, 0.09);
-    border-color: rgba(48, 209, 88, 0.18);
+    color: #b7c3d4;
+    background: rgba(148, 180, 255, 0.07);
+    border-color: rgba(148, 180, 255, 0.16);
 }
 
 .pc-stage-badge--active::before {
     background: #58dc82;
-    box-shadow: 0 0 0 3px rgba(88, 220, 130, 0.10);
+    box-shadow: none;
 }
 
 .pc-stage-badge--need_sync {
@@ -3103,21 +3133,22 @@ button.pc-act-reason {
 }
 
 #tab-projects .card[id^="project-card-"] .pc-state-top {
-    grid-template-columns: minmax(100px, 0.78fr) minmax(0, 1.62fr);
-    margin: 0 12px 12px;
+    grid-template-columns: 100px minmax(0, 1fr);
+    margin: 0 16px 14px;
     padding: 0;
-    overflow: hidden;
-    border: 1px solid var(--pc-hero-line);
-    border-radius: 15px;
-    background: rgba(7, 13, 23, 0.22);
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-state-day {
     justify-content: center;
-    gap: 9px;
-    padding: 13px 10px 12px 12px;
-    border-right: 1px solid var(--pc-hero-line);
-    background: linear-gradient(180deg, rgba(90, 150, 255, 0.10), rgba(90, 150, 255, 0.028));
+    align-items: center;
+    gap: 10px;
+    padding: 12px 8px;
+    border-right: 0;
+    background: transparent;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-cal {
@@ -3125,7 +3156,7 @@ button.pc-act-reason {
     height: 42px;
     border: 1px solid rgba(124, 172, 255, 0.23);
     border-radius: 13px;
-    background: linear-gradient(145deg, rgba(87, 145, 255, 0.22), rgba(87, 145, 255, 0.08));
+    background: rgba(87, 145, 255, 0.14);
     color: #a9caff;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 5px 13px rgba(16, 57, 124, 0.18);
 }
@@ -3167,13 +3198,22 @@ button.pc-act-reason {
 #tab-projects .card[id^="project-card-"] .pc-day-hub-line {
     font-size: 10px;
     color: rgba(189, 207, 235, 0.66);
+    text-align: center;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-state-day__copy,
+#tab-projects .card[id^="project-card-"] .pc-day-value,
+#tab-projects .card[id^="project-card-"] .pc-day-lead {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-state-testers {
     grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: 8px;
+    column-gap: 10px;
     row-gap: 9px;
-    padding: 13px 11px 12px 14px;
+    padding: 7px 0 7px 14px;
     border-left: 0;
 }
 
@@ -3185,16 +3225,8 @@ button.pc-act-reason {
 }
 
 #tab-projects .card[id^="project-card-"] .pc-tester-ratio__current {
-    font-size: 31px;
+    font-size: 34px;
     color: #f7faff;
-}
-
-.pc-tester-ratio__goal {
-    font-size: 17px;
-    font-weight: 700;
-    color: rgba(193, 210, 235, 0.64);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.025em;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-testers-label {
@@ -3206,12 +3238,12 @@ button.pc-act-reason {
 }
 
 #tab-projects .card[id^="project-card-"] .pc-state-testers .pc-ring {
-    width: 86px;
-    height: 86px;
+    width: 110px;
+    height: 110px;
 }
 
-#tab-projects .card[id^="project-card-"] .pc-ring__count { font-size: 13px; }
-#tab-projects .card[id^="project-card-"] .pc-ring__label { font-size: 7.5px; }
+#tab-projects .card[id^="project-card-"] .pc-ring__count { font-size: 16px; }
+#tab-projects .card[id^="project-card-"] .pc-ring__label { font-size: 8.5px; }
 
 #tab-projects .card[id^="project-card-"] .status-chip {
     min-height: 22px;
@@ -3251,9 +3283,9 @@ button.pc-act-reason {
 
 #tab-projects .card[id^="project-card-"] .pc-cta--testers.pc-cta--primary {
     color: #ffffff;
-    background: linear-gradient(135deg, #4d8dff, #2f6fdc);
-    border-color: rgba(150, 190, 255, 0.46);
-    box-shadow: 0 6px 14px rgba(35, 100, 213, 0.27);
+    background: #3976cf;
+    border-color: rgba(150, 190, 255, 0.28);
+    box-shadow: 0 4px 10px rgba(35, 100, 213, 0.16);
 }
 
 #tab-projects .card[id^="project-card-"] .pc-cta--testers.pc-cta--neutral {
@@ -3287,6 +3319,8 @@ button.pc-act-reason {
 @media (max-width: 359px) {
     #tab-projects .card[id^="project-card-"] .pc-state-top {
         grid-template-columns: 80px minmax(0, 1fr);
+        margin-right: 12px;
+        margin-left: 12px;
     }
 
     #tab-projects .card[id^="project-card-"] .pc-state-day {
@@ -3294,26 +3328,18 @@ button.pc-act-reason {
     }
 
     #tab-projects .card[id^="project-card-"] .pc-state-testers {
-        column-gap: 4px;
-        padding: 11px 8px 11px 10px;
+        column-gap: 6px;
+        padding: 7px 0 7px 8px;
     }
 
     #tab-projects .card[id^="project-card-"] .pc-state-testers .pc-ring {
-        width: 62px;
-        height: 62px;
+        width: 78px;
+        height: 78px;
     }
 
-    #tab-projects .card[id^="project-card-"] .pc-tester-ratio__current { font-size: 27px; }
-    .pc-tester-ratio__goal { font-size: 14px; }
-
-    #tab-projects .card[id^="project-card-"] .pc-testers-metric {
-        column-gap: 4px;
-        row-gap: 1px;
-        flex-wrap: wrap;
-    }
+    #tab-projects .card[id^="project-card-"] .pc-tester-ratio__current { font-size: 30px; }
 
     #tab-projects .card[id^="project-card-"] .pc-testers-label {
-        flex-basis: 100%;
         align-self: auto;
         padding-bottom: 0;
     }

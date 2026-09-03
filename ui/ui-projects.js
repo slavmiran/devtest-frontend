@@ -1081,14 +1081,11 @@ function renderProjects(force) {
 
         const totalTesters = activeRegularTesters.length + guestTesters.length;
         const regularTesterCount = activeRegularTesters.length;
-        // The recruitment limits are already shown in the lower row. Reuse
-        // them beside the current team size, so the main metric is readable
-        // at a glance without changing quotas or their calculations.
-        const testerGoal = (project.mode === 'mutual' || project.mode === 'hybrid' ? Number(project.limit_mutual || 0) : 0)
+        // The main card metric is the planned team size. Current recruitment
+        // progress remains visible in the dedicated "Набор" row below.
+        const testerTargetCount = (project.mode === 'mutual' || project.mode === 'hybrid' ? Number(project.limit_mutual || 0) : 0)
             + (project.mode === 'bounty' || project.mode === 'hybrid' ? Number(project.limit_bounty || 0) : 0);
-        const testerGoalHtml = testerGoal > 0
-            ? `<span class="pc-tester-ratio__goal">/ ${window.escapeHTML(String(testerGoal))}</span>`
-            : '';
+        const testerHeadlineCount = testerTargetCount > 0 ? testerTargetCount : regularTesterCount;
 
         const extraDaysRunning = extraPaidDays > 0 && (hasSync ? currentGoogleDay > 14 : platformDays > 14);
         const needSyncPrompt = !hasSync && projectNeedsConsoleSync(project, { platformDays: platformDays });
@@ -1221,8 +1218,7 @@ function renderProjects(force) {
                     <div class="pc-state-testers${testersToneClass}">
                         <div class="pc-testers-copy">
                             <div class="pc-testers-metric">
-                                <span class="pc-tester-ratio__current">${window.escapeHTML(String(regularTesterCount))}</span>
-                                ${testerGoalHtml}
+                                <span class="pc-tester-ratio__current">${window.escapeHTML(String(testerHeadlineCount))}</span>
                                 <span class="pc-testers-label">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</span>
                             </div>
                             ${dailyStatusHtml}
@@ -7357,7 +7353,7 @@ async function openAttractTestersSheet(projectId) {
                         <span class="attract-sheet-hub-btn-desc">${window.escapeHTML(window.t('attractMutualCatalogActionManualDesc', {}, lang))}</span>
                     </span>
                 </button>
-                <button type="button" class="attract-sheet-hub-btn attract-sheet-hub-btn--accent" onclick="openMassInviteModal(${projectId});">
+                <button type="button" class="attract-sheet-hub-btn" onclick="openMassInviteModal(${projectId});">
                     <span class="attract-sheet-hub-btn-icon">⚡</span>
                     <span class="attract-sheet-hub-btn-content">
                         <span class="attract-sheet-hub-btn-title">${window.escapeHTML(window.t('attractMutualCatalogActionAuto', {}, lang))}</span>

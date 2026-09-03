@@ -2896,7 +2896,7 @@
             pcBufferLineHours: "Buffer {hours}h",
             pcExtensionLine: "+{days} day",
             pcInviteCta: "Invite",
-            pcTestedTodayLabel: "Tested today",
+            pcTestedTodayLabel: "Active",
             pcTotalDays: "Total days {day}",
             pcExtraDaysNote: "+{days} {unit}",
             pcTestersShortLabel: "Testers",

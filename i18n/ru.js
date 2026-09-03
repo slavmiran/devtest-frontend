@@ -2902,7 +2902,7 @@
             pcBufferLineHours: "Буфер {hours}ч",
             pcExtensionLine: "+{days} день",
             pcInviteCta: "Пригласить",
-            pcTestedTodayLabel: "Протестировали сегодня",
+            pcTestedTodayLabel: "Active",
             pcTotalDays: "Всего дней {day}",
             pcExtraDaysNote: "+{days} {unit}",
             pcTestersShortLabel: "Тестеры",

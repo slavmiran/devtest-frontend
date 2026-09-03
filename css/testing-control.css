@@ -102,16 +102,16 @@
 .testing-control-avatar--fallback { display: grid; place-items: center; color: #dcecff; background: rgba(10, 132, 255, 0.2); font-weight: 800; }
 .testing-control-avatar-badge {
     position: absolute;
-    right: -2px;
-    bottom: -2px;
-    width: 14px;
-    height: 14px;
+    right: -4px;
+    bottom: -4px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     overflow: hidden;
     display: grid;
     place-items: center;
     background: #2c2c2e;
-    border: 1.5px solid rgba(12, 12, 14, 0.95);
+    border: 2px solid rgba(12, 12, 14, 0.95);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
     pointer-events: none;
 }
@@ -123,12 +123,12 @@
 }
 .testing-control-avatar-badge__letter {
     color: #f2f2f7;
-    font-size: 7px;
+    font-size: 13px;
     font-weight: 800;
     line-height: 1;
 }
 .testing-control-avatar-badge__glyph {
-    font-size: 8px;
+    font-size: 16px;
     line-height: 1;
     transform: translateY(0.5px);
 }

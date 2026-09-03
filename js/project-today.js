@@ -178,7 +178,8 @@
         var tone = opts.tone || 'neutral';
         var extra = opts.extraHtml || '';
         var stateCls = opts.received ? ' is-received' : (opts.waiting ? ' is-waiting' : '');
-        return '<li class="pc-person is-' + esc(tone) + stateCls + '"' +
+        var rowCls = opts.rowClass ? ' ' + String(opts.rowClass) : '';
+        return '<li class="pc-person is-' + esc(tone) + stateCls + rowCls + '"' +
             ' onclick="' + dossierClick(opts.appId, tester) + '">' +
             '<div class="pc-person__top">' +
                 '<span class="pc-person__avatar">' +
@@ -833,18 +834,24 @@
         if (!items.length) return emptySheetHtml(text('pcAttentionEmpty', 'Nobody needs attention right now'));
         return '<ul class="pc-act-list">' + items.map(function (item) {
             var hasDebt = item.reasons.some(function (reason) { return reason.code === 'debt'; });
-            var actions = iconAct('remind', text('pcRemindBtn', 'Remind'),
-                'pcRemindTester(' + Number(appId) + ',' + Number(item.testerId) + ')');
+            // Remind stays rightmost; debt/link (if any) sits to its left.
+            var actions = '';
             if (hasDebt && typeof openTesterLinkStatusFromRow === 'function') {
                 actions += iconAct('link', text('pcDebtShort', 'Debt'),
                     'openTesterLinkStatusFromRow(' + Number(appId) + ',' + Number(item.testerId) + ', event)',
                     { title: text('linkedBadgeDebt', 'Mutual debt') });
             }
+            actions += iconAct('remind', text('pcRemindBtn', 'Remind'),
+                'pcRemindTester(' + Number(appId) + ',' + Number(item.testerId) + ')');
+            var metaHtml = item.reasons.map(function (reason) {
+                return '<span class="pc-person__reason">• ' + esc(reason.label) + '</span>';
+            }).join('');
             return personRowHtml({
                 appId: appId,
                 tester: item.tester,
                 tone: attentionTone(item),
-                metaHtml: esc(item.reasons.map(function (reason) { return reason.label; }).join(' · ')),
+                rowClass: 'pc-person--reasons',
+                metaHtml: metaHtml,
                 actionsHtml: actions,
             });
         }).join('') + '</ul>';

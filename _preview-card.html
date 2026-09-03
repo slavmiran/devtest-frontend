@@ -73,9 +73,9 @@ function stateBlock(o) {
     <div class="pc-state-testers">
       <div class="pc-testers-main">
         <div class="pc-testers-copy">
-          <div class="pc-testers-metric"><span class="pc-tester-ratio__current">${o.testers}</span>${o.goal ? `<span class="pc-tester-ratio__goal">/ ${o.goal}</span>` : ''}<span class="pc-testers-label">Тестеры</span></div>
+          <div class="pc-testers-metric"><span class="pc-tester-ratio__current">${o.teamSize || o.testers}</span><span class="pc-testers-label">Тестеры</span></div>
           ${statusChip}
-          <div class="pc-tested-today"><span class="pc-tested-today__label">Протестировали сегодня</span><span class="pc-tested-pct">${o.pct}%</span></div>
+          <div class="pc-tested-today"><span class="pc-tested-today__label">Active</span><span class="pc-tested-pct">${o.pct}%</span></div>
         </div>
         ${ring(o.done, o.testers)}
       </div>
@@ -135,9 +135,9 @@ function card(id, opts) {
 }
 
 document.getElementById('projects-list').innerHTML =
-  card(1, { sub:'<span class="pc-subtitle-flags">Запрашивать Google отзывы</span>', stage:'recruiting', stageLabel:'Идёт набор команды', day:3, total:false, extra:false, buffer:false, totalDays:0, testers:0, goal:12, done:0, pct:0, chip:null, needSync:false, ping: pingExpanded(), activity:false })
-+ card(2, { sub:'<span class="pc-subtitle-flags">Email · Запрашивать Google отзывы</span>', stage:'need_sync', stageLabel:'Нужна синхронизация', day:7, total:false, extra:false, buffer:false, totalDays:0, testers:9, goal:12, done:7, pct:78, chip:null, needSync:true, ping: pingCompact(), activity:true })
-+ card(3, { sub:'com.slavmiran.quickpaste6', stage:'active', stageLabel:'Активный тест', day:9, total:true, extra:true, buffer:true, totalDays:23, testers:16, goal:12, done:14, pct:88, chip:{kind:'sky', text:'Сбор чекинов (14/12)'}, needSync:false, mini:true, ping:'', activity:true });
+  card(1, { sub:'<span class="pc-subtitle-flags">Запрашивать Google отзывы</span>', stage:'recruiting', stageLabel:'Идёт набор команды', day:3, total:false, extra:false, buffer:false, totalDays:0, testers:0, teamSize:12, done:0, pct:0, chip:null, needSync:false, ping: pingExpanded(), activity:false })
++ card(2, { sub:'<span class="pc-subtitle-flags">Email · Запрашивать Google отзывы</span>', stage:'need_sync', stageLabel:'Нужна синхронизация', day:7, total:false, extra:false, buffer:false, totalDays:0, testers:9, teamSize:12, done:7, pct:78, chip:null, needSync:true, ping: pingCompact(), activity:true })
++ card(3, { sub:'com.slavmiran.quickpaste6', stage:'active', stageLabel:'Активный тест', day:9, total:true, extra:true, buffer:true, totalDays:23, testers:16, teamSize:12, done:14, pct:88, chip:{kind:'sky', text:'Сбор чекинов (14/12)'}, needSync:false, mini:true, ping:'', activity:true });
 
 document.querySelectorAll('.pc-dotswitch').forEach(function (btn) {
   btn.addEventListener('click', function () {
