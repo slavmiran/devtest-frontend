@@ -54,7 +54,7 @@
     <script src="./js/app-actions.js?v=20260830-feedback-cache-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20260830-multi-proof-v1"></script>
     <script src="./js/testing-control.js?v=20260901-activity-filters-v1"></script>
-    <script src="./js/project-today.js?v=20260903-card-polish-v1"></script>
+    <script src="./js/project-today.js?v=20260903-roster-first-paint-v1"></script>
     <script src="./js/proof-ping.js?v=20260903-card-polish-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
 <script src="./js/app-features.js?v=20260827-balance-actions-v17"></script>
@@ -99,7 +99,7 @@
     <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260829-proof-pending-v2">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
     <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260903-card-polish-v1">
-    <link rel="stylesheet" href="./css/proof-ping.css?v=20260903-card-polish-v1">
+    <link rel="stylesheet" href="./css/proof-ping.css?v=20260903-settings-row-v1">
 </head>
 <body>
 
@@ -240,12 +240,12 @@
                             </svg>
                         </button>
                     </div>
-                    <label class="toggle-switch" aria-label="Screenshot notifications">
-                        <input type="checkbox" id="settings-proof-ping-toggle" checked onchange="pcProofPingMasterToggle(this)">
-                        <span class="toggle-slider"></span>
-                    </label>
+                    <div class="system-setting-meta" id="settings-proof-ping-meta" data-i18n="settingsProofPingMeta">Упоминание в топике Testing Proofs</div>
                 </div>
-                <div class="system-setting-meta" id="settings-proof-ping-meta" data-i18n="settingsProofPingMeta">Упоминание в топике Testing Proofs</div>
+                <label class="toggle-switch" aria-label="Screenshot notifications">
+                    <input type="checkbox" id="settings-proof-ping-toggle" checked onchange="pcProofPingMasterToggle(this)">
+                    <span class="toggle-slider"></span>
+                </label>
             </div>
             <div class="system-setting-row" id="default-group-joined-row">
                 <div class="system-setting-copy-wrap">

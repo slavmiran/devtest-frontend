@@ -304,14 +304,23 @@
     transform: translateX(16px);
 }
 
-/* ── Settings & support: master row + bottom sheet ──────────────────────── */
+/* ── Settings & support: master row + bottom sheet ────────────────────────
+   Same shell as homescreen / email: left column (title + meta), toggle on the
+   right. Meta must stay inside copy-wrap or the row flex squeezes the title
+   into a one-character column (overflow-wrap: anywhere). */
+
+.system-setting-row--proof-ping {
+    align-items: center;
+}
 
 .system-setting-row--proof-ping .system-setting-copy-wrap {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 4px;
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .proof-ping-setting-main {
@@ -319,6 +328,19 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
+    width: 100%;
+}
+
+.system-setting-row--proof-ping .system-setting-copy {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+.system-setting-row--proof-ping > .toggle-switch {
+    flex: 0 0 auto;
+    align-self: center;
 }
 
 .proof-ping-setting-open {

@@ -805,9 +805,17 @@
         }).join('') + '</ul>';
     }
 
+    function rosterSourceHtml(appId) {
+        var source = document.getElementById('pc-roster-source-' + Number(appId || 0));
+        return source ? source.innerHTML : '';
+    }
+
     function testersNowHtml(project) {
-        var source = document.getElementById('pc-roster-source-' + Number(project.id));
-        return source ? source.innerHTML : emptySheetHtml(text('pcAllTestersHint', 'No testers yet'));
+        var html = rosterSourceHtml(project && project.id);
+        if (html) return html;
+        // First paint of the card happens before the hidden roster node is in
+        // the document. Leave the pane blank; mount() fills it on the same tick.
+        return '';
     }
 
     function controlNowHtml(appId, rows, context) {
@@ -825,8 +833,7 @@
     }
 
     function testersSheetHtml(project) {
-        var source = document.getElementById('pc-roster-source-' + Number(project.id));
-        var roster = source ? source.innerHTML : emptySheetHtml(text('pcAllTestersHint', 'No testers yet'));
+        var roster = rosterSourceHtml(project && project.id) || emptySheetHtml(text('pcAllTestersHint', 'No testers yet'));
         return '<div id="pc-activity-state-pane" class="pc-activity-pane">' + roster + '</div>' +
             '<div id="pc-activity-history" class="pc-activity-history" hidden></div>';
     }
@@ -1184,12 +1191,14 @@
     }
 
     function mount(cardEl, project) {
+        var root = cardEl && cardEl.querySelector('#pc-today-' + Number(project.id));
+        if (!root) return;
+        // The card is in the document now, so the hidden roster source exists.
+        // Re-paint "All / Now" from it — the first innerHtml() ran too early.
+        refreshActivityWorkspace(Number(project.id));
         if (!window.App || window.App.testingControlEnabled !== true) return;
         var status = String(project.app_status || project.status || 'active').toLowerCase();
         if (status !== 'active' && status !== 'pending_completion') return;
-        var root = cardEl && cardEl.querySelector('#pc-today-' + Number(project.id));
-        if (!root) return;
-        afterPaint(Number(project.id));
         var entry = cache.get(Number(project.id));
         if (entry && !entry.loading && !entry.error && (Date.now() - entry.loadedAt) < CACHE_TTL_MS) {
             loadPendingThumbnails(Number(project.id), { scope: '.pc-activity__list' });
