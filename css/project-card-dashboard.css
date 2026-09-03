@@ -88,6 +88,10 @@ button.pc-stage-badge {
 }
 
 .pc-stage-badge::before {
+    display: none !important;
+}
+
+.pc-stage-badge::after {
     content: '';
     width: 6px;
     height: 6px;
@@ -107,7 +111,7 @@ button.pc-stage-badge {
     border: none !important;
 }
 
-.pc-stage-badge--need_sync::before {
+.pc-stage-badge--need_sync::after {
     background: #7ea6e0;
     opacity: 1;
 }
@@ -3200,6 +3204,9 @@ button.pc-act-reason {
 }
 
 #tab-projects .card[id^="project-card-"] .pc-closed-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     gap: 7px;
     padding: 0 16px 12px;
     border-top: 0;
@@ -3260,7 +3267,7 @@ button.pc-act-reason {
 }
 
 .pc-stage-badge--recruiting { color: #bbcae0; }
-.pc-stage-badge--recruiting::before { background: #8db3ee; }
+.pc-stage-badge--recruiting::after { background: #8db3ee; }
 
 .pc-stage-badge--active {
     color: #b7c3d4;
@@ -3268,7 +3275,7 @@ button.pc-act-reason {
     border: none !important;
 }
 
-.pc-stage-badge--active::before {
+.pc-stage-badge--active::after {
     background: #58dc82;
     box-shadow: none;
 }
@@ -4015,4 +4022,90 @@ button.pc-act-reason {
         margin-right: 10px;
         margin-left: 10px;
     }
+}
+
+/* Subtitle chips in project card header */
+.pc-subtitle-chips {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 3px;
+}
+
+.pc-subtitle-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 10.5px;
+    font-weight: 650;
+    line-height: 1.2;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(210, 222, 240, 0.78);
+}
+
+.pc-subtitle-chip--reviews {
+    cursor: pointer;
+}
+
+.pc-subtitle-chip--reviews .pc-subtitle-chip__state.is-on {
+    color: #4cd964;
+    font-weight: 700;
+}
+
+.pc-subtitle-chip--reviews .pc-subtitle-chip__state.is-off {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.pc-subtitle-chip--email {
+    color: #ff9f0a;
+    background: rgba(255, 159, 10, 0.10);
+    border-color: rgba(255, 159, 10, 0.20);
+}
+
+.pc-subtitle-chip--lang {
+    color: #64d2ff;
+    background: rgba(100, 210, 255, 0.10);
+    border-color: rgba(100, 210, 255, 0.20);
+}
+
+.pc-subtitle-chip--android {
+    color: #30d158;
+    background: rgba(48, 209, 88, 0.10);
+    border-color: rgba(48, 209, 88, 0.20);
+}
+
+.pc-metric-day-cal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.pc-metric-day-cal-icon {
+    width: 11px;
+    height: 11px;
+    opacity: 0.45;
+    filter: invert(85%) sepia(10%) saturate(300%) hue-rotate(180deg);
+    transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.pc-metric-day-cal-btn:hover .pc-metric-day-cal-icon {
+    opacity: 0.85;
+}
+
+.pc-recruit__check {
+    color: #30d158 !important;
+    font-weight: 800;
+    margin-left: 2px;
 }

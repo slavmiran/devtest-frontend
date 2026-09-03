@@ -410,13 +410,21 @@ function buildProjectCardSubtitle(project, options) {
         );
     }
 
-    if (minAndroid > 0) {
-        const androidLabel = window.escapeHTML(
-            window.t('pcCardAndroidMinChip', { version: minAndroid }, lang) || ('Android ' + minAndroid + '+')
-        );
+    if (project.target_lang && String(project.target_lang).toUpperCase() !== 'ALL') {
+        const langCode = String(project.target_lang).toUpperCase();
+        const langLabel = langCode === 'RU' ? '🇷🇺 RU' : (langCode === 'EN' ? '🇬🇧 EN' : langCode);
         chips.push(
-            '<span class="pc-subtitle-chip pc-subtitle-chip--android" title="' + androidLabel + '">' +
-                androidLabel +
+            '<span class="pc-subtitle-chip pc-subtitle-chip--lang">' +
+                langLabel +
+            '</span>'
+        );
+    }
+
+    if (minAndroid > 0) {
+        const androidSvg = '<svg class="android-chip-icon" viewBox="0 0 24 24" width="11" height="11" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><path d="M17.523 15.341a1 1 0 0 1 0-1.999 1 1 0 0 1 0 2m-11.046 0a1 1 0 0 1 0-2 1 1 0 0 1 0 2m11.405-6.02 1.997-3.46a.416.416 0 0 0-.152-.567.416.416 0 0 0-.568.152L17.137 8.95c-1.547-.706-3.284-1.1-5.137-1.1s-3.59.394-5.137 1.1L4.841 5.447a.416.416 0 0 0-.568-.152.416.416 0 0 0-.152.567l1.997 3.46C2.688 11.186.343 14.658 0 18.76h24c-.344-4.102-2.69-7.574-6.119-9.44"/></svg>';
+        chips.push(
+            '<span class="pc-subtitle-chip pc-subtitle-chip--android" title="Android ' + minAndroid + '+">' +
+                androidSvg + minAndroid + '+' +
             '</span>'
         );
     }
@@ -1157,7 +1165,7 @@ function renderProjects(force) {
                 <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zM6 10V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
             </svg>`;
         const pingSlotHtml = `<span class="pc-ping-slot" data-pc-ping-slot="${project.id}"></span>`;
-        const actionTimeIconHtml = '<img class="pc-action-btn__icon" src="./images/Icons/time-add-svgrepo-com.svg" alt="" aria-hidden="true">';
+        const actionTimeIconHtml = '<img class="pc-action-btn__icon" src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" alt="" aria-hidden="true">';
         const actionSyncIconHtml = '<img class="pc-action-btn__icon" src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" alt="" aria-hidden="true">';
 
         let count_done = 0;
@@ -1262,7 +1270,7 @@ function renderProjects(force) {
                 '<span class="pc-recruit__item">' +
                     window.escapeHTML(window.t('pcRecruitMutualName', {}, lang) || 'Взаимка') +
                     ' <span class="pc-recruit__count">' + window.escapeHTML(String(mutualCount) + '/' + String(mutualTarget)) + '</span>' +
-                    (mutualFilled ? ' ✓' : '') +
+                    (mutualFilled ? ' <span class="pc-recruit__check">✓</span>' : '') +
                 '</span>'
             );
         }
@@ -1273,7 +1281,7 @@ function renderProjects(force) {
                 '<span class="pc-recruit__item">' +
                     window.escapeHTML(window.t('pcRecruitContractsName', {}, lang) || 'Контракты') +
                     ' <span class="pc-recruit__count">' + window.escapeHTML(String(bountyCount) + '/' + String(bountyTarget)) + '</span>' +
-                    (bountyFilled ? ' ✓' : '') +
+                    (bountyFilled ? ' <span class="pc-recruit__check">✓</span>' : '') +
                 '</span>'
             );
         }
@@ -1310,7 +1318,10 @@ function renderProjects(force) {
                 </div>
                 <div class="pc-metrics-grid">
                     <section class="pc-metric-card pc-metric-card--term">
-                        <div class="pc-metric-title">${window.escapeHTML(window.t('pcDayWord', {}, lang))}${syncDotHtml}</div>
+                        <div class="pc-metric-title">${!hasSync
+                            ? `<button type="button" class="pc-metric-day-cal-btn" onclick="openProjectLifecycleModal(${project.id}); event.stopPropagation();" aria-label="${window.escapeHTML(window.t('pcTermAction', {}, lang))}">${window.escapeHTML(window.t('pcDayWord', {}, lang))}<img src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" class="pc-metric-day-cal-icon" alt="" aria-hidden="true"></button>`
+                            : `<span class="pc-metric-title-text">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</span>`
+                        }</div>
                         <div class="pc-metric-main pc-metric-day">${dayValueHtml}</div>
                         ${termReserveHtml}
                         <div class="pc-metric-footer">${termFooterHtml}</div>
