@@ -55,31 +55,29 @@ function ring(done, total) {
 
 function stateBlock(o) {
   const teamSize = o.teamSize || o.testers;
-  const teamDelta = teamSize - 12;
-  const testersReserve = teamDelta > 0
-    ? `<span class="pc-metric-reserve pc-metric-reserve--team">Запас +${teamDelta} тестеров</span>`
-    : teamDelta < 0
-      ? `<span class="pc-metric-reserve pc-metric-reserve--need">Нужно ещё ${Math.abs(teamDelta)} тестера</span>`
-      : `<span class="pc-metric-minimum">12 тестеров набрано</span>`;
+  const testersReserve = teamSize < 12
+    ? `<span class="pc-metric-reserve pc-metric-reserve--warning">Минимум ещё ${12 - teamSize} тестеров</span>`
+    : teamSize < 20
+      ? `<span class="pc-metric-reserve pc-metric-reserve--recommend">Рекомендуем ещё +${20 - teamSize}</span>`
+      : `<span class="pc-metric-reserve pc-metric-reserve--reliable">Надёжное кол‑во тестеров</span>`;
   const timeIcon = '<img class="pc-action-btn__icon" src="./images/Icons/time-add-svgrepo-com.svg" alt="">';
   const syncIcon = '<img class="pc-action-btn__icon" src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" alt="">';
   const dayValue = `<span class="pc-metric-day__value">${o.day}</span>${o.total ? '<span class="pc-metric-day__total">/ 14</span>' : ''}`;
-  const dayReserve = o.total && o.extra
-    ? `<span class="pc-metric-reserve pc-metric-reserve--time">+${o.extra} д. • +48ч</span>` : '';
+  const dayReserve = o.total
+    ? `<span class="pc-metric-reserve pc-metric-reserve--time"><span class="pc-metric-reserve__plus">+</span><span>${o.extra ? `${o.extra}дн & 48ч` : 'Буфер +48ч'}</span></span>` : '';
   const dayFooter = o.total
-    ? `<span class="pc-metric-footer__line">Всего ${o.totalDays} дн.</span>`
+    ? `<span class="pc-metric-footer__line">Всего: ${o.totalDays} дн.</span>`
     : `<span class="pc-metric-footer__line pc-metric-footer__line--buffer">${timeIcon}Буфер +48ч</span>`;
   const actionSecondary = o.needSync
     ? `<button type="button" class="pc-action-btn pc-action-btn--sync">${syncIcon}<span>Синхронизировать</span></button>`
     : `<button type="button" class="pc-action-btn pc-action-btn--term">${timeIcon}<span>Срок</span></button>`;
   return `
   <div class="pc-closed-head">
-    <span class="pc-test-mode-badge"><svg class="pc-test-mode-badge__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V6Zm3 9.73V17a1 1 0 0 1-2 0v-1.27a2 2 0 1 1 2 0Z"/></svg><span>Закрытый тест</span></span>
     <span class="pc-stage-badge pc-stage-badge--${o.stage}">${o.stageLabel}</span>
   </div>
   <div class="pc-metrics-grid">
     <section class="pc-metric-card pc-metric-card--term">
-      <div class="pc-metric-title">ДЕНЬ${o.total ? '<span class="pc-metric-title__dot" aria-label="Google Console синхронизирована"></span>' : ''}</div>
+      <div class="pc-metric-title">ДЕНЬ</div>
       <div class="pc-metric-main pc-metric-day">${dayValue}</div>
       ${dayReserve}
       <div class="pc-metric-footer">${dayFooter}</div>

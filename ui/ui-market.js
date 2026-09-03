@@ -7208,15 +7208,16 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
         if (feedbackCount > 0) statsParts.push(lang === 'ru' ? `Фидбэки: ${feedbackCount}` : `Feedback: ${feedbackCount}`);
         const metaStr = statsParts.length ? statsParts.join(' · ') : (lang === 'ru' ? `День ${testerDay || 1}` : `Day ${testerDay || 1}`);
 
-        const usedBadges = [];
-        if (testerPools.hasThanks) usedBadges.push(`<span class="karma-awarded-pill">👍 +1.5</span>`);
-        if (testerPools.hasSpecial) usedBadges.push(`<span class="karma-awarded-pill">💡 +3.0</span>`);
+        const issuedRewards = [];
+        if (testerPools.hasThanks) issuedRewards.push('👍 +1.5');
+        if (testerPools.hasSpecial) issuedRewards.push('💡 +3.0');
+        const usedBadges = issuedRewards.map((reward) => `<span class="karma-awarded-pill">${reward}</span>`);
 
         let actionBtnHtml = '';
         if (testerPools.canReward) {
             actionBtnHtml = `<button type="button" class="karma-action-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Наградить')}</button>`;
-        } else if (usedBadges.length >= 2) {
-            actionBtnHtml = `<span class="karma-done-badge">${window.escapeHTML(window.t('karmaAllRewarded', {}, lang) || '✓ Награждён')}</span>`;
+        } else if (issuedRewards.length >= 2) {
+            actionBtnHtml = `<span class="karma-awarded-summary"><span class="karma-awarded-summary__label">${window.escapeHTML(window.t('karmaAwardIssuedLabel', {}, lang) || 'Награда')}</span><span class="karma-awarded-summary__value">${window.escapeHTML(issuedRewards.join(' · '))}</span></span>`;
         } else {
             actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled>+ Наградить</button>`;
         }
@@ -7227,7 +7228,7 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
                 <div class="karma-dist-tester-meta">${window.escapeHTML(metaStr)}</div>
             </div>
             <div class="karma-dist-row-actions">
-                ${usedBadges.join('')}
+                ${testerPools.canReward ? usedBadges.join('') : ''}
                 ${actionBtnHtml}
             </div>
         </div>`;

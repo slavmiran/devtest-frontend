@@ -201,12 +201,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.4em;
-    padding: 1px 7px;
+    min-width: 0;
+    padding: 0;
     margin: 0;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.06);
+    border: 0;
+    background: transparent;
     color: #c9d3e3;
     font: inherit;
     font-weight: 750;
@@ -215,11 +214,17 @@
     -webkit-appearance: none;
 }
 
-button.pc-subtitle-chip__state {
+.pc-subtitle-chip--reviews {
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+button.pc-subtitle-chip--reviews {
+    font: inherit;
     cursor: pointer;
 }
 
-button.pc-subtitle-chip__state:active {
+button.pc-subtitle-chip--reviews:active {
     transform: scale(0.97);
 }
 
@@ -230,14 +235,10 @@ button.pc-subtitle-chip__state:active {
 
 .pc-subtitle-chip--reviews.is-on .pc-subtitle-chip__state {
     color: #9fc0ff;
-    border-color: rgba(76, 141, 255, 0.34);
-    background: rgba(76, 141, 255, 0.16);
 }
 
 .pc-subtitle-chip--reviews.is-off .pc-subtitle-chip__state {
     color: #8b95a5;
-    border-color: rgba(255, 255, 255, 0.10);
-    background: rgba(255, 255, 255, 0.04);
 }
 
 .pc-subtitle-chip--android {

@@ -3028,6 +3028,32 @@ button.pc-act-reason {
     transform: none;
 }
 
+.pc-award-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 26px;
+    padding: 4px 6px;
+    box-sizing: border-box;
+    border: 1px solid rgba(153, 180, 219, 0.15);
+    border-radius: 8px;
+    background: rgba(99, 128, 178, 0.07);
+    color: rgba(203, 218, 240, 0.78);
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.pc-award-badge__label {
+    color: rgba(171, 190, 218, 0.62);
+}
+
+.pc-award-badge__value {
+    color: #b9cef1;
+    font-variant-numeric: tabular-nums;
+}
+
 /* ───────────────── Project card visual refinement ─────────────────
    The card is arranged as identity → test state → progress / recruitment.
    Its data and interactions stay intact; these rules only sharpen hierarchy.
@@ -3497,6 +3523,7 @@ button.pc-act-reason {
     align-items: center;
     justify-content: center;
     align-self: center;
+    gap: 5px;
     min-height: 32px;
     max-width: 100%;
     box-sizing: border-box;
@@ -3521,6 +3548,33 @@ button.pc-act-reason {
     color: #ffc26b;
     background: rgba(255, 159, 10, 0.10);
     border-color: rgba(255, 159, 10, 0.22);
+}
+
+.pc-metric-reserve--recommend {
+    color: #a9c5ef;
+    background: rgba(83, 135, 212, 0.10);
+    border-color: rgba(111, 157, 224, 0.20);
+}
+
+.pc-metric-reserve--reliable {
+    color: #82d7ad;
+    background: rgba(48, 209, 143, 0.08);
+    border-color: rgba(48, 209, 143, 0.17);
+}
+
+.pc-metric-reserve__plus {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    color: #c3efd7;
+    background: rgba(119, 220, 163, 0.20);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    flex: 0 0 auto;
 }
 
 .pc-metric-footer {

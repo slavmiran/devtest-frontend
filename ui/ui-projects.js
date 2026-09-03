@@ -387,26 +387,19 @@ function buildProjectCardSubtitle(project, options) {
             ? (window.t('pcCardReviewsOn', {}, lang) || 'вкл')
             : (window.t('pcCardReviewsOff', {}, lang) || 'откл')
     );
-    const reviewsStateHtml = interactive
-        ? (
-            '<button type="button" class="pc-subtitle-chip__state' +
-                (reviewsOn ? ' is-on' : ' is-off') +
-                '" onclick="toggleProjectRequestReviews(' + Number(project.id || project.app_id || 0) + ', event)">' +
-                reviewsState +
-            '</button>'
-        )
-        : (
-            '<span class="pc-subtitle-chip__state' +
-                (reviewsOn ? ' is-on' : ' is-off') + '">' +
-                reviewsState +
-            '</span>'
-        );
+    const reviewsStateHtml = '<span class="pc-subtitle-chip__state' +
+        (reviewsOn ? ' is-on' : ' is-off') + '">' +
+        reviewsState +
+    '</span>';
+    const reviewsChipClass = 'pc-subtitle-chip pc-subtitle-chip--reviews' +
+        (reviewsOn ? ' is-on' : ' is-off');
     chips.push(
-        '<span class="pc-subtitle-chip pc-subtitle-chip--reviews' +
-            (reviewsOn ? ' is-on' : ' is-off') + '">' +
+        (interactive
+            ? '<button type="button" class="' + reviewsChipClass + '" onclick="toggleProjectRequestReviews(' + Number(project.id || project.app_id || 0) + ', event)">'
+            : '<span class="' + reviewsChipClass + '">') +
             '<span class="pc-subtitle-chip__label">' + reviewsLabel + ':</span>' +
             reviewsStateHtml +
-        '</span>'
+        (interactive ? '</button>' : '</span>')
     );
 
     if (isEmail) {
@@ -1214,13 +1207,17 @@ function renderProjects(force) {
         const dayMain = hasSync ? currentGoogleDay : platformDays;
         const dayValueHtml = '<span class="pc-metric-day__value">' + window.escapeHTML(String(dayMain)) + '</span>'
             + (hasSync ? '<span class="pc-metric-day__total">/ 14</span>' : '');
-        const syncDotHtml = hasSync ? '<span class="pc-metric-title__dot" aria-label="Google Console синхронизирована"></span>' : '';
+        const syncDotHtml = '';
         const bufferHoursText = isPendingCompletion && bufferHoursLeft > 0
             ? String(bufferHoursLeft)
-            : '+48';
-        const termReserveHtml = hasSync && (extraPaidDays > 0 || isPendingCompletion)
+            : '48';
+        const termReserveText = extraPaidDays > 0
+            ? window.t('pcMetricTimeReserve', { days: extraPaidDays, hours: bufferHoursText }, lang)
+            : window.t('pcMetricBufferReserve', { hours: bufferHoursText }, lang);
+        const termReserveHtml = hasSync
             ? '<span class="pc-metric-reserve pc-metric-reserve--time">' +
-                window.escapeHTML(window.t('pcMetricTimeReserve', { days: extraPaidDays, hours: bufferHoursText }, lang)) +
+                '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
+                '<span>' + window.escapeHTML(termReserveText) + '</span>' +
               '</span>'
             : '';
         const termFooterHtml = hasSync
@@ -1229,12 +1226,13 @@ function renderProjects(force) {
 
         const dailyMeta = getProjectDailyProgressMeta(project);
         const teamTesterCount = Math.max(totalTesters, Number(dailyMeta.totalTesters || 0));
-        const teamDifference = teamTesterCount - 12;
-        const teamReserveHtml = teamDifference > 0
-            ? '<span class="pc-metric-reserve pc-metric-reserve--positive">' + window.escapeHTML(window.t('pcMetricTesterReserve', { count: teamDifference, unit: testerUnitLabel(teamDifference) }, lang)) + '</span>'
-            : teamDifference < 0
-                ? '<span class="pc-metric-reserve pc-metric-reserve--warning">' + window.escapeHTML(window.t('pcMetricTesterNeed', { count: Math.abs(teamDifference), unit: testerUnitLabel(Math.abs(teamDifference)) }, lang)) + '</span>'
-                : '<span class="pc-metric-reserve pc-metric-reserve--positive">' + window.escapeHTML(window.t('pcTestersMinimumReached', {}, lang)) + '</span>';
+        const testersToMinimum = Math.max(0, 12 - teamTesterCount);
+        const testersToRecommended = Math.max(0, 20 - teamTesterCount);
+        const teamReserveHtml = teamTesterCount < 12
+            ? '<span class="pc-metric-reserve pc-metric-reserve--warning">' + window.escapeHTML(window.t('pcMetricTesterMinimum', { count: testersToMinimum, unit: testerUnitLabel(testersToMinimum) }, lang)) + '</span>'
+            : teamTesterCount < 20
+                ? '<span class="pc-metric-reserve pc-metric-reserve--recommend">' + window.escapeHTML(window.t('pcMetricTesterRecommend', { count: testersToRecommended }, lang)) + '</span>'
+                : '<span class="pc-metric-reserve pc-metric-reserve--reliable">' + window.escapeHTML(window.t('pcMetricTesterReliable', {}, lang)) + '</span>';
         const dailyStatusHtml = dailyMeta.statusChip && dailyMeta.statusChip.text
             ? '<div class="pc-daily-status status-chip status-chip--' + window.escapeHTML(dailyMeta.statusChip.kind) + '">' +
                 (dailyMeta.statusChip.iconHtml || '') +
@@ -1306,7 +1304,6 @@ function renderProjects(force) {
 
         const stateBlockHtml = `
                 <div class="pc-closed-head">
-                    <span class="pc-test-mode-badge"><svg class="pc-test-mode-badge__glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V6Zm3 9.73V17a1 1 0 0 1-2 0v-1.27a2 2 0 1 1 2 0Z"/></svg><span>${window.escapeHTML(window.t('pcClosedTestTitle', {}, lang))}</span></span>
                     ${stageBadgeHtml}
                 </div>
                 <div class="pc-metrics-grid">

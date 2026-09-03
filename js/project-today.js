@@ -155,6 +155,22 @@
             '</button>';
     }
 
+    function awardedRewardBadgeHtml(context, testerId) {
+        var rewards = (context && context.rewardTypesByTester && context.rewardTypesByTester[Number(testerId)]) || [];
+        var tokens = rewards.map(function (type) {
+            if (type === 'good') return '👍 +1.5';
+            if (type === 'bug') return '💎 +3.0';
+            if (type === 'overtime') return '⏱ +2.0';
+            return '☯️';
+        });
+        if (!tokens.length) tokens.push('☯️');
+        var label = text('pcAwardBadgeLabel', 'Award');
+        return '<span class="pc-award-badge" title="' + esc(label + ': ' + tokens.join(' · ')) + '">' +
+            '<span class="pc-award-badge__label">' + esc(label) + '</span>' +
+            '<span class="pc-award-badge__value">' + esc(tokens.join(' · ')) + '</span>' +
+        '</span>';
+    }
+
     function dossierClick(appId, tester) {
         var username = dossierUsername(tester);
         var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
@@ -536,7 +552,7 @@
                 { title: text('pcProcessBtn', 'Process') });
         }
         if (context.rewardedTesterIds.indexOf(Number(row.testerId)) !== -1) {
-            html += iconAct('reward', text('pcRewardedLabel', 'Rewarded'), '', { done: true });
+            html += awardedRewardBadgeHtml(context, row.testerId);
         } else if (context.rewardsLeft > 0) {
             html += iconAct('reward', text('pcRewardBtn', 'Reward'),
                 'pcRewardTester(' + Number(appId) + ',' + Number(row.testerId) + ')');
@@ -827,7 +843,7 @@
             }).join('<span class="pc-act-reason-sep"> · </span>');
             var rewarded = context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
             var rewardHtml = rewarded
-                ? iconAct('reward', text('pcRewardedLabel', 'Rewarded'), '', { done: true })
+                ? awardedRewardBadgeHtml(context, item.testerId)
                 : (context.rewardsLeft > 0
                     ? iconAct('reward', text('pcRewardBtn', 'Reward'),
                         'pcRewardTester(' + Number(appId) + ',' + Number(item.testerId) + ')')
@@ -1267,9 +1283,20 @@
     /* ───────────────────────────── public surface ──────────────────────────── */
 
     function contextFor(project) {
+        var rewardTypesByTester = {};
+        (project.likes || []).forEach(function (like) {
+            var testerId = Number(like && like.tester_id || 0);
+            var type = String(like && like.type || '').toLowerCase();
+            if (!testerId) return;
+            if (!rewardTypesByTester[testerId]) rewardTypesByTester[testerId] = [];
+            if (type && rewardTypesByTester[testerId].indexOf(type) === -1) {
+                rewardTypesByTester[testerId].push(type);
+            }
+        });
         return {
             rewardsLeft: Math.max(0, Number(project.likes_max || 0) - Number(project.likes_used || 0)),
             rewardedTesterIds: (project.likes || []).map(function (like) { return Number(like.tester_id || 0); }),
+            rewardTypesByTester: rewardTypesByTester,
         };
     }
 
