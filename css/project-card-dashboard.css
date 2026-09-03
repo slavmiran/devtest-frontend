@@ -65,14 +65,15 @@
     align-items: center;
     gap: 5px;
     max-width: 100%;
-    padding: 3px 8px;
-    border-radius: 999px;
+    padding: 0;
+    border: none !important;
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
     font-size: 10.5px;
     font-weight: 700;
     line-height: 1.25;
     color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-subtle);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -102,8 +103,8 @@ button.pc-stage-badge {
 
 .pc-stage-badge--need_sync {
     color: #9bb6d9;
-    background: rgba(76, 141, 255, 0.08);
-    border-color: rgba(76, 141, 255, 0.22);
+    background: transparent !important;
+    border: none !important;
 }
 
 .pc-stage-badge--need_sync::before {
@@ -3208,12 +3209,22 @@ button.pc-act-reason {
     border-top: 0;
 }
 
-.pc-test-mode-badge,
-.pc-stage-badge {
+.pc-test-mode-badge {
     min-height: 25px;
     box-sizing: border-box;
     padding: 4px 9px;
     border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 720;
+    letter-spacing: 0.005em;
+}
+.pc-stage-badge {
+    min-height: auto;
+    box-sizing: border-box;
+    padding: 0;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
     font-size: 10.5px;
     font-weight: 720;
     letter-spacing: 0.005em;
@@ -3238,8 +3249,8 @@ button.pc-act-reason {
 
 .pc-stage-badge {
     color: #b7c3d4;
-    background: rgba(148, 180, 255, 0.07);
-    border-color: rgba(148, 180, 255, 0.16);
+    background: transparent !important;
+    border: none !important;
 }
 
 .pc-stage-badge::before {
@@ -3253,8 +3264,8 @@ button.pc-act-reason {
 
 .pc-stage-badge--active {
     color: #b7c3d4;
-    background: rgba(148, 180, 255, 0.07);
-    border-color: rgba(148, 180, 255, 0.16);
+    background: transparent !important;
+    border: none !important;
 }
 
 .pc-stage-badge--active::before {
@@ -3264,15 +3275,15 @@ button.pc-act-reason {
 
 .pc-stage-badge--need_sync {
     color: #b4ccfa;
-    background: rgba(76, 141, 255, 0.12);
-    border-color: rgba(104, 157, 255, 0.22);
+    background: transparent !important;
+    border: none !important;
 }
 
 .pc-stage-badge--extension,
 .pc-stage-badge--buffer {
     color: #d4beff;
-    background: rgba(163, 112, 255, 0.10);
-    border-color: rgba(174, 130, 255, 0.18);
+    background: transparent !important;
+    border: none !important;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-state-top {
@@ -3389,20 +3400,38 @@ button.pc-act-reason {
 #tab-projects .card[id^="project-card-"] .pc-ring__label { font-size: 8.5px; }
 
 #tab-projects .card[id^="project-card-"] .status-chip {
-    min-height: 22px;
-    padding: 3px 7px;
-    border-radius: 7px;
-    font-size: 9.5px;
-    font-weight: 700;
-    color: #92dfab;
-    background: rgba(48, 209, 88, 0.09);
-    border-color: rgba(48, 209, 88, 0.16);
+    min-height: 20px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 720;
+    color: #a1a1aa;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+#tab-projects .card[id^="project-card-"] .status-chip--amber {
+    color: #ffb340 !important;
+    background: rgba(255, 159, 10, 0.12) !important;
+    border-color: rgba(255, 159, 10, 0.24) !important;
 }
 
 #tab-projects .card[id^="project-card-"] .status-chip--sky {
-    color: #9cc6ff;
-    background: rgba(82, 151, 255, 0.10);
-    border-color: rgba(101, 160, 255, 0.18);
+    color: #9cc6ff !important;
+    background: rgba(82, 151, 255, 0.10) !important;
+    border-color: rgba(101, 160, 255, 0.18) !important;
+}
+
+#tab-projects .card[id^="project-card-"] .status-chip--emerald {
+    color: #72db9e !important;
+    background: rgba(48, 209, 88, 0.10) !important;
+    border-color: rgba(48, 209, 88, 0.20) !important;
+}
+
+#tab-projects .card[id^="project-card-"] .status-chip--purple {
+    color: #d1a5ff !important;
+    background: rgba(191, 90, 242, 0.12) !important;
+    border-color: rgba(191, 90, 242, 0.22) !important;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-tested-today {
@@ -3514,7 +3543,7 @@ button.pc-act-reason {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
     gap: 8px;
-    margin: 0 14px 12px;
+    margin: 0 14px 10px;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card {
@@ -3522,11 +3551,11 @@ button.pc-act-reason {
     flex-direction: column;
     align-items: stretch;
     min-width: 0;
-    height: 174px;
+    height: 152px;
     box-sizing: border-box;
-    padding: 10px 8px 8px;
+    padding: 8px 6px 6px;
     border: 1px solid rgba(188, 206, 238, 0.09);
-    border-radius: 16px;
+    border-radius: 14px;
     background: rgba(7, 14, 25, 0.22);
 }
 
@@ -3559,8 +3588,8 @@ button.pc-act-reason {
     display: flex;
     align-items: baseline;
     justify-content: center;
-    min-height: 38px;
-    margin-top: 10px;
+    min-height: 30px;
+    margin-top: 6px;
     color: #f5f8ff;
     font-variant-numeric: tabular-nums;
     text-align: center;
@@ -3568,26 +3597,22 @@ button.pc-act-reason {
 
 .pc-metric-day__value,
 .pc-metric-team__value {
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 820;
-    letter-spacing: -0.055em;
+    letter-spacing: -0.05em;
     line-height: 1;
 }
 
 .pc-metric-day__total {
-    margin-left: 4px;
+    margin-left: 3px;
     color: rgba(193, 210, 235, 0.62);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     letter-spacing: -0.03em;
 }
 
 .pc-metric-card--testers .pc-metric-main {
-    margin-top: 8px;
-}
-
-.pc-metric-team__value {
-    font-size: 34px;
+    margin-top: 6px;
 }
 
 .pc-metric-reserve {
@@ -3595,17 +3620,17 @@ button.pc-act-reason {
     align-items: center;
     justify-content: center;
     align-self: center;
-    gap: 5px;
-    min-height: 26px;
+    gap: 4px;
+    min-height: 22px;
     max-width: 100%;
     box-sizing: border-box;
-    margin-top: 4px;
-    padding: 3px 6px;
+    margin-top: 3px;
+    padding: 2px 5px;
     border: 1px solid transparent;
-    border-radius: 8px;
-    font-size: 9.5px;
-    font-weight: 760;
-    line-height: 1.25;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 740;
+    line-height: 1.2;
     text-align: center;
 }
 
@@ -3653,9 +3678,9 @@ button.pc-act-reason {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 24px;
+    min-height: 20px;
     margin-top: auto;
-    padding-top: 6px;
+    padding-top: 4px;
     border-top: 1px solid rgba(188, 206, 238, 0.08);
     text-align: center;
 }
@@ -3694,23 +3719,23 @@ button.pc-act-reason {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 80px;
-    margin: 0 0 2px;
+    min-height: 72px;
+    margin: 0;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring {
-    width: 78px;
-    height: 78px;
+    width: 72px;
+    height: 72px;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count {
-    font-size: 15px;
+    font-size: 14px;
     color: #f8faff;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label {
-    margin-top: 2px;
-    font-size: 8px;
+    margin-top: 1px;
+    font-size: 7.5px;
     color: rgba(204, 216, 238, 0.62);
     text-transform: none;
     letter-spacing: 0;
@@ -3762,15 +3787,15 @@ button.pc-act-reason {
     align-items: center;
     justify-content: center;
     align-self: center;
-    gap: 4px;
+    gap: 3px;
     max-width: 100%;
-    min-height: 24px;
+    min-height: 20px;
     box-sizing: border-box;
-    margin-top: 3px;
-    padding: 3px 7px;
-    border-radius: 7px;
-    font-size: 9px;
-    font-weight: 740;
+    margin-top: 2px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 8.5px;
+    font-weight: 720;
     line-height: 1.15;
     white-space: nowrap;
     overflow: hidden;

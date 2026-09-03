@@ -5375,3 +5375,8 @@ html.tg-deeplink-loading .tg-deeplink-loader {
 .project-settings-drawer .drawer-item-icon-box svg {
     display: block;
 }
+
+#android-version-picker-overlay.modal-overlay,
+.android-version-picker-overlay {
+    z-index: 20000 !important;
+}

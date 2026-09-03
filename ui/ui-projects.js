@@ -1222,7 +1222,7 @@ function renderProjects(force) {
             : '';
         const termFooterHtml = hasSync
             ? '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcMetricTotalDays', { day: platformDays }, lang)) + '</span>'
-            : '<span class="pc-metric-footer__line pc-metric-footer__line--buffer">' + actionTimeIconHtml + window.escapeHTML(window.t('pcBufferLine', {}, lang)) + '</span>';
+            : '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcBufferLine', {}, lang)) + '</span>';
 
         const dailyMeta = getProjectDailyProgressMeta(project);
         const teamTesterCount = Math.max(totalTesters, Number(dailyMeta.totalTesters || 0));

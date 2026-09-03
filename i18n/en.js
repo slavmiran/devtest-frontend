@@ -301,6 +301,8 @@
             projectLanguageToastRu: "Communication for this project is available only in Russian.",
             projectLanguageToastEn: "Communication for this project is available only in English.",
             projectLanguageToastAll: "Communication for this project is available in Russian and English.",
+            editFiltersSectionTitle: "🌐 Filters & Requirements",
+            editFiltersSectionDesc: "Language targeting and tester device requirements.",
             instructions: "Instructions",
             instPlaceholder: "Give any instructions (less than 1000 characters)",
             devInfo: "Additional info from developer 📌",

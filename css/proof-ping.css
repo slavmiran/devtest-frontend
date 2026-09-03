@@ -87,9 +87,7 @@
 
 .pc-ping__link-label {
     min-width: 0;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    text-decoration-thickness: 1px;
+    text-decoration: none !important;
 }
 
 /* Muted steel toggle — matches the card, not the global acid-green switch. */

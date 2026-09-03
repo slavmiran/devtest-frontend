@@ -809,7 +809,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.22s ease;
-    z-index: 12050;
+    z-index: 20000 !important;
 }
 
 .android-version-picker-overlay.active {
