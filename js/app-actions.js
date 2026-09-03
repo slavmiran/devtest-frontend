@@ -2245,9 +2245,9 @@ function _getActiveTimerDetails() {
     var activeTest = (Array.isArray(myTests) ? myTests : []).find(function(item) {
         return Number(item && item.id) === Number(activeTimerAppId);
     });
-    var rawName = (activeTest && (activeTest.name || activeTest.package_name)) || 'App';
+    var rawName = (activeTest && (activeTest.name || activeTest.package || activeTest.package_name || activeTest.external_package_name)) || 'App';
     var activeAppName = (typeof _cleanDisplayName === 'function' ? _cleanDisplayName(rawName) : rawName) || 'App';
-    var activePkg = (activeTest && (activeTest.package_name || activeTest.pkg)) || '';
+    var activePkg = (activeTest && (activeTest.package || activeTest.package_name || activeTest.pkg || activeTest.external_package_name)) || '';
     var remainingSec = Math.max(1, Math.ceil((_timerEndTimestamp - Date.now()) / 1000));
     return {
         appId: activeTimerAppId,
@@ -2258,46 +2258,72 @@ function _getActiveTimerDetails() {
     };
 }
 
+function _openStorePackage(pkg, appId) {
+    var safePkg = String(pkg || '').trim();
+    if (!safePkg) return;
+    var playUrl = 'https://play.google.com/store/apps/details?id=' + encodeURIComponent(safePkg);
+    if (window.tg && typeof window.tg.openLink === 'function') {
+        window.tg.openLink(playUrl);
+    } else {
+        window.open(playUrl, '_blank');
+    }
+    if (appId && typeof _onStoreLinkClickedForIssueFlow === 'function') {
+        _onStoreLinkClickedForIssueFlow(appId);
+    }
+}
+
+function _findAttemptedOpenButton(attemptedAppId) {
+    if (!attemptedAppId) return null;
+    var card = document.getElementById('test-card-' + attemptedAppId);
+    if (card) {
+        var openBtn = card.querySelector('.checkin-open-btn, .external-tests-open-btn, .tstep[data-step-key="download"] .tstep__row');
+        if (openBtn) return openBtn;
+    }
+    var directBtn = document.querySelector(`[onclick*="startTimer(${attemptedAppId}"]`)
+        || document.querySelector(`[onclick*="handleFirstDownload(${attemptedAppId}"]`)
+        || document.querySelector(`[onclick*="openPlay(${attemptedAppId}"]`);
+    if (directBtn) return directBtn;
+    if (card) {
+        var anyActionBtn = card.querySelector('#actions-' + attemptedAppId + ' button:not([id^="btn-confirm-"]):not([id^="btn-claim-"])');
+        if (anyActionBtn) return anyActionBtn;
+    }
+    return null;
+}
+
 function handleActiveTimerSwitchAttempt(attemptedAppId) {
     var details = _getActiveTimerDetails();
     if (!details) return;
 
     var currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
-    var lastShown = Number(localStorage.getItem(ACTIVE_TIMER_SWITCH_TIP_KEY) || 0);
-    var isFirstIn1h = !lastShown || (Date.now() - lastShown > 1 * 60 * 60 * 1000);
 
-    if (isFirstIn1h) {
+    _activeTimerSwitchAttempts = (_activeTimerSwitchAttempts || 0) + 1;
+    var cycleStep = ((_activeTimerSwitchAttempts - 1) % 4) + 1;
+
+    // 1. Step 1 (clicks 1, 5, 9...): Show large modal
+    if (cycleStep === 1) {
         openActiveTimerSwitchModal(details);
         return;
     }
 
-    _activeTimerSwitchAttempts = (_activeTimerSwitchAttempts || 0) + 1;
-
-    // Direct opening of active project's Google Play for attempt >= 3 (as if clicking OPEN on the active card)
-    if (_activeTimerSwitchAttempts >= 3) {
+    // 2. Step 4 (clicks 4, 8, 12...): Direct opening of active project's Google Play
+    if (cycleStep === 4) {
         if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
             window.tg.HapticFeedback.selectionChanged();
         }
-        if (details.pkg) {
-            tg.openLink('https://play.google.com/store/apps/details?id=' + details.pkg);
-            _onStoreLinkClickedForIssueFlow(details.appId);
-        }
+        _openStorePackage(details.pkg, details.appId);
         return;
     }
 
-    // 1. Haptic feedback
+    // 3. Steps 2 & 3: Haptics, shake clicked Open button, highlight active card, and show warning toast
     if (window.tg && window.tg.HapticFeedback) {
         try {
             window.tg.HapticFeedback.impactOccurred('medium');
         } catch (e) {}
     }
 
-    // 2. Shake clicked foreign button
+    // Shake the clicked "Открыть" button (specifically the open button, NOT the confirm button next to it)
     if (attemptedAppId) {
-        var clickedBtn = document.getElementById('btn-confirm-' + attemptedAppId);
-        if (!clickedBtn) {
-            clickedBtn = document.querySelector(`[onclick*="startTimer(${attemptedAppId}"]`);
-        }
+        var clickedBtn = _findAttemptedOpenButton(attemptedAppId);
         if (clickedBtn) {
             clickedBtn.classList.remove('is-shaking');
             void clickedBtn.offsetWidth;
@@ -2308,41 +2334,34 @@ function handleActiveTimerSwitchAttempt(attemptedAppId) {
         }
     }
 
-    // 3. Highlight current active test card
+    // Highlight current active test card
     var activeConfirmBtn = document.getElementById('btn-confirm-' + details.appId);
-    var activeCard = activeConfirmBtn ? activeConfirmBtn.closest('.card') : null;
+    var activeCard = activeConfirmBtn ? activeConfirmBtn.closest('.card') : (document.getElementById('test-card-' + details.appId) || null);
     if (activeCard) {
         activeCard.classList.remove('active-timer-card-highlight');
         void activeCard.offsetWidth;
         activeCard.classList.add('active-timer-card-highlight');
         setTimeout(function() {
             activeCard.classList.remove('active-timer-card-highlight');
-        }, 1200);
+        }, 1500);
     }
 
-    // 4. Select toast text based on attempt count
+    // Select toast text based on cycle step (2nd or 3rd click)
     var toastMessage = '';
-    if (_activeTimerSwitchAttempts === 1) {
+    if (cycleStep === 2) {
         var msgTpl1 = (typeof window.t === 'function' ? window.t('activeTimerSwitchToastP1', {}, currentLang) : null)
             || 'Многозадачность впечатляет, но тестируем по одному 🙂\n{appName} · ещё {sec} сек';
         toastMessage = msgTpl1.replace('{appName}', details.appName).replace('{sec}', details.remainingSec);
-    } else if (_activeTimerSwitchAttempts === 2) {
+    } else if (cycleStep === 3) {
         var msgTpl2 = (typeof window.t === 'function' ? window.t('activeTimerSwitchToastP2', {}, currentLang) : null)
             || '👀 Мы тоже проверили. Таймер настоящий 🙂\n{appName} · ещё {sec} сек';
         toastMessage = msgTpl2.replace('{appName}', details.appName).replace('{sec}', details.remainingSec);
     }
 
+    // Show toast with standard duration (default 3000ms, does not vanish prematurely)
     if (toastMessage && typeof showToast === 'function') {
-        showToast(toastMessage, 1200);
+        showToast(toastMessage);
     }
-
-    // 5. Automatically redirect to active project's Google Play after short delay (~950ms)
-    setTimeout(function() {
-        if (activeTimerAppId && details.pkg) {
-            tg.openLink('https://play.google.com/store/apps/details?id=' + details.pkg);
-            _onStoreLinkClickedForIssueFlow(details.appId);
-        }
-    }, 950);
 }
 
 function openActiveTimerSwitchModal(details) {
@@ -2420,15 +2439,10 @@ function handleReturnToActiveTimerClick() {
 
     localStorage.setItem(ACTIVE_TIMER_SWITCH_TIP_KEY, String(Date.now()));
 
-    if (pkg) {
-        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
-            window.tg.HapticFeedback.selectionChanged();
-        }
-        tg.openLink('https://play.google.com/store/apps/details?id=' + pkg);
-        if (appId) {
-            _onStoreLinkClickedForIssueFlow(appId);
-        }
+    if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+        window.tg.HapticFeedback.selectionChanged();
     }
+    _openStorePackage(pkg, appId);
 }
 
 function closeActiveTimerSwitchModal(event) {
@@ -2617,6 +2631,10 @@ function advanceFirstDayStepsAfterDownload(id) {
 }
 
 function handleFirstDownload(id, pkg) {
+    if (activeTimerAppId !== null && Number(activeTimerAppId) !== Number(id)) {
+        handleActiveTimerSwitchAttempt(id);
+        return;
+    }
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     setFirstDayScreenshotVisible(id, true);
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
