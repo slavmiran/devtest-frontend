@@ -356,6 +356,43 @@ function getAvatar(name) {
     return `<div class="avatar" style="background-color: ${color}">${window.escapeHTML(letter)}</div>`;
 }
 
+/** Muted purple yin-yang mark for karma UI (replaces ☯️ emoji icons). */
+function karmaIconHtml(extraClass) {
+    var cls = 'karma-yin-icon' + (extraClass ? (' ' + String(extraClass)) : '');
+    return '<svg class="' + cls + '" viewBox="-40 -40 80 80" aria-hidden="true" focusable="false">' +
+        '<circle r="39" fill="currentColor"></circle>' +
+        '<path fill="#fff" fill-opacity="0.92" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"></path>' +
+        '<circle r="5" cy="19" fill="#fff" fill-opacity="0.92"></circle>' +
+        '<circle r="5" cy="-19" fill="currentColor"></circle>' +
+    '</svg>';
+}
+
+function withKarmaIcon(text, extraClass) {
+    var raw = String(text == null ? '' : text);
+    var cleaned = raw.replace(/\u262F\uFE0F?/g, '').replace(/\s{2,}/g, ' ').trim();
+    return karmaIconHtml(extraClass || 'karma-yin-icon--inline') + (cleaned ? (' ' + cleaned) : '');
+}
+
+window.karmaIconHtml = karmaIconHtml;
+window.withKarmaIcon = withKarmaIcon;
+
+function hydrateKarmaIcons(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('[data-karma-icon]').forEach(function (el) {
+        if (el.getAttribute('data-karma-ready') === '1') return;
+        el.innerHTML = karmaIconHtml(el.getAttribute('data-karma-class') || 'karma-yin-icon--inline');
+        el.setAttribute('data-karma-ready', '1');
+    });
+}
+window.hydrateKarmaIcons = hydrateKarmaIcons;
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { hydrateKarmaIcons(); });
+    } else {
+        hydrateKarmaIcons();
+    }
+}
+
 function resolveIconUrl(iconUrl) {
     if (!iconUrl || typeof iconUrl !== 'string') return '';
     var trimmed = iconUrl.trim();

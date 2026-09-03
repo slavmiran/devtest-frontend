@@ -492,7 +492,7 @@ function renderProjects(force) {
                             <span class="metric-label">${window.t('metricKarma', {}, lang)}</span>
                             <span class="metric-chevron">›</span>
                         </div>
-                        <div class="metric-value">${formatUiAmount(visibilityStats.ownerKarma || 0, 1)} <span class="metric-value-mark">☯️</span></div>
+                        <div class="metric-value">${formatUiAmount(visibilityStats.ownerKarma || 0, 1)} <span class="metric-value-mark">${typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️'}</span></div>
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-primary" onclick="openEarnBustModal()">
                         <div class="metric-card-top">
@@ -792,7 +792,9 @@ function renderProjects(force) {
                 let karmaHtml = '';
                 const alreadyLiked = (project.likes || []).some((like) => like.tester_id === tester.tester_id);
                 if (!isLeftSoft && alreadyLiked) {
-                    karmaHtml = '<span class="tester-icon-action tester-icon-muted" title="☯️">+☯️</span>';
+                    karmaHtml = '<span class="tester-icon-action tester-icon-muted" title="Karma">+' +
+                        (typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️') +
+                    '</span>';
                 }
 
                 const joinTypeLabel = isMutualDebt
@@ -5571,7 +5573,7 @@ function buildOwnerDetailMetricsHtml(profile, test) {
             '</div>' +
             '<div class="metric-card metric-card-gold" id="detail-owner-metric-karma">' +
                 '<div class="metric-card-top"><span class="metric-label">' + window.escapeHTML(window.t('metricKarma', {}, lang)) + '</span></div>' +
-                '<div class="metric-value" id="detail-owner-karma-value">' + window.escapeHTML(karmaText) + ' <span class="metric-value-mark">☯️</span></div>' +
+                '<div class="metric-value" id="detail-owner-karma-value">' + window.escapeHTML(karmaText) + ' <span class="metric-value-mark">' + (typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️') + '</span></div>' +
             '</div>' +
             '<div class="metric-card metric-card-neutral metric-card-sprint" id="detail-owner-metric-sprint">' +
                 '<div class="metric-card-top"><span class="metric-label">' + window.escapeHTML(window.t('metricSprintPositionLabel', {}, lang) || (lang === 'ru' ? 'Место в спринте' : 'Sprint place')) + '</span></div>' +
@@ -5615,7 +5617,7 @@ function updateOwnerDetailMetricsFromProfile(profile, test) {
     const karmaEl = document.getElementById('detail-owner-karma-value');
     if (karmaEl) {
         const karmaText = (typeof formatUiAmount === 'function') ? formatUiAmount(karma, 1) : String(karma);
-        karmaEl.innerHTML = window.escapeHTML(karmaText) + ' <span class="metric-value-mark">☯️</span>';
+        karmaEl.innerHTML = window.escapeHTML(karmaText) + ' <span class="metric-value-mark">' + (typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️') + '</span>';
     }
 
     const sprintEl = document.getElementById('detail-owner-sprint-value');
@@ -5981,7 +5983,7 @@ function openProjectDetailsModal(appId) {
                         '</div>' +
                     '</div>' +
                     '<div class="ppc-reward-split-card karma-boost">' +
-                        '<span class="ppc-reward-split-emoji">☯️</span>' +
+                        '<span class="ppc-reward-split-emoji">' + (typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️') + '</span>' +
                         '<div class="ppc-reward-split-info">' +
                             '<span class="ppc-reward-split-value notranslate">+0.5</span>' +
                             '<span class="ppc-reward-split-label">' + window.escapeHTML(window.t('ppcRewardSplitKarmaLabel', {}, lang)) + '</span>' +
@@ -6134,20 +6136,21 @@ function openProjectDetailsModal(appId) {
     var totalKarma = Number(rewardsSummary.total_karma || 0);
     var totalBust = Number(rewardsSummary.total_bust || 0);
     var rewardsRows = [];
+    var karmaMark = typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️';
     if (checkinKarma > 0) {
-        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsCheckinKarma', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(checkinKarma, 1)) + ' ☯️</span></div>');
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsCheckinKarma', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(checkinKarma, 1)) + ' ' + karmaMark + '</span></div>');
     }
     if (ownerKarmaTotal > 0) {
-        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsOwnerKarma', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(ownerKarmaTotal, 1)) + ' ☯️</span></div>');
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsOwnerKarma', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(ownerKarmaTotal, 1)) + ' ' + karmaMark + '</span></div>');
     }
     if (feedbackKarma > 0 || feedbackBust > 0) {
-        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsFeedback', {}, lang)) + '</span><span class="dashboard-label notranslate" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(feedbackKarma, 1)) + ' ☯️ / +' + window.escapeHTML(formatAmountValue(feedbackBust, 1)) + ' $BUST</span></div>');
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsFeedback', {}, lang)) + '</span><span class="dashboard-label notranslate" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(feedbackKarma, 1)) + ' ' + karmaMark + ' / +' + window.escapeHTML(formatAmountValue(feedbackBust, 1)) + ' $BUST</span></div>');
     }
     if (reviewOwnerBoostBust > 0 || reviewOwnerBoostKarma > 0) {
-        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsReviewBoost', {}, lang)) + '</span><span class="dashboard-label notranslate" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(reviewOwnerBoostKarma, 1)) + ' ☯️ / +' + window.escapeHTML(formatAmountValue(reviewOwnerBoostBust, 1)) + ' $BUST</span></div>');
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsReviewBoost', {}, lang)) + '</span><span class="dashboard-label notranslate" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(reviewOwnerBoostKarma, 1)) + ' ' + karmaMark + ' / +' + window.escapeHTML(formatAmountValue(reviewOwnerBoostBust, 1)) + ' $BUST</span></div>');
     }
     if (reviewPlatformKarma > 0) {
-        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsReviewPlatform', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(reviewPlatformKarma, 1)) + ' ☯️</span></div>');
+        rewardsRows.push('<div class="dashboard-row"><span class="dashboard-label">' + window.escapeHTML(window.t('appRewardsReviewPlatform', {}, lang)) + '</span><span class="dashboard-label" style="font-weight:700;">+' + window.escapeHTML(formatAmountValue(reviewPlatformKarma, 1)) + ' ' + karmaMark + '</span></div>');
     }
     if (rewardsRows.length > 0) {
         rewardsByAppHtml = '<div class="details-block">' +

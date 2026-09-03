@@ -361,8 +361,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 30px;
+    height: 30px;
     padding: 0;
     border: none;
     border-radius: 0;
@@ -372,8 +372,8 @@
 }
 
 .pc-ping-mini .pc-ping__glyph {
-    width: 15px;
-    height: 15px;
+    width: 22px;
+    height: 22px;
 }
 
 .pc-ping-mini:active {

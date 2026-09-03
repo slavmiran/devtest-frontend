@@ -941,7 +941,7 @@ function renderFeedCard(item, kind) {
                 </div>
                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
                     ${langBadge}
-                    <span class="meta-chip accent-yellow">☯️ ${item.owner_karma || 0}</span>
+                    <span class="meta-chip accent-yellow">${typeof window.withKarmaIcon === 'function' ? window.withKarmaIcon(String(item.owner_karma || 0)) : ('☯️ ' + (item.owner_karma || 0))}</span>
                 </div>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
@@ -5168,7 +5168,7 @@ function renderProjectFeedbackCards(project, items) {
                 rewardHtml = `
                     <div class="fb-reward-block">
                         ${rewardBust > 0 ? `<span class="fb-reward-chip reward-bust"><span class="reward-icon">💎</span> ${formatBustAmount(rewardBust)}</span>` : ''}
-                        ${rewardKarma > 0 ? `<span class="fb-reward-chip reward-karma"><span class="reward-icon">☯️</span> ${rewardKarma.toFixed(1)} Karma</span>` : ''}
+                        ${rewardKarma > 0 ? `<span class="fb-reward-chip reward-karma"><span class="reward-icon">${typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️'}</span> ${rewardKarma.toFixed(1)} Karma</span>` : ''}
                     </div>`;
             }
 
@@ -5915,7 +5915,9 @@ function getKarmaSourceLabel(sourceType) {
 function formatKarmaAmount(amount) {
     const num = Number(amount || 0);
     const sign = num >= 0 ? '+' : '';
-    return `${sign}${num.toFixed(1)} ☯️`;
+    const value = `${sign}${num.toFixed(1)}`;
+    if (typeof window.withKarmaIcon === 'function') return window.withKarmaIcon(value);
+    return `${value} ☯️`;
 }
 
 function closeKarmaInfoModal(event) {
@@ -5934,9 +5936,13 @@ async function showKarmaInfo() {
     if (!modal || !totalEl || !breakdownSection || !breakdownEl) return;
 
     const fallbackTotal = Number((visibilityStats && visibilityStats.ownerKarma) || 0);
-    totalEl.textContent = window.t('karmaInfoBalanceValue', {
-        amount: fallbackTotal.toFixed(1),
-    });
+    totalEl.innerHTML = (typeof window.withKarmaIcon === 'function')
+        ? window.withKarmaIcon(window.t('karmaInfoBalanceValue', {
+            amount: fallbackTotal.toFixed(1),
+        }))
+        : window.t('karmaInfoBalanceValue', {
+            amount: fallbackTotal.toFixed(1),
+        });
     breakdownEl.innerHTML = '';
     breakdownSection.style.display = 'none';
 
@@ -5954,9 +5960,13 @@ async function showKarmaInfo() {
     const safeTotal = Number.isFinite(Number(result && result.total))
         ? Number(result.total)
         : fallbackTotal;
-    totalEl.textContent = window.t('karmaInfoBalanceValue', {
-        amount: safeTotal.toFixed(1),
-    });
+    totalEl.innerHTML = (typeof window.withKarmaIcon === 'function')
+        ? window.withKarmaIcon(window.t('karmaInfoBalanceValue', {
+            amount: safeTotal.toFixed(1),
+        }))
+        : window.t('karmaInfoBalanceValue', {
+            amount: safeTotal.toFixed(1),
+        });
 
     const rows = (Array.isArray(result && result.breakdown) ? result.breakdown : [])
         .filter((item) => Number(item && item.count) !== 0 || Number(item && item.amount) !== 0)
@@ -7225,7 +7235,7 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
 
     body.innerHTML = `
         <div class="karma-dist-header">
-            <div class="karma-dist-icon-badge">☯️</div>
+            <div class="karma-dist-icon-badge">${typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--lg') : '☯️'}</div>
             <div class="karma-dist-header-main">
                 <h3 class="karma-dist-title">${window.escapeHTML(window.t('karmaDistributionTitle', {}, lang) || 'Раздача Кармы')}</h3>
                 <div class="karma-dist-subtitle">${window.escapeHTML(subtitleText)}</div>
@@ -10190,6 +10200,10 @@ function openKarmaSelectPopup(appId, testerId) {
         ? project.testers.find(function(t) { return Number(t.tester_id) === Number(testerId); })
         : null;
     const pools = getProjectKarmaPools(project, testerId);
+    const badge = document.getElementById('karma-select-icon-badge');
+    if (badge && typeof window.karmaIconHtml === 'function') {
+        badge.innerHTML = window.karmaIconHtml('karma-yin-icon--lg');
+    }
 
     const testerMetaEl = document.getElementById('karma-select-tester-meta');
     if (testerMetaEl) {
@@ -10730,6 +10744,7 @@ Object.assign(window, {
     closeContractEconomyModal,
     openKarmaDistribution,
     closeKarmaDistribution,
+    getProjectKarmaPools,
     openKarmaSelectPopup,
     closeKarmaSelectPopup,
     confirmKarmaSelect,

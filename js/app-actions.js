@@ -3326,7 +3326,10 @@ function updateFeedbackRewardKarmaStatus(project) {
     var karmaEl = document.getElementById('feedback-karma-status');
     if (!karmaEl) return;
     var meta = buildFeedbackRewardKarmaMeta(project);
-    karmaEl.textContent = meta.statusLabel;
+    var label = String(meta.statusLabel || '');
+    karmaEl.innerHTML = (typeof window.withKarmaIcon === 'function')
+        ? window.withKarmaIcon(window.escapeHTML(label))
+        : window.escapeHTML(label);
     karmaEl.dataset.toast = meta.toastText || '';
 }
 

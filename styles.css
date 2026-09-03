@@ -1712,6 +1712,39 @@ input::placeholder,
     white-space: nowrap;
 }
 
+.karma-yin-icon {
+    display: inline-block;
+    width: 1.05em;
+    height: 1.05em;
+    vertical-align: -0.18em;
+    color: #8f7eaf;
+    flex: 0 0 auto;
+}
+
+.karma-yin-icon--inline {
+    width: 1em;
+    height: 1em;
+}
+
+.karma-yin-icon--lg {
+    width: 28px;
+    height: 28px;
+}
+
+.karma-dist-icon-badge .karma-yin-icon,
+.karma-select-icon-badge .karma-yin-icon {
+    width: 28px;
+    height: 28px;
+    vertical-align: middle;
+}
+
+#karma-balance-value .karma-yin-icon {
+    width: 0.85em;
+    height: 0.85em;
+    margin-right: 4px;
+    vertical-align: -0.12em;
+}
+
 .metric-card-success .metric-value {
     color: #52f4b5;
 }

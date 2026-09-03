@@ -131,7 +131,9 @@
     /* Compact Material-style glyphs for filtered-tab actions. */
     var ICONS = {
         remind: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>',
-        reward: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35C11.96 2.54 11.05 2 10 2 8.34 2 7 3.34 7 5c0 .35.07.69.18 1H5c-1.11 0-1.99.89-1.99 2L3 20c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-6 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM20 20H4V8h16v12z"/></svg>',
+        reward: (typeof window.karmaIconHtml === 'function'
+            ? window.karmaIconHtml('karma-yin-icon--inline')
+            : '<svg viewBox="-40 -40 80 80" aria-hidden="true"><circle r="39" fill="currentColor"/><path fill="#fff" fill-opacity="0.92" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"/><circle r="5" cy="19" fill="#fff" fill-opacity="0.92"/><circle r="5" cy="-19" fill="currentColor"/></svg>'),
         link: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
         image: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>',
         process: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H6v-2h6v2zm4-4H6v-2h10v2zm0-4H6V7h10v2z"/></svg>',
@@ -543,9 +545,15 @@
     }
 
     function controlRowHtml(appId, row, context) {
+        var dayNum = Number(row && row.day || 0);
         var meta = '<span class="pc-pstate ' + (row.received ? 'is-received' : 'is-pending') + '">' +
             esc(row.received ? text('pcControlReceived', 'Received') : text('pcControlPending', 'Pending')) +
             '</span>';
+        if (dayNum > 0) {
+            meta += '<span class="pc-person__day">• ' +
+                esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
+            '</span>';
+        }
         var typeLabel = row.received ? proofTypeLabel(row.proofType) : '';
         if (typeLabel) {
             meta += '<span class="pc-tag pc-tag--' + esc(row.proofType) + '">' + esc(typeLabel) + '</span>';
@@ -592,7 +600,11 @@
         var done = rows.filter(function (row) { return row.received; }).length;
         var rewardChip = context.rewardsLeft > 0
             ? '<button type="button" class="pc-reward-chip" onclick="event.stopPropagation(); openKarmaDistribution(' +
-                Number(project.id) + ');">' + esc(text('karmaRewards', '☯️ Rewards: {count}', { count: context.rewardsLeft })) + '</button>'
+                Number(project.id) + ');">' +
+                (typeof window.withKarmaIcon === 'function'
+                    ? window.withKarmaIcon(esc(text('karmaRewards', 'Rewards: {count}', { count: context.rewardsLeft })))
+                    : esc(text('karmaRewards', 'Rewards: {count}', { count: context.rewardsLeft }))) +
+              '</button>'
             : '';
         var ringHtml = typeof window.buildProjectDailyProgressRingHtml === 'function'
             ? window.buildProjectDailyProgressRingHtml(project)
@@ -1049,8 +1061,48 @@
         '</div>';
     }
 
-    function captionHtml(appId, filter, mode) {
+    function karmaAvailability(project) {
+        if (typeof window.getProjectKarmaPools === 'function') {
+            var pools = window.getProjectKarmaPools(project) || {};
+            return {
+                available: Math.max(0, Number(pools.thanksAvailable || 0) + Number(pools.specialAvailable || 0)),
+                max: Math.max(0, Number(pools.thanksMax || 0) + Number(pools.specialMax || 0)),
+            };
+        }
+        var max = Math.max(0, Number(project && project.likes_max || 0));
+        var used = Math.max(0, Number(project && project.likes_used || 0));
+        return {
+            available: Math.max(0, max - used),
+            max: max,
+        };
+    }
+
+    function captionHtml(appId, filter, mode, project) {
         var historyOn = mode === 'history';
+        var trailing;
+        if (filter === 'contribution') {
+            var avail = karmaAvailability(project || projectById(appId));
+            var label = text('pcKarmaAvailableShort', 'Available {available}/{max}', {
+                available: avail.available,
+                max: avail.max,
+            });
+            trailing = '<button type="button" class="pc-activity__karma" ' +
+                'onclick="event.stopPropagation(); ' +
+                (typeof openKarmaDistribution === 'function'
+                    ? ('openKarmaDistribution(' + Number(appId) + ')')
+                    : 'void 0') +
+                '">' +
+                (typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '') +
+                '<span>' + esc(label) + '</span>' +
+            '</button>';
+        } else {
+            trailing = '<button type="button" class="pc-activity__hist' + (historyOn ? ' is-on' : '') +
+                '" aria-pressed="' + (historyOn ? 'true' : 'false') +
+                '" onclick="event.stopPropagation(); pcToggleActivityHistory(' + Number(appId) + ')">' +
+                '<span class="pc-activity__hist-dot" aria-hidden="true"></span>' +
+                esc(text('pcModeHistory', 'History')) +
+            '</button>';
+        }
         return '<div class="pc-activity__caption">' +
             '<p class="pc-activity__hint">' +
                 esc(hintForFilter(filter)) +
@@ -1058,12 +1110,7 @@
                     esc(text('pcHintInfoAria', 'Filter criteria')) +
                     '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')">ⓘ</button>' +
             '</p>' +
-            '<button type="button" class="pc-activity__hist' + (historyOn ? ' is-on' : '') +
-                '" aria-pressed="' + (historyOn ? 'true' : 'false') +
-                '" onclick="event.stopPropagation(); pcToggleActivityHistory(' + Number(appId) + ')">' +
-                '<span class="pc-activity__hist-dot" aria-hidden="true"></span>' +
-                esc(text('pcModeHistory', 'History')) +
-            '</button>' +
+            trailing +
         '</div>';
     }
 
@@ -1097,6 +1144,7 @@
         var prefs = readPrefs(appId);
         var filter = resolvedFilter(prefs, data);
         var mode = prefs.modes[filter] || 'now';
+        if (filter === 'contribution') mode = 'now';
         if (mode === 'history') {
             loadFilterHistory(appId, filter, data);
         } else if (filter === 'control') {
@@ -1119,6 +1167,7 @@
         var prefs = readPrefs(safeAppId);
         var filter = resolvedFilter(prefs, data);
         var mode = prefs.modes[filter] || 'now';
+        if (filter === 'contribution') mode = 'now';
         var context = contextFor(project);
         var filtersEl = shell.querySelector('.pc-activity__filters');
         var captionEl = shell.querySelector('.pc-activity__caption');
@@ -1132,7 +1181,7 @@
         }
         if (captionEl) {
             var nextCaption = document.createElement('div');
-            nextCaption.innerHTML = captionHtml(safeAppId, filter, mode);
+            nextCaption.innerHTML = captionHtml(safeAppId, filter, mode, project);
             captionEl.replaceWith(nextCaption.firstChild);
         }
         if (nowEl) {
@@ -1229,6 +1278,7 @@
         var prefs = readPrefs(project.id);
         var filter = resolvedFilter(prefs, data);
         var mode = prefs.modes[filter] || 'now';
+        if (filter === 'contribution') mode = 'now';
         var context = contextFor(project);
         var errorHtml = data.error
             ? '<div class="pc-today__error">' + esc(text('pcTodayLoadError', "Could not load today's reports")) +
@@ -1240,7 +1290,7 @@
                 '<h3 class="pc-activity__title">' + esc(text('pcActivityTitle', 'Testers activity')) + '</h3>' +
             '</header>' +
             filtersHtml(project.id, visibleFilters(data), filter, data) +
-            captionHtml(project.id, filter, mode) +
+            captionHtml(project.id, filter, mode, project) +
             workspaceListHtml(project, filter, mode, data, context) +
             errorHtml +
         '</section>';
@@ -1308,6 +1358,9 @@
     window.pcSetActivityFilter = function (appId, filter) {
         var prefs = readPrefs(appId);
         prefs.filter = ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers';
+        if (prefs.filter === 'contribution') {
+            prefs.modes.contribution = 'now';
+        }
         writePrefs(appId, prefs);
         refreshActivityWorkspace(appId);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();

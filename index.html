@@ -36,14 +36,14 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260903-card-hero-v2"></script>
-    <script src="./i18n/en.js?v=20260903-card-hero-v2"></script>
+<script src="./i18n/ru.js?v=20260903-reports-karma-v1"></script>
+    <script src="./i18n/en.js?v=20260903-reports-karma-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
-    <script src="./ui/ui-helpers.js?v=20260820-report-modal-v1"></script>
+    <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
     <script src="./ui/ui-tests.js?v=20260901-edit-modal-layout-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260903-attract-equal-v2"></script>
-    <script src="./ui/ui-market.js?v=20260831-app-block-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260903-reports-karma-v1"></script>
+    <script src="./ui/ui-market.js?v=20260903-reports-karma-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
@@ -51,10 +51,10 @@
     <script src="./js/app-api.js?v=20260831-app-block-v1"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260830-feedback-cache-v1"></script>
+    <script src="./js/app-actions.js?v=20260903-reports-karma-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20260830-multi-proof-v1"></script>
     <script src="./js/testing-control.js?v=20260903-history-guest-badge-v1"></script>
-    <script src="./js/project-today.js?v=20260903-attention-reasons-v1"></script>
+    <script src="./js/project-today.js?v=20260903-reports-karma-v1"></script>
     <script src="./js/proof-ping.js?v=20260903-ping-master-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
 <script src="./js/app-features.js?v=20260903-ping-master-v1"></script>
@@ -71,7 +71,7 @@
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20260802-grants-3cols">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20260830-multi-proof-v1">
-    <link rel="stylesheet" href="./css/testing-control.css?v=20260903-history-badge-lg-v1">
+    <link rel="stylesheet" href="./css/testing-control.css?v=20260903-history-badge-md-v1">
     <link rel="stylesheet" href="./css/wizard.css?v=20260901-edit-modal-layout-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/kick-tester-modal.css?v=20260822-recip-highlight-v1">
@@ -92,14 +92,14 @@
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260803-jb-accordion">
     <link rel="stylesheet" href="./css/access-issue.css?v=20260722-access-timer-v1">
     <link rel="stylesheet" href="./css/default-group.css?v=20260820-group-wait-inline-v1">
-    <link rel="stylesheet" href="./styles.css?v=20260903-karma-select-v1">
+    <link rel="stylesheet" href="./styles.css?v=20260903-reports-karma-v1">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260821-chooser-v6">
     <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260829-proof-pending-v2">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
-    <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260903-attention-reasons-v1">
-    <link rel="stylesheet" href="./css/proof-ping.css?v=20260903-ping-layout-v2">
+    <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260903-reports-karma-v1">
+    <link rel="stylesheet" href="./css/proof-ping.css?v=20260903-reports-karma-v1">
 </head>
 <body>
 
@@ -1884,7 +1884,7 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <div style="text-align:center; margin-bottom: 12px;">
                 <div class="dashboard-title" data-i18n="karmaInfoModalTitle">ТВОЙ БАЛАНС КАРМЫ</div>
-                <div id="karma-balance-value" style="font-size: 36px; font-weight: 800; margin-top: 8px; letter-spacing: 0.5px;">☯️ 0.0</div>
+                <div id="karma-balance-value" style="font-size: 36px; font-weight: 800; margin-top: 8px; letter-spacing: 0.5px;">0.0</div>
             </div>
 
             <div class="card" id="karma-stats-container" style="margin-bottom: 12px; display: none;">
@@ -2108,7 +2108,7 @@
                     </div>
                 </div>
                 <div class="ppc-reward-split-card karma-boost">
-                    <span class="ppc-reward-split-emoji">☯️</span>
+                    <span class="ppc-reward-split-emoji" data-karma-icon></span>
                     <div class="ppc-reward-split-info">
                         <span id="ppc-phase-modal-karma-bonus" class="ppc-reward-split-value" style="color: var(--reward);">+0.5</span>
                         <span class="ppc-reward-split-label" data-i18n="ppcModalKarmaBonus">Повышенная карма + 0,5</span>
@@ -2610,12 +2610,12 @@
             <div class="feedback-reward-block">
                 <div class="feedback-reward-block-head">
                     <div class="feedback-reward-label" data-i18n="feedbackRewardKarmaLabel">Карма</div>
-                    <button type="button" class="feedback-reward-status-item feedback-reward-status-button" id="feedback-karma-status" onclick="showFeedbackRewardKarmaInfo()">☯️ 0/0</button>
+                    <button type="button" class="feedback-reward-status-item feedback-reward-status-button" id="feedback-karma-status" onclick="showFeedbackRewardKarmaInfo()">0/0</button>
                 </div>
                 <div class="chip-scroll feedback-reward-chips">
                     <button class="chip feedback-reward-chip" id="feedback-karma-chip-0" onclick="setFeedbackRewardKarma(0)">0</button>
-                    <button class="chip feedback-reward-chip" id="feedback-karma-chip-15" onclick="setFeedbackRewardKarma(1.5)">+1.5 ☯️</button>
-                    <button class="chip feedback-reward-chip" id="feedback-karma-chip-30" onclick="setFeedbackRewardKarma(3.0)">+3.0 ☯️</button>
+                    <button class="chip feedback-reward-chip" id="feedback-karma-chip-15" onclick="setFeedbackRewardKarma(1.5)">+1.5</button>
+                    <button class="chip feedback-reward-chip" id="feedback-karma-chip-30" onclick="setFeedbackRewardKarma(3.0)">+3.0</button>
                 </div>
                 <div id="feedback-reward-karma-warning" class="feedback-warning-banner" style="display: none;"></div>
             </div>
@@ -2774,7 +2774,7 @@
     <div id="karma-select-popup" class="modal-overlay centered-popup-overlay" onclick="closeKarmaSelectPopup(event)">
         <div class="modal-content centered-popup karma-select-popup-content" onclick="event.stopPropagation()">
             <div class="karma-select-header">
-                <div class="karma-select-icon-badge">☯️</div>
+                <div class="karma-select-icon-badge" id="karma-select-icon-badge"></div>
                 <div class="karma-select-header-text">
                     <h3 id="karma-select-title" data-i18n="karmaSelectTitle">Награда тестеру</h3>
                     <div id="karma-select-tester-meta" class="karma-select-tester-meta"></div>
