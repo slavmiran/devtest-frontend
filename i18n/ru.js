@@ -2909,7 +2909,7 @@
             pcTestersNeedMore: "Нужно ещё {count}",
             pcTestersMinimumReached: "Минимум набран",
             pcTestersReserve: "Запас +{count}",
-            pcPingTitle: "Пинг о пруфах в чате",
+            pcPingTitle: "Пинг об отчетах в чате",
             pcPingDesc: "Скриншот контрольного дня попадает в общий топик «Testing Proofs». Бот отметит вас @упоминанием, чтобы уведомление пришло сразу.",
             pcPingToggleLabel: "Уведомления о скриншотах",
             pcPingToggleAria: "Уведомления о скриншотах контрольного дня",
