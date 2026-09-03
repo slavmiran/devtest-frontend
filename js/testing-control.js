@@ -269,14 +269,115 @@
         return text('testingControlStarted', 'Started {date}', { date: item.start_date || '—' });
     }
 
+    function resolveAvatarIconUrl(url) {
+        var raw = String(url || '').trim();
+        if (!raw) return '';
+        if (typeof window.resolveIconUrl === 'function') {
+            try {
+                return String(window.resolveIconUrl(raw) || raw).trim();
+            } catch (_err) {
+                return raw;
+            }
+        }
+        return raw;
+    }
+
+    function localTesterLink(item) {
+        var testerId = Number(item && item.tester && item.tester.id || 0);
+        if (testerId <= 0) return null;
+        var cached = projectFromCache(state.appId);
+        var testers = cached && cached.project && cached.project.testers;
+        if (!Array.isArray(testers)) return null;
+        for (var i = 0; i < testers.length; i += 1) {
+            var row = testers[i] || {};
+            if (Number(row.tester_id || row.id || 0) === testerId) return row;
+        }
+        return null;
+    }
+
+    function testerLinkMeta(item) {
+        var local = localTesterLink(item) || {};
+        var joinType = String(
+            item && item.join_type
+            || local.join_type
+            || 'invite'
+        ).trim().toLowerCase() || 'invite';
+        var isGuest = !!(
+            (item && item.is_guest_tester)
+            || local.is_guest_tester
+            || local.is_external
+            || String(local.external_source || '').trim()
+            || String(local.external_guest_app_id || '').trim()
+            || Number(local.external_source_app_id || 0) > 0
+        );
+        var reciprocalAppId = isGuest ? 0 : Number(
+            item && item.reciprocal_app_id
+            || local.reciprocal_app_id
+            || 0
+        );
+        var reciprocalName = isGuest ? '' : String(
+            item && item.reciprocal_app_name
+            || local.reciprocal_app_name
+            || ''
+        ).trim();
+        var reciprocalIcon = isGuest ? '' : String(
+            item && item.reciprocal_app_icon_url
+            || local.reciprocal_app_icon_url
+            || ''
+        ).trim();
+        return {
+            joinType: joinType,
+            isGuest: isGuest,
+            reciprocalAppId: reciprocalAppId,
+            reciprocalName: reciprocalName,
+            reciprocalIcon: reciprocalIcon,
+        };
+    }
+
+    function avatarBadgeHtml(item) {
+        var link = testerLinkMeta(item);
+        var title = '';
+        var inner = '';
+        if (link.isGuest) {
+            title = text('linkedBadgeGuest', '👽 Guest project');
+            inner = '<span class="testing-control-avatar-badge__glyph" aria-hidden="true">👽</span>';
+        } else if (link.reciprocalAppId > 0) {
+            title = link.reciprocalName
+                || text('testingControlReciprocalProject', 'Mutual project');
+            var iconUrl = resolveAvatarIconUrl(link.reciprocalIcon);
+            if (iconUrl) {
+                inner = '<img src="' + escape(iconUrl) + '" alt="" loading="lazy">';
+            } else {
+                var letter = (link.reciprocalName.charAt(0) || 'A').toUpperCase();
+                inner = '<span class="testing-control-avatar-badge__letter">' + escape(letter) + '</span>';
+            }
+        } else if (link.joinType === 'bounty') {
+            title = text('testerSourceBountyFull', 'Contract test');
+            inner = '<span class="testing-control-avatar-badge__glyph" aria-hidden="true">💎</span>';
+        } else if (link.joinType === 'mutual' || link.joinType === 'prelaunch') {
+            title = text('testerSourceMutualFull', 'Mutual test');
+            inner = '<span class="testing-control-avatar-badge__glyph" aria-hidden="true">🤝</span>';
+        } else {
+            title = text('testerSourceInviteNoMutualFull', 'Invite (No Mutual)');
+            inner = '<span class="testing-control-avatar-badge__glyph" aria-hidden="true">🔗</span>';
+        }
+        return '<span class="testing-control-avatar-badge" title="' + escape(title) + '" aria-label="' + escape(title) + '">' +
+            inner +
+        '</span>';
+    }
+
     function avatarHtml(item) {
         var tester = item && item.tester || {};
         var avatarUrl = String(tester.avatar_url || '').trim();
-        if (avatarUrl) {
-            return '<img class="testing-control-avatar" src="' + escape(avatarUrl) + '" loading="lazy" alt="">';
-        }
-        var label = testerLabel(item).replace(/^@/, '').trim();
-        return '<span class="testing-control-avatar testing-control-avatar--fallback">' + escape((label.charAt(0) || '?').toUpperCase()) + '</span>';
+        var main = avatarUrl
+            ? '<img class="testing-control-avatar" src="' + escape(avatarUrl) + '" loading="lazy" alt="">'
+            : (function () {
+                var label = testerLabel(item).replace(/^@/, '').trim();
+                return '<span class="testing-control-avatar testing-control-avatar--fallback">' +
+                    escape((label.charAt(0) || '?').toUpperCase()) +
+                '</span>';
+            })();
+        return '<span class="testing-control-avatar-wrap">' + main + avatarBadgeHtml(item) + '</span>';
     }
 
     function renderTester(item) {

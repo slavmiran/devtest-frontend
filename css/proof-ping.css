@@ -428,14 +428,7 @@
     gap: 4px;
     min-width: 0;
     flex: 1 1 auto;
-}
-
-.proof-ping-setting-main {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    width: 100%;
+    padding-right: 8px;
 }
 
 .system-setting-row--proof-ping .system-setting-copy {
@@ -443,12 +436,21 @@
     min-width: 0;
     overflow-wrap: normal;
     word-break: normal;
+    text-align: left;
 }
 
-.system-setting-row--proof-ping > .toggle-switch {
+.proof-ping-setting-controls {
     flex: 0 0 auto;
-    align-self: flex-start;
-    margin-top: 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-top: 0;
+}
+
+.proof-ping-setting-controls > .toggle-switch {
+    flex: 0 0 auto;
 }
 
 .proof-ping-setting-open {
@@ -487,6 +489,7 @@
     font-weight: 700;
     line-height: 1.2;
     cursor: pointer;
+    text-decoration: none;
 }
 
 .proof-ping-setting-chat .pc-ping__glyph {
@@ -496,8 +499,7 @@
 }
 
 .proof-ping-setting-chat span {
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    text-decoration: none;
 }
 
 #proof-ping-sheet.modal-overlay,

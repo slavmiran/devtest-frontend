@@ -92,8 +92,46 @@
 .testing-control-tester { border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; background: rgba(255, 255, 255, 0.035); overflow: hidden; transition: border-color .2s ease, background .2s ease; }
 .testing-control-tester.is-focused { border-color: rgba(10, 132, 255, 0.8); background: rgba(10, 132, 255, 0.1); }
 .testing-control-tester__head { width: 100%; min-height: 64px; padding: 10px 11px; display: flex; align-items: center; gap: 10px; border: 0; color: inherit; background: transparent; text-align: left; }
-.testing-control-avatar { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 50%; object-fit: cover; background: rgba(255, 255, 255, 0.08); }
+.testing-control-avatar-wrap {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+}
+.testing-control-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: rgba(255, 255, 255, 0.08); display: block; }
 .testing-control-avatar--fallback { display: grid; place-items: center; color: #dcecff; background: rgba(10, 132, 255, 0.2); font-weight: 800; }
+.testing-control-avatar-badge {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    background: #2c2c2e;
+    border: 1.5px solid rgba(12, 12, 14, 0.95);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+.testing-control-avatar-badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.testing-control-avatar-badge__letter {
+    color: #f2f2f7;
+    font-size: 7px;
+    font-weight: 800;
+    line-height: 1;
+}
+.testing-control-avatar-badge__glyph {
+    font-size: 8px;
+    line-height: 1;
+    transform: translateY(0.5px);
+}
 .testing-control-tester__identity { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .testing-control-tester__name { color: #fff; font-size: 14px; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .testing-control-tester__sub { color: var(--hint-color); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

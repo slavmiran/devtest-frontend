@@ -36,13 +36,13 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260903-ping-master-v1"></script>
-    <script src="./i18n/en.js?v=20260903-ping-master-v1"></script>
+<script src="./i18n/ru.js?v=20260903-ping-layout-v2"></script>
+    <script src="./i18n/en.js?v=20260903-ping-layout-v2"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260820-report-modal-v1"></script>
     <script src="./ui/ui-tests.js?v=20260901-edit-modal-layout-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260903-card-hero-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260903-ping-layout-v2"></script>
     <script src="./ui/ui-market.js?v=20260831-app-block-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
@@ -53,7 +53,7 @@
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20260830-feedback-cache-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20260830-multi-proof-v1"></script>
-    <script src="./js/testing-control.js?v=20260901-activity-filters-v1"></script>
+    <script src="./js/testing-control.js?v=20260903-history-guest-badge-v1"></script>
     <script src="./js/project-today.js?v=20260903-activity-rows-v2"></script>
     <script src="./js/proof-ping.js?v=20260903-ping-master-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
@@ -71,7 +71,7 @@
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20260802-grants-3cols">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20260830-multi-proof-v1">
-    <link rel="stylesheet" href="./css/testing-control.css?v=20260830-medium-proof-v1">
+    <link rel="stylesheet" href="./css/testing-control.css?v=20260903-history-avatar-badge-v1">
     <link rel="stylesheet" href="./css/wizard.css?v=20260901-edit-modal-layout-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/kick-tester-modal.css?v=20260822-recip-highlight-v1">
@@ -99,7 +99,7 @@
     <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260829-proof-pending-v2">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
     <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260903-card-hero-v1">
-    <link rel="stylesheet" href="./css/proof-ping.css?v=20260903-ping-master-v1">
+    <link rel="stylesheet" href="./css/proof-ping.css?v=20260903-ping-layout-v2">
 </head>
 <body>
 
@@ -232,24 +232,24 @@
             </div>
             <div class="system-setting-row system-setting-row--proof-ping" id="proof-ping-settings-row">
                 <div class="system-setting-copy-wrap">
-                    <div class="proof-ping-setting-main">
-                        <button type="button" class="system-setting-copy" id="settings-proof-ping-label" onclick="openProofPingSettingsSheet(event)" data-i18n="settingsProofPingLabel">🔔 Уведомления</button>
-                        <button type="button" class="proof-ping-setting-open" onclick="openProofPingSettingsSheet(event)" aria-label="Per-project notifications">
-                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                <path fill="currentColor" d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
-                            </svg>
-                        </button>
-                    </div>
+                    <button type="button" class="system-setting-copy" id="settings-proof-ping-label" onclick="openProofPingSettingsSheet(event)" data-i18n="settingsProofPingLabel">🔔 Уведомления</button>
                     <div class="system-setting-meta" id="settings-proof-ping-meta">Упоминание @nickname в топике Testing Proofs</div>
                     <button type="button" class="proof-ping-setting-chat" id="settings-proof-ping-chat" onclick="pcProofPingOpenCommunity(event)">
                         <svg class="pc-ping__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
                         <span id="settings-proof-ping-chat-label" data-i18n="settingsProofPingCommunity">Community Chat</span>
                     </button>
                 </div>
-                <label class="toggle-switch" aria-label="Notifications master">
-                    <input type="checkbox" id="settings-proof-ping-toggle" checked onchange="pcProofPingMasterToggle(this)">
-                    <span class="toggle-slider"></span>
-                </label>
+                <div class="proof-ping-setting-controls">
+                    <button type="button" class="proof-ping-setting-open" onclick="openProofPingSettingsSheet(event)" aria-label="Per-project notifications">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+                        </svg>
+                    </button>
+                    <label class="toggle-switch" aria-label="Notifications master">
+                        <input type="checkbox" id="settings-proof-ping-toggle" checked onchange="pcProofPingMasterToggle(this)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
             </div>
             <div class="system-setting-row" id="default-group-joined-row">
                 <div class="system-setting-copy-wrap">
