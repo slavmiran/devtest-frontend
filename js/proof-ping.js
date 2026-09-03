@@ -114,6 +114,25 @@
         '</label>';
     }
 
+    function dotSwitchHtml(appId, enabled) {
+        return '<button type="button" class="pc-dotswitch' + (enabled ? ' is-on' : '') + '"' +
+            ' aria-pressed="' + (enabled ? 'true' : 'false') + '"' +
+            ' aria-label="' + esc(text('pcPingToggleAria', 'Screenshot notifications')) + '"' +
+            ' onclick="event.stopPropagation(); pcProofPingToggleDot(' + Number(appId) + ', this)">' +
+            '<span class="pc-dotswitch__dot" aria-hidden="true"></span>' +
+        '</button>';
+    }
+
+    function descHtml() {
+        var mention = '<span class="pc-ping__mention">' +
+            esc(text('pcPingMention', '@mention')) + '</span>';
+        var parts = String(text(
+            'pcPingDesc',
+            'Control-day screenshots land in the shared “Testing Proofs” topic. The bot tags you with an {mention}.'
+        )).split('{mention}');
+        return esc(parts[0] || '') + mention + esc(parts[1] || '');
+    }
+
     function ctaHtml(modifier) {
         var label = modifier === 'sm'
             ? text('pcPingChatCtaShort', 'Community')
@@ -126,30 +145,44 @@
         '</button>';
     }
 
+    function chatEntryHtml() {
+        return '<button type="button" class="pc-ping__chat" onclick="pcProofPingOpenChat(event)">' +
+            '<span class="pc-ping__chat-row">' +
+                TELEGRAM_ICON +
+                '<span class="pc-ping__chat-label">' + esc(text('pcPingChatCta', 'Testing Proofs')) + '</span>' +
+                '<span class="pc-ping__chat-chev" aria-hidden="true">›</span>' +
+            '</span>' +
+            '<span class="pc-ping__chat-note">' + esc(text('pcPingNote', '')) + '</span>' +
+        '</button>';
+    }
+
     /* ── card markup ────────────────────────────────────────────────────── */
 
     function expandedHtml(project) {
         var appId = Number(project.id || project.app_id || 0);
-        return '<section class="pc-ping pc-ping--expanded" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
+        var enabled = isEnabled(project);
+        return '<section class="pc-ping pc-ping--expanded' + (enabled ? ' is-on' : ' is-off') +
+            '" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
             '<div class="pc-ping__head">' +
                 '<div class="pc-ping__titles">' +
-                    '<h3 class="pc-ping__title">' + esc(text('pcPingTitle', 'Proof ping in chat')) + '</h3>' +
-                    '<p class="pc-ping__desc">' + esc(text('pcPingDesc', '')) + '</p>' +
+                    '<h3 class="pc-ping__title">' + esc(text('pcPingTitle', 'Notifications')) + '</h3>' +
+                    '<p class="pc-ping__desc">' + descHtml() + '</p>' +
                 '</div>' +
-                switchHtml(appId, isEnabled(project), 'toggle-switch--sm') +
+                dotSwitchHtml(appId, enabled) +
             '</div>' +
             '<div class="pc-ping__foot">' +
-                ctaHtml('') +
-                '<p class="pc-ping__note">' + esc(text('pcPingNote', '')) + '</p>' +
+                chatEntryHtml() +
             '</div>' +
         '</section>';
     }
 
     function compactHtml(project) {
         var appId = Number(project.id || project.app_id || 0);
-        return '<section class="pc-ping pc-ping--compact" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
-            '<span class="pc-ping__compact-label">' + esc(text('pcPingCompactLabel', 'Screenshot ping')) + '</span>' +
-            switchHtml(appId, isEnabled(project), 'toggle-switch--sm') +
+        var enabled = isEnabled(project);
+        return '<section class="pc-ping pc-ping--compact' + (enabled ? ' is-on' : ' is-off') +
+            '" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
+            dotSwitchHtml(appId, enabled) +
+            '<span class="pc-ping__compact-label">' + esc(text('pcPingCompactLabel', 'Reports')) + '</span>' +
             ctaHtml('sm') +
             '<button type="button" class="pc-ping__close" aria-label="' + esc(text('pcPingHide', 'Hide')) + '"' +
                 ' onclick="pcProofPingDismiss(' + appId + ', event)">' +
@@ -213,13 +246,22 @@
 
     function syncSwitches(appId, enabled) {
         var safeId = Number(appId || 0);
+        var on = !!enabled;
         var selectors = [
             '[data-pc-ping="' + safeId + '"] input[type="checkbox"]',
             '[data-pc-ping-row="' + safeId + '"] input[type="checkbox"]',
         ];
         selectors.forEach(function (selector) {
             Array.prototype.slice.call(document.querySelectorAll(selector)).forEach(function (input) {
-                input.checked = !!enabled;
+                input.checked = on;
+            });
+        });
+        Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping="' + safeId + '"]')).forEach(function (block) {
+            block.classList.toggle('is-on', on);
+            block.classList.toggle('is-off', !on);
+            Array.prototype.slice.call(block.querySelectorAll('.pc-dotswitch')).forEach(function (btn) {
+                btn.classList.toggle('is-on', on);
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
         });
         syncMasterSwitch();
@@ -287,6 +329,12 @@
 
     window.pcProofPingToggle = function (appId, input) {
         var enabled = !!(input && input.checked);
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+        setEnabled(appId, enabled);
+    };
+
+    window.pcProofPingToggleDot = function (appId, button) {
+        var enabled = !(button && button.classList.contains('is-on'));
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
         setEnabled(appId, enabled);
     };

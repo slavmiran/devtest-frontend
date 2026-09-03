@@ -59,22 +59,22 @@
     align-items: center;
     gap: 5px;
     flex: 0 0 auto;
-    min-height: 0;
-    padding: 0;
+    min-height: 28px;
+    padding: 0 2px;
     margin: 0;
     border: none;
     border-radius: 0;
     background: none;
-    color: var(--text-secondary);
+    color: var(--accent-primary);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1;
     cursor: pointer;
     white-space: nowrap;
 }
 
 .pc-ping__link .pc-ping__glyph {
-    color: #7a93b0;
+    color: var(--accent-primary);
 }
 
 .pc-ping__link:active {
@@ -87,6 +87,9 @@
 
 .pc-ping__link-label {
     min-width: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
 }
 
 /* Muted steel toggle — matches the card, not the global acid-green switch. */
@@ -145,12 +148,112 @@
     color: var(--text-tertiary);
 }
 
+.pc-ping__mention {
+    font-weight: 650;
+    color: var(--text-tertiary);
+}
+
+.pc-ping.is-on .pc-ping__mention {
+    color: var(--accent-primary);
+    font-weight: 750;
+}
+
+.pc-dotswitch {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    margin: -4px 0;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+}
+
+.pc-dotswitch__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+}
+
+.pc-dotswitch.is-on .pc-dotswitch__dot {
+    background: var(--accent-primary);
+    box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2);
+}
+
+.pc-dotswitch:active .pc-dotswitch__dot {
+    transform: scale(0.9);
+}
+
 .pc-ping__foot {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 4px;
     min-width: 0;
+}
+
+.pc-ping__chat {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+    width: 100%;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid rgba(10, 132, 255, 0.22);
+    border-radius: 10px;
+    background: rgba(10, 132, 255, 0.08);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.pc-ping__chat:active {
+    opacity: 0.82;
+}
+
+.pc-ping__chat-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.pc-ping__chat-row .pc-ping__glyph {
+    color: var(--accent-primary);
+}
+
+.pc-ping__chat-label {
+    min-width: 0;
+    flex: 1;
+    font-size: 12.5px;
+    font-weight: 750;
+    color: var(--accent-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.pc-ping__chat-chev {
+    flex: 0 0 auto;
+    color: var(--accent-primary);
+    font-size: 16px;
+    line-height: 1;
+    opacity: 0.7;
+}
+
+.pc-ping__chat-note {
+    margin: 0;
+    padding-left: 21px;
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-secondary);
 }
 
 .pc-ping__note {
@@ -197,6 +300,10 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.pc-ping--compact .pc-dotswitch {
+    margin: -6px 0 -6px -6px;
 }
 
 .pc-ping__close {

@@ -1054,6 +1054,7 @@
             '<button type="button" class="pc-activity__hist' + (historyOn ? ' is-on' : '') +
                 '" aria-pressed="' + (historyOn ? 'true' : 'false') +
                 '" onclick="event.stopPropagation(); pcToggleActivityHistory(' + Number(appId) + ')">' +
+                '<span class="pc-activity__hist-dot" aria-hidden="true"></span>' +
                 esc(text('pcModeHistory', 'History')) +
             '</button>' +
         '</div>';
