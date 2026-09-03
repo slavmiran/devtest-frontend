@@ -440,6 +440,25 @@
     display: none;
 }
 
+/* Centered popups must keep all four rounded corners (modal-content defaults to sheet). */
+.centered-popup-overlay .modal-content.centered-popup,
+#karma-select-popup .modal-content {
+    width: 92%;
+    max-width: 420px;
+    margin: auto;
+    border-radius: 20px;
+    padding: 20px;
+    padding-bottom: 20px;
+    max-height: min(80vh, 640px);
+    transform: scale(0.94);
+    overflow: hidden;
+}
+
+.centered-popup-overlay.active .modal-content.centered-popup,
+#karma-select-popup.active .modal-content {
+    transform: scale(1);
+}
+
 .no-username-overlay__desc,
     z-index: 260;
 }

@@ -417,7 +417,7 @@
    into a one-character column (overflow-wrap: anywhere). */
 
 .system-setting-row--proof-ping {
-    align-items: center;
+    align-items: flex-start;
 }
 
 .system-setting-row--proof-ping .system-setting-copy-wrap {
@@ -447,7 +447,8 @@
 
 .system-setting-row--proof-ping > .toggle-switch {
     flex: 0 0 auto;
-    align-self: center;
+    align-self: flex-start;
+    margin-top: 2px;
 }
 
 .proof-ping-setting-open {
@@ -469,6 +470,39 @@
     width: 15px;
     height: 15px;
     display: block;
+}
+
+.proof-ping-setting-chat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent-primary);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.proof-ping-setting-chat .pc-ping__glyph {
+    width: 14px;
+    height: 14px;
+    color: var(--accent-primary);
+}
+
+.proof-ping-setting-chat span {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+#proof-ping-sheet.modal-overlay,
+.proof-ping-overlay {
+    z-index: 10060;
 }
 
 .proof-ping-overlay .proof-ping-sheet-card {
@@ -495,11 +529,35 @@
 }
 
 .proof-ping-sheet__hint {
-    margin: 0;
+    margin: 0 0 8px;
     font-size: 11.5px;
     font-weight: 500;
     line-height: 1.42;
     color: var(--text-tertiary);
+}
+
+.proof-ping-sheet__chat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent-primary);
+    font-size: 12.5px;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.proof-ping-sheet__chat .pc-ping__glyph {
+    width: 15px;
+    height: 15px;
+    color: var(--accent-primary);
+}
+
+.proof-ping-sheet__chat span {
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }
 
 .proof-ping-sheet__master {
@@ -513,6 +571,17 @@
     font-size: 13px;
     font-weight: 700;
     color: var(--text-primary);
+}
+
+.proof-ping-sheet__banner {
+    margin: 0;
+    padding: 8px 16px;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .proof-ping-sheet__body {

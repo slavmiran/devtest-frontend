@@ -6,7 +6,10 @@
 
     var DISMISS_PREFIX = 'pc_ping_dismissed_';
     var PENDING_PREFIX = 'pc_ping_pending_';
+    var MASTER_STORAGE_KEY = 'pc_ping_master_v1';
     var FALLBACK_GROUP_URL = 'https://t.me/googleplay_console_12testers';
+    var masterEnabled = true;
+    var masterReady = false;
 
     function uiLang() {
         return typeof lang !== 'undefined' ? lang : 'ru';
@@ -17,7 +20,13 @@
             var value = window.t(key, params || {}, uiLang());
             if (value && value !== key) return value;
         }
-        return fallback;
+        var raw = fallback;
+        if (params && typeof raw === 'string') {
+            Object.keys(params).forEach(function (name) {
+                raw = raw.replace(new RegExp('\\{' + name + '\\}', 'g'), String(params[name]));
+            });
+        }
+        return raw;
     }
 
     function esc(value) {
@@ -37,10 +46,73 @@
         }) || null;
     }
 
-    function topicUrl() {
-        return (window.App && window.App.proofsTopicUrl)
-            || (window.App && window.App.publicGroupUrl)
-            || FALLBACK_GROUP_URL;
+    function isInviteTelegramUrl(url) {
+        return /t\.me\/\+|t\.me\/joinchat\//i.test(String(url || ''));
+    }
+
+    function communityUrl() {
+        var configured = String((window.App && window.App.publicGroupUrl) || '').trim().replace(/\/+$/, '');
+        if (configured && !isInviteTelegramUrl(configured)) return configured;
+        return FALLBACK_GROUP_URL;
+    }
+
+    function proofsTopicUrl() {
+        var community = communityUrl();
+        var configured = String((window.App && window.App.proofsTopicUrl) || '').trim().replace(/\/+$/, '');
+        if (configured && !isInviteTelegramUrl(configured)) return configured;
+        var match = configured.match(/\/(\d+)$/);
+        if (match) return community + '/' + match[1];
+        return community;
+    }
+
+    function openTelegramUrl(url) {
+        var target = String(url || communityUrl()).trim();
+        if (!target) return;
+        if (window.tg && typeof window.tg.openTelegramLink === 'function') {
+            try {
+                window.tg.openTelegramLink(target);
+                return;
+            } catch (_) {}
+        }
+        window.open(target, '_blank');
+    }
+
+    function ownerHandle() {
+        var raw = '';
+        try {
+            if (typeof telegramUsername !== 'undefined' && telegramUsername) raw = String(telegramUsername);
+            else if (window.tg && window.tg.initDataUnsafe && window.tg.initDataUnsafe.user) {
+                raw = String(window.tg.initDataUnsafe.user.username || '');
+            }
+        } catch (_) {}
+        raw = String(raw || '').trim().replace(/^@+/, '');
+        return raw || 'nickname';
+    }
+
+    function readStoredMaster() {
+        try {
+            var raw = localStorage.getItem(MASTER_STORAGE_KEY);
+            if (raw === '0') return false;
+            if (raw === '1') return true;
+        } catch (_) {}
+        return true;
+    }
+
+    function writeStoredMaster(value) {
+        try {
+            localStorage.setItem(MASTER_STORAGE_KEY, value ? '1' : '0');
+        } catch (_) {}
+    }
+
+    function isMasterEnabled() {
+        return masterEnabled !== false;
+    }
+
+    function setMasterLocal(value) {
+        masterEnabled = value !== false;
+        masterReady = true;
+        writeStoredMaster(masterEnabled);
+        if (window.App) window.App.proofPingMasterEnabled = masterEnabled;
     }
 
     /* ── switch state ────────────────────────────────────────────────────────
@@ -134,12 +206,17 @@
     }
 
     function ctaHtml(modifier) {
-        var label = modifier === 'sm'
+        var isCommunity = modifier === 'sm';
+        var label = isCommunity
             ? text('pcPingChatCtaShort', 'Community')
             : text('pcPingChatCta', 'Testing Proofs');
+        var opener = isCommunity ? 'pcProofPingOpenCommunity(event)' : 'pcProofPingOpenChat(event)';
+        var aria = isCommunity
+            ? text('pcPingCommunityAria', 'Open Community Chat')
+            : text('pcPingOpenAria', 'Open the Testing Proofs topic');
         return '<button type="button" class="pc-ping__link' + (modifier ? ' pc-ping__link--' + modifier : '') + '"' +
-            ' aria-label="' + esc(text('pcPingOpenAria', 'Open the Testing Proofs topic')) + '"' +
-            ' onclick="pcProofPingOpenChat(event)">' +
+            ' aria-label="' + esc(aria) + '"' +
+            ' onclick="' + opener + '">' +
             TELEGRAM_ICON +
             '<span class="pc-ping__link-label">' + esc(label) + '</span>' +
         '</button>';
@@ -264,7 +341,6 @@
                 btn.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
         });
-        syncMasterSwitch();
     }
 
     async function setEnabled(appId, enabled) {
@@ -286,17 +362,34 @@
         });
     }
 
-    function masterState() {
-        var list = ownedProjects();
-        if (!list.length) return true;
-        return list.some(function (project) { return isEnabled(project); });
+    function syncMasterSwitch() {
+        var on = isMasterEnabled();
+        var master = document.getElementById('proof-ping-master-toggle');
+        if (master) master.checked = on;
+        var settingsRow = document.getElementById('settings-proof-ping-toggle');
+        if (settingsRow) settingsRow.checked = on;
+        var sheet = document.getElementById('proof-ping-sheet');
+        if (sheet) {
+            sheet.classList.toggle('is-master-off', !on);
+            var banner = sheet.querySelector('.proof-ping-sheet__banner');
+            if (banner) banner.hidden = on;
+        }
     }
 
-    function syncMasterSwitch() {
-        var master = document.getElementById('proof-ping-master-toggle');
-        if (master) master.checked = masterState();
-        var settingsRow = document.getElementById('settings-proof-ping-toggle');
-        if (settingsRow) settingsRow.checked = masterState();
+    function syncSettingsRow() {
+        var label = document.getElementById('settings-proof-ping-label');
+        if (label) label.textContent = text('settingsProofPingLabel', '🔔 Notifications');
+        var meta = document.getElementById('settings-proof-ping-meta');
+        if (meta) {
+            meta.textContent = text(
+                'settingsProofPingMeta',
+                'Mention @{username} in the Testing Proofs topic',
+                { username: ownerHandle() }
+            );
+        }
+        var chatLabel = document.getElementById('settings-proof-ping-chat-label');
+        if (chatLabel) chatLabel.textContent = text('settingsProofPingCommunity', 'Community Chat');
+        syncMasterSwitch();
     }
 
     function sheetRowsHtml() {
@@ -319,12 +412,47 @@
         if (!body) return;
         body.innerHTML = sheetRowsHtml();
         var title = document.getElementById('proof-ping-sheet-title');
-        if (title) title.textContent = text('settingsProofPingSheetTitle', 'Screenshot notifications');
+        if (title) title.textContent = text('settingsProofPingSheetTitle', 'Notifications');
         var hint = document.getElementById('proof-ping-sheet-hint');
         if (hint) hint.textContent = text('settingsProofPingSheetHint', '');
         var masterLabel = document.getElementById('proof-ping-master-label');
-        if (masterLabel) masterLabel.textContent = text('settingsProofPingMaster', 'All projects');
+        if (masterLabel) masterLabel.textContent = text('settingsProofPingMaster', 'All notifications');
+        var banner = document.getElementById('proof-ping-sheet-banner');
+        if (banner) banner.textContent = text('settingsProofPingMasterOff', 'Global mute is on: no @mentions are sent.');
+        var chatLabel = document.getElementById('proof-ping-sheet-chat-label');
+        if (chatLabel) chatLabel.textContent = text('settingsProofPingCommunity', 'Community Chat');
         syncMasterSwitch();
+    }
+
+    async function persistMaster(enabled) {
+        try {
+            var response = await fetch(apiBase() + '/users/me/proof-ping-master', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: !!enabled, init_data: initData() }),
+            });
+            var payload = await response.json().catch(function () { return {}; });
+            if (!response.ok || !payload || payload.status !== 'success') {
+                throw new Error((payload && payload.code) || 'proof_ping_master_save_failed');
+            }
+            return true;
+        } catch (error) {
+            if (typeof window.showToast === 'function') {
+                window.showToast(text('settingsProofPingSaveError', 'Could not save the setting'));
+            }
+            return false;
+        }
+    }
+
+    async function setMasterEnabled(enabled) {
+        var previous = isMasterEnabled();
+        setMasterLocal(enabled);
+        syncMasterSwitch();
+        var saved = await persistMaster(enabled);
+        if (!saved) {
+            setMasterLocal(previous);
+            syncMasterSwitch();
+        }
     }
 
     window.pcProofPingToggle = function (appId, input) {
@@ -342,20 +470,20 @@
     window.pcProofPingMasterToggle = function (input) {
         var enabled = !!(input && input.checked);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
-        ownedProjects().forEach(function (project) {
-            if (isEnabled(project) === enabled) return;
-            setEnabled(Number(project.id || project.app_id || 0), enabled);
-        });
+        setMasterEnabled(enabled);
     };
 
     window.pcProofPingOpenChat = function (event) {
         if (event) event.stopPropagation();
-        var url = topicUrl();
-        if (window.tg && typeof window.tg.openTelegramLink === 'function') {
-            window.tg.openTelegramLink(url);
-            return;
+        openTelegramUrl(proofsTopicUrl());
+    };
+
+    window.pcProofPingOpenCommunity = function (event) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
         }
-        window.open(url, '_blank');
+        openTelegramUrl(communityUrl());
     };
 
     /** Collapse the compact bar into the Telegram icon pinned to the status row. */
@@ -422,6 +550,19 @@
         stateFor: stateFor,
         isEnabled: isEnabled,
         isDismissed: isDismissed,
+        isMasterEnabled: isMasterEnabled,
+        applyMasterFromProfile: function (value) {
+            setMasterLocal(value !== false);
+            syncSettingsRow();
+        },
         syncMasterSwitch: syncMasterSwitch,
+        syncSettingsRow: syncSettingsRow,
     };
+
+    setMasterLocal(readStoredMaster());
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', syncSettingsRow);
+    } else {
+        syncSettingsRow();
+    }
 })();

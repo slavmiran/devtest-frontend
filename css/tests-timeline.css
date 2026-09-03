@@ -809,7 +809,7 @@ button.is-shaking {
 .karma-select-tester-meta {
     font-size: 13px;
     font-weight: 600;
-    color: var(--link-color, #0a84ff);
+    color: var(--text-secondary, #aeaeb2);
     margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
@@ -852,7 +852,7 @@ button.is-shaking {
     width: 100%;
     padding: 12px 14px;
     border-radius: 14px;
-    border: 1px solid transparent;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     text-align: left;
     cursor: pointer;
     background: rgba(255, 255, 255, 0.04);
@@ -863,40 +863,40 @@ button.is-shaking {
     transform: scale(0.98);
 }
 
-.karma-option-card.good {
-    background: rgba(52, 199, 89, 0.08);
-    border-color: rgba(52, 199, 89, 0.22);
-}
-
-.karma-option-card.good:not(:disabled):hover {
-    background: rgba(52, 199, 89, 0.14);
-    border-color: rgba(52, 199, 89, 0.38);
-}
-
+.karma-option-card.good,
 .karma-option-card.bug {
-    background: rgba(0, 122, 255, 0.08);
-    border-color: rgba(0, 122, 255, 0.22);
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
+.karma-option-card.good:not(:disabled):hover,
 .karma-option-card.bug:not(:disabled):hover {
-    background: rgba(0, 122, 255, 0.14);
-    border-color: rgba(0, 122, 255, 0.38);
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.16);
 }
 
 .karma-option-card:disabled,
 .karma-option-card.is-disabled {
     opacity: 0.45;
     cursor: not-allowed;
-    filter: grayscale(0.5);
+    filter: grayscale(0.35);
     background: rgba(142, 142, 147, 0.06) !important;
     border-color: rgba(142, 142, 147, 0.15) !important;
     transform: none !important;
 }
 
 .karma-option-icon {
-    font-size: 26px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
     line-height: 1;
     flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .karma-option-body {
@@ -925,18 +925,16 @@ button.is-shaking {
     border-radius: 8px;
     letter-spacing: 0.2px;
     flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary, #c7c7cc);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.karma-option-badge.good {
-    background: rgba(52, 199, 89, 0.18);
-    color: var(--success, #34c759);
-    border: 1px solid rgba(52, 199, 89, 0.3);
-}
-
+.karma-option-badge.good,
 .karma-option-badge.bug {
-    background: rgba(0, 122, 255, 0.18);
-    color: var(--link-color, #0a84ff);
-    border: 1px solid rgba(0, 122, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary, #c7c7cc);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .karma-option-desc {
@@ -950,10 +948,11 @@ button.is-shaking {
     font-size: 11px;
     font-weight: 600;
     line-height: 1.3;
+    color: var(--hint-color, #8e8e93);
 }
 
 .karma-option-status.is-available {
-    color: var(--success, #34c759);
+    color: var(--text-secondary, #aeaeb2);
 }
 
 .karma-option-status.is-given {
@@ -961,14 +960,15 @@ button.is-shaking {
 }
 
 .karma-option-status.is-exhausted {
-    color: #ff9f0a;
+    color: var(--hint-color, #8e8e93);
 }
 
 .karma-select-note {
     font-size: 11px;
     color: var(--hint-color, #8e8e93);
     line-height: 1.45;
-    background: rgba(142, 142, 147, 0.08);
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 10px;
     padding: 8px 10px;
     margin-bottom: 14px;
@@ -980,8 +980,8 @@ button.is-shaking {
     border-radius: 12px;
     font-size: 14px;
     font-weight: 600;
-    border: 1px solid rgba(142, 142, 147, 0.2);
-    background: var(--secondary-bg-color, rgba(142, 142, 147, 0.12));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text-color, #fff);
     cursor: pointer;
     transition: background 0.15s ease, transform 0.1s ease;

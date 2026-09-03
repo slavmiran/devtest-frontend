@@ -1659,6 +1659,13 @@ async function loadUserProfilePreferences() {
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
         window.App.autoAcceptBounty = !!window._autoAcceptBountyEnabled;
         window.App.defaultGroupJoined = _defaultGroupJoined;
+        if (window.ProofPing && typeof window.ProofPing.applyMasterFromProfile === 'function') {
+            window.ProofPing.applyMasterFromProfile(
+                typeof profile.proof_ping_master_enabled === 'undefined'
+                    ? true
+                    : profile.proof_ping_master_enabled
+            );
+        }
         if ((!wasReady || previousJoined !== _defaultGroupJoined) && typeof window.renderTests === 'function') {
             window.renderTests(true);
         }
