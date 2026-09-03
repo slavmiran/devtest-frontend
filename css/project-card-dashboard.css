@@ -2352,51 +2352,113 @@ button.pc-stage-badge {
 
 .pc-activity__filters {
     display: flex;
-    gap: 2px;
+    width: 100%;
+    gap: 0;
     margin: 2px 0 0;
     padding: 3px;
-    border-radius: 11px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.045);
 }
 
 .pc-activity__filter {
     flex: 1 1 0;
     min-width: 0;
-    min-height: 32px;
-    padding: 0 4px;
+    min-height: 28px;
+    padding: 0 6px;
     border: 0;
-    border-radius: 9px;
+    border-radius: 8px;
     background: transparent;
     color: var(--text-tertiary);
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 650;
     line-height: 1.15;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.pc-activity__filter-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pc-activity__count {
+    flex: 0 0 auto;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-tertiary);
+}
+
+.pc-activity__count.is-warn {
+    color: #ff9f0a;
 }
 
 .pc-activity__filter.is-active {
     color: var(--text-primary);
-    background: rgba(10, 132, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .pc-activity__caption {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
-    gap: 8px;
-    padding: 8px 0 6px;
+    justify-content: space-between;
+    gap: 6px 10px;
+    padding: 8px 0 4px;
 }
 
 .pc-activity__hint {
     margin: 0;
-    flex: 1;
+    flex: 1 1 160px;
     min-width: 0;
     font-size: 11px;
     font-weight: 600;
-    line-height: 1.35;
+    line-height: 1.4;
     color: var(--text-tertiary);
+}
+
+.pc-activity__info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-left: 2px;
+    vertical-align: middle;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.pc-activity__hist {
+    flex: 0 0 auto;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 650;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.pc-activity__hist.is-on {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .pc-activity__mode {
@@ -2422,7 +2484,7 @@ button.pc-stage-badge {
 
 .pc-activity__mode-btn.is-active {
     color: var(--text-primary);
-    background: rgba(10, 132, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .pc-activity__list {
@@ -2717,4 +2779,161 @@ button.pc-act-reason {
     color: var(--text-secondary);
     background: rgba(255, 255, 255, 0.05);
     border-color: var(--border-subtle);
+}
+
+/* Filtered-tab person rows (Contribution / Attention / Control). All keeps the dense roster. */
+
+.pc-person {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+}
+
+.pc-person:last-child {
+    border-bottom: none;
+}
+
+.pc-person__top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pc-person__avatar {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.pc-person .pc-avatar {
+    width: 36px;
+    height: 36px;
+}
+
+.pc-person .pc-avatar--letter {
+    font-size: 14px;
+}
+
+.pc-person__dot {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    border: 2px solid var(--bg-surface-2);
+    box-sizing: border-box;
+}
+
+.pc-person.is-sky .pc-person__dot {
+    background: var(--accent-primary);
+}
+
+.pc-person.is-amber .pc-person__dot {
+    background: #ff9f0a;
+}
+
+.pc-person.is-green .pc-person__dot {
+    background: var(--success);
+}
+
+.pc-person__copy {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pc-person__name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pc-person__meta {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-secondary);
+}
+
+.pc-person__meta > * + .pc-tag,
+.pc-person__meta > * + .pc-pstate {
+    margin-left: 6px;
+}
+
+.pc-person__actions {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    flex: 0 0 auto;
+}
+
+.pc-person__chev {
+    flex: 0 0 auto;
+    margin-left: 2px;
+    color: var(--text-tertiary);
+    font-size: 18px;
+    line-height: 1;
+    opacity: 0.5;
+}
+
+.pc-person .pc-slots {
+    margin-left: 46px;
+    margin-top: 8px;
+}
+
+.pc-iconact {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 4px 4px 2px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.pc-iconact svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+.pc-iconact__label {
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1.1;
+    max-width: 52px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: inherit;
+}
+
+.pc-iconact--remind,
+.pc-iconact--process {
+    color: var(--accent-primary);
+}
+
+.pc-iconact--done {
+    color: var(--success);
+    cursor: default;
+}
+
+.pc-iconact:active {
+    transform: scale(0.94);
+}
+
+.pc-iconact--done:active {
+    transform: none;
 }

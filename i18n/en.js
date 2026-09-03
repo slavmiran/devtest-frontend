@@ -3046,9 +3046,15 @@
             pcModeNow: "Now",
             pcModeHistory: "History",
             pcHintContribution: "Today they did more than a regular check-in: reports, bugs, recommendations, or 3+ screenshots.",
-            pcHintAttention: "These testers may stall the test or need an action from you.",
+            pcHintAttention: "Testers who may stall the test or need an action from you.",
             pcHintControl: "Today they must confirm testing with a control report.",
             pcHintAll: "Everyone in the current test.",
+            pcHintInfoAria: "Filter criteria",
+            pcHintCriteriaContribution: "Value: testers who sent a bug, idea, review, or 3+ screenshots today.",
+            pcHintCriteriaAttention: "Attention: testers who have not opened the app, missed yesterday's control proof, skipped 3+ days, or still owe a mutual test.",
+            pcHintCriteriaControl: "Control: testers whose today is a mandatory proof day (1, 4, 7, 10, 14).",
+            pcHintCriteriaAll: "All: the full current roster of this test.",
+            pcDebtShort: "Debt",
 
     };
     window.I18N_EN = window.I18NEN;

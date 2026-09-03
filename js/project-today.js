@@ -128,6 +128,74 @@
         return '<span class="pc-avatar pc-avatar--letter">' + esc((label.charAt(0) || '?').toUpperCase()) + '</span>';
     }
 
+    /* Compact Material-style glyphs for filtered-tab actions. */
+    var ICONS = {
+        remind: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>',
+        reward: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35C11.96 2.54 11.05 2 10 2 8.34 2 7 3.34 7 5c0 .35.07.69.18 1H5c-1.11 0-1.99.89-1.99 2L3 20c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-6 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM20 20H4V8h16v12z"/></svg>',
+        link: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
+        image: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>',
+        process: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H6v-2h6v2zm4-4H6v-2h10v2zm0-4H6V7h10v2z"/></svg>',
+        done: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>',
+    };
+
+    function iconAct(kind, label, onclick, opts) {
+        opts = opts || {};
+        var title = opts.title || label || '';
+        var labelHtml = label ? '<span class="pc-iconact__label">' + esc(label) + '</span>' : '';
+        if (opts.done) {
+            return '<span class="pc-iconact pc-iconact--done" title="' + esc(title) + '">' +
+                ICONS.done + labelHtml + '</span>';
+        }
+        return '<button type="button" class="pc-iconact pc-iconact--' + esc(kind) + '" title="' + esc(title) + '"' +
+            ' onclick="event.stopPropagation(); ' + onclick + '">' +
+            (ICONS[kind] || '') +
+            labelHtml +
+            '</button>';
+    }
+
+    function dossierClick(appId, tester) {
+        var username = dossierUsername(tester);
+        var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
+        return 'openDossierModal(\'' + safeUser + '\', ' + Number(tester && (tester.tester_id || tester.id) || 0) + ', ' + Number(appId) + ')';
+    }
+
+    function attentionTone(item) {
+        var codes = {};
+        (item && item.reasons || []).forEach(function (reason) {
+            codes[String(reason.code || '')] = true;
+        });
+        if (codes.skips || codes.missed_control || codes.debt) return 'amber';
+        if (codes.not_opened) return 'sky';
+        return 'amber';
+    }
+
+    /**
+     * Status-dot is a visual summary of already-known states, not new logic.
+     * sky = waiting / expected action; amber = stalling risk; green = done.
+     */
+    function personRowHtml(opts) {
+        var tester = opts.tester || {};
+        var tone = opts.tone || 'neutral';
+        var extra = opts.extraHtml || '';
+        var stateCls = opts.received ? ' is-received' : (opts.waiting ? ' is-waiting' : '');
+        return '<li class="pc-person is-' + esc(tone) + stateCls + '"' +
+            ' onclick="' + dossierClick(opts.appId, tester) + '">' +
+            '<div class="pc-person__top">' +
+                '<span class="pc-person__avatar">' +
+                    avatarHtml(tester) +
+                    '<span class="pc-person__dot" aria-hidden="true"></span>' +
+                '</span>' +
+                '<div class="pc-person__copy">' +
+                    '<span class="pc-person__name notranslate">' + esc(handleOf(tester)) + '</span>' +
+                    '<span class="pc-person__meta">' + (opts.metaHtml || '') + '</span>' +
+                '</div>' +
+                '<div class="pc-person__actions">' + (opts.actionsHtml || '') + '</div>' +
+                '<span class="pc-person__chev" aria-hidden="true">›</span>' +
+            '</div>' +
+            extra +
+        '</li>';
+    }
+
     function proofTypeLabel(type) {
         if (type === 'bug') return text('pcProofBug', 'Bug');
         if (type === 'idea') return text('pcProofIdea', 'Idea');
@@ -448,40 +516,49 @@
         return received + '<span class="pc-tag pc-tag--' + esc(row.proofType) + '">' + esc(typeLabel) + '</span>';
     }
 
-    function feedbackActionHtml(appId, row) {
-        if (row.feedbackId <= 0) return '';
-        if (isProcessed(row)) {
-            return '<span class="pc-linkaction is-done">' + esc(text('pcProcessedLabel', 'Processed')) + '</span>';
-        }
-        return '<button type="button" class="pc-linkaction" onclick="event.stopPropagation(); pcOpenFeedback(' +
-            Number(appId) + ',' + Number(row.feedbackId) + ')">' + esc(text('pcProcessBtn', 'Process')) + '</button>';
-    }
-
-    function rewardActionHtml(appId, row, context) {
+    function controlActionsHtml(appId, row, context) {
+        var html = '';
         if (!row.received) {
-            return '<button type="button" class="pc-action pc-action--remind" onclick="event.stopPropagation(); pcRemindTester(' +
-                Number(appId) + ',' + Number(row.testerId) + ')">' + esc(text('pcRemindBtn', 'Remind')) + '</button>';
+            return iconAct('remind', text('pcRemindBtn', 'Remind'),
+                'pcRemindTester(' + Number(appId) + ',' + Number(row.testerId) + ')');
+        }
+        if (row.proofId > 0) {
+            html += iconAct('image', '',
+                'pcOpenProof(' + Number(appId) + ',' + Number(row.proofId) + ',0)',
+                { title: controlProofLabel(row) });
+        }
+        if (row.feedbackId > 0 && !isProcessed(row)) {
+            html += iconAct('process', '',
+                'pcOpenFeedback(' + Number(appId) + ',' + Number(row.feedbackId) + ')',
+                { title: text('pcProcessBtn', 'Process') });
         }
         if (context.rewardedTesterIds.indexOf(Number(row.testerId)) !== -1) {
-            return '<span class="pc-action pc-action--done">☯️ ' + esc(text('pcRewardedLabel', 'Rewarded')) + '</span>';
+            html += iconAct('reward', text('pcRewardedLabel', 'Rewarded'), '', { done: true });
+        } else if (context.rewardsLeft > 0) {
+            html += iconAct('reward', text('pcRewardBtn', 'Reward'),
+                'pcRewardTester(' + Number(appId) + ',' + Number(row.testerId) + ')');
         }
-        if (context.rewardsLeft <= 0) return '';
-        return '<button type="button" class="pc-action pc-action--reward" onclick="event.stopPropagation(); pcRewardTester(' +
-            Number(appId) + ',' + Number(row.testerId) + ')">' + esc(text('pcRewardBtn', 'Reward')) + '</button>';
+        return html;
     }
 
     function controlRowHtml(appId, row, context) {
-        return '<li class="pc-row' + (row.received ? ' is-received' : ' is-waiting') + '">' +
-            '<div class="pc-row__top">' +
-                avatarHtml(row.tester) +
-                '<span class="pc-row__ident">' +
-                    '<span class="pc-row__name notranslate">' + esc(handleOf(row.tester)) + '</span>' +
-                    '<span class="pc-row__meta">' + stateHtml(row) + feedbackActionHtml(appId, row) + '</span>' +
-                '</span>' +
-                rewardActionHtml(appId, row, context) +
-            '</div>' +
-            (row.received && row.slots && row.slots.length ? slotsHtml(appId, row) : '') +
-        '</li>';
+        var meta = '<span class="pc-pstate ' + (row.received ? 'is-received' : 'is-pending') + '">' +
+            esc(row.received ? text('pcControlReceived', 'Received') : text('pcControlPending', 'Pending')) +
+            '</span>';
+        var typeLabel = row.received ? proofTypeLabel(row.proofType) : '';
+        if (typeLabel) {
+            meta += '<span class="pc-tag pc-tag--' + esc(row.proofType) + '">' + esc(typeLabel) + '</span>';
+        }
+        return personRowHtml({
+            appId: appId,
+            tester: row.tester,
+            tone: row.received ? 'green' : 'sky',
+            received: !!row.received,
+            waiting: !row.received,
+            metaHtml: meta,
+            actionsHtml: controlActionsHtml(appId, row, context),
+            extraHtml: row.received && row.slots && row.slots.length ? slotsHtml(appId, row) : '',
+        });
     }
 
     /* ───────────────────────── control block rendering ─────────────────────── */
@@ -735,74 +812,49 @@
                 return '<button type="button" class="pc-act-reason" onclick="event.stopPropagation(); ' + handler + '">' +
                     esc(reason.label) + '</button>';
             }).join('<span class="pc-act-reason-sep"> · </span>');
-            var username = dossierUsername(item.tester);
-            var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
             var rewarded = context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
             var rewardHtml = rewarded
-                ? '<span class="pc-action pc-action--done">☯️ ' + esc(text('pcRewardedLabel', 'Rewarded')) + '</span>'
+                ? iconAct('reward', text('pcRewardedLabel', 'Rewarded'), '', { done: true })
                 : (context.rewardsLeft > 0
-                    ? '<button type="button" class="pc-action pc-action--reward" onclick="event.stopPropagation(); pcRewardTester(' +
-                        Number(appId) + ',' + Number(item.testerId) + ')">' + esc(text('pcRewardBtn', 'Reward')) + '</button>'
+                    ? iconAct('reward', text('pcRewardBtn', 'Reward'),
+                        'pcRewardTester(' + Number(appId) + ',' + Number(item.testerId) + ')')
                     : '');
-            return '<li class="pc-act-item" onclick="openDossierModal(\'' + safeUser + '\', ' + Number(item.testerId) + ', ' + Number(appId) + ')">' +
-                '<div class="pc-act-item__main">' +
-                    '<span class="pc-act-item__name notranslate">' + esc(handleOf(item.tester)) + '</span>' +
-                    '<span class="pc-act-item__reasons">' + reasonHtml + '</span>' +
-                '</div>' +
-                rewardHtml +
-            '</li>';
+            return personRowHtml({
+                appId: appId,
+                tester: item.tester,
+                tone: rewarded ? 'green' : 'sky',
+                metaHtml: reasonHtml,
+                actionsHtml: rewardHtml,
+            });
         }).join('') + '</ul>';
     }
 
     function attentionSheetHtml(appId, items) {
         if (!items.length) return emptySheetHtml(text('pcAttentionEmpty', 'Nobody needs attention right now'));
         return '<ul class="pc-act-list">' + items.map(function (item) {
-            var username = dossierUsername(item.tester);
-            var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
             var hasDebt = item.reasons.some(function (reason) { return reason.code === 'debt'; });
-            var actions = '<button type="button" class="pc-action pc-action--remind" onclick="event.stopPropagation(); pcRemindTester(' +
-                Number(appId) + ',' + Number(item.testerId) + ')">' + esc(text('pcRemindBtn', 'Remind')) + '</button>';
+            var actions = iconAct('remind', text('pcRemindBtn', 'Remind'),
+                'pcRemindTester(' + Number(appId) + ',' + Number(item.testerId) + ')');
             if (hasDebt && typeof openTesterLinkStatusFromRow === 'function') {
-                actions += '<button type="button" class="pc-action pc-action--debt" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(' +
-                    Number(appId) + ',' + Number(item.testerId) + ', event)">' +
-                    esc(text('linkedBadgeDebt', 'Mutual debt')) + '</button>';
+                actions += iconAct('link', text('pcDebtShort', 'Debt'),
+                    'openTesterLinkStatusFromRow(' + Number(appId) + ',' + Number(item.testerId) + ', event)',
+                    { title: text('linkedBadgeDebt', 'Mutual debt') });
             }
-            return '<li class="pc-act-item" onclick="openDossierModal(\'' + safeUser + '\', ' + Number(item.testerId) + ', ' + Number(appId) + ')">' +
-                '<div class="pc-act-item__main">' +
-                    '<span class="pc-act-item__name notranslate">' + esc(handleOf(item.tester)) + '</span>' +
-                    '<span class="pc-act-item__reasons">' + esc(item.reasons.map(function (reason) { return reason.label; }).join(' · ')) + '</span>' +
-                '</div>' +
-                '<div class="pc-act-item__actions">' + actions + '</div>' +
-            '</li>';
+            return personRowHtml({
+                appId: appId,
+                tester: item.tester,
+                tone: attentionTone(item),
+                metaHtml: esc(item.reasons.map(function (reason) { return reason.label; }).join(' · ')),
+                actionsHtml: actions,
+            });
         }).join('') + '</ul>';
     }
 
     function compactControlSheetHtml(appId, rows, context) {
         if (!rows.length) return emptySheetHtml(text('pcControlEmpty', 'No control day today'));
-        return '<ul class="pc-act-list">' + rows.map(function (row) {
-            var username = dossierUsername(row.tester);
-            var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
-            var mark = row.received ? '✓' : '○';
-            var typeLabel = controlProofLabel(row);
-            var openProof = row.received && row.proofId > 0
-                ? 'pcOpenProof(' + Number(appId) + ',' + Number(row.proofId) + ',0)'
-                : '';
-            var nameClick = openProof || ('openDossierModal(\'' + safeUser + '\', ' + Number(row.testerId) + ', ' + Number(appId) + ')');
-            var extra = '';
-            if (row.received && row.feedbackId > 0 && !isProcessed(row)) {
-                extra = '<button type="button" class="pc-linkaction" onclick="event.stopPropagation(); pcOpenFeedback(' +
-                    Number(appId) + ',' + Number(row.feedbackId) + ')">' + esc(text('pcProcessBtn', 'Process')) + '</button>';
-            }
-            return '<li class="pc-act-item' + (row.received ? ' is-received' : ' is-waiting') + '">' +
-                '<button type="button" class="pc-act-item__main pc-act-item__main--btn" onclick="event.stopPropagation(); ' + nameClick + '">' +
-                    '<span class="pc-act-item__name notranslate"><span class="pc-act-mark" aria-hidden="true">' + mark + '</span> ' +
-                    esc(handleOf(row.tester)) + '</span>' +
-                    '<span class="pc-act-item__reasons">' + esc(typeLabel) + '</span>' +
-                '</button>' +
-                extra +
-                rewardActionHtml(appId, row, context) +
-            '</li>';
-        }).join('') + '</ul>';
+        return '<ul class="pc-act-list">' +
+            rows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
+        '</ul>';
     }
 
     function rosterSourceHtml(appId) {
@@ -820,9 +872,9 @@
 
     function controlNowHtml(appId, rows, context) {
         if (!rows.length) return emptySheetHtml(text('pcControlEmpty', 'No control day today'));
-        return '<ul class="pc-control__rows pc-activity-control">' +
+        return '<ul class="pc-act-list pc-activity-control">' +
             rows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
-            '</ul>';
+        '</ul>';
     }
 
     function nowHtmlForFilter(project, filter, data, context) {
@@ -947,7 +999,27 @@
         return text('pcHintAll', 'Everyone in the current test.');
     }
 
-    function filtersHtml(appId, visible, active) {
+    function criteriaForFilter(filter) {
+        if (filter === 'contribution') {
+            return text('pcHintCriteriaContribution', 'Value: testers who sent a bug, idea, review, or 3+ screenshots today.');
+        }
+        if (filter === 'attention') {
+            return text('pcHintCriteriaAttention', 'Attention: testers who have not opened the app, missed yesterday\'s control proof, skipped 3+ days, or still owe a mutual test.');
+        }
+        if (filter === 'control') {
+            return text('pcHintCriteriaControl', 'Control: testers whose today is a mandatory proof day (1, 4, 7, 10, 14).');
+        }
+        return text('pcHintCriteriaAll', 'All: the full current roster of this test.');
+    }
+
+    function filterCount(key, data) {
+        if (key === 'contribution') return (data && data.contribution || []).length;
+        if (key === 'attention') return (data && data.attention || []).length;
+        if (key === 'control') return (data && data.controlRows || []).length;
+        return 0;
+    }
+
+    function filtersHtml(appId, visible, active, data) {
         var labels = {
             contribution: text('pcFilterContribution', 'Contribution'),
             attention: text('pcFilterAttention', 'Attention'),
@@ -956,25 +1028,34 @@
         };
         return '<div class="pc-activity__filters" role="tablist">' +
             visible.map(function (key) {
+                var count = filterCount(key, data || {});
+                var countHtml = key === 'testers' || count <= 0
+                    ? ''
+                    : '<span class="pc-activity__count' + (key === 'attention' ? ' is-warn' : '') + '">' + count + '</span>';
                 return '<button type="button" class="pc-activity__filter' + (key === active ? ' is-active' : '') +
                     '" role="tab" aria-selected="' + (key === active ? 'true' : 'false') +
                     '" onclick="event.stopPropagation(); pcSetActivityFilter(' + Number(appId) + ', \'' + key + '\')">' +
-                    esc(labels[key]) + '</button>';
+                    '<span class="pc-activity__filter-label">' + esc(labels[key]) + '</span>' +
+                    countHtml +
+                    '</button>';
             }).join('') +
         '</div>';
     }
 
     function captionHtml(appId, filter, mode) {
+        var historyOn = mode === 'history';
         return '<div class="pc-activity__caption">' +
-            '<p class="pc-activity__hint">' + esc(hintForFilter(filter)) + '</p>' +
-            '<div class="pc-activity__mode" role="group" aria-label="' + esc(text('pcModeNow', 'Now') + ' / ' + text('pcModeHistory', 'History')) + '">' +
-                '<button type="button" class="pc-activity__mode-btn' + (mode === 'now' ? ' is-active' : '') +
-                    '" onclick="event.stopPropagation(); pcSetActivityMode(' + Number(appId) + ', \'now\')">' +
-                    esc(text('pcModeNow', 'Now')) + '</button>' +
-                '<button type="button" class="pc-activity__mode-btn' + (mode === 'history' ? ' is-active' : '') +
-                    '" onclick="event.stopPropagation(); pcSetActivityMode(' + Number(appId) + ', \'history\')">' +
-                    esc(text('pcModeHistory', 'History')) + '</button>' +
-            '</div>' +
+            '<p class="pc-activity__hint">' +
+                esc(hintForFilter(filter)) +
+                '<button type="button" class="pc-activity__info" aria-label="' +
+                    esc(text('pcHintInfoAria', 'Filter criteria')) +
+                    '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')">ⓘ</button>' +
+            '</p>' +
+            '<button type="button" class="pc-activity__hist' + (historyOn ? ' is-on' : '') +
+                '" aria-pressed="' + (historyOn ? 'true' : 'false') +
+                '" onclick="event.stopPropagation(); pcToggleActivityHistory(' + Number(appId) + ')">' +
+                esc(text('pcModeHistory', 'History')) +
+            '</button>' +
         '</div>';
     }
 
@@ -1038,7 +1119,7 @@
         shell.classList.toggle('is-hydrating', !!data.loading);
         if (filtersEl) {
             var nextFilters = document.createElement('div');
-            nextFilters.innerHTML = filtersHtml(safeAppId, visibleFilters(data), filter);
+            nextFilters.innerHTML = filtersHtml(safeAppId, visibleFilters(data), filter, data);
             filtersEl.replaceWith(nextFilters.firstChild);
         }
         if (captionEl) {
@@ -1150,7 +1231,7 @@
             '<header class="pc-activity__head">' +
                 '<h3 class="pc-activity__title">' + esc(text('pcActivityTitle', 'Testers activity')) + '</h3>' +
             '</header>' +
-            filtersHtml(project.id, visibleFilters(data), filter) +
+            filtersHtml(project.id, visibleFilters(data), filter, data) +
             captionHtml(project.id, filter, mode) +
             workspaceListHtml(project, filter, mode, data, context) +
             errorHtml +
@@ -1222,6 +1303,19 @@
         writePrefs(appId, prefs);
         refreshActivityWorkspace(appId);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    };
+
+    window.pcToggleActivityHistory = function (appId) {
+        var project = projectById(appId);
+        var prefs = readPrefs(appId);
+        var filter = resolvedFilter(prefs, activityCounts(project || { testers: [] }));
+        var next = prefs.modes[filter] === 'history' ? 'now' : 'history';
+        window.pcSetActivityMode(appId, next);
+    };
+
+    window.pcShowFilterCriteria = function (filter) {
+        var message = criteriaForFilter(filter);
+        if (typeof showToast === 'function') showToast(message, 4500);
     };
 
     window.pcSetActivityMode = function (appId, mode) {
