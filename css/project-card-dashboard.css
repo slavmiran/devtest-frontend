@@ -3450,9 +3450,9 @@ button.pc-act-reason {
     flex-direction: column;
     align-items: stretch;
     min-width: 0;
-    height: 206px;
+    height: 174px;
     box-sizing: border-box;
-    padding: 13px 10px 10px;
+    padding: 10px 8px 8px;
     border: 1px solid rgba(188, 206, 238, 0.09);
     border-radius: 16px;
     background: rgba(7, 14, 25, 0.22);
@@ -3487,8 +3487,8 @@ button.pc-act-reason {
     display: flex;
     align-items: baseline;
     justify-content: center;
-    min-height: 48px;
-    margin-top: 21px;
+    min-height: 38px;
+    margin-top: 10px;
     color: #f5f8ff;
     font-variant-numeric: tabular-nums;
     text-align: center;
@@ -3496,7 +3496,7 @@ button.pc-act-reason {
 
 .pc-metric-day__value,
 .pc-metric-team__value {
-    font-size: 31px;
+    font-size: 28px;
     font-weight: 820;
     letter-spacing: -0.055em;
     line-height: 1;
@@ -3505,17 +3505,17 @@ button.pc-act-reason {
 .pc-metric-day__total {
     margin-left: 4px;
     color: rgba(193, 210, 235, 0.62);
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     letter-spacing: -0.03em;
 }
 
 .pc-metric-card--testers .pc-metric-main {
-    margin-top: 20px;
+    margin-top: 8px;
 }
 
 .pc-metric-team__value {
-    font-size: 39px;
+    font-size: 34px;
 }
 
 .pc-metric-reserve {
@@ -3524,14 +3524,14 @@ button.pc-act-reason {
     justify-content: center;
     align-self: center;
     gap: 5px;
-    min-height: 32px;
+    min-height: 26px;
     max-width: 100%;
     box-sizing: border-box;
-    margin-top: 6px;
-    padding: 4px 7px;
+    margin-top: 4px;
+    padding: 3px 6px;
     border: 1px solid transparent;
     border-radius: 8px;
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 760;
     line-height: 1.25;
     text-align: center;
@@ -3581,9 +3581,9 @@ button.pc-act-reason {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 28px;
+    min-height: 24px;
     margin-top: auto;
-    padding-top: 8px;
+    padding-top: 6px;
     border-top: 1px solid rgba(188, 206, 238, 0.08);
     text-align: center;
 }
@@ -3622,13 +3622,13 @@ button.pc-act-reason {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 94px;
-    margin: 3px 0 1px;
+    min-height: 80px;
+    margin: 0 0 2px;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring {
-    width: 88px;
-    height: 88px;
+    width: 78px;
+    height: 78px;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count {
@@ -3689,18 +3689,27 @@ button.pc-act-reason {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    align-self: center;
+    gap: 4px;
     max-width: 100%;
-    min-height: 22px;
+    min-height: 24px;
     box-sizing: border-box;
-    padding: 3px 5px;
+    margin-top: 3px;
+    padding: 3px 7px;
     border-radius: 7px;
-    font-size: 8.5px;
-    font-weight: 720;
+    font-size: 9px;
+    font-weight: 740;
     line-height: 1.15;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.pc-daily-activity-line {
+    color: rgba(197, 211, 233, 0.60);
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.25;
 }
 
 .pc-metric-card--google .pc-daily-status .status-chip__icon {

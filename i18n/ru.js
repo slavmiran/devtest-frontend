@@ -3002,7 +3002,7 @@
             dprLabelPlanClosed: "План закрыт",
             dprLabelOvercharge: "Overcharge",
             dprChipDeficit: "Дефицит (-{count})",
-            dprChipGathering: "Сбор чекинов ({done}/12)",
+            dprChipGathering: "Сбор чекинов",
             dprChipComplete: "Норма выполнена",
             dprChipOver: "Сверх нормы (+{count})",
             dprSubtextDeficit: "Протестировали сегодня: {done} из {total} ({percent}%)",

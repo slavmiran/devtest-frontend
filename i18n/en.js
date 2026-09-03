@@ -2995,7 +2995,7 @@
             dprLabelPlanClosed: "Quota met",
             dprLabelOvercharge: "Overcharge",
             dprChipDeficit: "Deficit (-{count})",
-            dprChipGathering: "In progress ({done}/12)",
+            dprChipGathering: "Collecting check-ins",
             dprChipComplete: "Quota completed",
             dprChipOver: "Above quota (+{count})",
             dprSubtextDeficit: "Tested today: {done} of {total} ({percent}%)",

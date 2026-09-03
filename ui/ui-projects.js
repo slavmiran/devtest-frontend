@@ -146,7 +146,7 @@ function getProjectDailyProgressMeta(project) {
         };
     } else if (todayDone < 12) {
         statusChip = {
-            text: tr('dprChipGathering', { done: todayDone }, `Сбор чекинов (${todayDone}/12)`),
+            text: tr('dprChipGathering', {}, 'Сбор чекинов'),
             kind: 'sky',
             iconHtml: icons.time
         };
@@ -1242,11 +1242,12 @@ function renderProjects(force) {
         const testersRingHtml = typeof buildProjectDailyProgressRingHtml === 'function'
             ? buildProjectDailyProgressRingHtml(project, { compactLabel: true })
             : '';
-        const dailyActivityTone = dailyMeta.isOverachieved
-            ? 'is-over'
-            : (Number(dailyMeta.todayDone || 0) >= 12 ? 'is-ok' : 'is-warning');
-        const dailyActivityHtml = '<span class="pc-daily-activity ' + dailyActivityTone + '">' +
-            '<span aria-hidden="true">⚡</span>' +
+        const currentRegularTestersCount = activeRegularTesters.length;
+        const remainingRecruitmentSlots = Math.max(0, testerTargetCount - currentRegularTestersCount);
+        const isFullActivity = Number(dailyMeta.teamPercent || 0) >= 100;
+        const activityLightning = isFullActivity ? '<span aria-hidden="true">⚡ </span>' : '';
+        const dailyActivityHtml = '<span class="pc-metric-footer__line pc-daily-activity-line">' +
+            activityLightning +
             '<span>' + window.escapeHTML(window.t('pcMetricActivity', {}, lang)) + ' ' + window.escapeHTML(String(Number(dailyMeta.teamPercent || 0))) + '%</span>' +
             '</span>';
 
@@ -1317,13 +1318,12 @@ function renderProjects(force) {
                         <div class="pc-metric-title">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</div>
                         <div class="pc-metric-main pc-metric-team__value">${window.escapeHTML(String(teamTesterCount))}</div>
                         ${teamReserveHtml}
-                        <div class="pc-metric-footer"><span class="pc-metric-footer__line">${window.escapeHTML(window.t('pcMetricRecruitmentTarget', { count: testerTargetCount }, lang))}</span></div>
+                        <div class="pc-metric-footer"><span class="pc-metric-footer__line">${window.escapeHTML(window.t('pcMetricRecruitmentTarget', { count: remainingRecruitmentSlots }, lang))}</span></div>
                     </section>
                     <section class="pc-metric-card pc-metric-card--google">
-                        <div class="pc-metric-title">GOOGLE 12</div>
                         <div class="pc-metric-ring">${testersRingHtml}</div>
-                        ${dailyActivityHtml}
-                        <div class="pc-metric-footer">${dailyStatusHtml}</div>
+                        ${dailyStatusHtml}
+                        <div class="pc-metric-footer">${dailyActivityHtml}</div>
                     </section>
                 </div>
                 <div class="pc-action-bar${needSyncPrompt ? ' is-sync-required' : ''}">

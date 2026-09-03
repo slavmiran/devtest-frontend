@@ -1473,38 +1473,38 @@
                     </label>
                 </div>
 
-                <!-- Card 5: Optional Settings -->
-                <div class="wizard-optional-card is-expanded" id="edit-wizard-optional-card">
-                    <div class="wizard-optional-card__head" style="cursor: default;">
-                        <span data-i18n="optionalSettings">⚙️ Дополнительные настройки</span>
+                <!-- Card 5: Filters & Requirements -->
+                <div class="wizard-section-card" id="edit-filters-card">
+                    <div class="wizard-section-head">
+                        <h3 class="wizard-section-title" id="t-editFiltersTitle" data-i18n="editFiltersSectionTitle">🌐 Фильтры и требования</h3>
+                        <p class="wizard-section-desc" id="t-editFiltersDesc" data-i18n="editFiltersSectionDesc">Настройки языка и требований к устройствам тестировщиков.</p>
                     </div>
-                    <div class="wizard-optional-card__body" style="display: block;">
-                        <div class="form-group">
-                            <label class="form-label" data-i18n="projectLanguageLabel">Язык коммуникации</label>
-                            <div class="form-hint" data-i18n="projectLanguageHint">Укажите, на каком языке вы готовы общаться с тестерами.</div>
-                            <input type="hidden" id="edit-target-lang" value="ALL">
-                            <div class="seg-control">
-                                <button type="button" class="seg-btn" id="edit-target-lang-ru" onclick="setProjectTargetLang('edit', 'RU')" data-i18n="projectLanguageRu">🇷🇺 RU</button>
-                                <button type="button" class="seg-btn" id="edit-target-lang-en" onclick="setProjectTargetLang('edit', 'EN')" data-i18n="projectLanguageEn">🇬🇧 EN</button>
-                                <button type="button" class="seg-btn active" id="edit-target-lang-all" onclick="setProjectTargetLang('edit', 'ALL')" data-i18n="projectLanguageAll">🌐 ALL</button>
-                            </div>
-                        </div>
 
-                        <div class="form-group wizard-android-field">
-                            <label class="form-label" data-i18n="projectMinAndroidLabel">Минимальная версия Android</label>
-                            <div class="form-hint" data-i18n="projectMinAndroidHint">Тестеры с версией ниже указанной не получат массовую рассылку.</div>
-                            <input type="hidden" id="edit-min-android-version" value="0">
-                            <button type="button" class="form-input android-version-trigger" id="edit-min-android-trigger" onclick="openAndroidVersionPicker('edit')">
-                                <span id="edit-min-android-label" data-i18n="androidVerAny">Любая</span>
-                                <span class="android-version-trigger__chev" aria-hidden="true">▾</span>
-                            </button>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="projectLanguageLabel">Язык коммуникации</label>
+                        <div class="form-hint" data-i18n="projectLanguageHint">Укажите, на каком языке вы готовы общаться с тестерами.</div>
+                        <input type="hidden" id="edit-target-lang" value="ALL">
+                        <div class="seg-control">
+                            <button type="button" class="seg-btn" id="edit-target-lang-ru" onclick="setProjectTargetLang('edit', 'RU')" data-i18n="projectLanguageRu">🇷🇺 RU</button>
+                            <button type="button" class="seg-btn" id="edit-target-lang-en" onclick="setProjectTargetLang('edit', 'EN')" data-i18n="projectLanguageEn">🇬🇧 EN</button>
+                            <button type="button" class="seg-btn active" id="edit-target-lang-all" onclick="setProjectTargetLang('edit', 'ALL')" data-i18n="projectLanguageAll">🌐 ALL</button>
                         </div>
+                    </div>
 
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label class="form-label" id="t-editDescription" data-i18n="instructions">Инструкции для тестеров</label>
-                            <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000" data-i18n-placeholder="instPlaceholder"></textarea>
-                            <div id="chips-edit-instructions" class="chip-scroll"></div>
-                        </div>
+                    <div class="form-group wizard-android-field">
+                        <label class="form-label" data-i18n="projectMinAndroidLabel">Минимальная версия Android</label>
+                        <div class="form-hint" data-i18n="projectMinAndroidHint">Тестеры с версией ниже указанной не получат массовую рассылку.</div>
+                        <input type="hidden" id="edit-min-android-version" value="0">
+                        <button type="button" class="form-input android-version-trigger" id="edit-min-android-trigger" onclick="openAndroidVersionPicker('edit')">
+                            <span id="edit-min-android-label" data-i18n="androidVerAny">Любая</span>
+                            <span class="android-version-trigger__chev" aria-hidden="true">▾</span>
+                        </button>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" id="t-editDescription" data-i18n="instructions">Инструкции для тестеров</label>
+                        <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000" data-i18n-placeholder="instPlaceholder"></textarea>
+                        <div id="chips-edit-instructions" class="chip-scroll"></div>
                     </div>
                 </div>
 
