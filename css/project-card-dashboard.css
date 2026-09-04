@@ -4920,3 +4920,31 @@ button.pc-metric-reserve:active {
     color: var(--text-tertiary, rgba(255, 255, 255, 0.5));
     text-align: center;
 }
+
+
+/* ─────────────────── Reserve Chip States (Neutral / Active / Expired) ─────────────────── */
+.pc-metric-reserve--neutral {
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.52)) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+}
+
+.pc-metric-reserve--paid-active {
+    color: #71d7ad !important;
+    background: rgba(48, 209, 143, 0.12) !important;
+    border: 1px solid rgba(48, 209, 143, 0.25) !important;
+}
+
+.pc-metric-reserve--expired {
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.38)) !important;
+    background: transparent !important;
+    border: none !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+}
+
+.pc-metric-reserve--buffer-active {
+    color: var(--stage-buffer, #ffb84d) !important;
+    background: rgba(255, 184, 77, 0.12) !important;
+    border: 1px solid rgba(255, 184, 77, 0.28) !important;
+}

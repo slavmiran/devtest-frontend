@@ -814,7 +814,7 @@ function renderProjects(force) {
         const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
         const projectCardSubtitleHtml = buildProjectCardSubtitle(project);
 
-        const platformDays = getProjectPlatformDay(project.created_at);
+        const platformDays = getProjectPlatformDay(project.created_at, project.restarted_at || project.last_restarted_at);
         const rawGoogleDay = _isProjectSyncedSafe(project)
             ? getProjectCurrentGoogleDay(project, platformDays)
             : platformDays;
@@ -1325,15 +1325,25 @@ function renderProjects(force) {
         const bufferWord = lang === 'en' ? 'Buffer' : 'Буфер';
         const bufferUnit = lang === 'en' ? 'h' : 'ч';
 
-        const bufferChipHtml = '<button type="button" class="pc-metric-reserve pc-metric-reserve--time pc-metric-reserve--buffer" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();">' +
-            '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
-            '<span>' + window.escapeHTML(bufferHoursText + bufferUnit + ' ' + bufferWord) + '</span>' +
+        const isPaidDaysActive = hasSync && extraPaidDays > 0 && currentGoogleDay > 14 && currentGoogleDay <= (14 + extraPaidDays) && !isPendingCompletion;
+        const isPaidDaysExpired = hasSync && extraPaidDays > 0 && (currentGoogleDay > (14 + extraPaidDays) || isPendingCompletion);
+        const isBufferActive = isPendingCompletion;
+
+        const paidDaysClass = isPaidDaysActive
+            ? 'pc-metric-reserve pc-metric-reserve--paid-active'
+            : (isPaidDaysExpired ? 'pc-metric-reserve pc-metric-reserve--expired' : 'pc-metric-reserve pc-metric-reserve--neutral');
+
+        const bufferClass = isBufferActive
+            ? 'pc-metric-reserve pc-metric-reserve--buffer-active'
+            : 'pc-metric-reserve pc-metric-reserve--neutral';
+
+        const bufferChipHtml = '<button type="button" class="' + bufferClass + '" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();">' +
+            '<span>' + window.escapeHTML('+' + bufferHoursText + bufferUnit + ' ' + bufferWord) + '</span>' +
         '</button>';
 
         const paidDaysChipHtml = extraPaidDays > 0
-            ? '<button type="button" class="pc-metric-reserve pc-metric-reserve--time" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();">' +
-                '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
-                '<span>' + window.escapeHTML(String(extraPaidDays) + ' ' + extraDaysWord) + '</span>' +
+            ? '<button type="button" class="' + paidDaysClass + '" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();">' +
+                '<span>' + window.escapeHTML('+' + String(extraPaidDays) + ' ' + extraDaysWord) + '</span>' +
               '</button>'
             : '';
 
@@ -6857,9 +6867,7 @@ function openProjectLifecycleModal(projectId, event) {
 
     // Track label formatting: shows main days + 48h buffer clearly
     const bufferWord = tr('pcBufferWord') || 'буфер';
-    const trackDaysValue = isPending
-        ? `${tr('pcLifecycleMainMeta', { day: Math.min(currentDay, lastMainDay), total: lastMainDay })} · ${tr('pcLifecycleBufferTitle')} (${bufferHoursLeft}ч)`
-        : `${tr('pcLifecycleMainMeta', { day: Math.min(currentDay, lastMainDay), total: lastMainDay })} + 48ч ${bufferWord}`;
+    const trackDaysValue = `${tr('pcLifecycleMainMeta', { day: Math.min(currentDay, lastMainDay), total: lastMainDay })} + 48ч ${bufferWord}`;
 
     bodyEl.innerHTML = `
         <p class="pc-lc-intro">${esc(tr('pcLifecycleIntro'))}</p>

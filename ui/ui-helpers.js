@@ -123,8 +123,9 @@ function getDayDiffFromToday(dateValue) {
     return Math.max(0, Math.floor((today - source) / (1000 * 60 * 60 * 24)));
 }
 
-function getProjectPlatformDay(createdAt) {
-    return Math.max(1, getDayDiffFromToday(createdAt) + 1);
+function getProjectPlatformDay(createdAt, restartedAt) {
+    const dateSource = restartedAt || createdAt;
+    return Math.max(1, getDayDiffFromToday(dateSource) + 1);
 }
 const GUEST_LANGUAGE_META = {
     ar: { flag: '🇦🇪', label: 'Arabic' },
