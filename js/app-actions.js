@@ -4549,7 +4549,16 @@ async function claimGrant(progressId, appId) {
 async function claimEarlyFinishBonus(progressId, appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
     const btn = document.getElementById('btn-early-finish-' + appId);
-    if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+    const finishCard = document.getElementById('test-card-' + appId) || document.getElementById('external-test-card-' + appId);
+    const origBtnHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('is-loading');
+        btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span> <span>' + window.escapeHTML(window.t('loading', {}, lang) || 'Обработка...') + '</span>';
+    }
+    if (finishCard) {
+        finishCard.classList.add('is-processing');
+    }
     try {
         const response = await fetch(`${API_BASE}/testing/${progressId}/claim_early_finish`, {
             method: 'POST',
@@ -4558,7 +4567,12 @@ async function claimEarlyFinishBonus(progressId, appId) {
         });
         const result = await response.json();
         if (!response.ok || result.status !== 'success') {
-            if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('is-loading');
+                btn.innerHTML = origBtnHtml;
+            }
+            if (finishCard) finishCard.classList.remove('is-processing');
             handleApiError(getBackendErrorCode(result), result.details || {});
             return;
         }
@@ -4583,14 +4597,18 @@ async function claimEarlyFinishBonus(progressId, appId) {
         } else {
             showToast(window.t('earlyFinishNoBonus', {}, lang));
         }
-        const finishCard = document.getElementById('test-card-' + appId) || document.getElementById('external-test-card-' + appId);
         if (finishCard && finishCard.parentNode) {
             await animateTestCardOut(finishCard);
         }
         if (window.renderTests) window.renderTests(true);
     } catch (error) {
         console.error('Claim early finish error:', error);
-        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('is-loading');
+            btn.innerHTML = origBtnHtml;
+        }
+        if (finishCard) finishCard.classList.remove('is-processing');
         handleApiError('network_error');
     }
 }

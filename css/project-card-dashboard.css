@@ -3359,9 +3359,14 @@ button.pc-act-reason {
     border: none !important;
 }
 
-.pc-stage-badge--extension,
-.pc-stage-badge--buffer {
+.pc-stage-badge--extension {
     color: #d4beff;
+    background: transparent !important;
+    border: none !important;
+}
+
+.pc-stage-badge--buffer {
+    color: var(--stage-buffer, #ffb84d);
     background: transparent !important;
     border: none !important;
 }
@@ -3798,8 +3803,8 @@ button.pc-act-reason {
 }
 
 .pc-metric-card--google {
-    padding-right: 6px;
-    padding-left: 6px;
+    padding-right: 4px;
+    padding-left: 4px;
 }
 
 .pc-metric-card--google .pc-metric-title {
@@ -3811,22 +3816,24 @@ button.pc-act-reason {
     align-items: center;
     justify-content: center;
     flex: 1 1 auto;
-    margin: 2px 0;
+    margin: 1px 0;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring {
-    width: 82px;
-    height: 82px;
+    width: 90px;
+    height: 90px;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count {
-    font-size: 15px;
+    font-size: 16px;
+    font-weight: 850;
     color: #f8faff;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label {
     margin-top: 1px;
-    font-size: 8px;
+    font-size: 8.5px;
+    font-weight: 700;
     color: rgba(204, 216, 238, 0.65);
     text-transform: none;
     letter-spacing: 0;
@@ -4447,6 +4454,15 @@ button.pc-quick-tile:active,
 
 button.pc-metric-reserve {
     cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.15s ease;
+}
+
+button.pc-metric-reserve:hover {
+    opacity: 0.88;
+}
+
+button.pc-metric-reserve:active {
+    transform: scale(0.96);
 }
 
 .dp-sheet__protip {

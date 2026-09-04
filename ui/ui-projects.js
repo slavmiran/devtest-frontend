@@ -1219,16 +1219,16 @@ function renderProjects(force) {
         const bufferWord = lang === 'en' ? 'Buffer' : 'Буфер';
         const bufferUnit = lang === 'en' ? 'h' : 'ч';
 
-        const bufferChipHtml = '<span class="pc-metric-reserve pc-metric-reserve--time pc-metric-reserve--buffer">' +
+        const bufferChipHtml = '<button type="button" class="pc-metric-reserve pc-metric-reserve--time pc-metric-reserve--buffer" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();">' +
             '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
             '<span>' + window.escapeHTML(bufferHoursText + bufferUnit + ' ' + bufferWord) + '</span>' +
-        '</span>';
+        '</button>';
 
         const paidDaysChipHtml = extraPaidDays > 0
-            ? '<span class="pc-metric-reserve pc-metric-reserve--time">' +
+            ? '<button type="button" class="pc-metric-reserve pc-metric-reserve--time" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();">' +
                 '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
                 '<span>' + window.escapeHTML(String(extraPaidDays) + ' ' + extraDaysWord) + '</span>' +
-              '</span>'
+              '</button>'
             : '';
 
         const termReserveHtml = hasSync
