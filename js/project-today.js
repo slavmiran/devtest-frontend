@@ -457,18 +457,24 @@
         var current = cache.get(safeAppId);
         if (current && current.loading) return;
         if (current && !current.error && (Date.now() - current.loadedAt) < CACHE_TTL_MS) return;
-        var markCardRefresh = typeof window.beginProjectCardRefresh === 'function';
-        if (markCardRefresh) window.beginProjectCardRefresh(safeAppId);
-        try {
-            cache.set(safeAppId, { loadedAt: 0, loading: true, error: false, control: [], others: [] });
+        var previous = current && !current.error ? current : null;
+        cache.set(safeAppId, {
+            loadedAt: previous ? previous.loadedAt : 0,
+            loading: true,
+            error: false,
+            control: previous ? previous.control : [],
+            others: previous ? previous.others : [],
+        });
+        if (!previous) {
             try {
                 paint(safeAppId);
             } catch (error) {
                 console.warn('Project today paint failed:', error);
             }
+        }
 
-            try {
-                var testersPromise = requestJson(
+        try {
+            var testersPromise = requestJson(
                     API_BASE + '/projects/' + safeAppId + '/testing-control/testers?limit=50&init_data=' + encodeURIComponent(initData())
                 );
                 var screenshotsPromise = galleryEnabled()
@@ -511,18 +517,25 @@
                 });
 
                 await attachFeedbackStatuses(control.concat(others));
-                cache.set(safeAppId, { loadedAt: Date.now(), loading: false, error: false, control: control, others: others });
-            } catch (error) {
-                console.warn('Project today hydration failed:', error);
-                cache.set(safeAppId, { loadedAt: Date.now(), loading: false, error: true, control: [], others: [] });
-            }
-            paint(safeAppId);
-            loadPendingThumbnails(safeAppId);
-        } finally {
-            if (markCardRefresh && typeof window.endProjectCardRefresh === 'function') {
-                window.endProjectCardRefresh(safeAppId);
-            }
+            var contentChanged = !previous
+                || JSON.stringify(previous.control || []) !== JSON.stringify(control)
+                || JSON.stringify(previous.others || []) !== JSON.stringify(others);
+            cache.set(safeAppId, { loadedAt: Date.now(), loading: false, error: false, control: control, others: others });
+            if (contentChanged) paint(safeAppId);
+        } catch (error) {
+            console.warn('Project today hydration failed:', error);
+            cache.set(safeAppId, previous
+                ? {
+                    loadedAt: previous.loadedAt,
+                    loading: false,
+                    error: false,
+                    control: previous.control || [],
+                    others: previous.others || [],
+                }
+                : { loadedAt: Date.now(), loading: false, error: true, control: [], others: [] });
+            if (!previous) paint(safeAppId);
         }
+        loadPendingThumbnails(safeAppId);
     }
 
     function findRow(appId, proofId) {
@@ -1511,7 +1524,6 @@
             if (current && current.loading) return;
             var maxAgeMs = Math.max(0, Number(options && options.maxAgeMs || 0));
             if (current && !current.error && maxAgeMs > 0 && (Date.now() - current.loadedAt) < maxAgeMs) return;
-            cache.delete(safeAppId);
             var root = document.getElementById('pc-today-' + safeAppId);
             if (!root) return;
             ensureObserver();

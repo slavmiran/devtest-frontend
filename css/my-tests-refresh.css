@@ -50,10 +50,6 @@
     animation: myTestsRefreshSpin 0.72s linear infinite;
 }
 
-#tab-tests .card[id^="test-card-"].is-data-updated {
-    animation: myTestsDataUpdated 0.85s ease-out calc(var(--ts-refresh-order, 0) * 55ms) both;
-}
-
 @media (max-width: 370px) {
     .ts-refresh-state {
         width: 28px;
@@ -67,20 +63,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .ts-refresh-state__spinner,
-    #tab-tests .card[id^="test-card-"].is-data-updated {
+    .ts-refresh-state__spinner {
         animation: none;
     }
 }
 
 @keyframes myTestsRefreshSpin {
     to { transform: rotate(360deg); }
-}
-
-@keyframes myTestsDataUpdated {
-    0% { box-shadow: 0 0 0 0 rgba(86, 145, 239, 0); }
-    34% { box-shadow: 0 0 0 2px rgba(86, 145, 239, 0.17), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
-    100% { box-shadow: 0 0 0 0 rgba(86, 145, 239, 0), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
 }
 
 /* --------------------------------------------------------------------------

@@ -149,12 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof startBountyApplicationsPolling === 'function') startBountyApplicationsPolling();
         } catch (e) { console.error('Bootstrap startBountyApplicationsPolling error:', e); }
         try { startMarketPolling(); } catch (e) { console.error('Bootstrap startMarketPolling error:', e); }
-        try {
-            if (typeof window.startTestsPolling === 'function') window.startTestsPolling();
-        } catch (e) { console.error('Bootstrap startTestsPolling error:', e); }
-        try {
-            if (typeof window.startProjectsPolling === 'function') window.startProjectsPolling();
-        } catch (e) { console.error('Bootstrap startProjectsPolling error:', e); }
         loadEvents().catch(function(e) { console.error('Bootstrap loadEvents error:', e); });
         loadExternalCounts().catch(function(e) { console.error('Bootstrap loadExternalCounts error:', e); });
         if (typeof loadGuestApps === 'function') {

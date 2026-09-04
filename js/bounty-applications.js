@@ -345,7 +345,8 @@ function renderBountyApplications(force) {
             }
             if (expireEl) {
                 var left = window.t('offerTimeLeftValue', { hours: remain.hours, minutes: remain.minutes }, lang);
-                expireEl.textContent = window.t('bountyAppTimeLeft', { time: left }, lang);
+                var nextExpireText = window.t('bountyAppTimeLeft', { time: left }, lang);
+                if (expireEl.textContent !== nextExpireText) expireEl.textContent = nextExpireText;
             }
         });
         if (hasExpired) {
@@ -353,7 +354,7 @@ function renderBountyApplications(force) {
             _bountyAppsTimerId = null;
             loadBountyApplications({ background: true }).catch(function() {});
         }
-    }, 1000);
+    }, 30000);
 }
 
 function highlightBountyApplicationCard(applicationId) {

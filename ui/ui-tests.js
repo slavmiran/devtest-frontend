@@ -1699,7 +1699,8 @@ function renderIncomingOffers() {
             }
             if (expireEl) {
                 const leftTimeText = window.t('offerTimeLeftValue', { hours: remain.hours, minutes: remain.minutes }, lang);
-                expireEl.textContent = window.t('offerTimeLeft', { time: leftTimeText }, lang);
+                const nextExpireText = window.t('offerTimeLeft', { time: leftTimeText }, lang);
+                if (expireEl.textContent !== nextExpireText) expireEl.textContent = nextExpireText;
             }
         });
 
@@ -1707,7 +1708,7 @@ function renderIncomingOffers() {
             clearInterval(_offersTimerId);
             _offersTimerId = null;
         }
-    }, 1000);
+    }, 30000);
 }
 
 function formatKarmaValue(value) {
@@ -2102,8 +2103,29 @@ function renderExternalGuestTestsSection() {
     return externalTests.length;
 }
 
+function captureTestsViewportAnchor() {
+    if (!isTabVisible('tests') || window.scrollY <= 0) return null;
+    const tab = document.getElementById('tab-tests');
+    if (!tab) return null;
+    const cards = Array.from(tab.querySelectorAll('.card[id^="test-card-"]'));
+    const anchor = cards.find(function(card) {
+        const rect = card.getBoundingClientRect();
+        return rect.bottom > 0 && rect.top < window.innerHeight;
+    });
+    return anchor ? { id: anchor.id, top: anchor.getBoundingClientRect().top } : null;
+}
+
+function restoreTestsViewportAnchor(anchor) {
+    if (!anchor || !isTabVisible('tests')) return;
+    const node = document.getElementById(anchor.id);
+    if (!node) return;
+    const delta = node.getBoundingClientRect().top - anchor.top;
+    if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+}
+
 function renderTests(force) {
     if (!force && !isTabVisible('tests')) return;
+    const viewportAnchor = captureTestsViewportAnchor();
     syncExternalContinueModeState();
     if (typeof window.updateOwnerAccessIssueBanner === 'function') {
         window.updateOwnerAccessIssueBanner();
@@ -2704,6 +2726,8 @@ function renderTests(force) {
     if (typeof restoreAccessProblemAccordions === 'function') restoreAccessProblemAccordions();
     if (typeof window.updateTestsRefreshUi === 'function') window.updateTestsRefreshUi();
     refreshMyTestsSectionHandoffs();
+    if (typeof window.markTestsViewClean === 'function') window.markTestsViewClean();
+    restoreTestsViewportAnchor(viewportAnchor);
 }
 
 function _isMyTestsSectionVisible(el) {

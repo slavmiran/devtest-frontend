@@ -7923,7 +7923,8 @@ function switchTab(tabId, navElement) {
         renderEvents(true);
         renderIncomingOffers(true);
         if (typeof renderBountyApplications === 'function') renderBountyApplications(true);
-        renderTests(true);
+        if (typeof window.reconcileTestsView === 'function') window.reconcileTestsView();
+        else renderTests(true);
     }
 
     if (finalTab === 'market') {
@@ -7939,11 +7940,11 @@ function switchTab(tabId, navElement) {
         if (typeof window.syncHomeScreenUi === 'function') {
             window.syncHomeScreenUi();
         }
-        // A background SWR response can update the in-memory snapshot while this
-        // tab is hidden. Always reconcile the visible DOM before starting the next
-        // refresh so the user never has to click a stale card to see fresh data.
-        renderProjects(true);
-        renderArchivedProjects();
+        if (typeof window.reconcileProjectsView === 'function') window.reconcileProjectsView();
+        else {
+            renderProjects(true);
+            renderArchivedProjects();
+        }
     }
 
     if (finalTab === 'market') {

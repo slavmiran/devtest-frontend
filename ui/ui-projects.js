@@ -546,6 +546,24 @@ async function toggleProjectRequestReviews(appId, event) {
 }
 window.toggleProjectRequestReviews = toggleProjectRequestReviews;
 
+function captureProjectViewportAnchor(container) {
+    if (!container || !isTabVisible('projects') || window.scrollY <= 0) return null;
+    const cards = Array.from(container.querySelectorAll('.card[id^="project-card-"]'));
+    const anchor = cards.find(function(card) {
+        const rect = card.getBoundingClientRect();
+        return rect.bottom > 0 && rect.top < window.innerHeight;
+    });
+    return anchor ? { id: anchor.id, top: anchor.getBoundingClientRect().top } : null;
+}
+
+function restoreProjectViewportAnchor(anchor) {
+    if (!anchor || !isTabVisible('projects')) return;
+    const node = document.getElementById(anchor.id);
+    if (!node) return;
+    const delta = node.getBoundingClientRect().top - anchor.top;
+    if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+}
+
 
 
 function renderProjects(force) {
@@ -555,6 +573,7 @@ function renderProjects(force) {
     }
     const container = document.getElementById('projects-list');
     if (!container) return;
+    const viewportAnchor = captureProjectViewportAnchor(container);
     const openSettingsDrawerIds = Array.from(container.querySelectorAll('.project-settings-drawer.active'))
         .map((drawer) => Number(String(drawer.id || '').replace('settings-drawer-', '')))
         .filter(Boolean);
@@ -722,7 +741,22 @@ function renderProjects(force) {
                     };
                     visibilityStats.contribution_score = Number(me.contribution_score || 0);
                 }
-                try { renderProjects(true); } catch (_) { /* ignore */ }
+                const sprintCard = container.querySelector('.metric-card-sprint .metric-sprint-body');
+                if (sprintCard && container.isConnected) {
+                    const updatedSeason = (visibilityStats && visibilityStats.contribution_season) || {};
+                    const updatedRank = Number(updatedSeason.rank || 0);
+                    const updatedEndsAt = Date.parse(String(updatedSeason.ends_at || ''));
+                    const updatedTimer = Number.isFinite(updatedEndsAt)
+                        ? (window.t('metricSprintDaysLeft', {
+                            days: Math.max(0, Math.floor((updatedEndsAt - Date.now()) / 86400000)),
+                        }, lang) || '')
+                        : '';
+                    sprintCard.innerHTML =
+                        '<div class="metric-value metric-value--sprint">' +
+                            window.escapeHTML(updatedRank > 0 ? ('#' + Math.round(updatedRank)) : '—') +
+                        '</div>' +
+                        (updatedTimer ? '<div class="metric-sprint-timer">' + window.escapeHTML(updatedTimer) + '</div>' : '');
+                }
             }).catch(function() { /* ignore */ });
         }
     }
@@ -740,6 +774,10 @@ function renderProjects(force) {
         if (typeof window.updateProjectsRefreshUi === 'function') {
             window.updateProjectsRefreshUi();
         }
+        if (typeof window.markProjectsViewClean === 'function') {
+            window.markProjectsViewClean();
+        }
+        restoreProjectViewportAnchor(viewportAnchor);
         return;
     }
 
@@ -1524,10 +1562,6 @@ function renderProjects(force) {
                     ${projectCardSubtitleHtml}
                 </div>
                 <div class="project-header-actions">
-                    <span class="pc-card-refresh-state" aria-hidden="true" title="${window.escapeHTML(window.t('pcProjectRefreshing', {}, lang) || 'Обновляем данные')}">
-                        <span class="pc-card-refresh-state__spinner"></span>
-                        <span class="pc-card-refresh-state__label">${window.escapeHTML(window.t('pcProjectRefreshingShort', {}, lang) || 'Обновляем')}</span>
-                    </span>
                     <button type="button" class="project-icon-btn" aria-label="${window.escapeHTML(window.t('pcQuickSettingsTitle', {}, lang) || 'Быстрые настройки проекта')}" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">
                         <img class="project-icon-btn__glyph project-icon-btn__glyph--asset" src="./images/Icons/settings-svgrepo-com.svg" alt="" aria-hidden="true">
                     </button>
@@ -1636,6 +1670,10 @@ function renderProjects(force) {
     if (typeof window.updateProjectsRefreshUi === 'function') {
         window.updateProjectsRefreshUi();
     }
+    if (typeof window.markProjectsViewClean === 'function') {
+        window.markProjectsViewClean();
+    }
+    restoreProjectViewportAnchor(viewportAnchor);
     if (window.ProofPing) window.ProofPing.syncMasterSwitch();
 }
 
@@ -2845,6 +2883,12 @@ function renderArchivedProjects(force) {
     function paintArchive(gtArchivedOrders) {
         const keepArchiveOpen = archiveWasOpen || !!section.querySelector('.archive-list:not(.is-collapsed)');
         const gtOrders = Array.isArray(gtArchivedOrders) ? gtArchivedOrders : [];
+        const archiveSnapshot = JSON.stringify({ projects: visibleArchivedProjects, orders: gtOrders });
+        if (section.dataset.archiveSnapshot === archiveSnapshot) {
+            if (typeof window.markArchivedProjectsViewClean === 'function') window.markArchivedProjectsViewClean();
+            return;
+        }
+        section.dataset.archiveSnapshot = archiveSnapshot;
         const totalCount = visibleArchivedProjects.length + gtOrders.length;
         if (totalCount === 0) {
             section.innerHTML = `
@@ -2855,6 +2899,7 @@ function renderArchivedProjects(force) {
                     </button>
                 </div>
             `;
+            if (typeof window.markArchivedProjectsViewClean === 'function') window.markArchivedProjectsViewClean();
             return;
         }
         let html = `
@@ -2947,6 +2992,7 @@ function renderArchivedProjects(force) {
                 if (arrow) arrow.textContent = '▲';
             }
         }
+        if (typeof window.markArchivedProjectsViewClean === 'function') window.markArchivedProjectsViewClean();
     }
 
     paintArchive(_gtArchivedOrdersCache || []);
@@ -7188,8 +7234,10 @@ window.toggleProjectSettingsDrawer = toggleProjectSettingsDrawer;
 // --- Attract Testers Bottom Sheet Helper Functions ---
 var _gtActiveOrdersCache = null;
 var _gtActiveOrdersCacheAt = 0;
+var _gtActiveOrdersInFlight = null;
 var _gtArchivedOrdersCache = null;
 var _gtArchivedOrdersCacheAt = 0;
+var _gtArchivedOrdersInFlight = null;
 var _gtStatusModalOrder = null;
 
 function invalidateGuaranteedOrdersCache() {
@@ -7418,27 +7466,50 @@ function renderGuaranteedOrdersSection(container) {
     var section = document.createElement('section');
     section.className = 'guaranteed-orders-section';
     section.setAttribute('aria-live', 'polite');
+    section.hidden = true;
     container.appendChild(section);
 
-    loadVisibleGuaranteedOrders(false).then(function (orders) {
-        if (!container.contains(section) || !Array.isArray(orders) || !orders.length) {
-            section.remove();
+    function paintOrders(orders) {
+        if (!container.contains(section)) return;
+        var safeOrders = Array.isArray(orders) ? orders : [];
+        var snapshot = JSON.stringify(safeOrders);
+        if (section.dataset.ordersSnapshot === snapshot) return;
+        var viewportAnchor = captureProjectViewportAnchor(container);
+        section.dataset.ordersSnapshot = snapshot;
+        if (!safeOrders.length) {
+            section.hidden = true;
+            section.innerHTML = '';
+            restoreProjectViewportAnchor(viewportAnchor);
             return;
         }
-        var cards = orders.map(function (order) {
+        var cards = safeOrders.map(function (order) {
             return buildGuaranteedOrderCardHtml(order, { archived: false });
         }).join('');
         if (!cards) {
-            section.remove();
+            section.hidden = true;
+            section.innerHTML = '';
+            restoreProjectViewportAnchor(viewportAnchor);
             return;
         }
+        section.hidden = false;
         section.innerHTML =
             '<h2 class="guaranteed-orders-section__title">' +
                 window.escapeHTML(getProjectUiText('gtOrdersSectionTitle', 'Private Testing')) +
             '</h2>' +
             '<div class="guaranteed-orders-section__list">' + cards + '</div>';
+        restoreProjectViewportAnchor(viewportAnchor);
+    }
+
+    // Reuse the last confirmed contract snapshot synchronously. This keeps the
+    // mutual-project cards at a stable Y position when the user returns here.
+    if (Array.isArray(_gtActiveOrdersCache)) paintOrders(_gtActiveOrdersCache);
+
+    loadVisibleGuaranteedOrders(false).then(function (orders) {
+        paintOrders(orders);
     }).catch(function () {
-        section.remove();
+        if (!Array.isArray(_gtActiveOrdersCache) || !_gtActiveOrdersCache.length) {
+            section.hidden = true;
+        }
     });
 }
 
@@ -7447,22 +7518,31 @@ async function loadVisibleGuaranteedOrders(forceRefresh) {
     if (!forceRefresh && _gtActiveOrdersCache && (now - _gtActiveOrdersCacheAt) < 30000) {
         return _gtActiveOrdersCache;
     }
-    try {
-        var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
-        var initData = (typeof getTelegramInitDataRaw === 'function')
-            ? getTelegramInitDataRaw()
-            : ((window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '');
-        var resp = await fetch(apiBase + '/guaranteed-test-orders/mine?init_data=' + encodeURIComponent(initData));
-        var data = await resp.json();
-        if (data && data.status === 'success' && Array.isArray(data.orders)) {
-            _gtActiveOrdersCache = data.orders;
-            _gtActiveOrdersCacheAt = now;
-            return _gtActiveOrdersCache;
+    if (_gtActiveOrdersInFlight) return _gtActiveOrdersInFlight;
+    var request = (async function() {
+        try {
+            var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
+            var initData = (typeof getTelegramInitDataRaw === 'function')
+                ? getTelegramInitDataRaw()
+                : ((window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '');
+            var resp = await fetch(apiBase + '/guaranteed-test-orders/mine?init_data=' + encodeURIComponent(initData));
+            var data = await resp.json();
+            if (data && data.status === 'success' && Array.isArray(data.orders)) {
+                _gtActiveOrdersCache = data.orders;
+                _gtActiveOrdersCacheAt = Date.now();
+                return _gtActiveOrdersCache;
+            }
+        } catch (e) {
+            console.warn('Failed to load guaranteed orders:', e);
         }
-    } catch (e) {
-        console.warn('Failed to load guaranteed orders:', e);
+        return _gtActiveOrdersCache || [];
+    })();
+    _gtActiveOrdersInFlight = request;
+    try {
+        return await request;
+    } finally {
+        if (_gtActiveOrdersInFlight === request) _gtActiveOrdersInFlight = null;
     }
-    return _gtActiveOrdersCache || [];
 }
 
 async function loadArchivedGuaranteedOrders(forceRefresh) {
@@ -7470,22 +7550,31 @@ async function loadArchivedGuaranteedOrders(forceRefresh) {
     if (!forceRefresh && _gtArchivedOrdersCache && (now - _gtArchivedOrdersCacheAt) < 30000) {
         return _gtArchivedOrdersCache;
     }
-    try {
-        var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
-        var initData = (typeof getTelegramInitDataRaw === 'function')
-            ? getTelegramInitDataRaw()
-            : ((window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '');
-        var resp = await fetch(apiBase + '/guaranteed-test-orders/archived?init_data=' + encodeURIComponent(initData));
-        var data = await resp.json();
-        if (data && data.status === 'success' && Array.isArray(data.orders)) {
-            _gtArchivedOrdersCache = data.orders;
-            _gtArchivedOrdersCacheAt = now;
-            return _gtArchivedOrdersCache;
+    if (_gtArchivedOrdersInFlight) return _gtArchivedOrdersInFlight;
+    var request = (async function() {
+        try {
+            var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || '';
+            var initData = (typeof getTelegramInitDataRaw === 'function')
+                ? getTelegramInitDataRaw()
+                : ((window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '');
+            var resp = await fetch(apiBase + '/guaranteed-test-orders/archived?init_data=' + encodeURIComponent(initData));
+            var data = await resp.json();
+            if (data && data.status === 'success' && Array.isArray(data.orders)) {
+                _gtArchivedOrdersCache = data.orders;
+                _gtArchivedOrdersCacheAt = Date.now();
+                return _gtArchivedOrdersCache;
+            }
+        } catch (e) {
+            console.warn('Failed to load archived guaranteed orders:', e);
         }
-    } catch (e) {
-        console.warn('Failed to load archived guaranteed orders:', e);
+        return _gtArchivedOrdersCache || [];
+    })();
+    _gtArchivedOrdersInFlight = request;
+    try {
+        return await request;
+    } finally {
+        if (_gtArchivedOrdersInFlight === request) _gtArchivedOrdersInFlight = null;
     }
-    return _gtArchivedOrdersCache || [];
 }
 
 // Compatibility for existing project-level private-testing actions.

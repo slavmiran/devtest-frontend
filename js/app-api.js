@@ -29,55 +29,77 @@ function runWhenIdle(task, timeoutMs) {
     setTimeout(task, Math.min(timeoutMs || 1000, 250));
 }
 
-var _projectCardRefreshState = Object.create(null);
-var _projectsPollId = null;
 var _testsListRefreshCount = 0;
-var _testsPollId = null;
+var _testsRefreshIndicatorVisible = false;
+var _testsRefreshIndicatorTimer = null;
+var _projectsViewDirty = true;
+var _testsViewDirty = true;
+var _archivedProjectsViewDirty = true;
+var _archivedProjectsLoadedOnce = false;
+var _archivedProjectsInFlight = false;
 
 function updateProjectsRefreshUi() {
     var list = document.getElementById('projects-list');
     var isListRefreshing = (_backgroundSyncState.projects || 0) > 0;
-    var hasCardRefresh = Object.keys(_projectCardRefreshState).some(function(key) {
-        return (_projectCardRefreshState[key] || 0) > 0;
-    });
 
     if (list) {
         list.classList.toggle('is-refreshing', isListRefreshing);
-        list.setAttribute('aria-busy', (isListRefreshing || hasCardRefresh) ? 'true' : 'false');
-        list.querySelectorAll('[id^="project-card-"]').forEach(function(card) {
-            var appId = String(card.id || '').replace('project-card-', '');
-            var isCardRefreshing = isListRefreshing || (_projectCardRefreshState[appId] || 0) > 0;
-            card.classList.toggle('is-refreshing', isCardRefreshing);
-        });
+        list.setAttribute('aria-busy', isListRefreshing ? 'true' : 'false');
     }
 
     var tab = document.getElementById('tab-projects');
-    if (tab) tab.classList.toggle('has-project-refresh', isListRefreshing || hasCardRefresh);
+    if (tab) tab.classList.toggle('has-project-refresh', isListRefreshing);
 }
 
-function beginProjectCardRefresh(appId) {
-    var key = String(Number(appId || 0));
-    if (key === '0') return;
-    _projectCardRefreshState[key] = (_projectCardRefreshState[key] || 0) + 1;
-    updateProjectsRefreshUi();
+function markProjectsViewDirty() {
+    _projectsViewDirty = true;
 }
 
-function endProjectCardRefresh(appId) {
-    var key = String(Number(appId || 0));
-    if (key === '0') return;
-    _projectCardRefreshState[key] = Math.max(0, (_projectCardRefreshState[key] || 0) - 1);
-    if (_projectCardRefreshState[key] === 0) delete _projectCardRefreshState[key];
-    updateProjectsRefreshUi();
+function markProjectsViewClean() {
+    _projectsViewDirty = false;
+}
+
+function markTestsViewDirty() {
+    _testsViewDirty = true;
+}
+
+function markTestsViewClean() {
+    _testsViewDirty = false;
+}
+
+function markArchivedProjectsViewDirty() {
+    _archivedProjectsViewDirty = true;
+}
+
+function markArchivedProjectsViewClean() {
+    _archivedProjectsViewDirty = false;
+}
+
+function reconcileProjectsView() {
+    if (!isTabCurrentlyActive('projects')) return;
+    if (_projectsViewDirty) renderProjects();
+    if (_archivedProjectsViewDirty) renderArchivedProjects();
+}
+
+function reconcileTestsView() {
+    if (!isTabCurrentlyActive('tests')) return;
+    if (_testsViewDirty) renderTests();
 }
 
 window.updateProjectsRefreshUi = updateProjectsRefreshUi;
-window.beginProjectCardRefresh = beginProjectCardRefresh;
-window.endProjectCardRefresh = endProjectCardRefresh;
+window.markProjectsViewDirty = markProjectsViewDirty;
+window.markProjectsViewClean = markProjectsViewClean;
+window.markTestsViewDirty = markTestsViewDirty;
+window.markTestsViewClean = markTestsViewClean;
+window.markArchivedProjectsViewDirty = markArchivedProjectsViewDirty;
+window.markArchivedProjectsViewClean = markArchivedProjectsViewClean;
+window.reconcileProjectsView = reconcileProjectsView;
+window.reconcileTestsView = reconcileTestsView;
 
 function refreshVisibleProjects(force) {
     if (document.hidden || !isTabCurrentlyActive('projects')) return Promise.resolve();
-    // Start the viewport-aware detail refresh immediately. It runs in parallel
-    // with the slower aggregate project request instead of waiting for it.
+    // Detail data is revalidated independently, but ProjectToday keeps the last
+    // painted snapshot and only touches the card when the response is different.
     _refreshProjectActivityData(myProjects, true);
     var jobs = [];
     if (typeof loadProjects === 'function') {
@@ -89,36 +111,45 @@ function refreshVisibleProjects(force) {
     return Promise.all(jobs);
 }
 
-function startProjectsPolling() {
-    if (_projectsPollId) window.clearInterval(_projectsPollId);
-    _projectsPollId = window.setInterval(function() {
-        refreshVisibleProjects(false).catch(function() {});
-    }, 60000);
-}
-
 window.refreshVisibleProjects = refreshVisibleProjects;
-window.startProjectsPolling = startProjectsPolling;
 
 function updateTestsRefreshUi() {
     var refreshing = _testsListRefreshCount > 0;
+    var showIndicator = refreshing && _testsRefreshIndicatorVisible;
     var tab = document.getElementById('tab-tests');
     var list = document.getElementById('my-tests-list');
     var status = document.getElementById('my-tests-refresh-state');
-    if (tab) tab.classList.toggle('is-tests-refreshing', refreshing);
+    if (tab) tab.classList.toggle('is-tests-refreshing', showIndicator);
     if (list) list.setAttribute('aria-busy', refreshing ? 'true' : 'false');
     if (status) {
-        status.hidden = !refreshing;
-        status.setAttribute('aria-hidden', refreshing ? 'false' : 'true');
+        status.hidden = !showIndicator;
+        status.setAttribute('aria-hidden', showIndicator ? 'false' : 'true');
     }
 }
 
 function beginTestsListRefresh() {
     _testsListRefreshCount += 1;
+    if (_testsListRefreshCount === 1) {
+        _testsRefreshIndicatorVisible = false;
+        if (_testsRefreshIndicatorTimer) window.clearTimeout(_testsRefreshIndicatorTimer);
+        _testsRefreshIndicatorTimer = window.setTimeout(function() {
+            _testsRefreshIndicatorTimer = null;
+            if (_testsListRefreshCount > 0) {
+                _testsRefreshIndicatorVisible = true;
+                updateTestsRefreshUi();
+            }
+        }, 450);
+    }
     updateTestsRefreshUi();
 }
 
 function endTestsListRefresh() {
     _testsListRefreshCount = Math.max(0, _testsListRefreshCount - 1);
+    if (_testsListRefreshCount === 0) {
+        if (_testsRefreshIndicatorTimer) window.clearTimeout(_testsRefreshIndicatorTimer);
+        _testsRefreshIndicatorTimer = null;
+        _testsRefreshIndicatorVisible = false;
+    }
     updateTestsRefreshUi();
 }
 
@@ -136,16 +167,8 @@ function refreshVisibleTests(options) {
     return Promise.all(jobs);
 }
 
-function startTestsPolling() {
-    if (_testsPollId) window.clearInterval(_testsPollId);
-    _testsPollId = window.setInterval(function() {
-        refreshVisibleTests({ contentOnly: true }).catch(function() {});
-    }, 60000);
-}
-
 window.updateTestsRefreshUi = updateTestsRefreshUi;
 window.refreshVisibleTests = refreshVisibleTests;
-window.startTestsPolling = startTestsPolling;
 
 function updateBackgroundSyncUi() {
     var hasAnySync = Object.keys(_backgroundSyncState).some(function(key) {
@@ -1419,6 +1442,7 @@ function applyOptimisticMyTestJoin(appId, options) {
         myTests = [optimisticRow].concat(Array.isArray(myTests) ? myTests : []);
     }
     _testsLoadedOnce = true;
+    markTestsViewDirty();
     _lastFetchTimes.tests = 0;
     persistTestsCacheSnapshot();
     if (typeof renderTests === 'function') {
@@ -1437,6 +1461,7 @@ function removeOptimisticMyTest(appId) {
     myTests = (Array.isArray(myTests) ? myTests : []).filter(function(test) {
         return Number(test && test.id) !== normalizedId;
     });
+    markTestsViewDirty();
     persistTestsCacheSnapshot();
     if (typeof renderTests === 'function') {
         renderTests(true);
@@ -1454,6 +1479,7 @@ async function loadTasks(isBackground) {
         if (cached && Array.isArray(cached.tests)) {
             myTests = cached.tests;
             _testsLoadedOnce = true;
+            markTestsViewDirty();
             renderTests();
             if (Array.isArray(cached.incoming_offers)) {
                 incomingOffers = cached.incoming_offers;
@@ -1502,24 +1528,6 @@ function _changedTestIds(previousTests, nextTests) {
     return Array.from(ids).filter(function(id) {
         return JSON.stringify(previousById[id] || null) !== JSON.stringify(nextById[id] || null);
     }).map(Number);
-}
-
-function _markFreshTestCards(testIds) {
-    if (!Array.isArray(testIds) || !testIds.length) return;
-    window.requestAnimationFrame(function() {
-        testIds.forEach(function(testId, index) {
-            var card = document.getElementById('test-card-' + Number(testId || 0));
-            if (!card) return;
-            card.style.setProperty('--ts-refresh-order', String(Math.min(index, 6)));
-            card.classList.remove('is-data-updated');
-            void card.offsetWidth;
-            card.classList.add('is-data-updated');
-            window.setTimeout(function() {
-                card.classList.remove('is-data-updated');
-                card.style.removeProperty('--ts-refresh-order');
-            }, 1450 + Math.min(index, 6) * 55);
-        });
-    });
 }
 
 function _mapTestsFromApi(data) {
@@ -1796,13 +1804,13 @@ async function _loadTasksImpl(options) {
         var testsChanged = changedTestIds.length > 0;
         if (testsChanged || !wasTestsLoadedBeforeRequest) {
             myTests = nextTests;
+            markTestsViewDirty();
             var pendingHandled = typeof clearCompletedPendingFeedbackCheckins === 'function'
                 && clearCompletedPendingFeedbackCheckins();
             if (!pendingHandled) {
                 if (isTabCurrentlyActive('tests')) renderTests(true);
                 if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
             }
-            if (testsChanged && isTabCurrentlyActive('tests')) _markFreshTestCards(changedTestIds);
             if (testsChanged && typeof renderBountyFeed === 'function') renderBountyFeed(true);
         } else if (typeof clearCompletedPendingFeedbackCheckins === 'function') {
             clearCompletedPendingFeedbackCheckins();
@@ -2108,6 +2116,7 @@ async function loadProjects(isBackground, force) {
             visibilityStats = cached.visibilityStats || {};
             _projectsLoadedOnce = true;
             myProjectsLoadError = false;
+            markProjectsViewDirty();
             renderProjects();
             if (typeof window.updateOwnerAccessIssueBanner === 'function') {
                 window.updateOwnerAccessIssueBanner();
@@ -2163,28 +2172,10 @@ function _refreshProjectActivityData(projects, forceRefresh) {
         var appId = _projectSnapshotId(project);
         if (!appId) return;
         if (forceRefresh && typeof window.ProjectToday.refresh === 'function') {
-            window.ProjectToday.refresh(appId, { maxAgeMs: 25000 });
+            window.ProjectToday.refresh(appId, { maxAgeMs: 90000 });
         } else if (typeof window.ProjectToday.invalidate === 'function') {
             window.ProjectToday.invalidate(appId);
         }
-    });
-}
-
-function _markFreshProjectCards(projectIds) {
-    if (!Array.isArray(projectIds) || !projectIds.length) return;
-    window.requestAnimationFrame(function() {
-        projectIds.forEach(function(appId, index) {
-            var card = document.getElementById('project-card-' + Number(appId || 0));
-            if (!card) return;
-            card.style.setProperty('--pc-refresh-order', String(Math.min(index, 6)));
-            card.classList.remove('is-freshly-updated');
-            void card.offsetWidth;
-            card.classList.add('is-freshly-updated');
-            window.setTimeout(function() {
-                card.classList.remove('is-freshly-updated');
-                card.style.removeProperty('--pc-refresh-order');
-            }, 1500 + Math.min(index, 6) * 60);
-        });
     });
 }
 
@@ -2439,6 +2430,7 @@ function _markPostSyncRefreshCooldown() {
 
 async function _loadProjectsImpl(options) {
     var shouldMarkBackgroundSync = !!(options && options.backgroundSync);
+    var wasProjectsLoadedBeforeRequest = _projectsLoadedOnce;
     if (shouldMarkBackgroundSync) {
         beginBackgroundSync('projects');
     }
@@ -2458,25 +2450,24 @@ async function _loadProjectsImpl(options) {
         var projectsChanged = changedProjectIds.length > 0;
         var statsChanged = JSON.stringify(visibilityStats) !== JSON.stringify(nextStats);
 
-        if (projectsChanged || statsChanged) {
+        if (projectsChanged || statsChanged || !wasProjectsLoadedBeforeRequest) {
             myProjects = nextProjects;
             visibilityStats = nextStats;
             myProjectsLoadError = false;
-            _refreshProjectActivityData(nextProjects, false);
+            markProjectsViewDirty();
+            if (projectsChanged) {
+                var changedProjectIdSet = new Set(changedProjectIds.map(Number));
+                _refreshProjectActivityData(nextProjects.filter(function(project) {
+                    return changedProjectIdSet.has(_projectSnapshotId(project));
+                }), false);
+            }
             if (isTabCurrentlyActive('projects')) {
                 renderProjects(true);
-                _markFreshProjectCards(projectsChanged
-                    ? changedProjectIds
-                    : nextProjects.map(_projectSnapshotId).filter(Boolean));
             }
             if (typeof window.renderTests === 'function' && Array.isArray(myTests) && myTests.length) {
+                markTestsViewDirty();
                 window.renderTests();
             }
-        } else if (isTabCurrentlyActive('projects')) {
-            // The outer project snapshot may be unchanged while today's check-ins,
-            // feedback and tester activity have moved on. Refresh those near the
-            // viewport progressively instead of rebuilding every card.
-            _refreshProjectActivityData(nextProjects, true);
         }
         if (typeof window.updateOwnerAccessIssueBanner === 'function') {
             window.updateOwnerAccessIssueBanner();
@@ -2913,10 +2904,13 @@ async function loadArchivedProjects(options) {
     var silent = !!opts.silent || background;
     var shouldMarkBackgroundSync = background || archivedProjects.length > 0;
 
+    if (_archivedProjectsInFlight) return;
+
     if (background && !opts.force && (Date.now() - (_lastFetchTimes.archived || 0)) < ARCHIVED_FETCH_THROTTLE_MS) {
         return;
     }
 
+    _archivedProjectsInFlight = true;
     try {
         if (shouldMarkBackgroundSync) {
             beginBackgroundSync('projects');
@@ -2925,7 +2919,7 @@ async function loadArchivedProjects(options) {
         const response = await fetch(`${API_BASE}/projects/${userId}/archived?init_data=${encodeURIComponent(initDataRaw)}`);
         if (!response.ok) return;
         const data = await response.json();
-        archivedProjects = (data.archived || []).map(function(project) {
+        var nextArchivedProjects = (data.archived || []).map(function(project) {
             return Object.assign({}, project, {
                 target_lang: project.target_lang || 'ALL',
                 run_iteration: Number(project.run_iteration || 1),
@@ -2938,13 +2932,20 @@ async function loadArchivedProjects(options) {
             });
         });
         _lastFetchTimes.archived = Date.now();
-        renderArchivedProjects();
+        var archiveChanged = JSON.stringify(archivedProjects) !== JSON.stringify(nextArchivedProjects);
+        if (archiveChanged || !_archivedProjectsLoadedOnce) {
+            archivedProjects = nextArchivedProjects;
+            _archivedProjectsLoadedOnce = true;
+            markArchivedProjectsViewDirty();
+            if (isTabCurrentlyActive('projects')) renderArchivedProjects();
+        }
     } catch (error) {
         console.error('Archive load error:', error);
         if (!silent) {
             showToast(getApiErrorMessage(error && error.message, 'networkError'));
         }
     } finally {
+        _archivedProjectsInFlight = false;
         if (shouldMarkBackgroundSync) {
             endBackgroundSync('projects');
         }
