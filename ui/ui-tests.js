@@ -3665,3 +3665,23 @@ window.closeBountyInfoModal = closeBountyInfoModal;
 window.toggleCheckpointAccordion = toggleCheckpointAccordion;
 window.handleGrantTomorrowClick = handleGrantTomorrowClick;
 
+(function initTestsScrollPerf() {
+    var scrollEndTimer = null;
+    var isTestsScrolling = false;
+
+    function markTestsScrolling() {
+        if (!isTabVisible('tests')) return;
+        if (!isTestsScrolling) {
+            isTestsScrolling = true;
+            document.documentElement.classList.add('tests-scrolling');
+        }
+        clearTimeout(scrollEndTimer);
+        scrollEndTimer = setTimeout(function() {
+            isTestsScrolling = false;
+            document.documentElement.classList.remove('tests-scrolling');
+        }, 160);
+    }
+
+    window.addEventListener('scroll', markTestsScrolling, { passive: true });
+})();
+

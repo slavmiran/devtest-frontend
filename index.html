@@ -41,8 +41,8 @@
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
-    <script src="./ui/ui-tests.js?v=20260904-my-tests-refresh-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260904-project-refresh-v1"></script>
+    <script src="./ui/ui-tests.js?v=20260904-scroll-smooth-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260904-scroll-smooth-v1"></script>
     <script src="./ui/ui-market.js?v=20260904-my-tests-refresh-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
@@ -93,10 +93,10 @@
     <link rel="stylesheet" href="./css/access-issue.css?v=20260722-access-timer-v1">
     <link rel="stylesheet" href="./css/default-group.css?v=20260820-group-wait-inline-v1">
     <link rel="stylesheet" href="./styles.css?v=20260903-reviews-chip-v2">
-    <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
+    <link rel="stylesheet" href="./css/projects-scroll.css?v=20260904-scroll-smooth-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260821-chooser-v6">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260904-my-tests-refresh-v1">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260904-scroll-smooth-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260904-project-refresh-v1">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260904-quick-settings-v1">
@@ -908,11 +908,14 @@
     <!-- Project card: lifecycle / safety buffer guide -->
     <div id="project-lifecycle-modal" class="modal-overlay" onclick="closeProjectLifecycleModal(event)">
         <div class="modal-content pc-lc-sheet" onclick="event.stopPropagation()">
+            <button type="button" class="pc-lc-sheet__close" onclick="closeProjectLifecycleModal(event)" aria-label="Close">&times;</button>
             <h3 id="project-lifecycle-title" class="pc-lc-sheet__title"></h3>
             <div id="project-lifecycle-body"></div>
-            <div class="pc-lc-sheet__actions">
-                <button type="button" class="btn btn-secondary" onclick="closeProjectLifecycleModal()" data-i18n="pcLifecycleCloseBtn">Закрыть</button>
-                <button type="button" class="btn btn-primary" id="project-lifecycle-action"></button>
+            <div class="pc-lc-sheet__actions" id="project-lifecycle-actions-wrap">
+                <div class="pc-lc-action-card">
+                    <button type="button" class="btn btn-primary pc-lc-main-cta" id="project-lifecycle-action"></button>
+                    <p class="pc-lc-action-desc" id="project-lifecycle-action-desc"></p>
+                </div>
             </div>
             <div id="project-lifecycle-extra"></div>
         </div>

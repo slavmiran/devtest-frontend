@@ -64,7 +64,10 @@
 
 html.projects-scrolling #tab-projects .energy-bar-fill::after,
 html.projects-scrolling #tab-projects .energy-bar-shimmer,
-html.projects-scrolling #tab-projects .grant-segment.current-pending {
+html.projects-scrolling #tab-projects .grant-segment.current-pending,
+html.projects-scrolling #tab-projects .grant-segment.current-completed,
+html.projects-scrolling #tab-projects .pc-cal.is-need-sync .pc-cal__dot,
+html.projects-scrolling #tab-projects .pc-slot.is-filled:not(.is-loaded)::after {
     animation-play-state: paused !important;
 }
 

@@ -19,6 +19,38 @@
     overflow: visible;
 }
 
+/* These cards already use opaque surfaces below, so the global card blur only
+   makes mobile scrolling more expensive without adding a visible effect. */
+#tab-tests .card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+#tab-tests.tab-content {
+    animation: testsTabFadeIn 0.18s ease;
+}
+
+@keyframes testsTabFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Decorative effects are useful at rest, but repainting their shadows while
+   a long list moves costs frames on mid-range mobile devices. */
+html.tests-scrolling #tab-tests .grant-segment.current-pending,
+html.tests-scrolling #tab-tests .grant-segment.current-completed,
+html.tests-scrolling #tab-tests .btn-claim-grant:not(.btn-missed-grant),
+html.tests-scrolling #tab-tests .sync-last-day-chip,
+html.tests-scrolling #tab-tests .access-error-panel,
+html.tests-scrolling #tab-tests .access-error-head__icon,
+html.tests-scrolling #tab-tests .protection-reward-chip,
+html.tests-scrolling #tab-tests .grant-shield.current,
+html.tests-scrolling #tab-tests .screenshot-proof-upload-pending__spinner,
+html.tests-scrolling #tab-tests .test-card-highlight-pulse {
+    animation-play-state: paused !important;
+}
+
 .ts-refresh-state {
     display: inline-flex;
     align-items: center;
