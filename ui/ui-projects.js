@@ -1293,8 +1293,7 @@ function renderProjects(force) {
         const testerTargetCount = (project.mode === 'mutual' || project.mode === 'hybrid' ? Number(project.limit_mutual || 0) : 0)
             + (project.mode === 'bounty' || project.mode === 'hybrid' ? Number(project.limit_bounty || 0) : 0);
 
-        const currentEffectiveDay = hasSync ? currentGoogleDay : platformDays;
-        const extraDaysRunning = extraPaidDays > 0 && currentEffectiveDay > 14;
+        const extraDaysRunning = extraPaidDays > 0 && !isPendingCompletion && (hasSync ? (platformDays > 14 || currentGoogleDay > 14) : platformDays > 14);
         const needSyncPrompt = !hasSync && projectNeedsConsoleSync(project, { platformDays: platformDays });
         const closedTestStage = isPendingCompletion
             ? 'buffer'
@@ -1313,8 +1312,28 @@ function renderProjects(force) {
                         ? window.t('pcStatusNeedSync', {}, lang)
                         : window.t('pcStatusRecruiting', {}, lang);
 
-        const dayMain = currentEffectiveDay;
-        const dayValueHtml = '<span class="pc-metric-day__value">' + window.escapeHTML(String(dayMain)) + '</span>'
+        let dayMain;
+        let isDayMainBuffer = false;
+        if (hasSync) {
+            if (isPendingCompletion) {
+                const consumedBufferHours = Number(project.consumed_pending_hours || 0);
+                const bufferDaysElapsed = Math.min(2, Math.floor(consumedBufferHours / 24));
+                const bufferedDay = Math.min(16, Math.max(14, Math.min(14, currentGoogleDay) + bufferDaysElapsed));
+                dayMain = bufferedDay;
+                if (dayMain > 14) {
+                    isDayMainBuffer = true;
+                }
+            } else {
+                dayMain = Math.min(14, Math.max(1, currentGoogleDay));
+            }
+        } else {
+            dayMain = platformDays;
+        }
+
+        const dayValClass = isDayMainBuffer
+            ? 'pc-metric-day__value pc-metric-day__value--buffer'
+            : 'pc-metric-day__value';
+        const dayValueHtml = '<span class="' + dayValClass + '">' + window.escapeHTML(String(dayMain)) + '</span>'
             + (hasSync ? '<span class="pc-metric-day__total">/ 14</span>' : '');
         const syncDotHtml = '';
         const bufferHoursText = isPendingCompletion && bufferHoursLeft > 0
@@ -1326,8 +1345,8 @@ function renderProjects(force) {
         const bufferWord = lang === 'en' ? 'Buffer' : 'Буфер';
         const bufferUnit = lang === 'en' ? 'h' : 'ч';
 
-        const isPaidDaysActive = extraPaidDays > 0 && currentEffectiveDay > 14 && currentEffectiveDay <= (14 + extraPaidDays) && !isPendingCompletion;
-        const isPaidDaysExpired = extraPaidDays > 0 && (currentEffectiveDay > (14 + extraPaidDays) || isPendingCompletion);
+        const isPaidDaysActive = extraPaidDays > 0 && !isPendingCompletion && (hasSync ? (platformDays > 14 || currentGoogleDay > 14) : platformDays > 14);
+        const isPaidDaysExpired = extraPaidDays > 0 && (platformDays > (14 + extraPaidDays) || isPendingCompletion);
         const isBufferActive = isPendingCompletion;
 
         const paidDaysClass = isPaidDaysActive
@@ -6814,13 +6833,20 @@ function openProjectLifecycleModal(projectId, event) {
     const bufferHoursLeft = isPending
         ? Math.min(48, Math.max(0, 48 - Number(project.consumed_pending_hours || 0)))
         : 0;
-    const lastMainDay = 14 + extraPaidDays;
+    const consumedBufferHours = isPending ? Number(project.consumed_pending_hours || 0) : 0;
+    const bufferDaysElapsed = Math.min(2, Math.floor(consumedBufferHours / 24));
+
+    const trackTotalDays = hasSync ? 14 : (14 + extraPaidDays);
+    const trackCurrentDay = hasSync
+        ? (isPending ? Math.min(16, 14 + bufferDaysElapsed) : Math.min(14, Math.max(1, currentDay)))
+        : Math.min(trackTotalDays, Math.max(1, platformDay));
+
     const verifiedMeta = typeof getProjectVerifiedTestersMeta === 'function'
         ? getProjectVerifiedTestersMeta(project)
         : { verifiedCount: 0, estimatedGoogleDay: 0, twelveVerifiedAt: null };
     const estimatedGoogleDay = Number(verifiedMeta.estimatedGoogleDay || 0);
     const verifiedCount = Number(verifiedMeta.verifiedCount || 0);
-    const hubDay = Math.max(1, Number(currentDay || 1));
+    const hubDay = Math.max(1, Number(platformDay || 1));
     const googleGap = estimatedGoogleDay > 0 ? Math.max(0, hubDay - estimatedGoogleDay) : null;
 
     const esc = window.escapeHTML;
@@ -6828,15 +6854,17 @@ function openProjectLifecycleModal(projectId, event) {
 
     let stage = 'main';
     if (isPending) stage = 'buffer';
-    else if (extraPaidDays > 0 && currentDay > 14) stage = 'extended';
+    else if (extraPaidDays > 0 && platformDay > 14) stage = 'extended';
     else if (hasSync && googleGap > 0) stage = 'sync';
 
     const dots = [];
-    for (let day = 1; day <= lastMainDay; day += 1) {
+    for (let day = 1; day <= trackTotalDays; day += 1) {
         let cls = 'pc-lc-dot';
-        if (day <= currentDay) cls += ' is-done';
-        if (day === currentDay) cls += ' is-current';
-        if (day > 14) cls += ' is-paid';
+        const isDone = isPending ? true : (day <= trackCurrentDay);
+        const isCurrent = !isPending && (day === trackCurrentDay);
+        if (isDone) cls += ' is-done';
+        if (isCurrent) cls += ' is-current';
+        if (!hasSync && day > 14) cls += ' is-paid';
         dots.push(`<span class="${cls}"></span>`);
     }
 
@@ -6864,11 +6892,18 @@ function openProjectLifecycleModal(projectId, event) {
     titleEl.textContent = tr('pcLifecycleTitle');
 
     // Default sub-tab inside the twin capsule: sync or extended
-    const defaultSub = (extraPaidDays > 0 && currentDay > 14) ? 'extended' : 'sync';
+    const defaultSub = (extraPaidDays > 0 && platformDay > 14) ? 'extended' : 'sync';
 
     // Track label formatting: shows main days + 48h buffer clearly
     const bufferWord = tr('pcBufferWord') || 'буфер';
-    const trackDaysValue = `${tr('pcLifecycleMainMeta', { day: Math.min(currentDay, lastMainDay), total: lastMainDay })} + 48ч ${bufferWord}`;
+    const displayDay = hasSync
+        ? (isPending && trackCurrentDay > 14 ? trackCurrentDay : Math.min(14, trackCurrentDay))
+        : Math.min(trackTotalDays, platformDay);
+    const trackDaysValue = `${tr('pcLifecycleMainMeta', { day: displayDay, total: trackTotalDays })} + 48ч ${bufferWord}`;
+
+    const legendPaidHtml = (!hasSync && extraPaidDays > 0)
+        ? `<span><i class="pc-lc-key is-paid"></i>${esc(tr('pcLifecycleLegendPaid'))}</span>`
+        : (extraPaidDays > 0 ? `<span><i class="pc-lc-key is-paid"></i>🛡 +${extraPaidDays} ${lang === 'en' ? 'days' : 'дн.'}</span>` : '');
 
     bodyEl.innerHTML = `
         <p class="pc-lc-intro">${esc(tr('pcLifecycleIntro'))}</p>
@@ -6883,7 +6918,7 @@ function openProjectLifecycleModal(projectId, event) {
             </div>
             <div class="pc-lc-legend">
                 <span><i class="pc-lc-key is-done"></i>${esc(tr('pcLifecycleLegendDone'))}</span>
-                <span><i class="pc-lc-key is-paid"></i>${esc(tr('pcLifecycleLegendPaid'))}</span>
+                ${legendPaidHtml}
                 <span><i class="pc-lc-key"></i>${esc(tr('pcLifecycleLegendLeft'))}</span>
                 <span><i class="pc-lc-key is-buffer"></i>${esc(tr('pcLifecycleLegendBuffer'))}</span>
             </div>

@@ -3947,6 +3947,11 @@ button.pc-act-reason {
     line-height: 1;
 }
 
+.pc-metric-day__value--buffer {
+    color: var(--stage-buffer, #ffb84d) !important;
+    text-shadow: 0 0 12px rgba(255, 184, 77, 0.45);
+}
+
 .pc-metric-day__total {
     margin-left: 3px;
     color: rgba(193, 210, 235, 0.62);
