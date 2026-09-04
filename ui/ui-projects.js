@@ -44,6 +44,67 @@ function testersWhoCompletedTests(testers) {
     });
 }
 
+function isVerifiedActiveTester(tester) {
+    if (!tester || tester.is_left_soft) return false;
+    if (tester.is_guest_tester || tester.is_external) return false;
+    if (Number(tester.checkins_count || 0) >= 1) return true;
+    if (tester.last_check_date) return true;
+    var timeline = String(tester.daily_timeline || '');
+    return timeline.indexOf('1') >= 0 || timeline.indexOf('2') >= 0;
+}
+
+function firstVerifiedAtFromTester(tester) {
+    if (!tester) return '';
+    var startRaw = String(tester.start_date || '').slice(0, 10);
+    var timeline = String(tester.daily_timeline || '');
+    for (var i = 0; i < timeline.length; i += 1) {
+        if (timeline.charAt(i) === '1' || timeline.charAt(i) === '2') {
+            if (startRaw && typeof parseLocalDateOnly === 'function') {
+                var startDt = parseLocalDateOnly(startRaw);
+                if (startDt) {
+                    var first = new Date(startDt.getTime());
+                    first.setDate(first.getDate() + i);
+                    var year = first.getFullYear();
+                    var month = String(first.getMonth() + 1).padStart(2, '0');
+                    var day = String(first.getDate()).padStart(2, '0');
+                    return year + '-' + month + '-' + day;
+                }
+            }
+            break;
+        }
+    }
+    var lastCheck = String(tester.last_check_date || '').slice(0, 10);
+    if (Number(tester.checkins_count || 0) === 1 && lastCheck) return lastCheck;
+    return startRaw || lastCheck || '';
+}
+
+function getProjectVerifiedTestersMeta(project) {
+    var testers = Array.isArray(project && project.testers) ? project.testers : [];
+    var verified = testers.filter(isVerifiedActiveTester);
+    var storedCount = Number(project && project.verified_testers_count || 0);
+    var verifiedCount = Math.max(verified.length, storedCount);
+    var storedAt = project && project.twelve_verified_testers_at ? String(project.twelve_verified_testers_at) : '';
+    if (!storedAt && verified.length >= 12) {
+        var stamps = verified.map(firstVerifiedAtFromTester).filter(Boolean).sort();
+        storedAt = stamps[11] || '';
+    }
+    var estimatedGoogleDay = 0;
+    if (verifiedCount >= 12 && storedAt) {
+        var then = new Date(storedAt);
+        if (!isNaN(then.getTime())) {
+            estimatedGoogleDay = Math.min(14, Math.max(1, Math.floor((Date.now() - then.getTime()) / (1000 * 60 * 60 * 24)) + 1));
+        }
+    }
+    return {
+        verifiedCount: verifiedCount,
+        twelveVerifiedAt: storedAt || null,
+        estimatedGoogleDay: estimatedGoogleDay,
+    };
+}
+
+window.isVerifiedActiveTester = isVerifiedActiveTester;
+window.getProjectVerifiedTestersMeta = getProjectVerifiedTestersMeta;
+
 function testerCompletedDayCount(tester) {
     var days = Number(tester && tester.testing_days || 0);
     if (days >= 1) return days;
@@ -6652,6 +6713,13 @@ function openProjectLifecycleModal(projectId, event) {
         ? Math.min(48, Math.max(0, 48 - Number(project.consumed_pending_hours || 0)))
         : 0;
     const lastMainDay = 14 + extraPaidDays;
+    const verifiedMeta = typeof getProjectVerifiedTestersMeta === 'function'
+        ? getProjectVerifiedTestersMeta(project)
+        : { verifiedCount: 0, estimatedGoogleDay: 0, twelveVerifiedAt: null };
+    const estimatedGoogleDay = Number(verifiedMeta.estimatedGoogleDay || 0);
+    const verifiedCount = Number(verifiedMeta.verifiedCount || 0);
+    const hubDay = Math.max(1, Number(currentDay || 1));
+    const googleGap = estimatedGoogleDay > 0 ? Math.max(0, hubDay - estimatedGoogleDay) : null;
 
     const esc = window.escapeHTML;
     const tr = (key, params) => window.t(key, params || {}, lang);
@@ -6669,6 +6737,7 @@ function openProjectLifecycleModal(projectId, event) {
             glyph: '🧪',
             title: tr('pcLifecycleMainTitle'),
             meta: tr('pcLifecycleMainMeta', { day: Math.min(currentDay, 14), total: 14 }),
+            short: tr('pcLifecycleMainShort'),
             desc: tr('pcLifecycleMainDesc'),
         },
         {
@@ -6678,6 +6747,7 @@ function openProjectLifecycleModal(projectId, event) {
             meta: extraPaidDays > 0
                 ? tr('pcLifecycleExtendedMetaPaid', { days: extraPaidDays })
                 : tr('pcLifecycleExtendedMetaEmpty'),
+            short: tr('pcLifecycleExtendedShort'),
             desc: tr('pcLifecycleExtendedDesc'),
             chips: extraPaidDays > 0
                 ? Array.from({ length: extraPaidDays }, (_, i) => tr('pcLifecycleDayChip', { day: 15 + i }))
@@ -6689,6 +6759,7 @@ function openProjectLifecycleModal(projectId, event) {
             glyph: '⏳',
             title: tr('pcLifecycleBufferTitle'),
             meta: bufferHoursLeft > 0 ? tr('pcBufferHoursShort', { hours: bufferHoursLeft }) : tr('pcBufferBadge'),
+            short: tr('pcLifecycleBufferShort'),
             desc: tr('pcLifecycleBufferDesc'),
         },
         {
@@ -6696,6 +6767,7 @@ function openProjectLifecycleModal(projectId, event) {
             glyph: '🏁',
             title: tr('pcLifecycleArchiveTitle'),
             meta: tr('pcLifecycleArchiveMeta'),
+            short: tr('pcLifecycleArchiveShort'),
             desc: tr('pcLifecycleArchiveDesc'),
         },
     ];
@@ -6707,6 +6779,27 @@ function openProjectLifecycleModal(projectId, event) {
         if (day === currentDay) cls += ' is-current';
         if (day > 14) cls += ' is-paid';
         dots.push(`<span class="${cls}"></span>`);
+    }
+
+    let gapTone = 'wait';
+    let gapTitle = tr('pcLcGapWaitTitle');
+    let gapShort = tr('pcLcGapWaitShort', { count: Math.max(0, 12 - verifiedCount) });
+    if (estimatedGoogleDay > 0 && googleGap === 0) {
+        gapTone = 'ok';
+        gapTitle = tr('pcLcGapAlignedTitle');
+        gapShort = tr('pcLcGapAlignedShort');
+    } else if (googleGap === 1) {
+        gapTone = 'ok';
+        gapTitle = tr('pcLcGapSafeTitle');
+        gapShort = tr('pcLcGapSafeShort');
+    } else if (googleGap === 2) {
+        gapTone = 'warn';
+        gapTitle = tr('pcLcGapWarnTitle');
+        gapShort = tr('pcLcGapWarnShort');
+    } else if (googleGap >= 3) {
+        gapTone = 'crit';
+        gapTitle = tr('pcLcGapCritTitle');
+        gapShort = tr('pcLcGapCritShort');
     }
 
     titleEl.textContent = tr('pcLifecycleTitle');
@@ -6726,11 +6819,35 @@ function openProjectLifecycleModal(projectId, event) {
                 <span><i class="pc-lc-key is-buffer"></i>${esc(tr('pcLifecycleLegendBuffer'))}</span>
             </div>
         </div>
+        <section class="pc-lc-gap is-${gapTone}">
+            <div class="pc-lc-gap__head">
+                <span class="pc-lc-gap__kicker">${esc(tr('pcLcGapKicker'))}</span>
+                <span class="pc-lc-gap__title">${esc(gapTitle)}</span>
+            </div>
+            <div class="pc-lc-gap__metrics">
+                <span>${esc(tr('pcLcGapVerified', { count: verifiedCount }))}</span>
+                <span>${esc(estimatedGoogleDay > 0
+                    ? tr('pcLcGapEstimate', { day: estimatedGoogleDay })
+                    : tr('pcLcGapEstimatePending'))}</span>
+                ${googleGap != null ? `<span>${esc(tr('pcLcGapDays', { count: googleGap }))}</span>` : ''}
+            </div>
+            <p class="pc-lc-gap__short">${esc(gapShort)}</p>
+            <p class="pc-lc-gap__hint">${esc(tr('pcLcGapSpeedHint'))}</p>
+            <p class="pc-lc-gap__extend">${esc(tr('pcLcGapExtendHint'))}</p>
+            <details class="pc-lc-gap-why">
+                <summary>
+                    <span>${esc(tr('pcLcGapWhyTitle'))}</span>
+                    <span class="pc-lc-gap-why__chev" aria-hidden="true">▾</span>
+                </summary>
+                <p>${esc(tr('pcLcGapWhyBody'))}</p>
+            </details>
+        </section>
         <ol class="pc-lc-steps">
             ${stages.map((item, index) => {
                 const state = index < stageIndex ? 'is-past' : (index === stageIndex ? 'is-active' : 'is-future');
+                const isOpen = index === stageIndex;
                 return `
-                <li class="pc-lc-step ${state}${item.muted ? ' is-muted' : ''}">
+                <li class="pc-lc-step stage-${item.id} ${state}${item.muted ? ' is-muted' : ''}${isOpen ? ' is-open' : ''}" data-lc-step="${item.id}">
                     <span class="pc-lc-step__glyph" aria-hidden="true">${item.glyph}</span>
                     <div class="pc-lc-step__body">
                         <div class="pc-lc-step__head">
@@ -6740,7 +6857,11 @@ function openProjectLifecycleModal(projectId, event) {
                         ${item.chips && item.chips.length
                             ? `<div class="pc-lc-step__chips">${item.chips.map((chip) => `<span class="pc-lc-chip">${esc(chip)}</span>`).join('')}</div>`
                             : ''}
+                        <p class="pc-lc-step__short">${esc(item.short)}</p>
                         <p class="pc-lc-step__desc">${esc(item.desc)}</p>
+                        <button type="button" class="pc-lc-step__toggle" aria-expanded="${isOpen ? 'true' : 'false'}" onclick="toggleProjectLifecycleStep(this)">
+                            ${esc(isOpen ? tr('pcLifecycleLess') : tr('pcLifecycleMore'))}
+                        </button>
                     </div>
                 </li>`;
             }).join('')}
@@ -6776,6 +6897,21 @@ function openProjectLifecycleModal(projectId, event) {
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
+
+function toggleProjectLifecycleStep(button) {
+    if (!button) return;
+    var step = button.closest ? button.closest('.pc-lc-step') : null;
+    if (!step) return;
+    var willOpen = !step.classList.contains('is-open');
+    step.classList.toggle('is-open', willOpen);
+    button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    var langNow = typeof lang !== 'undefined' ? lang : 'ru';
+    button.textContent = willOpen
+        ? (window.t('pcLifecycleLess', {}, langNow) || 'Свернуть')
+        : (window.t('pcLifecycleMore', {}, langNow) || 'Подробнее');
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+}
+window.toggleProjectLifecycleStep = toggleProjectLifecycleStep;
 
 function closeProjectLifecycleModal(event) {
     if (event && event.target !== event.currentTarget) return;

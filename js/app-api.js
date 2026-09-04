@@ -2096,6 +2096,8 @@ function _mapProjectsFromApi(data) {
             feedback_new_count: project.feedback_new_count || 0,
             feedback_total_count: project.feedback_total_count || 0,
             guest_testers_count: Number(project.guest_testers_count || 0),
+            verified_testers_count: Number(project.verified_testers_count || 0),
+            twelve_verified_testers_at: project.twelve_verified_testers_at || null,
             paid_protection_days: Number(project.purchased_protection_days || project.paid_protection_days || 0),
             protection_bust_pool: Number(project.protection_bust_pool || 0),
             consumed_pending_hours: Number(project.consumed_pending_hours || 0),
