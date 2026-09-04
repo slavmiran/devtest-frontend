@@ -1129,7 +1129,9 @@
 
         var deepLink = (typeof buildTesterReminderDeepLink === 'function')
             ? buildTesterReminderDeepLink(appId)
-            : ('https://t.me/Android12TestersBot/app?startapp=test_' + appId);
+            : ((typeof buildCheckpointTestLink === 'function')
+                ? buildCheckpointTestLink(appId)
+                : ('https://t.me/Android12TestersBot/app?startapp=app_focus_' + appId));
 
         var langKey = messageLang === 'en' ? 'en' : 'ru';
 

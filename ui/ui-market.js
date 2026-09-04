@@ -2827,9 +2827,13 @@ function formatCompactSyncLabel(project) {
 }
 
 function buildTesterReminderDeepLink(appId) {
+    if (typeof buildCheckpointTestLink === 'function') {
+        var checkpointLink = buildCheckpointTestLink(appId);
+        if (checkpointLink) return checkpointLink;
+    }
     var botUsername = String((window.App && window.App.botUsername) || window.__BOT_USERNAME__ || 'Android12TestersBot').trim().replace(/^@+/, '');
     var webappShortname = String((window.App && window.App.webappShortname) || 'app').trim().replace(/^\/+|\/+$/g, '');
-    return 'https://t.me/' + botUsername + '/' + webappShortname + '?startapp=test_' + Number(appId || 0);
+    return 'https://t.me/' + botUsername + '/' + webappShortname + '?startapp=app_focus_' + Number(appId || 0);
 }
 
 function showScreenshotCompleteModal(ownerUsername) {
@@ -10797,6 +10801,7 @@ Object.assign(window, {
     selectPlayReviewRejectReason,
     confirmPlayReviewReject,
     toggleFeedbackCardCollapse,
+    buildTesterReminderDeepLink,
 });
 
 console.log('[DEBUG] ui-market.js END — switchTab=', typeof switchTab, 'showLoading=', typeof showLoading);
