@@ -4049,12 +4049,6 @@ button.pc-act-reason {
     border-color: rgba(255, 184, 77, 0.22);
 }
 
-.pc-metric-reserve--warning {
-    color: #ffc26b;
-    background: rgba(255, 159, 10, 0.10);
-    border-color: rgba(255, 159, 10, 0.22);
-}
-
 .pc-metric-reserve--recommend {
     color: #a9c5ef;
     background: rgba(83, 135, 212, 0.10);
@@ -4434,8 +4428,14 @@ button.pc-act-reason {
     cursor: pointer;
 }
 
-.pc-subtitle-chip--reviews .pc-subtitle-chip__state.is-on {
-    color: #4cd964;
+.pc-subtitle-chip--reviews.is-on {
+    border-color: rgba(76, 141, 255, 0.22);
+    background: rgba(76, 141, 255, 0.07);
+}
+
+.pc-subtitle-chip--reviews .pc-subtitle-chip__state.is-on,
+.pc-subtitle-chip--reviews.is-on .pc-subtitle-chip__state {
+    color: #7eb6ff;
     font-weight: 700;
 }
 
@@ -4522,7 +4522,6 @@ button.pc-act-reason {
 .pc-quick-settings__title {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
     min-width: 0;
     color: rgba(203, 216, 238, 0.7);
     font-size: 10px;
@@ -4531,16 +4530,6 @@ button.pc-act-reason {
     line-height: 1.2;
     text-transform: uppercase;
     white-space: nowrap;
-}
-
-.pc-quick-settings__title::before {
-    width: 6px;
-    height: 6px;
-    flex: 0 0 6px;
-    border-radius: 50%;
-    background: #5d9eff;
-    box-shadow: 0 0 7px rgba(80, 145, 255, 0.34);
-    content: '';
 }
 
 .pc-quick-settings__meta {
@@ -4655,12 +4644,9 @@ button.pc-quick-tile:active,
     white-space: nowrap;
 }
 
-.pc-quick-tile__value--ping.is-on {
-    color: #48caaf;
-}
-
+.pc-quick-tile__value--ping.is-on,
 .pc-quick-tile__value--ping.is-off {
-    color: rgba(190, 202, 221, 0.55);
+    color: rgba(244, 247, 253, 0.92);
 }
 
 .pc-quick-settings__actions {

@@ -1395,7 +1395,7 @@ function renderProjects(force) {
         const testersToMinimum = Math.max(0, 12 - teamTesterCount);
         const testersToRecommended = Math.max(0, 20 - teamTesterCount);
         const teamReserveHtml = teamTesterCount < 12
-            ? '<button type="button" class="pc-metric-reserve pc-metric-reserve--warning" onclick="openDailyProgressDetailsModal(' + Number(project.id) + ', event); event.stopPropagation();">' + window.escapeHTML(window.t('pcMetricTesterMinimum', { count: testersToMinimum, unit: testerUnitLabel(testersToMinimum) }, lang)) + '</button>'
+            ? '<button type="button" class="pc-metric-reserve pc-metric-reserve--neutral" onclick="openDailyProgressDetailsModal(' + Number(project.id) + ', event); event.stopPropagation();">' + window.escapeHTML(window.t('pcMetricTesterMinimum', { count: testersToMinimum, unit: testerUnitLabel(testersToMinimum) }, lang)) + '</button>'
             : teamTesterCount < 20
                 ? '<button type="button" class="pc-metric-reserve pc-metric-reserve--recommend" onclick="openDailyProgressDetailsModal(' + Number(project.id) + ', event); event.stopPropagation();">' + window.escapeHTML(window.t('pcMetricTesterRecommend', { count: testersToRecommended }, lang)) + '</button>'
                 : '<button type="button" class="pc-metric-reserve pc-metric-reserve--reliable" onclick="openDailyProgressDetailsModal(' + Number(project.id) + ', event); event.stopPropagation();">' + window.escapeHTML(window.t('pcMetricTesterReliable', {}, lang)) + '</button>';
