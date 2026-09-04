@@ -4715,3 +4715,112 @@ button.pc-metric-reserve:active {
     line-height: 1;
     display: block;
 }
+
+/* ───────────────────── Progressive project refresh ────────────────────── */
+
+.background-sync-bar {
+    position: fixed;
+    inset: 0 0 auto;
+    height: 3px;
+    z-index: 1200;
+    overflow: hidden;
+    pointer-events: none;
+    background: rgba(75, 139, 244, 0.12);
+}
+
+.background-sync-bar::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 34%;
+    border-radius: 0 999px 999px 0;
+    background: #4b8bf4;
+    box-shadow: 0 0 10px rgba(75, 139, 244, 0.42);
+    animation: pc-background-sync-travel 1.05s ease-in-out infinite;
+}
+
+.background-sync-bar.hidden {
+    display: none;
+}
+
+.pc-card-refresh-state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0;
+    height: 28px;
+    padding: 0;
+    margin-right: -8px;
+    overflow: hidden;
+    opacity: 0;
+    color: rgba(176, 202, 241, 0.78);
+    background: rgba(75, 139, 244, 0.08);
+    border: 1px solid rgba(117, 166, 244, 0.12);
+    border-radius: 999px;
+    transition: width 180ms ease, opacity 150ms ease, padding 180ms ease, margin 180ms ease;
+    pointer-events: none;
+}
+
+#tab-projects .card[id^="project-card-"].is-refreshing .pc-card-refresh-state {
+    width: 28px;
+    margin-right: 0;
+    opacity: 1;
+}
+
+.pc-card-refresh-state__spinner {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+    border: 1.5px solid rgba(133, 177, 246, 0.28);
+    border-top-color: rgba(151, 192, 255, 0.92);
+    border-radius: 50%;
+    animation: pc-refresh-spin 0.72s linear infinite;
+}
+
+.pc-card-refresh-state__label {
+    display: none;
+    margin-left: 6px;
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+#tab-projects .card[id^="project-card-"].is-freshly-updated {
+    animation: pc-card-reconciled 0.9s ease-out calc(var(--pc-refresh-order, 0) * 60ms) both;
+}
+
+@media (min-width: 440px) {
+    #tab-projects .card[id^="project-card-"].is-refreshing .pc-card-refresh-state {
+        width: auto;
+        padding: 0 9px;
+    }
+
+    .pc-card-refresh-state__label {
+        display: inline;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .background-sync-bar::after,
+    .pc-card-refresh-state__spinner,
+    #tab-projects .card[id^="project-card-"].is-freshly-updated {
+        animation: none;
+    }
+}
+
+@keyframes pc-background-sync-travel {
+    0% { transform: translateX(-105%); }
+    55% { transform: translateX(185%); }
+    100% { transform: translateX(300%); }
+}
+
+@keyframes pc-refresh-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pc-card-reconciled {
+    0% { box-shadow: 0 0 0 0 rgba(86, 145, 239, 0); }
+    32% { box-shadow: 0 0 0 2px rgba(86, 145, 239, 0.18), 0 10px 28px rgba(0, 0, 0, 0.18); }
+    100% { box-shadow: 0 0 0 0 rgba(86, 145, 239, 0), 0 8px 24px rgba(0, 0, 0, 0.16); }
+}

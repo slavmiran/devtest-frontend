@@ -3140,6 +3140,8 @@
             pcHintCriteriaControl: "Контроль: сегодня обязательный день proof (1, 4, 7, 10, 14).",
             pcHintCriteriaAll: "Все: полный текущий состав этого тестирования.",
             pcDebtShort: "Долг",
+            pcProjectRefreshing: "Обновляем данные проекта",
+            pcProjectRefreshingShort: "Обновляем",
 
     };
     window.I18N_RU = window.I18NRU;

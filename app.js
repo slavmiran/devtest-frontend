@@ -64,6 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadBountyApplications({ background: true }).catch(() => {});
                 }
                 loadReliabilitySummary(true).catch(() => {});
+                if (typeof window.refreshVisibleProjects === 'function') {
+                    window.refreshVisibleProjects(false).catch(function() {});
+                }
             }
         });
 
@@ -77,11 +80,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadTasks(true).catch(function() {});
             }
             if (window.renderTests) window.renderTests(true);
+            if (typeof window.refreshVisibleProjects === 'function') {
+                window.refreshVisibleProjects(false).catch(function() {});
+            }
         });
 
         window.addEventListener('pageshow', function() {
             _syncActiveTimerState();
             if (window.renderTests) window.renderTests(true);
+            if (typeof window.refreshVisibleProjects === 'function') {
+                window.refreshVisibleProjects(false).catch(function() {});
+            }
         });
 
         document.addEventListener('pointerdown', (event) => {
@@ -135,6 +144,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof startBountyApplicationsPolling === 'function') startBountyApplicationsPolling();
         } catch (e) { console.error('Bootstrap startBountyApplicationsPolling error:', e); }
         try { startMarketPolling(); } catch (e) { console.error('Bootstrap startMarketPolling error:', e); }
+        try {
+            if (typeof window.startProjectsPolling === 'function') window.startProjectsPolling();
+        } catch (e) { console.error('Bootstrap startProjectsPolling error:', e); }
         loadEvents().catch(function(e) { console.error('Bootstrap loadEvents error:', e); });
         loadExternalCounts().catch(function(e) { console.error('Bootstrap loadExternalCounts error:', e); });
         if (typeof loadGuestApps === 'function') {

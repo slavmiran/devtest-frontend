@@ -457,64 +457,72 @@
         var current = cache.get(safeAppId);
         if (current && current.loading) return;
         if (current && !current.error && (Date.now() - current.loadedAt) < CACHE_TTL_MS) return;
-        cache.set(safeAppId, { loadedAt: 0, loading: true, error: false, control: [], others: [] });
+        var markCardRefresh = typeof window.beginProjectCardRefresh === 'function';
+        if (markCardRefresh) window.beginProjectCardRefresh(safeAppId);
         try {
-            paint(safeAppId);
-        } catch (error) {
-            console.warn('Project today paint failed:', error);
-        }
+            cache.set(safeAppId, { loadedAt: 0, loading: true, error: false, control: [], others: [] });
+            try {
+                paint(safeAppId);
+            } catch (error) {
+                console.warn('Project today paint failed:', error);
+            }
 
-        try {
-            var testersPromise = requestJson(
-                API_BASE + '/projects/' + safeAppId + '/testing-control/testers?limit=50&init_data=' + encodeURIComponent(initData())
-            );
-            var screenshotsPromise = galleryEnabled()
-                ? requestJson(
-                    API_BASE + '/projects/' + safeAppId + '/testing-control/screenshots?limit=50&init_data=' + encodeURIComponent(initData())
-                ).catch(function () { return { items: [] }; })
-                : Promise.resolve({ items: [] });
+            try {
+                var testersPromise = requestJson(
+                    API_BASE + '/projects/' + safeAppId + '/testing-control/testers?limit=50&init_data=' + encodeURIComponent(initData())
+                );
+                var screenshotsPromise = galleryEnabled()
+                    ? requestJson(
+                        API_BASE + '/projects/' + safeAppId + '/testing-control/screenshots?limit=50&init_data=' + encodeURIComponent(initData())
+                    ).catch(function () { return { items: [] }; })
+                    : Promise.resolve({ items: [] });
 
-            var results = await Promise.all([testersPromise, screenshotsPromise]);
-            var thumbnailByProofId = {};
-            (results[1].items || []).forEach(function (shot) {
-                var proofId = Number(shot.proof_id || 0);
-                var url = mediaUrl(shot.thumbnail_url);
-                thumbnailByProofId[proofId] = url;
-                if (url) thumbnailCache.set(thumbKey(proofId, 0), url);
-            });
-
-            var control = [];
-            var others = [];
-            var seenOtherProofIds = {};
-            var project = projectById(safeAppId);
-            (results[0].items || []).forEach(function (item) {
-                if (isExcludedControlTester(project, item)) return;
-                var row = buildRow(item, thumbnailByProofId);
-                if (row.day <= 0) return;
-                if (isControlDay(row.day)) control.push(row);
-                else if (row.proofId > 0) {
-                    others.push(row);
-                    seenOtherProofIds[row.proofId] = true;
-                }
-                (item.extra_proofs || []).forEach(function (proof) {
-                    var extra = buildProofRow(item, proof, thumbnailByProofId);
-                    if (extra.proofId <= 0 || seenOtherProofIds[extra.proofId]) return;
-                    seenOtherProofIds[extra.proofId] = true;
-                    others.push(extra);
+                var results = await Promise.all([testersPromise, screenshotsPromise]);
+                var thumbnailByProofId = {};
+                (results[1].items || []).forEach(function (shot) {
+                    var proofId = Number(shot.proof_id || 0);
+                    var url = mediaUrl(shot.thumbnail_url);
+                    thumbnailByProofId[proofId] = url;
+                    if (url) thumbnailCache.set(thumbKey(proofId, 0), url);
                 });
-            });
-            others.sort(function (left, right) {
-                return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
-            });
 
-            await attachFeedbackStatuses(control.concat(others));
-            cache.set(safeAppId, { loadedAt: Date.now(), loading: false, error: false, control: control, others: others });
-        } catch (error) {
-            console.warn('Project today hydration failed:', error);
-            cache.set(safeAppId, { loadedAt: Date.now(), loading: false, error: true, control: [], others: [] });
+                var control = [];
+                var others = [];
+                var seenOtherProofIds = {};
+                var project = projectById(safeAppId);
+                (results[0].items || []).forEach(function (item) {
+                    if (isExcludedControlTester(project, item)) return;
+                    var row = buildRow(item, thumbnailByProofId);
+                    if (row.day <= 0) return;
+                    if (isControlDay(row.day)) control.push(row);
+                    else if (row.proofId > 0) {
+                        others.push(row);
+                        seenOtherProofIds[row.proofId] = true;
+                    }
+                    (item.extra_proofs || []).forEach(function (proof) {
+                        var extra = buildProofRow(item, proof, thumbnailByProofId);
+                        if (extra.proofId <= 0 || seenOtherProofIds[extra.proofId]) return;
+                        seenOtherProofIds[extra.proofId] = true;
+                        others.push(extra);
+                    });
+                });
+                others.sort(function (left, right) {
+                    return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
+                });
+
+                await attachFeedbackStatuses(control.concat(others));
+                cache.set(safeAppId, { loadedAt: Date.now(), loading: false, error: false, control: control, others: others });
+            } catch (error) {
+                console.warn('Project today hydration failed:', error);
+                cache.set(safeAppId, { loadedAt: Date.now(), loading: false, error: true, control: [], others: [] });
+            }
+            paint(safeAppId);
+            loadPendingThumbnails(safeAppId);
+        } finally {
+            if (markCardRefresh && typeof window.endProjectCardRefresh === 'function') {
+                window.endProjectCardRefresh(safeAppId);
+            }
         }
-        paint(safeAppId);
-        loadPendingThumbnails(safeAppId);
     }
 
     function findRow(appId, proofId) {
@@ -1486,7 +1494,30 @@
         buildSection: buildSection,
         mount: mount,
         isControlDay: isControlDay,
-        invalidate: function (appId) { cache.delete(Number(appId || 0)); },
+        invalidate: function (appId) {
+            var safeAppId = Number(appId || 0);
+            var current = cache.get(safeAppId);
+            if (current && current.loading) return;
+            cache.delete(safeAppId);
+        },
+        refresh: function (appId, options) {
+            var safeAppId = Number(appId || 0);
+            if (!safeAppId) return;
+            if (!window.App || window.App.testingControlEnabled !== true) return;
+            var project = projectById(safeAppId);
+            var status = String(project && (project.app_status || project.status) || 'active').toLowerCase();
+            if (!project || (status !== 'active' && status !== 'pending_completion')) return;
+            var current = cache.get(safeAppId);
+            if (current && current.loading) return;
+            var maxAgeMs = Math.max(0, Number(options && options.maxAgeMs || 0));
+            if (current && !current.error && maxAgeMs > 0 && (Date.now() - current.loadedAt) < maxAgeMs) return;
+            cache.delete(safeAppId);
+            var root = document.getElementById('pc-today-' + safeAppId);
+            if (!root) return;
+            ensureObserver();
+            if (observer) observer.observe(root);
+            else hydrate(safeAppId);
+        },
     };
 
     window.pcSetActivityFilter = function (appId, filter) {

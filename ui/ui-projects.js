@@ -554,6 +554,10 @@ function renderProjects(force) {
         window.syncHomeScreenUi();
     }
     const container = document.getElementById('projects-list');
+    if (!container) return;
+    const openSettingsDrawerIds = Array.from(container.querySelectorAll('.project-settings-drawer.active'))
+        .map((drawer) => Number(String(drawer.id || '').replace('settings-drawer-', '')))
+        .filter(Boolean);
     container.innerHTML = '';
 
     if (visibilityStats) {
@@ -733,6 +737,9 @@ function renderProjects(force) {
                 <p>${t.emptyProjects}</p>
             </div>
         `);
+        if (typeof window.updateProjectsRefreshUi === 'function') {
+            window.updateProjectsRefreshUi();
+        }
         return;
     }
 
@@ -1517,6 +1524,10 @@ function renderProjects(force) {
                     ${projectCardSubtitleHtml}
                 </div>
                 <div class="project-header-actions">
+                    <span class="pc-card-refresh-state" aria-hidden="true" title="${window.escapeHTML(window.t('pcProjectRefreshing', {}, lang) || 'Обновляем данные')}">
+                        <span class="pc-card-refresh-state__spinner"></span>
+                        <span class="pc-card-refresh-state__label">${window.escapeHTML(window.t('pcProjectRefreshingShort', {}, lang) || 'Обновляем')}</span>
+                    </span>
                     <button type="button" class="project-icon-btn" aria-label="${window.escapeHTML(window.t('pcQuickSettingsTitle', {}, lang) || 'Быстрые настройки проекта')}" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">
                         <img class="project-icon-btn__glyph project-icon-btn__glyph--asset" src="./images/Icons/settings-svgrepo-com.svg" alt="" aria-hidden="true">
                     </button>
@@ -1618,6 +1629,13 @@ function renderProjects(force) {
         }
     });
 
+    openSettingsDrawerIds.forEach(function(projectId) {
+        const drawer = document.getElementById('settings-drawer-' + projectId);
+        if (drawer) drawer.classList.add('active');
+    });
+    if (typeof window.updateProjectsRefreshUi === 'function') {
+        window.updateProjectsRefreshUi();
+    }
     if (window.ProofPing) window.ProofPing.syncMasterSwitch();
 }
 
@@ -2815,6 +2833,7 @@ function renderArchivedProjects(force) {
     if (!force && !isTabVisible('projects')) return;
     const section = document.getElementById('archive-section');
     if (!section) return;
+    const archiveWasOpen = !!section.querySelector('.archive-list:not(.is-collapsed)');
     const activePackages = new Set((myProjects || []).map(function(project) {
         return String(project.package || '').trim().toLowerCase();
     }).filter(Boolean));
@@ -2824,6 +2843,7 @@ function renderArchivedProjects(force) {
     });
 
     function paintArchive(gtArchivedOrders) {
+        const keepArchiveOpen = archiveWasOpen || !!section.querySelector('.archive-list:not(.is-collapsed)');
         const gtOrders = Array.isArray(gtArchivedOrders) ? gtArchivedOrders : [];
         const totalCount = visibleArchivedProjects.length + gtOrders.length;
         if (totalCount === 0) {
@@ -2917,6 +2937,16 @@ function renderArchivedProjects(force) {
             </div>
         `;
         section.innerHTML = html;
+        if (keepArchiveOpen) {
+            const archiveList = section.querySelector('.archive-list');
+            const archiveToggle = section.querySelector('.archive-toggle');
+            if (archiveList) archiveList.classList.remove('is-collapsed');
+            if (archiveToggle) {
+                archiveToggle.classList.add('is-open');
+                const arrow = archiveToggle.querySelector('.archive-toggle-arrow');
+                if (arrow) arrow.textContent = '▲';
+            }
+        }
     }
 
     paintArchive(_gtArchivedOrdersCache || []);

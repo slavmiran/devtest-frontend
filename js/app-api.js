@@ -29,6 +29,74 @@ function runWhenIdle(task, timeoutMs) {
     setTimeout(task, Math.min(timeoutMs || 1000, 250));
 }
 
+var _projectCardRefreshState = Object.create(null);
+var _projectsPollId = null;
+
+function updateProjectsRefreshUi() {
+    var list = document.getElementById('projects-list');
+    var isListRefreshing = (_backgroundSyncState.projects || 0) > 0;
+    var hasCardRefresh = Object.keys(_projectCardRefreshState).some(function(key) {
+        return (_projectCardRefreshState[key] || 0) > 0;
+    });
+
+    if (list) {
+        list.classList.toggle('is-refreshing', isListRefreshing);
+        list.setAttribute('aria-busy', (isListRefreshing || hasCardRefresh) ? 'true' : 'false');
+        list.querySelectorAll('[id^="project-card-"]').forEach(function(card) {
+            var appId = String(card.id || '').replace('project-card-', '');
+            var isCardRefreshing = isListRefreshing || (_projectCardRefreshState[appId] || 0) > 0;
+            card.classList.toggle('is-refreshing', isCardRefreshing);
+        });
+    }
+
+    var tab = document.getElementById('tab-projects');
+    if (tab) tab.classList.toggle('has-project-refresh', isListRefreshing || hasCardRefresh);
+}
+
+function beginProjectCardRefresh(appId) {
+    var key = String(Number(appId || 0));
+    if (key === '0') return;
+    _projectCardRefreshState[key] = (_projectCardRefreshState[key] || 0) + 1;
+    updateProjectsRefreshUi();
+}
+
+function endProjectCardRefresh(appId) {
+    var key = String(Number(appId || 0));
+    if (key === '0') return;
+    _projectCardRefreshState[key] = Math.max(0, (_projectCardRefreshState[key] || 0) - 1);
+    if (_projectCardRefreshState[key] === 0) delete _projectCardRefreshState[key];
+    updateProjectsRefreshUi();
+}
+
+window.updateProjectsRefreshUi = updateProjectsRefreshUi;
+window.beginProjectCardRefresh = beginProjectCardRefresh;
+window.endProjectCardRefresh = endProjectCardRefresh;
+
+function refreshVisibleProjects(force) {
+    if (document.hidden || !isTabCurrentlyActive('projects')) return Promise.resolve();
+    // Start the viewport-aware detail refresh immediately. It runs in parallel
+    // with the slower aggregate project request instead of waiting for it.
+    _refreshProjectActivityData(myProjects, true);
+    var jobs = [];
+    if (typeof loadProjects === 'function') {
+        jobs.push(loadProjects(true, !!force));
+    }
+    if (typeof loadArchivedProjects === 'function') {
+        jobs.push(loadArchivedProjects({ background: true, silent: true, force: !!force }));
+    }
+    return Promise.all(jobs);
+}
+
+function startProjectsPolling() {
+    if (_projectsPollId) window.clearInterval(_projectsPollId);
+    _projectsPollId = window.setInterval(function() {
+        refreshVisibleProjects(false).catch(function() {});
+    }, 60000);
+}
+
+window.refreshVisibleProjects = refreshVisibleProjects;
+window.startProjectsPolling = startProjectsPolling;
+
 function updateBackgroundSyncUi() {
     var hasAnySync = Object.keys(_backgroundSyncState).some(function(key) {
         return (_backgroundSyncState[key] || 0) > 0;
@@ -44,6 +112,7 @@ function updateBackgroundSyncUi() {
     if (testsDot) testsDot.classList.toggle('hidden', (_backgroundSyncState.tests || 0) === 0);
     if (projectsDot) projectsDot.classList.toggle('hidden', (_backgroundSyncState.projects || 0) === 0);
     if (marketDot) marketDot.classList.toggle('hidden', (_backgroundSyncState.market || 0) === 0);
+    updateProjectsRefreshUi();
 }
 
 function beginBackgroundSync(scope) {
@@ -1969,6 +2038,59 @@ async function loadProjects(isBackground, force) {
     }
 }
 
+function _projectSnapshotId(project) {
+    return Number(project && (project.id || project.app_id) || 0);
+}
+
+function _changedProjectIds(previousProjects, nextProjects) {
+    var previousById = Object.create(null);
+    var nextById = Object.create(null);
+    (Array.isArray(previousProjects) ? previousProjects : []).forEach(function(project) {
+        var id = _projectSnapshotId(project);
+        if (id) previousById[id] = project;
+    });
+    (Array.isArray(nextProjects) ? nextProjects : []).forEach(function(project) {
+        var id = _projectSnapshotId(project);
+        if (id) nextById[id] = project;
+    });
+
+    var ids = new Set(Object.keys(previousById).concat(Object.keys(nextById)));
+    return Array.from(ids).filter(function(id) {
+        return JSON.stringify(previousById[id] || null) !== JSON.stringify(nextById[id] || null);
+    }).map(Number);
+}
+
+function _refreshProjectActivityData(projects, forceRefresh) {
+    if (!window.ProjectToday) return;
+    (Array.isArray(projects) ? projects : []).forEach(function(project) {
+        var appId = _projectSnapshotId(project);
+        if (!appId) return;
+        if (forceRefresh && typeof window.ProjectToday.refresh === 'function') {
+            window.ProjectToday.refresh(appId, { maxAgeMs: 25000 });
+        } else if (typeof window.ProjectToday.invalidate === 'function') {
+            window.ProjectToday.invalidate(appId);
+        }
+    });
+}
+
+function _markFreshProjectCards(projectIds) {
+    if (!Array.isArray(projectIds) || !projectIds.length) return;
+    window.requestAnimationFrame(function() {
+        projectIds.forEach(function(appId, index) {
+            var card = document.getElementById('project-card-' + Number(appId || 0));
+            if (!card) return;
+            card.style.setProperty('--pc-refresh-order', String(Math.min(index, 6)));
+            card.classList.remove('is-freshly-updated');
+            void card.offsetWidth;
+            card.classList.add('is-freshly-updated');
+            window.setTimeout(function() {
+                card.classList.remove('is-freshly-updated');
+                card.style.removeProperty('--pc-refresh-order');
+            }, 1500 + Math.min(index, 6) * 60);
+        });
+    });
+}
+
 async function publishProjectToMarket(projectId) {
     if (!projectId) return null;
 
@@ -2232,18 +2354,32 @@ async function _loadProjectsImpl(options) {
         var nextProjects = _mapProjectsFromApi(data);
         var nextStats = _mapStatsFromApi(data);
 
-        // Diff: only re-render if changed
-        var projectsChanged = JSON.stringify(myProjects) !== JSON.stringify(nextProjects);
+        // Diff the project records so only the cards that actually changed get
+        // a visual confirmation after the background reconcile.
+        var previousProjects = Array.isArray(myProjects) ? myProjects : [];
+        var changedProjectIds = _changedProjectIds(previousProjects, nextProjects);
+        var projectsChanged = changedProjectIds.length > 0;
         var statsChanged = JSON.stringify(visibilityStats) !== JSON.stringify(nextStats);
 
         if (projectsChanged || statsChanged) {
             myProjects = nextProjects;
             visibilityStats = nextStats;
             myProjectsLoadError = false;
-            renderProjects();
+            _refreshProjectActivityData(nextProjects, false);
+            if (isTabCurrentlyActive('projects')) {
+                renderProjects(true);
+                _markFreshProjectCards(projectsChanged
+                    ? changedProjectIds
+                    : nextProjects.map(_projectSnapshotId).filter(Boolean));
+            }
             if (typeof window.renderTests === 'function' && Array.isArray(myTests) && myTests.length) {
                 window.renderTests();
             }
+        } else if (isTabCurrentlyActive('projects')) {
+            // The outer project snapshot may be unchanged while today's check-ins,
+            // feedback and tester activity have moved on. Refresh those near the
+            // viewport progressively instead of rebuilding every card.
+            _refreshProjectActivityData(nextProjects, true);
         }
         if (typeof window.updateOwnerAccessIssueBanner === 'function') {
             window.updateOwnerAccessIssueBanner();
@@ -2680,7 +2816,7 @@ async function loadArchivedProjects(options) {
     var silent = !!opts.silent || background;
     var shouldMarkBackgroundSync = background || archivedProjects.length > 0;
 
-    if (background && (Date.now() - (_lastFetchTimes.archived || 0)) < ARCHIVED_FETCH_THROTTLE_MS) {
+    if (background && !opts.force && (Date.now() - (_lastFetchTimes.archived || 0)) < ARCHIVED_FETCH_THROTTLE_MS) {
         return;
     }
 

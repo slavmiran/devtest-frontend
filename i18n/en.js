@@ -3132,6 +3132,8 @@
             pcHintCriteriaControl: "Control: testers whose today is a mandatory proof day (1, 4, 7, 10, 14).",
             pcHintCriteriaAll: "All: the full current roster of this test.",
             pcDebtShort: "Debt",
+            pcProjectRefreshing: "Updating project data",
+            pcProjectRefreshingShort: "Updating",
 
     };
     window.I18N_EN = window.I18NEN;

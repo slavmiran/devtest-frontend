@@ -7942,12 +7942,11 @@ function switchTab(tabId, navElement) {
         if (typeof window.syncHomeScreenUi === 'function') {
             window.syncHomeScreenUi();
         }
-        var projectsList = document.getElementById('projects-list');
-        var hasRenderedProjects = projectsList && projectsList.querySelector('.card, .developer-widget, .empty-state');
-        if (!hasRenderedProjects) {
-            renderProjects(true);
-            renderArchivedProjects(true);
-        }
+        // A background SWR response can update the in-memory snapshot while this
+        // tab is hidden. Always reconcile the visible DOM before starting the next
+        // refresh so the user never has to click a stale card to see fresh data.
+        renderProjects(true);
+        renderArchivedProjects();
     }
 
     if (finalTab === 'market') {
@@ -7982,11 +7981,15 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'projects') {
-        if (window.loadProjects) {
-            window.loadProjects(true).catch(function() {});
-        }
-        if (window.loadArchivedProjects) {
-            window.loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+        if (typeof window.refreshVisibleProjects === 'function') {
+            window.refreshVisibleProjects(false).catch(function() {});
+        } else {
+            if (window.loadProjects) {
+                window.loadProjects(true).catch(function() {});
+            }
+            if (window.loadArchivedProjects) {
+                window.loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+            }
         }
     }
 
