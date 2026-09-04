@@ -2897,7 +2897,7 @@
             pcStatusRecruiting: "Recruiting the team",
             pcStatusNeedSync: "Sync needed",
             pcStatusActiveTest: "Active test",
-            pcStatusExtension: "Extension",
+            pcStatusExtension: "Test Extension",
             pcStatusBuffer: "Buffer",
             pcSyncNotConfigured: "Console day • Not set up →",
             pcSyncConfigured: "Sync configured ✓",

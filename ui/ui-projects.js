@@ -1293,7 +1293,8 @@ function renderProjects(force) {
         const testerTargetCount = (project.mode === 'mutual' || project.mode === 'hybrid' ? Number(project.limit_mutual || 0) : 0)
             + (project.mode === 'bounty' || project.mode === 'hybrid' ? Number(project.limit_bounty || 0) : 0);
 
-        const extraDaysRunning = extraPaidDays > 0 && (hasSync ? currentGoogleDay > 14 : platformDays > 14);
+        const currentEffectiveDay = hasSync ? currentGoogleDay : platformDays;
+        const extraDaysRunning = extraPaidDays > 0 && currentEffectiveDay > 14;
         const needSyncPrompt = !hasSync && projectNeedsConsoleSync(project, { platformDays: platformDays });
         const closedTestStage = isPendingCompletion
             ? 'buffer'
@@ -1312,7 +1313,7 @@ function renderProjects(force) {
                         ? window.t('pcStatusNeedSync', {}, lang)
                         : window.t('pcStatusRecruiting', {}, lang);
 
-        const dayMain = hasSync ? currentGoogleDay : platformDays;
+        const dayMain = currentEffectiveDay;
         const dayValueHtml = '<span class="pc-metric-day__value">' + window.escapeHTML(String(dayMain)) + '</span>'
             + (hasSync ? '<span class="pc-metric-day__total">/ 14</span>' : '');
         const syncDotHtml = '';
@@ -1325,8 +1326,8 @@ function renderProjects(force) {
         const bufferWord = lang === 'en' ? 'Buffer' : 'Буфер';
         const bufferUnit = lang === 'en' ? 'h' : 'ч';
 
-        const isPaidDaysActive = hasSync && extraPaidDays > 0 && currentGoogleDay > 14 && currentGoogleDay <= (14 + extraPaidDays) && !isPendingCompletion;
-        const isPaidDaysExpired = hasSync && extraPaidDays > 0 && (currentGoogleDay > (14 + extraPaidDays) || isPendingCompletion);
+        const isPaidDaysActive = extraPaidDays > 0 && currentEffectiveDay > 14 && currentEffectiveDay <= (14 + extraPaidDays) && !isPendingCompletion;
+        const isPaidDaysExpired = extraPaidDays > 0 && (currentEffectiveDay > (14 + extraPaidDays) || isPendingCompletion);
         const isBufferActive = isPendingCompletion;
 
         const paidDaysClass = isPaidDaysActive
@@ -6803,7 +6804,7 @@ function openProjectLifecycleModal(projectId, event) {
     const extraEl = document.getElementById('project-lifecycle-extra');
     if (!modal || !titleEl || !bodyEl || !actionBtn || !project) return;
 
-    const platformDay = typeof getProjectPlatformDay === 'function' ? getProjectPlatformDay(project.created_at) : 0;
+    const platformDay = typeof getProjectPlatformDay === 'function' ? getProjectPlatformDay(project) : 0;
     const hasSync = _isProjectSyncedSafe(project);
     const currentDay = hasSync && typeof getProjectCurrentGoogleDay === 'function'
         ? getProjectCurrentGoogleDay(project, platformDay)

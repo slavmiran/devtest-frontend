@@ -106,13 +106,13 @@ function parseLocalDateOnly(dateValue) {
     if (dateValue instanceof Date) {
         return new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
     }
-    const str = String(dateValue);
-    const datePart = str.includes('T') ? str.split('T')[0] : str;
+    const str = String(dateValue).trim();
+    const datePart = str.split(/[T\s]/)[0];
     const parts = datePart.split('-').map(Number);
     if (parts.length === 3 && parts.every((value) => Number.isFinite(value))) {
         return new Date(parts[0], parts[1] - 1, parts[2]);
     }
-    const parsed = new Date(str);
+    const parsed = new Date(str.replace(' ', 'T'));
     if (Number.isNaN(parsed.getTime())) return null;
     return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 }
@@ -123,8 +123,13 @@ function getDayDiffFromToday(dateValue) {
     return Math.max(0, Math.floor((today - source) / (1000 * 60 * 60 * 24)));
 }
 
-function getProjectPlatformDay(createdAt, restartedAt) {
-    const dateSource = restartedAt || createdAt;
+function getProjectPlatformDay(createdAtOrProject, restartedAt) {
+    if (createdAtOrProject && typeof createdAtOrProject === 'object') {
+        const p = createdAtOrProject;
+        const dateSource = p.restarted_at || p.last_restarted_at || p.created_at;
+        return Math.max(1, getDayDiffFromToday(dateSource) + 1);
+    }
+    const dateSource = restartedAt || createdAtOrProject;
     return Math.max(1, getDayDiffFromToday(dateSource) + 1);
 }
 const GUEST_LANGUAGE_META = {

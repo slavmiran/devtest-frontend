@@ -960,7 +960,7 @@ function getProjectCurrentGoogleDay(test, fallbackDay) {
     // advances as syncDay + calendar days since last_sync.
     if (syncDay <= 1) {
         var platformDay = typeof getProjectPlatformDay === 'function'
-            ? getProjectPlatformDay(test && test.created_at)
+            ? getProjectPlatformDay(test)
             : Number(fallbackDay || 0);
         if (Number.isFinite(platformDay) && platformDay > 0) {
             return Math.max(1, platformDay);

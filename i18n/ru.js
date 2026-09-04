@@ -2903,7 +2903,7 @@
             pcStatusRecruiting: "Идёт набор команды",
             pcStatusNeedSync: "Нужна синхронизация",
             pcStatusActiveTest: "Активный тест",
-            pcStatusExtension: "Продление",
+            pcStatusExtension: "Продление теста",
             pcStatusBuffer: "Буфер",
             pcSyncNotConfigured: "Console день • Не настроен →",
             pcSyncConfigured: "Sync настроен ✓",
