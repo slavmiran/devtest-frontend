@@ -288,10 +288,6 @@ function buildProjectDailyProgressBlockHtml(project) {
         <div class="pc-ring-block" onclick="openDailyProgressDetailsModal(${appId}, event);">
             ${ringHtml}
             <div class="pc-ring-block__info">
-                <div class="status-chip status-chip--${meta.statusChip.kind}">
-                    ${meta.statusChip.iconHtml || ''}
-                    <span class="status-chip__text">${meta.statusChip.text}</span>
-                </div>
                 <div class="progress-subtext">
                     ${meta.subtext}
                 </div>
@@ -1220,21 +1216,28 @@ function renderProjects(force) {
         const extraDaysWord = lang === 'en'
             ? (extraPaidDays === 1 ? 'day' : 'days')
             : (extraPaidDays === 1 ? 'день' : (extraPaidDays >= 2 && extraPaidDays <= 4 ? 'дня' : 'дней'));
+        const bufferWord = lang === 'en' ? 'Buffer' : 'Буфер';
+        const bufferUnit = lang === 'en' ? 'h' : 'ч';
+
+        const bufferChipHtml = '<span class="pc-metric-reserve pc-metric-reserve--time pc-metric-reserve--buffer">' +
+            '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
+            '<span>' + window.escapeHTML(bufferHoursText + bufferUnit + ' ' + bufferWord) + '</span>' +
+        '</span>';
+
+        const paidDaysChipHtml = extraPaidDays > 0
+            ? '<span class="pc-metric-reserve pc-metric-reserve--time">' +
+                '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
+                '<span>' + window.escapeHTML(String(extraPaidDays) + ' ' + extraDaysWord) + '</span>' +
+              '</span>'
+            : '';
+
         const termReserveHtml = hasSync
-            ? (extraPaidDays > 0
-                ? '<span class="pc-metric-reserve pc-metric-reserve--time">' +
-                    '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
-                    '<span>' + window.escapeHTML(String(extraPaidDays) + ' ' + extraDaysWord) + '</span>' +
-                  '</span>'
-                : '<span class="pc-metric-reserve pc-metric-reserve--time">' +
-                    '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
-                    '<span>' + window.escapeHTML(bufferHoursText + (lang === 'en' ? 'h' : 'ч')) + '</span>' +
-                  '</span>')
+            ? (paidDaysChipHtml ? (paidDaysChipHtml + bufferChipHtml) : bufferChipHtml)
             : '<button type="button" class="pc-metric-cal-slot-btn" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();" aria-label="' + window.escapeHTML(window.t('pcTermAction', {}, lang)) + '">' +
                 '<img src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" class="pc-metric-cal-slot-icon" alt="" aria-hidden="true">' +
               '</button>';
         const termFooterHtml = hasSync
-            ? '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcBufferLine', {}, lang) || ('Буфер +' + bufferHoursText + 'ч')) + '</span>'
+            ? '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcMetricTotalDays', { day: platformDays }, lang)) + '</span>'
             : '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcBufferLine', {}, lang)) + '</span>';
 
         const dailyMeta = getProjectDailyProgressMeta(project);
@@ -1253,12 +1256,6 @@ function renderProjects(force) {
         const remainingRecruitmentSlots = Math.max(0, testerTargetCount - currentRegularTestersCount);
         const isFullActivity = Number(dailyMeta.teamPercent || 0) >= 100;
         const activityLightning = isFullActivity ? '<span aria-hidden="true">⚡ </span>' : '';
-        const dailyStatusHtml = dailyMeta.statusChip && dailyMeta.statusChip.text
-            ? '<div class="pc-daily-status status-chip status-chip--' + window.escapeHTML(dailyMeta.statusChip.kind) + '">' +
-                (dailyMeta.statusChip.iconHtml || '') +
-                '<span class="status-chip__text">' + window.escapeHTML(dailyMeta.statusChip.text) + '</span>' +
-              '</div>'
-            : '';
         const dailyActivityHtml = '<span class="pc-metric-footer__line pc-daily-activity-line">' +
             activityLightning +
             '<span>' + window.escapeHTML(window.t('pcMetricActivity', {}, lang)) + ' ' + window.escapeHTML(String(Number(dailyMeta.teamPercent || 0))) + '%</span>' +
@@ -1338,7 +1335,6 @@ function renderProjects(force) {
                     </section>
                     <section class="pc-metric-card pc-metric-card--google">
                         <div class="pc-metric-ring">${testersRingHtml}</div>
-                        ${dailyStatusHtml}
                         <div class="pc-metric-footer">${dailyActivityHtml}</div>
                     </section>
                 </div>
@@ -1477,10 +1473,10 @@ function renderProjects(force) {
                                 <span class="pc-quick-tile__icon pc-quick-tile__icon--visibility" aria-hidden="true">${visibilityMeta.buttonIcon}</span>
                                 <span class="pc-quick-tile__copy">
                                     <span class="pc-quick-tile__label">${window.escapeHTML(window.t('settingsVisibilityTitle', {}, lang) || 'Видимость')}</span>
-                                    <span class="pc-quick-tile__value">${window.escapeHTML(visibilitySubText)}<span class="pc-quick-tile__chev" aria-hidden="true">⌄</span></span>
+                                    <span class="pc-quick-tile__value">${window.escapeHTML(visibilitySubText)}</span>
                                 </span>
                             </button>
-                            <div class="pc-quick-tile pc-quick-tile--notifications ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer="${project.id}">
+                            <button type="button" class="pc-quick-tile pc-quick-tile--notifications ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer="${project.id}" aria-pressed="${proofPingEnabled ? 'true' : 'false'}" aria-label="${window.escapeHTML(window.t('pcPingToggleAria', {}, lang) || 'Уведомления о скриншотах контрольного дня')}" onclick="event.stopPropagation(); pcProofPingToggleDot(${project.id}, this)">
                                 <span class="pc-quick-tile__icon pc-quick-tile__icon--notifications" aria-hidden="true">
                                     <img data-pc-ping-drawer-icon="${project.id}" src="${notificationIconSrc}" alt="">
                                 </span>
@@ -1488,11 +1484,7 @@ function renderProjects(force) {
                                     <span class="pc-quick-tile__label">${window.escapeHTML(window.t('pcPingTitle', {}, lang) || 'Уведомления')}</span>
                                     <span class="pc-quick-tile__value pc-quick-tile__value--ping ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer-status="${project.id}">${window.escapeHTML(notificationState)}</span>
                                 </span>
-                                <label class="toggle-switch pc-quick-tile__switch" onclick="event.stopPropagation();">
-                                    <input type="checkbox" id="project-drawer-ping-${project.id}" ${proofPingEnabled ? 'checked' : ''} onchange="pcProofPingToggle(${project.id}, this)" aria-label="${window.escapeHTML(window.t('pcPingToggleAria', {}, lang) || 'Уведомления о скриншотах контрольного дня')}">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
+                            </button>
                         </div>
                         <div class="pc-quick-settings__actions">
                             <button type="button" class="pc-quick-action" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">

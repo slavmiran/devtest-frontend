@@ -363,6 +363,7 @@
         Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping-drawer="' + safeId + '"]')).forEach(function (tile) {
             tile.classList.toggle('is-on', on);
             tile.classList.toggle('is-off', !on);
+            tile.setAttribute('aria-pressed', on ? 'true' : 'false');
         });
         Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping-drawer-icon="' + safeId + '"]')).forEach(function (icon) {
             icon.src = on

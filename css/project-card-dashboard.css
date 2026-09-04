@@ -3648,6 +3648,17 @@ button.pc-act-reason {
     border-color: rgba(48, 209, 143, 0.20);
 }
 
+.pc-metric-card--term .pc-metric-reserve {
+    min-height: 19px;
+    padding: 1px 5px;
+    font-size: 8.5px;
+    margin-top: 2px;
+}
+
+.pc-metric-card--term .pc-metric-reserve + .pc-metric-reserve {
+    margin-top: 2px;
+}
+
 .pc-metric-reserve--warning {
     color: #ffc26b;
     background: rgba(255, 159, 10, 0.10);
@@ -3787,6 +3798,12 @@ button.pc-act-reason {
 .pc-metric-card--google .pc-metric-footer {
     min-height: 25px;
     padding-top: 7px;
+}
+
+/* Status chips under the Google ring were removed from the card layout. */
+#tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-daily-status,
+#tab-projects .card[id^="project-card-"] .pc-metric-card--google > .status-chip {
+    display: none !important;
 }
 
 .pc-daily-activity-line {
@@ -4254,43 +4271,6 @@ button.pc-quick-tile:active,
     color: rgba(190, 202, 221, 0.55);
 }
 
-.pc-quick-tile__chev {
-    margin-left: auto;
-    color: rgba(172, 195, 227, 0.66);
-    font-size: 16px;
-    font-weight: 650;
-    line-height: 0.7;
-    transform: translateY(-1px);
-}
-
-.pc-quick-tile__switch {
-    width: 39px;
-    height: 22px;
-    margin-left: 6px;
-}
-
-.pc-quick-tile__switch .toggle-slider {
-    border: 1px solid rgba(178, 195, 221, 0.1);
-    background: rgba(127, 146, 177, 0.28);
-}
-
-.pc-quick-tile__switch .toggle-slider::before {
-    width: 18px;
-    height: 18px;
-    bottom: 1px;
-    left: 1px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.pc-quick-tile__switch input:checked + .toggle-slider {
-    border-color: rgba(72, 149, 255, 0.48);
-    background: #2f81f7;
-}
-
-.pc-quick-tile__switch input:checked + .toggle-slider::before {
-    transform: translateX(17px);
-}
-
 .pc-quick-settings__actions {
     margin-top: 8px;
 }
@@ -4363,15 +4343,6 @@ button.pc-quick-tile:active,
         margin-right: 6px;
     }
 
-    .pc-quick-tile__switch {
-        width: 36px;
-        flex-basis: 36px;
-        margin-left: 3px;
-    }
-
-    .pc-quick-tile__switch input:checked + .toggle-slider::before {
-        transform: translateX(14px);
-    }
 }
 
 .pc-metric-cal-slot-btn {
