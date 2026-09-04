@@ -1116,21 +1116,22 @@ button.pc-stage-badge {
 }
 
 .pc-lc-dots {
-    --pc-lc-dot-size: 13px;
-    --pc-lc-dot-gap: 8px;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
-    gap: var(--pc-lc-dot-gap);
+    gap: clamp(3px, 1.2vw, 6px);
+    width: 100%;
 }
 
 .pc-lc-dot {
-    width: var(--pc-lc-dot-size);
-    height: var(--pc-lc-dot-size);
+    height: 12px;
+    min-width: 8px;
+    max-width: 14px;
+    flex: 1 1 0;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    flex: 0 0 auto;
+    box-sizing: border-box;
 }
 
 .pc-lc-dot.is-done {
@@ -1176,13 +1177,15 @@ button.pc-stage-badge {
 
 /* 48h safety buffer ≈ two dot spans on the day track. Yellow-orange everywhere */
 .pc-lc-buffer-cap {
-    width: calc(var(--pc-lc-dot-size) * 2 + var(--pc-lc-dot-gap));
-    height: var(--pc-lc-dot-size);
+    height: 12px;
+    min-width: 20px;
+    max-width: 32px;
+    flex: 2.2 1 0;
     border-radius: 999px;
     background: rgba(255, 184, 77, 0.22);
     border: 1px dashed rgba(255, 184, 77, 0.55);
-    flex: 0 0 auto;
     transition: all 0.2s ease;
+    box-sizing: border-box;
 }
 
 .pc-lc-buffer-cap.is-active {
@@ -1202,11 +1205,50 @@ button.pc-stage-badge {
     }
 }
 
+.pc-lc-track-bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+}
+
 .pc-lc-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 12px;
-    margin-top: 10px;
+    align-items: center;
+    gap: 4px 10px;
+    flex: 1 1 auto;
+}
+
+.pc-lc-track-total {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+    padding-left: 6px;
+}
+
+.pc-lc-track-total__value {
+    font-size: 26px;
+    font-weight: 850;
+    letter-spacing: -0.04em;
+    color: rgba(255, 255, 255, 0.16);
+    font-variant-numeric: tabular-nums;
+    line-height: 0.85;
+}
+
+.pc-lc-track-total__label {
+    font-size: 8.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.28);
+    margin-top: 2px;
+    white-space: nowrap;
 }
 
 .pc-lc-legend span {
@@ -4807,14 +4849,52 @@ button.pc-metric-reserve:active {
 }
 
 /* ──────────────────── Refined Lifecycle Modal Enhancements ──────────────────── */
-.pc-lc-sheet {
-    position: relative;
+#project-lifecycle-modal.modal-overlay {
+    align-items: stretch;
+    padding: 0;
 }
 
-.pc-lc-sheet__close {
-    position: absolute;
-    top: 14px;
-    right: 14px;
+#project-lifecycle-modal .pc-lc-sheet {
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    width: 100%;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    background: var(--bg-color, #121214);
+}
+
+.pc-lc-sheet__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 14px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-surface-1, #18181c);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+}
+
+.pc-lc-sheet__header .pc-lc-sheet__title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-primary, #ffffff);
+    flex: 1 1 auto;
+}
+
+.pc-lc-sheet__header .pc-lc-sheet__close {
+    position: static;
+    flex-shrink: 0;
     width: 32px;
     height: 32px;
     border: none;
@@ -4828,54 +4908,78 @@ button.pc-metric-reserve:active {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 5;
     transition: background 0.18s, color 0.18s, transform 0.15s;
 }
 
-.pc-lc-sheet__close:hover,
-.pc-lc-sheet__close:active {
+.pc-lc-sheet__header .pc-lc-sheet__close:hover,
+.pc-lc-sheet__header .pc-lc-sheet__close:active {
     background: rgba(255, 255, 255, 0.16);
     color: var(--text-primary, #ffffff);
     transform: scale(1.04);
 }
 
+#project-lifecycle-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 16px calc(140px + env(safe-area-inset-bottom, 0px));
+}
+
+#project-lifecycle-actions-wrap.pc-lc-sheet__actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: rgba(18, 18, 22, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255, 255, 255, 0.10);
+    z-index: 20;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Step header with right-aligned metric */
 .pc-lc-step__head {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    cursor: pointer;
-    user-select: none;
-    -webkit-user-select: none;
-    padding: 2px 0;
-}
-
-.pc-lc-step__head-left {
-    display: flex;
     align-items: baseline;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 2px 0 4px;
+    width: 100%;
+    cursor: default;
+}
+
+.pc-lc-step__title {
+    font-size: 14.5px;
+    font-weight: 750;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
     flex: 1 1 auto;
-    min-width: 0;
 }
 
-.pc-lc-step__chev {
-    color: var(--text-tertiary, rgba(255, 255, 255, 0.45));
-    transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
+.pc-lc-step__meta {
     flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 750;
+    color: var(--text-tertiary);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
-.pc-lc-step.is-open .pc-lc-step__chev {
-    transform: rotate(180deg);
-    color: var(--accent-primary, #4c8dff);
+/* Ensure step details and descriptions are always visible (expanded by default) */
+.pc-lc-step .pc-lc-step__desc,
+.pc-lc-step .pc-lc-step__body-detail {
+    display: block !important;
 }
 
-.pc-lc-step:not(.is-open) .pc-lc-step__body-detail {
-    display: none;
-}
-
-.pc-lc-step.is-open .pc-lc-step__body-detail {
-    display: block;
-    margin-top: 6px;
+.pc-lc-step__desc {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-tertiary);
 }
 
 /* Twin Glyph Capsule on the vertical line */
@@ -4884,21 +4988,20 @@ button.pc-metric-reserve:active {
     z-index: 1;
     flex: 0 0 34px;
     width: 34px;
-    border-radius: 18px;
+    height: 66px;
+    border-radius: 17px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.14);
     display: flex;
     flex-direction: column;
-    align-items: center;
-    padding: 3px 2px;
-    gap: 3px;
+    padding: 0;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 .pc-lc-capsule-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+    flex: 1 1 50%;
+    width: 100%;
     border: none;
     background: transparent;
     display: flex;
@@ -4907,9 +5010,18 @@ button.pc-metric-reserve:active {
     font-size: 13px;
     cursor: pointer;
     opacity: 0.55;
-    transition: opacity 0.18s, background 0.18s, transform 0.18s;
+    transition: opacity 0.18s, background 0.18s, color 0.18s;
     padding: 0;
     line-height: 1;
+    color: inherit;
+}
+
+.pc-lc-capsule-btn--top {
+    border-radius: 16px 16px 0 0;
+}
+
+.pc-lc-capsule-btn--bottom {
+    border-radius: 0 0 16px 16px;
 }
 
 .pc-lc-capsule-btn:hover {
@@ -4918,15 +5030,25 @@ button.pc-metric-reserve:active {
 
 .pc-lc-capsule-btn.is-selected {
     opacity: 1;
-    background: rgba(76, 141, 255, 0.22);
-    box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.45);
-    transform: scale(1.06);
+    transform: none;
+    box-shadow: none;
+}
+
+.pc-lc-capsule-btn--top.is-selected {
+    background: rgba(76, 141, 255, 0.35);
+    color: #ffffff;
+}
+
+.pc-lc-capsule-btn--bottom.is-selected {
+    background: rgba(139, 108, 255, 0.35);
+    color: #ffffff;
 }
 
 .pc-lc-capsule-div {
-    width: 14px;
+    width: 100%;
     height: 1px;
     background: rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
 }
 
 .pc-lc-subview {
@@ -4939,7 +5061,49 @@ button.pc-metric-reserve:active {
 }
 
 .pc-lc-step--dual:not(:last-child)::before {
-    top: 66px !important;
+    top: 68px !important;
+}
+
+/* Stage 5: Restart */
+.pc-lc-step.stage-restart .pc-lc-step__glyph {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+.pc-lc-step.stage-restart .pc-lc-step__meta {
+    color: #34c759;
+    font-weight: 750;
+}
+
+/* Step chips styling */
+.pc-lc-chip--warn {
+    color: #ffb84d !important;
+    background: rgba(255, 184, 77, 0.12) !important;
+    border: 1px solid rgba(255, 184, 77, 0.32) !important;
+}
+
+.pc-lc-chip--ok {
+    color: #34c759 !important;
+    background: rgba(52, 199, 89, 0.12) !important;
+    border: 1px solid rgba(52, 199, 89, 0.32) !important;
+}
+
+.pc-lc-chip--safe {
+    color: #70b4ff !important;
+    background: rgba(76, 141, 255, 0.12) !important;
+    border: 1px solid rgba(76, 141, 255, 0.32) !important;
+}
+
+.pc-lc-chip--recruit {
+    color: var(--text-secondary) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.pc-lc-chip--gap {
+    color: #ff9f0a !important;
+    background: rgba(255, 159, 10, 0.12) !important;
+    border: 1px solid rgba(255, 159, 10, 0.3) !important;
 }
 
 /* Action card & CTA button */
@@ -4971,7 +5135,6 @@ button.pc-metric-reserve:active {
     color: var(--text-tertiary, rgba(255, 255, 255, 0.5));
     text-align: center;
 }
-
 
 /* ─────────────────── Reserve Chip States (Neutral / Active / Expired) ─────────────────── */
 .pc-metric-reserve--neutral {

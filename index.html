@@ -906,18 +906,19 @@
     </div>
 
     <!-- Project card: lifecycle / safety buffer guide -->
-    <div id="project-lifecycle-modal" class="modal-overlay" onclick="closeProjectLifecycleModal(event)">
+    <div id="project-lifecycle-modal" class="modal-overlay pc-lc-modal-overlay" onclick="closeProjectLifecycleModal(event)">
         <div class="modal-content pc-lc-sheet" onclick="event.stopPropagation()">
-            <button type="button" class="pc-lc-sheet__close" onclick="closeProjectLifecycleModal(event)" aria-label="Close">&times;</button>
-            <h3 id="project-lifecycle-title" class="pc-lc-sheet__title"></h3>
-            <div id="project-lifecycle-body"></div>
+            <div class="pc-lc-sheet__header">
+                <h3 id="project-lifecycle-title" class="pc-lc-sheet__title"></h3>
+                <button type="button" class="pc-lc-sheet__close" onclick="closeProjectLifecycleModal(event)" aria-label="Close">&times;</button>
+            </div>
+            <div class="pc-lc-sheet__body" id="project-lifecycle-body"></div>
             <div class="pc-lc-sheet__actions" id="project-lifecycle-actions-wrap">
                 <div class="pc-lc-action-card">
                     <button type="button" class="btn btn-primary pc-lc-main-cta" id="project-lifecycle-action"></button>
                     <p class="pc-lc-action-desc" id="project-lifecycle-action-desc"></p>
                 </div>
             </div>
-            <div id="project-lifecycle-extra"></div>
         </div>
     </div>
 

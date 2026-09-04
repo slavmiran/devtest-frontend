@@ -6905,6 +6905,44 @@ function openProjectLifecycleModal(projectId, event) {
         ? `<span><i class="pc-lc-key is-paid"></i>${esc(tr('pcLifecycleLegendPaid'))}</span>`
         : (extraPaidDays > 0 ? `<span><i class="pc-lc-key is-paid"></i>🛡 +${extraPaidDays} ${lang === 'en' ? 'days' : 'дн.'}</span>` : '');
 
+    const totalDaysNum = Math.max(1, Number(platformDay || 1));
+    const totalDaysLabel = lang === 'en' ? 'total days' : 'дней всего';
+
+    // Step 2a chips based on requirements:
+    // when verifiedCount >= 12:
+    //   if hasSync:
+    //     ✅ "Синхронизация установлена" + 🛡️ "Проект в безопасности"
+    //   if !hasSync:
+    //     ⚠️ "Требуется синхронизация"
+    // when verifiedCount < 12:
+    //   👥 "Набор: ещё {count} тест."
+    // and if googleGap > 0:
+    //   ⏱️ "Расхождение {count} дн."
+    let syncChipsHtml = '';
+    if (verifiedCount >= 12) {
+        if (hasSync) {
+            syncChipsHtml = `
+                <span class="pc-lc-chip pc-lc-chip--ok">✅ ${esc(tr('pcLifecycleSyncEstablishedChip'))}</span>
+                <span class="pc-lc-chip pc-lc-chip--safe">🛡️ ${esc(tr('pcLifecycleSyncSafeNote'))}</span>
+            `;
+        } else {
+            syncChipsHtml = `
+                <span class="pc-lc-chip pc-lc-chip--warn">⚠️ ${esc(tr('pcLifecycleSyncRequiredChip'))}</span>
+            `;
+        }
+    } else {
+        syncChipsHtml = `
+            <span class="pc-lc-chip pc-lc-chip--recruit">👥 ${esc(tr('pcLifecycleSyncRecruitChip', { count: 12 - verifiedCount }))}</span>
+        `;
+    }
+    if (googleGap != null && googleGap > 0) {
+        syncChipsHtml += `
+            <span class="pc-lc-chip pc-lc-chip--gap">⏱️ ${esc(tr('pcLcGapDays', { count: googleGap }))}</span>
+        `;
+    }
+
+    const step1Meta = `${hasSync ? Math.min(14, currentDay) : Math.min(14, platformDay)}/14`;
+
     bodyEl.innerHTML = `
         <p class="pc-lc-intro">${esc(tr('pcLifecycleIntro'))}</p>
         <div class="pc-lc-track" role="img" aria-label="${esc(trackDaysValue)}">
@@ -6916,62 +6954,54 @@ function openProjectLifecycleModal(projectId, event) {
                 ${dots.join('')}
                 <span class="pc-lc-buffer-cap ${isPending ? 'is-active' : ''}" aria-label="${esc(tr('pcLifecycleBufferTitle'))}"></span>
             </div>
-            <div class="pc-lc-legend">
-                <span><i class="pc-lc-key is-done"></i>${esc(tr('pcLifecycleLegendDone'))}</span>
-                ${legendPaidHtml}
-                <span><i class="pc-lc-key"></i>${esc(tr('pcLifecycleLegendLeft'))}</span>
-                <span><i class="pc-lc-key is-buffer"></i>${esc(tr('pcLifecycleLegendBuffer'))}</span>
+            <div class="pc-lc-track-bottom">
+                <div class="pc-lc-legend">
+                    <span><i class="pc-lc-key is-done"></i>${esc(tr('pcLifecycleLegendDone'))}</span>
+                    ${legendPaidHtml}
+                    <span><i class="pc-lc-key"></i>${esc(tr('pcLifecycleLegendLeft'))}</span>
+                    <span><i class="pc-lc-key is-buffer"></i>${esc(tr('pcLifecycleLegendBuffer'))}</span>
+                </div>
+                <div class="pc-lc-track-total" title="${esc(lang === 'en' ? 'Actual days on platform' : 'Фактически дней на платформе')}">
+                    <span class="pc-lc-track-total__value">${totalDaysNum}</span>
+                    <span class="pc-lc-track-total__label">${totalDaysLabel}</span>
+                </div>
             </div>
         </div>
         <ol class="pc-lc-steps">
             <!-- Stage 1: Main Test -->
-            <li class="pc-lc-step stage-main ${stage === 'main' ? 'is-active is-open' : (currentDay > 14 ? 'is-past' : 'is-future')}" data-lc-step="main">
+            <li class="pc-lc-step stage-main ${stage === 'main' ? 'is-active' : (currentDay > 14 ? 'is-past' : 'is-future')}" data-lc-step="main">
                 <span class="pc-lc-step__glyph" aria-hidden="true">🧪</span>
                 <div class="pc-lc-step__body">
-                    <div class="pc-lc-step__head" onclick="toggleProjectLifecycleStep(this)">
-                        <div class="pc-lc-step__head-left">
-                            <span class="pc-lc-step__title">${esc(tr('pcLifecycleMainTitle'))}</span>
-                            <span class="pc-lc-step__meta">${esc(tr('pcLifecycleMainMeta', { day: Math.min(currentDay, 14), total: 14 }))}</span>
-                        </div>
-                        <svg class="pc-lc-step__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
+                    <div class="pc-lc-step__head">
+                        <span class="pc-lc-step__title">${esc(tr('pcLifecycleMainTitle'))}</span>
+                        <span class="pc-lc-step__meta">${esc(step1Meta)}</span>
                     </div>
-                    <p class="pc-lc-step__short">${esc(tr('pcLifecycleMainShort'))}</p>
-                    <div class="pc-lc-step__body-detail">
-                        <p class="pc-lc-step__desc">${esc(tr('pcLifecycleMainDesc'))}</p>
-                    </div>
+                    <p class="pc-lc-step__desc">${esc(tr('pcLifecycleMainDesc'))}</p>
                 </div>
             </li>
 
             <!-- Stage 2: Twin Capsule (2a Google Play Sync & 2b Testing Extension) -->
-            <li class="pc-lc-step pc-lc-step--dual stage-sync-extend ${stage === 'sync' || stage === 'extended' ? 'is-active is-open' : (stage === 'main' ? 'is-open' : 'is-future')}" data-lc-step="sync-extend">
+            <li class="pc-lc-step pc-lc-step--dual stage-sync-extend ${stage === 'sync' || stage === 'extended' ? 'is-active' : (stage === 'main' ? '' : 'is-future')}" data-lc-step="sync-extend">
                 <div class="pc-lc-glyph-capsule" role="tablist" aria-label="${esc(tr('pcLifecycleSyncStageBadge'))}">
-                    <button type="button" class="pc-lc-capsule-btn ${defaultSub === 'sync' ? 'is-selected' : ''}" data-sub="sync" onclick="switchLifecycleSubStep(this, 'sync', event)" title="${esc(tr('pcLifecycleSyncStageTitle'))}">
+                    <button type="button" class="pc-lc-capsule-btn pc-lc-capsule-btn--top ${defaultSub === 'sync' ? 'is-selected' : ''}" data-sub="sync" onclick="switchLifecycleSubStep(this, 'sync', event)" title="${esc(tr('pcLifecycleSyncStageTitle'))}">
                         🔄
                     </button>
                     <span class="pc-lc-capsule-div" aria-hidden="true"></span>
-                    <button type="button" class="pc-lc-capsule-btn ${defaultSub === 'extended' ? 'is-selected' : ''}" data-sub="extended" onclick="switchLifecycleSubStep(this, 'extended', event)" title="${esc(tr('pcLifecycleExtendedTitle'))}">
+                    <button type="button" class="pc-lc-capsule-btn pc-lc-capsule-btn--bottom ${defaultSub === 'extended' ? 'is-selected' : ''}" data-sub="extended" onclick="switchLifecycleSubStep(this, 'extended', event)" title="${esc(tr('pcLifecycleExtendedTitle'))}">
                         🛡
                     </button>
                 </div>
                 <div class="pc-lc-step__body">
                     <!-- Sub-view 2a: Google Play Sync -->
                     <div class="pc-lc-subview pc-lc-subview--sync ${defaultSub === 'sync' ? 'is-active' : ''}">
-                        <div class="pc-lc-step__head" onclick="toggleProjectLifecycleStep(this)">
-                            <div class="pc-lc-step__head-left">
-                                <span class="pc-lc-step__title">${esc(tr('pcLifecycleSyncStageTitle'))}</span>
-                                <span class="pc-lc-step__meta">${esc(gapTitle)}</span>
-                            </div>
-                            <svg class="pc-lc-step__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                        </div>
-                        <div class="pc-lc-gap__metrics">
-                            <span>👥 ${esc(tr('pcLcGapVerified', { count: verifiedCount }))}</span>
-                            ${googleGap != null && googleGap > 0 ? `<span>⚠️ ${esc(tr('pcLcGapDays', { count: googleGap }))}</span>` : ''}
+                        <div class="pc-lc-step__head">
+                            <span class="pc-lc-step__title">${esc(tr('pcLifecycleSyncStageTitle'))}</span>
+                            <span class="pc-lc-step__meta">${verifiedCount}/12</span>
                         </div>
                         <div class="pc-lc-step__body-detail">
+                            <div class="pc-lc-step__chips">
+                                ${syncChipsHtml}
+                            </div>
                             <p class="pc-lc-step__desc">${esc(gapShort)}</p>
                             <p class="pc-lc-gap__hint">${esc(tr('pcLcGapSpeedHint'))}</p>
                         </div>
@@ -6979,18 +7009,12 @@ function openProjectLifecycleModal(projectId, event) {
 
                     <!-- Sub-view 2b: Testing Extension -->
                     <div class="pc-lc-subview pc-lc-subview--extended ${defaultSub === 'extended' ? 'is-active' : ''}">
-                        <div class="pc-lc-step__head" onclick="toggleProjectLifecycleStep(this)">
-                            <div class="pc-lc-step__head-left">
-                                <span class="pc-lc-step__title">${esc(tr('pcLifecycleExtendedTitle'))}</span>
-                                <span class="pc-lc-step__meta">${extraPaidDays > 0
-                                    ? esc(tr('pcLifecycleExtendedMetaPaid', { days: extraPaidDays }))
-                                    : esc(tr('pcLifecycleExtendedMetaEmpty'))}</span>
-                            </div>
-                            <svg class="pc-lc-step__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
+                        <div class="pc-lc-step__head">
+                            <span class="pc-lc-step__title">${esc(tr('pcLifecycleExtendedTitle'))}</span>
+                            <span class="pc-lc-step__meta">${extraPaidDays > 0
+                                ? esc(tr('pcLifecycleExtendedMetaPaid', { days: extraPaidDays }))
+                                : esc(tr('pcLifecycleExtendedMetaEmpty'))}</span>
                         </div>
-                        <p class="pc-lc-step__short">${esc(tr('pcLifecycleExtendedShort'))}</p>
                         <div class="pc-lc-step__body-detail">
                             ${extraPaidDays > 0
                                 ? `<div class="pc-lc-step__chips">${Array.from({ length: extraPaidDays }, (_, i) => `<span class="pc-lc-chip">${esc(tr('pcLifecycleDayChip', { day: 15 + i }))}</span>`).join('')}</div>`
@@ -7009,22 +7033,14 @@ function openProjectLifecycleModal(projectId, event) {
             </li>
 
             <!-- Stage 3: Buffer -->
-            <li class="pc-lc-step stage-buffer ${stage === 'buffer' ? 'is-active is-open' : (isPending ? 'is-active is-open' : 'is-future')}" data-lc-step="buffer">
+            <li class="pc-lc-step stage-buffer ${stage === 'buffer' ? 'is-active' : (isPending ? 'is-active' : 'is-future')}" data-lc-step="buffer">
                 <span class="pc-lc-step__glyph" aria-hidden="true">⏳</span>
                 <div class="pc-lc-step__body">
-                    <div class="pc-lc-step__head" onclick="toggleProjectLifecycleStep(this)">
-                        <div class="pc-lc-step__head-left">
-                            <span class="pc-lc-step__title">${esc(tr('pcLifecycleBufferTitle'))}</span>
-                            <span class="pc-lc-step__meta">${bufferHoursLeft > 0 ? esc(tr('pcBufferHoursShort', { hours: bufferHoursLeft })) : esc(tr('pcBufferBadge'))}</span>
-                        </div>
-                        <svg class="pc-lc-step__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
+                    <div class="pc-lc-step__head">
+                        <span class="pc-lc-step__title">${esc(tr('pcLifecycleBufferTitle'))}</span>
+                        <span class="pc-lc-step__meta">${bufferHoursLeft > 0 ? esc(tr('pcBufferHoursShort', { hours: bufferHoursLeft })) : '48ч'}</span>
                     </div>
-                    <p class="pc-lc-step__short">${esc(tr('pcLifecycleBufferShort'))}</p>
-                    <div class="pc-lc-step__body-detail">
-                        <p class="pc-lc-step__desc">${esc(tr('pcLifecycleBufferDesc'))}</p>
-                    </div>
+                    <p class="pc-lc-step__desc">${esc(tr('pcLifecycleBufferDesc'))}</p>
                 </div>
             </li>
 
@@ -7032,40 +7048,30 @@ function openProjectLifecycleModal(projectId, event) {
             <li class="pc-lc-step stage-archive is-future" data-lc-step="archive">
                 <span class="pc-lc-step__glyph" aria-hidden="true">🏁</span>
                 <div class="pc-lc-step__body">
-                    <div class="pc-lc-step__head" onclick="toggleProjectLifecycleStep(this)">
-                        <div class="pc-lc-step__head-left">
-                            <span class="pc-lc-step__title">${esc(tr('pcLifecycleArchiveTitle'))}</span>
-                            <span class="pc-lc-step__meta">${esc(tr('pcLifecycleArchiveMeta'))}</span>
-                        </div>
-                        <svg class="pc-lc-step__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
+                    <div class="pc-lc-step__head">
+                        <span class="pc-lc-step__title">${esc(tr('pcLifecycleArchiveTitle'))}</span>
+                        <span class="pc-lc-step__meta">${esc(tr('pcLifecycleArchiveMeta'))}</span>
                     </div>
-                    <p class="pc-lc-step__short">${esc(tr('pcLifecycleArchiveShort'))}</p>
-                    <div class="pc-lc-step__body-detail">
-                        <p class="pc-lc-step__desc">${esc(tr('pcLifecycleArchiveDesc'))}</p>
+                    <p class="pc-lc-step__desc">${esc(tr('pcLifecycleArchiveDesc'))}</p>
+                </div>
+            </li>
+
+            <!-- Stage 5: Restart -->
+            <li class="pc-lc-step stage-restart is-future" data-lc-step="restart">
+                <span class="pc-lc-step__glyph" aria-hidden="true">🔁</span>
+                <div class="pc-lc-step__body">
+                    <div class="pc-lc-step__head">
+                        <span class="pc-lc-step__title">${esc(tr('pcLifecycleRestartTitle'))}</span>
+                        <span class="pc-lc-step__meta">${esc(tr('pcLifecycleRestartMeta'))}</span>
                     </div>
+                    <p class="pc-lc-step__desc">${esc(tr('pcLifecycleRestartDesc'))}</p>
                 </div>
             </li>
         </ol>
     `;
 
     if (extraEl) {
-        extraEl.innerHTML = `
-            <details class="pc-lc-restart-accordion">
-                <summary class="pc-lc-restart-summary">
-                    <span class="pc-lc-restart-summary__left">
-                        <span class="pc-lc-restart-glyph" aria-hidden="true">🔄</span>
-                        <span class="pc-lc-restart-title">${esc(tr('pcLifecycleRestartTitle'))}</span>
-                    </span>
-                    <span class="pc-lc-restart-meta">${esc(tr('pcLifecycleRestartMeta'))}</span>
-                    <span class="pc-lc-restart-chevron" aria-hidden="true">▾</span>
-                </summary>
-                <div class="pc-lc-restart-body">
-                    <p class="pc-lc-restart-desc">${esc(tr('pcLifecycleRestartDesc'))}</p>
-                </div>
-            </details>
-        `;
+        extraEl.innerHTML = '';
     }
 
     actionBtn.innerHTML = `
@@ -7099,8 +7105,6 @@ function switchLifecycleSubStep(btn, sub, event) {
     subviews.forEach(function (sv) {
         sv.classList.toggle('is-active', sv.classList.contains('pc-lc-subview--' + sub));
     });
-
-    step.classList.add('is-open');
 
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
 }
