@@ -2979,6 +2979,7 @@
             pcLifecycleLegendPaid: "paid day",
             pcLifecycleLegendLeft: "remaining",
             pcLifecycleLegendBuffer: "safety buffer",
+            pcBufferWord: "buffer",
             pcLifecycleDayChip: "Day {day}",
             pcLifecycleMainTitle: "Main test",
             pcLifecycleMainMeta: "Day {day} of {total}",
