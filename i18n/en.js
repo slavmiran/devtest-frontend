@@ -3134,6 +3134,8 @@
             pcDebtShort: "Debt",
             pcProjectRefreshing: "Updating project data",
             pcProjectRefreshingShort: "Updating",
+            myTestsRefreshing: "Updating test data",
+            myTestsRefreshingShort: "Updating",
 
     };
     window.I18N_EN = window.I18NEN;

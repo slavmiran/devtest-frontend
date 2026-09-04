@@ -3142,6 +3142,8 @@
             pcDebtShort: "Долг",
             pcProjectRefreshing: "Обновляем данные проекта",
             pcProjectRefreshingShort: "Обновляем",
+            myTestsRefreshing: "Обновляем данные тестов",
+            myTestsRefreshingShort: "Обновляем",
 
     };
     window.I18N_RU = window.I18NRU;

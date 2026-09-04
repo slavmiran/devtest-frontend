@@ -7924,9 +7924,6 @@ function switchTab(tabId, navElement) {
         renderIncomingOffers(true);
         if (typeof renderBountyApplications === 'function') renderBountyApplications(true);
         renderTests(true);
-        if (typeof loadTasks === 'function') {
-            loadTasks(true).catch(function() {});
-        }
     }
 
     if (finalTab === 'market') {
@@ -7960,23 +7957,17 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'tests') {
-        if (window.loadTasks) {
-            window.loadTasks(true).catch(function() {});
-        }
         if (window.loadEvents) {
             window.loadEvents().catch(function() {});
         }
-        if (window.loadIncomingOffers) {
-            window.loadIncomingOffers({ background: true }).catch(function() {});
-        }
-        if (window.loadBountyApplications) {
-            window.loadBountyApplications({ background: true }).catch(function() {});
-        }
-        if (window.loadReliabilitySummary) {
-            window.loadReliabilitySummary(true).catch(function() {});
-        }
-        if (window.loadReliabilityBreakdown) {
-            window.loadReliabilityBreakdown(true).catch(function() {});
+        if (typeof window.refreshVisibleTests === 'function') {
+            window.refreshVisibleTests().catch(function() {});
+        } else {
+            if (window.loadTasks) window.loadTasks(true).catch(function() {});
+            if (window.loadIncomingOffers) window.loadIncomingOffers({ background: true }).catch(function() {});
+            if (window.loadBountyApplications) window.loadBountyApplications({ background: true }).catch(function() {});
+            if (window.loadReliabilitySummary) window.loadReliabilitySummary(true).catch(function() {});
+            if (window.loadReliabilityBreakdown) window.loadReliabilityBreakdown(true).catch(function() {});
         }
     }
 

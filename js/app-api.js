@@ -31,6 +31,8 @@ function runWhenIdle(task, timeoutMs) {
 
 var _projectCardRefreshState = Object.create(null);
 var _projectsPollId = null;
+var _testsListRefreshCount = 0;
+var _testsPollId = null;
 
 function updateProjectsRefreshUi() {
     var list = document.getElementById('projects-list');
@@ -96,6 +98,54 @@ function startProjectsPolling() {
 
 window.refreshVisibleProjects = refreshVisibleProjects;
 window.startProjectsPolling = startProjectsPolling;
+
+function updateTestsRefreshUi() {
+    var refreshing = _testsListRefreshCount > 0;
+    var tab = document.getElementById('tab-tests');
+    var list = document.getElementById('my-tests-list');
+    var status = document.getElementById('my-tests-refresh-state');
+    if (tab) tab.classList.toggle('is-tests-refreshing', refreshing);
+    if (list) list.setAttribute('aria-busy', refreshing ? 'true' : 'false');
+    if (status) {
+        status.hidden = !refreshing;
+        status.setAttribute('aria-hidden', refreshing ? 'false' : 'true');
+    }
+}
+
+function beginTestsListRefresh() {
+    _testsListRefreshCount += 1;
+    updateTestsRefreshUi();
+}
+
+function endTestsListRefresh() {
+    _testsListRefreshCount = Math.max(0, _testsListRefreshCount - 1);
+    updateTestsRefreshUi();
+}
+
+function refreshVisibleTests(options) {
+    var opts = options || {};
+    if (document.hidden || !isTabCurrentlyActive('tests')) return Promise.resolve();
+    var jobs = [];
+    if (typeof loadTasks === 'function') jobs.push(loadTasks(true));
+    if (opts.contentOnly !== true) {
+        if (typeof loadIncomingOffers === 'function') jobs.push(loadIncomingOffers({ background: true }));
+        if (typeof loadBountyApplications === 'function') jobs.push(loadBountyApplications({ background: true }));
+        if (typeof loadReliabilitySummary === 'function') jobs.push(loadReliabilitySummary(true));
+        if (typeof loadReliabilityBreakdown === 'function') jobs.push(loadReliabilityBreakdown(true));
+    }
+    return Promise.all(jobs);
+}
+
+function startTestsPolling() {
+    if (_testsPollId) window.clearInterval(_testsPollId);
+    _testsPollId = window.setInterval(function() {
+        refreshVisibleTests({ contentOnly: true }).catch(function() {});
+    }, 60000);
+}
+
+window.updateTestsRefreshUi = updateTestsRefreshUi;
+window.refreshVisibleTests = refreshVisibleTests;
+window.startTestsPolling = startTestsPolling;
 
 function updateBackgroundSyncUi() {
     var hasAnySync = Object.keys(_backgroundSyncState).some(function(key) {
@@ -837,6 +887,7 @@ async function loadIncomingOffers(options) {
     }
 
     var shouldMarkBackgroundSync = background || _offersLoadedOnce || Array.isArray(cached);
+    var shouldRenderOffersAfterRequest = !_offersLoadedOnce;
 
     var requestPromise = (async function() {
         if (shouldMarkBackgroundSync) {
@@ -847,7 +898,11 @@ async function loadIncomingOffers(options) {
             var response = await fetchWithRetry(`${API_BASE}/offers/incoming/${userId}`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             var data = await response.json();
-            incomingOffers = data.offers || [];
+            var nextIncomingOffers = data.offers || [];
+            if (JSON.stringify(incomingOffers) !== JSON.stringify(nextIncomingOffers)) {
+                shouldRenderOffersAfterRequest = true;
+            }
+            incomingOffers = nextIncomingOffers;
             setOffersCache(incomingOffers);
             _offersLoadedOnce = true;
             _offersLoadError = false;
@@ -855,23 +910,21 @@ async function loadIncomingOffers(options) {
 
             // Contract applications ride along with mutual offers (same proven GET path).
             if (Array.isArray(data.bounty_applications) && typeof applyIncomingBountyApplications === 'function') {
-                applyIncomingBountyApplications(data.bounty_applications, { forceRender: true });
-            }
-
-            renderIncomingOffers();
-            if (typeof renderBountyApplications === 'function') {
-                renderBountyApplications(true);
+                applyIncomingBountyApplications(data.bounty_applications);
             } else if (typeof syncIncomingApplicationsSection === 'function') {
                 syncIncomingApplicationsSection();
             }
         } catch (error) {
             console.error('Error loading incoming offers:', error);
             if (!Array.isArray(incomingOffers) || incomingOffers.length === 0) {
-                incomingOffers = Array.isArray(cached) ? cached : [];
+                var fallbackOffers = Array.isArray(cached) ? cached : [];
+                if (JSON.stringify(incomingOffers || []) !== JSON.stringify(fallbackOffers)) {
+                    shouldRenderOffersAfterRequest = true;
+                }
+                incomingOffers = fallbackOffers;
             }
             _offersLoadedOnce = true;
             _offersLoadError = true;
-            renderIncomingOffers();
             if (!background && (!incomingOffers || incomingOffers.length === 0)) {
                 _showNonCriticalLoaderToast(getApiErrorMessage(error && error.message, 'networkError'), 'incoming_offers');
             }
@@ -884,7 +937,7 @@ async function loadIncomingOffers(options) {
     })();
 
     _offersInFlight = requestPromise;
-    renderIncomingOffers();
+    if (!_offersLoadedOnce) renderIncomingOffers();
 
     try {
         await requestPromise;
@@ -892,7 +945,7 @@ async function loadIncomingOffers(options) {
         if (_offersInFlight === requestPromise) {
             _offersInFlight = null;
         }
-        renderIncomingOffers();
+        if (shouldRenderOffersAfterRequest) renderIncomingOffers();
     }
 }
 
@@ -901,7 +954,7 @@ function startOffersPolling() {
         clearInterval(_offersPollId);
     }
     _offersPollId = setInterval(function() {
-        if (!document.hidden) {
+        if (!document.hidden && isTabCurrentlyActive('tests')) {
             loadIncomingOffers({ background: true }).catch(function() {});
         }
     }, 30000);
@@ -1430,6 +1483,45 @@ async function loadTasks(isBackground) {
     }
 }
 
+function _testSnapshotId(test) {
+    return Number(test && test.id || 0);
+}
+
+function _changedTestIds(previousTests, nextTests) {
+    var previousById = Object.create(null);
+    var nextById = Object.create(null);
+    (Array.isArray(previousTests) ? previousTests : []).forEach(function(test) {
+        var id = _testSnapshotId(test);
+        if (id) previousById[id] = test;
+    });
+    (Array.isArray(nextTests) ? nextTests : []).forEach(function(test) {
+        var id = _testSnapshotId(test);
+        if (id) nextById[id] = test;
+    });
+    var ids = new Set(Object.keys(previousById).concat(Object.keys(nextById)));
+    return Array.from(ids).filter(function(id) {
+        return JSON.stringify(previousById[id] || null) !== JSON.stringify(nextById[id] || null);
+    }).map(Number);
+}
+
+function _markFreshTestCards(testIds) {
+    if (!Array.isArray(testIds) || !testIds.length) return;
+    window.requestAnimationFrame(function() {
+        testIds.forEach(function(testId, index) {
+            var card = document.getElementById('test-card-' + Number(testId || 0));
+            if (!card) return;
+            card.style.setProperty('--ts-refresh-order', String(Math.min(index, 6)));
+            card.classList.remove('is-data-updated');
+            void card.offsetWidth;
+            card.classList.add('is-data-updated');
+            window.setTimeout(function() {
+                card.classList.remove('is-data-updated');
+                card.style.removeProperty('--ts-refresh-order');
+            }, 1450 + Math.min(index, 6) * 55);
+        });
+    });
+}
+
 function _mapTestsFromApi(data) {
     var today = getLocalDate();
     return (data.to_test_today || []).map(function(app) {
@@ -1678,6 +1770,8 @@ function _mapTestsFromApi(data) {
 
 async function _loadTasksImpl(options) {
     var shouldMarkBackgroundSync = !!(options && options.backgroundSync);
+    var wasTestsLoadedBeforeRequest = _testsLoadedOnce;
+    beginTestsListRefresh();
     if (shouldMarkBackgroundSync) {
         beginBackgroundSync('tests');
     }
@@ -1697,17 +1791,19 @@ async function _loadTasksImpl(options) {
         // /api/tasks no longer embeds incoming_offers; missing key must not wipe the inbox.
         var nextOffers = Array.isArray(data.incoming_offers) ? data.incoming_offers : null;
 
-        // Diff: only re-render if changed
-        var testsChanged = JSON.stringify(myTests) !== JSON.stringify(nextTests);
-        if (testsChanged) {
+        // Rebuild the lists only when the API snapshot actually changed.
+        var changedTestIds = _changedTestIds(myTests, nextTests);
+        var testsChanged = changedTestIds.length > 0;
+        if (testsChanged || !wasTestsLoadedBeforeRequest) {
             myTests = nextTests;
             var pendingHandled = typeof clearCompletedPendingFeedbackCheckins === 'function'
                 && clearCompletedPendingFeedbackCheckins();
             if (!pendingHandled) {
-                renderTests();
+                if (isTabCurrentlyActive('tests')) renderTests(true);
                 if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
             }
-            if (typeof renderBountyFeed === 'function') renderBountyFeed(true);
+            if (testsChanged && isTabCurrentlyActive('tests')) _markFreshTestCards(changedTestIds);
+            if (testsChanged && typeof renderBountyFeed === 'function') renderBountyFeed(true);
         } else if (typeof clearCompletedPendingFeedbackCheckins === 'function') {
             clearCompletedPendingFeedbackCheckins();
         }
@@ -1748,6 +1844,7 @@ async function _loadTasksImpl(options) {
         if (shouldMarkBackgroundSync) {
             endBackgroundSync('tests');
         }
+        endTestsListRefresh();
     }
 }
 

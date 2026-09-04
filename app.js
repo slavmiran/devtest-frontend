@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (!document.hidden) {
                 _syncActiveTimerState();
+                var hasPendingFeedback = typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins();
                 // Drop stale Confirm-ready state when local calendar day rolls over.
                 if (typeof _loadTimerReadyState === 'function') {
                     _loadTimerReadyState();
@@ -48,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof _applyPersistedReadyTimerButtons === 'function') {
                     _applyPersistedReadyTimerButtons();
                 }
-                if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
+                if (hasPendingFeedback) {
                     _lastFetchTimes.tests = 0;
                     if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
                         syncPendingFeedbackCheckinsFromServer().catch(function() {});
@@ -57,13 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof refreshHomeScreenStatus === 'function') {
                     refreshHomeScreenStatus({ force: true });
                 }
-                renderTests(true);
-                loadTasks(true).catch(() => {});
-                loadIncomingOffers({ background: true }).catch(() => {});
-                if (typeof loadBountyApplications === 'function') {
-                    loadBountyApplications({ background: true }).catch(() => {});
+                if (typeof window.refreshVisibleTests === 'function') {
+                    window.refreshVisibleTests().catch(function() {});
+                } else if (hasPendingFeedback) {
+                    loadTasks(true).catch(function() {});
                 }
-                loadReliabilitySummary(true).catch(() => {});
                 if (typeof window.refreshVisibleProjects === 'function') {
                     window.refreshVisibleProjects(false).catch(function() {});
                 }
@@ -72,14 +71,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.addEventListener('focus', function() {
             _syncActiveTimerState();
-            if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
+            var hasPendingFeedback = typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins();
+            if (hasPendingFeedback) {
                 _lastFetchTimes.tests = 0;
                 if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
                     syncPendingFeedbackCheckinsFromServer().catch(function() {});
                 }
+            }
+            if (typeof window.refreshVisibleTests === 'function') {
+                window.refreshVisibleTests().catch(function() {});
+            } else if (hasPendingFeedback) {
                 loadTasks(true).catch(function() {});
             }
-            if (window.renderTests) window.renderTests(true);
             if (typeof window.refreshVisibleProjects === 'function') {
                 window.refreshVisibleProjects(false).catch(function() {});
             }
@@ -87,7 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.addEventListener('pageshow', function() {
             _syncActiveTimerState();
-            if (window.renderTests) window.renderTests(true);
+            if (typeof window.refreshVisibleTests === 'function') {
+                window.refreshVisibleTests().catch(function() {});
+            }
             if (typeof window.refreshVisibleProjects === 'function') {
                 window.refreshVisibleProjects(false).catch(function() {});
             }
@@ -144,6 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof startBountyApplicationsPolling === 'function') startBountyApplicationsPolling();
         } catch (e) { console.error('Bootstrap startBountyApplicationsPolling error:', e); }
         try { startMarketPolling(); } catch (e) { console.error('Bootstrap startMarketPolling error:', e); }
+        try {
+            if (typeof window.startTestsPolling === 'function') window.startTestsPolling();
+        } catch (e) { console.error('Bootstrap startTestsPolling error:', e); }
         try {
             if (typeof window.startProjectsPolling === 'function') window.startProjectsPolling();
         } catch (e) { console.error('Bootstrap startProjectsPolling error:', e); }

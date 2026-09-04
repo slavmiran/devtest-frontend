@@ -113,13 +113,16 @@ function _formatBountyReliabilityChip(application) {
 
 function applyIncomingBountyApplications(list, options) {
     var opts = options || {};
-    bountyApplications = Array.isArray(list) ? list.slice() : [];
+    var wasLoaded = _bountyAppsLoadedOnce;
+    var nextApplications = Array.isArray(list) ? list.slice() : [];
+    var changed = JSON.stringify(bountyApplications || []) !== JSON.stringify(nextApplications);
+    bountyApplications = nextApplications;
     setBountyAppsCache(bountyApplications);
     _bountyAppsLoadedOnce = true;
     _bountyAppsLoadError = false;
     if (window._lastFetchTimes) _lastFetchTimes.bountyApps = Date.now();
-    if (opts.render !== false) {
-        renderBountyApplications(!!opts.forceRender || true);
+    if (opts.render !== false && (changed || !wasLoaded || !!opts.forceRender)) {
+        renderBountyApplications(true);
     }
     return bountyApplications;
 }
@@ -428,7 +431,7 @@ async function loadBountyApplications(options) {
             if (data && data.status && data.status !== 'success') {
                 throw new Error(data.code || data.message || 'bounty_applications_load_failed');
             }
-            applyIncomingBountyApplications(data.applications || [], { forceRender: true });
+            applyIncomingBountyApplications(data.applications || []);
         } catch (error) {
             console.error('Error loading bounty applications:', error);
             // Do not poison cache with empty list on transient errors.
@@ -452,19 +455,18 @@ async function loadBountyApplications(options) {
     })();
 
     _bountyAppsInFlight = requestPromise;
-    renderBountyApplications();
+    if (!_bountyAppsLoadedOnce) renderBountyApplications();
     try {
         await requestPromise;
     } finally {
         if (_bountyAppsInFlight === requestPromise) _bountyAppsInFlight = null;
-        renderBountyApplications();
     }
 }
 
 function startBountyApplicationsPolling() {
     if (_bountyAppsPollId) clearInterval(_bountyAppsPollId);
     _bountyAppsPollId = setInterval(function() {
-        if (!document.hidden) {
+        if (!document.hidden && typeof isTabCurrentlyActive === 'function' && isTabCurrentlyActive('tests')) {
             loadBountyApplications({ background: true }).catch(function() {});
         }
     }, 30000);

@@ -2702,6 +2702,7 @@ function renderTests(force) {
     if (window._restoreActiveTimer) window._restoreActiveTimer();
     if (typeof reapplyAllFeedbackCheckinPendingUi === 'function') reapplyAllFeedbackCheckinPendingUi();
     if (typeof restoreAccessProblemAccordions === 'function') restoreAccessProblemAccordions();
+    if (typeof window.updateTestsRefreshUi === 'function') window.updateTestsRefreshUi();
     refreshMyTestsSectionHandoffs();
 }
 
