@@ -89,7 +89,7 @@ function stateBlock(o) {
       <div class="pc-metric-footer"><span class="pc-metric-footer__line">Набор: ${o.recruitTarget || teamSize} чел.</span></div>
     </section>
     <section class="pc-metric-card pc-metric-card--google">
-      <div class="pc-metric-title">GOOGLE 12</div>
+      <div class="pc-metric-title">АКТИВНОСТЬ</div>
       <div class="pc-metric-ring-wrap">${ring(o.done, o.testers).replace('Чекины дня', 'чекины')}</div>
       <div class="pc-daily-activity ${o.done > 12 ? 'is-over' : o.done >= 12 ? 'is-ok' : 'is-warning'}"><span>⚡</span><span>Акт. ${o.pct}%</span></div>
       <div class="pc-metric-footer">${o.chip ? `<div class="pc-daily-status status-chip status-chip--${o.chip.kind}"><span class="status-chip__text">${o.chip.text}</span></div>` : '<span class="pc-daily-status status-chip status-chip--sky"><span class="status-chip__text">Сбор чекинов</span></span>'}</div>

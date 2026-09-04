@@ -1258,7 +1258,7 @@ function renderProjects(force) {
         const activityLightning = isFullActivity ? '<span aria-hidden="true">⚡ </span>' : '';
         const dailyActivityHtml = '<span class="pc-metric-footer__line pc-daily-activity-line">' +
             activityLightning +
-            '<span>' + window.escapeHTML(window.t('pcMetricActivity', {}, lang)) + ' ' + window.escapeHTML(String(Number(dailyMeta.teamPercent || 0))) + '%</span>' +
+            '<span>' + window.escapeHTML(window.t('pcMetricToday', {}, lang) || 'Сегодня') + ' ' + window.escapeHTML(String(Number(dailyMeta.teamPercent || 0))) + '%</span>' +
             '</span>';
 
         const mutualCount = activeRegularTesters.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
@@ -1334,6 +1334,7 @@ function renderProjects(force) {
                         <div class="pc-metric-footer"><span class="pc-metric-footer__line">${window.escapeHTML(window.t('pcMetricRecruitmentTarget', { count: remainingRecruitmentSlots }, lang))}</span></div>
                     </section>
                     <section class="pc-metric-card pc-metric-card--google">
+                        <div class="pc-metric-title">${window.escapeHTML(window.t('pcActivityWord', {}, lang) || 'Активность')}</div>
                         <div class="pc-metric-ring">${testersRingHtml}</div>
                         <div class="pc-metric-footer">${dailyActivityHtml}</div>
                     </section>
@@ -6637,6 +6638,7 @@ function openProjectLifecycleModal(projectId, event) {
     const titleEl = document.getElementById('project-lifecycle-title');
     const bodyEl = document.getElementById('project-lifecycle-body');
     const actionBtn = document.getElementById('project-lifecycle-action');
+    const extraEl = document.getElementById('project-lifecycle-extra');
     if (!modal || !titleEl || !bodyEl || !actionBtn || !project) return;
 
     const platformDay = typeof getProjectPlatformDay === 'function' ? getProjectPlatformDay(project.created_at) : 0;
@@ -6743,20 +6745,26 @@ function openProjectLifecycleModal(projectId, event) {
                 </li>`;
             }).join('')}
         </ol>
-        <ol class="pc-lc-steps pc-lc-steps--aside" aria-label="${esc(tr('pcLifecycleRestartTitle'))}">
-            <li class="pc-lc-step is-standalone is-future">
-                <span class="pc-lc-step__glyph" aria-hidden="true">🔄</span>
-                <div class="pc-lc-step__body">
-                    <div class="pc-lc-step__head">
-                        <span class="pc-lc-step__title">${esc(tr('pcLifecycleRestartTitle'))}</span>
-                        <span class="pc-lc-step__meta">${esc(tr('pcLifecycleRestartMeta'))}</span>
-                    </div>
-                    <p class="pc-lc-step__desc">${esc(tr('pcLifecycleRestartDesc'))}</p>
-                </div>
-            </li>
-        </ol>
         <div class="pc-lc-note">${esc(hasSync ? tr('pcLifecycleSyncedNote') : tr('pcLifecycleUnsyncedNote'))}</div>
     `;
+
+    if (extraEl) {
+        extraEl.innerHTML = `
+            <details class="pc-lc-restart-accordion">
+                <summary class="pc-lc-restart-summary">
+                    <span class="pc-lc-restart-summary__left">
+                        <span class="pc-lc-restart-glyph" aria-hidden="true">🔄</span>
+                        <span class="pc-lc-restart-title">${esc(tr('pcLifecycleRestartTitle'))}</span>
+                    </span>
+                    <span class="pc-lc-restart-meta">${esc(tr('pcLifecycleRestartMeta'))}</span>
+                    <span class="pc-lc-restart-chevron" aria-hidden="true">▾</span>
+                </summary>
+                <div class="pc-lc-restart-body">
+                    <p class="pc-lc-restart-desc">${esc(tr('pcLifecycleRestartDesc'))}</p>
+                </div>
+            </details>
+        `;
+    }
 
     actionBtn.textContent = hasSync ? tr('pcLifecycleActionSynced') : tr('pcLifecycleActionUnsynced');
     actionBtn.onclick = function (clickEvent) {
