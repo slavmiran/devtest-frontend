@@ -173,9 +173,13 @@
 
     /* ── icons ──────────────────────────────────────────────────────────── */
 
-    var NOTIFICATION_SVG_ICON = '<svg class="pc-ping-svg-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-        '<path d="M11 4H7.8C6.11984 4 5.27976 4 4.63803 4.32698C4.07354 4.6146 3.6146 5.07354 3.32698 5.63803C3 6.27976 3 7.11984 3 8.8V14C3 14.93 3 15.395 3.10222 15.7765C3.37962 16.8117 4.18827 17.6204 5.22354 17.8978C5.60504 18 6.07003 18 7 18V20.3355C7 20.8684 7 21.1348 7.10923 21.2716C7.20422 21.3906 7.34827 21.4599 7.50054 21.4597C7.67563 21.4595 7.88367 21.2931 8.29976 20.9602L10.6852 19.0518C11.1725 18.662 11.4162 18.4671 11.6875 18.3285C11.9282 18.2055 12.1844 18.1156 12.4492 18.0613C12.7477 18 13.0597 18 13.6837 18H15.2C16.8802 18 17.7202 18 18.362 17.673C18.9265 17.3854 19.3854 16.9265 19.673 16.362C20 15.7202 20 14.8802 20 13.2V13M20.1213 3.87868C21.2929 5.05025 21.2929 6.94975 20.1213 8.12132C18.9497 9.29289 17.0503 9.29289 15.8787 8.12132C14.7071 6.94975 14.7071 5.05025 15.8787 3.87868C17.0503 2.70711 18.9497 2.70711 20.1213 3.87868Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-        '</svg>';
+    function notificationIconHtml(appId, enabled) {
+        var src = enabled
+            ? './images/Icons/notification-new-svgrepo-com.svg'
+            : './images/Icons/notification-off-svgrepo-com.svg';
+        return '<img class="pc-ping-svg-ico pc-ping-notification-icon" data-pc-ping-icon="' + Number(appId || 0) +
+            '" src="' + src + '" alt="" aria-hidden="true">';
+    }
 
     var TELEGRAM_ICON = '<svg class="pc-ping__glyph" viewBox="0 0 24 24" aria-hidden="true">' +
         '<path fill="currentColor" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>' +
@@ -266,7 +270,7 @@
                 ' aria-pressed="' + (enabled ? 'true' : 'false') + '"' +
                 ' aria-label="' + esc(text('pcPingToggleAria', 'Screenshot notifications')) + '"' +
                 ' onclick="event.stopPropagation(); pcProofPingToggleDot(' + Number(appId) + ', this)">' +
-                NOTIFICATION_SVG_ICON +
+                notificationIconHtml(appId, enabled) +
             '</button>' +
             ctaHtml('sm') +
             '<button type="button" class="pc-ping__close" aria-label="' + esc(text('pcPingHide', 'Hide')) + '"' +
@@ -350,6 +354,28 @@
                 btn.classList.toggle('is-off', !on);
                 btn.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
+        });
+        Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping-icon="' + safeId + '"]')).forEach(function (icon) {
+            icon.src = on
+                ? './images/Icons/notification-new-svgrepo-com.svg'
+                : './images/Icons/notification-off-svgrepo-com.svg';
+        });
+        Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping-drawer="' + safeId + '"]')).forEach(function (tile) {
+            tile.classList.toggle('is-on', on);
+            tile.classList.toggle('is-off', !on);
+        });
+        Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping-drawer-icon="' + safeId + '"]')).forEach(function (icon) {
+            icon.src = on
+                ? './images/Icons/notification-new-svgrepo-com.svg'
+                : './images/Icons/notification-off-svgrepo-com.svg';
+        });
+        Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping-drawer-status="' + safeId + '"]')).forEach(function (status) {
+            status.classList.toggle('is-on', on);
+            status.classList.toggle('is-off', !on);
+            status.textContent = text(
+                on ? 'pcQuickSettingsNotificationsOn' : 'pcQuickSettingsNotificationsOff',
+                on ? 'Enabled' : 'Disabled'
+            );
         });
     }
 

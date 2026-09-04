@@ -1425,6 +1425,21 @@ function renderProjects(force) {
             if (visibilityMeta.mode === 'hidden_manual') return window.t('settingsVisibilityPrivate', {}, lang) || 'Скрыто из витрины';
             return window.t('settingsVisibilityPublic', {}, lang) || 'Публичный';
         })();
+        const proofPingEnabled = window.ProofPing
+            ? window.ProofPing.isEnabled(project)
+            : (project.proof_ping_enabled !== false);
+        const notificationIconSrc = proofPingEnabled
+            ? './images/Icons/notification-new-svgrepo-com.svg'
+            : './images/Icons/notification-off-svgrepo-com.svg';
+        const notificationState = window.t(
+            proofPingEnabled ? 'pcQuickSettingsNotificationsOn' : 'pcQuickSettingsNotificationsOff',
+            {},
+            lang
+        ) || (proofPingEnabled ? 'Включены' : 'Выключены');
+        const quickSettingsMeta = window.t('pcQuickSettingsMeta', {
+            id: Number(project.id || project.app_id || 0),
+            run: Math.max(1, Number(project.run_iteration || 1)),
+        }, lang) || ('ID: ' + Number(project.id || project.app_id || 0) + ' · Run #' + Math.max(1, Number(project.run_iteration || 1)));
 
         card.innerHTML = `
             <section class="pc-state-unified">
@@ -1440,60 +1455,52 @@ function renderProjects(force) {
                     ${projectCardSubtitleHtml}
                 </div>
                 <div class="project-header-actions">
-                    <button type="button" class="project-icon-btn" aria-label="${window.escapeHTML(window.t('kebabEdit', {}, lang))}" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">
-                        <svg class="project-icon-btn__glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.48.48 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/>
-                        </svg>
+                    <button type="button" class="project-icon-btn" aria-label="${window.escapeHTML(window.t('pcQuickSettingsTitle', {}, lang) || 'Быстрые настройки проекта')}" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">
+                        <img class="project-icon-btn__glyph project-icon-btn__glyph--asset" src="./images/Icons/settings-svgrepo-com.svg" alt="" aria-hidden="true">
                     </button>
                 </div>
             </div>
             
             <div id="settings-drawer-${project.id}" class="project-settings-drawer" onclick="event.stopPropagation();">
                 <div class="project-settings-drawer__inner">
-                <div class="drawer-item" onclick="openVisibilityModeModal(${project.id}, event)" style="cursor: pointer;">
-                    <div class="drawer-item-left">
-                        <div class="drawer-item-icon-box visibility">
-                            <span>${visibilityMeta.buttonIcon}</span>
+                    <section class="pc-quick-settings" aria-label="${window.escapeHTML(window.t('pcQuickSettingsTitle', {}, lang) || 'Быстрые настройки проекта')}">
+                        <div class="pc-quick-settings__head">
+                            <span class="pc-quick-settings__title">${window.escapeHTML(window.t('pcQuickSettingsTitle', {}, lang) || 'Быстрые настройки проекта')}</span>
+                            <span class="pc-quick-settings__meta">${window.escapeHTML(quickSettingsMeta)}</span>
                         </div>
-                        <div class="drawer-item-text-group">
-                            <span class="drawer-item-title">${window.escapeHTML(window.t('settingsVisibilityTitle', {}, lang))}</span>
-                            <span class="drawer-item-subtitle">${window.escapeHTML(visibilitySubText)}</span>
+                        <div class="pc-quick-settings__grid">
+                            <button type="button" class="pc-quick-tile pc-quick-tile--visibility" onclick="openVisibilityModeModal(${project.id}, event)">
+                                <span class="pc-quick-tile__icon pc-quick-tile__icon--visibility" aria-hidden="true">${visibilityMeta.buttonIcon}</span>
+                                <span class="pc-quick-tile__copy">
+                                    <span class="pc-quick-tile__label">${window.escapeHTML(window.t('settingsVisibilityTitle', {}, lang) || 'Видимость')}</span>
+                                    <span class="pc-quick-tile__value">${window.escapeHTML(visibilitySubText)}<span class="pc-quick-tile__chev" aria-hidden="true">⌄</span></span>
+                                </span>
+                            </button>
+                            <div class="pc-quick-tile pc-quick-tile--notifications ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer="${project.id}">
+                                <span class="pc-quick-tile__icon pc-quick-tile__icon--notifications" aria-hidden="true">
+                                    <img data-pc-ping-drawer-icon="${project.id}" src="${notificationIconSrc}" alt="">
+                                </span>
+                                <span class="pc-quick-tile__copy">
+                                    <span class="pc-quick-tile__label">${window.escapeHTML(window.t('pcPingTitle', {}, lang) || 'Уведомления')}</span>
+                                    <span class="pc-quick-tile__value pc-quick-tile__value--ping ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer-status="${project.id}">${window.escapeHTML(notificationState)}</span>
+                                </span>
+                                <label class="toggle-switch pc-quick-tile__switch" onclick="event.stopPropagation();">
+                                    <input type="checkbox" id="project-drawer-ping-${project.id}" ${proofPingEnabled ? 'checked' : ''} onchange="pcProofPingToggle(${project.id}, this)" aria-label="${window.escapeHTML(window.t('pcPingToggleAria', {}, lang) || 'Уведомления о скриншотах контрольного дня')}">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
                         </div>
-                    </div>
-                    <span class="drawer-chevron">›</span>
-                </div>
-                <div class="drawer-item" onclick="event.stopPropagation();" style="cursor: default;">
-                    <div class="drawer-item-left">
-                        <div class="drawer-item-icon-box notifications">
-                            <svg class="drawer-item-svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 17px; height: 17px;">
-                                <path d="M11 4H7.8C6.11984 4 5.27976 4 4.63803 4.32698C4.07354 4.6146 3.6146 5.07354 3.32698 5.63803C3 6.27976 3 7.11984 3 8.8V14C3 14.93 3 15.395 3.10222 15.7765C3.37962 16.8117 4.18827 17.6204 5.22354 17.8978C5.60504 18 6.07003 18 7 18V20.3355C7 20.8684 7 21.1348 7.10923 21.2716C7.20422 21.3906 7.34827 21.4599 7.50054 21.4597C7.67563 21.4595 7.88367 21.2931 8.29976 20.9602L10.6852 19.0518C11.1725 18.662 11.4162 18.4671 11.6875 18.3285C11.9282 18.2055 12.1844 18.1156 12.4492 18.0613C12.7477 18 13.0597 18 13.6837 18H15.2C16.8802 18 17.7202 18 18.362 17.673C18.9265 17.3854 19.3854 16.9265 19.673 16.362C20 15.7202 20 14.8802 20 13.2V13M20.1213 3.87868C21.2929 5.05025 21.2929 6.94975 20.1213 8.12132C18.9497 9.29289 17.0503 9.29289 15.8787 8.12132C14.7071 6.94975 14.7071 5.05025 15.8787 3.87868C17.0503 2.70711 18.9497 2.70711 20.1213 3.87868Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
+                        <div class="pc-quick-settings__actions">
+                            <button type="button" class="pc-quick-action" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
+                                <img src="./images/Icons/settingsfull-svgrepo-com.svg" alt="" aria-hidden="true">
+                                <span>${window.escapeHTML(window.t('pcQuickSettingsEdit', {}, lang) || 'Изменить')}</span>
+                            </button>
+                            <button type="button" class="pc-quick-action pc-quick-action--archive" onclick="openDeleteModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
+                                <img src="./images/Icons/mail-inbox-dismiss-svgrepo-com.svg" alt="" aria-hidden="true">
+                                <span>${window.escapeHTML(window.t('pcQuickSettingsArchive', {}, lang) || 'В архив')}</span>
+                            </button>
                         </div>
-                        <span class="drawer-item-title">${window.escapeHTML(window.t('pcPingTitle', {}, lang) || 'Уведомления')}</span>
-                    </div>
-                    <label class="toggle-switch" onclick="event.stopPropagation();">
-                        <input type="checkbox" id="project-drawer-ping-${project.id}" ${(window.ProofPing ? window.ProofPing.isEnabled(project) : (project.proof_ping_enabled !== false)) ? 'checked' : ''} onchange="pcProofPingToggle(${project.id}, this)">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                <div class="drawer-item" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);" style="cursor: pointer;">
-                    <div class="drawer-item-left">
-                        <div class="drawer-item-icon-box edit">
-                            <span>✏️</span>
-                        </div>
-                        <span class="drawer-item-title">${window.escapeHTML(window.t('kebabEdit', {}, lang))}</span>
-                    </div>
-                    <span class="drawer-chevron">›</span>
-                </div>
-                <div class="drawer-item is-danger" onclick="openDeleteModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);" style="cursor: pointer;">
-                    <div class="drawer-item-left">
-                        <div class="drawer-item-icon-box danger">
-                            <span>🗑️</span>
-                        </div>
-                        <span class="drawer-item-title">${window.escapeHTML(window.t('kebabArchive', {}, lang))}</span>
-                    </div>
-                    <span class="drawer-chevron">›</span>
-                </div>
+                    </section>
                 </div>
             </div>
 

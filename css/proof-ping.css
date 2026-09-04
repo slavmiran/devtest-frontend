@@ -661,6 +661,15 @@
     display: block;
 }
 
+.pc-ping-icon-btn .pc-ping-notification-icon {
+    object-fit: contain;
+    filter: invert(62%) sepia(10%) saturate(653%) hue-rotate(176deg) brightness(89%) contrast(87%);
+}
+
+.pc-ping-icon-btn.is-on .pc-ping-notification-icon {
+    filter: invert(66%) sepia(56%) saturate(662%) hue-rotate(174deg) brightness(99%) contrast(103%);
+}
+
 .pc-ping--compact .pc-ping__link {
     margin-left: auto;
 }
