@@ -2892,6 +2892,8 @@
             testingControlFeedbackStatusRejected: "Отклонён",
 
             /* --- Карточка проекта: ежедневный дашборд владельца --- */
+            sessionExpiredToast: "Сессия Telegram устарела. Пожалуйста, перезапустите Mini App.",
+            invalid_init_data: "Сессия Telegram устарела. Пожалуйста, перезапустите Mini App.",
             packageCopiedToast: "Пакет скопирован",
 
             pcDayOf: "День {day} / {total}",

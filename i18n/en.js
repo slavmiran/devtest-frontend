@@ -2886,6 +2886,8 @@
             testingControlFeedbackStatusRejected: "Rejected",
 
             /* --- Project card: owner daily dashboard --- */
+            sessionExpiredToast: "Telegram session expired. Please restart the Mini App.",
+            invalid_init_data: "Telegram session expired. Please restart the Mini App.",
             packageCopiedToast: "Package name copied",
 
             pcDayOf: "Day {day} / {total}",

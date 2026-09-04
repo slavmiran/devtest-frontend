@@ -7874,6 +7874,7 @@ function handleGuestClaimWelcomeGoToDashboard() {
 }
 
 function showToast(message, duration) {
+    if (!message || typeof message !== 'string' || !message.trim()) return;
     let toast = document.getElementById('custom-toast');
     if (!toast) {
         toast = document.createElement('div');

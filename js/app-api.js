@@ -1021,16 +1021,23 @@ async function readApiErrorPayload(response) {
 }
 
 async function buildHttpStatusError(response, fallbackKey) {
+    if (response && response.status === 401) {
+        return new Error(window.t ? window.t('sessionExpiredToast') : 'Сессия Telegram устарела. Пожалуйста, перезапустите Mini App.');
+    }
     var payload = await readApiErrorPayload(response);
     var code = getBackendErrorCode(payload);
     if (code === 'invalid_init_data') {
-        return new Error(window.t ? window.t('guestClaimAuthErrorToast') : 'invalid_init_data');
+        return new Error(window.t ? window.t('sessionExpiredToast') : 'Сессия Telegram устарела. Пожалуйста, перезапустите Mini App.');
     }
     if (code === 'username_required') {
         return new Error(window.t ? window.t('noUsernameTitle') : 'username_required');
     }
     if (payload && (payload.detail || payload.message)) {
-        return new Error(String(payload.detail || payload.message));
+        var detailStr = String(payload.detail || payload.message).trim();
+        if (detailStr === 'invalid_init_data' || /^(http\s*)?401(\s*unauthorized)?$/i.test(detailStr)) {
+            return new Error(window.t ? window.t('sessionExpiredToast') : 'Сессия Telegram устарела. Пожалуйста, перезапустите Mini App.');
+        }
+        return new Error(detailStr);
     }
     return new Error('HTTP ' + (response && response.status ? response.status : 'error'));
 }

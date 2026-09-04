@@ -62,18 +62,32 @@
                 ? (payload.code || payload.message)
                 : null;
 
+        const isAuthExpired = function (val) {
+            if (!val || typeof val !== 'string') return false;
+            const s = val.trim().toLowerCase();
+            return s === 'invalid_init_data' || s === '401' || s === 'http 401' || s === '401 unauthorized' || s.indexOf('expired auth_date') !== -1;
+        };
+
         if (typeof code === 'string') {
-            const localized = getMap(targetLang)[code] ?? DICT[DEFAULT_LANG][code];
+            const trimmed = code.trim();
+            if (isAuthExpired(trimmed)) {
+                return window.t('sessionExpiredToast', {}, targetLang) || 'Сессия Telegram устарела. Пожалуйста, перезапустите Mini App.';
+            }
+            const localized = getMap(targetLang)[trimmed] ?? DICT[DEFAULT_LANG][trimmed];
             if (typeof localized !== 'undefined') {
                 return interpolate(localized, details);
             }
-            if (code.trim()) {
-                return code;
+            if (trimmed) {
+                return trimmed;
             }
         }
 
         if (payload && typeof payload === 'object' && typeof payload.detail === 'string' && payload.detail.trim()) {
-            return payload.detail;
+            const detailStr = payload.detail.trim();
+            if (isAuthExpired(detailStr)) {
+                return window.t('sessionExpiredToast', {}, targetLang) || 'Сессия Telegram устарела. Пожалуйста, перезапустите Mini App.';
+            }
+            return detailStr;
         }
 
         return window.t(defaultKey, {}, targetLang);
