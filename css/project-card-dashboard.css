@@ -3195,13 +3195,71 @@ button.pc-act-reason {
     white-space: nowrap;
 }
 
-.pc-award-badge__label {
-    color: rgba(171, 190, 218, 0.62);
-}
-
 .pc-award-badge__value {
     color: #b9cef1;
     font-variant-numeric: tabular-nums;
+}
+
+/* Attention gets the same avatar-corner cue as Contribution. */
+.pc-attention-marker {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    z-index: 1;
+    display: grid;
+    width: 19px;
+    height: 19px;
+    place-items: center;
+    border: 2px solid var(--bg-surface-2);
+    border-radius: 50%;
+    box-sizing: border-box;
+    color: #ffd695;
+    background: #4b3b29;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+.pc-attention-marker svg {
+    display: block;
+    width: 11px;
+    height: 11px;
+}
+
+.pc-attention-marker.is-debt {
+    color: #ffc861;
+    background: #4b3826;
+}
+
+.pc-attention-marker.is-skips {
+    color: #ffb0a0;
+    background: #4d2d31;
+}
+
+.pc-attention-marker.is-missed_control {
+    color: #ffc978;
+    background: #4c3e29;
+}
+
+.pc-attention-marker.is-not_opened {
+    color: #a9cbff;
+    background: #293d58;
+}
+
+.pc-attention-marker b {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    display: grid;
+    width: 11px;
+    height: 11px;
+    place-items: center;
+    border: 1.5px solid var(--bg-surface-2);
+    border-radius: 50%;
+    box-sizing: border-box;
+    color: #fff;
+    background: var(--accent-primary);
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
 }
 
 /* ───────────────── Project card visual refinement ─────────────────

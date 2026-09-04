@@ -147,6 +147,16 @@
         screenshots: ICONS.image,
     };
 
+    // Reasons in Attention are shown directly on the avatar, just like a
+    // contribution source. They only visualize the reasons already calculated
+    // below; the selection rules themselves stay untouched.
+    var ATTENTION_ICONS = {
+        debt: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13ZM6.5 5a.5.5 0 0 0-.5.5v2h12v-2a.5.5 0 0 0-.5-.5h-11ZM6 10v8.5c0 .28.22.5.5.5h11a.5.5 0 0 0 .5-.5V10H6Zm3 2h6v2H9v-2Zm0 3h4v2H9v-2Z"/></svg>',
+        skips: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3 1.7 20.5h20.6L12 3Zm1 13h-2V9h2v7Zm0 3h-2v-2h2v2Z"/></svg>',
+        missed_control: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h10v2h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3V2Zm2 2h6V3H9v1Zm11 4H4v12h16V8Zm-8 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm1 1v2.59l1.7 1.7-1.4 1.41L11 14v-3h2Z"/></svg>',
+        not_opened: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 5c5.3 0 9.27 4.11 10.5 7-1.23 2.89-5.2 7-10.5 7S2.73 14.89 1.5 12C2.73 9.11 6.7 5 12 5Zm0 2c-3.96 0-7.16 2.86-8.39 5 1.23 2.14 4.43 5 8.39 5s7.16-2.86 8.39-5C19.16 9.86 15.96 7 12 7Zm0 2.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Zm-7.7 9.34L18.6 4.3l1.41 1.41L5.71 20 4.3 18.59Z"/></svg>',
+    };
+
     function iconAct(kind, label, onclick, opts) {
         opts = opts || {};
         var title = opts.title || label || '';
@@ -171,10 +181,9 @@
             return '☯️';
         });
         if (!tokens.length) tokens.push('☯️');
-        var label = text('pcAwardBadgeLabel', 'Award:');
-        return '<span class="pc-award-badge" title="' + esc(label + ' ' + tokens.join(' · ')) + '">' +
-            '<span class="pc-award-badge__label">' + esc(label) + '</span>' +
-            '<span class="pc-award-badge__value">' + esc(tokens.join(' · ')) + '</span>' +
+        var value = tokens.join(' · ');
+        return '<span class="pc-award-badge" title="' + esc(value) + '">' +
+            '<span class="pc-award-badge__value">' + esc(value) + '</span>' +
         '</span>';
     }
 
@@ -186,6 +195,18 @@
                     : 'screenshots';
         return '<span class="pc-contribution-marker is-' + esc(primary) + '" aria-hidden="true">' +
             (CONTRIBUTION_ICONS[primary] || CONTRIBUTION_ICONS.screenshots) +
+            (items.length > 1 ? '<b>+</b>' : '') +
+        '</span>';
+    }
+
+    function attentionAvatarMarkerHtml(reasons) {
+        var items = Array.isArray(reasons) ? reasons : [];
+        var primary = items.some(function (reason) { return reason.code === 'debt'; }) ? 'debt'
+            : items.some(function (reason) { return reason.code === 'skips'; }) ? 'skips'
+                : items.some(function (reason) { return reason.code === 'missed_control'; }) ? 'missed_control'
+                    : 'not_opened';
+        return '<span class="pc-attention-marker is-' + esc(primary) + '" aria-hidden="true">' +
+            (ATTENTION_ICONS[primary] || ATTENTION_ICONS.not_opened) +
             (items.length > 1 ? '<b>+</b>' : '') +
         '</span>';
     }
@@ -944,6 +965,7 @@
                 rowClass: 'pc-person--reasons',
                 metaHtml: metaHtml,
                 actionsHtml: actions,
+                avatarMarkerHtml: attentionAvatarMarkerHtml(item.reasons),
             });
         }).join('') + '</ul>';
     }
@@ -1081,7 +1103,14 @@
             if (testerId > 0) testerIds.push(testerId);
             if (progressId > 0) progressIds.push(progressId);
         });
-        return { testerIds: testerIds, progressIds: progressIds };
+        // A filtered card can be rendered before its tester mapping has been
+        // hydrated. Passing two empty arrays to Testing Control then filters
+        // every loaded row out and leaves the History pane blank. In that
+        // transient case show the project history instead of an empty pane.
+        return {
+            testerIds: testerIds.length ? testerIds : null,
+            progressIds: progressIds.length ? progressIds : null,
+        };
     }
 
     function hintForFilter(filter) {
@@ -1203,16 +1232,31 @@
         '</div>';
     }
 
-    function loadFilterHistory(appId, filter, data) {
+    async function loadFilterHistory(appId, filter, data) {
         var pane = document.getElementById('pc-activity-history-' + Number(appId));
         if (!pane) return;
         var scope = scopeForFilter(filter, data);
         if (typeof window.renderTestingControlHistoryInto === 'function') {
-            window.renderTestingControlHistoryInto(pane, appId, {
-                archived: false,
-                testerIds: scope.testerIds,
-                progressIds: scope.progressIds,
-            });
+            pane.innerHTML = '<div class="pc-activity-empty">' + esc(text('pcActivityHistoryLoading', 'Loading history…')) + '</div>';
+            try {
+                var loaded = await window.renderTestingControlHistoryInto(pane, appId, {
+                    archived: false,
+                    testerIds: scope.testerIds,
+                    progressIds: scope.progressIds,
+                });
+                // The feature may be temporarily unavailable while the card is
+                // already visible. Keep a useful empty state rather than a blank
+                // History pane.
+                if (loaded === false && pane.isConnected) {
+                    pane.innerHTML = '<div class="pc-activity-empty">' + esc(text('testingControlEmpty', 'There are no testers in this run yet.')) + '</div>';
+                }
+            } catch (_) {
+                if (pane.isConnected) {
+                    pane.innerHTML = '<div class="pc-activity-empty">' + esc(text('testingControlLoadError', 'Could not load testing progress.')) + '</div>';
+                }
+            }
+        } else {
+            pane.innerHTML = '<div class="pc-activity-empty">' + esc(text('testingControlEmpty', 'There are no testers in this run yet.')) + '</div>';
         }
     }
 

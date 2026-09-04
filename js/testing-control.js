@@ -387,7 +387,7 @@
         var tester = item && item.tester || {};
         var testerId = Number(tester.id || item.tester_id || 0);
         var username = String(tester.username || '').trim().replace(/^@+/, '');
-        var safeUsername = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\'");
+        var safeUsername = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
         
         var isLeftSoft = !!item.is_left_soft
             || !!(tester && tester.is_left_soft)
@@ -416,13 +416,13 @@
             : '';
 
         var leaveChipHtml = isLeftSoft
-            ? '<button type="button" class="tester-leave-chip notranslate" style="margin-left:auto; margin-right:6px;" onclick="event.stopPropagation(); if (typeof openLeftTesterLinkStatus === 'function') { openLeftTesterLinkStatus(' + Number(state.appId || 0) + ', ' + testerId + ', event); } else if (typeof openMutualBalanceModal === 'function') { openMutualBalanceModal(' + Number(state.appId || 0) + ', event, { testerId: ' + testerId + ' }); }">' +
+            ? '<button type="button" class="tester-leave-chip notranslate" style="margin-left:auto; margin-right:6px;" onclick="event.stopPropagation(); if (typeof openLeftTesterLinkStatus === \'function\') { openLeftTesterLinkStatus(' + Number(state.appId || 0) + ', ' + testerId + ', event); } else if (typeof openMutualBalanceModal === \'function\') { openMutualBalanceModal(' + Number(state.appId || 0) + ', event, { testerId: ' + testerId + ' }); }">' +
                 escape(text('testerLeftChip', 'LEAVE')) +
               '</button>'
             : '';
 
         return '<article class="testing-control-tester' + (isLeftSoft ? ' is-tester-left' : '') + '" data-progress-id="' + Number(item.progress_id || 0) + '">' +
-            '<button type="button" class="testing-control-tester__head" onclick="openDossierModal('' + safeUsername + '', ' + Number(tester.id || 0) + ', ' + Number(state.appId || 0) + ')">' +
+            '<button type="button" class="testing-control-tester__head" onclick="openDossierModal(\'' + safeUsername + '\', ' + Number(tester.id || 0) + ', ' + Number(state.appId || 0) + ')">' +
                 avatarHtml(item) +
                 '<span class="testing-control-tester__identity">' +
                     '<span class="testing-control-tester__name notranslate">' + escape(testerLabel(item)) + '</span>' +
@@ -452,6 +452,11 @@
             var progressId = Number(item && item.progress_id || 0);
             return (testerId > 0 && testers[testerId]) || (progressId > 0 && progress[progressId]);
         });
+    }
+
+    function hasEmbeddedItems() {
+        if (!state.embedTesterIds && !state.embedProgressIds) return true;
+        return embedScopedItems().length > 0;
     }
 
     function testersListHtml() {
@@ -1016,6 +1021,21 @@
             state.project = payload.project || state.project;
             state.items = options.append ? state.items.concat(payload.items || []) : (payload.items || []);
             state.nextCursor = payload.next_cursor || null;
+
+            // The compact project card filters an embedded history by tester.
+            // The API is paginated by progress id, so a matching tester can
+            // legitimately be after the first page. Fetch further pages until
+            // a matching row is available; otherwise the pane looked empty
+            // despite the tester having a history.
+            if (!options.append && (state.embedTesterIds || state.embedProgressIds) && !hasEmbeddedItems()) {
+                var embedGuard = 0;
+                while (state.nextCursor && embedGuard < 9 && !hasEmbeddedItems()) {
+                    embedGuard += 1;
+                    var embeddedNext = await requestPage(state.nextCursor);
+                    state.items = state.items.concat(embeddedNext.items || []);
+                    state.nextCursor = embeddedNext.next_cursor || null;
+                }
+            }
 
             if (state.focusProgressId > 0 && !state.items.some(function (item) {
                 return Number(item.progress_id) === Number(state.focusProgressId);
