@@ -740,10 +740,7 @@ function renderProjects(force) {
         card.className = cardClass + (hasAccessOverlay ? ' card-has-access-issue' : '');
         card.id = `project-card-${project.id}`;
         card.setAttribute('data-project-id', String(project.id));
-        const showUpdateTip = projectStatus === 'active' && platformDays >= 3 && !isProjectUpdateTipDismissed(project.id);
-        const updateTipHtml = showUpdateTip
-            ? `<div id="update-tip-${project.id}" class="project-update-tip"><div class="project-update-tip__text">${window.escapeHTML(window.t('projectUpdateTipText', {}, lang))}</div><button type="button" class="project-update-tip__close" onclick="dismissProjectUpdateTip(${project.id}, event)" aria-label="${window.escapeHTML(window.t('btnClose', {}, lang))}">✕</button></div>`
-            : '';
+        const updateTipHtml = '';
 
         const allProjectTesters = Array.isArray(project.testers) ? project.testers : [];
         const guestTesters = allProjectTesters.filter(function(tester) {
@@ -1220,17 +1217,24 @@ function renderProjects(force) {
         const bufferHoursText = isPendingCompletion && bufferHoursLeft > 0
             ? String(bufferHoursLeft)
             : '48';
-        const termReserveText = extraPaidDays > 0
-            ? window.t('pcMetricTimeReserve', { days: extraPaidDays, hours: bufferHoursText }, lang)
-            : window.t('pcMetricBufferReserve', { hours: bufferHoursText }, lang);
+        const extraDaysWord = lang === 'en'
+            ? (extraPaidDays === 1 ? 'day' : 'days')
+            : (extraPaidDays === 1 ? 'день' : (extraPaidDays >= 2 && extraPaidDays <= 4 ? 'дня' : 'дней'));
         const termReserveHtml = hasSync
-            ? '<span class="pc-metric-reserve pc-metric-reserve--time">' +
-                '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
-                '<span>' + window.escapeHTML(termReserveText) + '</span>' +
-              '</span>'
-            : '';
+            ? (extraPaidDays > 0
+                ? '<span class="pc-metric-reserve pc-metric-reserve--time">' +
+                    '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
+                    '<span>' + window.escapeHTML(String(extraPaidDays) + ' ' + extraDaysWord) + '</span>' +
+                  '</span>'
+                : '<span class="pc-metric-reserve pc-metric-reserve--time">' +
+                    '<span class="pc-metric-reserve__plus" aria-hidden="true">+</span>' +
+                    '<span>' + window.escapeHTML(bufferHoursText + (lang === 'en' ? 'h' : 'ч')) + '</span>' +
+                  '</span>')
+            : '<button type="button" class="pc-metric-cal-slot-btn" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();" aria-label="' + window.escapeHTML(window.t('pcTermAction', {}, lang)) + '">' +
+                '<img src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" class="pc-metric-cal-slot-icon" alt="" aria-hidden="true">' +
+              '</button>';
         const termFooterHtml = hasSync
-            ? '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcMetricTotalDays', { day: platformDays }, lang)) + '</span>'
+            ? '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcBufferLine', {}, lang) || ('Буфер +' + bufferHoursText + 'ч')) + '</span>'
             : '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcBufferLine', {}, lang)) + '</span>';
 
         const dailyMeta = getProjectDailyProgressMeta(project);
@@ -1238,16 +1242,10 @@ function renderProjects(force) {
         const testersToMinimum = Math.max(0, 12 - teamTesterCount);
         const testersToRecommended = Math.max(0, 20 - teamTesterCount);
         const teamReserveHtml = teamTesterCount < 12
-            ? '<span class="pc-metric-reserve pc-metric-reserve--warning">' + window.escapeHTML(window.t('pcMetricTesterMinimum', { count: testersToMinimum, unit: testerUnitLabel(testersToMinimum) }, lang)) + '</span>'
+            ? '<button type="button" class="pc-metric-reserve pc-metric-reserve--warning" onclick="openDailyProgressDetailsModal(' + Number(project.id) + ', event); event.stopPropagation();">' + window.escapeHTML(window.t('pcMetricTesterMinimum', { count: testersToMinimum, unit: testerUnitLabel(testersToMinimum) }, lang)) + '</button>'
             : teamTesterCount < 20
-                ? '<span class="pc-metric-reserve pc-metric-reserve--recommend">' + window.escapeHTML(window.t('pcMetricTesterRecommend', { count: testersToRecommended }, lang)) + '</span>'
-                : '<span class="pc-metric-reserve pc-metric-reserve--reliable">' + window.escapeHTML(window.t('pcMetricTesterReliable', {}, lang)) + '</span>';
-        const dailyStatusHtml = dailyMeta.statusChip && dailyMeta.statusChip.text
-            ? '<div class="pc-daily-status status-chip status-chip--' + window.escapeHTML(dailyMeta.statusChip.kind) + '">' +
-                (dailyMeta.statusChip.iconHtml || '') +
-                '<span class="status-chip__text">' + window.escapeHTML(dailyMeta.statusChip.text) + '</span>' +
-              '</div>'
-            : '';
+                ? '<button type="button" class="pc-metric-reserve pc-metric-reserve--recommend" onclick="openDailyProgressDetailsModal(' + Number(project.id) + ', event); event.stopPropagation();">' + window.escapeHTML(window.t('pcMetricTesterRecommend', { count: testersToRecommended }, lang)) + '</button>'
+                : '<button type="button" class="pc-metric-reserve pc-metric-reserve--reliable" onclick="openDailyProgressDetailsModal(' + Number(project.id) + ', event); event.stopPropagation();">' + window.escapeHTML(window.t('pcMetricTesterReliable', {}, lang)) + '</button>';
         const testersRingHtml = typeof buildProjectDailyProgressRingHtml === 'function'
             ? buildProjectDailyProgressRingHtml(project, { compactLabel: true })
             : '';
@@ -1255,6 +1253,12 @@ function renderProjects(force) {
         const remainingRecruitmentSlots = Math.max(0, testerTargetCount - currentRegularTestersCount);
         const isFullActivity = Number(dailyMeta.teamPercent || 0) >= 100;
         const activityLightning = isFullActivity ? '<span aria-hidden="true">⚡ </span>' : '';
+        const dailyStatusHtml = dailyMeta.statusChip && dailyMeta.statusChip.text
+            ? '<div class="pc-daily-status status-chip status-chip--' + window.escapeHTML(dailyMeta.statusChip.kind) + '">' +
+                (dailyMeta.statusChip.iconHtml || '') +
+                '<span class="status-chip__text">' + window.escapeHTML(dailyMeta.statusChip.text) + '</span>' +
+              '</div>'
+            : '';
         const dailyActivityHtml = '<span class="pc-metric-footer__line pc-daily-activity-line">' +
             activityLightning +
             '<span>' + window.escapeHTML(window.t('pcMetricActivity', {}, lang)) + ' ' + window.escapeHTML(String(Number(dailyMeta.teamPercent || 0))) + '%</span>' +
@@ -1298,14 +1302,17 @@ function renderProjects(force) {
         const inviteCtaLabel = availableOfferCount > 0
             ? window.t('pcInviteTestersWithCount', { count: availableOfferCount }, lang)
             : window.t('pcInviteTesters', {}, lang);
+        const termBtnLabel = hasSync
+            ? (window.t('pcRefreshAction', {}, lang) || 'Обновить')
+            : (window.t('pcTermAction', {}, lang) || 'Срок');
         const actionSecondaryHtml = needSyncPrompt
             ? `<button type="button" class="pc-action-btn pc-action-btn--sync" onclick="openProtectionCenter(${project.id}); event.stopPropagation();">
                     ${actionSyncIconHtml}
                     <span>${window.escapeHTML(window.t('pcSyncAction', {}, lang))}</span>
                </button>`
-            : `<button type="button" class="pc-action-btn pc-action-btn--term" onclick="openProjectLifecycleModal(${project.id}); event.stopPropagation();">
+            : `<button type="button" class="pc-action-btn pc-action-btn--term" onclick="${hasSync ? `openProtectionCenter(${project.id})` : `openProjectLifecycleModal(${project.id})`}; event.stopPropagation();">
                     ${actionTimeIconHtml}
-                    <span>${window.escapeHTML(window.t('pcTermAction', {}, lang))}</span>
+                    <span>${window.escapeHTML(termBtnLabel)}</span>
                </button>`;
 
         const stageBadgeHtml = needSyncPrompt
@@ -1318,10 +1325,7 @@ function renderProjects(force) {
                 </div>
                 <div class="pc-metrics-grid">
                     <section class="pc-metric-card pc-metric-card--term">
-                        <div class="pc-metric-title">${!hasSync
-                            ? `<button type="button" class="pc-metric-day-cal-btn" onclick="openProjectLifecycleModal(${project.id}); event.stopPropagation();" aria-label="${window.escapeHTML(window.t('pcTermAction', {}, lang))}">${window.escapeHTML(window.t('pcDayWord', {}, lang))}<img src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" class="pc-metric-day-cal-icon" alt="" aria-hidden="true"></button>`
-                            : `<span class="pc-metric-title-text">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</span>`
-                        }</div>
+                        <div class="pc-metric-title">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</div>
                         <div class="pc-metric-main pc-metric-day">${dayValueHtml}</div>
                         ${termReserveHtml}
                         <div class="pc-metric-footer">${termFooterHtml}</div>
@@ -6835,11 +6839,18 @@ function openDailyProgressDetailsModal(projectId, event) {
                         <span class="dp-sheet__metric-k">${tr('dprModalDeficitTeam', { total: totalTesters })}</span>
                     </div>
                     <div class="dp-sheet__metric-item">
-                        <span class="dp-sheet__metric-k text-amber">${tr('dprModalDeficitBreakdown', { deficit: deficit, recommended: recommended })}</span>
+                        <span class="dp-sheet__metric-k text-amber">${tr('dprModalDeficitNotEnough', { deficit: deficit }, (uiLang === 'en' ? `• Not enough to minimum: ${deficit} testers` : `• Не хватает до минимума: ${deficit} чел.`))}</span>
+                    </div>
+                    <div class="dp-sheet__metric-item">
+                        <span class="dp-sheet__metric-k">${tr('dprModalDeficitRecommend', { recommended: recommended }, (uiLang === 'en' ? `• Recommended for safe zone: +${recommended} testers` : `• Рекомендуется для безопасной зоны: +${recommended} чел.`))}</span>
                     </div>
                     <div class="dp-sheet__metric-item">
                         <span class="dp-sheet__metric-k">${tr('dprModalDeficitTested', { done: todayDone })}</span>
                     </div>
+                </div>
+                <div class="dp-sheet__protip">
+                    <div class="dp-sheet__protip-title">${uiLang === 'en' ? '💡 Pro-Tip for Approval' : '💡 Совет для успешного релиза'}</div>
+                    <div class="dp-sheet__protip-text">${tr('projectUpdateTipText', {}, 'Выпустите 1-2 обновления в Google Console во время этого теста (даже мелкий bug fix). Это покажет модераторам вашу активность и сильно повысит шансы на успешный релиз!')}</div>
                 </div>
             </div>
         `;

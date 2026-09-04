@@ -789,7 +789,8 @@
         var stateClass = isBroken ? ' is-broken' : (isDebtDone ? ' is-debt-done' : (isDebtActive || isPartnerDebt ? ' is-debt-active' : ''));
         var stateBadge = '';
         if (isBroken) {
-            var breakDateText = options.breakDate ? (' • ' + _esc(_formatDateShort(options.breakDate))) : '';
+            var dateVal = options.breakDate || options.doneDate || (options.contextData && (options.contextData.partnerLastActive || options.contextData.theirDoneDate));
+            var breakDateText = dateVal ? (' • ' + _esc(_formatDateShort(dateVal))) : '';
             stateBadge = '<div class="parity-side-broken">' + _esc(_t('mutualBalanceSideBroken')) + breakDateText + '</div>';
         } else if (isDebtDone) {
             var doneDateText = options.doneDate ? (' • ' + _esc(_formatDateShort(options.doneDate))) : '';

@@ -3789,26 +3789,6 @@ button.pc-act-reason {
     padding-top: 7px;
 }
 
-.pc-metric-card--google .pc-daily-status {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    align-self: center;
-    gap: 3px;
-    max-width: 100%;
-    min-height: 20px;
-    box-sizing: border-box;
-    margin-top: 2px;
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-size: 8.5px;
-    font-weight: 720;
-    line-height: 1.15;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
 .pc-daily-activity-line {
     color: rgba(197, 211, 233, 0.60);
     font-size: 10px;
@@ -3816,16 +3796,10 @@ button.pc-act-reason {
     line-height: 1.25;
 }
 
-.pc-metric-card--google .pc-daily-status .status-chip__icon {
-    width: 10px;
-    height: 10px;
-    flex: 0 0 auto;
-}
-
 #tab-projects .card[id^="project-card-"] .pc-action-bar {
     display: grid;
-    grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
-    gap: 8px;
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.3fr);
+    gap: 7px;
     margin: 0 14px;
 }
 
@@ -3886,7 +3860,8 @@ button.pc-act-reason {
 }
 
 .pc-action-btn--term .pc-action-btn__icon {
-    filter: invert(77%) sepia(46%) saturate(624%) hue-rotate(119deg) brightness(93%) contrast(95%);
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
 }
 
 .pc-action-btn--sync .pc-action-btn__icon {
@@ -3989,7 +3964,6 @@ button.pc-act-reason {
     #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count { font-size: 12px; }
     #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label { font-size: 6.5px; }
     .pc-daily-activity { padding: 3px 4px; font-size: 8px; }
-    .pc-metric-card--google .pc-daily-status { padding-right: 3px; padding-left: 3px; font-size: 7px; }
 
     .pc-action-btn {
         gap: 5px;
@@ -4398,4 +4372,67 @@ button.pc-quick-tile:active,
     .pc-quick-tile__switch input:checked + .toggle-slider::before {
         transform: translateX(14px);
     }
+}
+
+.pc-metric-cal-slot-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    width: 32px;
+    height: 32px;
+    margin-top: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(188, 206, 238, 0.08);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.18s ease, transform 0.15s ease;
+}
+
+.pc-metric-cal-slot-btn:active {
+    transform: scale(0.92);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.pc-metric-cal-slot-icon {
+    width: 18px;
+    height: 18px;
+    opacity: 0.45;
+    filter: invert(85%) sepia(10%) saturate(300%) hue-rotate(180deg);
+}
+
+button.pc-metric-reserve {
+    cursor: pointer;
+}
+
+.dp-sheet__protip {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 159, 10, 0.08);
+    border: 1px solid rgba(255, 159, 10, 0.22);
+}
+
+.dp-sheet__protip-title {
+    font-size: 11.5px;
+    font-weight: 750;
+    color: #ffb340;
+    margin-bottom: 4px;
+}
+
+.dp-sheet__protip-text {
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: rgba(240, 246, 255, 0.85);
+}
+
+.testing-control-day.is-exit-day {
+    border-color: rgba(255, 69, 58, 0.5) !important;
+    background: rgba(255, 69, 58, 0.12) !important;
+}
+
+.testing-control-day__exit-marker {
+    font-size: 10px;
+    line-height: 1;
+    display: block;
 }

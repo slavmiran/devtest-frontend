@@ -1256,7 +1256,7 @@ function formatProtectionBadgeLabel(extraPaid, poolAmount, lang) {
     if (extraPaid <= 0) {
         return window.t('ppcProtectedBadge', {}, lang) || (lang === 'en' ? '🛡 Protected' : '🛡 Защищён');
     }
-    const formattedBust = typeof formatBustAmount === 'function' ? formatBustAmount(poolAmount) : poolAmount;
+    const formattedBust = typeof formatAmountValue === 'function' ? formatAmountValue(poolAmount, 1) : poolAmount;
     if (poolAmount > 0) {
         if (lang === 'en') {
             const dayStr = extraPaid === 1 ? '1 day' : (extraPaid + ' days');

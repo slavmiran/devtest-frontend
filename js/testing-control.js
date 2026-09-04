@@ -223,16 +223,19 @@
         return text('testingControlStateFuture', 'Upcoming');
     }
 
-    function renderDay(day, appId) {
+    function renderDay(day, appId, isLeftSoft, exitDay) {
+        var dayNum = Number(day && day.day || 0);
         var proof = day && day.proof;
         var proofType = String(proof && proof.type || '');
         var stateName = String(day && day.state || 'future');
+        var isExitDay = isLeftSoft && (dayNum === exitDay || (day && day.is_exit_day));
         var classes = 'testing-control-day is-' + escape(stateName);
         if (proofType) classes += ' has-proof proof-' + escape(proofType);
+        if (isExitDay) classes += ' is-exit-day';
         var title = text('testingControlDayAria', 'Day {day}: {state}', {
-            day: Number(day && day.day || 0),
+            day: dayNum,
             state: stateLabel(day),
-        });
+        }) + (isExitDay ? ' (LEAVE)' : '');
         var action = '';
         var imageCount = proofType === 'screenshot'
             ? Math.max(1, Math.min(5, Number(proof && proof.image_count || 1)))
@@ -241,8 +244,8 @@
             action = ' onclick="openTestingControlProof(' + Number(appId || 0) + ', ' + Number(proof.id || 0) + ')"';
         }
         return '<button type="button" class="' + classes + '" title="' + escape(title) + '"' + action + '>' +
-            '<span class="testing-control-day__number">' + Number(day && day.day || 0) + '</span>' +
-            (proofType ? '<span class="testing-control-day__proof" aria-label="' + escape(proofLabel(proofType)) + '">' + escape(proofGlyph(proofType)) + '</span>' : '') +
+            '<span class="testing-control-day__number">' + dayNum + '</span>' +
+            (isExitDay ? '<span class="testing-control-day__exit-marker" title="LEAVE">💔</span>' : (proofType ? '<span class="testing-control-day__proof" aria-label="' + escape(proofLabel(proofType)) + '">' + escape(proofGlyph(proofType)) + '</span>' : '')) +
             (imageCount > 1 ? '<span class="testing-control-day__album-count" aria-label="' + escape(text('testingControlAlbumCount', '{count} images', { count: imageCount })) + '">' + imageCount + '</span>' : '') +
         '</button>';
     }
@@ -382,23 +385,50 @@
 
     function renderTester(item) {
         var tester = item && item.tester || {};
+        var testerId = Number(tester.id || item.tester_id || 0);
         var username = String(tester.username || '').trim().replace(/^@+/, '');
-        var safeUsername = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
+        var safeUsername = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\'");
+        
+        var isLeftSoft = !!item.is_left_soft
+            || !!(tester && tester.is_left_soft)
+            || String(item.status || '').toLowerCase() === 'left_soft'
+            || String(item.status || '').toLowerCase() === 'abandoned'
+            || String(item.status || '').toLowerCase() === 'justified_exit'
+            || String(item.status || '').toLowerCase() === 'kicked_by_owner'
+            || String(item.status || '').toLowerCase() === 'canceled_neutral'
+            || String(item.status || '').toLowerCase() === 'dropped';
+        
+        var project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function(p) { return Number(p.id) === Number(state.appId); });
+        var rosterTester = project && Array.isArray(project.testers)
+            ? project.testers.find(function(t) { return Number(t.tester_id || t.id) === testerId; })
+            : null;
+        if (rosterTester && rosterTester.is_left_soft) {
+            isLeftSoft = true;
+        }
+
         var timeline = (item.timeline || []).map(function (day) {
-            return renderDay(day, state.appId);
+            return renderDay(day, state.appId, isLeftSoft, Number(item.current_day || 0));
         }).join('');
         var device = deviceLine(item.device);
         var currentDay = Number(item.current_day || 0);
         var dayChip = currentDay > 0
             ? '<span class="testing-control-current-day">' + escape(text('testingControlCurrentDay', 'Day {day}', { day: currentDay })) + '</span>'
             : '';
-        return '<article class="testing-control-tester" data-progress-id="' + Number(item.progress_id || 0) + '">' +
-            '<button type="button" class="testing-control-tester__head" onclick="openDossierModal(\'' + safeUsername + '\', ' + Number(tester.id || 0) + ', ' + Number(state.appId || 0) + ')">' +
+
+        var leaveChipHtml = isLeftSoft
+            ? '<button type="button" class="tester-leave-chip notranslate" style="margin-left:auto; margin-right:6px;" onclick="event.stopPropagation(); if (typeof openLeftTesterLinkStatus === 'function') { openLeftTesterLinkStatus(' + Number(state.appId || 0) + ', ' + testerId + ', event); } else if (typeof openMutualBalanceModal === 'function') { openMutualBalanceModal(' + Number(state.appId || 0) + ', event, { testerId: ' + testerId + ' }); }">' +
+                escape(text('testerLeftChip', 'LEAVE')) +
+              '</button>'
+            : '';
+
+        return '<article class="testing-control-tester' + (isLeftSoft ? ' is-tester-left' : '') + '" data-progress-id="' + Number(item.progress_id || 0) + '">' +
+            '<button type="button" class="testing-control-tester__head" onclick="openDossierModal('' + safeUsername + '', ' + Number(tester.id || 0) + ', ' + Number(state.appId || 0) + ')">' +
                 avatarHtml(item) +
                 '<span class="testing-control-tester__identity">' +
                     '<span class="testing-control-tester__name notranslate">' + escape(testerLabel(item)) + '</span>' +
                     '<span class="testing-control-tester__sub notranslate">' + escape(testerSubLabel(item)) + '</span>' +
                 '</span>' +
+                leaveChipHtml +
                 dayChip +
                 '<span class="testing-control-chevron">›</span>' +
             '</button>' +
