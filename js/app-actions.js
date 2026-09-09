@@ -4125,30 +4125,32 @@ function showCheckinRewardToasts(result) {
     var holdBonusForfeited = !!result.hold_bonus_forfeited;
     var dailyOnlyBust = Math.max(0, earnedBust - (holdBonusEarned > 0 ? holdBonusEarned : 0));
 
+    var karmaValFormatted = formatAmountValue(earnedKarma || 0.5, 1);
+    var karmaStr = (lang === 'ru') ? karmaValFormatted.replace('.', ',') : karmaValFormatted;
+
     if (sourceType === 'overtime_checkin' && rewardBust > 0) {
-        var karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
         var bustVal = formatAmountValue(rewardBust, 1);
         showToast(lang === 'ru'
-            ? ('Чекин успешен! +' + karmaVal + ' ☯️ Кармы и +' + bustVal + '💎$BUST')
-            : ('Check-in successful! +' + karmaVal + ' ☯️ Karma and +' + bustVal + '💎$BUST'));
+            ? ('Чекин успешен! +' + karmaStr + ' ☯️ кармы и +' + bustVal + '💎$BUST')
+            : ('Check-in successful! +' + karmaValFormatted + ' ☯️ Karma and +' + bustVal + '💎$BUST'));
     } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
-        showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+        showToast(window.t('checkinEarnOvertimeKarma', { amount: karmaStr }, lang));
     } else if (dailyOnlyBust > 0 && earnedKarma > 0) {
         showToast(window.t('checkinEarnBustAndKarma', {
             bust: formatAmountValue(dailyOnlyBust, 1),
-            karma: formatAmountValue(earnedKarma, 1)
+            karma: karmaStr
         }, lang));
     } else if (earnedBust > 0 && earnedKarma > 0 && holdBonusEarned <= 0) {
         showToast(window.t('checkinEarnBustAndKarma', {
             bust: formatAmountValue(earnedBust, 1),
-            karma: formatAmountValue(earnedKarma, 1)
+            karma: karmaStr
         }, lang));
     } else if (dailyOnlyBust > 0) {
         showToast(window.t('checkinEarnBust', { amount: formatAmountValue(dailyOnlyBust, 1) }, lang));
     } else if (earnedBust > 0 && holdBonusEarned <= 0) {
         showToast(window.t('checkinEarnBust', { amount: formatAmountValue(earnedBust, 1) }, lang));
     } else if (earnedKarma > 0) {
-        showToast(window.t('checkinEarnKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+        showToast(window.t('checkinEarnKarma', { amount: karmaStr }, lang));
     } else if (holdBonusEarned <= 0 && !holdBonusForfeited) {
         showToast(window.t('successCheckin', {}, lang));
     }

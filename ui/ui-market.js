@@ -4203,7 +4203,28 @@ function openReportModal(appId, ownerUsername) {
         && window.isScreenshotProofUploadEnabled();
     var reportModal = document.getElementById('report-modal');
     if (reportModal) reportModal.classList.toggle('is-proof-upload', usesProofUpload);
-    if (!usesProofUpload) {
+    if (usesProofUpload) {
+        var safeAppId = Number(appId || 0);
+        var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
+        var progressId = Number(test && test.progress_id || 0);
+        if (progressId > 0 && typeof _loadOrCreateCheckinProofKey === 'function') {
+            if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();
+            _checkinProofUploadState.appId = safeAppId;
+            _checkinProofUploadState.progressId = progressId;
+            _checkinProofUploadState.idempotencyKey = _loadOrCreateCheckinProofKey(progressId);
+            if (typeof _setCheckinProofStatus === 'function') _setCheckinProofStatus('', '');
+        }
+        var visibilityNote = document.getElementById('t-checkinProofVisibilityNote');
+        if (visibilityNote) visibilityNote.textContent = window.t('checkinProofVisibilityNote', {}, lang);
+        var chooseLabel = document.getElementById('t-checkinProofChoose');
+        if (chooseLabel) chooseLabel.textContent = window.t('checkinProofChoose', {}, lang);
+        var limitsLabel = document.getElementById('t-checkinProofLimits');
+        if (limitsLabel) limitsLabel.textContent = window.t('checkinProofLimits', {}, lang);
+        var submitLabel = document.getElementById('t-checkinProofSubmit');
+        if (submitLabel) submitLabel.textContent = window.t('checkinProofSubmit', {}, lang);
+        var cancelLabel = document.getElementById('t-checkinProofCancel');
+        if (cancelLabel) cancelLabel.textContent = window.t('checkinProofCancel', {}, lang);
+    } else {
         renderReportOwnerHeader(appId, ownerUsername);
         renderReportLanguageToggle();
         updateReportModalPrefill();
@@ -4212,11 +4233,14 @@ function openReportModal(appId, ownerUsername) {
         usesProofUpload ? 'reportProofModalTitle' : 'reportModalTitle', {}, lang
     );
     document.getElementById('t-reportModalHint').innerText = window.t(
-        usesProofUpload ? 'reportProofModalHint' : 'reportModalHint', {}, lang
+        usesProofUpload ? 'checkinProofUploadHint' : 'reportModalHint', {}, lang
     );
-    document.getElementById('t-reportBtnSend').innerText = window.t(
-        usesProofUpload ? 'reportProofBtnUpload' : 'reportBtnSend', {}, lang
-    );
+    var sendBtn = document.getElementById('t-reportBtnSend');
+    if (sendBtn) {
+        sendBtn.innerText = window.t(
+            usesProofUpload ? 'reportProofBtnUpload' : 'reportBtnSend', {}, lang
+        );
+    }
     var altLabel = document.getElementById('t-reportAltLabel');
     if (altLabel) altLabel.textContent = window.t('reportAltLabel', {}, lang);
 
@@ -4253,13 +4277,16 @@ function openReportModal(appId, ownerUsername) {
 
 function closeReportModal(event) {
     if (event && event.target !== document.getElementById('report-modal')) return;
-    document.getElementById('report-modal').classList.remove('active');
+    var modal = document.getElementById('report-modal');
+    if (modal) modal.classList.remove('active');
+    if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();
     setTimeout(() => {
         _reportAppId = null;
         _reportOwnerUsername = null;
         _reportMessageLang = null;
         _reportTextExpanded = false;
     }, 300);
+    if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
 }
 
 function insertReportChip(chipText) {

@@ -1438,6 +1438,9 @@ function renderProjects(force) {
             closedTestStageExtra = ' +' + remainingPaidDays + ' ' + extraDaysUnitLabel(remainingPaidDays);
         } else if (closedTestStage === 'buffer') {
             closedTestStageExtra = ' +' + remainingBufferHours + (lang === 'en' ? 'h' : 'ч');
+        } else if (closedTestStage === 'active') {
+            const todayActiveCount = Math.max(0, Number(dailyMeta.todayDone || 0));
+            closedTestStageExtra = ' · ' + (window.t('pcStatusActiveToday', { done: todayActiveCount, total: teamTesterCount }, lang) || ('сегодня ' + todayActiveCount + '/' + teamTesterCount));
         } else if (closedTestStage === 'recruiting' && testersToMinimum > 0) {
             closedTestStageExtra = ' · ' + (window.t('pcStatusRecruitingMinimum', { count: testersToMinimum }, lang) || ('Минимум +' + testersToMinimum));
         }

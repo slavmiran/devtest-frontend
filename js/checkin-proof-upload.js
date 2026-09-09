@@ -65,6 +65,19 @@ function _setCheckinProofStatus(message, kind) {
     element.textContent = String(message || '');
     element.classList.toggle('is-error', kind === 'error');
     element.classList.toggle('is-success', kind === 'success');
+    element.classList.toggle('is-incentive', kind === 'incentive');
+    element.classList.toggle('is-bonus', kind === 'bonus');
+}
+
+function _updateCheckinProofFileStatus() {
+    var count = _checkinProofUploadState.files.length;
+    if (count <= 0) {
+        _setCheckinProofStatus('', '');
+    } else if (count < 3) {
+        _setCheckinProofStatus(window.t('checkinProofReady', { count: count }, lang), 'incentive');
+    } else {
+        _setCheckinProofStatus(window.t('checkinProofReadyBonus', { count: count }, lang), 'bonus');
+    }
 }
 
 function _revokeCheckinProofPreviews() {
@@ -132,32 +145,16 @@ function _resetCheckinProofSelection() {
 function openCheckinProofUploadModal(appId) {
     var safeAppId = Number(appId || 0);
     if (isScreenshotProofUploadPending(safeAppId)) return false;
-    var test = _checkinProofTest(safeAppId);
-    var progressId = Number(test && test.progress_id || 0);
-    if (!test || progressId <= 0) {
-        if (typeof handleApiError === 'function') handleApiError('progress_not_found');
-        return false;
+    if (typeof window.openReportModal === 'function') {
+        return window.openReportModal(safeAppId, '');
     }
-    _resetCheckinProofSelection();
-    _checkinProofUploadState.appId = safeAppId;
-    _checkinProofUploadState.progressId = progressId;
-    _checkinProofUploadState.idempotencyKey = _loadOrCreateCheckinProofKey(progressId);
-    document.getElementById('t-checkinProofUploadTitle').textContent = window.t('checkinProofUploadTitle', {}, lang);
-    document.getElementById('t-checkinProofUploadHint').textContent = window.t('checkinProofUploadHint', {}, lang);
-    document.getElementById('t-checkinProofVisibilityNote').textContent = window.t('checkinProofVisibilityNote', {}, lang);
-    _setCheckinProofStatus('', '');
-    var modal = document.getElementById('checkin-proof-upload-modal');
-    if (modal) modal.classList.add('active');
-    if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
-    return true;
+    return false;
 }
 
 function closeCheckinProofUploadModal(event) {
-    var modal = document.getElementById('checkin-proof-upload-modal');
-    if (!modal || (event && event.target !== modal)) return;
-    _resetCheckinProofSelection();
-    modal.classList.remove('active');
-    if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
+    if (typeof window.closeReportModal === 'function') {
+        window.closeReportModal(event);
+    }
 }
 
 function _setCheckinProofBackgroundCard(appId, isPending) {
@@ -206,7 +203,7 @@ function handleCheckinProofFileSelected(event) {
     });
     if (event.target) event.target.value = '';
     _renderCheckinProofPreviews();
-    _setCheckinProofStatus(window.t('checkinProofReady', { count: _checkinProofUploadState.files.length }, lang), '');
+    _updateCheckinProofFileStatus();
     _syncCheckinProofControls();
     if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
@@ -219,9 +216,7 @@ function removeCheckinProofFile(index) {
     _checkinProofUploadState.files.splice(safeIndex, 1);
     _checkinProofUploadState.previewUrls.splice(safeIndex, 1);
     _renderCheckinProofPreviews();
-    _setCheckinProofStatus(_checkinProofUploadState.files.length
-        ? window.t('checkinProofReady', { count: _checkinProofUploadState.files.length }, lang)
-        : '', '');
+    _updateCheckinProofFileStatus();
     _syncCheckinProofControls();
 }
 
@@ -233,8 +228,15 @@ function _checkinProofErrorMessage(result) {
     return window.t('checkinProofUploadFailed', {}, lang);
 }
 
-function _applyScreenshotCheckinResult(appId, result) {
+function _applyScreenshotCheckinResult(appId, result, screenshotCount) {
     var checkin = result && result.checkin ? result.checkin : {};
+    var safeCount = Number(screenshotCount || (result && result.proof && result.proof.media_count) || 1);
+    if (safeCount >= 3) {
+        checkin.screenshot_count = safeCount;
+        if (!checkin.earned_karma || Number(checkin.earned_karma) < 0.3) {
+            checkin.earned_karma = 0.3;
+        }
+    }
     var test = _checkinProofTest(appId);
     var wasFirstCheckin = Number(test && test.checkins_count || 0) <= 0 || String(test && test.status || '') === 'new';
     if (test) {
@@ -304,7 +306,7 @@ async function _runCheckinProofUploadJob(job) {
             throw { isApiError: true, payload: result || { code: 'checkinProofUploadFailed' } };
         }
         _clearCheckinProofKey(job.progressId);
-        _applyScreenshotCheckinResult(job.appId, result);
+        _applyScreenshotCheckinResult(job.appId, result, job.files ? job.files.length : 1);
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } catch (error) {
         var payload = error && error.isApiError ? error.payload : { code: 'network_error' };
