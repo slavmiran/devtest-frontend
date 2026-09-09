@@ -99,16 +99,33 @@ function stateBlock(o) {
 function pingExpanded() {
   return `<section class="pc-ping pc-ping--expanded is-on">
     <div class="pc-ping__head">
+      <div class="pc-ping__badge" aria-hidden="true">${BELL}</div>
       <div class="pc-ping__titles">
-        <h3 class="pc-ping__title">Уведомления</h3>
+        <div class="pc-ping__title-row">
+          <h3 class="pc-ping__title">Уведомления</h3>
+          <span class="pc-ping__status is-on">Включены</span>
+        </div>
         <p class="pc-ping__desc">Скриншот контрольного дня попадает в общий топик «Testing Proofs». Бот отметит вас <span class="pc-ping__mention">@упоминанием</span>.</p>
       </div>
-      <button type="button" class="pc-dotswitch is-on" aria-pressed="true"><span class="pc-dotswitch__dot"></span></button>
+      <div class="pc-ping__action">
+        <button type="button" class="pc-switch-toggle pc-dotswitch is-on" role="switch" aria-checked="true" aria-pressed="true">
+          <span class="pc-switch-toggle__track"><span class="pc-switch-toggle__thumb"></span></span>
+        </button>
+      </div>
     </div>
     <div class="pc-ping__foot">
       <button type="button" class="pc-ping__chat">
-        <span class="pc-ping__chat-row">${TG}<span class="pc-ping__chat-label">Testing Proofs</span><span class="pc-ping__chat-chev">›</span></span>
-        <span class="pc-ping__chat-note">Чтобы упоминание сработало, нужно состоять в сообществе.</span>
+        <div class="pc-ping__chat-badge" aria-hidden="true">${TG}</div>
+        <div class="pc-ping__chat-content">
+          <div class="pc-ping__chat-title-row">
+            <span class="pc-ping__chat-label">Testing Proofs</span>
+            <span class="pc-ping__topic-badge">Топик</span>
+          </div>
+          <span class="pc-ping__chat-note">Чтобы упоминание сработало, нужно состоять в сообществе.</span>
+        </div>
+        <div class="pc-ping__chat-action" aria-hidden="true">
+          <svg class="pc-ping__chat-chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
       </button>
     </div>
   </section>`;
@@ -177,15 +194,22 @@ document.getElementById('projects-list').innerHTML =
 + card(3, { sub:'com.slavmiran.quickpaste6', stage:'extension', stageLabel:'Продление теста +2 дня', day:14, total:true, extra:2, totalDays:16, testers:16, teamSize:21, done:14, pct:88, chip:{kind:'purple', text:'Сверх нормы (+2)'}, needSync:false, availableOffer:9, recruitTarget:21, mini:true, ping:'', activity:true, paidActive:true })
 + card(4, { sub:'com.slavmiran.quickpaste6', stage:'buffer', stageLabel:'Буфер +32ч', day:15, total:true, extra:false, totalDays:18, testers:16, teamSize:21, done:12, pct:100, chip:null, needSync:false, availableOffer:9, recruitTarget:21, mini:true, ping:'', activity:true, bufferActive:true });
 
-document.querySelectorAll('.pc-dotswitch').forEach(function (btn) {
+document.querySelectorAll('.pc-dotswitch, .pc-switch-toggle').forEach(function (btn) {
   btn.addEventListener('click', function () {
     var on = !btn.classList.contains('is-on');
     btn.classList.toggle('is-on', on);
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-checked', on ? 'true' : 'false');
     var block = btn.closest('.pc-ping');
     if (block) {
       block.classList.toggle('is-on', on);
       block.classList.toggle('is-off', !on);
+      var status = block.querySelector('.pc-ping__status');
+      if (status) {
+        status.classList.toggle('is-on', on);
+        status.classList.toggle('is-off', !on);
+        status.textContent = on ? 'Включены' : 'Выключены';
+      }
     }
   });
 });

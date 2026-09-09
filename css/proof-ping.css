@@ -105,58 +105,72 @@
     background-color: rgba(255, 255, 255, 0.14);
 }
 
-/* ── State 1: expanded ──────────────────────────────────────────────────── */
+/* ── Modern iOS / Telegram toggle switch ────────────────────────────────── */
 
-.pc-ping--expanded {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    border-bottom-left-radius: 14px;
-    border-bottom-right-radius: 14px;
-    border-bottom: 1px solid var(--border-subtle);
-    margin-bottom: 10px;
+.pc-switch-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+    flex: 0 0 auto;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.2s ease, transform 0.15s ease;
 }
 
-.pc-ping__head {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    min-width: 0;
+.pc-switch-toggle:active {
+    transform: scale(0.96);
 }
 
-.pc-ping__titles {
-    min-width: 0;
-    flex: 1 1 auto;
+.pc-switch-toggle__track {
+    position: relative;
+    display: block;
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+    transition: background-color 0.24s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.24s ease;
 }
 
-.pc-ping__title {
-    margin: 0 0 3px;
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1.25;
-    color: var(--text-primary);
+.pc-switch-toggle__thumb {
+    position: absolute;
+    top: 2.5px;
+    left: 2.5px;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.15);
+    transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.18s ease;
 }
 
-.pc-ping__desc {
-    margin: 0;
-    font-size: 11.5px;
-    font-weight: 500;
-    line-height: 1.42;
-    color: var(--text-tertiary);
+.pc-switch-toggle.is-on .pc-switch-toggle__track {
+    background-color: var(--accent-primary, #0a84ff);
+    box-shadow: 0 0 10px rgba(10, 132, 255, 0.32);
 }
 
-.pc-ping__mention {
-    font-weight: 650;
-    color: var(--text-tertiary);
+.pc-switch-toggle.is-on .pc-switch-toggle__thumb {
+    transform: translateX(18px);
 }
 
-.pc-ping.is-on .pc-ping__mention {
-    color: var(--accent-primary);
-    font-weight: 750;
+.pc-switch-toggle:active .pc-switch-toggle__thumb {
+    width: 22px;
 }
 
-.pc-dotswitch {
+.pc-switch-toggle.is-on:active .pc-switch-toggle__thumb {
+    transform: translateX(15px);
+}
+
+/* Fallback / legacy dotswitch compatibility */
+.pc-dotswitch:not(.pc-switch-toggle) {
     flex: 0 0 auto;
     width: 32px;
     height: 32px;
@@ -184,74 +198,260 @@
     box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.2);
 }
 
-.pc-dotswitch:active .pc-dotswitch__dot {
-    transform: scale(0.9);
+/* ── State 1: expanded ──────────────────────────────────────────────────── */
+
+.pc-ping--expanded {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-2, rgba(255, 255, 255, 0.03));
+    margin-bottom: 12px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.pc-ping--expanded.is-on {
+    border-color: rgba(10, 132, 255, 0.22);
+}
+
+.pc-ping__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+}
+
+.pc-ping__badge {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-tertiary);
+    transition: background-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+    margin-top: 1px;
+}
+
+.pc-ping.is-on .pc-ping__badge {
+    background: rgba(10, 132, 255, 0.12);
+    color: var(--accent-primary, #0a84ff);
+    box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.2);
+}
+
+.pc-ping__bell-svg {
+    width: 17px;
+    height: 17px;
+    display: block;
+}
+
+.pc-ping__titles {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.pc-ping__title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    min-width: 0;
+}
+
+.pc-ping__title {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text-primary);
+}
+
+.pc-ping__status {
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-tertiary);
+    transition: background-color 0.2s ease, color 0.2s ease;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+
+.pc-ping__status.is-on {
+    background: rgba(10, 132, 255, 0.12);
+    color: var(--accent-primary, #0a84ff);
+}
+
+.pc-ping__desc {
+    margin: 0;
+    font-size: 11.5px;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    transition: opacity 0.2s ease;
+}
+
+.pc-ping.is-off .pc-ping__desc {
+    opacity: 0.68;
+}
+
+.pc-ping__mention {
+    display: inline-block;
+    padding: 0 5px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.pc-ping.is-on .pc-ping__mention {
+    background: rgba(10, 132, 255, 0.12);
+    color: var(--accent-primary, #0a84ff);
+    border: 1px solid rgba(10, 132, 255, 0.22);
+}
+
+.pc-ping__action {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
 }
 
 .pc-ping__foot {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 4px;
     min-width: 0;
 }
 
 .pc-ping__chat {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 3px;
+    align-items: center;
+    gap: 10px;
     width: 100%;
     margin: 0;
-    padding: 8px 10px;
-    border: 1px solid rgba(10, 132, 255, 0.22);
-    border-radius: 10px;
-    background: rgba(10, 132, 255, 0.08);
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.035);
     color: inherit;
     text-align: left;
     cursor: pointer;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pc-ping__chat:hover {
+    background: rgba(255, 255, 255, 0.065);
+    border-color: rgba(10, 132, 255, 0.28);
 }
 
 .pc-ping__chat:active {
-    opacity: 0.82;
+    background: rgba(255, 255, 255, 0.08);
+    transform: scale(0.985);
 }
 
-.pc-ping__chat-row {
+.pc-ping.is-off .pc-ping__chat {
+    opacity: 0.72;
+}
+
+.pc-ping__chat-badge {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2AABEE 0%, #229ED9 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(34, 158, 217, 0.28);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pc-ping__chat:hover .pc-ping__chat-badge {
+    transform: scale(1.05);
+    box-shadow: 0 3px 10px rgba(34, 158, 217, 0.4);
+}
+
+.pc-ping__chat-badge .pc-ping__glyph {
+    width: 17px;
+    height: 17px;
+    color: #ffffff;
+}
+
+.pc-ping__chat-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pc-ping__chat-title-row {
     display: flex;
     align-items: center;
     gap: 6px;
     min-width: 0;
 }
 
-.pc-ping__chat-row .pc-ping__glyph {
-    color: var(--accent-primary);
-}
-
 .pc-ping__chat-label {
-    min-width: 0;
-    flex: 1;
-    font-size: 12.5px;
-    font-weight: 750;
-    color: var(--accent-primary);
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    font-size: 13px;
+    font-weight: 650;
+    color: var(--text-primary);
+    line-height: 1.25;
+    text-decoration: none !important;
 }
 
-.pc-ping__chat-chev {
-    flex: 0 0 auto;
-    color: var(--accent-primary);
-    font-size: 16px;
-    line-height: 1;
-    opacity: 0.7;
+.pc-ping__chat:hover .pc-ping__chat-label {
+    color: var(--accent-primary, #0a84ff);
+}
+
+.pc-ping__topic-badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(10, 132, 255, 0.12);
+    color: var(--accent-primary, #0a84ff);
 }
 
 .pc-ping__chat-note {
-    margin: 0;
-    padding-left: 21px;
-    font-size: 10.5px;
-    font-weight: 500;
-    line-height: 1.4;
-    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.35;
+    color: var(--text-tertiary);
+}
+
+.pc-ping__chat-action {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.pc-ping__chat:hover .pc-ping__chat-action {
+    color: var(--accent-primary, #0a84ff);
+    transform: translateX(2px);
+}
+
+.pc-ping__chat-chev {
+    display: block;
+    width: 16px;
+    height: 16px;
 }
 
 .pc-ping__note {

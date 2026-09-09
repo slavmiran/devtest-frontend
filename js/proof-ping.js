@@ -185,6 +185,15 @@
         '<path fill="currentColor" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>' +
         '</svg>';
 
+    var BELL_ICON = '<svg class="pc-ping__bell-svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>' +
+        '<path d="M13.73 21a2 2 0 0 1-3.46 0"></path>' +
+        '</svg>';
+
+    var CHEVRON_ICON = '<svg class="pc-ping__chat-chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M9 18l6-6-6-6"/>' +
+        '</svg>';
+
     function switchHtml(appId, enabled, extraClass) {
         return '<label class="toggle-switch pc-ping-switch' + (extraClass ? ' ' + extraClass : '') + '" onclick="event.stopPropagation();">' +
             '<input type="checkbox"' + (enabled ? ' checked' : '') +
@@ -195,11 +204,13 @@
     }
 
     function dotSwitchHtml(appId, enabled) {
-        return '<button type="button" class="pc-dotswitch' + (enabled ? ' is-on' : '') + '"' +
+        return '<button type="button" class="pc-switch-toggle pc-dotswitch' + (enabled ? ' is-on' : '') + '"' +
+            ' role="switch"' +
+            ' aria-checked="' + (enabled ? 'true' : 'false') + '"' +
             ' aria-pressed="' + (enabled ? 'true' : 'false') + '"' +
             ' aria-label="' + esc(text('pcPingToggleAria', 'Screenshot notifications')) + '"' +
             ' onclick="event.stopPropagation(); pcProofPingToggleDot(' + Number(appId) + ', this)">' +
-            '<span class="pc-dotswitch__dot" aria-hidden="true"></span>' +
+            '<span class="pc-switch-toggle__track"><span class="pc-switch-toggle__thumb"></span></span>' +
         '</button>';
     }
 
@@ -231,13 +242,21 @@
     }
 
     function chatEntryHtml() {
+        var topicTag = text('pcPingTopicBadge', 'Topic');
         return '<button type="button" class="pc-ping__chat" onclick="pcProofPingOpenChat(event)">' +
-            '<span class="pc-ping__chat-row">' +
+            '<div class="pc-ping__chat-badge" aria-hidden="true">' +
                 TELEGRAM_ICON +
-                '<span class="pc-ping__chat-label">' + esc(text('pcPingChatCta', 'Testing Proofs')) + '</span>' +
-                '<span class="pc-ping__chat-chev" aria-hidden="true">›</span>' +
-            '</span>' +
-            '<span class="pc-ping__chat-note">' + esc(text('pcPingNote', '')) + '</span>' +
+            '</div>' +
+            '<div class="pc-ping__chat-content">' +
+                '<div class="pc-ping__chat-title-row">' +
+                    '<span class="pc-ping__chat-label">' + esc(text('pcPingChatCta', 'Testing Proofs')) + '</span>' +
+                    '<span class="pc-ping__topic-badge">' + esc(topicTag) + '</span>' +
+                '</div>' +
+                '<span class="pc-ping__chat-note">' + esc(text('pcPingNote', '')) + '</span>' +
+            '</div>' +
+            '<div class="pc-ping__chat-action" aria-hidden="true">' +
+                CHEVRON_ICON +
+            '</div>' +
         '</button>';
     }
 
@@ -246,14 +265,26 @@
     function expandedHtml(project) {
         var appId = Number(project.id || project.app_id || 0);
         var enabled = isEnabled(project);
+        var statusLabel = text(
+            enabled ? 'pcPingStatusOn' : 'pcPingStatusOff',
+            enabled ? 'Enabled' : 'Disabled'
+        );
         return '<section class="pc-ping pc-ping--expanded' + (enabled ? ' is-on' : ' is-off') +
             '" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
             '<div class="pc-ping__head">' +
+                '<div class="pc-ping__badge" aria-hidden="true">' +
+                    BELL_ICON +
+                '</div>' +
                 '<div class="pc-ping__titles">' +
-                    '<h3 class="pc-ping__title">' + esc(text('pcPingTitle', 'Notifications')) + '</h3>' +
+                    '<div class="pc-ping__title-row">' +
+                        '<h3 class="pc-ping__title">' + esc(text('pcPingTitle', 'Notifications')) + '</h3>' +
+                        '<span class="pc-ping__status ' + (enabled ? 'is-on' : 'is-off') + '" data-pc-ping-status="' + appId + '">' + esc(statusLabel) + '</span>' +
+                    '</div>' +
                     '<p class="pc-ping__desc">' + descHtml() + '</p>' +
                 '</div>' +
-                dotSwitchHtml(appId, enabled) +
+                '<div class="pc-ping__action">' +
+                    dotSwitchHtml(appId, enabled) +
+                '</div>' +
             '</div>' +
             '<div class="pc-ping__foot">' +
                 chatEntryHtml() +
@@ -349,11 +380,20 @@
         Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping="' + safeId + '"]')).forEach(function (block) {
             block.classList.toggle('is-on', on);
             block.classList.toggle('is-off', !on);
-            Array.prototype.slice.call(block.querySelectorAll('.pc-dotswitch, .pc-ping-icon-btn')).forEach(function (btn) {
+            Array.prototype.slice.call(block.querySelectorAll('.pc-dotswitch, .pc-switch-toggle, .pc-ping-icon-btn')).forEach(function (btn) {
                 btn.classList.toggle('is-on', on);
                 btn.classList.toggle('is-off', !on);
                 btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+                btn.setAttribute('aria-checked', on ? 'true' : 'false');
             });
+        });
+        Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping-status="' + safeId + '"]')).forEach(function (status) {
+            status.classList.toggle('is-on', on);
+            status.classList.toggle('is-off', !on);
+            status.textContent = text(
+                on ? 'pcPingStatusOn' : 'pcPingStatusOff',
+                on ? 'Enabled' : 'Disabled'
+            );
         });
         Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping-icon="' + safeId + '"]')).forEach(function (icon) {
             icon.src = on
