@@ -76,14 +76,16 @@ function stateBlock(o) {
     </section>
     <section class="pc-metric-card pc-metric-card--testers">
       <div class="pc-metric-title">ТЕСТЕРЫ</div>
-      <button type="button" class="pc-metric-num-btn pc-metric-main"><span class="pc-metric-team__value${o.paidActive ? ' pc-metric-team__value--paid' : ''}">${teamSize}</span></button>
+      <button type="button" class="pc-metric-num-btn pc-metric-main">
+        <span class="pc-metric-team__value${o.paidActive ? ' pc-metric-team__value--paid' : ''}">${teamSize}</span>
+        <div class="pc-testers-microbar"><span class="pc-testers-microbar__fill${teamSize > 12 ? ' is-over' : ''}" style="width: ${teamSize >= 12 ? 100 : Math.max(teamSize > 0 ? 8 : 0, Math.min(100, Math.round((teamSize / 12) * 100)))}%;"></span></div>
+      </button>
       <div class="pc-metric-footer"><span class="pc-metric-footer__line">Набор: ${o.recruitTarget || teamSize} чел.</span></div>
     </section>
     <section class="pc-metric-card pc-metric-card--google">
       <div class="pc-metric-title">АКТИВНОСТЬ</div>
-      <div class="pc-metric-ring-wrap">${ring(o.done, o.testers).replace('Чекины дня', 'чекины')}</div>
-      <div class="pc-daily-activity ${o.done > 12 ? 'is-over' : o.done >= 12 ? 'is-ok' : 'is-warning'}"><span>⚡</span><span>Акт. ${o.pct}%</span></div>
-      <div class="pc-metric-footer">${o.chip ? `<div class="pc-daily-status status-chip status-chip--${o.chip.kind}"><span class="status-chip__text">${o.chip.text}</span></div>` : '<span class="pc-daily-status status-chip status-chip--sky"><span class="status-chip__text">Сбор чекинов</span></span>'}</div>
+      <div class="pc-metric-ring">${ring(o.done, o.testers).replace('Чекины дня', 'чекины')}</div>
+      <div class="pc-metric-footer"><span class="pc-metric-footer__line pc-daily-activity-line"><span>Сегодня ${o.pct}%</span></span></div>
     </section>
   </div>
   <div class="pc-action-bar${o.needSync ? ' is-sync-required' : ''}">

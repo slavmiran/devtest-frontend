@@ -3973,21 +3973,31 @@ button.pc-act-reason {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
-    gap: 8px;
+    gap: 0;
     margin: 0 14px 10px;
+    padding: 12px 0 10px;
+    border: 1px solid rgba(188, 206, 238, 0.09);
+    border-radius: 16px;
+    background: rgba(7, 14, 25, 0.22);
+    box-sizing: border-box;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card {
     display: flex;
     flex-direction: column;
     align-items: stretch;
+    justify-content: space-between;
     min-width: 0;
-    height: 152px;
+    height: 116px;
     box-sizing: border-box;
-    padding: 8px 6px 6px;
-    border: 1px solid rgba(188, 206, 238, 0.09);
-    border-radius: 14px;
-    background: rgba(7, 14, 25, 0.22);
+    padding: 0 6px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-metric-card:not(:last-child) {
+    border-right: 1px solid rgba(188, 206, 238, 0.08);
 }
 
 .pc-metric-title {
@@ -4019,26 +4029,56 @@ button.pc-act-reason {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 30px;
-    margin-top: 6px;
+    min-height: 0;
+    margin-top: 0;
     color: #f5f8ff;
     font-variant-numeric: tabular-nums;
     text-align: center;
 }
 
-.pc-metric-card--term .pc-metric-main,
+.pc-metric-card--term .pc-metric-main {
+    flex: 1 1 auto;
+    margin: 0;
+    min-height: 0;
+}
+
 .pc-metric-card--testers .pc-metric-main {
     flex: 1 1 auto;
-    margin-top: 0;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
     min-height: 0;
 }
 
 .pc-metric-day__value,
 .pc-metric-team__value {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 820;
-    letter-spacing: -0.05em;
+    letter-spacing: -0.04em;
     line-height: 1;
+}
+
+/* Micro progress bar under testers count */
+.pc-testers-microbar {
+    width: 38px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+    display: block;
+    margin: 2px auto 0;
+}
+
+.pc-testers-microbar__fill {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: #3b82f6;
+    transition: width 0.3s ease;
+}
+
+.pc-testers-microbar__fill.is-over {
+    background: linear-gradient(90deg, #3b82f6 0%, #b882ee 100%);
 }
 
 .pc-metric-day__value--buffer {
@@ -4154,10 +4194,10 @@ button.pc-metric-num-btn:active {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 20px;
+    min-height: 16px;
     margin-top: auto;
-    padding-top: 4px;
-    border-top: 1px solid rgba(188, 206, 238, 0.08);
+    padding-top: 0;
+    border-top: none;
     text-align: center;
 }
 
@@ -4167,9 +4207,10 @@ button.pc-metric-num-btn:active {
     justify-content: center;
     gap: 4px;
     color: rgba(197, 211, 233, 0.60);
-    font-size: 10px;
-    font-weight: 650;
+    font-size: 10.5px;
+    font-weight: 600;
     line-height: 1.25;
+    white-space: nowrap;
 }
 
 .pc-metric-footer__line--buffer {
@@ -4196,27 +4237,28 @@ button.pc-metric-num-btn:active {
     align-items: center;
     justify-content: center;
     flex: 1 1 auto;
-    margin: 1px 0;
+    margin: 0;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring {
-    width: 90px;
-    height: 90px;
+    width: 64px;
+    height: 64px;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count {
-    font-size: 16px;
-    font-weight: 850;
+    font-size: 12.5px;
+    font-weight: 800;
+    line-height: 1.1;
     color: #f8faff;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label {
     margin-top: 1px;
-    font-size: 8.5px;
-    font-weight: 700;
+    font-size: 7.5px;
+    font-weight: 650;
     color: rgba(204, 216, 238, 0.65);
     text-transform: none;
-    letter-spacing: 0;
+    letter-spacing: 0.02em;
 }
 
 .pc-daily-activity {
@@ -4408,7 +4450,12 @@ button.pc-metric-num-btn:active {
 }
 
 @media (max-width: 359px) {
-    #tab-projects .card[id^="project-card-"] .pc-metrics-grid,
+    #tab-projects .card[id^="project-card-"] .pc-metrics-grid {
+        margin-right: 10px;
+        margin-left: 10px;
+        padding: 10px 0 8px;
+    }
+
     #tab-projects .card[id^="project-card-"] .pc-action-bar {
         gap: 6px;
         margin-right: 10px;
@@ -4416,29 +4463,28 @@ button.pc-metric-num-btn:active {
     }
 
     #tab-projects .card[id^="project-card-"] .pc-metric-card {
-        height: 190px;
-        padding: 11px 6px 8px;
-        border-radius: 14px;
+        height: 110px;
+        padding: 0 4px;
     }
 
-    .pc-metric-title { font-size: 8px; }
+    .pc-metric-title { font-size: 8.5px; }
     .pc-metric-day__value,
-    .pc-metric-team__value { font-size: 27px; }
-    .pc-metric-day__total { font-size: 13px; }
+    .pc-metric-team__value { font-size: 21px; }
+    .pc-metric-day__total { font-size: 12px; }
     .pc-metric-reserve { padding: 3px 4px; font-size: 8.5px; }
-    .pc-metric-footer__line { font-size: 8.5px; }
+    .pc-metric-footer__line { font-size: 9px; }
 
     .pc-metric-ring {
-        min-height: 78px;
-        margin-top: 1px;
+        min-height: 0;
+        margin-top: 0;
     }
 
     #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring {
-        width: 70px;
-        height: 70px;
+        width: 56px;
+        height: 56px;
     }
 
-    #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count { font-size: 12px; }
+    #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count { font-size: 11px; }
     #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label { font-size: 6.5px; }
     .pc-daily-activity { padding: 3px 4px; font-size: 8px; }
 

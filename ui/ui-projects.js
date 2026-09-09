@@ -1365,6 +1365,11 @@ function renderProjects(force) {
         const dailyMeta = getProjectDailyProgressMeta(project);
         const teamTesterCount = Math.max(totalTesters, Number(dailyMeta.totalTesters || 0));
         const testersToMinimum = Math.max(0, 12 - teamTesterCount);
+        const testersMicrobarFillPercent = teamTesterCount >= 12
+            ? 100
+            : Math.max(teamTesterCount > 0 ? 8 : 0, Math.min(100, Math.round((teamTesterCount / 12) * 100)));
+        const testersMicrobarOver = teamTesterCount > 12;
+        const testersMicrobarHtml = `<div class="pc-testers-microbar" aria-hidden="true"><span class="pc-testers-microbar__fill${testersMicrobarOver ? ' is-over' : ''}" style="width: ${testersMicrobarFillPercent}%;"></span></div>`;
         const testersRingHtml = typeof buildProjectDailyProgressRingHtml === 'function'
             ? buildProjectDailyProgressRingHtml(project, { compactLabel: true })
             : '';
@@ -1461,6 +1466,7 @@ function renderProjects(force) {
                         <div class="pc-metric-title">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</div>
                         <button type="button" class="pc-metric-num-btn pc-metric-main" onclick="openDailyProgressDetailsModal(${project.id}, event); event.stopPropagation();" aria-label="${testersPlanAria}">
                             <span class="${testersValueClass}">${window.escapeHTML(String(teamTesterCount))}</span>
+                            ${testersMicrobarHtml}
                         </button>
                         <div class="pc-metric-footer"><span class="pc-metric-footer__line">${window.escapeHTML(window.t('pcMetricRecruitmentTarget', { count: remainingRecruitmentSlots }, lang))}</span></div>
                     </section>
