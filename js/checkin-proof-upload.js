@@ -2,7 +2,7 @@
 
 var CHECKIN_PROOF_MAX_FILES = 5;
 var CHECKIN_PROOF_UPLOAD_CONCURRENCY = 2;
-var _checkinProofUploadState = { appId: null, progressId: null, files: [], previewUrls: [], idempotencyKey: '' };
+var _checkinProofUploadState = { appId: null, progressId: null, files: [], previewUrls: [], fingerprints: [], checkingFiles: false, selectionGeneration: 0, idempotencyKey: '' };
 var _checkinProofPendingAppIds = {};
 var _checkinProofUploadQueue = [];
 var _checkinProofActiveJobs = 0;
@@ -128,7 +128,12 @@ function _renderCheckinProofPreviews() {
 
 function _syncCheckinProofControls() {
     var submit = document.getElementById('checkin-proof-submit');
-    if (submit) submit.disabled = _checkinProofUploadState.files.length < 1;
+    if (submit) submit.disabled = _checkinProofUploadState.files.length < 1 || _checkinProofUploadState.checkingFiles;
+    var picker = document.getElementById('checkin-proof-picker');
+    if (picker) picker.disabled = _checkinProofUploadState.checkingFiles;
+    document.querySelectorAll('.checkin-proof-preview-add').forEach(function(addButton) {
+        addButton.disabled = _checkinProofUploadState.checkingFiles;
+    });
     var label = document.getElementById('t-checkinProofSubmit');
     if (label) label.textContent = window.t('checkinProofSubmit', {}, lang);
 }
@@ -136,6 +141,9 @@ function _syncCheckinProofControls() {
 function _resetCheckinProofSelection() {
     _revokeCheckinProofPreviews();
     _checkinProofUploadState.files = [];
+    _checkinProofUploadState.fingerprints = [];
+    _checkinProofUploadState.checkingFiles = false;
+    _checkinProofUploadState.selectionGeneration += 1;
     var input = document.getElementById('checkin-proof-file-input');
     if (input) input.value = '';
     _renderCheckinProofPreviews();
@@ -170,11 +178,43 @@ function isScreenshotProofUploadPending(appId) {
 }
 
 function chooseCheckinProofFile() {
+    if (_checkinProofUploadState.checkingFiles) return;
     var input = document.getElementById('checkin-proof-file-input');
     if (input) input.click();
 }
 
-function handleCheckinProofFileSelected(event) {
+function _checkinProofMetadataFingerprint(file) {
+    return 'meta:' + [
+        String(file && file.name || ''),
+        String(Number(file && file.size || 0)),
+        String(Number(file && file.lastModified || 0)),
+        String(file && file.type || '').toLowerCase(),
+    ].join('|');
+}
+
+async function _checkinProofFileFingerprint(file) {
+    if (
+        window.crypto && window.crypto.subtle &&
+        typeof window.crypto.subtle.digest === 'function' &&
+        file && typeof file.arrayBuffer === 'function'
+    ) {
+        try {
+            var digest = await window.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+            return 'sha256:' + Array.from(new Uint8Array(digest)).map(function(value) {
+                return value.toString(16).padStart(2, '0');
+            }).join('');
+        } catch (error) {}
+    }
+    // Older WebViews still get a cheap best-effort guard. The backend remains
+    // authoritative and computes SHA-256 from the uploaded bytes.
+    return _checkinProofMetadataFingerprint(file);
+}
+
+async function handleCheckinProofFileSelected(event) {
+    if (_checkinProofUploadState.checkingFiles) {
+        if (event && event.target) event.target.value = '';
+        return;
+    }
     var selected = Array.from(event && event.target && event.target.files || []);
     if (!selected.length) return;
     if (_checkinProofUploadState.files.length + selected.length > CHECKIN_PROOF_MAX_FILES) {
@@ -197,14 +237,38 @@ function handleCheckinProofFileSelected(event) {
             return;
         }
     }
-    selected.forEach(function(file) {
-        _checkinProofUploadState.files.push(file);
-        _checkinProofUploadState.previewUrls.push(URL.createObjectURL(file));
-    });
-    if (event.target) event.target.value = '';
-    _renderCheckinProofPreviews();
-    _updateCheckinProofFileStatus();
+    _checkinProofUploadState.checkingFiles = true;
+    var selectionGeneration = _checkinProofUploadState.selectionGeneration;
+    _setCheckinProofStatus(window.t('checkinProofCheckingDuplicates', {}, lang), '');
     _syncCheckinProofControls();
+    var known = new Set(_checkinProofUploadState.fingerprints || []);
+    var duplicateCount = 0;
+    try {
+        // Sequential hashing keeps peak memory small on budget Android devices.
+        for (var selectedIndex = 0; selectedIndex < selected.length; selectedIndex += 1) {
+            var selectedFile = selected[selectedIndex];
+            var fingerprint = await _checkinProofFileFingerprint(selectedFile);
+            if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
+            if (known.has(fingerprint)) {
+                duplicateCount += 1;
+                continue;
+            }
+            known.add(fingerprint);
+            _checkinProofUploadState.files.push(selectedFile);
+            _checkinProofUploadState.fingerprints.push(fingerprint);
+            _checkinProofUploadState.previewUrls.push(URL.createObjectURL(selectedFile));
+        }
+    } finally {
+        if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
+        _checkinProofUploadState.checkingFiles = false;
+        if (event.target) event.target.value = '';
+        _renderCheckinProofPreviews();
+        _updateCheckinProofFileStatus();
+        if (duplicateCount > 0) {
+            _setCheckinProofStatus(window.t('checkinProofDuplicateSelected', { count: duplicateCount }, lang), 'error');
+        }
+        _syncCheckinProofControls();
+    }
     if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
@@ -215,6 +279,7 @@ function removeCheckinProofFile(index) {
     try { if (url) URL.revokeObjectURL(url); } catch (error) {}
     _checkinProofUploadState.files.splice(safeIndex, 1);
     _checkinProofUploadState.previewUrls.splice(safeIndex, 1);
+    _checkinProofUploadState.fingerprints.splice(safeIndex, 1);
     _renderCheckinProofPreviews();
     _updateCheckinProofFileStatus();
     _syncCheckinProofControls();
