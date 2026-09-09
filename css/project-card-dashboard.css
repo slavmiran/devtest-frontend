@@ -2849,7 +2849,7 @@ button.pc-stage-badge {
 }
 
 .pc-activity__karma .karma-yin-icon {
-    color: #8f7eaf;
+    color: #000000;
     width: 14px;
     height: 14px;
 }
@@ -3974,8 +3974,8 @@ button.pc-act-reason {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
     gap: 0;
-    margin: 0 14px 10px;
-    padding: 12px 0 10px;
+    margin: 0 14px 8px;
+    padding: 10px 0 8px;
     border: 1px solid rgba(188, 206, 238, 0.09);
     border-radius: 16px;
     background: rgba(7, 14, 25, 0.22);
@@ -3988,7 +3988,7 @@ button.pc-act-reason {
     align-items: stretch;
     justify-content: space-between;
     min-width: 0;
-    height: 116px;
+    height: 104px;
     box-sizing: border-box;
     padding: 0 6px;
     border: none;
@@ -4037,14 +4037,15 @@ button.pc-act-reason {
 }
 
 .pc-metric-card--term .pc-metric-main {
-    flex: 1 1 auto;
+    flex: 0 0 54px;
     margin: 0;
     min-height: 0;
 }
 
 .pc-metric-card--testers .pc-metric-main {
-    flex: 1 1 auto;
+    flex: 0 0 54px;
     flex-direction: column;
+    justify-content: center;
     gap: 4px;
     margin: 0;
     min-height: 0;
@@ -4194,8 +4195,8 @@ button.pc-metric-num-btn:active {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 16px;
-    margin-top: auto;
+    min-height: 14px;
+    margin-top: 0;
     padding-top: 0;
     border-top: none;
     text-align: center;
@@ -4236,7 +4237,7 @@ button.pc-metric-num-btn:active {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 1 1 auto;
+    flex: 0 0 64px;
     margin: 0;
 }
 
@@ -4298,8 +4299,8 @@ button.pc-metric-num-btn:active {
 }
 
 .pc-metric-card--google .pc-metric-footer {
-    min-height: 20px;
-    padding-top: 4px;
+    min-height: 14px;
+    padding-top: 0;
 }
 
 /* Status chips under the Google ring were removed from the card layout. */

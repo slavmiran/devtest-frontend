@@ -118,13 +118,8 @@ function updateTestsRefreshUi() {
     var showIndicator = refreshing && _testsRefreshIndicatorVisible;
     var tab = document.getElementById('tab-tests');
     var list = document.getElementById('my-tests-list');
-    var status = document.getElementById('my-tests-refresh-state');
     if (tab) tab.classList.toggle('is-tests-refreshing', showIndicator);
     if (list) list.setAttribute('aria-busy', refreshing ? 'true' : 'false');
-    if (status) {
-        status.hidden = !showIndicator;
-        status.setAttribute('aria-hidden', showIndicator ? 'false' : 'true');
-    }
 }
 
 function beginTestsListRefresh() {

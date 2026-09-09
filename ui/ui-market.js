@@ -3084,24 +3084,25 @@ function renderPlayReviewModal() {
            </div>`
         : '';
 
-    // Step 1 done state.
-    // Screenshot upload also counts as step1: openLink often kills WebApp before in-memory flag is set.
+    // Open-in-Play is optional here. Daily check-in already required Open + timer
+    // before this modal, so do not gate screenshot upload on clicking Open again.
+    var alreadyOpenedFromCard = _playReviewModalSource === 'checkin'
+        || (typeof window.isCheckinTimerActiveForApp === 'function'
+            && window.isCheckinTimerActiveForApp(_playReviewModalAppId));
     var step1Done = isReadOnly
         || !!window._playReviewStep1Done
         || !!session.step1Done
-        || !!screenshotUrl;
-    
-    // Step 2 done state
+        || !!screenshotUrl
+        || alreadyOpenedFromCard;
+
     var step2Done = !!screenshotUrl;
 
-    // Step 1 Number and status
     var step1StatusClass = step1Done ? 'is-done' : 'is-active';
     var step1NumHtml = step1Done 
         ? `<svg class="step-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` 
         : '1';
 
-    // Step 2 Number and status
-    var step2StatusClass = step2Done ? 'is-done' : (step1Done ? 'is-active' : 'is-locked');
+    var step2StatusClass = step2Done ? 'is-done' : 'is-active';
     var step2NumHtml = step2Done 
         ? `<svg class="step-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` 
         : '2';
@@ -3124,9 +3125,9 @@ function renderPlayReviewModal() {
             </div>
         `;
     } else {
-        var uploadLockedClass = !step1Done ? ' is-locked' : '';
+        var uploadLockedClass = isReadOnly ? ' is-locked' : '';
         uploadOrPreviewHtml = `
-            <div class="play-review-upload-zone${uploadLockedClass}" id="play-review-upload-zone" onclick="${(step1Done && !isReadOnly) ? "document.getElementById('play-review-file').click()" : ""}">
+            <div class="play-review-upload-zone${uploadLockedClass}" id="play-review-upload-zone" onclick="${!isReadOnly ? "document.getElementById('play-review-file').click()" : ""}">
                 <input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleReviewScreenshotUpload(this, ${test.id})">
                 <div class="upload-zone-content">
                     <svg class="upload-zone-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -3137,7 +3138,7 @@ function renderPlayReviewModal() {
     }
 
     // Submit button state
-    var isSubmitEnabled = step1Done && step2Done && !isReadOnly;
+    var isSubmitEnabled = step2Done && !isReadOnly;
     var submitDisabledAttr = isSubmitEnabled ? '' : ' disabled';
     var submitButtonClass = isSubmitEnabled ? 'btn-primary' : 'btn-disabled';
 
@@ -3163,7 +3164,7 @@ function renderPlayReviewModal() {
                         </div>
                         <div class="review-step-content">
                             <div class="review-step-title">${window.escapeHTML(lang === 'ru' ? 'Открыть страницу приложения' : 'Open app page')}</div>
-                            <div class="review-step-desc">${window.escapeHTML(lang === 'ru' ? 'Перейдите в Google Play и опубликуйте отзыв.' : 'Go to Google Play and publish your review.')}</div>
+                            <div class="review-step-desc">${window.escapeHTML(lang === 'ru' ? 'Если страница ещё не открыта — перейдите в Google Play и опубликуйте отзыв.' : 'If the page is not open yet, go to Google Play and publish your review.')}</div>
                             <button type="button" class="btn play-review-store-btn" onclick="handlePlayReviewOpenStoreClick(event)" ${reviewUrl ? '' : 'disabled'}>
                                 <svg class="store-btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                                 ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
@@ -3711,6 +3712,12 @@ function openPlayReviewModal(appId, event, options) {
         : String(test && test.play_review_status || 'none').toLowerCase();
     var session = _loadPlayReviewSession(appId);
 
+    if (_playReviewModalSource === 'checkin') {
+        window._playReviewStep1Done = true;
+        _savePlayReviewSession(appId, { step1Done: true });
+        session = _loadPlayReviewSession(appId);
+    }
+
     if (reviewStatus === 'rejected' && test) {
         // Drop stale rejected screenshot from the test row, but keep a fresh
         // session upload if the user already attached one in this retry.
@@ -3738,7 +3745,7 @@ function openPlayReviewModal(appId, event, options) {
 
 function openPlayReviewModalFromCheckinOptions(event) {
     if (_checkinOptionsAppId == null) return;
-    openPlayReviewModal(_checkinOptionsAppId, event);
+    openPlayReviewModal(_checkinOptionsAppId, event, { source: 'checkin' });
 }
 
 function closePlayReviewModal(event) {
@@ -4255,12 +4262,23 @@ function openReportModal(appId, ownerUsername) {
     if (bugBtn) bugBtn.textContent = window.t('reportBtnSendBug', {}, lang);
     if (ideaBtn) ideaBtn.textContent = window.t('reportBtnSendIdea', {}, lang);
 
+    var currentTest = typeof _checkinProofTest === 'function'
+        ? _checkinProofTest(appId)
+        : (typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null);
+    var testingDay = currentTest && typeof window.getUserTestingDay === 'function'
+        ? Number(window.getUserTestingDay(currentTest.start_date, currentTest.testing_days) || 0)
+        : 0;
+    var isFirstDay = !currentTest || currentTest.status === 'new' || Number(currentTest.checkins_count || 0) === 0 || testingDay <= 1;
+
+    var feedbackBlock = document.querySelector('.report-feedback-block');
+    if (feedbackBlock) {
+        // Feedback alternative block (bug/recommendation) is ONLY shown on Day 1.
+        // On subsequent days, the user already made their choice on the checkin-options modal.
+        feedbackBlock.style.display = isFirstDay ? '' : 'none';
+    }
+
     const noteEl = document.getElementById('t-reportFeedbackScreenshotNote');
     if (noteEl) {
-        var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
-        var testingDay = test && typeof window.getUserTestingDay === 'function'
-            ? Number(window.getUserTestingDay(test.start_date) || 0)
-            : 0;
         var controlDays = (typeof window.CONTROL_DAYS !== 'undefined' && Array.isArray(window.CONTROL_DAYS))
             ? window.CONTROL_DAYS
             : [1, 4, 7, 10, 14];
@@ -4285,6 +4303,8 @@ function closeReportModal(event) {
         _reportOwnerUsername = null;
         _reportMessageLang = null;
         _reportTextExpanded = false;
+        var feedbackBlock = document.querySelector('.report-feedback-block');
+        if (feedbackBlock) feedbackBlock.style.display = '';
     }, 300);
     if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
 }

@@ -362,14 +362,14 @@ function getAvatar(name) {
     return `<div class="avatar" style="background-color: ${color}">${window.escapeHTML(letter)}</div>`;
 }
 
-/** Muted purple yin-yang mark for karma UI (replaces ☯️ emoji icons). */
+/** Crisp black & white yin-yang mark for karma UI (replaces ☯️ emoji icons). */
 function karmaIconHtml(extraClass) {
     var cls = 'karma-yin-icon' + (extraClass ? (' ' + String(extraClass)) : '');
     return '<svg class="' + cls + '" viewBox="-40 -40 80 80" aria-hidden="true" focusable="false">' +
-        '<circle r="39" fill="currentColor"></circle>' +
-        '<path fill="#fff" fill-opacity="0.92" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"></path>' +
-        '<circle r="5" cy="19" fill="#fff" fill-opacity="0.92"></circle>' +
-        '<circle r="5" cy="-19" fill="currentColor"></circle>' +
+        '<circle r="38" fill="#000000" stroke="#ffffff" stroke-width="2"></circle>' +
+        '<path fill="#ffffff" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"></path>' +
+        '<circle r="5.5" cy="19" fill="#ffffff"></circle>' +
+        '<circle r="5.5" cy="-19" fill="#000000"></circle>' +
     '</svg>';
 }
 
