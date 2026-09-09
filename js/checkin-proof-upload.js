@@ -62,7 +62,15 @@ function _clearCheckinProofKey(progressId) {
 function _setCheckinProofStatus(message, kind) {
     var element = document.getElementById('checkin-proof-upload-status');
     if (!element) return;
-    element.textContent = String(message || '');
+    var text = String(message || '').trim();
+    if (!text) {
+        element.innerHTML = '';
+        element.hidden = true;
+        element.className = 'checkin-proof-upload-status';
+        return;
+    }
+    element.hidden = false;
+    element.innerHTML = text;
     element.classList.toggle('is-error', kind === 'error');
     element.classList.toggle('is-success', kind === 'success');
     element.classList.toggle('is-incentive', kind === 'incentive');
@@ -146,6 +154,7 @@ function _resetCheckinProofSelection() {
     _checkinProofUploadState.selectionGeneration += 1;
     var input = document.getElementById('checkin-proof-file-input');
     if (input) input.value = '';
+    _setCheckinProofStatus('', '');
     _renderCheckinProofPreviews();
     _syncCheckinProofControls();
 }

@@ -152,46 +152,84 @@
     font-size: 11px;
 }
 
+.checkin-proof-upload-status[hidden],
+.checkin-proof-upload-status:empty {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+}
+
 .checkin-proof-upload-status {
-    min-height: 20px;
-    margin: 10px 2px 0;
-    color: var(--hint-color);
-    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 2px 0 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 12.5px;
     line-height: 1.4;
     text-align: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-color, #ffffff);
+    box-sizing: border-box;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .checkin-proof-upload-status.is-error {
-    color: #ff453a;
+    background: rgba(255, 69, 58, 0.08);
+    border: 1px solid rgba(255, 69, 58, 0.22);
+    color: #ff6961;
 }
 
 .checkin-proof-upload-status.is-success {
-    color: #32d74b;
-    font-weight: 650;
+    background: rgba(50, 215, 75, 0.08);
+    border: 1px solid rgba(50, 215, 75, 0.22);
+    color: #34c759;
 }
 
 .checkin-proof-upload-status.is-incentive {
-    color: #ffd60a;
-    font-weight: 550;
-    text-shadow: 0 0 12px rgba(255, 214, 10, 0.25);
+    background: rgba(255, 179, 64, 0.08);
+    border: 1px solid rgba(255, 179, 64, 0.22);
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.checkin-proof-upload-status.is-incentive strong {
+    color: #ffb340;
+    font-weight: 650;
 }
 
 .checkin-proof-upload-status.is-bonus {
-    color: #30d158;
+    background: rgba(50, 215, 75, 0.08);
+    border: 1px solid rgba(50, 215, 75, 0.24);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.checkin-proof-upload-status.is-bonus strong {
+    color: #34c759;
     font-weight: 650;
-    text-shadow: 0 0 12px rgba(48, 209, 88, 0.25);
 }
 
 .checkin-proof-upload-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
-    gap: 10px;
-    margin-top: 10px;
+    display: flex;
+    width: 100%;
+    margin-top: 4px;
 }
 
 .checkin-proof-upload-actions .btn {
     width: 100%;
     min-width: 0;
+}
+
+#checkin-proof-submit:disabled {
+    opacity: 0.38 !important;
+    background: rgba(10, 132, 255, 0.25) !important;
+    color: rgba(255, 255, 255, 0.45) !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 #report-modal.is-proof-upload .report-standard-block {
@@ -207,11 +245,5 @@
     flex-direction: column;
     gap: 10px;
     margin-bottom: 6px;
-}
-
-@media (max-width: 380px) {
-    .checkin-proof-upload-actions {
-        grid-template-columns: 1fr;
-    }
 }
 
