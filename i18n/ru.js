@@ -2901,6 +2901,7 @@
             pcConfigureBtn: "Настроить",
             pcClosedTestTitle: "Закрытый тест",
             pcStatusRecruiting: "Идёт набор команды",
+            pcStatusRecruitingMinimum: "Минимум +{count}",
             pcStatusNeedSync: "Нужна синхронизация",
             pcStatusActiveTest: "Активный тест",
             pcStatusExtension: "Продление теста",

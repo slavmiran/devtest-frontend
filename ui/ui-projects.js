@@ -1335,43 +1335,15 @@ function renderProjects(force) {
             : 'pc-metric-day__value';
         const dayValueHtml = '<span class="' + dayValClass + '">' + window.escapeHTML(String(dayMain)) + '</span>'
             + (hasSync ? '<span class="pc-metric-day__total">/ 14</span>' : '');
-        const syncDotHtml = '';
-        const bufferHoursText = isPendingCompletion && bufferHoursLeft > 0
-            ? String(bufferHoursLeft)
-            : '48';
-        const extraDaysWord = lang === 'en'
-            ? (extraPaidDays === 1 ? 'day' : 'days')
-            : (extraPaidDays === 1 ? 'день' : (extraPaidDays >= 2 && extraPaidDays <= 4 ? 'дня' : 'дней'));
-        const bufferWord = lang === 'en' ? 'Buffer' : 'Буфер';
-        const bufferUnit = lang === 'en' ? 'h' : 'ч';
-
         const isPaidDaysActive = extraPaidDays > 0 && !isPendingCompletion && (hasSync ? (platformDays > 14 || currentGoogleDay > 14) : platformDays > 14);
-        const isPaidDaysExpired = extraPaidDays > 0 && (platformDays > (14 + extraPaidDays) || isPendingCompletion);
-        const isBufferActive = isPendingCompletion;
+        const extensionClockDay = Math.max(Number(platformDays || 0), hasSync ? Number(currentGoogleDay || 0) : 0);
+        const remainingPaidDays = extraPaidDays > 0
+            ? Math.max(0, extraPaidDays - Math.max(0, extensionClockDay - 15))
+            : 0;
+        const remainingBufferHours = isPendingCompletion
+            ? Math.max(0, Math.round(Number(bufferHoursLeft || 0)))
+            : 0;
 
-        const paidDaysClass = isPaidDaysActive
-            ? 'pc-metric-reserve pc-metric-reserve--paid-active'
-            : (isPaidDaysExpired ? 'pc-metric-reserve pc-metric-reserve--expired' : 'pc-metric-reserve pc-metric-reserve--neutral');
-
-        const bufferClass = isBufferActive
-            ? 'pc-metric-reserve pc-metric-reserve--buffer-active'
-            : 'pc-metric-reserve pc-metric-reserve--neutral';
-
-        const bufferChipHtml = '<button type="button" class="' + bufferClass + '" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();">' +
-            '<span>' + window.escapeHTML('+' + bufferHoursText + bufferUnit + ' ' + bufferWord) + '</span>' +
-        '</button>';
-
-        const paidDaysChipHtml = extraPaidDays > 0
-            ? '<button type="button" class="' + paidDaysClass + '" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();">' +
-                '<span>' + window.escapeHTML('+' + String(extraPaidDays) + ' ' + extraDaysWord) + '</span>' +
-              '</button>'
-            : '';
-
-        const termReserveHtml = hasSync
-            ? (paidDaysChipHtml ? (paidDaysChipHtml + bufferChipHtml) : bufferChipHtml)
-            : '<button type="button" class="pc-metric-cal-slot-btn" onclick="openProjectLifecycleModal(' + Number(project.id) + '); event.stopPropagation();" aria-label="' + window.escapeHTML(window.t('pcTermAction', {}, lang)) + '">' +
-                '<img src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" class="pc-metric-cal-slot-icon" alt="" aria-hidden="true">' +
-              '</button>';
         const totalDaysText = (function() {
             if (lang === 'ru') {
                 const n = Math.max(0, Math.floor(Number(platformDays) || 0));
@@ -1393,12 +1365,6 @@ function renderProjects(force) {
         const dailyMeta = getProjectDailyProgressMeta(project);
         const teamTesterCount = Math.max(totalTesters, Number(dailyMeta.totalTesters || 0));
         const testersToMinimum = Math.max(0, 12 - teamTesterCount);
-        const testersToRecommended = Math.max(0, 20 - teamTesterCount);
-        const teamReserveHtml = teamTesterCount < 12
-            ? '<button type="button" class="pc-metric-reserve pc-metric-reserve--neutral" onclick="openDailyProgressDetailsModal(' + Number(project.id) + ', event); event.stopPropagation();">' + window.escapeHTML(window.t('pcMetricTesterMinimum', { count: testersToMinimum, unit: testerUnitLabel(testersToMinimum) }, lang)) + '</button>'
-            : teamTesterCount < 20
-                ? '<button type="button" class="pc-metric-reserve pc-metric-reserve--recommend" onclick="openDailyProgressDetailsModal(' + Number(project.id) + ', event); event.stopPropagation();">' + window.escapeHTML(window.t('pcMetricTesterRecommend', { count: testersToRecommended }, lang)) + '</button>'
-                : '<button type="button" class="pc-metric-reserve pc-metric-reserve--reliable" onclick="openDailyProgressDetailsModal(' + Number(project.id) + ', event); event.stopPropagation();">' + window.escapeHTML(window.t('pcMetricTesterReliable', {}, lang)) + '</button>';
         const testersRingHtml = typeof buildProjectDailyProgressRingHtml === 'function'
             ? buildProjectDailyProgressRingHtml(project, { compactLabel: true })
             : '';
@@ -1462,9 +1428,22 @@ function renderProjects(force) {
                     <span>${window.escapeHTML(termBtnLabel)}</span>
                </button>`;
 
+        let closedTestStageExtra = '';
+        if (closedTestStage === 'extension' && remainingPaidDays > 0) {
+            closedTestStageExtra = ' +' + remainingPaidDays + ' ' + extraDaysUnitLabel(remainingPaidDays);
+        } else if (closedTestStage === 'buffer') {
+            closedTestStageExtra = ' +' + remainingBufferHours + (lang === 'en' ? 'h' : 'ч');
+        } else if (closedTestStage === 'recruiting' && testersToMinimum > 0) {
+            closedTestStageExtra = ' · ' + (window.t('pcStatusRecruitingMinimum', { count: testersToMinimum }, lang) || ('Минимум +' + testersToMinimum));
+        }
+        const closedTestStageText = closedTestStageLabel + closedTestStageExtra;
+        const dayLifecycleAria = window.escapeHTML(window.t('pcLifecycleTitle', {}, lang) || 'Жизненный цикл проекта');
+        const testersPlanAria = window.escapeHTML(window.t('dprModalTitle', {}, lang) || 'Суточный план и рекомендации');
+        const testersValueClass = 'pc-metric-team__value' + (isPaidDaysActive ? ' pc-metric-team__value--paid' : '');
+
         const stageBadgeHtml = needSyncPrompt
-            ? `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${window.escapeHTML(closedTestStageLabel)}</button>`
-            : `<span class="pc-stage-badge pc-stage-badge--${closedTestStage}">${window.escapeHTML(closedTestStageLabel)}</span>`;
+            ? `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${window.escapeHTML(closedTestStageText)}</button>`
+            : `<span class="pc-stage-badge pc-stage-badge--${closedTestStage}">${window.escapeHTML(closedTestStageText)}</span>`;
 
         const stateBlockHtml = `
                 <div class="pc-closed-head">
@@ -1473,14 +1452,16 @@ function renderProjects(force) {
                 <div class="pc-metrics-grid">
                     <section class="pc-metric-card pc-metric-card--term">
                         <div class="pc-metric-title">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</div>
-                        <div class="pc-metric-main pc-metric-day">${dayValueHtml}</div>
-                        ${termReserveHtml}
+                        <button type="button" class="pc-metric-num-btn pc-metric-main pc-metric-day" onclick="openProjectLifecycleModal(${project.id}, event); event.stopPropagation();" aria-label="${dayLifecycleAria}">
+                            ${dayValueHtml}
+                        </button>
                         <div class="pc-metric-footer">${termFooterHtml}</div>
                     </section>
                     <section class="pc-metric-card pc-metric-card--testers">
                         <div class="pc-metric-title">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</div>
-                        <div class="pc-metric-main pc-metric-team__value">${window.escapeHTML(String(teamTesterCount))}</div>
-                        ${teamReserveHtml}
+                        <button type="button" class="pc-metric-num-btn pc-metric-main ${testersValueClass}" onclick="openDailyProgressDetailsModal(${project.id}, event); event.stopPropagation();" aria-label="${testersPlanAria}">
+                            ${window.escapeHTML(String(teamTesterCount))}
+                        </button>
                         <div class="pc-metric-footer"><span class="pc-metric-footer__line">${window.escapeHTML(window.t('pcMetricRecruitmentTarget', { count: remainingRecruitmentSlots }, lang))}</span></div>
                     </section>
                     <section class="pc-metric-card pc-metric-card--google">

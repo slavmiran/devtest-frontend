@@ -3994,6 +3994,28 @@ button.pc-act-reason {
     text-shadow: 0 0 12px rgba(255, 184, 77, 0.45);
 }
 
+.pc-metric-team__value--paid {
+    color: #c4b5fd !important;
+    text-shadow: 0 0 12px rgba(139, 108, 255, 0.5);
+}
+
+button.pc-metric-num-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+button.pc-metric-num-btn:active {
+    transform: scale(0.97);
+}
+
 .pc-metric-day__total {
     margin-left: 3px;
     color: rgba(193, 210, 235, 0.62);

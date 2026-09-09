@@ -2895,6 +2895,7 @@
             pcConfigureBtn: "Configure",
             pcClosedTestTitle: "Closed test",
             pcStatusRecruiting: "Recruiting the team",
+            pcStatusRecruitingMinimum: "Minimum +{count}",
             pcStatusNeedSync: "Sync needed",
             pcStatusActiveTest: "Active test",
             pcStatusExtension: "Test Extension",
