@@ -1459,8 +1459,8 @@ function renderProjects(force) {
                     </section>
                     <section class="pc-metric-card pc-metric-card--testers">
                         <div class="pc-metric-title">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</div>
-                        <button type="button" class="pc-metric-num-btn pc-metric-main ${testersValueClass}" onclick="openDailyProgressDetailsModal(${project.id}, event); event.stopPropagation();" aria-label="${testersPlanAria}">
-                            ${window.escapeHTML(String(teamTesterCount))}
+                        <button type="button" class="pc-metric-num-btn pc-metric-main" onclick="openDailyProgressDetailsModal(${project.id}, event); event.stopPropagation();" aria-label="${testersPlanAria}">
+                            <span class="${testersValueClass}">${window.escapeHTML(String(teamTesterCount))}</span>
                         </button>
                         <div class="pc-metric-footer"><span class="pc-metric-footer__line">${window.escapeHTML(window.t('pcMetricRecruitmentTarget', { count: remainingRecruitmentSlots }, lang))}</span></div>
                     </section>
@@ -1557,6 +1557,15 @@ function renderProjects(force) {
             if (visibilityMeta.mode === 'hidden_manual') return window.t('settingsVisibilityPrivate', {}, lang) || 'Скрыто из витрины';
             return window.t('settingsVisibilityPublic', {}, lang) || 'Публичный';
         })();
+        const visibilitySvg = (() => {
+            if (visibilityMeta.mode === 'isolated') {
+                return '<svg class="pc-quick-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+            }
+            if (visibilityMeta.mode === 'hidden_manual') {
+                return '<svg class="pc-quick-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+            }
+            return '<svg class="pc-quick-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+        })();
         const proofPingEnabled = window.ProofPing
             ? window.ProofPing.isEnabled(project)
             : (project.proof_ping_enabled !== false);
@@ -1602,11 +1611,12 @@ function renderProjects(force) {
                         </div>
                         <div class="pc-quick-settings__grid">
                             <button type="button" class="pc-quick-tile pc-quick-tile--visibility" onclick="openVisibilityModeModal(${project.id}, event)">
-                                <span class="pc-quick-tile__icon pc-quick-tile__icon--visibility" aria-hidden="true">${visibilityMeta.buttonIcon}</span>
+                                <span class="pc-quick-tile__icon pc-quick-tile__icon--visibility" aria-hidden="true">${visibilitySvg}</span>
                                 <span class="pc-quick-tile__copy">
                                     <span class="pc-quick-tile__label">${window.escapeHTML(window.t('settingsVisibilityTitle', {}, lang) || 'Видимость')}</span>
                                     <span class="pc-quick-tile__value">${window.escapeHTML(visibilitySubText)}</span>
                                 </span>
+                                <svg class="pc-quick-tile__chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </button>
                             <button type="button" class="pc-quick-tile pc-quick-tile--notifications ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer="${project.id}" aria-pressed="${proofPingEnabled ? 'true' : 'false'}" aria-label="${window.escapeHTML(window.t('pcPingToggleAria', {}, lang) || 'Уведомления о скриншотах контрольного дня')}" onclick="event.stopPropagation(); pcProofPingToggleDot(${project.id}, this)">
                                 <span class="pc-quick-tile__icon pc-quick-tile__icon--notifications" aria-hidden="true">
@@ -1620,11 +1630,11 @@ function renderProjects(force) {
                         </div>
                         <div class="pc-quick-settings__actions">
                             <button type="button" class="pc-quick-action" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
-                                <img src="./images/Icons/settingsfull-svgrepo-com.svg" alt="" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                 <span>${window.escapeHTML(window.t('pcQuickSettingsEdit', {}, lang) || 'Изменить')}</span>
                             </button>
                             <button type="button" class="pc-quick-action pc-quick-action--archive" onclick="openDeleteModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
-                                <img src="./images/Icons/mail-inbox-dismiss-svgrepo-com.svg" alt="" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
                                 <span>${window.escapeHTML(window.t('pcQuickSettingsArchive', {}, lang) || 'В архив')}</span>
                             </button>
                         </div>
@@ -7001,13 +7011,6 @@ function openProjectLifecycleModal(projectId, event) {
                                 ? `<div class="pc-lc-step__chips">${Array.from({ length: extraPaidDays }, (_, i) => `<span class="pc-lc-chip">${esc(tr('pcLifecycleDayChip', { day: 15 + i }))}</span>`).join('')}</div>`
                                 : ''}
                             <p class="pc-lc-step__desc">${esc(tr('pcLifecycleExtendedDesc'))}</p>
-                            <details class="pc-lc-gap-why">
-                                <summary>
-                                    <span>${esc(tr('pcLcGapWhyTitle'))}</span>
-                                    <span class="pc-lc-gap-why__chev" aria-hidden="true">▾</span>
-                                </summary>
-                                <p>${esc(tr('pcLcGapWhyBody'))}</p>
-                            </details>
                         </div>
                     </div>
                 </div>
@@ -7125,8 +7128,6 @@ function openDailyProgressDetailsModal(projectId, event) {
 
     const meta = getProjectDailyProgressMeta(project);
     const totalTesters = meta.totalTesters;
-    const todayDone = meta.todayDone;
-    const teamPercent = meta.teamPercent;
 
     const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
     const tr = (k, p, def) => (typeof window.t === 'function' ? window.t(k, p || {}, uiLang) : (def || k));
@@ -7137,47 +7138,40 @@ function openDailyProgressDetailsModal(projectId, event) {
         ? buildProjectDailyProgressRingHtml(project)
         : '';
 
-    if (totalTesters < 12) {
-        const deficit = 12 - totalTesters;
-        const recommended = Math.max(0, 20 - totalTesters);
-        bodyEl.innerHTML = `
+    const recommended = Math.max(0, 20 - totalTesters);
+    const recommendHtml = recommended > 0
+        ? `<div class="dp-sheet__metrics-compact">
+                <div class="dp-sheet__metric-item">
+                    <span class="dp-sheet__metric-k">${tr('dprModalDeficitRecommend', { recommended: recommended })}</span>
+                </div>
+            </div>`
+        : '';
+    const hintsHtml = `
+                <div class="dp-sheet__hints">
+                    <div class="dp-sheet__hint dp-sheet__hint--danger">
+                        <strong class="dp-sheet__hint-title">${tr('dprHintFloorTitle')}</strong>
+                        <p class="dp-sheet__hint-text">${tr('dprHintFloor')}</p>
+                    </div>
+                    <div class="dp-sheet__hint dp-sheet__hint--team">
+                        <strong class="dp-sheet__hint-title">${tr('dprHintTeamTitle')}</strong>
+                        <p class="dp-sheet__hint-text">${tr('dprHintTeam')}</p>
+                    </div>
+                    <div class="dp-sheet__hint dp-sheet__hint--update">
+                        <strong class="dp-sheet__hint-title">${tr('dprHintUpdatesTitle')}</strong>
+                        <p class="dp-sheet__hint-text">${tr('dprHintUpdates')}</p>
+                    </div>
+                </div>`;
+
+    bodyEl.innerHTML = `
             <div class="dp-sheet__card">
                 <div class="dp-sheet__ring-hero">
                     ${modalRingHtml}
                 </div>
-                <div class="dp-sheet__alert dp-sheet__alert--warn">
-                    <svg class="dp-sheet__alert-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <div class="dp-sheet__alert-body">
-                        <strong class="dp-sheet__alert-title">${tr('dprModalDeficitLead')}</strong>
-                        <p class="dp-sheet__alert-desc">${tr('dprModalDeficitWarning')}</p>
-                    </div>
-                </div>
-                <div class="dp-sheet__tip">
-                    <svg class="dp-sheet__tip-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
-                    <div class="dp-sheet__tip-text">
-                        <strong>Совет:</strong> ${tr('dprModalDeficitAdvice')}
-                    </div>
-                </div>
-                <div class="dp-sheet__metrics-compact">
-                    <div class="dp-sheet__metric-item">
-                        <span class="dp-sheet__metric-k">${tr('dprModalDeficitTeam', { total: totalTesters })}</span>
-                    </div>
-                    <div class="dp-sheet__metric-item">
-                        <span class="dp-sheet__metric-k text-amber">${tr('dprModalDeficitNotEnough', { deficit: deficit }, (uiLang === 'en' ? `• Not enough to minimum: ${deficit} testers` : `• Не хватает до минимума: ${deficit} чел.`))}</span>
-                    </div>
-                    <div class="dp-sheet__metric-item">
-                        <span class="dp-sheet__metric-k">${tr('dprModalDeficitRecommend', { recommended: recommended }, (uiLang === 'en' ? `• Recommended for safe zone: +${recommended} testers` : `• Рекомендуется для безопасной зоны: +${recommended} чел.`))}</span>
-                    </div>
-                    <div class="dp-sheet__metric-item">
-                        <span class="dp-sheet__metric-k">${tr('dprModalDeficitTested', { done: todayDone })}</span>
-                    </div>
-                </div>
-                <div class="dp-sheet__protip">
-                    <div class="dp-sheet__protip-title">${uiLang === 'en' ? '💡 Pro-Tip for Approval' : '💡 Совет для успешного релиза'}</div>
-                    <div class="dp-sheet__protip-text">${tr('projectUpdateTipText', {}, 'Выпустите 1-2 обновления в Google Console во время этого теста (даже мелкий bug fix). Это покажет модераторам вашу активность и сильно повысит шансы на успешный релиз!')}</div>
-                </div>
+                ${recommendHtml}
+                ${hintsHtml}
             </div>
         `;
+    if (totalTesters < 12) {
         actionsEl.innerHTML = `
             <button type="button" class="btn btn-secondary" onclick="closeDailyProgressDetailsModal()">${tr('pcLifecycleCloseBtn', {}, 'Закрыть')}</button>
             <button type="button" class="btn btn-primary" onclick="closeDailyProgressDetailsModal(); openAttractTestersSheet(${project.id});">
@@ -7186,40 +7180,6 @@ function openDailyProgressDetailsModal(projectId, event) {
             </button>
         `;
     } else {
-        const quotaDone = todayDone >= 12;
-        const leftCount = 12 - todayDone;
-        const recommended = Math.max(0, 20 - totalTesters);
-        bodyEl.innerHTML = `
-            <div class="dp-sheet__card">
-                <div class="dp-sheet__ring-hero">
-                    ${modalRingHtml}
-                </div>
-                <div class="dp-sheet__status-badge ${quotaDone ? 'is-complete' : 'is-gathering'}">
-                    <svg class="dp-sheet__status-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        ${quotaDone
-                            ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
-                            : '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
-                        }
-                    </svg>
-                    <div class="dp-sheet__status-text">
-                        ${quotaDone ? tr('dprModalCompleteStatus', { done: todayDone }) : tr('dprModalInProgressStatus', { done: todayDone, left: leftCount })}
-                    </div>
-                </div>
-                
-                <div class="dp-sheet__tip">
-                    <svg class="dp-sheet__tip-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
-                    <div class="dp-sheet__tip-text">
-                        <strong>Совет для успешного релиза:</strong> ${tr('dprModalCompleteUpdatesAdvice')}
-                    </div>
-                </div>
-
-                <div class="dp-sheet__metrics-compact">
-                    <div class="dp-sheet__metric-item">
-                        <span class="dp-sheet__metric-k">${tr('dprModalCompleteTeam', { done: todayDone, total: totalTesters, percent: teamPercent, recommended: recommended })}</span>
-                    </div>
-                </div>
-            </div>
-        `;
         actionsEl.innerHTML = `
             <button type="button" class="btn btn-primary" style="width: 100%;" onclick="closeDailyProgressDetailsModal()">${tr('pcLifecycleCloseBtn', {}, 'Понятно')}</button>
         `;

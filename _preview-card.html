@@ -76,7 +76,7 @@ function stateBlock(o) {
     </section>
     <section class="pc-metric-card pc-metric-card--testers">
       <div class="pc-metric-title">ТЕСТЕРЫ</div>
-      <button type="button" class="pc-metric-num-btn pc-metric-main pc-metric-team__value${o.paidActive ? ' pc-metric-team__value--paid' : ''}">${teamSize}</button>
+      <button type="button" class="pc-metric-num-btn pc-metric-main"><span class="pc-metric-team__value${o.paidActive ? ' pc-metric-team__value--paid' : ''}">${teamSize}</span></button>
       <div class="pc-metric-footer"><span class="pc-metric-footer__line">Набор: ${o.recruitTarget || teamSize} чел.</span></div>
     </section>
     <section class="pc-metric-card pc-metric-card--google">
