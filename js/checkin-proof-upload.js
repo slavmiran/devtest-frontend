@@ -59,6 +59,33 @@ function _clearCheckinProofKey(progressId) {
     try { sessionStorage.removeItem(_checkinProofSessionKey(progressId)); } catch (error) {}
 }
 
+var CHECKIN_PROOF_KARMA_ICON_HTML = '<img src="images/Icons/Yin_yang.svg" class="checkin-proof-karma-icon" alt="☯" width="14" height="14">';
+var _checkinProofAlertTimer = null;
+
+function _setCheckinProofAlert(message) {
+    var alertEl = document.getElementById('checkin-proof-upload-alert');
+    if (!alertEl) return;
+    if (_checkinProofAlertTimer) {
+        clearTimeout(_checkinProofAlertTimer);
+        _checkinProofAlertTimer = null;
+    }
+    var text = String(message || '').trim();
+    if (!text) {
+        alertEl.hidden = true;
+        alertEl.innerHTML = '';
+        return;
+    }
+    alertEl.innerHTML = '<span class="checkin-proof-alert-icon" aria-hidden="true">⚠️</span><span class="checkin-proof-alert-text">' + text + '</span>';
+    alertEl.hidden = false;
+    _checkinProofAlertTimer = setTimeout(function() {
+        if (alertEl) {
+            alertEl.hidden = true;
+            alertEl.innerHTML = '';
+        }
+        _checkinProofAlertTimer = null;
+    }, 6000);
+}
+
 function _setCheckinProofStatus(message, kind) {
     var element = document.getElementById('checkin-proof-upload-status');
     if (!element) return;
@@ -82,9 +109,11 @@ function _updateCheckinProofFileStatus() {
     if (count <= 0) {
         _setCheckinProofStatus('', '');
     } else if (count < 3) {
-        _setCheckinProofStatus(window.t('checkinProofReady', { count: count }, lang), 'incentive');
+        var html = window.t('checkinProofReady', { count: count, karmaIcon: CHECKIN_PROOF_KARMA_ICON_HTML }, lang);
+        _setCheckinProofStatus(html, 'incentive');
     } else {
-        _setCheckinProofStatus(window.t('checkinProofReadyBonus', { count: count }, lang), 'bonus');
+        var html = window.t('checkinProofReadyBonus', { count: count, karmaIcon: CHECKIN_PROOF_KARMA_ICON_HTML }, lang);
+        _setCheckinProofStatus(html, 'bonus');
     }
 }
 
@@ -154,6 +183,7 @@ function _resetCheckinProofSelection() {
     _checkinProofUploadState.selectionGeneration += 1;
     var input = document.getElementById('checkin-proof-file-input');
     if (input) input.value = '';
+    _setCheckinProofAlert('');
     _setCheckinProofStatus('', '');
     _renderCheckinProofPreviews();
     _syncCheckinProofControls();
@@ -228,7 +258,7 @@ async function handleCheckinProofFileSelected(event) {
     if (!selected.length) return;
     if (_checkinProofUploadState.files.length + selected.length > CHECKIN_PROOF_MAX_FILES) {
         var warning = window.t('checkinProofTooMany', { max: CHECKIN_PROOF_MAX_FILES }, lang);
-        _setCheckinProofStatus(warning, 'error');
+        _setCheckinProofAlert(warning);
         if (typeof showToast === 'function') showToast(warning);
         if (event.target) event.target.value = '';
         return;
@@ -236,19 +266,23 @@ async function handleCheckinProofFileSelected(event) {
     var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     for (var i = 0; i < selected.length; i += 1) {
         if (Number(selected[i].size || 0) <= 0 || allowedTypes.indexOf(String(selected[i].type || '').toLowerCase()) === -1) {
-            _setCheckinProofStatus(window.t('invalid_image_type', {}, lang), 'error');
+            var typeMsg = window.t('invalid_image_type', {}, lang);
+            _setCheckinProofAlert(typeMsg);
+            if (typeof showToast === 'function') showToast(typeMsg);
             if (event.target) event.target.value = '';
             return;
         }
         if (Number(selected[i].size || 0) > 5 * 1024 * 1024) {
-            _setCheckinProofStatus(window.t('file_too_large', {}, lang), 'error');
+            var sizeMsg = window.t('file_too_large', {}, lang);
+            _setCheckinProofAlert(sizeMsg);
+            if (typeof showToast === 'function') showToast(sizeMsg);
             if (event.target) event.target.value = '';
             return;
         }
     }
     _checkinProofUploadState.checkingFiles = true;
     var selectionGeneration = _checkinProofUploadState.selectionGeneration;
-    _setCheckinProofStatus(window.t('checkinProofCheckingDuplicates', {}, lang), '');
+    _setCheckinProofAlert('');
     _syncCheckinProofControls();
     var known = new Set(_checkinProofUploadState.fingerprints || []);
     var duplicateCount = 0;
@@ -274,7 +308,11 @@ async function handleCheckinProofFileSelected(event) {
         _renderCheckinProofPreviews();
         _updateCheckinProofFileStatus();
         if (duplicateCount > 0) {
-            _setCheckinProofStatus(window.t('checkinProofDuplicateSelected', { count: duplicateCount }, lang), 'error');
+            var dupMsg = window.t('checkinProofDuplicateSelected', { count: duplicateCount }, lang);
+            _setCheckinProofAlert(dupMsg);
+            if (typeof showToast === 'function') {
+                showToast(dupMsg, 5000);
+            }
         }
         _syncCheckinProofControls();
     }
@@ -289,6 +327,7 @@ function removeCheckinProofFile(index) {
     _checkinProofUploadState.files.splice(safeIndex, 1);
     _checkinProofUploadState.previewUrls.splice(safeIndex, 1);
     _checkinProofUploadState.fingerprints.splice(safeIndex, 1);
+    _setCheckinProofAlert('');
     _renderCheckinProofPreviews();
     _updateCheckinProofFileStatus();
     _syncCheckinProofControls();
