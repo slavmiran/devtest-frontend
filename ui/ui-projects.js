@@ -1344,9 +1344,13 @@ function renderProjects(force) {
             ? Math.max(0, Math.round(Number(bufferHoursLeft || 0)))
             : 0;
 
-        const totalDaysText = (function() {
+        const metricFooterPairHtml = function(label, value) {
+            return window.escapeHTML(String(label || '')) +
+                ' <span class="pc-metric-footer__value">' + window.escapeHTML(String(value || '')) + '</span>';
+        };
+        const totalDaysHtml = (function() {
+            const n = Math.max(0, Math.floor(Number(platformDays) || 0));
             if (lang === 'ru') {
-                const n = Math.max(0, Math.floor(Number(platformDays) || 0));
                 const mod10 = n % 10;
                 const mod100 = n % 100;
                 let word = 'дней';
@@ -1354,12 +1358,12 @@ function renderProjects(force) {
                     if (mod10 === 1) word = 'день';
                     else if (mod10 >= 2 && mod10 <= 4) word = 'дня';
                 }
-                return 'Всего: ' + n + ' ' + word;
+                return metricFooterPairHtml('Всего:', n + ' ' + word);
             }
-            return window.t ? window.t('pcMetricTotalDays', { day: platformDays }, lang) : ('Total: ' + platformDays + ' days');
+            return metricFooterPairHtml('Total:', n + ' days');
         })();
         const termFooterHtml = hasSync
-            ? '<span class="pc-metric-footer__line">' + window.escapeHTML(totalDaysText) + '</span>'
+            ? '<span class="pc-metric-footer__line">' + totalDaysHtml + '</span>'
             : '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcBufferLine', {}, lang)) + '</span>';
 
         const dailyMeta = getProjectDailyProgressMeta(project);
@@ -1379,7 +1383,10 @@ function renderProjects(force) {
         const activityLightning = isFullActivity ? '<span aria-hidden="true">⚡ </span>' : '';
         const dailyActivityHtml = '<span class="pc-metric-footer__line pc-daily-activity-line">' +
             activityLightning +
-            '<span>' + window.escapeHTML(window.t('pcMetricToday', {}, lang) || 'Сегодня') + ' ' + window.escapeHTML(String(Number(dailyMeta.teamPercent || 0))) + '%</span>' +
+            metricFooterPairHtml(
+                window.t('pcMetricToday', {}, lang) || 'Сегодня',
+                String(Number(dailyMeta.teamPercent || 0)) + '%'
+            ) +
             '</span>';
 
         const mutualCount = activeRegularTesters.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
@@ -1471,7 +1478,10 @@ function renderProjects(force) {
                             <span class="${testersValueClass}">${window.escapeHTML(String(teamTesterCount))}</span>
                             ${testersMicrobarHtml}
                         </button>
-                        <div class="pc-metric-footer"><span class="pc-metric-footer__line">${window.escapeHTML(window.t('pcMetricRecruitmentTarget', { count: remainingRecruitmentSlots }, lang))}</span></div>
+                        <div class="pc-metric-footer"><span class="pc-metric-footer__line">${metricFooterPairHtml(
+                            lang === 'ru' ? 'Набор:' : 'Recruiting:',
+                            lang === 'ru' ? (remainingRecruitmentSlots + ' чел.') : String(remainingRecruitmentSlots)
+                        )}</span></div>
                     </section>
                     <section class="pc-metric-card pc-metric-card--google">
                         <div class="pc-metric-title">${window.escapeHTML(window.t('pcActivityWord', {}, lang) || 'Активность')}</div>
